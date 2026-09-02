@@ -92,6 +92,12 @@ async function main(): Promise<void> {
   ])
   for (const toolId of settings.get().disabledTools) toolRegistry.setEnabled(toolId, false)
   toolTelemetry = await ToolTelemetry.open(join(userData(), 'tool-telemetry.jsonl'))
+  toolTelemetry.observeTools(toolRegistry.namespaces.flatMap((namespace) => namespace.tools.map((tool) => ({
+    toolId: `${namespace.name}.${tool.name}`,
+    namespace: namespace.name,
+    name: tool.name,
+    actions: (tool.actions ?? []).map((action) => action.name)
+  }))))
   toolRegistry.subscribe((record) => toolTelemetry?.record(record))
   chatService = new ChatService(chatWorkspace, settings, toolRegistry, () => {
     const active = browserService?.tabList().find((tab) => tab.active)
@@ -145,6 +151,7 @@ function createWindow(): void {
   operationsService?.on('changed', (event: OperationsEvent) => mainWindow?.webContents.send('operations:changed', event))
   const sendToolsEvent = (event: ToolsEvent): void => { mainWindow?.webContents.send('tools:event', event) }
   toolTelemetry?.on('record', (record) => sendToolsEvent({ type: 'call', record }))
+  toolTelemetry?.on('registered', (tool) => sendToolsEvent({ type: 'registered', tool }))
   toolTelemetry?.on('cleared', () => sendToolsEvent({ type: 'cleared' }))
 
   if (process.env.ELECTRON_RENDERER_URL) {

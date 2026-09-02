@@ -44,6 +44,10 @@ export function useToolsController(active: boolean): ToolsController {
         setManifest((current) => current ? withEnabled(current, event.toolId, event.enabled) : current)
         return
       }
+      if (event.type === 'registered') {
+        void refresh()
+        return
+      }
       setTelemetry((current) => current ? applyRecord(current, event.record) : current)
     })
     return () => {
@@ -104,5 +108,5 @@ export function applyRecord(snapshot: ToolTelemetrySnapshot, record: ToolCallRec
       : { toolId: record.toolId, action, calls: 1, failures: record.ok ? 0 : 1, averageMs: record.durationMs, lastAt: record.at }
     stats = [updated, ...stats.filter((stat) => !(stat.toolId === record.toolId && stat.action === action))]
   }
-  return { ...snapshot, stats, recent: [record, ...snapshot.recent].slice(0, 100) }
+  return { ...snapshot, stats, totalCalls: snapshot.totalCalls + 1, recent: [record, ...snapshot.recent].slice(0, 100) }
 }

@@ -27,7 +27,7 @@ export function ToolsModal({ open, onOpenChange }: ToolsModalProps): JSX.Element
   )
   const items = groups.flatMap((group) => group.items)
   const enabledCount = items.filter((item) => item.enabled).length
-  const totalCalls = tools.telemetry?.stats.filter((stat) => stat.action === null).reduce((sum, stat) => sum + stat.calls, 0) ?? 0
+  const totalCalls = tools.telemetry?.totalCalls ?? 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
