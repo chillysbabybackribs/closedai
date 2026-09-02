@@ -4,13 +4,12 @@ import { FileCode2, LogIn } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import { ChatContainerContent, ChatContainerRoot, ChatContainerScrollAnchor } from '../components/ui/chat-container.js'
-import { TextShimmer } from '../components/ui/text-shimmer.js'
 import type { ChatAttachment, ChatConnectionState } from '../shared/chat.js'
 import { useChatController } from './chat-controller.js'
 import { ChatHeader } from './chat-header.js'
 import { ChatHistory } from './chat-history.js'
 import { chatTitle } from './chat-state.js'
-import { ChatTranscript, hasReasoningForTurn } from './chat-transcript.js'
+import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { ToolsModal } from './tools/tools-modal.js'
 
@@ -22,7 +21,6 @@ export function ChatPane(): JSX.Element {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [toolsOpen, setToolsOpen] = useState(false)
   const title = chatTitle(state)
-  const showWorking = state.activeTurnId !== null && !hasReasoningForTurn(state.items, state.activeTurnId)
 
   async function sendMessage(text: string, attachments: ChatAttachment[]): Promise<void> {
     setHistoryOpen(false)
@@ -77,7 +75,6 @@ export function ChatPane(): JSX.Element {
           {state.items.length === 0
             ? <EmptyState state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
             : <ChatTranscript items={state.items} activeTurnId={state.activeTurnId} />}
-          {showWorking && <WorkingIndicator />}
           <ChatContainerScrollAnchor />
         </ChatContainerContent>
       </ChatContainerRoot>
@@ -116,14 +113,6 @@ function EmptyState({
           Sign in with ChatGPT
         </Button>
       )}
-    </div>
-  )
-}
-
-function WorkingIndicator(): JSX.Element {
-  return (
-    <div className="prompt-working" aria-live="polite">
-      <TextShimmer className="prompt-working-text">Thinking</TextShimmer>
     </div>
   )
 }
