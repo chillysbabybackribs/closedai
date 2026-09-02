@@ -20,6 +20,12 @@ export type ToolContext = {
   threadId: string | null
   turnId: string | null
   callId: string
+  /** Set when a tool call was dispatched by another tool, such as tool_batch. */
+  parentCallId?: string | null
+  /** Groups nested calls under the outer batch or orchestration request. */
+  batchId?: string | null
+  /** The boundary that initiated the call. */
+  source?: 'model' | 'batch' | 'system' | 'external'
   /** Aborted when the registry times the call out. Long-running tools should honour it. */
   signal: AbortSignal
 }

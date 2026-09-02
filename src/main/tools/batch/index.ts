@@ -133,7 +133,14 @@ function parseCalls(input: JsonObject): BatchCall[] | string {
 function dispatch(registry: ToolRegistry, call: BatchCall, context: ToolContext): Promise<ToolResult> {
   return registry.call(
     { namespace: call.namespace, tool: call.tool, arguments: call.arguments },
-    { threadId: context.threadId, turnId: context.turnId, callId: `${context.callId}#${call.index}` }
+    {
+      threadId: context.threadId,
+      turnId: context.turnId,
+      callId: `${context.callId}#${call.index}`,
+      parentCallId: context.callId,
+      batchId: context.callId,
+      source: 'batch'
+    }
   )
 }
 
