@@ -7,25 +7,21 @@ import type { AppToolHost } from './host.js'
 function harness(overrides: Partial<AppToolHost> = {}) {
   const calls: unknown[] = []
   const host: AppToolHost = {
-    inspect: async (maxElements) => {
-      calls.push(['inspect', maxElements])
-      return { snapshotId: 'p1', elements: [] }
+    click: async (target) => {
+      calls.push(['click', target])
+      return { target, point: { x: 10, y: 20 } }
     },
-    click: async (ref) => {
-      calls.push(['click', ref])
-      return { ref, point: { x: 10, y: 20 } }
-    },
-    typeText: async (ref, text, clear) => {
-      calls.push(['typeText', ref, text, clear])
-      return { ref, value: text }
+    typeText: async (target) => {
+      calls.push(['typeText', target])
+      return { target, value: target.text }
     },
     pressKey: async (key, modifiers) => {
       calls.push(['pressKey', key, modifiers])
       return { key, modifiers }
     },
-    scroll: async (ref, deltaX, deltaY) => {
-      calls.push(['scroll', ref, deltaX, deltaY])
-      return { scrolled: ref ? 'into_view' : 'wheel' }
+    scroll: async (target) => {
+      calls.push(['scroll', target])
+      return { scrolled: target.ref || target.selector ? 'into_view' : 'wheel' }
     },
     waitFor: async (options, signal) => {
       calls.push(['waitFor', options, signal.aborted])
@@ -55,23 +51,23 @@ test('app tool advertises the semantic renderer actions', () => {
   const { registry } = harness()
   assert.deepEqual(registry.names(), ['closedai_app.page'])
   assert.deepEqual(registry.namespaces[0]!.tools[0]!.actions?.map((action) => action.name), [
-    'inspect_app', 'click', 'type', 'press_key', 'scroll', 'wait_for'
+    'click', 'type', 'press_key', 'scroll', 'wait_for'
   ])
 })
 
-test('inspect and ref actions route to the app host with safe defaults', async () => {
+test('click, type, and scroll actions route to the app host with safe defaults', async () => {
   const { calls, call } = harness()
-  assert.match(textOf(await call({ action: 'inspect_app' })), /"snapshotId": "p1"/)
-  await call({ action: 'click', ref: 'p1:main:e1' })
-  await call({ action: 'type', ref: 'p1:main:e2', text: 'hello' })
+  await call({ action: 'click', selector: 'button[aria-label="New chat"]' })
+  await call({ action: 'click', x: 100, y: 200 })
+  await call({ action: 'type', selector: 'textarea', text: 'hello' })
   await call({ action: 'press_key', key: 'Enter', modifiers: ['ctrl'] })
   await call({ action: 'scroll', delta_y: 400 })
   assert.deepEqual(calls, [
-    ['inspect', 200],
-    ['click', 'p1:main:e1'],
-    ['typeText', 'p1:main:e2', 'hello', true],
+    ['click', { selector: 'button[aria-label="New chat"]', ref: undefined, x: undefined, y: undefined }],
+    ['click', { selector: undefined, ref: undefined, x: 100, y: 200 }],
+    ['typeText', { selector: 'textarea', ref: undefined, text: 'hello', clear: true }],
     ['pressKey', 'Enter', ['ctrl']],
-    ['scroll', undefined, 0, 400]
+    ['scroll', { selector: undefined, ref: undefined, deltaX: 0, deltaY: 400 }]
   ])
 })
 
@@ -109,8 +105,8 @@ test('wait succeeds with default condition and timeout', async () => {
 
 test('action schemas reject stale-shaped and oversized arguments before dispatch', async () => {
   const { calls, call } = harness()
-  const missingRef = await call({ action: 'click' })
-  assert.equal(missingRef.isError, true)
+  const missingTarget = await call({ action: 'click' })
+  assert.equal(missingTarget.isError, true)
   const badModifier = await call({ action: 'press_key', key: 'Enter', modifiers: ['hyper'] })
   assert.equal(badModifier.isError, true)
   const badTimeout = await call({ action: 'wait_for', wait_for_text: 'x', timeout_ms: 30_000 })

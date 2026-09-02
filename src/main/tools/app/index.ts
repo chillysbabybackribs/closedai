@@ -3,9 +3,24 @@ import { jsonResult, objectSchema } from '../json-result.js'
 import { booleanArg, numberArg, stringArg, type JsonObject, type ToolNamespace } from '../tool.js'
 import { requireApp, type AppHostProvider } from './host.js'
 
+const selectorField: JsonObject = {
+  type: 'string', minLength: 1, maxLength: 1_000,
+  description: 'CSS selector targeting the element.'
+}
+
 const refField: JsonObject = {
   type: 'string', minLength: 1,
-  description: 'Element ref returned by the latest inspect_app call.'
+  description: 'Element ref or identifier.'
+}
+
+const xField: JsonObject = {
+  type: 'number', minimum: 0,
+  description: 'Horizontal CSS-pixel coordinate from the viewport left edge.'
+}
+
+const yField: JsonObject = {
+  type: 'number', minimum: 0,
+  description: 'Vertical CSS-pixel coordinate from the viewport top edge.'
 }
 
 const modifiersField: JsonObject = {
@@ -17,13 +32,13 @@ const modifiersField: JsonObject = {
 export function appTools(app: AppHostProvider): ToolNamespace {
   return {
     name: 'closedai_app',
-    description: 'Semantic inspection and interaction for the ClosedAI desktop app renderer.',
+    description: 'Interaction for the ClosedAI desktop app renderer.',
     tools: [defineActionTool({
       name: 'page',
       description:
         'Operate ClosedAI app chrome with real input. This targets the chat pane, tool dialogs, browser chrome, ' +
-        'and other renderer UI; use browser_cdp.page for the web page inside the embedded browser. Inspect first ' +
-        'and use returned refs: they become stale when the layout changes.',
+        'and other renderer UI; use browser_cdp.page for the web page inside the embedded browser. For visual ' +
+        'inspection, use closedai_ui.capture with action app_window.',
       actions: actions(app)
     })]
   }
@@ -32,34 +47,42 @@ export function appTools(app: AppHostProvider): ToolNamespace {
 function actions(app: AppHostProvider): ToolAction[] {
   return [
     {
-      action: 'inspect_app',
-      description:
-        'Return window state, visible app surfaces and alerts, focused element, and visible interactive elements with stable snapshot refs.',
-      inputSchema: objectSchema({
-        max_elements: {
-          type: 'integer', minimum: 1, maximum: 500,
-          description: 'Maximum interactive elements to return; defaults to 200.'
-        }
-      }),
-      run: async (input) => jsonResult(await requireApp(app).inspect(numberArg(input, 'max_elements', 200)))
-    },
-    {
       action: 'click',
-      description: 'Re-resolve an inspected ref, scroll it into view, verify it is unobscured and enabled, then send a real click.',
-      inputSchema: objectSchema({ ref: refField }, ['ref']),
-      run: async (input) => jsonResult(await requireApp(app).click(stringArg(input, 'ref')!))
+      description: 'Click an element by CSS selector, explicit viewport coordinates (x, y), or ref.',
+      inputSchema: objectSchema({
+        selector: selectorField,
+        x: xField,
+        y: yField,
+        ref: refField
+      }),
+      run: async (input) => {
+        const selector = stringArg(input, 'selector')
+        const ref = stringArg(input, 'ref')
+        const x = numberArg(input, 'x')
+        const y = numberArg(input, 'y')
+        if (!selector && !ref && (x === undefined || y === undefined)) {
+          throw new Error('Pass `selector`, `(x, y)` coordinates, or `ref` to click')
+        }
+        return jsonResult(await requireApp(app).click({ selector, ref, x, y }))
+      }
     },
     {
       action: 'type',
-      description: 'Focus an inspected input, textarea, or contenteditable element and insert the full text in one operation.',
+      description: 'Focus an input, textarea, or contenteditable element by selector or ref and insert text.',
       inputSchema: objectSchema({
+        selector: selectorField,
         ref: refField,
         text: { type: 'string', maxLength: 20_000, description: 'Literal text to insert.' },
         clear: { type: 'boolean', description: 'Replace the current value (default true); false inserts at the caret.' }
-      }, ['ref', 'text']),
-      run: async (input) => jsonResult(await requireApp(app).typeText(
-        stringArg(input, 'ref')!, stringArg(input, 'text')!, booleanArg(input, 'clear', true)
-      ))
+      }, ['text']),
+      run: async (input) => {
+        const selector = stringArg(input, 'selector')
+        const ref = stringArg(input, 'ref')
+        if (!selector && !ref) throw new Error('Pass `selector` or `ref` to type into')
+        return jsonResult(await requireApp(app).typeText({
+          selector, ref, text: stringArg(input, 'text')!, clear: booleanArg(input, 'clear', true)
+        }))
+      }
     },
     {
       action: 'press_key',
@@ -77,22 +100,26 @@ function actions(app: AppHostProvider): ToolAction[] {
     },
     {
       action: 'scroll',
-      description: 'Scroll an inspected ref into view, or wheel-scroll the app viewport by CSS-pixel deltas.',
+      description: 'Scroll an element into view by selector or ref, or wheel-scroll the app viewport by CSS-pixel deltas.',
       inputSchema: objectSchema({
+        selector: selectorField,
         ref: refField,
         delta_x: { type: 'number', minimum: -10_000, maximum: 10_000, description: 'Horizontal wheel delta.' },
         delta_y: { type: 'number', minimum: -10_000, maximum: 10_000, description: 'Vertical wheel delta.' }
       }),
-      run: async (input) => jsonResult(await requireApp(app).scroll(
-        stringArg(input, 'ref'), numberArg(input, 'delta_x', 0), numberArg(input, 'delta_y', 0)
-      ))
+      run: async (input) => jsonResult(await requireApp(app).scroll({
+        selector: stringArg(input, 'selector'),
+        ref: stringArg(input, 'ref'),
+        deltaX: numberArg(input, 'delta_x', 0),
+        deltaY: numberArg(input, 'delta_y', 0)
+      }))
     },
     {
       action: 'wait_for',
       description:
         'Wait until a CSS selector and/or visible app text is visible or hidden. When both are supplied, both must reach the requested condition.',
       inputSchema: objectSchema({
-        selector: { type: 'string', minLength: 1, maxLength: 1_000, description: 'CSS selector to observe.' },
+        selector: selectorField,
         wait_for_text: { type: 'string', minLength: 1, maxLength: 2_000, description: 'Visible text substring to observe.' },
         condition: {
           type: 'string', enum: ['visible', 'hidden'],
@@ -130,4 +157,12 @@ function modifiersFrom(input: JsonObject): string[] {
   return value as string[]
 }
 
-export type { AppHostProvider, AppToolHost, AppWaitOptions, AppWaitResult } from './host.js'
+export type {
+  AppClickTarget,
+  AppHostProvider,
+  AppScrollTarget,
+  AppToolHost,
+  AppTypeTarget,
+  AppWaitOptions,
+  AppWaitResult
+} from './host.js'

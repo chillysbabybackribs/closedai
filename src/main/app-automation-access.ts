@@ -1,5 +1,12 @@
 import type { BrowserWindow, WebContents } from 'electron'
-import type { AppToolHost, AppWaitOptions, AppWaitResult } from './tools/app/host.js'
+import type {
+  AppClickTarget,
+  AppScrollTarget,
+  AppToolHost,
+  AppTypeTarget,
+  AppWaitOptions,
+  AppWaitResult
+} from './tools/app/host.js'
 import { CdpSession } from './cdp/cdp-session.js'
 import { CdpPageController } from './cdp/page-control/page-controller.js'
 import { CdpPageInput } from './cdp/page-control/page-input.js'
@@ -24,35 +31,51 @@ export class AppAutomationAccess implements AppToolHost {
 
   constructor(private readonly getWindow: () => BrowserWindow | null) {}
 
-  async inspect(maxElements: number): Promise<unknown> {
-    const { window, contents, session, page } = this.resolve()
-    const [inspection, documentState] = await Promise.all([
-      page.inspect(maxElements),
-      contents.executeJavaScript(APP_STATE_SCRIPT, true)
-    ])
-    return {
-      window: {
-        title: window.getTitle(),
-        focused: window.isFocused(),
-        visible: window.isVisible(),
-        minimized: window.isMinimized(),
-        maximized: window.isMaximized(),
-        bounds: window.getBounds()
-      },
-      document: documentState,
-      connectionId: session.connectionId,
-      ...inspection
+  async click(target: AppClickTarget): Promise<unknown> {
+    const { contents, session, page } = this.resolve()
+    if (typeof target.x === 'number' && typeof target.y === 'number') {
+      return { connectionId: session.connectionId, ...await page.clickAt({ x: target.x, y: target.y }) }
     }
+    if (target.selector) {
+      const point = await contents.executeJavaScript(`(() => {
+        const el = document.querySelector(${JSON.stringify(target.selector)});
+        if (!el) throw new Error('No element matched selector: ' + ${JSON.stringify(target.selector)});
+        el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        const rect = el.getBoundingClientRect();
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      })()`, true) as { x: number; y: number }
+      const clickResult = await page.clickAt(point)
+      return { connectionId: session.connectionId, selector: target.selector, ...clickResult }
+    }
+    if (target.ref) {
+      return { connectionId: session.connectionId, ...await page.click(target.ref) }
+    }
+    throw new Error('click requires selector, (x, y) coordinates, or ref')
   }
 
-  async click(ref: string): Promise<unknown> {
-    const { session, page } = this.resolve()
-    return { connectionId: session.connectionId, ...await page.click(ref) }
-  }
-
-  async typeText(ref: string, text: string, clear: boolean): Promise<unknown> {
-    const { session, input } = this.resolve()
-    return { connectionId: session.connectionId, ...await input.type(ref, text, clear) }
+  async typeText(target: AppTypeTarget): Promise<unknown> {
+    const { contents, session, page, input } = this.resolve()
+    if (target.selector) {
+      const point = await contents.executeJavaScript(`(() => {
+        const el = document.querySelector(${JSON.stringify(target.selector)});
+        if (!el) throw new Error('No element matched selector: ' + ${JSON.stringify(target.selector)});
+        el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        if (typeof (el as HTMLElement).focus === 'function') (el as HTMLElement).focus();
+        const rect = el.getBoundingClientRect();
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      })()`, true) as { x: number; y: number }
+      await page.clickAt(point)
+      if (target.clear) {
+        await input.pressKey('a', ['ctrl'])
+        await input.pressKey('Backspace', [])
+      }
+      await session.command('Input.insertText', { text: target.text })
+      return { connectionId: session.connectionId, selector: target.selector, text: target.text }
+    }
+    if (target.ref) {
+      return { connectionId: session.connectionId, ...await input.type(target.ref, target.text, target.clear) }
+    }
+    throw new Error('type requires selector or ref')
   }
 
   async pressKey(key: string, modifiers: string[]): Promise<unknown> {
@@ -60,9 +83,17 @@ export class AppAutomationAccess implements AppToolHost {
     return { connectionId: session.connectionId, ...await input.pressKey(key, modifiers) }
   }
 
-  async scroll(ref: string | undefined, deltaX: number, deltaY: number): Promise<unknown> {
-    const { session, input } = this.resolve()
-    return { connectionId: session.connectionId, ...await input.scroll(ref, deltaX, deltaY) }
+  async scroll(target: AppScrollTarget): Promise<unknown> {
+    const { contents, session, input } = this.resolve()
+    if (target.selector) {
+      await contents.executeJavaScript(`(() => {
+        const el = document.querySelector(${JSON.stringify(target.selector)});
+        if (!el) throw new Error('No element matched selector: ' + ${JSON.stringify(target.selector)});
+        el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      })()`, true)
+      return { connectionId: session.connectionId, scrolled: 'into_view', selector: target.selector }
+    }
+    return { connectionId: session.connectionId, ...await input.scroll(target.ref, target.deltaX, target.deltaY) }
   }
 
   async waitFor(options: AppWaitOptions, signal: AbortSignal): Promise<AppWaitResult> {
@@ -147,33 +178,3 @@ async function abortableDelay(ms: number, signal: AbortSignal): Promise<void> {
     }
   })
 }
-
-const APP_STATE_SCRIPT = `(() => {
-  const visible = (element) => {
-    const style = getComputedStyle(element);
-    return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) !== 0 &&
-      Array.from(element.getClientRects()).some((rect) => rect.width > 0 && rect.height > 0);
-  };
-  const label = (element) => element.getAttribute('aria-label') || element.getAttribute('title') || '';
-  const describe = (element) => ({
-    tag: element.tagName.toLowerCase(),
-    surface: element.getAttribute('data-ui-surface'),
-    role: element.getAttribute('role'),
-    label: label(element),
-    source: element.getAttribute('data-ui-source'),
-    stateOwner: element.getAttribute('data-ui-state-owner'),
-    text: (element.innerText || '').replace(/\\s+/g, ' ').trim().slice(0, 500)
-  });
-  const bodyText = document.body ? document.body.innerText || '' : '';
-  const active = document.activeElement;
-  return {
-    title: document.title,
-    url: location.href,
-    readyState: document.readyState,
-    activeElement: active && active instanceof HTMLElement ? describe(active) : null,
-    surfaces: Array.from(document.querySelectorAll('[data-ui-surface], [role="dialog"], [role="alert"], [role="status"]'))
-      .filter(visible).slice(0, 100).map(describe),
-    visibleText: bodyText.slice(0, 8000),
-    textTruncated: bodyText.length > 8000
-  };
-})()`

@@ -12,12 +12,32 @@ export type AppWaitResult = AppWaitOptions & {
   textMatched: boolean | null
 }
 
+export type AppClickTarget = {
+  ref?: string
+  selector?: string
+  x?: number
+  y?: number
+}
+
+export type AppTypeTarget = {
+  ref?: string
+  selector?: string
+  text: string
+  clear: boolean
+}
+
+export type AppScrollTarget = {
+  ref?: string
+  selector?: string
+  deltaX: number
+  deltaY: number
+}
+
 export type AppToolHost = {
-  inspect(maxElements: number): Promise<unknown>
-  click(ref: string): Promise<unknown>
-  typeText(ref: string, text: string, clear: boolean): Promise<unknown>
+  click(target: AppClickTarget): Promise<unknown>
+  typeText(target: AppTypeTarget): Promise<unknown>
   pressKey(key: string, modifiers: string[]): Promise<unknown>
-  scroll(ref: string | undefined, deltaX: number, deltaY: number): Promise<unknown>
+  scroll(target: AppScrollTarget): Promise<unknown>
   waitFor(options: AppWaitOptions, signal: AbortSignal): Promise<AppWaitResult>
 }
 
