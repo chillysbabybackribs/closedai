@@ -68,10 +68,11 @@
   --transcript-activity-hover: #202223;
 
   /* Tool disclosures recede on paper by darkening the surface a step, the same
-     direction the dark theme takes — never a black panel on a light plane. */
+     direction the dark theme takes — never a black panel on a light plane.
+     --tool-well is deliberately NOT overridden: it is the code-bearing detail
+     panel, and code keeps its dark canvas here (see .prompt-tool-content). */
   --tool-surface: rgb(32 34 35 / 5%);
   --tool-surface-hover: rgb(32 34 35 / 9%);
-  --tool-well: rgb(32 34 35 / 8%);
   --tool-edge: rgb(32 34 35 / 14%);
 
   --background: #eeeae4;
@@ -279,4 +280,17 @@
 
 :root[data-theme='warm'] .tool-run-earlier:hover {
   color: var(--transcript-copy);
+}
+
+/* The tool detail panel is a code surface, not a paper surface: its `pre` is
+   set in --code-text, a light ink with no warm counterpart. So it keeps the
+   dark canvas, and its hairline and section labels come from the code ramp
+   too — the warm ink ramp would be invisible against it. */
+:root[data-theme='warm'] .prompt-tool-content,
+:root[data-theme='warm'] .prompt-tool-section + .prompt-tool-section {
+  border-color: var(--code-border);
+}
+
+:root[data-theme='warm'] .prompt-tool-section > strong {
+  color: var(--code-muted);
 }
