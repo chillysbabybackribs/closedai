@@ -35,7 +35,7 @@ export class OperationsService extends EventEmitter {
     try {
       const parsed: unknown = JSON.parse(await readFile(filePath, 'utf8'))
       if (Array.isArray(parsed) && parsed.every(isRun)) {
-        runs = parsed.map((run) => ({ ...run, modelId: run.modelId ?? null }))
+        runs = parsed.map((run) => ({ ...run, modelId: run.modelId ?? null, threadId: run.threadId ?? null, turnId: run.turnId ?? null }))
       }
     } catch (error) {
       const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''

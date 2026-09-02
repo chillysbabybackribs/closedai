@@ -27,6 +27,8 @@ function isOperationsRun(value: unknown): value is OperationsRun {
     && typeof run.worker === 'string'
     && typeof run.workspace === 'string'
     && (run.modelId === undefined || run.modelId === null || typeof run.modelId === 'string')
+    && (run.threadId === undefined || run.threadId === null || typeof run.threadId === 'string')
+    && (run.turnId === undefined || run.turnId === null || typeof run.turnId === 'string')
     && typeof run.checkpoint === 'string'
     && typeof run.status === 'string'
     && RUN_STATUSES.has(run.status as RunStatus)
@@ -40,7 +42,7 @@ export function readOperationsRuns(storage: Pick<Storage, 'getItem'>): Operation
     if (!stored) return null
     const parsed: unknown = JSON.parse(stored)
     return Array.isArray(parsed) && parsed.every(isOperationsRun)
-      ? parsed.map((run) => ({ ...run, modelId: run.modelId ?? null }))
+      ? parsed.map((run) => ({ ...run, modelId: run.modelId ?? null, threadId: run.threadId ?? null, turnId: run.turnId ?? null }))
       : null
   } catch {
     return null

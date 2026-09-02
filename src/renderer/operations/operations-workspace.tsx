@@ -140,6 +140,8 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
       worker: 'New worker',
       workspace,
       modelId,
+      threadId: null,
+      turnId: null,
       checkpoint: 'Queued for initialization',
       status: 'queued',
       runtime: '—',
