@@ -154,7 +154,7 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
 
   return (
     <section className="operations-workspace" data-ui-surface="operations">
-      <OperationsSidebar />
+      <OperationsSidebar runs={runs} />
       <main className="ops-main">
         <div className="ops-breadcrumb"><span>Operations</span><span>/</span><strong>Runs</strong></div>
         <div className="ops-page-heading">
