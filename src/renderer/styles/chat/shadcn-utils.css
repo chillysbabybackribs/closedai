@@ -1,0 +1,54 @@
+/* Official shadcn chat utilities (scroll-fade + shimmer). These ship with
+   `shadcn/tailwind.css`; this project keeps a focused copy so the MessageScroller
+   viewport and Attachment title states work without the CLI package. */
+
+@utility shimmer {
+  color: transparent;
+  background-image:
+    linear-gradient(
+      var(--shimmer-angle, 20deg),
+      #0000 calc(50% - var(--shimmer-spread, calc(3ch + 40px))),
+      var(--shimmer-color, color-mix(in srgb, currentColor 72%, white)),
+      #0000 calc(50% + var(--shimmer-spread, calc(3ch + 40px)))
+    ),
+    linear-gradient(currentColor, currentColor);
+  background-size: 250% 100%, auto;
+  background-repeat: no-repeat, padding-box;
+  background-position: 100% center;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: tw-shimmer var(--shimmer-duration, 2s) linear infinite;
+}
+
+@utility shimmer-none {
+  animation: none;
+  color: inherit;
+  background: none;
+}
+
+@utility scroll-fade-b {
+  mask-image: linear-gradient(#000 0%, #000 calc(100% - min(12%, 40px)), transparent);
+}
+
+@utility scroll-fade-x {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 min(12%, 40px),
+    #000 calc(100% - min(12%, 40px)),
+    transparent
+  );
+}
+
+@keyframes tw-shimmer {
+  from { background-position: 100% center; }
+  to { background-position: 0% center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+    color: inherit;
+    background: none;
+  }
+}

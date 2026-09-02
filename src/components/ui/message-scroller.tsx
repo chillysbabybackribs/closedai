@@ -7,8 +7,8 @@ import {
 } from "@shadcn/react/message-scroller"
 import { ArrowDownIcon } from "lucide-react"
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { cn } from '../../lib/utils.js'
+import { Button } from './button.js'
 
 function MessageScrollerProvider(
   props: React.ComponentProps<typeof MessageScrollerPrimitive.Provider>
@@ -70,10 +70,7 @@ function MessageScrollerItem({
     <MessageScrollerPrimitive.Item
       data-slot="message-scroller-item"
       scrollAnchor={scrollAnchor}
-      className={cn(
-        "min-w-0 shrink-0 [contain-intrinsic-size:auto_10rem] [content-visibility:auto]",
-        className
-      )}
+      className={cn('min-w-0 shrink-0', className)}
       {...props}
     />
   )

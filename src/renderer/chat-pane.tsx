@@ -1,9 +1,15 @@
 import type { JSX } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FileCode2, LogIn } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
-import { ChatContainerContent, ChatContainerRoot, ChatContainerScrollAnchor } from '../components/ui/chat-container.js'
+import {
+  MessageScroller,
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerProvider,
+  MessageScrollerViewport
+} from '../components/ui/message-scroller.js'
 import type { ChatAttachment, ChatConnectionState } from '../shared/chat.js'
 import { useChatController } from './chat-controller.js'
 import { ChatHeader } from './chat-header.js'
@@ -70,14 +76,11 @@ export function ChatPane(): JSX.Element {
           onClose={() => setHistoryOpen(false)}
         />
       ) : (
-      <ChatContainerRoot className="prompt-chat-scroll">
-        <ChatContainerContent className="prompt-chat-content">
+        <TranscriptScroller threadId={state.threadId}>
           {state.items.length === 0
             ? <EmptyState state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
             : <ChatTranscript items={state.items} activeTurnId={state.activeTurnId} />}
-          <ChatContainerScrollAnchor />
-        </ChatContainerContent>
-      </ChatContainerRoot>
+        </TranscriptScroller>
       )}
       <Composer
         enabled={ready}
@@ -92,6 +95,57 @@ export function ChatPane(): JSX.Element {
   )
 }
 
+function TranscriptScroller({
+  threadId,
+  children
+}: {
+  threadId: string | null
+  children: JSX.Element
+}): JSX.Element {
+  const [root, setRoot] = useState<HTMLDivElement | null>(null)
+  const scrollDir = useScrollDirection(root)
+
+  return (
+    <MessageScrollerProvider
+      key={threadId ?? 'empty'}
+      autoScroll
+      defaultScrollPosition="last-anchor"
+      scrollPreviousItemPeek={64}
+    >
+      <MessageScroller ref={setRoot} className="chat-scroll-root prompt-chat-scroll" data-scroll-dir={scrollDir}>
+        <MessageScrollerViewport className="chat-scroll">
+          <MessageScrollerContent className="chat-scroll-content gap-0">
+            {children}
+          </MessageScrollerContent>
+        </MessageScrollerViewport>
+        <MessageScrollerButton direction="start" />
+        <MessageScrollerButton direction="end" />
+      </MessageScroller>
+    </MessageScrollerProvider>
+  )
+}
+
+function useScrollDirection(root: HTMLElement | null): 'up' | 'down' {
+  const [direction, setDirection] = useState<'up' | 'down'>('down')
+
+  useEffect(() => {
+    if (!root) return
+    const viewport = root.querySelector<HTMLElement>('[data-slot="message-scroller-viewport"]')
+    if (!viewport) return
+    let last = viewport.scrollTop
+    const onScroll = (): void => {
+      const next = viewport.scrollTop
+      if (next === last) return
+      setDirection(next > last ? 'down' : 'up')
+      last = next
+    }
+    viewport.addEventListener('scroll', onScroll, { passive: true })
+    return () => viewport.removeEventListener('scroll', onScroll)
+  }, [root])
+
+  return direction
+}
+
 function EmptyState({
   state,
   message,
@@ -103,7 +157,7 @@ function EmptyState({
 }): JSX.Element {
   const available = state === 'ready'
   return (
-    <div className="prompt-chat-empty">
+    <div className="prompt-chat-empty chat-empty">
       <div className="prompt-chat-empty-icon" aria-hidden="true"><FileCode2 /></div>
       <h2>{available ? 'How can I help you?' : 'Start with Codex'}</h2>
       <p>{available ? 'Ask a question or describe a change you want to make.' : message}</p>
@@ -116,4 +170,3 @@ function EmptyState({
     </div>
   )
 }
-

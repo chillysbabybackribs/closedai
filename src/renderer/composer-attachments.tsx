@@ -1,8 +1,18 @@
 import type { ChangeEvent, JSX, RefObject } from 'react'
 import { FileImage, FileText, Plus, Upload, X } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
+import {
+  Attachment,
+  AttachmentAction,
+  AttachmentActions,
+  AttachmentContent,
+  AttachmentDescription,
+  AttachmentGroup,
+  AttachmentMedia,
+  AttachmentTitle
+} from '../components/ui/attachment.js'
 import { Button } from '../components/ui/button.js'
-import type { ChatAttachment } from '../shared/chat.js'
+import type { ChatAttachment, ChatAttachmentSummary } from '../shared/chat.js'
 
 const IMAGE_EXTENSIONS = /\.(?:avif|bmp|gif|jpe?g|png|webp)$/i
 
@@ -87,16 +97,65 @@ export function AttachmentChips({
 }): JSX.Element | null {
   if (!attachments.length) return null
   return (
-    <div className="prompt-attachments" aria-label="Attachments">
+    <AttachmentGroup className="prompt-attachments" aria-label="Attachments">
       {attachments.map((attachment) => (
-        <div className="prompt-attachment-chip" key={attachment.id}>
-          {attachment.kind === 'image' ? <FileImage aria-hidden="true" /> : <FileText aria-hidden="true" />}
-          <span title={attachment.name}>{attachment.name}</span>
-          <button type="button" aria-label={`Remove ${attachment.name}`} onClick={() => onRemove(attachment.id)}>
-            <X aria-hidden="true" />
-          </button>
-        </div>
+        <AttachmentCard
+          key={attachment.id}
+          attachment={attachment}
+          onRemove={() => onRemove(attachment.id)}
+        />
       ))}
-    </div>
+    </AttachmentGroup>
   )
+}
+
+export function TranscriptAttachments({
+  attachments
+}: {
+  attachments: ChatAttachmentSummary[]
+}): JSX.Element | null {
+  if (!attachments.length) return null
+  return (
+    <AttachmentGroup className="prompt-message-user-attachments" aria-label="Attachments">
+      {attachments.map((attachment) => (
+        <AttachmentCard key={attachment.id} attachment={attachment} />
+      ))}
+    </AttachmentGroup>
+  )
+}
+
+function AttachmentCard({
+  attachment,
+  onRemove
+}: {
+  attachment: ChatAttachmentSummary
+  onRemove?: () => void
+}): JSX.Element {
+  const preview = imagePreview(attachment)
+  return (
+    <Attachment size="sm">
+      <AttachmentMedia variant={preview ? 'image' : 'icon'}>
+        {preview
+          ? <img src={preview} alt="" />
+          : attachment.kind === 'image' ? <FileImage aria-hidden="true" /> : <FileText aria-hidden="true" />}
+      </AttachmentMedia>
+      <AttachmentContent>
+        <AttachmentTitle>{attachment.name}</AttachmentTitle>
+        <AttachmentDescription>{attachment.kind === 'image' ? 'Image' : 'File'}</AttachmentDescription>
+      </AttachmentContent>
+      {onRemove ? (
+        <AttachmentActions>
+          <AttachmentAction type="button" aria-label={`Remove ${attachment.name}`} onClick={onRemove}>
+            <X aria-hidden="true" />
+          </AttachmentAction>
+        </AttachmentActions>
+      ) : null}
+    </Attachment>
+  )
+}
+
+function imagePreview(attachment: ChatAttachmentSummary): string | null {
+  if (attachment.kind !== 'image' || !('source' in attachment)) return null
+  const source = (attachment as ChatAttachment).source
+  return source.type === 'url' ? source.url : null
 }

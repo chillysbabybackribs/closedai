@@ -17,12 +17,20 @@
 // not resolve on its own but the sibling source exists, and only `.tsx` files are transformed.
 // Real `.js` files and package imports are untouched.
 import { existsSync, readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { transformSync } from 'esbuild'
 
 const SOURCE_EXTENSIONS = ['.ts', '.tsx']
+const srcRoot = join(dirname(fileURLToPath(import.meta.url)), '..', 'src')
 
 export async function resolve(specifier, context, nextResolve) {
+  if (specifier.startsWith('@/')) {
+    const rest = specifier.slice(2)
+    for (const candidate of [join(srcRoot, rest), join(srcRoot, `${rest}.ts`), join(srcRoot, `${rest}.tsx`), join(srcRoot, rest, 'index.ts'), join(srcRoot, rest, 'index.tsx')]) {
+      if (existsSync(candidate)) return { url: pathToFileURL(candidate).href, shortCircuit: true }
+    }
+  }
   if ((specifier.startsWith('./') || specifier.startsWith('../')) && specifier.endsWith('.js')) {
     try {
       return await nextResolve(specifier, context)

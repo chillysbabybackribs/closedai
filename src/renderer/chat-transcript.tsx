@@ -2,13 +2,18 @@ import type { JSX } from 'react'
 import { memo, useMemo, useState } from 'react'
 import { ChevronDown, Loader2, XCircle } from 'lucide-react'
 
+import { Bubble, BubbleContent } from '../components/ui/bubble.js'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible.js'
+import { Markdown } from '../components/ui/markdown.js'
+import { Marker, MarkerContent } from '../components/ui/marker.js'
 import { Message, MessageContent } from '../components/ui/message.js'
+import { MessageScrollerItem } from '../components/ui/message-scroller.js'
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '../components/ui/reasoning.js'
 import { TextShimmer } from '../components/ui/text-shimmer.js'
 import { Tool } from '../components/ui/tool.js'
 import type { ChatTranscriptItem } from '../shared/chat.js'
 import { ChatScreenshot } from './chat-screenshot.js'
+import { TranscriptAttachments } from './composer-attachments.js'
 import {
   activityClusters,
   activityHeadline,
@@ -30,11 +35,33 @@ export const ChatTranscript = memo(function ChatTranscript({
   const rows = useMemo(() => visibleTranscriptRows(items, activeTurnId), [items, activeTurnId])
   return (
     <>
-      {rows.map((row) => row.kind === 'activity'
-        ? <ToolActivity key={`activity:${row.id}:${row.items[0]?.id}`} items={row.items} />
-        : row.kind === 'reasoning'
-          ? <ThinkingLine key={`reasoning:${row.id}`} items={row.items} active={row.id === activeTurnId} />
-          : <TranscriptItem key={row.item.id} item={row.item} />)}
+      {rows.map((row) => {
+        if (row.kind === 'activity') {
+          const id = `activity:${row.id}:${row.items[0]?.id}`
+          return (
+            <MessageScrollerItem key={id} messageId={id}>
+              <ToolActivity items={row.items} />
+            </MessageScrollerItem>
+          )
+        }
+        if (row.kind === 'reasoning') {
+          return (
+            <MessageScrollerItem key={`reasoning:${row.id}`} messageId={`reasoning:${row.id}`}>
+              <ThinkingLine items={row.items} active={row.id === activeTurnId} />
+            </MessageScrollerItem>
+          )
+        }
+        return (
+          <MessageScrollerItem
+            key={row.item.id}
+            messageId={row.item.id}
+            scrollAnchor={row.item.type === 'user'}
+            className={row.item.type === 'user' ? 'chat-turn-user' : undefined}
+          >
+            <TranscriptItem item={row.item} />
+          </MessageScrollerItem>
+        )
+      })}
     </>
   )
 })
@@ -55,17 +82,15 @@ const TranscriptItem = memo(function TranscriptItem({
 }): JSX.Element | null {
   if (item.type === 'user') {
     return (
-      <Message className="prompt-message prompt-message-user">
-        <div className="prompt-message-user-stack">
-          {item.attachments?.length ? (
-            <div className="prompt-message-user-attachments">
-              {item.attachments.map((attachment) => (
-                <span key={attachment.id}>{attachment.kind === 'image' ? 'Image' : 'File'} · {attachment.name}</span>
-              ))}
-            </div>
+      <Message align="end" className="message message-user prompt-message prompt-message-user">
+        <MessageContent>
+          {item.attachments?.length ? <TranscriptAttachments attachments={item.attachments} /> : null}
+          {item.text ? (
+            <Bubble variant="secondary" align="end">
+              <BubbleContent className="prompt-message-user-content">{item.text}</BubbleContent>
+            </Bubble>
           ) : null}
-          {item.text && <MessageContent className="prompt-message-user-content">{item.text}</MessageContent>}
-        </div>
+        </MessageContent>
       </Message>
     )
   }
@@ -74,7 +99,15 @@ const TranscriptItem = memo(function TranscriptItem({
     return <AssistantMessage item={item} />
   }
   if (item.type === 'notice') {
-    return <div className="prompt-system-message" data-tone={item.tone} role={item.tone === 'error' ? 'alert' : 'status'}>{item.text}</div>
+    return (
+      <Marker
+        className="prompt-system-message w-fit"
+        data-tone={item.tone}
+        role={item.tone === 'error' ? 'alert' : 'status'}
+      >
+        <MarkerContent>{item.text}</MarkerContent>
+      </Marker>
+    )
   }
   if (item.type === 'screenshot') return <ChatScreenshot item={item} />
   return null
@@ -85,6 +118,15 @@ const ThinkingLine = memo(function ThinkingLine({ items, active }: { items: Reas
   const text = items.map((item) => item.text).filter(Boolean).join('\n\n')
   const label = streaming ? 'Thinking' : items.length && items.every((item) => item.type === 'plan') ? 'Plan' : 'Thought'
   if (!text && !streaming) return null
+  if (streaming && !text) {
+    return (
+      <Marker role="status" className="prompt-reasoning">
+        <MarkerContent>
+          <TextShimmer as="span" className="prompt-reasoning-label">Thinking</TextShimmer>
+        </MarkerContent>
+      </Marker>
+    )
+  }
   return (
     <Reasoning className="prompt-reasoning">
       <ReasoningTrigger className="prompt-reasoning-trigger" aria-label={label}>
@@ -136,12 +178,13 @@ const ToolActivity = memo(function ToolActivity({ items }: { items: ActivityItem
 
 const AssistantMessage = memo(function AssistantMessage({ item }: { item: Extract<ChatTranscriptItem, { type: 'assistant' }> }): JSX.Element {
   return (
-    <Message className="prompt-message prompt-message-assistant" data-phase={item.phase ?? 'unknown'}>
-      <MessageContent
-        markdown
-        className="prompt-message-assistant-content prose max-w-none prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-h4:text-base prose-h5:text-sm prose-h6:text-xs dark:prose-invert"
-      >
-        {item.text}
+    <Message className="message message-assistant prompt-message prompt-message-assistant" data-phase={item.phase ?? 'unknown'}>
+      <MessageContent>
+        <Bubble variant="ghost">
+          <BubbleContent className="prompt-message-assistant-content prose max-w-none prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-h4:text-base prose-h5:text-sm prose-h6:text-xs dark:prose-invert">
+            <Markdown>{item.text}</Markdown>
+          </BubbleContent>
+        </Bubble>
       </MessageContent>
     </Message>
   )

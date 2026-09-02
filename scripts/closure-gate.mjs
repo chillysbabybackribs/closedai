@@ -11,6 +11,7 @@ const allowedPackages = new Set([
   'electron', 'react', 'react-dom', 'lucide-react', 'clsx', 'tailwind-merge',
   'class-variance-authority', 'radix-ui', 'react-resizable-panels',
   'marked', 'react-markdown', 'remark-breaks', 'remark-gfm', 'shiki', 'use-stick-to-bottom',
+  '@shadcn/react',
   '@fontsource-variable/inter', '@fontsource-variable/geist-mono', '@fontsource/instrument-serif'
 ])
 const forbiddenPaths = /(claude|codex|cursor|antigravity|agent|mcp|tool-|plugin|recall|artifact|seo-|blender|ytdlp|vpn|tor-|workflow|credential)/i

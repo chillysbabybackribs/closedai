@@ -18,6 +18,7 @@
 @import "./styles/theme-warm.css";
 @import "./styles/typography.css";
 @import "./styles/prompt-kit-chat.css";
+@import "./styles/chat/shadcn-utils.css";
 @import "./styles/chat/tool-activity.css";
 @import "./styles/chat/model-picker.css";
 @import "./styles/chat/sources.css";

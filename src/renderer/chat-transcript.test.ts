@@ -1,18 +1,23 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createElement } from 'react'
+import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { MessageScrollerProvider } from '../components/ui/message-scroller.tsx'
 import type { ChatTranscriptItem } from '../shared/chat.ts'
 import { ChatTranscript } from './chat-transcript.tsx'
 
+function renderTranscript(props: { items: ChatTranscriptItem[]; activeTurnId: string | null }): string {
+  return renderToStaticMarkup(createElement(MessageScrollerProvider, null, createElement(ChatTranscript, props) as ReactNode))
+}
+
 test('thinking is a chevron-free process line and stays collapsed while streaming', () => {
-  const html = renderToStaticMarkup(createElement(ChatTranscript, {
+  const html = renderTranscript({
     items: [
       { type: 'user', id: 'u', turnId: 't', text: 'Hi' },
       { type: 'reasoning', id: 'r', turnId: 't', text: 'secret plan', streaming: true }
     ],
     activeTurnId: 't'
-  }))
+  })
   assert.match(html, /Thinking/)
   assert.doesNotMatch(html, /Thinking…/)
   assert.doesNotMatch(html, /lucide-chevron-down/)
@@ -20,10 +25,10 @@ test('thinking is a chevron-free process line and stays collapsed while streamin
 })
 
 test('an active turn without model output still shows the merged thinking line', () => {
-  const html = renderToStaticMarkup(createElement(ChatTranscript, {
+  const html = renderTranscript({
     items: [{ type: 'user', id: 'u', turnId: 't', text: 'Hi' }],
     activeTurnId: 't'
-  }))
+  })
   assert.match(html, /Thinking/)
   assert.doesNotMatch(html, /lucide-chevron-down/)
 })
@@ -40,7 +45,7 @@ test('consecutive commands collapse to a counted headline', () => {
       cwd: '/', status: 'completed', output: '', exitCode: 0
     }
   ]
-  const html = renderToStaticMarkup(createElement(ChatTranscript, { items, activeTurnId: null }))
+  const html = renderTranscript({ items, activeTurnId: null })
   assert.match(html, /Ran 2 commands/)
   assert.match(html, /aria-label="Ran 2 commands, completed"/)
 })
@@ -53,9 +58,26 @@ test('thinking stays visible while tool calls stream on the same turn', () => {
       cwd: '/', status: 'inProgress', output: '', exitCode: null
     }
   ]
-  const html = renderToStaticMarkup(createElement(ChatTranscript, { items, activeTurnId: 't' }))
+  const html = renderTranscript({ items, activeTurnId: 't' })
   assert.match(html, /Thinking/)
   assert.match(html, /rg AGENTS.md/)
+})
+
+test('user turns are scroller anchors and attachments render as attachment cards', () => {
+  const html = renderTranscript({
+    items: [{
+      type: 'user',
+      id: 'u',
+      turnId: 't',
+      text: 'See this',
+      attachments: [{ id: 'a1', kind: 'file', name: 'notes.md' }]
+    }],
+    activeTurnId: null
+  })
+  assert.match(html, /data-slot="message-scroller-item"/)
+  assert.match(html, /data-scroll-anchor="true"/)
+  assert.match(html, /data-slot="attachment"/)
+  assert.match(html, /notes\.md/)
 })
 
 test('identically named tool calls collapse to a counted label', () => {
@@ -65,7 +87,7 @@ test('identically named tool calls collapse to a counted label', () => {
     { type: 'assistant', id: 'a0', turnId: 't', text: '', phase: null, streaming: true },
     { type: 'tool', id: 's2', turnId: 't', label: 'Web search', detail: 'q2', status: 'completed' }
   ]
-  const html = renderToStaticMarkup(createElement(ChatTranscript, { items, activeTurnId: 't' }))
+  const html = renderTranscript({ items, activeTurnId: 't' })
   assert.match(html, /Web search 2/)
   assert.match(html, /aria-label="Web search 2, completed"/)
 })

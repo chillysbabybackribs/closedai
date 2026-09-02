@@ -105,6 +105,7 @@
    scroller root filling the chat pane's middle grid row; `.chat-scroll` is its
    viewport — the reading surface is the app's lightest large material. */
 .chat-scroll-root {
+  grid-row: 2;
   min-width: 0;
   min-height: 0;
 }
@@ -281,12 +282,15 @@
 
 .chat-scroll-content > [data-slot="message-scroller-item"] {
   padding-inline: var(--chat-inline);
-  /* Keep every row's measured height honest. @shadcn/react 0.2.1 computes its
+  /* Keep every row's measured height honest. @shadcn/react computes its
      distance from the end from row getBoundingClientRect() values and observes this
      content with ResizeObserver; CSS virtualization substitutes intrinsic heights
-     and makes completion/follow-mode scroll math jump. Contract checked against
-     node_modules/@shadcn/react/dist/message-scroller/index.js and the official source:
-     https://github.com/shadcn-ui/ui/tree/main/packages/react */
+     and makes completion/follow-mode scroll math jump. Do not put
+     content-visibility:auto on MessageScrollerItem. */
+}
+
+.chat-scroll-content > [data-slot="message-scroller-item"] + [data-slot="message-scroller-item"] {
+  margin-top: 8px;
 }
 
 .chat-scroll-content > [data-slot="message-scroller-item"].chat-turn-user {

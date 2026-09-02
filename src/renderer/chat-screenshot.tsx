@@ -10,7 +10,7 @@ export function ChatScreenshot({ item }: { item: ScreenshotItem }): JSX.Element 
     ? 'Application window'
     : item.surface === 'browser_page' ? 'Browser page' : 'Screenshot crop'
   return (
-    <Message className="prompt-message prompt-message-screenshot">
+    <Message className="message prompt-message prompt-message-screenshot">
       <figure className="prompt-screenshot">
         <img src={item.imageUrl} alt={`${surface} screenshot`} loading="lazy" />
         <figcaption>
