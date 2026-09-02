@@ -48,7 +48,7 @@ export function ChatHeader({
           <DropdownMenu.Content className="chat-header-menu" sideOffset={6} align="end">
             <DropdownMenu.Item
               className="chat-header-menu-item"
-              disabled={!ready || running}
+              disabled={!ready}
               onSelect={onNewChat}
             >
               <Plus className="size-3.5" aria-hidden="true" />

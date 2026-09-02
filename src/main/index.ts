@@ -17,6 +17,7 @@ import { discoverSources, importCookies } from './import-cookies.js'
 import { PARTITION } from './browser-url.js'
 import { ChatService } from './chat-service.js'
 import { ChatHub } from './chat-hub.js'
+import { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { ClaudeChatService } from './claude/claude-service.js'
 import { BrowserPageAccess } from './browser-page-access.js'
 import { BrowserCdpAccess } from './cdp/browser-cdp-access.js'
@@ -30,11 +31,12 @@ import { captureTools, ScreenshotStore } from './tools/capture/index.js'
 import { batchTools } from './tools/batch/index.js'
 import { workspaceTools } from './tools/workspace/index.js'
 import { searchTools } from './tools/search/index.js'
+import { peerChatTools } from './tools/peer-chats/index.js'
 import { ToolTelemetry } from './tools/telemetry.js'
 import { registerToolsIpc } from './tools/ipc.js'
 import type { ToolsEvent } from '../shared/tools.js'
 import { registerChatIpc } from './chat-ipc.js'
-import type { ChatEvent } from '../shared/chat.js'
+import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../shared/types.js'
 
 // Chromium switches must land before `ready`. Owner decision: the Linux sandbox flags stay
@@ -54,7 +56,7 @@ let browserDownloads: BrowserDownloadService | null = null
 let browserHistory: BrowserHistoryStore | null = null
 let browserTabSession: BrowserTabSessionStore | null = null
 let settings: AppSettingsStore | null = null
-let chatService: ChatHub | null = null
+let chatService: ChatPeerManager | null = null
 let toolRegistry: ToolRegistry | null = null
 let toolTelemetry: ToolTelemetry | null = null
 let browserSessionFlush: Promise<void> | null = null
@@ -101,6 +103,7 @@ async function main(): Promise<void> {
     cdpTools(() => cdpAccess),
     captureTools(() => captureAccess, screenshots),
     searchTools(),
+    peerChatTools(() => chatService),
     ...(workspaceNamespace ? [workspaceNamespace] : []),
     // Lazy self-reference: the batch dispatches into the registry it is registered in.
     batchTools(() => toolRegistry!, { maxCalls: settings.get().toolBatchMaxCalls })
@@ -121,12 +124,14 @@ async function main(): Promise<void> {
       isLoading: active.isLoading
     }
   }
-  // Both providers share the workspace, settings, tool registry, and screenshot store; the hub
-  // shows whichever one the selected model belongs to.
-  chatService = new ChatHub({
-    codex: new ChatService(chatWorkspace, settings, toolRegistry, activeBrowserContext, screenshots),
-    claude: new ClaudeChatService(chatWorkspace, settings, toolRegistry, activeBrowserContext, screenshots)
-  }, settings.get().chatModelId)
+  chatService = new ChatPeerManager(settings, (peerSettings, modelId) => new ChatHub({
+    codex: new ChatService(
+      chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, undefined, peerSettings.paneId
+    ),
+    claude: new ClaudeChatService(
+      chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, peerSettings.paneId
+    )
+  }, modelId))
   registerIpc()
   // The one-shot cookie import runs before the first tab loads, so a restored or home page
   // arrives already signed in rather than racing the import.
@@ -152,7 +157,7 @@ function createWindow(): void {
   browserDownloads.on('changed', (downloads: BrowserDownload[]) =>
     sendToMainWindow('browserDownloads:changed', downloads)
   )
-  chatService?.on('event', (event: ChatEvent) => sendToMainWindow('chat:event', event))
+  chatService?.on('event', (event: ChatWorkspaceEvent) => sendToMainWindow('chat:event', event))
   const sendToolsEvent = (event: ToolsEvent): void => { sendToMainWindow('tools:event', event) }
   toolTelemetry?.on('record', (record) => sendToolsEvent({ type: 'call', record }))
   toolTelemetry?.on('cleared', () => sendToolsEvent({ type: 'cleared' }))

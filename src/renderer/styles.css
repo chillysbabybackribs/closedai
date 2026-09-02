@@ -26,6 +26,7 @@
 @import "./styles/chat/attachments.css";
 @import "./styles/chat/screenshots.css";
 @import "./styles/chat-history.css";
+@import "./styles/chat/peer-chats.css";
 @import "./styles/tools/modal.css";
 @source "../components";
 

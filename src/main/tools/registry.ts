@@ -10,6 +10,7 @@ import {
   type ToolNamespace,
   type ToolResult
 } from './tool.js'
+import { ToolResourceLocks } from './resource-locks.js'
 
 export type ToolCallRequest = {
   namespace: string | null
@@ -39,7 +40,7 @@ export class ToolRegistry {
   private readonly listeners = new Set<ToolCallListener>()
   private readonly disabled = new Set<string>()
 
-  constructor(namespaces: ToolNamespace[]) {
+  constructor(namespaces: ToolNamespace[], private readonly resourceLocks = new ToolResourceLocks()) {
     assertWellFormed(namespaces)
     this.namespaces = namespaces.map((namespace) => ({ ...namespace, tools: [...namespace.tools] }))
   }
@@ -149,12 +150,15 @@ export class ToolRegistry {
         resolve(failureResult(`${label}: timed out after ${Math.round(timeoutMs / 1000)}s`))
       }, timeoutMs)
     })
+    const lock = this.resourceLocks.tryAcquire(request, input as JsonObject, context.paneId ?? null, context.callId)
+    if (typeof lock === 'string') return failureResult(`${label}: conflict — ${lock}`)
     try {
       const run = definition.run(input as JsonObject, { ...context, signal: controller.signal })
       return boundResult(await Promise.race([run, timeout]))
     } catch (error) {
       return failureResult(`${label}: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
+      lock()
       if (timer) clearTimeout(timer)
     }
   }

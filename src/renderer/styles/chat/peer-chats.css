@@ -1,0 +1,72 @@
+.chat-composer-stack {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.peer-chat-cards {
+  display: flex;
+  gap: 6px;
+  max-width: var(--chat-column-width);
+  margin: 0 auto;
+  padding: 6px 6px 0;
+  overflow-x: auto;
+}
+
+.peer-chat-card {
+  display: flex;
+  flex: 0 1 220px;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--antigravity-card-border);
+  border-radius: 10px;
+  color: #d7d7da;
+  background: var(--antigravity-card-bg);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 18%);
+  text-align: left;
+}
+
+.peer-chat-card:hover {
+  border-color: rgb(255 255 255 / 16%);
+  background: #2b2b2d;
+}
+
+.peer-chat-card-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: #929297;
+}
+
+.peer-chat-card-running {
+  color: var(--antigravity-blue);
+  animation: peer-chat-spin 1.1s linear infinite;
+}
+
+.peer-chat-card-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.peer-chat-card-title,
+.peer-chat-card-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.peer-chat-card-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.peer-chat-card-meta {
+  color: #8f8f94;
+  font-size: 10px;
+}
+
+@keyframes peer-chat-spin {
+  to { transform: rotate(360deg); }
+}

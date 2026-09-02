@@ -39,16 +39,6 @@
   position: relative;
 }
 
-.chat-scroll-root::after {
-  content: '';
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  border-radius: var(--chat-radius) var(--chat-radius) 0 0;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%), inset 0 4px 5px -4px rgb(0 0 0 / 40%);
-  pointer-events: none;
-}
-
 .chat-scroll-root[data-scrollable~="start"][data-scrollable~="end"][data-scroll-dir="up"]
   [data-slot="message-scroller-button"][data-direction="end"],
 .chat-scroll-root[data-scrollable~="start"][data-scrollable~="end"][data-scroll-dir="down"]

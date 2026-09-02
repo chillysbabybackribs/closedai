@@ -1,4 +1,5 @@
 import type { ChatEvent, ChatProvider, ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
+import type { ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../shared/chat-peers.js'
 
 export function initialChatState(): ChatSnapshot {
   return {
@@ -15,6 +16,22 @@ export function initialChatState(): ChatSnapshot {
     contextUsage: null,
     items: []
   }
+}
+
+export function initialChatWorkspaceState(): ChatWorkspaceSnapshot {
+  return { selectedPaneId: '', peers: [], selected: initialChatState() }
+}
+
+export function reduceChatWorkspaceEvent(
+  state: ChatWorkspaceSnapshot,
+  event: ChatWorkspaceEvent
+): ChatWorkspaceSnapshot {
+  if (event.type === 'workspace') return event.snapshot
+  if (event.type === 'peers') {
+    return { ...state, selectedPaneId: event.selectedPaneId, peers: event.peers }
+  }
+  if (event.paneId !== state.selectedPaneId) return state
+  return { ...state, selected: reduceChatEvent(state.selected, event.event) }
 }
 
 /** How the pane names each provider. */

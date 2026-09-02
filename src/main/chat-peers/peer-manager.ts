@@ -7,7 +7,7 @@ import type {
   ChatWorkspaceSnapshot,
   PeerChatReadResult
 } from '../../shared/chat-peers.js'
-import type { AppSettings, ChatPeerRecord } from '../../shared/types.js'
+import type { ChatPeerRecord } from '../../shared/types.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import { PeerSettings } from './peer-settings.js'
@@ -47,8 +47,14 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   ) {
     super()
     const saved = settings.get()
-    this.selectedPaneId = saved.chatSelectedPaneId ?? saved.chatPeers[0]!.paneId
-    for (const record of saved.chatPeers) this.attach(record)
+    const records = saved.chatPeers.length > 0
+      ? saved.chatPeers
+      : [freshRecord(saved.chatModelId, saved.chatReasoningEffort)]
+    this.selectedPaneId = saved.chatSelectedPaneId ?? records[0]!.paneId
+    for (const record of records) this.attach(record)
+    if (saved.chatPeers.length === 0) {
+      void settings.set({ chatPeers: records, chatSelectedPaneId: this.selectedPaneId })
+    }
   }
 
   snapshot(): ChatWorkspaceSnapshot {

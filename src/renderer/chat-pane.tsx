@@ -17,6 +17,7 @@ import { ChatHistory } from './chat-history.js'
 import { chatTitle, PROVIDER_LABELS } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
+import { PeerChatCards } from './chat-peers/peer-chat-cards.js'
 import { ToolsModal } from './tools/tools-modal.js'
 
 export function ChatPane(): JSX.Element {
@@ -29,6 +30,7 @@ export function ChatPane(): JSX.Element {
   const title = chatTitle(state)
   const hasMessages = state.items.length > 0
   const centerComposer = ready && !hasMessages && !historyOpen
+  const backgroundPeers = chat.peers.filter((peer) => peer.paneId !== chat.selectedPaneId)
 
   async function sendMessage(text: string, attachments: ChatAttachment[]): Promise<void> {
     setHistoryOpen(false)
@@ -91,18 +93,21 @@ export function ChatPane(): JSX.Element {
           )}
         </TranscriptScroller>
       )}
-      <Composer
-        enabled={ready}
-        running={running}
-        models={state.models}
-        selectedModel={state.selectedModel}
-        selectedReasoningEffort={state.selectedReasoningEffort}
-        contextUsage={state.contextUsage}
-        onModelChange={chat.selectModel}
-        onReasoningEffortChange={chat.selectReasoningEffort}
-        onSend={sendMessage}
-        onStop={chat.interrupt}
-      />
+      <div className="chat-composer-stack">
+        <PeerChatCards peers={backgroundPeers} onSelect={(paneId) => void chat.selectPane(paneId)} />
+        <Composer
+          enabled={ready}
+          running={running}
+          models={state.models}
+          selectedModel={state.selectedModel}
+          selectedReasoningEffort={state.selectedReasoningEffort}
+          contextUsage={state.contextUsage}
+          onModelChange={chat.selectModel}
+          onReasoningEffortChange={chat.selectReasoningEffort}
+          onSend={sendMessage}
+          onStop={chat.interrupt}
+        />
+      </div>
     </aside>
   )
 }
