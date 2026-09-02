@@ -19,6 +19,7 @@
     "hooks": "@/hooks"
   },
   "registries": {
-    "@prompt-kit": "https://prompt-kit.com/c/{name}.json"
+    "@prompt-kit": "https://prompt-kit.com/c/{name}.json",
+    "@ai-elements": "https://ai-sdk.dev/elements/api/registry/{name}.json"
   }
 }
