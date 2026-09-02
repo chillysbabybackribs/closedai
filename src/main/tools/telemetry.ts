@@ -31,14 +31,15 @@ export class ToolTelemetry extends EventEmitter {
   /** Open aggregate counters and replace a legacy per-call JSONL log when one exists. */
   static async open(filePath: string, legacyPath?: string): Promise<ToolTelemetry> {
     const current = await readCurrent(filePath)
-    if (current) return new ToolTelemetry(filePath, current)
+    if (current) {
+      await removeLegacy(legacyPath)
+      return new ToolTelemetry(filePath, current)
+    }
 
     const legacy = legacyPath ? await readLegacy(legacyPath) : null
     const telemetry = new ToolTelemetry(filePath, legacy ?? undefined)
-    if (legacy) {
-      await telemetry.persistNow()
-      await unlink(legacyPath!).catch(() => {})
-    }
+    if (legacy) await telemetry.persistNow()
+    await removeLegacy(legacyPath)
     return telemetry
   }
 
@@ -175,4 +176,13 @@ function codeOf(error: unknown): string {
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+async function removeLegacy(filePath?: string): Promise<void> {
+  if (!filePath) return
+  try {
+    await unlink(filePath)
+  } catch (error) {
+    if (codeOf(error) !== 'ENOENT') console.warn('[tools] could not remove legacy telemetry:', messageOf(error))
+  }
 }
