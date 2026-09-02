@@ -83,7 +83,12 @@ test('an active turn with only the user prompt shows a pending thinking row', ()
   assert.equal(visibleTranscriptRows(items, null).length, 1)
 })
 
-test('pending thinking yields once the turn has reasoning or tools', () => {
+test('pending thinking stays until the turn has visible output', () => {
+  const emptyAnswer: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u1', turnId: 't1', text: 'Hello' },
+    { type: 'assistant', id: 'a1', turnId: 't1', text: '', phase: null, streaming: true }
+  ]
+  assert.equal(visibleTranscriptRows(emptyAnswer, 't1').some((row) => row.kind === 'reasoning' && row.items.length === 0), true)
   const withThought: ChatTranscriptItem[] = [
     { type: 'user', id: 'u1', turnId: 't1', text: 'Hello' },
     { type: 'reasoning', id: 'r1', turnId: 't1', text: 'Plan', streaming: true }

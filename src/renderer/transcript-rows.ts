@@ -48,10 +48,15 @@ export function visibleTranscriptRows(
 ): TranscriptRow[] {
   const rows = transcriptRows(items)
   if (!activeTurnId) return rows
-  if (items.some((item) => item.turnId === activeTurnId && (isReasoning(item) || isActivity(item) || item.type === 'assistant' || item.type === 'screenshot'))) {
+  if (items.some((item) => item.turnId === activeTurnId && turnHasVisibleOutput(item))) {
     return rows
   }
   return [...rows, { kind: 'reasoning', id: activeTurnId, items: [] }]
+}
+
+function turnHasVisibleOutput(item: ChatTranscriptItem): boolean {
+  if (isReasoning(item) || isActivity(item) || item.type === 'screenshot') return true
+  return item.type === 'assistant' && Boolean(item.text)
 }
 
 export function activityHeadline(items: ActivityItem[]): string {
