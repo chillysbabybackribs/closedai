@@ -47,7 +47,7 @@ export function RunDetailDrawer({
           <div>
             <span className="ops-eyebrow">Run detail</span>
             <h2 id="run-detail-title">{run.task}</h2>
-            <p>{run.worker} · {run.workspace}</p>
+            <p>{run.worker} · {run.workspace}{run.modelId ? ` · ${run.modelId}` : ''}</p>
           </div>
           <button type="button" className="ops-icon-button" onClick={onClose} aria-label="Close run detail">
             <X size={16} />
@@ -98,6 +98,7 @@ function RunOverview({ run }: { run: OperationsRun }): JSX.Element {
       <dl className="ops-run-facts">
         <div><dt>Worker</dt><dd>{run.worker}</dd></div>
         <div><dt>Workspace</dt><dd>{run.workspace}</dd></div>
+        <div><dt>Model</dt><dd>{run.modelId ?? 'Not assigned'}</dd></div>
         <div><dt>Runtime</dt><dd>{run.runtime}</dd></div>
         <div><dt>Last activity</dt><dd>{run.activity}</dd></div>
       </dl>
