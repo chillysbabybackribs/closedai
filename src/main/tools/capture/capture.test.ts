@@ -141,5 +141,5 @@ test('crop rejects missing, evicted, and out-of-bounds source regions', async ()
     action: 'crop', source_id: 'source_2', x: 0, y: 0, width: 100, height: 100, zoom: 5
   })
   assert.equal(invalidZoom.isError, true)
-  assert.match(textOf(invalidZoom), /capture\.crop: invalid arguments — \$\.zoom must be <= 4/)
+  assert.match(textOf(invalidZoom), /capture: invalid arguments — \$\.zoom must be <= 4/)
 })
