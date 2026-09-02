@@ -1,6 +1,5 @@
 import type { ChangeEvent, JSX, RefObject } from 'react'
-import { FileImage, FileText, Plus, Upload, X } from 'lucide-react'
-import { DropdownMenu } from 'radix-ui'
+import { FileImage, FileText, FileUp, X } from 'lucide-react'
 import { cn } from '../lib/utils.js'
 import {
   Attachment,
@@ -13,6 +12,7 @@ import {
   AttachmentTitle
 } from '../components/ui/attachment.js'
 import { Button } from '../components/ui/button.js'
+import { PromptInputAction } from '../components/ui/prompt-input.js'
 import type { ChatAttachment, ChatAttachmentSummary } from '../shared/chat.js'
 
 const IMAGE_EXTENSIONS = /\.(?:avif|bmp|gif|jpe?g|png|webp)$/i
@@ -70,28 +70,19 @@ export function AttachmentPicker({
   return (
     <>
       <input ref={inputRef} className="prompt-attachment-input" type="file" multiple onChange={onChange} />
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="prompt-composer-tool prompt-composer-attachment rounded-full"
-            aria-label="Add attachment"
-            disabled={disabled}
-          >
-            <Plus size={19} strokeWidth={2.75} aria-hidden="true" />
-          </Button>
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content className="prompt-attachment-menu" side="top" align="start" sideOffset={8}>
-            <DropdownMenu.Item className="prompt-attachment-menu-item" onSelect={() => inputRef.current?.click()}>
-              <Upload size={16} aria-hidden="true" />
-              Upload files
-            </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
+      <PromptInputAction tooltip="Upload files">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="prompt-composer-tool rounded-full"
+          aria-label="Upload files"
+          disabled={disabled}
+          onClick={() => inputRef.current?.click()}
+        >
+          <FileUp size={18} aria-hidden="true" />
+        </Button>
+      </PromptInputAction>
     </>
   )
 }
