@@ -1,5 +1,6 @@
+import { Check, Copy } from 'lucide-react'
 import { marked } from 'marked'
-import { memo, type ReactNode, useId, useMemo } from 'react'
+import { createElement, memo, useCallback, useId, useMemo, useState, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
@@ -27,7 +28,66 @@ function extractLanguage(className?: string): string {
   return className?.match(/language-([\w-]+)/)?.[1] ?? 'plaintext'
 }
 
+/* The element set the assistant-ui "markdown-text" renderer tags
+   (assistant-ui.com/elements/markdown-text). Every block carries an aui-md-*
+   class so one of them can be restyled without replacing the whole set; the
+   styling itself lives in styles/chat/markdown.css. */
+const TAGGED_ELEMENTS = [
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'blockquote',
+  'ul', 'ol', 'li', 'hr', 'table', 'th', 'td', 'tr', 'strong', 'sup'
+] as const
+
+type TaggedProps = { node?: unknown; className?: string; children?: ReactNode }
+
+const TAGGED_COMPONENTS = Object.fromEntries(TAGGED_ELEMENTS.map((tag) => [
+  tag,
+  function Tagged({ node: _node, className, ...props }: TaggedProps) {
+    return createElement(tag, { ...props, className: cn(`aui-md-${tag}`, className) })
+  }
+])) as unknown as Partial<Components>
+
+async function copyText(value: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(value)
+    return true
+  } catch {
+    // A file:// renderer is not a secure context, so the async clipboard API can be missing.
+    const field = document.createElement('textarea')
+    field.value = value
+    field.setAttribute('readonly', '')
+    field.style.position = 'fixed'
+    field.style.opacity = '0'
+    document.body.append(field)
+    field.select()
+    const copied = document.execCommand('copy')
+    field.remove()
+    return copied
+  }
+}
+
+function CodeHeader({ language, code }: { language: string; code: string }) {
+  const [copied, setCopied] = useState(false)
+  const onCopy = useCallback(() => {
+    if (copied) return
+    void copyText(code).then((done) => {
+      if (!done) return
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 3000)
+    })
+  }, [code, copied])
+
+  return (
+    <div className="aui-code-header-root">
+      <span className="aui-code-header-language">{language}</span>
+      <button type="button" className="aui-code-header-copy" aria-label="Copy" onClick={onCopy}>
+        {copied ? <Check className="size-3.5" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
+      </button>
+    </div>
+  )
+}
+
 const DEFAULT_COMPONENTS: Partial<Components> = {
+  ...TAGGED_COMPONENTS,
   a: function LinkComponent({ href, children, node: _node, ...props }) {
     const safeHref = safeWebUrl(href)
     if (safeHref) {
@@ -41,6 +101,7 @@ const DEFAULT_COMPONENTS: Partial<Components> = {
     }
     return (
       <a
+        className="aui-md-a"
         href={undefined}
         onClick={(event) => {
           event.preventDefault()
@@ -54,11 +115,15 @@ const DEFAULT_COMPONENTS: Partial<Components> = {
   code: function CodeComponent({ className, children, node: _node, ...props }) {
     const code = String(children).replace(/\n$/, '')
     const multiline = code.includes('\n') || className?.includes('language-')
-    if (!multiline) return <code className={cn('prompt-markdown-inline-code', className)} {...props}>{children}</code>
+    if (!multiline) return <code className={cn('aui-md-inline-code', className)} {...props}>{children}</code>
+    const language = extractLanguage(className)
     return (
-      <CodeBlock className={className}>
-        <CodeBlockCode code={code} language={extractLanguage(className)} />
-      </CodeBlock>
+      <div className="aui-md-code">
+        <CodeHeader language={language} code={code} />
+        <CodeBlock className={cn('aui-md-pre', className)}>
+          <CodeBlockCode className="aui-md-code-body" code={code} language={language} />
+        </CodeBlock>
+      </div>
     )
   },
   pre: function PreComponent({ children }) {
@@ -86,7 +151,7 @@ function MarkdownComponent({ children, id, className, components }: MarkdownProp
   const blocks = useMemo(() => parseMarkdownIntoBlocks(children), [children])
   const mergedComponents = useMemo(() => ({ ...DEFAULT_COMPONENTS, ...components }), [components])
   return (
-    <div data-slot="markdown" className={cn('prompt-markdown', className)}>
+    <div data-slot="markdown" className={cn('aui-md prompt-markdown', className)}>
       {blocks.map((block, index) => (
         <MarkdownBlock key={`${blockId}-${index}`} content={block} components={mergedComponents} />
       ))}
