@@ -202,6 +202,6 @@ function assembleResult(calls: BatchCall[], outcomes: BatchOutcome[]): ToolResul
   return {
     content: [{ type: 'text', text: `${summary}\n\n${sections.join('\n\n')}` }, ...images],
     // Partial success is success: the model needs the surviving results, not a retry loop.
-    isError: succeeded === 0
+    ...(succeeded === 0 ? { isError: true } : {})
   }
 }
