@@ -101,7 +101,7 @@
   width: 54px;
 }
 
-/* Chat message scroller (shadcn MessageScroller). `.chat-scroll-root` is the
+/* Chat message scroller. `.chat-scroll-root` is the
    scroller root filling the chat pane's middle grid row; `.chat-scroll` is its
    viewport — the reading surface is the app's lightest large material. */
 .chat-scroll-root {
@@ -258,6 +258,7 @@
      insetting the items is still the cleaner way to get full-bleed rows.) */
   padding: clamp(12px, 2.5vh, 18px) 0 clamp(14px, 3vh, 22px);
   overflow-y: auto;
+  overflow-anchor: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
   /* Keep a comfortable gap between the newest content and the composer even when
@@ -283,11 +284,8 @@
 
 .chat-scroll-content > [data-slot="message-scroller-item"] {
   padding-inline: var(--chat-inline);
-  /* Keep every row's measured height honest. @shadcn/react computes its
-     distance from the end from row getBoundingClientRect() values and observes this
-     content with ResizeObserver; CSS virtualization substitutes intrinsic heights
-     and makes completion/follow-mode scroll math jump. Do not put
-     content-visibility:auto on MessageScrollerItem. */
+  /* Native scroll anchoring keeps the reading position stable as images and code settle.
+     Row heights remain real because the custom scroller never substitutes estimates. */
 }
 
 .chat-scroll-content > [data-slot="message-scroller-item"] + [data-slot="message-scroller-item"] {

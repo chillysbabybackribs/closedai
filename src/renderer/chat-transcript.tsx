@@ -1,13 +1,17 @@
 import type { JSX } from 'react'
-import { memo, useMemo, useState } from 'react'
-import { Loader2, XCircle } from 'lucide-react'
+import { memo, useEffect, useMemo, useState } from 'react'
+import { ChevronUp, Loader2, XCircle } from 'lucide-react'
 
 import { Bubble, BubbleContent } from '../components/ui/bubble.js'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible.js'
 import { Markdown } from '../components/ui/markdown.js'
 import { Marker, MarkerContent } from '../components/ui/marker.js'
 import { Message, MessageContent } from '../components/ui/message.js'
-import { MessageScrollerItem } from '../components/ui/message-scroller.js'
+import {
+  MessageScrollerItem,
+  useMessageScroller,
+  useMessageScrollerScrollable
+} from '../components/ui/message-scroller.js'
 import { Tool } from '../components/ui/tool.js'
 import type { ChatTranscriptItem } from '../shared/chat.js'
 import { ChatScreenshot } from './chat-screenshot.js'
@@ -28,9 +32,37 @@ export const ChatTranscript = memo(function ChatTranscript({
   items: ChatTranscriptItem[]
 }): JSX.Element {
   const rows = useMemo(() => transcriptRows(items), [items])
+  const [windowStart, setWindowStart] = useState(() => initialWindowStart(rows.length))
+  const { prepareForPrepend } = useMessageScroller()
+  const scrollable = useMessageScrollerScrollable()
+  const start = Math.min(windowStart, initialWindowStart(rows.length))
+  const visibleRows = rows.slice(start)
+
+  // A reader away from the latest message keeps a stable window. Once they return to
+  // the end, trim excess rows that accumulated during streaming so the DOM stays bounded.
+  useEffect(() => {
+    if (!scrollable.end && visibleRows.length > MAX_MOUNTED_ROWS) {
+      setWindowStart(Math.max(0, rows.length - INITIAL_VISIBLE_ROWS))
+    }
+  }, [rows.length, scrollable.end, visibleRows.length])
+
+  const revealEarlier = (): void => {
+    prepareForPrepend()
+    setWindowStart(Math.max(0, start - REVEAL_ROW_COUNT))
+  }
+
   return (
     <>
-      {rows.map((row) => {
+      {start > 0 ? (
+        <div className="transcript-fold-banner" role="status">
+          <button type="button" className="transcript-fold-toggle" onClick={revealEarlier}>
+            <ChevronUp className="transcript-fold-chevron" aria-hidden="true" />
+            <span>{start} earlier {start === 1 ? 'entry' : 'entries'}</span>
+            <span className="transcript-fold-action">Show earlier</span>
+          </button>
+        </div>
+      ) : null}
+      {visibleRows.map((row) => {
         if (row.kind === 'activity') {
           const id = `activity:${row.id}:${row.items[0]?.id}`
           return (
@@ -52,6 +84,14 @@ export const ChatTranscript = memo(function ChatTranscript({
     </>
   )
 })
+
+const INITIAL_VISIBLE_ROWS = 120
+const MAX_MOUNTED_ROWS = 160
+const REVEAL_ROW_COUNT = 80
+
+function initialWindowStart(rowCount: number): number {
+  return Math.max(0, rowCount - INITIAL_VISIBLE_ROWS)
+}
 
 /** Consecutive batches can share a turn id; pin the first member so React does not reuse the wrong group. */
 function sameGroup<T extends { items: readonly unknown[] }>(previous: T, next: T): boolean {

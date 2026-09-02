@@ -87,3 +87,15 @@ test('identically named tool calls collapse to a counted label', () => {
   assert.match(html, /Searched the web 2 times/)
   assert.match(html, /aria-label="Searched the web 2 times, completed"/)
 })
+
+test('long transcripts initially mount only the latest bounded window', () => {
+  const items: ChatTranscriptItem[] = Array.from({ length: 250 }, (_, index) => ({
+    type: 'user', id: `u${index}`, turnId: `t${index}`, text: `Message ${index}`
+  }))
+  const html = renderTranscript({ items })
+  assert.match(html, /130 earlier entries/)
+  assert.doesNotMatch(html, /Message 129</)
+  assert.match(html, /Message 130</)
+  assert.match(html, /Message 249</)
+  assert.equal((html.match(/data-slot="message-scroller-item"/g) ?? []).length, 120)
+})

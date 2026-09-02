@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { FileCode2, LogIn } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
@@ -104,12 +104,9 @@ function TranscriptScroller({
   threadId: string | null
   children: JSX.Element
 }): JSX.Element {
-  const [root, setRoot] = useState<HTMLDivElement | null>(null)
-  const scrollDir = useScrollDirection(root)
-
   return (
     <MessageScrollerProvider key={threadId ?? 'empty'} autoScroll defaultScrollPosition="end">
-      <MessageScroller ref={setRoot} className="chat-scroll-root prompt-chat-scroll" data-scroll-dir={scrollDir}>
+      <MessageScroller className="chat-scroll-root prompt-chat-scroll">
         <MessageScrollerViewport className="chat-scroll">
           <MessageScrollerContent className="chat-scroll-content gap-0">
             {children}
@@ -120,27 +117,6 @@ function TranscriptScroller({
       </MessageScroller>
     </MessageScrollerProvider>
   )
-}
-
-function useScrollDirection(root: HTMLElement | null): 'up' | 'down' {
-  const [direction, setDirection] = useState<'up' | 'down'>('down')
-
-  useEffect(() => {
-    if (!root) return
-    const viewport = root.querySelector<HTMLElement>('[data-slot="message-scroller-viewport"]')
-    if (!viewport) return
-    let last = viewport.scrollTop
-    const onScroll = (): void => {
-      const next = viewport.scrollTop
-      if (next === last) return
-      setDirection(next > last ? 'down' : 'up')
-      last = next
-    }
-    viewport.addEventListener('scroll', onScroll, { passive: true })
-    return () => viewport.removeEventListener('scroll', onScroll)
-  }, [root])
-
-  return direction
 }
 
 function EmptyState({
