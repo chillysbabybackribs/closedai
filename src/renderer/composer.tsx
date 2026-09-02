@@ -137,7 +137,7 @@ export function Composer({
                   size="icon"
                   className="prompt-composer-tool prompt-composer-new-chat rounded-full"
                   aria-label="New chat"
-                  disabled={!enabled || running}
+                  disabled={!enabled}
                   onClick={handleNewChat}
                 >
                   <Plus size={21} strokeWidth={2.6} aria-hidden="true" />

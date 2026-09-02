@@ -19,7 +19,6 @@ export function DrawerHeader({
         type="button"
         className="agents-new"
         onClick={() => void chat.newThread()}
-        disabled={chat.state.activeTurnId !== null}
         title="New agent chat"
         aria-label="New agent chat"
       >
