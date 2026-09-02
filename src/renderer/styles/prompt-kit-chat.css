@@ -186,8 +186,10 @@
   margin: 0;
   padding: 0;
   border: 0;
+  appearance: none;
   background: transparent;
   color: var(--transcript-activity);
+  font-family: inherit;
   font-size: 12px;
   font-weight: 500;
   line-height: 1.4;
