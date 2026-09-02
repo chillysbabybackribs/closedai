@@ -11,7 +11,7 @@ import { TabRenderingPolicy } from './browser-tab-rendering.js'
 import { allSettledBounded } from './bounded-concurrency.js'
 import { restorePlan, type RestoredTabSession } from './browser-tab-session-store.js'
 import { browserSurfaceVisibility } from './browser-surface-visibility.js'
-import { activateTabSurface } from './browser-tab-activation.js'
+import { activateTabSurface, prepareTabSurfaceForTool } from './browser-tab-activation.js'
 
 type BrowserServiceOptions = {
   initialUrl?: string
@@ -259,14 +259,21 @@ export class BrowserService extends EventEmitter {
   /** Live WebContents of a tab (the active one when omitted); null if unknown or destroyed. */
   contentsOf(tabId?: string): WebContents | null {
     const tab = tabId ? this.tabs.find((candidate) => candidate.id === tabId) ?? null : this.active
+    if (tab) this.prepareTabForTool(tab)
     const contents = tab?.view.webContents
     return contents && !contents.isDestroyed() ? contents : null
   }
 
   /** Keep a tab's compositor attached while a frame-dependent tool operates on it. */
   leaseTabRendering(tabId: string): (() => void) | null {
-    if (!this.tabs.some((tab) => tab.id === tabId)) return null
+    const tab = this.tabs.find((candidate) => candidate.id === tabId)
+    if (!tab) return null
+    this.prepareTabForTool(tab)
     return this.rendering.pin(tabId)
+  }
+
+  private prepareTabForTool(tab: BrowserTab): void {
+    prepareTabSurfaceForTool(tab, this.activeId, this.bounds, browserSurfaceVisibility(this.bounds))
   }
 
   /** Navigate the active tab, or a new active tab, and resolve with the tab id once usable. */
