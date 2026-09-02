@@ -18,24 +18,6 @@ test('chat reducer upserts authoritative items without changing their order', ()
   ])
 })
 
-test('chat reducer resolves only the matching approval', () => {
-  const approval = {
-    requestId: '7',
-    kind: 'command' as const,
-    threadId: 'thread',
-    turnId: 'turn',
-    itemId: 'item',
-    title: 'Allow command?',
-    detail: 'npm test',
-    reason: null
-  }
-  let state = reduceChatEvent(initialChatState(), { type: 'approval', approval })
-  state = reduceChatEvent(state, { type: 'approvalResolved', requestId: '8' })
-  assert.equal(state.approvals.length, 1)
-  state = reduceChatEvent(state, { type: 'approvalResolved', requestId: '7' })
-  assert.equal(state.approvals.length, 0)
-})
-
 test('chat reducer tracks the thread id and name together', () => {
   let state = reduceChatEvent(initialChatState(), { type: 'thread', threadId: 'thread-1', threadName: null })
   assert.equal(state.threadId, 'thread-1')

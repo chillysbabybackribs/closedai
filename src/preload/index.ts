@@ -47,7 +47,6 @@ const api: ClosedaiApi = {
     attachmentPath: (file) => webUtils.getPathForFile(file),
     interrupt: () => ipcRenderer.invoke('chat:interrupt'),
     selectModel: (modelId: string) => ipcRenderer.invoke('chat:selectModel', modelId),
-    respondToApproval: (requestId, decision) => ipcRenderer.invoke('chat:approval', requestId, decision),
     loginWithChatGPT: () => ipcRenderer.invoke('chat:login'),
     listThreads: () => ipcRenderer.invoke('chat:listThreads'),
     newThread: () => ipcRenderer.invoke('chat:newThread'),

@@ -36,3 +36,23 @@ test('tool activity never consolidates across turns or unowned items', () => {
     ['a'], ['b'], ['loose-1'], ['loose-2']
   ])
 })
+
+test('reasoning in one turn becomes one updating transcript row', () => {
+  const items: ChatTranscriptItem[] = [
+    { type: 'reasoning', id: 'r1', turnId: 'turn-a', text: 'First thought' },
+    {
+      type: 'assistant', id: 'a1', turnId: 'turn-a', text: 'Progress update',
+      phase: 'commentary', streaming: false
+    },
+    { type: 'reasoning', id: 'r2', turnId: 'turn-a', text: 'Second thought' },
+    { type: 'plan', id: 'p1', turnId: 'turn-a', text: 'Implementation plan' }
+  ]
+
+  const rows = transcriptRows(items)
+  assert.deepEqual(rows.map((row) => row.kind), ['reasoning', 'item'])
+  const reasoning = rows[0]
+  assert.equal(reasoning?.kind, 'reasoning')
+  if (reasoning?.kind === 'reasoning') {
+    assert.deepEqual(reasoning.items.map((item) => item.id), ['r1', 'r2', 'p1'])
+  }
+})

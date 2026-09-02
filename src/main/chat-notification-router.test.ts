@@ -12,7 +12,6 @@ function target() {
     consumeItem: (item, turnId, completed) => log.push(['item', item, turnId, completed]),
     appendDelta: () => {},
     addNotice: (text, tone) => log.push(['notice', text, tone]),
-    resolveApproval: () => {},
     refreshSession: () => {},
     noteContextUsage: (usage) => log.push(['usage', usage]),
     contextCompacted: () => log.push(['compacted']),

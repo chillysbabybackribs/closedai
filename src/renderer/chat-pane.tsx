@@ -1,16 +1,16 @@
 import type { JSX } from 'react'
 import { useState } from 'react'
-import { AlertTriangle, FileCode2, LogIn } from 'lucide-react'
+import { FileCode2, LogIn } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import { ChatContainerContent, ChatContainerRoot, ChatContainerScrollAnchor } from '../components/ui/chat-container.js'
 import { TextShimmer } from '../components/ui/text-shimmer.js'
-import type { ChatApproval, ChatAttachment, ChatConnectionState } from '../shared/chat.js'
+import type { ChatAttachment, ChatConnectionState } from '../shared/chat.js'
 import { useChatController } from './chat-controller.js'
 import { ChatHeader } from './chat-header.js'
 import { ChatHistory } from './chat-history.js'
 import { chatTitle } from './chat-state.js'
-import { ChatTranscript } from './chat-transcript.js'
+import { ChatTranscript, hasReasoningForTurn } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { ToolsModal } from './tools/tools-modal.js'
 
@@ -22,6 +22,7 @@ export function ChatPane(): JSX.Element {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [toolsOpen, setToolsOpen] = useState(false)
   const title = chatTitle(state)
+  const showWorking = state.activeTurnId !== null && !hasReasoningForTurn(state.items, state.activeTurnId)
 
   async function sendMessage(text: string, attachments: ChatAttachment[]): Promise<void> {
     setHistoryOpen(false)
@@ -61,13 +62,10 @@ export function ChatPane(): JSX.Element {
       ) : (
       <ChatContainerRoot className="prompt-chat-scroll">
         <ChatContainerContent className="prompt-chat-content">
-          {state.items.length === 0 && state.approvals.length === 0
+          {state.items.length === 0
             ? <EmptyState state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
             : <ChatTranscript items={state.items} activeTurnId={state.activeTurnId} />}
-          {state.activeTurnId && <WorkingIndicator />}
-          {state.approvals.map((approval) => (
-            <ApprovalCard key={approval.requestId} approval={approval} respond={chat.respondToApproval} />
-          ))}
+          {showWorking && <WorkingIndicator />}
           <ChatContainerScrollAnchor />
         </ChatContainerContent>
       </ChatContainerRoot>
@@ -118,26 +116,3 @@ function WorkingIndicator(): JSX.Element {
   )
 }
 
-function ApprovalCard({
-  approval,
-  respond
-}: {
-  approval: ChatApproval
-  respond: (requestId: string, decision: 'accept' | 'acceptForSession' | 'decline' | 'cancel') => Promise<void>
-}): JSX.Element {
-  return (
-    <section className="prompt-approval" aria-label={approval.title}>
-      <div className="prompt-approval-heading">
-        <AlertTriangle className="size-4" aria-hidden="true" />
-        <strong>{approval.title}</strong>
-      </div>
-      <code>{approval.detail}</code>
-      {approval.reason && <p>{approval.reason}</p>}
-      <div className="prompt-approval-actions">
-        <Button type="button" variant="ghost" size="sm" onClick={() => void respond(approval.requestId, 'decline')}>Decline</Button>
-        <Button type="button" variant="secondary" size="sm" onClick={() => void respond(approval.requestId, 'acceptForSession')}>Always allow</Button>
-        <Button type="button" size="sm" onClick={() => void respond(approval.requestId, 'accept')}>Allow once</Button>
-      </div>
-    </section>
-  )
-}

@@ -11,8 +11,7 @@ export function initialChatState(): ChatSnapshot {
     threadName: null,
     activeTurnId: null,
     contextUsage: null,
-    items: [],
-    approvals: []
+    items: []
   }
 }
 
@@ -59,17 +58,6 @@ export function reduceChatEvent(state: ChatSnapshot, event: ChatEvent): ChatSnap
         ...state,
         items: state.items.map((item) => appendDelta(item, event.itemId, event.field, event.delta))
       }
-    case 'approval': {
-      const exists = state.approvals.some((approval) => approval.requestId === event.approval.requestId)
-      return {
-        ...state,
-        approvals: exists
-          ? state.approvals.map((approval) => approval.requestId === event.approval.requestId ? event.approval : approval)
-          : [...state.approvals, event.approval]
-      }
-    }
-    case 'approvalResolved':
-      return { ...state, approvals: state.approvals.filter((approval) => approval.requestId !== event.requestId) }
   }
 }
 

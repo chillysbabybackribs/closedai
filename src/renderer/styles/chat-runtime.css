@@ -37,8 +37,7 @@
 
 .chat-runtime-notice[data-tone='error'] { color: #d99a9a; }
 
-.chat-runtime-card,
-.chat-approval-card {
+.chat-runtime-card {
   margin: 8px var(--chat-inline);
   border: 1px solid var(--hairline-strong);
   border-radius: 9px;
@@ -102,24 +101,6 @@
 .chat-file-change span { overflow: hidden; color: var(--cwd-ink); font-family: var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
 .chat-file-change pre { grid-column: 1 / -1; margin: 2px -10px -8px; }
 
-.chat-approval-card {
-  padding: 11px;
-  border-color: rgb(216 162 74 / 34%);
-  background: rgb(216 162 74 / 6%);
-}
-
-.chat-approval-card > strong { display: block; color: var(--transcript-heading); font-size: 12px; }
-.chat-approval-card > code { display: block; margin-top: 8px; color: var(--transcript-copy); font-family: var(--font-mono); font-size: 10.5px; overflow-wrap: anywhere; white-space: pre-wrap; }
-.chat-approval-card > p { margin: 7px 0 0; line-height: 1.45; }
-
-.chat-approval-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-  margin-top: 11px;
-}
-
-.chat-approval-actions button,
 .chat-login-button {
   padding: 6px 9px;
   border: 1px solid var(--hairline-strong);
@@ -130,7 +111,5 @@
   cursor: pointer;
 }
 
-.chat-approval-actions button:hover,
 .chat-login-button:hover { background: var(--surface-control-hover); }
-.chat-approval-actions button.is-primary { border-color: #8ab4f8; background: #8ab4f8; color: #141414; }
 .chat-login-button { margin-top: 16px; padding: 8px 12px; }

@@ -1,5 +1,5 @@
 import { shell, type IpcMain } from 'electron'
-import type { ChatApprovalDecision, ChatAttachment } from '../shared/chat.js'
+import type { ChatAttachment } from '../shared/chat.js'
 import type { ChatService } from './chat-service.js'
 
 export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatService | null): void {
@@ -15,9 +15,6 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatService 
   )
   ipcMain.handle('chat:interrupt', () => requireService().interrupt())
   ipcMain.handle('chat:selectModel', (_event, modelId: string) => requireService().selectModel(modelId))
-  ipcMain.handle('chat:approval', (_event, requestId: string, decision: ChatApprovalDecision) =>
-    requireService().respondToApproval(requestId, decision)
-  )
   ipcMain.handle('chat:listThreads', () => requireService().listThreads())
   ipcMain.handle('chat:newThread', () => requireService().newThread())
   ipcMain.handle('chat:openThread', (_event, threadId: string) => requireService().openThread(threadId))

@@ -1,7 +1,6 @@
 import { EventEmitter } from 'node:events'
 import type {
   ChatAccount,
-  ChatApprovalDecision,
   ChatAttachment,
   ChatConnection,
   ChatEvent,
@@ -14,7 +13,7 @@ import {
   AppServerClient,
   type AppServerNotification
 } from './app-server-client.js'
-import { ChatApprovals } from './chat-approvals.js'
+import { answerServerRequest } from './chat-approvals.js'
 import {
   messageOf,
   normalizeAccount,
@@ -56,7 +55,6 @@ export class ChatService extends EventEmitter {
   private threadName: string | null = null
   private activeTurnId: string | null = null
   private readonly transcript: ChatTranscript
-  private readonly approvals: ChatApprovals
   private readonly toolCalls: AppServerToolCalls
   private readonly compactor: ContextCompactor
   private startPromise: Promise<void> | null = null
@@ -81,7 +79,6 @@ export class ChatService extends EventEmitter {
       (callId) => screenshots?.get(callId) ?? null
     )
     this.client = new AppServerClient(executable, cwd)
-    this.approvals = new ChatApprovals(this.client, (event) => this.emitEvent(event))
     this.toolCalls = new AppServerToolCalls(this.tools, this.client)
     this.compactor = new ContextCompactor({
       thresholdPercent: () => this.settings.get().chatCompactAtPercent,
@@ -92,7 +89,7 @@ export class ChatService extends EventEmitter {
     })
     this.client.on('notification', (notification: AppServerNotification) => this.onNotification(notification))
     this.client.on('request', (request) => {
-      if (!this.toolCalls.handle(request)) this.approvals.handleServerRequest(request)
+      if (!this.toolCalls.handle(request)) answerServerRequest(this.client, request)
     })
     this.client.on('protocolError', (error: Error) => this.addNotice(error.message, 'error'))
     this.client.on('exit', () => this.onExit())
@@ -109,8 +106,7 @@ export class ChatService extends EventEmitter {
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
       contextUsage: describeUsage(this.compactor.current),
-      items: this.transcript.snapshot(),
-      approvals: this.approvals.snapshot()
+      items: this.transcript.snapshot()
     }
   }
 
@@ -170,10 +166,6 @@ export class ChatService extends EventEmitter {
     await this.settings.set({ chatModelId: modelId })
     this.selectedModel = modelId
     this.emitEvent({ type: 'model', selectedModel: modelId })
-  }
-
-  async respondToApproval(requestId: string, decision: ChatApprovalDecision): Promise<void> {
-    this.approvals.respond(requestId, decision)
   }
 
   async listThreads(): Promise<ChatThreadSummary[]> {
@@ -317,7 +309,6 @@ export class ChatService extends EventEmitter {
     this.threadId = null
     this.threadName = null
     this.transcript.clear()
-    this.approvals.clear()
     this.compactor.reset()
     this.activeTurnId = null
   }
@@ -368,7 +359,6 @@ export class ChatService extends EventEmitter {
       consumeItem: (item, turnId, completed) => this.transcript.consume(item, turnId, completed),
       appendDelta: (itemId, field, delta) => this.transcript.appendDelta(itemId, field, delta),
       addNotice: (text, tone, turnId) => this.addNotice(text, tone, turnId),
-      resolveApproval: (requestId) => this.approvals.resolve(requestId),
       refreshSession: () => this.refreshSession(),
       noteContextUsage: (usage) => this.noteContextUsage(usage),
       contextCompacted: () => this.compactor.compacted(),
@@ -421,7 +411,6 @@ export class ChatService extends EventEmitter {
   private onExit(): void {
     this.compactor.reset()
     this.setTurn(null)
-    this.approvals.clear(true)
     this.setConnection({ state: 'error', message: 'Codex stopped unexpectedly; reconnecting…' })
     this.scheduleRestart()
   }

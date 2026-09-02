@@ -11,31 +11,46 @@ import type { ChatTranscriptItem } from '../shared/chat.js'
 import { ChatScreenshot } from './chat-screenshot.js'
 
 type ActivityItem = Extract<ChatTranscriptItem, { type: 'command' | 'fileChange' | 'tool' }>
+type ReasoningItem = Extract<ChatTranscriptItem, { type: 'plan' | 'reasoning' }>
+type StandaloneItem = Exclude<ChatTranscriptItem, ActivityItem | ReasoningItem>
 
 export type TranscriptRow =
-  | { kind: 'item'; item: Exclude<ChatTranscriptItem, ActivityItem> }
+  | { kind: 'item'; item: StandaloneItem }
   | { kind: 'activity'; id: string; items: ActivityItem[] }
+  | { kind: 'reasoning'; id: string; items: ReasoningItem[] }
 
 export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {
   const byTurn = new Map<string, ActivityItem[]>()
+  const reasoningByTurn = new Map<string, ReasoningItem[]>()
   for (const item of items) {
-    if (!isActivity(item)) continue
     const key = item.turnId ?? `item:${item.id}`
-    byTurn.set(key, [...(byTurn.get(key) ?? []), item])
+    if (isActivity(item)) byTurn.set(key, [...(byTurn.get(key) ?? []), item])
+    if (isReasoning(item)) reasoningByTurn.set(key, [...(reasoningByTurn.get(key) ?? []), item])
   }
-  const emitted = new Set<string>()
+  const emittedActivity = new Set<string>()
+  const emittedReasoning = new Set<string>()
   const rows: TranscriptRow[] = []
   for (const item of items) {
-    if (!isActivity(item)) {
-      rows.push({ kind: 'item', item })
+    const key = item.turnId ?? `item:${item.id}`
+    if (isActivity(item)) {
+      if (emittedActivity.has(key)) continue
+      emittedActivity.add(key)
+      rows.push({ kind: 'activity', id: key, items: byTurn.get(key) ?? [item] })
       continue
     }
-    const key = item.turnId ?? `item:${item.id}`
-    if (emitted.has(key)) continue
-    emitted.add(key)
-    rows.push({ kind: 'activity', id: key, items: byTurn.get(key) ?? [item] })
+    if (isReasoning(item)) {
+      if (emittedReasoning.has(key)) continue
+      emittedReasoning.add(key)
+      rows.push({ kind: 'reasoning', id: key, items: reasoningByTurn.get(key) ?? [item] })
+      continue
+    }
+    rows.push({ kind: 'item', item })
   }
   return rows
+}
+
+export function hasReasoningForTurn(items: ChatTranscriptItem[], turnId: string): boolean {
+  return items.some((item) => item.turnId === turnId && isReasoning(item))
 }
 
 export function ChatTranscript({
@@ -49,17 +64,17 @@ export function ChatTranscript({
     <>
       {transcriptRows(items).map((row) => row.kind === 'activity'
         ? <ToolActivity key={`activity:${row.id}`} items={row.items} />
-        : <TranscriptItem key={row.item.id} item={row.item} running={activeTurnId === row.item.turnId} />)}
+        : row.kind === 'reasoning'
+          ? <ReasoningGroup key={`reasoning:${row.id}`} items={row.items} running={activeTurnId === row.id} />
+          : <TranscriptItem key={row.item.id} item={row.item} />)}
     </>
   )
 }
 
 function TranscriptItem({
-  item,
-  running
+  item
 }: {
-  item: Exclude<ChatTranscriptItem, ActivityItem>
-  running: boolean
+  item: StandaloneItem
 }): JSX.Element | null {
   if (item.type === 'user') {
     return (
@@ -85,13 +100,19 @@ function TranscriptItem({
     return <div className="prompt-system-message" data-tone={item.tone} role={item.tone === 'error' ? 'alert' : 'status'}>{item.text}</div>
   }
   if (item.type === 'screenshot') return <ChatScreenshot item={item} />
+  return null
+}
+
+function ReasoningGroup({ items, running }: { items: ReasoningItem[]; running: boolean }): JSX.Element {
+  const onlyPlans = items.every((item) => item.type === 'plan')
+  const text = items.map((item) => item.text).filter(Boolean).join('\n\n')
   return (
     <Reasoning className="prompt-reasoning" isStreaming={running}>
       <ReasoningTrigger className="prompt-reasoning-trigger">
-        {item.type === 'plan' ? 'Plan' : running ? 'Thinking…' : 'Reasoning'}
+        {running ? 'Thinking…' : onlyPlans ? 'Plan' : 'Reasoning'}
       </ReasoningTrigger>
       <ReasoningContent markdown className="prompt-reasoning-content" contentClassName="prompt-reasoning-copy prose prose-sm max-w-none dark:prose-invert">
-        {item.text}
+        {text}
       </ReasoningContent>
     </Reasoning>
   )
@@ -192,6 +213,10 @@ function toolPart(item: ActivityItem): ToolPart {
 
 function isActivity(item: ChatTranscriptItem): item is ActivityItem {
   return item.type === 'command' || item.type === 'fileChange' || item.type === 'tool'
+}
+
+function isReasoning(item: ChatTranscriptItem): item is ReasoningItem {
+  return item.type === 'plan' || item.type === 'reasoning'
 }
 
 function activityState(items: ActivityItem[]): ToolPart['state'] {

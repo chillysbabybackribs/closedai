@@ -1,5 +1,5 @@
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
-import type { ChatApprovalDecision, ChatAttachment, ChatEvent, ChatSnapshot, ChatThreadSummary } from './chat.js'
+import type { ChatAttachment, ChatEvent, ChatSnapshot, ChatThreadSummary } from './chat.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 
 export type Unsubscribe = () => void
@@ -44,7 +44,6 @@ export type ClosedaiApi = {
     attachmentPath: (file: File) => string
     interrupt: () => Promise<void>
     selectModel: (modelId: string) => Promise<void>
-    respondToApproval: (requestId: string, decision: ChatApprovalDecision) => Promise<void>
     loginWithChatGPT: () => Promise<void>
     /** Threads recorded for this workspace, newest first. */
     listThreads: () => Promise<ChatThreadSummary[]>

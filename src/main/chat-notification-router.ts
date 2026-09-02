@@ -11,7 +11,6 @@ export type ChatNotificationTarget = {
   consumeItem: (item: unknown, turnId: string | null, completed: boolean) => void
   appendDelta: (itemId: string, field: 'text' | 'output', delta: string) => void
   addNotice: (text: string, tone: 'info' | 'error', turnId?: string | null) => void
-  resolveApproval: (requestId: string) => void
   refreshSession: () => void
   noteContextUsage: (usage: ContextUsage) => void
   /** The app-server finished compacting the thread's history. */
@@ -93,7 +92,6 @@ export function routeChatNotification(
       break
     }
     case 'serverRequest/resolved':
-      target.resolveApproval(String(params?.requestId ?? ''))
       break
     case 'account/updated':
     case 'account/login/completed':

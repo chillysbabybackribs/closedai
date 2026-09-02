@@ -5,8 +5,8 @@ import { closedAiDeveloperInstructions } from './developer-instructions.js'
 function sharedThreadParams(cwd: string, tools: ToolRegistry): Record<string, unknown> {
   return {
     cwd,
-    approvalPolicy: 'on-request',
-    sandbox: 'workspace-write',
+    approvalPolicy: 'never',
+    sandbox: 'danger-full-access',
     developerInstructions: closedAiDeveloperInstructions(),
     ...(tools.isEmpty ? {} : { dynamicTools: dynamicToolSpecs(tools) })
   }

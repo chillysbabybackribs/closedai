@@ -83,17 +83,6 @@ export type ChatTranscriptItem =
     }
   | { type: 'notice'; id: string; turnId: string | null; text: string; tone: 'info' | 'error' }
 
-export type ChatApproval = {
-  requestId: string
-  kind: 'command' | 'fileChange'
-  threadId: string
-  turnId: string
-  itemId: string
-  title: string
-  detail: string
-  reason: string | null
-}
-
 /** One row of the chat history list, sorted newest-first by the main process. */
 export type ChatThreadSummary = {
   id: string
@@ -125,7 +114,6 @@ export type ChatSnapshot = {
   activeTurnId: string | null
   contextUsage: ChatContextUsage | null
   items: ChatTranscriptItem[]
-  approvals: ChatApproval[]
 }
 
 export type ChatEvent =
@@ -137,7 +125,3 @@ export type ChatEvent =
   | { type: 'context'; usage: ChatContextUsage | null }
   | { type: 'item'; item: ChatTranscriptItem }
   | { type: 'itemDelta'; itemId: string; field: 'text' | 'output'; delta: string }
-  | { type: 'approval'; approval: ChatApproval }
-  | { type: 'approvalResolved'; requestId: string }
-
-export type ChatApprovalDecision = 'accept' | 'acceptForSession' | 'decline' | 'cancel'

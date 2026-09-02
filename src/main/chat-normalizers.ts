@@ -1,6 +1,5 @@
 import type {
   ChatAccount,
-  ChatApprovalDecision,
   ChatAttachmentSummary,
   ChatFileChange,
   ChatModel,
@@ -155,10 +154,6 @@ export function nullableString(value: unknown): string | null {
 
 export function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
-}
-
-export function isApprovalDecision(value: string): value is ChatApprovalDecision {
-  return value === 'accept' || value === 'acceptForSession' || value === 'decline' || value === 'cancel'
 }
 
 function normalizeFileChanges(value: unknown): ChatFileChange[] {
