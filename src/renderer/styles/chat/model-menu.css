@@ -4,6 +4,7 @@
 .prompt-model-controls {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -163,4 +164,83 @@
   height: 1px;
   margin: 5px 6px;
   background: var(--border);
+}
+
+/* ---- Context meter --------------------------------------------------------
+   How full the model's window is, parked beside the model picker because the two
+   are one fact: this model, this much of its window spent. Replaces the percentage
+   pill that used to sit in the chat header, where it read as a thread action.
+
+   Ring + number at rest; the raw token counts unfold on hover, so the resting
+   state stays as quiet as the model name next to it. */
+.context-meter {
+  --context-meter-ink: var(--muted-foreground, #959598);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px 2px 4px;
+  border-radius: 999px;
+  color: var(--context-meter-ink);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: default;
+  transition: background 120ms var(--ease-chrome), color 120ms var(--ease-chrome);
+}
+
+.context-meter:hover {
+  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+}
+
+.context-meter[data-level='warm'] {
+  --context-meter-ink: #d9a45c;
+}
+
+.context-meter[data-level='hot'] {
+  --context-meter-ink: #e0705e;
+}
+
+.context-meter-ring {
+  flex: none;
+  /* 12 o'clock start, clockwise: the ring should fill the way a gauge does. */
+  transform: rotate(-90deg);
+}
+
+.context-meter-track {
+  fill: none;
+  stroke: color-mix(in srgb, var(--foreground) 14%, transparent);
+  stroke-width: 1.5;
+}
+
+.context-meter-fill {
+  fill: none;
+  stroke: var(--context-meter-ink);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  transition: stroke-dasharray 260ms var(--ease-chrome);
+}
+
+.context-meter-value {
+  font-weight: 500;
+}
+
+/* Kept out of the resting layout entirely, not just faded: an inline max-width
+   animation here would nudge the composer's send button on every hover. */
+.context-meter-detail {
+  display: none;
+  color: var(--muted-foreground, #959598);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.context-meter:hover .context-meter-detail {
+  display: inline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .context-meter,
+  .context-meter-fill {
+    transition: none;
+  }
 }
