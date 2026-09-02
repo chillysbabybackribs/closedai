@@ -51,9 +51,9 @@ runs on the Electron installed here.
 
 `~/.config/closedai/`: `browser-tabs.json` (restored on launch), `browser-history.json`
 (omnibox suggestions), `app-settings.json` (cookie-import latch, current Codex thread, selected
-model, disabled tool ids, `chatAutoCompactTokens`, the context size in tokens past which Codex
-compacts mid-turn; default 100000, 0 keeps Codex's own limit, and `chatCompactAtPercent`, the
-context-usage percentage after which the app compacts between turns; default 60, 0 disables),
+model, disabled tool ids, `chatCompactAtPercent`, the context-usage percentage after which the
+app compacts between turns; default 80, 0 disables, and `chatMidTurnCompactTokens`, an opt-in
+context size in tokens past which Codex compacts mid-turn; default 0 keeps Codex's own limit),
 `tool-telemetry.jsonl` (recent tool calls), `code-cache/`, and
 Chromium's `Partitions/browser` profile.
 
@@ -66,8 +66,8 @@ model knows which tab the user is looking at.
 
 Codex replays the whole thread to the model each turn, so the app keeps that history lean: tool
 text is capped per result, screenshots reach the model scaled while the transcript shows the full
-capture, Codex compacts mid-turn once the context passes `chatAutoCompactTokens`, and the app
-compacts again once a turn ends above `chatCompactAtPercent`. The chat header shows how full the
+capture, pasted screenshots are bounded before they are sent, and the app compacts once a turn
+ends above `chatCompactAtPercent` (Codex itself compacts near the limit). The chat header shows how full the
 context is, and "Continue in new chat" starts a fresh thread carrying only a digest of the current
 one (`docs/tools.md`, "Results live in the thread history").
 

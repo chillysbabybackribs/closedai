@@ -114,15 +114,28 @@ turn, and only compacts by itself near the context limit. Three things keep that
   the full-resolution capture in `capture/screenshot-store.ts`, keyed by the tool call id. The
   transcript looks the call id up when it renders the screenshot item and falls back to the
   model's copy once the store has evicted it (60 entries or 96 MB, newest kept).
-- The app-server is launched with `-c model_auto_compact_token_limit=<chatAutoCompactTokens>`
-  (app settings, default 100000, 0 keeps Codex's own ~90% limit), so Codex compacts in the
-  middle of a turn once tool results push the context past it. This is the main guard: one turn
-  of UI work has been measured adding 200k tokens through 70 tool calls, and every call replays
-  all of it. See `src/main/chat-context/app-server-config.ts`.
-- `ChatService` also watches `thread/tokenUsage/updated` and asks for `thread/compact/start`
-  after a turn ends with the context above `chatCompactAtPercent` (default 60, 0 disables), as a
-  between-turn fallback. One compaction per completed turn at most; sends wait for a compaction
-  in flight. See `src/main/chat-context/context-compaction.ts`.
+- Measured 2026-09-02 across ~1,200 model steps: with prompt caching (median 98% of input
+  tokens cached) a step after a tool result takes a median 2.7 s under 40k context and 3.4-4.0 s
+  at 200k. Context size barely moves latency; the number of steps and the size of each tool
+  result do. Each compaction costs 60-90 s and loses detail, so compaction is kept rare.
+- `ChatService` watches `thread/tokenUsage/updated` and asks for `thread/compact/start` after a
+  turn ends with the context above `chatCompactAtPercent` (default 80, 0 disables). One
+  compaction per completed turn at most; sends wait for a compaction in flight. See
+  `src/main/chat-context/context-compaction.ts`.
+- Opt-in: `chatMidTurnCompactTokens` (default 0) launches the app-server with
+  `-c model_auto_compact_token_limit=<n>` so Codex compacts mid-turn past `n` tokens. At 100k it
+  fired every ~10 exec calls in a heavy turn, which is why it is off. See
+  `src/main/chat-context/app-server-config.ts`.
+- Codex 0.152 runs gpt-5.6 in code mode: the model calls tools from JavaScript inside a generic
+  `exec` tool whose result budget defaults to 10k tokens per call (the model can raise it to
+  20k), and a dynamic tool's result reaches that JavaScript as one string with any image inline
+  as a data URL. The capture tool's description carries the exact `text()`/`image()` split so
+  the model never dumps an image as base64 text (one such call cost 174k tokens before Codex
+  truncated it). The developer instructions ask for `max_output_tokens` ≤ 4000 and targeted
+  reads.
+- Pasted screenshots are bounded to 1600x1200 JPEG before they are sent
+  (`src/main/chat-attachment-images.ts`): Codex re-sends user messages verbatim through every
+  compaction, so a full-size paste is paid for on every call for the life of the thread.
 - "Continue in new chat" (chat header) leaves the thread behind entirely: the next message opens
   a fresh thread whose first turn carries a digest of the old one as `additionalContext`
   (`closedai.chat.handoff`, built from the app transcript without a model call, ≤12k chars).
