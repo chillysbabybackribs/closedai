@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { useState } from 'react'
-import { FileCode2, LogIn } from 'lucide-react'
+import { LogIn, Sparkles } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import {
@@ -133,9 +133,9 @@ function EmptyState({
   const available = state === 'ready'
   return (
     <div className="prompt-chat-empty chat-empty">
-      <div className="prompt-chat-empty-icon" aria-hidden="true"><FileCode2 /></div>
-      <h2>{available ? 'How can I help you?' : `Start with ${PROVIDER_LABELS[provider]}`}</h2>
-      <p>{available ? 'Ask a question or describe a change you want to make.' : message}</p>
+      <div className="prompt-chat-empty-icon" aria-hidden="true"><Sparkles /></div>
+      <h2>{available ? 'How can I help you today?' : `Start with ${PROVIDER_LABELS[provider]}`}</h2>
+      <p>{available ? 'Ask a question, brainstorm ideas, or collaborate on code changes.' : message}</p>
       {/* Claude Code signs in from its own CLI; the message above says how. */}
       {state === 'signed-out' && provider === 'codex' && (
         <Button type="button" variant="secondary" onClick={() => void onLogin()}>

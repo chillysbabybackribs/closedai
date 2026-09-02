@@ -31,7 +31,7 @@ function Tool({ toolPart, defaultOpen = false, className }: ToolProps) {
         <CollapsibleTrigger asChild disabled={!hasDetails}>
           <Button variant="ghost" className="prompt-tool-trigger h-auto w-full justify-start rounded-none px-3 py-2 font-normal">
             <span className="prompt-tool-title">
-              <status.Icon className={cn('size-4', status.spin && 'animate-spin')} aria-hidden="true" />
+              <status.Icon className={cn('size-3.5', status.color, status.spin && 'animate-spin')} aria-hidden="true" />
               <span>{toolPart.type}</span>
               <em>{status.label}</em>
             </span>
@@ -56,12 +56,12 @@ function ToolSection({ label, value, tone }: { label: string; value: unknown; to
   )
 }
 
-function toolStatus(state: ToolPart['state']): { Icon: typeof CircleEllipsis; label: string; spin?: boolean } {
+function toolStatus(state: ToolPart['state']): { Icon: typeof CircleEllipsis; label: string; spin?: boolean; color?: string } {
   switch (state) {
-    case 'input-streaming': return { Icon: Loader2, label: 'Running', spin: true }
-    case 'input-available': return { Icon: CircleEllipsis, label: 'Waiting' }
-    case 'output-error': return { Icon: XCircle, label: 'Failed' }
-    case 'output-available': return { Icon: CheckCircle2, label: 'Completed' }
+    case 'input-streaming': return { Icon: Loader2, label: 'Running', spin: true, color: 'text-[#09b6a2]' }
+    case 'input-available': return { Icon: CircleEllipsis, label: 'Waiting', color: 'text-muted-foreground' }
+    case 'output-error': return { Icon: XCircle, label: 'Failed', color: 'text-destructive' }
+    case 'output-available': return { Icon: CheckCircle2, label: 'Completed', color: 'text-[#7aae66]' }
   }
 }
 

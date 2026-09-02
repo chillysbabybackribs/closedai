@@ -1,12 +1,11 @@
-/* One quiet, live-updating disclosure per consecutive tool batch. It carries no
-   chrome of its own: no chip, no border, no caret. Just a counted verb line in
-   process ink that brightens on hover, so the transcript stays a reading
-   surface and the batch reads as a footnote to the answer. */
+/* ---------------------------------------------------------------------------
+   Antigravity Tool Activity Disclosure & Step Cards
+--------------------------------------------------------------------------- */
 
 .prompt-tool-activity {
   width: 100%;
   min-width: 0;
-  color: var(--transcript-activity);
+  color: var(--transcript-activity, #9b9ba1);
 }
 
 .prompt-tool-activity-trigger {
@@ -18,22 +17,24 @@
   justify-content: flex-start;
   gap: 6px;
   margin: 0;
-  padding: 0;
+  padding: 2px 4px;
   border: 0;
+  border-radius: 4px;
   appearance: none;
   background: transparent;
-  color: var(--transcript-activity);
+  color: var(--transcript-activity, #9b9ba1);
   font-family: inherit;
-  font-size: var(--chat-fs-process, 18px);
+  font-size: var(--chat-fs-process, 12px);
   font-weight: 500;
   line-height: 1.4;
   cursor: pointer;
-  transition: color 120ms var(--ease-chrome);
+  transition: all 110ms ease;
 }
 
 .prompt-tool-activity-trigger:hover,
 .prompt-tool-activity-trigger[aria-expanded='true'] {
-  color: var(--transcript-activity-hover);
+  color: var(--transcript-activity-hover, #d4d4d8);
+  background: rgb(255 255 255 / 4%);
 }
 
 .chat-scroll-content > [data-slot='message-scroller-item']:has(.prompt-tool-activity)
@@ -45,31 +46,36 @@
   + [data-slot='message-scroller-item']:has(.prompt-tool-activity),
 .chat-scroll-content > [data-slot='message-scroller-item']:has(.prompt-tool-activity)
   + [data-slot='message-scroller-item']:has(.prompt-message-assistant) {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .prompt-tool-activity-trigger > span { font-variant-numeric: tabular-nums; }
 
-.prompt-process-spinner,
-.prompt-process-failed {
-  width: 14px;
-  height: 14px;
+.prompt-process-spinner {
+  width: 13px;
+  height: 13px;
   flex: none;
+  color: var(--antigravity-teal, #09b6a2);
+}
+
+.prompt-process-failed {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: var(--destructive, #d28b8b);
 }
 
 .prompt-tool-activity[data-state='output-error'] .prompt-tool-activity-trigger {
-  color: var(--destructive);
+  color: var(--destructive, #d28b8b);
 }
 
-/* Opening the batch indents its calls under a hairline rather than boxing them
-   in a panel: the disclosure is a list of what ran, not an object. */
 .prompt-tool-activity-content {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin: 5px 0 2px 7px;
-  padding-left: 12px;
-  border-left: 1px solid var(--border);
+  gap: 3px;
+  margin: 4px 0 3px 6px;
+  padding-left: 10px;
+  border-left: 1.5px solid var(--border, rgb(255 255 255 / 10%));
 }
 
 .prompt-transcript-tool {
@@ -81,59 +87,64 @@
 
 .prompt-tool-trigger {
   min-width: 0;
-  border-radius: 7px;
-  color: var(--transcript-activity);
+  border-radius: 6px;
+  color: var(--transcript-activity, #9b9ba1);
   background: transparent;
+  padding: 4px 6px;
 }
 
-.prompt-tool-trigger:hover { background: var(--surface-highlight); color: var(--accent-foreground); }
+.prompt-tool-trigger:hover {
+  background: rgb(255 255 255 / 5%);
+  color: #ececee;
+}
 
 .prompt-tool-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .prompt-tool-title > span {
   min-width: 0;
   overflow: hidden;
-  color: var(--foreground);
+  color: #ececee;
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .prompt-tool-title > em {
   flex: 0 0 auto;
-  color: var(--muted-foreground);
-  font-size: 14px;
+  color: var(--muted-foreground, #858585);
+  font-size: 11px;
   font-style: normal;
 }
 
-/* The detail panel is a code surface, not a transcript surface: its `pre` is
-   set in --code-text, which has no light-theme counterpart. So it draws from
-   the code ramp and stays a dark canvas under every theme, exactly as fenced
-   code blocks and diffs already do. */
 .prompt-tool-content {
-  margin: 0 4px 5px 28px;
-  border: 1px solid var(--code-border);
-  border-radius: 8px;
-  background: var(--code-canvas);
+  margin: 2px 2px 4px 20px;
+  border: 1px solid var(--code-border, rgb(255 255 255 / 9%));
+  border-radius: 6px;
+  background: var(--code-canvas, #141414);
 }
 
-.prompt-tool-section { padding: 10px; }
-.prompt-tool-section + .prompt-tool-section { border-top: 1px solid var(--code-border); }
-.prompt-tool-section > strong { color: var(--code-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.prompt-tool-section { padding: 8px 10px; }
+.prompt-tool-section + .prompt-tool-section { border-top: 1px solid var(--code-border, rgb(255 255 255 / 9%)); }
+.prompt-tool-section > strong {
+  color: var(--code-muted, #777779);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
 .prompt-tool-section > pre {
-  max-height: 280px;
-  margin: 7px 0 0;
+  max-height: 240px;
+  margin: 5px 0 0;
   overflow: auto;
-  color: var(--code-text);
+  color: var(--code-text, #d1d1d2);
   font-family: var(--font-mono);
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 12px;
+  line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
