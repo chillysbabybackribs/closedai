@@ -283,12 +283,14 @@
 .prompt-composer {
   grid-row: 3;
   min-width: 0;
-  padding: 8px clamp(10px, 2.5vw, 16px) 12px;
-  border-top: 1px solid var(--hairline);
-  background: var(--background, #181818);
+  padding: 6px clamp(18px, 4vw, 32px) 14px;
+  border-top: none;
+  background: transparent;
 }
 
 .prompt-composer-input {
+  max-width: 680px;
+  margin-inline: auto;
   padding: 6px;
   border: 1px solid var(--composer-line);
   border-radius: 14px;
