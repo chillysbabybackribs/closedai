@@ -74,6 +74,13 @@ export type BrowserDownload = {
   error: string | null
 }
 
+export type ChatPeerRecord = {
+  paneId: string
+  provider: 'codex' | 'claude'
+  threadId: string | null
+  modelId: string | null
+  reasoningEffort: string | null
+}
 
 export type AppSettings = {
   browserCookiesImported: boolean
@@ -85,6 +92,9 @@ export type AppSettings = {
   chatModelId: string | null
   /** User's preferred reasoning effort when the selected model supports it. */
   chatReasoningEffort: string | null
+  /** Open chat panes. Legacy single-chat fields above are retained for migration. */
+  chatPeers: ChatPeerRecord[]
+  chatSelectedPaneId: string | null
   /** `namespace.tool` ids the user switched off in the Tools modal. */
   disabledTools: string[]
   /** Maximum inner calls accepted by one tool_batch.run invocation. Applied at startup. */

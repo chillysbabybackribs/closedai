@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 import { writeAtomic } from './atomic-write.js'
-import type { AppSettings } from '../shared/types.ts'
+import type { AppSettings, ChatPeerRecord } from '../shared/types.ts'
 import { DEFAULT_BATCH_MAX_CALLS, normalizeBatchMaxCalls } from './batch-config.js'
 
 // App-scoped preferences that must live in the main process because they shape how
@@ -17,6 +18,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatClaudeSessionId: null,
   chatModelId: null,
   chatReasoningEffort: null,
+  chatPeers: [],
+  chatSelectedPaneId: null,
   disabledTools: [],
   toolBatchMaxCalls: DEFAULT_BATCH_MAX_CALLS,
   // Compaction is lossy and takes 60-90 seconds, and prompt caching keeps per-step latency
@@ -33,23 +36,29 @@ const MAX_AUTO_COMPACT_TOKENS = 2_000_000
 function normalize(parsed: unknown): AppSettings {
   if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_APP_SETTINGS }
   const record = parsed as Record<string, unknown>
+  const chatModelId = optionalString(record.chatModelId)
+  const chatReasoningEffort = optionalString(record.chatReasoningEffort)
+  const chatPeers = normalizeChatPeers(record.chatPeers, {
+    chatThreadId: optionalString(record.chatThreadId),
+    chatClaudeSessionId: optionalString(record.chatClaudeSessionId),
+    chatModelId,
+    chatReasoningEffort
+  })
+  const requestedPaneId = optionalString(record.chatSelectedPaneId)
+  const chatSelectedPaneId = chatPeers.some((peer) => peer.paneId === requestedPaneId)
+    ? requestedPaneId
+    : chatPeers[0]?.paneId ?? null
   return {
     browserCookiesImported:
       typeof record.browserCookiesImported === 'boolean'
         ? record.browserCookiesImported
         : DEFAULT_APP_SETTINGS.browserCookiesImported,
-    chatThreadId: typeof record.chatThreadId === 'string' && record.chatThreadId.length > 0
-      ? record.chatThreadId
-      : null,
-    chatClaudeSessionId: typeof record.chatClaudeSessionId === 'string' && record.chatClaudeSessionId.length > 0
-      ? record.chatClaudeSessionId
-      : null,
-    chatModelId: typeof record.chatModelId === 'string' && record.chatModelId.length > 0
-      ? record.chatModelId
-      : null,
-    chatReasoningEffort: typeof record.chatReasoningEffort === 'string' && record.chatReasoningEffort.length > 0
-      ? record.chatReasoningEffort
-      : null,
+    chatThreadId: optionalString(record.chatThreadId),
+    chatClaudeSessionId: optionalString(record.chatClaudeSessionId),
+    chatModelId,
+    chatReasoningEffort,
+    chatPeers,
+    chatSelectedPaneId,
     disabledTools: Array.isArray(record.disabledTools)
       ? [...new Set(record.disabledTools.filter((id): id is string => typeof id === 'string' && id.length > 0))]
       : [],
@@ -59,6 +68,49 @@ function normalize(parsed: unknown): AppSettings {
       : DEFAULT_APP_SETTINGS.chatCompactAtPercent,
     chatMidTurnCompactTokens: normalizeAutoCompactTokens(record.chatMidTurnCompactTokens)
   }
+}
+
+function optionalString(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null
+}
+
+function normalizeChatPeers(
+  value: unknown,
+  legacy: Pick<AppSettings, 'chatThreadId' | 'chatClaudeSessionId' | 'chatModelId' | 'chatReasoningEffort'>
+): ChatPeerRecord[] {
+  if (Array.isArray(value)) {
+    const seen = new Set<string>()
+    const peers = value.flatMap((candidate): ChatPeerRecord[] => {
+      if (!candidate || typeof candidate !== 'object') return []
+      const record = candidate as Record<string, unknown>
+      const paneId = optionalString(record.paneId)
+      if (!paneId || seen.has(paneId)) return []
+      seen.add(paneId)
+      const modelId = optionalString(record.modelId)
+      const provider = record.provider === 'claude' || record.provider === 'codex'
+        ? record.provider
+        : modelId?.startsWith('claude:') ? 'claude' : 'codex'
+      return [{
+        paneId,
+        provider,
+        threadId: optionalString(record.threadId),
+        modelId,
+        reasoningEffort: optionalString(record.reasoningEffort)
+      }]
+    })
+    if (peers.length > 0) return peers
+  }
+  const provider = legacy.chatModelId?.startsWith('claude:') ? 'claude' : 'codex'
+  const threadId = provider === 'claude' && legacy.chatClaudeSessionId
+    ? `claude:${legacy.chatClaudeSessionId}`
+    : legacy.chatThreadId
+  return [{
+    paneId: randomUUID(),
+    provider,
+    threadId,
+    modelId: legacy.chatModelId,
+    reasoningEffort: legacy.chatReasoningEffort
+  }]
 }
 
 /** 0 disables; anything else lands between the bounds so a typo cannot compact every call. */

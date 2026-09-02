@@ -1,5 +1,6 @@
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
-import type { ChatAttachment, ChatEvent, ChatSnapshot, ChatThreadSummary } from './chat.js'
+import type { ChatAttachment, ChatThreadSummary } from './chat.js'
+import type { ChatPaneId, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 
 export type Unsubscribe = () => void
@@ -38,23 +39,24 @@ export type ClosedaiApi = {
     onChanged: (listener: (downloads: BrowserDownload[]) => void) => Unsubscribe
   }
   chat: {
-    snapshot: () => Promise<ChatSnapshot>
-    send: (text: string, attachments: ChatAttachment[]) => Promise<void>
+    snapshot: () => Promise<ChatWorkspaceSnapshot>
+    send: (paneId: ChatPaneId, text: string, attachments: ChatAttachment[]) => Promise<void>
     /** Resolve an OS-backed File without exposing Electron APIs to the renderer. */
     attachmentPath: (file: File) => string
-    interrupt: () => Promise<void>
-    selectModel: (modelId: string) => Promise<void>
-    selectReasoningEffort: (effort: string) => Promise<void>
+    interrupt: (paneId: ChatPaneId) => Promise<void>
+    selectPane: (paneId: ChatPaneId) => Promise<void>
+    selectModel: (paneId: ChatPaneId, modelId: string) => Promise<void>
+    selectReasoningEffort: (paneId: ChatPaneId, effort: string) => Promise<void>
     loginWithChatGPT: () => Promise<void>
     /** Threads recorded for this workspace, newest first. */
     listThreads: () => Promise<ChatThreadSummary[]>
     /** Clear the pane; the next message starts a fresh app-server thread. */
-    newThread: () => Promise<void>
+    newPeer: () => Promise<ChatPaneId>
     /** Clear the pane; the next message starts a fresh thread carrying a digest of this one. */
-    continueInNewThread: () => Promise<void>
-    openThread: (threadId: string) => Promise<void>
+    continueInNewPeer: (paneId: ChatPaneId) => Promise<ChatPaneId>
+    openThread: (paneId: ChatPaneId, threadId: string) => Promise<void>
     archiveThread: (threadId: string) => Promise<void>
-    onEvent: (listener: (event: ChatEvent) => void) => Unsubscribe
+    onEvent: (listener: (event: ChatWorkspaceEvent) => void) => Unsubscribe
   }
   tools: {
     manifest: () => Promise<ToolManifest>
