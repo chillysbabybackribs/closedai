@@ -81,6 +81,8 @@ export type AppSettings = {
   chatThreadId: string | null
   /** User's preferred Codex model for new chats. */
   chatModelId: string | null
+  /** User's preferred reasoning effort when the selected model supports it. */
+  chatReasoningEffort: string | null
   /** `namespace.tool` ids the user switched off in the Tools modal. */
   disabledTools: string[]
   /**

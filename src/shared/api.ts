@@ -44,6 +44,7 @@ export type ClosedaiApi = {
     attachmentPath: (file: File) => string
     interrupt: () => Promise<void>
     selectModel: (modelId: string) => Promise<void>
+    selectReasoningEffort: (effort: string) => Promise<void>
     loginWithChatGPT: () => Promise<void>
     /** Threads recorded for this workspace, newest first. */
     listThreads: () => Promise<ChatThreadSummary[]>

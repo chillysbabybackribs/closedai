@@ -14,6 +14,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   browserCookiesImported: false,
   chatThreadId: null,
   chatModelId: null,
+  chatReasoningEffort: null,
   disabledTools: [],
   // Compaction is lossy and takes 60-90 seconds, and prompt caching keeps per-step latency
   // nearly flat with context size, so it waits for a genuinely full window: 80% leaves room
@@ -39,6 +40,9 @@ function normalize(parsed: unknown): AppSettings {
       : null,
     chatModelId: typeof record.chatModelId === 'string' && record.chatModelId.length > 0
       ? record.chatModelId
+      : null,
+    chatReasoningEffort: typeof record.chatReasoningEffort === 'string' && record.chatReasoningEffort.length > 0
+      ? record.chatReasoningEffort
       : null,
     disabledTools: Array.isArray(record.disabledTools)
       ? [...new Set(record.disabledTools.filter((id): id is string => typeof id === 'string' && id.length > 0))]

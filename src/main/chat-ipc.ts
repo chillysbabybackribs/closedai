@@ -15,6 +15,7 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatService 
   )
   ipcMain.handle('chat:interrupt', () => requireService().interrupt())
   ipcMain.handle('chat:selectModel', (_event, modelId: string) => requireService().selectModel(modelId))
+  ipcMain.handle('chat:selectReasoningEffort', (_event, effort: string) => requireService().selectReasoningEffort(effort))
   ipcMain.handle('chat:listThreads', () => requireService().listThreads())
   ipcMain.handle('chat:newThread', () => requireService().newThread())
   ipcMain.handle('chat:continueInNewThread', () => requireService().continueInNewThread())

@@ -16,7 +16,13 @@ export type ChatModel = {
   displayName: string
   description: string
   defaultReasoningEffort: string
+  supportedReasoningEfforts: ChatReasoningEffort[]
   isDefault: boolean
+}
+
+export type ChatReasoningEffort = {
+  reasoningEffort: string
+  description: string
 }
 
 export type ChatAttachment = {
@@ -107,6 +113,7 @@ export type ChatSnapshot = {
   account: ChatAccount | null
   models: ChatModel[]
   selectedModel: string | null
+  selectedReasoningEffort: string | null
   cwd: string
   threadId: string | null
   /** User-facing thread title from the app-server, when one has been set. */
@@ -118,8 +125,9 @@ export type ChatSnapshot = {
 
 export type ChatEvent =
   | { type: 'replace'; snapshot: ChatSnapshot }
-  | { type: 'connection'; connection: ChatConnection; account: ChatAccount | null; models: ChatModel[]; selectedModel: string | null }
-  | { type: 'model'; selectedModel: string }
+  | { type: 'connection'; connection: ChatConnection; account: ChatAccount | null; models: ChatModel[]; selectedModel: string | null; selectedReasoningEffort: string | null }
+  | { type: 'model'; selectedModel: string; selectedReasoningEffort: string | null }
+  | { type: 'reasoningEffort'; selectedReasoningEffort: string }
   | { type: 'thread'; threadId: string | null; threadName: string | null }
   | { type: 'turn'; turnId: string | null }
   | { type: 'context'; usage: ChatContextUsage | null }

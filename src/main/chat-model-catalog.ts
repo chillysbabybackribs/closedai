@@ -10,12 +10,14 @@ type ModelListPage = {
 export type ChatModelCatalog = {
   models: ChatModel[]
   selectedModel: string | null
+  selectedReasoningEffort: string | null
 }
 
 /** Fetch every visible model the signed-in Codex account advertises. */
 export async function loadChatModels(
   client: Pick<AppServerClient, 'request'>,
-  preferredModel: string | null
+  preferredModel: string | null,
+  preferredReasoningEffort: string | null = null
 ): Promise<ChatModelCatalog> {
   const models: ChatModel[] = []
   const seenIds = new Set<string>()
@@ -41,5 +43,22 @@ export async function loadChatModels(
   const selectedModel = models.some((model) => model.id === preferredModel)
     ? preferredModel
     : models.find((model) => model.isDefault)?.id ?? models[0]?.id ?? null
-  return { models, selectedModel }
+  return {
+    models,
+    selectedModel,
+    selectedReasoningEffort: reasoningEffortForModel(models, selectedModel, preferredReasoningEffort)
+  }
+}
+
+export function reasoningEffortForModel(
+  models: ChatModel[],
+  modelId: string | null,
+  preferred: string | null
+): string | null {
+  const model = models.find((entry) => entry.id === modelId)
+  if (!model) return null
+  const supported = model.supportedReasoningEfforts.map((entry) => entry.reasoningEffort)
+  if (preferred && supported.includes(preferred)) return preferred
+  if (supported.includes(model.defaultReasoningEffort)) return model.defaultReasoningEffort
+  return supported[0] ?? null
 }

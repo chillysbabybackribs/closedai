@@ -27,8 +27,18 @@ export function normalizeModels(value: unknown): ChatModel[] {
       displayName: typeof model.displayName === 'string' ? model.displayName : model.id,
       description: stringOf(model.description),
       defaultReasoningEffort: stringOf(model.defaultReasoningEffort) || 'medium',
+      supportedReasoningEfforts: normalizeReasoningEfforts(model.supportedReasoningEfforts),
       isDefault: model.isDefault === true
     }]
+  })
+}
+
+function normalizeReasoningEfforts(value: unknown): ChatModel['supportedReasoningEfforts'] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((entry) => {
+    const option = recordOf(entry)
+    const effort = stringOf(option?.reasoningEffort)
+    return effort ? [{ reasoningEffort: effort, description: stringOf(option?.description) }] : []
   })
 }
 
