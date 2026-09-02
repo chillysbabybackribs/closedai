@@ -1,8 +1,12 @@
 import { textResult, type JsonObject, type ToolResult } from './tool.js'
+import { truncateText } from './truncate-json.js'
 
-// Every result is replayed to the model on later turns. Keep structured inspection
-// output useful without letting a large DOM or protocol response dominate the thread.
-const MAX_OUTPUT_CHARS = 20_000
+// Every result is replayed to the model on later turns, so a DOM, protocol, or app inspection
+// dump must stay a working-set expense, not a permanent one. 16k chars is ~4k tokens; larger
+// results shrink structurally (`truncate-json.ts`) so they stay valid JSON for a code-mode
+// script's JSON.parse and carry a `_closedai_truncated` note with advice instead of a cut.
+const MAX_OUTPUT_CHARS = 16_000
+const ADVICE = 'Narrow the request — a smaller limit, fewer max_elements, a tighter params object (depth, filters), or a more specific query.'
 
 export function objectSchema(properties: Record<string, JsonObject>, required: string[] = []): JsonObject {
   return { type: 'object', properties, required, additionalProperties: false }
@@ -15,9 +19,5 @@ export function jsonResult(value: unknown): ToolResult {
   } catch {
     text = String(value)
   }
-  if (text.length > MAX_OUTPUT_CHARS) {
-    text = `${text.slice(0, MAX_OUTPUT_CHARS)}\n… [ClosedAI truncated ${text.length - MAX_OUTPUT_CHARS} characters. ` +
-      'Narrow the request with a smaller limit or a more specific query.]'
-  }
-  return textResult(text)
+  return textResult(truncateText(text, MAX_OUTPUT_CHARS, ADVICE).text)
 }

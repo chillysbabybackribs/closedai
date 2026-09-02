@@ -28,7 +28,9 @@ export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
           'protocol, targets to discover inspectable children, command for any domain method, and events ' +
           'after enabling the relevant domain. DOM nodes, runtime objects, frames, execution contexts, ' +
           'target sessions, and request ids are transient and may become invalid after navigation. ' +
-          'Attach child targets with flatten=true and pass the returned session_id on later commands.',
+          'Attach child targets with flatten=true and pass the returned session_id on later commands. ' +
+          'Results are JSON text: JSON.parse the returned string in exec scripts; oversized results ' +
+          'shrink structurally and carry a `_closedai_truncated` note.',
         deferLoading: true,
         actions: actions(cdp)
       }),

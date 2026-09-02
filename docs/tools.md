@@ -125,7 +125,8 @@ turn, and only compacts by itself near the context limit. Three things keep that
   cut. JSON results shrink structurally (`tools/truncate-json.ts`: shorter strings, fewer array
   items, shallower nesting, plus a `_closedai_truncated` note) so a script's `JSON.parse` never
   throws on a cut string; plain text is cut with a footer. CDP JSON results are capped tighter
-  still at 16k characters (`cdp/result.ts`) because protocol dumps are the chattiest text source.
+  still at 16k characters (`tools/json-result.ts`, shared by the CDP and app inspection tools) because
+  protocol dumps are the chattiest text source.
 - Capture actions are capped at `DEFAULT_MAX_CAPTURES_PER_TURN` (8) images per turn across
   `app_window`, `browser_page`, and `crop`; past that the action fails with advice to read page
   state instead, and each image result reports how many are left. A capture scaled below 60% of

@@ -23,7 +23,8 @@ export function cdpPageTool(cdp: CdpHostProvider): ToolDefinition {
       'Real page interaction over CDP: inspect elements, then click, type, press keys, and scroll ' +
       'by ref. Always prefer these verbs over raw protocol commands — one type call replaces a whole ' +
       'keystroke sequence. Coordinates are snapshot-time CSS pixels in the main frame viewport and ' +
-      'can become stale after any layout change.',
+      'can become stale after any layout change. Results are JSON text: JSON.parse the returned ' +
+      'string in exec scripts. Oversized results shrink structurally and carry a `_closedai_truncated` note.',
     actions: pageActions(cdp)
   })
 }
