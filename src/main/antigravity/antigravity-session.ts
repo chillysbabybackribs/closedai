@@ -3,6 +3,8 @@ import { antigravityTurnLine } from './antigravity-cli.js'
 import { AntigravityProcess } from './antigravity-process.js'
 import { AntigravityTurnTranslator, type TranscriptOp, type TurnEnd } from './antigravity-stream.js'
 import type { AntigravityServerName } from './antigravity-tool-items.js'
+import { traceLog, type TraceScope } from '../trace/trace-log.js'
+import { summarizeAntigravityEvent } from '../trace/summaries.js'
 
 // The chat pane's one Antigravity thread: which CLI conversation it continues, the live process
 // when there is one, and the turn that process is running. The process is spawned on demand
@@ -23,6 +25,8 @@ export type AntigravitySessionDeps = {
   onTurn: (turnId: string | null) => void
   onConversationId: (conversationId: string) => void
   onTurnEnd: (turnId: string, end: TurnEnd) => void
+  /** When set, every stream-json line in either direction is recorded in the turn trace. */
+  traceScope?: () => TraceScope
   idleMs?: number
 }
 
@@ -60,6 +64,7 @@ export class AntigravitySession {
     this.deps.onTurn(turnId)
     try {
       process.write(antigravityTurnLine(content))
+      this.trace('out', 'user turn', content)
     } catch (error) {
       this.endTurn({ status: 'failed', error: error instanceof Error ? error.message : String(error) })
       throw error
@@ -112,7 +117,13 @@ export class AntigravitySession {
     return process
   }
 
+  private trace(direction: 'in' | 'out', summary: string, detail: unknown): void {
+    if (!this.deps.traceScope) return
+    traceLog.record(this.deps.traceScope(), { kind: 'raw', label: direction === 'in' ? 'agy.in' : 'agy.out', summary, detail, direction })
+  }
+
   private onEvent(raw: unknown): void {
+    this.trace('in', summarizeAntigravityEvent(raw), raw)
     const translator = this.translator
     if (!translator) return
     const translation = translator.handle(raw)

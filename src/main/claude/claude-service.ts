@@ -224,7 +224,8 @@ export class ClaudeChatService extends EventEmitter {
       onTurn: (turnId) => this.setTurn(turnId),
       onSessionId: (sessionId) => this.adoptSessionId(sessionId),
       onTurnEnd: (turnId, end) => this.onTurnEnd(turnId, end),
-      onContextUsage: (usage) => this.noteContextUsage(usage)
+      onContextUsage: (usage) => this.noteContextUsage(usage),
+      traceScope: () => ({ paneId: this.paneId, provider: 'claude', turnId: this.activeTurnId })
     })
   }
 

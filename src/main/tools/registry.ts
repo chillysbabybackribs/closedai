@@ -20,6 +20,12 @@ export type ToolCallRequest = {
 
 export type ToolCallContext = Omit<ToolContext, 'signal'>
 export type ToolCallListener = (record: ToolCallEvent) => void
+
+/** Full-fidelity view of one call for the turn trace: the request as made and the result as returned. */
+export type ToolCallTrace =
+  | { phase: 'start'; request: ToolCallRequest; context: ToolCallContext }
+  | { phase: 'end'; request: ToolCallRequest; context: ToolCallContext; result: ToolResult; durationMs: number }
+export type ToolCallObserver = (trace: ToolCallTrace) => void
 // Tool results live in the thread history for every later turn. Code-mode models see a
 // dynamic tool result only through `exec`, whose own result cap is 10k tokens (~40k chars)
 // with a silent head/tail cut, so this ceiling sits well below it: ~6k tokens, and the model
@@ -38,6 +44,7 @@ const NAME = /^[a-z][a-z0-9_]*$/
 export class ToolRegistry {
   readonly namespaces: readonly ToolNamespace[]
   private readonly listeners = new Set<ToolCallListener>()
+  private readonly observers = new Set<ToolCallObserver>()
   private readonly disabled = new Set<string>()
 
   constructor(namespaces: ToolNamespace[], private readonly resourceLocks = new ToolResourceLocks()) {
@@ -106,6 +113,12 @@ export class ToolRegistry {
     return () => { this.listeners.delete(listener) }
   }
 
+  /** Observe every call with its arguments and result (the turn trace). Observers must not throw. */
+  observe(observer: ToolCallObserver): () => void {
+    this.observers.add(observer)
+    return () => { this.observers.delete(observer) }
+  }
+
   find(namespace: string | null, tool: string): ToolDefinition | null {
     // A null namespace means the model called the bare tool name; accept it when unambiguous.
     const candidates = this.namespaces
@@ -115,9 +128,18 @@ export class ToolRegistry {
   }
 
   async call(request: ToolCallRequest, context: ToolCallContext): Promise<ToolResult> {
+    const startedAt = performance.now()
+    this.notifyObservers({ phase: 'start', request, context })
     const result = await this.run(request, context)
+    this.notifyObservers({ phase: 'end', request, context, result, durationMs: performance.now() - startedAt })
     this.report(request, result)
     return result
+  }
+
+  private notifyObservers(trace: ToolCallTrace): void {
+    for (const observer of this.observers) {
+      try { observer(trace) } catch { /* the trace must never break a call */ }
+    }
   }
 
   private async run(request: ToolCallRequest, context: ToolCallContext): Promise<ToolResult> {

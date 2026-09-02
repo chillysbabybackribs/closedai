@@ -1,6 +1,8 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { createInterface, type Interface as ReadLineInterface } from 'node:readline'
+import { traceLog, type TraceScope } from './trace/trace-log.js'
+import { summarizeCodexRpc } from './trace/summaries.js'
 
 export type RpcId = number | string
 
@@ -37,7 +39,9 @@ export class AppServerClient extends EventEmitter {
     private readonly executable: string,
     private readonly cwd: string,
     /** Extra `codex app-server` arguments, read at each spawn so a restart picks up changes. */
-    private readonly launchArgs: () => string[] = () => []
+    private readonly launchArgs: () => string[] = () => [],
+    /** When set, every line in either direction is recorded in the turn trace under this scope. */
+    private readonly traceScope: (() => TraceScope) | null = null
   ) {
     super()
   }
@@ -152,6 +156,18 @@ export class AppServerClient extends EventEmitter {
     const child = this.child
     if (!child || child.stdin.destroyed || !child.stdin.writable) throw new Error('Codex app-server is not connected')
     child.stdin.write(`${JSON.stringify(message)}\n`)
+    this.trace('out', message)
+  }
+
+  private trace(direction: 'in' | 'out', message: unknown): void {
+    if (!this.traceScope) return
+    traceLog.record(this.traceScope(), {
+      kind: 'raw',
+      label: direction === 'in' ? 'codex.in' : 'codex.out',
+      summary: summarizeCodexRpc(message),
+      detail: message,
+      direction
+    })
   }
 
   private receiveLine(line: string): void {
@@ -166,6 +182,7 @@ export class AppServerClient extends EventEmitter {
     }
     const record = asRecord(message)
     if (!record) return
+    this.trace('in', message)
     const id = typeof record.id === 'number' || typeof record.id === 'string' ? record.id : null
     const method = typeof record.method === 'string' ? record.method : null
 

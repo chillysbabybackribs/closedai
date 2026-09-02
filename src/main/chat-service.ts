@@ -81,7 +81,8 @@ export class ChatService extends EventEmitter {
       (event) => this.emitEvent(event),
       (callId) => screenshots?.get(callId) ?? null
     )
-    this.client = new AppServerClient(executable, cwd, () => appServerConfigArgs(this.settings.get()))
+    this.client = new AppServerClient(executable, cwd, () => appServerConfigArgs(this.settings.get()),
+      () => ({ paneId: this.paneId, provider: 'codex', turnId: this.activeTurnId }))
     this.toolCalls = new AppServerToolCalls(this.tools, this.client, this.paneId)
     this.compactor = new ContextCompactor({
       thresholdPercent: () => this.settings.get().chatCompactAtPercent,

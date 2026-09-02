@@ -6,6 +6,8 @@ import { ClaudeRuntime } from './claude-runtime.js'
 import type { ClaudeSdk } from './claude-sdk.js'
 import { ClaudeTurnTranslator, type TranscriptOp, type TurnEnd } from './claude-stream.js'
 import type { DisplayScreenshot } from './claude-tool-items.js'
+import { traceLog, type TraceScope } from '../trace/trace-log.js'
+import { summarizeClaudeMessage } from '../trace/summaries.js'
 
 // The chat pane's one Claude thread: which stored session it continues, the live process when
 // there is one, and the turn that process is running. The process is spawned on demand with
@@ -23,6 +25,8 @@ export type ClaudeSessionDeps = {
   onSessionId: (sessionId: string) => void
   onTurnEnd: (turnId: string, end: TurnEnd) => void
   onContextUsage: (usage: ContextUsage) => void
+  /** When set, every SDK message in either direction is recorded in the turn trace. */
+  traceScope?: () => TraceScope
   idleMs?: number
 }
 
@@ -77,7 +81,9 @@ export class ClaudeSession {
     this.clearIdleTimer()
     const turnId = `claude-turn-${randomUUID()}`
     this.beginTurn(turnId)
-    runtime.push({ ...message, session_id: this.sessionId ?? message.session_id })
+    const outgoing = { ...message, session_id: this.sessionId ?? message.session_id }
+    runtime.push(outgoing)
+    this.trace('out', outgoing)
     return turnId
   }
 
@@ -126,7 +132,19 @@ export class ClaudeSession {
     this.sessionId = sessionId
   }
 
+  private trace(direction: 'in' | 'out', message: SDKMessage | SDKUserMessage): void {
+    if (!this.deps.traceScope) return
+    traceLog.record(this.deps.traceScope(), {
+      kind: 'raw',
+      label: direction === 'in' ? 'claude.in' : 'claude.out',
+      summary: direction === 'in' ? summarizeClaudeMessage(message as SDKMessage) : 'user message',
+      detail: message,
+      direction
+    })
+  }
+
   private onMessage(message: SDKMessage): void {
+    this.trace('in', message)
     // The CLI can start a turn by itself when a backgrounded task settles; mint one so its
     // output lands in the transcript instead of being dropped.
     if (!this.translator && (message.type === 'stream_event' || message.type === 'assistant')) {

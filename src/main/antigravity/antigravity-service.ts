@@ -213,7 +213,8 @@ export class AntigravityChatService extends EventEmitter {
       apply: (op) => this.applyOp(op),
       onTurn: (turnId) => this.setTurn(turnId),
       onConversationId: (conversationId) => this.adoptConversationId(conversationId),
-      onTurnEnd: (turnId, end) => this.onTurnEnd(turnId, end)
+      onTurnEnd: (turnId, end) => this.onTurnEnd(turnId, end),
+      traceScope: () => ({ paneId: this.paneId, provider: 'antigravity', turnId: this.activeTurnId })
     })
   }
 
