@@ -42,21 +42,48 @@ test('commentary splits tool batches so later calls stay in narrative order', ()
     command('c2', 't1', 'npm test', 'inProgress')
   ]
   const rows = transcriptRows(items)
-  assert.deepEqual(rows.map((row) => row.kind), ['activity', 'item', 'activity'])
+  assert.deepEqual(rows.map((row) => row.kind), ['activity', 'item', 'activity', 'activity'])
   assert.equal(rows[0]?.kind === 'activity' && rows[0].items[0]?.id, 'c1')
-  assert.equal(rows[2]?.kind === 'activity' && rows[2].items.map((item) => item.id).join(','), 'f1,c2')
+  assert.equal(rows[2]?.kind === 'activity' && rows[2].items[0]?.id, 'f1')
+  assert.equal(rows[3]?.kind === 'activity' && rows[3].items[0]?.id, 'c2')
 })
 
-test('tool activity never consolidates across turns or unowned items', () => {
+test('empty placeholders do not split identically named calls', () => {
+  const web = (id: string, turnId: string | null): ChatTranscriptItem => ({
+    type: 'tool', id, turnId, label: 'Web search', detail: id, status: 'completed'
+  })
+  const rows = transcriptRows([
+    web('s1', null),
+    { type: 'assistant', id: 'a0', turnId: 't1', text: '', phase: null, streaming: true },
+    web('s2', 't1')
+  ])
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0]?.kind, 'activity')
+  if (rows[0]?.kind === 'activity') {
+    assert.deepEqual(rows[0].items.map((item) => item.id), ['s1', 's2'])
+    assert.equal(activityHeadline(rows[0].items), 'Web search 2')
+  }
+})
+
+test('different activity names stay on their own rows', () => {
+  const rows = transcriptRows([
+    command('c1', 't1', 'bash -lc "sed -n 1,20p file"'),
+    { type: 'tool', id: 's1', turnId: 't1', label: 'Web search', detail: 'q1', status: 'completed' },
+    { type: 'tool', id: 's2', turnId: 't1', label: 'Web search', detail: 'q2', status: 'completed' }
+  ])
+  assert.deepEqual(rows.map((row) => row.kind === 'activity' ? activityHeadline(row.items) : ''), [
+    "sed -n 1,20p file",
+    'Web search 2'
+  ])
+})
+
+test('tool activity never consolidates across a visible turn break', () => {
   const rows = transcriptRows([
     command('a', 'turn-a', 'a'),
-    command('b', 'turn-b', 'b'),
-    command('loose-1', null, 'loose-1'),
-    command('loose-2', null, 'loose-2')
+    { type: 'user', id: 'u', turnId: 'turn-b', text: 'next' },
+    command('b', 'turn-b', 'b')
   ])
-  assert.deepEqual(rows.map((row) => row.kind === 'activity' ? row.items.map((item) => item.id) : []), [
-    ['a'], ['b'], ['loose-1'], ['loose-2']
-  ])
+  assert.deepEqual(rows.map((row) => row.kind), ['activity', 'item', 'activity'])
 })
 
 test('consecutive reasoning stays one row; later thoughts after an answer start another', () => {
@@ -99,6 +126,11 @@ test('pending thinking stays until the turn has visible output', () => {
     command('c1', 't1', 'ls')
   ]
   assert.equal(visibleTranscriptRows(withTool, 't1').some((row) => row.kind === 'reasoning'), false)
+  const orphanTool: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u1', turnId: 't1', text: 'Hello' },
+    command('c1', null, 'ls')
+  ]
+  assert.equal(visibleTranscriptRows(orphanTool, 't1').some((row) => row.kind === 'reasoning'), false)
 })
 
 test('command titles unwrap bash -lc and truncate the working command', () => {
@@ -118,7 +150,7 @@ test('stacked commands collapse to a counted headline and cluster by verb', () =
     command('c3', 't1', 'bash -lc "sed -n 1,20p package.json"')
   ] as Extract<ChatTranscriptItem, { type: 'command' }>[]
   assert.equal(activityHeadline(items), 'Ran 3 commands')
-  assert.deepEqual(activityClusters(items).map((cluster) => cluster.title), ['rg × 2', 'sed -n 1,20p package.json'])
+  assert.deepEqual(activityClusters(items).map((cluster) => cluster.title), ['rg 2', 'sed -n 1,20p package.json'])
 })
 
 test('a single command keeps its short title instead of a count', () => {

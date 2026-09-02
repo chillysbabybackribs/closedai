@@ -24,16 +24,22 @@ export function isReasoning(item: ChatTranscriptItem): item is ReasoningItem {
   return item.type === 'plan' || item.type === 'reasoning'
 }
 
-/** Consecutive activity/reasoning in the same turn stays one row; commentary splits batches. */
+/** Consecutive same-identity activity stays one row. Invisible placeholders do not split it. */
 export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {
   const rows: TranscriptRow[] = []
   for (const item of items) {
+    if (!rowVisible(item)) continue
     if (isActivity(item)) {
-      appendGrouped(rows, 'activity', item)
+      const key = clusterKey(item)
+      const last = rows.at(-1)
+      if (last?.kind === 'activity' && last.id === key) last.items.push(item)
+      else rows.push({ kind: 'activity', id: key, items: [item] })
       continue
     }
     if (isReasoning(item)) {
-      appendGrouped(rows, 'reasoning', item)
+      const last = rows.at(-1)
+      if (last?.kind === 'reasoning') last.items.push(item)
+      else rows.push({ kind: 'reasoning', id: item.turnId ?? item.id, items: [item] })
       continue
     }
     rows.push({ kind: 'item', item })
@@ -48,35 +54,28 @@ export function visibleTranscriptRows(
 ): TranscriptRow[] {
   const rows = transcriptRows(items)
   if (!activeTurnId) return rows
-  if (items.some((item) => item.turnId === activeTurnId && turnHasVisibleOutput(item))) {
-    return rows
-  }
+  if (rows.some((row) => row.kind === 'activity' || (row.kind === 'reasoning' && row.items.length > 0))) return rows
+  if (items.some((item) => item.type === 'assistant' && item.text)) return rows
   return [...rows, { kind: 'reasoning', id: activeTurnId, items: [] }]
 }
 
-function turnHasVisibleOutput(item: ChatTranscriptItem): boolean {
-  if (isReasoning(item) || isActivity(item) || item.type === 'screenshot') return true
-  return item.type === 'assistant' && Boolean(item.text)
+function rowVisible(item: ChatTranscriptItem): boolean {
+  if (isActivity(item)) return true
+  if (isReasoning(item)) return Boolean(item.text) || item.streaming
+  if (item.type === 'assistant') return Boolean(item.text)
+  if (item.type === 'user') return Boolean(item.text) || Boolean(item.attachments?.length)
+  return true
 }
 
 export function activityHeadline(items: ActivityItem[]): string {
   if (items.length === 1) return activityTitle(items[0]!)
-  let commands = 0
-  let files = 0
-  let searches = 0
-  let tools = 0
-  for (const item of items) {
-    if (item.type === 'command') commands += 1
-    else if (item.type === 'fileChange') files += Math.max(item.changes.length, 1)
-    else if (isSearchTool(item)) searches += 1
-    else tools += 1
-  }
-  const parts: string[] = []
-  if (commands) parts.push(counted('Ran', commands, 'command', 'commands'))
-  if (files) parts.push(counted('Edited', files, 'file', 'files'))
-  if (searches) parts.push(searches === 1 ? 'Searched' : `Searched · ${searches}`)
-  if (tools) parts.push(counted('Used', tools, 'tool', 'tools'))
-  return parts.join(' · ')
+  const first = items[0]!
+  if (first.type === 'tool') return `${first.label} ${items.length}`
+  if (first.type === 'command') return counted('Ran', items.length, 'command', 'commands')
+  const files = items.reduce((count, item) => (
+    item.type === 'fileChange' ? count + Math.max(item.changes.length, 1) : count
+  ), 0)
+  return counted('Edited', files, 'file', 'files')
 }
 
 export function activityTitle(item: ActivityItem): string {
@@ -107,7 +106,7 @@ export function activityClusters(items: ActivityItem[]): ActivityCluster[] {
     id: cluster.id,
     title: cluster.items.length === 1
       ? activityTitle(cluster.items[0]!)
-      : `${clusterLabel(cluster.items[0]!)} × ${cluster.items.length}`,
+      : `${clusterLabel(cluster.items[0]!)} ${cluster.items.length}`,
     items: cluster.items
   }))
 }
@@ -162,20 +161,6 @@ export function activityState(items: ActivityItem[]): ToolPart['state'] {
   return 'output-available'
 }
 
-function appendGrouped(
-  rows: TranscriptRow[],
-  kind: 'activity' | 'reasoning',
-  item: ActivityItem | ReasoningItem
-): void {
-  const key = item.turnId ?? `item:${item.id}`
-  const last = rows.at(-1)
-  if (last?.kind === kind && last.id === key) {
-    last.items.push(item as never)
-    return
-  }
-  rows.push({ kind, id: key, items: [item as never] })
-}
-
 function clusterKey(item: ActivityItem): string {
   if (item.type === 'command') return `command:${commandVerb(item.command)}`
   if (item.type === 'fileChange') return 'fileChange'
@@ -212,10 +197,6 @@ function fileName(path: string): string {
 
 function counted(verb: string, count: number, one: string, many: string): string {
   return count === 1 ? `${verb} 1 ${one}` : `${verb} ${count} ${many}`
-}
-
-function isSearchTool(item: ActivityItem): boolean {
-  return item.type === 'tool' && /search|lookup|web/i.test(item.label)
 }
 
 function toolState(status: string, exitCode: number | null): ToolPart['state'] {

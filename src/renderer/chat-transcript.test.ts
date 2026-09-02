@@ -44,3 +44,15 @@ test('consecutive commands collapse to a counted headline', () => {
   assert.match(html, /Ran 2 commands/)
   assert.match(html, /aria-label="Ran 2 commands, completed"/)
 })
+
+test('identically named tool calls collapse to a counted label', () => {
+  const items: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u', turnId: 't', text: 'Go' },
+    { type: 'tool', id: 's1', turnId: null, label: 'Web search', detail: 'q1', status: 'completed' },
+    { type: 'assistant', id: 'a0', turnId: 't', text: '', phase: null, streaming: true },
+    { type: 'tool', id: 's2', turnId: 't', label: 'Web search', detail: 'q2', status: 'completed' }
+  ]
+  const html = renderToStaticMarkup(createElement(ChatTranscript, { items, activeTurnId: 't' }))
+  assert.match(html, /Web search 2/)
+  assert.match(html, /aria-label="Web search 2, completed"/)
+})

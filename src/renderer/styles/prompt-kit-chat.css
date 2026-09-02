@@ -4,6 +4,12 @@
   /* Header (title + new chat/history), transcript or history list, composer. */
   grid-template-rows: auto minmax(0, 1fr) auto;
   background: var(--background);
+  --chat-fs-body: 18px;
+  --chat-fs-process: 15px;
+  --chat-fs-meta: 14px;
+  --chat-lh-body: 1.65;
+  --chat-gap: 16px;
+  --chat-turn-extra: 18px;
 }
 
 .prompt-chat-scroll {
@@ -16,20 +22,20 @@
 
 .prompt-chat-content {
   min-height: 100%;
-  gap: 10px;
-  padding: 26px clamp(14px, 3vw, 22px) 22px;
+  gap: var(--chat-gap);
+  padding: 28px clamp(16px, 3vw, 24px) 24px;
 }
 
 .prompt-message {
   width: 100%;
   min-width: 0;
-  font-size: 13.5px;
-  line-height: 1.65;
+  font-size: var(--chat-fs-body);
+  line-height: var(--chat-lh-body);
 }
 
 .prompt-message-user {
   justify-content: flex-end;
-  margin-top: 10px;
+  margin-top: var(--chat-turn-extra);
 }
 
 .prompt-chat-content > .prompt-message-user:first-child {
@@ -39,11 +45,13 @@
 .prompt-message-user-content {
   width: fit-content;
   max-width: min(88%, 36rem);
-  padding: 9px 13px;
+  padding: 12px 16px;
   border: 1px solid var(--border);
-  border-radius: 18px 18px 5px 18px;
+  border-radius: 20px 20px 6px 20px;
   background: var(--secondary);
   color: var(--secondary-foreground);
+  font-size: var(--chat-fs-body);
+  line-height: var(--chat-lh-body);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -59,6 +67,13 @@
   border-radius: 0;
   background: transparent;
   color: var(--transcript-copy);
+  font-size: var(--chat-fs-body);
+  line-height: var(--chat-lh-body);
+}
+
+.prompt-chat .prose {
+  font-size: var(--chat-fs-body);
+  line-height: var(--chat-lh-body);
 }
 
 .prompt-message-assistant[data-phase='commentary'] .prompt-message-assistant-content {
@@ -66,8 +81,8 @@
 }
 
 .prompt-message-actions {
-  min-height: 24px;
-  margin-top: 5px;
+  min-height: 28px;
+  margin-top: 8px;
   opacity: 0;
   transition: opacity 120ms var(--ease-chrome);
 }
@@ -106,7 +121,7 @@
   padding-left: 1.4rem;
 }
 
-.prompt-markdown li + li { margin-top: 4px; }
+.prompt-markdown li + li { margin-top: 8px; }
 
 .prompt-markdown strong { color: var(--transcript-strong); font-weight: 650; }
 
@@ -144,7 +159,7 @@
 .prompt-markdown table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--chat-fs-meta);
 }
 
 .prompt-markdown th,
@@ -159,13 +174,13 @@
 .prompt-system-message {
   width: fit-content;
   max-width: 100%;
-  padding: 7px 10px;
+  padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: color-mix(in srgb, var(--muted) 62%, transparent);
   color: var(--muted-foreground);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: var(--chat-fs-meta);
+  line-height: 1.5;
 }
 
 .prompt-system-message[data-tone='error'] {
@@ -252,8 +267,8 @@
 }
 
 .prompt-chat-empty-icon svg { width: 19px; height: 19px; }
-.prompt-chat-empty h2 { margin: 0; color: var(--foreground); font-size: 17px; font-weight: 600; letter-spacing: var(--tracking-tight); }
-.prompt-chat-empty p { max-width: 300px; margin: 7px 0 16px; font-size: 12.5px; line-height: 1.5; }
+.prompt-chat-empty h2 { margin: 0; color: var(--foreground); font-size: 22px; font-weight: 600; letter-spacing: var(--tracking-tight); }
+.prompt-chat-empty p { max-width: 340px; margin: 10px 0 16px; font-size: 16px; line-height: 1.5; }
 
 .prompt-composer {
   grid-row: 3;
@@ -278,11 +293,11 @@
 }
 
 .prompt-composer-textarea {
-  min-height: 48px;
-  max-height: min(36vh, 240px);
-  padding: 8px 9px 4px;
+  min-height: 56px;
+  max-height: min(36vh, 280px);
+  padding: 10px 11px 6px;
   color: var(--foreground);
-  font-size: 14px;
+  font-size: var(--chat-fs-body);
   line-height: 1.5;
 }
 
@@ -290,19 +305,19 @@
 .prompt-composer-actions { justify-content: space-between; gap: 8px; margin-top: 6px; padding: 0 3px 3px; }
 
 .prompt-composer-tool {
-  height: 32px;
-  min-width: 32px;
+  height: 36px;
+  min-width: 36px;
   border-color: var(--input);
   background: transparent;
   color: var(--muted-foreground);
   box-shadow: none;
-  font-size: 12.5px;
+  font-size: var(--chat-fs-meta);
 }
 
 .prompt-composer-tool:not(:disabled):hover { background: var(--accent); color: var(--accent-foreground); }
 
 .prompt-composer-send,
-.prompt-composer-stop { width: 32px; height: 32px; border-radius: 999px; }
+.prompt-composer-stop { width: 36px; height: 36px; border-radius: 999px; }
 .prompt-composer-send:not(:disabled) { background: var(--primary); color: var(--primary-foreground); }
 .prompt-composer-send:not(:disabled):hover { background: color-mix(in srgb, var(--primary) 88%, white); }
 .prompt-composer-stop { color: var(--stop-ink); }

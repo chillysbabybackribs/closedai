@@ -49,7 +49,7 @@
   border-radius: 9px;
   background: var(--secondary);
   color: var(--secondary-foreground);
-  font-size: 11.5px;
+  font-size: 13.5px;
 }
 
 .prompt-attachment-chip > svg {
