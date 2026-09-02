@@ -24,21 +24,13 @@ test('no peer bar renders for an empty background list', () => {
   assert.equal(renderToStaticMarkup(createElement(PeerChatCards, { peers: [], onSelect: () => {} })), '')
 })
 
-test('the collapsed bar summarizes peer and running counts', () => {
+test('the strip numbers each peer and marks running ones', () => {
   const html = renderToStaticMarkup(createElement(PeerChatCards, { peers: [peer, idle], onSelect: () => {} }))
   assert.match(html, /aria-label="Peer chats"/)
-  assert.match(html, /2 peer chats/)
-  assert.match(html, /1 running/)
-  assert.match(html, /aria-expanded="false"/)
-  assert.doesNotMatch(html, /Background research/)
-})
-
-test('the open bar shows only the peer rows, not the summary text', () => {
-  const html = renderToStaticMarkup(createElement(PeerChatCards, { peers: [peer, idle], onSelect: () => {}, defaultOpen: true }))
-  assert.match(html, /Background research/)
-  assert.match(html, /Web search/)
-  assert.match(html, /Style cleanup/)
-  assert.match(html, /Claude Code/)
+  assert.match(html, /Peer 1/)
+  assert.match(html, /Peer 2/)
   assert.match(html, /aria-label="Running"/)
-  assert.doesNotMatch(html, /2 peer chats/)
+  assert.match(html, /title="Background research — Web search"/)
+  assert.match(html, /title="Style cleanup"/)
+  assert.doesNotMatch(html, /peer chats<\//)
 })
