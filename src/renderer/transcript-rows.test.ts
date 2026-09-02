@@ -149,3 +149,14 @@ test('tool activity headlines dynamically reflect running and completed state', 
   assert.equal(activityHeadline([analyzeTool], false), 'Analyzed workspace')
 })
 
+test('multiple read commands display file names in headline', () => {
+  const items = [
+    command('c1', 't1', 'cat file1.ts'),
+    command('c2', 't1', 'cat file2.ts'),
+    command('c3', 't1', 'cat file3.ts'),
+    command('c4', 't1', 'cat file4.ts')
+  ] as Extract<ChatTranscriptItem, { type: 'command' }>[]
+  assert.equal(activityHeadline(items), 'Read file1.ts, file2.ts, file3.ts (+1 more)')
+  assert.equal(activityHeadline(items, true), 'Reading file1.ts, file2.ts, file3.ts (+1 more)')
+})
+
