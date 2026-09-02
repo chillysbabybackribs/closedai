@@ -196,21 +196,19 @@ test('images from inner calls are re-attached after the combined text, in call o
   assert.deepEqual(result.content[1], { type: 'image', dataUrl: 'data:image/png;base64,AA==' })
 })
 
-test('each inner call is reported to telemetry with a batch-suffixed call id', async () => {
+test('each inner call is reported to aggregate telemetry', async () => {
   const { registry } = harness()
-  const callIds: string[] = []
-  registry.subscribe((record) => { callIds.push(`${record.toolId}@${record.callId}`) })
+  const events: string[] = []
+  registry.subscribe((record) => { events.push(`${record.toolId}:${record.action ?? 'call'}:${record.ok}`) })
   await call(registry, {
     calls: [
       { tool: 'lab.echo', arguments: { text: 'a' } },
       { tool: 'lab.echo', arguments: { text: 'b' } }
     ]
   })
-  assert.deepEqual(callIds, ['lab.echo@c#1', 'lab.echo@c#2', 'tool_batch.run@c'])
-  const records: Array<{ callId: string; parentCallId?: string | null; batchId?: string | null; source?: string }> = []
-  registry.subscribe((record) => { records.push(record) })
-  await call(registry, { calls: [{ tool: 'lab.echo', arguments: { text: 'nested' } }] })
-  assert.equal(records[0]?.parentCallId, 'c')
-  assert.equal(records[0]?.batchId, 'c')
-  assert.equal(records[0]?.source, 'batch')
+  assert.deepEqual(events, [
+    'lab.echo:call:true',
+    'lab.echo:call:true',
+    'tool_batch.run:call:true'
+  ])
 })

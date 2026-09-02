@@ -33,7 +33,7 @@ src/main/tools/
   registry.ts          validation, timeouts, error handling
   app-server-tools.ts  Codex adapter (dynamicTools + item/tool/call)
   manifest.ts          renderer-facing registry snapshot for the Tools modal
-  telemetry.ts         recent call stats + JSONL persistence
+  telemetry.ts         aggregate run/error counters + compact JSON persistence
   index.ts             public exports and createToolRegistry factory
   <namespace>/
     index.ts           namespace and its tool definitions
@@ -191,30 +191,16 @@ is stored in `app-settings.json` and applied before each `ChatService` starts or
 
 ## Telemetry
 
-The registry reports every call to subscribers (`registry.subscribe`). `ToolTelemetry`
-(`telemetry.ts`) keeps the last 500 records in memory and appends each to
-`<userData>/tool-telemetry.jsonl`, so history survives restarts. The durable file is read in
-full for its total call count, while recent records and stats stay bounded in memory.
+The registry reports an aggregate-only event after every call (`registry.subscribe`): tool id,
+optional action name, and whether it succeeded. `ToolTelemetry` stores only per-tool and
+per-action run/error counters in `<userData>/tool-telemetry.json`, so counts survive restarts
+without retaining arguments, results, error messages, timing, or conversation identifiers.
 
-A call record holds the tool, action, argument preview, duration, success, the failure text the
-model saw, and the thread, turn, and call ids. Nested calls also carry `source`, `parentCallId`,
-and `batchId`, so a `tool_batch` run can be reconstructed from its flat JSONL records. The
-registry records failures from unknown, disabled, and invalid calls too, because reporting
-happens after result normalization rather than only inside the tool implementation.
-
-At startup the main process registers every tool and action definition with telemetry. New
-definitions are appended as `tool_registered` events, so the observed tool catalog survives
-restarts and can be refreshed by the Tools modal. Adding a namespace, tool, or action to the
-registry is enough for it to appear in both the manifest and telemetry; tool implementations do
-not need their own instrumentation.
-
-The modal shows per-tool calls, failures, average time, last call, and recent calls with their
-arguments and output; it updates live while open. "Clear telemetry" clears call history and
-totals while retaining the observed tool catalog. This app-level telemetry does not automatically
-include host orchestration calls that never enter `ToolRegistry` (for example shell or patch
-operations); those require a host-side telemetry adapter, which can call
-`ToolTelemetry.recordExternal` and `observeTools(definitions, 'external')` to use the same
-durable stream and catalog.
+On the first start after this format was introduced, ClosedAI reads only the counters from the
+old `tool-telemetry.jsonl`, writes the aggregate JSON file with mode `0600`, and removes the old
+text-bearing log. The Tools modal shows the on/off switch, run count, and error count for each
+switchable capability and updates those counters live. "Clear counts" resets every aggregate.
+Failures from unknown, disabled, and invalid calls are counted too.
 
 Telemetry is best-effort. Subscribers must not break tool calls, and the registry swallows
 subscriber errors after the model-visible result is produced.
