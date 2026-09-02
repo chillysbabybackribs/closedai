@@ -189,7 +189,9 @@
   justify-content: flex-start;
   min-height: 100%;
   gap: 0;
-  padding: 12px 0 6px;
+  /* Bottom padding is the breathing room between the last line of a response and the composer's
+     top edge. It sits inside the scroll content so it survives being scrolled to the bottom. */
+  padding: 12px 0 18px;
 }
 
 .chat-scroll-content > [data-slot="message-scroller-item"] {
