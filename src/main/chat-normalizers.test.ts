@@ -62,3 +62,12 @@ test('completed crop calls become crop screenshots', () => {
     caption: 'Crop of: capture-1'
   })
 })
+
+test('reasoning and plan items stream until the item is completed', () => {
+  const live = normalizeItem({ type: 'reasoning', summary: ['a'] }, 'r1', 't1', false)
+  assert.deepEqual(live, { type: 'reasoning', id: 'r1', turnId: 't1', text: 'a', streaming: true })
+  const done = normalizeItem({ type: 'reasoning', summary: ['a'] }, 'r1', 't1', true)
+  assert.equal(done?.type === 'reasoning' && done.streaming, false)
+  const plan = normalizeItem({ type: 'plan', text: 'steps' }, 'p1', 't1', false)
+  assert.equal(plan?.type === 'plan' && plan.streaming, true)
+})

@@ -1,60 +1,46 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import type { ChatTranscriptItem } from '../shared/chat.ts'
-import { hasReasoningForTurn, transcriptRows } from './chat-transcript.tsx'
+import { ChatTranscript } from './chat-transcript.tsx'
 
-test('tool activity in one turn becomes one updating transcript row', () => {
+test('thinking is a chevron-free process line and stays collapsed while streaming', () => {
+  const html = renderToStaticMarkup(createElement(ChatTranscript, {
+    items: [
+      { type: 'user', id: 'u', turnId: 't', text: 'Hi' },
+      { type: 'reasoning', id: 'r', turnId: 't', text: 'secret plan', streaming: true }
+    ],
+    activeTurnId: 't'
+  }))
+  assert.match(html, /Thinking/)
+  assert.doesNotMatch(html, /Thinking…/)
+  assert.doesNotMatch(html, /lucide-chevron-down/)
+  assert.doesNotMatch(html, /secret plan/)
+})
+
+test('an active turn without model output still shows the merged thinking line', () => {
+  const html = renderToStaticMarkup(createElement(ChatTranscript, {
+    items: [{ type: 'user', id: 'u', turnId: 't', text: 'Hi' }],
+    activeTurnId: 't'
+  }))
+  assert.match(html, /Thinking/)
+  assert.doesNotMatch(html, /lucide-chevron-down/)
+})
+
+test('consecutive commands collapse to a counted headline', () => {
   const items: ChatTranscriptItem[] = [
-    { type: 'user', id: 'u1', turnId: 't1', text: 'Make the change' },
+    { type: 'user', id: 'u', turnId: 't', text: 'Go' },
     {
-      type: 'command', id: 'c1', turnId: 't1', command: 'npm install', cwd: '/workspace',
-      status: 'completed', output: '', exitCode: 0
+      type: 'command', id: 'c1', turnId: 't', command: 'bash -lc "rg AGENTS.md"',
+      cwd: '/', status: 'completed', output: '', exitCode: 0
     },
     {
-      type: 'assistant', id: 'a1', turnId: 't1', text: 'Checking compatibility.',
-      phase: 'commentary', streaming: false
-    },
-    { type: 'fileChange', id: 'f1', turnId: 't1', status: 'completed', changes: [] },
-    {
-      type: 'command', id: 'c2', turnId: 't1', command: 'npm test', cwd: '/workspace',
-      status: 'inProgress', output: '', exitCode: null
+      type: 'command', id: 'c2', turnId: 't', command: 'bash -lc "rg src"',
+      cwd: '/', status: 'completed', output: '', exitCode: 0
     }
   ]
-  const rows = transcriptRows(items)
-  assert.deepEqual(rows.map((row) => row.kind), ['item', 'activity', 'item'])
-  const activity = rows[1]
-  assert.equal(activity?.kind, 'activity')
-  if (activity?.kind === 'activity') assert.deepEqual(activity.items.map((item) => item.id), ['c1', 'f1', 'c2'])
-})
-
-test('tool activity never consolidates across turns or unowned items', () => {
-  const command = (id: string, turnId: string | null): ChatTranscriptItem => ({
-    type: 'command', id, turnId, command: id, cwd: '/', status: 'completed', output: '', exitCode: 0
-  })
-  const rows = transcriptRows([command('a', 'turn-a'), command('b', 'turn-b'), command('loose-1', null), command('loose-2', null)])
-  assert.deepEqual(rows.map((row) => row.kind === 'activity' ? row.items.map((item) => item.id) : []), [
-    ['a'], ['b'], ['loose-1'], ['loose-2']
-  ])
-})
-
-test('reasoning in one turn becomes one updating transcript row', () => {
-  const items: ChatTranscriptItem[] = [
-    { type: 'reasoning', id: 'r1', turnId: 'turn-a', text: 'First thought' },
-    {
-      type: 'assistant', id: 'a1', turnId: 'turn-a', text: 'Progress update',
-      phase: 'commentary', streaming: false
-    },
-    { type: 'reasoning', id: 'r2', turnId: 'turn-a', text: 'Second thought' },
-    { type: 'plan', id: 'p1', turnId: 'turn-a', text: 'Implementation plan' }
-  ]
-
-  const rows = transcriptRows(items)
-  assert.deepEqual(rows.map((row) => row.kind), ['reasoning', 'item'])
-  const reasoning = rows[0]
-  assert.equal(reasoning?.kind, 'reasoning')
-  if (reasoning?.kind === 'reasoning') {
-    assert.deepEqual(reasoning.items.map((item) => item.id), ['r1', 'r2', 'p1'])
-  }
-  assert.equal(hasReasoningForTurn(items, 'turn-a'), true)
-  assert.equal(hasReasoningForTurn(items, 'turn-b'), false)
+  const html = renderToStaticMarkup(createElement(ChatTranscript, { items, activeTurnId: null }))
+  assert.match(html, /Ran 2 commands/)
+  assert.match(html, /aria-label="Ran 2 commands, completed"/)
 })
