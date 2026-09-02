@@ -54,34 +54,35 @@ function rowVisible(item: ChatTranscriptItem): boolean {
   return true
 }
 
-export function activityHeadline(items: ActivityItem[]): string {
-  if (items.length === 1) return activityTitle(items[0]!)
+export function activityHeadline(items: ActivityItem[], running = false): string {
+  if (items.length === 1) return activityTitle(items[0]!, running)
   const first = items[0]!
-  if (first.type === 'tool') return toolPhrase(first.label, items.length)
-  if (first.type === 'command') return commandHeadline(items)
+  if (first.type === 'tool') return toolPhrase(first.label, items.length, running)
+  if (first.type === 'command') return commandHeadline(items, running)
   const files = items.reduce((count, item) => (
     item.type === 'fileChange' ? count + Math.max(item.changes.length, 1) : count
   ), 0)
-  return counted('Edited', files, 'file', 'files')
+  return counted(running ? 'Editing' : 'Edited', files, 'file', 'files')
 }
 
-export function activityTitle(item: ActivityItem): string {
-  if (item.type === 'command') return commandPhrase(item.command)
+export function activityTitle(item: ActivityItem, running = false): string {
+  if (item.type === 'command') return commandPhrase(item.command, running)
   if (item.type === 'fileChange') {
-    if (item.changes.length === 1) return `Edited ${fileName(item.changes[0]!.path)}`
-    if (item.changes.length > 1) return `Edited ${item.changes.length} files`
-    return 'Edited files'
+    const verb = running ? 'Editing' : 'Edited'
+    if (item.changes.length === 1) return `${verb} ${fileName(item.changes[0]!.path)}`
+    if (item.changes.length > 1) return `${verb} ${item.changes.length} files`
+    return `${verb} files`
   }
-  return toolPhrase(item.label)
+  return toolPhrase(item.label, 1, running)
 }
 
-function commandHeadline(items: ActivityItem[]): string {
+function commandHeadline(items: ActivityItem[], running = false): string {
   const kinds = new Set(items.map((item) => item.type === 'command' ? commandKind(item.command) : 'run'))
-  if (kinds.size === 1 && kinds.has('read')) return counted('Read', items.length, 'file', 'files')
-  if (kinds.size === 1 && kinds.has('search')) return `Searched ${items.length} times`
-  if (kinds.size === 1 && kinds.has('list')) return counted('Listed', items.length, 'path', 'paths')
-  if (kinds.size === 1 && kinds.has('test')) return 'Ran tests'
-  return counted('Ran', items.length, 'command', 'commands')
+  if (kinds.size === 1 && kinds.has('read')) return counted(running ? 'Reading' : 'Read', items.length, 'file', 'files')
+  if (kinds.size === 1 && kinds.has('search')) return `${running ? 'Searching' : 'Searched'} ${items.length} times`
+  if (kinds.size === 1 && kinds.has('list')) return counted(running ? 'Listing' : 'Listed', items.length, 'path', 'paths')
+  if (kinds.size === 1 && kinds.has('test')) return running ? 'Running tests' : 'Ran tests'
+  return counted(running ? 'Running' : 'Ran', items.length, 'command', 'commands')
 }
 
 export function commandTitle(command: string, max = 64): string {
@@ -95,7 +96,7 @@ function activityDetail(item: ActivityItem): string {
   return activityTitle(item)
 }
 
-export function activityClusters(items: ActivityItem[]): ActivityCluster[] {
+export function activityClusters(items: ActivityItem[], running = false): ActivityCluster[] {
   const clusters: Array<ActivityCluster & { key: string }> = []
   for (const item of items) {
     const key = clusterKey(item)
@@ -105,7 +106,7 @@ export function activityClusters(items: ActivityItem[]): ActivityCluster[] {
   }
   return clusters.map((cluster) => ({
     id: cluster.id,
-    title: activityHeadline(cluster.items),
+    title: activityHeadline(cluster.items, running),
     items: cluster.items
   }))
 }
@@ -123,9 +124,10 @@ export function clusterToolPart(cluster: ActivityCluster): ToolPart {
 }
 
 export function toolPart(item: ActivityItem): ToolPart {
+  const running = item.status.toLowerCase().includes('progress') || item.status.toLowerCase().includes('running')
   if (item.type === 'command') {
     return {
-      type: activityTitle(item),
+      type: activityTitle(item, running),
       state: toolState(item.status, item.exitCode),
       input: {
         command: commandTitle(item.command),
@@ -138,7 +140,7 @@ export function toolPart(item: ActivityItem): ToolPart {
   }
   if (item.type === 'fileChange') {
     return {
-      type: activityTitle(item),
+      type: activityTitle(item, running),
       state: toolState(item.status, null),
       input: { files: item.changes.map(({ path, kind }) => ({ path, kind })) },
       output: item.changes.some((change) => change.diff)
@@ -148,7 +150,7 @@ export function toolPart(item: ActivityItem): ToolPart {
     }
   }
   return {
-    type: toolPhrase(item.label),
+    type: toolPhrase(item.label, 1, running),
     state: toolState(item.status, null),
     input: item.detail ? { detail: item.detail } : undefined,
     toolCallId: item.id

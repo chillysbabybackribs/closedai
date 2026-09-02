@@ -4,34 +4,36 @@ export type CommandKind = 'read' | 'search' | 'list' | 'edit' | 'git' | 'test' |
 
 const FLAGS_WITH_VALUE = new Set([
   '-A', '-B', '-C', '-d', '-e', '-f', '-g', '-m', '-t', '-T', '-j',
+  '-n', '-c',
   '--glob', '--type', '--type-add', '--type-not', '--regexp', '--file',
   '--max-count', '--max-depth', '--max-filesize', '--max-columns',
   '--ignore-file', '--path-separator'
 ])
 
-export function commandPhrase(command: string): string {
+export function commandPhrase(command: string, running = false): string {
   const stage = firstStage(unwrapShell(command))
   const argv = tokenize(stage)
   const verb = fileName(argv[0] ?? '').toLowerCase()
   const args = argv.slice(1)
   if (verb === 'sed' || verb === 'cat' || verb === 'bat' || verb === 'head' || verb === 'tail' || verb === 'nl' || verb === 'less' || verb === 'more') {
-    return readPhrase(args, verb)
+    return readPhrase(args, verb, running)
   }
-  if (verb === 'rg' || verb === 'grep' || verb === 'ag' || verb === 'ack') return searchPhrase(args)
-  if (verb === 'ls' || verb === 'tree' || verb === 'find' || verb === 'fd') return listPhrase(args, verb)
-  if (verb === 'git') return gitPhrase(args)
-  if (verb === 'npm' || verb === 'pnpm' || verb === 'yarn' || verb === 'bun') return packagePhrase(verb, args)
-  if (verb === 'pwd') return 'Checked directory'
-  if (verb === 'wc') return 'Counted lines'
+  if (verb === 'rg' || verb === 'grep' || verb === 'ag' || verb === 'ack') return searchPhrase(args, running)
+  if (verb === 'ls' || verb === 'tree' || verb === 'find' || verb === 'fd') return listPhrase(args, verb, running)
+  if (verb === 'git') return gitPhrase(args, running)
+  if (verb === 'npm' || verb === 'pnpm' || verb === 'yarn' || verb === 'bun') return packagePhrase(verb, args, running)
+  if (verb === 'pwd') return running ? 'Checking directory' : 'Checked directory'
+  if (verb === 'wc') return running ? 'Counting lines' : 'Counted lines'
   if (verb === 'mkdir' || verb === 'touch' || verb === 'cp' || verb === 'mv' || verb === 'rm') {
     const files = positionals(args)
-    if (verb === 'mkdir') return files[0] ? `Created ${fileName(files[0])}` : 'Created directory'
-    if (verb === 'touch') return files[0] ? `Created ${fileName(files[0])}` : 'Created file'
-    if (verb === 'cp') return files.at(-1) ? `Copied to ${fileName(files.at(-1)!)}` : 'Copied files'
-    if (verb === 'mv') return files.at(-1) ? `Moved to ${fileName(files.at(-1)!)}` : 'Moved files'
-    return files[0] ? `Removed ${fileName(files[0])}` : 'Removed files'
+    if (verb === 'mkdir') return files[0] ? `${running ? 'Creating' : 'Created'} ${fileName(files[0])}` : (running ? 'Creating directory' : 'Created directory')
+    if (verb === 'touch') return files[0] ? `${running ? 'Creating' : 'Created'} ${fileName(files[0])}` : (running ? 'Creating file' : 'Created file')
+    if (verb === 'cp') return files.at(-1) ? `${running ? 'Copying to' : 'Copied to'} ${fileName(files.at(-1)!)}` : (running ? 'Copying files' : 'Copied files')
+    if (verb === 'mv') return files.at(-1) ? `${running ? 'Moving to' : 'Moved to'} ${fileName(files.at(-1)!)}` : (running ? 'Moving files' : 'Moved files')
+    return files[0] ? `${running ? 'Removing' : 'Removed'} ${fileName(files[0])}` : (running ? 'Removing files' : 'Removed files')
   }
-  return verb ? `Ran ${verb}` : 'Ran command'
+  const actionVerb = running ? 'Running' : 'Ran'
+  return verb ? `${actionVerb} ${verb}` : `${actionVerb} command`
 }
 
 export function commandKind(command: string): CommandKind {
@@ -47,18 +49,60 @@ export function commandKind(command: string): CommandKind {
   return 'run'
 }
 
-export function toolPhrase(label: string, count = 1): string {
+type Phrased = {
+  running: string
+  completed: string
+  multiRunning?: (count: number) => string
+  multiCompleted?: (count: number) => string
+}
+
+const TOOL_PHRASES: Record<string, Phrased> = {
+  'web search': {
+    running: 'Searching the web',
+    completed: 'Searched the web',
+    multiRunning: (count) => `Searching the web ${count} times`,
+    multiCompleted: (count) => `Searched the web ${count} times`
+  },
+  query: {
+    running: 'Searching the web',
+    completed: 'Searched the web',
+    multiRunning: (count) => `Searching the web ${count} times`,
+    multiCompleted: (count) => `Searched the web ${count} times`
+  },
+  'read page': { running: 'Reading page', completed: 'Read page' },
+  page: { running: 'Reading page', completed: 'Read page' },
+  'open page': { running: 'Opening page', completed: 'Opened page' },
+  'wait for page': { running: 'Waiting for page', completed: 'Waited for page' },
+  'analyze page': { running: 'Analyzing page', completed: 'Analyzed page' },
+  'analyze app': { running: 'Analyzing app', completed: 'Analyzed app' },
+  'analyze workspace': { running: 'Analyzing workspace', completed: 'Analyzed workspace' },
+  inspect: { running: 'Analyzing workspace', completed: 'Analyzed workspace' },
+  capture: { running: 'Capturing screenshot', completed: 'Captured' },
+  'viewed image': { running: 'Viewing image', completed: 'Viewed image' },
+  'fetch page': { running: 'Fetching page', completed: 'Fetched page' },
+  'click element': { running: 'Clicking element', completed: 'Clicked element' },
+  'click app element': { running: 'Clicking app element', completed: 'Clicked app element' },
+  'type text': { running: 'Typing text', completed: 'Typed text' },
+  'type in app': { running: 'Typing in app', completed: 'Typed in app' },
+  'scroll page': { running: 'Scrolling page', completed: 'Scrolled page' },
+  'press key': { running: 'Pressing key', completed: 'Pressed key' },
+  'tool call': { running: 'Using a tool', completed: 'Used a tool' }
+}
+
+export function toolPhrase(label: string, count = 1, running = false): string {
   const key = label.trim().toLowerCase()
-  const named: Record<string, string> = {
-    'web search': 'Searched the web',
-    'viewed image': 'Viewed image',
-    inspect: 'Inspected',
-    capture: 'Captured',
-    'tool call': 'Used a tool'
+  const phrased = TOOL_PHRASES[key]
+  if (phrased) {
+    if (count > 1) {
+      if (running && phrased.multiRunning) return phrased.multiRunning(count)
+      if (!running && phrased.multiCompleted) return phrased.multiCompleted(count)
+      const base = running ? phrased.running : phrased.completed
+      return `${base} ${count}`
+    }
+    return running ? phrased.running : phrased.completed
   }
-  const base = named[key] ?? sentenceCase(label.trim() || 'Used a tool')
+  const base = sentenceCase(label.trim() || 'Used a tool')
   if (count <= 1) return base
-  if (key === 'web search') return `Searched the web ${count} times`
   return `${base} ${count}`
 }
 
@@ -68,11 +112,12 @@ export function unwrapShell(command: string): string {
   return unquote(match[1]!.trim())
 }
 
-function readPhrase(args: string[], verb: string): string {
+function readPhrase(args: string[], verb: string, running = false): string {
   const files = readFiles(args, verb)
-  if (files.length === 1) return `Read ${fileName(files[0]!)}`
-  if (files.length > 1) return `Read ${files.length} files`
-  return 'Read file'
+  const action = running ? 'Reading' : 'Read'
+  if (files.length === 1) return `${action} ${fileName(files[0]!)}`
+  if (files.length > 1) return `${action} ${files.length} files`
+  return `${action} file`
 }
 
 function readFiles(args: string[], verb: string): string[] {
@@ -85,39 +130,41 @@ function isSedScript(token: string): boolean {
   return /^(?:\d+[,\d]*[pP]?|\$|[spy][#/;]).*/.test(token)
 }
 
-function searchPhrase(args: string[]): string {
-  if (listingSearch(args)) return listPhrase(args, 'rg')
+function searchPhrase(args: string[], running = false): string {
+  if (listingSearch(args)) return listPhrase(args, 'rg', running)
   const pattern = searchPattern(args)
-  return pattern ? `Searched for ${truncate(pattern, 36)}` : 'Searched files'
+  const action = running ? 'Searching' : 'Searched'
+  return pattern ? `${action} for ${truncate(pattern, 36)}` : `${action} files`
 }
 
-function listPhrase(args: string[], verb: string): string {
+function listPhrase(args: string[], verb: string, running = false): string {
   const files = positionals(args)
+  const action = running ? 'Listing' : 'Listed'
   if (verb === 'rg' || verb === 'fd' || verb === 'find') {
-    return files[0] ? `Listed files in ${fileName(files[0])}` : 'Listed files'
+    return files[0] ? `${action} files in ${fileName(files[0])}` : `${action} files`
   }
-  return files[0] ? `Listed ${fileName(files[0])}` : 'Listed files'
+  return files[0] ? `${action} ${fileName(files[0])}` : `${action} files`
 }
 
-function gitPhrase(args: string[]): string {
+function gitPhrase(args: string[], running = false): string {
   const sub = args.find((arg) => !arg.startsWith('-'))
-  if (sub === 'status') return 'Checked git status'
-  if (sub === 'diff') return 'Inspected git diff'
-  if (sub === 'log' || sub === 'show') return 'Read git history'
-  if (sub === 'add') return 'Staged files'
-  if (sub === 'commit') return 'Created a commit'
-  return sub ? `Ran git ${sub}` : 'Ran git'
+  if (sub === 'status') return running ? 'Checking git status' : 'Checked git status'
+  if (sub === 'diff') return running ? 'Inspecting git diff' : 'Inspected git diff'
+  if (sub === 'log' || sub === 'show') return running ? 'Reading git history' : 'Read git history'
+  if (sub === 'add') return running ? 'Staging files' : 'Staged files'
+  if (sub === 'commit') return running ? 'Creating a commit' : 'Created a commit'
+  return sub ? `${running ? 'Running' : 'Ran'} git ${sub}` : `${running ? 'Running' : 'Ran'} git`
 }
 
-function packagePhrase(verb: string, args: string[]): string {
+function packagePhrase(verb: string, args: string[], running = false): string {
   const script = args.find((arg) => !arg.startsWith('-'))
-  if (script === 'test') return 'Ran tests'
-  if (script === 'install' || script === 'i' || script === 'ci') return 'Installed packages'
+  if (script === 'test') return running ? 'Running tests' : 'Ran tests'
+  if (script === 'install' || script === 'i' || script === 'ci') return running ? 'Installing packages' : 'Installed packages'
   if (script === 'run') {
     const name = args.filter((arg) => !arg.startsWith('-'))[1]
-    return name ? `Ran ${name}` : `Ran ${verb}`
+    return name ? `${running ? 'Running' : 'Ran'} ${name}` : `${running ? 'Running' : 'Ran'} ${verb}`
   }
-  return script ? `Ran ${script}` : `Ran ${verb}`
+  return script ? `${running ? 'Running' : 'Ran'} ${script}` : `${running ? 'Running' : 'Ran'} ${verb}`
 }
 
 function listingSearch(args: string[]): boolean {
