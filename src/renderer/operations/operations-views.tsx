@@ -17,7 +17,6 @@ import {
   attentionRunCount,
   filterRuns,
   type OperationsRun,
-  type RunStatus,
   type RunTab
 } from './operations-data.js'
 import { RunsTable } from './runs-table.js'
@@ -96,7 +95,7 @@ function OverviewView({ runs, onNewWorker, onOpenRun }: ViewProps): JSX.Element 
   return (
     <>
       <div className="ops-breadcrumb"><strong>Overview</strong></div>
-      <PageHeading title="Overview" description="See what is running, what needs attention, and what happened recently." action={<NewWorkerButton onNewWorker={onNewWorker} />} />
+      <PageHeading title="Overview" description="See what is running, what needs attention, and what happened recently." action={<NewWorkerButton onNewWorker={onNewWorker!} />} />
       <Metrics runs={runs} />
       <div className="ops-overview-grid">
         <section className="ops-summary-panel">
@@ -125,7 +124,7 @@ function RunsView({ runs, onNewWorker, onOpenRun }: ViewProps): JSX.Element {
   return (
     <>
       <div className="ops-breadcrumb"><span>Operations</span><span>/</span><strong>Runs</strong></div>
-      <PageHeading title="Runs" description="Monitor long-running work and intervene when an agent needs you." action={<NewWorkerButton onNewWorker={onNewWorker} />} />
+      <PageHeading title="Runs" description="Monitor long-running work and intervene when an agent needs you." action={<NewWorkerButton onNewWorker={onNewWorker!} />} />
       <Metrics runs={runs} />
       <div className="ops-tab-row">
         <div className="ops-tabs" role="tablist" aria-label="Run status">
@@ -172,7 +171,7 @@ function SchedulesView(): JSX.Element {
 
 type ViewProps = {
   runs: OperationsRun[]
-  onNewWorker: () => void
+  onNewWorker?: () => void
   onOpenRun: (id: number) => void
 }
 

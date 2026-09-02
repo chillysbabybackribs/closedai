@@ -1,9 +1,5 @@
 import type { JSX } from 'react'
-import { useEffect, useMemo, useState } from 'react'
-import {
-  CheckCircle2,
-  CircleAlert
-} from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { NewWorkerDialog } from './new-worker-dialog.js'
 import {
   attentionRunCount,
@@ -14,7 +10,6 @@ import {
 import { OperationsHeader, type OperationsView } from './operations-sidebar.js'
 import { OperationsViewContent } from './operations-views.js'
 import { RunDetailDrawer } from './run-detail-drawer.js'
-import { RunsTable } from './runs-table.js'
 import { WorkerChatDrawer } from './worker-chat-drawer.js'
 import type { ChatModel } from '../../shared/chat.js'
 import type { OperationsEvent } from '../../shared/operations.js'
@@ -82,8 +77,7 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
   async function createWorker(task: string, workspace: string, modelId: string): Promise<void> {
     if (operationsApi) {
       const run = await operationsApi.create(task, workspace, modelId)
-      setTab('all')
-      setSearch('')
+      setView('runs')
       setNewWorkerOpen(false)
       setSelectedRunId(run.id)
       return
@@ -93,7 +87,7 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
 
   return (
     <section className="operations-workspace" data-ui-surface="operations">
-      <OperationsHeader runs={runs} />
+      <OperationsHeader runs={runs} view={view} onViewChange={changeView} />
       <main className="ops-main">
         <OperationsViewContent
           view={view}

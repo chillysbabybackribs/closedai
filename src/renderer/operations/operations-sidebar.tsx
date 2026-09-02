@@ -1,11 +1,9 @@
 import type { JSX } from 'react'
 import {
-  Bot,
   CalendarClock,
   CircleAlert,
   Gauge,
   PlayCircle,
-  ServerCog,
   Settings
 } from 'lucide-react'
 import { attentionRunCount, type OperationsRun } from './operations-data.js'
@@ -15,7 +13,7 @@ const primaryItems = [
   { Icon: PlayCircle, id: 'runs', label: 'Runs' },
   { Icon: CircleAlert, id: 'approvals', label: 'Approvals' },
   { Icon: CalendarClock, id: 'schedules', label: 'Schedules' }
-]
+] as const
 
 export type OperationsView = typeof primaryItems[number]['id']
 
