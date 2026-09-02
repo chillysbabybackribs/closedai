@@ -25,6 +25,7 @@ import { cdpTools } from './tools/cdp/index.js'
 import { captureTools, ScreenshotStore } from './tools/capture/index.js'
 import { batchTools } from './tools/batch/index.js'
 import { workspaceTools } from './tools/workspace/index.js'
+import { searchTools } from './tools/search/index.js'
 import { ToolTelemetry } from './tools/telemetry.js'
 import { registerToolsIpc } from './tools/ipc.js'
 import type { ToolsEvent } from '../shared/tools.js'
@@ -84,6 +85,7 @@ async function main(): Promise<void> {
     browserTools(() => pageAccess),
     cdpTools(() => cdpAccess),
     captureTools(() => captureAccess, screenshots),
+    searchTools(),
     ...(workspaceNamespace ? [workspaceNamespace] : []),
     // Lazy self-reference: the batch dispatches into the registry it is registered in.
     batchTools(() => toolRegistry!)

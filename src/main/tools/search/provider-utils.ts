@@ -38,7 +38,7 @@ export function result(
     provider,
     url,
     title: text(first(fields.title)) || url,
-    snippet: compactText(...fields.snippet.map((name) => item[name])),
+    snippet: compactText(...fields.snippet.map((name) => item[name])).slice(0, 2_000),
     ...(fields.age && first(fields.age) ? { age: text(first(fields.age)) } : {}),
     ...(typeof rawScore === 'number' ? { score: rawScore } : {})
   }

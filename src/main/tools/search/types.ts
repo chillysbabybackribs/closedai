@@ -25,6 +25,7 @@ export type SearchResult = {
   url: string
   snippet: string
   provider: SearchProvider
+  corroboratedBy?: SearchProvider[]
   age?: string
   score?: number
 }
@@ -48,4 +49,5 @@ export type SearchResponse = {
   answers: Array<{ provider: SearchProvider; text: string }>
   results: SearchResult[]
   errors: Array<{ provider: SearchProvider; message: string }>
+  cached?: boolean
 }
