@@ -24,6 +24,7 @@ import { browserTools } from './tools/browser/index.js'
 import { cdpTools } from './tools/cdp/index.js'
 import { captureTools, ScreenshotStore } from './tools/capture/index.js'
 import { batchTools } from './tools/batch/index.js'
+import { workspaceTools } from './tools/workspace/index.js'
 import { ToolTelemetry } from './tools/telemetry.js'
 import { registerToolsIpc } from './tools/ipc.js'
 import type { ToolsEvent } from '../shared/tools.js'
@@ -78,10 +79,12 @@ async function main(): Promise<void> {
   const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService)
   // Full-resolution captures for the transcript; the model only ever receives the scaled copy.
   const screenshots = new ScreenshotStore()
+  const workspaceNamespace = workspaceTools(chatWorkspace)
   toolRegistry = createToolRegistry([
     browserTools(() => pageAccess),
     cdpTools(() => cdpAccess),
     captureTools(() => captureAccess, screenshots),
+    ...(workspaceNamespace ? [workspaceNamespace] : []),
     // Lazy self-reference: the batch dispatches into the registry it is registered in.
     batchTools(() => toolRegistry!)
   ])
