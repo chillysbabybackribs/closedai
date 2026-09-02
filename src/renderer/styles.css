@@ -17,6 +17,7 @@
 @import "./styles/control-tokens.css";
 @import "./styles/theme-warm.css";
 @import "./styles/prompt-kit-chat.css";
+@import "./styles/chat/tool-activity.css";
 @import "./styles/chat/model-picker.css";
 @import "./styles/chat/sources.css";
 @import "./styles/chat/attachments.css";

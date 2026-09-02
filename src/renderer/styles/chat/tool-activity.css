@@ -1,0 +1,120 @@
+/* One quiet, live-updating disclosure per turn. Individual calls remain available
+   underneath it for diagnosis, but neither level uses card borders. */
+.prompt-tool-activity {
+  width: 100%;
+  min-width: 0;
+  color: var(--transcript-activity);
+}
+
+.prompt-tool-activity-trigger {
+  width: fit-content;
+  max-width: 100%;
+  height: 24px;
+  justify-content: flex-start;
+  gap: 7px;
+  padding: 0 2px;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--transcript-activity);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.prompt-tool-activity-trigger:hover {
+  background: transparent;
+  color: var(--transcript-activity-hover);
+}
+
+.prompt-tool-activity-trigger > svg {
+  width: 13px;
+  height: 13px;
+}
+
+.prompt-tool-activity-trigger > span { font-variant-numeric: tabular-nums; }
+
+.prompt-tool-activity-trigger > em {
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.prompt-tool-activity[data-state='output-error'] .prompt-tool-activity-trigger {
+  color: var(--destructive);
+}
+
+.prompt-tool-activity-caret {
+  margin-left: 1px;
+  transition: transform 120ms var(--ease-chrome);
+}
+
+.prompt-tool-activity-caret.is-open { transform: rotate(180deg); }
+
+.prompt-tool-activity-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 5px 0 2px 7px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+}
+
+.prompt-transcript-tool {
+  flex: 0 0 auto;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+}
+
+.prompt-tool-trigger {
+  min-width: 0;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.prompt-tool-trigger:hover { background: transparent; color: var(--accent-foreground); }
+
+.prompt-tool-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.prompt-tool-title > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prompt-tool-title > em {
+  flex: 0 0 auto;
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+  font-style: normal;
+}
+
+.prompt-tool-content {
+  margin: 0 4px 5px 28px;
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+}
+
+.prompt-tool-section { padding: 10px; }
+.prompt-tool-section + .prompt-tool-section { border-top: 1px solid var(--border); }
+.prompt-tool-section > strong { color: var(--muted-foreground); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.prompt-tool-section > pre {
+  max-height: 280px;
+  margin: 7px 0 0;
+  overflow: auto;
+  color: var(--code-text);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.prompt-tool-section[data-tone='error'] > pre { color: #e6a2a2; }
