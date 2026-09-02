@@ -44,37 +44,37 @@ export function ChatHeader({
           </Button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
-          <DropdownMenu.Content className="model-menu min-w-[13rem]" sideOffset={6} align="start">
+          <DropdownMenu.Content className="chat-header-menu" sideOffset={6} align="start">
             <DropdownMenu.Item
-              className="model-menu-item flex items-center gap-2 pl-3"
+              className="chat-header-menu-item"
               disabled={!ready || running}
               onSelect={onNewChat}
             >
-              <Plus className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <Plus className="size-3.5" aria-hidden="true" />
               <span>New chat</span>
             </DropdownMenu.Item>
             <DropdownMenu.Item
-              className="model-menu-item flex items-center gap-2 pl-3"
+              className="chat-header-menu-item"
               disabled={!ready && !historyOpen}
               onSelect={onToggleHistory}
             >
-              <History className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <History className="size-3.5" aria-hidden="true" />
               <span>{historyOpen ? 'Close chat history' : 'Chat history'}</span>
             </DropdownMenu.Item>
             <DropdownMenu.Item
-              className="model-menu-item flex items-center gap-2 pl-3"
+              className="chat-header-menu-item"
               disabled={!ready || running || !canContinue}
               onSelect={onContinueInNewChat}
             >
-              <MessageSquareShare className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <MessageSquareShare className="size-3.5" aria-hidden="true" />
               <span>Continue in new chat</span>
             </DropdownMenu.Item>
-            <DropdownMenu.Separator className="model-menu-separator" />
+            <DropdownMenu.Separator className="chat-header-menu-separator" />
             <DropdownMenu.Item
-              className="model-menu-item flex items-center gap-2 pl-3"
+              className="chat-header-menu-item"
               onSelect={onOpenTools}
             >
-              <Wrench className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <Wrench className="size-3.5" aria-hidden="true" />
               <span>Tools</span>
             </DropdownMenu.Item>
           </DropdownMenu.Content>

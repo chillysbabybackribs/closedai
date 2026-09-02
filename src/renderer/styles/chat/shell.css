@@ -96,6 +96,56 @@
   min-width: 4px;
 }
 
+/* Thread actions collapsed into one menu (chat-header.tsx). Its own surface rather
+   than the composer's .model-menu, whose grid rows are shaped for two-line model
+   entries and would stack each icon above its label here. */
+.chat-header-menu {
+  z-index: 60;
+  min-width: 13rem;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 28%),
+    0 12px 32px rgb(0 0 0 / 40%);
+}
+
+.chat-header-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  line-height: 1.2;
+  outline: none;
+  user-select: none;
+  cursor: pointer;
+}
+
+.chat-header-menu-item svg {
+  flex: none;
+  color: var(--muted-foreground);
+}
+
+.chat-header-menu-item[data-highlighted] {
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+}
+
+.chat-header-menu-item[data-disabled] {
+  color: var(--muted-foreground);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.chat-header-menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
 .chat-header-action {
   width: 26px;
   height: 26px;
