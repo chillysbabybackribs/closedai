@@ -50,6 +50,7 @@ const api: ClosedaiApi = {
     loginWithChatGPT: () => ipcRenderer.invoke('chat:login'),
     listThreads: () => ipcRenderer.invoke('chat:listThreads'),
     newThread: () => ipcRenderer.invoke('chat:newThread'),
+    continueInNewThread: () => ipcRenderer.invoke('chat:continueInNewThread'),
     openThread: (threadId: string) => ipcRenderer.invoke('chat:openThread', threadId),
     archiveThread: (threadId: string) => ipcRenderer.invoke('chat:archiveThread', threadId),
     onEvent: (listener) => subscribe<ChatEvent>('chat:event', listener)

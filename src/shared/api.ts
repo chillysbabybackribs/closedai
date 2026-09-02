@@ -49,6 +49,8 @@ export type ClosedaiApi = {
     listThreads: () => Promise<ChatThreadSummary[]>
     /** Clear the pane; the next message starts a fresh app-server thread. */
     newThread: () => Promise<void>
+    /** Clear the pane; the next message starts a fresh thread carrying a digest of this one. */
+    continueInNewThread: () => Promise<void>
     openThread: (threadId: string) => Promise<void>
     archiveThread: (threadId: string) => Promise<void>
     onEvent: (listener: (event: ChatEvent) => void) => Unsubscribe

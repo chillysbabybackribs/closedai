@@ -14,13 +14,8 @@ import {
   type AppServerNotification
 } from './app-server-client.js'
 import { answerServerRequest } from './chat-approvals.js'
-import {
-  messageOf,
-  normalizeAccount,
-  normalizeThreadSummaries,
-  nullableString,
-  recordOf
-} from './chat-normalizers.js'
+import { messageOf, normalizeAccount, nullableString, recordOf } from './chat-normalizers.js'
+import { listWorkspaceThreads, startChatGptLogin } from './chat-requests.js'
 import { routeChatNotification } from './chat-notification-router.js'
 import { ChatTranscript } from './chat-transcript.js'
 import {
@@ -29,6 +24,8 @@ import {
 } from './chat-context/turn-context.js'
 import { resumeThreadParams, startThreadParams } from './chat-context/thread-params.js'
 import { ContextCompactor, describeUsage, type ContextUsage } from './chat-context/context-compaction.js'
+import { appServerConfigArgs } from './chat-context/app-server-config.js'
+import { buildThreadHandoff, handoffAdditionalContext } from './chat-context/thread-handoff.js'
 import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
 import { loadChatModels } from './chat-model-catalog.js'
@@ -57,6 +54,8 @@ export class ChatService extends EventEmitter {
   private readonly transcript: ChatTranscript
   private readonly toolCalls: AppServerToolCalls
   private readonly compactor: ContextCompactor
+  /** Digest of the chat the user chose to continue from; rides on the next turn, once. */
+  private pendingHandoff: string | null = null
   private startPromise: Promise<void> | null = null
   private resumePromise: Promise<void> | null = null
   private restartTimer: NodeJS.Timeout | null = null
@@ -78,7 +77,7 @@ export class ChatService extends EventEmitter {
       (event) => this.emitEvent(event),
       (callId) => screenshots?.get(callId) ?? null
     )
-    this.client = new AppServerClient(executable, cwd)
+    this.client = new AppServerClient(executable, cwd, () => appServerConfigArgs(this.settings.get()))
     this.toolCalls = new AppServerToolCalls(this.tools, this.client)
     this.compactor = new ContextCompactor({
       thresholdPercent: () => this.settings.get().chatCompactAtPercent,
@@ -131,15 +130,19 @@ export class ChatService extends EventEmitter {
       if (this.activeTurnId) throw new Error('A Codex turn is already running')
       const threadId = await this.ensureThread()
       const clientUserMessageId = crypto.randomUUID()
-      const additionalContext = this.turnAdditionalContext(prompt)
+      const additionalContext = {
+        ...this.turnAdditionalContext(prompt),
+        ...(this.pendingHandoff ? handoffAdditionalContext(this.pendingHandoff) : {})
+      }
       this.transcript.addOptimisticUser(clientUserMessageId, prompt, summaries)
       const response = await this.client.request<{ turn?: unknown }>('turn/start', {
         threadId,
         clientUserMessageId,
         ...(this.selectedModel ? { model: this.selectedModel } : {}),
-        ...(additionalContext ? { additionalContext } : {}),
+        ...(Object.keys(additionalContext).length ? { additionalContext } : {}),
         input
       })
+      this.pendingHandoff = null
       const turn = recordOf(response.turn)
       if (typeof turn?.id === 'string') this.setTurn(turn.id)
     } catch (error) {
@@ -170,14 +173,7 @@ export class ChatService extends EventEmitter {
 
   async listThreads(): Promise<ChatThreadSummary[]> {
     await this.ensureConnected()
-    const response = await this.client.request<{ data?: unknown }>('thread/list', {
-      cwd: this.cwd,
-      sortKey: 'updated_at',
-      sortDirection: 'desc',
-      limit: 100,
-      archived: false
-    })
-    return normalizeThreadSummaries(response.data)
+    return listWorkspaceThreads(this.client, this.cwd)
   }
 
   /** Clear the pane. The next `send` lazily starts a fresh app-server thread. */
@@ -187,6 +183,22 @@ export class ChatService extends EventEmitter {
     this.detachThread()
     await this.settings.set({ chatThreadId: null })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
+  }
+
+  /**
+   * Leave this chat behind and start the next message in a fresh thread that carries only a
+   * digest of it. The old thread stays in history; the new one skips its replayed tool output.
+   */
+  async continueInNewThread(): Promise<void> {
+    if (this.activeTurnId) throw new Error('Stop the current turn before continuing in a new chat')
+    const title = this.threadName ?? summarizeFirstRequest(this.transcript.snapshot())
+    const handoff = buildThreadHandoff(this.transcript.snapshot(), title)
+    if (!handoff) throw new Error('There is no conversation to continue yet')
+    this.detachThread()
+    this.pendingHandoff = handoff
+    await this.settings.set({ chatThreadId: null })
+    this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
+    this.addNotice(`Continuing from “${title}”. A short summary of that chat goes with your next message.`, 'info', null)
   }
 
   async openThread(threadId: string): Promise<void> {
@@ -212,15 +224,7 @@ export class ChatService extends EventEmitter {
 
   async beginChatGptLogin(): Promise<string> {
     await this.ensureConnected()
-    const response = await this.client.request<{ type?: unknown; authUrl?: unknown }>('account/login/start', {
-      type: 'chatgpt',
-      useHostedLoginSuccessPage: true,
-      appBrand: 'chatgpt'
-    })
-    if (response.type !== 'chatgpt' || typeof response.authUrl !== 'string') {
-      throw new Error('Codex did not return a ChatGPT sign-in URL')
-    }
-    return response.authUrl
+    return startChatGptLogin(this.client)
   }
 
   stop(): void {
@@ -310,6 +314,7 @@ export class ChatService extends EventEmitter {
     this.threadName = null
     this.transcript.clear()
     this.compactor.reset()
+    this.pendingHandoff = null
     this.activeTurnId = null
   }
 
@@ -424,4 +429,12 @@ export class ChatService extends EventEmitter {
       void this.start()
     }, delay)
   }
+}
+
+/** First line of the first request, as the history list would title the chat. */
+function summarizeFirstRequest(items: ReturnType<ChatTranscript['snapshot']>): string | null {
+  const first = items.find((item) => item.type === 'user')
+  const line = first?.type === 'user' ? first.text.trim().split('\n')[0]?.trim() ?? '' : ''
+  if (!line) return null
+  return line.length > 60 ? `${line.slice(0, 59).trimEnd()}…` : line
 }

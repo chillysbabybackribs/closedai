@@ -10,6 +10,7 @@ export type ChatController = {
   loginWithChatGPT: () => Promise<void>
   listThreads: () => Promise<ChatThreadSummary[]>
   newThread: () => Promise<void>
+  continueInNewThread: () => Promise<void>
   openThread: (threadId: string) => Promise<void>
   archiveThread: (threadId: string) => Promise<void>
 }
@@ -49,8 +50,9 @@ export function useChatController(): ChatController {
   const loginWithChatGPT = useCallback(() => window.closedai.chat.loginWithChatGPT(), [])
   const listThreads = useCallback(() => window.closedai.chat.listThreads(), [])
   const newThread = useCallback(() => window.closedai.chat.newThread(), [])
+  const continueInNewThread = useCallback(() => window.closedai.chat.continueInNewThread(), [])
   const openThread = useCallback((threadId: string) => window.closedai.chat.openThread(threadId), [])
   const archiveThread = useCallback((threadId: string) => window.closedai.chat.archiveThread(threadId), [])
 
-  return { state, send, interrupt, selectModel, loginWithChatGPT, listThreads, newThread, openThread, archiveThread }
+  return { state, send, interrupt, selectModel, loginWithChatGPT, listThreads, newThread, continueInNewThread, openThread, archiveThread }
 }
