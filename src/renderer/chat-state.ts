@@ -1,7 +1,8 @@
-import type { ChatEvent, ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
+import type { ChatEvent, ChatProvider, ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
 
 export function initialChatState(): ChatSnapshot {
   return {
+    provider: 'codex',
     connection: { state: 'starting', message: 'Starting Codex…' },
     account: null,
     models: [],
@@ -16,7 +17,10 @@ export function initialChatState(): ChatSnapshot {
   }
 }
 
-/** Header title: the app-server name, else the first user message, else a placeholder. */
+/** How the pane names each provider. */
+export const PROVIDER_LABELS: Record<ChatProvider, string> = { codex: 'Codex', claude: 'Claude Code' }
+
+/** Header title: the provider's thread name, else the first user message, else a placeholder. */
 export function chatTitle(state: ChatSnapshot): string {
   if (state.threadName) return state.threadName
   const first = state.items.find((item) => item.type === 'user')
@@ -39,6 +43,7 @@ export function reduceChatEvent(state: ChatSnapshot, event: ChatEvent): ChatSnap
     case 'connection':
       return {
         ...state,
+        provider: event.provider,
         connection: event.connection,
         account: event.account,
         models: event.models,

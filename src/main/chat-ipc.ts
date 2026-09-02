@@ -1,9 +1,9 @@
 import { shell, type IpcMain } from 'electron'
 import type { ChatAttachment } from '../shared/chat.js'
-import type { ChatService } from './chat-service.js'
+import type { ChatSurface } from './chat-hub.js'
 
-export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatService | null): void {
-  const requireService = (): ChatService => {
+export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatSurface | null): void {
+  const requireService = (): ChatSurface => {
     const service = getService()
     if (!service) throw new Error('Chat service is not available')
     return service
@@ -22,7 +22,7 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatService 
   ipcMain.handle('chat:openThread', (_event, threadId: string) => requireService().openThread(threadId))
   ipcMain.handle('chat:archiveThread', (_event, threadId: string) => requireService().archiveThread(threadId))
   ipcMain.handle('chat:login', async () => {
-    const authUrl = await requireService().beginChatGptLogin()
-    await shell.openExternal(authUrl)
+    const authUrl = await requireService().beginLogin()
+    if (authUrl) await shell.openExternal(authUrl)
   })
 }

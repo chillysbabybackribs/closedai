@@ -9,7 +9,8 @@ import {
   PromptInputActions,
   PromptInputTextarea
 } from '../components/ui/prompt-input.js'
-import type { ChatAttachment, ChatModel } from '../shared/chat.js'
+import type { ChatAttachment, ChatModel, ChatProvider } from '../shared/chat.js'
+import { PROVIDER_LABELS } from './chat-state.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
 
 export type ComposerProps = {
@@ -215,21 +216,32 @@ function ModelPicker({
   onChange: (modelId: string) => Promise<void>
 }): JSX.Element {
   const selected = models.find((model) => model.id === selectedModel)
+  const providers = (['codex', 'claude'] as const).filter((provider) => models.some((model) => model.provider === provider))
   return (
-    <label className="prompt-model-picker" title={selected?.description || 'Choose a Codex model'}>
-      <span className="sr-only">Codex model</span>
+    <label className="prompt-model-picker" title={selected?.description || 'Choose a model'}>
+      <span className="sr-only">Model</span>
       <select
-        aria-label="Codex model"
+        aria-label="Model"
         value={selectedModel ?? ''}
         disabled={!enabled || models.length === 0}
         onChange={(event) => { void onChange(event.target.value).catch(() => {}) }}
       >
         {!selectedModel && <option value="">Choose model</option>}
-        {models.map((model) => (
-          <option key={model.id} value={model.id}>{model.displayName}</option>
+        {providers.map((provider) => (
+          <ModelGroup key={provider} provider={provider} models={models.filter((model) => model.provider === provider)} />
         ))}
       </select>
     </label>
+  )
+}
+
+function ModelGroup({ provider, models }: { provider: ChatProvider; models: ChatModel[] }): JSX.Element {
+  return (
+    <optgroup label={PROVIDER_LABELS[provider]}>
+      {models.map((model) => (
+        <option key={model.id} value={model.id}>{model.displayName}</option>
+      ))}
+    </optgroup>
   )
 }
 

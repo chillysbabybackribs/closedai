@@ -12,13 +12,16 @@ const allowedPackages = new Set([
   'class-variance-authority', 'radix-ui', 'react-resizable-panels',
   'marked', 'react-markdown', 'remark-breaks', 'remark-gfm', 'shiki', 'use-stick-to-bottom',
   '@shadcn/react',
-  '@fontsource-variable/inter', '@fontsource-variable/geist-mono', '@fontsource/instrument-serif'
+  '@fontsource-variable/inter', '@fontsource-variable/geist-mono', '@fontsource/instrument-serif',
+  // The Claude Code provider: the Agent SDK (loaded lazily, externalized from the bundle) and
+  // zod, which its in-process MCP tool helper takes tool schemas in.
+  '@anthropic-ai/claude-agent-sdk', 'zod'
 ])
 const forbiddenPaths = /(claude|codex|cursor|antigravity|agent|mcp|tool-|plugin|recall|artifact|seo-|blender|ytdlp|vpn|tor-|workflow|credential)/i
 // The sanctioned homes for model-facing tools (docs/tools.md): the registry in main and
-// its inspector UI in the renderer. Everything else that smells like agent/provider/tool
-// code is still rejected.
-const sanctionedPaths = /^src\/(main|renderer)\/tools\//
+// its inspector UI in the renderer, plus the Claude Code provider adapter (docs/claude-code.md).
+// Everything else that smells like agent/provider/tool code is still rejected.
+const sanctionedPaths = /^src\/(main|renderer)\/tools\/|^src\/main\/claude\//
 
 const importRe = /(?:import|export)\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g
 function resolveLocal(from, spec) {

@@ -10,11 +10,11 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport
 } from '../components/ui/message-scroller.js'
-import type { ChatAttachment, ChatConnectionState } from '../shared/chat.js'
+import type { ChatAttachment, ChatConnectionState, ChatProvider } from '../shared/chat.js'
 import { useChatController } from './chat-controller.js'
 import { ChatHeader } from './chat-header.js'
 import { ChatHistory } from './chat-history.js'
-import { chatTitle } from './chat-state.js'
+import { chatTitle, PROVIDER_LABELS } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { ToolsModal } from './tools/tools-modal.js'
@@ -78,7 +78,7 @@ export function ChatPane(): JSX.Element {
       ) : (
         <TranscriptScroller threadId={state.threadId}>
           {state.items.length === 0
-            ? <EmptyState state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
+            ? <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
             : <ChatTranscript items={state.items} />}
         </TranscriptScroller>
       )}
@@ -120,10 +120,12 @@ function TranscriptScroller({
 }
 
 function EmptyState({
+  provider,
   state,
   message,
   onLogin
 }: {
+  provider: ChatProvider
   state: ChatConnectionState
   message: string
   onLogin: () => Promise<void>
@@ -132,9 +134,10 @@ function EmptyState({
   return (
     <div className="prompt-chat-empty chat-empty">
       <div className="prompt-chat-empty-icon" aria-hidden="true"><FileCode2 /></div>
-      <h2>{available ? 'How can I help you?' : 'Start with Codex'}</h2>
+      <h2>{available ? 'How can I help you?' : `Start with ${PROVIDER_LABELS[provider]}`}</h2>
       <p>{available ? 'Ask a question or describe a change you want to make.' : message}</p>
-      {state === 'signed-out' && (
+      {/* Claude Code signs in from its own CLI; the message above says how. */}
+      {state === 'signed-out' && provider === 'codex' && (
         <Button type="button" variant="secondary" onClick={() => void onLogin()}>
           <LogIn className="size-4" aria-hidden="true" />
           Sign in with ChatGPT

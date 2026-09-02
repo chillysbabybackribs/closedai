@@ -9,11 +9,13 @@ import type { AdditionalContext } from '../chat-context/turn-context.js'
 // the same buildChatInput the Codex lane uses; only the wire shape differs: Anthropic content
 // blocks, with app context ahead of the user's own words so the model reads state first.
 
+type ImageMediaType = 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'
+
 type ContentBlock =
   | { type: 'text'; text: string }
-  | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
+  | { type: 'image'; source: { type: 'base64'; media_type: ImageMediaType; data: string } }
 
-const IMAGE_MEDIA_TYPES: Record<string, string> = {
+const IMAGE_MEDIA_TYPES: Record<string, ImageMediaType> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
@@ -87,6 +89,6 @@ async function imageFromPath(path: string): Promise<ContentBlock | null> {
 }
 
 export function imageFromDataUrl(url: string): ContentBlock | null {
-  const match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/s.exec(url)
-  return match ? { type: 'image', source: { type: 'base64', media_type: match[1]!, data: match[2]! } } : null
+  const match = /^data:(image\/(?:png|jpeg|gif|webp));base64,(.+)$/s.exec(url)
+  return match ? { type: 'image', source: { type: 'base64', media_type: match[1]! as ImageMediaType, data: match[2]! } } : null
 }

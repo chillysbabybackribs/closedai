@@ -4,6 +4,7 @@ import { ChatModelState } from './chat-model-state.js'
 
 const catalog = {
   models: [{
+    provider: 'codex' as const,
     id: 'sol',
     displayName: 'Sol',
     description: '',
@@ -15,6 +16,7 @@ const catalog = {
     ],
     isDefault: true
   }, {
+    provider: 'codex' as const,
     id: 'luna',
     displayName: 'Luna',
     description: '',

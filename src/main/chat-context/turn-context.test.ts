@@ -34,6 +34,8 @@ test('new and resumed threads receive the same developer instructions', () => {
   assert.equal(resumeThreadParams('thread-a', '/workspace', tools).developerInstructions, expected)
   assert.equal(startThreadParams('/workspace', tools, 'model-a').model, 'model-a')
   assert.equal(resumeThreadParams('thread-a', '/workspace', tools).threadId, 'thread-a')
+  assert.deepEqual(startThreadParams('/workspace', tools, 'model-a', 'low').config, { model_reasoning_effort: 'low' })
+  assert.deepEqual(resumeThreadParams('thread-a', '/workspace', tools, 'medium').config, { model_reasoning_effort: 'medium' })
 })
 
 test('browser context is gated to browser and visible-page requests', () => {

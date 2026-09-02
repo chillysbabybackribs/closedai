@@ -16,6 +16,8 @@ import { pruneOversizedBrowserCacheOnce } from './browser-cache-maintenance.js'
 import { discoverSources, importCookies } from './import-cookies.js'
 import { PARTITION } from './browser-url.js'
 import { ChatService } from './chat-service.js'
+import { ChatHub } from './chat-hub.js'
+import { ClaudeChatService } from './claude/claude-service.js'
 import { BrowserPageAccess } from './browser-page-access.js'
 import { BrowserCdpAccess } from './cdp/browser-cdp-access.js'
 import { AppAutomationAccess } from './app-automation-access.js'
@@ -52,7 +54,7 @@ let browserDownloads: BrowserDownloadService | null = null
 let browserHistory: BrowserHistoryStore | null = null
 let browserTabSession: BrowserTabSessionStore | null = null
 let settings: AppSettingsStore | null = null
-let chatService: ChatService | null = null
+let chatService: ChatHub | null = null
 let toolRegistry: ToolRegistry | null = null
 let toolTelemetry: ToolTelemetry | null = null
 let browserSessionFlush: Promise<void> | null = null
@@ -104,7 +106,7 @@ async function main(): Promise<void> {
     actions: (tool.actions ?? []).map((action) => action.name)
   }))))
   toolRegistry.subscribe((record) => toolTelemetry?.record(record))
-  chatService = new ChatService(chatWorkspace, settings, toolRegistry, () => {
+  const activeBrowserContext = (): { tabId: string; url: string; title: string; isLoading: boolean } | null => {
     const active = browserService?.tabList().find((tab) => tab.active)
     if (!active) return null
     return {
@@ -113,7 +115,13 @@ async function main(): Promise<void> {
       title: active.title,
       isLoading: active.isLoading
     }
-  }, screenshots)
+  }
+  // Both providers share the workspace, settings, tool registry, and screenshot store; the hub
+  // shows whichever one the selected model belongs to.
+  chatService = new ChatHub({
+    codex: new ChatService(chatWorkspace, settings, toolRegistry, activeBrowserContext, screenshots),
+    claude: new ClaudeChatService(chatWorkspace, settings, toolRegistry, activeBrowserContext, screenshots)
+  }, settings.get().chatModelId)
   registerIpc()
   // The one-shot cookie import runs before the first tab loads, so a restored or home page
   // arrives already signed in rather than racing the import.
@@ -180,7 +188,7 @@ function registerIpc(): void {
   registerToolsIpc(ipcMain, {
     registry: () => toolRegistry,
     telemetry: () => toolTelemetry,
-    providers: () => ['codex'],
+    providers: () => ['codex', 'claude'],
     onEnabledChanged: async (toolId, enabled, disabledIds) => {
       await settings?.set({ disabledTools: disabledIds })
       mainWindow?.webContents.send('tools:event', { type: 'enabled', toolId, enabled } satisfies ToolsEvent)

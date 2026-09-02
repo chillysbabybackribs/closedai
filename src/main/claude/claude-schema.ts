@@ -26,13 +26,13 @@ export function zodShapeFromJsonSchema(schema: unknown): ZodShapeConversion {
 function looseShape(schema: Record<string, unknown>): ZodRawShape {
   const properties = recordOf(schema.properties)
   const required = new Set(Array.isArray(schema.required) ? schema.required : [])
-  const shape: ZodRawShape = {}
+  const shape: Record<string, z.ZodTypeAny> = {}
   for (const [name, property] of Object.entries(properties)) {
     const description = recordOf(property).description
     const base = typeof description === 'string' ? z.unknown().describe(description) : z.unknown()
     shape[name] = required.has(name) ? base : base.optional()
   }
-  return shape
+  return shape as unknown as ZodRawShape
 }
 
 function recordOf(value: unknown): Record<string, unknown> {
