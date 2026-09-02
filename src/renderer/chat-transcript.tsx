@@ -27,9 +27,11 @@ import {
 } from './transcript-rows.js'
 
 export const ChatTranscript = memo(function ChatTranscript({
-  items
+  items,
+  activeTurnId
 }: {
   items: ChatTranscriptItem[]
+  activeTurnId?: string | null
 }): JSX.Element {
   const rows = useMemo(() => transcriptRows(items), [items])
   const [windowStart, setWindowStart] = useState(() => initialWindowStart(rows.length))
@@ -65,9 +67,13 @@ export const ChatTranscript = memo(function ChatTranscript({
       {visibleRows.map((row) => {
         if (row.kind === 'activity') {
           const id = `activity:${row.id}:${row.items[0]?.id}`
+          const isRunning = Boolean(
+            (activeTurnId && row.items.some((item) => item.turnId === activeTurnId)) ||
+            row.items.some((item) => item.status === 'inProgress')
+          )
           return (
             <MessageScrollerItem key={id} messageId={id}>
-              <ToolActivity items={row.items} />
+              <ToolActivity items={row.items} isRunning={isRunning} />
             </MessageScrollerItem>
           )
         }
@@ -140,12 +146,18 @@ const TranscriptItem = memo(function TranscriptItem({
   return null
 })
 
-const ToolActivity = memo(function ToolActivity({ items }: { items: ActivityItem[] }): JSX.Element {
+const ToolActivity = memo(function ToolActivity({
+  items,
+  isRunning
+}: {
+  items: ActivityItem[]
+  isRunning?: boolean
+}): JSX.Element {
   const [open, setOpen] = useState(false)
   const state = useMemo(() => activityState(items), [items])
   const headline = useMemo(() => activityHeadline(items), [items])
   const clusters = useMemo(() => activityClusters(items), [items])
-  const running = state === 'input-streaming'
+  const running = isRunning ?? (state === 'input-streaming')
   const failed = state === 'output-error'
   const status = running ? 'running' : failed ? 'failed' : 'completed'
   return (
@@ -159,9 +171,9 @@ const ToolActivity = memo(function ToolActivity({ items }: { items: ActivityItem
           >
             {failed ? (
               <XCircle className="prompt-process-failed" aria-hidden="true" />
-            ) : (
+            ) : running ? (
               <Loader2 className="prompt-process-spinner animate-spin" aria-hidden="true" />
-            )}
+            ) : null}
             <span>{headline}</span>
             <ChevronRight className={`size-3 prompt-process-chevron transition-transform duration-150 ${open ? 'rotate-90' : ''}`} aria-hidden="true" />
           </button>
@@ -174,7 +186,7 @@ const ToolActivity = memo(function ToolActivity({ items }: { items: ActivityItem
       </Collapsible>
     </div>
   )
-}, sameGroup)
+}, (prev, next) => sameGroup(prev, next) && prev.isRunning === next.isRunning)
 
 const AssistantMessage = memo(function AssistantMessage({ item }: { item: Extract<ChatTranscriptItem, { type: 'assistant' }> }): JSX.Element {
   return (

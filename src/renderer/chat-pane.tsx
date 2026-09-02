@@ -80,7 +80,7 @@ export function ChatPane(): JSX.Element {
           {state.items.length === 0 ? (
             <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
           ) : (
-            <ChatTranscript items={state.items} />
+            <ChatTranscript items={state.items} activeTurnId={state.activeTurnId} />
           )}
         </TranscriptScroller>
       )}

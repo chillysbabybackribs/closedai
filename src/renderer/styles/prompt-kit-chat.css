@@ -351,13 +351,13 @@
 }
 
 .prompt-composer-send:not(:disabled) {
-  background: var(--antigravity-teal, #09b6a2);
-  color: #ffffff;
-  box-shadow: 0 1px 4px rgb(9 182 162 / 36%);
+  background: var(--antigravity-blue, #8ab4f8);
+  color: #121213;
+  box-shadow: 0 1px 4px var(--antigravity-blue-glow, rgb(138 180 248 / 36%));
 }
 
 .prompt-composer-send:not(:disabled):hover {
-  background: #0bbfa9;
+  background: var(--antigravity-blue-hover, #a5c5fa);
   transform: scale(1.04);
 }
 
