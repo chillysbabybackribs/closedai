@@ -190,15 +190,15 @@
   max-width: calc(var(--chat-column-width) + 64px);
   margin-inline: auto;
   padding: 8px;
-  border: 1px solid var(--composer-line);
-  border-radius: 16px;
+  border: 1px solid #333;
+  border-radius: 10px;
   background: var(--antigravity-card-bg, #252526);
   box-shadow: 0 2px 8px rgb(0 0 0 / 22%), 0 1px 2px rgb(0 0 0 / 14%);
   transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
 .prompt-composer-input:focus-within {
-  border-color: var(--composer-line-strong);
+  border-color: #454545;
   box-shadow: 0 2px 8px rgb(0 0 0 / 22%), 0 1px 2px rgb(0 0 0 / 14%);
 }
 
@@ -206,8 +206,9 @@
   min-height: 76px;
   max-height: min(34vh, 260px);
   padding: 10px 12px 8px;
-  color: #ececee;
+  color: #fff;
   font-size: 15px;
+  font-weight: 600;
   line-height: 1.55;
 }
 
@@ -240,21 +241,26 @@
   color: #f0f0f1;
 }
 
+/* Whatever reads white in the composer reads bold white: the tool icons, their
+   hover state, and the model name beside them. */
 .prompt-composer-new-chat,
-.prompt-composer-attachment {
-  color: #fff;
-}
-
+.prompt-composer-attachment,
 .prompt-composer-new-chat:not(:disabled):hover,
 .prompt-composer-attachment:not(:disabled):hover {
   color: #fff;
+  font-weight: 700;
+}
+
+.prompt-composer-actions .model-menu-trigger-name {
+  color: #fff;
+  font-weight: 700;
 }
 
 .prompt-composer-send,
 .prompt-composer-stop {
   width: 36px;
   height: 36px;
-  border-radius: 999px;
+  border-radius: 8px;
   display: grid;
   place-items: center;
   transition: all 120ms ease;

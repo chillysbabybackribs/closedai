@@ -190,7 +190,7 @@ export function Composer({
                     data-waiting-for-input={waitingForInput || undefined}
                     disabled={!canSend}
                   >
-                    <ArrowUp size={20} strokeWidth={2.25} aria-hidden="true" />
+                    <ArrowUp size={19} strokeWidth={2} aria-hidden="true" />
                   </Button>
                 </PromptInputAction>
               )}
