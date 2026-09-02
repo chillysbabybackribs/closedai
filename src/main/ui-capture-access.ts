@@ -5,6 +5,11 @@ import type { BrowserPageCapture, CapturedImage, UiCaptureHost } from './tools/c
 
 const MAX_IMAGE_WIDTH = 1_920
 const MAX_IMAGE_HEIGHT = 1_440
+// The model copy: a 1280-wide frame is ~700 image patches instead of ~1500 at 1920, and JPEG
+// keeps the request bytes an order of magnitude below PNG. Text stays readable at this size.
+const MODEL_MAX_WIDTH = 1_280
+const MODEL_MAX_HEIGHT = 960
+const MODEL_JPEG_QUALITY = 85
 const PAINT_TIMEOUT_MS = 1_500
 
 /** Electron implementation of the provider-neutral visual capture tool host. */
@@ -67,18 +72,30 @@ export class UiCaptureAccess implements UiCaptureHost {
   private payload(image: NativeImage): CapturedImage | null {
     const size = image.getSize()
     if (size.width === 0 || size.height === 0) return null
-    const fitted = fitWithin(size.width, size.height, MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT)
-    const normalized = fitted.width < size.width || fitted.height < size.height
-      ? image.resize({ ...fitted, quality: 'best' })
-      : image
-    const actual = normalized.getSize()
+    const display = fitImage(image, MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT)
+    const model = fitImage(display, MODEL_MAX_WIDTH, MODEL_MAX_HEIGHT)
+    const displaySize = display.getSize()
+    const modelSize = model.getSize()
     return {
-      dataUrl: `data:image/png;base64,${normalized.toPNG().toString('base64')}`,
-      width: actual.width,
-      height: actual.height,
-      capturedAt: this.now().toISOString()
+      dataUrl: `data:image/png;base64,${display.toPNG().toString('base64')}`,
+      width: displaySize.width,
+      height: displaySize.height,
+      capturedAt: this.now().toISOString(),
+      model: {
+        dataUrl: `data:image/jpeg;base64,${model.toJPEG(MODEL_JPEG_QUALITY).toString('base64')}`,
+        width: modelSize.width,
+        height: modelSize.height
+      }
     }
   }
+}
+
+function fitImage(image: NativeImage, maxWidth: number, maxHeight: number): NativeImage {
+  const size = image.getSize()
+  const fitted = fitWithin(size.width, size.height, maxWidth, maxHeight)
+  return fitted.width < size.width || fitted.height < size.height
+    ? image.resize({ ...fitted, quality: 'best' })
+    : image
 }
 
 function fitWithin(width: number, height: number, maxWidth: number, maxHeight: number): { width: number; height: number } {

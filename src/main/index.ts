@@ -22,7 +22,7 @@ import { UiCaptureAccess } from './ui-capture-access.js'
 import { createToolRegistry, type ToolRegistry } from './tools/index.js'
 import { browserTools } from './tools/browser/index.js'
 import { cdpTools } from './tools/cdp/index.js'
-import { captureTools } from './tools/capture/index.js'
+import { captureTools, ScreenshotStore } from './tools/capture/index.js'
 import { ToolTelemetry } from './tools/telemetry.js'
 import { registerToolsIpc } from './tools/ipc.js'
 import type { ToolsEvent } from '../shared/tools.js'
@@ -75,10 +75,12 @@ async function main(): Promise<void> {
   const pageAccess = new BrowserPageAccess(() => browserService)
   cdpAccess = new BrowserCdpAccess(() => browserService)
   const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService)
+  // Full-resolution captures for the transcript; the model only ever receives the scaled copy.
+  const screenshots = new ScreenshotStore()
   toolRegistry = createToolRegistry([
     browserTools(() => pageAccess),
     cdpTools(() => cdpAccess),
-    captureTools(() => captureAccess)
+    captureTools(() => captureAccess, screenshots)
   ])
   for (const toolId of settings.get().disabledTools) toolRegistry.setEnabled(toolId, false)
   toolTelemetry = await ToolTelemetry.open(join(userData(), 'tool-telemetry.jsonl'))
@@ -92,7 +94,7 @@ async function main(): Promise<void> {
       title: active.title,
       isLoading: active.isLoading
     }
-  })
+  }, screenshots)
   registerIpc()
   // The one-shot cookie import runs before the first tab loads, so a restored or home page
   // arrives already signed in rather than racing the import.

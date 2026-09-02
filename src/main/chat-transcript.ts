@@ -2,6 +2,8 @@ import type { ChatAttachmentSummary, ChatEvent, ChatTranscriptItem } from '../sh
 import { cloneItem, normalizeItem, nullableString, recordOf, stringOf } from './chat-normalizers.js'
 
 type EmitChatEvent = (event: ChatEvent) => void
+/** Full-resolution capture for a tool call id, when the app still holds one. */
+type DisplayScreenshot = (callId: string) => { dataUrl: string } | null
 
 export class ChatTranscript {
   private readonly items = new Map<string, ChatTranscriptItem>()
@@ -11,7 +13,8 @@ export class ChatTranscript {
   constructor(
     private readonly cwd: string,
     private readonly activeTurn: () => string | null,
-    private readonly emit: EmitChatEvent
+    private readonly emit: EmitChatEvent,
+    private readonly displayScreenshot: DisplayScreenshot = () => null
   ) {}
 
   snapshot(): ChatTranscriptItem[] {
@@ -44,6 +47,8 @@ export class ChatTranscript {
     if (item?.type === 'user' && optimistic?.type === 'user' && optimistic.attachments?.length) {
       item.attachments = optimistic.attachments
     }
+    // The model was handed a scaled image; the transcript shows the full capture when it is still held.
+    if (item?.type === 'screenshot') item.imageUrl = this.displayScreenshot(id)?.dataUrl ?? item.imageUrl
     if (item) this.upsert(item)
   }
 

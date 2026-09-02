@@ -33,6 +33,7 @@ import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
 import { loadChatModels } from './chat-model-catalog.js'
 import { buildChatInput } from './chat-input.js'
+import type { ScreenshotStore } from './tools/capture/screenshot-store.js'
 
 type ThreadResponse = {
   thread?: unknown
@@ -67,10 +68,16 @@ export class ChatService extends EventEmitter {
     private readonly settings: AppSettingsStore,
     private readonly tools: ToolRegistry = new ToolRegistry([]),
     private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
+    screenshots: Pick<ScreenshotStore, 'get'> | null = null,
     executable = process.env.CLOSEDAI_CODEX_PATH?.trim() || 'codex'
   ) {
     super()
-    this.transcript = new ChatTranscript(cwd, () => this.activeTurnId, (event) => this.emitEvent(event))
+    this.transcript = new ChatTranscript(
+      cwd,
+      () => this.activeTurnId,
+      (event) => this.emitEvent(event),
+      (callId) => screenshots?.get(callId) ?? null
+    )
     this.client = new AppServerClient(executable, cwd)
     this.approvals = new ChatApprovals(this.client, (event) => this.emitEvent(event))
     this.toolCalls = new AppServerToolCalls(this.tools, this.client)

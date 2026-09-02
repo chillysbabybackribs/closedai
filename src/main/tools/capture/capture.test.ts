@@ -4,8 +4,12 @@ import type { PageReadyResult } from '../../browser-page-ready.js'
 import { ToolRegistry } from '../registry.js'
 import type { UiCaptureHost } from './host.js'
 import { captureTools } from './index.js'
+import { ScreenshotStore } from './screenshot-store.js'
 
-const image = { dataUrl: 'data:image/png;base64,cG5n', width: 1200, height: 800, capturedAt: '2026-09-02T12:00:00.000Z' }
+const image = {
+  dataUrl: 'data:image/png;base64,cG5n', width: 1920, height: 1080, capturedAt: '2026-09-02T12:00:00.000Z',
+  model: { dataUrl: 'data:image/jpeg;base64,anBn', width: 1280, height: 720 }
+}
 const ready: PageReadyResult = {
   readyState: 'complete', reached: true, conditionMet: true, elapsedMs: 600,
   url: 'https://a.test/', title: 'A'
@@ -21,12 +25,13 @@ function harness(overrides: Partial<UiCaptureHost> = {}) {
     },
     ...overrides
   }
-  const registry = new ToolRegistry([captureTools(() => host)])
-  const call = (args: Record<string, unknown>) => registry.call(
+  const store = new ScreenshotStore()
+  const registry = new ToolRegistry([captureTools(() => host, store)])
+  const call = (args: Record<string, unknown>, callId = 'c') => registry.call(
     { namespace: 'closedai_ui', tool: 'capture', arguments: args },
-    { threadId: null, turnId: null, callId: 'c' }
+    { threadId: null, turnId: null, callId }
   )
-  return { calls, call, registry }
+  return { calls, call, registry, store }
 }
 
 function textOf(result: { content: Array<{ type: string; text?: string }> }): string {
@@ -39,13 +44,24 @@ test('capture tool advertises one tool with two visual-read actions', () => {
   assert.deepEqual(registry.namespaces[0].tools[0].actions?.map((action) => action.name), ['app_window', 'browser_page'])
 })
 
-test('app_window returns a composed image with metadata', async () => {
-  const { calls, call } = harness()
-  const result = await call({ action: 'app_window' })
+test('app_window hands the model the scaled image and keeps the full capture for the transcript', async () => {
+  const { calls, call, store } = harness()
+  const result = await call({ action: 'app_window' }, 'call_1')
   assert.equal(result.isError, undefined)
   assert.deepEqual(calls, [['app']])
-  assert.match(textOf(result), /Surface: application window\nImage: 1200x800/)
-  assert.deepEqual(result.content[1], { type: 'image', dataUrl: image.dataUrl })
+  assert.match(textOf(result), /Surface: application window\nImage: 1280x720 \(scaled from 1920x1080; the user sees the full capture\)/)
+  assert.deepEqual(result.content[1], { type: 'image', dataUrl: image.model.dataUrl })
+  assert.deepEqual(store.get('call_1'), {
+    dataUrl: image.dataUrl, width: 1920, height: 1080, surface: 'app_window', capturedAt: image.capturedAt
+  })
+})
+
+test('an unscaled capture reports one size and is still retained', async () => {
+  const same = { ...image, model: { dataUrl: image.dataUrl, width: image.width, height: image.height } }
+  const { call, store } = harness({ captureAppWindow: async () => same })
+  const result = await call({ action: 'app_window' }, 'call_2')
+  assert.match(textOf(result), /Image: 1920x1080\nCaptured:/)
+  assert.equal(store.get('call_2')?.surface, 'app_window')
 })
 
 test('browser_page defaults to an idle wait and passes deterministic conditions', async () => {
