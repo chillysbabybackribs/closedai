@@ -51,7 +51,8 @@ runs on the Electron installed here.
 
 `~/.config/closedai/`: `browser-tabs.json` (restored on launch), `browser-history.json`
 (omnibox suggestions), `app-settings.json` (cookie-import latch, current Codex thread, selected
-model, and disabled tool ids), `tool-telemetry.jsonl` (recent tool calls), `code-cache/`, and
+model, disabled tool ids, and `chatCompactAtPercent`, the context-usage percentage after which
+the app compacts the thread; default 60, 0 disables), `tool-telemetry.jsonl` (recent tool calls), `code-cache/`, and
 Chromium's `Partitions/browser` profile.
 
 ## Chat and tools
@@ -60,6 +61,11 @@ Chromium's `Partitions/browser` profile.
 keeps the current thread id in app settings, resumes the saved thread on startup, and restarts the
 app-server after unexpected exits. Each turn also gets lightweight active-browser context so the
 model knows which tab the user is looking at.
+
+Codex replays the whole thread to the model each turn, so the app keeps that history lean: tool
+text is capped per result, screenshots reach the model scaled while the transcript shows the full
+capture, and the thread is compacted once a turn ends above the configured context usage
+(`docs/tools.md`, "Results live in the thread history").
 
 Tools are advertised to Codex as app-server `dynamicTools` on `thread/start` and `thread/resume`.
 Codex calls them through `item/tool/call`; `src/main/tools/app-server-tools.ts` adapts that request

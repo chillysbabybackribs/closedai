@@ -29,7 +29,7 @@ import {
   type ActiveBrowserContext
 } from './chat-context/turn-context.js'
 import { resumeThreadParams, startThreadParams } from './chat-context/thread-params.js'
-import { ContextCompactor, usagePercent, type ContextUsage } from './chat-context/context-compaction.js'
+import { ContextCompactor, describeUsage, type ContextUsage } from './chat-context/context-compaction.js'
 import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
 import { loadChatModels } from './chat-model-catalog.js'
@@ -107,7 +107,7 @@ export class ChatService extends EventEmitter {
       threadId: this.threadId,
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
-      contextUsage: this.contextUsage(),
+      contextUsage: describeUsage(this.compactor.current),
       items: this.transcript.snapshot(),
       approvals: this.approvals.snapshot()
     }
@@ -405,12 +405,7 @@ export class ChatService extends EventEmitter {
 
   private noteContextUsage(usage: ContextUsage): void {
     this.compactor.noteUsage(usage)
-    this.emitEvent({ type: 'context', usage: this.contextUsage() })
-  }
-
-  private contextUsage(): ChatSnapshot['contextUsage'] {
-    const usage = this.compactor.current
-    return usage ? { ...usage, percent: usagePercent(usage) } : null
+    this.emitEvent({ type: 'context', usage: describeUsage(usage) })
   }
 
   private adoptThreadModel(value: unknown): void {

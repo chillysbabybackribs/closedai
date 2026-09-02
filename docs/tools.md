@@ -48,7 +48,7 @@ before the app-server starts.
 | Namespace | Tool | Actions | Purpose |
 |---|---|---|---|
 | `embedded_browser` | `page` | `navigate`, `read_page`, `wait_for` | Browser-page inspection for the pane the user can see. It can open a URL or search query, wait for page readiness, and read visible text from the whole page or one selector. |
-| `closedai_ui` | `capture` | `app_window`, `browser_page` | Visual evidence. `app_window` captures the composed Electron window, including chat and browser chrome. `browser_page` captures only one browser page after deterministic readiness checks. |
+| `closedai_ui` | `capture` | `app_window`, `browser_page` | Visual evidence. `app_window` captures the composed Electron window, including chat and browser chrome. `browser_page` captures only one browser page after deterministic readiness checks. The model receives a scaled JPEG (max 1280x960); the full-resolution PNG goes to `ScreenshotStore` for the transcript. |
 | `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `events` | Low-level Chrome DevTools Protocol access for ClosedAI tabs. See `docs/cdp-tool-foundation.md` for the lifecycle rules and handle caveats. |
 
 The model-facing names intentionally differ from OpenAI reserved namespaces. For example,
@@ -96,6 +96,23 @@ The adapter maps registry text results to `inputText` and image results to `inpu
 
 Codex extra: set `deferLoading: true` on a rarely used tool and it stays out of context until
 the model searches for it.
+
+## Results live in the thread history
+
+The app-server replays the whole thread (every tool result, every image) to the model on every
+turn, and only compacts by itself near the context limit. Three things keep that history small:
+
+- The registry caps each text item of a result at `MAX_RESULT_TEXT_CHARS` (40k characters, about
+  10k tokens) and appends a hint to narrow the request. Codex truncates shell output itself but
+  passes dynamic tool output through untouched.
+- Capture actions return a bounded image to the model (image tokens scale with pixels) and keep
+  the full-resolution capture in `capture/screenshot-store.ts`, keyed by the tool call id. The
+  transcript looks the call id up when it renders the screenshot item and falls back to the
+  model's copy once the store has evicted it (60 entries or 96 MB, newest kept).
+- `ChatService` watches `thread/tokenUsage/updated` and asks for `thread/compact/start` after a
+  turn ends with the context above `chatCompactAtPercent` (app settings, default 60, 0 disables).
+  One compaction per completed turn at most; sends wait for a compaction in flight. See
+  `src/main/chat-context/context-compaction.ts`.
 
 ## Seeing what exists: the Tools modal
 

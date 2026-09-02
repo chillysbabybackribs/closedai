@@ -1,4 +1,4 @@
-// Which tabs are allowed to produce frames, and when.
+// Which tabs are allowed to remain in the window's native view tree, and when.
 //
 // Background tabs are DETACHED from the window's content tree rather than merely hidden. A
 // WebContentsView that stays in the tree keeps running requestAnimationFrame at the display's
@@ -9,9 +9,9 @@
 //
 // Removing the view from the content tree takes it to zero frames while leaving the page
 // completely alive: script runs, timers keep their normal cadence, navigation and CDP still
-// work, and page state is untouched. What a detached view cannot do is produce pixels — every
-// capture path hangs on one, including the fromSurface:false + device-metrics path that serves
-// hidden worker tabs. Frames are therefore leased: anything that needs them pins the tab first.
+// work. Electron does not reliably recreate its compositor surface after repeated reattachment,
+// though, so ordinary user tabs opt into `resident` mode while the browser pane is present.
+// Leased/background surfaces still detach when no operation needs their frames.
 //
 // Both claims are measured, not inferred — scripts/probe-hidden-view-throttling.mjs and
 // scripts/probe-detached-frameless-capture.mjs reproduce them from a bare Electron window.
@@ -39,6 +39,9 @@ export class TabRenderingPolicy {
   // never-mapped window, where this policy has nothing to win and their capture path already
   // depends on a permanently pinned viewport.
   private readonly exempt = new Set<string>()
+  // User-visible tabs stay attached (but setVisible(false)) while their pane exists. This costs
+  // background frames, but avoids Electron's reproducible blank surface after tab reattachment.
+  private readonly resident = new Set<string>()
   private readonly attached = new Set<string>()
   private activeId: string | null = null
   private paneVisible = true
@@ -48,9 +51,10 @@ export class TabRenderingPolicy {
     private readonly graceMs: number = PIN_GRACE_MS
   ) {}
 
-  register(tabId: string, options: { exempt?: boolean } = {}): void {
+  register(tabId: string, options: { exempt?: boolean; resident?: boolean } = {}): void {
     this.known.add(tabId)
     if (options.exempt) this.exempt.add(tabId)
+    if (options.resident) this.resident.add(tabId)
     this.sync(tabId)
   }
 
@@ -63,6 +67,7 @@ export class TabRenderingPolicy {
     this.pins.delete(tabId)
     this.known.delete(tabId)
     this.exempt.delete(tabId)
+    this.resident.delete(tabId)
     this.attached.delete(tabId)
     if (this.activeId === tabId) this.activeId = null
   }
@@ -111,12 +116,13 @@ export class TabRenderingPolicy {
   }
 
   // Test/diagnostic view of why a tab is currently rendering.
-  describe(tabId: string): { attached: boolean; pins: number; inGrace: boolean; exempt: boolean } {
+  describe(tabId: string): { attached: boolean; pins: number; inGrace: boolean; exempt: boolean; resident: boolean } {
     return {
       attached: this.attached.has(tabId),
       pins: this.pins.get(tabId) ?? 0,
       inGrace: this.grace.has(tabId),
-      exempt: this.exempt.has(tabId)
+      exempt: this.exempt.has(tabId),
+      resident: this.resident.has(tabId)
     }
   }
 
@@ -126,6 +132,7 @@ export class TabRenderingPolicy {
     this.pins.clear()
     this.known.clear()
     this.exempt.clear()
+    this.resident.clear()
     this.attached.clear()
     this.activeId = null
   }
@@ -134,6 +141,7 @@ export class TabRenderingPolicy {
     if (this.exempt.has(tabId)) return true
     if ((this.pins.get(tabId) ?? 0) > 0) return true
     if (this.grace.has(tabId)) return true
+    if (this.resident.has(tabId) && this.paneVisible) return true
     return this.paneVisible && tabId === this.activeId
   }
 

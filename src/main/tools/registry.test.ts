@@ -3,7 +3,7 @@ import test from 'node:test'
 import { dynamicToolSpecs } from './app-server-tools.js'
 import { toolManifest } from './manifest.js'
 import { defineActionTool } from './action-tool.js'
-import { ToolRegistry } from './registry.js'
+import { boundResult, MAX_RESULT_TEXT_CHARS, ToolRegistry } from './registry.js'
 import { textResult, type ToolNamespace } from './tool.js'
 
 function namespaces(): ToolNamespace[] {
@@ -87,4 +87,24 @@ test('an action can be switched off on its own: dropped from the advertised tool
   registry.setEnabled('web.lookup.search', false)
   assert.deepEqual(dynamicToolSpecs(registry), [])
   assert.equal(toolManifest(registry, []).namespaces[0].tools[0].enabled, false)
+})
+
+test('oversized text results are cut with a hint so one call cannot flood the history', async () => {
+  const big = 'x'.repeat(MAX_RESULT_TEXT_CHARS + 500)
+  const registry = new ToolRegistry([{
+    name: 'gamma',
+    description: 'Gamma tools',
+    tools: [{
+      name: 'dump',
+      description: 'dump',
+      inputSchema: { type: 'object', properties: {} },
+      run: async () => ({ content: [{ type: 'text', text: big }, { type: 'text', text: 'short' }] })
+    }]
+  }])
+  const result = await registry.call({ namespace: 'gamma', tool: 'dump', arguments: {} }, context)
+  const first = result.content[0].type === 'text' ? result.content[0].text : ''
+  assert.ok(first.startsWith('x'.repeat(MAX_RESULT_TEXT_CHARS)))
+  assert.match(first, /\[ClosedAI truncated 500 characters\. Narrow the request/)
+  assert.deepEqual(result.content[1], { type: 'text', text: 'short' })
+  assert.deepEqual(boundResult(textResult('small')), textResult('small'))
 })

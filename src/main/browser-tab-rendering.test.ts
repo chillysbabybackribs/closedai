@@ -44,6 +44,36 @@ test('activating a tab attaches it and detaches the one it replaced', () => {
   assert.deepEqual(log, ['detach:tab-1', 'attach:tab-2'])
 })
 
+test('resident user tabs switch visibility without leaving the native view tree', () => {
+  const { policy, log } = harness()
+  policy.register('tab-1', { resident: true })
+  policy.setActive('tab-1')
+  policy.register('tab-2', { resident: true })
+  log.length = 0
+
+  policy.setActive('tab-2')
+
+  assert.equal(policy.isAttached('tab-1'), true)
+  assert.equal(policy.isAttached('tab-2'), true)
+  assert.equal(policy.describe('tab-1').resident, true)
+  assert.deepEqual(log, [])
+})
+
+test('resident tabs detach when the whole browser pane hides and return with it', () => {
+  const { policy } = harness()
+  policy.register('tab-1', { resident: true })
+  policy.register('tab-2', { resident: true })
+  policy.setActive('tab-1')
+
+  policy.setPaneVisible(false)
+  assert.equal(policy.isAttached('tab-1'), false)
+  assert.equal(policy.isAttached('tab-2'), false)
+
+  policy.setPaneVisible(true)
+  assert.equal(policy.isAttached('tab-1'), true)
+  assert.equal(policy.isAttached('tab-2'), true)
+})
+
 test('a pin attaches a background tab and restores the active tab z-order', () => {
   const { policy, log } = harness()
   policy.register('tab-1')

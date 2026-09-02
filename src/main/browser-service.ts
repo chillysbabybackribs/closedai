@@ -129,7 +129,10 @@ export class BrowserService extends EventEmitter {
       this.closeTab(tab.id)
     })
     this.tabs.push(tab)
-    this.rendering.register(tab.id)
+    // Electron can permanently blank a previously loaded WebContentsView after it is removed
+    // and re-added repeatedly. User tabs therefore stay attached while this pane exists; tab
+    // switching uses visibility + z-order only. The entire set still detaches with the pane.
+    this.rendering.register(tab.id, { resident: true })
   }
 
   private attachTabView(tabId: string): void {

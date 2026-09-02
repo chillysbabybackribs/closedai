@@ -38,6 +38,11 @@ export function usagePercent(usage: ContextUsage): number {
   return Math.min(100, Math.max(0, Math.round((usage.usedTokens / usage.contextWindow) * 100)))
 }
 
+/** The latest usage with its percentage, in the shape the transcript snapshot carries. */
+export function describeUsage(usage: ContextUsage | null): (ContextUsage & { percent: number }) | null {
+  return usage ? { ...usage, percent: usagePercent(usage) } : null
+}
+
 export class ContextCompactor {
   private usage: ContextUsage | null = null
   private pending: { promise: Promise<void>; settle: () => void } | null = null

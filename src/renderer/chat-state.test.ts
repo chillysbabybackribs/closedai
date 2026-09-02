@@ -75,3 +75,10 @@ test('summarizeMessage truncates long first lines', () => {
   assert.equal(summarizeMessage('a'.repeat(100), 10), 'aaaaaaaaa…')
   assert.equal(summarizeMessage('   \n\n'), 'New chat')
 })
+
+test('context usage updates replace the previous reading', () => {
+  const usage = { usedTokens: 50_000, contextWindow: 200_000, percent: 25 }
+  const state = reduceChatEvent(initialChatState(), { type: 'context', usage })
+  assert.deepEqual(state.contextUsage, usage)
+  assert.equal(reduceChatEvent(state, { type: 'context', usage: null }).contextUsage, null)
+})
