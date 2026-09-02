@@ -26,32 +26,6 @@
   scrollbar-width: none;
 }
 
-.pinned-user-card-wrap {
-  flex: 0 0 auto;
-  padding: 10px clamp(12px, 2.5vw, 20px) 4px;
-  background: var(--background, #181818);
-}
-
-.pinned-user-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  padding: 10px 14px;
-  border: 1px solid var(--antigravity-card-border, rgb(255 255 255 / 8%));
-  border-radius: 10px;
-  background: var(--antigravity-card-bg, #252526);
-  color: #ececee;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
-}
-
-.pinned-user-text {
-  font-size: var(--chat-fs-body, 13px);
-  line-height: var(--chat-lh-body, 1.55);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
 .prompt-chat-content {
   min-height: 100%;
   gap: var(--chat-gap);

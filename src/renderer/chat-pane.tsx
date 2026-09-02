@@ -10,14 +10,13 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport
 } from '../components/ui/message-scroller.js'
-import type { ChatAttachment, ChatConnectionState, ChatProvider, ChatTranscriptItem } from '../shared/chat.js'
+import type { ChatAttachment, ChatConnectionState, ChatProvider } from '../shared/chat.js'
 import { useChatController } from './chat-controller.js'
 import { ChatHeader } from './chat-header.js'
 import { ChatHistory } from './chat-history.js'
 import { chatTitle, PROVIDER_LABELS } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
-import { TranscriptAttachments } from './composer-attachments.js'
 import { ToolsModal } from './tools/tools-modal.js'
 
 export function ChatPane(): JSX.Element {
@@ -52,10 +51,6 @@ export function ChatPane(): JSX.Element {
     }
   }
 
-  const latestUserIndex = findLastUserIndex(state.items)
-  const latestUserMessage = latestUserIndex >= 0 ? (state.items[latestUserIndex] as Extract<ChatTranscriptItem, { type: 'user' }>) : null
-  const transcriptItems = state.items.filter((item) => item.type !== 'user')
-
   return (
     <aside className="chat-pane prompt-chat" data-ui-surface="chat">
       <ChatHeader
@@ -81,16 +76,13 @@ export function ChatPane(): JSX.Element {
           onClose={() => setHistoryOpen(false)}
         />
       ) : (
-        <>
-          {latestUserMessage && <PinnedUserCard item={latestUserMessage} />}
-          <TranscriptScroller threadId={state.threadId}>
-            {state.items.length === 0 ? (
-              <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
-            ) : (
-              <ChatTranscript items={transcriptItems} />
-            )}
-          </TranscriptScroller>
-        </>
+        <TranscriptScroller threadId={state.threadId}>
+          {state.items.length === 0 ? (
+            <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
+          ) : (
+            <ChatTranscript items={state.items} />
+          )}
+        </TranscriptScroller>
       )}
       <Composer
         enabled={ready}
@@ -107,23 +99,6 @@ export function ChatPane(): JSX.Element {
   )
 }
 
-function PinnedUserCard({ item }: { item: Extract<ChatTranscriptItem, { type: 'user' }> }): JSX.Element {
-  return (
-    <div className="pinned-user-card-wrap">
-      <div className="pinned-user-card">
-        {item.attachments?.length ? <TranscriptAttachments attachments={item.attachments} /> : null}
-        {item.text ? <div className="pinned-user-text">{item.text}</div> : null}
-      </div>
-    </div>
-  )
-}
-
-function findLastUserIndex(items: ChatTranscriptItem[]): number {
-  for (let i = items.length - 1; i >= 0; i -= 1) {
-    if (items[i]!.type === 'user') return i
-  }
-  return -1
-}
 
 function TranscriptScroller({
   threadId,
