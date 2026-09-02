@@ -6,7 +6,6 @@ import {
   ChartNoAxesCombined,
   CircleAlert,
   FileStack,
-  FolderKanban,
   Gauge,
   PlayCircle,
   Settings,
