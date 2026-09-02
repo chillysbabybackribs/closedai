@@ -4,34 +4,43 @@ import '@fontsource-variable/inter/wght-italic.css'
 import '@fontsource-variable/geist-mono/wght.css'
 import React from 'react'
 import { createRoot } from 'react-dom/client'
+import { AgentsSidebar } from './agents/agents-sidebar.js'
+import { AgentsToggle } from './agents/agents-toggle.js'
+import { useAgentsController } from './agents/agents-controller.js'
 import { AppWindowControls } from './app-window-controls.js'
 import { BrowserPane } from './browser-pane.js'
 import { useBrowserController } from './browser-controller.js'
+import { useChatController, type ChatController } from './chat-controller.js'
 import { ChatPane } from './chat-pane.js'
 import { TitlebarMenu } from './titlebar-menu.js'
 import { WorkspaceSplit } from './workspace-split.js'
 import './styles.css'
 
 function App(): JSX.Element {
+  const chat = useChatController()
+  const agents = useAgentsController(chat)
+
   return (
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
+        <AgentsToggle controller={agents} />
         <TitlebarMenu />
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
-      <div className="workspace" data-mode="chat" data-agents="closed">
-        <DesktopWorkspace />
+      <div className="workspace" data-mode="chat" data-agents={agents.isCollapsed ? 'closed' : 'open'}>
+        <AgentsSidebar controller={agents} chat={chat} />
+        <DesktopWorkspace chat={chat} />
       </div>
     </div>
   )
 }
 
-function DesktopWorkspace(): JSX.Element {
+function DesktopWorkspace({ chat }: { chat: ChatController }): JSX.Element {
   const browser = useBrowserController('browser')
   return (
     <WorkspaceSplit
-      chat={<ChatPane />}
+      chat={<ChatPane controller={chat} />}
       workspace={
         <div className="workspace-right" data-mode="browser" data-with-browser="yes" data-refs="no">
           <div className="workspace-surface workspace-surface-browser">

@@ -20,8 +20,9 @@ import { Composer } from './composer.js'
 import { PeerChatCards } from './chat-peers/peer-chat-cards.js'
 import { ToolsModal } from './tools/tools-modal.js'
 
-export function ChatPane(): JSX.Element {
-  const chat = useChatController()
+export function ChatPane({ controller }: { controller?: ReturnType<typeof useChatController> } = {}): JSX.Element {
+  const internalChat = useChatController()
+  const chat = controller ?? internalChat
   const { state } = chat
   const ready = state.connection.state === 'ready'
   const running = state.activeTurnId !== null
