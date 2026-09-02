@@ -19,17 +19,12 @@ export function PeerChatCards({
           key={peer.paneId}
           type="button"
           onClick={() => onSelect(peer.paneId)}
-          title={peer.preview || peer.title}
+          title={`${peer.title} — ${peer.activity || PROVIDER_LABELS[peer.provider]}${peer.preview ? `\n${peer.preview}` : ''}`}
         >
           {peer.running
             ? <LoaderCircle className="peer-chat-card-icon peer-chat-card-running" aria-label="Running" />
             : <MessageSquare className="peer-chat-card-icon" aria-hidden="true" />}
-          <span className="peer-chat-card-copy">
-            <span className="peer-chat-card-title">{peer.title}</span>
-            <span className="peer-chat-card-meta">
-              {peer.activity || PROVIDER_LABELS[peer.provider]}
-            </span>
-          </span>
+          <span className="peer-chat-card-title">{peer.title}</span>
         </button>
       ))}
     </nav>
