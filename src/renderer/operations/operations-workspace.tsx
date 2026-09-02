@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   CalendarDays,
   CheckCircle2,
@@ -12,7 +12,16 @@ import {
   Search
 } from 'lucide-react'
 import { NewWorkerDialog } from './new-worker-dialog.js'
-import { filterRuns, INITIAL_RUNS, type OperationsRun, type RunStatus, type RunTab } from './operations-data.js'
+import {
+  attentionRunCount,
+  filterRuns,
+  INITIAL_RUNS,
+  persistOperationsRuns,
+  readOperationsRuns,
+  type OperationsRun,
+  type RunStatus,
+  type RunTab
+} from './operations-data.js'
 import { OperationsSidebar } from './operations-sidebar.js'
 import { RunDetailDrawer } from './run-detail-drawer.js'
 import { RunsTable } from './runs-table.js'
@@ -45,8 +54,8 @@ function Metric({
   )
 }
 
-export function OperationsWorkspace(): JSX.Element {
-  const [runs, setRuns] = useState(INITIAL_RUNS)
+export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCountChange?: (count: number) => void } = {}): JSX.Element {
+  const [runs, setRuns] = useState<OperationsRun[]>(() => readOperationsRuns(window.localStorage) ?? INITIAL_RUNS)
   const [tab, setTab] = useState<RunTab>('all')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<number[]>([])
@@ -58,6 +67,11 @@ export function OperationsWorkspace(): JSX.Element {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const visibleRuns = useMemo(() => filterRuns(runs, tab, search), [runs, search, tab])
   const selectedRun = selectedRunId === null ? null : runs.find((run) => run.id === selectedRunId) ?? null
+
+  useEffect(() => {
+    persistOperationsRuns(window.localStorage, runs)
+    onAttentionCountChange?.(attentionRunCount(runs))
+  }, [onAttentionCountChange, runs])
 
   function updateSelectedStatus(status: RunStatus): void {
     if (selectedRunId === null) return
@@ -95,10 +109,10 @@ export function OperationsWorkspace(): JSX.Element {
           <button type="button" className="ops-primary-button" onClick={() => setNewWorkerOpen(true)}><Plus size={14} />New worker</button>
         </div>
         <section className="ops-metrics" aria-label="Run overview">
-          <Metric label="Needs attention" value="1" meta="Approval required" tone="attention" />
-          <Metric label="Running" value="1" meta="Across 1 workspace" tone="running" />
-          <Metric label="Queued" value="1" meta="Starting soon" tone="queued" />
-          <Metric label="Completed today" value="12" meta="92% success rate" tone="completed" />
+          <Metric label="Needs attention" value={String(attentionRunCount(runs))} meta="Approval required" tone="attention" />
+          <Metric label="Running" value={String(runs.filter((run) => run.status === 'running').length)} meta="Across active workspaces" tone="running" />
+          <Metric label="Queued" value={String(runs.filter((run) => run.status === 'queued').length)} meta="Starting soon" tone="queued" />
+          <Metric label="Completed today" value={String(runs.filter((run) => run.status === 'completed').length)} meta="Successful runs" tone="completed" />
         </section>
         <div className="ops-tab-row">
           <div className="ops-tabs" role="tablist" aria-label="Run status">
@@ -111,7 +125,7 @@ export function OperationsWorkspace(): JSX.Element {
                 aria-selected={tab === item.id}
                 onClick={() => { setTab(item.id); setSelected([]) }}
               >
-                {item.label}{item.id === 'attention' ? <span>1</span> : null}
+                {item.label}{item.id === 'attention' ? <span>{attentionRunCount(runs)}</span> : null}
               </button>
             ))}
           </div>

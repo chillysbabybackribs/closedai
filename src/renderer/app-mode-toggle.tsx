@@ -6,11 +6,13 @@ export type AppMode = 'chat' | 'operations'
 export function AppModeToggle({
   mode,
   onChange,
-  chatAvailable = true
+  chatAvailable = true,
+  operationsAttentionCount = 0
 }: {
   mode: AppMode
   onChange: (mode: AppMode) => void
   chatAvailable?: boolean
+  operationsAttentionCount?: number
 }): JSX.Element {
   return (
     <>
@@ -37,7 +39,7 @@ export function AppModeToggle({
         >
           <Activity size={13} />
           Operations
-          <span className="app-mode-attention">1</span>
+          {operationsAttentionCount > 0 ? <span className="app-mode-attention">{operationsAttentionCount}</span> : null}
         </button>
       </div>
     </>

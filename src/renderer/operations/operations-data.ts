@@ -12,6 +12,8 @@ export type OperationsRun = {
   activity: string
 }
 
+export const OPERATIONS_RUNS_STORAGE_KEY = 'closedai.operations.runs'
+
 export const INITIAL_RUNS: OperationsRun[] = [
   {
     id: 1,
@@ -82,6 +84,46 @@ export const RUN_STATUS_LABELS: Record<RunStatus, string> = {
   paused: 'Paused',
   queued: 'Queued',
   running: 'Running'
+}
+
+const RUN_STATUSES = new Set<RunStatus>(['attention', 'completed', 'failed', 'paused', 'queued', 'running'])
+
+function isOperationsRun(value: unknown): value is OperationsRun {
+  if (!value || typeof value !== 'object') return false
+  const run = value as Partial<OperationsRun>
+  return typeof run.id === 'number'
+    && Number.isFinite(run.id)
+    && typeof run.task === 'string'
+    && typeof run.worker === 'string'
+    && typeof run.workspace === 'string'
+    && typeof run.checkpoint === 'string'
+    && typeof run.status === 'string'
+    && RUN_STATUSES.has(run.status as RunStatus)
+    && typeof run.runtime === 'string'
+    && typeof run.activity === 'string'
+}
+
+export function readOperationsRuns(storage: Pick<Storage, 'getItem'>): OperationsRun[] | null {
+  try {
+    const stored = storage.getItem(OPERATIONS_RUNS_STORAGE_KEY)
+    if (!stored) return null
+    const parsed: unknown = JSON.parse(stored)
+    return Array.isArray(parsed) && parsed.every(isOperationsRun) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+export function persistOperationsRuns(storage: Pick<Storage, 'setItem'>, runs: OperationsRun[]): void {
+  try {
+    storage.setItem(OPERATIONS_RUNS_STORAGE_KEY, JSON.stringify(runs))
+  } catch {
+    // Storage can be unavailable in restricted browser contexts; the in-memory UI still works.
+  }
+}
+
+export function attentionRunCount(runs: OperationsRun[]): number {
+  return runs.filter((run) => run.status === 'attention' || run.status === 'failed').length
 }
 
 export function filterRuns(
