@@ -1,7 +1,7 @@
 .ops-scrim {
-  position: fixed;
+  position: absolute;
   z-index: 40;
-  inset: 35px 0 0;
+  inset: 0;
   padding: 0;
   border: 0;
   background: rgb(2 3 5 / 68%);
@@ -11,14 +11,14 @@
 .ops-scrim-top { z-index: 60; inset: 0; }
 
 .ops-drawer {
-  position: fixed;
+  position: absolute;
   z-index: 50;
-  top: 35px;
+  top: 0;
   right: 0;
   bottom: 0;
   display: flex;
   flex-direction: column;
-  width: min(610px, 94vw);
+  width: min(610px, 94%);
   padding: 20px 22px 0;
   border-left: 1px solid #2a2d33;
   background: #0d0f12;
@@ -196,7 +196,7 @@
 .ops-drawer > footer > button.is-danger { color: #fda29b; }
 .ops-drawer > footer > .ops-primary-button { margin-left: auto; }
 
-.ops-chat-drawer { z-index: 70; top: 0; width: min(430px, 94vw); }
+.ops-chat-drawer { z-index: 70; top: 0; width: min(430px, 94%); }
 
 .ops-chat-body {
   flex: 1;
