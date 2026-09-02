@@ -105,6 +105,14 @@ export type ChatThreadSummary = {
   updatedAt: number
 }
 
+/** How full the model's context window was after the latest model response. */
+export type ChatContextUsage = {
+  usedTokens: number
+  contextWindow: number
+  /** 0–100, rounded. */
+  percent: number
+}
+
 export type ChatSnapshot = {
   connection: ChatConnection
   account: ChatAccount | null
@@ -115,6 +123,7 @@ export type ChatSnapshot = {
   /** User-facing thread title from the app-server, when one has been set. */
   threadName: string | null
   activeTurnId: string | null
+  contextUsage: ChatContextUsage | null
   items: ChatTranscriptItem[]
   approvals: ChatApproval[]
 }
@@ -125,6 +134,7 @@ export type ChatEvent =
   | { type: 'model'; selectedModel: string }
   | { type: 'thread'; threadId: string | null; threadName: string | null }
   | { type: 'turn'; turnId: string | null }
+  | { type: 'context'; usage: ChatContextUsage | null }
   | { type: 'item'; item: ChatTranscriptItem }
   | { type: 'itemDelta'; itemId: string; field: 'text' | 'output'; delta: string }
   | { type: 'approval'; approval: ChatApproval }

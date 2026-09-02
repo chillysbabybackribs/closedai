@@ -29,6 +29,7 @@ import {
   type ActiveBrowserContext
 } from './chat-context/turn-context.js'
 import { resumeThreadParams, startThreadParams } from './chat-context/thread-params.js'
+import { ContextCompactor, usagePercent, type ContextUsage } from './chat-context/context-compaction.js'
 import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
 import { loadChatModels } from './chat-model-catalog.js'
@@ -57,6 +58,7 @@ export class ChatService extends EventEmitter {
   private readonly transcript: ChatTranscript
   private readonly approvals: ChatApprovals
   private readonly toolCalls: AppServerToolCalls
+  private readonly compactor: ContextCompactor
   private startPromise: Promise<void> | null = null
   private resumePromise: Promise<void> | null = null
   private restartTimer: NodeJS.Timeout | null = null
@@ -81,6 +83,12 @@ export class ChatService extends EventEmitter {
     this.client = new AppServerClient(executable, cwd)
     this.approvals = new ChatApprovals(this.client, (event) => this.emitEvent(event))
     this.toolCalls = new AppServerToolCalls(this.tools, this.client)
+    this.compactor = new ContextCompactor({
+      thresholdPercent: () => this.settings.get().chatCompactAtPercent,
+      threadId: () => this.threadId,
+      request: (method, params) => this.client.request(method, params),
+      notice: (text, tone) => this.addNotice(text, tone, null)
+    })
     this.client.on('notification', (notification: AppServerNotification) => this.onNotification(notification))
     this.client.on('request', (request) => {
       if (!this.toolCalls.handle(request)) this.approvals.handleServerRequest(request)
@@ -99,6 +107,7 @@ export class ChatService extends EventEmitter {
       threadId: this.threadId,
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
+      contextUsage: this.contextUsage(),
       items: this.transcript.snapshot(),
       approvals: this.approvals.snapshot()
     }
@@ -121,6 +130,7 @@ export class ChatService extends EventEmitter {
       const { prompt, input, summaries } = buildChatInput(text, attachments)
       if (input.length === 0) return
       await this.ensureReady()
+      await this.compactor.idle()
       if (this.activeTurnId) throw new Error('A Codex turn is already running')
       const threadId = await this.ensureThread()
       const clientUserMessageId = crypto.randomUUID()
@@ -296,6 +306,7 @@ export class ChatService extends EventEmitter {
     this.threadName = nullableString(thread.name)
     this.adoptThreadModel(response.model)
     this.transcript.replaceFromThread(thread)
+    this.compactor.reset()
     await this.settings.set({ chatThreadId: thread.id })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }
@@ -306,6 +317,7 @@ export class ChatService extends EventEmitter {
     this.threadName = null
     this.transcript.clear()
     this.approvals.clear()
+    this.compactor.reset()
     this.activeTurnId = null
   }
 
@@ -357,6 +369,8 @@ export class ChatService extends EventEmitter {
       addNotice: (text, tone, turnId) => this.addNotice(text, tone, turnId),
       resolveApproval: (requestId) => this.approvals.resolve(requestId),
       refreshSession: () => this.refreshSession(),
+      noteContextUsage: (usage) => this.noteContextUsage(usage),
+      contextCompacted: () => this.compactor.compacted(),
       emit: (event) => this.emitEvent(event)
     })
   }
@@ -386,6 +400,17 @@ export class ChatService extends EventEmitter {
     if (this.activeTurnId === turnId) return
     this.activeTurnId = turnId
     this.emitEvent({ type: 'turn', turnId })
+    if (turnId === null) this.compactor.turnFinished()
+  }
+
+  private noteContextUsage(usage: ContextUsage): void {
+    this.compactor.noteUsage(usage)
+    this.emitEvent({ type: 'context', usage: this.contextUsage() })
+  }
+
+  private contextUsage(): ChatSnapshot['contextUsage'] {
+    const usage = this.compactor.current
+    return usage ? { ...usage, percent: usagePercent(usage) } : null
   }
 
   private adoptThreadModel(value: unknown): void {
@@ -398,6 +423,7 @@ export class ChatService extends EventEmitter {
   }
 
   private onExit(): void {
+    this.compactor.reset()
     this.setTurn(null)
     this.approvals.clear(true)
     this.setConnection({ state: 'error', message: 'Codex stopped unexpectedly; reconnecting…' })

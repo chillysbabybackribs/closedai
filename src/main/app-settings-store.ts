@@ -14,8 +14,13 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   browserCookiesImported: false,
   chatThreadId: null,
   chatModelId: null,
-  disabledTools: []
+  disabledTools: [],
+  // Compaction is lossy, so it waits for a comfortably full window rather than firing early;
+  // 60% leaves room for a long turn while keeping old screenshots from piling up.
+  chatCompactAtPercent: 60
 }
+
+const MAX_COMPACT_AT_PERCENT = 95
 
 function normalize(parsed: unknown): AppSettings {
   if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_APP_SETTINGS }
@@ -33,7 +38,10 @@ function normalize(parsed: unknown): AppSettings {
       : null,
     disabledTools: Array.isArray(record.disabledTools)
       ? [...new Set(record.disabledTools.filter((id): id is string => typeof id === 'string' && id.length > 0))]
-      : []
+      : [],
+    chatCompactAtPercent: typeof record.chatCompactAtPercent === 'number' && Number.isFinite(record.chatCompactAtPercent)
+      ? Math.min(MAX_COMPACT_AT_PERCENT, Math.max(0, Math.round(record.chatCompactAtPercent)))
+      : DEFAULT_APP_SETTINGS.chatCompactAtPercent
   }
 }
 

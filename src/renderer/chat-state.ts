@@ -10,6 +10,7 @@ export function initialChatState(): ChatSnapshot {
     threadId: null,
     threadName: null,
     activeTurnId: null,
+    contextUsage: null,
     items: [],
     approvals: []
   }
@@ -49,6 +50,8 @@ export function reduceChatEvent(state: ChatSnapshot, event: ChatEvent): ChatSnap
       return { ...state, threadId: event.threadId, threadName: event.threadName }
     case 'turn':
       return { ...state, activeTurnId: event.turnId }
+    case 'context':
+      return { ...state, contextUsage: event.usage }
     case 'item':
       return { ...state, items: upsertItem(state.items, event.item) }
     case 'itemDelta':

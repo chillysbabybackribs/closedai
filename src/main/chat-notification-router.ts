@@ -1,6 +1,7 @@
 import type { ChatEvent } from '../shared/chat.js'
 import type { AppServerNotification } from './app-server-client.js'
 import { nullableString, recordOf, stringOf } from './chat-normalizers.js'
+import { parseTokenUsage, type ContextUsage } from './chat-context/context-compaction.js'
 
 export type ChatNotificationTarget = {
   activeThreadId: () => string | null
@@ -12,6 +13,9 @@ export type ChatNotificationTarget = {
   addNotice: (text: string, tone: 'info' | 'error', turnId?: string | null) => void
   resolveApproval: (requestId: string) => void
   refreshSession: () => void
+  noteContextUsage: (usage: ContextUsage) => void
+  /** The app-server finished compacting the thread's history. */
+  contextCompacted: () => void
   emit: (event: ChatEvent) => void
 }
 
@@ -56,7 +60,16 @@ export function routeChatNotification(
       break
     case 'item/completed':
       target.consumeItem(params?.item, stringOf(params?.turnId), true)
+      if (recordOf(params?.item)?.type === 'contextCompaction') target.contextCompacted()
       break
+    case 'thread/compacted':
+      target.contextCompacted()
+      break
+    case 'thread/tokenUsage/updated': {
+      const usage = parseTokenUsage(params?.tokenUsage)
+      if (usage) target.noteContextUsage(usage)
+      break
+    }
     case 'item/agentMessage/delta':
     case 'item/plan/delta':
       target.appendDelta(stringOf(params?.itemId), 'text', stringOf(params?.delta))

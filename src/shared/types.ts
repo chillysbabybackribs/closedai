@@ -83,6 +83,11 @@ export type AppSettings = {
   chatModelId: string | null
   /** `namespace.tool` ids the user switched off in the Tools modal. */
   disabledTools: string[]
+  /**
+   * Compact the Codex thread once a completed turn leaves the context this full, as a
+   * percentage of the model window. 0 leaves it to Codex's own near-limit compaction.
+   */
+  chatCompactAtPercent: number
 }
 
 /** A still of the page the user is looking at; `imageUrl` is a data URL. */

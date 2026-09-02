@@ -21,6 +21,9 @@ export type ToolCallListener = (record: ToolCallRecord) => void
 
 const PREVIEW_ARGS = 400
 const PREVIEW_OUTPUT = 300
+// Tool results live in the thread history for every later turn, and the app-server does not
+// truncate dynamic tool output the way it does shell output. ~10k tokens per text item.
+export const MAX_RESULT_TEXT_CHARS = 40_000
 
 const NAME = /^[a-z][a-z0-9_]*$/
 
@@ -147,7 +150,7 @@ export class ToolRegistry {
     })
     try {
       const run = definition.run(input as JsonObject, { ...context, signal: controller.signal })
-      return await Promise.race([run, timeout])
+      return boundResult(await Promise.race([run, timeout]))
     } catch (error) {
       return failureResult(`${label}: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
@@ -180,6 +183,22 @@ export class ToolRegistry {
     for (const listener of this.listeners) {
       try { listener(record) } catch { /* telemetry must never break a call */ }
     }
+  }
+}
+
+/** Cap each text item so one call cannot permanently occupy a large slice of the context. */
+export function boundResult(result: ToolResult, maxChars = MAX_RESULT_TEXT_CHARS): ToolResult {
+  if (!result.content.some((item) => item.type === 'text' && item.text.length > maxChars)) return result
+  return {
+    ...result,
+    content: result.content.map((item) => {
+      if (item.type !== 'text' || item.text.length <= maxChars) return item
+      const dropped = item.text.length - maxChars
+      return {
+        type: 'text',
+        text: `${item.text.slice(0, maxChars)}\n\n[ClosedAI truncated ${dropped} characters. Narrow the request (a selector, range, filter, or smaller limit) to see the rest.]`
+      }
+    })
   }
 }
 
