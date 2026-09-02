@@ -93,7 +93,7 @@ async function main(): Promise<void> {
     searchTools(),
     ...(workspaceNamespace ? [workspaceNamespace] : []),
     // Lazy self-reference: the batch dispatches into the registry it is registered in.
-    batchTools(() => toolRegistry!)
+    batchTools(() => toolRegistry!, { maxCalls: settings.get().toolBatchMaxCalls })
   ])
   for (const toolId of settings.get().disabledTools) toolRegistry.setEnabled(toolId, false)
   toolTelemetry = await ToolTelemetry.open(join(userData(), 'tool-telemetry.jsonl'))

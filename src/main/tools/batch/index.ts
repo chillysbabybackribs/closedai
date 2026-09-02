@@ -1,5 +1,6 @@
 import { allSettledBounded } from '../../bounded-concurrency.js'
 import type { ToolRegistry } from '../registry.js'
+import { normalizeToolBatchMaxCalls } from '../../../shared/tool-batch.js'
 import {
   booleanArg,
   defineTool,
@@ -17,13 +18,17 @@ import {
 // batch adds sequencing and result assembly, never a second execution path.
 
 export const TOOL_BATCH_NAMESPACE = 'tool_batch'
-export const MAX_BATCH_CALLS = 8
 /** Independent calls overlap, but a runaway page cannot monopolise the browser host. */
 const PARALLEL_WIDTH = 4
 /** Must contain a full sequential batch of slow inner calls (navigate is ~20s worst case). */
 const BATCH_TIMEOUT_MS = 180_000
 
 export type ToolRegistryProvider = () => ToolRegistry
+
+export type BatchToolOptions = {
+  /** Resolved startup setting; invalid values fall back to the shared default. */
+  maxCalls?: number
+}
 
 type BatchCall = {
   /** 1-based position, used as the label the model can correlate results by. */
@@ -42,7 +47,8 @@ type BatchOutcome =
  * The registry is provided lazily because this namespace is constructed as part of the
  * very registry it dispatches into (same pattern as the browser host providers).
  */
-export function batchTools(registry: ToolRegistryProvider): ToolNamespace {
+export function batchTools(registry: ToolRegistryProvider, options: BatchToolOptions = {}): ToolNamespace {
+  const maxCalls = normalizeToolBatchMaxCalls(options.maxCalls)
   return {
     name: TOOL_BATCH_NAMESPACE,
     description: 'Run several tool calls from the other namespaces in one request.',
@@ -50,7 +56,7 @@ export function batchTools(registry: ToolRegistryProvider): ToolNamespace {
       defineTool({
         name: 'run',
         description:
-          'Run up to ' + MAX_BATCH_CALLS + ' tool calls in one request instead of a turn per call. ' +
+          'Run up to ' + maxCalls + ' tool calls in one request instead of a turn per call. ' +
           'Each entry names a tool as `namespace.tool` and carries the exact arguments a direct call would use; ' +
           'each call reports its own ok/failed status and results are returned in call order, numbered `[1]`, `[2]`, … ' +
           'By default the calls run in order and a failure skips the rest, so a dependent sequence ' +
@@ -63,7 +69,7 @@ export function batchTools(registry: ToolRegistryProvider): ToolNamespace {
           properties: {
             calls: {
               type: 'array',
-              description: `The tool calls to run, in order. Between 1 and ${MAX_BATCH_CALLS} entries.`,
+              description: `The tool calls to run, in order. Between 1 and ${maxCalls} entries.`,
               items: {
                 type: 'object',
                 properties: {
@@ -90,7 +96,7 @@ export function batchTools(registry: ToolRegistryProvider): ToolNamespace {
         },
         timeoutMs: BATCH_TIMEOUT_MS,
         async run(input, context) {
-          const parsed = parseCalls(input)
+          const parsed = parseCalls(input, maxCalls)
           if (typeof parsed === 'string') return failureResult(`tool_batch.run: ${parsed}`)
           const outcomes = booleanArg(input, 'parallel', false)
             ? await runParallel(registry(), parsed, context)
@@ -103,11 +109,11 @@ export function batchTools(registry: ToolRegistryProvider): ToolNamespace {
 }
 
 /** The schema has already vetted shapes; this owns limits and target resolution. */
-function parseCalls(input: JsonObject): BatchCall[] | string {
+function parseCalls(input: JsonObject, maxCalls: number): BatchCall[] | string {
   const entries = input.calls as Array<Record<string, unknown>>
   if (entries.length === 0) return 'the batch needs at least one call'
-  if (entries.length > MAX_BATCH_CALLS) {
-    return `the batch has ${entries.length} calls; the limit is ${MAX_BATCH_CALLS}. Split it into smaller batches.`
+  if (entries.length > maxCalls) {
+    return `the batch has ${entries.length} calls; the limit is ${maxCalls}. Split it into smaller batches.`
   }
   const calls: BatchCall[] = []
   for (const [position, entry] of entries.entries()) {

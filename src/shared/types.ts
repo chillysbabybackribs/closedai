@@ -85,6 +85,8 @@ export type AppSettings = {
   chatReasoningEffort: string | null
   /** `namespace.tool` ids the user switched off in the Tools modal. */
   disabledTools: string[]
+  /** Maximum inner calls accepted by one tool_batch.run invocation. Applied at startup. */
+  toolBatchMaxCalls: number
   /**
    * Compact the Codex thread once a completed turn leaves the context this full, as a
    * percentage of the model window. 0 leaves it to Codex's own near-limit compaction.

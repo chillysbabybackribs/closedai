@@ -55,7 +55,8 @@ Electron's `app.getPath('userData')` directory (`~/.config/closedai/` on Linux):
 (omnibox suggestions), `app-settings.json` (cookie-import latch, current Codex thread, selected
 model, `chatReasoningEffort` (null follows the model default), disabled tool or action ids, `chatCompactAtPercent`, the context-usage percentage after which the
 app compacts between turns; default 80, 0 disables, and `chatMidTurnCompactTokens`, an opt-in
-context size in tokens past which Codex compacts mid-turn; default 0 keeps Codex's own limit),
+context size in tokens past which Codex compacts mid-turn; default 0 keeps Codex's own limit, and
+`toolBatchMaxCalls`, the startup batch limit; default 16 and clamped to 1–64),
 `tool-telemetry.jsonl` (recent tool calls), `code-cache/`, and
 Chromium's `Partitions/browser` profile.
 

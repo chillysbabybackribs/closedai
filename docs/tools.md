@@ -57,7 +57,7 @@ before the app-server starts.
 | `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `events` | Raw Chrome DevTools Protocol escape hatch (`deferLoading`: out of context until searched for). `Input.*` and `Page.captureScreenshot` are refused with pointers to `page` and `capture`. See `docs/cdp-tool-foundation.md`. |
 | `search` | `query` | plain tool | Routed public-web search across Brave, Serper, Jina, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. |
 | `closedai_workspace` | `inspect` | `map`, `related`, `tests`, `ipc_flow` | Read-only navigation registered only when the app-server workspace is this checkout. It queries a generated file index, direct relative import relationships, candidate tests, and preload-to-main IPC ownership. |
-| `tool_batch` | `run` | plain tool | Runs up to eight other tools sequentially or, for independent calls, with bounded parallelism. Nested batches are refused. |
+| `tool_batch` | `run` | plain tool | Runs up to 16 other tools by default, sequentially or with bounded parallelism. `toolBatchMaxCalls` configures 1–64 at startup; nested batches are refused. |
 
 The model-facing names intentionally differ from OpenAI reserved namespaces. For example,
 ClosedAI uses `embedded_browser`, not `browser`.

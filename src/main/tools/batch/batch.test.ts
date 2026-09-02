@@ -2,14 +2,15 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { ToolRegistry } from '../registry.js'
 import { textResult, type ToolNamespace, type ToolResult } from '../tool.js'
-import { batchTools, MAX_BATCH_CALLS } from './index.js'
+import { DEFAULT_TOOL_BATCH_MAX_CALLS } from '../../../shared/tool-batch.ts'
+import { batchTools } from './index.js'
 
 // Every test drives the batch through registry.call — the same path the Codex adapter
 // uses — so its schema validation, switches, and telemetry are part of what is verified.
 
 const context = { threadId: 't', turnId: 'u', callId: 'c' }
 
-function harness(): { registry: ToolRegistry; log: string[] } {
+function harness(maxCalls?: number): { registry: ToolRegistry; log: string[] } {
   const log: string[] = []
   const lab: ToolNamespace = {
     name: 'lab',
@@ -47,7 +48,7 @@ function harness(): { registry: ToolRegistry; log: string[] } {
     ]
   }
   let registry: ToolRegistry
-  registry = new ToolRegistry([lab, batchTools(() => registry)])
+  registry = new ToolRegistry([lab, batchTools(() => registry, { maxCalls })])
   return { registry, log }
 }
 
@@ -154,10 +155,23 @@ test('the batch size is bounded at both ends', async () => {
   assert.match(batchText(empty), /at least one call/)
 
   const oversized = await call(registry, {
-    calls: Array.from({ length: MAX_BATCH_CALLS + 1 }, () => ({ tool: 'lab.echo', arguments: { text: 'x' } }))
+    calls: Array.from({ length: DEFAULT_TOOL_BATCH_MAX_CALLS + 1 }, () => ({ tool: 'lab.echo', arguments: { text: 'x' } }))
   })
   assert.equal(oversized.isError, true)
-  assert.match(batchText(oversized), /the limit is 8/)
+  assert.match(batchText(oversized), /the limit is 16/)
+})
+
+test('a configured batch limit shapes both advertising and enforcement', async () => {
+  const { registry } = harness(24)
+  const tool = registry.namespaces.find((namespace) => namespace.name === 'tool_batch')?.tools[0]
+  assert.match(tool?.description ?? '', /up to 24 tool calls/)
+  assert.match(String((tool?.inputSchema.properties as Record<string, { description?: string }>).calls.description), /1 and 24/)
+
+  const oversized = await call(registry, {
+    calls: Array.from({ length: 25 }, () => ({ tool: 'lab.echo', arguments: { text: 'x' } }))
+  })
+  assert.equal(oversized.isError, true)
+  assert.match(batchText(oversized), /the limit is 24/)
 })
 
 test('malformed entries are refused by the schema before anything runs', async () => {

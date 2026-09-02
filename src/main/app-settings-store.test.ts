@@ -17,6 +17,15 @@ test('a missing file yields the defaults, including the compaction threshold', a
   assert.deepEqual(store.get(), DEFAULT_APP_SETTINGS)
   assert.equal(store.get().chatCompactAtPercent, 80)
   assert.equal(store.get().chatMidTurnCompactTokens, 0)
+  assert.equal(store.get().toolBatchMaxCalls, 16)
+})
+
+test('the tool batch limit is configurable within safe startup bounds', async () => {
+  assert.equal((await storeWith('{"toolBatchMaxCalls": 24}')).store.get().toolBatchMaxCalls, 24)
+  assert.equal((await storeWith('{"toolBatchMaxCalls": 24.4}')).store.get().toolBatchMaxCalls, 24)
+  assert.equal((await storeWith('{"toolBatchMaxCalls": 0}')).store.get().toolBatchMaxCalls, 1)
+  assert.equal((await storeWith('{"toolBatchMaxCalls": 999}')).store.get().toolBatchMaxCalls, 64)
+  assert.equal((await storeWith('{"toolBatchMaxCalls": "many"}')).store.get().toolBatchMaxCalls, 16)
 })
 
 test('the opt-in mid-turn compact limit is bounded, with 0 leaving it to Codex', async () => {
