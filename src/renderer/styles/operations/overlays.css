@@ -266,6 +266,7 @@
   font-weight: 600;
 }
 
+.ops-modal input,
 .ops-modal textarea,
 .ops-modal select {
   width: 100%;
@@ -279,7 +280,13 @@
   font-size: 9px;
 }
 
+.ops-modal input { height: 34px; }
 .ops-modal textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
+
+.ops-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ops-form-grid > label { margin-top: 16px; }
+.ops-schedule-dialog-note { display: flex; align-items: center; gap: 7px; margin: 14px 0 0; color: #858995; font-size: 8px; line-height: 1.45; }
+.ops-schedule-dialog-note svg { flex: 0 0 auto; color: #a99aff; }
 
 .ops-modal > footer {
   display: flex;

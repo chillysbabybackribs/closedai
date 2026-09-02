@@ -1,5 +1,5 @@
 export type RunTab = 'all' | 'attention' | 'completed' | 'running'
-export type { OperationsRun, RunStatus } from '../../shared/operations.js'
+export type { OperationsRun, OperationsSchedule, RunStatus } from '../../shared/operations.js'
 import type { OperationsRun, RunStatus } from '../../shared/operations.js'
 import { DEFAULT_OPERATIONS_RUNS } from '../../shared/operations.js'
 

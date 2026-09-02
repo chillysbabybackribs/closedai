@@ -16,12 +16,14 @@
 }
 
 /* The separator is visually a hairline but behaves like a much larger target
-   (`resizeTargetMinimumSize` in WorkspaceSplit). Its grip appears only when the
-   seam is relevant, keeping the resting shell as quiet as the original layout. */
+   (`resizeTargetMinimumSize` in WorkspaceSplit). It rests at --hairline-strong:
+   the earlier 4.5% white vanished against the dark chat and operations panes,
+   leaving the two surfaces reading as one. The grip still appears only on
+   hover/drag, so the seam is visible but stays quiet. */
 .workspace-primary-divider {
   position: relative;
   width: 1px;
-  background: rgb(255 255 255 / 4.5%);
+  background: var(--hairline-strong, rgb(255 255 255 / 14%));
   cursor: col-resize;
   outline: none;
   transition: background 130ms var(--ease-chrome), box-shadow 130ms var(--ease-chrome);

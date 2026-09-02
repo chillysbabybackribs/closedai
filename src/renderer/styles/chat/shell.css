@@ -36,8 +36,9 @@
   overflow: hidden;
   border-radius: var(--chat-radius) var(--chat-radius) 0 0;
   /* Light hairline on the edge facing the recessed browser gutter — reads as
-     the raised lip of the chat surface. */
-  border-right: 1px solid rgb(255 255 255 / 4.5%);
+     the raised lip of the chat surface, one step under the primary divider
+     beside it so together they frame the chat/workspace seam. */
+  border-right: 1px solid var(--hairline, rgb(255 255 255 / 8%));
   background: var(--surface-card);
 }
 

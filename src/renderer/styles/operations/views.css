@@ -112,7 +112,44 @@
 .ops-schedule-empty p { max-width: 390px; margin: 8px 0 18px; color: var(--ops-muted); font-size: 10px; line-height: 1.5; }
 .ops-schedule-empty button { min-height: 30px; padding: 0 11px; border: 1px solid #2b2e35; border-radius: 6px; background: #121419; color: #777b86; font-size: 10px; }
 
+.ops-schedule-empty button.ops-primary-button { border-color: rgb(255 255 255 / 12%); background: var(--ops-accent); color: white; }
+
+.ops-schedule-list {
+  display: grid;
+  gap: 9px;
+  margin-top: 24px;
+}
+
+.ops-schedule-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px auto;
+  align-items: center;
+  gap: 18px;
+  padding: 14px;
+  border: 1px solid var(--ops-border);
+  border-radius: 9px;
+  background: var(--ops-surface);
+}
+
+.ops-schedule-main { display: flex; align-items: flex-start; min-width: 0; gap: 11px; }
+.ops-schedule-icon { display: grid; place-items: center; flex: 0 0 auto; width: 28px; height: 28px; border: 1px solid rgb(124 92 255 / 24%); border-radius: 7px; background: var(--ops-accent-soft); color: #b9a9ff; }
+.ops-schedule-main strong { display: block; overflow: hidden; color: #e7e7ea; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.ops-schedule-main p { margin: 4px 0 0; overflow: hidden; color: var(--ops-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.ops-schedule-main small, .ops-schedule-next small { display: block; margin-top: 5px; color: var(--ops-subtle); font-size: 8px; }
+.ops-schedule-next { min-width: 0; }
+.ops-schedule-next span { display: block; color: var(--ops-subtle); font-size: 8px; text-transform: uppercase; }
+.ops-schedule-next strong { display: block; margin-top: 4px; color: #d9d9de; font-size: 10px; font-weight: 600; }
+.ops-schedule-actions { display: flex; align-items: center; gap: 6px; }
+.ops-schedule-actions button { display: inline-flex; align-items: center; height: 28px; gap: 5px; padding: 0 8px; border: 1px solid #2b2e35; border-radius: 6px; background: #121419; color: #b9bbc3; font-size: 8px; }
+.ops-schedule-actions button:hover:not(:disabled) { border-color: #4a4d58; color: white; }
+.ops-schedule-actions button:disabled { cursor: default; opacity: 0.45; }
+.ops-schedule-actions .ops-schedule-toggle[aria-pressed='true'] { border-color: rgb(50 213 131 / 22%); background: rgb(50 213 131 / 8%); color: #83e3ae; }
+.ops-schedule-actions button.is-danger { width: 28px; justify-content: center; padding: 0; color: #fda29b; font-size: 15px; }
+
 @media (max-width: 760px) {
   .ops-overview-grid { grid-template-columns: 1fr; }
   .ops-schedule-empty { margin-top: 24px; padding: 32px 18px; }
+  .ops-schedule-row { grid-template-columns: 1fr; gap: 12px; }
+  .ops-schedule-next { padding-left: 39px; }
+  .ops-schedule-actions { padding-left: 39px; }
 }

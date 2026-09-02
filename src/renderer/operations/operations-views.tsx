@@ -17,6 +17,7 @@ import {
   attentionRunCount,
   filterRuns,
   type OperationsRun,
+  type OperationsSchedule,
   type RunTab
 } from './operations-data.js'
 import { RunsTable } from './runs-table.js'
@@ -159,12 +160,52 @@ function ApprovalsView({ runs, onOpenRun }: ViewProps): JSX.Element {
   )
 }
 
-function SchedulesView(): JSX.Element {
+const FREQUENCY_LABELS = { hourly: 'Every hour', daily: 'Every day', weekly: 'Every week' } as const
+
+function scheduleDate(timestamp: number): string {
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(timestamp)
+}
+
+function ScheduleRow({ schedule, onToggle, onRunNow, onDelete }: {
+  schedule: OperationsSchedule
+  onToggle: (id: number, enabled: boolean) => void
+  onRunNow: (id: number) => void
+  onDelete: (id: number) => void
+}): JSX.Element {
+  return (
+    <article className="ops-schedule-row">
+      <div className="ops-schedule-main">
+        <span className="ops-schedule-icon"><CalendarClock size={15} /></span>
+        <div><strong>{schedule.name}</strong><p>{schedule.task}</p><small>{schedule.workspace} · {FREQUENCY_LABELS[schedule.frequency]} · {schedule.modelId}</small></div>
+      </div>
+      <div className="ops-schedule-next"><span>Next run</span><strong>{schedule.enabled ? scheduleDate(schedule.nextRunAt) : 'Paused'}</strong>{schedule.lastRunAt ? <small>Last run {scheduleDate(schedule.lastRunAt)}</small> : <small>Not run yet</small>}</div>
+      <div className="ops-schedule-actions">
+        <button type="button" className="ops-schedule-toggle" aria-pressed={schedule.enabled} onClick={() => onToggle(schedule.id, !schedule.enabled)}>{schedule.enabled ? 'Enabled' : 'Paused'}</button>
+        <button type="button" onClick={() => onRunNow(schedule.id)} disabled={!schedule.enabled}><PlayCircle size={13} />Run now</button>
+        <button type="button" className="is-danger" onClick={() => onDelete(schedule.id)} aria-label={`Delete ${schedule.name}`}><XIcon /></button>
+      </div>
+    </article>
+  )
+}
+
+function XIcon(): JSX.Element {
+  return <span aria-hidden="true">×</span>
+}
+
+function SchedulesView({ schedules, onNewSchedule, onToggleSchedule, onRunSchedule, onDeleteSchedule }: {
+  schedules: OperationsSchedule[]
+  onNewSchedule: () => void
+  onToggleSchedule: (id: number, enabled: boolean) => void
+  onRunSchedule: (id: number) => void
+  onDeleteSchedule: (id: number) => void
+}): JSX.Element {
   return (
     <>
       <div className="ops-breadcrumb"><span>Operations</span><span>/</span><strong>Schedules</strong></div>
-      <PageHeading title="Schedules" description="Plan recurring workers and keep routine work moving." />
-      <section className="ops-schedule-empty"><span><CalendarClock size={22} /></span><strong>No schedules yet</strong><p>Recurring worker schedules will appear here once scheduling is connected to the Operations runtime.</p><button type="button" disabled title="Scheduling is not connected yet">Create schedule</button></section>
+      <PageHeading title="Schedules" description="Plan recurring workers and keep routine work moving." action={<button type="button" className="ops-primary-button" onClick={onNewSchedule}><Plus size={14} />Create schedule</button>} />
+      {schedules.length === 0
+        ? <section className="ops-schedule-empty"><span><CalendarClock size={22} /></span><strong>No schedules yet</strong><p>Create a recurring worker and it will run automatically while the ClosedAI desktop app is open.</p><button type="button" className="ops-primary-button" onClick={onNewSchedule}><Plus size={14} />Create schedule</button></section>
+        : <section className="ops-schedule-list" aria-label="Worker schedules">{schedules.map((schedule) => <ScheduleRow key={schedule.id} schedule={schedule} onToggle={onToggleSchedule} onRunNow={onRunSchedule} onDelete={onDeleteSchedule} />)}</section>}
     </>
   )
 }
@@ -172,12 +213,16 @@ function SchedulesView(): JSX.Element {
 type ViewProps = {
   runs: OperationsRun[]
   onNewWorker?: () => void
+  onNewSchedule?: () => void
+  onToggleSchedule?: (id: number, enabled: boolean) => void
+  onRunSchedule?: (id: number) => void
+  onDeleteSchedule?: (id: number) => void
   onOpenRun: (id: number) => void
 }
 
-export function OperationsViewContent({ view, runs, onNewWorker, onOpenRun }: { view: OperationsView; runs: OperationsRun[]; onNewWorker: () => void; onOpenRun: (id: number) => void }): JSX.Element {
+export function OperationsViewContent({ view, runs, schedules, onNewWorker, onNewSchedule, onToggleSchedule, onRunSchedule, onDeleteSchedule, onOpenRun }: { view: OperationsView; runs: OperationsRun[]; schedules: OperationsSchedule[]; onNewWorker: () => void; onNewSchedule: () => void; onToggleSchedule: (id: number, enabled: boolean) => void; onRunSchedule: (id: number) => void; onDeleteSchedule: (id: number) => void; onOpenRun: (id: number) => void }): JSX.Element {
   if (view === 'overview') return <OverviewView runs={runs} onNewWorker={onNewWorker} onOpenRun={onOpenRun} />
   if (view === 'approvals') return <ApprovalsView runs={runs} onOpenRun={onOpenRun} />
-  if (view === 'schedules') return <SchedulesView />
+  if (view === 'schedules') return <SchedulesView schedules={schedules} onNewSchedule={onNewSchedule} onToggleSchedule={onToggleSchedule} onRunSchedule={onRunSchedule} onDeleteSchedule={onDeleteSchedule} />
   return <RunsView runs={runs} onNewWorker={onNewWorker} onOpenRun={onOpenRun} />
 }
