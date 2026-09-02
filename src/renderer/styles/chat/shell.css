@@ -182,8 +182,8 @@
 .chat-scroll {
   grid-row: 2;
   --chat-inline: 14px;
-  --transcript-turn-gap: 16px;
-  --transcript-answer-gap: 10px;
+  --transcript-turn-gap: 22px;
+  --transcript-answer-gap: 14px;
   min-width: 0;
   min-height: 0;
   padding: 12px 0 16px;
@@ -208,7 +208,7 @@
 }
 
 .chat-scroll-content > [data-slot="message-scroller-item"] + [data-slot="message-scroller-item"] {
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 .chat-turn-user {

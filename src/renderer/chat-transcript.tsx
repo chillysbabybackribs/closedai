@@ -193,7 +193,7 @@ const ToolActivity = memo(function ToolActivity({
             className="prompt-tool-activity-trigger"
             aria-label={`${headline}, ${status}`}
           >
-            {failed ? (
+            {failed && open ? (
               <XCircle className="prompt-process-failed" aria-hidden="true" />
             ) : running ? (
               <Loader2 className="prompt-process-spinner animate-spin" aria-hidden="true" />

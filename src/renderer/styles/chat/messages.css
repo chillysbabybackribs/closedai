@@ -5,8 +5,8 @@
   max-width: 100%;
   margin: 0;
   color: var(--transcript-copy);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: var(--chat-fs-body, 14px);
+  line-height: var(--chat-lh-body, 1.68);
 }
 
 .message [data-slot="message-content"] {
@@ -25,14 +25,14 @@
 .user-message {
   width: 100%;
   box-sizing: border-box;
-  padding: 10px var(--chat-inline);
+  padding: 12px var(--chat-inline);
   border: solid var(--hairline);
   border-width: 1px 0;
   border-radius: 0;
   background: #212122;
   color: #e8e8e9;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--chat-fs-body, 14px);
+  line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -74,8 +74,8 @@
 
 .message-system [data-slot="bubble-content"] {
   padding: 10px 12px;
-  font-size: 12.5px;
-  line-height: 1.5;
+  font-size: 13.5px;
+  line-height: 1.55;
 }
 
 /* The tool reel supplies its own vertical margins (tool-activity.css); the row

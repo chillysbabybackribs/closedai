@@ -12,12 +12,12 @@
   display: inline-flex;
   width: fit-content;
   max-width: 100%;
-  min-height: 22px;
+  min-height: 26px;
   align-items: center;
   justify-content: flex-start;
-  gap: 6px;
+  gap: 7px;
   margin: 0;
-  padding: 2px 4px;
+  padding: 4px 6px;
   border: 0;
   border-radius: 4px;
   appearance: none;
@@ -39,14 +39,14 @@
 
 .chat-scroll-content > [data-slot='message-scroller-item']:has(.prompt-tool-activity)
   + [data-slot='message-scroller-item']:has(.prompt-tool-activity) {
-  margin-top: 2px;
+  margin-top: 5px;
 }
 
 .chat-scroll-content > [data-slot='message-scroller-item']:has(.prompt-message-assistant)
   + [data-slot='message-scroller-item']:has(.prompt-tool-activity),
 .chat-scroll-content > [data-slot='message-scroller-item']:has(.prompt-tool-activity)
   + [data-slot='message-scroller-item']:has(.prompt-message-assistant) {
-  margin-top: 6px;
+  margin-top: 11px;
 }
 
 .prompt-tool-activity-trigger > span { font-variant-numeric: tabular-nums; }
@@ -65,15 +65,19 @@
   color: var(--destructive, #d28b8b);
 }
 
-.prompt-tool-activity[data-state='output-error'] .prompt-tool-activity-trigger {
+/* A failure stays quiet while the reel is collapsed — a red headline shouts at
+   the user for a step they may not care about. The colour only appears once
+   they open the disclosure and are actually looking at the error. */
+.prompt-tool-activity[data-state='output-error']
+  .prompt-tool-activity-trigger[aria-expanded='true'] {
   color: var(--destructive, #d28b8b);
 }
 
 .prompt-tool-activity-content {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  margin: 4px 0 3px 6px;
+  gap: 5px;
+  margin: 6px 0 5px 6px;
   padding-left: 10px;
   border-left: 1.5px solid var(--border, rgb(255 255 255 / 10%));
 }
@@ -90,7 +94,7 @@
   border-radius: 6px;
   color: var(--transcript-activity, #9b9ba1);
   background: transparent;
-  padding: 4px 6px;
+  padding: 5px 7px;
 }
 
 .prompt-tool-trigger:hover {
@@ -110,7 +114,7 @@
   overflow: hidden;
   color: #ececee;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 12.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
