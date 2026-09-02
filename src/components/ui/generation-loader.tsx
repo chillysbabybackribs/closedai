@@ -11,6 +11,10 @@ export type GenerationLoaderProps = Omit<ComponentProps<'div'>, 'children'> & {
   variant?: GenerationLoaderVariant
 }
 
+/** Per-character delay for the label typewriter. Deliberately unhurried: the strip is ambient
+ *  status, not a progress bar, and a slow reveal reads as considered rather than frantic. */
+const TYPE_INTERVAL_MS = 95
+
 const CELL_SHAPES: Record<GenerationLoaderVariant, string> = {
   dots: 'rounded-full',
   squares: 'rounded-[1px]',
@@ -81,7 +85,7 @@ function useTypewriter(label: string): string {
       index += 1
       setVisible(label.slice(0, index))
       if (index >= label.length) window.clearInterval(id)
-    }, 28)
+    }, TYPE_INTERVAL_MS)
     return () => window.clearInterval(id)
   }, [label, reduceMotion])
 

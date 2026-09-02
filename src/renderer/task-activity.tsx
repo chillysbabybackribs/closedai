@@ -29,19 +29,19 @@ export function taskActivityLabel(items: ChatTranscriptItem[], activeTurnId: str
   for (let index = items.length - 1; index >= 0; index -= 1) {
     const item = items[index]!
     if (item.turnId !== activeTurnId) continue
-    if (item.type === 'reasoning' || item.type === 'plan' || item.type === 'user') return 'Thinking…'
-    if (item.type === 'assistant') return item.streaming && item.text ? 'Writing response…' : 'Thinking…'
+    if (item.type === 'reasoning' || item.type === 'plan' || item.type === 'user') return 'Thinking'
+    if (item.type === 'assistant') return item.streaming && item.text ? 'Writing response' : 'Thinking'
     if (isActivity(item)) {
       const status = item.status.toLowerCase()
-      if (status.includes('pending') || status.includes('request')) return 'Waiting for approval…'
-      if (status.includes('progress') || status.includes('running')) return `${activityTitle(item, true)}…`
-      return 'Thinking…'
+      if (status.includes('pending') || status.includes('request')) return 'Waiting for approval'
+      if (status.includes('progress') || status.includes('running')) return activityTitle(item, true)
+      return 'Thinking'
     }
-    if (item.type === 'screenshot') return 'Inspecting screenshot…'
-    return 'Working…'
+    if (item.type === 'screenshot') return 'Inspecting screenshot'
+    return 'Working'
   }
 
-  return 'Thinking…'
+  return 'Thinking'
 }
 
 function useLoaderTick(active: boolean): number {
