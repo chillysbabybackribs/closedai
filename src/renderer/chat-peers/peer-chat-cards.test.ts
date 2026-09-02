@@ -18,14 +18,27 @@ const peer: ChatPeerSummary = {
   updatedAt: 1
 }
 
-test('no peer cards render for an empty background list', () => {
+const idle: ChatPeerSummary = { ...peer, paneId: 'peer-c', title: 'Style cleanup', running: false, activity: null }
+
+test('no peer bar renders for an empty background list', () => {
   assert.equal(renderToStaticMarkup(createElement(PeerChatCards, { peers: [], onSelect: () => {} })), '')
 })
 
-test('running peer cards expose their title and activity', () => {
-  const html = renderToStaticMarkup(createElement(PeerChatCards, { peers: [peer], onSelect: () => {} }))
+test('the collapsed bar summarizes peer and running counts', () => {
+  const html = renderToStaticMarkup(createElement(PeerChatCards, { peers: [peer, idle], onSelect: () => {} }))
   assert.match(html, /aria-label="Peer chats"/)
+  assert.match(html, /2 peer chats/)
+  assert.match(html, /1 running/)
+  assert.match(html, /aria-expanded="false"/)
+  assert.doesNotMatch(html, /Background research/)
+})
+
+test('the expanded bar lists each peer with its title and activity', () => {
+  const html = renderToStaticMarkup(createElement(PeerChatCards, { peers: [peer, idle], onSelect: () => {}, defaultOpen: true }))
+  assert.match(html, /aria-expanded="true"/)
   assert.match(html, /Background research/)
   assert.match(html, /Web search/)
+  assert.match(html, /Style cleanup/)
+  assert.match(html, /Claude Code/)
   assert.match(html, /aria-label="Running"/)
 })
