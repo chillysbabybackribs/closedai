@@ -10,7 +10,7 @@
   height: 100%;
   overflow: hidden;
   background: var(--background, #181818);
-  --chat-column-width: 680px;
+  --chat-column-width: 720px;
   --chat-column-gutter: clamp(18px, 4vw, 32px);
   --chat-fs-body: 14px;
   --chat-fs-process: 13px;
