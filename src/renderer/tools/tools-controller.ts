@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { ToolCallRecord, ToolManifest, ToolTelemetrySnapshot } from '../../shared/tools.js'
+import type { ToolCallEvent, ToolManifest, ToolTelemetrySnapshot } from '../../shared/tools.js'
 
 export type ToolsController = {
   manifest: ToolManifest | null
@@ -37,15 +37,11 @@ export function useToolsController(active: boolean): ToolsController {
     const unsubscribe = window.closedai.tools.onEvent((event) => {
       if (!live) return
       if (event.type === 'cleared') {
-        setTelemetry((current) => current ? { ...current, stats: [], recent: [] } : current)
+        setTelemetry((current) => current ? { ...current, stats: [], totalCalls: 0 } : current)
         return
       }
       if (event.type === 'enabled') {
         setManifest((current) => current ? withEnabled(current, event.toolId, event.enabled) : current)
-        return
-      }
-      if (event.type === 'registered') {
-        void refresh()
         return
       }
       setTelemetry((current) => current ? applyRecord(current, event.record) : current)
@@ -92,7 +88,7 @@ function withEnabled(manifest: ToolManifest, id: string, enabled: boolean): Tool
 }
 
 /** Fold one new call into the snapshot so the modal updates without a round trip. */
-export function applyRecord(snapshot: ToolTelemetrySnapshot, record: ToolCallRecord): ToolTelemetrySnapshot {
+export function applyRecord(snapshot: ToolTelemetrySnapshot, record: ToolCallEvent): ToolTelemetrySnapshot {
   const keys: Array<string | null> = record.action ? [null, record.action] : [null]
   let stats = snapshot.stats
   for (const action of keys) {
@@ -101,12 +97,10 @@ export function applyRecord(snapshot: ToolTelemetrySnapshot, record: ToolCallRec
       ? {
           ...existing,
           calls: existing.calls + 1,
-          failures: existing.failures + (record.ok ? 0 : 1),
-          averageMs: Math.round((existing.averageMs * existing.calls + record.durationMs) / (existing.calls + 1)),
-          lastAt: Math.max(existing.lastAt ?? 0, record.at)
+          failures: existing.failures + (record.ok ? 0 : 1)
         }
-      : { toolId: record.toolId, action, calls: 1, failures: record.ok ? 0 : 1, averageMs: record.durationMs, lastAt: record.at }
+      : { toolId: record.toolId, action, calls: 1, failures: record.ok ? 0 : 1 }
     stats = [updated, ...stats.filter((stat) => !(stat.toolId === record.toolId && stat.action === action))]
   }
-  return { ...snapshot, stats, totalCalls: snapshot.totalCalls + 1, recent: [record, ...snapshot.recent].slice(0, 100) }
+  return { ...snapshot, stats, totalCalls: snapshot.totalCalls + 1 }
 }

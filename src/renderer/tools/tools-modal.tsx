@@ -4,7 +4,7 @@ import { RefreshCw, Trash2 } from 'lucide-react'
 
 import { Button } from '../../components/ui/button.js'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog.js'
-import type { ToolCallRecord, ToolInfo, ToolStats } from '../../shared/tools.js'
+import type { ToolInfo, ToolStats } from '../../shared/tools.js'
 import { ToolCard, type ToolCardItem } from './tool-card.js'
 import { useToolsController } from './tools-controller.js'
 
@@ -22,7 +22,7 @@ export function ToolsModal({ open, onOpenChange }: ToolsModalProps): JSX.Element
   const tools = useToolsController(open)
   const groups = useMemo(
     () => (tools.manifest?.namespaces.flatMap((namespace) => namespace.tools) ?? [])
-      .map((tool) => ({ tool, items: cardItems(tool, tools.telemetry?.stats ?? [], tools.telemetry?.recent ?? []) })),
+      .map((tool) => ({ tool, items: cardItems(tool, tools.telemetry?.stats ?? []) })),
     [tools.manifest, tools.telemetry]
   )
   const items = groups.flatMap((group) => group.items)
@@ -37,7 +37,7 @@ export function ToolsModal({ open, onOpenChange }: ToolsModalProps): JSX.Element
             <DialogTitle>Tools</DialogTitle>
             <DialogDescription id="tools-modal-description">
               {tools.manifest
-                ? `${enabledCount} of ${items.length} on · advertised to ${tools.manifest.providers.join(', ') || 'no provider'} · ${totalCalls} call${totalCalls === 1 ? '' : 's'} recorded`
+                ? `${enabledCount} of ${items.length} on · advertised to ${tools.manifest.providers.join(', ') || 'no provider'} · ${totalCalls} run${totalCalls === 1 ? '' : 's'} recorded`
                 : 'Loading…'}
             </DialogDescription>
           </div>
@@ -46,7 +46,7 @@ export function ToolsModal({ open, onOpenChange }: ToolsModalProps): JSX.Element
               <RefreshCw aria-hidden="true" /> Refresh
             </Button>
             <Button type="button" variant="ghost" size="sm" disabled={totalCalls === 0} onClick={() => void tools.clearTelemetry()}>
-              <Trash2 aria-hidden="true" /> Clear telemetry
+              <Trash2 aria-hidden="true" /> Clear counts
             </Button>
           </div>
         </header>
@@ -81,29 +81,21 @@ export function ToolsModal({ open, onOpenChange }: ToolsModalProps): JSX.Element
 }
 
 /** One card per action of an action tool; one card for a plain tool. */
-function cardItems(tool: ToolInfo, stats: ToolStats[], recent: ToolCallRecord[]): ToolCardItem[] {
+function cardItems(tool: ToolInfo, stats: ToolStats[]): ToolCardItem[] {
   if (tool.actions.length === 0) {
     return [{
       id: tool.id,
       name: tool.name,
       badges: [tool.deferLoading ? 'deferred' : null].filter((badge): badge is string => badge !== null),
-      description: tool.description,
-      fields: tool.fields,
       enabled: tool.enabled,
-      stat: stats.find((stat) => stat.toolId === tool.id && stat.action === null) ?? null,
-      recent: recent.filter((record) => record.toolId === tool.id),
-      inputSchema: tool.inputSchema
+      stat: stats.find((stat) => stat.toolId === tool.id && stat.action === null) ?? null
     }]
   }
   return tool.actions.map((action) => ({
     id: action.id,
     name: action.name,
     badges: [],
-    description: action.description,
-    fields: action.fields,
     enabled: action.enabled,
-    stat: stats.find((stat) => stat.toolId === tool.id && stat.action === action.name) ?? null,
-    recent: recent.filter((record) => record.toolId === tool.id && record.action === action.name),
-    inputSchema: null
+    stat: stats.find((stat) => stat.toolId === tool.id && stat.action === action.name) ?? null
   }))
 }
