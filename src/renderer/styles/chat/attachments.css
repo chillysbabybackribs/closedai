@@ -103,12 +103,100 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
-  gap: 5px;
+  gap: 8px;
   margin-bottom: 6px;
 }
 
-.prompt-message-user-attachments [data-slot='attachment'].prompt-image-attachment {
+.prompt-message-user-attachments [data-slot='attachment'].prompt-image-attachment,
+.prompt-message-user-attachments [data-slot='attachment'][data-kind='image'],
+.prompt-attachments [data-slot='attachment'][data-kind='image'] {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.prompt-image-attachment-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 160px;
+  max-width: 200px;
+  min-width: 0;
+  padding: 0;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.prompt-image-attachment-media {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: none !important;
+  background: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.prompt-image-attachment-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  border: none !important;
+}
+
+.prompt-image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--muted-foreground);
+}
+
+.prompt-image-remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
   border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 110ms ease;
+}
+
+.prompt-image-remove-btn:hover {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.prompt-image-remove-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.prompt-image-attachment-name {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+  line-height: 1.3;
 }
 
 .prompt-message-user-attachments > span {

@@ -38,7 +38,11 @@ export type ChatAttachment = {
   | { kind: 'image'; source: { type: 'path'; path: string } | { type: 'url'; url: string } }
 )
 
-export type ChatAttachmentSummary = Pick<ChatAttachment, 'id' | 'kind' | 'name'>
+export type ChatAttachmentSummary = Pick<ChatAttachment, 'id' | 'kind' | 'name'> & {
+  path?: string
+  url?: string
+  source?: { type: 'path'; path: string } | { type: 'url'; url: string }
+}
 
 export type ChatFileChange = {
   path: string

@@ -192,14 +192,14 @@ function attachmentsFromContent(value: unknown, itemId: string): { attachments?:
     const content = recordOf(entry)
     if (!content) return []
     if (content.type === 'localImage' && typeof content.path === 'string') {
-      return [{ id: `${itemId}:${index}`, kind: 'image', name: fileName(content.path) }]
+      return [{ id: `${itemId}:${index}`, kind: 'image', name: fileName(content.path), path: content.path, source: { type: 'path', path: content.path } }]
     }
     if (content.type === 'image' && typeof content.url === 'string') {
-      return [{ id: `${itemId}:${index}`, kind: 'image', name: 'Pasted image' }]
+      return [{ id: `${itemId}:${index}`, kind: 'image', name: 'Pasted image', url: content.url, source: { type: 'url', url: content.url } }]
     }
     if (content.type === 'mention' && typeof content.path === 'string') {
       const name = typeof content.name === 'string' && content.name.trim() ? content.name : fileName(content.path)
-      return [{ id: `${itemId}:${index}`, kind: 'file', name }]
+      return [{ id: `${itemId}:${index}`, kind: 'file', name, path: content.path }]
     }
     return []
   })

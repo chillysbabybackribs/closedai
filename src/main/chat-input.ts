@@ -25,15 +25,20 @@ export function buildChatInput(text: string, attachments: ChatAttachment[]): {
     const name = validName(attachment)
     const id = typeof attachment?.id === 'string' && attachment.id ? attachment.id : crypto.randomUUID()
     if (attachment.kind === 'file') {
-      input.push({ type: 'mention', name, path: validPath(attachment.path) })
+      const path = validPath(attachment.path)
+      input.push({ type: 'mention', name, path })
+      summaries.push({ id, kind: 'file', name, path })
     } else if (attachment.kind === 'image' && attachment.source?.type === 'path') {
-      input.push({ type: 'localImage', path: validPath(attachment.source.path) })
+      const path = validPath(attachment.source.path)
+      input.push({ type: 'localImage', path })
+      summaries.push({ id, kind: 'image', name, path, source: attachment.source })
     } else if (attachment.kind === 'image' && attachment.source?.type === 'url') {
-      input.push({ type: 'image', url: validImageUrl(attachment.source.url) })
+      const url = validImageUrl(attachment.source.url)
+      input.push({ type: 'image', url })
+      summaries.push({ id, kind: 'image', name, url, source: attachment.source })
     } else {
       throw new Error('Invalid attachment')
     }
-    summaries.push({ id, kind: attachment.kind, name })
   }
   return { prompt, input, summaries }
 }

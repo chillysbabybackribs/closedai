@@ -1,6 +1,7 @@
 import type { ChangeEvent, JSX, RefObject } from 'react'
 import { FileImage, FileText, Plus, Upload, X } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
+import { cn } from '../lib/utils.js'
 import {
   Attachment,
   AttachmentAction,
@@ -32,10 +33,17 @@ async function attachmentFromFile(file: File): Promise<ChatAttachment> {
   const path = window.closedai.chat.attachmentPath(file)
   const image = file.type.startsWith('image/') || IMAGE_EXTENSIONS.test(file.name)
   if (image) {
+    const dataUrl = await readDataUrl(file).catch(() => undefined)
     const source: Extract<ChatAttachment, { kind: 'image' }>['source'] = path
       ? { type: 'path', path }
-      : { type: 'url', url: await readDataUrl(file) }
-    return { id: crypto.randomUUID(), kind: 'image', name: file.name || 'Pasted image', source }
+      : { type: 'url', url: dataUrl || '' }
+    return {
+      id: crypto.randomUUID(),
+      kind: 'image',
+      name: file.name || 'Pasted image',
+      source,
+      ...(dataUrl ? { url: dataUrl } : {})
+    }
   }
   if (!path) throw new Error(`${file.name || 'This file'} is not backed by a local file`)
   return { id: crypto.randomUUID(), kind: 'file', name: file.name, path }
@@ -133,21 +141,48 @@ function AttachmentCard({
   onRemove,
   className
 }: {
-  attachment: ChatAttachmentSummary
+  attachment: ChatAttachmentSummary | ChatAttachment
   onRemove?: () => void
   className?: string
 }): JSX.Element {
   const preview = imagePreview(attachment)
+  if (attachment.kind === 'image' || preview) {
+    return (
+      <div className={cn('prompt-image-attachment-card', className)} data-slot="attachment" data-kind="image">
+        <div className="prompt-image-attachment-media">
+          {preview ? (
+            <img src={preview} alt={attachment.name} />
+          ) : (
+            <div className="prompt-image-placeholder">
+              <FileImage aria-hidden="true" />
+            </div>
+          )}
+          {onRemove ? (
+            <button
+              type="button"
+              className="prompt-image-remove-btn"
+              aria-label={`Remove ${attachment.name}`}
+              onClick={onRemove}
+            >
+              <X aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
+        <span className="prompt-image-attachment-name" title={attachment.name}>
+          {attachment.name}
+        </span>
+      </div>
+    )
+  }
+
   return (
     <Attachment size="sm" className={className}>
-      <AttachmentMedia variant={preview ? 'image' : 'icon'}>
-        {preview
-          ? <img src={preview} alt="" />
-          : attachment.kind === 'image' ? <FileImage aria-hidden="true" /> : <FileText aria-hidden="true" />}
+      <AttachmentMedia variant="icon">
+        <FileText aria-hidden="true" />
       </AttachmentMedia>
       <AttachmentContent>
         <AttachmentTitle>{attachment.name}</AttachmentTitle>
-        <AttachmentDescription>{attachment.kind === 'image' ? 'Image' : 'File'}</AttachmentDescription>
+        <AttachmentDescription>File</AttachmentDescription>
       </AttachmentContent>
       {onRemove ? (
         <AttachmentActions>
@@ -160,11 +195,31 @@ function AttachmentCard({
   )
 }
 
-function imagePreview(attachment: ChatAttachmentSummary): string | null {
-  if (!isImageAttachment(attachment)) return null
-  return attachment.source.type === 'url' ? attachment.source.url : null
+function toImageSrc(pathOrUrl: string): string {
+  if (!pathOrUrl) return ''
+  if (
+    pathOrUrl.startsWith('data:') ||
+    pathOrUrl.startsWith('file:') ||
+    pathOrUrl.startsWith('http:') ||
+    pathOrUrl.startsWith('https:')
+  ) {
+    return pathOrUrl
+  }
+  return `file://${encodeURI(pathOrUrl)}`
 }
 
-function isImageAttachment(attachment: ChatAttachmentSummary): attachment is Extract<ChatAttachment, { kind: 'image' }> {
-  return attachment.kind === 'image' && 'source' in attachment
+function imagePreview(attachment: ChatAttachmentSummary | ChatAttachment): string | null {
+  if (attachment.kind !== 'image') return null
+  if ('url' in attachment && typeof attachment.url === 'string' && attachment.url) {
+    return attachment.url
+  }
+  if ('source' in attachment && attachment.source) {
+    const source = attachment.source
+    if (source.type === 'url' && source.url) return source.url
+    if (source.type === 'path' && source.path) return toImageSrc(source.path)
+  }
+  if ('path' in attachment && typeof attachment.path === 'string' && attachment.path) {
+    return toImageSrc(attachment.path)
+  }
+  return null
 }
