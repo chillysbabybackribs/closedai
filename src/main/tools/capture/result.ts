@@ -2,8 +2,8 @@ import type { ToolResult } from '../tool.js'
 import type { CapturedImage } from './host.js'
 import type { ScreenshotStore, ScreenshotSurface } from './screenshot-store.js'
 
-/** Below this fraction of the source width, UI text in the model copy stops being readable. */
-const LEGIBLE_SCALE = 0.75
+/** Below this fraction of the source width (a 2560-wide window lands at 50%), UI text in the model copy stops being readable; a 1920-wide one (67%) still reads. */
+const LEGIBLE_SCALE = 0.6
 
 /** Hand the model the bounded image and keep the full-resolution one for the transcript. */
 export function imageResult(

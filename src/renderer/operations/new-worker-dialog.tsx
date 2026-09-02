@@ -1,16 +1,26 @@
 import type { FormEvent, JSX } from 'react'
 import { useEffect, useState } from 'react'
 import { Sparkles, X } from 'lucide-react'
+import type { ChatModel } from '../../shared/chat.js'
 
 export function NewWorkerDialog({
   onClose,
-  onCreate
+  onCreate,
+  models,
+  defaultModel
 }: {
   onClose: () => void
-  onCreate: (task: string, workspace: string) => void
+  onCreate: (task: string, workspace: string, modelId: string) => Promise<void>
+  models: ChatModel[]
+  defaultModel: string | null
 }): JSX.Element {
   const [task, setTask] = useState('')
   const [workspace, setWorkspace] = useState('closedai')
+  const [modelId, setModelId] = useState(defaultModel ?? models[0]?.id ?? '')
+  const [error, setError] = useState('')
+  useEffect(() => {
+    if (!modelId && (defaultModel || models[0]?.id)) setModelId(defaultModel ?? models[0]!.id)
+  }, [defaultModel, modelId, models])
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') onClose()
@@ -19,10 +29,15 @@ export function NewWorkerDialog({
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [onClose])
 
-  function create(event: FormEvent): void {
+  async function create(event: FormEvent): Promise<void> {
     event.preventDefault()
     if (!task.trim()) return
-    onCreate(task.trim(), workspace)
+    setError('')
+    try {
+      await onCreate(task.trim(), workspace, modelId)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
   }
 
   return (
@@ -52,9 +67,18 @@ export function NewWorkerDialog({
             <option value="closedai">closedai</option><option value="desktop">desktop</option><option value="platform">platform</option>
           </select>
         </label>
+        <label>
+          Codex model
+          <select aria-label="Codex model" value={modelId} onChange={(event) => setModelId(event.target.value)} disabled={models.length === 0}>
+            {!modelId ? <option value="">Choose model</option> : null}
+            {models.map((model) => <option key={model.id} value={model.id}>{model.displayName}</option>)}
+          </select>
+          {models.length === 0 ? <small>Connect Codex to load available models.</small> : null}
+          {error ? <small role="alert">{error}</small> : null}
+        </label>
         <footer>
           <button type="button" onClick={onClose}>Cancel</button>
-          <button type="submit" className="ops-primary-button" disabled={!task.trim()}><Sparkles size={14} fill="currentColor" />Create worker</button>
+          <button type="submit" className="ops-primary-button" disabled={!task.trim() || !modelId}><Sparkles size={14} fill="currentColor" />Create worker</button>
         </footer>
       </form>
     </>
