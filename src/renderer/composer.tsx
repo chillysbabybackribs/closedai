@@ -105,7 +105,7 @@ export function Composer({ enabled, running, models, selectedModel, selectedReas
           {attachmentError && <div className="prompt-attachment-error" role="alert">{attachmentError}</div>}
 
           <PromptInputActions className="prompt-composer-actions">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <AttachmentPicker
                 disabled={!enabled || running || sending}
                 inputRef={fileInputRef}

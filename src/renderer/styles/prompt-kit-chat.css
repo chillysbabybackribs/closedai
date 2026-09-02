@@ -340,6 +340,14 @@
   color: #f0f0f1;
 }
 
+.prompt-composer-attachment {
+  color: #fff;
+}
+
+.prompt-composer-attachment:not(:disabled):hover {
+  color: #fff;
+}
+
 .prompt-composer-send,
 .prompt-composer-stop {
   width: 30px;
@@ -351,13 +359,13 @@
 }
 
 .prompt-composer-send:not(:disabled) {
-  background: var(--antigravity-blue, #8ab4f8);
-  color: #121213;
-  box-shadow: 0 1px 4px var(--antigravity-blue-glow, rgb(138 180 248 / 36%));
+  background: #fff;
+  color: #171717;
+  box-shadow: 0 1px 4px rgb(255 255 255 / 22%);
 }
 
 .prompt-composer-send:not(:disabled):hover {
-  background: var(--antigravity-blue-hover, #a5c5fa);
+  background: #e8e8e8;
   transform: scale(1.04);
 }
 

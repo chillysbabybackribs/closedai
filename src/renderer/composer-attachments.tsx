@@ -76,11 +76,11 @@ export function AttachmentPicker({
             type="button"
             variant="ghost"
             size="icon"
-            className="prompt-composer-tool rounded-full"
+            className="prompt-composer-tool prompt-composer-attachment rounded-full"
             aria-label="Add attachment"
             disabled={disabled}
           >
-            <Plus size={18} aria-hidden="true" />
+            <Plus size={19} strokeWidth={2.75} aria-hidden="true" />
           </Button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
