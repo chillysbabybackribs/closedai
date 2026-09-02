@@ -45,6 +45,7 @@ const DEFAULT_CONNECTION: ChatConnection = {
   message: 'Starting Codex…'
 }
 
+/** The Codex provider: one long-lived app-server process serving every Codex turn. */
 export class ChatService extends EventEmitter {
   private readonly client: AppServerClient
   private connection: ChatConnection = DEFAULT_CONNECTION
@@ -98,6 +99,7 @@ export class ChatService extends EventEmitter {
 
   snapshot(): ChatSnapshot {
     return {
+      provider: 'codex',
       connection: { ...this.connection },
       account: this.account ? { ...this.account } : null,
       models: this.modelState.models.map((model) => ({ ...model })),
@@ -401,6 +403,7 @@ export class ChatService extends EventEmitter {
     this.connection = connection
     this.emitEvent({
       type: 'connection',
+      provider: 'codex',
       connection: { ...connection },
       account: this.account ? { ...this.account } : null,
       models: this.modelState.models.map((model) => ({ ...model })),

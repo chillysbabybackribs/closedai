@@ -14,6 +14,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   // successful import flips this so it happens exactly once.
   browserCookiesImported: false,
   chatThreadId: null,
+  chatClaudeSessionId: null,
   chatModelId: null,
   chatReasoningEffort: null,
   disabledTools: [],
@@ -39,6 +40,9 @@ function normalize(parsed: unknown): AppSettings {
         : DEFAULT_APP_SETTINGS.browserCookiesImported,
     chatThreadId: typeof record.chatThreadId === 'string' && record.chatThreadId.length > 0
       ? record.chatThreadId
+      : null,
+    chatClaudeSessionId: typeof record.chatClaudeSessionId === 'string' && record.chatClaudeSessionId.length > 0
+      ? record.chatClaudeSessionId
       : null,
     chatModelId: typeof record.chatModelId === 'string' && record.chatModelId.length > 0
       ? record.chatModelId

@@ -5,13 +5,18 @@ export type ChatConnection = {
   message: string
 }
 
+/** Which chat backend owns a model or thread. Codex is the app-server; Claude is the Claude Agent SDK. */
+export type ChatProvider = 'codex' | 'claude'
+
 export type ChatAccount = {
-  type: 'chatgpt' | 'apiKey' | 'amazonBedrock' | 'other'
+  type: 'chatgpt' | 'apiKey' | 'amazonBedrock' | 'claude' | 'other'
   email: string | null
   planType: string | null
 }
 
 export type ChatModel = {
+  provider: ChatProvider
+  /** Unique across providers; Claude ids carry a `claude:` prefix so the hub routes without a lookup. */
   id: string
   displayName: string
   description: string
@@ -109,6 +114,8 @@ export type ChatContextUsage = {
 }
 
 export type ChatSnapshot = {
+  /** The provider whose thread the pane shows; its connection and account are the ones below. */
+  provider: ChatProvider
   connection: ChatConnection
   account: ChatAccount | null
   models: ChatModel[]
@@ -125,7 +132,16 @@ export type ChatSnapshot = {
 
 export type ChatEvent =
   | { type: 'replace'; snapshot: ChatSnapshot }
-  | { type: 'connection'; connection: ChatConnection; account: ChatAccount | null; models: ChatModel[]; selectedModel: string | null; selectedReasoningEffort: string | null }
+  | {
+      type: 'connection'
+      provider: ChatProvider
+      connection: ChatConnection
+      account: ChatAccount | null
+      /** Every provider's models merged, so the picker can switch providers from any state. */
+      models: ChatModel[]
+      selectedModel: string | null
+      selectedReasoningEffort: string | null
+    }
   | { type: 'model'; selectedModel: string; selectedReasoningEffort: string | null }
   | { type: 'reasoningEffort'; selectedReasoningEffort: string }
   | { type: 'thread'; threadId: string | null; threadName: string | null }

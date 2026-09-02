@@ -23,6 +23,7 @@ export function normalizeModels(value: unknown): ChatModel[] {
     const model = recordOf(entry)
     if (!model || typeof model.id !== 'string') return []
     return [{
+      provider: 'codex',
       id: model.id,
       displayName: typeof model.displayName === 'string' ? model.displayName : model.id,
       description: stringOf(model.description),

@@ -77,9 +77,11 @@ export type BrowserDownload = {
 
 export type AppSettings = {
   browserCookiesImported: boolean
-  /** Last app-server thread selected by the single chat surface. */
+  /** Last app-server (Codex) thread selected by the single chat surface. */
   chatThreadId: string | null
-  /** User's preferred Codex model for new chats. */
+  /** Last Claude Agent SDK session the chat surface showed; resumed on the next Claude turn. */
+  chatClaudeSessionId: string | null
+  /** User's preferred model for new chats; a `claude:` prefix selects the Claude provider. */
   chatModelId: string | null
   /** User's preferred reasoning effort when the selected model supports it. */
   chatReasoningEffort: string | null
