@@ -1,0 +1,104 @@
+# Antigravity provider
+
+ClosedAI's chat has three providers behind one pane: Codex (the app-server, `src/main/chat-service.ts`),
+Claude Code (the Claude Agent SDK, `src/main/claude/`), and Antigravity (Google's `agy` CLI on the
+user's Antigravity subscription, `src/main/antigravity/`). `src/main/chat-hub.ts` owns which one the
+pane shows, merges their model catalogs into one picker, and routes every call by the id it carries
+through `src/shared/chat-providers.ts`. Antigravity model ids and thread ids carry an `agy:` prefix
+(`src/main/antigravity/antigravity-ids.ts`).
+
+Everything below was verified live against `agy` 1.1.24 on 2026-09-02. The CLI self-updates, so the
+notes name what was measured rather than what the docs promise.
+
+## Why the CLI
+
+The subscription is only reachable through Google's own clients. `agy` is the sanctioned headless one:
+it authenticates from the credentials the Antigravity desktop app or a prior `agy` login cached under
+`~/.gemini`, and the app never sees or stores a Google token. The proxy projects that extract the
+desktop app's OAuth client and call the internal endpoint directly are deliberately not used.
+
+## Semantics
+
+- **A thread belongs to a provider.** Picking an Antigravity model switches the pane to its current
+  conversation; the old thread stays in history. Opening a thread from history switches to its
+  provider. Switching is refused while a turn runs.
+- **Sign-in is per provider.** `agy models` at startup both fills the catalog and proves the sign-in;
+  an authentication failure shows the pane's sign-in message (run `agy` in a terminal and complete the
+  Google login), and choosing an Antigravity model re-checks.
+- **No approval prompts**, matching the other lanes: `--dangerously-skip-permissions` (without it the
+  init event reports `permission_mode: request-review` and a headless turn stalls on a prompt nobody
+  answers).
+- **Models** come from `agy models`, never a hardcoded list: the CLI drops ids between versions and a
+  dropped id fails a turn instantly. Effort is baked into the CLI's ids (`gemini-3.8-flash-high`), so
+  the picker shows one entry per family and the shared effort control chooses the suffix
+  (`antigravity-models.ts`). Families without a suffix (the Claude models) take no effort. Effort and
+  model are spawn-time flags, so a change takes effect with the next process.
+- **Tools** are the shared registry, served to the CLI over MCP (`antigravity-mcp.ts`, below). The
+  model sees `mcp_embedded_browser_page` where Claude sees `mcp__embedded_browser__page`. Every call
+  runs through `ToolRegistry.call`, so validation, timeouts, telemetry, and the Tools modal's switches
+  apply. Namespaces are registered with the CLI when the bridge starts; a namespace switched on later
+  is advertised after the next app launch.
+- **The custom agent** (`antigravity-profile.ts`) is written under `<userData>/antigravity/profile` and
+  reaches the CLI as an extra `--add-dir` plus `--agent closedai`. Its frontmatter `tools:` list is the
+  agent's native tool grant (files, search, shell, tasks). Without it a `--agent` run keeps only a
+  read-only set and the model narrates diffs instead of editing. A `PreToolUse` hook denies the CLI's
+  own browser, web-fetch, search, and image tools with a steer to the ClosedAI equivalents, because
+  those drive a browser the user cannot see and carry none of their sessions.
+- **No context gauge.** `agy` reports token usage per step but no context window, and the transcript
+  shows a gauge only with a denominator.
+
+## Process lifecycle (`antigravity-session.ts`, `antigravity-process.ts`)
+
+One `agy --print= --input-format stream-json --output-format stream-json` process per live thread.
+Turns go in as one JSON line each (`{"event":"user","message":{"role":"user","content":…}}`); the
+process stays alive across turns on one conversation, is closed after 15 idle minutes, and the next
+turn resumes the conversation in a fresh process with `--conversation <id>`. `--print=` with an
+empty value is load-bearing: a bare `--print` swallows the next flag as its prompt.
+
+`--add-dir <workspace>` must be passed and must come first. The spawn cwd alone does not reach the
+model's shell, which otherwise starts in the CLI's state dir; the first `--add-dir` does.
+
+There is no interrupt in the protocol. Stopping a turn kills the process group (TERM, then KILL
+after three seconds) so shell commands the CLI forked stop too; the conversation resumes later.
+
+## Stream (`antigravity-stream.ts`)
+
+Events are `{"event": <kind>, <kind>: {…}}`. `init` carries the conversation id; `step_update`
+carries every step (`user_input`, `agent_response` with `text_delta`, `tool` with
+`tool_info{name, parameters, output, error}`, ACTIVE then DONE or ERROR); `result` closes the turn
+with a status and the final `response`. The delta stream is not a reliable transcript (a one-word
+reply streamed only a newline), so the last assistant item is repaired from `result.response`.
+`result` arrives a few seconds after the last step.
+
+## MCP bridge (`antigravity-mcp.ts`)
+
+The main process hosts one streamable-HTTP MCP endpoint per enabled namespace on
+`127.0.0.1:<random port>/mcp/<namespace>` (MCP SDK 1.30). The CLI POSTs `initialize` and then opens a
+standalone GET SSE stream, so the transport is stateful (one per `mcp-session-id`). Registration is
+global and only through the CLI's verbs: `agy mcp add --type http <namespace> <url>` and
+`agy mcp enable`, which write `~/.gemini/config/mcp_config.json`. `mcp add` drops per-tool flags, so
+the bridge then rewrites the file to mark every non-deferred tool `{eager: true}`; without that the
+tools hide behind the generic `call_mcp_tool` gateway. The entries are removed at quit. While the app
+runs, a standalone `agy` session also sees the servers, which is harmless.
+
+Each `tools/call` carries `_meta['antigravity.google/conversation_id']`. The service binds
+conversation ids to its pane and turn as soon as the init event names one, and that binding becomes
+the registry's call context. Completed calls are recorded per conversation so the transcript can
+attach the app's full-resolution capture to the matching `closedai_ui · capture` row.
+
+## History (`antigravity-history.ts`)
+
+Conversations live in the CLI's store (`~/.gemini/antigravity-cli`): one SQLite file of protobuf steps
+per conversation, and `conversation_summaries.db` with the title the CLI generates, a preview,
+timestamps, and the workspaces the conversation was added to. The app lists that table for its
+workspace (top-level conversations only). The steps are opaque, so the app saves its own copy of each
+conversation's transcript under `<userData>/antigravity/transcripts` after every turn and shows it
+when a thread is reopened; a conversation this app never showed reopens empty with a notice. The CLI
+has no tag or delete verb, so archiving is an app-side set.
+
+## Not done yet
+
+- Pasted images are written to `<userData>/antigravity/attachments` and listed by path for the
+  model's `view_file`; whether the current models read them there has not been verified.
+- Thread names arrive from the CLI's title generator a moment after the first turn; the pane polls
+  once two seconds after each turn.
