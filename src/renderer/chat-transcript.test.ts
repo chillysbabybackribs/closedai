@@ -57,6 +57,8 @@ test('thinking stays visible while tool calls stream on the same turn', () => {
   assert.match(html, /Thinking/)
   assert.match(html, /rg AGENTS.md/)
 })
+
+test('identically named tool calls collapse to a counted label', () => {
   const items: ChatTranscriptItem[] = [
     { type: 'user', id: 'u', turnId: 't', text: 'Go' },
     { type: 'tool', id: 's1', turnId: null, label: 'Web search', detail: 'q1', status: 'completed' },
