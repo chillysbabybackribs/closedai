@@ -37,7 +37,7 @@ const MessageScroller = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement
 )
 
 const MessageScrollerViewport = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  function MessageScrollerViewport({ className, onKeyDown, onPointerDown, onScroll, onTouchStart, onWheel, ...props }, ref) {
+  function MessageScrollerViewport({ className, onKeyDown, onScroll, onTouchMove, onWheel, ...props }, ref) {
     const { setViewport, state, syncFromViewport, userScrollIntent } = useScrollerContext()
     const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
       if (userScrollKey(event)) userScrollIntent()
@@ -51,12 +51,11 @@ const MessageScrollerViewport = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDi
         tabIndex={0}
         data-slot="message-scroller-viewport"
         data-pending-scroll={state.pending ? '' : undefined}
-        className={cn('size-full min-h-0 min-w-0 overflow-y-auto overscroll-contain', className)}
+        className={cn('size-full min-h-0 min-w-0 overflow-y-auto overscroll-contain data-pending-scroll:invisible', className)}
         onKeyDown={handleKeyDown}
-        onPointerDown={(event) => { userScrollIntent(); onPointerDown?.(event) }}
         onScroll={(event) => { syncFromViewport(); onScroll?.(event) }}
-        onTouchStart={(event) => { userScrollIntent(); onTouchStart?.(event) }}
-        onWheel={(event) => { userScrollIntent(); onWheel?.(event) }}
+        onTouchMove={(event) => { userScrollIntent(); onTouchMove?.(event) }}
+        onWheel={(event) => { if (event.deltaY < 0) userScrollIntent(); onWheel?.(event) }}
         {...props}
       />
     )
@@ -108,6 +107,7 @@ function MessageScrollerButton({
   className,
   children,
   onClick,
+  tabIndex,
   ...props
 }: ScrollerButtonProps): JSX.Element {
   const { scrollToEnd, scrollToStart, state } = useScrollerContext()
@@ -118,7 +118,7 @@ function MessageScrollerButton({
       variant="secondary"
       size="icon-sm"
       inert={!active}
-      tabIndex={active ? props.tabIndex : -1}
+      tabIndex={active ? tabIndex : -1}
       data-slot="message-scroller-button"
       data-direction={direction}
       data-active={String(active)}

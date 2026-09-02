@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { scrollEdges } from './message-scroller-state.ts'
+import { preservedScrollTop, scrollEdges } from './message-scroller-state.ts'
 
 test('short content has no scrollable edge', () => {
   assert.deepEqual(scrollEdges({ clientHeight: 500, scrollHeight: 300, scrollTop: 0 }, 24), {
@@ -29,4 +29,8 @@ test('rubber-band positions are clamped before calculating edges', () => {
     start: false,
     end: true
   })
+})
+
+test('prepending rows preserves the reader position by the exact height delta', () => {
+  assert.equal(preservedScrollTop({ scrollHeight: 2_000, scrollTop: 500 }, 2_750), 1_250)
 })

@@ -21,6 +21,14 @@ export function scrollEdges(metrics: ScrollMetrics, threshold: number): ScrollEd
   }
 }
 
+/** Keep the same content under the reader after older rows are inserted above it. */
+export function preservedScrollTop(
+  before: Pick<ScrollMetrics, 'scrollHeight' | 'scrollTop'>,
+  nextScrollHeight: number
+): number {
+  return Math.max(0, before.scrollTop + nextScrollHeight - before.scrollHeight)
+}
+
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value))
 }

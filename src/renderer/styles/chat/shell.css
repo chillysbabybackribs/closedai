@@ -158,7 +158,8 @@
    chat-pane.tsx, `data-scrollable` by the component (which ends are reachable).
    Gating on BOTH ends being reachable is what keeps this from ever leaving a
    dead end: parked at the top or bottom only one button exists, so the pair is
-   not in conflict and nothing is taken away — the way back stays one click. */
+   not in conflict and nothing is taken away — the way back stays one click. The
+   custom scroller writes both attributes from its constant-time metrics. */
 .chat-scroll-root[data-scrollable~="start"][data-scrollable~="end"][data-scroll-dir="up"]
   [data-slot="message-scroller-button"][data-direction="end"],
 .chat-scroll-root[data-scrollable~="start"][data-scrollable~="end"][data-scroll-dir="down"]

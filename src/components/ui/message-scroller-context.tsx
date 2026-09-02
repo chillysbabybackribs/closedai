@@ -11,7 +11,12 @@ import {
   type ReactNode
 } from 'react'
 
-import { scrollEdges, type ScrollEdges, type ScrollMetrics } from './message-scroller-state.js'
+import {
+  preservedScrollTop,
+  scrollEdges,
+  type ScrollEdges,
+  type ScrollMetrics
+} from './message-scroller-state.js'
 
 const EDGE_THRESHOLD = 24
 
@@ -59,6 +64,7 @@ export function MessageScrollerProvider({
   const followingRef = useRef(autoScroll && defaultScrollPosition === 'end')
   const lastScrollTopRef = useRef(0)
   const prependRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null)
+  const scrollTargetRef = useRef<ScrollPosition | null>(null)
   const frameRef = useRef<number | null>(null)
 
   const syncFromViewport = useCallback(() => {
@@ -67,7 +73,13 @@ export function MessageScrollerProvider({
     const direction = metrics.scrollTop < lastScrollTopRef.current ? 'up' : 'down'
     lastScrollTopRef.current = metrics.scrollTop
     const edges = scrollEdges(metrics, EDGE_THRESHOLD)
-    if (!edges.end) followingRef.current = autoScroll
+    if (!edges.end) {
+      followingRef.current = autoScroll
+      if (scrollTargetRef.current === 'end') scrollTargetRef.current = null
+    } else if (scrollTargetRef.current !== 'end') {
+      followingRef.current = false
+    }
+    if (!edges.start && scrollTargetRef.current === 'start') scrollTargetRef.current = null
     setState((previous) => (
       previous.direction === direction &&
       previous.edges.start === edges.start &&
@@ -89,6 +101,7 @@ export function MessageScrollerProvider({
   const scrollToStart = useCallback((behavior: ScrollBehavior = 'smooth') => {
     if (!viewport) return
     followingRef.current = false
+    scrollTargetRef.current = 'start'
     viewport.scrollTo({ top: 0, behavior })
     scheduleSync()
   }, [scheduleSync, viewport])
@@ -96,6 +109,7 @@ export function MessageScrollerProvider({
   const scrollToEnd = useCallback((behavior: ScrollBehavior = 'smooth') => {
     if (!viewport) return
     followingRef.current = autoScroll
+    scrollTargetRef.current = 'end'
     viewport.scrollTo({ top: viewport.scrollHeight, behavior })
     scheduleSync()
   }, [autoScroll, scheduleSync, viewport])
@@ -104,12 +118,13 @@ export function MessageScrollerProvider({
     if (!viewport) return
     prependRef.current = { scrollHeight: viewport.scrollHeight, scrollTop: viewport.scrollTop }
     followingRef.current = false
+    scrollTargetRef.current = null
   }, [viewport])
 
   const userScrollIntent = useCallback(() => {
-    if (!viewport) return
-    if (scrollEdges(viewportMetrics(viewport), EDGE_THRESHOLD).end) followingRef.current = false
-  }, [viewport])
+    followingRef.current = false
+    scrollTargetRef.current = null
+  }, [])
 
   useLayoutEffect(() => {
     if (!viewport || !content) return
@@ -124,7 +139,7 @@ export function MessageScrollerProvider({
       const prepended = prependRef.current
       if (prepended) {
         prependRef.current = null
-        viewport.scrollTop = prepended.scrollTop + (viewport.scrollHeight - prepended.scrollHeight)
+        viewport.scrollTop = preservedScrollTop(prepended, viewport.scrollHeight)
       } else if (followingRef.current) {
         viewport.scrollTop = viewport.scrollHeight
       }
