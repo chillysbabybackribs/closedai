@@ -1,7 +1,7 @@
 import type { WebContents } from 'electron'
 import type { BrowserTabInfo } from '../../shared/types.js'
 import type { CdpToolHost } from '../tools/cdp/host.js'
-import { CdpPageAgent } from './agent-page/page-agent.js'
+import { CdpPageController } from './page-control/page-controller.js'
 import { CdpSession, type CdpEventPage } from './cdp-session.js'
 
 export type CdpBrowserSource = {
@@ -11,7 +11,7 @@ export type CdpBrowserSource = {
 
 /** Resolves stable ClosedAI tab ids into transient CDP attachments. */
 export class BrowserCdpAccess implements CdpToolHost {
-  private readonly connections = new Map<string, { session: CdpSession; page: CdpPageAgent }>()
+  private readonly connections = new Map<string, { session: CdpSession; page: CdpPageController }>()
 
   constructor(private readonly browser: () => CdpBrowserSource | null) {}
 
@@ -69,7 +69,7 @@ export class BrowserCdpAccess implements CdpToolHost {
     this.connections.clear()
   }
 
-  private resolve(tabId?: string): { tab: BrowserTabInfo; session: CdpSession; page: CdpPageAgent } {
+  private resolve(tabId?: string): { tab: BrowserTabInfo; session: CdpSession; page: CdpPageController } {
     const browser = this.browser()
     if (!browser) throw new Error('The browser is not available yet')
     const tabs = browser.tabList()
@@ -84,7 +84,7 @@ export class BrowserCdpAccess implements CdpToolHost {
     const session = new CdpSession(tab.id, contents, (closed) => {
       if (this.connections.get(tab.id)?.session === closed) this.connections.delete(tab.id)
     })
-    const page = new CdpPageAgent(session)
+    const page = new CdpPageController(session)
     this.connections.set(tab.id, { session, page })
     return { tab, session, page }
   }

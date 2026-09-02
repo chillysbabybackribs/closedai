@@ -32,7 +32,7 @@ type SnapshotState = {
 }
 
 /** Agent-oriented DOM geometry and input built only from CDP commands. */
-export class CdpPageAgent {
+export class CdpPageController {
   private snapshot: SnapshotState | null = null
 
   constructor(private readonly target: CdpCommandTarget) {}

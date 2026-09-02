@@ -29,7 +29,7 @@ export type PreparedClick = {
   viewport: { width: number; height: number }
 }
 
-const WORLD_STATE = '__closedaiAgentPageV1'
+const WORLD_STATE = '__closedaiPageControlV1'
 
 export const FRAME_OWNER_QUAD_FUNCTION = `function () {
   const getQuads = this.getBoxQuads

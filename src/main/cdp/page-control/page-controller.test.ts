@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { CdpPageAgent, type CdpCommandTarget } from './page-agent.ts'
+import { CdpPageController, type CdpCommandTarget } from './page-controller.ts'
 import type { LocalInspection } from './runtime.ts'
 
 type SeenCommand = { method: string; params: Record<string, unknown> }
@@ -55,7 +55,7 @@ test('inspect returns labelled main-viewport coordinates and click re-resolves i
       throw new Error(`Unexpected ${method}`)
     }
   }
-  const agent = new CdpPageAgent(target)
+  const agent = new CdpPageController(target)
   const inspection = await agent.inspect(200)
   assert.equal(inspection.coordinateSpace, 'main_viewport_css')
   assert.deepEqual(inspection.viewport, {
@@ -117,7 +117,7 @@ test('inspect normalizes child-frame geometry through its owner content quad', a
       throw new Error(`Unexpected ${method}`)
     }
   }
-  const agent = new CdpPageAgent(target)
+  const agent = new CdpPageController(target)
   const inspection = await agent.inspect(20)
   assert.deepEqual(inspection.elements[0]?.center, { x: 240, y: 130 })
   assert.deepEqual(inspection.elements[0]?.bounds, { x: 220, y: 120, width: 40, height: 20 })
@@ -142,7 +142,7 @@ test('click_at hit-tests before input and rejects points outside the viewport', 
       throw new Error(`Unexpected ${method}`)
     }
   }
-  const agent = new CdpPageAgent(target)
+  const agent = new CdpPageController(target)
   await assert.rejects(() => agent.clickAt({ x: 640, y: 20 }), /outside the 640×480 main viewport/)
   assert.deepEqual(seen, ['Page.getLayoutMetrics'])
   const result = await agent.clickAt({ x: 12.5, y: 20 })
