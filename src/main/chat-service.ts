@@ -30,6 +30,7 @@ import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
 import { loadChatModels } from './chat-model-catalog.js'
 import { buildChatInput } from './chat-input.js'
+import { shrinkPastedImages } from './chat-attachment-images.js'
 import type { ScreenshotStore } from './tools/capture/screenshot-store.js'
 
 type ThreadResponse = {
@@ -128,7 +129,7 @@ export class ChatService extends EventEmitter {
 
   async send(text: string, attachments: ChatAttachment[] = []): Promise<void> {
     try {
-      const { prompt, input, summaries } = buildChatInput(text, attachments)
+      const { prompt, input, summaries } = buildChatInput(text, shrinkPastedImages(attachments))
       if (input.length === 0) return
       await this.ensureReady()
       await this.compactor.idle()

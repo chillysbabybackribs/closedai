@@ -9,10 +9,10 @@ import type { AppSettings } from '../../shared/types.js'
 const AUTO_COMPACT_TOKEN_LIMIT = 'model_auto_compact_token_limit'
 
 /** `-c key=value` pairs for `codex app-server`, derived from the app settings. */
-export function appServerConfigArgs(settings: Pick<AppSettings, 'chatAutoCompactTokens'>): string[] {
+export function appServerConfigArgs(settings: Pick<AppSettings, 'chatMidTurnCompactTokens'>): string[] {
   const args: string[] = []
-  if (settings.chatAutoCompactTokens > 0) {
-    args.push('-c', `${AUTO_COMPACT_TOKEN_LIMIT}=${Math.round(settings.chatAutoCompactTokens)}`)
+  if (settings.chatMidTurnCompactTokens > 0) {
+    args.push('-c', `${AUTO_COMPACT_TOKEN_LIMIT}=${Math.round(settings.chatMidTurnCompactTokens)}`)
   }
   return args
 }

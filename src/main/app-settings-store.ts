@@ -15,13 +15,11 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatThreadId: null,
   chatModelId: null,
   disabledTools: [],
-  // Compaction is lossy, so it waits for a comfortably full window rather than firing early;
-  // 60% leaves room for a long turn while keeping old screenshots from piling up.
-  chatCompactAtPercent: 60,
-  // A single turn of UI work can add 200k tokens through tool results before the between-turn
-  // compaction above gets a chance, and latency grows with every replayed token. 100k keeps a
-  // working-set-sized context through long turns at the cost of one summary per ~30 calls.
-  chatAutoCompactTokens: 100_000
+  // Compaction is lossy and takes 60-90 seconds, and prompt caching keeps per-step latency
+  // nearly flat with context size, so it waits for a genuinely full window: 80% leaves room
+  // for one more long turn before Codex's own ~90% compaction would interrupt it mid-turn.
+  chatCompactAtPercent: 80,
+  chatMidTurnCompactTokens: 0
 }
 
 const MAX_COMPACT_AT_PERCENT = 95
@@ -48,13 +46,13 @@ function normalize(parsed: unknown): AppSettings {
     chatCompactAtPercent: typeof record.chatCompactAtPercent === 'number' && Number.isFinite(record.chatCompactAtPercent)
       ? Math.min(MAX_COMPACT_AT_PERCENT, Math.max(0, Math.round(record.chatCompactAtPercent)))
       : DEFAULT_APP_SETTINGS.chatCompactAtPercent,
-    chatAutoCompactTokens: normalizeAutoCompactTokens(record.chatAutoCompactTokens)
+    chatMidTurnCompactTokens: normalizeAutoCompactTokens(record.chatMidTurnCompactTokens)
   }
 }
 
 /** 0 disables; anything else lands between the bounds so a typo cannot compact every call. */
 function normalizeAutoCompactTokens(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_APP_SETTINGS.chatAutoCompactTokens
+  if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_APP_SETTINGS.chatMidTurnCompactTokens
   if (value <= 0) return 0
   return Math.min(MAX_AUTO_COMPACT_TOKENS, Math.max(MIN_AUTO_COMPACT_TOKENS, Math.round(value)))
 }

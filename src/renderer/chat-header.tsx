@@ -81,9 +81,10 @@ export function ChatHeader({
   )
 }
 
-/** Past these the model is noticeably slower per call; the colour nudges toward continuing fresh. */
-const WARM_PERCENT = 40
-const HOT_PERCENT = 70
+/** Latency stays flat with context (prompt cache), so the colour tracks how much old history the
+ * model is wading through; past these, quality drifts and a fresh chat is worth considering. */
+const WARM_PERCENT = 50
+const HOT_PERCENT = 75
 
 function ContextGauge({ usage }: { usage: ChatContextUsage }): JSX.Element {
   const level = usage.percent >= HOT_PERCENT ? 'hot' : usage.percent >= WARM_PERCENT ? 'warm' : 'cool'

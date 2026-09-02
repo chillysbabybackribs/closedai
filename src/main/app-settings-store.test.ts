@@ -15,23 +15,27 @@ async function storeWith(contents: string | null): Promise<{ store: AppSettingsS
 test('a missing file yields the defaults, including the compaction threshold', async () => {
   const { store } = await storeWith(null)
   assert.deepEqual(store.get(), DEFAULT_APP_SETTINGS)
-  assert.equal(store.get().chatCompactAtPercent, 60)
-  assert.equal(store.get().chatAutoCompactTokens, 100_000)
+  assert.equal(store.get().chatCompactAtPercent, 80)
+  assert.equal(store.get().chatMidTurnCompactTokens, 0)
 })
 
-test('the mid-turn auto-compact limit is bounded, with 0 leaving it to Codex', async () => {
-  assert.equal((await storeWith('{"chatAutoCompactTokens": 0}')).store.get().chatAutoCompactTokens, 0)
-  assert.equal((await storeWith('{"chatAutoCompactTokens": -1}')).store.get().chatAutoCompactTokens, 0)
-  assert.equal((await storeWith('{"chatAutoCompactTokens": 500}')).store.get().chatAutoCompactTokens, 20_000)
-  assert.equal((await storeWith('{"chatAutoCompactTokens": 9e9}')).store.get().chatAutoCompactTokens, 2_000_000)
-  assert.equal((await storeWith('{"chatAutoCompactTokens": "lots"}')).store.get().chatAutoCompactTokens, 100_000)
-  assert.equal((await storeWith('{"chatAutoCompactTokens": 80000.4}')).store.get().chatAutoCompactTokens, 80_000)
+test('the opt-in mid-turn compact limit is bounded, with 0 leaving it to Codex', async () => {
+  assert.equal((await storeWith('{"chatMidTurnCompactTokens": 0}')).store.get().chatMidTurnCompactTokens, 0)
+  assert.equal((await storeWith('{"chatMidTurnCompactTokens": -1}')).store.get().chatMidTurnCompactTokens, 0)
+  assert.equal((await storeWith('{"chatMidTurnCompactTokens": 500}')).store.get().chatMidTurnCompactTokens, 20_000)
+  assert.equal((await storeWith('{"chatMidTurnCompactTokens": 9e9}')).store.get().chatMidTurnCompactTokens, 2_000_000)
+  assert.equal((await storeWith('{"chatMidTurnCompactTokens": "lots"}')).store.get().chatMidTurnCompactTokens, 0)
+  assert.equal((await storeWith('{"chatMidTurnCompactTokens": 80000.4}')).store.get().chatMidTurnCompactTokens, 80_000)
+  // The retired key from the first cut of this feature is dropped rather than honoured.
+  const { store } = await storeWith('{"chatAutoCompactTokens": 100000}')
+  assert.equal(store.get().chatMidTurnCompactTokens, 0)
+  assert.equal('chatAutoCompactTokens' in store.get(), false)
 })
 
 test('the compaction threshold is clamped and bad values fall back', async () => {
   assert.equal((await storeWith('{"chatCompactAtPercent": 140}')).store.get().chatCompactAtPercent, 95)
   assert.equal((await storeWith('{"chatCompactAtPercent": -4}')).store.get().chatCompactAtPercent, 0)
-  assert.equal((await storeWith('{"chatCompactAtPercent": "soon"}')).store.get().chatCompactAtPercent, 60)
+  assert.equal((await storeWith('{"chatCompactAtPercent": "soon"}')).store.get().chatCompactAtPercent, 80)
   const { store, file } = await storeWith('{}')
   const updated = await store.set({ chatCompactAtPercent: 72.4 })
   assert.equal(updated.chatCompactAtPercent, 72)

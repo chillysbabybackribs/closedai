@@ -89,10 +89,12 @@ export type AppSettings = {
    */
   chatCompactAtPercent: number
   /**
-   * Have Codex compact the thread in the middle of a turn once the context passes this many
-   * tokens, so a long run of tool calls cannot fill the window. 0 keeps Codex's own limit.
+   * Opt-in: have Codex compact in the middle of a turn once the context passes this many tokens.
+   * 0 (default) keeps Codex's own near-limit compaction. Measured 2026-09-02: with prompt caching
+   * a model step costs about the same at 200k context as at 40k, while each compaction costs
+   * 60-90 seconds and loses detail, so an early limit only makes sense to cap spend.
    */
-  chatAutoCompactTokens: number
+  chatMidTurnCompactTokens: number
 }
 
 /** A still of the page the user is looking at; `imageUrl` is a data URL. */
