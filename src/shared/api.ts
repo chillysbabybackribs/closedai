@@ -1,7 +1,6 @@
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatEvent, ChatSnapshot, ChatThreadSummary } from './chat.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
-import type { OperationsEvent, OperationsModelCatalog, OperationsRun, OperationsSchedule, OperationsSnapshot, RunStatus, ScheduleFrequency } from './operations.js'
 
 export type Unsubscribe = () => void
 
@@ -63,16 +62,5 @@ export type ClosedaiApi = {
     /** Persisted. Takes effect for calls immediately and for advertising on the next thread. */
     setEnabled: (toolId: string, enabled: boolean) => Promise<void>
     onEvent: (listener: (event: ToolsEvent) => void) => Unsubscribe
-  }
-  operations: {
-    snapshot: () => Promise<OperationsSnapshot>
-    models: () => Promise<OperationsModelCatalog>
-    create: (task: string, workspace: string, modelId: string) => Promise<OperationsRun>
-    setStatus: (id: number, status: RunStatus) => Promise<void>
-    createSchedule: (name: string, task: string, workspace: string, modelId: string, frequency: ScheduleFrequency) => Promise<OperationsSchedule>
-    setScheduleEnabled: (id: number, enabled: boolean) => Promise<void>
-    runScheduleNow: (id: number) => Promise<OperationsRun>
-    deleteSchedule: (id: number) => Promise<void>
-    onChanged: (listener: (event: OperationsEvent) => void) => Unsubscribe
   }
 }

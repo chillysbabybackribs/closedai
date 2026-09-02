@@ -51,16 +51,6 @@
   overflow: hidden;
 }
 
-/* Operations replaces the browser in the same right-hand workspace. The native page is
-   occluded by the controller while this layer owns the pointer events, so chat stays
-   untouched and the existing divider remains the resize affordance. */
-.workspace-surface-operations {
-  position: absolute;
-  z-index: 2;
-  inset: 0;
-  background: #0a0b0d;
-}
-
 /* When the editor takes over, remove the browser surface from the grid entirely. A mere
    width:0 leaves ~40px of residual width from the inner browser-shell's intrinsic size,
    which insets the editor from the divider (a dead gap between chat and editor). display:none

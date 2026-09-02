@@ -11,7 +11,6 @@
 @import "./styles/browser.css";
 @import "./styles/browser-downloads.css";
 @import "./styles/workspace.css";
-@import "./styles/operations/index.css";
 /* After every surface it decorates: the title-bar rule relies on source order
    to re-set the background-image that .shell-titlebar's shorthand clears. */
 @import "./styles/texture.css";

@@ -2,66 +2,44 @@ import type { JSX } from 'react'
 import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/inter/wght-italic.css'
 import '@fontsource-variable/geist-mono/wght.css'
-import React, { useState } from 'react'
+import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { AppModeToggle, type AppMode } from './app-mode-toggle.js'
+import { Sparkles } from 'lucide-react'
 import { AppWindowControls } from './app-window-controls.js'
 import { BrowserPane } from './browser-pane.js'
 import { useBrowserController } from './browser-controller.js'
 import { ChatPane } from './chat-pane.js'
-import { attentionRunCount, INITIAL_RUNS } from './operations/operations-data.js'
-import { OperationsWorkspace } from './operations/operations-workspace.js'
 import { WorkspaceSplit } from './workspace-split.js'
 import './styles.css'
 
 function App(): JSX.Element {
-  const desktopAvailable = typeof window.closedai !== 'undefined'
-  const [mode, setMode] = useState<AppMode>(() => desktopAvailable ? 'chat' : 'operations')
-  const [operationsAttentionCount, setOperationsAttentionCount] = useState(() => attentionRunCount(INITIAL_RUNS))
   return (
-    <div className="shell" data-ui-surface="shell" data-app-mode={mode}>
+    <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
-        <AppModeToggle
-          mode={mode}
-          onChange={setMode}
-          chatAvailable={desktopAvailable}
-          operationsAttentionCount={operationsAttentionCount}
-        />
+        <div className="app-brand" aria-label="ClosedAI">
+          <span className="app-brand-mark"><Sparkles size={12} fill="currentColor" /></span>
+          <strong>ClosedAI</strong>
+        </div>
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
-      <div className="workspace" data-mode={mode} data-agents="closed">
-        {desktopAvailable ? (
-          <DesktopWorkspace mode={mode} onAttentionCountChange={setOperationsAttentionCount} />
-        ) : (
-          <OperationsWorkspace onAttentionCountChange={setOperationsAttentionCount} />
-        )}
+      <div className="workspace" data-mode="chat" data-agents="closed">
+        <DesktopWorkspace />
       </div>
     </div>
   )
 }
 
-function DesktopWorkspace({
-  mode,
-  onAttentionCountChange
-}: {
-  mode: AppMode
-  onAttentionCountChange: (count: number) => void
-}): JSX.Element {
-  const browser = useBrowserController('browser', true, mode === 'operations')
+function DesktopWorkspace(): JSX.Element {
+  const browser = useBrowserController('browser')
   return (
     <WorkspaceSplit
       chat={<ChatPane />}
       workspace={
-        <div className="workspace-right" data-mode={mode === 'operations' ? 'operations' : 'browser'} data-with-browser="yes" data-refs="no">
+        <div className="workspace-right" data-mode="browser" data-with-browser="yes" data-refs="no">
           <div className="workspace-surface workspace-surface-browser">
             <BrowserPane controller={browser} />
           </div>
-          {mode === 'operations' ? (
-            <div className="workspace-surface workspace-surface-operations">
-              <OperationsWorkspace onAttentionCountChange={onAttentionCountChange} />
-            </div>
-          ) : null}
         </div>
       }
     />

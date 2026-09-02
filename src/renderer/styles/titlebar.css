@@ -38,6 +38,35 @@
   pointer-events: none;
 }
 
+.app-brand {
+  position: absolute;
+  top: 0;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 100%;
+  color: var(--chrome-control-strong);
+  font-size: 11px;
+  letter-spacing: var(--tracking-tight);
+  -webkit-app-region: no-drag;
+}
+
+.app-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 6px;
+  background: #6941c6;
+  color: white;
+}
+
+@media (max-width: 760px) {
+  .app-brand strong { display: none; }
+}
+
 /* Chat actions and workspace-mode controls form one compact left rail immediately
    after the agents-sidebar toggle. The empty remainder stays draggable. */
 .titlebar-chat-actions {
