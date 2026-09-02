@@ -51,11 +51,39 @@
 
 .prompt-tool-activity-trigger > span { font-variant-numeric: tabular-nums; }
 
-.prompt-process-spinner {
-  width: 13px;
-  height: 13px;
-  flex: none;
-  color: var(--antigravity-blue, #8ab4f8);
+/* The running row says so by moving, not by carrying an icon. A highlight band travels along the
+   headline's own glyphs (background-clip: text), so exactly one line in the transcript is ever in
+   motion — the one still streaming. */
+@keyframes prompt-process-shimmer {
+  from { background-position: 180% 0; }
+  to { background-position: -80% 0; }
+}
+
+.prompt-tool-activity-trigger[data-running] > span {
+  background-image: linear-gradient(
+    100deg,
+    var(--transcript-activity, #9b9ba1) 0%,
+    var(--transcript-activity, #9b9ba1) 38%,
+    var(--transcript-activity-hover, #d4d4d8) 50%,
+    var(--transcript-activity, #9b9ba1) 62%,
+    var(--transcript-activity, #9b9ba1) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: prompt-process-shimmer 2.4s linear infinite;
+}
+
+/* Motion is the only live signal here, so when it is suppressed the row still has to read as
+   running — hold the brighter ink instead of animating it. */
+@media (prefers-reduced-motion: reduce) {
+  .prompt-tool-activity-trigger[data-running] > span {
+    animation: none;
+    background-image: none;
+    color: var(--transcript-activity-hover, #d4d4d8);
+  }
 }
 
 .prompt-process-failed {

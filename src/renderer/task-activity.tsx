@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { GenerationLoader } from '../components/ui/generation-loader.js'
 import type { ChatTranscriptItem } from '../shared/chat.js'
-import { activityTitle, isActivity } from './transcript-rows.js'
+import { isActivity } from './transcript-rows.js'
 
 export function TaskActivity({
   items,
@@ -30,14 +30,17 @@ export function taskActivityLabel(items: ChatTranscriptItem[], activeTurnId: str
     const item = items[index]!
     if (item.turnId !== activeTurnId) continue
     if (item.type === 'reasoning' || item.type === 'plan' || item.type === 'user') return 'Thinking'
-    if (item.type === 'assistant') return item.streaming && item.text ? 'Writing response' : 'Thinking'
+    if (item.type === 'assistant') return item.streaming && item.text ? 'Responding' : 'Thinking'
     if (isActivity(item)) {
       const status = item.status.toLowerCase()
-      if (status.includes('pending') || status.includes('request')) return 'Waiting for approval'
-      if (status.includes('progress') || status.includes('running')) return activityTitle(item, true)
+      if (status.includes('pending') || status.includes('request')) return 'Needs your approval'
+      // Deliberately not the activity's own title: that exact string is already the headline of the
+      // row directly above this strip, and repeating it made the two read as one stuttering line.
+      // The row names what is happening; the strip only says that something still is.
+      if (status.includes('progress') || status.includes('running')) return 'Working'
       return 'Thinking'
     }
-    if (item.type === 'screenshot') return 'Inspecting screenshot'
+    if (item.type === 'screenshot') return 'Looking'
     return 'Working'
   }
 

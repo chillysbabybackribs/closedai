@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { memo, useEffect, useMemo, useState } from 'react'
-import { ChevronRight, ChevronUp, Loader2, XCircle } from 'lucide-react'
+import { ChevronRight, ChevronUp, XCircle } from 'lucide-react'
 
 import { Bubble, BubbleContent } from '../components/ui/bubble.js'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible.js'
@@ -191,13 +191,15 @@ const ToolActivity = memo(function ToolActivity({
           <button
             type="button"
             className="prompt-tool-activity-trigger"
+            data-running={running || undefined}
             aria-label={`${headline}, ${status}`}
           >
             {failed && open ? (
               <XCircle className="prompt-process-failed" aria-hidden="true" />
-            ) : running ? (
-              <Loader2 className="prompt-process-spinner animate-spin" aria-hidden="true" />
             ) : null}
+            {/* Live-ness is carried by the headline's own shimmer rather than a spinner beside it,
+                so a turn full of activity rows reads as one moving line instead of a column of
+                competing icons. */}
             <span>{headline}</span>
             <ChevronRight className={`size-3 prompt-process-chevron transition-transform duration-150 ${open ? 'rotate-90' : ''}`} aria-hidden="true" />
           </button>
