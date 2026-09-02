@@ -9,7 +9,7 @@
 .prompt-reasoning-trigger,
 .prompt-reasoning-pending,
 .prompt-reasoning-label {
-  min-height: 28px;
+  min-height: 32px;
   margin: 0;
   padding: 0;
   border: 0;
@@ -17,7 +17,7 @@
   background: transparent;
   color: var(--transcript-activity);
   font-family: inherit;
-  font-size: var(--chat-fs-process, 15px);
+  font-size: var(--chat-fs-process, 18px);
   font-weight: 500;
   line-height: 1.4;
 }
@@ -35,7 +35,7 @@
 
 .prompt-reasoning-copy {
   color: var(--muted-foreground);
-  font-size: var(--chat-fs-process, 15px);
+  font-size: var(--chat-fs-process, 18px);
   line-height: 1.6;
 }
 
@@ -51,7 +51,7 @@
   display: inline-flex;
   width: fit-content;
   max-width: 100%;
-  min-height: 28px;
+  min-height: 32px;
   align-items: center;
   justify-content: flex-start;
   gap: 7px;
@@ -62,7 +62,7 @@
   background: transparent;
   color: var(--transcript-activity);
   font-family: inherit;
-  font-size: var(--chat-fs-process, 15px);
+  font-size: var(--chat-fs-process, 18px);
   font-weight: 500;
   line-height: 1.4;
   cursor: pointer;
@@ -76,8 +76,8 @@
 
 .prompt-process-spinner,
 .prompt-process-failed {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   flex: none;
 }
 
@@ -86,8 +86,8 @@
 }
 
 .prompt-tool-activity-caret {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   margin-left: 1px;
   opacity: 0.55;
   transition: transform 120ms var(--ease-chrome);
@@ -131,7 +131,7 @@
   overflow: hidden;
   color: var(--foreground);
   font-family: var(--font-mono);
-  font-size: 13.5px;
+  font-size: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -139,7 +139,7 @@
 .prompt-tool-title > em {
   flex: 0 0 auto;
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: 14px;
   font-style: normal;
 }
 
@@ -150,14 +150,14 @@
 
 .prompt-tool-section { padding: 10px; }
 .prompt-tool-section + .prompt-tool-section { border-top: 1px solid var(--border); }
-.prompt-tool-section > strong { color: var(--muted-foreground); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.prompt-tool-section > strong { color: var(--muted-foreground); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
 .prompt-tool-section > pre {
   max-height: 280px;
   margin: 7px 0 0;
   overflow: auto;
   color: var(--code-text);
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 14px;
   line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;

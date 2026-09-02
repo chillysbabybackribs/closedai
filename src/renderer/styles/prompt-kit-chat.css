@@ -4,12 +4,12 @@
   /* Header (title + new chat/history), transcript or history list, composer. */
   grid-template-rows: auto minmax(0, 1fr) auto;
   background: var(--background);
-  --chat-fs-body: 18px;
-  --chat-fs-process: 15px;
-  --chat-fs-meta: 14px;
-  --chat-lh-body: 1.65;
-  --chat-gap: 16px;
-  --chat-turn-extra: 18px;
+  --chat-fs-body: 22px;
+  --chat-fs-process: 18px;
+  --chat-fs-meta: 16px;
+  --chat-lh-body: 1.6;
+  --chat-gap: 20px;
+  --chat-turn-extra: 22px;
 }
 
 .prompt-chat-scroll {
@@ -23,7 +23,7 @@
 .prompt-chat-content {
   min-height: 100%;
   gap: var(--chat-gap);
-  padding: 28px clamp(16px, 3vw, 24px) 24px;
+  padding: 32px clamp(16px, 3vw, 26px) 28px;
 }
 
 .prompt-message {
@@ -45,7 +45,7 @@
 .prompt-message-user-content {
   width: fit-content;
   max-width: min(88%, 36rem);
-  padding: 12px 16px;
+  padding: 14px 18px;
   border: 1px solid var(--border);
   border-radius: 20px 20px 6px 20px;
   background: var(--secondary);
@@ -81,8 +81,8 @@
 }
 
 .prompt-message-actions {
-  min-height: 28px;
-  margin-top: 8px;
+  min-height: 32px;
+  margin-top: 10px;
   opacity: 0;
   transition: opacity 120ms var(--ease-chrome);
 }
@@ -164,7 +164,7 @@
 
 .prompt-markdown th,
 .prompt-markdown td {
-  padding: 7px 9px;
+  padding: 9px 11px;
   border: 1px solid var(--border);
   text-align: left;
 }
@@ -267,8 +267,8 @@
 }
 
 .prompt-chat-empty-icon svg { width: 19px; height: 19px; }
-.prompt-chat-empty h2 { margin: 0; color: var(--foreground); font-size: 22px; font-weight: 600; letter-spacing: var(--tracking-tight); }
-.prompt-chat-empty p { max-width: 340px; margin: 10px 0 16px; font-size: 16px; line-height: 1.5; }
+.prompt-chat-empty h2 { margin: 0; color: var(--foreground); font-size: 26px; font-weight: 600; letter-spacing: var(--tracking-tight); }
+.prompt-chat-empty p { max-width: 380px; margin: 12px 0 18px; font-size: 18px; line-height: 1.5; }
 
 .prompt-composer {
   grid-row: 3;
@@ -293,9 +293,9 @@
 }
 
 .prompt-composer-textarea {
-  min-height: 56px;
-  max-height: min(36vh, 280px);
-  padding: 10px 11px 6px;
+  min-height: 64px;
+  max-height: min(36vh, 320px);
+  padding: 12px 12px 8px;
   color: var(--foreground);
   font-size: var(--chat-fs-body);
   line-height: 1.5;
@@ -305,8 +305,8 @@
 .prompt-composer-actions { justify-content: space-between; gap: 8px; margin-top: 6px; padding: 0 3px 3px; }
 
 .prompt-composer-tool {
-  height: 36px;
-  min-width: 36px;
+  height: 40px;
+  min-width: 40px;
   border-color: var(--input);
   background: transparent;
   color: var(--muted-foreground);
@@ -317,7 +317,7 @@
 .prompt-composer-tool:not(:disabled):hover { background: var(--accent); color: var(--accent-foreground); }
 
 .prompt-composer-send,
-.prompt-composer-stop { width: 36px; height: 36px; border-radius: 999px; }
+.prompt-composer-stop { width: 40px; height: 40px; border-radius: 999px; }
 .prompt-composer-send:not(:disabled) { background: var(--primary); color: var(--primary-foreground); }
 .prompt-composer-send:not(:disabled):hover { background: color-mix(in srgb, var(--primary) 88%, white); }
 .prompt-composer-stop { color: var(--stop-ink); }

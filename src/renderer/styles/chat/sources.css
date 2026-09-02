@@ -2,7 +2,7 @@
   display: inline-flex;
   align-items: center;
   max-width: 148px;
-  height: 24px;
+  height: 28px;
   padding: 0 8px;
   gap: 5px;
   overflow: hidden;
@@ -10,7 +10,7 @@
   border-radius: 999px;
   background: var(--muted);
   color: var(--muted-foreground);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1;
   text-decoration: none;
   vertical-align: -5px;
@@ -61,7 +61,7 @@
   align-items: center;
   gap: 6px;
   color: var(--foreground);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .prompt-source-preview strong,
@@ -72,7 +72,7 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.45;
 }
 

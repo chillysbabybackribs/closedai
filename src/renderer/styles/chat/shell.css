@@ -182,7 +182,7 @@
 .chat-header-title {
   overflow: hidden;
   color: var(--chrome-control-fg);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 550;
   letter-spacing: var(--tracking-ui);
   line-height: 1.2;
@@ -197,7 +197,7 @@
   background: var(--chrome-control-hover);
   color: var(--cwd-ink, #7eb0e0);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -211,7 +211,7 @@
   background: var(--chrome-control-hover);
   color: var(--chrome-control-fg);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
   white-space: nowrap;
