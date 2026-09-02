@@ -277,10 +277,10 @@
   background: transparent;
 }
 
-/* Before the first message, center the peer cards and composer as one unit.
-   Absolute positioning also lets the empty scroller fill the pane, while the normal
-   document-flow position takes over as soon as a transcript item appears. */
-.prompt-chat-composer-centered .chat-composer-stack {
+/* Before the first message, center the composer. Absolute positioning also lets
+   the empty scroller fill the pane, while the normal document-flow position takes
+   over as soon as a transcript item appears. */
+.prompt-chat-composer-centered .prompt-composer {
   position: absolute;
   z-index: 2;
   top: 50%;

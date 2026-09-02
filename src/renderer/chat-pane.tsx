@@ -17,7 +17,6 @@ import { ChatHistory } from './chat-history.js'
 import { chatTitle, PROVIDER_LABELS } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
-import { PeerChatCards } from './chat-peers/peer-chat-cards.js'
 import { ToolsModal } from './tools/tools-modal.js'
 
 export function ChatPane({ controller }: { controller?: ReturnType<typeof useChatController> } = {}): JSX.Element {
@@ -31,10 +30,6 @@ export function ChatPane({ controller }: { controller?: ReturnType<typeof useCha
   const title = chatTitle(state)
   const hasMessages = state.items.length > 0
   const centerComposer = ready && !hasMessages && !historyOpen
-  const backgroundPeers = chat.peers.filter((peer) =>
-    peer.paneId !== chat.selectedPaneId &&
-    (peer.running || peer.threadId !== null || peer.preview.length > 0)
-  )
 
   async function sendMessage(text: string, attachments: ChatAttachment[]): Promise<void> {
     setHistoryOpen(false)
@@ -97,25 +92,18 @@ export function ChatPane({ controller }: { controller?: ReturnType<typeof useCha
           )}
         </TranscriptScroller>
       )}
-      <div className="chat-composer-stack">
-        <PeerChatCards
-          peers={backgroundPeers}
-          onSelect={(paneId) => void chat.selectPane(paneId)}
-          onClose={(paneId) => void chat.closePeer(paneId)}
-        />
-        <Composer
-          enabled={ready}
-          running={running}
-          models={state.models}
-          selectedModel={state.selectedModel}
-          selectedReasoningEffort={state.selectedReasoningEffort}
-          contextUsage={state.contextUsage}
-          onModelChange={chat.selectModel}
-          onReasoningEffortChange={chat.selectReasoningEffort}
-          onSend={sendMessage}
-          onStop={chat.interrupt}
-        />
-      </div>
+      <Composer
+        enabled={ready}
+        running={running}
+        models={state.models}
+        selectedModel={state.selectedModel}
+        selectedReasoningEffort={state.selectedReasoningEffort}
+        contextUsage={state.contextUsage}
+        onModelChange={chat.selectModel}
+        onReasoningEffortChange={chat.selectReasoningEffort}
+        onSend={sendMessage}
+        onStop={chat.interrupt}
+      />
     </aside>
   )
 }
