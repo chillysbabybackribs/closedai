@@ -16,7 +16,6 @@ import { pruneOversizedBrowserCacheOnce } from './browser-cache-maintenance.js'
 import { discoverSources, importCookies } from './import-cookies.js'
 import { PARTITION } from './browser-url.js'
 import { ChatService } from './chat-service.js'
-import { installChatStopHotkey } from './chat-stop-hotkey.js'
 import { BrowserPageAccess } from './browser-page-access.js'
 import { BrowserCdpAccess } from './cdp/browser-cdp-access.js'
 import { UiCaptureAccess } from './ui-capture-access.js'
@@ -54,8 +53,6 @@ let toolTelemetry: ToolTelemetry | null = null
 let browserSessionFlush: Promise<void> | null = null
 let cdpAccess: BrowserCdpAccess | null = null
 let quitting = false
-
-installChatStopHotkey(app, () => chatService)
 
 const userData = (): string => app.getPath('userData')
 
