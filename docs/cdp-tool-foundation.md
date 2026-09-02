@@ -33,6 +33,12 @@ worker, service worker, or other child target.
 Sends any CDP `Domain.method` with its raw parameters. `tab_id` defaults to the active
 ClosedAI tab. `session_id` routes to a flat child-target session.
 
+Two families are refused with a pointer to the purpose-built tool: `Input.*` (use the `page`
+verbs — telemetry showed a model issuing 708 `Input.dispatchKeyEvent` calls to type text) and
+`Page.captureScreenshot` (returns base64 as a text result and bypasses the screenshot budget;
+use `closedai_ui` capture). The `protocol` tool is also marked `deferLoading`, so its schema
+stays out of the model's context until it searches for it.
+
 ### `events`
 
 Reads instrumentation events from a per-tab cursor. Domains only emit their full event sets
@@ -68,6 +74,28 @@ Accepts explicit `x` and `y` values in `main_viewport_css`. It rejects points ou
 visual viewport, performs `DOM.getNodeForLocation`, and then dispatches the same real mouse
 sequence. Element refs are preferred because raw coordinates have no semantic identity and go
 stale after scroll, resize, animation, or layout changes.
+
+### `type`
+
+Accepts a ref, focuses it with the same real click pipeline, verifies it is an input, textarea,
+or contenteditable element, selects the existing contents unless `clear` is false, and inserts
+the whole string with one `Input.insertText`. The result echoes the field's value (truncated)
+so the model can confirm without re-inspecting. One call replaces the per-keystroke
+`Input.dispatchKeyEvent` sequences models otherwise fall back to.
+
+### `press_key`
+
+Dispatches one real `keyDown`/`keyUp` pair for a named key (Enter, Tab, Escape, Backspace,
+Delete, arrows, Home/End, PageUp/PageDown) or a single character, with optional `alt`, `ctrl`,
+`meta`, `shift` modifiers. Ctrl/meta chords suppress the text payload so shortcuts do not also
+insert characters. Text entry belongs in `type`; this is for submits, dismissals, and chords.
+
+### `scroll`
+
+With a ref, scrolls the element to its frame's viewport center and reports the resulting scroll
+offsets. Without one, dispatches a real `mouseWheel` at the main viewport's center using
+`delta_x`/`delta_y` CSS pixels. Refs and coordinates from earlier inspections may be stale after
+scrolling; inspect again before clicking.
 
 This first wrapper inspects frames reachable from the selected page target. Out-of-process
 frames that require their own flat target session are surfaced as uninspected frames; automatic

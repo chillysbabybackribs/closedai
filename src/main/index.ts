@@ -23,6 +23,7 @@ import { createToolRegistry, type ToolRegistry } from './tools/index.js'
 import { browserTools } from './tools/browser/index.js'
 import { cdpTools } from './tools/cdp/index.js'
 import { captureTools, ScreenshotStore } from './tools/capture/index.js'
+import { batchTools } from './tools/batch/index.js'
 import { ToolTelemetry } from './tools/telemetry.js'
 import { registerToolsIpc } from './tools/ipc.js'
 import type { ToolsEvent } from '../shared/tools.js'
@@ -85,7 +86,9 @@ async function main(): Promise<void> {
   toolRegistry = createToolRegistry([
     browserTools(() => pageAccess),
     cdpTools(() => cdpAccess),
-    captureTools(() => captureAccess, screenshots)
+    captureTools(() => captureAccess, screenshots),
+    // Lazy self-reference: the batch dispatches into the registry it is registered in.
+    batchTools(() => toolRegistry!)
   ])
   for (const toolId of settings.get().disabledTools) toolRegistry.setEnabled(toolId, false)
   toolTelemetry = await ToolTelemetry.open(join(userData(), 'tool-telemetry.jsonl'))

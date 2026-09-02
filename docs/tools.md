@@ -49,7 +49,8 @@ before the app-server starts.
 |---|---|---|---|
 | `embedded_browser` | `page` | `navigate`, `read_page`, `wait_for` | Browser-page inspection for the pane the user can see. It can open a URL or search query, wait for page readiness, and read visible text from the whole page or one selector. |
 | `closedai_ui` | `capture` | `app_window`, `browser_page` | Visual evidence. `app_window` captures the composed Electron window, including chat and browser chrome. `browser_page` captures only one browser page after deterministic readiness checks. The model receives a scaled JPEG (max 1280x960); the full-resolution PNG goes to `ScreenshotStore` for the transcript. |
-| `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `events` | Low-level Chrome DevTools Protocol access for ClosedAI tabs. See `docs/cdp-tool-foundation.md` for the lifecycle rules and handle caveats. |
+| `browser_cdp` | `page` | `inspect_page`, `click`, `click_at`, `type`, `press_key`, `scroll` | Agent-oriented page interaction: semantic element refs with real CDP mouse, keyboard, and wheel input. `type` inserts whole strings in one call; `press_key` sends chords. |
+| `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `events` | Raw Chrome DevTools Protocol escape hatch (`deferLoading`: out of context until searched for). `Input.*` and `Page.captureScreenshot` are refused with pointers to `page` and `capture`. See `docs/cdp-tool-foundation.md`. |
 
 The model-facing names intentionally differ from OpenAI reserved namespaces. For example,
 ClosedAI uses `embedded_browser`, not `browser`.
@@ -104,7 +105,8 @@ turn, and only compacts by itself near the context limit. Three things keep that
 
 - The registry caps each text item of a result at `MAX_RESULT_TEXT_CHARS` (40k characters, about
   10k tokens) and appends a hint to narrow the request. Codex truncates shell output itself but
-  passes dynamic tool output through untouched.
+  passes dynamic tool output through untouched. CDP JSON results are capped tighter still at 20k
+  characters (`cdp/result.ts`) because protocol dumps are the chattiest text source.
 - Capture actions are capped at `DEFAULT_MAX_CAPTURES_PER_TURN` (8) images per turn across
   `app_window`, `browser_page`, and `crop`; past that the action fails with advice to read page
   state instead, and each image result reports how many are left. A capture scaled below 60% of
