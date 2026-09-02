@@ -6,6 +6,12 @@ export const tabIdField: JsonObject = {
   description: 'ClosedAI tab id. Defaults to the active tab.'
 }
 
+export const refField: JsonObject = {
+  type: 'string',
+  minLength: 1,
+  description: 'Element ref returned by the latest inspect_page call.'
+}
+
 export const sessionIdField: JsonObject = {
   type: 'string',
   minLength: 1,
