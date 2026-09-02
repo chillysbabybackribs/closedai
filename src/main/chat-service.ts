@@ -28,7 +28,8 @@ import { appServerConfigArgs } from './chat-context/app-server-config.js'
 import { buildThreadHandoff, handoffAdditionalContext } from './chat-context/thread-handoff.js'
 import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
-import { loadChatModels, reasoningEffortForModel } from './chat-model-catalog.js'
+import { loadChatModels } from './chat-model-catalog.js'
+import { ChatModelState } from './chat-model-state.js'
 import { buildChatInput } from './chat-input.js'
 import { shrinkPastedImages } from './chat-attachment-images.js'
 import type { ScreenshotStore } from './tools/capture/screenshot-store.js'
@@ -48,9 +49,7 @@ export class ChatService extends EventEmitter {
   private readonly client: AppServerClient
   private connection: ChatConnection = DEFAULT_CONNECTION
   private account: ChatAccount | null = null
-  private models: ChatModel[] = []
-  private selectedModel: string | null = null
-  private selectedReasoningEffort: string | null = null
+  private readonly modelState = new ChatModelState()
   private threadId: string | null = null
   private threadName: string | null = null
   private activeTurnId: string | null = null
@@ -101,9 +100,9 @@ export class ChatService extends EventEmitter {
     return {
       connection: { ...this.connection },
       account: this.account ? { ...this.account } : null,
-      models: this.models.map((model) => ({ ...model })),
-      selectedModel: this.selectedModel,
-      selectedReasoningEffort: this.selectedReasoningEffort,
+      models: this.modelState.models.map((model) => ({ ...model })),
+      selectedModel: this.modelState.selectedModel,
+      selectedReasoningEffort: this.modelState.selectedReasoningEffort,
       cwd: this.cwd,
       threadId: this.threadId,
       threadName: this.threadName,
@@ -115,7 +114,7 @@ export class ChatService extends EventEmitter {
 
   async listModels(): Promise<ChatModel[]> {
     await this.ensureConnected()
-    return this.models.map((model) => ({ ...model }))
+    return this.modelState.models.map((model) => ({ ...model }))
   }
 
   start(): Promise<void> {
@@ -147,8 +146,8 @@ export class ChatService extends EventEmitter {
       const response = await this.client.request<{ turn?: unknown }>('turn/start', {
         threadId,
         clientUserMessageId,
-        ...(this.selectedModel ? { model: this.selectedModel } : {}),
-        ...(this.selectedReasoningEffort ? { effort: this.selectedReasoningEffort } : {}),
+        ...(this.modelState.selectedModel ? { model: this.modelState.selectedModel } : {}),
+        ...(this.modelState.selectedReasoningEffort ? { effort: this.modelState.selectedReasoningEffort } : {}),
         ...(Object.keys(additionalContext).length ? { additionalContext } : {}),
         input
       })
@@ -174,24 +173,19 @@ export class ChatService extends EventEmitter {
 
   async selectModel(modelId: string): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before changing models')
-    if (!this.models.some((model) => model.id === modelId)) throw new Error('That Codex model is not available')
-    const effort = reasoningEffortForModel(this.models, modelId, this.selectedReasoningEffort)
-    if (this.selectedModel === modelId && this.selectedReasoningEffort === effort) return
-    await this.settings.set({ chatModelId: modelId, chatReasoningEffort: effort })
-    this.selectedModel = modelId
-    this.selectedReasoningEffort = effort
-    this.emitEvent({ type: 'model', selectedModel: modelId, selectedReasoningEffort: effort })
+    const preference = this.modelState.preferenceForModel(modelId)
+    if (this.modelState.selectedModel === modelId && this.modelState.selectedReasoningEffort === preference.effort) return
+    await this.settings.set({ chatModelId: modelId, chatReasoningEffort: preference.effort })
+    this.modelState.apply(preference)
+    this.emitEvent({ type: 'model', selectedModel: modelId, selectedReasoningEffort: preference.effort })
   }
 
   async selectReasoningEffort(effort: string): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before changing reasoning effort')
-    const selected = this.models.find((model) => model.id === this.selectedModel)
-    if (!selected?.supportedReasoningEfforts.some((option) => option.reasoningEffort === effort)) {
-      throw new Error('That reasoning effort is not available for this Codex model')
-    }
-    if (this.selectedReasoningEffort === effort) return
+    const preference = this.modelState.preferenceForEffort(effort)
+    if (this.modelState.selectedReasoningEffort === effort) return
     await this.settings.set({ chatReasoningEffort: effort })
-    this.selectedReasoningEffort = effort
+    this.modelState.apply(preference)
     this.emitEvent({ type: 'reasoningEffort', selectedReasoningEffort: effort })
   }
 
@@ -278,14 +272,10 @@ export class ChatService extends EventEmitter {
     try {
       const saved = this.settings.get()
       const catalog = await loadChatModels(this.client, saved.chatModelId, saved.chatReasoningEffort)
-      this.models = catalog.models
-      this.selectedModel = catalog.selectedModel
-      this.selectedReasoningEffort = catalog.selectedReasoningEffort
+      this.modelState.load(catalog)
     } catch (error) {
       console.warn('[app-server] could not list models:', messageOf(error))
-      this.models = []
-      this.selectedModel = null
-      this.selectedReasoningEffort = null
+      this.modelState.clear()
     }
     const requiresOpenaiAuth = accountResponse.requiresOpenaiAuth === true
     if (!this.account && requiresOpenaiAuth) {
@@ -327,8 +317,7 @@ export class ChatService extends EventEmitter {
     if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')
     this.threadId = thread.id
     this.threadName = nullableString(thread.name)
-    this.adoptThreadModel(response.model)
-    this.adoptThreadReasoningEffort(response.reasoningEffort)
+    this.modelState.adopt(response.model, response.reasoningEffort)
     this.transcript.replaceFromThread(thread)
     this.compactor.reset()
     await this.settings.set({ chatThreadId: thread.id })
@@ -360,13 +349,13 @@ export class ChatService extends EventEmitter {
     if (this.threadId) return this.threadId
     const response = await this.client.request<ThreadResponse>(
       'thread/start',
-      startThreadParams(this.cwd, this.tools, this.selectedModel)
+      startThreadParams(this.cwd, this.tools, this.modelState.selectedModel)
     )
     const thread = recordOf(response.thread)
     if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')
     this.threadId = thread.id
     this.threadName = nullableString(thread.name)
-    this.adoptThreadModel(response.model)
+    this.modelState.adopt(response.model)
     await this.settings.set({ chatThreadId: thread.id })
     this.emitEvent({ type: 'thread', threadId: thread.id, threadName: this.threadName })
     return thread.id
@@ -414,9 +403,9 @@ export class ChatService extends EventEmitter {
       type: 'connection',
       connection: { ...connection },
       account: this.account ? { ...this.account } : null,
-      models: this.models.map((model) => ({ ...model })),
-      selectedModel: this.selectedModel
-      ,selectedReasoningEffort: this.selectedReasoningEffort
+      models: this.modelState.models.map((model) => ({ ...model })),
+      selectedModel: this.modelState.selectedModel,
+      selectedReasoningEffort: this.modelState.selectedReasoningEffort
     })
   }
 
@@ -430,17 +419,6 @@ export class ChatService extends EventEmitter {
   private noteContextUsage(usage: ContextUsage): void {
     this.compactor.noteUsage(usage)
     this.emitEvent({ type: 'context', usage: describeUsage(usage) })
-  }
-
-  private adoptThreadModel(value: unknown): void {
-    if (typeof value !== 'string' || !this.models.some((model) => model.id === value)) return
-    this.selectedModel = value
-    this.selectedReasoningEffort = reasoningEffortForModel(this.models, value, this.selectedReasoningEffort)
-  }
-
-  private adoptThreadReasoningEffort(value: unknown): void {
-    if (typeof value !== 'string') return
-    this.selectedReasoningEffort = reasoningEffortForModel(this.models, this.selectedModel, value)
   }
 
   private emitEvent(event: ChatEvent): void {
