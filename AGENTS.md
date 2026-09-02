@@ -30,6 +30,11 @@ Prefer a feature directory once a concern needs three or more files. Keep tests 
 
 The byte caps and layer-boundary rules live in `scripts/hygiene-gate.mjs`. At 80% of a limit, treat the warning as a prompt to extract by responsibility. Never minify source, compress formatting, raise a limit, add an exception, or disable a gate to make a change pass without explicit owner approval.
 
-## Completion gate
+## Verification and Testing
 
-Run `npm run check` before handing off a change. A change is not complete until hygiene, type checking, tests, the production build, and the import-closure gate pass.
+Keep turns fast, focused, and token-efficient:
+
+- **No pre-change baseline tests**: Never run tests, benchmarks, or whole-repo checks before making an edit. Jump directly into implementing the change.
+- **Targeted verification only**: Verify changes with `npm run typecheck` and *only* the specific test file that exercises the edited code (e.g. `node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs --test "src/path/to/target.test.ts"`).
+- **Never run the full test suite (`npm test` / `npm run check`) for routine edits**: Full repo test runs take 20+ seconds, generate massive outputs, and waste context. Only run full gates when preparing a release or when explicitly instructed by the user.
+- **Hygiene checks**: Run `npm run hygiene` when modifying file lengths or structure to verify line limits.

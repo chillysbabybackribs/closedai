@@ -9,6 +9,7 @@ const INSTRUCTIONS = [
   'Screenshots are capped per turn: batch changes, capture once to verify, and read page text or the DOM for facts.',
   'Reading code: rg -n to locate, then read only the needed line range (sed -n, or slice in JS before text()). Never emit whole files, trees, or multi-file dumps; aim for at most ~4000 output tokens per exec result.',
   'Shell output streams while a command runs; poll long-running sessions with write_stdin instead of re-running them. Browser navigate defaults to dom-ready; use wait_for only for load, idle, or selectors.',
+  'Make changes directly without running pre-change test baselines. Verify changes with focused, targeted tests and type checking rather than full-repository test suites.',
   'Follow applicable AGENTS.md instructions for workspace changes. Lead final responses with the outcome and mention important limitations or unfinished work.'
 ].join('\n')
 
