@@ -51,8 +51,10 @@ runs on the Electron installed here.
 
 `~/.config/closedai/`: `browser-tabs.json` (restored on launch), `browser-history.json`
 (omnibox suggestions), `app-settings.json` (cookie-import latch, current Codex thread, selected
-model, disabled tool ids, and `chatCompactAtPercent`, the context-usage percentage after which
-the app compacts the thread; default 60, 0 disables), `tool-telemetry.jsonl` (recent tool calls), `code-cache/`, and
+model, disabled tool ids, `chatAutoCompactTokens`, the context size in tokens past which Codex
+compacts mid-turn; default 100000, 0 keeps Codex's own limit, and `chatCompactAtPercent`, the
+context-usage percentage after which the app compacts between turns; default 60, 0 disables),
+`tool-telemetry.jsonl` (recent tool calls), `code-cache/`, and
 Chromium's `Partitions/browser` profile.
 
 ## Chat and tools
@@ -64,8 +66,10 @@ model knows which tab the user is looking at.
 
 Codex replays the whole thread to the model each turn, so the app keeps that history lean: tool
 text is capped per result, screenshots reach the model scaled while the transcript shows the full
-capture, and the thread is compacted once a turn ends above the configured context usage
-(`docs/tools.md`, "Results live in the thread history").
+capture, Codex compacts mid-turn once the context passes `chatAutoCompactTokens`, and the app
+compacts again once a turn ends above `chatCompactAtPercent`. The chat header shows how full the
+context is, and "Continue in new chat" starts a fresh thread carrying only a digest of the current
+one (`docs/tools.md`, "Results live in the thread history").
 
 Tools are advertised to Codex as app-server `dynamicTools` on `thread/start` and `thread/resume`.
 Codex calls them through `item/tool/call`; `src/main/tools/app-server-tools.ts` adapts that request
