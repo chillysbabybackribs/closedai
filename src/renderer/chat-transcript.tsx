@@ -157,8 +157,11 @@ const ToolActivity = memo(function ToolActivity({ items }: { items: ActivityItem
             className="prompt-tool-activity-trigger"
             aria-label={`${headline}, ${status}`}
           >
-            {running ? <Loader2 className="prompt-process-spinner animate-spin" aria-hidden="true" /> : null}
-            {failed ? <XCircle className="prompt-process-failed" aria-hidden="true" /> : null}
+            {failed ? (
+              <XCircle className="prompt-process-failed" aria-hidden="true" />
+            ) : (
+              <Loader2 className="prompt-process-spinner animate-spin" aria-hidden="true" />
+            )}
             <span>{headline}</span>
           </button>
         </CollapsibleTrigger>
