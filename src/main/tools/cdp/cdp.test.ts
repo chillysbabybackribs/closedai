@@ -29,6 +29,18 @@ function harness(overrides: Partial<CdpToolHost> = {}) {
       calls.push(['clickAt', tabId, x, y])
       return { point: { x, y } }
     },
+    typeText: async (tabId, ref, text, clear) => {
+      calls.push(['typeText', tabId, ref, text, clear])
+      return { ref, value: text }
+    },
+    pressKey: async (tabId, key, modifiers) => {
+      calls.push(['pressKey', tabId, key, modifiers])
+      return { key }
+    },
+    scrollPage: async (tabId, ref, deltaX, deltaY) => {
+      calls.push(['scrollPage', tabId, ref, deltaX, deltaY])
+      return { scrolled: ref ? 'into_view' : 'wheel' }
+    },
     ...overrides
   }
   const registry = new ToolRegistry([cdpTools(() => host)])
@@ -93,6 +105,38 @@ test('events use cursor defaults and accept method-prefix filtering', async () =
   const { calls, call } = harness()
   await call({ action: 'events', method_prefix: 'Network.' })
   assert.deepEqual(calls[0], ['events', undefined, 0, 100, 'Network.'])
+})
+
+test('page input verbs route typing, key chords, and scrolling to the host', async () => {
+  const { calls, registry } = harness()
+  const callPage = (arguments_: Record<string, unknown>) => registry.call(
+    { namespace: 'browser_cdp', tool: 'page', arguments: arguments_ },
+    { threadId: null, turnId: null, callId: 'call-input' }
+  )
+  await callPage({ action: 'type', ref: 'p1:main:e2', text: 'hello', clear: false })
+  await callPage({ action: 'press_key', key: 'Enter', modifiers: ['ctrl'] })
+  await callPage({ action: 'scroll', ref: 'p1:main:e3' })
+  await callPage({ action: 'scroll', delta_y: 500 })
+  assert.deepEqual(calls, [
+    ['typeText', undefined, 'p1:main:e2', 'hello', false],
+    ['pressKey', undefined, 'Enter', ['ctrl']],
+    ['scrollPage', undefined, 'p1:main:e3', 0, 0],
+    ['scrollPage', undefined, undefined, 0, 500]
+  ])
+  const badModifier = await callPage({ action: 'press_key', key: 'Enter', modifiers: ['hyper'] })
+  assert.equal(badModifier.isError, true)
+})
+
+test('protocol defers loading and refuses raw input and screenshot commands', async () => {
+  const { calls, call, registry } = harness()
+  assert.equal(registry.namespaces[0]!.tools[0]!.deferLoading, true)
+  const input = await call({ action: 'command', method: 'Input.dispatchKeyEvent', params: { type: 'keyDown' } })
+  assert.equal(input.isError, true)
+  assert.match(textOf(input), /type inserts whole strings/)
+  const screenshot = await call({ action: 'command', method: 'Page.captureScreenshot' })
+  assert.equal(screenshot.isError, true)
+  assert.match(textOf(screenshot), /closedai_ui capture/)
+  assert.deepEqual(calls, [])
 })
 
 test('command validates CDP method syntax and action-specific fields', async () => {
