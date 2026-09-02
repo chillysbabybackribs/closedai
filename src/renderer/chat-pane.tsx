@@ -52,7 +52,7 @@ export function ChatPane(): JSX.Element {
     }
   }
 
-  const latestUserIndex = state.items.findLastIndex((item) => item.type === 'user')
+  const latestUserIndex = findLastUserIndex(state.items)
   const latestUserMessage = latestUserIndex >= 0 ? (state.items[latestUserIndex] as Extract<ChatTranscriptItem, { type: 'user' }>) : null
   const transcriptItems = latestUserMessage
     ? state.items.filter((_, index) => index !== latestUserIndex)
@@ -118,6 +118,13 @@ function PinnedUserCard({ item }: { item: Extract<ChatTranscriptItem, { type: 'u
       </div>
     </div>
   )
+}
+
+function findLastUserIndex(items: ChatTranscriptItem[]): number {
+  for (let i = items.length - 1; i >= 0; i -= 1) {
+    if (items[i]!.type === 'user') return i
+  }
+  return -1
 }
 
 function TranscriptScroller({
