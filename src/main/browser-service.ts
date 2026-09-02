@@ -234,8 +234,8 @@ export class BrowserService extends EventEmitter {
       this.browserDetached = false
       this.rendering.setPaneVisible(true)
     }
-    // A modal only hides the pixels. Keeping the view attached preserves its compositor and
-    // page state, so closing the modal cannot return an empty native surface.
+    // A modal only hides the pixels. Keeping the view attached avoids the detach/re-attach
+    // lifecycle, so closing the modal cannot return an empty native surface.
     active?.applyBounds(bounds, pageVisible)
   }
 
@@ -293,7 +293,7 @@ export class BrowserService extends EventEmitter {
   }
 
   // A still of the active tab for the renderer's overlay freeze (the native view composites
-  // above the DOM, so a shelf or dialog shows this image while the live view is detached).
+  // above the DOM, so a shelf or dialog shows this image while the live pixels are hidden).
   async capture(): Promise<BrowserShot | null> {
     const tab = this.active
     if (!tab) return null

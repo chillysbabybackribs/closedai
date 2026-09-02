@@ -31,6 +31,27 @@ export type PreparedClick = {
 
 const WORLD_STATE = '__closedaiAgentPageV1'
 
+export const FRAME_OWNER_QUAD_FUNCTION = `function () {
+  const getQuads = this.getBoxQuads
+  const box = typeof getQuads === 'function' ? getQuads.call(this, { box: 'content' })[0] : null
+  if (box) return [box.p1.x, box.p1.y, box.p2.x, box.p2.y, box.p3.x, box.p3.y, box.p4.x, box.p4.y]
+  const rect = this.getBoundingClientRect()
+  const style = getComputedStyle(this)
+  const scaleX = this.offsetWidth > 0 ? rect.width / this.offsetWidth : 1
+  const scaleY = this.offsetHeight > 0 ? rect.height / this.offsetHeight : 1
+  const left = rect.left + (parseFloat(style.borderLeftWidth) || 0) * scaleX
+  const top = rect.top + (parseFloat(style.borderTopWidth) || 0) * scaleY
+  const width = this.clientWidth * scaleX
+  const height = this.clientHeight * scaleY
+  return [left, top, left + width, top, left + width, top + height, left, top + height]
+}`
+
+export const SCROLL_FRAME_OWNER_FUNCTION = `async function () {
+  this.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+  return true
+}`
+
 export function inspectionExpression(snapshotId: string, frameId: string, maxElements: number): string {
   return `(${inspectFrame.toString()})(${JSON.stringify(snapshotId)},${JSON.stringify(frameId)},${maxElements},${JSON.stringify(WORLD_STATE)})`
 }

@@ -1,5 +1,7 @@
 import type { AgentPageClick, AgentPageElement, AgentPageFrame, AgentPageInspection, ViewportPoint } from './types.js'
 import {
+  FRAME_OWNER_QUAD_FUNCTION,
+  SCROLL_FRAME_OWNER_FUNCTION,
   inspectionExpression,
   prepareClickExpression,
   type LocalElement,
@@ -69,10 +71,13 @@ export class CdpPageAgent {
     const elements: AgentPageElement[] = []
     const refs = new Map<string, FrameInspection>()
     for (const frame of inspected.values()) {
+      const quadCache = new Map<string, number[]>()
       for (const local of frame.local.elements) {
         if (elements.length === maxElements) break
         try {
-          elements.push(await this.normalizeElement(local, frame, graph.rootFrameId, graph.frames, inspected))
+          elements.push(await this.normalizeElement(
+            local, frame, graph.rootFrameId, graph.frames, inspected, quadCache
+          ))
           refs.set(local.ref, frame)
         } catch (error) {
           const result = frameResults.find((candidate) => candidate.frameId === frame.frame.id)
@@ -108,12 +113,14 @@ export class CdpPageAgent {
     frame.local.viewport.width = prepared.viewport.width
     frame.local.viewport.height = prepared.viewport.height
     const graph = await this.frameGraph()
+    await this.scrollFrameChain(frame.frame.id, graph.rootFrameId, graph.frames, snapshot.inspected)
     const point = await this.toMainViewport(
       prepared.point,
       frame.frame.id,
       graph.rootFrameId,
       graph.frames,
-      snapshot.inspected
+      snapshot.inspected,
+      new Map()
     )
     const hitTest = await this.hitTest(point)
     await this.dispatchClick(point)
@@ -137,27 +144,37 @@ export class CdpPageAgent {
     frame: FrameInspection,
     rootFrameId: string,
     frames: Map<string, FrameNode>,
-    inspected: Map<string, FrameInspection>
+    inspected: Map<string, FrameInspection>,
+    quadCache: Map<string, number[]>
   ): Promise<AgentPageElement> {
     const quad: number[] = []
     for (let index = 0; index < local.quad.length; index += 2) {
       const point = await this.toMainViewport(
-        { x: local.quad[index]!, y: local.quad[index + 1]! }, frame.frame.id, rootFrameId, frames, inspected
+        { x: local.quad[index]!, y: local.quad[index + 1]! },
+        frame.frame.id, rootFrameId, frames, inspected, quadCache
       )
       quad.push(point.x, point.y)
     }
-    const center = await this.toMainViewport(local.center, frame.frame.id, rootFrameId, frames, inspected)
+    const center = await this.toMainViewport(
+      local.center, frame.frame.id, rootFrameId, frames, inspected, quadCache
+    )
     const xs = quad.filter((_, index) => index % 2 === 0)
     const ys = quad.filter((_, index) => index % 2 === 1)
     const left = Math.min(...xs)
     const right = Math.max(...xs)
     const top = Math.min(...ys)
     const bottom = Math.max(...ys)
+    const rootViewport = inspected.get(rootFrameId)?.local.viewport
+    const insideMainViewport = !rootViewport || (
+      right > 0 && bottom > 0 && left < rootViewport.width && top < rootViewport.height
+    )
     return {
       ...local,
       bounds: { x: left, y: top, width: right - left, height: bottom - top },
       center,
       quad,
+      visible: local.visible && insideMainViewport,
+      hitTestable: local.hitTestable && insideMainViewport,
       coordinateSpace: COORDINATE_SPACE
     }
   }
@@ -167,7 +184,8 @@ export class CdpPageAgent {
     frameId: string,
     rootFrameId: string,
     frames: Map<string, FrameNode>,
-    inspected: Map<string, FrameInspection>
+    inspected: Map<string, FrameInspection>,
+    quadCache: Map<string, number[]>
   ): Promise<ViewportPoint> {
     let point = source
     let currentId = frameId
@@ -181,22 +199,47 @@ export class CdpPageAgent {
       if (!viewport || viewport.width <= 0 || viewport.height <= 0) {
         throw new Error(`Frame ${currentId} has no usable viewport`)
       }
-      const quad = await this.frameOwnerContentQuad(currentId)
+      const parent = inspected.get(current.parentId)
+      if (!parent) throw new Error(`Parent frame ${current.parentId} could not be inspected`)
+      let quad = quadCache.get(currentId)
+      if (!quad) {
+        quad = await this.frameOwnerContentQuad(currentId, parent.contextId)
+        quadCache.set(currentId, quad)
+      }
       point = mapIntoQuad(point, viewport.width, viewport.height, quad)
       currentId = current.parentId
     }
     return point
   }
 
-  private async frameOwnerContentQuad(frameId: string): Promise<number[]> {
+  private async frameOwnerContentQuad(frameId: string, parentContextId: number): Promise<number[]> {
     const owner = recordOf(await this.target.command('DOM.getFrameOwner', { frameId }))
     const backendNodeId = numberOf(owner?.backendNodeId)
     if (backendNodeId === null) throw new Error(`CDP did not return the owner of frame ${frameId}`)
-    const response = recordOf(await this.target.command('DOM.getBoxModel', { backendNodeId }))
-    const model = recordOf(response?.model)
-    const content = numberArray(model?.content)
-    if (!content || content.length !== 8) throw new Error(`CDP did not return an 8-point content quad for frame ${frameId}`)
-    return content
+    const content = await this.callNodeFunction<unknown>(backendNodeId, parentContextId, FRAME_OWNER_QUAD_FUNCTION)
+    const quad = numberArray(content)
+    if (!quad || quad.length !== 8) throw new Error(`CDP did not return an 8-point content quad for frame ${frameId}`)
+    return quad
+  }
+
+  private async scrollFrameChain(
+    frameId: string,
+    rootFrameId: string,
+    frames: Map<string, FrameNode>,
+    inspected: Map<string, FrameInspection>
+  ): Promise<void> {
+    let currentId = frameId
+    while (currentId !== rootFrameId) {
+      const current = frames.get(currentId)
+      if (!current?.parentId) throw new Error(`Frame ${currentId} is no longer attached to the main frame`)
+      const parent = inspected.get(current.parentId)
+      if (!parent) throw new Error(`Parent frame ${current.parentId} could not be inspected`)
+      const owner = recordOf(await this.target.command('DOM.getFrameOwner', { frameId: currentId }))
+      const backendNodeId = numberOf(owner?.backendNodeId)
+      if (backendNodeId === null) throw new Error(`CDP did not return the owner of frame ${currentId}`)
+      await this.callNodeFunction(backendNodeId, parent.contextId, SCROLL_FRAME_OWNER_FUNCTION, true)
+      currentId = current.parentId
+    }
   }
 
   private async frameGraph(): Promise<{ rootFrameId: string; frames: Map<string, FrameNode> }> {
@@ -249,10 +292,35 @@ export class CdpPageAgent {
     return result.value as T
   }
 
+  private async callNodeFunction<T>(
+    backendNodeId: number,
+    contextId: number,
+    functionDeclaration: string,
+    awaitPromise = false
+  ): Promise<T> {
+    const resolved = recordOf(await this.target.command('DOM.resolveNode', {
+      backendNodeId, executionContextId: contextId
+    }))
+    const objectId = stringOf(recordOf(resolved?.object)?.objectId)
+    if (!objectId) throw new Error(`CDP could not resolve backend node ${backendNodeId}`)
+    try {
+      const response = recordOf(await this.target.command('Runtime.callFunctionOn', {
+        objectId, functionDeclaration, returnByValue: true, awaitPromise
+      }))
+      const exception = recordOf(response?.exceptionDetails)
+      if (exception) throw new Error(stringOf(exception.text) ?? 'Frame owner evaluation failed')
+      const result = recordOf(response?.result)
+      if (!result || !('value' in result)) throw new Error('Frame owner evaluation returned no value')
+      return result.value as T
+    } finally {
+      await this.target.command('Runtime.releaseObject', { objectId }).catch(() => {})
+    }
+  }
+
   private async hitTest(point: ViewportPoint): Promise<unknown> {
     return this.target.command('DOM.getNodeForLocation', {
-      x: point.x,
-      y: point.y,
+      x: Math.round(point.x),
+      y: Math.round(point.y),
       includeUserAgentShadowDOM: true,
       ignorePointerEventsNone: false
     })

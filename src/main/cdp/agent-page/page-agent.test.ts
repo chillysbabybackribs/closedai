@@ -101,9 +101,11 @@ test('inspect normalizes child-frame geometry through its owner content quad', a
         }], 100, 50) } }
       }
       if (method === 'DOM.getFrameOwner') return { backendNodeId: 9 }
-      if (method === 'DOM.getBoxModel') {
-        return { model: { content: [200, 100, 400, 100, 400, 200, 200, 200] } }
+      if (method === 'DOM.resolveNode') return { object: { objectId: 'owner-9' } }
+      if (method === 'Runtime.callFunctionOn') {
+        return { result: { value: [200, 100, 400, 100, 400, 200, 200, 200] } }
       }
+      if (method === 'Runtime.releaseObject') return {}
       throw new Error(`Unexpected ${method}`)
     }
   }

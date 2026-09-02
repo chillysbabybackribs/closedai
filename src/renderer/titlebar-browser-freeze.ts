@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { BrowserShot } from '../shared/types.js'
 
 // DOM surfaces that may paint over the browser column.
 const OVERLAY_SELECTOR = '.browser-downloads, [role="dialog"], [role="menu"]'
 const BROWSER_HOST_SELECTOR = '#browser-page'
-const EAGER_CAPTURE_TRIGGER = '[aria-label="Downloads"]'
+const EAGER_CAPTURE_TRIGGER = '[aria-label="Downloads"], [aria-label="Tools"]'
 
 export function rectsOverlap(a: DOMRectReadOnly, b: DOMRectReadOnly): boolean {
   return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
@@ -35,9 +35,13 @@ export function overlayBlocksBrowser(root: ParentNode = document): boolean {
 
 // Electron paints WebContentsView above the renderer, so a DOM overlay cannot literally stack
 // over the live page. When an overlay intersects the browser host, prime a one-frame capture,
-// show that still in the unchanged browser box, and detach the native view. Closing the
-// overlay restores the live surface on the same bounds.
-export function useTitlebarBrowserFreeze(): { open: boolean; shot: BrowserShot | null } {
+// show that still in the unchanged browser box, and hide the native pixels while leaving the
+// view attached. Closing the overlay restores the live surface on the same bounds.
+export function useTitlebarBrowserFreeze(): {
+  open: boolean
+  shot: BrowserShot | null
+  finishRestore: () => void
+} {
   const [freeze, setFreeze] = useState<BrowserShot | null>(null)
   const [open, setOpen] = useState(false)
   const overlayOpen = useRef(false)
@@ -59,11 +63,10 @@ export function useTitlebarBrowserFreeze(): { open: boolean; shot: BrowserShot |
     const apply = (next: boolean): void => {
       if (next === overlayOpen.current) return
       overlayOpen.current = next
-      // Detach the native view immediately; waiting for the still lets Chromium composite
+      // Hide the native pixels immediately; waiting for the still lets Chromium composite
       // above the first frames of the overlay.
       setOpen(next)
       if (!next) {
-        setFreeze(null)
         primed.current = null
         return
       }
@@ -92,5 +95,11 @@ export function useTitlebarBrowserFreeze(): { open: boolean; shot: BrowserShot |
     }
   }, [])
 
-  return { open, shot: freeze }
+  // The DOM overlay disappears before the bounds IPC necessarily reaches main. Retain the
+  // still until main has made the attached live page visible, so there is no blank handoff.
+  const finishRestore = useCallback((): void => {
+    if (!overlayOpen.current) setFreeze(null)
+  }, [])
+
+  return { open, shot: freeze, finishRestore }
 }

@@ -24,7 +24,8 @@ export function useBrowserController(layoutKey?: string, visible = true) {
   const browserHostRef = useBrowserBounds(
     layoutKey,
     visible && !state.browser.navigationError,
-    titlebarOverlay.open
+    titlebarOverlay.open,
+    titlebarOverlay.finishRestore
   )
   const displayedUrl = state.browser.navigationError?.url ?? state.browser.url
   const identity = useMemo(
@@ -81,8 +82,16 @@ function useBrowserSnapshot(isEditingUrl: boolean) {
 }
 
 // See native-view-bounds.ts for why the layout key, coalesce, and settle re-measure are needed.
-function useBrowserBounds(layoutKey?: string, visible = true, occluded = false) {
-  return useNativeViewBounds((bounds) => window.closedai.browser.setBounds(bounds), layoutKey, visible, occluded)
+function useBrowserBounds(
+  layoutKey?: string,
+  visible = true,
+  occluded = false,
+  finishRestore?: () => void
+) {
+  return useNativeViewBounds(async (bounds) => {
+    await window.closedai.browser.setBounds(bounds)
+    if (!bounds.occluded) finishRestore?.()
+  }, layoutKey, visible, occluded)
 }
 
 function useOmnibox(
