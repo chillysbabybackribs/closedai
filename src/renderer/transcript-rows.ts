@@ -72,8 +72,9 @@ export function activityHeadline(items: ActivityItem[], running = false): string
     ), 0)
     return counted(running ? 'Editing' : 'Edited', files, 'file', 'files')
   }
-  if (items.every((item) => item.type === 'tool' && item.label === items[0]!.label)) {
-    return toolPhrase(items[0]!.label, items.length, running)
+  const first = items[0]!
+  if (first.type === 'tool' && items.every((item) => item.type === 'tool' && item.label === first.label)) {
+    return toolPhrase(first.label, items.length, running)
   }
   return mixedHeadline(items, running)
 }
