@@ -33,7 +33,6 @@ import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
 import { loadChatModels } from './chat-model-catalog.js'
 import { buildChatInput } from './chat-input.js'
-import { ScreenshotContextLifecycle } from './screenshot-context-lifecycle.js'
 
 type ThreadResponse = {
   thread?: unknown
@@ -57,7 +56,6 @@ export class ChatService extends EventEmitter {
   private readonly transcript: ChatTranscript
   private readonly approvals: ChatApprovals
   private readonly toolCalls: AppServerToolCalls
-  private readonly screenshotContext = new ScreenshotContextLifecycle()
   private startPromise: Promise<void> | null = null
   private resumePromise: Promise<void> | null = null
   private restartTimer: NodeJS.Timeout | null = null
@@ -75,7 +73,7 @@ export class ChatService extends EventEmitter {
     this.transcript = new ChatTranscript(cwd, () => this.activeTurnId, (event) => this.emitEvent(event))
     this.client = new AppServerClient(executable, cwd)
     this.approvals = new ChatApprovals(this.client, (event) => this.emitEvent(event))
-    this.toolCalls = new AppServerToolCalls(this.tools, this.client, (call) => this.screenshotContext.observe(call))
+    this.toolCalls = new AppServerToolCalls(this.tools, this.client)
     this.client.on('notification', (notification: AppServerNotification) => this.onNotification(notification))
     this.client.on('request', (request) => {
       if (!this.toolCalls.handle(request)) this.approvals.handleServerRequest(request)
@@ -302,7 +300,6 @@ export class ChatService extends EventEmitter {
     this.transcript.clear()
     this.approvals.clear()
     this.activeTurnId = null
-    this.screenshotContext.clear()
   }
 
   private async ensureReady(): Promise<void> {
@@ -343,7 +340,6 @@ export class ChatService extends EventEmitter {
   }
 
   private onNotification(notification: AppServerNotification): void {
-    const compact = this.screenshotContext.consumeCompleted(notification)
     routeChatNotification(notification, {
       activeThreadId: () => this.threadId,
       activeTurnId: () => this.activeTurnId,
@@ -356,11 +352,6 @@ export class ChatService extends EventEmitter {
       refreshSession: () => this.refreshSession(),
       emit: (event) => this.emitEvent(event)
     })
-    if (compact && compact.threadId === this.threadId) {
-      void this.client.request('thread/compact/start', { threadId: compact.threadId }).catch((error: unknown) => {
-        this.addNotice(`Could not release screenshot context: ${messageOf(error)}`, 'error', compact.turnId)
-      })
-    }
   }
 
   private refreshSession(): void {
@@ -400,7 +391,6 @@ export class ChatService extends EventEmitter {
   }
 
   private onExit(): void {
-    this.screenshotContext.clear()
     this.setTurn(null)
     this.approvals.clear(true)
     this.setConnection({ state: 'error', message: 'Codex stopped unexpectedly; reconnecting…' })

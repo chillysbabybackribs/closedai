@@ -16,8 +16,7 @@ export function captureTools(capture: UiCaptureHostProvider): ToolNamespace {
         name: 'capture',
         description:
           'Take a current screenshot when visual evidence is needed. Choose app_window for the ' +
-          'whole user-visible interface; choose browser_page for an isolated, readiness-gated web page. ' +
-          'The pixels are current-turn context, so inspect them now and carry forward only your conclusions.',
+          'whole user-visible interface; choose browser_page for an isolated, readiness-gated web page.',
         actions: [appWindowAction(capture), browserPageAction(capture)]
       })
     ]
