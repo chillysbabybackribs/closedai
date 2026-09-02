@@ -4,7 +4,6 @@ import '@fontsource-variable/inter/wght-italic.css'
 import '@fontsource-variable/geist-mono/wght.css'
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { Sparkles } from 'lucide-react'
 import { AppWindowControls } from './app-window-controls.js'
 import { BrowserPane } from './browser-pane.js'
 import { useBrowserController } from './browser-controller.js'
@@ -16,10 +15,6 @@ function App(): JSX.Element {
   return (
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
-        <div className="app-brand" aria-label="ClosedAI">
-          <span className="app-brand-mark"><Sparkles size={12} fill="currentColor" /></span>
-          <strong>ClosedAI</strong>
-        </div>
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
