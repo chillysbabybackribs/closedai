@@ -192,4 +192,10 @@ test('each inner call is reported to telemetry with a batch-suffixed call id', a
     ]
   })
   assert.deepEqual(callIds, ['lab.echo@c#1', 'lab.echo@c#2', 'tool_batch.run@c'])
+  const records: Array<{ callId: string; parentCallId?: string | null; batchId?: string | null; source?: string }> = []
+  registry.subscribe((record) => { records.push(record) })
+  await call(registry, { calls: [{ tool: 'lab.echo', arguments: { text: 'nested' } }] })
+  assert.equal(records[0]?.parentCallId, 'c#1')
+  assert.equal(records[0]?.batchId, 'c#1')
+  assert.equal(records[0]?.source, 'batch')
 })

@@ -55,6 +55,29 @@ test('telemetry persists as JSONL, reloads, trims to the retained window, and cl
   }
 })
 
+test('telemetry keeps a durable call total and records new tool definitions', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'closedai-telemetry-'))
+  const file = join(dir, 'tool-telemetry.jsonl')
+  try {
+    const telemetry = await ToolTelemetry.open(file, 1)
+    telemetry.observeTools([
+      { toolId: 'alpha.lookup', namespace: 'alpha', name: 'lookup', actions: ['search', 'fetch'] },
+      { toolId: 'beta.echo', namespace: 'beta', name: 'echo', actions: [] }
+    ])
+    telemetry.record(record({ id: 'first' }))
+    telemetry.record(record({ id: 'second' }))
+    assert.equal(telemetry.snapshot().totalCalls, 2)
+    assert.deepEqual(telemetry.snapshot().recent.map((entry) => entry.id), ['second'])
+    assert.deepEqual(telemetry.snapshot().registeredTools.map((tool) => tool.toolId), ['alpha.lookup', 'beta.echo'])
+    await telemetry.clear()
+    const reopened = await ToolTelemetry.open(file, 1)
+    assert.equal(reopened.snapshot().totalCalls, 0)
+    assert.deepEqual(reopened.snapshot().registeredTools.map((tool) => tool.toolId), ['alpha.lookup', 'beta.echo'])
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('the registry reports every call to subscribers, including failures and unknown tools', async () => {
   const registry = new ToolRegistry([{
     name: 'ns',
