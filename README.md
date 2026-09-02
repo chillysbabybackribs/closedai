@@ -1,7 +1,7 @@
 # closedai
 
 An Electron 44 workspace with two first-class panes: one embedded Chromium browser and one
-Prompt Kit-powered Codex app-server chat. The browser is the appv1 embedded browser lineage
+Prompt Kit-powered chat that runs on Codex (app-server) or Claude Code (Claude Agent SDK). The browser is the appv1 embedded browser lineage
 (same tab strip, omnibox, downloads shelf, dark chrome, session partition, cookie import, and
 popup-to-tab routing). The chat is a local Codex app-server client with thread history, model
 selection, approval handling, attachments, and ClosedAI-owned browser/capture/CDP tools.
@@ -19,7 +19,9 @@ npm run check               # map, hygiene, types, tests, production build, and 
 ```
 
 ClosedAI resolves `codex` from `PATH`. Set `CLOSEDAI_CODEX_PATH` to use a specific CLI
-binary and `CLOSEDAI_WORKSPACE` to override the app-server working directory.
+binary and `CLOSEDAI_WORKSPACE` to override the app-server working directory. Claude Code needs no
+binary on `PATH`: the pinned `@anthropic-ai/claude-agent-sdk` ships its own CLI, and it uses the
+sign-in the `claude` CLI keeps (`docs/claude-code.md`).
 
 `scripts/launch-electron-vite.mjs` scrubs GPU-offload variables (hybrid-GPU Linux) and any
 `ELECTRON_EXEC_PATH` / `ELECTRON_*` identity a parent Electron app exported, so the app always
@@ -27,7 +29,8 @@ runs on the Electron installed here.
 
 ## Layout
 
-- `src/main` - bootstrap (`index.ts`), `ChatService`, `BrowserService` / `BrowserTab`
+- `src/main` - bootstrap (`index.ts`), `ChatHub` over `ChatService` (Codex) and
+  `src/main/claude/` (Claude Code), `BrowserService` / `BrowserTab`
   (WebContentsView per tab), browser session identity + cookie persistence + first-launch
   cookie import, downloads, tab-session/history/settings JSON stores, permission policy
   (allow-all, see `docs/electron-browser-platform-review.md` section 0), popup bridge,
@@ -42,6 +45,8 @@ runs on the Electron installed here.
 - `src/renderer` - `App.tsx`, the split workspace, browser pane, chat pane, history drawer,
   composer, attachment handling, screenshots, and the Tools modal.
 - `docs/tools.md` - the model tool architecture, current namespaces, telemetry, and modal.
+- `docs/claude-code.md` - the Claude Code provider: session shape, lifecycle, history, transcript
+  mapping, and every SDK contract it relies on.
 - `docs/cdp-tool-foundation.md` - lifecycle and usage notes for the raw CDP tool.
 - `docs/electron-browser-platform-review.md` — the dated Electron/Chromium design review,
   owner decisions, and implementation-status matrix.
@@ -52,8 +57,9 @@ runs on the Electron installed here.
 
 Electron's `app.getPath('userData')` directory (`~/.config/closedai/` on Linux):
 `browser-tabs.json` (restored on launch), `browser-history.json`
-(omnibox suggestions), `app-settings.json` (cookie-import latch, current Codex thread, selected
-model, `chatReasoningEffort` (null follows the model default), disabled tool or action ids, `chatCompactAtPercent`, the context-usage percentage after which the
+(omnibox suggestions), `app-settings.json` (cookie-import latch, current Codex thread, current Claude session
+(`chatClaudeSessionId`), selected model (a `claude:` prefix selects Claude Code), `chatReasoningEffort`
+(null follows the model default), disabled tool or action ids, `chatCompactAtPercent`, the context-usage percentage after which the
 app compacts between turns; default 80, 0 disables, and `chatMidTurnCompactTokens`, an opt-in
 context size in tokens past which Codex compacts mid-turn; default 0 keeps Codex's own limit, and
 `toolBatchMaxCalls`, the startup batch limit; default 16 and clamped to 1–64),
@@ -61,6 +67,11 @@ context size in tokens past which Codex compacts mid-turn; default 0 keeps Codex
 Chromium's `Partitions/browser` profile.
 
 ## Chat and tools
+
+The model picker lists both providers. A thread belongs to the provider that started it: picking a
+model from the other provider shows that provider's current thread (the old one stays in history), and
+opening a thread from history switches providers. Claude Code threads live in the Agent SDK's own
+session store and use the same ClosedAI tools through in-process MCP servers (`docs/claude-code.md`).
 
 `ChatService` starts `codex` from `PATH` (or `CLOSEDAI_CODEX_PATH`) in the workspace directory,
 keeps the current thread id in app settings, resumes the saved thread on startup, and restarts the

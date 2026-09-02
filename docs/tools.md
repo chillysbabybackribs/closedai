@@ -1,8 +1,10 @@
 # Tools
 
 Everything the app offers a model lives under `src/main/tools/`. Tools are provider-agnostic:
-the registry is the single source of truth, and a provider adapter (Codex today via
-`app-server-tools.ts`; others later) translates it to that provider's protocol.
+the registry is the single source of truth, and a provider adapter translates it to that provider's
+protocol: `app-server-tools.ts` for Codex (`dynamicTools` + `item/tool/call`) and
+`src/main/claude/claude-tools.ts` for Claude Code (one in-process MCP server per namespace, so the
+model sees `mcp__embedded_browser__page`; see `docs/claude-code.md`).
 
 ## Three levels, three rules
 
