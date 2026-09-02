@@ -9,8 +9,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const output = path.join(root, 'src/main/chat-context/workspace-map.generated.ts')
 const sourceExtensions = new Set(['.ts', '.tsx'])
 // Past this many files a directory is listed as filename-prefix families instead of members,
-// so the map stays a fixed cost as the codebase grows.
-const collapseAbove = 40
+// so the map stays a fixed cost as the codebase grows. Exact names are worth more while a
+// directory is small; raise this only alongside a deliberate check of the rendered size.
+const collapseAbove = 60
 // The generated module is checked by the hygiene gate as ordinary code (450 lines).
 const maxRenderedLines = 380
 
@@ -63,13 +64,14 @@ function renderTree(node, lines = []) {
   return lines
 }
 
-const channelPattern = /['"]([a-zA-Z][a-zA-Z0-9]*):([a-zA-Z][a-zA-Z0-9]*)['"]/g
+// Matched against registration call sites only. A bare 'a:b' literal anywhere in a file is
+// not evidence that the file owns that channel.
+const handlerPattern = /ipcMain\s*\.\s*(?:handle|handleOnce|on|once)\(\s*['"]([a-zA-Z][a-zA-Z0-9]*):[a-zA-Z][a-zA-Z0-9]*['"]/g
+const callerPattern = /ipcRenderer\s*\.\s*(?:invoke|send|on|once)\(\s*['"]([a-zA-Z][a-zA-Z0-9]*):[a-zA-Z][a-zA-Z0-9]*['"]/g
 
-async function channelsIn(relativePath) {
+async function namespacesIn(relativePath, pattern) {
   const source = await readFile(path.join(root, relativePath), 'utf8')
-  const namespaces = new Set()
-  for (const [, namespace] of source.matchAll(channelPattern)) namespaces.add(namespace)
-  return namespaces
+  return new Set([...source.matchAll(pattern)].map(([, namespace]) => namespace))
 }
 
 async function mainIpcFiles() {
@@ -79,10 +81,9 @@ async function mainIpcFiles() {
       const target = path.join(directory, entry.name)
       if (entry.isDirectory()) await walk(target)
       else if (entry.isFile() && entry.name.endsWith('.ts') && !isTest(entry.name)) {
-        const source = await readFile(target, 'utf8')
-        if (!source.includes('ipcMain.')) continue
         const relativePath = path.relative(root, target).replaceAll(path.sep, '/')
-        found.push({ file: relativePath, namespaces: await channelsIn(relativePath) })
+        const namespaces = await namespacesIn(relativePath, handlerPattern)
+        if (namespaces.size > 0) found.push({ file: relativePath, namespaces })
       }
     }
   }
@@ -92,8 +93,7 @@ async function mainIpcFiles() {
 
 /** Pairs each preload namespace with the main-process module that handles its channels. */
 async function renderFlows() {
-  const preload = 'src/preload/index.ts'
-  const exposed = await channelsIn(preload)
+  const exposed = await namespacesIn('src/preload/index.ts', callerPattern)
   const handlers = await mainIpcFiles()
   const rows = []
   for (const namespace of [...exposed].sort()) {
