@@ -54,6 +54,8 @@ export const ChatTranscript = memo(function ChatTranscript({
     setWindowStart(Math.max(0, start - REVEAL_ROW_COUNT))
   }
 
+  const lastTurnIndex = useMemo(() => lastRowForTurn(rows, activeTurnId), [rows, activeTurnId])
+
   return (
     <>
       {start > 0 ? (
@@ -68,7 +70,7 @@ export const ChatTranscript = memo(function ChatTranscript({
       {visibleRows.map((row, index) => {
         if (row.kind === 'activity') {
           const id = `activity:${row.id}:${row.items[0]?.id}`
-          const isRunning = isActivityRowRunning(row, start + index, rows, activeTurnId)
+          const isRunning = isActivityRowRunning(row, start + index, lastTurnIndex, activeTurnId)
           return (
             <MessageScrollerItem key={id} messageId={id}>
               <ToolActivity items={row.items} isRunning={isRunning} />
@@ -101,10 +103,18 @@ function rowTurnId(row: TranscriptRow): string | null {
   return row.kind === 'activity' ? (row.items[0]?.turnId ?? null) : (row.item.turnId ?? null)
 }
 
+function lastRowForTurn(rows: TranscriptRow[], activeTurnId: string | null | undefined): number {
+  if (!activeTurnId) return -1
+  for (let i = rows.length - 1; i >= 0; i -= 1) {
+    if (rowTurnId(rows[i]!) === activeTurnId) return i
+  }
+  return -1
+}
+
 function isActivityRowRunning(
   row: Extract<TranscriptRow, { kind: 'activity' }>,
   index: number,
-  rows: TranscriptRow[],
+  lastTurnIndex: number,
   activeTurnId: string | null | undefined
 ): boolean {
   if (row.items.some((item) => item.status === 'inProgress')) {
@@ -113,14 +123,7 @@ function isActivityRowRunning(
   if (!activeTurnId) return false
   const turnId = row.items[0]?.turnId
   if (!turnId || turnId !== activeTurnId) return false
-
-  // When the next section or step starts in this turn, the spinner stops for this section.
-  for (let j = index + 1; j < rows.length; j += 1) {
-    if (rowTurnId(rows[j]!) === activeTurnId) {
-      return false
-    }
-  }
-  return true
+  return index >= lastTurnIndex
 }
 
 /** Consecutive batches can share a turn id; pin the first member so React does not reuse the wrong group. */

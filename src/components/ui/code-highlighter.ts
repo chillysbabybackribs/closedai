@@ -57,10 +57,26 @@ const LANGUAGE_ALIASES: Record<string, string> = {
   yml: 'yaml'
 }
 
+const MAX_HIGHLIGHT_CACHE = 200
+const highlightCache = new Map<string, string>()
+
 export async function highlightCode(code: string, language: string, theme: string): Promise<string> {
+  const resolvedTheme = theme === 'github-dark-default' ? theme : 'github-dark-default'
+  const resolvedLang = LANGUAGE_ALIASES[language.toLowerCase()] ?? 'plaintext'
+  const cacheKey = `${resolvedLang}:${resolvedTheme}:${code}`
+  const cached = highlightCache.get(cacheKey)
+  if (cached !== undefined) return cached
+
   const highlighter = await highlighterPromise
-  return highlighter.codeToHtml(code, {
-    lang: LANGUAGE_ALIASES[language.toLowerCase()] ?? 'plaintext',
-    theme: theme === 'github-dark-default' ? theme : 'github-dark-default'
+  const html = highlighter.codeToHtml(code, {
+    lang: resolvedLang,
+    theme: resolvedTheme
   })
+
+  if (highlightCache.size >= MAX_HIGHLIGHT_CACHE) {
+    const oldestKey = highlightCache.keys().next().value
+    if (oldestKey) highlightCache.delete(oldestKey)
+  }
+  highlightCache.set(cacheKey, html)
+  return html
 }

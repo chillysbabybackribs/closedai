@@ -28,7 +28,6 @@ function CodeBlockCode({ code, language = 'plaintext', theme = 'github-dark-defa
 
   useEffect(() => {
     let active = true
-    setHighlightedHtml(null)
     void import('./code-highlighter.js')
       .then(({ highlightCode }) => highlightCode(code, language, theme))
       .then((html) => {

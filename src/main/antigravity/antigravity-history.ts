@@ -18,9 +18,6 @@ import { antigravityThreadId } from './antigravity-ids.js'
 const MAX_THREADS = 100
 
 type IndexEntry = { conversationId: string; cwd: string; title: string; preview: string; createdAt: number; updatedAt: number }
-
-type SummaryRow = { conversation_id: string; title: string }
-
 type StoredTranscript = { conversationId: string; items: ChatTranscriptItem[]; updatedAt: number }
 
 export class AntigravityHistory {
@@ -29,32 +26,46 @@ export class AntigravityHistory {
     private readonly summariesDbPath = join(ANTIGRAVITY_STATE_DIR, 'conversation_summaries.db')
   ) {}
 
-  /** Conversations recorded for this workspace, newest first, minus the archived ones. */
+  /** Conversations this app ran for the workspace, newest first, minus the archived ones. */
   async listThreads(cwd: string): Promise<ChatThreadSummary[]> {
-    const archived = await this.archivedIds()
-    const rows = this.readSummaries()
-    const workspace = workspaceUri(cwd)
-    return rows
-      .filter((row) => row.nesting_depth === 0 && !archived.has(row.conversation_id) && workspacesOf(row).includes(workspace))
-      .map(threadSummary)
+    const [archived, index] = await Promise.all([this.archivedIds(), this.readIndex()])
+    const titles = this.readCliTitles()
+    const workspace = workspaceKey(cwd)
+    return Object.values(index)
+      .filter((entry) => !archived.has(entry.conversationId) && workspaceKey(entry.cwd) === workspace)
+      .map((entry): ChatThreadSummary => ({
+        id: antigravityThreadId(entry.conversationId),
+        title: titles.get(entry.conversationId) || entry.title || 'New chat',
+        preview: entry.preview,
+        createdAt: entry.createdAt,
+        updatedAt: entry.updatedAt
+      }))
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, MAX_THREADS)
   }
 
-  /** The CLI's generated title for a conversation, once it has one. */
+  /** The CLI's generated title for a conversation, when its summary table has one. */
   async threadName(conversationId: string): Promise<string | null> {
-    let db: DatabaseSync | null = null
-    try {
-      db = new DatabaseSync(this.summariesDbPath)
-      const row = db.prepare(
-        'SELECT title FROM conversation_summaries WHERE conversation_id = ? LIMIT 1'
-      ).get(conversationId) as Record<string, unknown> | undefined
-      return typeof row?.title === 'string' ? row.title.trim() || null : null
-    } catch {
-      return null
-    } finally {
-      db?.close()
+    return this.readCliTitles().get(conversationId) || null
+  }
+
+  /** Record (or refresh) a conversation in the workspace index from its transcript. */
+  async recordThread(conversationId: string, cwd: string, items: ChatTranscriptItem[]): Promise<void> {
+    const index = await this.readIndex()
+    const first = items.find((item) => item.type === 'user')
+    const text = first?.type === 'user' ? first.text : ''
+    const now = Date.now()
+    const existing = index[conversationId]
+    index[conversationId] = {
+      conversationId,
+      cwd,
+      title: existing?.title || firstLine(text) || (first?.type === 'user' ? first.attachments?.[0]?.name ?? '' : ''),
+      preview: existing?.preview || text.slice(0, 200),
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now
     }
+    await mkdir(this.stateDir, { recursive: true })
+    await writeAtomic(this.indexPath(), JSON.stringify(index, null, 2))
   }
 
   async archive(conversationId: string): Promise<void> {
@@ -80,19 +91,21 @@ export class AntigravityHistory {
     }
   }
 
-  private readSummaries(): SummaryRow[] {
+  private readCliTitles(): Map<string, string> {
     let db: DatabaseSync | null = null
     try {
       db = new DatabaseSync(this.summariesDbPath)
       const rows = db.prepare('SELECT conversation_id, title FROM conversation_summaries').all() as unknown[]
-      return rows.flatMap((row) => {
+      const titles = new Map<string, string>()
+      for (const row of rows) {
         const record = row as Record<string, unknown>
-        return typeof record.conversation_id === 'string' && record.conversation_id
-          ? [{ conversation_id: record.conversation_id, title: String(record.title ?? '') }]
-          : []
-      })
+        if (typeof record.conversation_id === 'string' && typeof record.title === 'string' && record.title.trim()) {
+          titles.set(record.conversation_id, record.title.trim())
+        }
+      }
+      return titles
     } catch {
-      return []
+      return new Map()
     } finally {
       db?.close()
     }
@@ -119,10 +132,6 @@ export class AntigravityHistory {
     }
   }
 
-  private indexPath(): string {
-    return join(this.stateDir, 'threads.json')
-  }
-
   private async archivedIds(): Promise<Set<string>> {
     try {
       const parsed = JSON.parse(await readFile(this.archivedPath(), 'utf8')) as unknown
@@ -130,6 +139,10 @@ export class AntigravityHistory {
     } catch {
       return new Set()
     }
+  }
+
+  private indexPath(): string {
+    return join(this.stateDir, 'threads.json')
   }
 
   private archivedPath(): string {
@@ -141,15 +154,12 @@ export class AntigravityHistory {
   }
 }
 
-function normalizeUri(uri: string): string {
-  try {
-    return decodeURIComponent(uri).replace(/\/+$/, '')
-  } catch {
-    return uri.replace(/\/+$/, '')
-  }
+function workspaceKey(cwd: string): string {
+  return pathToFileURL(cwd).href.replace(/\/+$/, '')
 }
 
-function firstLine(text: string): string {
+/** The first line of the user's own words, without the app's context blocks. */
+export function firstLine(text: string): string {
   const line = text.replace(/<closedai_context\b[^>]*>[\s\S]*?<\/closedai_context>\s*/g, '').split('\n')[0]?.trim() ?? ''
   return line.length > 80 ? `${line.slice(0, 79).trimEnd()}…` : line
 }

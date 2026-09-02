@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   chatTitle,
   coalesceChatEvents,
+  coalesceChatWorkspaceEvents,
   initialChatState,
   initialChatWorkspaceState,
   reduceChatEvent,
@@ -139,4 +140,20 @@ test('a delta leaves untouched items and unknown targets referentially stable', 
   assert.equal(next.items[0], state.items[0])
   assert.equal(next.items[1]?.type === 'assistant' && next.items[1].text, 'x')
   assert.equal(reduceChatEvent(state, { type: 'itemDelta', itemId: 'missing', field: 'text', delta: 'x' }), state)
+})
+
+test('coalesceChatWorkspaceEvents collapses pane stream chunks and resets on workspace replace', () => {
+  const ws = initialChatWorkspaceState()
+  const merged = coalesceChatWorkspaceEvents([
+    { type: 'pane', paneId: 'p1', event: { type: 'itemDelta', itemId: 'a', field: 'text', delta: 'stale' } },
+    { type: 'workspace', snapshot: ws },
+    { type: 'pane', paneId: 'p1', event: { type: 'itemDelta', itemId: 'a', field: 'text', delta: 'hel' } },
+    { type: 'pane', paneId: 'p1', event: { type: 'itemDelta', itemId: 'a', field: 'text', delta: 'lo' } },
+    { type: 'pane', paneId: 'p2', event: { type: 'itemDelta', itemId: 'b', field: 'text', delta: 'world' } }
+  ])
+  assert.deepEqual(merged, [
+    { type: 'workspace', snapshot: ws },
+    { type: 'pane', paneId: 'p1', event: { type: 'itemDelta', itemId: 'a', field: 'text', delta: 'hello' } },
+    { type: 'pane', paneId: 'p2', event: { type: 'itemDelta', itemId: 'b', field: 'text', delta: 'world' } }
+  ])
 })

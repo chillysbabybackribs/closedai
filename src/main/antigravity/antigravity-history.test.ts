@@ -4,42 +4,44 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import test from 'node:test'
-import { AntigravityHistory, parseCliTime, previewText } from './antigravity-history.js'
+import { AntigravityHistory, firstLine } from './antigravity-history.js'
 
-// Schema and value shapes copied from ~/.gemini/antigravity-cli/conversation_summaries.db (agy 1.1.24).
-async function summariesDb(dir: string, rows: Array<Record<string, unknown>>): Promise<string> {
+// Column shapes copied from ~/.gemini/antigravity-cli/conversation_summaries.db (agy 1.1.24).
+function summariesDb(dir: string, rows: Array<[id: string, title: string]>): string {
   const path = join(dir, 'conversation_summaries.db')
   const db = new DatabaseSync(path)
-  db.exec('CREATE TABLE conversation_summaries (conversation_id text PRIMARY KEY, title text NOT NULL DEFAULT "", preview text NOT NULL DEFAULT "", step_count integer NOT NULL DEFAULT 0, last_modified_time datetime NOT NULL, workspace_uris text NOT NULL, nesting_depth integer NOT NULL DEFAULT 0, last_user_input_time datetime NOT NULL)')
-  const insert = db.prepare('INSERT INTO conversation_summaries (conversation_id, title, preview, last_modified_time, workspace_uris, nesting_depth, last_user_input_time) VALUES (?, ?, ?, ?, ?, ?, ?)')
-  for (const row of rows) {
-    insert.run(String(row.id), String(row.title ?? ''), String(row.preview ?? ''), String(row.modified), String(row.workspaces ?? '[]'), Number(row.depth ?? 0), String(row.input ?? '0001-01-01 00:00:00+00:00'))
-  }
+  db.exec('CREATE TABLE conversation_summaries (conversation_id text PRIMARY KEY, title text NOT NULL DEFAULT "")')
+  const insert = db.prepare('INSERT INTO conversation_summaries (conversation_id, title) VALUES (?, ?)')
+  for (const [id, title] of rows) insert.run(id, title)
   db.close()
   return path
 }
 
-test('threads list the workspace\'s top-level conversations newest first, minus archived ones', async () => {
+test('recorded conversations list for their workspace newest first, titled by the CLI when it has one', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'agy-history-'))
   try {
-    const db = await summariesDb(dir, [
-      { id: 'a', title: 'Search plan', preview: 'first prompt', modified: '2026-08-30 17:54:50.501242631+00:00', workspaces: '["file:///home/dp/My%20Project"]', input: '2026-08-30 17:50:00+00:00' },
-      { id: 'b', title: '', preview: '<closedai_context name="x" kind="application">\nstate\n</closedai_context>\nHello there\nsecond line', modified: '2026-08-31 10:00:00+00:00', workspaces: '["file:///home/dp/My%20Project/"]' },
-      { id: 'c', title: 'Elsewhere', preview: '', modified: '2026-08-31 11:00:00+00:00', workspaces: '["file:///tmp/other"]' },
-      { id: 'd', title: 'Subagent', preview: '', modified: '2026-08-31 12:00:00+00:00', workspaces: '["file:///home/dp/My%20Project"]', depth: 1 },
-      { id: 'e', title: 'Archived', preview: '', modified: '2026-08-31 13:00:00+00:00', workspaces: '["file:///home/dp/My%20Project"]' }
-    ])
-    const history = new AntigravityHistory(join(dir, 'state'), db)
+    const history = new AntigravityHistory(join(dir, 'state'), summariesDb(dir, [['a', 'Search plan']]))
+    await history.recordThread('a', '/home/dp/My Project', [{ type: 'user', id: 'u', turnId: null, text: '<closedai_context name="x" kind="application">\nstate\n</closedai_context>\nfirst prompt\nmore' }])
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    await history.recordThread('b', '/home/dp/My Project/', [{ type: 'user', id: 'u', turnId: null, text: 'Hello there' }])
+    await history.recordThread('c', '/tmp/other', [{ type: 'user', id: 'u', turnId: null, text: 'Elsewhere' }])
+    await history.recordThread('e', '/home/dp/My Project', [{ type: 'user', id: 'u', turnId: null, text: 'Archived' }])
     await history.archive('e')
     const threads = await history.listThreads('/home/dp/My Project')
     assert.deepEqual(threads.map((thread) => thread.id), ['agy:b', 'agy:a'])
     assert.equal(threads[0]!.title, 'Hello there')
-    assert.equal(threads[0]!.preview, 'Hello there\nsecond line')
     assert.equal(threads[1]!.title, 'Search plan')
-    assert.equal(threads[1]!.createdAt, Date.parse('2026-08-30T17:50:00+00:00'))
-    assert.equal(threads[1]!.updatedAt, Date.parse('2026-08-30T17:54:50.501+00:00'))
+    assert.ok(threads[1]!.preview.startsWith('<closedai_context'))
+    assert.ok(threads[1]!.createdAt <= threads[1]!.updatedAt)
     assert.equal(await history.threadName('a'), 'Search plan')
     assert.equal(await history.threadName('b'), null)
+    // A second turn keeps the title and creation time but moves the conversation up.
+    const createdAt = threads[1]!.createdAt
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    await history.recordThread('a', '/home/dp/My Project', [{ type: 'user', id: 'u', turnId: null, text: 'different' }])
+    const again = await history.listThreads('/home/dp/My Project')
+    assert.equal(again[0]!.id, 'agy:a')
+    assert.equal(again[0]!.createdAt, createdAt)
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
@@ -53,13 +55,13 @@ test('transcripts round-trip through the state dir and a missing one reads as nu
     await history.saveTranscript('c1', [{ type: 'user', id: 'u1', turnId: null, text: 'hi' }])
     assert.deepEqual(await history.loadTranscript('c1'), [{ type: 'user', id: 'u1', turnId: null, text: 'hi' }])
     assert.deepEqual(await history.listThreads('/w'), [])
+    assert.equal(await history.threadName('c1'), null)
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
 })
 
-test('CLI timestamps parse with nanoseconds trimmed and the zero time as unset', () => {
-  assert.equal(parseCliTime('2026-08-30 17:54:50.501242631+00:00'), Date.parse('2026-08-30T17:54:50.501+00:00'))
-  assert.equal(parseCliTime('0001-01-01 00:00:00+00:00'), null)
-  assert.equal(previewText('<project_instructions src="AGENTS.md">\nrules\n</project_instructions>\nWrite a plan'), 'Write a plan')
+test('titles come from the first line of the user\'s own words', () => {
+  assert.equal(firstLine('<closedai_context name="a" kind="untrusted">\nx\n</closedai_context>\nWrite a plan\nmore'), 'Write a plan')
+  assert.equal(firstLine(`${'a'.repeat(90)}`).length, 80)
 })
