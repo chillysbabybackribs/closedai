@@ -119,7 +119,7 @@ function readPhrase(args: string[], verb: string, running = false): string {
   return `${action} file`
 }
 
-function readFiles(args: string[], verb: string): string[] {
+export function readFiles(args: string[], verb: string): string[] {
   const files = positionals(args, verb)
   if (verb === 'sed') return files.filter((token) => !isSedScript(token))
   return files
@@ -204,7 +204,7 @@ function positionals(args: string[], verb?: string): string[] {
   return files
 }
 
-function firstStage(command: string): string {
+export function firstStage(command: string): string {
   const stages = splitPipeline(command).map((stage) => stage.trim()).filter(Boolean)
   const interesting = stages.filter((stage) => !/^pwd(?:\s|$)/.test(stage))
   return (interesting.at(-1) ?? stages.at(-1) ?? command).trim()
@@ -243,7 +243,7 @@ function splitPipeline(command: string): string[] {
   return stages.length ? stages : [command]
 }
 
-function tokenize(command: string): string[] {
+export function tokenize(command: string): string[] {
   const tokens: string[] = []
   let current = ''
   let quote: "'" | '"' | null = null

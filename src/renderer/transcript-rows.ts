@@ -1,6 +1,6 @@
 import type { ChatTranscriptItem } from '../shared/chat.js'
 import type { ToolPart } from '../components/ui/tool.js'
-import { commandKind, commandPhrase, toolPhrase, unwrapShell } from './activity-phrase.js'
+import { commandKind, commandPhrase, firstStage, readFiles, tokenize, toolPhrase, unwrapShell } from './activity-phrase.js'
 
 export type ActivityItem = Extract<ChatTranscriptItem, { type: 'command' | 'fileChange' | 'tool' }>
 export type ReasoningItem = Extract<ChatTranscriptItem, { type: 'plan' | 'reasoning' }>
@@ -78,11 +78,29 @@ export function activityTitle(item: ActivityItem, running = false): string {
 
 function commandHeadline(items: ActivityItem[], running = false): string {
   const kinds = new Set(items.map((item) => item.type === 'command' ? commandKind(item.command) : 'run'))
-  if (kinds.size === 1 && kinds.has('read')) return counted(running ? 'Reading' : 'Read', items.length, 'file', 'files')
+  if (kinds.size === 1 && kinds.has('read')) return readHeadline(items, running)
   if (kinds.size === 1 && kinds.has('search')) return `${running ? 'Searching' : 'Searched'} ${items.length} times`
   if (kinds.size === 1 && kinds.has('list')) return counted(running ? 'Listing' : 'Listed', items.length, 'path', 'paths')
   if (kinds.size === 1 && kinds.has('test')) return running ? 'Running tests' : 'Ran tests'
   return counted(running ? 'Running' : 'Ran', items.length, 'command', 'commands')
+}
+
+function readHeadline(items: ActivityItem[], running = false): string {
+  const files: string[] = []
+  for (const item of items) {
+    if (item.type === 'command') {
+      const stage = firstStage(unwrapShell(item.command))
+      const argv = tokenize(stage)
+      const verb = fileName(argv[0] ?? '').toLowerCase()
+      files.push(...readFiles(argv.slice(1), verb))
+    }
+  }
+  const action = running ? 'Reading' : 'Read'
+  const names = files.map(fileName)
+  if (names.length === 1) return `${action} ${names[0]!}`
+  if (names.length > 1 && names.length <= 3) return `${action} ${names.join(', ')}`
+  if (names.length > 3) return `${action} ${names.slice(0, 3).join(', ')} (+${names.length - 3} more)`
+  return counted(action, items.length, 'file', 'files')
 }
 
 export function commandTitle(command: string, max = 64): string {

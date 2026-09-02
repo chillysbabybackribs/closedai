@@ -203,9 +203,11 @@ const ToolActivity = memo(function ToolActivity({
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent className="prompt-tool-activity-content">
-          {clusters.map((cluster) => (
-            <Tool key={cluster.id} className="prompt-transcript-tool" toolPart={clusterToolPart(cluster)} />
-          ))}
+          <div className="prompt-tool-activity-card">
+            {clusters.map((cluster) => (
+              <Tool key={cluster.id} className="prompt-transcript-tool" toolPart={clusterToolPart(cluster)} defaultOpen={true} />
+            ))}
+          </div>
         </CollapsibleContent>
       </Collapsible>
     </div>
