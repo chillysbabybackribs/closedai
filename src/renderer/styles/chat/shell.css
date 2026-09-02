@@ -273,8 +273,9 @@
 .chat-scroll-content {
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   min-height: 100%;
-  /* Rows space themselves with .message margins; cancel the component's gap-8. */
+  /* Rows space themselves with scroller-item adjacency; cancel the component's gap-8. */
   gap: 0;
   padding-bottom: 8px;
   zoom: var(--chat-zoom, 1);
@@ -291,10 +292,6 @@
 
 .chat-scroll-content > [data-slot="message-scroller-item"] + [data-slot="message-scroller-item"] {
   margin-top: 8px;
-}
-
-.chat-scroll-content > [data-slot="message-scroller-item"].chat-turn-user {
-  padding-inline: 0;
 }
 
 /* Row spacing is owned HERE, at the scroller-item level, and nowhere else.

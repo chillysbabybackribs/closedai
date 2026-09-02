@@ -106,12 +106,7 @@ function TranscriptScroller({
   const scrollDir = useScrollDirection(root)
 
   return (
-    <MessageScrollerProvider
-      key={threadId ?? 'empty'}
-      autoScroll
-      defaultScrollPosition="last-anchor"
-      scrollPreviousItemPeek={64}
-    >
+    <MessageScrollerProvider key={threadId ?? 'empty'} autoScroll defaultScrollPosition="end">
       <MessageScroller ref={setRoot} className="chat-scroll-root prompt-chat-scroll" data-scroll-dir={scrollDir}>
         <MessageScrollerViewport className="chat-scroll">
           <MessageScrollerContent className="chat-scroll-content gap-0">

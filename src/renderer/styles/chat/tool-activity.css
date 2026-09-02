@@ -48,22 +48,18 @@
   color: var(--transcript-activity);
 }
 
-.prompt-chat-content > .prompt-reasoning + .prompt-tool-activity,
-.prompt-chat-content > .prompt-tool-activity + .prompt-tool-activity,
 .chat-scroll-content > [data-slot='message-scroller-item']:has(.prompt-reasoning)
   + [data-slot='message-scroller-item']:has(.prompt-tool-activity),
 .chat-scroll-content > [data-slot='message-scroller-item']:has(.prompt-tool-activity)
   + [data-slot='message-scroller-item']:has(.prompt-tool-activity) {
-  margin-top: calc(2px - var(--chat-gap, 0px));
+  margin-top: 2px;
 }
 
-.prompt-chat-content > .prompt-message-assistant + .prompt-tool-activity,
-.prompt-chat-content > .prompt-tool-activity + .prompt-message-assistant,
 .chat-scroll-content > [data-slot='message-scroller-item']:has(.prompt-message-assistant)
   + [data-slot='message-scroller-item']:has(.prompt-tool-activity),
 .chat-scroll-content > [data-slot='message-scroller-item']:has(.prompt-tool-activity)
   + [data-slot='message-scroller-item']:has(.prompt-message-assistant) {
-  margin-top: calc(10px - var(--chat-gap, 0px));
+  margin-top: 8px;
 }
 
 .prompt-tool-activity-trigger {

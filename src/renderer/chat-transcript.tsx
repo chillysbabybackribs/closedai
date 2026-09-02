@@ -55,7 +55,6 @@ export const ChatTranscript = memo(function ChatTranscript({
           <MessageScrollerItem
             key={row.item.id}
             messageId={row.item.id}
-            scrollAnchor={row.item.type === 'user'}
             className={row.item.type === 'user' ? 'chat-turn-user' : undefined}
           >
             <TranscriptItem item={row.item} />

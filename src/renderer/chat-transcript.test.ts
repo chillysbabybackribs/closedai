@@ -63,7 +63,7 @@ test('thinking stays visible while tool calls stream on the same turn', () => {
   assert.match(html, /rg AGENTS.md/)
 })
 
-test('user turns are scroller anchors and attachments render as attachment cards', () => {
+test('user turns are scroller rows and attachments render as attachment cards', () => {
   const html = renderTranscript({
     items: [{
       type: 'user',
@@ -75,7 +75,7 @@ test('user turns are scroller anchors and attachments render as attachment cards
     activeTurnId: null
   })
   assert.match(html, /data-slot="message-scroller-item"/)
-  assert.match(html, /data-scroll-anchor="true"/)
+  assert.doesNotMatch(html, /data-scroll-anchor="true"/)
   assert.match(html, /data-slot="attachment"/)
   assert.match(html, /notes\.md/)
 })

@@ -35,11 +35,6 @@
 
 .prompt-message-user {
   justify-content: flex-end;
-  margin-top: var(--chat-turn-extra);
-}
-
-.prompt-chat-content > .prompt-message-user:first-child {
-  margin-top: 0;
 }
 
 .prompt-message-user-content {
