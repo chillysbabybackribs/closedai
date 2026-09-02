@@ -74,7 +74,7 @@ export function AttachmentPicker({
         <DropdownMenu.Trigger asChild>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="icon"
             className="prompt-composer-tool rounded-full"
             aria-label="Add attachment"
