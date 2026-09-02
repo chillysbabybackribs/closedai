@@ -30,7 +30,10 @@ export function ChatPane(): JSX.Element {
   const title = chatTitle(state)
   const hasMessages = state.items.length > 0
   const centerComposer = ready && !hasMessages && !historyOpen
-  const backgroundPeers = chat.peers.filter((peer) => peer.paneId !== chat.selectedPaneId)
+  const backgroundPeers = chat.peers.filter((peer) =>
+    peer.paneId !== chat.selectedPaneId &&
+    (peer.running || peer.threadId !== null || peer.preview.length > 0)
+  )
 
   async function sendMessage(text: string, attachments: ChatAttachment[]): Promise<void> {
     setHistoryOpen(false)

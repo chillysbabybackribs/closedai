@@ -85,6 +85,23 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   async selectPane(paneId: ChatPaneId): Promise<void> {
     this.requirePeer(paneId)
     if (paneId === this.selectedPaneId) return
+
+    const currentEntry = this.peers.get(this.selectedPaneId)
+    const currentSnapshot = currentEntry?.surface.snapshot()
+    const currentEmpty = currentSnapshot &&
+      currentSnapshot.items.length === 0 &&
+      currentSnapshot.threadId === null &&
+      !currentSnapshot.activeTurnId
+
+    if (currentEmpty && currentEntry && this.peers.size > 1) {
+      currentEntry.surface.stop()
+      this.peers.delete(this.selectedPaneId)
+      const settings = this.settings.get()
+      await this.settings.set({
+        chatPeers: settings.chatPeers.filter((p) => p.paneId !== this.selectedPaneId)
+      })
+    }
+
     this.selectedPaneId = paneId
     await this.settings.set({ chatSelectedPaneId: paneId })
     this.emitWorkspace()
@@ -113,6 +130,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   async newPeer(): Promise<ChatPaneId> {
     const current = this.requirePeer(this.selectedPaneId).surface.snapshot()
+    const currentEmpty = current.items.length === 0 && current.threadId === null && !current.activeTurnId
+    if (currentEmpty) return this.selectedPaneId
+
     const record = freshRecord(current.selectedModel, current.selectedReasoningEffort)
     const settings = this.settings.get()
     await this.settings.set({

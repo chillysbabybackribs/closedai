@@ -136,3 +136,17 @@ test('closePeer stops surface and removes pane, selecting remaining pane', async
   assert.equal(manager.snapshot().selectedPaneId, 'pane-a')
   assert.ok(surfaces[1]!.calls.includes('stop'))
 })
+
+test('switching away from an empty new chat discards it so it does not linger', async () => {
+  const { manager, surfaces } = harness()
+  await manager.send('pane-a', 'hello', [])
+  const paneB = await manager.newPeer()
+  assert.equal(manager.snapshot().peers.length, 2)
+  assert.equal(manager.snapshot().selectedPaneId, paneB)
+
+  // Switching back to pane-a without sending anything in paneB should discard empty paneB
+  await manager.selectPane('pane-a')
+  assert.equal(manager.snapshot().peers.length, 1)
+  assert.equal(manager.snapshot().selectedPaneId, 'pane-a')
+  assert.ok(surfaces[1]!.calls.includes('stop'))
+})
