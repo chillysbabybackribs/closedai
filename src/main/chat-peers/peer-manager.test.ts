@@ -124,3 +124,15 @@ test('peer awareness exposes child subagent activity without duplicating the cal
   const read = manager.readReadable(visible[0]!.paneId, 'pane-a')
   assert.equal(read?.items[0]?.id, 'sub-1')
 })
+
+test('closePeer stops surface and removes pane, selecting remaining pane', async () => {
+  const { manager, surfaces } = harness()
+  const paneB = await manager.newPeer()
+  assert.equal(manager.snapshot().peers.length, 2)
+  assert.equal(manager.snapshot().selectedPaneId, paneB)
+
+  await manager.closePeer(paneB)
+  assert.equal(manager.snapshot().peers.length, 1)
+  assert.equal(manager.snapshot().selectedPaneId, 'pane-a')
+  assert.ok(surfaces[1]!.calls.includes('stop'))
+})

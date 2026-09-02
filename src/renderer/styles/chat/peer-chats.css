@@ -3,54 +3,224 @@
   min-width: 0;
 }
 
-/* Static strip fused to the composer: inset from the input's edges and tucked
-   behind its opaque surface so only the top sliver shows. */
-.peer-chat-bar {
+/* Floating agent shelf positioned directly above the composer input */
+.peer-chat-shelf {
   padding: 0 var(--chat-column-gutter);
+  margin-bottom: 8px;
 }
 
-.peer-chat-bar-inner {
+.peer-chat-shelf-inner {
   display: flex;
   align-items: center;
-  gap: 2px;
-  max-width: calc(var(--chat-column-width) - 20px);
-  height: 41px;
-  margin: 0 auto -16px;
-  padding: 0 8px 16px;
-  border: 1px solid var(--antigravity-card-border);
-  border-bottom: none;
-  border-radius: 10px 10px 0 0;
-  background: #202021;
-  overflow-x: auto;
+  gap: 6px;
+  max-width: calc(var(--chat-column-width) + 48px);
+  margin-inline: auto;
+  min-width: 0;
 }
 
-.peer-chat-bar-item {
-  display: flex;
-  flex: 0 0 auto;
+/* Individual agent pill */
+.peer-chat-pill {
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 19px;
-  padding: 0 8px;
-  border-radius: 6px;
-  color: #a5a5aa;
-  font-size: 11px;
+  height: 28px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--popover, #252528) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border, #3c3c40) 70%, transparent);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  overflow: hidden;
+}
+
+.peer-chat-pill:hover {
+  background: var(--popover, #2a2a2e);
+  border-color: color-mix(in srgb, var(--border, #4c4c52) 90%, transparent);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 26%);
+}
+
+.peer-chat-pill-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 10px;
+  background: transparent;
+  border: 0;
+  color: var(--muted-foreground, #a1a1aa);
+  font: inherit;
+  font-size: 12px;
   font-weight: 500;
+  cursor: pointer;
+  min-width: 0;
+  transition: color 120ms ease;
 }
 
-.peer-chat-bar-item:hover {
-  color: #d7d7da;
-  background: #2b2b2d;
+.peer-chat-pill:hover .peer-chat-pill-main,
+.peer-chat-pill-main:hover {
+  color: var(--foreground, #f4f4f5);
 }
 
-.peer-chat-bar-icon {
+.peer-chat-pill-title {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.peer-chat-pill-icon {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+
+.peer-chat-pill-running {
+  color: var(--antigravity-blue, #60a5fa);
+  animation: peer-chat-spin 1.1s linear infinite;
+}
+
+.peer-chat-pill-idle {
+  color: var(--muted-foreground, #71717a);
+}
+
+.peer-chat-pill-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 4px;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--muted-foreground, #a1a1aa) 70%, transparent);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.peer-chat-pill-close:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 14%, transparent);
+  color: var(--foreground, #ffffff);
+}
+
+.peer-chat-pill-close-icon {
   width: 11px;
   height: 11px;
-  flex: 0 0 auto;
 }
 
-.peer-chat-bar-running {
-  color: var(--antigravity-blue);
-  animation: peer-chat-spin 1.1s linear infinite;
+/* "+N more" overflow cluster pill */
+.peer-chat-overflow-trigger {
+  gap: 4px;
+  padding: 0 10px;
+  background: color-mix(in srgb, var(--popover, #252528) 85%, transparent);
+  color: var(--muted-foreground, #a1a1aa);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.peer-chat-overflow-trigger:hover,
+.peer-chat-overflow-trigger[data-state='open'] {
+  color: var(--foreground, #ffffff);
+  background: var(--popover, #2a2a2e);
+}
+
+.peer-chat-overflow-caret {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+
+/* Radix Dropdown Content for overflow peers */
+.peer-chat-menu {
+  z-index: 60;
+  min-width: 16rem;
+  max-width: min(22rem, calc(100vw - 24px));
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border, #3c3c40) 80%, transparent);
+  background: var(--popover, #1e1e20);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 46%);
+}
+
+.peer-chat-menu-label {
+  padding: 5px 8px 4px;
+  color: var(--muted-foreground, #71717a);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.peer-chat-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  transition: background 100ms ease;
+}
+
+.peer-chat-menu-item:hover {
+  background: color-mix(in srgb, var(--foreground, #fff) 8%, transparent);
+}
+
+.peer-chat-menu-item-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.peer-chat-menu-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.peer-chat-menu-item-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--foreground, #e4e4e7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.peer-chat-menu-item-activity {
+  font-size: 11px;
+  color: var(--muted-foreground, #a1a1aa);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.peer-chat-menu-item-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-foreground, #a1a1aa);
+  cursor: pointer;
+  transition: background 100ms ease, color 100ms ease;
+}
+
+.peer-chat-menu-item-close:hover {
+  background: color-mix(in srgb, var(--foreground, #fff) 12%, transparent);
+  color: var(--foreground, #fff);
 }
 
 @keyframes peer-chat-spin {
