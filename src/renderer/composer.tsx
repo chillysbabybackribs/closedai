@@ -1,6 +1,6 @@
 import type { ClipboardEvent, DragEvent, FormEvent, JSX } from 'react'
 import { useRef, useState } from 'react'
-import { ArrowRight, Mic, Square } from 'lucide-react'
+import { ArrowUp, Mic, Square } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import {
@@ -157,7 +157,7 @@ export function Composer({ enabled, running, models, selectedModel, selectedReas
                     data-waiting-for-input={waitingForInput || undefined}
                     disabled={!canSend}
                   >
-                    <ArrowRight size={18} aria-hidden="true" />
+                    <ArrowUp size={18} aria-hidden="true" />
                   </Button>
                 </PromptInputAction>
               )}
