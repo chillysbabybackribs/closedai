@@ -86,7 +86,7 @@ test('wait forwards conditions and marks a timeout as a tool failure', async () 
   const { calls, call } = harness({ waitFor: timedOut })
   const missingCondition = await call({ action: 'wait_for' })
   assert.equal(missingCondition.isError, true)
-  assert.match(textOf(missingCondition), /selector.*text/)
+  assert.match(textOf(missingCondition), /selector.*wait_for_text/)
 
   const result = await call({
     action: 'wait_for', selector: '[role="dialog"]', condition: 'hidden', timeout_ms: 250
@@ -98,7 +98,7 @@ test('wait forwards conditions and marks a timeout as a tool failure', async () 
 
 test('wait succeeds with default condition and timeout', async () => {
   const { calls, call } = harness()
-  const result = await call({ action: 'wait_for', text: 'Tools' })
+  const result = await call({ action: 'wait_for', wait_for_text: 'Tools' })
   assert.equal(result.isError, undefined)
   assert.deepEqual(calls[0], [
     'waitFor',
@@ -113,7 +113,7 @@ test('action schemas reject stale-shaped and oversized arguments before dispatch
   assert.equal(missingRef.isError, true)
   const badModifier = await call({ action: 'press_key', key: 'Enter', modifiers: ['hyper'] })
   assert.equal(badModifier.isError, true)
-  const badTimeout = await call({ action: 'wait_for', text: 'x', timeout_ms: 30_000 })
+  const badTimeout = await call({ action: 'wait_for', wait_for_text: 'x', timeout_ms: 30_000 })
   assert.equal(badTimeout.isError, true)
   assert.deepEqual(calls, [])
 })

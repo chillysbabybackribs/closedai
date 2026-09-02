@@ -93,7 +93,7 @@ function actions(app: AppHostProvider): ToolAction[] {
         'Wait until a CSS selector and/or visible app text is visible or hidden. When both are supplied, both must reach the requested condition.',
       inputSchema: objectSchema({
         selector: { type: 'string', minLength: 1, maxLength: 1_000, description: 'CSS selector to observe.' },
-        text: { type: 'string', minLength: 1, maxLength: 2_000, description: 'Visible text substring to observe.' },
+        wait_for_text: { type: 'string', minLength: 1, maxLength: 2_000, description: 'Visible text substring to observe.' },
         condition: {
           type: 'string', enum: ['visible', 'hidden'],
           description: 'Desired state; defaults to visible.'
@@ -106,8 +106,8 @@ function actions(app: AppHostProvider): ToolAction[] {
       timeoutMs: 30_000,
       run: async (input, context) => {
         const selector = stringArg(input, 'selector')
-        const text = stringArg(input, 'text')
-        if (!selector && !text) throw new Error('Pass `selector`, `text`, or both')
+        const text = stringArg(input, 'wait_for_text')
+        if (!selector && !text) throw new Error('Pass `selector`, `wait_for_text`, or both')
         const condition = stringArg(input, 'condition', 'visible')
         if (condition !== 'visible' && condition !== 'hidden') throw new Error('Unsupported condition')
         const result = await requireApp(app).waitFor({
