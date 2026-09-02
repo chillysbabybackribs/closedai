@@ -6,8 +6,9 @@ Prompt Kit-powered chat that runs on Codex (app-server) or Claude Code (Claude A
 popup-to-tab routing). The chat is a local Codex app-server client with thread history, model
 selection, approval handling, attachments, and ClosedAI-owned browser/capture/CDP tools.
 
-One long-lived local app-server process serves every chat turn. The renderer only talks to the
-main process through the typed `window.closedai` preload bridge.
+One long-lived local app-server process serves each live chat pane. On launch, only the selected
+pane is warmed; persisted background panes stay dormant until used. The renderer only talks to
+the main process through the typed `window.closedai` preload bridge.
 
 ## Run
 

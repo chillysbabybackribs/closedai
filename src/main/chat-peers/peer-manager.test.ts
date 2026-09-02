@@ -49,7 +49,7 @@ class FakeSurface extends EventEmitter implements ChatSurface {
   async interrupt(): Promise<void> { this.calls.push('interrupt'); this.state.activeTurnId = null }
   async selectModel(modelId: string): Promise<void> { this.calls.push(`model:${modelId}`) }
   async selectReasoningEffort(effort: string): Promise<void> { this.calls.push(`effort:${effort}`) }
-  async listThreads(): Promise<[]> { return [] }
+  async listThreads(): Promise<[]> { this.calls.push('listThreads'); return [] }
   async newThread(): Promise<void> { this.calls.push('newThread') }
   async continueInNewThread(): Promise<void> { this.calls.push('continue') }
   async openThread(threadId: string): Promise<void> { this.calls.push(`open:${threadId}`) }
@@ -80,6 +80,37 @@ function harness(): { manager: ChatPeerManager; surfaces: FakeSurface[] } {
   })
   return { manager, surfaces }
 }
+
+test('startup and workspace history only wake the selected persisted pane', async () => {
+  const paneA = 'pane-a'
+  const paneB = 'pane-b'
+  const records = [paneA, paneB].map((paneId) => ({
+    paneId,
+    provider: 'codex' as const,
+    threadId: null,
+    codexThreadId: null,
+    claudeSessionId: null,
+    modelId: 'gpt',
+    reasoningEffort: null
+  }))
+  const settings = new MemorySettings({
+    ...DEFAULT_APP_SETTINGS,
+    chatPeers: records,
+    chatSelectedPaneId: paneB
+  })
+  const surfaces: FakeSurface[] = []
+  const manager = new ChatPeerManager(settings, (_peerSettings, modelId) => {
+    const surface = new FakeSurface(modelId)
+    surfaces.push(surface)
+    return surface
+  })
+
+  await manager.start()
+  await manager.listThreads()
+
+  assert.deepEqual(surfaces[0]!.calls, [])
+  assert.deepEqual(surfaces[1]!.calls, ['start', 'listThreads'])
+})
 
 test('new chat keeps a running peer alive and selects an independent surface', async () => {
   const { manager, surfaces } = harness()

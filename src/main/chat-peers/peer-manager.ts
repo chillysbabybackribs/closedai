@@ -67,7 +67,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async start(): Promise<void> {
-    await Promise.all([...this.peers.values()].map((entry) => entry.surface.start()))
+    // Persisted panes are history, not live work. Warming every one creates an app-server per
+    // pane after each relaunch; the selected pane is the only surface startup needs immediately.
+    await this.requirePeer(this.selectedPaneId).surface.start()
   }
 
   stop(): void {
@@ -116,16 +118,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async listThreads(): Promise<ChatThreadSummary[]> {
-    const lists = await Promise.allSettled([...this.peers.values()].map((entry) => entry.surface.listThreads()))
-    const byId = new Map<string, ChatThreadSummary>()
-    for (const result of lists) {
-      if (result.status !== 'fulfilled') continue
-      for (const thread of result.value) byId.set(thread.id, thread)
-    }
-    if (lists.length > 0 && lists.every((result) => result.status === 'rejected')) {
-      throw (lists[0] as PromiseRejectedResult).reason
-    }
-    return [...byId.values()].sort((a, b) => b.updatedAt - a.updatedAt)
+    // Thread history is workspace-wide, so every pane returns the same catalog. Querying each
+    // persisted pane needlessly wakes all of their provider runtimes during the drawer's mount.
+    return this.requirePeer(this.selectedPaneId).surface.listThreads()
   }
 
   async newPeer(): Promise<ChatPaneId> {
