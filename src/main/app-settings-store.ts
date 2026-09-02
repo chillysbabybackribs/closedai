@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { writeAtomic } from './atomic-write.js'
 import type { AppSettings, ChatPeerRecord } from '../shared/types.ts'
+import { chatProviderOfId } from '../shared/chat-providers.js'
+import { peerThreadId } from './chat-peers/peer-settings.js'
 import { DEFAULT_BATCH_MAX_CALLS, normalizeBatchMaxCalls } from './batch-config.js'
 
 export type AppSettingsAccess = {
@@ -21,6 +23,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   browserCookiesImported: false,
   chatThreadId: null,
   chatClaudeSessionId: null,
+  chatAntigravityConversationId: null,
   chatModelId: null,
   chatReasoningEffort: null,
   chatPeers: [],
@@ -46,6 +49,7 @@ function normalize(parsed: unknown): AppSettings {
   const chatPeers = normalizeChatPeers(record.chatPeers, {
     chatThreadId: optionalString(record.chatThreadId),
     chatClaudeSessionId: optionalString(record.chatClaudeSessionId),
+    chatAntigravityConversationId: optionalString(record.chatAntigravityConversationId),
     chatModelId,
     chatReasoningEffort
   })
@@ -60,6 +64,7 @@ function normalize(parsed: unknown): AppSettings {
         : DEFAULT_APP_SETTINGS.browserCookiesImported,
     chatThreadId: optionalString(record.chatThreadId),
     chatClaudeSessionId: optionalString(record.chatClaudeSessionId),
+    chatAntigravityConversationId: optionalString(record.chatAntigravityConversationId),
     chatModelId,
     chatReasoningEffort,
     chatPeers,
@@ -81,7 +86,7 @@ function optionalString(value: unknown): string | null {
 
 function normalizeChatPeers(
   value: unknown,
-  legacy: Pick<AppSettings, 'chatThreadId' | 'chatClaudeSessionId' | 'chatModelId' | 'chatReasoningEffort'>
+  legacy: Pick<AppSettings, 'chatThreadId' | 'chatClaudeSessionId' | 'chatAntigravityConversationId' | 'chatModelId' | 'chatReasoningEffort'>
 ): ChatPeerRecord[] {
   if (Array.isArray(value)) {
     const seen = new Set<string>()
@@ -92,35 +97,38 @@ function normalizeChatPeers(
       if (!paneId || seen.has(paneId)) return []
       seen.add(paneId)
       const modelId = optionalString(record.modelId)
-      const provider = record.provider === 'claude' || record.provider === 'codex'
-        ? record.provider
-        : modelId?.startsWith('claude:') ? 'claude' : 'codex'
-      return [{
-        paneId,
-        provider,
-        threadId: optionalString(record.threadId),
-        codexThreadId: optionalString(record.codexThreadId) ?? (provider === 'codex' ? optionalString(record.threadId) : null),
+      const provider = isProvider(record.provider) ? record.provider : chatProviderOfId(modelId)
+      const threadId = optionalString(record.threadId)
+      // Records written before a provider had its own field carry that thread only in `threadId`.
+      const ids = {
+        codexThreadId: optionalString(record.codexThreadId) ?? (provider === 'codex' ? threadId : null),
         claudeSessionId: optionalString(record.claudeSessionId) ??
-          (provider === 'claude' ? optionalString(record.threadId)?.replace(/^claude:/, '') ?? null : null),
-        modelId,
-        reasoningEffort: optionalString(record.reasoningEffort)
-      }]
+          (provider === 'claude' ? threadId?.replace(/^claude:/, '') ?? null : null),
+        antigravityConversationId: optionalString(record.antigravityConversationId) ??
+          (provider === 'antigravity' ? threadId?.replace(/^agy:/, '') ?? null : null)
+      }
+      return [{ paneId, provider, threadId: peerThreadId(provider, ids), ...ids, modelId, reasoningEffort: optionalString(record.reasoningEffort) }]
     })
     if (peers.length > 0) return peers
   }
-  const provider = legacy.chatModelId?.startsWith('claude:') ? 'claude' : 'codex'
-  const threadId = provider === 'claude' && legacy.chatClaudeSessionId
-    ? `claude:${legacy.chatClaudeSessionId}`
-    : legacy.chatThreadId
+  const provider = chatProviderOfId(legacy.chatModelId)
+  const ids = {
+    codexThreadId: legacy.chatThreadId,
+    claudeSessionId: legacy.chatClaudeSessionId,
+    antigravityConversationId: legacy.chatAntigravityConversationId
+  }
   return [{
     paneId: randomUUID(),
     provider,
-    threadId,
-    codexThreadId: legacy.chatThreadId,
-    claudeSessionId: legacy.chatClaudeSessionId,
+    threadId: peerThreadId(provider, ids),
+    ...ids,
     modelId: legacy.chatModelId,
     reasoningEffort: legacy.chatReasoningEffort
   }]
+}
+
+function isProvider(value: unknown): value is ChatPeerRecord['provider'] {
+  return value === 'codex' || value === 'claude' || value === 'antigravity'
 }
 
 /** 0 disables; anything else lands between the bounds so a typo cannot compact every call. */

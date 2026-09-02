@@ -6,13 +6,13 @@ import type {
   ChatSnapshot,
   ChatThreadSummary
 } from '../shared/chat.js'
-import { isClaudeModelId, isClaudeThreadId } from './claude/claude-ids.js'
+import { CHAT_PROVIDERS, chatProviderOfId } from '../shared/chat-providers.js'
 
-// One chat pane, two providers. Each provider owns its own thread, transcript, and connection;
-// the hub owns which one the pane shows, merges the model catalogs so the picker can switch
-// providers from any state, and routes every call by the id it carries. Picking a model from
-// the other provider switches the pane to that provider's current thread (the old one stays in
-// history), which keeps a thread bound to the backend that can actually continue it.
+// One chat pane, several providers. Each provider owns its own thread, transcript, and
+// connection; the hub owns which one the pane shows, merges the model catalogs so the picker
+// can switch providers from any state, and routes every call by the id it carries. Picking a
+// model from another provider switches the pane to that provider's current thread (the old one
+// stays in history), which keeps a thread bound to the backend that can actually continue it.
 
 /** What the chat IPC drives: the hub, or a single provider in tests. */
 export type ChatSurface = {
@@ -40,6 +40,7 @@ export type ChatProviderService = Omit<ChatSurface, 'beginLogin' | 'start'> & {
 export type ChatHubProviders = {
   codex: ChatProviderService & { beginChatGptLogin(): Promise<string> }
   claude: ChatProviderService
+  antigravity: ChatProviderService
 }
 
 export class ChatHub extends EventEmitter implements ChatSurface {
@@ -47,8 +48,8 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   constructor(private readonly providers: ChatHubProviders, initialModelId: string | null) {
     super()
-    this.active = isClaudeModelId(initialModelId) ? 'claude' : 'codex'
-    for (const name of ['codex', 'claude'] as const) {
+    this.active = chatProviderOfId(initialModelId)
+    for (const name of CHAT_PROVIDERS) {
       providers[name].on('event', (event: ChatEvent) => this.onProviderEvent(name, event))
     }
   }
@@ -61,16 +62,16 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     return this.merge(this.current().snapshot())
   }
 
+  /** Every provider starts; only the active one stays warm (the CLI-backed ones close again). */
   async start(): Promise<void> {
-    await Promise.all([
-      this.providers.codex.start().catch((error: unknown) => console.warn('[chat] codex start failed:', error)),
-      this.providers.claude.start({ warm: this.active === 'claude' }).catch((error: unknown) => console.warn('[chat] claude start failed:', error))
-    ])
+    await Promise.all(CHAT_PROVIDERS.map((name) =>
+      this.providers[name].start({ warm: this.active === name })
+        .catch((error: unknown) => console.warn(`[chat] ${name} start failed:`, error))
+    ))
   }
 
   stop(): void {
-    this.providers.codex.stop()
-    this.providers.claude.stop()
+    for (const name of CHAT_PROVIDERS) this.providers[name].stop()
   }
 
   send(text: string, attachments: ChatAttachment[]): Promise<void> {
@@ -82,7 +83,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   async selectModel(modelId: string): Promise<void> {
-    const target = isClaudeModelId(modelId) ? 'claude' : 'codex'
+    const target = chatProviderOfId(modelId)
     if (target === this.active) return this.current().selectModel(modelId)
     await this.switchTo(target, () => this.providers[target].selectModel(modelId))
   }
@@ -91,9 +92,9 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     return this.current().selectReasoningEffort(effort)
   }
 
-  /** Both providers' threads, newest first; one provider being down hides only its threads. */
+  /** Every provider's threads, newest first; one provider being down hides only its threads. */
   async listThreads(): Promise<ChatThreadSummary[]> {
-    const lists = await Promise.allSettled([this.providers.codex.listThreads(), this.providers.claude.listThreads()])
+    const lists = await Promise.allSettled(CHAT_PROVIDERS.map((name) => this.providers[name].listThreads()))
     const threads = lists.flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
     if (lists.every((result) => result.status === 'rejected')) throw (lists[0] as PromiseRejectedResult).reason
     return threads.sort((a, b) => b.updatedAt - a.updatedAt)
@@ -108,19 +109,20 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   async openThread(threadId: string): Promise<void> {
-    const target = isClaudeThreadId(threadId) ? 'claude' : 'codex'
+    const target = chatProviderOfId(threadId)
     if (target === this.active) return this.current().openThread(threadId)
     await this.switchTo(target, () => this.providers[target].openThread(threadId))
   }
 
   archiveThread(threadId: string): Promise<void> {
-    return this.providers[isClaudeThreadId(threadId) ? 'claude' : 'codex'].archiveThread(threadId)
+    return this.providers[chatProviderOfId(threadId)].archiveThread(threadId)
   }
 
   async beginLogin(): Promise<string | null> {
     if (this.active === 'codex') return this.providers.codex.beginChatGptLogin()
-    // Claude Code signs in from its own CLI; re-checking picks up a login completed elsewhere.
-    await this.providers.claude.start({ warm: true })
+    // Claude Code and Antigravity sign in from their own CLIs; re-checking picks up a login
+    // completed elsewhere.
+    await this.current().start({ warm: true })
     return null
   }
 
@@ -141,13 +143,13 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   private models(): ChatSnapshot['models'] {
-    return [...this.providers.codex.snapshot().models, ...this.providers.claude.snapshot().models]
+    return CHAT_PROVIDERS.flatMap((name) => this.providers[name].snapshot().models)
   }
 
   private onProviderEvent(source: ChatProvider, event: ChatEvent): void {
     if (event.type === 'connection') {
-      // Either provider's catalog or connection changing re-describes the pane in terms of the
-      // active provider, with every model merged in so the picker can offer the other one.
+      // Any provider's catalog or connection changing re-describes the pane in terms of the
+      // active provider, with every model merged in so the picker can offer the others.
       const active = this.current().snapshot()
       this.emitEvent({
         type: 'connection',

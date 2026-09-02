@@ -1,7 +1,7 @@
 import type { JSX } from 'react'
 
 import type { ChatProvider } from '../../shared/chat.js'
-import { ClaudeLogo, OpenAILogo, type LogoProps } from './provider-logos.js'
+import { ClaudeLogo, GeminiLogo, OpenAILogo, type LogoProps } from './provider-logos.js'
 
 export type ProviderMarkProps = LogoProps & {
   provider: ChatProvider
@@ -11,7 +11,14 @@ export type ProviderMarkProps = LogoProps & {
 
 const PROVIDER_NAMES: Record<ChatProvider, string> = {
   codex: 'OpenAI',
-  claude: 'Claude'
+  claude: 'Claude',
+  antigravity: 'Google Antigravity'
+}
+
+const LOGOS: Record<ChatProvider, (props: LogoProps) => JSX.Element> = {
+  codex: OpenAILogo,
+  claude: ClaudeLogo,
+  antigravity: GeminiLogo
 }
 
 /**
@@ -19,10 +26,11 @@ const PROVIDER_NAMES: Record<ChatProvider, string> = {
  * render at their intrinsic ~256px — so every call site goes through here to get one.
  *
  * Note the marks colour differently: OpenAI's fills with `currentColor`, Claude's carries a fixed
- * `#D97757`. Dim this with `opacity-*`, never with a `text-*` utility, or the two drift apart.
+ * `#D97757`, and the Gemini mark (Antigravity) its own gradient. Dim this with `opacity-*`, never
+ * with a `text-*` utility, or the marks drift apart.
  */
 export function ProviderMark({ provider, label, className, ...props }: ProviderMarkProps): JSX.Element {
-  const Logo = provider === 'claude' ? ClaudeLogo : OpenAILogo
+  const Logo = LOGOS[provider]
   const named = label !== undefined
   return (
     <Logo

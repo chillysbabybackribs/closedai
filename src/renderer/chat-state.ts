@@ -1,5 +1,6 @@
 import type { ChatEvent, ChatProvider, ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
 import type { ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../shared/chat-peers.js'
+import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 
 export function initialChatState(): ChatSnapshot {
   return {
@@ -35,7 +36,7 @@ export function reduceChatWorkspaceEvent(
 }
 
 /** How the pane names each provider. */
-export const PROVIDER_LABELS: Record<ChatProvider, string> = { codex: 'Codex', claude: 'Claude Code' }
+export const PROVIDER_LABELS: Record<ChatProvider, string> = CHAT_PROVIDER_LABELS
 
 /** Header title: the provider's thread name, else the first user message, else a placeholder. */
 export function chatTitle(state: ChatSnapshot): string {

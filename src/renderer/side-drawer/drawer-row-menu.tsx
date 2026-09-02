@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { GitBranch } from 'lucide-react'
 import type { ChatModel } from '../../shared/chat.js'
+import { modelGroups } from '../model-menu-state.js'
 import { placeRowMenu, type MenuPlacement } from './drawer-row-position.js'
 
 export type RowMenuTarget = { id: string; title: string; model?: string; x: number; y: number }
@@ -58,8 +59,7 @@ export function DrawerRowMenu({
     }
   }, [onClose])
 
-  const codexModels = models.filter((m) => m.provider === 'codex')
-  const claudeModels = models.filter((m) => m.provider === 'claude')
+  const groups = modelGroups(models)
 
   return createPortal(
     <div
@@ -91,10 +91,10 @@ export function DrawerRowMenu({
         {inheritedModel ? <span className="agents-row-menu-model">{inheritedModel}</span> : null}
       </button>
 
-      {codexModels.length > 0 && (
-        <div className="agents-row-menu-group">
-          <div className="agents-row-menu-group-label">Codex</div>
-          {codexModels.map((m) => (
+      {groups.map((group) => (
+        <div className="agents-row-menu-group" key={group.provider}>
+          <div className="agents-row-menu-group-label">{group.label}</div>
+          {group.models.map((m) => (
             <button
               type="button"
               role="menuitem"
@@ -110,28 +110,7 @@ export function DrawerRowMenu({
             </button>
           ))}
         </div>
-      )}
-
-      {claudeModels.length > 0 && (
-        <div className="agents-row-menu-group">
-          <div className="agents-row-menu-group-label">Claude</div>
-          {claudeModels.map((m) => (
-            <button
-              type="button"
-              role="menuitem"
-              className={`agents-row-menu-item ${m.id === inheritedModel ? 'is-inherited' : ''}`}
-              key={m.id}
-              onClick={() => onFork(m.id)}
-              title={m.description}
-            >
-              <span>{m.displayName}</span>
-              {m.id === inheritedModel ? (
-                <span className="agents-row-menu-model">source</span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-      )}
+      ))}
     </div>,
     document.body
   )

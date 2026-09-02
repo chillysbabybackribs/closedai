@@ -1,11 +1,12 @@
 import type { ChatModel, ChatProvider } from '../shared/chat.js'
+import { CHAT_PROVIDERS } from '../shared/chat-providers.js'
 import { PROVIDER_LABELS } from './chat-state.js'
 
 // Pure state for the composer's model menu: what the trigger reads and how the menu groups.
 
 export type ModelGroup = { provider: ChatProvider; label: string; models: ChatModel[] }
 
-const PROVIDER_ORDER: readonly ChatProvider[] = ['codex', 'claude']
+const PROVIDER_ORDER: readonly ChatProvider[] = CHAT_PROVIDERS
 
 /** Models grouped by provider in a fixed order; providers without models are omitted. */
 export function modelGroups(models: ChatModel[]): ModelGroup[] {
