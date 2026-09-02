@@ -130,9 +130,6 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   async newPeer(): Promise<ChatPaneId> {
     const current = this.requirePeer(this.selectedPaneId).surface.snapshot()
-    const currentEmpty = current.items.length === 0 && current.threadId === null && !current.activeTurnId
-    if (currentEmpty) return this.selectedPaneId
-
     const record = freshRecord(current.selectedModel, current.selectedReasoningEffort)
     const settings = this.settings.get()
     await this.settings.set({
