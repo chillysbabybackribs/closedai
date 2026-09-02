@@ -6,11 +6,11 @@ import type { ChatAttachment } from '../shared/chat.js'
 // pasted screenshot is replayed on every call for the life of the thread. Image tokens scale
 // with pixels, so the copy the model gets is bounded here, the same way tool captures are.
 
-const MAX_WIDTH = 1_600
-const MAX_HEIGHT = 1_200
-const JPEG_QUALITY = 85
+const MAX_WIDTH = 1_280
+const MAX_HEIGHT = 960
+const JPEG_QUALITY = 70
 /** Below this many bytes a paste is already cheap; re-encoding would only lose quality. */
-const SKIP_BELOW_BYTES = 120_000
+const SKIP_BELOW_BYTES = 60_000
 
 /** Return the attachments with pasted (data URL) images bounded for the model. */
 export function shrinkPastedImages(attachments: ChatAttachment[]): ChatAttachment[] {

@@ -15,7 +15,7 @@ const ready: PageReadyResult = {
   url: 'https://a.test/', title: 'A'
 }
 
-function harness(overrides: Partial<UiCaptureHost> = {}, budget = new CaptureBudget()) {
+function harness(overrides: Partial<UiCaptureHost> = {}, budget = new CaptureBudget(10)) {
   const calls: unknown[] = []
   const host: UiCaptureHost = {
     captureAppWindow: async () => { calls.push(['app']); return image },

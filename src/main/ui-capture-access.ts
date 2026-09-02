@@ -5,11 +5,11 @@ import type { BrowserPageCapture, CapturedImage, ImageCrop, UiCaptureHost } from
 
 const MAX_IMAGE_WIDTH = 1_920
 const MAX_IMAGE_HEIGHT = 1_440
-// The model copy: a 1280-wide frame is ~700 image patches instead of ~1500 at 1920, and JPEG
-// keeps the request bytes an order of magnitude below PNG. Text stays readable at this size.
-const MODEL_MAX_WIDTH = 1_280
-const MODEL_MAX_HEIGHT = 960
-const MODEL_JPEG_QUALITY = 85
+// The model copy: a 960-wide frame is ~350 image patches instead of ~1500 at 1920, and JPEG 65
+// keeps the request bytes tiny (~35KB). Text stays readable while keeping token overhead minimal.
+const MODEL_MAX_WIDTH = 960
+const MODEL_MAX_HEIGHT = 720
+const MODEL_JPEG_QUALITY = 65
 const PAINT_TIMEOUT_MS = 1_500
 
 /** Electron implementation of the provider-neutral visual capture tool host. */

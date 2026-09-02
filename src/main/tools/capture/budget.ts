@@ -3,7 +3,7 @@
 // the tool enforces a per-turn ceiling: past it, capture actions fail with advice to verify by
 // reading page state instead. The count resets when the app-server starts a new turn.
 
-export const DEFAULT_MAX_CAPTURES_PER_TURN = 8
+export const DEFAULT_MAX_CAPTURES_PER_TURN = 2
 
 export type CaptureBudgetUse = {
   allowed: boolean
