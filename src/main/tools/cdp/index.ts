@@ -11,7 +11,7 @@ import {
 } from './fields.js'
 import { requireCdp, type CdpHostProvider } from './host.js'
 import { cdpPageTool } from './page.js'
-import { jsonResult, objectSchema } from './result.js'
+import { jsonResult, objectSchema } from '../json-result.js'
 
 export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
   return {

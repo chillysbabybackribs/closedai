@@ -2,7 +2,7 @@ import { defineActionTool, type ToolAction } from '../action-tool.js'
 import { booleanArg, numberArg, stringArg, type JsonObject, type ToolDefinition } from '../tool.js'
 import { refField, tabIdField, tabIdFrom } from './fields.js'
 import { requireCdp, type CdpHostProvider } from './host.js'
-import { jsonResult, objectSchema } from './result.js'
+import { jsonResult, objectSchema } from '../json-result.js'
 
 const coordinateSpaceField: JsonObject = {
   type: 'string',
