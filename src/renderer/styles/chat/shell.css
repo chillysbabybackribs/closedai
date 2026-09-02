@@ -37,8 +37,8 @@
 .chat-zoom-surface {
   display: flex;
   flex-direction: column;
-  width: calc(100% / var(--chat-zoom));
-  height: calc(100% / var(--chat-zoom));
+  width: calc(100% * var(--chat-zoom-inverse));
+  height: calc(100% * var(--chat-zoom-inverse));
   min-width: 0;
   min-height: 0;
   transform: scale(var(--chat-zoom));

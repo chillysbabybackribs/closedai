@@ -74,7 +74,10 @@ export function ChatPane({
     >
       <div
         className="chat-zoom-surface"
-        style={{ '--chat-zoom': zoom / 100 } as React.CSSProperties}
+        style={{
+          '--chat-zoom': zoom / 100,
+          '--chat-zoom-inverse': 100 / zoom
+        } as React.CSSProperties}
       >
         <ChatHeader
           title={title}

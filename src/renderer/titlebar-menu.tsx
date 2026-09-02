@@ -1,11 +1,22 @@
 import { memo, type JSX } from 'react'
 import { Menubar } from 'radix-ui'
-import { CHAT_ZOOM_MAX, CHAT_ZOOM_MIN, type ChatZoomCommand } from './chat-zoom.js'
+import {
+  CHAT_ZOOM_DEFAULT,
+  CHAT_ZOOM_MAX,
+  CHAT_ZOOM_MIN,
+  type ChatZoomCommand
+} from './chat-zoom.js'
 
 /** One menu's worth of rows. `null` is a separator. */
 type MenuRow = { label: string; shortcut?: string; command?: ChatZoomCommand } | null
 
 type Menu = { label: string; rows: MenuRow[] }
+
+function zoomCommandIsDisabled(command: ChatZoomCommand, chatZoom: number): boolean {
+  if (command === 'in') return chatZoom >= CHAT_ZOOM_MAX
+  if (command === 'out') return chatZoom <= CHAT_ZOOM_MIN
+  return chatZoom === CHAT_ZOOM_DEFAULT
+}
 
 /* Shell menus matching the desktop apps this chrome is modelled on. Rows without
    commands remain placeholders until their application behavior exists. */
@@ -83,7 +94,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                     <Menubar.Item
                       key={row.label}
                       className="titlebar-menu-item"
-                      disabled={!row.command || (row.command === 'in' && chatZoom >= CHAT_ZOOM_MAX) || (row.command === 'out' && chatZoom <= CHAT_ZOOM_MIN)}
+                      disabled={!row.command || zoomCommandIsDisabled(row.command, chatZoom)}
                       onSelect={() => row.command && onChatZoomChange(row.command)}
                     >
                       <span>{row.label}</span>
