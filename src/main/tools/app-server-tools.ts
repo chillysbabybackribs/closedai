@@ -1,5 +1,5 @@
 import type { AppServerClient, AppServerRequest } from '../app-server-client.js'
-import type { ToolRegistry } from './registry.js'
+import type { ToolCallContext, ToolCallRequest, ToolRegistry } from './registry.js'
 import type { ToolResult } from './tool.js'
 
 // Adapter between the ToolRegistry and the Codex app-server protocol: tools are advertised
@@ -22,6 +22,12 @@ export type DynamicToolSpec = {
 export type DynamicToolCallResponse = {
   contentItems: Array<{ type: 'inputText'; text: string } | { type: 'inputImage'; imageUrl: string }>
   success: boolean
+}
+
+export type CompletedToolCall = {
+  request: ToolCallRequest
+  context: ToolCallContext
+  result: ToolResult
 }
 
 export const TOOL_CALL_METHOD = 'item/tool/call'
@@ -54,7 +60,8 @@ export function toolCallResponse(result: ToolResult): DynamicToolCallResponse {
 export class AppServerToolCalls {
   constructor(
     private readonly registry: ToolRegistry,
-    private readonly client: Pick<AppServerClient, 'respond' | 'respondWithError'>
+    private readonly client: Pick<AppServerClient, 'respond' | 'respondWithError'>,
+    private readonly onCompleted: (call: CompletedToolCall) => void = () => {}
   ) {}
 
   /** Returns false when the request is not a tool call, so the caller can route it elsewhere. */
@@ -66,16 +73,22 @@ export class AppServerToolCalls {
       this.client.respondWithError(request.id, -32602, 'item/tool/call is missing `tool`')
       return true
     }
+    const callRequest: ToolCallRequest = {
+      namespace: typeof params.namespace === 'string' ? params.namespace : null,
+      tool,
+      arguments: params.arguments
+    }
+    const context: ToolCallContext = {
+      threadId: typeof params.threadId === 'string' ? params.threadId : null,
+      turnId: typeof params.turnId === 'string' ? params.turnId : null,
+      callId: typeof params.callId === 'string' ? params.callId : String(request.id)
+    }
     void this.registry
-      .call(
-        { namespace: typeof params.namespace === 'string' ? params.namespace : null, tool, arguments: params.arguments },
-        {
-          threadId: typeof params.threadId === 'string' ? params.threadId : null,
-          turnId: typeof params.turnId === 'string' ? params.turnId : null,
-          callId: typeof params.callId === 'string' ? params.callId : String(request.id)
-        }
-      )
-      .then((result) => this.client.respond(request.id, toolCallResponse(result)))
+      .call(callRequest, context)
+      .then((result) => {
+        try { this.onCompleted({ request: callRequest, context, result }) } catch { /* observers cannot block a tool */ }
+        this.client.respond(request.id, toolCallResponse(result))
+      })
       .catch((error: unknown) => {
         this.client.respondWithError(request.id, -32603, error instanceof Error ? error.message : String(error))
       })
