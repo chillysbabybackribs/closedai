@@ -1,0 +1,70 @@
+.task-activity-strip {
+  flex: 0 0 auto;
+  width: calc(100% - var(--chat-column-gutter) - var(--chat-column-gutter));
+  max-width: calc(var(--chat-column-width) + 64px);
+  min-height: 27px;
+  margin: 0 auto;
+  padding: 5px 10px 0;
+  overflow: hidden;
+}
+
+.task-generation-loader {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  color: var(--transcript-activity, #9b9ba1);
+}
+
+.task-generation-grid {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(3, 4px);
+  gap: 2px;
+}
+
+.task-generation-cell {
+  width: 4px;
+  height: 4px;
+  background: var(--antigravity-blue, #8ab4f8);
+  opacity: 0.16;
+  transition: opacity 300ms ease;
+}
+
+.task-generation-cell[data-active] {
+  opacity: 0.92;
+}
+
+.task-generation-copy {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--chat-fs-process, 13px);
+  font-weight: 500;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-generation-caret {
+  display: inline-block;
+  width: 1px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.16em;
+  background: currentColor;
+  opacity: 0;
+}
+
+.task-generation-caret[data-typing] {
+  opacity: 0.75;
+  animation: task-generation-caret 720ms steps(1, end) infinite;
+}
+
+@keyframes task-generation-caret {
+  50% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-generation-cell { transition: none; }
+  .task-generation-caret { animation: none; }
+}

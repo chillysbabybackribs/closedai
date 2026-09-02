@@ -17,6 +17,7 @@ import { ChatHistory } from './chat-history.js'
 import { chatTitle, PROVIDER_LABELS } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
+import { TaskActivity } from './task-activity.js'
 import { ToolsModal } from './tools/tools-modal.js'
 
 export function ChatPane({ controller }: { controller?: ReturnType<typeof useChatController> } = {}): JSX.Element {
@@ -97,6 +98,7 @@ export function ChatPane({ controller }: { controller?: ReturnType<typeof useCha
           )}
         </TranscriptScroller>
       )}
+      <TaskActivity items={state.items} activeTurnId={state.activeTurnId} />
       <Composer
         enabled={ready}
         running={running}
