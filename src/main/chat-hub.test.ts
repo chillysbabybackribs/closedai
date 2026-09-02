@@ -71,11 +71,11 @@ test('the saved model decides the initial provider and which one starts warm', a
   assert.deepEqual(claudeFirst.claude.calls, ['start:true'])
 })
 
-test('the snapshot is the active provider with both catalogs merged', () => {
+test('the snapshot is the active provider with every catalog merged', () => {
   const { hub } = build()
   const snapshot = hub.snapshot()
   assert.equal(snapshot.provider, 'codex')
-  assert.deepEqual(snapshot.models.map((entry) => entry.id), ['gpt-5.6-sol', 'claude:opus[1m]'])
+  assert.deepEqual(snapshot.models.map((entry) => entry.id), ['gpt-5.6-sol', 'claude:opus[1m]', 'agy:gemini-3.8-flash'])
 })
 
 test('selecting the other provider switches the pane after that provider accepts the model', async () => {
@@ -99,13 +99,14 @@ test('a running turn blocks switching providers', async () => {
 })
 
 test('threads merge newest first and route by id; one failing provider hides only its threads', async () => {
-  const { hub, codex, claude } = build()
+  const { hub, codex, claude, antigravity } = build()
   codex.threads = [{ id: 'c1', title: 'Codex', preview: '', createdAt: 1, updatedAt: 5 }]
   claude.threads = [{ id: 'claude:s1', title: 'Claude', preview: '', createdAt: 1, updatedAt: 9 }]
   assert.deepEqual((await hub.listThreads()).map((thread) => thread.id), ['claude:s1', 'c1'])
   claude.failThreads = true
   assert.deepEqual((await hub.listThreads()).map((thread) => thread.id), ['c1'])
   codex.failThreads = true
+  antigravity.failThreads = true
   await assert.rejects(hub.listThreads(), /down/)
   claude.failThreads = false
   await hub.openThread('claude:s1')
@@ -123,7 +124,7 @@ test('connection events from either provider re-describe the active one with mer
   if (event?.type !== 'connection') return
   assert.equal(event.provider, 'codex')
   assert.equal(event.connection.message, 'codex ready')
-  assert.equal(event.models.length, 2)
+  assert.equal(event.models.length, 3)
   claude.emit('event', { type: 'turn', turnId: 't' })
   assert.equal(events.at(-1)?.type, 'connection')
   assert.equal(hub.activeProvider, 'codex')
