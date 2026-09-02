@@ -11,27 +11,29 @@ import { jsonPreview, recordOf, stringOf } from '../claude/claude-tool-items.js'
 export type AntigravityToolCall = { id: string; name: string; parameters: Record<string, unknown> }
 export type AntigravityToolOutcome = { output: string; failed: boolean }
 export type ResolvedAntigravityTool = { namespace: string | null; tool: string; parameters: Record<string, unknown> }
+/** An MCP server name the CLI knows and the registry namespace it serves. */
+export type AntigravityServerName = { server: string; namespace: string }
 
 const MAX_OUTPUT_CHARS = 24_000
 
 /** Split an MCP declaration into the ClosedAI namespace and tool it names; native tools keep no namespace. */
-export function resolveAntigravityTool(name: string, parameters: Record<string, unknown>, namespaces: readonly string[]): ResolvedAntigravityTool {
+export function resolveAntigravityTool(name: string, parameters: Record<string, unknown>, servers: readonly AntigravityServerName[]): ResolvedAntigravityTool {
   if (name === 'call_mcp_tool') {
     const inner = stringOf(parameters.ToolName)
     const args = recordOf(parameters.Arguments)
-    return inner ? resolveAntigravityTool(inner, args, namespaces) : { namespace: null, tool: name, parameters }
+    return inner ? resolveAntigravityTool(inner, args, servers) : { namespace: null, tool: name, parameters }
   }
-  for (const namespace of namespaces) {
-    const prefix = `mcp_${namespace}_`
+  for (const { server, namespace } of servers) {
+    const prefix = `mcp_${server}_`
     if (name.startsWith(prefix) && name.length > prefix.length) return { namespace, tool: name.slice(prefix.length), parameters }
   }
   return { namespace: null, tool: name, parameters }
 }
 
 /** The transcript item for a tool step as it starts. */
-export function antigravityToolItem(call: AntigravityToolCall, turnId: string | null, cwd: string, namespaces: readonly string[]): ChatTranscriptItem {
+export function antigravityToolItem(call: AntigravityToolCall, turnId: string | null, cwd: string, servers: readonly AntigravityServerName[]): ChatTranscriptItem {
   const { id } = call
-  const resolved = resolveAntigravityTool(call.name, call.parameters, namespaces)
+  const resolved = resolveAntigravityTool(call.name, call.parameters, servers)
   const input = resolved.parameters
   if (resolved.namespace) {
     return { type: 'tool', id, turnId, label: `${resolved.namespace} · ${resolved.tool}`, detail: jsonPreview(input), status: 'inProgress' }

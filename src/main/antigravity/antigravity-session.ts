@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { antigravityTurnLine } from './antigravity-cli.js'
 import { AntigravityProcess } from './antigravity-process.js'
 import { AntigravityTurnTranslator, type TranscriptOp, type TurnEnd } from './antigravity-stream.js'
+import type { AntigravityServerName } from './antigravity-tool-items.js'
 
 // The chat pane's one Antigravity thread: which CLI conversation it continues, the live process
 // when there is one, and the turn that process is running. The process is spawned on demand
@@ -15,7 +16,7 @@ export type AntigravitySessionDeps = {
   binary: () => string
   /** argv for a process on this thread; `resume` is the conversation to continue. */
   spawnArgs: (resume: string | null) => string[]
-  namespaces: () => string[]
+  servers: () => AntigravityServerName[]
   displayScreenshot: (callId: string) => { dataUrl: string } | null
   takeCallId: (conversationId: string | null, namespace: string, tool: string) => string | null
   apply: (op: TranscriptOp) => void
@@ -52,7 +53,7 @@ export class AntigravitySession {
     this.translator = new AntigravityTurnTranslator({
       turnId,
       cwd: this.deps.cwd,
-      namespaces: this.deps.namespaces(),
+      servers: this.deps.servers(),
       displayScreenshot: this.deps.displayScreenshot,
       takeCallId: (namespace, tool) => this.deps.takeCallId(this.conversationId, namespace, tool)
     })

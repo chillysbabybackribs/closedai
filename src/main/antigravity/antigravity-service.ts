@@ -207,7 +207,7 @@ export class AntigravityChatService extends EventEmitter {
         resume,
         agent: this.profile ? { name: this.profile.agentName, root: this.profile.root } : null
       }),
-      namespaces: () => this.bridge.namespaces(),
+      servers: () => this.bridge.servers(),
       displayScreenshot: (callId) => this.screenshots?.get(callId) ?? null,
       takeCallId: (conversationId, namespace, tool) => this.bridge.takeCallId(conversationId, namespace, tool),
       apply: (op) => this.applyOp(op),

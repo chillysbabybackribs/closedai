@@ -128,7 +128,8 @@ async function main(): Promise<void> {
     }
   }
   // One MCP bridge serves every pane's `agy` processes; calls carry the conversation id back.
-  antigravityBridge = new AntigravityToolBridge(toolRegistry)
+  // The CLI config is shared by every instance, so only the default profile registers bare names.
+  antigravityBridge = new AntigravityToolBridge(toolRegistry, { profileKey: profileKeyFor(userData()) })
   const antigravityStateDir = join(userData(), 'antigravity')
   chatService = new ChatPeerManager(settings, (peerSettings, modelId) => new ChatHub({
     codex: new ChatService(
@@ -148,6 +149,14 @@ async function main(): Promise<void> {
   createWindow()
   void chatService.start()
   void pruneOversizedBrowserCacheOnce(userData()).catch(() => {})
+}
+
+/** Null for Electron's default userData; a short stable hash for any other profile. */
+function profileKeyFor(userDataDir: string): string | null {
+  if (resolve(userDataDir) === resolve(join(app.getPath('appData'), app.getName()))) return null
+  let hash = 0
+  for (let index = 0; index < userDataDir.length; index += 1) hash = (hash * 31 + userDataDir.charCodeAt(index)) >>> 0
+  return hash.toString(36)
 }
 
 function createWindow(): void {

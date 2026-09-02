@@ -9,7 +9,7 @@ function translator(takeCallId: (namespace: string, tool: string) => string | nu
   return new AntigravityTurnTranslator({
     turnId: 'turn-1',
     cwd: '/w',
-    namespaces: ['embedded_browser', 'closedai_ui'],
+    servers: [{ server: 'embedded_browser', namespace: 'embedded_browser' }, { server: 'closedai_ui_k9', namespace: 'closedai_ui' }],
     displayScreenshot: () => (screenshot ? { dataUrl: screenshot } : null),
     takeCallId
   })
@@ -64,7 +64,7 @@ test('ClosedAI MCP declarations keep the namespace label, and a held capture bec
   const tool = items(page.ops)[0]!
   assert.equal(tool.type, 'tool')
   assert.equal(tool.label, 'embedded_browser · page')
-  const capture = t.handle(step({ step_index: 5, state: 'DONE', step_type: 'tool', tool_name: 'mcp_closedai_ui_capture', tool_info: { name: 'mcp_closedai_ui_capture', parameters: { action: 'browser_page' }, output: 'Captured the page\nmore' } }))
+  const capture = t.handle(step({ step_index: 5, state: 'DONE', step_type: 'tool', tool_name: 'mcp_closedai_ui_k9_capture', tool_info: { name: 'mcp_closedai_ui_k9_capture', parameters: { action: 'browser_page' }, output: 'Captured the page\nmore' } }))
   const rows = items(capture.ops)
   assert.deepEqual(rows[1], { type: 'screenshot', id: 'turn-1:s5', turnId: 'turn-1', imageUrl: 'data:image/png;base64,QUJD', surface: 'browser_page', caption: 'Captured the page' })
 })

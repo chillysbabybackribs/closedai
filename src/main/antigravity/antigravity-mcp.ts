@@ -23,6 +23,11 @@ import { ANTIGRAVITY_MCP_CONFIG_PATH, runAntigravityCommand } from './antigravit
 //   hiding it behind the generic call_mcp_tool gateway) is restored by rewriting the file after.
 // - Each tools/call carries `_meta['antigravity.google/conversation_id']`; the service binds
 //   conversation ids to its pane and turn, which becomes the registry's call context.
+// - The config is one file for every app instance. The default profile registers bare namespace
+//   names; any other profile (a second checkout, a test run) suffixes a stable hash so it never
+//   redirects the user's running app at its own bridge.
+
+export type AntigravityServer = { server: string; namespace: string }
 
 export type AntigravityCallContext = { paneId: string | null; threadId: string | null; turnId: string | null }
 
@@ -43,12 +48,17 @@ export class AntigravityToolBridge {
 
   constructor(
     private readonly registry: ToolRegistry,
-    private readonly options: { configPath?: string; binary?: string } = {}
+    private readonly options: { configPath?: string; binary?: string; profileKey?: string | null } = {}
   ) {}
 
-  /** Namespaces the CLI was pointed at (empty before the first start). */
-  namespaces(): string[] {
-    return [...this.registered]
+  /** The MCP server name a namespace is registered under for this profile. */
+  serverName(namespace: string): string {
+    return this.options.profileKey ? `${namespace}_${this.options.profileKey}` : namespace
+  }
+
+  /** Servers the CLI was pointed at (empty before the first start), with the namespace each serves. */
+  servers(): AntigravityServer[] {
+    return this.registered.map((namespace) => ({ server: this.serverName(namespace), namespace }))
   }
 
   /** Listen and register every enabled namespace with the CLI; cheap once done. */
@@ -65,7 +75,7 @@ export class AntigravityToolBridge {
     const names = this.registered
     this.registered = []
     this.starting = null
-    await this.rewriteConfig((servers) => { for (const name of names) delete servers[name] })
+    await this.rewriteConfig((servers) => { for (const name of names) delete servers[this.serverName(name)] })
     for (const session of this.sessions.values()) await session.transport.close().catch(() => {})
     this.sessions.clear()
     await new Promise<void>((resolve) => (this.http ? this.http.close(() => resolve()) : resolve()))
@@ -110,7 +120,8 @@ export class AntigravityToolBridge {
     const registered: string[] = []
     for (const namespace of namespaces) {
       const url = `http://127.0.0.1:${this.port}/mcp/${namespace.name}`
-      if (await this.cli(['mcp', 'add', '--type', 'http', namespace.name, url]) && await this.cli(['mcp', 'enable', namespace.name])) {
+      const server = this.serverName(namespace.name)
+      if (await this.cli(['mcp', 'add', '--type', 'http', server, url]) && await this.cli(['mcp', 'enable', server])) {
         registered.push(namespace.name)
       } else {
         console.warn(`[antigravity] could not register tool namespace ${namespace.name} with agy`)
@@ -124,7 +135,7 @@ export class AntigravityToolBridge {
   private exposeEagerTools(namespaces: ReturnType<ToolRegistry['enabledNamespaces']>): Promise<void> {
     return this.rewriteConfig((servers) => {
       for (const namespace of namespaces) {
-        const server = servers[namespace.name]
+        const server = servers[this.serverName(namespace.name)]
         if (!server) continue
         server.tools = Object.fromEntries(namespace.tools.filter((tool) => !tool.deferLoading).map((tool) => [tool.name, { eager: true }]))
       }

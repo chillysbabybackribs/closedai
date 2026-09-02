@@ -1,6 +1,6 @@
 import type { ChatTranscriptItem } from '../../shared/chat.js'
 import { recordOf, stringOf } from '../claude/claude-tool-items.js'
-import { antigravityToolItem, antigravityToolResult, resolveAntigravityTool } from './antigravity-tool-items.js'
+import { antigravityToolItem, antigravityToolResult, resolveAntigravityTool, type AntigravityServerName } from './antigravity-tool-items.js'
 
 // Pure translation from the `agy` stream-json events of one turn to transcript operations, so
 // the session only applies ops. Stream contract this relies on (agy 1.1.24, verified live
@@ -29,8 +29,8 @@ export type AntigravityTranslation = { ops: TranscriptOp[]; conversationId?: str
 export type AntigravityTranslatorOptions = {
   turnId: string
   cwd: string
-  /** Registry namespace names, so `mcp_<namespace>_<tool>` declarations resolve to their tool. */
-  namespaces: readonly string[]
+  /** MCP server names the CLI knows, so `mcp_<server>_<tool>` declarations resolve to their namespace and tool. */
+  servers: readonly AntigravityServerName[]
   displayScreenshot: (callId: string) => { dataUrl: string } | null
   /** The registry call id behind the ClosedAI tool the CLI just reported, when the bridge served one. */
   takeCallId: (namespace: string, tool: string) => string | null
@@ -113,7 +113,7 @@ export class AntigravityTurnTranslator {
     let item = this.tools.get(index)
     const ops: TranscriptOp[] = []
     if (!item) {
-      item = antigravityToolItem({ id, name, parameters }, this.options.turnId, this.options.cwd, this.options.namespaces)
+      item = antigravityToolItem({ id, name, parameters }, this.options.turnId, this.options.cwd, this.options.servers)
       this.tools.set(index, item)
       ops.push({ type: 'item', item })
     }
@@ -130,7 +130,7 @@ export class AntigravityTurnTranslator {
   /** A ClosedAI capture that the app still holds at full resolution becomes a screenshot row. */
   private screenshotItem(item: ChatTranscriptItem, name: string, parameters: Record<string, unknown>, output: string, failed: boolean): ChatTranscriptItem | null {
     if (failed || item.type !== 'tool') return null
-    const resolved = resolveAntigravityTool(name, parameters, this.options.namespaces)
+    const resolved = resolveAntigravityTool(name, parameters, this.options.servers)
     if (!resolved.namespace) return null
     const callId = this.options.takeCallId(resolved.namespace, resolved.tool)
     if (resolved.namespace !== 'closedai_ui' || resolved.tool !== 'capture' || !callId) return null

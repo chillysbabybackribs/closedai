@@ -30,21 +30,30 @@ export function isReasoning(item: ChatTranscriptItem): item is ReasoningItem {
   return item.type === 'plan' || item.type === 'reasoning'
 }
 
-/** Consecutive same-identity activity stays one row. Invisible placeholders do not split it. */
+/** Consecutive activity in the same turn stays one row. Commentary splits batches. */
 export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {
   const rows: TranscriptRow[] = []
   for (const item of items) {
     if (isReasoning(item) || !rowVisible(item)) continue
     if (isActivity(item)) {
-      const key = clusterKey(item)
+      const turnKey = item.turnId ?? `activity:${item.id}`
       const last = rows.at(-1)
-      if (last?.kind === 'activity' && last.id === key) last.items.push(item)
-      else rows.push({ kind: 'activity', id: key, items: [item] })
+      if (last?.kind === 'activity' && sameTurn(last, item)) {
+        last.items.push(item)
+      } else {
+        rows.push({ kind: 'activity', id: turnKey, items: [item] })
+      }
       continue
     }
     rows.push({ kind: 'item', item })
   }
   return rows
+}
+
+function sameTurn(last: Extract<TranscriptRow, { kind: 'activity' }>, item: ActivityItem): boolean {
+  const lastTurn = last.items[0]?.turnId
+  if (lastTurn && item.turnId) return lastTurn === item.turnId
+  return !lastTurn || !item.turnId || lastTurn === item.turnId
 }
 
 function rowVisible(item: ChatTranscriptItem): boolean {
@@ -56,13 +65,45 @@ function rowVisible(item: ChatTranscriptItem): boolean {
 
 export function activityHeadline(items: ActivityItem[], running = false): string {
   if (items.length === 1) return activityTitle(items[0]!, running)
-  const first = items[0]!
-  if (first.type === 'tool') return toolPhrase(first.label, items.length, running)
-  if (first.type === 'command') return commandHeadline(items, running)
-  const files = items.reduce((count, item) => (
-    item.type === 'fileChange' ? count + Math.max(item.changes.length, 1) : count
-  ), 0)
-  return counted(running ? 'Editing' : 'Edited', files, 'file', 'files')
+  if (items.every((item) => item.type === 'command')) return commandHeadline(items, running)
+  if (items.every((item) => item.type === 'fileChange')) {
+    const files = items.reduce((count, item) => (
+      item.type === 'fileChange' ? count + Math.max(item.changes.length, 1) : count
+    ), 0)
+    return counted(running ? 'Editing' : 'Edited', files, 'file', 'files')
+  }
+  if (items.every((item) => item.type === 'tool' && item.label === items[0]!.label)) {
+    return toolPhrase(items[0]!.label, items.length, running)
+  }
+  return mixedHeadline(items, running)
+}
+
+function mixedHeadline(items: ActivityItem[], running = false): string {
+  const parts: string[] = []
+  const fileChanges = items.filter((item) => item.type === 'fileChange')
+  if (fileChanges.length > 0) {
+    const files = fileChanges.reduce((count, item) => (
+      item.type === 'fileChange' ? count + Math.max(item.changes.length, 1) : count
+    ), 0)
+    parts.push(counted(running ? 'Editing' : 'Edited', files, 'file', 'files'))
+  }
+
+  const commands = items.filter((item) => item.type === 'command')
+  if (commands.length > 0) {
+    parts.push(commandHeadline(commands, running))
+  }
+
+  const tools = items.filter((item) => item.type === 'tool')
+  if (tools.length > 0) {
+    const labels = new Set(tools.map((t) => t.label))
+    if (labels.size === 1) {
+      parts.push(toolPhrase(tools[0]!.label, tools.length, running))
+    } else {
+      parts.push(counted(running ? 'Using' : 'Used', tools.length, 'tool', 'tools'))
+    }
+  }
+
+  return parts.length ? parts.join(', ') : counted(running ? 'Running' : 'Ran', items.length, 'step', 'steps')
 }
 
 export function activityTitle(item: ActivityItem, running = false): string {
@@ -115,14 +156,17 @@ function activityDetail(item: ActivityItem): string {
 }
 
 export function activityClusters(items: ActivityItem[], running = false): ActivityCluster[] {
-  const clusters: Array<ActivityCluster & { key: string }> = []
+  const byKey = new Map<string, ActivityCluster & { key: string }>()
   for (const item of items) {
     const key = clusterKey(item)
-    const last = clusters.at(-1)
-    if (last?.key === key) last.items.push(item)
-    else clusters.push({ id: item.id, title: '', items: [item], key })
+    const existing = byKey.get(key)
+    if (existing) {
+      existing.items.push(item)
+    } else {
+      byKey.set(key, { id: item.id, title: '', items: [item], key })
+    }
   }
-  return clusters.map((cluster) => ({
+  return Array.from(byKey.values()).map((cluster) => ({
     id: cluster.id,
     title: activityHeadline(cluster.items, running),
     items: cluster.items

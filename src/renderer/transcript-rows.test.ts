@@ -41,10 +41,9 @@ test('commentary splits tool batches so later calls stay in narrative order', ()
     command('c2', 't1', 'npm test', 'inProgress')
   ]
   const rows = transcriptRows(items)
-  assert.deepEqual(rows.map((row) => row.kind), ['activity', 'item', 'activity', 'activity'])
+  assert.deepEqual(rows.map((row) => row.kind), ['activity', 'item', 'activity'])
   assert.equal(rows[0]?.kind === 'activity' && rows[0].items[0]?.id, 'c1')
-  assert.equal(rows[2]?.kind === 'activity' && rows[2].items[0]?.id, 'f1')
-  assert.equal(rows[3]?.kind === 'activity' && rows[3].items[0]?.id, 'c2')
+  assert.equal(rows[2]?.kind === 'activity' && rows[2].items.map((item) => item.id).join(','), 'f1,c2')
 })
 
 test('empty placeholders do not split identically named calls', () => {
@@ -64,16 +63,19 @@ test('empty placeholders do not split identically named calls', () => {
   }
 })
 
-test('different activity names stay on their own rows', () => {
+test('different activity kinds in one turn consolidate into one counted row', () => {
   const rows = transcriptRows([
     command('c1', 't1', 'bash -lc "sed -n 1,20p file"'),
     { type: 'tool', id: 's1', turnId: 't1', label: 'Web search', detail: 'q1', status: 'completed' },
     { type: 'tool', id: 's2', turnId: 't1', label: 'Web search', detail: 'q2', status: 'completed' }
   ])
-  assert.deepEqual(rows.map((row) => row.kind === 'activity' ? activityHeadline(row.items) : ''), [
-    'Read file',
-    'Searched the web 2 times'
-  ])
+  assert.deepEqual(rows.map((row) => row.kind), ['activity'])
+  const activity = rows[0] as Extract<(typeof rows)[0], { kind: 'activity' }>
+  assert.equal(activityHeadline(activity.items), 'Read file, Searched the web 2 times')
+  assert.deepEqual(
+    activityClusters(activity.items).map((c) => c.title),
+    ['Read file', 'Searched the web 2 times']
+  )
 })
 
 test('tool activity never consolidates across a visible turn break', () => {
