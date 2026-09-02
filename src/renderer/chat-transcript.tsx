@@ -33,7 +33,7 @@ export const ChatTranscript = memo(function ChatTranscript({
       {rows.map((row) => row.kind === 'activity'
         ? <ToolActivity key={`activity:${row.id}:${row.items[0]?.id}`} items={row.items} />
         : row.kind === 'reasoning'
-          ? <ThinkingLine key={`reasoning:${row.id}`} items={row.items} />
+          ? <ThinkingLine key={`reasoning:${row.id}`} items={row.items} active={row.id === activeTurnId} />
           : <TranscriptItem key={row.item.id} item={row.item} />)}
     </>
   )
@@ -80,18 +80,11 @@ const TranscriptItem = memo(function TranscriptItem({
   return null
 })
 
-const ThinkingLine = memo(function ThinkingLine({ items }: { items: ReasoningItem[] }): JSX.Element | null {
-  const streaming = items.length === 0 || items.some((item) => item.streaming)
+const ThinkingLine = memo(function ThinkingLine({ items, active }: { items: ReasoningItem[]; active: boolean }): JSX.Element | null {
+  const streaming = active && (items.length === 0 || items.some((item) => item.streaming))
   const text = items.map((item) => item.text).filter(Boolean).join('\n\n')
   const label = streaming ? 'Thinking' : items.length && items.every((item) => item.type === 'plan') ? 'Plan' : 'Thought'
-  if (!text) {
-    if (!streaming) return null
-    return (
-      <div className="prompt-reasoning" aria-live="polite">
-        <TextShimmer as="p" className="prompt-reasoning-pending">Thinking</TextShimmer>
-      </div>
-    )
-  }
+  if (!text && !streaming) return null
   return (
     <Reasoning className="prompt-reasoning">
       <ReasoningTrigger className="prompt-reasoning-trigger" aria-label={label}>
@@ -99,12 +92,14 @@ const ThinkingLine = memo(function ThinkingLine({ items }: { items: ReasoningIte
           ? <TextShimmer as="span" className="prompt-reasoning-label">Thinking</TextShimmer>
           : <span className="prompt-reasoning-label">{label}</span>}
       </ReasoningTrigger>
-      <ReasoningContent markdown className="prompt-reasoning-content" contentClassName="prompt-reasoning-copy prose prose-sm max-w-none dark:prose-invert">
-        {text}
-      </ReasoningContent>
+      {text ? (
+        <ReasoningContent markdown className="prompt-reasoning-content" contentClassName="prompt-reasoning-copy prose prose-sm max-w-none dark:prose-invert">
+          {text}
+        </ReasoningContent>
+      ) : null}
     </Reasoning>
   )
-}, sameGroup)
+}, (previous, next) => previous.active === next.active && sameGroup(previous, next))
 
 const ToolActivity = memo(function ToolActivity({ items }: { items: ActivityItem[] }): JSX.Element {
   const [open, setOpen] = useState(false)

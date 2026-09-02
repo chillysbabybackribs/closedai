@@ -28,7 +28,7 @@ export function isReasoning(item: ChatTranscriptItem): item is ReasoningItem {
 export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {
   const rows: TranscriptRow[] = []
   for (const item of items) {
-    if (!rowVisible(item)) continue
+    if (isReasoning(item) || !rowVisible(item)) continue
     if (isActivity(item)) {
       const key = clusterKey(item)
       const last = rows.at(-1)
@@ -36,27 +36,65 @@ export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {
       else rows.push({ kind: 'activity', id: key, items: [item] })
       continue
     }
-    if (isReasoning(item)) {
-      const last = rows.at(-1)
-      if (last?.kind === 'reasoning') last.items.push(item)
-      else rows.push({ kind: 'reasoning', id: item.turnId ?? item.id, items: [item] })
-      continue
-    }
     rows.push({ kind: 'item', item })
   }
   return rows
 }
 
-/** Pending thinking appears only until the turn has reasoning, tools, or an answer. */
+/**
+ * One thinking slot per turn, pinned after the user prompt, so it does not
+ * mount/unmount as tools and answers stream in.
+ */
 export function visibleTranscriptRows(
   items: ChatTranscriptItem[],
   activeTurnId: string | null
 ): TranscriptRow[] {
-  const rows = transcriptRows(items)
-  if (!activeTurnId) return rows
-  if (rows.some((row) => row.kind === 'activity' || (row.kind === 'reasoning' && row.items.length > 0))) return rows
-  if (items.some((item) => item.type === 'assistant' && item.text)) return rows
-  return [...rows, { kind: 'reasoning', id: activeTurnId, items: [] }]
+  const reasoning = new Map<string, ReasoningItem[]>()
+  for (const item of items) {
+    if (!isReasoning(item) || (!item.text && !item.streaming)) continue
+    const key = turnKey(item.turnId, activeTurnId) ?? `item:${item.id}`
+    const group = reasoning.get(key) ?? []
+    group.push(item)
+    reasoning.set(key, group)
+  }
+
+  const rows: TranscriptRow[] = []
+  const placed = new Set<string>()
+
+  const placeThought = (turnId: string | null): void => {
+    const key = turnKey(turnId, activeTurnId)
+    if (!key || placed.has(key)) return
+    placed.add(key)
+    const grouped = reasoning.get(key) ?? []
+    if (grouped.length || key === activeTurnId) {
+      rows.push({ kind: 'reasoning', id: key, items: grouped })
+    }
+  }
+
+  for (const item of items) {
+    if (isReasoning(item) || !rowVisible(item)) continue
+    if (item.type === 'user') {
+      rows.push({ kind: 'item', item })
+      placeThought(item.turnId)
+      continue
+    }
+    placeThought(item.turnId)
+    if (isActivity(item)) {
+      const key = clusterKey(item)
+      const last = rows.at(-1)
+      if (last?.kind === 'activity' && last.id === key) last.items.push(item)
+      else rows.push({ kind: 'activity', id: key, items: [item] })
+      continue
+    }
+    rows.push({ kind: 'item', item })
+  }
+
+  if (activeTurnId) placeThought(activeTurnId)
+  return rows
+}
+
+function turnKey(turnId: string | null, activeTurnId: string | null): string | null {
+  return turnId || activeTurnId
 }
 
 function rowVisible(item: ChatTranscriptItem): boolean {
