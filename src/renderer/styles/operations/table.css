@@ -1,0 +1,185 @@
+.ops-table-card {
+  margin-top: 13px;
+  border: 1px solid var(--ops-border);
+  border-radius: 9px;
+  overflow: hidden;
+  background: var(--ops-surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 20%);
+}
+
+.ops-table-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 45px;
+  gap: 14px;
+  padding: 0 11px 0 14px;
+  border-bottom: 1px solid var(--ops-border-soft);
+}
+
+.ops-table-title > div:first-child { flex: 1; }
+.ops-table-title strong { font-size: 11px; }
+
+.ops-table-title > div:first-child > span {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 2px 5px;
+  border: 1px solid #2b2e35;
+  border-radius: 5px;
+  color: var(--ops-muted);
+  font-size: 8px;
+}
+
+.ops-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #b8bac2;
+  font-size: 9px;
+}
+
+.ops-bulk-actions button {
+  display: flex;
+  align-items: center;
+  height: 26px;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid #2b2e35;
+  border-radius: 6px;
+  background: #121419;
+  color: #c7c9cf;
+  font-size: 8px;
+}
+
+.ops-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ops-muted, var(--chrome-control-fg));
+}
+
+.ops-icon-button:hover { background: var(--ops-hover, var(--chrome-control-hover)); color: white; }
+
+.ops-table-scroll { overflow: auto; }
+
+.ops-table-card table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.ops-table-card th {
+  height: 33px;
+  padding: 0 11px;
+  background: #15171b;
+  color: #858995;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  text-align: left;
+}
+
+.ops-table-card th:nth-child(2) { width: 25%; }
+.ops-table-card th:nth-child(3) { width: 13%; }
+.ops-table-card th:nth-child(4) { width: 20%; }
+.ops-table-card th:nth-child(5) { width: 13%; }
+.ops-table-card th:nth-child(6) { width: 9%; }
+.ops-table-card th:nth-child(7) { width: 10%; }
+.ops-table-card th:last-child { width: 38px; }
+
+.ops-table-card td {
+  height: 57px;
+  padding: 0 11px;
+  border-top: 1px solid var(--ops-border-soft);
+  color: #b7bac3;
+  font-size: 10.5px;
+}
+
+.ops-table-card tbody tr {
+  cursor: pointer;
+  transition: background 120ms var(--ease-chrome);
+}
+
+.ops-table-card tbody tr:hover { background: #111318; }
+.ops-table-card td strong,
+.ops-table-card td > span { display: block; }
+
+.ops-table-card td strong {
+  overflow: hidden;
+  color: #e7e7ea;
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ops-table-card td strong + span { margin-top: 3px; color: #858995; font-size: 9.5px; }
+
+.ops-table-card .ops-check {
+  width: 37px;
+  padding-right: 0;
+  text-align: center;
+}
+
+.ops-table-card input[type='checkbox'] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--ops-accent);
+  cursor: pointer;
+}
+
+.ops-workspace-cell {
+  display: flex !important;
+  align-items: center;
+  gap: 7px;
+  color: #c0c2ca;
+}
+
+.ops-checkpoint {
+  overflow: hidden;
+  color: #a2a5ae;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ops-status {
+  display: flex !important;
+  align-items: center;
+  width: max-content;
+  gap: 5px;
+  padding: 3px 7px;
+  border: 1px solid #30333a;
+  border-radius: 6px;
+  background: #121419;
+  color: #c7c9cf;
+  font-size: 9.5px;
+  font-weight: 550;
+}
+
+.ops-status[data-status='running'] svg { color: #9b8afb; }
+.ops-status[data-status='attention'] svg,
+.ops-status[data-status='queued'] svg { color: var(--ops-amber); }
+.ops-status[data-status='completed'] svg { color: var(--ops-green); }
+.ops-status[data-status='failed'] svg { color: var(--ops-red); }
+.ops-status[data-status='paused'] svg { color: #98a2b3; }
+.ops-runtime { color: #c6c8cf; font-variant-numeric: tabular-nums; }
+.ops-muted { color: #7d808a !important; }
+
+.ops-empty {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  min-height: 220px;
+  gap: 8px;
+  color: var(--ops-muted);
+}
+
+.ops-empty strong { color: #dddde1; font-size: 12px; }
+.ops-empty span { font-size: 10px; }
