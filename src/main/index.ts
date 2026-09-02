@@ -19,6 +19,8 @@ import { ChatService } from './chat-service.js'
 import { ChatHub } from './chat-hub.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { ClaudeChatService } from './claude/claude-service.js'
+import { AntigravityChatService } from './antigravity/antigravity-service.js'
+import { AntigravityToolBridge } from './antigravity/antigravity-mcp.js'
 import { BrowserPageAccess } from './browser-page-access.js'
 import { BrowserCdpAccess } from './cdp/browser-cdp-access.js'
 import { AppAutomationAccess } from './app-automation-access.js'
@@ -59,6 +61,7 @@ let settings: AppSettingsStore | null = null
 let chatService: ChatPeerManager | null = null
 let toolRegistry: ToolRegistry | null = null
 let toolTelemetry: ToolTelemetry | null = null
+let antigravityBridge: AntigravityToolBridge | null = null
 let browserSessionFlush: Promise<void> | null = null
 let cdpAccess: BrowserCdpAccess | null = null
 let appAutomationAccess: AppAutomationAccess | null = null
@@ -124,12 +127,18 @@ async function main(): Promise<void> {
       isLoading: active.isLoading
     }
   }
+  // One MCP bridge serves every pane's `agy` processes; calls carry the conversation id back.
+  antigravityBridge = new AntigravityToolBridge(toolRegistry)
+  const antigravityStateDir = join(userData(), 'antigravity')
   chatService = new ChatPeerManager(settings, (peerSettings, modelId) => new ChatHub({
     codex: new ChatService(
       chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, undefined, peerSettings.paneId
     ),
     claude: new ClaudeChatService(
       chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, peerSettings.paneId
+    ),
+    antigravity: new AntigravityChatService(
+      chatWorkspace, peerSettings, antigravityBridge!, antigravityStateDir, activeBrowserContext, screenshots, peerSettings.paneId
     )
   }, modelId))
   registerIpc()
@@ -197,7 +206,7 @@ function registerIpc(): void {
   registerToolsIpc(ipcMain, {
     registry: () => toolRegistry,
     telemetry: () => toolTelemetry,
-    providers: () => ['codex', 'claude'],
+    providers: () => ['codex', 'claude', 'antigravity'],
     onEnabledChanged: async (toolId, enabled, disabledIds) => {
       await settings?.set({ disabledTools: disabledIds })
       sendToMainWindow('tools:event', { type: 'enabled', toolId, enabled } satisfies ToolsEvent)
@@ -260,6 +269,8 @@ app.on('before-quit', (event) => {
     browserHistory?.flush(),
     browserTabSession?.close(),
     settings?.set({}),
-    flushSession
+    flushSession,
+    // Leaves the user's agy MCP config without dead localhost endpoints.
+    antigravityBridge?.stop()
   ]).finally(() => app.quit())
 })

@@ -25,7 +25,7 @@ export class AntigravityProcess {
   private exited = false
   private terminating: Promise<void> | null = null
 
-  constructor(private readonly options: AntigravityProcessOptions) {
+  constructor(options: AntigravityProcessOptions) {
     this.buffer = new NdjsonLineBuffer((raw) => options.onEvent(raw))
     this.child = spawn(options.binary, [...options.args], {
       cwd: options.cwd,
