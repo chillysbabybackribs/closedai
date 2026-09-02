@@ -1,5 +1,5 @@
 import { defineActionTool, type ToolAction } from '../action-tool.js'
-import { stringArg, type JsonObject, type ToolNamespace } from '../tool.js'
+import { stringArg, type ToolNamespace } from '../tool.js'
 import {
   eventCursorFrom,
   eventLimitFrom,

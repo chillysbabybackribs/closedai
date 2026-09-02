@@ -17,6 +17,18 @@ function harness(overrides: Partial<CdpToolHost> = {}) {
       calls.push(['events', tabId, after, limit, prefix])
       return { tab: {}, connectionId: 'c1', oldestCursor: 1, nextCursor: 2, missedEvents: false, events: [] }
     },
+    inspectPage: async (tabId, maxElements) => {
+      calls.push(['inspectPage', tabId, maxElements])
+      return { snapshotId: 'p1', elements: [] }
+    },
+    clickElement: async (tabId, ref) => {
+      calls.push(['clickElement', tabId, ref])
+      return { ref, point: { x: 10, y: 20 } }
+    },
+    clickAt: async (tabId, x, y) => {
+      calls.push(['clickAt', tabId, x, y])
+      return { point: { x, y } }
+    },
     ...overrides
   }
   const registry = new ToolRegistry([cdpTools(() => host)])
@@ -33,9 +45,25 @@ function textOf(result: { content: Array<{ type: string; text?: string }> }): st
 
 test('CDP tool advertises the four foundational protocol actions', () => {
   const { registry } = harness()
-  assert.deepEqual(registry.names(), ['browser_cdp.protocol'])
+  assert.deepEqual(registry.names(), ['browser_cdp.protocol', 'browser_cdp.page'])
   assert.deepEqual(registry.namespaces[0].tools[0].actions?.map((action) => action.name), [
     'capabilities', 'targets', 'command', 'events'
+  ])
+})
+
+test('agent page wrapper inspects and clicks refs or explicit coordinates', async () => {
+  const { calls, registry } = harness()
+  const callPage = (arguments_: Record<string, unknown>) => registry.call(
+    { namespace: 'browser_cdp', tool: 'page', arguments: arguments_ },
+    { threadId: null, turnId: null, callId: 'call-page' }
+  )
+  assert.match(textOf(await callPage({ action: 'inspect_page', tab_id: 'tab-3' })), /"snapshotId": "p1"/)
+  await callPage({ action: 'click', ref: 'p1:main:e1' })
+  await callPage({ action: 'click_at', x: 12.5, y: 18, coordinate_space: 'main_viewport_css' })
+  assert.deepEqual(calls, [
+    ['inspectPage', 'tab-3', 200],
+    ['clickElement', undefined, 'p1:main:e1'],
+    ['clickAt', undefined, 12.5, 18]
   ])
 })
 
