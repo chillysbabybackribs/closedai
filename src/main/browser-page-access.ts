@@ -1,5 +1,5 @@
 import type { BrowserService } from './browser-service.js'
-import { readPageText, waitForPageReady, type PageReadiness, type PageReadyResult, type PageText } from './browser-page-ready.js'
+import { needsReadinessPoll, probePageReady, readPageText, waitForPageReady, type PageReadiness, type PageReadyResult, type PageText } from './browser-page-ready.js'
 import type { BrowserTabInfo } from '../shared/types.js'
 import type { BrowserToolHost, NavigateOutcome } from './tools/browser/index.js'
 
@@ -28,7 +28,9 @@ export class BrowserPageAccess implements BrowserToolHost {
     }
     const contents = service.contentsOf(tabId)
     if (!contents) return { ok: false, error: 'The tab closed while loading' }
-    const ready = await waitForPageReady(contents, options.ready)
+    const ready = needsReadinessPoll(options.ready)
+      ? await waitForPageReady(contents, options.ready)
+      : await probePageReady(contents, options.ready)
     return { ok: true, tabId, ready }
   }
 

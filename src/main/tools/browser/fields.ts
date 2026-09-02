@@ -4,8 +4,8 @@ import { numberArg, stringArg, type JsonObject } from '../tool.js'
 // Field schemas shared by more than one action. defineActionTool requires a shared field
 // to have an identical schema in every action, so they are defined once here.
 
-export const DEFAULT_WAIT_MS = 10_000
-export const MAX_WAIT_MS = 30_000
+export const DEFAULT_WAIT_MS = 3_000
+export const MAX_WAIT_MS = 15_000
 export const DEFAULT_MAX_CHARS = 20_000
 export const MAX_CHARS = 100_000
 
@@ -17,7 +17,7 @@ export const tabIdField: JsonObject = {
 export const waitUntilField: JsonObject = {
   type: 'string',
   enum: ['dom_ready', 'load', 'idle'],
-  description: 'How loaded the page must be: dom_ready (DOM parsed), load (all resources), or idle (loaded and text stopped changing; default).'
+  description: 'How loaded the page must be: dom_ready (DOM parsed; default), load (all resources), or idle (loaded and text stopped changing).'
 }
 
 export const waitForSelectorField: JsonObject = {
@@ -47,7 +47,7 @@ export const readinessProperties: Record<string, JsonObject> = {
 }
 
 export function readinessFrom(input: JsonObject): PageReadiness {
-  const until = stringArg(input, 'wait_until', 'idle') as PageReadiness['until']
+  const until = stringArg(input, 'wait_until', 'dom_ready') as PageReadiness['until']
   return {
     until,
     selector: stringArg(input, 'wait_for_selector'),

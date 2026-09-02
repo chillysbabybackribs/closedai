@@ -21,7 +21,7 @@ export function navigateAction(browser: BrowserHostProvider): ToolAction {
       required: ['url'],
       additionalProperties: false
     },
-    timeoutMs: MAX_WAIT_MS + 15_000,
+    timeoutMs: MAX_WAIT_MS + 5_000,
     async run(input) {
       const url = stringArg(input, 'url')!
       const newTab = booleanArg(input, 'new_tab', false)

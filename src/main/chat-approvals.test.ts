@@ -21,11 +21,42 @@ test('accepts stray approval requests for the session without surfacing them', (
     params: { threadId: 'thread-1', turnId: 'turn-1', itemId: 'item-1', command: 'npm test' }
   })
   answerServerRequest(client, { id: 8, method: 'item/fileChange/requestApproval', params: {} })
+  answerServerRequest(client, { id: 9, method: 'execCommandApproval', params: {} })
+  answerServerRequest(client, { id: 10, method: 'applyPatchApproval', params: {} })
   assert.deepEqual(responses, [
     { id: 7, result: { decision: 'acceptForSession' } },
-    { id: 8, result: { decision: 'acceptForSession' } }
+    { id: 8, result: { decision: 'acceptForSession' } },
+    { id: 9, result: { decision: 'approved_for_session' } },
+    { id: 10, result: { decision: 'approved_for_session' } }
   ])
   assert.deepEqual(errors, [])
+})
+
+test('auto-grants permission and user-input requests so turns do not stall on timers', () => {
+  const { client, responses } = harness()
+  answerServerRequest(client, {
+    id: 11,
+    method: 'item/permissions/requestApproval',
+    params: { permissions: { network: { enabled: true } } }
+  })
+  answerServerRequest(client, {
+    id: 12,
+    method: 'item/tool/requestUserInput',
+    params: {
+      questions: [{
+        id: 'q1',
+        header: 'Pick',
+        question: 'Which?',
+        options: [{ label: 'First', description: 'one' }, { label: 'Second', description: 'two' }]
+      }]
+    }
+  })
+  answerServerRequest(client, { id: 13, method: 'mcpServer/elicitation/request', params: {} })
+  assert.deepEqual(responses, [
+    { id: 11, result: { permissions: { network: { enabled: true } }, scope: 'session' } },
+    { id: 12, result: { answers: { q1: { answers: ['First'] } } } },
+    { id: 13, result: { action: 'decline' } }
+  ])
 })
 
 test('rejects unsupported server requests at the protocol boundary', () => {

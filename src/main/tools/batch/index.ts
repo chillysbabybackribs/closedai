@@ -20,7 +20,7 @@ export const TOOL_BATCH_NAMESPACE = 'tool_batch'
 export const MAX_BATCH_CALLS = 8
 /** Independent calls overlap, but a runaway page cannot monopolise the browser host. */
 const PARALLEL_WIDTH = 4
-/** Must contain a full sequential batch of slow inner calls (navigate is ~45s worst case). */
+/** Must contain a full sequential batch of slow inner calls (navigate is ~20s worst case). */
 const BATCH_TIMEOUT_MS = 180_000
 
 export type ToolRegistryProvider = () => ToolRegistry

@@ -77,14 +77,14 @@ test('an unscaled capture reports one size and is still retained', async () => {
   assert.equal(store.get('call_2')?.surface, 'app_window')
 })
 
-test('browser_page defaults to an idle wait and passes deterministic conditions', async () => {
+test('browser_page defaults to a dom-ready wait and passes deterministic conditions', async () => {
   const { calls, call } = harness()
   const result = await call({ action: 'browser_page', tab_id: 'tab-4', wait_for_selector: '#done', timeout_ms: 2_000 })
   assert.equal(result.isError, undefined)
   assert.deepEqual(calls[0], ['page', 'tab-4', {
-    until: 'idle', selector: '#done', text: undefined, timeoutMs: 2_000
+    until: 'dom_ready', selector: '#done', text: undefined, timeoutMs: 2_000
   }])
-  assert.match(textOf(result), /Page: A\nURL: https:\/\/a.test\/\nTab: tab-4\nReady: complete and idle/)
+  assert.match(textOf(result), /Page: A\nURL: https:\/\/a.test\/\nTab: tab-4\nReady: dom-ready/)
   assert.equal(result.content[1].type, 'image')
 })
 

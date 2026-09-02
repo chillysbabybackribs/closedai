@@ -49,8 +49,8 @@ test('waitForPageReady waits for text to stop changing for until=idle', async ()
   ])
   const result = await waitForPageReady(contents, { until: 'idle', timeoutMs: 5_000 }, now, sleep)
   assert.equal(result.reached, true)
-  // Three changes at 0/150/300ms, then stable: idle needs 500ms of no change → ~800ms.
-  assert.ok(result.elapsedMs >= 800 && result.elapsedMs < 1_100, `elapsed ${result.elapsedMs}`)
+  // Three changes at 0/75/150ms, then stable: idle needs 200ms of no change → ~425ms.
+  assert.ok(result.elapsedMs >= 350 && result.elapsedMs < 650, `elapsed ${result.elapsedMs}`)
 })
 
 test('waitForPageReady reports a timeout honestly and keeps the last observed state', async () => {

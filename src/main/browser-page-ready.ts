@@ -40,8 +40,8 @@ export type PageText = {
   truncated: boolean
 }
 
-export const IDLE_STABLE_MS = 500
-const POLL_MS = 150
+export const IDLE_STABLE_MS = 200
+const POLL_MS = 75
 
 type Probe = { readyState: string; textLength: number; url: string; title: string; selector: boolean | null; text: boolean | null }
 
@@ -82,6 +82,39 @@ export async function waitForPageReady(
     }
     await sleep(POLL_MS)
   }
+}
+
+/** One probe after navigation already waited for dom-ready; skip polling when that is enough. */
+export async function probePageReady(
+  contents: ScriptRunner,
+  readiness: PageReadiness
+): Promise<PageReadyResult> {
+  const probe = await runProbe(contents, readiness)
+  if (!probe) {
+    return {
+      readyState: 'unknown',
+      reached: false,
+      conditionMet: hasCondition(readiness) ? false : null,
+      elapsedMs: 0,
+      url: '',
+      title: ''
+    }
+  }
+  const conditionMet = conditionResult(probe)
+  const reached = readinessReached(readiness.until, probe.readyState, 0)
+  return {
+    readyState: probe.readyState,
+    reached: reached && conditionMet !== false,
+    conditionMet,
+    elapsedMs: 0,
+    url: probe.url,
+    title: probe.title
+  }
+}
+
+export function needsReadinessPoll(readiness: PageReadiness): boolean {
+  if (readiness.selector || readiness.text) return true
+  return readiness.until !== 'dom_ready'
 }
 
 export async function readPageText(
