@@ -377,6 +377,13 @@
   color: rgb(255 255 255 / 22%);
 }
 
+.prompt-composer-send[data-waiting-for-input='true'] {
+  background: #fff;
+  color: #171717;
+  opacity: 1;
+  box-shadow: 0 1px 4px rgb(255 255 255 / 22%);
+}
+
 .prompt-composer-stop {
   background: rgb(255 143 143 / 16%);
   border: 1px solid rgb(255 143 143 / 32%);

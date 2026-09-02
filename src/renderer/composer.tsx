@@ -35,6 +35,7 @@ export function Composer({ enabled, running, models, selectedModel, selectedReas
   const [sending, setSending] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !sending && enabled && !running
+  const waitingForInput = input.trim().length === 0 && attachments.length === 0 && enabled && !running && !sending
 
   async function submit(event?: FormEvent): Promise<void> {
     event?.preventDefault()
@@ -153,6 +154,7 @@ export function Composer({ enabled, running, models, selectedModel, selectedReas
                     size="icon"
                     className="prompt-composer-send"
                     aria-label="Send message"
+                    data-waiting-for-input={waitingForInput || undefined}
                     disabled={!canSend}
                   >
                     <ArrowRight size={18} aria-hidden="true" />
