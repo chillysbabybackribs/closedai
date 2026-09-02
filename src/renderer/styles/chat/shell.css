@@ -154,8 +154,8 @@
 
 /* Mid-transcript both jump controls are live at once and hover over the text
    arguing with each other; only the one pointing the way the reader is already
-   moving stays up. `data-scroll-dir` is written by useScrollDirectionGate in
-   chat-pane.tsx, `data-scrollable` by the component (which ends are reachable).
+   moving stays up. The scroller writes `data-scroll-dir` and `data-scrollable`
+   from viewport metrics (the latter says which ends are reachable).
    Gating on BOTH ends being reachable is what keeps this from ever leaving a
    dead end: parked at the top or bottom only one button exists, so the pair is
    not in conflict and nothing is taken away — the way back stays one click. The

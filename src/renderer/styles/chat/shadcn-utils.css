@@ -1,6 +1,4 @@
-/* Official shadcn chat utilities (scroll-fade + shimmer). These ship with
-   `shadcn/tailwind.css`; this project keeps a focused copy so the MessageScroller
-   viewport and Attachment title states work without the CLI package. */
+/* Focused chat utilities used by attachment loading states. */
 
 @utility shimmer {
   color: transparent;
@@ -24,10 +22,6 @@
   animation: none;
   color: inherit;
   background: none;
-}
-
-@utility scroll-fade-b {
-  mask-image: linear-gradient(#000 0%, #000 calc(100% - min(12%, 40px)), transparent);
 }
 
 @utility scroll-fade-x {
