@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { memo, useEffect, useMemo, useState } from 'react'
-import { ChevronUp, Loader2, XCircle } from 'lucide-react'
+import { ChevronRight, ChevronUp, Loader2, XCircle } from 'lucide-react'
 
 import { Bubble, BubbleContent } from '../components/ui/bubble.js'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible.js'
@@ -163,6 +163,7 @@ const ToolActivity = memo(function ToolActivity({ items }: { items: ActivityItem
               <Loader2 className="prompt-process-spinner animate-spin" aria-hidden="true" />
             )}
             <span>{headline}</span>
+            <ChevronRight className={`size-3 prompt-process-chevron transition-transform duration-150 ${open ? 'rotate-90' : ''}`} aria-hidden="true" />
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent className="prompt-tool-activity-content">

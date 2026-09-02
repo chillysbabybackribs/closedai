@@ -1,6 +1,6 @@
 import type { ClipboardEvent, DragEvent, FormEvent, JSX } from 'react'
 import { useRef, useState } from 'react'
-import { ArrowUp, Mic, Square } from 'lucide-react'
+import { ArrowRight, Mic, Square } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import {
@@ -151,7 +151,7 @@ export function Composer({ enabled, running, models, selectedModel, selectedReas
                     aria-label="Send message"
                     disabled={!canSend}
                   >
-                    <ArrowUp size={18} aria-hidden="true" />
+                    <ArrowRight size={18} aria-hidden="true" />
                   </Button>
                 </PromptInputAction>
               )}

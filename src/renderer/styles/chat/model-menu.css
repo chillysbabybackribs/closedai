@@ -7,18 +7,18 @@
   min-width: 0;
 }
 
-/* Monochrome accent: a quiet grey pill in every state, so the picker never competes with the
-   blue focus ring or the send button. Only the ink lightens on hover and while open. */
+/* Monochrome: plain grey ink with no chrome of its own; hovering or opening only lightens
+   the ink, so the picker never competes with the blue focus ring or the send button. */
 .model-menu-trigger {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   max-width: 260px;
   height: 30px;
-  padding: 0 8px 0 10px;
-  border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
   color: color-mix(in srgb, var(--foreground) 74%, transparent);
   font: inherit;
   font-size: 13px;
@@ -26,13 +26,11 @@
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color 110ms ease, border-color 110ms ease, color 110ms ease;
+  transition: color 110ms ease;
 }
 
 .model-menu-trigger:not(:disabled):hover,
 .model-menu-trigger[data-state='open'] {
-  border-color: color-mix(in srgb, var(--foreground) 16%, transparent);
-  background: color-mix(in srgb, var(--foreground) 10%, transparent);
   color: var(--foreground);
 }
 

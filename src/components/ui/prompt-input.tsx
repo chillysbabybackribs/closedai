@@ -52,7 +52,10 @@ function PromptInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const setValue = onValueChange ?? setInternalValue
   const handleClick: MouseEventHandler<HTMLDivElement> = (event) => {
-    if (!disabled) textareaRef.current?.focus()
+    // Clicking the box focuses the textarea, but not when the click landed on a control inside
+    // it: a menu opened by that control's pointerdown would be dismissed by the focus change.
+    const control = (event.target as HTMLElement | null)?.closest('button, a, input, select, [role="menu"], [role="menuitem"]')
+    if (!disabled && !control) textareaRef.current?.focus()
     onClick?.(event)
   }
 
