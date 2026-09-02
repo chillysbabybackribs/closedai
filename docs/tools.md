@@ -32,7 +32,7 @@ src/main/tools/
   app-server-tools.ts  Codex adapter (dynamicTools + item/tool/call)
   manifest.ts          renderer-facing registry snapshot for the Tools modal
   telemetry.ts         recent call stats + JSONL persistence
-  index.ts             createToolRegistry: registers every namespace
+  index.ts             public exports and createToolRegistry factory
   <namespace>/
     index.ts           namespace and its tool definitions
     <action>.ts        optional ToolAction modules for an action tool
@@ -42,6 +42,7 @@ src/main/tools/
 Small namespaces may define a plain tool or assemble an action tool directly in their
 `index.ts`. Split a concern into a tool subdirectory only when its implementation needs the
 extra boundary; do not create a second registry or provider-specific execution path.
+`src/main/index.ts` composes the namespace factories into the application registry.
 
 ## Current namespaces
 

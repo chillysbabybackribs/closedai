@@ -1,10 +1,13 @@
-# Electron + Chromium platform review for the closedai browser shell
+# Electron + Chromium platform review and implementation status
 
 Date: 2026-09-01. Sources: electronjs.org docs (`/docs/latest`, which documents Electron 44.1.1),
 the Electron 43 and 44 release posts, the breaking-changes page, and local inspection of
 `~/Desktop/appv1codeapp` (Electron 43.4.1 installed) and this machine (Ubuntu 24.04.4, kernel 7.0).
 Every claim below is either quoted from those docs or measured locally; anything unverified is
 marked **verify**.
+
+This is a dated design record, not a declaration that every recommendation is implemented.
+Section 4 compares the current checkout with the decisions and recommendations below.
 
 ## 0. Owner decisions (2026-09-01) — these override the recommendations below
 
@@ -16,8 +19,9 @@ marked **verify**.
   `setDisplayMediaRequestHandler` grants the requested screen/audio via `desktopCapturer`, and the
   `select-bluetooth-device` / `select-hid-device` / `select-serial-port` / `select-usb-device`
   events auto-select the first matching device. §3.2 is recorded as the documented risk, not as a task.
-- Everything else in §3 (Electron 44, popup-as-tab with opener, `navigationHistory.restore`,
-  Chrome-parity webPreferences, event set, session calls, fuses, dark theme, GPU launcher) stands.
+- Everything else in §3 remains the intended direction unless Section 4 marks it deferred or
+  unverified. This sentence records owner intent; it does not mean the current checkout has
+  completed every item.
 
 ## 1. Versions
 
@@ -216,13 +220,19 @@ database that Chromium uses to store cookies stores the values in plaintext" —
   cross-origin iframes get their own processes in Electron is **verify** (compare
   `webFrameMain.processId` across frames in phase 4).
 
-## 4. What this changes in the build plan
+## 4. Implementation status (2026-09-02)
 
-| Plan step | Change |
-|---|---|
-| 1 Scaffold | `electron@^44`, add `@electron/fuses` (dev), `.deb` as the Linux target. (Sandbox setup dropped per §0.) |
-| 3 Main bootstrap | `Menu.setApplicationMenu(null)`, `nativeTheme.themeSource='dark'`, `SpareRendererForSitePerProcess`, GPU status log, `web-contents-created` guard. |
-| 4 Browser core | allow-all permission handlers (§0), popup bridge with dispositions (3.3), `navigationHistory.restore` (3.4), tab webPreferences (3.5), event set (3.6), `setUserAgent(ua, langs)` + code cache + downloads (3.7). |
-| 5 Renderer | unchanged, plus fullscreen-collapse and audio indicator hooks. |
-| 6 Verify | add: popup-as-tab with opener, basic-auth prompt, cert-error page, PDF inline, back/forward stack survives restart, autoplay blocked without gesture. |
-| 7 Package | fuse flip + SUID `chrome-sandbox` in postinst. |
+| Area | Status | Current checkout |
+|---|---|---|
+| Electron 44 scaffold | **Implemented** | `electron@^44` and Electron Vite are configured. There is not yet a packaging target or `.deb` pipeline. |
+| Sandbox owner decision (§0/§3.1) | **Implemented as accepted risk** | Linux appends `no-sandbox`; the launch scripts set `ELECTRON_DISABLE_SANDBOX=1`. The chrome window also has `sandbox: false`; tab preferences request `sandbox: true`, but the process-wide switch remains authoritative. |
+| Allow-all permissions (§0/§3.2) | **Implemented as accepted risk** | Permission request/check/device/display handlers allow access, and device-selection events choose the first candidate. There is no per-origin permission store or prompt. |
+| Popup adoption (§3.3) | **Implemented** | Ordinary page windows become tabs, background disposition stays unselected, POST data is preserved, and OAuth/utility-window cases retain a native opener bridge. |
+| Session restoration (§3.4) | **Partial** | Tab order, active tab, URL, and title persist, capped at 24 tabs. Back/forward entries are not serialized and `navigationHistory.restore` is not called. |
+| Tab preferences and rendering (§3.5) | **Partial** | Context isolation, no Node integration, tab sandbox preference, background throttling, autoplay policy, WebSQL disablement, safe dialogs, and background-view detachment are present. Spellchecker language/configuration work is absent. Zoom is an Alt+wheel feature rather than the Ctrl shortcuts described above. |
+| Browser event set (§3.6) | **Partial** | Core navigation, title, favicon, failure, crash, unresponsive, unload, and context-menu events are handled. Recovery on `responsive`, HTTP basic auth, HTML fullscreen, audio state/muting, link preview, theme color, and find-in-page are not implemented. Certificate failures use the navigation-error surface rather than a dedicated `certificate-error` handler. |
+| Session services (§3.7) | **Partial** | Downloads, persistent code cache, request identity rewriting, cookie persistence, and storage flush are implemented. There is no extension loading or clear-browsing-data UI, and the exact `setUserAgent(ua, acceptLanguages)` plan is not used. |
+| Package fuses (§3.8) | **Deferred** | `@electron/fuses`, ASAR fuse flipping, cookie encryption, custom-scheme migration, and the Linux post-install sandbox setup are not configured. |
+| Window and theme (§3.9) | **Partial** | Frameless chrome, dark native theme, and removal of the application menu are implemented. `windowStatePersistence` is not configured. |
+| GPU/Linux startup (§3.10) | **Partial** | The launcher scrubs GPU-offload environment variables, GTK portal switches remain, and accelerated video decode is disabled unless overridden. GPU feature-status logging and `SpareRendererForSitePerProcess` are absent; the video-decode workaround still needs the documented Electron 44 retest. |
+| Verification (§3.11) | **Open** | Popup behavior has automated coverage. PDF rendering, site isolation, basic auth, fullscreen, persisted back/forward stacks, and the packaging/sandbox checks remain unverified or unimplemented. |
