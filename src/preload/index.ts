@@ -61,6 +61,13 @@ const api: ClosedaiApi = {
     clearTelemetry: () => ipcRenderer.invoke('tools:clearTelemetry'),
     setEnabled: (toolId: string, enabled: boolean) => ipcRenderer.invoke('tools:setEnabled', toolId, enabled),
     onEvent: (listener) => subscribe<ToolsEvent>('tools:event', listener)
+  },
+  operations: {
+    snapshot: () => ipcRenderer.invoke('operations:snapshot'),
+    models: () => ipcRenderer.invoke('operations:models'),
+    create: (task: string, workspace: string, modelId: string) => ipcRenderer.invoke('operations:create', task, workspace, modelId),
+    setStatus: (id: number, status) => ipcRenderer.invoke('operations:setStatus', id, status),
+    onChanged: (listener) => subscribe('operations:changed', listener)
   }
 }
 

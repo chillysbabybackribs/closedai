@@ -1,16 +1,6 @@
-export type RunStatus = 'attention' | 'completed' | 'failed' | 'paused' | 'queued' | 'running'
 export type RunTab = 'all' | 'attention' | 'completed' | 'running'
-
-export type OperationsRun = {
-  id: number
-  task: string
-  worker: string
-  workspace: string
-  checkpoint: string
-  status: RunStatus
-  runtime: string
-  activity: string
-}
+export type { OperationsRun, RunStatus } from '../../shared/operations.js'
+import type { OperationsRun, RunStatus } from '../../shared/operations.js'
 
 export const OPERATIONS_RUNS_STORAGE_KEY = 'closedai.operations.runs'
 
@@ -20,6 +10,7 @@ export const INITIAL_RUNS: OperationsRun[] = [
     task: 'Implement OAuth refresh handling',
     worker: 'Frontend maintainer',
     workspace: 'closedai',
+    modelId: null,
     checkpoint: 'Running verification suite',
     status: 'running',
     runtime: '18m 42s',
@@ -30,6 +21,7 @@ export const INITIAL_RUNS: OperationsRun[] = [
     task: 'Review Dropbox cleanup flow',
     worker: 'Safety reviewer',
     workspace: 'closedai',
+    modelId: null,
     checkpoint: 'Waiting for approval',
     status: 'attention',
     runtime: '1h 14m',
@@ -40,6 +32,7 @@ export const INITIAL_RUNS: OperationsRun[] = [
     task: 'Audit browser tab lifecycle',
     worker: 'Reliability worker',
     workspace: 'closedai',
+    modelId: null,
     checkpoint: 'Queued behind build',
     status: 'queued',
     runtime: '—',
@@ -50,6 +43,7 @@ export const INITIAL_RUNS: OperationsRun[] = [
     task: 'Prepare weekly release notes',
     worker: 'Release operator',
     workspace: 'desktop',
+    modelId: null,
     checkpoint: 'Published summary',
     status: 'completed',
     runtime: '7m 09s',
@@ -60,6 +54,7 @@ export const INITIAL_RUNS: OperationsRun[] = [
     task: 'Fix flaky CDP navigation test',
     worker: 'Test repair worker',
     workspace: 'closedai',
+    modelId: null,
     checkpoint: 'Test failed on retry 3',
     status: 'failed',
     runtime: '31m 20s',
@@ -70,6 +65,7 @@ export const INITIAL_RUNS: OperationsRun[] = [
     task: 'Refresh tool documentation',
     worker: 'Docs maintainer',
     workspace: 'platform',
+    modelId: null,
     checkpoint: 'Paused after source scan',
     status: 'paused',
     runtime: '12m 03s',
@@ -96,6 +92,7 @@ function isOperationsRun(value: unknown): value is OperationsRun {
     && typeof run.task === 'string'
     && typeof run.worker === 'string'
     && typeof run.workspace === 'string'
+    && (run.modelId === undefined || run.modelId === null || typeof run.modelId === 'string')
     && typeof run.checkpoint === 'string'
     && typeof run.status === 'string'
     && RUN_STATUSES.has(run.status as RunStatus)
@@ -108,7 +105,9 @@ export function readOperationsRuns(storage: Pick<Storage, 'getItem'>): Operation
     const stored = storage.getItem(OPERATIONS_RUNS_STORAGE_KEY)
     if (!stored) return null
     const parsed: unknown = JSON.parse(stored)
-    return Array.isArray(parsed) && parsed.every(isOperationsRun) ? parsed : null
+    return Array.isArray(parsed) && parsed.every(isOperationsRun)
+      ? parsed.map((run) => ({ ...run, modelId: run.modelId ?? null }))
+      : null
   } catch {
     return null
   }
