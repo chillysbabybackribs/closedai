@@ -294,9 +294,9 @@ export class AntigravityChatService extends EventEmitter {
     if (end.status === 'failed') this.addNotice(end.error ?? 'The turn failed', 'error', turnId)
     const conversationId = this.session?.conversationId
     if (!conversationId) return
-    void this.history.saveTranscript(conversationId, this.transcript.snapshot()).catch((error: unknown) => {
-      console.warn('[antigravity] could not save transcript:', messageOf(error))
-    })
+    const items = this.transcript.snapshot()
+    void Promise.all([this.history.saveTranscript(conversationId, items), this.history.recordThread(conversationId, this.cwd, items)])
+      .catch((error: unknown) => { console.warn('[antigravity] could not record the conversation:', messageOf(error)) })
     void this.refreshThreadName(conversationId)
   }
 

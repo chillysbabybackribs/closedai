@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react'
 import type { ChatAttachment, ChatSnapshot, ChatThreadSummary } from '../shared/chat.js'
 import type { ChatPeerSummary, ChatWorkspaceEvent } from '../shared/chat-peers.js'
-import { initialChatWorkspaceState, reduceChatWorkspaceEvent } from './chat-state.js'
+import { coalesceChatWorkspaceEvents, initialChatWorkspaceState, reduceChatWorkspaceEvent } from './chat-state.js'
 
 export type ChatController = {
   state: ChatSnapshot
@@ -32,7 +32,7 @@ export function useChatController(): ChatController {
     let frame: number | null = null
     const flush = (): void => {
       frame = null
-      const batch = queue
+      const batch = coalesceChatWorkspaceEvents(queue)
       queue = []
       for (const event of batch) dispatch(event)
     }

@@ -60,12 +60,12 @@ export class AntigravityToolBridge {
     return this.starting
   }
 
-  /** Unregister from the CLI config and close the server. */
+  /** Drop the app's entries from the CLI config and close the server. */
   async stop(): Promise<void> {
     const names = this.registered
     this.registered = []
     this.starting = null
-    for (const name of names) await this.cli(['mcp', 'remove', name])
+    await this.rewriteConfig((servers) => { for (const name of names) delete servers[name] })
     for (const session of this.sessions.values()) await session.transport.close().catch(() => {})
     this.sessions.clear()
     await new Promise<void>((resolve) => (this.http ? this.http.close(() => resolve()) : resolve()))
@@ -121,19 +121,29 @@ export class AntigravityToolBridge {
   }
 
   /** `agy mcp add` drops per-tool flags; put the eager map back so tools are direct declarations. */
-  private async exposeEagerTools(namespaces: ReturnType<ToolRegistry['enabledNamespaces']>): Promise<void> {
-    const path = this.options.configPath ?? ANTIGRAVITY_MCP_CONFIG_PATH
-    try {
-      const parsed = JSON.parse(await readFile(path, 'utf8')) as { mcpServers?: Record<string, Record<string, unknown>> }
-      const servers = parsed.mcpServers ?? {}
+  private exposeEagerTools(namespaces: ReturnType<ToolRegistry['enabledNamespaces']>): Promise<void> {
+    return this.rewriteConfig((servers) => {
       for (const namespace of namespaces) {
         const server = servers[namespace.name]
         if (!server) continue
         server.tools = Object.fromEntries(namespace.tools.filter((tool) => !tool.deferLoading).map((tool) => [tool.name, { eager: true }]))
       }
+    })
+  }
+
+  /**
+   * Edit the CLI's config file in place. The CLI does not rewrite it on exit (verified: an entry
+   * removed while a chat process ran stayed removed), so this is safe once no `mcp` verb is running.
+   */
+  private async rewriteConfig(edit: (servers: Record<string, Record<string, unknown>>) => void): Promise<void> {
+    const path = this.options.configPath ?? ANTIGRAVITY_MCP_CONFIG_PATH
+    try {
+      const parsed = JSON.parse(await readFile(path, 'utf8')) as { mcpServers?: Record<string, Record<string, unknown>> }
+      const servers = parsed.mcpServers ?? {}
+      edit(servers)
       await writeFile(path, `${JSON.stringify({ ...parsed, mcpServers: servers }, null, 2)}\n`)
     } catch (error) {
-      console.warn('[antigravity] could not mark tools eager in the agy MCP config:', error instanceof Error ? error.message : error)
+      console.warn('[antigravity] could not update the agy MCP config:', error instanceof Error ? error.message : error)
     }
   }
 

@@ -31,6 +31,7 @@ const ROUTES: Record<SearchIntent, Record<SearchDepth, SearchProvider[]>> = {
 }
 
 const CACHE_TTL_MS = 10 * 60 * 1_000
+const MAX_CACHE_ENTRIES = 100
 
 export function selectProviders(request: SearchRequest): SearchProvider[] {
   return request.providers?.length ? [...new Set(request.providers)] : ROUTES[request.intent][request.depth]
@@ -75,8 +76,21 @@ export class SearchRouter {
       results: mergeResults(outputs, request.count),
       errors
     }
+    this.pruneCache()
     this.cache.set(cacheKey, { at: this.now(), response })
     return response
+  }
+
+  private pruneCache(): void {
+    const now = this.now()
+    for (const [key, entry] of this.cache) {
+      if (now - entry.at >= CACHE_TTL_MS) this.cache.delete(key)
+    }
+    while (this.cache.size >= MAX_CACHE_ENTRIES) {
+      const oldestKey = this.cache.keys().next().value
+      if (!oldestKey) break
+      this.cache.delete(oldestKey)
+    }
   }
 }
 

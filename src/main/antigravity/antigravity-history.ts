@@ -7,24 +7,19 @@ import { writeAtomic } from '../atomic-write.js'
 import { ANTIGRAVITY_STATE_DIR } from './antigravity-cli.js'
 import { antigravityThreadId } from './antigravity-ids.js'
 
-// Antigravity threads live in the CLI's own store (~/.gemini/antigravity-cli): every conversation
-// is a SQLite file of protobuf steps, and `conversation_summaries.db` carries the title the CLI
-// generates, a preview, timestamps, and the workspaces the conversation was added to. The app
-// lists that summary table for its workspace. The steps themselves are opaque, so the app keeps
-// its own copy of each conversation's transcript (written after every turn) to show when a
-// thread is reopened, and an archived set, since the CLI has no tag or delete verb.
+// Antigravity conversations live in the CLI's own store (~/.gemini/antigravity-cli) as SQLite
+// files of protobuf steps, which the app cannot read back. The CLI's `conversation_summaries.db`
+// carries generated titles, but on agy 1.1.24 it stopped receiving rows for headless (`--print`)
+// conversations (verified 2026-09-02: none of the day's conversations appeared). So the app is
+// the record: an index of every conversation it ran for a workspace (title from the first
+// message, timestamps), a copy of each transcript written after every turn, and an archived set,
+// since the CLI has no tag or delete verb. The CLI table is consulted only for a nicer title.
 
 const MAX_THREADS = 100
 
-type SummaryRow = {
-  conversation_id: string
-  title: string
-  preview: string
-  last_modified_time: string
-  last_user_input_time: string
-  workspace_uris: string
-  nesting_depth: number
-}
+type IndexEntry = { conversationId: string; cwd: string; title: string; preview: string; createdAt: number; updatedAt: number }
+
+type SummaryRow = { conversation_id: string; title: string }
 
 type StoredTranscript = { conversationId: string; items: ChatTranscriptItem[]; updatedAt: number }
 
@@ -48,8 +43,18 @@ export class AntigravityHistory {
 
   /** The CLI's generated title for a conversation, once it has one. */
   async threadName(conversationId: string): Promise<string | null> {
-    const row = this.readSummaries().find((entry) => entry.conversation_id === conversationId)
-    return row?.title?.trim() || null
+    let db: DatabaseSync | null = null
+    try {
+      db = new DatabaseSync(this.summariesDbPath)
+      const row = db.prepare(
+        'SELECT title FROM conversation_summaries WHERE conversation_id = ? LIMIT 1'
+      ).get(conversationId) as Record<string, unknown> | undefined
+      return typeof row?.title === 'string' ? row.title.trim() || null : null
+    } catch {
+      return null
+    } finally {
+      db?.close()
+    }
   }
 
   async archive(conversationId: string): Promise<void> {
@@ -79,21 +84,11 @@ export class AntigravityHistory {
     let db: DatabaseSync | null = null
     try {
       db = new DatabaseSync(this.summariesDbPath)
-      const rows = db.prepare(
-        'SELECT conversation_id, title, preview, last_modified_time, last_user_input_time, workspace_uris, nesting_depth FROM conversation_summaries'
-      ).all() as unknown[]
+      const rows = db.prepare('SELECT conversation_id, title FROM conversation_summaries').all() as unknown[]
       return rows.flatMap((row) => {
         const record = row as Record<string, unknown>
         return typeof record.conversation_id === 'string' && record.conversation_id
-          ? [{
-              conversation_id: record.conversation_id,
-              title: String(record.title ?? ''),
-              preview: String(record.preview ?? ''),
-              last_modified_time: String(record.last_modified_time ?? ''),
-              last_user_input_time: String(record.last_user_input_time ?? ''),
-              workspace_uris: String(record.workspace_uris ?? ''),
-              nesting_depth: Number(record.nesting_depth ?? 0)
-            }]
+          ? [{ conversation_id: record.conversation_id, title: String(record.title ?? '') }]
           : []
       })
     } catch {
@@ -101,6 +96,31 @@ export class AntigravityHistory {
     } finally {
       db?.close()
     }
+  }
+
+  private async readIndex(): Promise<Record<string, IndexEntry>> {
+    try {
+      const parsed = JSON.parse(await readFile(this.indexPath(), 'utf8')) as Record<string, Partial<IndexEntry>>
+      const index: Record<string, IndexEntry> = {}
+      for (const [id, entry] of Object.entries(parsed)) {
+        if (typeof entry?.cwd !== 'string' || typeof entry.updatedAt !== 'number') continue
+        index[id] = {
+          conversationId: id,
+          cwd: entry.cwd,
+          title: typeof entry.title === 'string' ? entry.title : '',
+          preview: typeof entry.preview === 'string' ? entry.preview : '',
+          createdAt: typeof entry.createdAt === 'number' ? entry.createdAt : entry.updatedAt,
+          updatedAt: entry.updatedAt
+        }
+      }
+      return index
+    } catch {
+      return {}
+    }
+  }
+
+  private indexPath(): string {
+    return join(this.stateDir, 'threads.json')
   }
 
   private async archivedIds(): Promise<Set<string>> {
@@ -121,31 +141,6 @@ export class AntigravityHistory {
   }
 }
 
-function threadSummary(row: SummaryRow): ChatThreadSummary {
-  const preview = previewText(row.preview)
-  const updatedAt = parseCliTime(row.last_modified_time) ?? 0
-  return {
-    id: antigravityThreadId(row.conversation_id),
-    title: row.title.trim() || firstLine(preview) || 'New chat',
-    preview,
-    createdAt: parseCliTime(row.last_user_input_time) ?? updatedAt,
-    updatedAt
-  }
-}
-
-function workspacesOf(row: SummaryRow): string[] {
-  try {
-    const parsed = JSON.parse(row.workspace_uris) as unknown
-    return Array.isArray(parsed) ? parsed.filter((uri): uri is string => typeof uri === 'string').map(normalizeUri) : []
-  } catch {
-    return []
-  }
-}
-
-function workspaceUri(cwd: string): string {
-  return normalizeUri(pathToFileURL(cwd).href)
-}
-
 function normalizeUri(uri: string): string {
   try {
     return decodeURIComponent(uri).replace(/\/+$/, '')
@@ -154,23 +149,7 @@ function normalizeUri(uri: string): string {
   }
 }
 
-/** The CLI writes Go timestamps: `2026-08-30 17:54:50.501242631+00:00`; the zero time means unset. */
-export function parseCliTime(value: string): number | null {
-  if (!value || value.startsWith('0001-')) return null
-  const iso = value.trim().replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1')
-  const time = Date.parse(iso)
-  return Number.isFinite(time) ? time : null
-}
-
-/** The preview without the app's own context blocks, which the CLI records as part of the prompt. */
-export function previewText(text: string): string {
-  return text
-    .replace(/<closedai_context\b[^>]*>[\s\S]*?<\/closedai_context>\s*/g, '')
-    .replace(/<project_instructions\b[^>]*>[\s\S]*?(<\/project_instructions>|$)\s*/g, '')
-    .trim()
-}
-
 function firstLine(text: string): string {
-  const line = text.split('\n')[0]?.trim() ?? ''
+  const line = text.replace(/<closedai_context\b[^>]*>[\s\S]*?<\/closedai_context>\s*/g, '').split('\n')[0]?.trim() ?? ''
   return line.length > 80 ? `${line.slice(0, 79).trimEnd()}…` : line
 }

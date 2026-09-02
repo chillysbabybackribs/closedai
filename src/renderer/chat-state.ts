@@ -118,6 +118,35 @@ export function coalesceChatEvents(events: ChatEvent[]): ChatEvent[] {
   return merged
 }
 
+/**
+ * Merge a burst of workspace events. Streaming chunks for the same pane collapse
+ * their inner itemDeltas, and any full workspace snapshot drops prior queued events.
+ */
+export function coalesceChatWorkspaceEvents(events: ChatWorkspaceEvent[]): ChatWorkspaceEvent[] {
+  const merged: ChatWorkspaceEvent[] = []
+  for (const event of events) {
+    if (event.type === 'workspace') {
+      merged.length = 0
+      merged.push(event)
+      continue
+    }
+    const last = merged[merged.length - 1]
+    if (
+      event.type === 'pane' &&
+      last?.type === 'pane' &&
+      last.paneId === event.paneId
+    ) {
+      const coalesced = coalesceChatEvents([last.event, event.event])
+      if (coalesced.length === 1) {
+        merged[merged.length - 1] = { type: 'pane', paneId: event.paneId, event: coalesced[0]! }
+        continue
+      }
+    }
+    merged.push(event)
+  }
+  return merged
+}
+
 function upsertItem(items: ChatTranscriptItem[], next: ChatTranscriptItem): ChatTranscriptItem[] {
   const index = items.findIndex((item) => item.id === next.id)
   if (index < 0) return [...items, next]

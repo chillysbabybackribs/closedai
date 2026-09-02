@@ -136,12 +136,17 @@ export class BrowserHistoryStore extends EventEmitter implements BrowserHistory 
     const typedKey = historyKeyFromTyped(typed)
     if (!typedKey) return null
 
-    const matches = this.state.entries
-      .filter((entry) => entry.key.startsWith(typedKey) && entry.key !== typedKey)
-      .sort(
-        (a, b) => b.visitCount - a.visitCount || b.lastVisitedAt - a.lastVisitedAt
-      )
-    const best = matches[0]
+    let best: HistoryEntry | null = null
+    for (const entry of this.state.entries) {
+      if (!entry.key.startsWith(typedKey) || entry.key === typedKey) continue
+      if (
+        !best ||
+        entry.visitCount > best.visitCount ||
+        (entry.visitCount === best.visitCount && entry.lastVisitedAt > best.lastVisitedAt)
+      ) {
+        best = entry
+      }
+    }
     if (!best) return null
     return { completion: best.key, url: best.url }
   }
