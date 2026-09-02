@@ -2,6 +2,7 @@ import type { WebContents } from 'electron'
 import type { BrowserTabInfo } from '../../shared/types.js'
 import type { CdpToolHost } from '../tools/cdp/host.js'
 import { CdpPageController } from './page-control/page-controller.js'
+import { CdpPageInput } from './page-control/page-input.js'
 import { CdpSession, type CdpEventPage } from './cdp-session.js'
 
 export type CdpBrowserSource = {
@@ -11,7 +12,7 @@ export type CdpBrowserSource = {
 
 /** Resolves stable ClosedAI tab ids into transient CDP attachments. */
 export class BrowserCdpAccess implements CdpToolHost {
-  private readonly connections = new Map<string, { session: CdpSession; page: CdpPageController }>()
+  private readonly connections = new Map<string, { session: CdpSession; page: CdpPageController; input: CdpPageInput }>()
 
   constructor(private readonly browser: () => CdpBrowserSource | null) {}
 
@@ -64,12 +65,27 @@ export class BrowserCdpAccess implements CdpToolHost {
     return { tab, connectionId: session.connectionId, ...await page.clickAt({ x, y }) }
   }
 
+  async typeText(tabId: string | undefined, ref: string, text: string, clear: boolean): Promise<unknown> {
+    const { tab, session, input } = this.resolve(tabId)
+    return { tab, connectionId: session.connectionId, ...await input.type(ref, text, clear) }
+  }
+
+  async pressKey(tabId: string | undefined, key: string, modifiers: string[]): Promise<unknown> {
+    const { tab, session, input } = this.resolve(tabId)
+    return { tab, connectionId: session.connectionId, ...await input.pressKey(key, modifiers) }
+  }
+
+  async scrollPage(tabId: string | undefined, ref: string | undefined, deltaX: number, deltaY: number): Promise<unknown> {
+    const { tab, session, input } = this.resolve(tabId)
+    return { tab, connectionId: session.connectionId, ...await input.scroll(ref, deltaX, deltaY) }
+  }
+
   dispose(): void {
     for (const connection of this.connections.values()) connection.session.dispose()
     this.connections.clear()
   }
 
-  private resolve(tabId?: string): { tab: BrowserTabInfo; session: CdpSession; page: CdpPageController } {
+  private resolve(tabId?: string): { tab: BrowserTabInfo; session: CdpSession; page: CdpPageController; input: CdpPageInput } {
     const browser = this.browser()
     if (!browser) throw new Error('The browser is not available yet')
     const tabs = browser.tabList()
@@ -85,7 +101,9 @@ export class BrowserCdpAccess implements CdpToolHost {
       if (this.connections.get(tab.id)?.session === closed) this.connections.delete(tab.id)
     })
     const page = new CdpPageController(session)
-    this.connections.set(tab.id, { session, page })
-    return { tab, session, page }
+    const input = new CdpPageInput(session, page)
+    const connection = { session, page, input }
+    this.connections.set(tab.id, connection)
+    return { tab, ...connection }
   }
 }

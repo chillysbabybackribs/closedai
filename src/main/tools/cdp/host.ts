@@ -20,6 +20,9 @@ export type CdpToolHost = {
   inspectPage(tabId: string | undefined, maxElements: number): Promise<unknown>
   clickElement(tabId: string | undefined, ref: string): Promise<unknown>
   clickAt(tabId: string | undefined, x: number, y: number): Promise<unknown>
+  typeText(tabId: string | undefined, ref: string, text: string, clear: boolean): Promise<unknown>
+  pressKey(tabId: string | undefined, key: string, modifiers: string[]): Promise<unknown>
+  scrollPage(tabId: string | undefined, ref: string | undefined, deltaX: number, deltaY: number): Promise<unknown>
 }
 
 export type CdpHostProvider = () => CdpToolHost | null
