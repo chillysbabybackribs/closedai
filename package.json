@@ -9,6 +9,7 @@
   "scripts": {
     "predev": "npm run hygiene",
     "dev": "ELECTRON_DISABLE_SANDBOX=1 node scripts/launch-electron-vite.mjs dev",
+    "dev:web": "vite --config web.vite.config.ts",
     "prebuild": "npm run hygiene",
     "build": "tsc --noEmit && electron-vite build",
     "preview": "ELECTRON_DISABLE_SANDBOX=1 node scripts/launch-electron-vite.mjs preview",
