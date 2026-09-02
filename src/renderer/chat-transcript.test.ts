@@ -45,7 +45,18 @@ test('consecutive commands collapse to a counted headline', () => {
   assert.match(html, /aria-label="Ran 2 commands, completed"/)
 })
 
-test('identically named tool calls collapse to a counted label', () => {
+test('thinking stays visible while tool calls stream on the same turn', () => {
+  const items: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u', turnId: 't', text: 'Go' },
+    {
+      type: 'command', id: 'c1', turnId: 't', command: 'bash -lc "rg AGENTS.md"',
+      cwd: '/', status: 'inProgress', output: '', exitCode: null
+    }
+  ]
+  const html = renderToStaticMarkup(createElement(ChatTranscript, { items, activeTurnId: 't' }))
+  assert.match(html, /Thinking/)
+  assert.match(html, /rg AGENTS.md/)
+})
   const items: ChatTranscriptItem[] = [
     { type: 'user', id: 'u', turnId: 't', text: 'Go' },
     { type: 'tool', id: 's1', turnId: null, label: 'Web search', detail: 'q1', status: 'completed' },

@@ -86,8 +86,9 @@ test('tool activity never consolidates across a visible turn break', () => {
   assert.deepEqual(rows.map((row) => row.kind), ['activity', 'item', 'activity'])
 })
 
-test('consecutive reasoning stays one row; later thoughts after an answer start another', () => {
+test('consecutive reasoning in a turn hoists to one thinking slot before the answer', () => {
   const items: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u1', turnId: 'turn-a', text: 'Go' },
     { type: 'reasoning', id: 'r1', turnId: 'turn-a', text: 'First thought', streaming: true },
     {
       type: 'assistant', id: 'a1', turnId: 'turn-a', text: 'Progress update',
@@ -96,10 +97,9 @@ test('consecutive reasoning stays one row; later thoughts after an answer start 
     { type: 'reasoning', id: 'r2', turnId: 'turn-a', text: 'Second thought', streaming: false },
     { type: 'plan', id: 'p1', turnId: 'turn-a', text: 'Implementation plan', streaming: false }
   ]
-  const rows = transcriptRows(items)
-  assert.deepEqual(rows.map((row) => row.kind), ['reasoning', 'item', 'reasoning'])
-  assert.equal(rows[0]?.kind === 'reasoning' && rows[0].items[0]?.id, 'r1')
-  assert.deepEqual(rows[2]?.kind === 'reasoning' && rows[2].items.map((item) => item.id), ['r2', 'p1'])
+  const rows = visibleTranscriptRows(items, 'turn-a')
+  assert.deepEqual(rows.map((row) => row.kind), ['item', 'reasoning', 'item'])
+  assert.equal(rows[1]?.kind === 'reasoning' && rows[1].items.map((item) => item.id).join(','), 'r1,r2,p1')
 })
 
 test('an active turn with only the user prompt shows a pending thinking row', () => {
@@ -110,27 +110,34 @@ test('an active turn with only the user prompt shows a pending thinking row', ()
   assert.equal(visibleTranscriptRows(items, null).length, 1)
 })
 
-test('pending thinking stays until the turn has visible output', () => {
+test('thinking stays pinned after the user while tools and answers stream', () => {
   const emptyAnswer: ChatTranscriptItem[] = [
     { type: 'user', id: 'u1', turnId: 't1', text: 'Hello' },
     { type: 'assistant', id: 'a1', turnId: 't1', text: '', phase: null, streaming: true }
   ]
-  assert.equal(visibleTranscriptRows(emptyAnswer, 't1').some((row) => row.kind === 'reasoning' && row.items.length === 0), true)
+  assert.deepEqual(visibleTranscriptRows(emptyAnswer, 't1').map((row) => row.kind), ['item', 'reasoning'])
+
   const withThought: ChatTranscriptItem[] = [
     { type: 'user', id: 'u1', turnId: 't1', text: 'Hello' },
-    { type: 'reasoning', id: 'r1', turnId: 't1', text: 'Plan', streaming: true }
+    { type: 'reasoning', id: 'r1', turnId: 't1', text: 'Plan', streaming: true },
+    command('c1', 't1', 'ls'),
+    { type: 'assistant', id: 'a1', turnId: 't1', text: 'Done', phase: 'final_answer', streaming: false }
   ]
-  assert.equal(visibleTranscriptRows(withThought, 't1').filter((row) => row.kind === 'reasoning').length, 1)
+  assert.deepEqual(visibleTranscriptRows(withThought, 't1').map((row) => row.kind), [
+    'item', 'reasoning', 'activity', 'item'
+  ])
+
   const withTool: ChatTranscriptItem[] = [
     { type: 'user', id: 'u1', turnId: 't1', text: 'Hello' },
     command('c1', 't1', 'ls')
   ]
-  assert.equal(visibleTranscriptRows(withTool, 't1').some((row) => row.kind === 'reasoning'), false)
+  assert.deepEqual(visibleTranscriptRows(withTool, 't1').map((row) => row.kind), ['item', 'reasoning', 'activity'])
+
   const orphanTool: ChatTranscriptItem[] = [
     { type: 'user', id: 'u1', turnId: 't1', text: 'Hello' },
     command('c1', null, 'ls')
   ]
-  assert.equal(visibleTranscriptRows(orphanTool, 't1').some((row) => row.kind === 'reasoning'), false)
+  assert.deepEqual(visibleTranscriptRows(orphanTool, 't1').map((row) => row.kind), ['item', 'reasoning', 'activity'])
 })
 
 test('command titles unwrap bash -lc and truncate the working command', () => {
