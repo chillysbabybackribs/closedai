@@ -60,6 +60,18 @@ export function prepareClickExpression(snapshotId: string, ref: string): string 
   return `(${prepareClick.toString()})(${JSON.stringify(snapshotId)},${JSON.stringify(ref)},${JSON.stringify(WORLD_STATE)})`
 }
 
+export function prepareTypeExpression(snapshotId: string, ref: string, clear: boolean): string {
+  return `(${prepareType.toString()})(${JSON.stringify(snapshotId)},${JSON.stringify(ref)},${clear},${JSON.stringify(WORLD_STATE)})`
+}
+
+export function readValueExpression(snapshotId: string, ref: string): string {
+  return `(${readValue.toString()})(${JSON.stringify(snapshotId)},${JSON.stringify(ref)},${JSON.stringify(WORLD_STATE)})`
+}
+
+export function scrollRefExpression(snapshotId: string, ref: string): string {
+  return `(${scrollRef.toString()})(${JSON.stringify(snapshotId)},${JSON.stringify(ref)},${JSON.stringify(WORLD_STATE)})`
+}
+
 function inspectFrame(snapshotId: string, frameId: string, maxElements: number, stateKey: string): LocalInspection {
   const selector = [
     'a[href]', 'button', 'input', 'select', 'textarea', 'summary',
@@ -187,6 +199,62 @@ function inspectFrame(snapshotId: string, frameId: string, maxElements: number, 
     }
     return {}
   }
+}
+
+/** Verify the focused element is editable and optionally select its contents for replacement. */
+function prepareType(snapshotId: string, ref: string, clear: boolean, stateKey: string): boolean {
+  const state = (globalThis as typeof globalThis & {
+    [key: string]: { snapshotId: string; registry: Map<string, HTMLElement> } | undefined
+  })[stateKey]
+  if (!state || state.snapshotId !== snapshotId) throw new Error('Element reference is stale; inspect the page again')
+  const element = state.registry.get(ref)
+  if (!element?.isConnected) throw new Error('Element reference is detached; inspect the page again')
+  const field = element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element : null
+  if (field) {
+    if (field.readOnly || field.disabled) throw new Error('Element is read-only or disabled')
+    field.focus()
+    if (clear) field.select()
+    return true
+  }
+  if (element.isContentEditable) {
+    element.focus()
+    if (clear) {
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      const selection = getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+    }
+    return true
+  }
+  throw new Error('Element is not an input, textarea, or contenteditable element')
+}
+
+/** Read the element's value after typing so the model can confirm without re-inspecting. */
+function readValue(snapshotId: string, ref: string, stateKey: string): { value: string | null } {
+  const state = (globalThis as typeof globalThis & {
+    [key: string]: { snapshotId: string; registry: Map<string, HTMLElement> } | undefined
+  })[stateKey]
+  const element = state?.snapshotId === snapshotId ? state.registry.get(ref) : undefined
+  if (!element?.isConnected) return { value: null }
+  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+    return { value: element.value.slice(0, 200) }
+  }
+  if (element.isContentEditable) return { value: (element.textContent ?? '').slice(0, 200) }
+  return { value: null }
+}
+
+/** Scroll a ref to the frame's viewport center and report the resulting scroll offsets. */
+async function scrollRef(snapshotId: string, ref: string, stateKey: string): Promise<{ scrollX: number; scrollY: number }> {
+  const state = (globalThis as typeof globalThis & {
+    [key: string]: { snapshotId: string; registry: Map<string, HTMLElement> } | undefined
+  })[stateKey]
+  if (!state || state.snapshotId !== snapshotId) throw new Error('Element reference is stale; inspect the page again')
+  const element = state.registry.get(ref)
+  if (!element?.isConnected) throw new Error('Element reference is detached; inspect the page again')
+  element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })
+  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+  return { scrollX: window.scrollX, scrollY: window.scrollY }
 }
 
 async function prepareClick(snapshotId: string, ref: string, stateKey: string): Promise<PreparedClick> {

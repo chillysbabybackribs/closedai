@@ -128,6 +128,20 @@ export class CdpPageController {
     return { ref, point, coordinateSpace: COORDINATE_SPACE, hitTest }
   }
 
+  /** Evaluate a ref-scoped runtime expression in the ref's frame context (see runtime.ts). */
+  async evaluateOnRef<T>(
+    ref: string,
+    build: (snapshotId: string, ref: string) => string,
+    awaitPromise = false
+  ): Promise<T> {
+    const snapshot = this.snapshot
+    const frame = snapshot?.refs.get(ref)
+    if (!snapshot || !frame || !ref.startsWith(`${snapshot.id}:`)) {
+      throw new Error('Element reference is stale or unknown; inspect the page again')
+    }
+    return this.evaluate<T>(build(snapshot.id, ref), frame.contextId, awaitPromise)
+  }
+
   async clickAt(point: ViewportPoint): Promise<AgentPageClick> {
     const viewport = await this.layoutViewport()
     if (point.x < 0 || point.y < 0 || point.x >= viewport.width || point.y >= viewport.height) {
