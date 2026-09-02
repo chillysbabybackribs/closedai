@@ -105,6 +105,11 @@ turn, and only compacts by itself near the context limit. Three things keep that
 - The registry caps each text item of a result at `MAX_RESULT_TEXT_CHARS` (40k characters, about
   10k tokens) and appends a hint to narrow the request. Codex truncates shell output itself but
   passes dynamic tool output through untouched.
+- Capture actions are capped at `DEFAULT_MAX_CAPTURES_PER_TURN` (8) images per turn across
+  `app_window`, `browser_page`, and `crop`; past that the action fails with advice to read page
+  state instead, and each image result reports how many are left. A capture scaled below 75% of
+  its source width tells the model to crop for detail rather than capture again
+  (`capture/budget.ts`, `capture/result.ts`).
 - Capture actions return a bounded image to the model (image tokens scale with pixels) and keep
   the full-resolution capture in `capture/screenshot-store.ts`, keyed by the tool call id. The
   transcript looks the call id up when it renders the screenshot item and falls back to the

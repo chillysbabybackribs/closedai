@@ -3,7 +3,7 @@ import test from 'node:test'
 import type { PageReadyResult } from '../../browser-page-ready.js'
 import { ToolRegistry } from '../registry.js'
 import type { UiCaptureHost } from './host.js'
-import { captureTools } from './index.js'
+import { CaptureBudget, captureTools } from './index.js'
 import { ScreenshotStore } from './screenshot-store.js'
 
 const image = {
@@ -15,7 +15,7 @@ const ready: PageReadyResult = {
   url: 'https://a.test/', title: 'A'
 }
 
-function harness(overrides: Partial<UiCaptureHost> = {}) {
+function harness(overrides: Partial<UiCaptureHost> = {}, budget = new CaptureBudget()) {
   const calls: unknown[] = []
   const host: UiCaptureHost = {
     captureAppWindow: async () => { calls.push(['app']); return image },
@@ -30,10 +30,10 @@ function harness(overrides: Partial<UiCaptureHost> = {}) {
     ...overrides
   }
   const store = new ScreenshotStore()
-  const registry = new ToolRegistry([captureTools(() => host, store)])
-  const call = (args: Record<string, unknown>, callId = 'c') => registry.call(
+  const registry = new ToolRegistry([captureTools(() => host, store, budget)])
+  const call = (args: Record<string, unknown>, callId = 'c', turnId: string | null = null) => registry.call(
     { namespace: 'closedai_ui', tool: 'capture', arguments: args },
-    { threadId: null, turnId: null, callId }
+    { threadId: null, turnId, callId }
   )
   return { calls, call, registry, store }
 }
@@ -148,4 +148,28 @@ test('crop rejects missing, evicted, and out-of-bounds source regions', async ()
   })
   assert.equal(shrinkingZoom.isError, true)
   assert.match(textOf(shrinkingZoom), /capture: invalid arguments — \$\.zoom must be >= 1/)
+})
+
+test('each turn gets a bounded number of images across all capture actions', async () => {
+  const { call, calls } = harness({}, new CaptureBudget(2))
+  const first = await call({ action: 'app_window' }, 'c1', 'turn-1')
+  assert.match(textOf(first), /Images left this turn: 1$/)
+  const second = await call({ action: 'browser_page' }, 'c2', 'turn-1')
+  assert.match(textOf(second), /Images left this turn: 0$/)
+  const third = await call({ action: 'crop', source_id: 'c1', x: 0, y: 0, width: 10, height: 10 }, 'c3', 'turn-1')
+  assert.equal(third.isError, true)
+  assert.match(textOf(third), /Screenshot budget reached: 2 images/)
+  assert.equal(calls.length, 2, 'the host is not asked for a capture past the budget')
+  const nextTurn = await call({ action: 'app_window' }, 'c4', 'turn-2')
+  assert.notEqual(nextTurn.isError, true)
+  assert.match(textOf(nextTurn), /Images left this turn: 1$/)
+})
+
+test('a heavily scaled capture tells the model to crop rather than re-capture', async () => {
+  const wide = { ...image, width: 2560, height: 1080, model: { ...image.model, width: 1280, height: 540 } }
+  const { call } = harness({ captureAppWindow: async () => wide })
+  const result = await call({ action: 'app_window' })
+  assert.match(textOf(result), /Scaled to 50%: small text may be unreadable\. Use crop with zoom/)
+  const mild = await harness().call({ action: 'app_window' })
+  assert.doesNotMatch(textOf(mild), /Scaled to/)
 })

@@ -2,6 +2,9 @@ import type { ToolResult } from '../tool.js'
 import type { CapturedImage } from './host.js'
 import type { ScreenshotStore, ScreenshotSurface } from './screenshot-store.js'
 
+/** Below this fraction of the source width, UI text in the model copy stops being readable. */
+const LEGIBLE_SCALE = 0.75
+
 /** Hand the model the bounded image and keep the full-resolution one for the transcript. */
 export function imageResult(
   summary: string,
@@ -19,13 +22,19 @@ export function imageResult(
     surface,
     capturedAt: image.capturedAt
   })
+  const scale = image.model.width / image.width
   const scaled = image.model.width !== image.width || image.model.height !== image.height
   const size = scaled
     ? `${image.model.width}x${image.model.height} (scaled from ${image.width}x${image.height}; the user sees the full capture)`
     : `${image.width}x${image.height}`
+  // A wide window shrinks to a fraction of its size; the model tends to re-capture when text
+  // is illegible, and a crop of the retained full capture answers that for one image.
+  const hint = scale < LEGIBLE_SCALE
+    ? `\nScaled to ${Math.round(scale * 100)}%: small text may be unreadable. Use crop with zoom on this capture ID for detail instead of capturing again.`
+    : ''
   return {
     content: [
-      { type: 'text', text: `${summary}\nCapture ID: ${callId}\nImage: ${size}\nCaptured: ${image.capturedAt}` },
+      { type: 'text', text: `${summary}\nCapture ID: ${callId}\nImage: ${size}${hint}\nCaptured: ${image.capturedAt}` },
       { type: 'image', dataUrl: image.model.dataUrl }
     ]
   }
