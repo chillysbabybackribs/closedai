@@ -256,7 +256,7 @@
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 12px;
   background: #252526;
-  color: var(--antigravity-teal, #09b6a2);
+  color: var(--antigravity-blue, #8ab4f8);
   box-shadow: 0 4px 16px rgb(0 0 0 / 22%);
 }
 
@@ -295,8 +295,8 @@
 }
 
 .prompt-composer-input:focus-within {
-  border-color: var(--antigravity-teal, #09b6a2);
-  box-shadow: 0 0 0 2px var(--antigravity-teal-glow, rgb(9 182 162 / 24%)), 0 4px 14px rgb(0 0 0 / 28%);
+  border-color: var(--antigravity-blue, #8ab4f8);
+  box-shadow: 0 0 0 2px var(--antigravity-blue-glow, rgb(138 180 248 / 22%)), 0 4px 14px rgb(0 0 0 / 28%);
 }
 
 .prompt-composer-textarea {

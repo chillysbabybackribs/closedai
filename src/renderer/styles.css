@@ -28,6 +28,16 @@
 @import "./styles/tools/modal.css";
 @source "../components";
 
+/* Antigravity accent: the card design's signature blue, used for the focused composer
+   ring, the empty-state icon, and the running-process spinner. */
+:root {
+  --antigravity-blue: #8ab4f8;
+  --antigravity-blue-hover: #a5c5fa;
+  --antigravity-blue-glow: rgb(138 180 248 / 22%);
+  --antigravity-card-bg: #252526;
+  --antigravity-card-border: rgb(255 255 255 / 8%);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

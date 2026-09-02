@@ -55,7 +55,7 @@
   width: 13px;
   height: 13px;
   flex: none;
-  color: var(--antigravity-teal, #09b6a2);
+  color: var(--antigravity-blue, #8ab4f8);
 }
 
 .prompt-process-failed {
