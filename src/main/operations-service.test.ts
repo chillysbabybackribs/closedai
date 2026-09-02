@@ -56,8 +56,10 @@ test('marks a worker failed when runner setup cannot resolve its workspace', asy
       workspacePath: () => { throw new Error('Workspace is unavailable') }
     })
     const run = await service.create('Run with a live model', 'closedai', 'gpt-5.6-sol')
-    for (let attempt = 0; attempt < 20 && service.snapshot().runs[0]?.status !== 'failed'; attempt += 1) {
+    let persisted = ''
+    for (let attempt = 0; attempt < 20 && !persisted.includes('"status": "failed"'); attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 5))
+      persisted = await readFile(join(directory, 'runs.json'), 'utf8').catch(() => '')
     }
     assert.equal(service.snapshot().runs[0]?.id, run.id)
     assert.equal(service.snapshot().runs[0]?.status, 'failed')
