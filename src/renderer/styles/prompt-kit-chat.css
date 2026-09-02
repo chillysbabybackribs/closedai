@@ -400,5 +400,5 @@
 
 @media (max-width: 34rem) {
   .prompt-chat-content { padding-inline: 10px; }
-  .prompt-composer { padding-inline: 8px; }
+  .prompt-composer { padding-inline: 12px; }
 }
