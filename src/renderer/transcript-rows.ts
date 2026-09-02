@@ -227,14 +227,16 @@ function toolState(status: string, exitCode: number | null): ToolPart['state'] {
 }
 
 function clusterOutput(items: ActivityItem[]): Record<string, unknown> | undefined {
-  const results = items.flatMap((item) => {
-    if (item.type === 'command' && item.output) return [{ title: activityTitle(item), output: item.output, exitCode: item.exitCode }]
-    if (item.type === 'fileChange' && item.changes.length) {
-      return [{ title: activityTitle(item), files: item.changes.map(({ path, kind }) => ({ path, kind })) }]
+  const results: Record<string, unknown>[] = []
+  for (const item of items) {
+    if (item.type === 'command' && item.output) {
+      results.push({ title: activityTitle(item), output: item.output, exitCode: item.exitCode })
+    } else if (item.type === 'fileChange' && item.changes.length) {
+      results.push({ title: activityTitle(item), files: item.changes.map(({ path, kind }) => ({ path, kind })) })
+    } else if (item.type === 'tool' && item.detail) {
+      results.push({ title: item.label, detail: item.detail })
     }
-    if (item.type === 'tool' && item.detail) return [{ title: item.label, detail: item.detail }]
-    return []
-  })
+  }
   return results.length ? { results } : undefined
 }
 

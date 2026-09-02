@@ -174,44 +174,6 @@
   background: color-mix(in srgb, var(--destructive) 8%, transparent);
 }
 
-.prompt-reasoning {
-  width: 100%;
-  color: var(--transcript-activity);
-}
-
-.prompt-reasoning-trigger,
-.prompt-reasoning-pending,
-.prompt-reasoning-label {
-  min-height: 22px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  appearance: none;
-  background: transparent;
-  color: var(--transcript-activity);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-.prompt-reasoning-trigger:hover,
-.prompt-reasoning-trigger[aria-expanded='true'] {
-  color: var(--transcript-activity-hover);
-}
-
-.prompt-reasoning-content {
-  margin-top: 6px;
-  padding-left: 12px;
-  border-left: 1px solid var(--border);
-}
-
-.prompt-reasoning-copy {
-  color: var(--muted-foreground);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
 /* Gradient sweep over clipped text (text-shimmer.tsx). A dim base colour with a bright
    highlight band whose width scales with the text length via --shimmer-spread. */
 .text-shimmer {

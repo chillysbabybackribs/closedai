@@ -1,3 +1,44 @@
+/* Thinking and tool batches share one process-line language: muted 12px text,
+   no card chrome, details only on demand. */
+
+.prompt-reasoning {
+  width: 100%;
+  color: var(--transcript-activity);
+}
+
+.prompt-reasoning-trigger,
+.prompt-reasoning-pending,
+.prompt-reasoning-label {
+  min-height: 22px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  color: var(--transcript-activity);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.prompt-reasoning-trigger:hover,
+.prompt-reasoning-trigger[aria-expanded='true'] {
+  color: var(--transcript-activity-hover);
+}
+
+.prompt-reasoning-content {
+  margin-top: 6px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+}
+
+.prompt-reasoning-copy {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 /* One quiet, live-updating disclosure per consecutive tool batch. Individual
    calls stay collapsed behind a counted verb line. */
 .prompt-tool-activity {
