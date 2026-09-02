@@ -16,7 +16,7 @@ import { useTitlebarBrowserFreeze } from './titlebar-browser-freeze.js'
 type GhostSuggestion = { base: string; remainder: string; url: string }
 type BrowserIdentity = { kind: 'web' | 'file' | 'other'; secure: boolean; host: string; rest: string }
 
-export function useBrowserController(layoutKey?: string, visible = true) {
+export function useBrowserController(layoutKey?: string, visible = true, occluded = false) {
   const [isEditingUrl, setIsEditingUrl] = useState(false)
   const state = useBrowserSnapshot(isEditingUrl)
   const titlebarOverlay = useTitlebarBrowserFreeze()
@@ -24,7 +24,7 @@ export function useBrowserController(layoutKey?: string, visible = true) {
   const browserHostRef = useBrowserBounds(
     layoutKey,
     visible && !state.browser.navigationError,
-    titlebarOverlay.open,
+    occluded || titlebarOverlay.open,
     titlebarOverlay.finishRestore
   )
   const displayedUrl = state.browser.navigationError?.url ?? state.browser.url

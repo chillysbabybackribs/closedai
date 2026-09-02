@@ -20,7 +20,7 @@ import {
   type RunStatus,
   type RunTab
 } from './operations-data.js'
-import { OperationsSidebar } from './operations-sidebar.js'
+import { OperationsHeader } from './operations-sidebar.js'
 import { RunDetailDrawer } from './run-detail-drawer.js'
 import { RunsTable } from './runs-table.js'
 import { WorkerChatDrawer } from './worker-chat-drawer.js'
@@ -128,7 +128,7 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
 
   return (
     <section className="operations-workspace" data-ui-surface="operations">
-      <OperationsSidebar runs={runs} />
+      <OperationsHeader runs={runs} />
       <main className="ops-main">
         <div className="ops-breadcrumb"><span>Operations</span><span>/</span><strong>Runs</strong></div>
         <div className="ops-page-heading">

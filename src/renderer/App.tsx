@@ -31,25 +31,37 @@ function App(): JSX.Element {
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
       <div className="workspace" data-mode={mode} data-agents="closed">
-        {mode === 'chat' ? <ChatWorkspace /> : <OperationsWorkspace onAttentionCountChange={setOperationsAttentionCount} />}
+        {desktopAvailable ? (
+          <DesktopWorkspace mode={mode} onAttentionCountChange={setOperationsAttentionCount} />
+        ) : (
+          <OperationsWorkspace onAttentionCountChange={setOperationsAttentionCount} />
+        )}
       </div>
     </div>
   )
 }
 
-function ChatWorkspace(): JSX.Element {
-  const browser = useBrowserController('browser', true)
-  useEffect(() => () => {
-    void window.closedai.browser.setBounds({ x: 0, y: 0, width: 0, height: 0, visible: false })
-  }, [])
+function DesktopWorkspace({
+  mode,
+  onAttentionCountChange
+}: {
+  mode: AppMode
+  onAttentionCountChange: (count: number) => void
+}): JSX.Element {
+  const browser = useBrowserController('browser', true, mode === 'operations')
   return (
     <WorkspaceSplit
       chat={<ChatPane />}
       workspace={
-        <div className="workspace-right" data-mode="browser" data-with-browser="yes" data-refs="no">
+        <div className="workspace-right" data-mode={mode === 'operations' ? 'operations' : 'browser'} data-with-browser="yes" data-refs="no">
           <div className="workspace-surface workspace-surface-browser">
             <BrowserPane controller={browser} />
           </div>
+          {mode === 'operations' ? (
+            <div className="workspace-surface workspace-surface-operations">
+              <OperationsWorkspace onAttentionCountChange={onAttentionCountChange} />
+            </div>
+          ) : null}
         </div>
       }
     />
