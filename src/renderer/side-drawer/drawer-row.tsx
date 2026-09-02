@@ -84,7 +84,7 @@ export function DrawerRow({
             <span className="agents-row-task">
               {/* Only live panes carry a provider; history rows are thread records, so they get
                   no mark and the absence itself reads as "not a running chat". */}
-              {row.peer && <ProviderMark provider={row.peer.provider} className="agents-row-provider" />}
+              {row.provider && <ProviderMark provider={row.provider} className="agents-row-provider" />}
               {row.title}
             </span>
             <span className="agents-row-meta">

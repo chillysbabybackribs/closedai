@@ -136,6 +136,7 @@ export function useDrawerController(chat: ChatController) {
         linesRemoved: linesDiff.removed,
         running: activeRunning,
         status: activeRunning ? 'running' : 'chat',
+        provider: chat.state.provider,
         completedUnviewed: false,
         children: []
       })
@@ -157,6 +158,7 @@ export function useDrawerController(chat: ChatController) {
         linesRemoved: 0,
         running: peer.running,
         status,
+        provider: peer.provider,
         peer,
         completedUnviewed: false,
         children: []
