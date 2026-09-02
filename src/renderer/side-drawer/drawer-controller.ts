@@ -9,7 +9,7 @@ import {
   readDrawerReviewQueue,
   type DrawerReviewQueue
 } from './drawer-review-queue.js'
-import type { DrawerRowModel, DrawerRowStatus } from './drawer-types.js'
+import { buildDrawerRows } from './drawer-rows.js'
 
 const COLLAPSED_KEY = 'closedai.drawer.collapsed'
 const HISTORY_OPEN_KEY = 'closedai.drawer.historyOpen'
@@ -117,85 +117,14 @@ export function useDrawerController(chat: ChatController) {
   }, [chat.state.items])
 
   const rows = useMemo(() => {
-    const list: DrawerRowModel[] = []
-    const seenThreads = new Set<string>()
-
-    const activeThreadId = chat.state.threadId
-    const activeRunning = chat.state.activeTurnId !== null
-    if (activeThreadId) {
-      seenThreads.add(activeThreadId)
-      list.push({
-        id: activeThreadId,
-        threadId: activeThreadId,
-        paneId: chat.selectedPaneId,
-        title: chat.state.threadName || 'Active chat',
-        cwd: chat.state.cwd || null,
-        updatedAt: Date.now(),
-        messageCount: chat.state.items.filter((i) => i.type === 'user').length,
-        linesAdded: linesDiff.added,
-        linesRemoved: linesDiff.removed,
-        running: activeRunning,
-        status: activeRunning ? 'running' : 'chat',
-        provider: chat.state.provider,
-        completedUnviewed: false,
-        children: []
-      })
-    }
-
-    const peerRows = new Map<string, DrawerRowModel>()
-    for (const peer of chat.peers) {
-      if (peer.threadId) seenThreads.add(peer.threadId)
-      const status: DrawerRowStatus = peer.running ? 'running' : (peer.activity ? 'done' : 'chat')
-      const row: DrawerRowModel = {
-        id: peer.paneId,
-        threadId: peer.threadId,
-        paneId: peer.paneId,
-        title: peer.title || (peer.kind === 'subagent' ? 'Subagent task' : 'Peer chat'),
-        cwd: chat.state.cwd || null,
-        updatedAt: peer.updatedAt,
-        messageCount: 0,
-        linesAdded: 0,
-        linesRemoved: 0,
-        running: peer.running,
-        status,
-        provider: peer.provider,
-        peer,
-        completedUnviewed: false,
-        children: []
-      }
-      peerRows.set(peer.paneId, row)
-    }
-
-    for (const peer of chat.peers) {
-      const row = peerRows.get(peer.paneId)!
-      if (peer.parentPaneId && peerRows.has(peer.parentPaneId)) {
-        peerRows.get(peer.parentPaneId)!.children.push(row)
-      } else if (peer.paneId !== chat.selectedPaneId) {
-        list.push(row)
-      }
-    }
-
-    for (const t of threads) {
-      if (seenThreads.has(t.id)) continue
-      list.push({
-        id: t.id,
-        threadId: t.id,
-        title: t.title,
-        cwd: chat.state.cwd || null,
-        updatedAt: t.updatedAt,
-        messageCount: 1,
-        linesAdded: 0,
-        linesRemoved: 0,
-        running: false,
-        status: 'chat',
-        thread: t,
-        completedUnviewed: false,
-        children: []
-      })
-    }
-
-    return list
-  }, [chat.state.threadId, chat.state.threadName, chat.state.cwd, chat.state.items, chat.state.activeTurnId, chat.selectedPaneId, chat.peers, threads, linesDiff])
+    return buildDrawerRows({
+      selected: chat.state,
+      selectedPaneId: chat.selectedPaneId,
+      peers: chat.peers,
+      threads,
+      selectedDiff: linesDiff
+    })
+  }, [chat.state, chat.selectedPaneId, chat.peers, threads, linesDiff])
 
   return {
     isCollapsed,
