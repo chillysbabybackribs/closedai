@@ -155,7 +155,10 @@ function AttachmentCard({
 }
 
 function imagePreview(attachment: ChatAttachmentSummary): string | null {
-  if (attachment.kind !== 'image' || !('source' in attachment)) return null
-  const source = (attachment as ChatAttachment).source
-  return source.type === 'url' ? source.url : null
+  if (!isImageAttachment(attachment)) return null
+  return attachment.source.type === 'url' ? attachment.source.url : null
+}
+
+function isImageAttachment(attachment: ChatAttachmentSummary): attachment is Extract<ChatAttachment, { kind: 'image' }> {
+  return attachment.kind === 'image' && 'source' in attachment
 }
