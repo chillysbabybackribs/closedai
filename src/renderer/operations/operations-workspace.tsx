@@ -158,6 +158,7 @@ export function OperationsWorkspace(): JSX.Element {
           onClose={() => setSelectedRunId(null)}
           onMessage={() => setChatOpen(true)}
           onStatusChange={updateSelectedStatus}
+          escapeEnabled={!chatOpen}
         />
       ) : null}
       {chatOpen && selectedRun ? <WorkerChatDrawer run={selectedRun} onClose={() => setChatOpen(false)} /> : null}

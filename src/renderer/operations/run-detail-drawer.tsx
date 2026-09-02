@@ -20,21 +20,24 @@ export function RunDetailDrawer({
   run,
   onClose,
   onMessage,
-  onStatusChange
+  onStatusChange,
+  escapeEnabled = true
 }: {
   run: OperationsRun
   onClose: () => void
   onMessage: () => void
   onStatusChange: (status: RunStatus) => void
+  escapeEnabled?: boolean
 }): JSX.Element {
   const [tab, setTab] = useState<DetailTab>('Overview')
   useEffect(() => {
+    if (!escapeEnabled) return undefined
     const closeOnEscape = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [onClose])
+  }, [escapeEnabled, onClose])
 
   return (
     <>
