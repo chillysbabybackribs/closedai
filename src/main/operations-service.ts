@@ -80,6 +80,7 @@ export class OperationsService extends EventEmitter {
   }
 
   private readonly activeRuns = new Map<number, ActiveRun>()
+  private persistQueue: Promise<void> = Promise.resolve()
   private stopping = false
 
   snapshot(): OperationsSnapshot {
@@ -233,9 +234,13 @@ export class OperationsService extends EventEmitter {
   }
 
   private async persistAndEmit(): Promise<void> {
-    await writeAtomic(this.filePath, `${JSON.stringify(this.runs, null, 2)}\n`)
-    const event: OperationsEvent = { type: 'runs', runs: this.runs.map((run) => ({ ...run })) }
-    this.emit('changed', event)
+    const next = this.persistQueue.then(async () => {
+      await writeAtomic(this.filePath, `${JSON.stringify(this.runs, null, 2)}\n`)
+      const event: OperationsEvent = { type: 'runs', runs: this.runs.map((run) => ({ ...run })) }
+      this.emit('changed', event)
+    })
+    this.persistQueue = next.catch(() => {})
+    await next
   }
 }
 

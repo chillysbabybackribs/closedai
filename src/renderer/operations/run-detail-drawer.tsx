@@ -10,7 +10,7 @@ import {
   Square,
   X
 } from 'lucide-react'
-import type { OperationsRun, RunStatus } from './operations-data.js'
+import { RUN_STATUS_LABELS, type OperationsRun, type RunStatus } from './operations-data.js'
 import { RunStatusBadge } from './run-status-badge.js'
 
 const DETAIL_TABS = ['Overview', 'Activity', 'Artifacts', 'Browser', 'Logs', 'Configuration'] as const
@@ -93,7 +93,7 @@ function RunOverview({ run }: { run: OperationsRun }): JSX.Element {
     <>
       <section className="ops-run-progress">
         <span>Current checkpoint</span><strong>{run.checkpoint}</strong>
-        <div><span /></div><small>3 of 5 planned steps completed</small>
+        <div><span /></div><small>{run.status === 'running' ? 'Codex is processing this run' : RUN_STATUS_LABELS[run.status]}</small>
       </section>
       <dl className="ops-run-facts">
         <div><dt>Worker</dt><dd>{run.worker}</dd></div>
@@ -104,8 +104,8 @@ function RunOverview({ run }: { run: OperationsRun }): JSX.Element {
       </dl>
       <section className="ops-activity-list">
         <h3>Latest activity</h3>
-        <div><PlayCircle size={15} fill="currentColor" /><p><strong>Running project checks</strong><span>npm run check · 36 seconds</span></p></div>
-        <div><CheckCircle2 size={15} fill="currentColor" /><p><strong>Updated authentication service</strong><span>3 files changed · 4 minutes ago</span></p></div>
+        <div><PlayCircle size={15} fill="currentColor" /><p><strong>{run.checkpoint}</strong><span>{run.modelId ? `Using ${run.modelId}` : 'No model assigned'}</span></p></div>
+        <div><CheckCircle2 size={15} fill="currentColor" /><p><strong>{RUN_STATUS_LABELS[run.status]}</strong><span>Last activity: {run.activity}</span></p></div>
       </section>
     </>
   )
