@@ -204,7 +204,11 @@
 }
 
 .chat-scroll-content > [data-slot="message-scroller-item"] {
-  padding-inline: var(--chat-inline);
+  width: min(
+    var(--chat-column-width),
+    calc(100% - var(--chat-column-gutter) - var(--chat-column-gutter))
+  );
+  margin-inline: auto;
 }
 
 .chat-scroll-content > [data-slot="message-scroller-item"] + [data-slot="message-scroller-item"] {

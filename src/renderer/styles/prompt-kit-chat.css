@@ -10,6 +10,8 @@
   height: 100%;
   overflow: hidden;
   background: var(--background, #181818);
+  --chat-column-width: 680px;
+  --chat-column-gutter: clamp(18px, 4vw, 32px);
   --chat-fs-body: 14px;
   --chat-fs-process: 13px;
   --chat-fs-meta: 12px;
@@ -270,7 +272,7 @@
 .prompt-composer {
   grid-row: 3;
   min-width: 0;
-  padding: 6px clamp(18px, 4vw, 32px) 14px;
+  padding: 6px var(--chat-column-gutter) 14px;
   border-top: none;
   background: transparent;
 }
@@ -288,7 +290,7 @@
 }
 
 .prompt-composer-input {
-  max-width: 680px;
+  max-width: var(--chat-column-width);
   margin-inline: auto;
   padding: 6px;
   border: 1px solid var(--composer-line);
@@ -398,6 +400,6 @@
 }
 
 @media (max-width: 34rem) {
+  .prompt-chat { --chat-column-gutter: 12px; }
   .prompt-chat-content { padding-inline: 10px; }
-  .prompt-composer { padding-inline: 12px; }
 }
