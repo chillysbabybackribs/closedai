@@ -16,6 +16,16 @@ test('a missing file yields the defaults, including the compaction threshold', a
   const { store } = await storeWith(null)
   assert.deepEqual(store.get(), DEFAULT_APP_SETTINGS)
   assert.equal(store.get().chatCompactAtPercent, 60)
+  assert.equal(store.get().chatAutoCompactTokens, 100_000)
+})
+
+test('the mid-turn auto-compact limit is bounded, with 0 leaving it to Codex', async () => {
+  assert.equal((await storeWith('{"chatAutoCompactTokens": 0}')).store.get().chatAutoCompactTokens, 0)
+  assert.equal((await storeWith('{"chatAutoCompactTokens": -1}')).store.get().chatAutoCompactTokens, 0)
+  assert.equal((await storeWith('{"chatAutoCompactTokens": 500}')).store.get().chatAutoCompactTokens, 20_000)
+  assert.equal((await storeWith('{"chatAutoCompactTokens": 9e9}')).store.get().chatAutoCompactTokens, 2_000_000)
+  assert.equal((await storeWith('{"chatAutoCompactTokens": "lots"}')).store.get().chatAutoCompactTokens, 100_000)
+  assert.equal((await storeWith('{"chatAutoCompactTokens": 80000.4}')).store.get().chatAutoCompactTokens, 80_000)
 })
 
 test('the compaction threshold is clamped and bad values fall back', async () => {

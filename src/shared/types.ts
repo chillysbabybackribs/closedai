@@ -88,6 +88,11 @@ export type AppSettings = {
    * percentage of the model window. 0 leaves it to Codex's own near-limit compaction.
    */
   chatCompactAtPercent: number
+  /**
+   * Have Codex compact the thread in the middle of a turn once the context passes this many
+   * tokens, so a long run of tool calls cannot fill the window. 0 keeps Codex's own limit.
+   */
+  chatAutoCompactTokens: number
 }
 
 /** A still of the page the user is looking at; `imageUrl` is a data URL. */

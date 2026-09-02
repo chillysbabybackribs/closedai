@@ -35,7 +35,9 @@ export class AppServerClient extends EventEmitter {
 
   constructor(
     private readonly executable: string,
-    private readonly cwd: string
+    private readonly cwd: string,
+    /** Extra `codex app-server` arguments, read at each spawn so a restart picks up changes. */
+    private readonly launchArgs: () => string[] = () => []
   ) {
     super()
   }
@@ -43,7 +45,7 @@ export class AppServerClient extends EventEmitter {
   async start(): Promise<void> {
     if (this.child) return
     this.stopping = false
-    const child = spawn(this.executable, ['app-server', '--listen', 'stdio://'], {
+    const child = spawn(this.executable, ['app-server', ...this.launchArgs(), '--listen', 'stdio://'], {
       cwd: this.cwd,
       env: process.env,
       stdio: ['pipe', 'pipe', 'pipe']

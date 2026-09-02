@@ -17,10 +17,16 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   disabledTools: [],
   // Compaction is lossy, so it waits for a comfortably full window rather than firing early;
   // 60% leaves room for a long turn while keeping old screenshots from piling up.
-  chatCompactAtPercent: 60
+  chatCompactAtPercent: 60,
+  // A single turn of UI work can add 200k tokens through tool results before the between-turn
+  // compaction above gets a chance, and latency grows with every replayed token. 100k keeps a
+  // working-set-sized context through long turns at the cost of one summary per ~30 calls.
+  chatAutoCompactTokens: 100_000
 }
 
 const MAX_COMPACT_AT_PERCENT = 95
+const MIN_AUTO_COMPACT_TOKENS = 20_000
+const MAX_AUTO_COMPACT_TOKENS = 2_000_000
 
 function normalize(parsed: unknown): AppSettings {
   if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_APP_SETTINGS }
@@ -41,8 +47,16 @@ function normalize(parsed: unknown): AppSettings {
       : [],
     chatCompactAtPercent: typeof record.chatCompactAtPercent === 'number' && Number.isFinite(record.chatCompactAtPercent)
       ? Math.min(MAX_COMPACT_AT_PERCENT, Math.max(0, Math.round(record.chatCompactAtPercent)))
-      : DEFAULT_APP_SETTINGS.chatCompactAtPercent
+      : DEFAULT_APP_SETTINGS.chatCompactAtPercent,
+    chatAutoCompactTokens: normalizeAutoCompactTokens(record.chatAutoCompactTokens)
   }
+}
+
+/** 0 disables; anything else lands between the bounds so a typo cannot compact every call. */
+function normalizeAutoCompactTokens(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_APP_SETTINGS.chatAutoCompactTokens
+  if (value <= 0) return 0
+  return Math.min(MAX_AUTO_COMPACT_TOKENS, Math.max(MIN_AUTO_COMPACT_TOKENS, Math.round(value)))
 }
 
 export class AppSettingsStore {
