@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, ChevronDown, CircleEllipsis, Loader2, XCircle } from 'lucide-react'
+import { CheckCircle2, CircleEllipsis, Loader2, XCircle } from 'lucide-react'
 
 import { cn } from '../../lib/utils.js'
 import { Button } from './button.js'
@@ -29,13 +29,12 @@ function Tool({ toolPart, defaultOpen = false, className }: ToolProps) {
     <div data-slot="tool" className={cn('prompt-tool overflow-hidden', className)}>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild disabled={!hasDetails}>
-          <Button variant="ghost" className="prompt-tool-trigger h-auto w-full justify-between rounded-none px-3 py-2 font-normal">
+          <Button variant="ghost" className="prompt-tool-trigger h-auto w-full justify-start rounded-none px-3 py-2 font-normal">
             <span className="prompt-tool-title">
               <status.Icon className={cn('size-4', status.spin && 'animate-spin')} aria-hidden="true" />
               <span>{toolPart.type}</span>
               <em>{status.label}</em>
             </span>
-            {hasDetails && <ChevronDown className={cn('size-4 transition-transform', isOpen && 'rotate-180')} aria-hidden="true" />}
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="prompt-tool-content">
