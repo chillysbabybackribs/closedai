@@ -44,6 +44,13 @@ export function appTools(app: AppHostProvider): ToolNamespace {
   }
 }
 
+function optionalNumberArg(input: JsonObject, key: string): number | undefined {
+  const value = input[key]
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`\`${key}\` must be a number`)
+  return value
+}
+
 function actions(app: AppHostProvider): ToolAction[] {
   return [
     {
@@ -58,8 +65,8 @@ function actions(app: AppHostProvider): ToolAction[] {
       run: async (input) => {
         const selector = stringArg(input, 'selector')
         const ref = stringArg(input, 'ref')
-        const x = numberArg(input, 'x')
-        const y = numberArg(input, 'y')
+        const x = optionalNumberArg(input, 'x')
+        const y = optionalNumberArg(input, 'y')
         if (!selector && !ref && (x === undefined || y === undefined)) {
           throw new Error('Pass `selector`, `(x, y)` coordinates, or `ref` to click')
         }
