@@ -1,5 +1,6 @@
 import type { ChatTranscriptItem } from '../shared/chat.js'
 import type { ToolPart } from '../components/ui/tool.js'
+import { commandKind, commandPhrase, toolPhrase, unwrapShell } from './activity-phrase.js'
 
 export type ActivityItem = Extract<ChatTranscriptItem, { type: 'command' | 'fileChange' | 'tool' }>
 export type ReasoningItem = Extract<ChatTranscriptItem, { type: 'plan' | 'reasoning' }>
@@ -108,8 +109,8 @@ function rowVisible(item: ChatTranscriptItem): boolean {
 export function activityHeadline(items: ActivityItem[]): string {
   if (items.length === 1) return activityTitle(items[0]!)
   const first = items[0]!
-  if (first.type === 'tool') return `${first.label} ${items.length}`
-  if (first.type === 'command') return counted('Ran', items.length, 'command', 'commands')
+  if (first.type === 'tool') return toolPhrase(first.label, items.length)
+  if (first.type === 'command') return commandHeadline(items)
   const files = items.reduce((count, item) => (
     item.type === 'fileChange' ? count + Math.max(item.changes.length, 1) : count
   ), 0)
@@ -117,13 +118,22 @@ export function activityHeadline(items: ActivityItem[]): string {
 }
 
 export function activityTitle(item: ActivityItem): string {
-  if (item.type === 'command') return commandTitle(item.command)
+  if (item.type === 'command') return commandPhrase(item.command)
   if (item.type === 'fileChange') {
-    if (item.changes.length === 1) return fileName(item.changes[0]!.path)
-    if (item.changes.length > 1) return `${item.changes.length} files`
-    return 'File changes'
+    if (item.changes.length === 1) return `Edited ${fileName(item.changes[0]!.path)}`
+    if (item.changes.length > 1) return `Edited ${item.changes.length} files`
+    return 'Edited files'
   }
-  return item.label
+  return toolPhrase(item.label)
+}
+
+function commandHeadline(items: ActivityItem[]): string {
+  const kinds = new Set(items.map((item) => item.type === 'command' ? commandKind(item.command) : 'run'))
+  if (kinds.size === 1 && kinds.has('read')) return counted('Read', items.length, 'file', 'files')
+  if (kinds.size === 1 && kinds.has('search')) return `Searched ${items.length} times`
+  if (kinds.size === 1 && kinds.has('list')) return counted('Listed', items.length, 'path', 'paths')
+  if (kinds.size === 1 && kinds.has('test')) return 'Ran tests'
+  return counted('Ran', items.length, 'command', 'commands')
 }
 
 export function commandTitle(command: string, max = 64): string {
@@ -142,9 +152,7 @@ export function activityClusters(items: ActivityItem[]): ActivityCluster[] {
   }
   return clusters.map((cluster) => ({
     id: cluster.id,
-    title: cluster.items.length === 1
-      ? activityTitle(cluster.items[0]!)
-      : `${clusterLabel(cluster.items[0]!)} ${cluster.items.length}`,
+    title: activityHeadline(cluster.items),
     items: cluster.items
   }))
 }
@@ -154,7 +162,7 @@ export function clusterToolPart(cluster: ActivityCluster): ToolPart {
   return {
     type: cluster.title,
     state: activityState(cluster.items),
-    input: { steps: cluster.items.map(activityTitle) },
+    input: { steps: cluster.items.map(activityDetail) },
     output: clusterOutput(cluster.items),
     errorText: clusterError(cluster.items),
     toolCallId: cluster.items[0]!.id
@@ -164,7 +172,7 @@ export function clusterToolPart(cluster: ActivityCluster): ToolPart {
 export function toolPart(item: ActivityItem): ToolPart {
   if (item.type === 'command') {
     return {
-      type: commandTitle(item.command),
+      type: activityTitle(item),
       state: toolState(item.status, item.exitCode),
       input: item.cwd ? { cwd: item.cwd } : undefined,
       output: item.output ? { output: item.output, exitCode: item.exitCode } : undefined,
