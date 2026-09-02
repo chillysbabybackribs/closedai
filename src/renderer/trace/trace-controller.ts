@@ -97,7 +97,7 @@ export function groupByTurn(entries: TraceEntry[]): TraceTurnGroup[] {
   let current: TraceTurnGroup | null = null
   for (const entry of entries) {
     // A turn end carries no turn id but belongs to the turn it closes.
-    const turnId = entry.label === 'turn.end' && current ? current.turnId : entry.turnId
+    const turnId: string | null = entry.label === 'turn.end' && current ? current.turnId : entry.turnId
     if (!current || current.turnId !== turnId) {
       current = { turnId, entries: [], startedAt: entry.at, durationMs: null }
       groups.push(current)
