@@ -22,7 +22,7 @@ function peer(paneId: string, threadId: string, updatedAt: number): ChatPeerSumm
 function selected(threadId: string, threadName: string): ChatSnapshot {
   return {
     provider: 'codex',
-    connection: { state: 'connected' },
+    connection: { state: 'ready', message: 'Ready' },
     account: null,
     models: [],
     selectedModel: null,
@@ -83,8 +83,8 @@ test('live pane ids stay stable and suppress duplicate history threads', () => {
     selectedPaneId: 'pane-a',
     peers,
     threads: [
-      { id: 'thread-a', title: 'Duplicate', updatedAt: 100 },
-      { id: 'thread-old', title: 'Old chat', updatedAt: 50 }
+      { id: 'thread-a', title: 'Duplicate', preview: '', createdAt: 90, updatedAt: 100 },
+      { id: 'thread-old', title: 'Old chat', preview: '', createdAt: 40, updatedAt: 50 }
     ],
     selectedDiff: { added: 3, removed: 1 }
   })
