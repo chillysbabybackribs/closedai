@@ -3,7 +3,10 @@ import test from 'node:test'
 import { ScreenshotStore, type StoredScreenshot } from './screenshot-store.js'
 
 function shot(bytes: number): StoredScreenshot {
-  return { dataUrl: 'x'.repeat(bytes), width: 10, height: 10, surface: 'app_window', capturedAt: '2026-09-02T12:00:00.000Z' }
+  return {
+    dataUrl: 'x'.repeat(bytes), width: 10, height: 10, modelWidth: 10, modelHeight: 10,
+    surface: 'app_window', capturedAt: '2026-09-02T12:00:00.000Z'
+  }
 }
 
 test('keeps the newest captures within the entry and byte limits', () => {

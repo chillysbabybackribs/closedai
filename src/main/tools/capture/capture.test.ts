@@ -23,6 +23,10 @@ function harness(overrides: Partial<UiCaptureHost> = {}) {
       calls.push(['page', tabId, readiness])
       return { image, tabId: tabId ?? 'tab-1', url: ready.url, title: ready.title, ready }
     },
+    cropImage: async (dataUrl, crop, zoom) => {
+      calls.push(['crop', dataUrl, crop, zoom])
+      return image
+    },
     ...overrides
   }
   const store = new ScreenshotStore()
@@ -38,10 +42,13 @@ function textOf(result: { content: Array<{ type: string; text?: string }> }): st
   return result.content[0]?.type === 'text' ? result.content[0].text ?? '' : ''
 }
 
-test('capture tool advertises one tool with two visual-read actions', () => {
+test('capture tool advertises one tool with capture and crop actions', () => {
   const { registry } = harness()
   assert.deepEqual(registry.names(), ['closedai_ui.capture'])
-  assert.deepEqual(registry.namespaces[0].tools[0].actions?.map((action) => action.name), ['app_window', 'browser_page'])
+  assert.deepEqual(
+    registry.namespaces[0].tools[0].actions?.map((action) => action.name),
+    ['app_window', 'browser_page', 'crop']
+  )
 })
 
 test('app_window hands the model the scaled image and keeps the full capture for the transcript', async () => {
@@ -49,10 +56,16 @@ test('app_window hands the model the scaled image and keeps the full capture for
   const result = await call({ action: 'app_window' }, 'call_1')
   assert.equal(result.isError, undefined)
   assert.deepEqual(calls, [['app']])
-  assert.match(textOf(result), /Surface: application window\nImage: 1280x720 \(scaled from 1920x1080; the user sees the full capture\)/)
+  assert.match(textOf(result), /Surface: application window\nCapture ID: call_1\nImage: 1280x720/)
   assert.deepEqual(result.content[1], { type: 'image', dataUrl: image.model.dataUrl })
   assert.deepEqual(store.get('call_1'), {
-    dataUrl: image.dataUrl, width: 1920, height: 1080, surface: 'app_window', capturedAt: image.capturedAt
+    dataUrl: image.dataUrl,
+    width: 1920,
+    height: 1080,
+    modelWidth: 1280,
+    modelHeight: 720,
+    surface: 'app_window',
+    capturedAt: image.capturedAt
   })
 })
 
@@ -92,4 +105,35 @@ test('arguments are validated against the selected capture action', async () => 
   const result = await call({ action: 'app_window', tab_id: 'tab-1' })
   assert.equal(result.isError, true)
   assert.match(textOf(result), /capture\.app_window: invalid arguments — \$\.tab_id is not a recognised argument/)
+})
+
+test('crop maps model-image coordinates to the retained full-resolution screenshot', async () => {
+  const { call, calls, store } = harness()
+  await call({ action: 'app_window' }, 'source_1')
+  calls.length = 0
+
+  const result = await call({
+    action: 'crop', source_id: 'source_1', x: 100, y: 50, width: 400, height: 300, zoom: 2
+  }, 'crop_1')
+
+  assert.equal(result.isError, undefined)
+  assert.deepEqual(calls, [['crop', image.dataUrl, { x: 150, y: 75, width: 600, height: 450 }, 2]])
+  assert.match(textOf(result), /Crop of: source_1\nRegion: \(100, 50\) 400x300 of 1280x720\nZoom: 2x/)
+  assert.equal(store.get('crop_1')?.surface, 'crop')
+})
+
+test('crop rejects missing, evicted, and out-of-bounds source regions', async () => {
+  const { call, calls } = harness()
+  const missing = await call({ action: 'crop', source_id: 'gone', x: 0, y: 0, width: 1, height: 1 })
+  assert.equal(missing.isError, true)
+  assert.match(textOf(missing), /No retained screenshot with Capture ID gone/)
+
+  await call({ action: 'app_window' }, 'source_2')
+  calls.length = 0
+  const outside = await call({
+    action: 'crop', source_id: 'source_2', x: 1200, y: 700, width: 100, height: 30
+  })
+  assert.equal(outside.isError, true)
+  assert.match(textOf(outside), /exceeds source image 1280x720/)
+  assert.deepEqual(calls, [])
 })

@@ -39,3 +39,26 @@ test('capture calls stay ordinary tool rows until a successful image exists', ()
   }, 'capture-3', 'turn-1', true)
   assert.equal(failed?.type, 'tool')
 })
+
+test('completed crop calls become crop screenshots', () => {
+  const item = normalizeItem({
+    type: 'dynamicToolCall',
+    namespace: 'closedai_ui',
+    tool: 'capture',
+    arguments: { action: 'crop', source_id: 'capture-1', x: 10, y: 20, width: 30, height: 40 },
+    status: 'completed',
+    contentItems: [
+      { type: 'inputText', text: 'Crop of: capture-1\nRegion: (10, 20) 30x40' },
+      { type: 'inputImage', imageUrl: 'data:image/jpeg;base64,Y3JvcA==' }
+    ]
+  }, 'crop-1', 'turn-1', true)
+
+  assert.deepEqual(item, {
+    type: 'screenshot',
+    id: 'crop-1',
+    turnId: 'turn-1',
+    imageUrl: 'data:image/jpeg;base64,Y3JvcA==',
+    surface: 'crop',
+    caption: 'Crop of: capture-1'
+  })
+})
