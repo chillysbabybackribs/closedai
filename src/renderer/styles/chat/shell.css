@@ -175,7 +175,7 @@
   --transcript-answer-gap: 14px;
   min-width: 0;
   min-height: 0;
-  padding: 12px 0 16px;
+  padding: 0 0 16px;
   overflow-y: auto;
   overflow-anchor: auto;
   overscroll-behavior: contain;
@@ -189,7 +189,7 @@
   justify-content: flex-start;
   min-height: 100%;
   gap: 0;
-  padding-bottom: 6px;
+  padding: 12px 0 6px;
 }
 
 .chat-scroll-content > [data-slot="message-scroller-item"] {
