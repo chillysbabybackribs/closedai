@@ -1,0 +1,92 @@
+// The provider-agnostic tool contract. Every tool the app offers to a model — Codex today,
+// other assistants later — is a ToolDefinition grouped into a ToolNamespace. Provider
+// adapters (see app-server-tools.ts) translate this shape to each protocol; tools never
+// import provider code.
+
+export type JsonObject = Record<string, unknown>
+
+export type ToolContent =
+  | { type: 'text'; text: string }
+  /** A data URL (image/png or image/jpeg). */
+  | { type: 'image'; dataUrl: string }
+
+export type ToolResult = {
+  content: ToolContent[]
+  /** True when the call failed; the model sees the content as the failure reason. */
+  isError?: boolean
+}
+
+export type ToolContext = {
+  threadId: string | null
+  turnId: string | null
+  callId: string
+  /** Aborted when the registry times the call out. Long-running tools should honour it. */
+  signal: AbortSignal
+}
+
+export type ToolDefinition = {
+  /** snake_case; unique within its namespace. This is what the model calls. */
+  name: string
+  /** Written for the model: what it does, when to use it, what it returns. */
+  description: string
+  /** JSON Schema for `arguments` (always `type: object`). Validated before `run`. */
+  inputSchema: JsonObject
+  /** Hidden from the model's context until it searches for it. Use for rarely-needed tools. */
+  deferLoading?: boolean
+  /** Default 30s. The registry aborts `signal` and fails the call when exceeded. */
+  timeoutMs?: number
+  /** Set by defineActionTool: the verbs this tool dispatches on, for the manifest and tests. */
+  actions?: readonly ToolActionMeta[]
+  /** Set by defineActionTool: the same tool with only these verbs (null when none remain). */
+  restrictActions?: (enabledActions: readonly string[]) => ToolDefinition | null
+  run: (input: JsonObject, context: ToolContext) => Promise<ToolResult>
+}
+
+export type ToolActionMeta = {
+  name: string
+  description: string
+  inputSchema: JsonObject
+}
+
+export type ToolNamespace = {
+  /** snake_case; becomes the tool prefix the model sees (e.g. `browser`). */
+  name: string
+  description: string
+  tools: ToolDefinition[]
+}
+
+export const DEFAULT_TOOL_TIMEOUT_MS = 30_000
+
+export function defineTool(definition: ToolDefinition): ToolDefinition {
+  return definition
+}
+
+export function textResult(text: string): ToolResult {
+  return { content: [{ type: 'text', text }] }
+}
+
+export function failureResult(text: string): ToolResult {
+  return { content: [{ type: 'text', text }], isError: true }
+}
+
+/** Read a string argument, or the fallback when absent. Throws on the wrong type. */
+export function stringArg(input: JsonObject, key: string, fallback?: string): string | undefined {
+  const value = input[key]
+  if (value === undefined || value === null) return fallback
+  if (typeof value !== 'string') throw new Error(`\`${key}\` must be a string`)
+  return value
+}
+
+export function numberArg(input: JsonObject, key: string, fallback: number): number {
+  const value = input[key]
+  if (value === undefined || value === null) return fallback
+  if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`\`${key}\` must be a number`)
+  return value
+}
+
+export function booleanArg(input: JsonObject, key: string, fallback: boolean): boolean {
+  const value = input[key]
+  if (value === undefined || value === null) return fallback
+  if (typeof value !== 'boolean') throw new Error(`\`${key}\` must be a boolean`)
+  return value
+}

@@ -1,0 +1,228 @@
+/* The composer is one face of the cube: near-black matte material with warm
+   reflected light on its top edge and quieter charcoal on the control rail. */
+:root[data-theme='warm'] .composer {
+  background: var(--studio-field);
+}
+
+
+/* Vars scope to .composer (not the shell): the two-story deck's console sits
+   outside .composer-shell and reads the same palette. */
+:root[data-theme='warm'] .composer {
+  --composer-canvas: #202223;
+  --composer-rail: #191a1a;
+  --composer-line: rgb(238 234 228 / 9%);
+  --composer-line-strong: rgb(193 187 179 / 25%);
+  --composer-muted: #aaa69f;
+  --composer-ink: #eeeae4;
+}
+
+:root[data-theme='warm'] .composer-shell {
+  background: var(--composer-canvas);
+  box-shadow:
+    inset 0 1px 0 rgb(238 234 228 / 16%),
+    0 1px 2px rgb(32 34 35 / 26%),
+    0 8px 22px rgb(32 34 35 / 16%);
+}
+
+:root[data-theme='warm'] .composer-shell:focus-within {
+  border-color: #c1bbb3;
+  box-shadow:
+    inset 0 1px 0 rgb(238 234 228 / 22%),
+    0 0 0 2px rgb(238 234 228 / 13%),
+    0 1px 2px rgb(32 34 35 / 22%),
+    0 8px 24px rgb(32 34 35 / 16%);
+}
+
+:root[data-theme='warm'] .composer-shell.is-working {
+  border-color: rgb(193 187 179 / 38%);
+}
+
+:root[data-theme='warm'] .composer-cwd-empty,
+:root[data-theme='warm'] .composer-model-trigger,
+:root[data-theme='warm'] .composer-attach {
+  color: var(--composer-muted);
+}
+
+:root[data-theme='warm'] .composer-cwd-pick {
+  color: var(--cwd-ink, #3f5f86);
+}
+
+:root[data-theme='warm'] .composer-actions .btn-send,
+:root[data-theme='warm'] .composer-corner-action.btn-send {
+  color: #202223;
+}
+
+/* The arc loader inherits currentColor; recolor the line for the warm surface. */
+:root[data-theme='warm'] .live-status {
+  color: #3c3c3c;
+}
+
+:root[data-theme='warm'] .btn-send {
+  background: #eeeae4;
+  box-shadow: 0 1px 2px rgb(32 34 35 / 24%);
+}
+
+:root[data-theme='warm'] .btn-send:not(:disabled):hover {
+  background: #c1bbb3;
+}
+
+:root[data-theme='warm'] .btn-send:disabled {
+  color: #85827d;
+  background: #303130;
+  box-shadow: none;
+}
+
+:root[data-theme='warm'] .btn-stop:not(:disabled):hover {
+  color: #eeeae4;
+  background: #303130;
+}
+
+:root[data-theme='warm'] .composer-cwd-empty:hover,
+:root[data-theme='warm'] .composer-cwd-pick:hover,
+:root[data-theme='warm'] .composer-model-trigger:hover,
+:root[data-theme='warm'] .composer-model-trigger[data-state='open'] {
+  background: rgb(238 234 228 / 10%);
+}
+
+:root[data-theme='warm'] .composer-model-surface {
+  color: var(--paper);
+  background: var(--ink);
+  box-shadow:
+    inset 0 1px 0 rgb(238 234 228 / 14%),
+    0 0 0 1px rgb(32 34 35 / 18%),
+    0 10px 24px rgb(32 34 35 / 26%);
+}
+
+:root[data-theme='warm'] .composer-model-provider,
+:root[data-theme='warm'] .composer-model-option {
+  color: var(--paper);
+}
+
+:root[data-theme='warm'] .composer-model-provider-meta,
+:root[data-theme='warm'] .composer-model-reasoning .composer-model-provider-label,
+:root[data-theme='warm'] .composer-model-trigger-effort,
+:root[data-theme='warm'] .composer-model-provider [data-slot='dropdown-menu-sub-caret'],
+:root[data-theme='warm'] .composer-model-option [data-slot='dropdown-menu-item-indicator'] {
+  color: var(--studio);
+}
+
+:root[data-theme='warm'] .composer-model-trigger-effort {
+  border-left-color: rgb(238 234 228 / 16%);
+}
+
+:root[data-theme='warm'] .composer-model-divider {
+  background: rgb(238 234 228 / 16%);
+}
+
+:root[data-theme='warm'] .composer-model-provider[data-highlighted],
+:root[data-theme='warm'] .composer-model-provider[data-state='open'],
+:root[data-theme='warm'] .composer-model-option[data-highlighted],
+:root[data-theme='warm'] .composer-model-option:focus,
+:root[data-theme='warm'] .composer-model-option[data-state='checked'] {
+  background: #303130;
+}
+
+/* Browser shell is the second cube face: the same dark material, with toolbar
+   and active tab separated by reflected warm light rather than pale fills. */
+:root[data-theme='warm'] .browser-shell {
+  background: #202223;
+  box-shadow:
+    inset 0 1px 0 rgb(238 234 228 / 17%),
+    0 1px 2px rgb(32 34 35 / 28%),
+    0 8px 22px rgb(32 34 35 / 18%);
+}
+
+:root[data-theme='warm'] .browser-pane {
+  background: var(--studio-field);
+}
+
+:root[data-theme='warm'] .browser-tabstrip {
+  background: #202223;
+}
+
+:root[data-theme='warm'] .browser-tab:hover,
+:root[data-theme='warm'] .browser-tab:focus-within,
+:root[data-theme='warm'] .browser-tab-new:hover,
+:root[data-theme='warm'] .browser-nav-button:not(:disabled):hover {
+  color: #eeeae4;
+}
+
+:root[data-theme='warm'] .browser-tab {
+  color: #aaa69f;
+}
+
+:root[data-theme='warm'] .browser-tab:hover,
+:root[data-theme='warm'] .browser-tab:focus-within {
+  background: #292a29;
+}
+
+:root[data-theme='warm'] .browser-tab.is-active {
+  color: #eeeae4;
+  background: #303130;
+  box-shadow: inset 0 1px 0 rgb(238 234 228 / 13%);
+}
+
+:root[data-theme='warm'] .browser-tab-fallback,
+:root[data-theme='warm'] .omnibox-ghost .og-suggest,
+:root[data-theme='warm'] .omnibox-identity .oi-rest {
+  color: #4b4b49;
+}
+
+:root[data-theme='warm'] .browser-tab-owner {
+  background: #5b5a56;
+}
+
+:root[data-theme='warm'] .browser-tab-close:hover {
+  background: rgb(238 234 228 / 12%);
+}
+
+:root[data-theme='warm'] .browser-toolbar {
+  background: #292a29;
+  box-shadow:
+    inset 0 1px 0 rgb(238 234 228 / 13%),
+    inset 0 -1px 0 rgb(0 0 0 / 38%);
+}
+
+:root[data-theme='warm'] .browser-nav-button {
+  color: #c1bbb3;
+}
+
+:root[data-theme='warm'] .omnibox,
+:root[data-theme='warm'] .omnibox-identity {
+  border-color: rgb(32 34 35 / 24%);
+  color: #202223;
+  background: #eeeae4;
+}
+
+:root[data-theme='warm'] .omnibox {
+  box-shadow: none;
+}
+
+:root[data-theme='warm'] .omnibox:focus {
+  border-color: rgb(32 34 35 / 42%);
+  background: #eeeae4;
+  box-shadow: 0 0 0 2px var(--focus-halo);
+}
+
+:root[data-theme='warm'] .omnibox-identity .oi-icon {
+  color: #5a5956;
+}
+
+:root[data-theme='warm'] .omnibox-identity .oi-host {
+  color: #202223;
+}
+
+:root[data-theme='warm'] .browser-frame {
+  background: #202223;
+}
+
+:root[data-theme='warm'] .browser-view-host {
+  background: #202223;
+  box-shadow:
+    0 0 0 1px rgb(238 234 228 / 26%),
+    0 1px 2px rgb(32 34 35 / 26%);
+}
+
+:root[data-theme='warm'] .browser-view-host::after {
+  box-shadow: inset 0 1px 0 rgb(238 234 228 / 30%);
+}

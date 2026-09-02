@@ -1,0 +1,392 @@
+/* ---- Browser pane ------------------------------------------------------- */
+
+/* The recessed gutter: grained chassis material with the floating shell card
+   sitting on top. Padding is asymmetric so the card hugs the divider on the
+   left and breathes on the right, exactly like Codex Desktop's browser pane. */
+.browser-pane {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: 10px 10px 10px 6px;
+  background-color: var(--surface-card);
+  background-image: var(--grain);
+}
+
+/* Floating browser shell: a rounded card that rises out of the gutter. Rows:
+   tab strip, toolbar, then the frame that holds the page. */
+.browser-shell {
+  display: grid;
+  grid-template-rows: auto 42px minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: #101011;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 3%),
+    0 1px 2px rgb(0 0 0 / 28%),
+    0 8px 22px rgb(0 0 0 / 14%);
+}
+
+
+/* Tab strip: a horizontal, scrollable row of tab chips plus a new-tab button. Sits
+   above the toolbar and shares the chrome's dark surface. */
+.browser-tabstrip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 5px 7px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-radius: 9px 9px 0 0;
+  background: #161617;
+}
+
+.browser-tabstrip::-webkit-scrollbar {
+  display: none;
+}
+
+.browser-tab {
+  display: flex;
+  align-items: center;
+  flex: 0 1 180px;
+  min-width: 54px;
+  max-width: 180px;
+  height: 30px;
+  border-radius: 7px 7px 0 0;
+  color: var(--muted-foreground);
+  background: transparent;
+  transition:
+    background 110ms var(--ease-chrome),
+    color 110ms var(--ease-chrome);
+}
+
+.browser-tab:hover,
+.browser-tab:focus-within {
+  background: var(--surface-control);
+  color: #cfcfd2;
+}
+
+.browser-tab.is-active {
+  color: #f4f4f5;
+  background: var(--surface-raised);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+}
+
+.browser-tab-select {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 4px 0 10px;
+  border: 0;
+  border-radius: 7px 0 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+
+.browser-tab-select:focus-visible {
+  outline: 2px solid var(--focus-ink);
+  outline-offset: -2px;
+}
+
+/* Strip position. Deliberately quiet — it is a coordinate for pointing at a tab in
+   conversation ("close tab 3"), not a label competing with the title. Tabular figures keep
+   the favicons aligned as the count crosses 9. */
+.browser-tab-pos {
+  flex: 0 0 auto;
+  min-width: 9px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  opacity: 0.6;
+}
+
+.browser-tab.is-active .browser-tab-title {
+  font-weight: 500;
+}
+
+.browser-tab.is-active .browser-tab-pos {
+  opacity: 0.9;
+}
+
+.browser-tab-icon {
+  flex: 0 0 auto;
+  color: var(--muted-foreground);
+}
+
+.browser-tab-favicon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.browser-tab-fallback {
+  color: #8b8b90;
+}
+
+.browser-tab-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 450;
+  letter-spacing: var(--tracking-ui);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Per-chat lease badge: which tabs an agent chat owns. Solid green while its turn is
+   live (it may act any moment); dimmed while the lease is idle-but-reserved. */
+.browser-tab-owner {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4a4a50;
+}
+
+.browser-tab-owner.is-live {
+  background: #34c759;
+}
+
+.browser-tab-close {
+  display: grid;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  color: inherit;
+  background: transparent;
+  opacity: 0;
+  transition:
+    background 110ms var(--ease-chrome),
+    opacity 110ms var(--ease-chrome);
+}
+
+.browser-tab:hover .browser-tab-close,
+.browser-tab.is-active .browser-tab-close {
+  opacity: 0.72;
+}
+
+.browser-tab-close:hover {
+  opacity: 1;
+  background: rgb(255 255 255 / 12%);
+}
+
+.browser-tab-close:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--focus-ink);
+  outline-offset: -2px;
+}
+
+.browser-tab-new {
+  display: grid;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  margin-left: 2px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--muted-foreground);
+  background: transparent;
+  transition:
+    background 110ms var(--ease-chrome),
+    color 110ms var(--ease-chrome);
+}
+
+.browser-tab-new:hover {
+  color: #d0d0d0;
+  background: var(--surface-control);
+}
+
+.browser-toolbar {
+  display: grid;
+  /* Back, forward, reload, one flexible address-field track, then the trailing controls:
+     Select to edit, Markup, Downloads. Every track but the address field is `auto`, so a
+     button added on the WRONG side of the 1fr silently steals the flexible track and
+     collapses the omnibox to its content width — add trailing controls AFTER the address
+     field. */
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto auto auto auto;
+  /* And a trailing button beyond the track list now opens an implicit COLUMN rather than a
+     second row. It used to wrap, which put the last control underneath the native browser
+     view — invisible and unclickable, with nothing on screen to explain why. Adding the
+     camera button did exactly that to Downloads; a layout whose correctness depends on
+     counting tracks by hand will keep doing it. */
+  grid-auto-flow: column;
+  grid-auto-columns: auto;
+  position: relative;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 10px;
+  background: var(--surface-raised);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
+}
+
+.browser-nav-button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--chrome-fg);
+  transition:
+    background 110ms var(--ease-chrome),
+    color 110ms var(--ease-chrome);
+}
+
+.browser-nav-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.browser-nav-button:not(:disabled):hover {
+  color: #d0d0d0;
+  background: var(--surface-control-hover);
+}
+
+.browser-nav-button:disabled {
+  opacity: 0.42;
+}
+
+.browser-nav-button:focus-visible {
+  outline: 2px solid var(--focus-ink);
+  outline-offset: -2px;
+}
+
+/* The address field. Was a pill sunk into the toolbar on a 55%-black border
+   and a 2px inner shadow — three separate soft edges stacked on one control,
+   which is what made it read as moulded plastic rather than a field. Now one
+   flat fill inside one drawn hairline, on the shell's 8px radius step: the
+   only edge is the border, so the only thing the eye resolves is the border. */
+.omnibox-field {
+  position: relative;
+  min-width: 0;
+}
+
+.omnibox {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  outline: 0;
+  background: #161618;
+  color: #ececee;
+  padding: 0 14px;
+  font-size: 13.5px;
+  letter-spacing: var(--tracking-ui);
+  box-shadow: none;
+  transition:
+    border-color 110ms var(--ease-chrome),
+    background 110ms var(--ease-chrome),
+    box-shadow 110ms var(--ease-chrome);
+}
+
+/* Focus is a ring hugging the border, not a halo blurred outside it: the field
+   stays exactly the same size and shape, and the state reads instantly. */
+.omnibox:focus {
+  border-color: rgb(255 255 255 / 26%);
+  background: #1d1d1f;
+  box-shadow: 0 0 0 2px var(--focus-halo);
+}
+
+/* Inline suggestion ghost: overlays the input, matching its box exactly. The
+   typed portion is transparent (it only reserves width so the grey remainder
+   lands right after the caret); the suggested remainder shows in muted grey.
+   Click-through so it never steals focus from the input beneath. */
+.omnibox-ghost {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  font-size: 13.5px;
+  letter-spacing: var(--tracking-ui);
+  white-space: pre;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.omnibox-ghost .og-typed {
+  color: transparent;
+}
+
+.omnibox-ghost .og-suggest {
+  color: #6c6f73;
+}
+
+/* Idle identity readout over the raw URL. Click-through (pointer-events:none),
+   so focusing the field beneath still selects the text.
+
+   `overflow: hidden` is load-bearing, not tidiness — the same guard .omnibox-ghost
+   already carries. This is an absolutely-positioned nowrap overlay, so without it the
+   text escapes its own box and paints straight over the trailing toolbar buttons.
+   .oi-rest can ellipsis itself, but .oi-host is `flex: 0 0 auto` and will not shrink at
+   all: a URL that parses to a huge host (a `data:` URL is the pathological case) blows
+   past the field on its own. Clipping the container is what actually bounds it. */
+.omnibox-identity {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: #161618;
+  color: #ececee;
+  font-size: 13.5px;
+  letter-spacing: var(--tracking-ui);
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.omnibox-identity .oi-icon {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  color: #93999f;
+}
+
+/* Shrinkable rather than fixed, so a pathological host ellipsises instead of being hard
+   clipped by the container. Flex shrinks proportionally to base size, which gives the right
+   priority for free: on a normal URL the long path yields first and the host stays whole. */
+.omnibox-identity .oi-host {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: #f4f5f6;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+}
+
+.omnibox-identity .oi-rest {
+  min-width: 0;
+  overflow: hidden;
+  color: #6c6f73;
+  text-overflow: ellipsis;
+}
+
+.omnibox-identity .oi-insecure {
+  flex: 0 0 auto;
+  color: #c69b4e;
+  font-weight: 560;
+}

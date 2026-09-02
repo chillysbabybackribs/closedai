@@ -1,0 +1,88 @@
+/* ---- Primary chat/workspace split --------------------------------------- */
+
+.workspace-primary-split {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.workspace-chat-panel,
+.workspace-context-panel {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The separator is visually a hairline but behaves like a much larger target
+   (`resizeTargetMinimumSize` in WorkspaceSplit). Its grip appears only when the
+   seam is relevant, keeping the resting shell as quiet as the original layout. */
+.workspace-primary-divider {
+  position: relative;
+  width: 1px;
+  background: rgb(255 255 255 / 4.5%);
+  cursor: col-resize;
+  outline: none;
+  transition: background 130ms var(--ease-chrome), box-shadow 130ms var(--ease-chrome);
+}
+
+.workspace-primary-divider::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  transition: background 130ms var(--ease-chrome);
+}
+
+.workspace-primary-divider [data-slot='resizable-handle-grip'] {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 8px;
+  height: 32px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 999px;
+  background: #242426;
+  color: rgb(255 255 255 / 44%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 34%);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.94);
+  transition:
+    opacity 130ms var(--ease-chrome),
+    transform 130ms var(--ease-chrome),
+    color 130ms var(--ease-chrome),
+    border-color 130ms var(--ease-chrome);
+  pointer-events: none;
+}
+
+.workspace-primary-divider [data-slot='resizable-handle-grip'] svg {
+  width: 9px;
+  height: 14px;
+}
+
+.workspace-primary-divider:hover,
+.workspace-primary-divider:focus-visible,
+.workspace-primary-divider[data-separator='active'] {
+  background: rgb(255 255 255 / 22%);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 3%);
+}
+
+.workspace-primary-divider:hover [data-slot='resizable-handle-grip'],
+.workspace-primary-divider:focus-visible [data-slot='resizable-handle-grip'],
+.workspace-primary-divider[data-separator='active'] [data-slot='resizable-handle-grip'] {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.workspace-primary-divider:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus-ink);
+}
+
+.workspace-primary-divider[data-separator='active'] [data-slot='resizable-handle-grip'] {
+  border-color: rgb(255 255 255 / 18%);
+  color: rgb(255 255 255 / 72%);
+}

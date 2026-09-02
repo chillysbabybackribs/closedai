@@ -1,0 +1,418 @@
+.composer-model-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  width: auto;
+  /* 12px narrower than before to offset the margin-inline below — total row
+     footprint (and the label's resting position) is unchanged. The upper bound
+     grew when reasoning folded in: one trigger now carries model + effort, and
+     it is still far narrower than the two triggers it replaced. */
+  min-width: 124px;
+  max-width: 208px;
+  /* Borderless, matching the folder control: the hover wash is the affordance. */
+  border: none;
+  box-shadow: none;
+  /* Tighten the hover pill without moving anything: trade 6px of horizontal
+     padding for 6px of margin (content and neighbors stay exactly in place;
+     only the wash hugs the label closer), and pull the height in a touch —
+     the row centers it, so the label doesn't shift. */
+  height: 30px;
+  padding-inline: 10px;
+  margin-inline: 0;
+  color: #c7c7c9;
+  background: transparent;
+  /* Sans at pill size, per the Antigravity card — these are controls in the card's
+     bottom row now, not mono captions under it. */
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.composer-model-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.composer-model-trigger:focus-visible {
+  outline: 1px solid var(--ring);
+  outline-offset: 0;
+}
+
+.composer-model-trigger-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Effort rides the model label as a quiet suffix, not a second control: it reads
+   as a qualifier on the model, and never wins the eye over the model name. */
+.composer-model-trigger-effort {
+  flex: 0 0 auto;
+  padding-left: 5px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 450;
+  letter-spacing: 0.01em;
+}
+
+/* "Claude Fable 5.1 · Medium" — the dot separator from the card design, in CSS so
+   the suffix markup stays a plain qualifier span. */
+.composer-model-trigger-effort::before {
+  content: '· ';
+}
+
+.composer-model-trigger-runtime {
+  flex: 0 0 auto;
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 5px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 450;
+  letter-spacing: 0.01em;
+}
+
+.composer-model-trigger-runtime::before {
+  content: '· ';
+}
+
+.composer-model-trigger:hover .composer-model-trigger-effort,
+.composer-model-trigger[data-state='open'] .composer-model-trigger-effort,
+.composer-model-trigger:hover .composer-model-trigger-runtime,
+.composer-model-trigger[data-state='open'] .composer-model-trigger-runtime {
+  color: #a5a5a8;
+}
+
+.composer-model-trigger-caret {
+  flex: 0 0 auto;
+  opacity: 0.5;
+}
+
+.composer-model-trigger:hover,
+.composer-model-trigger[data-state='open'] {
+  color: var(--composer-ink);
+  background: rgb(255 255 255 / 4%);
+}
+
+/* Shared chrome for both menu levels: the provider list and each provider's models.
+   Both render in a Radix portal, outside the split chat pane. */
+.composer-model-surface {
+  padding: 4px;
+  border: 1px solid var(--border);
+  /* One step above the app canvas so the open control reads as a surface,
+     without becoming a visual focal point. */
+  background-color: #1c1c1d !important;
+  opacity: 1 !important;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 30%),
+    0 10px 24px rgb(0 0 0 / 36%);
+}
+
+.composer-model-providers {
+  width: min(15rem, calc(100vw - 24px));
+  max-width: min(15rem, calc(100vw - 24px));
+}
+
+.composer-model-list {
+  width: min(16rem, calc(100vw - 24px));
+  max-width: min(16rem, calc(100vw - 24px));
+}
+
+/* Level one: one row per provider, opening that provider's models. */
+.composer-model-provider {
+  gap: 8px;
+  min-height: 31px;
+  padding: 0 7px 0 9px;
+  border-radius: 5px;
+  color: var(--popover-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.composer-model-provider[data-highlighted],
+.composer-model-provider[data-state='open'] {
+  color: var(--accent-foreground);
+  background: #29292b;
+}
+
+.composer-model-provider[data-active] .composer-model-provider-label {
+  font-weight: 600;
+}
+
+.composer-model-provider-label {
+  flex: 0 0 auto;
+}
+
+.composer-model-provider-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-model-provider [data-slot='dropdown-menu-sub-caret'] {
+  flex: 0 0 auto;
+  margin-left: 0;
+  color: var(--muted-foreground);
+}
+
+/* Separates the "who thinks" rows from the "how hard" row without a heading. */
+.composer-model-divider {
+  margin: 4px 2px;
+  background: var(--hairline-strong);
+}
+
+.composer-model-reasoning .composer-model-provider-label {
+  color: var(--muted-foreground);
+}
+
+.composer-model-reasoning[data-highlighted] .composer-model-provider-label,
+.composer-model-reasoning[data-state='open'] .composer-model-provider-label {
+  color: var(--accent-foreground);
+}
+
+.composer-model-option {
+  min-width: 0;
+  width: 100%;
+  min-height: 31px;
+  padding: 0 28px 0 9px;
+  border-radius: 5px;
+  color: var(--popover-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.composer-model-option[data-highlighted],
+.composer-model-option:focus,
+.composer-model-option[data-state='checked'] {
+  color: var(--accent-foreground);
+  background: #29292b;
+}
+
+.composer-model-option[data-state='checked'] {
+  font-weight: 600;
+}
+
+.composer-model-option [data-slot='dropdown-menu-item-indicator'] {
+  color: var(--muted-foreground);
+}
+
+.composer-model-option[data-state='checked'] [data-slot='dropdown-menu-item-indicator'] {
+  color: var(--accent-foreground);
+}
+
+/* One action slot: Send (lit) while idle, swapped for the quiet Stop button while a turn runs. */
+.btn-stop {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  color: var(--chrome-fg);
+  background: var(--surface-raised);
+  transition:
+    background 110ms var(--ease-chrome),
+    color 110ms var(--ease-chrome),
+    opacity 110ms var(--ease-chrome);
+}
+
+.btn-stop:not(:disabled):hover {
+  color: #e6e6e6;
+  background: #2a2a2b;
+}
+
+.btn-stop:disabled {
+  opacity: 0.4;
+}
+
+.btn-stop svg {
+  width: 15px;
+  height: 15px;
+}
+
+.btn-stop:not(:disabled) svg {
+  color: var(--composer-stop-ink);
+}
+
+.btn-stop:not(:disabled):hover svg {
+  color: var(--composer-stop-ink-hover);
+}
+
+.btn-send {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 13px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: #ededed;
+  font-size: 13px;
+  font-weight: 620;
+  letter-spacing: var(--tracking-ui);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 24%);
+  transition:
+    background 110ms var(--ease-chrome),
+    opacity 110ms var(--ease-chrome);
+}
+
+.btn-send:not(:disabled):hover {
+  background: #ffffff;
+}
+
+.btn-send:disabled {
+  color: #7c7c7e;
+  background: #2b2b2c;
+  box-shadow: none;
+  opacity: 0.9;
+}
+
+.btn-send svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* The card's "+" uses the shell-owned AppGuideMenu dropdown. */
+
+/* The card's single corner action slot, same geometry in both states: Send until a
+   message is sent, then Stop for the run. Visuals come from btn-send / btn-stop
+   (and their warm-theme overrides); only geometry lives here. Explicit send ink
+   because the .composer-actions scoping cannot reach the corner. */
+.composer-corner-action {
+  flex: 0 0 auto;
+  z-index: 3;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  place-items: center;
+  /* Circular, per the Antigravity card. */
+  border-radius: 50%;
+}
+
+/* Accent-filled send circle from the card design; dark arrow ink survives the
+   shell-button inheritance in styles.css. Disabled falls back to btn-send's grey. */
+.composer-corner-action.btn-send {
+  color: #141414;
+}
+
+.composer-corner-action.btn-send:not(:disabled) {
+  background: #8ab4f8;
+}
+
+.composer-corner-action.btn-send:not(:disabled):hover {
+  background: #a5c5fa;
+}
+
+.composer-corner-action.btn-stop {
+  border: 0;
+  border-radius: 50%;
+  background: #3a2b2b;
+}
+
+.composer-corner-action svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 34rem) {
+  .composer {
+    padding: 10px 12px 12px;
+  }
+
+  .composer-controls {
+    gap: 3px;
+    padding: 4px 8px 8px;
+  }
+
+  .composer-model-trigger {
+    min-width: 0;
+    max-width: none;
+  }
+
+  .composer-cwd-name {
+    max-width: 84px;
+  }
+
+  .btn-send {
+    width: 30px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .btn-send-label {
+    display: none;
+  }
+
+  .live-status {
+    margin-right: 0;
+    margin-left: 0;
+  }
+
+}
+
+@media (max-width: 23rem) {
+  .composer-input {
+    font-size: 16px;
+  }
+
+  .btn-stop,
+  .btn-send {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* ---- Chrome icon button (shared: collapse toggle, browser buttons) ------ */
+
+.icon-button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--chrome-control-fg);
+  transition:
+    background-color 110ms var(--ease-chrome),
+    color 110ms var(--ease-chrome),
+    border-color 110ms var(--ease-chrome);
+}
+
+.icon-button svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: var(--chrome-icon-stroke, 1.5);
+}
+
+.icon-button:not(:disabled):hover {
+  color: var(--chrome-control-strong);
+  background: var(--surface-control);
+}
+
+.icon-button:disabled {
+  opacity: 0.42;
+}
+
+.icon-button:focus-visible {
+  outline: 2px solid var(--focus-ink);
+  outline-offset: 2px;
+}

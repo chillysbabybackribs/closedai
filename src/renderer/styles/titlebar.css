@@ -1,0 +1,355 @@
+/* ---- Shell title bar ------------------------------------------------------
+   The 34px top row of the shell grid: a drag region carrying three zones —
+   the left control rail (agents toggle, new chat, vpn/egress), the CENTRED view
+   dock (workspace modes; styled in workspace.css), and the window controls.
+   The chat title lives in the chat pane's own header now (chat-pane.tsx).
+   Split out of shell-chat.css, which reached its line cap.
+
+   MUST be imported before texture.css: that file re-sets the background-image
+   which .shell-titlebar's `background` shorthand clears. */
+
+.shell-titlebar {
+  position: relative;
+  /* Above the workspace row, so dock icons magnifying past the bar's bottom edge
+     paint over the divider instead of clipping under it. */
+  z-index: 5;
+  height: 34px;
+  background: var(--titlebar-surface);
+  box-shadow: inset 0 1px 0 var(--surface-highlight);
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+/* Dead centre of the drag region: the view dock. Interactive, so it opts out of
+   dragging; the empty remainder of the bar stays draggable. */
+.titlebar-center {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.shell-titlebar-divider {
+  background: var(--hairline-strong);
+  pointer-events: none;
+}
+
+/* Chat actions and workspace-mode controls form one compact left rail immediately
+   after the agents-sidebar toggle. The empty remainder stays draggable. */
+.titlebar-chat-actions {
+  position: absolute;
+  top: 0;
+  left: 36px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-action-divider {
+  width: 1px;
+  height: 14px;
+  margin: 0 5px;
+  background: var(--chrome-control-divider);
+  pointer-events: none;
+}
+
+.titlebar-icon-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--chrome-control-fg);
+  transition: color 110ms var(--ease-chrome);
+}
+
+/* Matches .workspace-seg-btn (26x22 r6) so the whole left rail — agents toggle, new
+   chat, six mode segments — shares ONE hover-chip geometry instead of three. */
+.titlebar-icon-button::before {
+  content: '';
+  position: absolute;
+  width: 26px;
+  height: 22px;
+  border-radius: 6px;
+}
+
+.titlebar-icon-button:hover:not(:disabled) {
+  color: var(--chrome-control-strong);
+}
+
+.titlebar-icon-button:hover:not(:disabled)::before {
+  background: var(--chrome-control-hover);
+}
+
+.titlebar-icon-button.is-selected {
+  color: var(--chrome-control-strong);
+}
+
+.titlebar-icon-button.is-selected::before {
+  background: var(--chrome-control-active);
+}
+
+.titlebar-icon-button:disabled {
+  color: var(--chrome-control-quiet);
+}
+
+.titlebar-icon-button svg {
+  position: relative;
+  stroke-width: var(--chrome-icon-stroke);
+}
+
+/* ---- VPN switch ----------------------------------------------------------
+   Shares .titlebar-icon-button's hover-chip geometry so it reads as one rail with
+   the chat and workspace controls. The wrapper exists only to anchor the tunnel
+   picker, which must escape the 28px title bar without being clipped by it. */
+.titlebar-vpn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+/* Widens past the 28px icon slot when it carries a location, matching the way an
+   active workspace segment grows to name itself. */
+.titlebar-vpn-button {
+  width: auto;
+  gap: 5px;
+  padding: 0 7px;
+}
+
+.titlebar-vpn-button::before {
+  width: 100%;
+  height: 22px;
+}
+
+.titlebar-vpn-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: var(--tracking-ui);
+  white-space: nowrap;
+}
+
+/* Connected is the one state worth colouring: it is a claim about where every request
+   from this machine now originates, and the user should be able to confirm it without
+   reading the tooltip. */
+.titlebar-vpn-button[data-tone='connected'] {
+  color: #3ddc97;
+}
+
+.titlebar-vpn-button[data-tone='error'] {
+  color: #e5484d;
+}
+
+.titlebar-vpn-button:disabled {
+  cursor: default;
+}
+
+.titlebar-vpn-spin {
+  animation: titlebar-vpn-spin 900ms linear infinite;
+}
+
+@keyframes titlebar-vpn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .titlebar-vpn-spin {
+    animation: none;
+  }
+}
+
+.titlebar-vpn-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  min-width: 148px;
+  padding: 4px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: var(--titlebar-surface);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 32%),
+    0 8px 24px rgb(0 0 0 / 42%);
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-vpn-menu-item {
+  padding: 6px 8px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--chrome-control-fg);
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.titlebar-vpn-menu-item:hover {
+  background: var(--chrome-control-hover);
+  color: var(--chrome-control-strong);
+}
+
+.titlebar-vpn-status {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px 8px;
+  color: var(--chrome-control-fg);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.titlebar-vpn-status-meta {
+  opacity: 0.7;
+  font-size: 10.5px;
+}
+
+.titlebar-vpn-menu-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--chrome-control-divider);
+}
+
+.titlebar-vpn-button[data-tone='busy'] {
+  color: var(--chrome-control-strong);
+}
+
+
+.shell-window-controls {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.shell-window-control {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 100%;
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: var(--chrome-control-fg);
+  cursor: pointer;
+  transition: color 110ms var(--ease-chrome);
+}
+
+.shell-window-control::before {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 20px;
+  border-radius: 4px;
+}
+
+.shell-window-control:hover {
+  color: var(--chrome-control-strong);
+}
+
+.shell-window-control:hover::before {
+  background: var(--chrome-control-hover);
+}
+
+.shell-window-control-close:hover {
+  color: #ffffff;
+}
+
+.shell-window-control-close:hover::before {
+  background: #e5484d;
+}
+
+/* ---- Tabbed Dropdown Header Navigation --------------------------------- */
+
+.titlebar-nav-menu {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  background: transparent;
+  padding: 0;
+  border: none;
+}
+
+.titlebar-nav-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 7px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--chrome-control-fg);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: var(--tracking-ui);
+  cursor: pointer;
+  transition: color 110ms var(--ease-chrome), background 110ms var(--ease-chrome);
+  user-select: none;
+}
+
+.titlebar-nav-tab:hover,
+.titlebar-nav-tab[data-state='open'] {
+  color: var(--chrome-control-strong);
+  background: var(--chrome-control-hover);
+}
+
+.titlebar-nav-tab:focus-visible {
+  outline: none;
+  background: var(--chrome-control-hover);
+  color: var(--chrome-control-strong);
+}
+
+.titlebar-dropdown-menu {
+  min-width: 236px;
+}
+
+.titlebar-dropdown-header {
+  padding: 5px 8px 3px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--chrome-control-muted);
+}
+
+.titlebar-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.titlebar-dropdown-item.is-current-mode {
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.titlebar-dropdown-item.is-current-mode svg {
+  color: var(--cwd-ink);
+}

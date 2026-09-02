@@ -1,0 +1,136 @@
+.chat-runtime-status {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--chrome-control-muted);
+  font-size: 10px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-runtime-status[data-state='ready'] { color: #79aa83; }
+.chat-runtime-status[data-state='error'],
+.chat-runtime-status[data-state='unavailable'] { color: #d28b8b; }
+
+.chat-assistant-copy,
+.chat-runtime-prose {
+  color: var(--transcript-copy);
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.message-assistant[data-phase='commentary'] .chat-assistant-copy {
+  color: var(--transcript-secondary);
+  font-size: 12.5px;
+}
+
+.chat-runtime-notice {
+  margin: 8px var(--chat-inline);
+  color: var(--transcript-secondary);
+  font-size: 11.5px;
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.chat-runtime-notice[data-tone='error'] { color: #d99a9a; }
+
+.chat-runtime-card,
+.chat-approval-card {
+  margin: 8px var(--chat-inline);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 2.5%);
+  color: var(--transcript-secondary);
+  font-size: 11.5px;
+}
+
+.chat-runtime-card summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.chat-runtime-card summary::-webkit-details-marker { display: none; }
+.chat-runtime-card summary > span { color: var(--transcript-activity-hover); font-weight: 600; }
+.chat-runtime-card summary > code { min-width: 0; overflow: hidden; color: var(--transcript-copy); font-family: var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
+.chat-runtime-card summary > em { margin-left: auto; color: var(--transcript-activity); font-style: normal; }
+
+.chat-runtime-card pre,
+.chat-file-change pre {
+  max-height: 260px;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  border-top: 1px solid var(--hairline);
+  background: var(--code-canvas);
+  color: var(--code-text);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chat-runtime-card-meta {
+  padding: 0 10px 8px;
+  overflow: hidden;
+  color: var(--cwd-ink);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-runtime-prose { padding: 0 10px 10px; }
+
+.chat-file-change {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 5px 8px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--hairline);
+}
+
+.chat-file-change strong { color: var(--transcript-activity-hover); font-size: 10px; text-transform: uppercase; }
+.chat-file-change span { overflow: hidden; color: var(--cwd-ink); font-family: var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
+.chat-file-change pre { grid-column: 1 / -1; margin: 2px -10px -8px; }
+
+.chat-approval-card {
+  padding: 11px;
+  border-color: rgb(216 162 74 / 34%);
+  background: rgb(216 162 74 / 6%);
+}
+
+.chat-approval-card > strong { display: block; color: var(--transcript-heading); font-size: 12px; }
+.chat-approval-card > code { display: block; margin-top: 8px; color: var(--transcript-copy); font-family: var(--font-mono); font-size: 10.5px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.chat-approval-card > p { margin: 7px 0 0; line-height: 1.45; }
+
+.chat-approval-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 11px;
+}
+
+.chat-approval-actions button,
+.chat-login-button {
+  padding: 6px 9px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 6px;
+  background: var(--surface-control);
+  color: var(--transcript-copy);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.chat-approval-actions button:hover,
+.chat-login-button:hover { background: var(--surface-control-hover); }
+.chat-approval-actions button.is-primary { border-color: #8ab4f8; background: #8ab4f8; color: #141414; }
+.chat-login-button { margin-top: 16px; padding: 8px 12px; }

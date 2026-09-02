@@ -1,0 +1,408 @@
+/* ---- Shell: fixed two-column workspace ---------------------------------- */
+
+.shell {
+  display: grid;
+  /* 34px titlebar: tall enough for the centred view dock's larger icons. */
+  grid-template-rows: 34px 1px minmax(0, 1fr);
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--chassis);
+}
+
+/* The 28px title-bar row of this grid is styled in titlebar.css. */
+
+/* Agents stay a fixed optional rail; the resizable group owns the chat/workspace
+   relationship so its pointer and keyboard paths share one set of constraints. */
+.workspace {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* ---- Chat pane ---------------------------------------------------------- */
+
+/* Rows: chat header (title + folder, moved out of the shell titlebar) / transcript /
+   composer. Each is pinned explicitly — the header is conditional, and auto-placement
+   would shift the others into the wrong tracks whenever it is absent. */
+.chat-pane {
+  --chat-radius: 10px;
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--chat-radius) var(--chat-radius) 0 0;
+  /* Light hairline on the edge facing the recessed browser gutter — reads as
+     the raised lip of the chat surface. */
+  border-right: 1px solid rgb(255 255 255 / 4.5%);
+  background: var(--surface-card);
+}
+
+.chat-zoom-control {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  color: var(--muted-foreground);
+}
+
+.chat-zoom-control [data-slot='button'] {
+  color: inherit;
+}
+
+.chat-zoom-control [data-slot='button']:hover {
+  color: var(--foreground);
+}
+
+.chat-zoom-value {
+  width: 34px;
+  color: var(--chrome-fg);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
+}
+
+.chat-zoom-popover {
+  position: absolute;
+  z-index: 20;
+  display: grid;
+  min-width: 166px;
+  gap: 7px;
+  padding: 9px 10px 8px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: #202021;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 30%),
+    0 10px 24px rgb(0 0 0 / 36%),
+    inset 0 1px 0 rgb(255 255 255 / 5%);
+  transform: translate(8px, 8px);
+}
+
+.chat-zoom-popover-heading {
+  color: var(--chrome-fg);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.chat-zoom-popover .chat-zoom-control {
+  justify-content: space-between;
+  color: var(--muted-foreground);
+}
+
+.chat-zoom-popover .chat-zoom-value {
+  width: 54px;
+}
+
+/* Chat message scroller (shadcn MessageScroller). `.chat-scroll-root` is the
+   scroller root filling the chat pane's middle grid row; `.chat-scroll` is its
+   viewport — the reading surface is the app's lightest large material. */
+.chat-scroll-root {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Sets the reading surface a step below the chrome that frames it: the title
+   bar above, the composer below, the browser gutter beside.
+
+   What makes this read as sunken rather than merely dim is that the top edge is
+   a CREASE, not a gradient: a 1px lit lip with a short 6px falloff directly
+   under it. Tried against an 8px and a 14px falloff on the real pane width —
+   the long ones fade out with no edge to locate, so they read as atmosphere or
+   as a scroll fade, and the surface stays flat. The lip is what the eye reads
+   as the lit rim of a step; the crease under it is the occlusion behind that
+   step. Sides and foot run at under half the top's weight — enough to close the
+   box, not enough to make the pane a card. The lip sits at --hairline's 8%,
+   which is where the shell's other lit edges already live.
+
+   Reworked for the crisp pass: the lip stays, the 70%-black crease under it
+   drops to a short 40% falloff, and the side/foot casts are gone. Their job
+   was to close the box, but at pane width they read as a vignette on the
+   transcript — the first line of every answer sat in a soft grey wash. The
+   1px lip alone is what locates the step; the falloff only has to be dark
+   enough to sit behind it.
+
+   Painted as an overlay rather than a box-shadow on the element itself: an
+   inset shadow paints above the background but below every descendant, so the
+   first message would scroll straight over it and the top edge — the whole
+   point — would be the one place it never showed. Above the content, the
+   message instead passes under the rim and is occluded by it, which is what
+   reads as depth. The root already clips and is `relative` (MessageScroller),
+   and the overlay is pointer-events: none, so the jump buttons underneath it
+   stay live; they sit 16px in, where this has long faded to nothing. */
+.chat-scroll-root::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  /* Follow the pane's own top corners — a square rim would leave the shadow
+     clipped flat where the radius cuts it. */
+  border-radius: var(--chat-radius) var(--chat-radius) 0 0;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 8%),
+    inset 0 4px 5px -4px rgb(0 0 0 / 40%);
+  pointer-events: none;
+}
+
+/* Mid-transcript both jump controls are live at once and hover over the text
+   arguing with each other; only the one pointing the way the reader is already
+   moving stays up. `data-scroll-dir` is written by useScrollDirectionGate in
+   chat-pane.tsx, `data-scrollable` by the component (which ends are reachable).
+   Gating on BOTH ends being reachable is what keeps this from ever leaving a
+   dead end: parked at the top or bottom only one button exists, so the pair is
+   not in conflict and nothing is taken away — the way back stays one click. */
+.chat-scroll-root[data-scrollable~="start"][data-scrollable~="end"][data-scroll-dir="up"]
+  [data-slot="message-scroller-button"][data-direction="end"],
+.chat-scroll-root[data-scrollable~="start"][data-scrollable~="end"][data-scroll-dir="down"]
+  [data-slot="message-scroller-button"][data-direction="start"] {
+  opacity: 0;
+  scale: 0.95;
+  pointer-events: none;
+}
+
+/* The chat's own header: WHICH chat this column shows, with its workspace folder.
+   Fixed above the scrolling transcript, never scrolls away. */
+.chat-header {
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 8px 16px 7px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.chat-header-title {
+  overflow: hidden;
+  color: var(--chrome-control-fg);
+  font-size: 11.5px;
+  font-weight: 550;
+  letter-spacing: var(--tracking-ui);
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chat-header-folder {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--chrome-control-hover);
+  color: var(--cwd-ink, #7eb0e0);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* Both pinned (composer's own block lives in history-composer.css): the header row
+   is conditional, and auto-placement would drift these into the wrong tracks. */
+.chat-pane > .composer {
+  grid-row: 3;
+}
+
+.chat-scroll {
+  grid-row: 2;
+  --chat-inline: 16px;
+  /* Transcript vertical rhythm, in one place. Two gaps, in a deliberate 2:1
+     relationship: a new task opens with twice the space that separates it from
+     its own answer, so turns read as grouped blocks rather than an even list.
+     Scaled from claude.ai's measured rhythm (its `--msg-gap` is 1.5rem/24px of
+     turn break against 16px prose, plus ~20px of text-to-text whitespace below
+     a user turn); our prose is 13px and our user turn is a full-bleed band with
+     a hard 1px rule rather than a soft floating bubble, and a hard boundary
+     needs more clearance than a soft one before it reads as cramped. Net
+     text-to-text: 35px above a task, 23px below it. */
+  --transcript-turn-gap: 24px;
+  --transcript-answer-gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  /* Horizontal inset lives on each scroller item so user bands can be true
+     full-bleed. (Originally forced: content-visibility containment clipped the
+     negative margins. That containment is gone — see MessageScrollerItem — but
+     insetting the items is still the cleaner way to get full-bleed rows.) */
+  padding: clamp(12px, 2.5vh, 18px) 0 clamp(14px, 3vh, 22px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  /* Keep a comfortable gap between the newest content and the composer even when
+     pinned to the bottom, so a tool card or streaming line never reads as tucked
+     under the input. Pairs with the JS ResizeObserver auto-scroll. */
+  scroll-padding-bottom: 16px;
+}
+
+/* Growing content box the auto-scroll ResizeObserver watches. The trailing
+   space guarantees breathing room below the last message at the pinned bottom.
+   min-height:100% makes it fill the scroll viewport so a full-height child (the
+   empty state) can center against the whole chat area rather than a short box. */
+.chat-scroll-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  /* Rows space themselves with .message margins; cancel the component's gap-8. */
+  gap: 0;
+  padding-bottom: 8px;
+  zoom: var(--chat-zoom, 1);
+}
+
+.chat-scroll-content > [data-slot="message-scroller-item"] {
+  padding-inline: var(--chat-inline);
+  /* Keep every row's measured height honest. @shadcn/react 0.2.1 computes its
+     distance from the end from row getBoundingClientRect() values and observes this
+     content with ResizeObserver; CSS virtualization substitutes intrinsic heights
+     and makes completion/follow-mode scroll math jump. Contract checked against
+     node_modules/@shadcn/react/dist/message-scroller/index.js and the official source:
+     https://github.com/shadcn-ui/ui/tree/main/packages/react */
+}
+
+.chat-scroll-content > [data-slot="message-scroller-item"].chat-turn-user {
+  padding-inline: 0;
+}
+
+/* Row spacing is owned HERE, at the scroller-item level, and nowhere else.
+   It used to live on `.message` (margin-bottom), where it was silently dead:
+   every message is the only child of its own scroller item, so
+   `.message:last-child` zeroed it on every single row. The visible result was a
+   transcript with a gap above each user band and NOTHING below it — the answer
+   started flush against the band's bottom rule. Spacing set on a row's own
+   child can always be cancelled by a child-position selector like that; spacing
+   set on the item's sibling adjacency cannot. Keep it here.
+   Both rules use `+`, so the first row stays flush to the top of the scroll. */
+
+/* A new task reads as a section break, not another row. */
+.chat-scroll-content > [data-slot="message-scroller-item"] + .chat-turn-user {
+  margin-top: var(--transcript-turn-gap);
+}
+
+/* …and its answer is a reply to that task, not a new section: close enough to
+   stay grouped with the band above it, far enough off the band's hard bottom
+   rule to breathe. This is the gap that was 0. */
+.chat-scroll-content > .chat-turn-user + [data-slot="message-scroller-item"] {
+  margin-top: var(--transcript-answer-gap);
+}
+
+.chat-scroll-content > .chat-error-banner {
+  margin-inline: var(--chat-inline);
+}
+
+.transcript-fold-banner {
+  display: flex;
+  justify-content: center;
+  margin: 10px var(--chat-inline) 14px;
+}
+
+.transcript-fold-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--hairline, rgba(255, 255, 255, 0.08));
+  border-radius: 9999px;
+  background: var(--surface-card-subtle, rgba(255, 255, 255, 0.03));
+  color: var(--muted-foreground, #949498);
+  font-size: 11px;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background 120ms var(--ease-chrome),
+    color 120ms var(--ease-chrome),
+    border-color 120ms var(--ease-chrome);
+}
+
+.transcript-fold-toggle:hover {
+  background: var(--chrome-control-hover, rgba(255, 255, 255, 0.07));
+  color: var(--foreground, #e4e4e7);
+  border-color: var(--hairline-strong, rgba(255, 255, 255, 0.14));
+}
+
+.transcript-fold-chevron {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.transcript-fold-chevron-expanded {
+  transform: rotate(180deg);
+}
+
+.transcript-fold-action {
+  font-weight: 600;
+  color: var(--chrome-fg, #d4d4d8);
+  margin-left: 2px;
+}
+
+.chat-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.chat-loading {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: #77777a;
+}
+
+.chat-empty {
+  /* Only child of the scroll content; margin:auto centers it on both axes within the
+     full chat viewport (the scroll content is a flex column with min-height:100%). */
+  margin: auto;
+  padding: 0 24px;
+  text-align: center;
+  color: #5f5f62;
+}
+
+.chat-empty-mark {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 22px;
+}
+
+.chat-empty-mark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.chat-empty-mark svg > rect:first-child {
+  fill: var(--chassis);
+  stroke: var(--hairline-strong);
+  stroke-width: 2;
+}
+
+.chat-empty-mark-bar {
+  fill: var(--chrome-fg);
+}
+
+.chat-empty-mark-bar:nth-of-type(2) { opacity: 0.28; }
+.chat-empty-mark-bar:nth-of-type(3) { opacity: 0.5; }
+.chat-empty-mark-bar:nth-of-type(4) { opacity: 0.82; }
+
+.chat-empty-mark-shimmer {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-empty-mark-shimmer {
+    display: none;
+  }
+}
+
+.chat-empty h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 21px;
+  font-weight: 560;
+  letter-spacing: var(--tracking-display);
+  line-height: 1.3;
+}
+
+.chat-empty p {
+  max-width: 340px;
+  margin: 10px auto 0;
+  font-size: 15px;
+  line-height: 1.5;
+}

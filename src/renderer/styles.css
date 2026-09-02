@@ -1,0 +1,338 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+/* Display serif for the opportunity report title. The reference UI this view was
+   rebuilt against sets its idea titles in Instrument Serif 400, and it is the
+   single largest reason that page reads as a document rather than a readout.
+   Bundled, not fetched: the renderer must render identically offline. */
+@import "@fontsource/instrument-serif/400.css";
+@import "./styles/shell-chat.css";
+@import "./styles/titlebar.css";
+@import "./styles/workspace-split.css";
+@import "./styles/browser.css";
+@import "./styles/browser-downloads.css";
+@import "./styles/workspace.css";
+/* After every surface it decorates: the title-bar rule relies on source order
+   to re-set the background-image that .shell-titlebar's shorthand clears. */
+@import "./styles/texture.css";
+@import "./styles/control-tokens.css";
+@import "./styles/theme-warm.css";
+@import "./styles/prompt-kit-chat.css";
+@import "./styles/chat/model-picker.css";
+@import "./styles/chat/sources.css";
+@import "./styles/chat/attachments.css";
+@import "./styles/chat/screenshots.css";
+@import "./styles/chat-history.css";
+@import "./styles/tools/modal.css";
+@source "../components";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* ---------------------------------------------------------------------------
+   closedai shell — Codex Desktop design language.
+
+   Ported from ~/Desktop/soloapps/codexdesktop: the monochrome surface ramp,
+   the film-grain material, the floating browser shell, the composer card, and
+   the reading-surface typography. Adapted to closedai's simpler layout — one
+   fixed left chat pane (compact chat history, no draggable divider) and one
+   single-page browser (no browser tab strip).
+--------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: dark;
+  --font-sans:
+    "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --font-mono:
+    "Geist Mono Variable", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: var(--font-sans);
+  background: #111111;
+  color: #d8d8d8;
+
+  /* Crisp text rendering. Greyscale AA rather than subpixel: on the dark
+     chassis, subpixel rendering fringes every stem with colour and is the
+     single biggest reason light-on-dark UI type reads soft. Kerning on,
+     synthesis off — Inter Variable already carries every weight the shell
+     asks for, so a synthesized bold would only smear one that exists. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-synthesis: none;
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures contextual;
+
+  /* One easing curve for every chrome transition, and three tracking steps.
+     Chrome type is set tight: at 11-13px Inter's default tracking is drawn
+     for paragraphs, and a UI label wants slightly less. Display sizes take
+     more, since optical tracking should shrink as the type grows. */
+  --ease-chrome: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --tracking-ui: -0.006em;
+  --tracking-tight: -0.014em;
+  --tracking-display: -0.022em;
+
+  /* Monochrome surface ramp. One material system for the shell: recessed
+     chassis (titlebar, divider, browser gutter) → chrome cards → the chat
+     canvas, which stays the lightest large surface. */
+  --chassis: #111112;
+  --chassis-well: #0c0c0d;
+  --surface-chrome: #131314;
+  --surface-card: #19191a;
+  --surface-raised: #212122;
+  --surface-control: #232324;
+  --surface-control-hover: #29292b;
+  --hairline: rgb(255 255 255 / 8%);
+  --hairline-strong: rgb(255 255 255 / 14%);
+  --titlebar-surface: #181819;
+  --chrome-fg: #9c9c9c;
+  --chrome-fg-strong: #eceef0;
+  /* Chrome icon/control ink — measured from Cursor + Antigravity dark_modern
+     activityBar/icon tokens (idle #868686, active #D7D7D7 / #CCCCCC). Cleaner
+     and quieter than near-white glyphs; selected dock still uses --cwd-ink. */
+  --chrome-control-fg: #868686;
+  --chrome-control-muted: #6e6e6e;
+  --chrome-control-quiet: #5a5a5a;
+  --chrome-control-strong: #ececed;
+  --chrome-control-selected: #e4e4e5;
+  --chrome-control-hover: rgb(255 255 255 / 7%);
+  --chrome-control-active: rgb(255 255 255 / 11%);
+  --chrome-control-divider: rgb(255 255 255 / 11%);
+  --chrome-control-edge: rgb(255 255 255 / 8%);
+  /* Lucide stroke upgraded to 1.75 for crisp, high-DPI rendering across shell chrome. */
+  --chrome-icon-stroke: 1.75;
+  --surface-highlight: rgb(255 255 255 / 3%);
+  --focus-ink: #a5a5a5;
+  --focus-halo: rgb(255 255 255 / 18%);
+  --live-signal: #e6e6e6;
+
+  /* The one hue the shell chrome spends: "this is armed and will interrupt".
+     Owned here rather than by the composer because the stop button is no longer
+     its only user — the browser's element picker reads as the same live mode. */
+  --stop-ink: #ff8f8f;
+  --stop-ink-hover: #ffaaaa;
+
+  /* Working-folder labels in the chat header and composer. Slate blue like
+     Cursor's path/link ink — distinct from neutral chrome without reading as a
+     bright accent. Verified live on graphite; AA (~7:1 at #7eb0e0). */
+  --cwd-ink: #7eb0e0;
+  /* Inline path/file chips: slate ink only — wrapper stays neutral grey like
+     Cursor's file-mention pill (no blue wash on the chrome). */
+  --path-chip-bg: rgb(255 255 255 / 8%);
+  --path-chip-border: rgb(255 255 255 / 12%);
+
+  /* Transcript ink is intentionally separate from shell chrome. Assistant
+     responses read like technical documents: soft copy, bright anchors, and
+     quieter supporting text. */
+  --transcript-copy: #ced1d6;
+  --transcript-heading: #f7f8f8;
+  --transcript-strong: #eff0f1;
+  --transcript-secondary: #969a9f;
+  /* Cursor-quiet process ink: Thought / Explored / tool-call labels. Soft
+     neutral mid-grey — no cool cast, quieter than secondary/answer copy.
+     Hover/open emphasis stays in the same neutral family (no jump to cool
+     --transcript-copy). */
+  --transcript-activity: #858585;
+  --transcript-activity-hover: #a8a8a8;
+
+  /* Semantic shadcn tokens stay on the same neutral material ramp. */
+  --background: #181818;
+  --foreground: #ececee;
+  --card: #19191a;
+  --card-foreground: #ececee;
+  --popover: #212122;
+  --popover-foreground: #ececee;
+  --primary: #e4e4e5;
+  --primary-foreground: #161617;
+  --secondary: #252526;
+  --secondary-foreground: #e8e8e9;
+  --muted: #232324;
+  --muted-foreground: #959598;
+  --accent: #2b2b2d;
+  --accent-foreground: #f0f0f1;
+  --destructive: #d28b8b;
+  --border: rgb(255 255 255 / 9%);
+  --input: rgb(255 255 255 / 12%);
+  --ring: #77777a;
+  --radius: 0.5rem;
+
+  /* Code and diff surfaces stay deliberately neutral. Syntax and change
+     semantics can carry color; the material itself should never read blue. */
+  --code-canvas: #111112;
+  --code-surface: #161617;
+  --code-header: #141415;
+  --code-border: rgb(255 255 255 / 9%);
+  --code-text: #d1d1d2;
+  --code-muted: #777779;
+
+  /* Film-grain tile at ~2.5% alpha; reads as material, not pattern. Applied
+     to chassis surfaces only — never the chat reading surface.
+
+     Pulled back from 4%: at that strength the noise was landing on the shell
+     card's own 1px border and on the omnibox edge, and a hairline sitting in
+     visible grain reads as a soft gradient rather than a drawn line. The
+     material survives at 2.5%; the edges over it stop being sanded down. */
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='linear' slope='0.025'/></feComponentTransfer></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
+
+  /* Dot field: the second texture, and deliberately not a variant of --grain.
+     Grain is unordered noise that reads as material; this is an ORDERED
+     lattice that reads as a surface finish — the eye resolves it only after
+     resting on a quiet area, which is the whole point.
+
+     Measured, not invented (finding #101): metoro.io's hero renders a ~6.5px
+     axis-aligned square lattice over a #111 base, perfectly neutral (R=G=B on
+     every pixel) and spanning just 8 luminance levels, 16..23, at sd 0.82.
+     Transposed to an 8px pitch here, on chassis material that is already
+     #111112-#141415. Peak dot lands 5 levels over the surface and most of
+     each dot's area sits 1-2 levels over — under the threshold where it reads
+     as "a pattern". Keep it neutral: any tint at this amplitude shows up as a
+     colour cast long before the lattice itself becomes visible.
+
+     3.7% is a quantized value, not a taste value: composited over #131314 the
+     peak dot rounds to the same rgb(23,23,24) for everything from 3.2% to
+     3.6%, so those are byte-identical renders. 3.7% is the first alpha that
+     moves the peak a whole level, to rgb(24,24,25), and it is also the only
+     one in the neighbourhood that adds an intermediate level rather than just
+     shifting the top — 3.8% and up land on the same peak with FEWER levels,
+     i.e. a coarser dot for no extra presence. Nudging this by "a little" is
+     not possible; the next real step down is back to 3.2%.
+
+     This is why --grain and --dotfield are mutually exclusive per surface, not
+     stackable. Measured on the real rules: grain is sd 0.93 across 5 levels,
+     the drifted lattice is sd 0.24 — layering them leaves the autocorrelation
+     completely flat, i.e. the lattice is not merely subtle, it is GONE. A
+     surface picks one material. Wells and the editor keep grain; the chrome
+     around the transcript takes the lattice. */
+  --dotfield: radial-gradient(
+    circle 2px at 50% 50%,
+    rgb(255 255 255 / 3.7%) 0%,
+    rgb(255 255 255 / 1.39%) 45%,
+    rgb(255 255 255 / 0%) 100%
+  );
+  --dotfield-pitch: 8px;
+
+  /* The part that makes it feel found rather than applied. On metoro this was
+     an accident — a +-3 level pattern sitting on the video codec's
+     quantization floor, so the lattice survived in some patches and flattened
+     out in others. Reproduced deliberately as a MASK (mask layers composite
+     with `add`, so the flat layer is ambient strength and each ellipse lifts
+     its patch toward full): the dots themselves vary in strength instead of
+     the surface under them changing colour. Reversing that — lightening the
+     backdrop — desaturates the lattice exactly where it should be strongest. */
+  --dotfield-drift:
+    radial-gradient(58% 40% at 20% 14%, rgb(0 0 0 / 62%) 0%, rgb(0 0 0 / 0%) 72%),
+    radial-gradient(46% 34% at 82% 66%, rgb(0 0 0 / 48%) 0%, rgb(0 0 0 / 0%) 70%),
+    radial-gradient(70% 52% at 54% 92%, rgb(0 0 0 / 34%) 0%, rgb(0 0 0 / 0%) 76%),
+    linear-gradient(rgb(0 0 0 / 40%), rgb(0 0 0 / 40%));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Scrolling stays fully functional everywhere; the bars themselves are hidden
+   for a clean, chromeless surface (chat, history, diff cards, code blocks). */
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  color: #d8d8d8;
+  background: var(--chassis);
+  font-family: var(--font-sans);
+  letter-spacing: var(--tracking-ui);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  /* `font:` resets the font-* longhands but not tracking, and a control that
+     kept `normal` while its label neighbours track tight is visible. */
+  letter-spacing: inherit;
+}
+
+/* Raw shell controls inherit their surrounding chrome. shadcn controls carry a
+   data-slot and must keep their semantic text utility (for example, dark ink on
+   a light primary button) instead of being overridden here. */
+button:not([data-slot]) {
+  color: inherit;
+}
+
+/* Transcript activity rows are buttons without data-slot; restore soft process
+   grey after the inherit rule (same specificity, later source order). Hover and
+   open stay in the neutral activity family — never jump to cool --transcript-copy. */
+button.tool-run-summary,
+button.tool-card-head,
+button.tool-group-head,
+button.reasoning-head {
+  color: var(--transcript-activity);
+}
+
+button.tool-run-summary:hover,
+button.tool-run-summary[data-open='true'],
+button.tool-card-head:hover,
+button.tool-card-head[aria-expanded='true'],
+button.tool-group-head:hover,
+button.tool-group-head[aria-expanded='true'],
+button.reasoning-head:not(:disabled):hover,
+button.reasoning-head[aria-expanded='true'] {
+  color: var(--transcript-activity-hover);
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-mono);
+}
+
+::selection {
+  background: rgb(255 255 255 / 16%);
+}
+
+.spin {
+  animation: work-spin 720ms linear infinite;
+}
+
+@keyframes work-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

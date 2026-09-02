@@ -1,0 +1,13 @@
+/* App-wide type-scale tokens.
+
+   Born as the Control pane's scale; the pane is gone (2026-08-21) but these
+   three steps had already spread to markup, browser, and workspace surfaces,
+   so they are now defined at :root. The floor is 11px: below that, dense
+   caption type stops being readable at a normal viewing distance. A new
+   font-size should use one of these — a new size means the scale is wrong,
+   not that a token is missing. */
+:root {
+  --fs-caption: 11px;   /* captions, hints, meta, mode buttons */
+  --fs-sm: 12px;        /* secondary body */
+  --fs-base: 13px;      /* body, control labels */
+}

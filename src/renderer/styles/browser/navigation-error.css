@@ -1,0 +1,152 @@
+/* The frame IS the visible bezel around the page. Because the live browser view
+   paints over anything drawn inside the page's own box, the crafted edge has to
+   live here — a thin machined ring, brighter at the top where light lands and
+   deepening toward the bottom, wrapping the page on all four sides. */
+/* The bezel is the same material as the shell card, not a black slab. The page
+   sits flush in the chrome and is separated from it by one machined ring — so
+   the eye reads a continuous surface with a crafted seam, never a hard border. */
+.browser-frame {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: 6px;
+  border-radius: 0 0 9px 9px;
+  background: #161617;
+}
+
+.browser-view-host.is-navigation-error {
+  visibility: hidden;
+}
+
+.browser-view-freeze {
+  position: absolute;
+  inset: 6px;
+  width: calc(100% - 12px);
+  height: calc(100% - 12px);
+  border-radius: 7px;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+.browser-navigation-error {
+  position: absolute;
+  inset: 6px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  border-radius: 7px;
+  background: var(--surface-card);
+  color: var(--foreground);
+}
+
+.browser-navigation-error-content {
+  width: min(100% - 48px, 620px);
+  margin: auto;
+  padding: 44px 0;
+}
+
+.browser-navigation-error-icon {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 22px;
+  color: var(--destructive);
+  stroke-width: 1.6;
+}
+
+.browser-navigation-error-eyebrow {
+  margin: 0 0 7px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.browser-navigation-error h2 {
+  margin: 0;
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.16;
+}
+
+.browser-navigation-error-summary {
+  max-width: 58ch;
+  margin: 13px 0 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.browser-navigation-error-url {
+  max-width: 100%;
+  margin: 15px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.browser-navigation-error-help {
+  margin-top: 24px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.browser-navigation-error-help p {
+  margin: 0 0 5px;
+  font-weight: 650;
+}
+
+.browser-navigation-error-help ul {
+  margin: 0;
+  padding-left: 19px;
+  color: var(--muted-foreground);
+}
+
+.browser-navigation-error-code {
+  margin: 22px 0 0;
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.025em;
+}
+
+.browser-navigation-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 25px;
+}
+
+@media (max-width: 620px) {
+  .browser-navigation-error-content {
+    width: min(100% - 30px, 620px);
+    padding: 30px 0;
+  }
+}
+
+@media (forced-colors: active) {
+  .browser-navigation-error {
+    border: 1px solid CanvasText;
+  }
+}
+
+.browser-view-host {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 7px;
+  background: #1c1c1d;
+  /* One drawn seam around the page, plus the shortest possible contact
+     shadow. The 6px/18px ambient cast that used to sit under this was doing
+     the opposite of its job: a wide blur under a 1px ring blooms across the
+     ring and softens the very edge it was meant to define. */
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 8%),
+    0 1px 2px rgb(0 0 0 / 30%);
+}

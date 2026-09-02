@@ -1,0 +1,216 @@
+/* Cursor's tighter transcript scale: 13px body. Vertical rhythm is NOT set
+   here — see the scroller-item adjacency rules above for why a margin on this
+   element cannot survive. */
+.message {
+  max-width: 100%;
+  margin: 0;
+  color: var(--transcript-copy);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.message [data-slot="message-content"] {
+  gap: 0;
+}
+
+/* User turns: edge-to-edge muted band across the chat pane (Cursor-style).
+   The scroller item drops inline padding (`.chat-turn-user`); text inset is
+   restored here so the background touches both edges. */
+.message-user {
+  width: 100%;
+  max-width: 100%;
+  color: var(--transcript-strong);
+}
+
+.user-message {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px var(--chat-inline);
+  border: solid var(--hairline);
+  border-width: 1px 0;
+  border-radius: 0;
+  background: #212122;
+  color: #e8e8e9;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.user-message p {
+  margin: 0;
+}
+
+/* Paths pasted into a task: same Cursor path-chip treatment as assistant prose. */
+.user-message code {
+  padding: 1px 5px;
+  border: 1px solid var(--path-chip-border, rgb(255 255 255 / 12%));
+  border-radius: 4px;
+  background: var(--path-chip-bg, rgb(255 255 255 / 8%));
+  color: var(--cwd-ink, #7eb0e0);
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  font-weight: 500;
+}
+
+/* Attached files render as chips above the text; see chat-attachment.css. */
+
+.message-assistant {
+  color: var(--foreground);
+}
+
+.message-assistant [data-slot="bubble"],
+.message-assistant [data-slot="bubble-content"],
+.message-system [data-slot="bubble"],
+.message-system [data-slot="bubble-content"] {
+  width: 100%;
+  max-width: 100%;
+}
+
+.message-system [data-slot="bubble-content"] {
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* The tool reel supplies its own vertical margins (tool-activity.css); the row
+   itself adds none. A `margin-bottom` here was dead for the same reason
+   `.message`'s was — it lost to `.message:last-child`, which every row matched. */
+
+/* Post-response footer under a settled assistant answer. */
+.turn-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 6px;
+  min-height: 18px;
+}
+
+.turn-footer.is-split {
+  justify-content: space-between;
+}
+
+.response-time {
+  color: var(--transcript-secondary);
+  opacity: 0.55;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  user-select: none;
+}
+
+/* Per-turn revert: quiet faded italic text with no decorative rule. */
+/* Informational system notice ("Turn stopped") — deliberately quiet text, not a
+   bubble: a user-pressed Stop is a normal outcome, not an error. Matches the
+   revert-row scale so it reads as transcript chrome rather than content. */
+.system-notice {
+  margin: 2px 0;
+  color: var(--transcript-secondary);
+  opacity: 0.7;
+  font-size: 11.5px;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.turn-revert {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--transcript-secondary);
+  opacity: 0.55;
+  font-size: 11.5px;
+  font-style: italic;
+  line-height: 1;
+  transition: color 110ms var(--ease-chrome), opacity 110ms var(--ease-chrome);
+}
+
+.turn-revert:hover {
+  color: var(--transcript-copy);
+  opacity: 1;
+}
+
+.turn-revert:focus-visible {
+  outline: 2px solid var(--focus-ink);
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
+/* Non-interactive revert states ("Reverting…", "Reverted ✓"): same quiet text,
+   just not a button. */
+.turn-revert.is-static {
+  gap: 4px;
+  cursor: default;
+}
+
+/* Armed confirm: the question plus ✓/✕, kept on the revert text's quiet scale so
+   arming does not cause a visual jump. */
+.turn-revert-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--transcript-secondary);
+  font-size: 11.5px;
+  font-style: italic;
+  line-height: 1;
+}
+
+.turn-revert-question {
+  margin-right: 4px;
+  opacity: 0.8;
+}
+
+.turn-revert-confirm button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 5px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--transcript-secondary);
+  line-height: 1;
+  transition: color 110ms var(--ease-chrome), background 110ms var(--ease-chrome);
+}
+
+.turn-revert-confirm button:hover {
+  color: var(--transcript-copy);
+  background: rgb(255 255 255 / 5%);
+}
+
+.turn-revert-confirm button:focus-visible {
+  outline: 2px solid var(--focus-ink);
+  outline-offset: 1px;
+}
+
+/* Keep the working surface complete even when the window approaches the
+   application's compact minimum. The browser stays available beside it while
+   transcript content, tool chrome, and composition controls retain priority. */
+@media (max-width: 34rem) {
+  .tool-card-detail,
+  .tool-card-summary,
+  .file-edit-move {
+    display: none;
+  }
+
+  .reasoning-body {
+    padding-left: 24px;
+  }
+}
+
+/* A settled sub-agent reporting back to the chat that spawned it. Information, not
+   breakage: a quiet bordered card, at the transcript's secondary scale, so it reads as a
+   distinct event without borrowing the destructive colouring an error bubble carries. */
+.agent-notice {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 2.5%);
+  color: var(--transcript-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}

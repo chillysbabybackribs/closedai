@@ -1,0 +1,198 @@
+/* Floating Downloads Dropdown Popover:
+   Anchored directly below the toolbar Downloads button and floating over the
+   browser page rather than pushing down the chassis grid. */
+.browser-nav-button.is-busy {
+  color: #d6d6dc;
+}
+
+.browser-downloads {
+  position: absolute;
+  top: 76px;
+  right: 12px;
+  width: 360px;
+  max-width: calc(100% - 24px);
+  max-height: 420px;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  background: #141416;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 34%),
+    0 2px 6px rgb(0 0 0 / 34%),
+    0 12px 32px rgb(0 0 0 / 46%);
+  z-index: 60;
+  overflow: hidden;
+}
+
+.browser-downloads-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px 4px 10px;
+}
+
+.browser-downloads-title {
+  color: #8a8a91;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.browser-downloads-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.browser-downloads-link {
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: #8a8a91;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.browser-downloads-link:hover {
+  color: #d6d6dc;
+}
+
+.browser-downloads-close {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: #8a8a91;
+  cursor: pointer;
+  place-items: center;
+}
+
+.browser-downloads-close:hover {
+  background: var(--surface-raised);
+  color: #d6d6dc;
+}
+
+.browser-downloads-empty {
+  margin: 0;
+  padding: 2px 10px 10px;
+  color: #6c6c73;
+  font-size: 11px;
+}
+
+.browser-downloads-list {
+  overflow-y: auto;
+  margin: 0;
+  padding: 0 0 6px;
+  list-style: none;
+}
+
+.browser-downloads-row {
+  display: grid;
+  align-items: center;
+  padding: 5px 8px 5px 10px;
+  gap: 2px 8px;
+  grid-template-areas:
+    'text actions'
+    'bar actions';
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.browser-downloads-row:hover {
+  background: rgb(255 255 255 / 3%);
+}
+
+.browser-downloads-row-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  grid-area: text;
+}
+
+.browser-downloads-name {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-downloads-detail {
+  overflow: hidden;
+  color: #7c7c84;
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A failed transfer is the one state worth colouring: it is the only one the user must act on. */
+.browser-downloads-row.is-interrupted .browser-downloads-detail {
+  color: #d98a7a;
+}
+
+.browser-downloads-bar {
+  position: relative;
+  overflow: hidden;
+  height: 3px;
+  margin-top: 3px;
+  border-radius: 999px;
+  background: var(--surface-raised);
+  grid-area: bar;
+}
+
+.browser-downloads-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #6f6f78;
+  transition: width 120ms linear;
+}
+
+/* No Content-Length: sweep instead of claiming a percentage we do not know. */
+.browser-downloads-bar.is-indeterminate .browser-downloads-bar-fill {
+  width: 35%;
+  animation: browser-downloads-sweep 1.1s ease-in-out infinite;
+}
+
+@keyframes browser-downloads-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(320%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .browser-downloads-bar.is-indeterminate .browser-downloads-bar-fill {
+    animation: none;
+  }
+
+  .browser-downloads-bar-fill {
+    transition: none;
+  }
+}
+
+.browser-downloads-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  grid-area: actions;
+}
+
+.browser-downloads-action {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: #8a8a91;
+  cursor: pointer;
+  place-items: center;
+}
+
+.browser-downloads-action:hover {
+  background: var(--surface-raised);
+  color: #e4e4e8;
+}

@@ -1,0 +1,272 @@
+/* ---- Warm Studio theme --------------------------------------------------
+   The matte-cube artifact translated into application materials:
+   dark studio chassis -> matte machine surfaces -> paper highlights -> ink.
+   Small text uses solid ink values rather than the artifact's softer caption
+   alpha so controls remain readable at CodeApp's compact chrome sizes. */
+
+:root[data-theme='warm'] {
+  color-scheme: light;
+  --font-sans:
+    "Helvetica Neue", Helvetica, "Nimbus Sans L", Arial, ui-sans-serif, sans-serif;
+  background: #85827d;
+  color: #202223;
+
+  /* Named from the cube study so this remains a material system, not a generic
+     light-mode ramp. Paper is the reading plane; studio values are chassis. */
+  --studio-dark: #85827d;
+  --studio: #aaa69f;
+  --studio-light: #c1bbb3;
+  --paper: #eeeae4;
+  --ink: #202223;
+  --studio-field:
+    repeating-linear-gradient(0deg, rgb(31 32 33 / 1.1%) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 1%) 0 1px, transparent 1px 4px),
+    radial-gradient(110% 90% at 68% 20%, rgb(237 231 222 / 84%) 0%, transparent 52%),
+    radial-gradient(90% 86% at 28% 82%, rgb(93 91 88 / 23%) 0%, transparent 55%),
+    linear-gradient(135deg, var(--studio-light), var(--studio) 54%, var(--studio-dark));
+  --chassis: #85827d;
+  --chassis-well: #c1bbb3;
+  --surface-chrome: #aaa69f;
+  --surface-card: #eeeae4;
+  --surface-raised: #c1bbb3;
+  --surface-control: #c1bbb3;
+  --surface-control-hover: #eeeae4;
+  --hairline: rgb(32 34 35 / 14%);
+  --hairline-strong: rgb(32 34 35 / 22%);
+  --titlebar-surface: #85827d;
+  --chrome-fg: #3c3c3c;
+  --chrome-fg-strong: #202223;
+  --chrome-control-fg: #1a1b1c;
+  --chrome-control-muted: #333432;
+  --chrome-control-quiet: #4b4b49;
+  --chrome-control-strong: #202223;
+  --chrome-control-selected: #202223;
+  --chrome-control-hover: rgb(238 234 228 / 42%);
+  --chrome-control-active: rgb(238 234 228 / 70%);
+  --chrome-control-divider: rgb(32 34 35 / 18%);
+  --chrome-control-edge: rgb(32 34 35 / 16%);
+  --chrome-icon-stroke: 1.5;
+  --surface-highlight: rgb(238 234 228 / 28%);
+  --focus-ink: #202223;
+  --focus-halo: rgb(32 34 35 / 16%);
+  --live-signal: #202223;
+  --stop-ink: #8f2929;
+  --stop-ink-hover: #a53838;
+  /* Darker slate so folder labels stay AA on warm paper chrome. */
+  --cwd-ink: #3f5f86;
+  --path-chip-bg: rgb(32 34 35 / 8%);
+  --path-chip-border: rgb(32 34 35 / 14%);
+
+  --transcript-copy: #202223;
+  --transcript-heading: #161718;
+  --transcript-strong: #1a1b1c;
+  --transcript-secondary: #3c3c3c;
+  --transcript-activity: #6e6e6e;
+  --transcript-activity-hover: #555555;
+
+  --background: #eeeae4;
+  --foreground: #202223;
+  --card: #c1bbb3;
+  --card-foreground: #202223;
+  --popover: #eeeae4;
+  --popover-foreground: #202223;
+  --primary: #202223;
+  --primary-foreground: #eeeae4;
+  --secondary: #c1bbb3;
+  --secondary-foreground: #202223;
+  --muted: #c1bbb3;
+  --muted-foreground: #3c3c3c;
+  --accent: #eeeae4;
+  --accent-foreground: #202223;
+  --destructive: #8f2929;
+  --border: rgb(32 34 35 / 18%);
+  --input: rgb(32 34 35 / 24%);
+  --ring: #202223;
+
+  --dotfield: radial-gradient(
+    circle 2px at 50% 50%,
+    rgb(32 34 35 / 5%) 0%,
+    rgb(32 34 35 / 1.8%) 45%,
+    transparent 100%
+  );
+}
+
+:root[data-theme='warm'] {
+  /* Light ground reverses the tradeoff: subpixel rendering is the crisper of
+     the two here, where on the dark chassis it was the thing fringing stems. */
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+:root[data-theme='warm'] body {
+  color: var(--foreground);
+  background: var(--chassis);
+}
+
+:root[data-theme='warm'] .shell {
+  background: var(--studio-field);
+}
+
+:root[data-theme='warm'] .shell-titlebar {
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 1%) 0 1px, transparent 1px 4px),
+    linear-gradient(90deg, var(--studio), var(--studio-dark));
+}
+
+:root[data-theme='warm'] .workspace-seg-btn.is-active {
+  color: var(--cwd-ink, #3f5f86);
+  background: transparent;
+  box-shadow: none;
+}
+
+:root[data-theme='warm'] ::selection {
+  color: #202223;
+  background: rgb(238 234 228 / 58%);
+}
+
+/* Chat becomes the broad matte work surface. */
+:root[data-theme='warm'] .chat-pane {
+  border-right-color: var(--hairline);
+  background: var(--paper);
+}
+
+:root[data-theme='warm'] .chat-zoom-popover {
+  background: #eeeae4;
+  box-shadow:
+    0 0 0 1px rgb(32 34 35 / 12%),
+    0 10px 24px rgb(32 34 35 / 18%),
+    inset 0 1px 0 rgb(255 255 255 / 44%);
+}
+
+:root[data-theme='warm'] .chat-scroll-root::after {
+  box-shadow:
+    inset 0 1px 0 rgb(238 234 228 / 55%),
+    inset 0 4px 5px -4px rgb(32 34 35 / 20%);
+}
+
+:root[data-theme='warm'] .chat-loading,
+:root[data-theme='warm'] .chat-empty {
+  color: var(--muted-foreground);
+}
+
+:root[data-theme='warm'] .message,
+:root[data-theme='warm'] .message-assistant {
+  color: var(--transcript-copy);
+}
+
+:root[data-theme='warm'] .markdown-body {
+  color: var(--transcript-copy);
+}
+
+:root[data-theme='warm'] .message-user {
+  color: var(--foreground);
+}
+
+:root[data-theme='warm'] .user-message {
+  color: #202223;
+  background: #c1bbb3;
+}
+
+:root[data-theme='warm'] .user-message code {
+  border-color: var(--path-chip-border, rgb(32 34 35 / 14%));
+  background: var(--path-chip-bg, rgb(32 34 35 / 8%));
+  color: var(--cwd-ink, #3f5f86);
+}
+
+:root[data-theme='warm'] .markdown-body :not(pre) > code {
+  border-color: var(--path-chip-border, rgb(32 34 35 / 14%));
+  color: var(--cwd-ink, #3f5f86);
+  background: var(--path-chip-bg, rgb(32 34 35 / 8%));
+}
+
+:root[data-theme='warm'] .markdown-body th {
+  color: var(--ink);
+  background: var(--studio-light);
+}
+
+:root[data-theme='warm'] button.turn-revert:hover {
+  background: rgb(32 34 35 / 7%);
+}
+
+/* The agents rail has several intentionally hand-tuned dark-theme readouts.
+   Consolidate their neutral ink here so none turn into low-contrast grey when
+   the underlying material flips warm. Status green/red remain semantic. */
+:root[data-theme='warm'] .agents-running-count,
+:root[data-theme='warm'] .agents-row-task,
+:root[data-theme='warm'] .agents-row-twisty:hover,
+:root[data-theme='warm'] .agents-settled-toggle:hover,
+:root[data-theme='warm'] .agents-settled-clear:hover {
+  color: #202223;
+}
+
+:root[data-theme='warm'] .agents-search-field,
+:root[data-theme='warm'] .agents-search-field input::placeholder,
+:root[data-theme='warm'] .agents-search-clear,
+:root[data-theme='warm'] .agents-search-result-meta,
+:root[data-theme='warm'] .agents-search-empty,
+:root[data-theme='warm'] .agents-section-label,
+:root[data-theme='warm'] .agents-section-toggle,
+:root[data-theme='warm'] .agents-dir-label,
+:root[data-theme='warm'] .agents-empty,
+:root[data-theme='warm'] .agents-row-twisty,
+:root[data-theme='warm'] .agents-twisty-count,
+:root[data-theme='warm'] .agents-settled-toggle,
+:root[data-theme='warm'] .agents-row-meta {
+  color: #3c3c3c;
+}
+
+:root[data-theme='warm'] .agents-section-toggle:hover,
+:root[data-theme='warm'] .agents-dir-label svg {
+  color: #202223;
+}
+
+:root[data-theme='warm'] .agents-section-count,
+:root[data-theme='warm'] .agents-settled-clear {
+  color: #555450;
+}
+
+:root[data-theme='warm'] .agents-search-results {
+  box-shadow:
+    0 0 0 1px rgb(32 34 35 / 14%),
+    0 10px 24px rgb(32 34 35 / 20%);
+}
+
+:root[data-theme='warm'] .agents-search-result-title mark {
+  color: #202223;
+}
+
+/* Reasoning and tool disclosures sit on a light fitted panel in this theme.
+   Code and diffs inside them keep their dedicated dark canvas. */
+:root[data-theme='warm'] .reasoning-card[data-open='true'],
+:root[data-theme='warm'] .tool-card[data-open='true'],
+:root[data-theme='warm'] .tool-group[data-open='true'] {
+  border-color: rgb(32 34 35 / 12%);
+  background: rgb(32 34 35 / 4%);
+}
+
+:root[data-theme='warm'] button.reasoning-head:not([data-slot]):not(:disabled):hover,
+:root[data-theme='warm'] button.tool-card-head:not([data-slot]):hover,
+:root[data-theme='warm'] button.tool-group-head:not([data-slot]):hover {
+  background: rgb(32 34 35 / 6%);
+  color: var(--transcript-activity-hover);
+}
+
+:root[data-theme='warm'] .reasoning-caret,
+:root[data-theme='warm'] .tool-run-earlier,
+:root[data-theme='warm'] .tool-run-summary-caret,
+:root[data-theme='warm'] .tool-run-summary-state,
+:root[data-theme='warm'] .tool-card-caret,
+:root[data-theme='warm'] .tool-card-caret-spacer,
+:root[data-theme='warm'] .tool-card-icon,
+:root[data-theme='warm'] .tool-card-detail,
+:root[data-theme='warm'] .tool-card-summary,
+:root[data-theme='warm'] .tool-card-elapsed,
+:root[data-theme='warm'] .tool-group-caret,
+:root[data-theme='warm'] .tool-group-icon,
+:root[data-theme='warm'] .plan-step-indicator {
+  color: var(--transcript-secondary);
+}
+
+:root[data-theme='warm'] .tool-run-earlier:hover {
+  color: var(--transcript-copy);
+}

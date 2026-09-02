@@ -1,0 +1,91 @@
+export type BrowserBounds = {
+  x: number
+  y: number
+  width: number
+  height: number
+  // When false, the native browser view is hidden outright rather than positioned — used
+  // when the workspace shows the editor instead of the browser. Optional so existing callers
+  // (which always mean "visible") stay unchanged. See BrowserService.setBounds.
+  visible?: boolean
+}
+
+export type BrowserNavigationError = {
+  /** The main-frame URL Chromium failed to load. */
+  url: string
+  /** The last usable page, used for a safe recovery action after provisional loads. */
+  previousUrl: string
+  /** Chromium net error name, for example ERR_SSL_PROTOCOL_ERROR. */
+  code: string
+  /** Chromium's numeric network error when Electron supplied one. */
+  errno: number | null
+  title: string
+  summary: string
+  suggestions: string[]
+  at: number
+}
+
+export type BrowserState = {
+  url: string
+  title: string
+  isLoading: boolean
+  canGoBack: boolean
+  canGoForward: boolean
+  /** Main-frame failure shown in browser chrome; absent on older persisted snapshots. */
+  navigationError?: BrowserNavigationError | null
+}
+
+// One entry per open tab, in display order. Emitted together as a list so the renderer
+// can render the whole strip from a single event.
+
+export type BrowserTabInfo = {
+  id: string
+  // 1-based left-to-right position in the tab strip. `id` is a monotonic creation counter
+  // that is never reused; `pos` shifts whenever tabs open or close.
+  pos: number
+  title: string
+  url: string
+  favicon: string | null
+  isLoading: boolean
+  active: boolean
+}
+
+
+export type BrowserDownloadState = 'progressing' | 'paused' | 'completed' | 'cancelled' | 'interrupted'
+
+// One file arriving from the embedded browser. `path` is absolute; `relativePath` is
+// resolved against the downloads root.
+
+export type BrowserDownload = {
+  id: string
+  url: string
+  filename: string
+  path: string
+  relativePath: string
+  mimeType: string
+  state: BrowserDownloadState
+  receivedBytes: number
+  /** 0 when the server sent no Content-Length, which the UI shows as an indeterminate size. */
+  totalBytes: number
+  bytesPerSecond: number
+  canResume: boolean
+  error: string | null
+}
+
+
+export type AppSettings = {
+  browserCookiesImported: boolean
+  /** Last app-server thread selected by the single chat surface. */
+  chatThreadId: string | null
+  /** User's preferred Codex model for new chats. */
+  chatModelId: string | null
+  /** `namespace.tool` ids the user switched off in the Tools modal. */
+  disabledTools: string[]
+}
+
+/** A still of the page the user is looking at; `imageUrl` is a data URL. */
+export type BrowserShot = {
+  imageUrl: string
+  tabId: string
+  url: string
+  title: string
+}

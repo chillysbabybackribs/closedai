@@ -1,0 +1,416 @@
+/* ---- Composer ----------------------------------------------------------- */
+
+.composer {
+  /* Vars live on the form, not the shell: the two-story deck splits the composer
+     into an elevated card (.composer-shell) and a console (.composer-console), and
+     both need the same palette. Theme overrides mirror this scope. */
+  --composer-canvas: #1c1c1d;
+  --composer-rail: #19191a;
+  --composer-line: rgb(255 255 255 / 8%);
+  --composer-line-strong: rgb(255 255 255 / 14%);
+  --composer-muted: #99999f;
+  --composer-ink: #ffffff;
+  --composer-stop-ink: var(--stop-ink);
+  --composer-stop-ink-hover: var(--stop-ink-hover);
+  position: relative;
+  min-width: 0;
+  /* Top padding matched a touch above the bottom's visual weight so the card
+     sits evenly in the chassis band. */
+  padding: 18px clamp(12px, 2.8vw, 20px) 14px;
+  border-top: 1px solid var(--hairline);
+  background-color: #141415;
+  /* Textured by --dotfield in texture.css — see the note on .agents-pane. */
+}
+
+/* ---- Live execution strip ----------------------------------------------- */
+
+/* Screen-reader only: the visible working indicator is the ticking
+   .composer-run-clock in the bar. This element announces the state without pixels. */
+.live-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.live-status:not([data-active='true']) { display: none; }
+
+.live-status[data-workflow='true'] {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  height: 28px;
+  margin: 0 10px 6px 0;
+  padding: 0 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  overflow: hidden;
+  color: var(--chrome-control-muted);
+  background: rgb(255 255 255 / 2.5%);
+  clip-path: none;
+  white-space: nowrap;
+}
+
+.workflow-run-strip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d8a24a;
+  box-shadow: 0 0 0 3px rgb(216 162 74 / 12%);
+}
+
+.workflow-run-strip-label,
+.workflow-run-strip-count {
+  color: var(--chrome-control-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.workflow-run-strip strong { overflow: hidden; color: var(--chrome-control-strong); font-size: 12px; text-overflow: ellipsis; }
+.workflow-run-strip-phase { margin-left: auto; overflow: hidden; font-size: 11px; text-overflow: ellipsis; }
+
+/* ---- Composer deck + attached block ------------------------------------- */
+
+/* The deck is a column: the plan pin's row, then the block. */
+.composer-deck {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* The block owns the card's outer inset and working state. */
+.composer-block {
+  min-width: 0;
+  margin-right: 10px;
+}
+
+/* The upper story: an elevated input card. Inset horizontally so the console below
+   reads as a wider chassis it sits on; z-index keeps its shadow over the console. */
+.composer-shell {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  /* Grid, not flex — .browser-selection-chip places itself with justify-self, which
+     only means anything in a grid (see browser-selection.css). space-between keeps the
+     field at the top and the controls row on the bottom edge as the card grows. */
+  align-content: space-between;
+  /* Deliberately unclipped so the usage tooltip paints OVER the transcript instead of
+     being cut at this border. */
+  overflow: visible;
+  border: 1px solid var(--composer-line-strong);
+  border-radius: 20px;
+  background: var(--composer-canvas);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 5%),
+    0 1px 2px rgb(0 0 0 / 30%),
+    0 10px 24px rgb(0 0 0 / 20%);
+  transition:
+    border-color 130ms var(--ease-chrome),
+    box-shadow 130ms var(--ease-chrome);
+}
+
+.composer-block:focus-within .composer-shell {
+  border-color: #505055;
+}
+
+.composer-block:focus-within .composer-shell {
+  /* No 2px spread ring: drawn around the card alone it would paint a bright line down
+     the seam, which is the one edge that must stay invisible. */
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 7%),
+    0 1px 2px rgb(0 0 0 / 26%),
+    0 10px 24px rgb(0 0 0 / 16%);
+}
+
+.composer-shell.is-working {
+  border-color: #414146;
+}
+
+/* The card's top story: the field alone, full width — controls moved to the
+   .composer-controls row along the card's bottom edge (Antigravity single-card
+   layout, user call 2026-08-30). */
+.composer-bar {
+  display: flex;
+  min-width: 0;
+  padding: 8px 10px 0;
+}
+
+.composer-bar .composer-input-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The Workflow door on the card's top-right corner (user call, 2026-09-01): a quiet
+   text button pinned to the bar's top edge. Same ink treatment as the browser globe —
+   it is a door, not the row's primary action. */
+.composer-workflow-btn {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin: 1px 0 0 8px;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--composer-muted);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background 110ms var(--ease-chrome), color 110ms var(--ease-chrome);
+}
+
+.composer-workflow-btn:hover,
+.composer-workflow-btn[data-state='open'] {
+  color: var(--composer-ink);
+  background: rgb(255 255 255 / 6%);
+}
+
+.composer-workflow-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Menu rows ride the model menu's shared surface chrome, widened just enough to make
+   each workflow's purpose legible before it is armed. */
+.composer-model-list.composer-workflow-surface {
+  width: min(21rem, calc(100vw - 24px));
+  max-width: min(21rem, calc(100vw - 24px));
+}
+
+.composer-workflow-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 5px;
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.composer-workflow-option {
+  align-items: flex-start;
+  min-height: 0;
+  padding: 7px 8px;
+  line-height: 1.25;
+}
+
+.composer-workflow-option-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.composer-workflow-option-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.composer-workflow-option-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Home-directory templates carry a quiet origin tag so a project/user name collision
+   is explicable at a glance. */
+.composer-workflow-option-origin {
+  flex: 0 0 auto;
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+}
+
+.composer-workflow-option-description,
+.composer-workflow-option-when {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-workflow-option-when {
+  opacity: 0.72;
+}
+
+.composer-workflow-empty {
+  color: var(--muted-foreground);
+}
+
+.composer-workflow-create {
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 0;
+  padding: 7px 8px;
+}
+
+.composer-workflow-create > svg {
+  margin-top: 1px;
+}
+
+.composer-workflow-create-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.25;
+}
+
+.composer-workflow-create-copy > span:last-child {
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+  font-weight: 400;
+}
+
+/* The card's bottom story: add door, model+effort, folder, then (spring) the
+   live clock and send/stop pinned to the right corner. */
+.composer-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 6px 10px 10px;
+}
+
+/* The add door is a peer of the model picker now, not a separate side section. Match
+   the row's 30px control height while keeping its existing hover/focus treatment. */
+.composer-controls > .app-guide-menu .app-guide-trigger {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: #83838b;
+}
+
+.composer-controls > .app-guide-menu .app-guide-trigger::before {
+  border-radius: 8px;
+}
+
+.composer-controls > .app-guide-menu .app-guide-trigger:focus-visible {
+  outline: 2px solid var(--focus-ink);
+  outline-offset: -1px;
+}
+
+.composer-controls-spring {
+  flex: 1 1 auto;
+  min-width: 8px;
+}
+
+/* Quiet running signal beside the action slot: the live clock alone, no dot,
+   no motion. */
+.composer-run-clock {
+  flex: 0 0 auto;
+  margin: 0 6px 0 2px;
+  color: var(--composer-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  /* Fixed-width digits so the ticking seconds don't wobble the stop button. */
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.composer-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  /* Two comfortable lines at rest — the taller Antigravity card; field-sizing
+     still grows the row with the message up to the same cap. */
+  min-height: 52px;
+  max-height: min(36vh, 250px);
+  field-sizing: content;
+  padding: 8px 7px 4px;
+  resize: none;
+  overflow-y: auto;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--composer-ink);
+  font-size: 16px;
+  line-height: 1.5;
+  scrollbar-width: thin;
+}
+
+/* Attachment chips + the attach control live in chat-attachment.css. */
+
+.composer-input::placeholder {
+  /* Quieter than typed text: the empty prompt is a hint, not content. Carried
+     by ink alone — it used to also drop to 14px against the field's 16px, so
+     the first keystroke visibly resized the line it replaced. */
+  color: #77777d;
+}
+
+/* (The two-story .composer-console/.composer-context/.composer-actions caption
+   line is gone — every control now rides .composer-controls inside the card.) */
+
+.composer-cwd {
+  display: inline-flex;
+  align-items: stretch;
+  min-width: 0;
+  height: 32px;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+}
+
+/* Quiet sans pills (Antigravity card): folder icon + tilde path in the muted ink
+   the design uses, full-radius hover wash. */
+.composer-cwd-empty,
+.composer-cwd-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 480;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.composer-cwd-pick,
+.composer-cwd-empty {
+  color: var(--composer-muted);
+}
+
+.composer-cwd-empty:hover,
+.composer-cwd-pick:hover {
+  color: var(--composer-ink);
+  background: rgb(255 255 255 / 5%);
+}
+
+.composer-cwd-empty svg,
+.composer-cwd-pick svg {
+  flex: 0 0 auto;
+}
+
+.composer-cwd-name {
+  min-width: 0;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

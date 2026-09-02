@@ -1,0 +1,225 @@
+import { app, BrowserWindow, ipcMain, Menu, nativeTheme, session } from 'electron'
+import { mkdir } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
+import { configureChromiumStartup } from './chromium-startup-policy.js'
+import { claimProfileInstance } from './app-single-instance.js'
+import { browserUserAgentFallback } from './browser-identity.js'
+import { createMainWindow } from './main-window.js'
+import { BrowserService } from './browser-service.js'
+import { BrowserHistoryStore } from './browser-history-store.js'
+import { BrowserTabSessionStore } from './browser-tab-session-store.js'
+import { AppSettingsStore } from './app-settings-store.js'
+import { BrowserDownloadService } from './browser-download-service.js'
+import { registerBrowserCoreIpc } from './browser-core-ipc.js'
+import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
+import { pruneOversizedBrowserCacheOnce } from './browser-cache-maintenance.js'
+import { discoverSources, importCookies } from './import-cookies.js'
+import { PARTITION } from './browser-url.js'
+import { ChatService } from './chat-service.js'
+import { BrowserPageAccess } from './browser-page-access.js'
+import { BrowserCdpAccess } from './cdp/browser-cdp-access.js'
+import { UiCaptureAccess } from './ui-capture-access.js'
+import { createToolRegistry, type ToolRegistry } from './tools/index.js'
+import { browserTools } from './tools/browser/index.js'
+import { cdpTools } from './tools/cdp/index.js'
+import { captureTools } from './tools/capture/index.js'
+import { ToolTelemetry } from './tools/telemetry.js'
+import { registerToolsIpc } from './tools/ipc.js'
+import type { ToolsEvent } from '../shared/tools.js'
+import { registerChatIpc } from './chat-ipc.js'
+import type { ChatEvent } from '../shared/chat.js'
+import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../shared/types.js'
+
+// Chromium switches must land before `ready`. Owner decision: the Linux sandbox flags stay
+// exactly as appv1 has them (docs/electron-browser-platform-review.md §0).
+configureChromiumStartup(app)
+// Drop the Electron/app tokens from the UA before any session exists, keeping Chromium's
+// native version and Client Hints intact.
+app.userAgentFallback = browserUserAgentFallback(app.userAgentFallback, app.getName())
+// Frameless window, no native menu — and no default accelerators shadowing browser shortcuts.
+Menu.setApplicationMenu(null)
+// Pages see prefers-color-scheme: dark and native dialogs/context menus follow the chrome.
+nativeTheme.themeSource = 'dark'
+
+let mainWindow: BrowserWindow | null = null
+let browserService: BrowserService | null = null
+let browserDownloads: BrowserDownloadService | null = null
+let browserHistory: BrowserHistoryStore | null = null
+let browserTabSession: BrowserTabSessionStore | null = null
+let settings: AppSettingsStore | null = null
+let chatService: ChatService | null = null
+let toolRegistry: ToolRegistry | null = null
+let toolTelemetry: ToolTelemetry | null = null
+let browserSessionFlush: Promise<void> | null = null
+let cdpAccess: BrowserCdpAccess | null = null
+let quitting = false
+
+const userData = (): string => app.getPath('userData')
+
+if (!claimProfileInstance(app, { profile: userData(), checkout: app.getAppPath(), pid: process.pid }, () => mainWindow)) {
+  // A second launch against the same profile focused the owner and is exiting.
+} else {
+  void app.whenReady().then(main)
+}
+
+async function main(): Promise<void> {
+  await mkdir(userData(), { recursive: true })
+  ;[browserHistory, browserTabSession, settings] = await Promise.all([
+    BrowserHistoryStore.open(join(userData(), 'browser-history.json')),
+    BrowserTabSessionStore.open(join(userData(), 'browser-tabs.json')),
+    AppSettingsStore.open(join(userData(), 'app-settings.json'))
+  ])
+  const configuredWorkspace = process.env.CLOSEDAI_WORKSPACE?.trim()
+  const chatWorkspace = configuredWorkspace ? resolve(configuredWorkspace) : app.getAppPath()
+  // Tools resolve the browser lazily: it is created with the window, after the chat service.
+  const pageAccess = new BrowserPageAccess(() => browserService)
+  cdpAccess = new BrowserCdpAccess(() => browserService)
+  const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService)
+  toolRegistry = createToolRegistry([
+    browserTools(() => pageAccess),
+    cdpTools(() => cdpAccess),
+    captureTools(() => captureAccess)
+  ])
+  for (const toolId of settings.get().disabledTools) toolRegistry.setEnabled(toolId, false)
+  toolTelemetry = await ToolTelemetry.open(join(userData(), 'tool-telemetry.jsonl'))
+  toolRegistry.subscribe((record) => toolTelemetry?.record(record))
+  chatService = new ChatService(chatWorkspace, settings, toolRegistry, () => {
+    const active = browserService?.tabList().find((tab) => tab.active)
+    if (!active) return null
+    return {
+      tabId: active.id,
+      url: active.url,
+      title: active.title,
+      isLoading: active.isLoading
+    }
+  })
+  registerIpc()
+  // The one-shot cookie import runs before the first tab loads, so a restored or home page
+  // arrives already signed in rather than racing the import.
+  await importDefaultBrowserCookies()
+  createWindow()
+  void chatService.start()
+  void pruneOversizedBrowserCacheOnce(userData()).catch(() => {})
+}
+
+function createWindow(): void {
+  const window = createMainWindow({ openLinkInNewTab: (url) => browserService?.openNewTab(url, false) })
+  mainWindow = window
+  // Reopen the tabs the last run ended with. The session was read from disk above, so the
+  // strip is rebuilt inside the constructor with no async gap the renderer could observe.
+  browserService = new BrowserService(window, browserHistory!, {
+    restore: browserTabSession?.restored() ?? undefined
+  })
+  wireBrowserEvents(browserService)
+  // Attached to the partition session rather than a tab: a download outlives the tab that
+  // started it. Files land in the OS downloads folder like Chrome.
+  browserDownloads = new BrowserDownloadService({ workspaceRoot: () => app.getPath('downloads') })
+  browserDownloads.install(session.fromPartition(PARTITION))
+  browserDownloads.on('changed', (downloads: BrowserDownload[]) =>
+    mainWindow?.webContents.send('browserDownloads:changed', downloads)
+  )
+  chatService?.on('event', (event: ChatEvent) => mainWindow?.webContents.send('chat:event', event))
+  const sendToolsEvent = (event: ToolsEvent): void => { mainWindow?.webContents.send('tools:event', event) }
+  toolTelemetry?.on('record', (record) => sendToolsEvent({ type: 'call', record }))
+  toolTelemetry?.on('cleared', () => sendToolsEvent({ type: 'cleared' }))
+
+  if (process.env.ELECTRON_RENDERER_URL) {
+    void window.loadURL(process.env.ELECTRON_RENDERER_URL)
+  } else {
+    void window.loadFile(join(import.meta.dirname, '../renderer/index.html'))
+  }
+  window.on('closed', disposeWindowServices)
+}
+
+function wireBrowserEvents(service: BrowserService): void {
+  service.on('state', (state: BrowserState) => mainWindow?.webContents.send('browser:state', state))
+  service.on('tabs', (tabs: BrowserTabInfo[]) => {
+    mainWindow?.webContents.send('browser:tabs', tabs)
+    // Persist the strip on every change rather than only at quit: a crash never reaches a
+    // quit hook, and the point is that the tabs come back regardless of how the app died.
+    browserTabSession?.save(tabs)
+  })
+  service.on('error', (error: unknown) => {
+    console.warn('[browser]', error instanceof Error ? error.message : error)
+  })
+}
+
+function registerIpc(): void {
+  ipcMain.handle('window:minimize', () => mainWindow?.minimize())
+  ipcMain.handle('window:maximize', () => {
+    if (!mainWindow) return
+    if (mainWindow.isMaximized()) mainWindow.unmaximize()
+    else mainWindow.maximize()
+  })
+  ipcMain.handle('window:close', () => mainWindow?.close())
+  registerBrowserCoreIpc(ipcMain, () => browserService)
+  registerBrowserDownloadsIpc(ipcMain, () => browserDownloads)
+  registerChatIpc(ipcMain, () => chatService)
+  registerToolsIpc(ipcMain, {
+    registry: () => toolRegistry,
+    telemetry: () => toolTelemetry,
+    providers: () => ['codex'],
+    onEnabledChanged: async (toolId, enabled, disabledIds) => {
+      await settings?.set({ disabledTools: disabledIds })
+      mainWindow?.webContents.send('tools:event', { type: 'enabled', toolId, enabled } satisfies ToolsEvent)
+    }
+  })
+}
+
+// One-shot clone of the user's real browser session (cookies) into persist:browser, so the
+// embedded browser starts signed in where the user already is. Latched in settings, but an
+// empty session with the latch set means a lost import, so re-run it in that case.
+async function importDefaultBrowserCookies(): Promise<void> {
+  if (!settings) return
+  if (settings.get().browserCookiesImported) {
+    try {
+      const existing = await session.fromPartition(PARTITION).cookies.get({})
+      if (existing.length > 0) return
+      console.warn('[cookie-import] latch set but session is empty; re-importing')
+    } catch {
+      // Reading cookies failed — fall through and attempt a fresh import.
+    }
+  }
+  const chosen = discoverSources()[0]
+  if (!chosen) {
+    console.warn('[cookie-import] no supported browser profile found; skipping')
+    return
+  }
+  try {
+    const target = session.fromPartition(PARTITION)
+    const result = await importCookies(chosen, target)
+    await target.cookies.flushStore()
+    await settings.set({ browserCookiesImported: true })
+    console.log(`[cookie-import] imported ${result.imported} cookies from ${result.source} (${result.failed} failed, ${result.skipped} skipped)`)
+  } catch (error) {
+    // Do not latch on failure — retry on the next launch.
+    console.warn('[cookie-import] failed:', error instanceof Error ? error.message : error)
+  }
+}
+
+function disposeWindowServices(): void {
+  browserSessionFlush = browserService?.flushSessionData() ?? null
+  cdpAccess?.dispose()
+  cdpAccess = null
+  browserService?.dispose()
+  browserService = null
+  mainWindow = null
+}
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('before-quit', (event) => {
+  if (quitting) return
+  event.preventDefault()
+  quitting = true
+  chatService?.stop()
+  const flushSession = browserSessionFlush ?? browserService?.flushSessionData()
+  void Promise.allSettled([
+    browserHistory?.flush(),
+    browserTabSession?.close(),
+    settings?.set({}),
+    flushSession
+  ]).finally(() => app.quit())
+})

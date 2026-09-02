@@ -1,0 +1,66 @@
+/* ---- Dot field ----------------------------------------------------------
+   Applies --dotfield to the shell chrome AROUND the transcript: the agents
+   sidebar, the composer, and the title bar. The chat reading surface is
+   deliberately excluded — the same line --grain already holds. Texture belongs
+   on chassis; the surface you read long-form output on stays flat.
+
+   These three surfaces gave up --grain to take the lattice. That is not a
+   stylistic preference: measured on the real rules, grain runs sd 0.93 over 5
+   luminance levels and the drifted lattice sd 0.24, so stacking them leaves
+   the autocorrelation flat — the lattice disappears entirely. One material per
+   surface. The browser gutter and editor pane keep grain, so the shell still
+   carries both materials, split along a meaningful line: wells are grained,
+   the chat surround is latticed.
+
+   Painted by a pseudo-element rather than another background layer because the
+   lattice has to be masked by --dotfield-drift, and background layers cannot be
+   masked individually. `isolation: isolate` + `z-index: -1` is the pairing that
+   puts the field above the host's own background (and its grain) but below
+   every child: without the isolate the host creates no stacking context and a
+   negative z-index drops the field behind the opaque background entirely, where
+   it silently renders nothing. Both hosts already clip with overflow: hidden or
+   sit inside a parent that does, so the new stacking context traps nothing that
+   was escaping before. */
+
+.agents-pane,
+.composer {
+  position: relative;
+  isolation: isolate;
+}
+
+/* The sidebar is a tall narrow column and the shared drift is proportioned for
+   wide boxes, so there it would put its strongest patch in the top corner. Give
+   it its own: one broad bloom just below centre, with a second overlapping it
+   off-axis and lower. Two soft ellipses at different sizes read as one uneven
+   cloud — a single one reads as a circle, which is the failure mode here. The
+   ambient layer drops to 30% so the quiet top and bottom fall nearly to flat
+   and the middle-down is unmistakably the brighter region. */
+.agents-pane {
+  --dotfield-drift:
+    radial-gradient(92% 25% at 52% 58%, rgb(0 0 0 / 68%) 0%, rgb(0 0 0 / 0%) 74%),
+    radial-gradient(78% 19% at 44% 73%, rgb(0 0 0 / 46%) 0%, rgb(0 0 0 / 0%) 76%),
+    linear-gradient(rgb(0 0 0 / 30%), rgb(0 0 0 / 30%));
+}
+
+.agents-pane::before,
+.composer::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image: var(--dotfield);
+  background-size: var(--dotfield-pitch) var(--dotfield-pitch);
+  mask-image: var(--dotfield-drift);
+  mask-composite: add;
+  pointer-events: none;
+}
+
+/* The title bar takes the lattice as a plain background layer instead. At 28px
+   it fits ~3 rows of dots, so drift has no room to read, and skipping the
+   pseudo-element means the title bar never gains a stacking context — it is the
+   first row of the shell grid, so trapping a descendant there would push it
+   behind the workspace rather than merely reordering it. */
+.shell-titlebar {
+  background-image: var(--dotfield);
+  background-size: var(--dotfield-pitch) var(--dotfield-pitch);
+}
