@@ -160,11 +160,26 @@ is stored in `app-settings.json` and applied before each `ChatService` starts or
 
 The registry reports every call to subscribers (`registry.subscribe`). `ToolTelemetry`
 (`telemetry.ts`) keeps the last 500 records in memory and appends each to
-`<userData>/tool-telemetry.jsonl`, so history survives restarts. A record holds the tool,
-action, argument preview, duration, success, the failure text the model saw, and the thread,
-turn, and call ids. The modal shows per-tool calls, failures, average time, last call, and the
-recent calls with their arguments and output; it updates live while open. "Clear telemetry"
-empties both the window and the file.
+`<userData>/tool-telemetry.jsonl`, so history survives restarts. The durable file is read in
+full for its total call count, while recent records and stats stay bounded in memory.
+
+A call record holds the tool, action, argument preview, duration, success, the failure text the
+model saw, and the thread, turn, and call ids. Nested calls also carry `source`, `parentCallId`,
+and `batchId`, so a `tool_batch` run can be reconstructed from its flat JSONL records. The
+registry records failures from unknown, disabled, and invalid calls too, because reporting
+happens after result normalization rather than only inside the tool implementation.
+
+At startup the main process registers every tool and action definition with telemetry. New
+definitions are appended as `tool_registered` events, so the observed tool catalog survives
+restarts and can be refreshed by the Tools modal. Adding a namespace, tool, or action to the
+registry is enough for it to appear in both the manifest and telemetry; tool implementations do
+not need their own instrumentation.
+
+The modal shows per-tool calls, failures, average time, last call, and recent calls with their
+arguments and output; it updates live while open. "Clear telemetry" clears call history and
+totals while retaining the observed tool catalog. This app-level telemetry does not automatically
+include host orchestration calls that never enter `ToolRegistry` (for example shell or patch
+operations); those require a host-side telemetry adapter.
 
 Telemetry is best-effort. Subscribers must not break tool calls, and the registry swallows
 subscriber errors after the model-visible result is produced.
