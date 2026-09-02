@@ -104,9 +104,6 @@ export class CdpSession {
   private readonly onDestroyed = (): void => {
     if (this.disposed) return
     this.disposed = true
-    this.contents.debugger.off('message', this.onMessage)
-    this.contents.debugger.off('detach', this.onDetach)
-    this.contents.off('destroyed', this.onDestroyed)
     this.onClosed(this)
   }
 

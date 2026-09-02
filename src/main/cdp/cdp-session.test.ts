@@ -31,8 +31,13 @@ class FakeDebugger extends EventEmitter {
 
 class FakeContents extends EventEmitter {
   readonly id = 17
-  readonly debugger = new FakeDebugger()
+  private readonly fakeDebugger = new FakeDebugger()
   destroyed = false
+
+  get debugger(): FakeDebugger {
+    if (this.destroyed) throw new TypeError('Object has been destroyed')
+    return this.fakeDebugger
+  }
 
   isDestroyed(): boolean {
     return this.destroyed
@@ -116,7 +121,7 @@ test('event cursors reset safely when they came from an older connection', () =>
   session.dispose()
 })
 
-test('destroying WebContents notifies its owner exactly once', () => {
+test('destroying WebContents does not access the destroyed target and notifies its owner exactly once', () => {
   const contents = new FakeContents()
   const closed: CdpSession[] = []
   const session = new CdpSession('tab-1', contents as unknown as WebContents, (entry) => closed.push(entry))
