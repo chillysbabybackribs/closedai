@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { writeAtomic } from './atomic-write.js'
 import type { AppSettings } from '../shared/types.ts'
-import { DEFAULT_TOOL_BATCH_MAX_CALLS, normalizeToolBatchMaxCalls } from '../shared/tool-batch.ts'
+import { DEFAULT_TOOL_BATCH_MAX_CALLS, normalizeToolBatchMaxCalls } from '../shared/tool-batch.js'
 
 // App-scoped preferences that must live in the main process because they shape how
 // the Codex app-server is driven (see codex-client thread/start + thread/resume).

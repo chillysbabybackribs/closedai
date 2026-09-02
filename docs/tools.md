@@ -62,6 +62,10 @@ before the app-server starts.
 The model-facing names intentionally differ from OpenAI reserved namespaces. For example,
 ClosedAI uses `embedded_browser`, not `browser`.
 
+`tool_batch` reads `toolBatchMaxCalls` from `<userData>/app-settings.json` when ClosedAI starts.
+The default is 16; configured values are rounded and clamped to 1–64. Restart the app after
+editing the setting so the model-facing description and runtime enforcement use the new limit.
+
 ### Search credentials
 
 Search providers read credentials from environment variables first and the Linux Secret
