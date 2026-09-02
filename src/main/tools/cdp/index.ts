@@ -1,5 +1,5 @@
 import { defineActionTool, type ToolAction } from '../action-tool.js'
-import { stringArg, type ToolNamespace } from '../tool.js'
+import { failureResult, stringArg, type ToolNamespace } from '../tool.js'
 import {
   eventCursorFrom,
   eventLimitFrom,
@@ -21,12 +21,15 @@ export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
       defineActionTool({
         name: 'protocol',
         description:
-          'Send raw CDP commands to a ClosedAI browser tab and read its instrumentation events. ' +
-          'Use capabilities to inspect the bundled Chromium protocol, targets to discover inspectable ' +
-          'children, command for any domain method, and events after enabling the relevant domain. ' +
-          'DOM nodes, runtime objects, frames, execution contexts, target sessions, and request ids are ' +
-          'transient and may become invalid after navigation. Attach child targets with flatten=true and ' +
-          'pass the returned session_id on later commands.',
+          'Escape hatch: raw CDP commands to a ClosedAI browser tab and its instrumentation events, for ' +
+          'inspection and debugging the page tool cannot do. Interaction belongs in the page tool ' +
+          '(click, type, press_key, scroll) and screenshots in closedai_ui capture; Input.* and ' +
+          'Page.captureScreenshot are refused here. Use capabilities to inspect the bundled Chromium ' +
+          'protocol, targets to discover inspectable children, command for any domain method, and events ' +
+          'after enabling the relevant domain. DOM nodes, runtime objects, frames, execution contexts, ' +
+          'target sessions, and request ids are transient and may become invalid after navigation. ' +
+          'Attach child targets with flatten=true and pass the returned session_id on later commands.',
+        deferLoading: true,
         actions: actions(cdp)
       }),
       cdpPageTool(cdp)
@@ -63,6 +66,8 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
         if (!/^[A-Za-z][A-Za-z0-9]*\.[A-Za-z][A-Za-z0-9]*$/.test(method)) {
           throw new Error('`method` must use CDP Domain.method syntax')
         }
+        const denied = deniedMethodAdvice(method)
+        if (denied) return failureResult(denied)
         return jsonResult(await requireCdp(cdp).command(
           tabIdFrom(input), method, paramsFrom(input), sessionIdFrom(input)
         ))
@@ -86,6 +91,23 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
       ))
     }
   ]
+}
+
+/**
+ * Raw methods with a purpose-built tool: refuse them with a pointer instead of letting the
+ * model rebuild input event-by-event (observed: 708 dispatchKeyEvent calls in one workspace)
+ * or pull base64 screenshots through a text result.
+ */
+function deniedMethodAdvice(method: string): string | null {
+  if (method.startsWith('Input.')) {
+    return `${method} is disabled here: use the page tool instead — type inserts whole strings, ` +
+      'press_key sends key chords, click/click_at click, and scroll scrolls. One call replaces an event sequence.'
+  }
+  if (method === 'Page.captureScreenshot') {
+    return 'Page.captureScreenshot is disabled here: it returns base64 as text and bypasses the screenshot ' +
+      'budget. Use closedai_ui capture with action browser_page (or app_window) instead.'
+  }
+  return null
 }
 
 export type { CdpHostProvider, CdpToolHost } from './host.js'
