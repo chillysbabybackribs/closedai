@@ -26,7 +26,7 @@ function Tool({ toolPart, defaultOpen = false, className }: ToolProps) {
   const status = toolStatus(toolPart.state)
 
   return (
-    <div data-slot="tool" className={cn('prompt-tool overflow-hidden rounded-lg border border-border', className)}>
+    <div data-slot="tool" className={cn('prompt-tool overflow-hidden', className)}>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild disabled={!hasDetails}>
           <Button variant="ghost" className="prompt-tool-trigger h-auto w-full justify-between rounded-none px-3 py-2 font-normal">

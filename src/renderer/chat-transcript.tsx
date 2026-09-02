@@ -1,0 +1,224 @@
+import type { JSX } from 'react'
+import { useState } from 'react'
+import { Check, CheckCircle2, ChevronDown, CircleEllipsis, Copy, Loader2, XCircle } from 'lucide-react'
+
+import { Button } from '../components/ui/button.js'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible.js'
+import { Message, MessageAction, MessageActions, MessageContent } from '../components/ui/message.js'
+import { Reasoning, ReasoningContent, ReasoningTrigger } from '../components/ui/reasoning.js'
+import { Tool, type ToolPart } from '../components/ui/tool.js'
+import type { ChatTranscriptItem } from '../shared/chat.js'
+import { ChatScreenshot } from './chat-screenshot.js'
+
+type ActivityItem = Extract<ChatTranscriptItem, { type: 'command' | 'fileChange' | 'tool' }>
+
+export type TranscriptRow =
+  | { kind: 'item'; item: Exclude<ChatTranscriptItem, ActivityItem> }
+  | { kind: 'activity'; id: string; items: ActivityItem[] }
+
+export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {
+  const byTurn = new Map<string, ActivityItem[]>()
+  for (const item of items) {
+    if (!isActivity(item)) continue
+    const key = item.turnId ?? `item:${item.id}`
+    byTurn.set(key, [...(byTurn.get(key) ?? []), item])
+  }
+  const emitted = new Set<string>()
+  const rows: TranscriptRow[] = []
+  for (const item of items) {
+    if (!isActivity(item)) {
+      rows.push({ kind: 'item', item })
+      continue
+    }
+    const key = item.turnId ?? `item:${item.id}`
+    if (emitted.has(key)) continue
+    emitted.add(key)
+    rows.push({ kind: 'activity', id: key, items: byTurn.get(key) ?? [item] })
+  }
+  return rows
+}
+
+export function ChatTranscript({
+  items,
+  activeTurnId
+}: {
+  items: ChatTranscriptItem[]
+  activeTurnId: string | null
+}): JSX.Element {
+  return (
+    <>
+      {transcriptRows(items).map((row) => row.kind === 'activity'
+        ? <ToolActivity key={`activity:${row.id}`} items={row.items} />
+        : <TranscriptItem key={row.item.id} item={row.item} running={activeTurnId === row.item.turnId} />)}
+    </>
+  )
+}
+
+function TranscriptItem({
+  item,
+  running
+}: {
+  item: Exclude<ChatTranscriptItem, ActivityItem>
+  running: boolean
+}): JSX.Element | null {
+  if (item.type === 'user') {
+    return (
+      <Message className="prompt-message prompt-message-user">
+        <div className="prompt-message-user-stack">
+          {item.attachments?.length ? (
+            <div className="prompt-message-user-attachments">
+              {item.attachments.map((attachment) => (
+                <span key={attachment.id}>{attachment.kind === 'image' ? 'Image' : 'File'} · {attachment.name}</span>
+              ))}
+            </div>
+          ) : null}
+          {item.text && <MessageContent className="prompt-message-user-content">{item.text}</MessageContent>}
+        </div>
+      </Message>
+    )
+  }
+  if (item.type === 'assistant') {
+    if (!item.text) return null
+    return <AssistantMessage item={item} />
+  }
+  if (item.type === 'notice') {
+    return <div className="prompt-system-message" data-tone={item.tone} role={item.tone === 'error' ? 'alert' : 'status'}>{item.text}</div>
+  }
+  if (item.type === 'screenshot') return <ChatScreenshot item={item} />
+  return (
+    <Reasoning className="prompt-reasoning" isStreaming={running}>
+      <ReasoningTrigger className="prompt-reasoning-trigger">
+        {item.type === 'plan' ? 'Plan' : running ? 'Thinking…' : 'Reasoning'}
+      </ReasoningTrigger>
+      <ReasoningContent markdown className="prompt-reasoning-content" contentClassName="prompt-reasoning-copy prose prose-sm max-w-none dark:prose-invert">
+        {item.text}
+      </ReasoningContent>
+    </Reasoning>
+  )
+}
+
+function ToolActivity({ items }: { items: ActivityItem[] }): JSX.Element {
+  const [open, setOpen] = useState(false)
+  const state = activityState(items)
+  const status = statusPresentation(state)
+  const count = items.length
+  return (
+    <div className="prompt-tool-activity" data-state={state}>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            className="prompt-tool-activity-trigger"
+            aria-label={`${count} tool call${count === 1 ? '' : 's'}, ${status.label}`}
+          >
+            <status.Icon className={status.spin ? 'animate-spin' : undefined} aria-hidden="true" />
+            <span>{count} tool call{count === 1 ? '' : 's'}</span>
+            <em>{status.label}</em>
+            <ChevronDown className={open ? 'prompt-tool-activity-caret is-open' : 'prompt-tool-activity-caret'} aria-hidden="true" />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="prompt-tool-activity-content">
+          {items.map((item) => <Tool key={item.id} className="prompt-transcript-tool" toolPart={toolPart(item)} />)}
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  )
+}
+
+function AssistantMessage({ item }: { item: Extract<ChatTranscriptItem, { type: 'assistant' }> }): JSX.Element {
+  const [copied, setCopied] = useState(false)
+  async function copy(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(item.text)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1400)
+    } catch {
+      setCopied(false)
+    }
+  }
+  return (
+    <Message className="prompt-message prompt-message-assistant" data-phase={item.phase ?? 'unknown'}>
+      <div className="prompt-message-assistant-stack">
+        <MessageContent
+          markdown
+          className="prompt-message-assistant-content prose max-w-none prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-h4:text-base prose-h5:text-sm prose-h6:text-xs dark:prose-invert"
+        >
+          {item.text}
+        </MessageContent>
+        {!item.streaming && (
+          <MessageActions className="prompt-message-actions">
+            <MessageAction tooltip={copied ? 'Copied' : 'Copy response'}>
+              <Button type="button" variant="ghost" size="icon-xs" aria-label="Copy response" onClick={() => void copy()}>
+                {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+              </Button>
+            </MessageAction>
+          </MessageActions>
+        )}
+      </div>
+    </Message>
+  )
+}
+
+function toolPart(item: ActivityItem): ToolPart {
+  if (item.type === 'command') {
+    return {
+      type: item.command,
+      state: toolState(item.status, item.exitCode),
+      input: item.cwd ? { cwd: item.cwd } : undefined,
+      output: item.output ? { output: item.output, exitCode: item.exitCode } : undefined,
+      errorText: item.exitCode !== null && item.exitCode !== 0 ? `Command exited with code ${item.exitCode}` : undefined,
+      toolCallId: item.id
+    }
+  }
+  if (item.type === 'fileChange') {
+    return {
+      type: `${item.changes.length} file change${item.changes.length === 1 ? '' : 's'}`,
+      state: toolState(item.status, null),
+      input: { files: item.changes.map(({ path, kind }) => ({ path, kind })) },
+      output: item.changes.some((change) => change.diff)
+        ? { diffs: item.changes.filter((change) => change.diff).map(({ path, diff }) => ({ path, diff })) }
+        : undefined,
+      toolCallId: item.id
+    }
+  }
+  return {
+    type: item.label,
+    state: toolState(item.status, null),
+    input: item.detail ? { detail: item.detail } : undefined,
+    toolCallId: item.id
+  }
+}
+
+function isActivity(item: ChatTranscriptItem): item is ActivityItem {
+  return item.type === 'command' || item.type === 'fileChange' || item.type === 'tool'
+}
+
+function activityState(items: ActivityItem[]): ToolPart['state'] {
+  const states = items.map((item) => toolPart(item).state)
+  if (states.includes('input-streaming')) return 'input-streaming'
+  if (states.includes('output-error')) return 'output-error'
+  if (states.includes('input-available')) return 'input-available'
+  return 'output-available'
+}
+
+function statusPresentation(state: ToolPart['state']): {
+  Icon: typeof CircleEllipsis
+  label: string
+  spin?: boolean
+} {
+  switch (state) {
+    case 'input-streaming': return { Icon: Loader2, label: 'Running', spin: true }
+    case 'input-available': return { Icon: CircleEllipsis, label: 'Waiting' }
+    case 'output-error': return { Icon: XCircle, label: 'Failed' }
+    case 'output-available': return { Icon: CheckCircle2, label: 'Completed' }
+  }
+}
+
+function toolState(status: string, exitCode: number | null): ToolPart['state'] {
+  const normalized = status.toLowerCase()
+  if (normalized.includes('progress') || normalized.includes('running')) return 'input-streaming'
+  if (normalized.includes('fail') || normalized.includes('error') || (exitCode !== null && exitCode !== 0)) return 'output-error'
+  if (normalized.includes('pending') || normalized.includes('request')) return 'input-available'
+  return 'output-available'
+}
