@@ -53,7 +53,8 @@ export class ClaudeChatService extends EventEmitter {
     private readonly settings: AppSettingsAccess,
     private readonly tools: ToolRegistry = new ToolRegistry([]),
     private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
-    private readonly screenshots: Pick<ScreenshotStore, 'get'> | null = null
+    private readonly screenshots: Pick<ScreenshotStore, 'get'> | null = null,
+    private readonly paneId: string | null = null
   ) {
     super()
     this.transcript = new ChatTranscript(cwd, () => this.activeTurnId, (event) => this.emitEvent(event), (callId) => screenshots?.get(callId) ?? null)
@@ -213,6 +214,7 @@ export class ClaudeChatService extends EventEmitter {
       sdk,
       cwd: this.cwd,
       mcpServers: () => claudeMcpServers(sdk, this.tools, () => ({
+        paneId: this.paneId,
         threadId: this.session?.sessionId ? claudeThreadId(this.session.sessionId) : null,
         turnId: this.activeTurnId
       })),

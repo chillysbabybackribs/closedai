@@ -71,7 +71,8 @@ export class ChatService extends EventEmitter {
     private readonly tools: ToolRegistry = new ToolRegistry([]),
     private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
     screenshots: Pick<ScreenshotStore, 'get'> | null = null,
-    executable = process.env.CLOSEDAI_CODEX_PATH?.trim() || 'codex'
+    executable = process.env.CLOSEDAI_CODEX_PATH?.trim() || 'codex',
+    private readonly paneId: string | null = null
   ) {
     super()
     this.transcript = new ChatTranscript(
@@ -81,7 +82,7 @@ export class ChatService extends EventEmitter {
       (callId) => screenshots?.get(callId) ?? null
     )
     this.client = new AppServerClient(executable, cwd, () => appServerConfigArgs(this.settings.get()))
-    this.toolCalls = new AppServerToolCalls(this.tools, this.client)
+    this.toolCalls = new AppServerToolCalls(this.tools, this.client, this.paneId)
     this.compactor = new ContextCompactor({
       thresholdPercent: () => this.settings.get().chatCompactAtPercent,
       threadId: () => this.threadId,

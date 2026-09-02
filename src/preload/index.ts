@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { ClosedaiApi } from '../shared/api.js'
-import type { ChatEvent } from '../shared/chat.js'
+import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import type { ToolsEvent } from '../shared/tools.js'
 import type { BrowserBounds, BrowserDownload, BrowserState, BrowserTabInfo } from '../shared/types.js'
 
@@ -43,18 +43,19 @@ const api: ClosedaiApi = {
   },
   chat: {
     snapshot: () => ipcRenderer.invoke('chat:snapshot'),
-    send: (text, attachments) => ipcRenderer.invoke('chat:send', text, attachments),
+    send: (paneId, text, attachments) => ipcRenderer.invoke('chat:send', paneId, text, attachments),
     attachmentPath: (file) => webUtils.getPathForFile(file),
-    interrupt: () => ipcRenderer.invoke('chat:interrupt'),
-    selectModel: (modelId: string) => ipcRenderer.invoke('chat:selectModel', modelId),
-    selectReasoningEffort: (effort: string) => ipcRenderer.invoke('chat:selectReasoningEffort', effort),
+    interrupt: (paneId) => ipcRenderer.invoke('chat:interrupt', paneId),
+    selectPane: (paneId) => ipcRenderer.invoke('chat:selectPane', paneId),
+    selectModel: (paneId, modelId) => ipcRenderer.invoke('chat:selectModel', paneId, modelId),
+    selectReasoningEffort: (paneId, effort) => ipcRenderer.invoke('chat:selectReasoningEffort', paneId, effort),
     loginWithChatGPT: () => ipcRenderer.invoke('chat:login'),
     listThreads: () => ipcRenderer.invoke('chat:listThreads'),
-    newThread: () => ipcRenderer.invoke('chat:newThread'),
-    continueInNewThread: () => ipcRenderer.invoke('chat:continueInNewThread'),
-    openThread: (threadId: string) => ipcRenderer.invoke('chat:openThread', threadId),
+    newPeer: () => ipcRenderer.invoke('chat:newPeer'),
+    continueInNewPeer: (paneId) => ipcRenderer.invoke('chat:continueInNewPeer', paneId),
+    openThread: (paneId, threadId) => ipcRenderer.invoke('chat:openThread', paneId, threadId),
     archiveThread: (threadId: string) => ipcRenderer.invoke('chat:archiveThread', threadId),
-    onEvent: (listener) => subscribe<ChatEvent>('chat:event', listener)
+    onEvent: (listener) => subscribe<ChatWorkspaceEvent>('chat:event', listener)
   },
   tools: {
     manifest: () => ipcRenderer.invoke('tools:manifest'),

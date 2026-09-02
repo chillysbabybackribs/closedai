@@ -17,6 +17,8 @@ export type ToolResult = {
 }
 
 export type ToolContext = {
+  /** Chat pane that initiated the call. Absent for system/tests and older callers. */
+  paneId?: string | null
   threadId: string | null
   turnId: string | null
   callId: string

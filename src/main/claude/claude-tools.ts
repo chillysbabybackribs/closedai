@@ -12,7 +12,7 @@ import { zodShapeFromJsonSchema } from './claude-schema.js'
 // the handler's `extra._meta['claudecode/toolUseId']` carries the tool_use id, which the
 // transcript uses as the item id (and the screenshot store as its key).
 
-export type ClaudeToolContext = () => { threadId: string | null; turnId: string | null }
+export type ClaudeToolContext = () => { paneId?: string | null; threadId: string | null; turnId: string | null }
 
 /** MCP content blocks the SDK accepts back from a tool handler. */
 export type ClaudeToolContent =
@@ -35,10 +35,10 @@ export function claudeMcpServers(
       tool.description,
       zodShapeFromJsonSchema(tool.inputSchema).shape,
       async (args, extra) => {
-        const { threadId, turnId } = context()
+        const { paneId, threadId, turnId } = context()
         const result = await registry.call(
           { namespace: namespace.name, tool: tool.name, arguments: args },
-          { threadId, turnId, callId: toolUseIdOf(extra) ?? crypto.randomUUID() }
+          { paneId, threadId, turnId, callId: toolUseIdOf(extra) ?? crypto.randomUUID() }
         )
         return claudeToolResult(result)
       },

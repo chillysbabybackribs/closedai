@@ -54,7 +54,8 @@ export function toolCallResponse(result: ToolResult): DynamicToolCallResponse {
 export class AppServerToolCalls {
   constructor(
     private readonly registry: ToolRegistry,
-    private readonly client: Pick<AppServerClient, 'respond' | 'respondWithError'>
+    private readonly client: Pick<AppServerClient, 'respond' | 'respondWithError'>,
+    private readonly paneId: string | null = null
   ) {}
 
   /** Returns false when the request is not a tool call, so the caller can route it elsewhere. */
@@ -70,6 +71,7 @@ export class AppServerToolCalls {
       .call(
         { namespace: typeof params.namespace === 'string' ? params.namespace : null, tool, arguments: params.arguments },
         {
+          paneId: this.paneId,
           threadId: typeof params.threadId === 'string' ? params.threadId : null,
           turnId: typeof params.turnId === 'string' ? params.turnId : null,
           callId: typeof params.callId === 'string' ? params.callId : String(request.id)
