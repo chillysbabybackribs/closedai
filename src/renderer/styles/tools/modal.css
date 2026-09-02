@@ -100,17 +100,6 @@
 .tool-card-name { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
 .tool-card-namespace { color: var(--muted-foreground); font-weight: 500; }
 
-.tool-card-badge {
-  padding: 1px 7px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--muted-foreground);
-  font-size: 10.5px;
-  white-space: nowrap;
-}
-
-.tool-card-badge[data-tone='off'] { border-color: transparent; background: var(--accent); }
-
 .tool-card-usage {
   display: flex;
   flex-direction: column;

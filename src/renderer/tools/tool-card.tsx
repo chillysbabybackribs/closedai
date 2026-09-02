@@ -6,7 +6,6 @@ import type { ToolStats } from '../../shared/tools.js'
 export type ToolCardItem = {
   id: string
   name: string
-  badges: string[]
   enabled: boolean
   stat: ToolStats | null
 }
@@ -33,8 +32,6 @@ export function ToolCard({ item, onToggle }: ToolCardProps): JSX.Element {
         <div className="tool-card-main">
           <span className="tool-card-title">
             <span className="tool-card-name">{item.name}</span>
-            {item.badges.map((badge) => <span key={badge} className="tool-card-badge">{badge}</span>)}
-            {!item.enabled && <span className="tool-card-badge" data-tone="off">off</span>}
           </span>
         </div>
         <span className="tool-card-usage" aria-label="Usage">

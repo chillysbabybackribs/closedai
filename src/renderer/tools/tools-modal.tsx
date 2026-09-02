@@ -86,7 +86,6 @@ function cardItems(tool: ToolInfo, stats: ToolStats[]): ToolCardItem[] {
     return [{
       id: tool.id,
       name: tool.name,
-      badges: [tool.deferLoading ? 'deferred' : null].filter((badge): badge is string => badge !== null),
       enabled: tool.enabled,
       stat: stats.find((stat) => stat.toolId === tool.id && stat.action === null) ?? null
     }]
@@ -94,7 +93,6 @@ function cardItems(tool: ToolInfo, stats: ToolStats[]): ToolCardItem[] {
   return tool.actions.map((action) => ({
     id: action.id,
     name: action.name,
-    badges: [],
     enabled: action.enabled,
     stat: stats.find((stat) => stat.toolId === tool.id && stat.action === action.name) ?? null
   }))
