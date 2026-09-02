@@ -27,7 +27,10 @@ import { ToolTelemetry } from './tools/telemetry.js'
 import { registerToolsIpc } from './tools/ipc.js'
 import type { ToolsEvent } from '../shared/tools.js'
 import { registerChatIpc } from './chat-ipc.js'
+import { OperationsService } from './operations-service.js'
+import { registerOperationsIpc } from './operations-ipc.js'
 import type { ChatEvent } from '../shared/chat.js'
+import type { OperationsEvent } from '../shared/operations.js'
 import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../shared/types.js'
 
 // Chromium switches must land before `ready`. Owner decision: the Linux sandbox flags stay
@@ -48,6 +51,7 @@ let browserHistory: BrowserHistoryStore | null = null
 let browserTabSession: BrowserTabSessionStore | null = null
 let settings: AppSettingsStore | null = null
 let chatService: ChatService | null = null
+let operationsService: OperationsService | null = null
 let toolRegistry: ToolRegistry | null = null
 let toolTelemetry: ToolTelemetry | null = null
 let browserSessionFlush: Promise<void> | null = null
@@ -95,6 +99,10 @@ async function main(): Promise<void> {
       isLoading: active.isLoading
     }
   }, screenshots)
+  operationsService = await OperationsService.open(
+    join(userData(), 'operations-runs.json'),
+    async () => ({ models: await requireChatService().listModels(), selectedModel: requireChatService().snapshot().selectedModel })
+  )
   registerIpc()
   // The one-shot cookie import runs before the first tab loads, so a restored or home page
   // arrives already signed in rather than racing the import.
@@ -121,6 +129,7 @@ function createWindow(): void {
     mainWindow?.webContents.send('browserDownloads:changed', downloads)
   )
   chatService?.on('event', (event: ChatEvent) => mainWindow?.webContents.send('chat:event', event))
+  operationsService?.on('changed', (event: OperationsEvent) => mainWindow?.webContents.send('operations:changed', event))
   const sendToolsEvent = (event: ToolsEvent): void => { mainWindow?.webContents.send('tools:event', event) }
   toolTelemetry?.on('record', (record) => sendToolsEvent({ type: 'call', record }))
   toolTelemetry?.on('cleared', () => sendToolsEvent({ type: 'cleared' }))
@@ -157,6 +166,7 @@ function registerIpc(): void {
   registerBrowserCoreIpc(ipcMain, () => browserService)
   registerBrowserDownloadsIpc(ipcMain, () => browserDownloads)
   registerChatIpc(ipcMain, () => chatService)
+  registerOperationsIpc(ipcMain, () => operationsService)
   registerToolsIpc(ipcMain, {
     registry: () => toolRegistry,
     telemetry: () => toolTelemetry,
@@ -166,6 +176,11 @@ function registerIpc(): void {
       mainWindow?.webContents.send('tools:event', { type: 'enabled', toolId, enabled } satisfies ToolsEvent)
     }
   })
+}
+
+function requireChatService(): ChatService {
+  if (!chatService) throw new Error('Chat service is not available')
+  return chatService
 }
 
 // One-shot clone of the user's real browser session (cookies) into persist:browser, so the

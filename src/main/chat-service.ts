@@ -109,6 +109,11 @@ export class ChatService extends EventEmitter {
     }
   }
 
+  async listModels(): Promise<ChatModel[]> {
+    await this.ensureConnected()
+    return this.models.map((model) => ({ ...model }))
+  }
+
   start(): Promise<void> {
     if (this.startPromise) return this.startPromise
     if (this.restartTimer) clearTimeout(this.restartTimer)
@@ -429,4 +434,3 @@ export class ChatService extends EventEmitter {
     }, delay)
   }
 }
-
