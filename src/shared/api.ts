@@ -52,6 +52,8 @@ export type ClosedaiApi = {
     listThreads: () => Promise<ChatThreadSummary[]>
     /** Clear the pane; the next message starts a fresh app-server thread. */
     newPeer: () => Promise<ChatPaneId>
+    /** Retire an open peer pane from the active workspace shelf back to history. */
+    closePeer: (paneId: ChatPaneId) => Promise<void>
     /** Clear the pane; the next message starts a fresh thread carrying a digest of this one. */
     continueInNewPeer: (paneId: ChatPaneId) => Promise<ChatPaneId>
     openThread: (paneId: ChatPaneId, threadId: string) => Promise<void>

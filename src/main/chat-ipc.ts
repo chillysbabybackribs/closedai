@@ -21,6 +21,7 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   )
   ipcMain.handle('chat:listThreads', () => requireService().listThreads())
   ipcMain.handle('chat:newPeer', () => requireService().newPeer())
+  ipcMain.handle('chat:closePeer', (_event, paneId: string) => requireService().closePeer(paneId))
   ipcMain.handle('chat:continueInNewPeer', (_event, paneId: string) => requireService().continueInNewPeer(paneId))
   ipcMain.handle('chat:openThread', (_event, paneId: string, threadId: string) => requireService().openThread(paneId, threadId))
   ipcMain.handle('chat:archiveThread', (_event, threadId: string) => requireService().archiveThread(threadId))

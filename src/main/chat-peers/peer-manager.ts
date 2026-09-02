@@ -25,6 +25,7 @@ export interface ChatWorkspaceSurface {
   selectReasoningEffort(paneId: ChatPaneId, effort: string): Promise<void>
   listThreads(): Promise<ChatThreadSummary[]>
   newPeer(): Promise<ChatPaneId>
+  closePeer(paneId: ChatPaneId): Promise<void>
   continueInNewPeer(paneId: ChatPaneId): Promise<ChatPaneId>
   openThread(paneId: ChatPaneId, threadId: string): Promise<void>
   archiveThread(threadId: string): Promise<void>
@@ -123,6 +124,29 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.emitWorkspace()
     void entry.surface.start()
     return record.paneId
+  }
+
+  async closePeer(paneId: ChatPaneId): Promise<void> {
+    const entry = this.peers.get(paneId)
+    if (!entry) return
+    entry.surface.stop()
+    this.peers.delete(paneId)
+    const settings = this.settings.get()
+    const remaining = settings.chatPeers.filter((record) => record.paneId !== paneId)
+    if (remaining.length === 0) {
+      const fresh = freshRecord(null, null)
+      remaining.push(fresh)
+      this.attach(fresh)
+      this.selectedPaneId = fresh.paneId
+      void this.requirePeer(fresh.paneId).surface.start()
+    } else if (this.selectedPaneId === paneId) {
+      this.selectedPaneId = remaining[0]!.paneId
+    }
+    await this.settings.set({
+      chatPeers: remaining,
+      chatSelectedPaneId: this.selectedPaneId
+    })
+    this.emitWorkspace()
   }
 
   async continueInNewPeer(paneId: ChatPaneId): Promise<ChatPaneId> {

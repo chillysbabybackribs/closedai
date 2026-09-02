@@ -94,7 +94,11 @@ export function ChatPane(): JSX.Element {
         </TranscriptScroller>
       )}
       <div className="chat-composer-stack">
-        <PeerChatCards peers={backgroundPeers} onSelect={(paneId) => void chat.selectPane(paneId)} />
+        <PeerChatCards
+          peers={backgroundPeers}
+          onSelect={(paneId) => void chat.selectPane(paneId)}
+          onClose={(paneId) => void chat.closePeer(paneId)}
+        />
         <Composer
           enabled={ready}
           running={running}

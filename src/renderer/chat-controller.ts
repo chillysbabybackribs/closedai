@@ -18,6 +18,7 @@ export type ChatController = {
   openThread: (threadId: string) => Promise<void>
   archiveThread: (threadId: string) => Promise<void>
   selectPane: (paneId: string) => Promise<void>
+  closePeer: (paneId: string) => Promise<void>
 }
 
 export function useChatController(): ChatController {
@@ -63,6 +64,7 @@ export function useChatController(): ChatController {
   const openThread = useCallback((threadId: string) => window.closedai.chat.openThread(paneId, threadId), [paneId])
   const archiveThread = useCallback((threadId: string) => window.closedai.chat.archiveThread(threadId), [])
   const selectPane = useCallback((nextPaneId: string) => window.closedai.chat.selectPane(nextPaneId), [])
+  const closePeer = useCallback((targetPaneId: string) => window.closedai.chat.closePeer(targetPaneId), [])
 
   return {
     state: workspace.selected,
@@ -78,6 +80,7 @@ export function useChatController(): ChatController {
     continueInNewThread,
     openThread,
     archiveThread,
-    selectPane
+    selectPane,
+    closePeer
   }
 }
