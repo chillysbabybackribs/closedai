@@ -5,8 +5,7 @@ import {
   activityClusters,
   activityHeadline,
   commandTitle,
-  transcriptRows,
-  visibleTranscriptRows
+  transcriptRows
 } from './transcript-rows.ts'
 
 const command = (
@@ -86,58 +85,30 @@ test('tool activity never consolidates across a visible turn break', () => {
   assert.deepEqual(rows.map((row) => row.kind), ['activity', 'item', 'activity'])
 })
 
-test('consecutive reasoning in a turn hoists to one thinking slot before the answer', () => {
+test('reasoning and plan items produce no rows and do not split activity', () => {
   const items: ChatTranscriptItem[] = [
     { type: 'user', id: 'u1', turnId: 'turn-a', text: 'Go' },
     { type: 'reasoning', id: 'r1', turnId: 'turn-a', text: 'First thought', streaming: true },
-    {
-      type: 'assistant', id: 'a1', turnId: 'turn-a', text: 'Progress update',
-      phase: 'commentary', streaming: false
-    },
-    { type: 'reasoning', id: 'r2', turnId: 'turn-a', text: 'Second thought', streaming: false },
-    { type: 'plan', id: 'p1', turnId: 'turn-a', text: 'Implementation plan', streaming: false }
+    command('c1', 'turn-a', 'ls'),
+    { type: 'plan', id: 'p1', turnId: 'turn-a', text: 'Implementation plan', streaming: false },
+    command('c2', 'turn-a', 'pwd'),
+    { type: 'assistant', id: 'a1', turnId: 'turn-a', text: 'Done', phase: 'final_answer', streaming: false }
   ]
-  const rows = visibleTranscriptRows(items, 'turn-a')
-  assert.deepEqual(rows.map((row) => row.kind), ['item', 'reasoning', 'item'])
-  assert.equal(rows[1]?.kind === 'reasoning' && rows[1].items.map((item) => item.id).join(','), 'r1,r2,p1')
+  const rows = transcriptRows(items)
+  assert.deepEqual(rows.map((row) => row.kind), ['item', 'activity', 'item'])
+  assert.deepEqual(
+    rows[1]?.kind === 'activity' ? rows[1].items.map((item) => item.id) : [],
+    ['c1', 'c2']
+  )
 })
 
-test('an active turn with only the user prompt shows a pending thinking row', () => {
-  const items: ChatTranscriptItem[] = [{ type: 'user', id: 'u1', turnId: 't1', text: 'Hello' }]
-  const rows = visibleTranscriptRows(items, 't1')
-  assert.deepEqual(rows.map((row) => row.kind), ['item', 'reasoning'])
-  assert.equal(rows[1]?.kind === 'reasoning' && rows[1].items.length, 0)
-  assert.equal(visibleTranscriptRows(items, null).length, 1)
-})
-
-test('thinking stays pinned after the user while tools and answers stream', () => {
-  const emptyAnswer: ChatTranscriptItem[] = [
+test('a turn carrying nothing but reasoning renders only the user prompt', () => {
+  const items: ChatTranscriptItem[] = [
     { type: 'user', id: 'u1', turnId: 't1', text: 'Hello' },
+    { type: 'reasoning', id: 'r1', turnId: 't1', text: 'Thinking it over', streaming: true },
     { type: 'assistant', id: 'a1', turnId: 't1', text: '', phase: null, streaming: true }
   ]
-  assert.deepEqual(visibleTranscriptRows(emptyAnswer, 't1').map((row) => row.kind), ['item', 'reasoning'])
-
-  const withThought: ChatTranscriptItem[] = [
-    { type: 'user', id: 'u1', turnId: 't1', text: 'Hello' },
-    { type: 'reasoning', id: 'r1', turnId: 't1', text: 'Plan', streaming: true },
-    command('c1', 't1', 'ls'),
-    { type: 'assistant', id: 'a1', turnId: 't1', text: 'Done', phase: 'final_answer', streaming: false }
-  ]
-  assert.deepEqual(visibleTranscriptRows(withThought, 't1').map((row) => row.kind), [
-    'item', 'reasoning', 'activity', 'item'
-  ])
-
-  const withTool: ChatTranscriptItem[] = [
-    { type: 'user', id: 'u1', turnId: 't1', text: 'Hello' },
-    command('c1', 't1', 'ls')
-  ]
-  assert.deepEqual(visibleTranscriptRows(withTool, 't1').map((row) => row.kind), ['item', 'reasoning', 'activity'])
-
-  const orphanTool: ChatTranscriptItem[] = [
-    { type: 'user', id: 'u1', turnId: 't1', text: 'Hello' },
-    command('c1', null, 'ls')
-  ]
-  assert.deepEqual(visibleTranscriptRows(orphanTool, 't1').map((row) => row.kind), ['item', 'reasoning', 'activity'])
+  assert.deepEqual(transcriptRows(items).map((row) => row.kind), ['item'])
 })
 
 test('command titles unwrap bash -lc and truncate the working command', () => {

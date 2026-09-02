@@ -9,7 +9,6 @@ export type StandaloneItem = Exclude<ChatTranscriptItem, ActivityItem | Reasonin
 export type TranscriptRow =
   | { kind: 'item'; item: StandaloneItem }
   | { kind: 'activity'; id: string; items: ActivityItem[] }
-  | { kind: 'reasoning'; id: string; items: ReasoningItem[] }
 
 export type ActivityCluster = {
   id: string
@@ -21,6 +20,12 @@ export function isActivity(item: ChatTranscriptItem): item is ActivityItem {
   return item.type === 'command' || item.type === 'fileChange' || item.type === 'tool'
 }
 
+/**
+ * Reasoning and plan items are dropped from the transcript entirely: the chat
+ * shows what the model did and what it answered, never its thinking. This
+ * predicate exists to exclude them, which is also why ReasoningItem is carved
+ * out of StandaloneItem — no row kind renders one.
+ */
 export function isReasoning(item: ChatTranscriptItem): item is ReasoningItem {
   return item.type === 'plan' || item.type === 'reasoning'
 }
@@ -42,65 +47,8 @@ export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {
   return rows
 }
 
-/**
- * One thinking slot per turn, pinned after the user prompt, so it does not
- * mount/unmount as tools and answers stream in.
- */
-export function visibleTranscriptRows(
-  items: ChatTranscriptItem[],
-  activeTurnId: string | null
-): TranscriptRow[] {
-  const reasoning = new Map<string, ReasoningItem[]>()
-  for (const item of items) {
-    if (!isReasoning(item) || (!item.text && !item.streaming)) continue
-    const key = turnKey(item.turnId, activeTurnId) ?? `item:${item.id}`
-    const group = reasoning.get(key) ?? []
-    group.push(item)
-    reasoning.set(key, group)
-  }
-
-  const rows: TranscriptRow[] = []
-  const placed = new Set<string>()
-
-  const placeThought = (turnId: string | null): void => {
-    const key = turnKey(turnId, activeTurnId)
-    if (!key || placed.has(key)) return
-    placed.add(key)
-    const grouped = reasoning.get(key) ?? []
-    if (grouped.length || key === activeTurnId) {
-      rows.push({ kind: 'reasoning', id: key, items: grouped })
-    }
-  }
-
-  for (const item of items) {
-    if (isReasoning(item) || !rowVisible(item)) continue
-    if (item.type === 'user') {
-      rows.push({ kind: 'item', item })
-      placeThought(item.turnId)
-      continue
-    }
-    placeThought(item.turnId)
-    if (isActivity(item)) {
-      const key = clusterKey(item)
-      const last = rows.at(-1)
-      if (last?.kind === 'activity' && last.id === key) last.items.push(item)
-      else rows.push({ kind: 'activity', id: key, items: [item] })
-      continue
-    }
-    rows.push({ kind: 'item', item })
-  }
-
-  if (activeTurnId) placeThought(activeTurnId)
-  return rows
-}
-
-function turnKey(turnId: string | null, activeTurnId: string | null): string | null {
-  return turnId || activeTurnId
-}
-
 function rowVisible(item: ChatTranscriptItem): boolean {
   if (isActivity(item)) return true
-  if (isReasoning(item)) return Boolean(item.text) || item.streaming
   if (item.type === 'assistant') return Boolean(item.text)
   if (item.type === 'user') return Boolean(item.text) || Boolean(item.attachments?.length)
   return true

@@ -8,8 +8,6 @@ import { Markdown } from '../components/ui/markdown.js'
 import { Marker, MarkerContent } from '../components/ui/marker.js'
 import { Message, MessageContent } from '../components/ui/message.js'
 import { MessageScrollerItem } from '../components/ui/message-scroller.js'
-import { Reasoning, ReasoningContent, ReasoningTrigger } from '../components/ui/reasoning.js'
-import { TextShimmer } from '../components/ui/text-shimmer.js'
 import { Tool } from '../components/ui/tool.js'
 import type { ChatTranscriptItem } from '../shared/chat.js'
 import { ChatScreenshot } from './chat-screenshot.js'
@@ -19,20 +17,17 @@ import {
   activityHeadline,
   activityState,
   clusterToolPart,
+  transcriptRows,
   type ActivityItem,
-  type ReasoningItem,
-  type StandaloneItem,
-  visibleTranscriptRows
+  type StandaloneItem
 } from './transcript-rows.js'
 
 export const ChatTranscript = memo(function ChatTranscript({
-  items,
-  activeTurnId
+  items
 }: {
   items: ChatTranscriptItem[]
-  activeTurnId: string | null
 }): JSX.Element {
-  const rows = useMemo(() => visibleTranscriptRows(items, activeTurnId), [items, activeTurnId])
+  const rows = useMemo(() => transcriptRows(items), [items])
   return (
     <>
       {rows.map((row) => {
@@ -41,13 +36,6 @@ export const ChatTranscript = memo(function ChatTranscript({
           return (
             <MessageScrollerItem key={id} messageId={id}>
               <ToolActivity items={row.items} />
-            </MessageScrollerItem>
-          )
-        }
-        if (row.kind === 'reasoning') {
-          return (
-            <MessageScrollerItem key={`reasoning:${row.id}`} messageId={`reasoning:${row.id}`}>
-              <ThinkingLine items={row.items} active={row.id === activeTurnId} />
             </MessageScrollerItem>
           )
         }
@@ -111,36 +99,6 @@ const TranscriptItem = memo(function TranscriptItem({
   if (item.type === 'screenshot') return <ChatScreenshot item={item} />
   return null
 })
-
-const ThinkingLine = memo(function ThinkingLine({ items, active }: { items: ReasoningItem[]; active: boolean }): JSX.Element | null {
-  const streaming = active && (items.length === 0 || items.some((item) => item.streaming))
-  const text = items.map((item) => item.text).filter(Boolean).join('\n\n')
-  const label = streaming ? 'Thinking' : items.length && items.every((item) => item.type === 'plan') ? 'Plan' : 'Thought'
-  if (!text && !streaming) return null
-  if (streaming && !text) {
-    return (
-      <Marker role="status" className="prompt-reasoning">
-        <MarkerContent>
-          <TextShimmer as="span" className="prompt-reasoning-label">Thinking</TextShimmer>
-        </MarkerContent>
-      </Marker>
-    )
-  }
-  return (
-    <Reasoning className="prompt-reasoning">
-      <ReasoningTrigger className="prompt-reasoning-trigger" aria-label={label}>
-        {streaming
-          ? <TextShimmer as="span" className="prompt-reasoning-label">Thinking</TextShimmer>
-          : <span className="prompt-reasoning-label">{label}</span>}
-      </ReasoningTrigger>
-      {text ? (
-        <ReasoningContent markdown className="prompt-reasoning-content" contentClassName="prompt-reasoning-copy prose prose-sm max-w-none dark:prose-invert">
-          {text}
-        </ReasoningContent>
-      ) : null}
-    </Reasoning>
-  )
-}, (previous, next) => previous.active === next.active && sameGroup(previous, next))
 
 const ToolActivity = memo(function ToolActivity({ items }: { items: ActivityItem[] }): JSX.Element {
   const [open, setOpen] = useState(false)

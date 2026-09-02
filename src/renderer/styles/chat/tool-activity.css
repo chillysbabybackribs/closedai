@@ -1,22 +1,14 @@
-/* Thinking and tool batches share one process-line language, and it is now a
-   chip on the transcript's darkest surface rather than a line of grey text.
-   Both are machine chrome standing beside the answer, so neither may read as
-   body prose — which is exactly what mid-grey text at the transcript's process
-   size was doing. Details still only on demand. */
+/* A tool batch is machine chrome standing beside the answer, so it must not
+   read as body prose — which is exactly what mid-grey text at the transcript's
+   process size was doing. It is a chip on the transcript's darkest surface,
+   with details only on demand. */
 
-.prompt-reasoning,
 .prompt-tool-activity {
   width: 100%;
   min-width: 0;
   color: var(--transcript-activity);
 }
 
-/* The streaming "Thinking" state is a Marker, not a button, so the chip lands
-   on its content span. It must not land on .prompt-reasoning-label itself:
-   that element carries the shimmer, which paints through background-clip:text
-   and would be erased by a background of its own. */
-.prompt-reasoning-trigger,
-.prompt-reasoning [data-slot='marker-content'],
 .prompt-tool-activity-trigger {
   display: inline-flex;
   width: fit-content;
@@ -35,16 +27,13 @@
   font-size: var(--chat-fs-process, 18px);
   font-weight: 500;
   line-height: 1.4;
+  cursor: pointer;
   transition:
     color 120ms var(--ease-chrome),
     background 120ms var(--ease-chrome),
     border-color 120ms var(--ease-chrome);
 }
 
-.prompt-tool-activity-trigger { cursor: pointer; }
-
-.prompt-reasoning-trigger:hover,
-.prompt-reasoning-trigger[aria-expanded='true'],
 .prompt-tool-activity-trigger:hover,
 .prompt-tool-activity-trigger[aria-expanded='true'] {
   border-color: var(--hairline-strong);
@@ -52,23 +41,6 @@
   color: var(--transcript-activity-hover);
 }
 
-/* Expanded reasoning extends the same dark panel the tool batch opens into. */
-.prompt-reasoning-content {
-  margin: 6px 0 2px;
-  padding: 11px 13px;
-  border: 1px solid var(--tool-edge);
-  border-radius: 10px;
-  background: var(--tool-surface);
-}
-
-.prompt-reasoning-copy {
-  color: var(--transcript-secondary);
-  font-size: var(--chat-fs-process, 18px);
-  line-height: 1.6;
-}
-
-.chat-scroll-content > [data-slot='message-scroller-item']:has(.prompt-reasoning)
-  + [data-slot='message-scroller-item']:has(.prompt-tool-activity),
 .chat-scroll-content > [data-slot='message-scroller-item']:has(.prompt-tool-activity)
   + [data-slot='message-scroller-item']:has(.prompt-tool-activity) {
   margin-top: 2px;

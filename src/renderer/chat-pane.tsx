@@ -79,7 +79,7 @@ export function ChatPane(): JSX.Element {
         <TranscriptScroller threadId={state.threadId}>
           {state.items.length === 0
             ? <EmptyState state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
-            : <ChatTranscript items={state.items} activeTurnId={state.activeTurnId} />}
+            : <ChatTranscript items={state.items} />}
         </TranscriptScroller>
       )}
       <Composer
