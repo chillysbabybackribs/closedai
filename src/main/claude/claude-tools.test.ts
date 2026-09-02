@@ -3,7 +3,7 @@ import test from 'node:test'
 import { z } from 'zod'
 import { createToolRegistry } from '../tools/index.js'
 import { defineTool, textResult } from '../tools/tool.js'
-import type { ToolCallRecord } from '../../shared/tools.js'
+import type { ToolCallEvent } from '../../shared/tools.js'
 import { claudeMcpServers, claudeToolResult, toolUseIdOf } from './claude-tools.js'
 
 type Registered = {
@@ -70,21 +70,19 @@ test('disabled tools are not advertised', () => {
   assert.deepEqual(servers[0]!.tools.map((tool) => tool.name), ['page'])
 })
 
-test('a call runs through the registry with the SDK tool_use id as its call id', async () => {
+test('a call runs through the registry and emits aggregate-only telemetry', async () => {
   const { sdk, servers } = fakeSdk()
   const tools = registry()
-  const records: ToolCallRecord[] = []
+  const records: ToolCallEvent[] = []
   tools.subscribe((record) => records.push(record))
   claudeMcpServers(sdk, tools, () => ({ threadId: 'claude:s1', turnId: 'turn-9' }))
   const page = servers[0]!.tools[0]!
   const result = await page.handler({ action: 'read', echo: 'x' }, { _meta: { 'claudecode/toolUseId': 'toolu_42' } }) as { content: unknown[]; isError?: boolean }
   assert.deepEqual(result, { content: [{ type: 'text', text: 'read:x' }, { type: 'image', data: 'QUJD', mimeType: 'image/png' }] })
-  assert.equal(records[0]!.callId, 'toolu_42')
-  assert.equal(records[0]!.threadId, 'claude:s1')
-  assert.equal(records[0]!.turnId, 'turn-9')
+  assert.deepEqual(records[0], { toolId: 'embedded_browser.page', action: 'read', ok: true })
   const failed = await page.handler({ action: 'read', echo: 'fail' }, {}) as { isError?: boolean }
   assert.equal(failed.isError, true)
-  assert.match(records[1]!.callId, /^[0-9a-f-]{36}$/)
+  assert.deepEqual(records[1], { toolId: 'embedded_browser.page', action: 'read', ok: false })
 })
 
 test('invalid arguments come back as a tool error the model can read', async () => {
