@@ -118,7 +118,11 @@ export function TranscriptAttachments({
   return (
     <AttachmentGroup className="prompt-message-user-attachments" aria-label="Attachments">
       {attachments.map((attachment) => (
-        <AttachmentCard key={attachment.id} attachment={attachment} />
+        <AttachmentCard
+          key={attachment.id}
+          attachment={attachment}
+          className={attachment.kind === 'image' ? 'prompt-image-attachment' : undefined}
+        />
       ))}
     </AttachmentGroup>
   )
@@ -126,14 +130,16 @@ export function TranscriptAttachments({
 
 function AttachmentCard({
   attachment,
-  onRemove
+  onRemove,
+  className
 }: {
   attachment: ChatAttachmentSummary
   onRemove?: () => void
+  className?: string
 }): JSX.Element {
   const preview = imagePreview(attachment)
   return (
-    <Attachment size="sm">
+    <Attachment size="sm" className={className}>
       <AttachmentMedia variant={preview ? 'image' : 'icon'}>
         {preview
           ? <img src={preview} alt="" />

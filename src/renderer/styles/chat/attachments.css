@@ -107,6 +107,10 @@
   margin-bottom: 6px;
 }
 
+.prompt-message-user-attachments [data-slot='attachment'].prompt-image-attachment {
+  border: 0;
+}
+
 .prompt-message-user-attachments > span {
   max-width: 220px;
   padding: 3px 7px;
