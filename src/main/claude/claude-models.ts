@@ -1,5 +1,6 @@
 import type { ChatModel, ChatReasoningEffort } from '../../shared/chat.js'
 import type { ModelInfo } from '@anthropic-ai/claude-agent-sdk'
+import { reasoningEffortForModel, type ChatModelCatalog } from '../chat-model-catalog.js'
 import { claudeModelId } from './claude-ids.js'
 
 // The Claude catalog is read live from the CLI (`Query.supportedModels()`), never hardcoded:
@@ -46,6 +47,19 @@ function effortOptions(info: ModelInfo): ChatReasoningEffort[] {
   if (info.supportsEffort === false) return []
   const levels = info.supportedEffortLevels ?? []
   return levels.map((level) => ({ reasoningEffort: level, description: EFFORT_DESCRIPTIONS[level] ?? '' }))
+}
+
+/** The catalog with the saved preference applied, in the shape ChatModelState loads. */
+export function claudeModelCatalog(
+  infos: readonly ModelInfo[],
+  preferredModel: string | null,
+  preferredEffort: string | null
+): ChatModelCatalog {
+  const models = claudeModelsFromInfo(infos)
+  const selectedModel = models.some((model) => model.id === preferredModel)
+    ? preferredModel
+    : models.find((model) => model.isDefault)?.id ?? models[0]?.id ?? null
+  return { models, selectedModel, selectedReasoningEffort: reasoningEffortForModel(models, selectedModel, preferredEffort) }
 }
 
 /** Whether a catalog model accepts the adaptive-thinking request option. */

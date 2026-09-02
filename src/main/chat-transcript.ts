@@ -63,6 +63,15 @@ export class ChatTranscript {
     }
   }
 
+  /** Replace every item without emitting; the caller follows with a snapshot replace. */
+  replaceItems(items: ChatTranscriptItem[]): void {
+    this.clear()
+    for (const item of items) {
+      if (!this.items.has(item.id)) this.order.push(item.id)
+      this.items.set(item.id, cloneItem(item))
+    }
+  }
+
   upsert(item: ChatTranscriptItem): void {
     if (!this.items.has(item.id)) this.order.push(item.id)
     this.items.set(item.id, item)

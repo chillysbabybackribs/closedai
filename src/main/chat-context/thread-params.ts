@@ -26,23 +26,27 @@ function sharedThreadParams(cwd: string, tools: ToolRegistry): Record<string, un
 export function resumeThreadParams(
   threadId: string,
   cwd: string,
-  tools: ToolRegistry
+  tools: ToolRegistry,
+  effort: string | null = null
 ): Record<string, unknown> {
   return {
     threadId,
     ...sharedThreadParams(cwd, tools),
-    excludeTurns: false
+    excludeTurns: false,
+    ...(effort ? { config: { model_reasoning_effort: effort } } : {})
   }
 }
 
 export function startThreadParams(
   cwd: string,
   tools: ToolRegistry,
-  model: string | null
+  model: string | null,
+  effort: string | null = null
 ): Record<string, unknown> {
   return {
     ...sharedThreadParams(cwd, tools),
     serviceName: 'closedai',
-    ...(model ? { model } : {})
+    ...(model ? { model } : {}),
+    ...(effort ? { config: { model_reasoning_effort: effort } } : {})
   }
 }

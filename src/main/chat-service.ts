@@ -313,7 +313,7 @@ export class ChatService extends EventEmitter {
   private async resumeThread(threadId: string): Promise<void> {
     const response = await this.client.request<ThreadResponse>(
       'thread/resume',
-      resumeThreadParams(threadId, this.cwd, this.tools)
+      resumeThreadParams(threadId, this.cwd, this.tools, this.modelState.selectedReasoningEffort)
     )
     const thread = recordOf(response.thread)
     if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')
@@ -351,7 +351,7 @@ export class ChatService extends EventEmitter {
     if (this.threadId) return this.threadId
     const response = await this.client.request<ThreadResponse>(
       'thread/start',
-      startThreadParams(this.cwd, this.tools, this.modelState.selectedModel)
+      startThreadParams(this.cwd, this.tools, this.modelState.selectedModel, this.modelState.selectedReasoningEffort)
     )
     const thread = recordOf(response.thread)
     if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')
