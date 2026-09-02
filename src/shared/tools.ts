@@ -80,6 +80,7 @@ export type ToolRegistration = {
   namespace: string
   name: string
   actions: string[]
+  source: 'app' | 'external'
   firstSeenAt: number
   lastSeenAt: number
 }

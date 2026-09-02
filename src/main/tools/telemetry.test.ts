@@ -65,9 +65,10 @@ test('telemetry keeps a durable call total and records new tool definitions', as
       { toolId: 'beta.echo', namespace: 'beta', name: 'echo', actions: [] }
     ])
     telemetry.record(record({ id: 'first' }))
-    telemetry.record(record({ id: 'second' }))
+    telemetry.recordExternal(record({ id: 'second', source: 'model' }))
     assert.equal(telemetry.snapshot().totalCalls, 2)
     assert.deepEqual(telemetry.snapshot().recent.map((entry) => entry.id), ['second'])
+    assert.equal(telemetry.snapshot().recent[0]?.source, 'external')
     assert.deepEqual(telemetry.snapshot().registeredTools.map((tool) => tool.toolId), ['alpha.lookup', 'beta.echo'])
     await telemetry.clear()
     const reopened = await ToolTelemetry.open(file, 1)

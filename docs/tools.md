@@ -179,7 +179,9 @@ The modal shows per-tool calls, failures, average time, last call, and recent ca
 arguments and output; it updates live while open. "Clear telemetry" clears call history and
 totals while retaining the observed tool catalog. This app-level telemetry does not automatically
 include host orchestration calls that never enter `ToolRegistry` (for example shell or patch
-operations); those require a host-side telemetry adapter.
+operations); those require a host-side telemetry adapter, which can call
+`ToolTelemetry.recordExternal` and `observeTools(definitions, 'external')` to use the same
+durable stream and catalog.
 
 Telemetry is best-effort. Subscribers must not break tool calls, and the registry swallows
 subscriber errors after the model-visible result is produced.

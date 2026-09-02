@@ -13,6 +13,13 @@ type ToolRegistrationEvent = {
   tool: ToolRegistration
 }
 
+type ToolDefinitionInput = {
+  toolId: string
+  namespace: string
+  name: string
+  actions: string[]
+}
+
 export class ToolTelemetry extends EventEmitter {
   private records: ToolCallRecord[]
   private readonly tools: Map<string, ToolRegistration>
@@ -48,7 +55,7 @@ export class ToolTelemetry extends EventEmitter {
         try {
           const parsed: unknown = JSON.parse(line)
           if (isToolRegistrationEvent(parsed)) {
-            tools.set(parsed.tool.toolId, parsed.tool)
+            tools.set(parsed.tool.toolId, { ...parsed.tool, source: parsed.tool.source ?? 'app' })
           } else if (isRecord(parsed)) {
             totalCalls += 1
             records.push(parsed)
@@ -73,8 +80,13 @@ export class ToolTelemetry extends EventEmitter {
     if (this.filePath) this.enqueue(() => appendFile(this.filePath!, `${JSON.stringify(record)}\n`))
   }
 
+  /** Adapter boundary for host tools that do not execute through ToolRegistry. */
+  recordExternal(record: ToolCallRecord): void {
+    this.record({ ...record, source: 'external' })
+  }
+
   /** Register every tool/action definition currently offered by the registry. */
-  observeTools(definitions: Array<{ toolId: string; namespace: string; name: string; actions: string[] }>): void {
+  observeTools(definitions: ToolDefinitionInput[], source: ToolRegistration['source'] = 'app'): void {
     for (const definition of definitions) {
       const current = this.tools.get(definition.toolId)
       if (current && current.namespace === definition.namespace && current.name === definition.name && sameStrings(current.actions, definition.actions)) continue
@@ -82,6 +94,7 @@ export class ToolTelemetry extends EventEmitter {
       const registration: ToolRegistration = {
         ...definition,
         actions: [...definition.actions],
+        source,
         firstSeenAt: current?.firstSeenAt ?? now,
         lastSeenAt: now
       }
@@ -165,6 +178,7 @@ function isToolRegistrationEvent(value: unknown): value is ToolRegistrationEvent
   return event.type === 'tool_registered' && Boolean(tool) && typeof tool?.toolId === 'string'
     && typeof tool.namespace === 'string' && typeof tool.name === 'string'
     && Array.isArray(tool.actions) && tool.actions.every((action) => typeof action === 'string')
+    && (tool.source === undefined || tool.source === 'app' || tool.source === 'external')
     && typeof tool.firstSeenAt === 'number' && typeof tool.lastSeenAt === 'number'
 }
 
