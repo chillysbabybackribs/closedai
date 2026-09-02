@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { ClosedaiApi } from '../shared/api.js'
 import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import type { ToolsEvent } from '../shared/tools.js'
+import type { TraceEvent } from '../shared/trace.js'
 import type { BrowserBounds, BrowserDownload, BrowserState, BrowserTabInfo } from '../shared/types.js'
 
 function subscribe<T>(channel: string, listener: (payload: T) => void): () => void {
@@ -64,6 +65,11 @@ const api: ClosedaiApi = {
     clearTelemetry: () => ipcRenderer.invoke('tools:clearTelemetry'),
     setEnabled: (toolId: string, enabled: boolean) => ipcRenderer.invoke('tools:setEnabled', toolId, enabled),
     onEvent: (listener) => subscribe<ToolsEvent>('tools:event', listener)
+  },
+  trace: {
+    snapshot: () => ipcRenderer.invoke('trace:snapshot'),
+    clear: () => ipcRenderer.invoke('trace:clear'),
+    onEvent: (listener) => subscribe<TraceEvent>('trace:event', listener)
   }
 }
 

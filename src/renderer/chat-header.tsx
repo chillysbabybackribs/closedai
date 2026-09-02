@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { DropdownMenu } from 'radix-ui'
-import { Folder, History, MessageSquareShare, MoreHorizontal, Plus, Wrench } from 'lucide-react'
+import { Activity, Folder, History, MessageSquareShare, MoreHorizontal, Plus, Wrench } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 
@@ -17,6 +17,7 @@ export type ChatHeaderProps = {
   onContinueInNewChat: () => void
   onToggleHistory: () => void
   onOpenTools: () => void
+  onOpenTrace: () => void
 }
 
 /** Fixed row above the transcript: which chat this is, in which folder, and one menu
@@ -24,7 +25,7 @@ export type ChatHeaderProps = {
  *  model whose window it fills. */
 export function ChatHeader({
   title, cwd, ready, running, historyOpen, canContinue,
-  onNewChat, onContinueInNewChat, onToggleHistory, onOpenTools
+  onNewChat, onContinueInNewChat, onToggleHistory, onOpenTools, onOpenTrace
 }: ChatHeaderProps): JSX.Element {
   return (
     <header className="chat-header">
@@ -77,6 +78,13 @@ export function ChatHeader({
             >
               <Wrench className="size-3.5" aria-hidden="true" />
               <span>Tools</span>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item
+              className="chat-header-menu-item"
+              onSelect={onOpenTrace}
+            >
+              <Activity className="size-3.5" aria-hidden="true" />
+              <span>Turn trace</span>
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>

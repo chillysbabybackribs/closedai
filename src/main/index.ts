@@ -36,6 +36,10 @@ import { searchTools } from './tools/search/index.js'
 import { peerChatTools } from './tools/peer-chats/index.js'
 import { ToolTelemetry } from './tools/telemetry.js'
 import { registerToolsIpc } from './tools/ipc.js'
+import { registerTraceIpc } from './trace/ipc.js'
+import { traceLog } from './trace/trace-log.js'
+import { traceChatEvent, traceToolCalls } from './trace/taps.js'
+import type { TraceEvent } from '../shared/trace.js'
 import type { ToolsEvent } from '../shared/tools.js'
 import { registerChatIpc } from './chat-ipc.js'
 import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
@@ -117,6 +121,8 @@ async function main(): Promise<void> {
     join(userData(), 'tool-telemetry.jsonl')
   )
   toolRegistry.subscribe((record) => toolTelemetry?.record(record))
+  // The live turn trace: full arguments and results, in memory only, for the user's own view.
+  traceToolCalls(toolRegistry)
   const activeBrowserContext = (): { tabId: string; url: string; title: string; isLoading: boolean } | null => {
     const active = browserService?.tabList().find((tab) => tab.active)
     if (!active) return null
@@ -175,7 +181,11 @@ function createWindow(): void {
   browserDownloads.on('changed', (downloads: BrowserDownload[]) =>
     sendToMainWindow('browserDownloads:changed', downloads)
   )
-  chatService?.on('event', (event: ChatWorkspaceEvent) => sendToMainWindow('chat:event', event))
+  chatService?.on('event', (event: ChatWorkspaceEvent) => {
+    traceChatEvent(event)
+    sendToMainWindow('chat:event', event)
+  })
+  traceLog.on('event', (event: TraceEvent) => sendToMainWindow('trace:event', event))
   const sendToolsEvent = (event: ToolsEvent): void => { sendToMainWindow('tools:event', event) }
   toolTelemetry?.on('record', (record) => sendToolsEvent({ type: 'call', record }))
   toolTelemetry?.on('cleared', () => sendToolsEvent({ type: 'cleared' }))
@@ -212,6 +222,7 @@ function registerIpc(): void {
   registerBrowserCoreIpc(ipcMain, () => browserService)
   registerBrowserDownloadsIpc(ipcMain, () => browserDownloads)
   registerChatIpc(ipcMain, () => chatService)
+  registerTraceIpc(ipcMain, traceLog)
   registerToolsIpc(ipcMain, {
     registry: () => toolRegistry,
     telemetry: () => toolTelemetry,

@@ -2,6 +2,7 @@ import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, Browser
 import type { ChatAttachment, ChatThreadSummary } from './chat.js'
 import type { ChatPaneId, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
+import type { TraceEvent, TraceSnapshot } from './trace.js'
 
 export type Unsubscribe = () => void
 
@@ -67,5 +68,11 @@ export type ClosedaiApi = {
     /** Persisted. Takes effect for calls immediately and for advertising on the next thread. */
     setEnabled: (toolId: string, enabled: boolean) => Promise<void>
     onEvent: (listener: (event: ToolsEvent) => void) => Unsubscribe
+  }
+  /** The live turn trace: in-memory, every pane, cleared at restart or on request. */
+  trace: {
+    snapshot: () => Promise<TraceSnapshot>
+    clear: () => Promise<void>
+    onEvent: (listener: (event: TraceEvent) => void) => Unsubscribe
   }
 }

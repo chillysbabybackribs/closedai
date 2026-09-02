@@ -19,6 +19,7 @@ import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { TaskActivity } from './task-activity.js'
 import { ToolsModal } from './tools/tools-modal.js'
+import { TraceModal } from './trace/trace-modal.js'
 
 export function ChatPane({
   controller,
@@ -36,6 +37,7 @@ export function ChatPane({
   const running = state.activeTurnId !== null
   const [historyOpen, setHistoryOpen] = useState(false)
   const [toolsOpen, setToolsOpen] = useState(false)
+  const [traceOpen, setTraceOpen] = useState(false)
   const title = chatTitle(state)
   const hasMessages = state.items.length > 0
   // 'starting' is the step on the way to ready, not a failure. Treating it as one made every new
@@ -95,8 +97,10 @@ export function ChatPane({
           onContinueInNewChat={() => void continueInNewChat()}
           onToggleHistory={() => setHistoryOpen((open) => !open)}
           onOpenTools={() => setToolsOpen(true)}
+          onOpenTrace={() => setTraceOpen(true)}
         />
         <ToolsModal open={toolsOpen} onOpenChange={setToolsOpen} />
+        <TraceModal open={traceOpen} onOpenChange={setTraceOpen} paneId={chat.selectedPaneId} />
         {historyOpen ? (
           <ChatHistory
             activeThreadId={state.threadId}

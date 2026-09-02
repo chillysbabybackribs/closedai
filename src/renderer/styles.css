@@ -30,6 +30,7 @@
 @import "./styles/chat/screenshots.css";
 @import "./styles/chat-history.css";
 @import "./styles/tools/modal.css";
+@import "./styles/trace/modal.css";
 @import "./styles/settings/appearance.css";
 @source "../components";
 
