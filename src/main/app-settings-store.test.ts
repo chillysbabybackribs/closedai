@@ -41,3 +41,10 @@ test('the compaction threshold is clamped and bad values fall back', async () =>
   assert.equal(updated.chatCompactAtPercent, 72)
   assert.match(await readFile(file, 'utf8'), /"chatCompactAtPercent": 72/)
 })
+
+test('reasoning effort is persisted as a model preference', async () => {
+  const { store, file } = await storeWith('{}')
+  await store.set({ chatReasoningEffort: 'high' })
+  assert.equal(store.get().chatReasoningEffort, 'high')
+  assert.match(await readFile(file, 'utf8'), /"chatReasoningEffort": "high"/)
+})

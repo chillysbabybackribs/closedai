@@ -1,6 +1,23 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { normalizeItem } from './chat-normalizers.js'
+import { normalizeItem, normalizeModels } from './chat-normalizers.js'
+
+test('models retain their advertised reasoning effort choices', () => {
+  const models = normalizeModels([{
+    id: 'sol',
+    displayName: 'Sol',
+    defaultReasoningEffort: 'high',
+    supportedReasoningEfforts: [
+      { reasoningEffort: 'low', description: 'Quick' },
+      { reasoningEffort: 'high', description: 'Deep' },
+      { description: 'Invalid option' }
+    ]
+  }])
+  assert.deepEqual(models[0]?.supportedReasoningEfforts, [
+    { reasoningEffort: 'low', description: 'Quick' },
+    { reasoningEffort: 'high', description: 'Deep' }
+  ])
+})
 
 test('completed capture calls become transcript screenshots', () => {
   const item = normalizeItem({

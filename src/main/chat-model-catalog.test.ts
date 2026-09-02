@@ -18,6 +18,7 @@ test('loads every visible model page, deduplicates models, and keeps an availabl
 
   assert.deepEqual(catalog.models.map((entry) => entry.id), ['sol', 'terra', 'luna'])
   assert.equal(catalog.selectedModel, 'terra')
+  assert.equal(catalog.selectedReasoningEffort, 'medium')
   assert.deepEqual(requests, [
     { limit: 100, includeHidden: false },
     { limit: 100, includeHidden: false, cursor: 'next' }
@@ -32,12 +33,25 @@ test('falls back to the advertised default when a saved model is unavailable', a
   assert.equal(catalog.selectedModel, 'sol')
 })
 
+test('keeps a supported saved effort and falls back when a model does not support it', async () => {
+  const client = {
+    request: async <T>(): Promise<T> => ({ data: [model('sol', true)], nextCursor: null }) as T
+  }
+  assert.equal((await loadChatModels(client, 'sol', 'high')).selectedReasoningEffort, 'high')
+  assert.equal((await loadChatModels(client, 'sol', 'ultra')).selectedReasoningEffort, 'medium')
+})
+
 function model(id: string, isDefault: boolean): Record<string, unknown> {
   return {
     id,
     displayName: id.toUpperCase(),
     description: `${id} description`,
     defaultReasoningEffort: 'medium',
+    supportedReasoningEfforts: [
+      { reasoningEffort: 'low', description: 'Fast answers' },
+      { reasoningEffort: 'medium', description: 'Balanced' },
+      { reasoningEffort: 'high', description: 'Deeper reasoning' }
+    ],
     isDefault
   }
 }

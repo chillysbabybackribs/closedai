@@ -27,8 +27,18 @@ test('chat reducer tracks the thread id and name together', () => {
 })
 
 test('chat reducer tracks a model selection', () => {
-  const state = reduceChatEvent(initialChatState(), { type: 'model', selectedModel: 'gpt-5.6-terra' })
+  const state = reduceChatEvent(initialChatState(), {
+    type: 'model', selectedModel: 'gpt-5.6-terra', selectedReasoningEffort: 'high'
+  })
   assert.equal(state.selectedModel, 'gpt-5.6-terra')
+  assert.equal(state.selectedReasoningEffort, 'high')
+})
+
+test('chat reducer tracks reasoning effort independently', () => {
+  const state = reduceChatEvent(initialChatState(), {
+    type: 'reasoningEffort', selectedReasoningEffort: 'xhigh'
+  })
+  assert.equal(state.selectedReasoningEffort, 'xhigh')
 })
 
 test('display-only screenshots are retained in renderer state like transcript messages', () => {
