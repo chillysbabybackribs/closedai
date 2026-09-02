@@ -238,7 +238,8 @@
   animation: prompt-kit-pulse 1.2s ease-in-out infinite;
 }
 
-/* Empty state: Antigravity IDE greeting card */
+/* Connection guidance remains visible while the provider is unavailable. A ready,
+   empty chat has no greeting; its composer occupies this visual center instead. */
 .prompt-chat-empty {
   display: grid;
   place-items: center;
@@ -250,20 +251,6 @@
   text-align: center;
 }
 
-.prompt-chat-empty-icon {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  margin-bottom: 14px;
-  place-items: center;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 12px;
-  background: #252526;
-  color: var(--antigravity-blue, #8ab4f8);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 22%);
-}
-
-.prompt-chat-empty-icon svg { width: 22px; height: 22px; }
 .prompt-chat-empty h2 {
   margin: 0;
   color: #ececee;
@@ -286,6 +273,18 @@
   padding: 6px clamp(18px, 4vw, 32px) 14px;
   border-top: none;
   background: transparent;
+}
+
+/* Before the first message, center the existing composer in the whole chat pane.
+   Absolute positioning also lets the empty scroller fill the pane, while the normal
+   document-flow position takes over as soon as a transcript item appears. */
+.prompt-chat-composer-centered .prompt-composer {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: 0;
+  left: 0;
+  transform: translateY(-50%);
 }
 
 .prompt-composer-input {

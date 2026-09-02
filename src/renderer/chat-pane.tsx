@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { useState } from 'react'
-import { LogIn, Sparkles } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import {
@@ -27,6 +27,8 @@ export function ChatPane(): JSX.Element {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [toolsOpen, setToolsOpen] = useState(false)
   const title = chatTitle(state)
+  const hasMessages = state.items.length > 0
+  const centerComposer = ready && !hasMessages && !historyOpen
 
   async function sendMessage(text: string, attachments: ChatAttachment[]): Promise<void> {
     setHistoryOpen(false)
@@ -52,7 +54,10 @@ export function ChatPane(): JSX.Element {
   }
 
   return (
-    <aside className="chat-pane prompt-chat" data-ui-surface="chat">
+    <aside
+      className={`chat-pane prompt-chat${centerComposer ? ' prompt-chat-composer-centered' : ''}`}
+      data-ui-surface="chat"
+    >
       <ChatHeader
         title={title}
         cwd={state.cwd}
@@ -77,10 +82,12 @@ export function ChatPane(): JSX.Element {
         />
       ) : (
         <TranscriptScroller threadId={state.threadId}>
-          {state.items.length === 0 ? (
+          {!hasMessages && !ready ? (
             <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
-          ) : (
+          ) : hasMessages ? (
             <ChatTranscript items={state.items} activeTurnId={state.activeTurnId} />
+          ) : (
+            <div aria-hidden="true" />
           )}
         </TranscriptScroller>
       )}
@@ -134,12 +141,10 @@ function EmptyState({
   message: string
   onLogin: () => Promise<void>
 }): JSX.Element {
-  const available = state === 'ready'
   return (
     <div className="prompt-chat-empty chat-empty">
-      <div className="prompt-chat-empty-icon" aria-hidden="true"><Sparkles /></div>
-      <h2>{available ? 'How can I help you today?' : `Start with ${PROVIDER_LABELS[provider]}`}</h2>
-      <p>{available ? 'Ask a question, brainstorm ideas, or collaborate on code changes.' : message}</p>
+      <h2>{`Start with ${PROVIDER_LABELS[provider]}`}</h2>
+      <p>{message}</p>
       {/* Claude Code signs in from its own CLI; the message above says how. */}
       {state === 'signed-out' && provider === 'codex' && (
         <Button type="button" variant="secondary" onClick={() => void onLogin()}>
