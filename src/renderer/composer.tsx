@@ -17,6 +17,8 @@ import { ModelMenu } from './model-menu.js'
 export type ComposerProps = {
   enabled: boolean
   running: boolean
+  /** Replaces the default prompt, e.g. with connection progress while the provider starts. */
+  placeholder?: string
   models: ChatModel[]
   selectedModel: string | null
   selectedReasoningEffort: string | null
@@ -32,6 +34,7 @@ export type ComposerProps = {
 export function Composer({
   enabled,
   running,
+  placeholder,
   models,
   selectedModel,
   selectedReasoningEffort,
@@ -117,7 +120,7 @@ export function Composer({
           />
           <PromptInputTextarea
             aria-label="Message Codex"
-            placeholder={enabled ? 'Ask anything' : 'Codex is unavailable'}
+            placeholder={placeholder ?? (enabled ? 'Ask anything' : 'Codex is unavailable')}
             spellCheck={false}
             className="prompt-composer-textarea"
             onPaste={pasteFiles}

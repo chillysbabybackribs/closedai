@@ -29,7 +29,12 @@ export function ChatPane({ controller }: { controller?: ReturnType<typeof useCha
   const [toolsOpen, setToolsOpen] = useState(false)
   const title = chatTitle(state)
   const hasMessages = state.items.length > 0
-  const centerComposer = ready && !hasMessages && !historyOpen
+  // 'starting' is the step on the way to ready, not a failure. Treating it as one made every new
+  // chat flash the connection guidance and drop the composer to the bottom for the frames before
+  // the pane's provider came up, so only a settled failure replaces the centered empty layout.
+  const connecting = state.connection.state === 'starting'
+  const blocked = !ready && !connecting
+  const centerComposer = !blocked && !hasMessages && !historyOpen
 
   async function sendMessage(text: string, attachments: ChatAttachment[]): Promise<void> {
     setHistoryOpen(false)
@@ -83,7 +88,7 @@ export function ChatPane({ controller }: { controller?: ReturnType<typeof useCha
         />
       ) : (
         <TranscriptScroller threadId={state.threadId}>
-          {!hasMessages && !ready ? (
+          {!hasMessages && blocked ? (
             <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
           ) : hasMessages ? (
             <ChatTranscript items={state.items} activeTurnId={state.activeTurnId} />
@@ -95,6 +100,7 @@ export function ChatPane({ controller }: { controller?: ReturnType<typeof useCha
       <Composer
         enabled={ready}
         running={running}
+        placeholder={connecting ? state.connection.message : undefined}
         models={state.models}
         selectedModel={state.selectedModel}
         selectedReasoningEffort={state.selectedReasoningEffort}
