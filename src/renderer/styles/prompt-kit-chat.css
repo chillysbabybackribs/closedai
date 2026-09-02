@@ -147,6 +147,14 @@
   font-size: .88em;
 }
 
+/* Typography wraps inline code in literal backtick glyphs via ::before and
+   ::after, which land inside the chip and read as part of the identifier. The
+   chip is already the "this is code" signal. */
+.prompt-markdown-inline-code::before,
+.prompt-markdown-inline-code::after {
+  content: none;
+}
+
 .prompt-markdown [data-slot='code-block'] {
   margin-block: 1.25em;
   border-color: var(--code-border);
