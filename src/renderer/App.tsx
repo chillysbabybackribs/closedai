@@ -14,28 +14,52 @@ import { useChatController, type ChatController } from './chat-controller.js'
 import { ChatPane } from './chat-pane.js'
 import {
   applyChatZoomCommand,
-  CHAT_ZOOM_DEFAULT,
   chatZoomCommandForKey,
   type ChatZoomCommand
 } from './chat-zoom.js'
 import { TitlebarMenu } from './titlebar-menu.js'
 import { WorkspaceSplit } from './workspace-split.js'
+import { AppearanceSettingsDialog } from './settings/appearance-settings-dialog.js'
+import {
+  normalizeAppearanceSettings,
+  persistAppearanceSettings,
+  readAppearanceSettings,
+  type AppearanceSettings
+} from './settings/appearance-settings.js'
 import './styles.css'
 
 function App(): JSX.Element {
   const chat = useChatController()
   const drawer = useDrawerController(chat)
-  const [chatZoom, setChatZoom] = useState(CHAT_ZOOM_DEFAULT)
+  const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const updateAppearance = useCallback((patch: Partial<AppearanceSettings>): void => {
+    setAppearance((current) => {
+      const next = normalizeAppearanceSettings({ ...current, ...patch })
+      persistAppearanceSettings(window.localStorage, next)
+      return next
+    })
+  }, [])
   const changeChatZoom = useCallback((command: ChatZoomCommand): void => {
-    setChatZoom((current) => applyChatZoomCommand(current, command))
+    setAppearance((current) => {
+      const next = { ...current, chatZoom: applyChatZoomCommand(current.chatZoom, command) }
+      persistAppearanceSettings(window.localStorage, next)
+      return next
+    })
   }, [])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       const command = chatZoomCommandForKey(event)
-      if (!command) return
-      event.preventDefault()
-      changeChatZoom(command)
+      if (command) {
+        event.preventDefault()
+        changeChatZoom(command)
+        return
+      }
+      if (!event.altKey && (event.ctrlKey || event.metaKey) && event.key === ',') {
+        event.preventDefault()
+        setSettingsOpen(true)
+      }
     }
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
@@ -45,29 +69,39 @@ function App(): JSX.Element {
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
         <DrawerToggle controller={drawer} />
-        <TitlebarMenu chatZoom={chatZoom} onChatZoomChange={changeChatZoom} />
+        <TitlebarMenu
+          chatZoom={appearance.chatZoom}
+          onChatZoomChange={changeChatZoom}
+          onOpenSettings={() => setSettingsOpen(true)}
+        />
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
       <div className="workspace" data-mode="chat" data-agents={drawer.isCollapsed ? 'closed' : 'open'}>
         <SideDrawer controller={drawer} chat={chat} />
-        <DesktopWorkspace chat={chat} chatZoom={chatZoom} />
+        <DesktopWorkspace chat={chat} appearance={appearance} />
       </div>
+      <AppearanceSettingsDialog
+        open={settingsOpen}
+        {...appearance}
+        onOpenChange={setSettingsOpen}
+        onChange={updateAppearance}
+      />
     </div>
   )
 }
 
 const DesktopWorkspace = React.memo(function DesktopWorkspace({
   chat,
-  chatZoom
+  appearance
 }: {
   chat: ChatController
-  chatZoom: number
+  appearance: AppearanceSettings
 }): JSX.Element {
   const browser = useBrowserController('browser')
   return (
     <WorkspaceSplit
-      chat={<ChatPane controller={chat} zoom={chatZoom} />}
+      chat={<ChatPane controller={chat} zoom={appearance.chatZoom} fontSize={appearance.chatFontSize} />}
       workspace={
         <div className="workspace-right" data-mode="browser" data-with-browser="yes" data-refs="no">
           <div className="workspace-surface workspace-surface-browser">

@@ -1,0 +1,115 @@
+.appearance-dialog {
+  width: min(440px, calc(100vw - 32px));
+  overflow: hidden;
+}
+
+.appearance-dialog-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 44px 17px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.appearance-dialog-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 9px;
+  background: var(--surface-control);
+  color: var(--chrome-control-strong);
+}
+
+.appearance-dialog-title {
+  margin-bottom: 3px;
+  font-size: 15px;
+}
+
+.appearance-controls {
+  display: grid;
+  gap: 1px;
+  padding: 8px 20px 12px;
+}
+
+.appearance-control {
+  display: grid;
+  gap: 13px;
+  padding: 15px 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.appearance-control:last-child { border-bottom: 0; }
+
+.appearance-control-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.appearance-control-copy label {
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.appearance-control-copy span {
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+}
+
+.appearance-control-inputs {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px 46px;
+  align-items: center;
+  gap: 9px;
+}
+
+.appearance-control-inputs button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 7px;
+  background: var(--surface-control);
+  color: var(--chrome-control-strong);
+}
+
+.appearance-control-inputs button:hover:not(:disabled) { background: var(--surface-control-hover); }
+.appearance-control-inputs button:disabled { color: var(--chrome-control-quiet); opacity: 0.5; }
+
+.appearance-control-inputs input {
+  width: 100%;
+  accent-color: var(--chrome-control-selected);
+}
+
+.appearance-control-inputs output {
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.appearance-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 16px;
+  border-top: 1px solid var(--border);
+  background: rgb(255 255 255 / 2%);
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+}
+
+.appearance-reset {
+  gap: 7px;
+  height: 28px;
+  padding-inline: 8px;
+  font-size: 11.5px;
+}

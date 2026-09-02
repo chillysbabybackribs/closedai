@@ -8,7 +8,12 @@ import {
 } from './chat-zoom.js'
 
 /** One menu's worth of rows. `null` is a separator. */
-type MenuRow = { label: string; shortcut?: string; command?: ChatZoomCommand } | null
+type MenuRow = {
+  label: string
+  shortcut?: string
+  command?: ChatZoomCommand
+  action?: 'settings'
+} | null
 
 type Menu = { label: string; rows: MenuRow[] }
 
@@ -27,7 +32,7 @@ const MENUS: Menu[] = [
       { label: 'New chat', shortcut: 'Ctrl+N' },
       { label: 'Open chat history', shortcut: 'Ctrl+H' },
       null,
-      { label: 'Settings', shortcut: 'Ctrl+,' },
+      { label: 'Settings', shortcut: 'Ctrl+,', action: 'settings' },
       null,
       { label: 'Close window', shortcut: 'Ctrl+W' }
     ]
@@ -72,12 +77,14 @@ const MENUS: Menu[] = [
 export type TitlebarMenuProps = {
   chatZoom: number
   onChatZoomChange: (command: ChatZoomCommand) => void
+  onOpenSettings: () => void
 }
 
 /** The shell's File / Edit / View / Help bar, sitting in the title bar's drag region. */
 export const TitlebarMenu = memo(function TitlebarMenu({
   chatZoom,
-  onChatZoomChange
+  onChatZoomChange,
+  onOpenSettings
 }: TitlebarMenuProps): JSX.Element {
   return (
     <Menubar.Root className="titlebar-nav-menu" aria-label="Application menu">
@@ -94,8 +101,14 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                     <Menubar.Item
                       key={row.label}
                       className="titlebar-menu-item"
-                      disabled={!row.command || zoomCommandIsDisabled(row.command, chatZoom)}
-                      onSelect={() => row.command && onChatZoomChange(row.command)}
+                      disabled={
+                        (!row.command && !row.action) ||
+                        (row.command ? zoomCommandIsDisabled(row.command, chatZoom) : false)
+                      }
+                      onSelect={() => {
+                        if (row.command) onChatZoomChange(row.command)
+                        if (row.action === 'settings') onOpenSettings()
+                      }}
                     >
                       <span>{row.label}</span>
                       {row.shortcut && (

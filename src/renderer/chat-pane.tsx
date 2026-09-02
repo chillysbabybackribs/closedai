@@ -22,10 +22,12 @@ import { ToolsModal } from './tools/tools-modal.js'
 
 export function ChatPane({
   controller,
-  zoom = 100
+  zoom = 100,
+  fontSize = 16
 }: {
   controller?: ReturnType<typeof useChatController>
   zoom?: number
+  fontSize?: number
 } = {}): JSX.Element {
   const internalChat = useChatController()
   const chat = controller ?? internalChat
@@ -76,7 +78,10 @@ export function ChatPane({
         className="chat-zoom-surface"
         style={{
           '--chat-zoom': zoom / 100,
-          '--chat-zoom-inverse': 100 / zoom
+          '--chat-zoom-inverse': 100 / zoom,
+          '--chat-font-size': `${fontSize}px`,
+          '--chat-fs-body': `${fontSize}px`,
+          '--chat-fs-markdown': `${fontSize}px`
         } as React.CSSProperties}
       >
         <ChatHeader
