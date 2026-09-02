@@ -20,7 +20,7 @@
 @import "./styles/prompt-kit-chat.css";
 @import "./styles/chat/shadcn-utils.css";
 @import "./styles/chat/tool-activity.css";
-@import "./styles/chat/model-picker.css";
+@import "./styles/chat/model-menu.css";
 @import "./styles/chat/sources.css";
 @import "./styles/chat/attachments.css";
 @import "./styles/chat/screenshots.css";

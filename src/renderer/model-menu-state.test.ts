@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatModel } from '../shared/chat.js'
-import { effortLabel, modelGroups, modelTriggerLabel } from './model-menu.js'
+import { effortLabel, modelGroups, modelTriggerLabel } from './model-menu-state.js'
 
 function model(provider: ChatModel['provider'], id: string, displayName: string, efforts: string[] = []): ChatModel {
   return {

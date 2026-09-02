@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ModelInfo } from '@anthropic-ai/claude-agent-sdk'
 import { claudeModelId, claudeModelValue, claudeSessionIdOf, claudeThreadId, isClaudeModelId, isClaudeThreadId } from './claude-ids.js'
-import { claudeModelCatalog, claudeModelsFromInfo, supportsAdaptiveThinking } from './claude-models.js'
+import { claudeDisplayName, claudeModelCatalog, claudeModelsFromInfo, supportsAdaptiveThinking } from './claude-models.js'
 
 // The catalog the CLI reported on 2026-09-02 (SDK 0.3.258), trimmed to the fields used.
 const infos: ModelInfo[] = [
@@ -31,6 +31,12 @@ test('catalog collapses aliases, keeps the CLI default, and carries effort level
   assert.equal(models[0]!.defaultReasoningEffort, 'high')
   assert.deepEqual(models[0]!.supportedReasoningEfforts.map((option) => option.reasoningEffort), ['low', 'medium', 'high', 'xhigh', 'max'])
   assert.deepEqual(models[2]!.supportedReasoningEfforts, [])
+})
+
+test('display names carry the full version and context tier', () => {
+  assert.deepEqual(claudeModelsFromInfo(infos).map((model) => model.displayName), ['Opus 5 (1M)', 'Fable 5.1 (1M)', 'Haiku 4.5'])
+  assert.equal(claudeDisplayName({ value: 'sonnet', resolvedModel: 'claude-sonnet-5', displayName: 'Sonnet' }), 'Sonnet 5')
+  assert.equal(claudeDisplayName({ value: 'custom', resolvedModel: 'my-gateway-model', displayName: 'Gateway' }), 'Gateway')
 })
 
 test('catalog falls back to the first model as default when the CLI names none', () => {

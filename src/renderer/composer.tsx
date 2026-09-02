@@ -9,9 +9,9 @@ import {
   PromptInputActions,
   PromptInputTextarea
 } from '../components/ui/prompt-input.js'
-import type { ChatAttachment, ChatModel, ChatProvider } from '../shared/chat.js'
-import { PROVIDER_LABELS } from './chat-state.js'
+import type { ChatAttachment, ChatModel } from '../shared/chat.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
+import { ModelMenu } from './model-menu.js'
 
 export type ComposerProps = {
   enabled: boolean
@@ -113,17 +113,13 @@ export function Composer({ enabled, running, models, selectedModel, selectedReas
               />
 
               <div className="prompt-model-controls">
-                <ModelPicker
+                <ModelMenu
                   enabled={enabled && !running}
                   models={models}
                   selectedModel={selectedModel}
-                  onChange={onModelChange}
-                />
-                <ReasoningEffortPicker
-                  enabled={enabled && !running}
-                  model={models.find((model) => model.id === selectedModel)}
-                  selectedEffort={selectedReasoningEffort}
-                  onChange={onReasoningEffortChange}
+                  selectedReasoningEffort={selectedReasoningEffort}
+                  onModelChange={onModelChange}
+                  onReasoningEffortChange={onReasoningEffortChange}
                 />
               </div>
             </div>
@@ -164,84 +160,6 @@ export function Composer({ enabled, running, models, selectedModel, selectedReas
         </div>
       </PromptInput>
     </form>
-  )
-}
-
-function ReasoningEffortPicker({
-  enabled,
-  model,
-  selectedEffort,
-  onChange
-}: {
-  enabled: boolean
-  model: ChatModel | undefined
-  selectedEffort: string | null
-  onChange: (effort: string) => Promise<void>
-}): JSX.Element | null {
-  if (!model?.supportedReasoningEfforts.length) return null
-  const selected = model.supportedReasoningEfforts.find((option) => option.reasoningEffort === selectedEffort)
-  return (
-    <label className="prompt-model-picker prompt-effort-picker" title={selected?.description || 'Choose reasoning effort'}>
-      <span className="sr-only">Reasoning effort</span>
-      <select
-        aria-label="Reasoning effort"
-        value={selectedEffort ?? ''}
-        disabled={!enabled}
-        onChange={(event) => { void onChange(event.target.value).catch(() => {}) }}
-      >
-        {!selectedEffort && <option value="">Choose effort</option>}
-        {model.supportedReasoningEfforts.map((option) => (
-          <option key={option.reasoningEffort} value={option.reasoningEffort}>
-            {displayEffort(option.reasoningEffort)}
-          </option>
-        ))}
-      </select>
-    </label>
-  )
-}
-
-function displayEffort(effort: string): string {
-  return effort.split(/[-_]/).map((part) => part ? `${part[0]!.toUpperCase()}${part.slice(1)}` : '').join(' ')
-}
-
-function ModelPicker({
-  enabled,
-  models,
-  selectedModel,
-  onChange
-}: {
-  enabled: boolean
-  models: ChatModel[]
-  selectedModel: string | null
-  onChange: (modelId: string) => Promise<void>
-}): JSX.Element {
-  const selected = models.find((model) => model.id === selectedModel)
-  const providers = (['codex', 'claude'] as const).filter((provider) => models.some((model) => model.provider === provider))
-  return (
-    <label className="prompt-model-picker" title={selected?.description || 'Choose a model'}>
-      <span className="sr-only">Model</span>
-      <select
-        aria-label="Model"
-        value={selectedModel ?? ''}
-        disabled={!enabled || models.length === 0}
-        onChange={(event) => { void onChange(event.target.value).catch(() => {}) }}
-      >
-        {!selectedModel && <option value="">Choose model</option>}
-        {providers.map((provider) => (
-          <ModelGroup key={provider} provider={provider} models={models.filter((model) => model.provider === provider)} />
-        ))}
-      </select>
-    </label>
-  )
-}
-
-function ModelGroup({ provider, models }: { provider: ChatProvider; models: ChatModel[] }): JSX.Element {
-  return (
-    <optgroup label={PROVIDER_LABELS[provider]}>
-      {models.map((model) => (
-        <option key={model.id} value={model.id}>{model.displayName}</option>
-      ))}
-    </optgroup>
   )
 }
 

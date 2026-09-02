@@ -32,7 +32,7 @@ export function claudeModelsFromInfo(infos: readonly ModelInfo[]): ChatModel[] {
     models.push({
       provider: 'claude',
       id: claudeModelId(info.value),
-      displayName: info.displayName || info.value,
+      displayName: claudeDisplayName(info),
       description: info.description ?? '',
       defaultReasoningEffort: CLAUDE_DEFAULT_EFFORT,
       supportedReasoningEfforts: effortOptions(info),
@@ -41,6 +41,22 @@ export function claudeModelsFromInfo(infos: readonly ModelInfo[]): ChatModel[] {
   }
   if (models.length > 0 && !models.some((model) => model.isDefault)) models[0]!.isDefault = true
   return models
+}
+
+/**
+ * The CLI's display names drop the version ("Fable", "Opus (1M context)"); the picker shows the
+ * full model so Fable 5.1 is never mistaken for Fable 5. Derived from the resolved model id
+ * (`claude-fable-5-1` → "Fable 5.1", `claude-haiku-4-5-20251001` → "Haiku 4.5"), with the
+ * context tier kept as a suffix; the CLI's name stands in when an id does not parse.
+ */
+export function claudeDisplayName(info: Pick<ModelInfo, 'value' | 'resolvedModel' | 'displayName'>): string {
+  const raw = info.resolvedModel ?? info.value
+  const oneMillion = /\[1m\]/i.test(raw) || /\[1m\]/i.test(info.value) || /1M context/i.test(info.displayName ?? '')
+  const match = /^claude-([a-z]+)-(\d+)(?:-(\d+))?(?:-\d{8})?(?:\[.*\])?$/i.exec(raw)
+  if (!match) return info.displayName || info.value
+  const family = `${match[1]![0]!.toUpperCase()}${match[1]!.slice(1)}`
+  const version = match[3] ? `${match[2]}.${match[3]}` : match[2]
+  return `${family} ${version}${oneMillion ? ' (1M)' : ''}`
 }
 
 function effortOptions(info: ModelInfo): ChatReasoningEffort[] {

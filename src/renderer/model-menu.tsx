@@ -3,7 +3,7 @@ import { DropdownMenu } from 'radix-ui'
 import { Check, ChevronDown } from 'lucide-react'
 
 import type { ChatModel } from '../shared/chat.js'
-import { effortLabel, modelGroups, modelTriggerLabel } from './model-menu.js'
+import { effortLabel, modelGroups, modelTriggerLabel } from './model-menu-state.js'
 
 export type ModelMenuProps = {
   enabled: boolean
