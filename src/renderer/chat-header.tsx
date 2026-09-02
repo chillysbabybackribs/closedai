@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
-import { History, MessageSquareShare, SquarePen, Wrench } from 'lucide-react'
+import { DropdownMenu } from 'radix-ui'
+import { History, MessageSquareShare, MoreHorizontal, Plus, Wrench } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import type { ChatContextUsage } from '../shared/chat.js'
@@ -34,35 +35,12 @@ export function ChatHeader({
         variant="ghost"
         size="icon-sm"
         className="chat-header-action"
-        aria-label="Tools"
-        title="Tools"
-        onClick={onOpenTools}
-      >
-        <Wrench aria-hidden="true" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        className="chat-header-action"
-        aria-label="Continue in new chat"
-        title="Continue in new chat: start fresh with a short summary of this one"
-        disabled={!ready || running || !canContinue}
-        onClick={onContinueInNewChat}
-      >
-        <MessageSquareShare aria-hidden="true" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        className="chat-header-action"
         aria-label="New chat"
         title="New chat"
         disabled={!ready || running}
         onClick={onNewChat}
       >
-        <SquarePen aria-hidden="true" />
+        <Plus className="size-4" aria-hidden="true" />
       </Button>
       <Button
         type="button"
@@ -75,8 +53,41 @@ export function ChatHeader({
         disabled={!ready && !historyOpen}
         onClick={onToggleHistory}
       >
-        <History aria-hidden="true" />
+        <History className="size-4" aria-hidden="true" />
       </Button>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="chat-header-action"
+            aria-label="More options"
+            title="More options"
+          >
+            <MoreHorizontal className="size-4" aria-hidden="true" />
+          </Button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content className="model-menu min-w-[12rem]" sideOffset={6} align="end">
+            <DropdownMenu.Item
+              className="model-menu-item flex items-center gap-2 pl-3"
+              onSelect={onOpenTools}
+            >
+              <Wrench className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <span>Tools</span>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item
+              className="model-menu-item flex items-center gap-2 pl-3"
+              disabled={!ready || running || !canContinue}
+              onSelect={onContinueInNewChat}
+            >
+              <MessageSquareShare className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <span>Continue in new chat</span>
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
     </header>
   )
 }
