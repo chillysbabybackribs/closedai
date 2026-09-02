@@ -51,6 +51,7 @@ before the app-server starts.
 | `closedai_ui` | `capture` | `app_window`, `browser_page` | Visual evidence. `app_window` captures the composed Electron window, including chat and browser chrome. `browser_page` captures only one browser page after deterministic readiness checks. The model receives a scaled JPEG (max 1280x960); the full-resolution PNG goes to `ScreenshotStore` for the transcript. |
 | `browser_cdp` | `page` | `inspect_page`, `click`, `click_at`, `type`, `press_key`, `scroll` | Agent-oriented page interaction: semantic element refs with real CDP mouse, keyboard, and wheel input. `type` inserts whole strings in one call; `press_key` sends chords. |
 | `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `events` | Raw Chrome DevTools Protocol escape hatch (`deferLoading`: out of context until searched for). `Input.*` and `Page.captureScreenshot` are refused with pointers to `page` and `capture`. See `docs/cdp-tool-foundation.md`. |
+| `closedai_workspace` | `inspect` | `map`, `related`, `tests`, `ipc_flow` | Deferred, read-only navigation for this checkout. It queries a generated file index, direct relative import relationships, candidate tests, and preload-to-main IPC ownership without placing repository-derived data in developer instructions. |
 
 The model-facing names intentionally differ from OpenAI reserved namespaces. For example,
 ClosedAI uses `embedded_browser`, not `browser`.
