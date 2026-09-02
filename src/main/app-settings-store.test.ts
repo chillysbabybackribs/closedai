@@ -74,7 +74,20 @@ test('legacy single-chat settings migrate into one selected peer', async () => {
     threadId: 'claude:claude-session',
     codexThreadId: 'codex-thread',
     claudeSessionId: 'claude-session',
+    antigravityConversationId: null,
     modelId: 'claude:opus',
     reasoningEffort: 'high'
   })
+})
+
+test('an antigravity model routes the legacy settings to its own conversation field', async () => {
+  const { store } = await storeWith(JSON.stringify({
+    chatAntigravityConversationId: 'conv-1',
+    chatModelId: 'agy:gemini-3.8-flash',
+    chatPeers: [{ paneId: 'p1', provider: 'antigravity', threadId: 'agy:conv-2', modelId: 'agy:gemini-3.8-flash' }]
+  }))
+  const peer = store.get().chatPeers[0]!
+  assert.equal(peer.provider, 'antigravity')
+  assert.equal(peer.antigravityConversationId, 'conv-2')
+  assert.equal(peer.threadId, 'agy:conv-2')
 })

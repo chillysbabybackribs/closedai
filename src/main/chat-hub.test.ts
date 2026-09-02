@@ -35,14 +35,30 @@ class FakeProvider extends EventEmitter {
   async beginChatGptLogin(): Promise<string> { this.calls.push('login'); return 'https://auth' }
 }
 
-function build(initialModel: string | null = null): { hub: ChatHub; codex: FakeProvider; claude: FakeProvider; events: ChatEvent[] } {
+function build(initialModel: string | null = null): { hub: ChatHub; codex: FakeProvider; claude: FakeProvider; antigravity: FakeProvider; events: ChatEvent[] } {
   const codex = new FakeProvider('codex', [model('codex', 'gpt-5.6-sol')])
   const claude = new FakeProvider('claude', [model('claude', 'claude:opus[1m]')])
-  const hub = new ChatHub({ codex, claude } as unknown as ChatHubProviders, initialModel)
+  const antigravity = new FakeProvider('antigravity', [model('antigravity', 'agy:gemini-3.8-flash')])
+  const hub = new ChatHub({ codex, claude, antigravity } as unknown as ChatHubProviders, initialModel)
   const events: ChatEvent[] = []
   hub.on('event', (event: ChatEvent) => events.push(event))
-  return { hub, codex, claude, events }
+  return { hub, codex, claude, antigravity, events }
 }
+
+test('an agy model routes to the Antigravity provider and its threads merge into history', async () => {
+  const { hub, antigravity, codex } = build('agy:gemini-3.8-flash')
+  assert.equal(hub.activeProvider, 'antigravity')
+  await hub.start()
+  assert.deepEqual(antigravity.calls, ['start:true'])
+  assert.deepEqual(codex.calls, ['start:false'])
+  antigravity.threads = [{ id: 'agy:c1', title: 'A', preview: '', createdAt: 1, updatedAt: 5 }]
+  codex.threads = [{ id: 't1', title: 'C', preview: '', createdAt: 1, updatedAt: 3 }]
+  assert.deepEqual((await hub.listThreads()).map((thread) => thread.id), ['agy:c1', 't1'])
+  await hub.openThread('t1')
+  assert.equal(hub.activeProvider, 'codex')
+  await hub.archiveThread('agy:c1')
+  assert.deepEqual(antigravity.calls.slice(-1), ['archive:agy:c1'])
+})
 
 test('the saved model decides the initial provider and which one starts warm', async () => {
   const codexFirst = build('gpt-5.6-sol')
