@@ -54,9 +54,7 @@ export function ChatPane(): JSX.Element {
 
   const latestUserIndex = findLastUserIndex(state.items)
   const latestUserMessage = latestUserIndex >= 0 ? (state.items[latestUserIndex] as Extract<ChatTranscriptItem, { type: 'user' }>) : null
-  const transcriptItems = latestUserMessage
-    ? state.items.filter((_, index) => index !== latestUserIndex)
-    : state.items
+  const transcriptItems = state.items.filter((item) => item.type !== 'user')
 
   return (
     <aside className="chat-pane prompt-chat" data-ui-surface="chat">
