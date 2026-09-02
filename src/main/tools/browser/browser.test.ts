@@ -46,7 +46,7 @@ test('navigate defaults to dom-ready readiness and reports the reached state', a
   const result = await call({ action: 'navigate', url: 'a.test' })
   assert.equal(result.isError, undefined)
   assert.deepEqual(calls[0], ['navigate', 'a.test', { newTab: false, ready: { until: 'dom_ready', selector: undefined, text: undefined, timeoutMs: 3_000 } }])
-  assert.match(textOf(result), /Loaded: A\nURL: https:\/\/a.test\/\nTab: tab-1\nReady: dom-ready after 0.8s/)
+  assert.match(textOf(result), /Loaded: A\nURL: https:\/\/a.test\/\nTab: tab-1\nReady: complete after 0.8s/)
 })
 
 test('navigate passes selector, text, timeout, and new_tab through and surfaces failures', async () => {

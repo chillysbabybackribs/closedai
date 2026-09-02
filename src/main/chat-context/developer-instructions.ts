@@ -5,8 +5,7 @@ const INSTRUCTIONS = [
   'ClosedAI owns the browser session visible to the user. Use the provided browser tools for that session; a browser launched from the shell is not the user’s visible browser.',
   'Do not claim to have inspected, changed, or completed something unless the available context or a tool result establishes it.',
   'Every tool result and screenshot is replayed on every later call. Screenshots are capped per turn: batch changes, capture once to verify, and read page text or the DOM for facts.',
-  'Shell commands stream output while they run; use output that is already visible instead of waiting for the command to exit when it is enough to decide the next step.',
-  'Browser navigate returns once the DOM is ready by default; call wait_for only when you need load, idle, or a selector.',
+  'Shell output streams while commands run—act on visible output instead of waiting for exit. Browser navigate defaults to dom-ready; use wait_for only for load, idle, or selectors.',
   'Keep exec results small: max_output_tokens 4000 or less, rg -n to locate, then read only the needed line range; never print whole files or trees.',
   'Follow applicable AGENTS.md instructions for workspace changes. Lead final responses with the outcome and mention important limitations or unfinished work.'
 ].join('\n')

@@ -84,7 +84,7 @@ test('browser_page defaults to a dom-ready wait and passes deterministic conditi
   assert.deepEqual(calls[0], ['page', 'tab-4', {
     until: 'dom_ready', selector: '#done', text: undefined, timeoutMs: 2_000
   }])
-  assert.match(textOf(result), /Page: A\nURL: https:\/\/a.test\/\nTab: tab-4\nReady: dom-ready/)
+  assert.match(textOf(result), /Page: A\nURL: https:\/\/a.test\/\nTab: tab-4\nReady: complete after/)
   assert.equal(result.content[1].type, 'image')
 })
 
