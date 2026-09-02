@@ -98,13 +98,10 @@ async function main(): Promise<void> {
     batchTools(() => toolRegistry!, { maxCalls: settings.get().toolBatchMaxCalls })
   ])
   for (const toolId of settings.get().disabledTools) toolRegistry.setEnabled(toolId, false)
-  toolTelemetry = await ToolTelemetry.open(join(userData(), 'tool-telemetry.jsonl'))
-  toolTelemetry.observeTools(toolRegistry.namespaces.flatMap((namespace) => namespace.tools.map((tool) => ({
-    toolId: `${namespace.name}.${tool.name}`,
-    namespace: namespace.name,
-    name: tool.name,
-    actions: (tool.actions ?? []).map((action) => action.name)
-  }))))
+  toolTelemetry = await ToolTelemetry.open(
+    join(userData(), 'tool-telemetry.json'),
+    join(userData(), 'tool-telemetry.jsonl')
+  )
   toolRegistry.subscribe((record) => toolTelemetry?.record(record))
   const activeBrowserContext = (): { tabId: string; url: string; title: string; isLoading: boolean } | null => {
     const active = browserService?.tabList().find((tab) => tab.active)
@@ -150,7 +147,6 @@ function createWindow(): void {
   chatService?.on('event', (event: ChatEvent) => mainWindow?.webContents.send('chat:event', event))
   const sendToolsEvent = (event: ToolsEvent): void => { mainWindow?.webContents.send('tools:event', event) }
   toolTelemetry?.on('record', (record) => sendToolsEvent({ type: 'call', record }))
-  toolTelemetry?.on('registered', (tool) => sendToolsEvent({ type: 'registered', tool }))
   toolTelemetry?.on('cleared', () => sendToolsEvent({ type: 'cleared' }))
 
   if (process.env.ELECTRON_RENDERER_URL) {

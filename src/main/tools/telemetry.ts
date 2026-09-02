@@ -1,189 +1,176 @@
 import { EventEmitter } from 'node:events'
-import { appendFile, readFile, writeFile } from 'node:fs/promises'
-import type { ToolCallRecord, ToolRegistration, ToolStats, ToolTelemetrySnapshot } from '../../shared/tools.js'
+import { readFile, unlink } from 'node:fs/promises'
+import type { ToolCallEvent, ToolStats, ToolTelemetrySnapshot } from '../../shared/tools.js'
+import { writeAtomic } from '../atomic-write.js'
 
-// Every tool call the registry runs, kept as a bounded in-memory window and appended to a
-// JSONL file so the history survives restarts. Stats are computed over the retained window
-// only; the file is the long-term record.
+const TELEMETRY_VERSION = 1
 
-export const DEFAULT_RETAINED = 500
-
-type ToolRegistrationEvent = {
-  type: 'tool_registered'
-  tool: ToolRegistration
+type PersistedTelemetry = {
+  version: typeof TELEMETRY_VERSION
+  totalCalls: number
+  stats: ToolStats[]
 }
 
-type ToolDefinitionInput = {
-  toolId: string
-  namespace: string
-  name: string
-  actions: string[]
-}
-
+/** Aggregate tool run/error counters. No per-call content or identifiers are retained. */
 export class ToolTelemetry extends EventEmitter {
-  private records: ToolCallRecord[]
-  private readonly tools: Map<string, ToolRegistration>
-  private totalCalls: number
+  private readonly stats = new Map<string, ToolStats>()
+  private totalCalls = 0
   private writes: Promise<void> = Promise.resolve()
 
-  private constructor(
-    private readonly filePath: string | null,
-    records: ToolCallRecord[],
-    tools: Map<string, ToolRegistration>,
-    totalCalls: number,
-    private readonly retained: number
-  ) {
+  private constructor(private readonly filePath: string | null, snapshot?: ToolTelemetrySnapshot) {
     super()
-    this.records = records.slice(-retained)
-    this.tools = tools
-    this.totalCalls = totalCalls
+    this.totalCalls = snapshot?.totalCalls ?? 0
+    for (const stat of snapshot?.stats ?? []) this.stats.set(keyOf(stat.toolId, stat.action), { ...stat })
   }
 
   /** In-memory only; for tests and for a missing user-data directory. */
-  static ephemeral(retained = DEFAULT_RETAINED): ToolTelemetry {
-    return new ToolTelemetry(null, [], new Map(), 0, retained)
+  static ephemeral(): ToolTelemetry {
+    return new ToolTelemetry(null)
   }
 
-  static async open(filePath: string, retained = DEFAULT_RETAINED): Promise<ToolTelemetry> {
-    const records: ToolCallRecord[] = []
-    const tools = new Map<string, ToolRegistration>()
-    let totalCalls = 0
-    try {
-      const lines = (await readFile(filePath, 'utf8')).split('\n')
-      for (const line of lines) {
-        if (!line.trim()) continue
-        try {
-          const parsed: unknown = JSON.parse(line)
-          if (isToolRegistrationEvent(parsed)) {
-            tools.set(parsed.tool.toolId, { ...parsed.tool, source: parsed.tool.source ?? 'app' })
-          } else if (isRecord(parsed)) {
-            totalCalls += 1
-            records.push(parsed)
-            if (records.length > retained) records.shift()
-          }
-        } catch {
-          // A corrupt line should not hide valid telemetry around it.
-        }
-      }
-    } catch (error) {
-      const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
-      if (code !== 'ENOENT') console.warn('[tools] telemetry unreadable, starting empty:', messageOf(error))
+  /** Open aggregate counters and replace a legacy per-call JSONL log when one exists. */
+  static async open(filePath: string, legacyPath?: string): Promise<ToolTelemetry> {
+    const current = await readCurrent(filePath)
+    if (current) return new ToolTelemetry(filePath, current)
+
+    const legacy = legacyPath ? await readLegacy(legacyPath) : null
+    const telemetry = new ToolTelemetry(filePath, legacy ?? undefined)
+    if (legacy) {
+      await telemetry.persistNow()
+      await unlink(legacyPath!).catch(() => {})
     }
-    return new ToolTelemetry(filePath, records, tools, totalCalls, retained)
+    return telemetry
   }
 
-  record(record: ToolCallRecord): void {
-    this.records.push(record)
+  record(record: ToolCallEvent): void {
     this.totalCalls += 1
-    if (this.records.length > this.retained) this.records.splice(0, this.records.length - this.retained)
+    this.bump(record.toolId, null, record.ok)
+    if (record.action) this.bump(record.toolId, record.action, record.ok)
     this.emit('record', record)
-    if (this.filePath) this.enqueue(() => appendFile(this.filePath!, `${JSON.stringify(record)}\n`))
+    this.enqueuePersist()
   }
 
-  /** Adapter boundary for host tools that do not execute through ToolRegistry. */
-  recordExternal(record: ToolCallRecord): void {
-    this.record({ ...record, source: 'external' })
-  }
-
-  /** Register every tool/action definition currently offered by the registry. */
-  observeTools(definitions: ToolDefinitionInput[], source: ToolRegistration['source'] = 'app'): void {
-    for (const definition of definitions) {
-      const current = this.tools.get(definition.toolId)
-      if (current && current.namespace === definition.namespace && current.name === definition.name && sameStrings(current.actions, definition.actions)) continue
-      const now = Date.now()
-      const registration: ToolRegistration = {
-        ...definition,
-        actions: [...definition.actions],
-        source,
-        firstSeenAt: current?.firstSeenAt ?? now,
-        lastSeenAt: now
-      }
-      this.tools.set(definition.toolId, registration)
-      this.emit('registered', registration)
-      if (this.filePath) {
-        const event: ToolRegistrationEvent = { type: 'tool_registered', tool: registration }
-        this.enqueue(() => appendFile(this.filePath!, `${JSON.stringify(event)}\n`))
-      }
-    }
-  }
-
-  snapshot(limit = 100): ToolTelemetrySnapshot {
+  snapshot(): ToolTelemetrySnapshot {
     return {
-      stats: computeStats(this.records),
-      recent: this.records.slice(-limit).reverse(),
-      retained: this.retained,
-      totalCalls: this.totalCalls,
-      registeredTools: [...this.tools.values()].sort((a, b) => a.toolId.localeCompare(b.toolId))
+      stats: [...this.stats.values()].sort(compareStats),
+      totalCalls: this.totalCalls
     }
   }
 
   async clear(): Promise<void> {
-    this.records = []
+    this.stats.clear()
     this.totalCalls = 0
     this.emit('cleared')
-    if (this.filePath) {
-      const registrations = [...this.tools.values()].map((tool) => `${JSON.stringify({ type: 'tool_registered', tool } satisfies ToolRegistrationEvent)}\n`).join('')
-      this.enqueue(() => writeFile(this.filePath!, registrations))
-      await this.writes
-    }
+    this.enqueuePersist()
+    await this.writes
   }
 
-  /** Serialise file writes so appends never interleave and clear() cannot race an append. */
-  private enqueue(write: () => Promise<void>): void {
-    this.writes = this.writes.then(write).catch((error: unknown) => {
+  private bump(toolId: string, action: string | null, ok: boolean): void {
+    const key = keyOf(toolId, action)
+    const current = this.stats.get(key) ?? { toolId, action, calls: 0, failures: 0 }
+    this.stats.set(key, {
+      ...current,
+      calls: current.calls + 1,
+      failures: current.failures + (ok ? 0 : 1)
+    })
+  }
+
+  private enqueuePersist(): void {
+    if (!this.filePath) return
+    this.writes = this.writes.then(() => this.persistNow()).catch((error: unknown) => {
       console.warn('[tools] telemetry write failed:', messageOf(error))
     })
   }
+
+  private persistNow(): Promise<void> {
+    if (!this.filePath) return Promise.resolve()
+    const persisted: PersistedTelemetry = {
+      version: TELEMETRY_VERSION,
+      totalCalls: this.totalCalls,
+      stats: [...this.stats.values()].sort(compareStats)
+    }
+    return writeAtomic(this.filePath, `${JSON.stringify(persisted, null, 2)}\n`)
+  }
 }
 
-/** One entry per tool (action null) plus one per (tool, action) pair seen. */
-export function computeStats(records: ToolCallRecord[]): ToolStats[] {
-  type Bucket = { toolId: string; action: string | null; calls: number; failures: number; totalMs: number; lastAt: number }
-  const buckets = new Map<string, Bucket>()
-  const bump = (toolId: string, action: string | null, record: ToolCallRecord): void => {
-    const key = action ? `${toolId}\u0000${action}` : toolId
-    const entry = buckets.get(key) ?? { toolId, action, calls: 0, failures: 0, totalMs: 0, lastAt: 0 }
-    entry.calls += 1
-    if (!record.ok) entry.failures += 1
-    entry.totalMs += record.durationMs
-    entry.lastAt = Math.max(entry.lastAt, record.at)
-    buckets.set(key, entry)
+async function readCurrent(filePath: string): Promise<ToolTelemetrySnapshot | null> {
+  try {
+    const parsed: unknown = JSON.parse(await readFile(filePath, 'utf8'))
+    return normalizeSnapshot(parsed)
+  } catch (error) {
+    if (codeOf(error) !== 'ENOENT') console.warn('[tools] aggregate telemetry unreadable, starting empty:', messageOf(error))
+    return null
   }
-  for (const record of records) {
-    bump(record.toolId, null, record)
-    if (record.action) bump(record.toolId, record.action, record)
-  }
-  return [...buckets.values()]
-    .map((entry) => ({
-      toolId: entry.toolId,
-      action: entry.action,
-      calls: entry.calls,
-      failures: entry.failures,
-      averageMs: Math.round(entry.totalMs / entry.calls),
-      lastAt: entry.lastAt || null
-    }))
-    .sort((a, b) => (b.lastAt ?? 0) - (a.lastAt ?? 0))
 }
 
-function isRecord(value: unknown): value is ToolCallRecord {
-  if (!value || typeof value !== 'object') return false
+/** Read only the non-sensitive counters from the old records; all other fields are discarded. */
+async function readLegacy(filePath: string): Promise<ToolTelemetrySnapshot | null> {
+  try {
+    const stats = new Map<string, ToolStats>()
+    let totalCalls = 0
+    for (const line of (await readFile(filePath, 'utf8')).split('\n')) {
+      if (!line.trim()) continue
+      try {
+        const record = legacyRecord(JSON.parse(line))
+        if (!record) continue
+        totalCalls += 1
+        bumpMap(stats, record.toolId, null, record.ok)
+        if (record.action) bumpMap(stats, record.toolId, record.action, record.ok)
+      } catch {
+        // A corrupt line should not hide valid counters around it.
+      }
+    }
+    return { stats: [...stats.values()], totalCalls }
+  } catch (error) {
+    if (codeOf(error) !== 'ENOENT') console.warn('[tools] legacy telemetry unreadable, starting empty:', messageOf(error))
+    return null
+  }
+}
+
+function normalizeSnapshot(value: unknown): ToolTelemetrySnapshot {
+  if (!value || typeof value !== 'object') throw new Error('invalid telemetry file')
+  const persisted = value as Partial<PersistedTelemetry>
+  if (persisted.version !== TELEMETRY_VERSION || !Array.isArray(persisted.stats)) throw new Error('unsupported telemetry file')
+  const stats = persisted.stats.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return []
+    const stat = entry as Partial<ToolStats>
+    if (typeof stat.toolId !== 'string' || (stat.action !== null && typeof stat.action !== 'string')) return []
+    if (!Number.isInteger(stat.calls) || stat.calls! < 0 || !Number.isInteger(stat.failures) || stat.failures! < 0) return []
+    return [{ toolId: stat.toolId, action: stat.action, calls: stat.calls!, failures: Math.min(stat.failures!, stat.calls!) }]
+  })
+  const totalCalls = Number.isInteger(persisted.totalCalls) && persisted.totalCalls! >= 0
+    ? persisted.totalCalls!
+    : stats.filter((stat) => stat.action === null).reduce((sum, stat) => sum + stat.calls, 0)
+  return { stats, totalCalls }
+}
+
+function legacyRecord(value: unknown): ToolCallEvent | null {
+  if (!value || typeof value !== 'object') return null
   const record = value as Record<string, unknown>
-  return typeof record.id === 'string' && typeof record.toolId === 'string' && typeof record.at === 'number' && typeof record.ok === 'boolean'
+  if (typeof record.toolId !== 'string' || typeof record.ok !== 'boolean') return null
+  return {
+    toolId: record.toolId,
+    action: typeof record.action === 'string' ? record.action : null,
+    ok: record.ok
+  }
 }
 
-function isToolRegistrationEvent(value: unknown): value is ToolRegistrationEvent {
-  if (!value || typeof value !== 'object') return false
-  const event = value as Partial<ToolRegistrationEvent>
-  const tool = event.tool
-  return event.type === 'tool_registered' && Boolean(tool) && typeof tool?.toolId === 'string'
-    && typeof tool.namespace === 'string' && typeof tool.name === 'string'
-    && Array.isArray(tool.actions) && tool.actions.every((action) => typeof action === 'string')
-    && (tool.source === undefined || tool.source === 'app' || tool.source === 'external')
-    && typeof tool.firstSeenAt === 'number' && typeof tool.lastSeenAt === 'number'
+function bumpMap(stats: Map<string, ToolStats>, toolId: string, action: string | null, ok: boolean): void {
+  const key = keyOf(toolId, action)
+  const current = stats.get(key) ?? { toolId, action, calls: 0, failures: 0 }
+  stats.set(key, { ...current, calls: current.calls + 1, failures: current.failures + (ok ? 0 : 1) })
 }
 
-function sameStrings(left: string[], right: string[]): boolean {
-  return left.length === right.length && left.every((value, index) => value === right[index])
+function keyOf(toolId: string, action: string | null): string {
+  return `${toolId}\u0000${action ?? ''}`
+}
+
+function compareStats(left: ToolStats, right: ToolStats): number {
+  return left.toolId.localeCompare(right.toolId) || (left.action ?? '').localeCompare(right.action ?? '')
+}
+
+function codeOf(error: unknown): string {
+  return error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
 }
 
 function messageOf(error: unknown): string {

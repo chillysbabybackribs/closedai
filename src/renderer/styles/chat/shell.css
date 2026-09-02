@@ -59,8 +59,7 @@
 }
 
 /* Antigravity Chat Header: 34px clean toolbar */
-/* Codex-desktop layout: folder glyph, thread name, one overflow menu — all left
-   aligned as a single label-and-actions cluster, with the rest of the row empty. */
+/* Header layout: folder glyph and thread name on the left, overflow actions menu on the right. */
 .chat-header {
   flex: 0 0 auto;
   display: flex;

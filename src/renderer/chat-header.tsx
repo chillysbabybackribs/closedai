@@ -30,6 +30,7 @@ export function ChatHeader({
     <header className="chat-header">
       <Folder className="chat-header-folder-icon size-3.5" aria-hidden="true" />
       <span className="chat-header-title" title={cwd ? `${title}\n${cwd}` : title}>{title}</span>
+      <span className="chat-header-spacer" />
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
           <Button
@@ -44,7 +45,7 @@ export function ChatHeader({
           </Button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
-          <DropdownMenu.Content className="chat-header-menu" sideOffset={6} align="start">
+          <DropdownMenu.Content className="chat-header-menu" sideOffset={6} align="end">
             <DropdownMenu.Item
               className="chat-header-menu-item"
               disabled={!ready || running}
@@ -80,7 +81,6 @@ export function ChatHeader({
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
-      <span className="chat-header-spacer" />
     </header>
   )
 }
