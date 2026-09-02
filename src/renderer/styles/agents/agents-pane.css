@@ -1,0 +1,235 @@
+/* ---- Background agents side drawer ----------------------------------------
+   Leftmost workspace column: a header with the "+ New Agent" button plus the agent
+   list. The open/close control lives in the TITLE BAR (.agents-titlebar-toggle),
+   so a collapsed sidebar leaves no rail — the column vanishes from the workspace
+   grid. Same chassis material as the chat chrome so it reads as part of the shell. */
+
+.agents-pane {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  width: 258px;
+  flex: 0 0 258px;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--hairline, rgb(255 255 255 / 8%));
+  background: var(--surface-chrome, #161617);
+}
+
+/* Title-bar toggle: floats at the top-left of the drag region. */
+.agents-titlebar-toggle {
+  position: absolute;
+  top: 0;
+  left: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--chrome-control-fg, #868686);
+  transition: color 120ms ease;
+  -webkit-app-region: no-drag;
+}
+
+.agents-titlebar-toggle::before {
+  content: '';
+  position: absolute;
+  width: 26px;
+  height: 22px;
+  border-radius: 6px;
+}
+
+.agents-titlebar-toggle:hover {
+  color: var(--chrome-control-strong, #ececed);
+}
+
+.agents-titlebar-toggle:hover::before {
+  background: var(--chrome-control-hover, rgb(255 255 255 / 7%));
+}
+
+.agents-titlebar-toggle svg {
+  position: relative;
+  stroke-width: var(--chrome-icon-stroke, 1.75);
+}
+
+/* Header is two stacked full-width bands: the new-agent button, then the chat search. */
+.agents-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--hairline, rgb(255 255 255 / 8%));
+  user-select: none;
+}
+
+.agents-running-count {
+  letter-spacing: normal;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+/* -- New agent button -- */
+
+.agents-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--hairline-strong, rgb(255 255 255 / 12%));
+  border-radius: 7px;
+  background: var(--surface-raised, #202022);
+  color: var(--chrome-fg-strong, #eceef0);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.agents-new:hover:not(:disabled) {
+  background: var(--surface-control-hover, rgb(255 255 255 / 7%));
+}
+
+.agents-new:disabled {
+  opacity: 0.45;
+}
+
+/* -- Agent list -- */
+
+.agents-list {
+  grid-row: 3;
+  min-height: 0;
+  padding: 6px;
+  overflow-y: auto;
+  overflow-anchor: none;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.agents-section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 4px 4px;
+  color: #77777a;
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.agents-section-label:first-child {
+  margin-top: 2px;
+}
+
+.agents-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin: 8px 0 4px;
+  padding: 2px 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #77777a;
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  user-select: none;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.agents-section-toggle:hover {
+  background: var(--surface-control, rgb(255 255 255 / 4%));
+  color: #a9a9ad;
+}
+
+.agents-section-count {
+  margin-left: auto;
+  color: #565659;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* Directory grouping */
+.agents-dir-group {
+  margin-bottom: 2px;
+}
+
+.agents-dir-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  margin: 4px 2px 1px;
+  padding: 2px 4px;
+  color: #8f8f93;
+  font-size: 10.5px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.agents-dir-label svg {
+  flex: 0 0 auto;
+  color: #6a6a6e;
+}
+
+.agents-dir-label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agents-dir-group .agents-row {
+  margin-left: 8px;
+}
+
+.agents-empty {
+  margin: 14px 10px;
+  color: #6a6a6e;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* Sticky instance footer */
+.agents-instance-footer {
+  grid-row: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  border-top: 1px solid var(--hairline, rgb(255 255 255 / 8%));
+  user-select: none;
+}
+
+.agents-instance-label {
+  min-width: 0;
+  color: var(--chrome-control-fg, #868686);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+
+.agents-instance-num {
+  color: var(--chrome-control-muted, #5e5e60);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 70rem) {
+  .agents-pane {
+    width: 216px;
+    flex-basis: 216px;
+  }
+}

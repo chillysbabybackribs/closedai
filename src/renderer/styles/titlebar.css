@@ -1,7 +1,7 @@
 /* ---- Shell title bar ------------------------------------------------------
    The 34px top row of the shell grid: a drag region carrying three zones —
-   the left application menu, the CENTRED view dock (workspace modes; styled in
-   workspace.css), and the window controls.
+   the left control rail (agents toggle, new chat, vpn/egress), the CENTRED view
+   dock (workspace modes; styled in workspace.css), and the window controls.
    The chat title lives in the chat pane's own header now (chat-pane.tsx).
    Split out of shell-chat.css, which reached its line cap.
 
@@ -65,6 +65,18 @@
 
 @media (max-width: 760px) {
   .app-brand strong { display: none; }
+}
+
+/* Chat actions and workspace-mode controls form one compact left rail immediately
+   after the agents-sidebar toggle. The empty remainder stays draggable. */
+.titlebar-chat-actions {
+  position: absolute;
+  top: 0;
+  left: 36px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  -webkit-app-region: no-drag;
 }
 
 .titlebar-action-divider {

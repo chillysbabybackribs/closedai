@@ -3,6 +3,7 @@ import { DropdownMenu } from 'radix-ui'
 import { Check, ChevronDown } from 'lucide-react'
 
 import type { ChatModel } from '../shared/chat.js'
+import { ProviderMark } from '../components/ui/provider-mark.js'
 import { effortLabel, modelGroups, modelTriggerLabel } from './model-menu-state.js'
 
 export type ModelMenuProps = {
@@ -33,6 +34,7 @@ export function ModelMenu({
         aria-label="Model and reasoning effort"
         title={trigger.description || 'Choose a model'}
       >
+        {selected && <ProviderMark provider={selected.provider} className="model-menu-trigger-mark" />}
         <span className="model-menu-trigger-name">{trigger.name}</span>
         {trigger.effort && <span className="model-menu-trigger-effort">{trigger.effort}</span>}
         <ChevronDown className="model-menu-trigger-caret" aria-hidden="true" />
@@ -45,7 +47,10 @@ export function ModelMenu({
           >
             {modelGroups(models).map((group) => (
               <DropdownMenu.Group key={group.provider} className="model-menu-group">
-                <DropdownMenu.Label className="model-menu-label">{group.label}</DropdownMenu.Label>
+                <DropdownMenu.Label className="model-menu-label">
+                  <ProviderMark provider={group.provider} className="model-menu-label-mark" />
+                  {group.label}
+                </DropdownMenu.Label>
                 {group.models.map((model) => (
                   <DropdownMenu.RadioItem key={model.id} value={model.id} className="model-menu-item" textValue={model.displayName}>
                     <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>

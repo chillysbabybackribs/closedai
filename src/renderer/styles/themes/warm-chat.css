@@ -185,6 +185,53 @@
   background: rgb(32 34 35 / 7%);
 }
 
+/* The agents rail has several intentionally hand-tuned dark-theme readouts.
+   Consolidate their neutral ink here so none turn into low-contrast grey when
+   the underlying material flips warm. Status green/red remain semantic. */
+:root[data-theme='warm'] .agents-running-count,
+:root[data-theme='warm'] .agents-row-task,
+:root[data-theme='warm'] .agents-row-twisty:hover,
+:root[data-theme='warm'] .agents-settled-toggle:hover,
+:root[data-theme='warm'] .agents-settled-clear:hover {
+  color: #202223;
+}
+
+:root[data-theme='warm'] .agents-search-field,
+:root[data-theme='warm'] .agents-search-field input::placeholder,
+:root[data-theme='warm'] .agents-search-clear,
+:root[data-theme='warm'] .agents-search-result-meta,
+:root[data-theme='warm'] .agents-search-empty,
+:root[data-theme='warm'] .agents-section-label,
+:root[data-theme='warm'] .agents-section-toggle,
+:root[data-theme='warm'] .agents-dir-label,
+:root[data-theme='warm'] .agents-empty,
+:root[data-theme='warm'] .agents-row-twisty,
+:root[data-theme='warm'] .agents-twisty-count,
+:root[data-theme='warm'] .agents-settled-toggle,
+:root[data-theme='warm'] .agents-row-meta {
+  color: #3c3c3c;
+}
+
+:root[data-theme='warm'] .agents-section-toggle:hover,
+:root[data-theme='warm'] .agents-dir-label svg {
+  color: #202223;
+}
+
+:root[data-theme='warm'] .agents-section-count,
+:root[data-theme='warm'] .agents-settled-clear {
+  color: #555450;
+}
+
+:root[data-theme='warm'] .agents-search-results {
+  box-shadow:
+    0 0 0 1px rgb(32 34 35 / 14%),
+    0 10px 24px rgb(32 34 35 / 20%);
+}
+
+:root[data-theme='warm'] .agents-search-result-title mark {
+  color: #202223;
+}
+
 /* Reasoning and tool disclosures sit on a light fitted panel in this theme.
    Code and diffs inside them keep their dedicated dark canvas. */
 :root[data-theme='warm'] .reasoning-card[data-open='true'],

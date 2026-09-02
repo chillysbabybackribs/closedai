@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from 'react'
+import { useCallback, useEffect, useMemo, useReducer } from 'react'
 import type { ChatAttachment, ChatSnapshot, ChatThreadSummary } from '../shared/chat.js'
 import type { ChatPeerSummary, ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import { initialChatWorkspaceState, reduceChatWorkspaceEvent } from './chat-state.js'
@@ -66,7 +66,10 @@ export function useChatController(): ChatController {
   const selectPane = useCallback((nextPaneId: string) => window.closedai.chat.selectPane(nextPaneId), [])
   const closePeer = useCallback((targetPaneId: string) => window.closedai.chat.closePeer(targetPaneId), [])
 
-  return {
+  // Memoized because consumers put the controller itself in dependency arrays. A fresh object
+  // per render turns any `[chat]`-keyed effect into a render loop: the effect sets state, the
+  // re-render mints a new controller, the effect fires again. The drawer hit exactly that.
+  return useMemo(() => ({
     state: workspace.selected,
     peers: workspace.peers,
     selectedPaneId: workspace.selectedPaneId,
@@ -82,5 +85,9 @@ export function useChatController(): ChatController {
     archiveThread,
     selectPane,
     closePeer
-  }
+  }), [
+    workspace.selected, workspace.peers, workspace.selectedPaneId,
+    send, interrupt, selectModel, selectReasoningEffort, loginWithChatGPT,
+    listThreads, newThread, continueInNewThread, openThread, archiveThread, selectPane, closePeer
+  ])
 }

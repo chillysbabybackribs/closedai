@@ -1,6 +1,6 @@
 /* ---- Dot field ----------------------------------------------------------
-   Applies --dotfield to the shell chrome AROUND the transcript: the composer
-   and the title bar. The chat reading surface is
+   Applies --dotfield to the shell chrome AROUND the transcript: the agents
+   sidebar, the composer, and the title bar. The chat reading surface is
    deliberately excluded — the same line --grain already holds. Texture belongs
    on chassis; the surface you read long-form output on stays flat.
 
@@ -22,11 +22,27 @@
    sit inside a parent that does, so the new stacking context traps nothing that
    was escaping before. */
 
+.agents-pane,
 .composer {
   position: relative;
   isolation: isolate;
 }
 
+/* The sidebar is a tall narrow column and the shared drift is proportioned for
+   wide boxes, so there it would put its strongest patch in the top corner. Give
+   it its own: one broad bloom just below centre, with a second overlapping it
+   off-axis and lower. Two soft ellipses at different sizes read as one uneven
+   cloud — a single one reads as a circle, which is the failure mode here. The
+   ambient layer drops to 30% so the quiet top and bottom fall nearly to flat
+   and the middle-down is unmistakably the brighter region. */
+.agents-pane {
+  --dotfield-drift:
+    radial-gradient(92% 25% at 52% 58%, rgb(0 0 0 / 68%) 0%, rgb(0 0 0 / 0%) 74%),
+    radial-gradient(78% 19% at 44% 73%, rgb(0 0 0 / 46%) 0%, rgb(0 0 0 / 0%) 76%),
+    linear-gradient(rgb(0 0 0 / 30%), rgb(0 0 0 / 30%));
+}
+
+.agents-pane::before,
 .composer::before {
   content: '';
   position: absolute;
