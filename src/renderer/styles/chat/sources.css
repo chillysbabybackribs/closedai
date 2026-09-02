@@ -1,19 +1,19 @@
 .prompt-markdown .prompt-source-trigger {
   display: inline-flex;
   align-items: center;
-  max-width: 128px;
-  height: 20px;
-  padding: 0 6px;
-  gap: 4px;
+  max-width: 148px;
+  height: 24px;
+  padding: 0 8px;
+  gap: 5px;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--muted);
   color: var(--muted-foreground);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1;
   text-decoration: none;
-  vertical-align: -4px;
+  vertical-align: -5px;
   transition: color 120ms var(--ease-chrome), background 120ms var(--ease-chrome);
 }
 
