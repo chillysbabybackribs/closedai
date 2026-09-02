@@ -55,10 +55,10 @@ export function ChatPane(): JSX.Element {
     <aside className="chat-pane prompt-chat" data-ui-surface="chat">
       <ChatHeader
         title={title}
+        cwd={state.cwd}
         ready={ready}
         running={running}
         historyOpen={historyOpen}
-        contextUsage={state.contextUsage}
         canContinue={state.items.some((item) => item.type === 'user')}
         onNewChat={() => void startNewChat()}
         onContinueInNewChat={() => void continueInNewChat()}
@@ -90,6 +90,7 @@ export function ChatPane(): JSX.Element {
         models={state.models}
         selectedModel={state.selectedModel}
         selectedReasoningEffort={state.selectedReasoningEffort}
+        contextUsage={state.contextUsage}
         onModelChange={chat.selectModel}
         onReasoningEffortChange={chat.selectReasoningEffort}
         onSend={sendMessage}

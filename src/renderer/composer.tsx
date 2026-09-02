@@ -9,8 +9,9 @@ import {
   PromptInputActions,
   PromptInputTextarea
 } from '../components/ui/prompt-input.js'
-import type { ChatAttachment, ChatModel } from '../shared/chat.js'
+import type { ChatAttachment, ChatContextUsage, ChatModel } from '../shared/chat.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
+import { ContextMeter } from './context-meter.js'
 import { ModelMenu } from './model-menu.js'
 
 export type ComposerProps = {
@@ -19,13 +20,15 @@ export type ComposerProps = {
   models: ChatModel[]
   selectedModel: string | null
   selectedReasoningEffort: string | null
+  /** How full the model's window was after the latest response; null before the first one. */
+  contextUsage: ChatContextUsage | null
   onModelChange: (modelId: string) => Promise<void>
   onReasoningEffortChange: (effort: string) => Promise<void>
   onSend: (text: string, attachments: ChatAttachment[]) => Promise<void>
   onStop: () => Promise<void>
 }
 
-export function Composer({ enabled, running, models, selectedModel, selectedReasoningEffort, onModelChange, onReasoningEffortChange, onSend, onStop }: ComposerProps): JSX.Element {
+export function Composer({ enabled, running, models, selectedModel, selectedReasoningEffort, contextUsage, onModelChange, onReasoningEffortChange, onSend, onStop }: ComposerProps): JSX.Element {
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<ChatAttachment[]>([])
   const [attachmentError, setAttachmentError] = useState('')
@@ -121,6 +124,7 @@ export function Composer({ enabled, running, models, selectedModel, selectedReas
                   onModelChange={onModelChange}
                   onReasoningEffortChange={onReasoningEffortChange}
                 />
+                {contextUsage && <ContextMeter usage={contextUsage} />}
               </div>
             </div>
 
