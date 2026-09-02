@@ -51,6 +51,7 @@
 .model-menu-trigger-name {
   min-width: 0;
   overflow: hidden;
+  color: var(--foreground);
   text-overflow: ellipsis;
 }
 
