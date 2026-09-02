@@ -290,7 +290,7 @@
 }
 
 .prompt-composer-input {
-  max-width: var(--chat-column-width);
+  max-width: calc(var(--chat-column-width) + 48px);
   margin-inline: auto;
   padding: 6px;
   border: 1px solid var(--composer-line);
@@ -306,7 +306,7 @@
 }
 
 .prompt-composer-textarea {
-  min-height: 48px;
+  min-height: 64px;
   max-height: min(34vh, 260px);
   padding: 8px 10px 6px;
   color: #ececee;

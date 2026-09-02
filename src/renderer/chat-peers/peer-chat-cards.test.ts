@@ -33,12 +33,12 @@ test('the collapsed bar summarizes peer and running counts', () => {
   assert.doesNotMatch(html, /Background research/)
 })
 
-test('the expanded bar lists each peer with its title and activity', () => {
+test('the open bar shows only the peer rows, not the summary text', () => {
   const html = renderToStaticMarkup(createElement(PeerChatCards, { peers: [peer, idle], onSelect: () => {}, defaultOpen: true }))
-  assert.match(html, /aria-expanded="true"/)
   assert.match(html, /Background research/)
   assert.match(html, /Web search/)
   assert.match(html, /Style cleanup/)
   assert.match(html, /Claude Code/)
   assert.match(html, /aria-label="Running"/)
+  assert.doesNotMatch(html, /2 peer chats/)
 })

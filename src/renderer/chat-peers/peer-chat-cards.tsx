@@ -4,8 +4,9 @@ import { ChevronRight, LoaderCircle, MessageSquare } from 'lucide-react'
 import type { ChatPeerSummary } from '../../shared/chat-peers.js'
 import { PROVIDER_LABELS } from '../chat-state.js'
 
-/** Collapsible bar fused to the composer top, Cursor-style: a summary row that
- *  expands upward into one clickable row per background peer chat. */
+/** Bar fused to the composer top. The collapsed strip summarizes the background
+ *  peers; hovering swaps it for one clickable row per peer, and moving the mouse
+ *  away or clicking anywhere collapses it again. */
 export function PeerChatCards({
   peers,
   onSelect,
@@ -19,9 +20,15 @@ export function PeerChatCards({
   if (peers.length === 0) return null
   const runningCount = peers.filter((peer) => peer.running).length
   return (
-    <div className="peer-chat-bar" aria-label="Peer chats">
+    <div
+      className="peer-chat-bar"
+      aria-label="Peer chats"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={() => setOpen(false)}
+    >
       <div className="peer-chat-bar-inner">
-        {open && (
+        {open ? (
           <ul className="peer-chat-bar-list">
             {peers.map((peer) => (
               <li key={peer.paneId}>
@@ -42,22 +49,23 @@ export function PeerChatCards({
               </li>
             ))}
           </ul>
+        ) : (
+          <button
+            className="peer-chat-bar-toggle"
+            type="button"
+            aria-expanded={false}
+            onFocus={() => setOpen(true)}
+          >
+            <ChevronRight className="peer-chat-bar-chevron" aria-hidden="true" />
+            <span>{peers.length === 1 ? '1 peer chat' : `${peers.length} peer chats`}</span>
+            {runningCount > 0 && (
+              <span className="peer-chat-bar-running-note">
+                <LoaderCircle className="peer-chat-bar-icon peer-chat-bar-running" aria-label="Running" />
+                {runningCount === 1 ? '1 running' : `${runningCount} running`}
+              </span>
+            )}
+          </button>
         )}
-        <button
-          className="peer-chat-bar-toggle"
-          type="button"
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-        >
-          <ChevronRight className={`peer-chat-bar-chevron${open ? ' peer-chat-bar-chevron-open' : ''}`} aria-hidden="true" />
-          <span>{peers.length === 1 ? '1 peer chat' : `${peers.length} peer chats`}</span>
-          {runningCount > 0 && (
-            <span className="peer-chat-bar-running-note">
-              <LoaderCircle className="peer-chat-bar-icon peer-chat-bar-running" aria-label="Running" />
-              {runningCount === 1 ? '1 running' : `${runningCount} running`}
-            </span>
-          )}
-        </button>
       </div>
     </div>
   )
