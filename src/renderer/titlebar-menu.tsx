@@ -1,14 +1,14 @@
 import { memo, type JSX } from 'react'
 import { Menubar } from 'radix-ui'
+import { CHAT_ZOOM_MAX, CHAT_ZOOM_MIN, type ChatZoomCommand } from './chat-zoom.js'
 
 /** One menu's worth of rows. `null` is a separator. */
-type MenuRow = { label: string; shortcut?: string } | null
+type MenuRow = { label: string; shortcut?: string; command?: ChatZoomCommand } | null
 
 type Menu = { label: string; rows: MenuRow[] }
 
-/* Placeholder shell menus, matching the desktop apps this chrome is modelled on.
-   Nothing is wired yet: every row renders disabled so the bar shows the intended
-   command surface without claiming actions the app does not perform. */
+/* Shell menus matching the desktop apps this chrome is modelled on. Rows without
+   commands remain placeholders until their application behavior exists. */
 const MENUS: Menu[] = [
   {
     label: 'File',
@@ -40,9 +40,9 @@ const MENUS: Menu[] = [
       { label: 'Reload', shortcut: 'Ctrl+R' },
       { label: 'Toggle browser pane' },
       null,
-      { label: 'Zoom in', shortcut: 'Ctrl+=' },
-      { label: 'Zoom out', shortcut: 'Ctrl+-' },
-      { label: 'Actual size', shortcut: 'Ctrl+0' },
+      { label: 'Zoom in', shortcut: 'Ctrl+=', command: 'in' },
+      { label: 'Zoom out', shortcut: 'Ctrl+-', command: 'out' },
+      { label: 'Actual size', shortcut: 'Ctrl+0', command: 'reset' },
       null,
       { label: 'Full screen', shortcut: 'F11' }
     ]
@@ -58,8 +58,16 @@ const MENUS: Menu[] = [
   }
 ]
 
+export type TitlebarMenuProps = {
+  chatZoom: number
+  onChatZoomChange: (command: ChatZoomCommand) => void
+}
+
 /** The shell's File / Edit / View / Help bar, sitting in the title bar's drag region. */
-export const TitlebarMenu = memo(function TitlebarMenu(): JSX.Element {
+export const TitlebarMenu = memo(function TitlebarMenu({
+  chatZoom,
+  onChatZoomChange
+}: TitlebarMenuProps): JSX.Element {
   return (
     <Menubar.Root className="titlebar-nav-menu" aria-label="Application menu">
       <div className="titlebar-nav-group">
@@ -72,9 +80,18 @@ export const TitlebarMenu = memo(function TitlebarMenu(): JSX.Element {
                   row === null ? (
                     <Menubar.Separator key={`sep-${index}`} className="titlebar-menu-separator" />
                   ) : (
-                    <Menubar.Item key={row.label} className="titlebar-menu-item" disabled>
+                    <Menubar.Item
+                      key={row.label}
+                      className="titlebar-menu-item"
+                      disabled={!row.command || (row.command === 'in' && chatZoom >= CHAT_ZOOM_MAX) || (row.command === 'out' && chatZoom <= CHAT_ZOOM_MIN)}
+                      onSelect={() => row.command && onChatZoomChange(row.command)}
+                    >
                       <span>{row.label}</span>
-                      {row.shortcut && <span className="titlebar-menu-shortcut">{row.shortcut}</span>}
+                      {row.shortcut && (
+                        <span className="titlebar-menu-shortcut">
+                          {row.command === 'reset' ? `${chatZoom}%  ` : ''}{row.shortcut}
+                        </span>
+                      )}
                     </Menubar.Item>
                   )
                 )}

@@ -31,6 +31,20 @@
   background: var(--surface-card, #19191a);
 }
 
+/* Chat zoom is deliberately inside the fixed split-panel box. Giving the scaled
+   surface the inverse layout size makes text and controls reflow at the chosen
+   scale while the chat/browser divider and the browser pane stay put. */
+.chat-zoom-surface {
+  display: flex;
+  flex-direction: column;
+  width: calc(100% / var(--chat-zoom));
+  height: calc(100% / var(--chat-zoom));
+  min-width: 0;
+  min-height: 0;
+  transform: scale(var(--chat-zoom));
+  transform-origin: top left;
+}
+
 /* Chat message scroller */
 .chat-scroll-root {
   flex: 1 1 0;

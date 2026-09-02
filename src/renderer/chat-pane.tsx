@@ -20,7 +20,13 @@ import { Composer } from './composer.js'
 import { TaskActivity } from './task-activity.js'
 import { ToolsModal } from './tools/tools-modal.js'
 
-export function ChatPane({ controller }: { controller?: ReturnType<typeof useChatController> } = {}): JSX.Element {
+export function ChatPane({
+  controller,
+  zoom = 100
+}: {
+  controller?: ReturnType<typeof useChatController>
+  zoom?: number
+} = {}): JSX.Element {
   const internalChat = useChatController()
   const chat = controller ?? internalChat
   const { state } = chat
@@ -64,55 +70,61 @@ export function ChatPane({ controller }: { controller?: ReturnType<typeof useCha
     <aside
       className={`chat-pane prompt-chat${centerComposer ? ' prompt-chat-composer-centered' : ''}`}
       data-ui-surface="chat"
+      data-zoom={zoom}
     >
-      <ChatHeader
-        title={title}
-        cwd={state.cwd}
-        ready={ready}
-        running={running}
-        historyOpen={historyOpen}
-        canContinue={state.items.some((item) => item.type === 'user')}
-        onNewChat={() => void startNewChat()}
-        onContinueInNewChat={() => void continueInNewChat()}
-        onToggleHistory={() => setHistoryOpen((open) => !open)}
-        onOpenTools={() => setToolsOpen(true)}
-      />
-      <ToolsModal open={toolsOpen} onOpenChange={setToolsOpen} />
-      {historyOpen ? (
-        <ChatHistory
-          activeThreadId={state.threadId}
-          busy={running}
-          listThreads={chat.listThreads}
-          openThread={chat.openThread}
-          archiveThread={chat.archiveThread}
-          onClose={() => setHistoryOpen(false)}
+      <div
+        className="chat-zoom-surface"
+        style={{ '--chat-zoom': zoom / 100 } as React.CSSProperties}
+      >
+        <ChatHeader
+          title={title}
+          cwd={state.cwd}
+          ready={ready}
+          running={running}
+          historyOpen={historyOpen}
+          canContinue={state.items.some((item) => item.type === 'user')}
+          onNewChat={() => void startNewChat()}
+          onContinueInNewChat={() => void continueInNewChat()}
+          onToggleHistory={() => setHistoryOpen((open) => !open)}
+          onOpenTools={() => setToolsOpen(true)}
         />
-      ) : (
-        <TranscriptScroller threadId={state.threadId}>
-          {!hasMessages && blocked ? (
-            <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
-          ) : hasMessages ? (
-            <ChatTranscript items={state.items} activeTurnId={state.activeTurnId} />
-          ) : (
-            <div aria-hidden="true" />
-          )}
-        </TranscriptScroller>
-      )}
-      <TaskActivity items={state.items} activeTurnId={state.activeTurnId} />
-      <Composer
-        enabled={ready}
-        running={running}
-        placeholder={connecting ? state.connection.message : undefined}
-        models={state.models}
-        selectedModel={state.selectedModel}
-        selectedReasoningEffort={state.selectedReasoningEffort}
-        contextUsage={state.contextUsage}
-        onModelChange={chat.selectModel}
-        onReasoningEffortChange={chat.selectReasoningEffort}
-        onSend={sendMessage}
-        onStop={chat.interrupt}
-        onNewChat={() => void startNewChat()}
-      />
+        <ToolsModal open={toolsOpen} onOpenChange={setToolsOpen} />
+        {historyOpen ? (
+          <ChatHistory
+            activeThreadId={state.threadId}
+            busy={running}
+            listThreads={chat.listThreads}
+            openThread={chat.openThread}
+            archiveThread={chat.archiveThread}
+            onClose={() => setHistoryOpen(false)}
+          />
+        ) : (
+          <TranscriptScroller threadId={state.threadId}>
+            {!hasMessages && blocked ? (
+              <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
+            ) : hasMessages ? (
+              <ChatTranscript items={state.items} activeTurnId={state.activeTurnId} />
+            ) : (
+              <div aria-hidden="true" />
+            )}
+          </TranscriptScroller>
+        )}
+        <TaskActivity items={state.items} activeTurnId={state.activeTurnId} />
+        <Composer
+          enabled={ready}
+          running={running}
+          placeholder={connecting ? state.connection.message : undefined}
+          models={state.models}
+          selectedModel={state.selectedModel}
+          selectedReasoningEffort={state.selectedReasoningEffort}
+          contextUsage={state.contextUsage}
+          onModelChange={chat.selectModel}
+          onReasoningEffortChange={chat.selectReasoningEffort}
+          onSend={sendMessage}
+          onStop={chat.interrupt}
+          onNewChat={() => void startNewChat()}
+        />
+      </div>
     </aside>
   )
 }

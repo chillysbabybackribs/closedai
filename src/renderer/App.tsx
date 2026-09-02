@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/inter/wght-italic.css'
 import '@fontsource-variable/geist-mono/wght.css'
-import React from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { SideDrawer } from './side-drawer/side-drawer.js'
 import { DrawerToggle } from './side-drawer/drawer-toggle.js'
@@ -12,6 +12,12 @@ import { BrowserPane } from './browser-pane.js'
 import { useBrowserController } from './browser-controller.js'
 import { useChatController, type ChatController } from './chat-controller.js'
 import { ChatPane } from './chat-pane.js'
+import {
+  applyChatZoomCommand,
+  CHAT_ZOOM_DEFAULT,
+  chatZoomCommandForKey,
+  type ChatZoomCommand
+} from './chat-zoom.js'
 import { TitlebarMenu } from './titlebar-menu.js'
 import { WorkspaceSplit } from './workspace-split.js'
 import './styles.css'
@@ -19,28 +25,49 @@ import './styles.css'
 function App(): JSX.Element {
   const chat = useChatController()
   const drawer = useDrawerController(chat)
+  const [chatZoom, setChatZoom] = useState(CHAT_ZOOM_DEFAULT)
+  const changeChatZoom = useCallback((command: ChatZoomCommand): void => {
+    setChatZoom((current) => applyChatZoomCommand(current, command))
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      const command = chatZoomCommandForKey(event)
+      if (!command) return
+      event.preventDefault()
+      changeChatZoom(command)
+    }
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
+  }, [changeChatZoom])
 
   return (
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
         <DrawerToggle controller={drawer} />
-        <TitlebarMenu />
+        <TitlebarMenu chatZoom={chatZoom} onChatZoomChange={changeChatZoom} />
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
       <div className="workspace" data-mode="chat" data-agents={drawer.isCollapsed ? 'closed' : 'open'}>
         <SideDrawer controller={drawer} chat={chat} />
-        <DesktopWorkspace chat={chat} />
+        <DesktopWorkspace chat={chat} chatZoom={chatZoom} />
       </div>
     </div>
   )
 }
 
-const DesktopWorkspace = React.memo(function DesktopWorkspace({ chat }: { chat: ChatController }): JSX.Element {
+const DesktopWorkspace = React.memo(function DesktopWorkspace({
+  chat,
+  chatZoom
+}: {
+  chat: ChatController
+  chatZoom: number
+}): JSX.Element {
   const browser = useBrowserController('browser')
   return (
     <WorkspaceSplit
-      chat={<ChatPane controller={chat} />}
+      chat={<ChatPane controller={chat} zoom={chatZoom} />}
       workspace={
         <div className="workspace-right" data-mode="browser" data-with-browser="yes" data-refs="no">
           <div className="workspace-surface workspace-surface-browser">
