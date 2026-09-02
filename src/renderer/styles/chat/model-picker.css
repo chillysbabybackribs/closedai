@@ -1,24 +1,33 @@
+.prompt-model-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
 .prompt-model-picker {
-  position: relative;
   display: inline-flex;
   align-items: center;
   max-width: 220px;
-  height: 40px;
-  color: var(--muted-foreground);
+  height: 30px;
+  color: var(--foreground);
 }
 
 .prompt-effort-picker {
   max-width: 145px;
+  color: var(--muted-foreground);
 }
 
 .prompt-model-picker select {
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   height: 100%;
-  padding: 0 27px 0 11px;
+  padding: 0 3px;
   overflow: hidden;
+  field-sizing: content;
   appearance: none;
-  border: 1px solid var(--input);
-  border-radius: 999px;
+  border: 0;
+  border-radius: 5px;
   outline: none;
   background: transparent;
   color: inherit;
@@ -42,12 +51,6 @@
 .prompt-model-picker select:disabled {
   cursor: not-allowed;
   opacity: 0.5;
-}
-
-.prompt-model-picker svg {
-  position: absolute;
-  right: 9px;
-  pointer-events: none;
 }
 
 .prompt-model-picker option {

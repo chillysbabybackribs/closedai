@@ -1,6 +1,6 @@
 import type { ClipboardEvent, DragEvent, FormEvent, JSX } from 'react'
 import { useRef, useState } from 'react'
-import { ArrowUp, ChevronDown, Mic, Square } from 'lucide-react'
+import { ArrowUp, Mic, Square } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import {
@@ -111,18 +111,20 @@ export function Composer({ enabled, running, models, selectedModel, selectedReas
                 }}
               />
 
-              <ModelPicker
-                enabled={enabled && !running}
-                models={models}
-                selectedModel={selectedModel}
-                onChange={onModelChange}
-              />
-              <ReasoningEffortPicker
-                enabled={enabled && !running}
-                model={models.find((model) => model.id === selectedModel)}
-                selectedEffort={selectedReasoningEffort}
-                onChange={onReasoningEffortChange}
-              />
+              <div className="prompt-model-controls">
+                <ModelPicker
+                  enabled={enabled && !running}
+                  models={models}
+                  selectedModel={selectedModel}
+                  onChange={onModelChange}
+                />
+                <ReasoningEffortPicker
+                  enabled={enabled && !running}
+                  model={models.find((model) => model.id === selectedModel)}
+                  selectedEffort={selectedReasoningEffort}
+                  onChange={onReasoningEffortChange}
+                />
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -193,7 +195,6 @@ function ReasoningEffortPicker({
           </option>
         ))}
       </select>
-      <ChevronDown size={13} aria-hidden="true" />
     </label>
   )
 }
@@ -228,7 +229,6 @@ function ModelPicker({
           <option key={model.id} value={model.id}>{model.displayName}</option>
         ))}
       </select>
-      <ChevronDown size={13} aria-hidden="true" />
     </label>
   )
 }
