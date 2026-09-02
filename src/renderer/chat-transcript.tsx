@@ -160,15 +160,15 @@ const AssistantMessage = memo(function AssistantMessage({ item }: { item: Extrac
         >
           {item.text}
         </MessageContent>
-        {!item.streaming && (
-          <MessageActions className="prompt-message-actions">
+        <MessageActions className="prompt-message-actions">
+          {!item.streaming && (
             <MessageAction tooltip={copied ? 'Copied' : 'Copy response'}>
               <Button type="button" variant="ghost" size="icon-xs" aria-label="Copy response" onClick={() => void copy()}>
                 {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
               </Button>
             </MessageAction>
-          </MessageActions>
-        )}
+          )}
+        </MessageActions>
       </div>
     </Message>
   )

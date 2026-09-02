@@ -10,7 +10,7 @@ const answer = (id: string, turnId: string, text: string, phase: 'commentary' | 
 test('the digest keeps requests, one answer per turn, and changed files, and drops tool noise', () => {
   const items: ChatTranscriptItem[] = [
     user('u1', 'Make the header sticky', 't1'),
-    { type: 'reasoning', id: 'r1', turnId: 't1', text: 'thinking hard' },
+    { type: 'reasoning', id: 'r1', turnId: 't1', text: 'thinking hard', streaming: false },
     { type: 'command', id: 'c1', turnId: 't1', command: 'ls', cwd: '/w', status: 'completed', output: 'lots of output', exitCode: 0 },
     { type: 'tool', id: 'x1', turnId: 't1', label: 'capture', detail: 'page', status: 'completed' },
     { type: 'screenshot', id: 's1', turnId: 't1', imageUrl: 'data:image/png;base64,AAAA', surface: 'browser_page', caption: 'page' },

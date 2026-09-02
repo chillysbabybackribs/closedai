@@ -16,7 +16,7 @@
 
 .prompt-chat-content {
   min-height: 100%;
-  gap: 18px;
+  gap: 10px;
   padding: 26px clamp(14px, 3vw, 22px) 22px;
 }
 
@@ -29,6 +29,11 @@
 
 .prompt-message-user {
   justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.prompt-chat-content > .prompt-message-user:first-child {
+  margin-top: 0;
 }
 
 .prompt-message-user-content {
@@ -171,30 +176,39 @@
 
 .prompt-reasoning {
   width: 100%;
-  color: var(--muted-foreground);
+  color: var(--transcript-activity);
 }
 
-.prompt-reasoning-trigger {
+.prompt-reasoning-trigger,
+.prompt-reasoning-pending,
+.prompt-reasoning-label {
+  min-height: 22px;
+  margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--muted-foreground);
+  color: var(--transcript-activity);
   font-size: 12px;
+  font-weight: 500;
   line-height: 1.4;
 }
 
-.prompt-reasoning-trigger:hover { color: var(--foreground); }
-.prompt-reasoning-content { margin-top: 8px; padding-left: 12px; border-left: 1px solid var(--border); }
-.prompt-reasoning-copy { color: var(--muted-foreground); font-size: 12px; line-height: 1.6; }
-
-.prompt-working {
-  display: flex;
-  min-height: 24px;
-  align-items: center;
-  color: var(--muted-foreground);
+.prompt-reasoning-trigger:hover,
+.prompt-reasoning-trigger[aria-expanded='true'] {
+  color: var(--transcript-activity-hover);
 }
 
-.prompt-working-text { margin: 0; font-size: 13px; line-height: 1.4; }
+.prompt-reasoning-content {
+  margin-top: 6px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+}
+
+.prompt-reasoning-copy {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.6;
+}
 
 /* Gradient sweep over clipped text (text-shimmer.tsx). A dim base colour with a bright
    highlight band whose width scales with the text length via --shimmer-spread. */
