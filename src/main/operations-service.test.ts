@@ -48,6 +48,31 @@ test('rejects a model that is not in the shared catalog', async () => {
   }
 })
 
+test('persists recurring schedules and turns Run now into a real queued run', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'closedai-operations-'))
+  const filePath = join(directory, 'runs.json')
+  try {
+    const service = await OperationsService.open(filePath, async () => catalog)
+    const schedule = await service.createSchedule('Daily release notes', 'Prepare release notes', 'closedai', 'gpt-5.6-sol', 'daily')
+    assert.equal(schedule.enabled, true)
+    assert.equal(service.snapshot().schedules[0]?.frequency, 'daily')
+    const run = await service.runScheduleNow(schedule.id)
+    assert.equal(run.scheduleId, schedule.id)
+    assert.equal(run.status, 'queued')
+    assert.equal(service.snapshot().schedules[0]?.lastRunAt !== null, true)
+    await service.setScheduleEnabled(schedule.id, false)
+    assert.equal(service.snapshot().schedules[0]?.enabled, false)
+    await service.deleteSchedule(schedule.id)
+    assert.equal(service.snapshot().schedules.length, 0)
+    const restored = await OperationsService.open(filePath, async () => catalog)
+    assert.equal(restored.snapshot().schedules.length, 0)
+    restored.stop()
+    service.stop()
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
 test('marks a worker failed when runner setup cannot resolve its workspace', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'closedai-operations-'))
   try {

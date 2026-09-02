@@ -247,16 +247,20 @@ export class OperationsService extends EventEmitter {
       this.scheduleTimers.delete(schedule.id)
       void this.fireSchedule(schedule, false).catch((error) => console.warn('scheduled worker failed:', error))
     }, delay)
+    timer.unref?.()
     this.scheduleTimers.set(schedule.id, timer)
   }
 
   private async fireSchedule(input: OperationsSchedule, manual: boolean): Promise<OperationsRun> {
     const schedule = this.schedules.find((item) => item.id === input.id)
     if (!schedule || (!schedule.enabled && !manual)) throw new Error('Schedule is disabled')
+    this.clearScheduleTimer(schedule.id)
     const now = Date.now()
     const nextRunAt = nextOccurrence(now, schedule.frequency)
     this.schedules = this.schedules.map((item) => item.id === schedule.id ? { ...item, lastRunAt: now, nextRunAt } : item)
     await this.persistAndEmit()
+    const updated = this.schedules.find((item) => item.id === schedule.id)
+    if (updated?.enabled) this.planSchedule(updated)
     const run: OperationsRun = {
       id: Math.max(...this.runs.map((item) => item.id), 0) + 1,
       task: schedule.task,
@@ -272,7 +276,6 @@ export class OperationsService extends EventEmitter {
       scheduleId: schedule.id
     }
     const created = await this.enqueueRun(run)
-    if (!manual) this.planSchedule({ ...schedule, lastRunAt: now, nextRunAt })
     return created
   }
 
