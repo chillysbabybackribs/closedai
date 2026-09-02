@@ -16,7 +16,8 @@ const MAX_THREADS = 100
 export function threadSummaryFromSession(info: SDKSessionInfo): ChatThreadSummary | null {
   if (!info.sessionId || info.tag === CLAUDE_ARCHIVED_TAG) return null
   const firstPrompt = info.firstPrompt?.trim() ?? ''
-  const title = info.customTitle?.trim() || info.summary?.trim() || firstLine(firstPrompt) || 'New chat'
+  // `summary` is the first prompt until the CLI has generated a title, so it is clipped like one.
+  const title = info.customTitle?.trim() || firstLine(firstPrompt || info.summary?.trim() || '') || 'New chat'
   return {
     id: claudeThreadId(info.sessionId),
     title,
@@ -38,11 +39,10 @@ export async function archiveClaudeThread(sdk: Pick<ClaudeSdk, 'tagSession'>, se
   await sdk.tagSession(sessionId, CLAUDE_ARCHIVED_TAG, { dir: cwd })
 }
 
-/** The CLI's title for a session once it has generated one; null before that. */
+/** The CLI's title for a session once it has generated one; null before that (the pane then shows the first message). */
 export async function claudeThreadName(sdk: Pick<ClaudeSdk, 'getSessionInfo'>, sessionId: string, cwd: string): Promise<string | null> {
   const info = await sdk.getSessionInfo(sessionId, { dir: cwd })
-  const title = info?.customTitle?.trim() || info?.summary?.trim() || ''
-  return title || null
+  return info?.customTitle?.trim() || null
 }
 
 /** Rebuild a session's transcript from the store, in the app's own item vocabulary. */

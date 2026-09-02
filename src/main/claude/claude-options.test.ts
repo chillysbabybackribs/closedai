@@ -30,7 +30,7 @@ test('the session shape: no prompts, isolated settings, only app MCP servers, su
   assert.equal(options.resume, undefined)
   assert.equal(options.env?.[CLAUDE_RUNTIME_ID_ENV], base.runtimeId)
   assert.equal(options.env?.PATH, '/bin')
-  assert.equal(options.env?.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC, '1')
+  assert.equal(options.env?.CLAUDE_AGENT_SDK_CLIENT_APP, 'closedai/0.1.0')
 })
 
 test('account default model, no effort, no thinking config, and a resume id', () => {

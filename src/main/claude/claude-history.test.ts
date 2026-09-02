@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { CLAUDE_ARCHIVED_TAG, listClaudeThreads, replayClaudeSession, threadSummaryFromSession } from './claude-history.js'
+import { CLAUDE_ARCHIVED_TAG, claudeThreadName, listClaudeThreads, replayClaudeSession, threadSummaryFromSession } from './claude-history.js'
 
 test('session info becomes a thread summary; archived sessions are hidden', () => {
   assert.deepEqual(threadSummaryFromSession({ sessionId: 's1', summary: 'Ping', customTitle: 'Embedded browser ping', firstPrompt: 'Call the tool\nthen reply', lastModified: 2000, createdAt: 1000 }), {
@@ -8,7 +8,15 @@ test('session info becomes a thread summary; archived sessions are hidden', () =
   })
   assert.equal(threadSummaryFromSession({ sessionId: 's2', summary: '', lastModified: 5 })!.title, 'New chat')
   assert.equal(threadSummaryFromSession({ sessionId: 's3', summary: '', firstPrompt: 'x'.repeat(100), lastModified: 5 })!.title.length, 80)
+  assert.equal(threadSummaryFromSession({ sessionId: 's5', summary: 'y'.repeat(100), lastModified: 5 })!.title.length, 80)
   assert.equal(threadSummaryFromSession({ sessionId: 's4', summary: 'gone', lastModified: 5, tag: CLAUDE_ARCHIVED_TAG }), null)
+})
+
+test('the header name is only the CLI-generated title, never the raw prompt', async () => {
+  const untitled = { getSessionInfo: async () => ({ sessionId: 's', summary: 'Long raw prompt', lastModified: 1 }) }
+  assert.equal(await claudeThreadName(untitled, 's', '/w'), null)
+  const titled = { getSessionInfo: async () => ({ sessionId: 's', summary: 'Long raw prompt', customTitle: 'Echo check', lastModified: 1 }) }
+  assert.equal(await claudeThreadName(titled, 's', '/w'), 'Echo check')
 })
 
 test('threads list newest first from the workspace directory', async () => {

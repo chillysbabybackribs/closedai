@@ -50,7 +50,9 @@ session), kept across turns, and closed after 15 idle minutes; the next turn res
 in a fresh process. At startup the provider spawns once to read the catalog and account, and closes it
 again unless Claude is the active provider.
 
-Every process carries `CLOSEDAI_CLAUDE_RUNTIME_ID` in its environment. Closing a runtime ends the input,
+Nonessential CLI traffic is left enabled on purpose: `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` also
+disables the session titles the history shows (verified live: with it set, `summary` stays the raw
+prompt). Every process carries `CLOSEDAI_CLAUDE_RUNTIME_ID` in its environment. Closing a runtime ends the input,
 closes the query, and then TERM/KILLs every Linux process still carrying that id
 (`claude-process-tree.ts`): a turn's "active" flag is not process ownership, since Bash and subagent work
 can outlive a turn or be reparented.

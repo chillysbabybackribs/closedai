@@ -48,7 +48,8 @@ export function claudeQueryOptions(config: ClaudeQueryConfig): Options {
     env: {
       ...(config.env ?? process.env),
       [CLAUDE_RUNTIME_ID_ENV]: config.runtimeId,
-      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+      // Nonessential traffic is left on deliberately: the switch that disables it also
+      // disables the CLI's session titles, which the chat history shows (verified live).
       CLAUDE_AGENT_SDK_CLIENT_APP: 'closedai/0.1.0'
     },
     includePartialMessages: true,
