@@ -8,6 +8,7 @@ import { AppWindowControls } from './app-window-controls.js'
 import { BrowserPane } from './browser-pane.js'
 import { useBrowserController } from './browser-controller.js'
 import { ChatPane } from './chat-pane.js'
+import { TitlebarMenu } from './titlebar-menu.js'
 import { WorkspaceSplit } from './workspace-split.js'
 import './styles.css'
 
@@ -15,6 +16,7 @@ function App(): JSX.Element {
   return (
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
+        <TitlebarMenu />
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />

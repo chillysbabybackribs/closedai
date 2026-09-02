@@ -308,7 +308,12 @@
 
 /* ---- Tabbed Dropdown Header Navigation --------------------------------- */
 
+/* Sits at the left edge of the drag region, where a desktop app's menu bar lives.
+   Only the tabs themselves opt out of dragging; the gap after them stays draggable. */
 .titlebar-nav-menu {
+  position: absolute;
+  top: 0;
+  left: 8px;
   display: flex;
   align-items: center;
   height: 100%;
@@ -381,4 +386,56 @@
 
 .titlebar-dropdown-item.is-current-mode svg {
   color: var(--cwd-ink);
+}
+
+/* Menu-bar popups. Deliberately not the composer's .model-menu: shell chrome keeps
+   its own tighter, squarer surface so a File menu never reads as a chat control. */
+.titlebar-menu-content {
+  z-index: 60;
+  min-width: 208px;
+  padding: 4px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 32%),
+    0 10px 28px rgb(0 0 0 / 44%);
+}
+
+.titlebar-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 12.5px;
+  line-height: 1.2;
+  outline: none;
+  user-select: none;
+  cursor: default;
+}
+
+.titlebar-menu-item[data-highlighted] {
+  background: var(--chrome-control-hover);
+  color: var(--chrome-control-strong);
+}
+
+/* Every row is a placeholder today, so the disabled state IS the resting state:
+   legible rather than the usual near-invisible 35%. */
+.titlebar-menu-item[data-disabled] {
+  color: var(--chrome-control-muted);
+}
+
+.titlebar-menu-shortcut {
+  color: var(--chrome-control-quiet);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.titlebar-menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--chrome-control-divider);
 }
