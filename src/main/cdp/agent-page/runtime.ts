@@ -55,7 +55,7 @@ function inspectFrame(snapshotId: string, frameId: string, maxElements: number, 
     if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) continue
     const rect = visibleRect(element)
     if (!rect) continue
-    const ref = `${snapshotId}:e${elements.length + 1}`
+    const ref = `${snapshotId}:${frameId}:e${elements.length + 1}`
     const center = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
     const hit = document.elementFromPoint(center.x, center.y)
     const box = element as HTMLElement & { getBoxQuads?: () => Array<{ p1: LocalPoint; p2: LocalPoint; p3: LocalPoint; p4: LocalPoint }> }
