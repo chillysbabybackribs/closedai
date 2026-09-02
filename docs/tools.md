@@ -109,10 +109,21 @@ turn, and only compacts by itself near the context limit. Three things keep that
   the full-resolution capture in `capture/screenshot-store.ts`, keyed by the tool call id. The
   transcript looks the call id up when it renders the screenshot item and falls back to the
   model's copy once the store has evicted it (60 entries or 96 MB, newest kept).
-- `ChatService` watches `thread/tokenUsage/updated` and asks for `thread/compact/start` after a
-  turn ends with the context above `chatCompactAtPercent` (app settings, default 60, 0 disables).
-  One compaction per completed turn at most; sends wait for a compaction in flight. See
-  `src/main/chat-context/context-compaction.ts`.
+- The app-server is launched with `-c model_auto_compact_token_limit=<chatAutoCompactTokens>`
+  (app settings, default 100000, 0 keeps Codex's own ~90% limit), so Codex compacts in the
+  middle of a turn once tool results push the context past it. This is the main guard: one turn
+  of UI work has been measured adding 200k tokens through 70 tool calls, and every call replays
+  all of it. See `src/main/chat-context/app-server-config.ts`.
+- `ChatService` also watches `thread/tokenUsage/updated` and asks for `thread/compact/start`
+  after a turn ends with the context above `chatCompactAtPercent` (default 60, 0 disables), as a
+  between-turn fallback. One compaction per completed turn at most; sends wait for a compaction
+  in flight. See `src/main/chat-context/context-compaction.ts`.
+- "Continue in new chat" (chat header) leaves the thread behind entirely: the next message opens
+  a fresh thread whose first turn carries a digest of the old one as `additionalContext`
+  (`closedai.chat.handoff`, built from the app transcript without a model call, ≤12k chars).
+  Tool output, screenshots, and reasoning stay in the old thread. See
+  `src/main/chat-context/thread-handoff.ts`. The header shows the context percentage so the
+  user can see when to reach for it.
 
 ## Seeing what exists: the Tools modal
 

@@ -201,6 +201,33 @@
   white-space: nowrap;
 }
 
+/* How full the model's window is. Mono digits so the pill does not jitter as the number
+   changes; the ink warms as replaying the history starts to cost real latency. */
+.chat-header-context {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--chrome-control-hover);
+  color: var(--chrome-control-fg);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0.75;
+}
+
+.chat-header-context[data-level='warm'] {
+  color: var(--context-warm-ink, #d9a45c);
+  opacity: 1;
+}
+
+.chat-header-context[data-level='hot'] {
+  color: var(--context-hot-ink, #e0705e);
+  background: color-mix(in srgb, var(--destructive) 12%, transparent);
+  opacity: 1;
+}
+
 /* Both pinned (composer's own block lives in history-composer.css): the header row
    is conditional, and auto-placement would drift these into the wrong tracks. */
 .chat-pane > .composer {

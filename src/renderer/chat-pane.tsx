@@ -38,6 +38,15 @@ export function ChatPane(): JSX.Element {
     }
   }
 
+  async function continueInNewChat(): Promise<void> {
+    setHistoryOpen(false)
+    try {
+      await chat.continueInNewThread()
+    } catch {
+      // As above: the reason lands in the transcript.
+    }
+  }
+
   return (
     <aside className="chat-pane prompt-chat" data-ui-surface="chat">
       <ChatHeader
@@ -45,7 +54,10 @@ export function ChatPane(): JSX.Element {
         ready={ready}
         running={running}
         historyOpen={historyOpen}
+        contextUsage={state.contextUsage}
+        canContinue={state.items.some((item) => item.type === 'user')}
         onNewChat={() => void startNewChat()}
+        onContinueInNewChat={() => void continueInNewChat()}
         onToggleHistory={() => setHistoryOpen((open) => !open)}
         onOpenTools={() => setToolsOpen(true)}
       />

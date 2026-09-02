@@ -191,14 +191,13 @@ export class ChatService extends EventEmitter {
    */
   async continueInNewThread(): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before continuing in a new chat')
-    const title = this.threadName ?? summarizeFirstRequest(this.transcript.snapshot())
-    const handoff = buildThreadHandoff(this.transcript.snapshot(), title)
+    const handoff = buildThreadHandoff(this.transcript.snapshot(), this.threadName)
     if (!handoff) throw new Error('There is no conversation to continue yet')
     this.detachThread()
-    this.pendingHandoff = handoff
+    this.pendingHandoff = handoff.text
     await this.settings.set({ chatThreadId: null })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
-    this.addNotice(`Continuing from “${title}”. A short summary of that chat goes with your next message.`, 'info', null)
+    this.addNotice(`Continuing from “${handoff.title}”. A short summary of that chat goes with your next message.`, 'info', null)
   }
 
   async openThread(threadId: string): Promise<void> {
@@ -431,10 +430,3 @@ export class ChatService extends EventEmitter {
   }
 }
 
-/** First line of the first request, as the history list would title the chat. */
-function summarizeFirstRequest(items: ReturnType<ChatTranscript['snapshot']>): string | null {
-  const first = items.find((item) => item.type === 'user')
-  const line = first?.type === 'user' ? first.text.trim().split('\n')[0]?.trim() ?? '' : ''
-  if (!line) return null
-  return line.length > 60 ? `${line.slice(0, 59).trimEnd()}…` : line
-}

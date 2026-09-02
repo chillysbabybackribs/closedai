@@ -16,18 +16,25 @@ const MAX_CHANGED_FILES = 30
 
 type HandoffEntry = { speaker: 'User' | 'Codex'; text: string }
 
+export type ThreadHandoff = {
+  /** The thread's name, else its opening request as the history list would show it. */
+  title: string
+  text: string
+}
+
 /** Digest of a transcript for the thread that continues it, or null when there is nothing to carry. */
-export function buildThreadHandoff(items: ChatTranscriptItem[], title: string | null): string | null {
+export function buildThreadHandoff(items: ChatTranscriptItem[], threadName: string | null): ThreadHandoff | null {
   const entries = conversationEntries(items)
   if (entries.length === 0) return null
+  const title = threadName ?? clip(entries[0]!.text.split('\n')[0] ?? '', 60)
   const header = [
-    `Handoff from the previous chat${title ? ` "${title}"` : ''}.`,
+    `Handoff from the previous chat "${title}".`,
     'The user continued that conversation here to keep the context small. Any edits made there are already on disk; re-read files rather than trusting this digest for exact contents.'
   ]
   const files = changedFiles(items)
   if (files.length > 0) header.push(`Files changed there: ${files.join(', ')}`)
   const conversation = fitEntries(entries, MAX_HANDOFF_CHARS - header.join('\n').length - 60)
-  return [...header, '', 'Conversation so far (oldest first; long messages trimmed):', ...conversation].join('\n')
+  return { title, text: [...header, '', 'Conversation so far (oldest first; long messages trimmed):', ...conversation].join('\n') }
 }
 
 /** The turn-context fragment that carries the digest into the new thread's first turn. */

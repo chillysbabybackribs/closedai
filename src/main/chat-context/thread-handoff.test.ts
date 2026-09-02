@@ -21,8 +21,10 @@ test('the digest keeps requests, one answer per turn, and changed files, and dro
     { type: 'user', id: 'u2', turnId: 't2', text: 'Now match this', attachments: [{ id: 'att', kind: 'image', name: 'mock.png' }] },
     answer('a3', 't2', 'Working on it', null)
   ]
-  const handoff = buildThreadHandoff(items, 'Header work')
-  assert.ok(handoff)
+  const digest = buildThreadHandoff(items, 'Header work')
+  assert.ok(digest)
+  assert.equal(digest.title, 'Header work')
+  const handoff = digest.text
   assert.match(handoff, /^Handoff from the previous chat "Header work"\./)
   assert.match(handoff, /Files changed there: src\/header\.tsx/)
   assert.match(handoff, /User: Make the header sticky\nCodex: Done: the header is sticky\.\nUser: Now match this \[attached: mock\.png\]\nCodex: Working on it$/)
@@ -41,10 +43,12 @@ test('long conversations keep the opening request and the most recent exchanges 
     items.push(user(`u${index}`, `Request ${index} ${'x'.repeat(900)}`, `t${index}`))
     items.push(answer(`a${index}`, `t${index}`, `Answer ${index} ${'y'.repeat(2_000)}`))
   }
-  const handoff = buildThreadHandoff(items, null)
-  assert.ok(handoff)
+  const digest = buildThreadHandoff(items, null)
+  assert.ok(digest)
+  assert.equal(digest.title, 'The original goal')
+  const handoff = digest.text
   assert.ok(handoff.length <= 12_000, `digest is ${handoff.length} chars`)
-  assert.match(handoff, /^Handoff from the previous chat\./)
+  assert.match(handoff, /^Handoff from the previous chat "The original goal"\./)
   assert.match(handoff, /User: The original goal\n\[\d+ earlier messages omitted\]\n/)
   assert.match(handoff, /Codex: Answer 40 y+…$/)
   assert.doesNotMatch(handoff, /Request 1 x/)
