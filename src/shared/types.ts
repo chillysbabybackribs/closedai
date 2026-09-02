@@ -7,6 +7,9 @@ export type BrowserBounds = {
   // when the workspace shows the editor instead of the browser. Optional so existing callers
   // (which always mean "visible") stay unchanged. See BrowserService.setBounds.
   visible?: boolean
+  // A renderer overlay covers this surface. Unlike `visible: false`, occlusion must not
+  // detach the live WebContentsView: modals are temporary and must never disturb the page.
+  occluded?: boolean
 }
 
 export type BrowserNavigationError = {

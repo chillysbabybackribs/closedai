@@ -27,14 +27,16 @@ export function boundsEqual(a: BrowserBounds, b: BrowserBounds): boolean {
     a.y === b.y &&
     a.width === b.width &&
     a.height === b.height &&
-    a.visible === b.visible
+    a.visible === b.visible &&
+    a.occluded === b.occluded
   )
 }
 
 export function useNativeViewBounds(
   report: (bounds: BrowserBounds) => void | Promise<void>,
   layoutKey: string | undefined,
-  visible: boolean
+  visible: boolean,
+  occluded = false
 ) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   // Held in a ref so an inline reporter does not have to be memoized by every caller: the
@@ -55,7 +57,7 @@ export function useNativeViewBounds(
 
     const read = (): BrowserBounds => {
       const rect = host.getBoundingClientRect()
-      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, visible }
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, visible, occluded }
     }
 
     const drain = async (): Promise<void> => {
@@ -115,6 +117,6 @@ export function useNativeViewBounds(
       observer.disconnect()
       window.removeEventListener('resize', sync)
     }
-  }, [layoutKey, visible])
+  }, [layoutKey, visible, occluded])
   return hostRef
 }

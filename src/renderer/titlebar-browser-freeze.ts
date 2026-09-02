@@ -10,6 +10,14 @@ export function rectsOverlap(a: DOMRectReadOnly, b: DOMRectReadOnly): boolean {
   return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
 }
 
+export function overlayIsOpen(overlay: Element): boolean {
+  if (overlay.hasAttribute('hidden') || overlay.getAttribute('aria-hidden') === 'true') return false
+  const state = overlay.getAttribute('data-state')
+  if (state === 'closed') return false
+  const details = overlay.closest('details')
+  return !details || details.open
+}
+
 /** Freeze only when an open overlay actually intersects the native browser host. */
 export function overlayBlocksBrowser(root: ParentNode = document): boolean {
   const host = root.querySelector(BROWSER_HOST_SELECTOR)
@@ -17,6 +25,7 @@ export function overlayBlocksBrowser(root: ParentNode = document): boolean {
   const browserRect = host.getBoundingClientRect()
   if (browserRect.width < 2 || browserRect.height < 2) return false
   for (const overlay of root.querySelectorAll(OVERLAY_SELECTOR)) {
+    if (!overlayIsOpen(overlay)) continue
     const rect = overlay.getBoundingClientRect()
     if (rect.width < 1 || rect.height < 1) continue
     if (rectsOverlap(rect, browserRect)) return true
@@ -69,7 +78,12 @@ export function useTitlebarBrowserFreeze(): { open: boolean; shot: BrowserShot |
     // Overlays mount inside the browser shell or directly under <body>; a subtree watch on
     // body is cheap here because nothing in this shell streams DOM at token frequency.
     const observer = new MutationObserver(sync)
-    observer.observe(document.body, { childList: true, subtree: true })
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['aria-hidden', 'data-state', 'hidden', 'open'],
+      childList: true,
+      subtree: true
+    })
     window.addEventListener('pointerdown', onPointerDown, true)
     sync()
     return () => {

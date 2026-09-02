@@ -222,18 +222,21 @@ export class BrowserService extends EventEmitter {
 
   setBounds(bounds: BrowserBounds): void {
     this.bounds = bounds
-    const show = bounds.visible !== false
+    const paneVisible = bounds.visible !== false
+    const pageVisible = paneVisible && bounds.occluded !== true
     const active = this.active
-    if (!show && !this.browserDetached) {
+    if (!paneVisible && !this.browserDetached) {
       this.browserDetached = true
       this.rendering.setPaneVisible(false)
       return
     }
-    if (show && this.browserDetached) {
+    if (paneVisible && this.browserDetached) {
       this.browserDetached = false
       this.rendering.setPaneVisible(true)
     }
-    active?.applyBounds(bounds, show)
+    // A modal only hides the pixels. Keeping the view attached preserves its compositor and
+    // page state, so closing the modal cannot return an empty native surface.
+    active?.applyBounds(bounds, pageVisible)
   }
 
   async navigate(input: string): Promise<void> {
