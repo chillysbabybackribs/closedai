@@ -29,6 +29,7 @@ import type { ToolsEvent } from '../shared/tools.js'
 import { registerChatIpc } from './chat-ipc.js'
 import { OperationsService } from './operations-service.js'
 import { registerOperationsIpc } from './operations-ipc.js'
+import { appServerConfigArgs } from './chat-context/app-server-config.js'
 import type { ChatEvent } from '../shared/chat.js'
 import type { OperationsEvent } from '../shared/operations.js'
 import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../shared/types.js'
@@ -101,7 +102,16 @@ async function main(): Promise<void> {
   }, screenshots)
   operationsService = await OperationsService.open(
     join(userData(), 'operations-runs.json'),
-    async () => ({ models: await requireChatService().listModels(), selectedModel: requireChatService().snapshot().selectedModel })
+    async () => {
+      const service = requireChatService()
+      return { models: await service.listModels(), selectedModel: service.snapshot().selectedModel }
+    },
+    {
+      runWorkers: true,
+      workspacePath: () => chatWorkspace,
+      tools: toolRegistry!,
+      launchArgs: () => appServerConfigArgs(settings!.get())
+    }
   )
   registerIpc()
   // The one-shot cookie import runs before the first tab loads, so a restored or home page
@@ -232,6 +242,7 @@ app.on('before-quit', (event) => {
   event.preventDefault()
   quitting = true
   chatService?.stop()
+  operationsService?.stop()
   const flushSession = browserSessionFlush ?? browserService?.flushSessionData()
   void Promise.allSettled([
     browserHistory?.flush(),

@@ -1,5 +1,11 @@
 import { EventEmitter } from 'node:events'
 import { readFile } from 'node:fs/promises'
+import { AppServerClient, type AppServerNotification, type AppServerRequest } from './app-server-client.js'
+import { answerServerRequest } from './chat-approvals.js'
+import { startThreadParams } from './chat-context/thread-params.js'
+import { appServerConfigArgs } from './chat-context/app-server-config.js'
+import { AppServerToolCalls } from './tools/app-server-tools.js'
+import { ToolRegistry } from './tools/registry.js'
 import type { OperationsEvent, OperationsModelCatalog, OperationsRun, OperationsSnapshot, RunStatus } from '../shared/operations.js'
 import { DEFAULT_OPERATIONS_RUNS } from '../shared/operations.js'
 import { writeAtomic } from './atomic-write.js'
@@ -13,23 +19,42 @@ function isRun(value: unknown): value is OperationsRun {
     && typeof run.task === 'string' && typeof run.worker === 'string'
     && typeof run.workspace === 'string'
     && (run.modelId === undefined || run.modelId === null || typeof run.modelId === 'string')
+    && (run.threadId === undefined || run.threadId === null || typeof run.threadId === 'string')
+    && (run.turnId === undefined || run.turnId === null || typeof run.turnId === 'string')
     && typeof run.checkpoint === 'string'
     && typeof run.status === 'string' && RUN_STATUSES.has(run.status as RunStatus)
     && typeof run.runtime === 'string' && typeof run.activity === 'string'
+}
+
+type RunnerOptions = {
+  runWorkers?: boolean
+  workspacePath?: (workspace: string) => string
+  tools?: ToolRegistry
+  launchArgs?: () => string[]
+  executable?: string
+}
+
+type ActiveRun = {
+  client: AppServerClient
+  threadId: string | null
+  turnId: string | null
+  startedAt: number
 }
 
 export class OperationsService extends EventEmitter {
   private constructor(
     private readonly filePath: string,
     private readonly modelCatalog: () => Promise<OperationsModelCatalog>,
-    private runs: OperationsRun[]
+    private runs: OperationsRun[],
+    private readonly runner: Required<Pick<RunnerOptions, 'runWorkers' | 'workspacePath' | 'launchArgs' | 'executable'>> & Pick<RunnerOptions, 'tools'>
   ) {
     super()
   }
 
   static async open(
     filePath: string,
-    modelCatalog: () => Promise<OperationsModelCatalog>
+    modelCatalog: () => Promise<OperationsModelCatalog>,
+    options: RunnerOptions = {}
   ): Promise<OperationsService> {
     let runs = DEFAULT_OPERATIONS_RUNS.map((run) => ({ ...run }))
     try {
@@ -41,8 +66,22 @@ export class OperationsService extends EventEmitter {
       const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
       if (code !== 'ENOENT') console.warn('operations state unreadable, using defaults:', error)
     }
-    return new OperationsService(filePath, modelCatalog, runs)
+    const runner = {
+      runWorkers: options.runWorkers ?? false,
+      workspacePath: options.workspacePath ?? (() => process.cwd()),
+      launchArgs: options.launchArgs ?? (() => []),
+      executable: options.executable ?? (process.env.CLOSEDAI_CODEX_PATH?.trim() || 'codex'),
+      tools: options.tools
+    }
+    const service = new OperationsService(filePath, modelCatalog, runs, runner)
+    if (runner.runWorkers) {
+      for (const run of runs) if (run.status === 'queued' && run.modelId) void service.startRun(run.id)
+    }
+    return service
   }
+
+  private readonly activeRuns = new Map<number, ActiveRun>()
+  private stopping = false
 
   snapshot(): OperationsSnapshot {
     return { runs: this.runs.map((run) => ({ ...run })) }
@@ -66,6 +105,8 @@ export class OperationsService extends EventEmitter {
       worker: 'New worker',
       workspace: normalizedWorkspace,
       modelId,
+      threadId: null,
+      turnId: null,
       checkpoint: 'Queued for initialization',
       status: 'queued',
       runtime: '—',
@@ -73,6 +114,7 @@ export class OperationsService extends EventEmitter {
     }
     this.runs = [run, ...this.runs]
     await this.persistAndEmit()
+    if (this.runner.runWorkers) void this.startRun(run.id)
     return { ...run }
   }
 
@@ -80,6 +122,15 @@ export class OperationsService extends EventEmitter {
     if (!Number.isFinite(id) || !RUN_STATUSES.has(status)) throw new Error('Invalid run status update')
     const current = this.runs.find((run) => run.id === id)
     if (!current) throw new Error('Run not found')
+    const active = this.activeRuns.get(id)
+    if (active && status !== 'running') {
+      this.activeRuns.delete(id)
+      try {
+        if (active.threadId && active.turnId) await active.client.request('turn/interrupt', { threadId: active.threadId, turnId: active.turnId })
+      } finally {
+        active.client.stop()
+      }
+    }
     const checkpoint = status === 'paused'
       ? 'Paused by operator'
       : status === 'queued'
@@ -89,6 +140,97 @@ export class OperationsService extends EventEmitter {
           : current.checkpoint
     this.runs = this.runs.map((run) => run.id === id ? { ...run, status, checkpoint } : run)
     await this.persistAndEmit()
+    if (status === 'queued' && this.runner.runWorkers && current.modelId) void this.startRun(id)
+  }
+
+  stop(): void {
+    this.stopping = true
+    for (const active of this.activeRuns.values()) active.client.stop()
+    this.activeRuns.clear()
+  }
+
+  private async startRun(id: number): Promise<void> {
+    if (this.stopping || this.activeRuns.has(id)) return
+    const run = this.runs.find((item) => item.id === id)
+    if (!run?.modelId) return
+    const cwd = this.runner.workspacePath(run.workspace)
+    const client = new AppServerClient(this.runner.executable, cwd, this.runner.launchArgs)
+    const active: ActiveRun = { client, threadId: null, turnId: null, startedAt: Date.now() }
+    this.activeRuns.set(id, active)
+    const tools = this.runner.tools ?? new ToolRegistry([])
+    const toolCalls = new AppServerToolCalls(tools, client)
+    client.on('request', (request: AppServerRequest) => {
+      if (!toolCalls.handle(request)) answerServerRequest(client, request)
+    })
+    client.on('notification', (notification: AppServerNotification) => this.onRunNotification(id, notification))
+    client.on('exit', () => {
+      if (this.activeRuns.get(id) === active) void this.finishRun(id, 'failed', 'Codex worker exited unexpectedly')
+    })
+    try {
+      await this.updateRun(id, { status: 'running', checkpoint: `Starting ${run.modelId}` })
+      await client.start()
+      const threadResponse = await client.request<{ thread?: unknown }>('thread/start', startThreadParams(cwd, tools, run.modelId))
+      const thread = recordOf(threadResponse.thread)
+      if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid worker thread')
+      active.threadId = thread.id
+      await this.updateRun(id, { threadId: thread.id, checkpoint: 'Starting worker turn' })
+      const turnResponse = await client.request<{ turn?: unknown }>('turn/start', {
+        threadId: thread.id,
+        input: [{ type: 'text', text: run.task }]
+      })
+      const turn = recordOf(turnResponse.turn)
+      if (typeof turn?.id === 'string') {
+        active.turnId = turn.id
+        await this.updateRun(id, { turnId: turn.id, checkpoint: 'Worker is running' })
+      }
+    } catch (error) {
+      await this.finishRun(id, 'failed', error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  private onRunNotification(id: number, notification: AppServerNotification): void {
+    const active = this.activeRuns.get(id)
+    if (!active) return
+    const params = recordOf(notification.params)
+    if (typeof params?.threadId === 'string' && active.threadId && params.threadId !== active.threadId) return
+    if (notification.method === 'turn/started') {
+      const turn = recordOf(params?.turn)
+      if (typeof turn?.id === 'string') {
+        active.turnId = turn.id
+        void this.updateRun(id, { turnId: turn.id, checkpoint: 'Worker is running' })
+      }
+      return
+    }
+    if (notification.method === 'item/started') {
+      const item = recordOf(params?.item)
+      const type = typeof item?.type === 'string' ? item.type : 'step'
+      void this.updateRun(id, { checkpoint: `Worker ${type.replaceAll('/', ' ')}` })
+      return
+    }
+    if (notification.method === 'turn/completed') {
+      const turn = recordOf(params?.turn)
+      const status = turn?.status === 'completed' ? 'completed' : 'failed'
+      void this.finishRun(id, status, status === 'completed' ? 'Worker completed' : 'Worker turn failed')
+    }
+  }
+
+  private async finishRun(id: number, status: 'completed' | 'failed', checkpoint: string): Promise<void> {
+    const active = this.activeRuns.get(id)
+    if (!active) return
+    this.activeRuns.delete(id)
+    active.client.stop()
+    await this.updateRun(id, {
+      status,
+      checkpoint,
+      runtime: formatRuntime(Date.now() - active.startedAt),
+      activity: 'Now',
+      turnId: null
+    })
+  }
+
+  private async updateRun(id: number, patch: Partial<OperationsRun>): Promise<void> {
+    this.runs = this.runs.map((run) => run.id === id ? { ...run, ...patch } : run)
+    await this.persistAndEmit()
   }
 
   private async persistAndEmit(): Promise<void> {
@@ -96,4 +238,15 @@ export class OperationsService extends EventEmitter {
     const event: OperationsEvent = { type: 'runs', runs: this.runs.map((run) => ({ ...run })) }
     this.emit('changed', event)
   }
+}
+
+function recordOf(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
+}
+
+function formatRuntime(milliseconds: number): string {
+  const seconds = Math.max(1, Math.round(milliseconds / 1000))
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  return `${minutes}m ${String(seconds % 60).padStart(2, '0')}s`
 }
