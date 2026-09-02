@@ -118,7 +118,7 @@ export function normalizeItem(
       }
     case 'dynamicToolCall':
       return normalizeScreenshot(item, id, turnId) ?? {
-        type: 'tool', id, turnId, label: stringOf(item.tool) || 'Tool call',
+        type: 'tool', id, turnId, label: dynamicToolLabel(item),
         detail: jsonPreview(item.arguments), status: stringOf(item.status)
       }
     case 'collabAgentToolCall':
@@ -250,3 +250,41 @@ function normalizeScreenshot(
   if (!imageUrl) return null
   return { type: 'screenshot', id, turnId, imageUrl, surface, caption }
 }
+
+export function dynamicToolLabel(item: Record<string, unknown>): string {
+  const tool = stringOf(item.tool)
+  const namespace = stringOf(item.namespace)
+  const args = recordOf(item.arguments)
+  const action = stringOf(args?.action)
+
+  if (namespace === 'search' || tool === 'query') return 'Web search'
+  if (namespace === 'embedded_browser' || (tool === 'page' && !namespace)) {
+    if (action === 'navigate') return 'Open page'
+    if (action === 'wait_for') return 'Wait for page'
+    return 'Read page'
+  }
+  if (namespace === 'browser_cdp') {
+    if (action === 'inspect_page') return 'Analyze page'
+    if (action === 'click') return 'Click element'
+    if (action === 'type') return 'Type text'
+    if (action === 'scroll') return 'Scroll page'
+    if (action === 'press_key') return 'Press key'
+    if (tool === 'protocol') return 'Browser protocol'
+    return 'Analyze page'
+  }
+  if (namespace === 'closedai_app') {
+    if (action === 'inspect_app') return 'Analyze app'
+    if (action === 'click') return 'Click app element'
+    if (action === 'type') return 'Type in app'
+    return 'Analyze app'
+  }
+  if (namespace === 'closedai_workspace' || tool === 'inspect') {
+    return 'Analyze workspace'
+  }
+  if (namespace === 'closedai_ui' || tool === 'capture') {
+    return 'Capture'
+  }
+  if (tool === 'page') return 'Read page'
+  return tool || 'Tool call'
+}
+
