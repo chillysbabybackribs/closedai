@@ -9,7 +9,7 @@ import { AppWindowControls } from './app-window-controls.js'
 import { BrowserPane } from './browser-pane.js'
 import { useBrowserController } from './browser-controller.js'
 import { ChatPane } from './chat-pane.js'
-import { attentionRunCount, INITIAL_RUNS, readOperationsRuns } from './operations/operations-data.js'
+import { attentionRunCount, INITIAL_RUNS } from './operations/operations-data.js'
 import { OperationsWorkspace } from './operations/operations-workspace.js'
 import { WorkspaceSplit } from './workspace-split.js'
 import './styles.css'
@@ -17,9 +17,7 @@ import './styles.css'
 function App(): JSX.Element {
   const desktopAvailable = typeof window.closedai !== 'undefined'
   const [mode, setMode] = useState<AppMode>(() => desktopAvailable ? 'chat' : 'operations')
-  const [operationsAttentionCount, setOperationsAttentionCount] = useState(() => (
-    attentionRunCount(readOperationsRuns(window.localStorage) ?? INITIAL_RUNS)
-  ))
+  const [operationsAttentionCount, setOperationsAttentionCount] = useState(() => attentionRunCount(INITIAL_RUNS))
   return (
     <div className="shell" data-ui-surface="shell" data-app-mode={mode}>
       <header className="shell-titlebar" aria-label="Window title bar">

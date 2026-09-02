@@ -21,12 +21,14 @@ export function RunDetailDrawer({
   onClose,
   onMessage,
   onStatusChange,
+  interactive = true,
   escapeEnabled = true
 }: {
   run: OperationsRun
   onClose: () => void
   onMessage: () => void
   onStatusChange: (status: RunStatus) => void
+  interactive?: boolean
   escapeEnabled?: boolean
 }): JSX.Element {
   const [tab, setTab] = useState<DetailTab>('Overview')
@@ -74,12 +76,12 @@ export function RunDetailDrawer({
           {tab === 'Overview' ? <RunOverview run={run} /> : <DetailPlaceholder tab={tab} />}
         </div>
         <footer>
-          <button type="button" onClick={() => onStatusChange('paused')}><Pause size={13} />Pause</button>
-          <button type="button" onClick={() => onStatusChange('queued')}><RotateCcw size={13} />Rerun</button>
-          <button type="button" className="is-danger" onClick={() => onStatusChange('failed')}>
+          <button type="button" disabled={!interactive} onClick={() => onStatusChange('paused')}><Pause size={13} />Pause</button>
+          <button type="button" disabled={!interactive} onClick={() => onStatusChange('queued')}><RotateCcw size={13} />Rerun</button>
+          <button type="button" className="is-danger" disabled={!interactive} onClick={() => onStatusChange('failed')}>
             <Square size={12} />Stop
           </button>
-          <button type="button" className="ops-primary-button" onClick={onMessage}>
+          <button type="button" className="ops-primary-button" disabled={!interactive} onClick={onMessage}>
             <MessageSquareText size={14} />Message worker
           </button>
         </footer>

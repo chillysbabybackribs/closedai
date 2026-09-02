@@ -16,8 +16,6 @@ import {
   attentionRunCount,
   filterRuns,
   INITIAL_RUNS,
-  persistOperationsRuns,
-  readOperationsRuns,
   type OperationsRun,
   type RunStatus,
   type RunTab
@@ -113,11 +111,7 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
     if (selectedRunId === null) return
     if (operationsApi) {
       void operationsApi.setStatus(selectedRunId, status).catch(() => {})
-      return
     }
-    setRuns((current) => current.map((run) => run.id === selectedRunId
-      ? { ...run, status, checkpoint: status === 'paused' ? 'Paused by operator' : status === 'queued' ? 'Queued to rerun' : 'Stopped by operator' }
-      : run))
   }
 
   async function createWorker(task: string, workspace: string, modelId: string): Promise<void> {
@@ -138,7 +132,7 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
       <main className="ops-main">
         <div className="ops-breadcrumb"><span>Operations</span><span>/</span><strong>Runs</strong></div>
         <div className="ops-page-heading">
-          <div><h1>Runs</h1><p>Monitor long-running work and intervene when an agent needs you.</p></div>
+          <div><h1>Runs</h1><p>{operationsApi ? 'Monitor long-running work and intervene when an agent needs you.' : 'Preview only. Open the ClosedAI desktop app to run workers with Codex.'}</p></div>
           <button type="button" className="ops-primary-button" onClick={() => setNewWorkerOpen(true)}><Plus size={14} />New worker</button>
         </div>
         <section className="ops-metrics" aria-label="Run overview">
@@ -205,6 +199,7 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
           onClose={() => setSelectedRunId(null)}
           onMessage={() => setChatOpen(true)}
           onStatusChange={updateSelectedStatus}
+          interactive={Boolean(operationsApi)}
           escapeEnabled={!chatOpen}
         />
       ) : null}
