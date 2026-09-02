@@ -70,8 +70,10 @@ test('inspect returns labelled main-viewport coordinates and click re-resolves i
 })
 
 test('inspect normalizes child-frame geometry through its owner content quad', async () => {
+  const seen: SeenCommand[] = []
   const target: CdpCommandTarget = {
     async command(method, params = {}) {
+      seen.push({ method, params })
       if (method === 'Page.getFrameTree') {
         return { frameTree: {
           frame: { id: 'main', url: 'https://closed.ai/' },
@@ -83,6 +85,9 @@ test('inspect normalizes child-frame geometry through its owner content quad', a
       }
       if (method === 'Runtime.evaluate') {
         const expression = String(params.expression)
+        if (expression.includes('function prepareClick')) {
+          return { result: { value: { point: { x: 20, y: 15 }, viewport: { width: 100, height: 50 } } } }
+        }
         const id = snapshotId(expression)
         if (params.contextId === 1) return { result: { value: localInspection([]) } }
         return { result: { value: localInspection([{
@@ -103,16 +108,25 @@ test('inspect normalizes child-frame geometry through its owner content quad', a
       if (method === 'DOM.getFrameOwner') return { backendNodeId: 9 }
       if (method === 'DOM.resolveNode') return { object: { objectId: 'owner-9' } }
       if (method === 'Runtime.callFunctionOn') {
+        if (String(params.functionDeclaration).includes('scrollIntoView')) return { result: { value: true } }
         return { result: { value: [200, 100, 400, 100, 400, 200, 200, 200] } }
       }
       if (method === 'Runtime.releaseObject') return {}
+      if (method === 'DOM.getNodeForLocation') return { backendNodeId: 4, frameId: 'child' }
+      if (method === 'Input.dispatchMouseEvent') return {}
       throw new Error(`Unexpected ${method}`)
     }
   }
-  const inspection = await new CdpPageAgent(target).inspect(20)
+  const agent = new CdpPageAgent(target)
+  const inspection = await agent.inspect(20)
   assert.deepEqual(inspection.elements[0]?.center, { x: 240, y: 130 })
   assert.deepEqual(inspection.elements[0]?.bounds, { x: 220, y: 120, width: 40, height: 20 })
   assert.equal(inspection.elements[0]?.frameId, 'child')
+  const click = await agent.click(inspection.elements[0]!.ref)
+  assert.deepEqual(click.point, { x: 240, y: 130 })
+  assert.equal(seen.some((entry) =>
+    entry.method === 'Runtime.callFunctionOn' && String(entry.params.functionDeclaration).includes('scrollIntoView')
+  ), true)
 })
 
 test('click_at hit-tests before input and rejects points outside the viewport', async () => {

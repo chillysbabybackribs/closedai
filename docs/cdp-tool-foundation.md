@@ -1,8 +1,8 @@
 # CDP tool foundation
 
 ClosedAI uses Electron's in-process `webContents.debugger` transport. It does not open a
-remote-debugging port. The first model-facing surface is one action tool:
-`browser_cdp.protocol`.
+remote-debugging port. The model-facing surface has a raw action tool,
+`browser_cdp.protocol`, and an agent-oriented geometry/input wrapper, `browser_cdp.page`.
 
 ## Ownership model
 
@@ -41,6 +41,37 @@ after the corresponding enable command. Each response returns `connectionId`, `o
 
 The buffer holds the newest 1,000 events. Oversized event parameters and model-facing command
 results are explicitly truncated. These are resource bounds, not capability restrictions.
+
+## Agent page wrapper
+
+### `inspect_page`
+
+Returns visible interactive elements from the selected tab. Each result includes a semantic
+role and name, a snapshot-scoped ref, frame id, state, bounds, center, and an eight-number
+quad. Coordinates are always labelled `main_viewport_css`: CSS pixels measured from the main
+frame viewport's top-left corner. Child-frame coordinates are transformed through the iframe's
+live content quad. Frames that cannot be inspected are reported instead of silently omitted.
+
+Refs intentionally expire. An inspection installs an isolated-world element registry for its
+snapshot; a later inspection replaces it, and navigation destroys its execution context.
+
+### `click`
+
+Accepts a ref from the latest inspection. It verifies the same snapshot and connected element,
+rejects disabled elements, scrolls the element and its iframe-owner chain into view, recomputes
+the point, verifies the element is not covered in its own frame, hit-tests the main-viewport
+coordinate, and dispatches the mouse move/press/release sequence through CDP.
+
+### `click_at`
+
+Accepts explicit `x` and `y` values in `main_viewport_css`. It rejects points outside the live
+visual viewport, performs `DOM.getNodeForLocation`, and then dispatches the same real mouse
+sequence. Element refs are preferred because raw coordinates have no semantic identity and go
+stale after scroll, resize, animation, or layout changes.
+
+This first wrapper inspects frames reachable from the selected page target. Out-of-process
+frames that require their own flat target session are surfaced as uninspected frames; automatic
+OOPIF session ownership is a subsequent layer rather than an implicit fallback.
 
 ## Deliberately deferred
 
