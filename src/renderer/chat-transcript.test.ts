@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatTranscriptItem } from '../shared/chat.ts'
-import { transcriptRows } from './chat-transcript.tsx'
+import { hasReasoningForTurn, transcriptRows } from './chat-transcript.tsx'
 
 test('tool activity in one turn becomes one updating transcript row', () => {
   const items: ChatTranscriptItem[] = [
@@ -55,4 +55,6 @@ test('reasoning in one turn becomes one updating transcript row', () => {
   if (reasoning?.kind === 'reasoning') {
     assert.deepEqual(reasoning.items.map((item) => item.id), ['r1', 'r2', 'p1'])
   }
+  assert.equal(hasReasoningForTurn(items, 'turn-a'), true)
+  assert.equal(hasReasoningForTurn(items, 'turn-b'), false)
 })
