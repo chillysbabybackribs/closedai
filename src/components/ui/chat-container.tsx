@@ -10,7 +10,7 @@ function ChatContainerRoot({ className, children, ...props }: ChatContainerProps
     <StickToBottom
       data-slot="chat-container"
       className={cn('flex overflow-y-auto', className)}
-      resize="smooth"
+      resize="instant"
       initial="instant"
       role="log"
       {...props}

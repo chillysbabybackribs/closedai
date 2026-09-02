@@ -89,12 +89,12 @@ export function normalizeItem(
         changes: normalizeFileChanges(item.changes)
       }
     case 'plan':
-      return { type: 'plan', id, turnId, text: stringOf(item.text) }
+      return { type: 'plan', id, turnId, text: stringOf(item.text), streaming: !completed }
     case 'reasoning': {
       const summary = Array.isArray(item.summary)
         ? item.summary.filter((value): value is string => typeof value === 'string')
         : []
-      return { type: 'reasoning', id, turnId, text: summary.join('\n') }
+      return { type: 'reasoning', id, turnId, text: summary.join('\n'), streaming: !completed }
     }
     case 'mcpToolCall':
       return {

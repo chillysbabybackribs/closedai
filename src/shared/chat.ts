@@ -62,8 +62,8 @@ export type ChatTranscriptItem =
       status: string
       changes: ChatFileChange[]
     }
-  | { type: 'plan'; id: string; turnId: string | null; text: string }
-  | { type: 'reasoning'; id: string; turnId: string | null; text: string }
+    | { type: 'plan'; id: string; turnId: string | null; text: string; streaming: boolean }
+    | { type: 'reasoning'; id: string; turnId: string | null; text: string; streaming: boolean }
   | {
       type: 'tool'
       id: string
