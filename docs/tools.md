@@ -119,10 +119,13 @@ the model searches for it.
 The app-server replays the whole thread (every tool result, every image) to the model on every
 turn, and only compacts by itself near the context limit. Three things keep that history small:
 
-- The registry caps each text item of a result at `MAX_RESULT_TEXT_CHARS` (40k characters, about
-  10k tokens) and appends a hint to narrow the request. Codex truncates shell output itself but
-  passes dynamic tool output through untouched. CDP JSON results are capped tighter still at 20k
-  characters (`cdp/result.ts`) because protocol dumps are the chattiest text source.
+- The registry caps each text item of a result at `MAX_RESULT_TEXT_CHARS` (24k characters, about
+  6k tokens). That sits below the 10k-token result budget of Codex's code-mode `exec` tool, so
+  the model reads ClosedAI's "narrow the request" advice rather than Codex's silent head/tail
+  cut. JSON results shrink structurally (`tools/truncate-json.ts`: shorter strings, fewer array
+  items, shallower nesting, plus a `_closedai_truncated` note) so a script's `JSON.parse` never
+  throws on a cut string; plain text is cut with a footer. CDP JSON results are capped tighter
+  still at 16k characters (`cdp/result.ts`) because protocol dumps are the chattiest text source.
 - Capture actions are capped at `DEFAULT_MAX_CAPTURES_PER_TURN` (8) images per turn across
   `app_window`, `browser_page`, and `crop`; past that the action fails with advice to read page
   state instead, and each image result reports how many are left. A capture scaled below 60% of
@@ -144,14 +147,20 @@ turn, and only compacts by itself near the context limit. Three things keep that
   `-c model_auto_compact_token_limit=<n>` so Codex compacts mid-turn past `n` tokens. At 100k it
   fired every ~10 exec calls in a heavy turn, which is why it is off. See
   `src/main/chat-context/app-server-config.ts`.
-- Observed 2026-09-02 with Codex 0.152 and gpt-5.6 in code mode (host behavior, not an app
-  contract): the model calls tools from JavaScript inside a generic
-  `exec` tool whose result budget defaults to 10k tokens per call (the model can raise it to
-  20k), and a dynamic tool's result reaches that JavaScript as one string with any image inline
-  as a data URL. The capture tool's description carries the exact `text()`/`image()` split so
-  the model never dumps an image as base64 text (one such call cost 174k tokens before Codex
-  truncated it). The developer instructions ask for `max_output_tokens` ≤ 4000 and targeted
-  reads.
+- Code mode (Codex 0.152, every gpt-5.6 model is `tool_mode: code_mode_only`): the model never
+  calls a dynamic tool directly. It writes JavaScript for a generic `exec` tool and reaches
+  ClosedAI tools as `tools.<namespace>__<tool>(args)`, declared to it as `Promise<unknown>`.
+  Verified against the CLI: a dynamic tool's `[text, image]` result arrives in that script as
+  ONE STRING — the text, a newline, then the raw `data:image/jpeg;base64,…` URL. Nothing is an
+  image unless the script passes the URL to `image()`. Before the recipe was spelled out, 29 of
+  43 captures in one day's threads were dumped through `text(JSON.stringify(r))`: ~10k tokens of
+  base64 each and no picture. So every tool description states its return shape for scripts,
+  the capture result text repeats the split recipe (`EXEC_IMAGE_HINT` in `capture/result.ts`,
+  so it survives compaction), and the developer instructions say it once more.
+- Reading habits, not caps, drive context size: a fresh thread reached 100k tokens in 26 calls
+  because the model ran `sed -n '1,360p'` over several files per call with
+  `max_output_tokens` 22k-30k. The developer instructions ask for ranged reads and JS-side
+  slicing before `text()`; Codex itself does not truncate `exec_command` output inside a script.
 - Pasted screenshots are bounded to 1600x1200 JPEG before they are sent
   (`src/main/chat-attachment-images.ts`): Codex re-sends user messages verbatim through every
   compaction, so a full-size paste is paid for on every call for the life of the thread.

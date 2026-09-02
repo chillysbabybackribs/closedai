@@ -34,8 +34,20 @@ export function imageResult(
     : ''
   return {
     content: [
-      { type: 'text', text: `${summary}\nCapture ID: ${callId}\nImage: ${size}${hint}\nCaptured: ${image.capturedAt}` },
+      {
+        type: 'text',
+        text: `${summary}\nCapture ID: ${callId}\nImage: ${size}${hint}\nCaptured: ${image.capturedAt}\n${EXEC_IMAGE_HINT}`
+      },
       { type: 'image', dataUrl: image.model.dataUrl }
     ]
   }
 }
+
+/**
+ * Code-mode models receive this result as one string with the JPEG data URL after the text.
+ * Repeating the split recipe in every result (not only the tool description, which a
+ * compaction can leave behind) is what stops `text(JSON.stringify(r))` dumping the image as
+ * base64 text — 10k tokens of noise and no picture.
+ */
+export const EXEC_IMAGE_HINT =
+  'exec scripts: const i = r.indexOf("data:image/"); text(r.slice(0, i)); image(r.slice(i)); — never text() the whole result.'

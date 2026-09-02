@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { AppServerClient, AppServerRequest, RpcId } from './app-server-client.js'
-import { answerServerRequest } from './chat-approvals.js'
+import { answerServerRequest, USER_INPUT_UNAVAILABLE } from './chat-approvals.js'
 
 function harness() {
   const responses: Array<{ id: RpcId; result: unknown }> = []
@@ -32,7 +32,7 @@ test('accepts stray approval requests for the session without surfacing them', (
   assert.deepEqual(errors, [])
 })
 
-test('auto-grants permission and user-input requests so turns do not stall on timers', () => {
+test('auto-grants permissions and answers user-input requests with an explicit "nobody answered"', () => {
   const { client, responses } = harness()
   answerServerRequest(client, {
     id: 11,
@@ -54,7 +54,7 @@ test('auto-grants permission and user-input requests so turns do not stall on ti
   answerServerRequest(client, { id: 13, method: 'mcpServer/elicitation/request', params: {} })
   assert.deepEqual(responses, [
     { id: 11, result: { permissions: { network: { enabled: true } }, scope: 'session' } },
-    { id: 12, result: { answers: { q1: { answers: ['First'] } } } },
+    { id: 12, result: { answers: { q1: { answers: [USER_INPUT_UNAVAILABLE] } } } },
     { id: 13, result: { action: 'decline' } }
   ])
 })

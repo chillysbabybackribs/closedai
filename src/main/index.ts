@@ -18,9 +18,11 @@ import { PARTITION } from './browser-url.js'
 import { ChatService } from './chat-service.js'
 import { BrowserPageAccess } from './browser-page-access.js'
 import { BrowserCdpAccess } from './cdp/browser-cdp-access.js'
+import { AppAutomationAccess } from './app-automation-access.js'
 import { UiCaptureAccess } from './ui-capture-access.js'
 import { createToolRegistry, type ToolRegistry } from './tools/index.js'
 import { browserTools } from './tools/browser/index.js'
+import { appTools } from './tools/app/index.js'
 import { cdpTools } from './tools/cdp/index.js'
 import { captureTools, ScreenshotStore } from './tools/capture/index.js'
 import { batchTools } from './tools/batch/index.js'
@@ -55,6 +57,7 @@ let toolRegistry: ToolRegistry | null = null
 let toolTelemetry: ToolTelemetry | null = null
 let browserSessionFlush: Promise<void> | null = null
 let cdpAccess: BrowserCdpAccess | null = null
+let appAutomationAccess: AppAutomationAccess | null = null
 let quitting = false
 
 const userData = (): string => app.getPath('userData')
@@ -77,11 +80,13 @@ async function main(): Promise<void> {
   // Tools resolve the browser lazily: it is created with the window, after the chat service.
   const pageAccess = new BrowserPageAccess(() => browserService)
   cdpAccess = new BrowserCdpAccess(() => browserService)
+  appAutomationAccess = new AppAutomationAccess(() => mainWindow)
   const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService)
   // Full-resolution captures for the transcript; the model only ever receives the scaled copy.
   const screenshots = new ScreenshotStore()
   const workspaceNamespace = workspaceTools(chatWorkspace)
   toolRegistry = createToolRegistry([
+    appTools(() => appAutomationAccess),
     browserTools(() => pageAccess),
     cdpTools(() => cdpAccess),
     captureTools(() => captureAccess, screenshots),
@@ -216,6 +221,7 @@ async function importDefaultBrowserCookies(): Promise<void> {
 
 function disposeWindowServices(): void {
   browserSessionFlush = browserService?.flushSessionData() ?? null
+  appAutomationAccess?.dispose()
   cdpAccess?.dispose()
   cdpAccess = null
   browserService?.dispose()

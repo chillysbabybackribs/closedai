@@ -10,6 +10,7 @@ export function createToolRegistry(namespaces: ToolNamespace[] = []): ToolRegist
 }
 
 export { batchTools } from './batch/index.js'
+export { appTools } from './app/index.js'
 export { browserTools } from './browser/index.js'
 export { cdpTools } from './cdp/index.js'
 export { captureTools } from './capture/index.js'

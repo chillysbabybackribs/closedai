@@ -110,9 +110,12 @@ function actions(app: AppHostProvider): ToolAction[] {
         if (!selector && !text) throw new Error('Pass `selector`, `text`, or both')
         const condition = stringArg(input, 'condition', 'visible')
         if (condition !== 'visible' && condition !== 'hidden') throw new Error('Unsupported condition')
-        return jsonResult(await requireApp(app).waitFor({
+        const result = await requireApp(app).waitFor({
           selector, text, condition, timeoutMs: numberArg(input, 'timeout_ms', 3_000)
-        }, context.signal))
+        }, context.signal)
+        const output = jsonResult(result)
+        if (!result.reached) output.isError = true
+        return output
       }
     }
   ]
@@ -127,4 +130,4 @@ function modifiersFrom(input: JsonObject): string[] {
   return value as string[]
 }
 
-export type { AppHostProvider, AppToolHost, AppWaitOptions } from './host.js'
+export type { AppHostProvider, AppToolHost, AppWaitOptions, AppWaitResult } from './host.js'

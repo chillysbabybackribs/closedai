@@ -53,7 +53,7 @@ runs on the Electron installed here.
 Electron's `app.getPath('userData')` directory (`~/.config/closedai/` on Linux):
 `browser-tabs.json` (restored on launch), `browser-history.json`
 (omnibox suggestions), `app-settings.json` (cookie-import latch, current Codex thread, selected
-model, disabled tool or action ids, `chatCompactAtPercent`, the context-usage percentage after which the
+model, `chatReasoningEffort` (null follows the model default), disabled tool or action ids, `chatCompactAtPercent`, the context-usage percentage after which the
 app compacts between turns; default 80, 0 disables, and `chatMidTurnCompactTokens`, an opt-in
 context size in tokens past which Codex compacts mid-turn; default 0 keeps Codex's own limit),
 `tool-telemetry.jsonl` (recent tool calls), `code-cache/`, and
@@ -67,11 +67,18 @@ app-server after unexpected exits. Each turn also gets lightweight active-browse
 model knows which tab the user is looking at.
 
 Codex replays the whole thread to the model each turn, so the app keeps that history lean: tool
-text is capped per result, screenshots reach the model scaled while the transcript shows the full
-capture, pasted screenshots are bounded before they are sent, and the app compacts once a turn
-ends above `chatCompactAtPercent` (Codex itself compacts near the limit). The chat header shows how full the
+text is capped per result (JSON shrinks structurally so scripts can still parse it), screenshots
+reach the model as a bounded JPEG while the transcript shows the full capture, pasted screenshots
+are bounded before they are sent, and the app compacts once a turn ends above
+`chatCompactAtPercent` (Codex itself compacts near the limit). The chat header shows how full the
 context is, and "Continue in new chat" starts a fresh thread carrying only a digest of the current
-one (`docs/tools.md`, "Results live in the thread history").
+one (`docs/tools.md`, "Results live in the thread history"). The composer's effort picker sends
+`turn/start.effort` on every turn; left on "Default effort", a thread keeps the effort it was
+created with (Codex persists it), even after `~/.codex/config.toml` changes.
+
+gpt-5.6 models run in Codex "code mode": they reach every ClosedAI tool from JavaScript inside
+Codex's `exec` tool, where a tool result is one string (an image arrives as a trailing data URL).
+Tool descriptions and results spell out that contract; see `docs/tools.md`.
 
 Tools are advertised to Codex as app-server `dynamicTools` on `thread/start` and `thread/resume`.
 Codex calls them through `item/tool/call`; `src/main/tools/app-server-tools.ts` adapts that request

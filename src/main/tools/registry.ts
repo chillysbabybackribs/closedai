@@ -1,5 +1,6 @@
 import type { ToolCallRecord } from '../../shared/tools.js'
 import { validateInput } from './schema.js'
+import { truncateText } from './truncate-json.js'
 import {
   DEFAULT_TOOL_TIMEOUT_MS,
   failureResult,
@@ -21,9 +22,13 @@ export type ToolCallListener = (record: ToolCallRecord) => void
 
 const PREVIEW_ARGS = 400
 const PREVIEW_OUTPUT = 300
-// Tool results live in the thread history for every later turn, and the app-server does not
-// truncate dynamic tool output the way it does shell output. ~10k tokens per text item.
-export const MAX_RESULT_TEXT_CHARS = 40_000
+// Tool results live in the thread history for every later turn. Code-mode models see a
+// dynamic tool result only through `exec`, whose own result cap is 10k tokens (~40k chars)
+// with a silent head/tail cut, so this ceiling sits well below it: ~6k tokens, and the model
+// reads ClosedAI's advice instead of Codex's cut. JSON results shrink structurally so that a
+// script's JSON.parse never throws on a truncated string.
+export const MAX_RESULT_TEXT_CHARS = 24_000
+const TRUNCATION_ADVICE = 'Narrow the request (a selector, range, filter, or smaller limit) to see the rest.'
 
 const NAME = /^[a-z][a-z0-9_]*$/
 
@@ -196,11 +201,7 @@ export function boundResult(result: ToolResult, maxChars = MAX_RESULT_TEXT_CHARS
     ...result,
     content: result.content.map((item) => {
       if (item.type !== 'text' || item.text.length <= maxChars) return item
-      const dropped = item.text.length - maxChars
-      return {
-        type: 'text',
-        text: `${item.text.slice(0, maxChars)}\n\n[ClosedAI truncated ${dropped} characters. Narrow the request (a selector, range, filter, or smaller limit) to see the rest.]`
-      }
+      return { type: 'text', text: truncateText(item.text, maxChars, TRUNCATION_ADVICE).text }
     })
   }
 }

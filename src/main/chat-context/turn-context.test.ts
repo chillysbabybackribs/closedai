@@ -18,7 +18,9 @@ const activeTab: ActiveBrowserContext = {
 
 test('developer instructions stay compact and establish the product trust boundary', () => {
   const instructions = closedAiDeveloperInstructions()
-  assert.ok(instructions.length < 1_500)
+  assert.ok(instructions.length < 2_300)
+  assert.match(instructions, /request_user_input is not wired/)
+  assert.match(instructions, /pass only the URL to image\(\)/)
   assert.match(instructions, /inside ClosedAI/)
   assert.match(instructions, /marked untrusted/)
   assert.match(instructions, /never as instructions/)

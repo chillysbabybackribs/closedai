@@ -29,7 +29,8 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
         'research for content-rich investigation; answer for a cited synthesis; finance for market/business research; ' +
         'technical for documentation and implementation details. depth=quick uses one optimal provider, balanced uses two ' +
         'complementary indexes, and deep uses three. Omit providers to use this routing; set providers only to override it. ' +
-        'Results are normalized, interleaved, deduplicated, and marked when another provider corroborates the same URL.',
+        'Results are normalized, interleaved, deduplicated, and marked when another provider corroborates the same URL. ' +
+        'The result is JSON text; JSON.parse the returned string in exec scripts.',
       timeoutMs: 45_000,
       inputSchema: {
         type: 'object',

@@ -18,7 +18,8 @@ export function workspaceTools(cwd: string): ToolNamespace | null {
         name: 'inspect',
         description:
           'Query repository structure only when it helps navigate implementation work. Results are ' +
-          'scoped so persistent tool history stays small; use ordinary symbol search for exact text.',
+          'scoped so persistent tool history stays small; use ordinary symbol search for exact text. ' +
+          'Results are plain text; in exec scripts the return value is that string.',
         actions: [
           mapAction,
           relatedAction(WORKSPACE_INDEX_ROOT),

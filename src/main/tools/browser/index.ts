@@ -23,7 +23,8 @@ export function browserTools(browser: BrowserHostProvider): ToolNamespace {
         description:
           'Read-only access to the embedded browser the user is looking at. Use navigate to open a page, ' +
           'read_page to get its text, and wait_for when content loads late. Every load reports the ready ' +
-          'state it reached; trust "complete", re-check anything else.',
+          'state it reached; trust "complete", re-check anything else. Results are plain text (a ' +
+          'Title / URL / Load state header, then the content); in exec scripts the return value is that string.',
         actions: [navigateAction(browser), readPageAction(browser), waitForAction(browser)]
       })
     ]

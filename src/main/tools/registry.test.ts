@@ -108,3 +108,13 @@ test('oversized text results are cut with a hint so one call cannot flood the hi
   assert.deepEqual(result.content[1], { type: 'text', text: 'short' })
   assert.deepEqual(boundResult(textResult('small')), textResult('small'))
 })
+
+test('oversized JSON results shrink structurally so a script can still JSON.parse them', () => {
+  const json = JSON.stringify({ items: Array.from({ length: 5_000 }, (_, i) => ({ i, label: 'row' })) })
+  const result = boundResult(textResult(json))
+  const text = result.content[0].type === 'text' ? result.content[0].text : ''
+  assert.ok(text.length <= MAX_RESULT_TEXT_CHARS)
+  const parsed = JSON.parse(text) as { _closedai_truncated: string; items: unknown[] }
+  assert.match(parsed._closedai_truncated, /Structurally truncated/)
+  assert.ok(parsed.items.length < 5_000)
+})

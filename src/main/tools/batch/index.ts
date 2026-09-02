@@ -56,7 +56,8 @@ export function batchTools(registry: ToolRegistryProvider): ToolNamespace {
           'By default the calls run in order and a failure skips the rest, so a dependent sequence ' +
           '(navigate, then wait_for, then read_page) is safe to batch. Set `parallel` to true only for ' +
           'independent read-only calls; they overlap, and one failure does not stop the others. ' +
-          'Batches cannot nest. Prefer direct calls for single steps or when a result decides what to do next.',
+          'Batches cannot nest. Prefer direct calls for single steps or when a result decides what to do next. ' +
+          'In exec scripts do not use this tool: await the tools directly (Promise.all for independent reads).',
         inputSchema: {
           type: 'object',
           properties: {
