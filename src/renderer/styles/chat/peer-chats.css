@@ -23,32 +23,32 @@
   display: inline-flex;
   align-items: center;
   height: 28px;
-  border-radius: 9999px;
-  background: color-mix(in srgb, var(--popover, #252528) 85%, transparent);
-  border: 1px solid color-mix(in srgb, var(--border, #3c3c40) 70%, transparent);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+  border-radius: 8px;
+  background: var(--antigravity-card-bg, #202023);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 22%);
   transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
   overflow: hidden;
 }
 
 .peer-chat-pill:hover {
-  background: var(--popover, #2a2a2e);
-  border-color: color-mix(in srgb, var(--border, #4c4c52) 90%, transparent);
-  box-shadow: 0 2px 6px rgb(0 0 0 / 26%);
+  background: #27272b;
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 2px 5px rgb(0 0 0 / 28%);
 }
 
 .peer-chat-pill-main {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   height: 100%;
   padding: 0 10px;
   background: transparent;
   border: 0;
-  color: var(--muted-foreground, #a1a1aa);
+  color: #c4c4c8;
   font: inherit;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 12.5px;
+  font-weight: 450;
   cursor: pointer;
   min-width: 0;
   transition: color 120ms ease;
@@ -56,19 +56,19 @@
 
 .peer-chat-pill:hover .peer-chat-pill-main,
 .peer-chat-pill-main:hover {
-  color: var(--foreground, #f4f4f5);
+  color: #ededef;
 }
 
 .peer-chat-pill-title {
-  max-width: 150px;
+  max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .peer-chat-pill-icon {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   flex: none;
 }
 
@@ -78,27 +78,34 @@
 }
 
 .peer-chat-pill-idle {
-  color: var(--muted-foreground, #71717a);
+  color: #8e8e93;
 }
 
 .peer-chat-pill-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  margin-right: 4px;
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  margin-left: -2px;
   border: 0;
-  border-radius: 9999px;
+  border-radius: 4px;
   background: transparent;
-  color: color-mix(in srgb, var(--muted-foreground, #a1a1aa) 70%, transparent);
+  color: #71717a;
+  opacity: 0.45;
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
+  transition: background 120ms ease, color 120ms ease, opacity 120ms ease;
+}
+
+.peer-chat-pill:hover .peer-chat-pill-close {
+  opacity: 0.85;
 }
 
 .peer-chat-pill-close:hover {
-  background: color-mix(in srgb, var(--foreground, #ffffff) 14%, transparent);
-  color: var(--foreground, #ffffff);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  opacity: 1;
 }
 
 .peer-chat-pill-close-icon {
@@ -108,20 +115,23 @@
 
 /* "+N more" overflow cluster pill */
 .peer-chat-overflow-trigger {
-  gap: 4px;
+  gap: 5px;
   padding: 0 10px;
-  background: color-mix(in srgb, var(--popover, #252528) 85%, transparent);
-  color: var(--muted-foreground, #a1a1aa);
+  border-radius: 8px;
+  background: var(--antigravity-card-bg, #202023);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #c4c4c8;
   font: inherit;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 12.5px;
+  font-weight: 450;
   cursor: pointer;
 }
 
 .peer-chat-overflow-trigger:hover,
 .peer-chat-overflow-trigger[data-state='open'] {
-  color: var(--foreground, #ffffff);
-  background: var(--popover, #2a2a2e);
+  color: #ededef;
+  background: #27272b;
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .peer-chat-overflow-caret {
