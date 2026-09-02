@@ -137,7 +137,7 @@ export function Composer({
                   disabled={!enabled || running}
                   onClick={handleNewChat}
                 >
-                  <Plus size={19} strokeWidth={2.75} aria-hidden="true" />
+                  <Plus size={21} strokeWidth={2.6} aria-hidden="true" />
                 </Button>
               </PromptInputAction>
 
@@ -174,7 +174,7 @@ export function Composer({
                     aria-label="Stop Codex"
                     onClick={() => void onStop()}
                   >
-                    <Square className="size-3.5" fill="currentColor" aria-hidden="true" />
+                    <Square size={16} fill="currentColor" aria-hidden="true" />
                   </Button>
                 </PromptInputAction>
               ) : (
@@ -187,7 +187,7 @@ export function Composer({
                     data-waiting-for-input={waitingForInput || undefined}
                     disabled={!canSend}
                   >
-                    <ArrowUp size={18} aria-hidden="true" />
+                    <ArrowUp size={20} strokeWidth={2.25} aria-hidden="true" />
                   </Button>
                 </PromptInputAction>
               )}

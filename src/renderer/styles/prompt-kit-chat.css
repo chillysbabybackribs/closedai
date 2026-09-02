@@ -290,11 +290,11 @@
 }
 
 .prompt-composer-input {
-  max-width: calc(var(--chat-column-width) + 48px);
+  max-width: calc(var(--chat-column-width) + 64px);
   margin-inline: auto;
-  padding: 6px;
+  padding: 8px;
   border: 1px solid var(--composer-line);
-  border-radius: 14px;
+  border-radius: 16px;
   background: var(--antigravity-card-bg, #252526);
   box-shadow: 0 2px 8px rgb(0 0 0 / 22%), 0 1px 2px rgb(0 0 0 / 14%);
   transition: border-color 140ms ease, box-shadow 140ms ease;
@@ -306,12 +306,12 @@
 }
 
 .prompt-composer-textarea {
-  min-height: 64px;
+  min-height: 76px;
   max-height: min(34vh, 260px);
-  padding: 8px 10px 6px;
+  padding: 10px 12px 8px;
   color: #ececee;
-  font-size: var(--chat-fs-body);
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.55;
 }
 
 .prompt-composer-textarea::placeholder { color: #727276; }
@@ -319,21 +319,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-top: 4px;
-  padding: 0 2px 2px;
+  gap: 10px;
+  margin-top: 5px;
+  padding: 0 3px 3px;
 }
 
 .prompt-composer-tool {
-  height: 30px;
-  min-width: 30px;
-  padding: 0 6px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0 8px;
   border: none;
   border-radius: 6px;
   background: transparent;
   color: #9c9c9e;
   box-shadow: none;
-  font-size: 12px;
+  font-size: 13px;
   transition: all 120ms ease;
 }
 
@@ -355,8 +355,8 @@
 
 .prompt-composer-send,
 .prompt-composer-stop {
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
   display: grid;
   place-items: center;

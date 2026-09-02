@@ -80,7 +80,7 @@ export function AttachmentPicker({
           disabled={disabled}
           onClick={() => inputRef.current?.click()}
         >
-          <FileUp size={18} aria-hidden="true" />
+          <FileUp size={20} strokeWidth={2.1} aria-hidden="true" />
         </Button>
       </PromptInputAction>
     </>
