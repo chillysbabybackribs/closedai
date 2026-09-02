@@ -62,6 +62,9 @@
   margin-top: 8px;
 }
 
+/* A collapsed batch is a closed hatch, not a line of prose: it sits on the
+   transcript's darkest surface with a hairline edge, so it reads as machine
+   chrome beside the answer instead of as dull, low-contrast body text. */
 .prompt-tool-activity-trigger {
   display: inline-flex;
   width: fit-content;
@@ -69,21 +72,28 @@
   min-height: 22px;
   align-items: center;
   justify-content: flex-start;
-  gap: 6px;
-  padding: 0;
-  border: 0;
+  gap: 7px;
+  padding: 5px 11px;
   appearance: none;
-  border-radius: 4px;
-  background: transparent;
+  border: 1px solid var(--tool-edge);
+  border-radius: 9px;
+  background: var(--tool-surface);
   color: var(--transcript-activity);
   font-family: inherit;
   font-size: var(--chat-fs-process, 18px);
   font-weight: 500;
   line-height: 1.4;
   cursor: pointer;
+  transition:
+    color 120ms var(--ease-chrome),
+    background 120ms var(--ease-chrome),
+    border-color 120ms var(--ease-chrome);
 }
 
-.prompt-tool-activity-trigger:hover {
+.prompt-tool-activity-trigger:hover,
+.prompt-tool-activity-trigger[aria-expanded='true'] {
+  border-color: var(--hairline-strong);
+  background: var(--tool-surface-hover);
   color: var(--transcript-activity-hover);
 }
 
@@ -110,13 +120,17 @@
 
 .prompt-tool-activity-caret.is-open { transform: rotate(180deg); }
 
+/* Opening the hatch extends the same dark panel downward rather than switching
+   to a left-rule list, so the batch stays one object at both states. */
 .prompt-tool-activity-content {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: 5px 0 2px 7px;
-  padding-left: 12px;
-  border-left: 1px solid var(--border);
+  margin: 6px 0 2px;
+  padding: 5px;
+  border: 1px solid var(--tool-edge);
+  border-radius: 10px;
+  background: var(--tool-surface);
 }
 
 .prompt-transcript-tool {
@@ -128,11 +142,12 @@
 
 .prompt-tool-trigger {
   min-width: 0;
-  color: var(--muted-foreground);
+  border-radius: 7px;
+  color: var(--transcript-activity);
   background: transparent;
 }
 
-.prompt-tool-trigger:hover { background: transparent; color: var(--accent-foreground); }
+.prompt-tool-trigger:hover { background: var(--surface-highlight); color: var(--accent-foreground); }
 
 .prompt-tool-title {
   display: flex;
@@ -160,12 +175,14 @@
 
 .prompt-tool-content {
   margin: 0 4px 5px 28px;
-  background: color-mix(in srgb, var(--card) 72%, transparent);
+  border: 1px solid var(--tool-edge);
+  border-radius: 8px;
+  background: var(--tool-well);
 }
 
 .prompt-tool-section { padding: 10px; }
-.prompt-tool-section + .prompt-tool-section { border-top: 1px solid var(--border); }
-.prompt-tool-section > strong { color: var(--muted-foreground); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.prompt-tool-section + .prompt-tool-section { border-top: 1px solid var(--tool-edge); }
+.prompt-tool-section > strong { color: var(--transcript-secondary); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
 .prompt-tool-section > pre {
   max-height: 280px;
   margin: 7px 0 0;

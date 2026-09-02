@@ -13,9 +13,9 @@
   gap: 0;
 }
 
-/* User turns: edge-to-edge muted band across the chat pane (Cursor-style).
-   The scroller item drops inline padding (`.chat-turn-user`); text inset is
-   restored here so the background touches both edges. */
+/* User turns: a muted band spanning the pane's text column, left-aligned with
+   the answer below it. Inline inset comes from the scroller item, so the band
+   stops at the same margin as assistant prose. */
 .message-user {
   width: 100%;
   max-width: 100%;
@@ -59,6 +59,11 @@
   color: var(--foreground);
 }
 
+/* Bubble ships `w-fit max-w-[80%]` on its wrapper, which would clamp a
+   full-width row no matter what the content rule says. Released here for every
+   row that spans the pane — user tasks included. */
+.message-user [data-slot="bubble"],
+.message-user [data-slot="bubble-content"],
 .message-assistant [data-slot="bubble"],
 .message-assistant [data-slot="bubble-content"],
 .message-system [data-slot="bubble"],

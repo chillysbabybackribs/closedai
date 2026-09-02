@@ -144,18 +144,21 @@
   --path-chip-border: rgb(255 255 255 / 12%);
 
   /* Transcript ink is intentionally separate from shell chrome. Assistant
-     responses read like technical documents: soft copy, bright anchors, and
-     quieter supporting text. */
-  --transcript-copy: #ced1d6;
-  --transcript-heading: #f7f8f8;
-  --transcript-strong: #eff0f1;
-  --transcript-secondary: #969a9f;
-  /* Cursor-quiet process ink: Thought / Explored / tool-call labels. Soft
-     neutral mid-grey — no cool cast, quieter than secondary/answer copy.
-     Hover/open emphasis stays in the same neutral family (no jump to cool
-     --transcript-copy). */
-  --transcript-activity: #858585;
-  --transcript-activity-hover: #a8a8a8;
+     responses read like technical documents, and the document structure is
+     carried by CONTRAST between two inks rather than by size alone: headings
+     land at pure white and body copy sits a full step down in neutral grey.
+     Body copy is deliberately not near-white — at the transcript's 22px scale
+     a light body makes headings invisible, which is what made the answer read
+     as one undifferentiated slab. */
+  --transcript-copy: #a8a8ad;
+  --transcript-heading: #ffffff;
+  --transcript-strong: #f5f5f6;
+  --transcript-secondary: #8f8f95;
+  /* Quiet process ink: Thought / Explored / tool-call labels. Kept a touch
+     cool: at mid-grey on this chassis a perfectly neutral value renders warm
+     once greyscale AA thins the stems, which read the labels as dull yellow. */
+  --transcript-activity: #9b9ba1;
+  --transcript-activity-hover: #d4d4d8;
 
   /* Semantic shadcn tokens stay on the same neutral material ramp. */
   --background: #181818;
@@ -186,6 +189,14 @@
   --code-border: rgb(255 255 255 / 9%);
   --code-text: #d1d1d2;
   --code-muted: #777779;
+
+  /* Tool disclosures are the one transcript element that must recede below the
+     reading surface rather than sit on it. Darker than the chat canvas, so a
+     collapsed batch reads as a closed hatch instead of competing with prose. */
+  --tool-surface: #0e0e0f;
+  --tool-surface-hover: #141416;
+  --tool-well: #0a0a0b;
+  --tool-edge: rgb(255 255 255 / 7%);
 
   /* Film-grain tile at ~2.5% alpha; reads as material, not pattern. Applied
      to chassis surfaces only — never the chat reading surface.

@@ -81,11 +81,11 @@ const TranscriptItem = memo(function TranscriptItem({
 }): JSX.Element | null {
   if (item.type === 'user') {
     return (
-      <Message align="end" className="message message-user prompt-message prompt-message-user">
+      <Message className="message message-user prompt-message prompt-message-user">
         <MessageContent>
           {item.attachments?.length ? <TranscriptAttachments attachments={item.attachments} /> : null}
           {item.text ? (
-            <Bubble variant="secondary" align="end">
+            <Bubble variant="secondary">
               <BubbleContent className="prompt-message-user-content">{item.text}</BubbleContent>
             </Bubble>
           ) : null}
@@ -180,7 +180,7 @@ const AssistantMessage = memo(function AssistantMessage({ item }: { item: Extrac
     <Message className="message message-assistant prompt-message prompt-message-assistant" data-phase={item.phase ?? 'unknown'}>
       <MessageContent>
         <Bubble variant="ghost">
-          <BubbleContent className="prompt-message-assistant-content prose max-w-none prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-h4:text-base prose-h5:text-sm prose-h6:text-xs dark:prose-invert">
+          <BubbleContent className="prompt-message-assistant-content prose max-w-none dark:prose-invert">
             <Markdown>{item.text}</Markdown>
           </BubbleContent>
         </Bubble>

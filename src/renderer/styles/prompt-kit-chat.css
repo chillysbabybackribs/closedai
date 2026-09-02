@@ -33,16 +33,20 @@
   line-height: var(--chat-lh-body);
 }
 
+/* A task reads as the section heading for the answer under it, so it spans the
+   pane and starts on the same left margin as the prose it introduces — not as a
+   right-hand chat bubble, which pushed the text away from its own answer and
+   wrapped long tasks into a narrow column. */
 .prompt-message-user {
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .prompt-message-user-content {
-  width: fit-content;
-  max-width: min(88%, 36rem);
-  padding: 14px 18px;
+  width: 100%;
+  max-width: 100%;
+  padding: 13px 16px;
   border: 1px solid var(--border);
-  border-radius: 20px 20px 6px 20px;
+  border-radius: 12px;
   background: var(--secondary);
   color: var(--secondary-foreground);
   font-size: var(--chat-fs-body);
@@ -78,16 +82,36 @@
 .prompt-markdown > :first-child { margin-top: 0; }
 .prompt-markdown > :last-child { margin-bottom: 0; }
 
+/* Section headers are the answer's structure, so they take every available
+   signal at once: pure white against grey body copy, a real bold rather than a
+   semibold, and a size step that is visible at the transcript's 22px body.
+   The scale is relative (em) so it tracks --chat-fs-body when the pane zooms. */
 .prompt-markdown h1,
 .prompt-markdown h2,
 .prompt-markdown h3,
 .prompt-markdown h4,
 .prompt-markdown h5,
 .prompt-markdown h6 {
+  margin-block: 1.5em 0.6em;
   color: var(--transcript-heading);
-  font-weight: 650;
-  line-height: 1.3;
+  font-weight: 700;
+  line-height: 1.25;
   letter-spacing: var(--tracking-tight);
+}
+
+.prompt-markdown h1 { font-size: 1.5em; letter-spacing: var(--tracking-display); }
+.prompt-markdown h2 { font-size: 1.28em; }
+.prompt-markdown h3 { font-size: 1.12em; }
+.prompt-markdown h4,
+.prompt-markdown h5,
+.prompt-markdown h6 { font-size: 1em; }
+
+/* Sub-headers below h3 have no size step left to spend, so they separate from
+   body copy on weight and case instead. */
+.prompt-markdown h5,
+.prompt-markdown h6 {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .prompt-markdown ul,
@@ -310,5 +334,4 @@
 @media (max-width: 34rem) {
   .prompt-chat-content { padding-inline: 12px; }
   .prompt-composer { padding-inline: 10px; }
-  .prompt-message-user-content { max-width: 94%; }
 }

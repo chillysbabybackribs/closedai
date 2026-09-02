@@ -57,12 +57,22 @@
   --path-chip-bg: rgb(32 34 35 / 8%);
   --path-chip-border: rgb(32 34 35 / 14%);
 
-  --transcript-copy: #202223;
-  --transcript-heading: #161718;
-  --transcript-strong: #1a1b1c;
-  --transcript-secondary: #3c3c3c;
-  --transcript-activity: #6e6e6e;
-  --transcript-activity-hover: #555555;
+  /* Same two-ink split as the dark chassis, inverted: headings take the
+     darkest available ink and body copy steps back to a mid grey so section
+     structure survives on paper too. */
+  --transcript-copy: #45474a;
+  --transcript-heading: #0d0e0f;
+  --transcript-strong: #16181a;
+  --transcript-secondary: #5b5d60;
+  --transcript-activity: #5f6164;
+  --transcript-activity-hover: #202223;
+
+  /* Tool disclosures recede on paper by darkening the surface a step, the same
+     direction the dark theme takes — never a black panel on a light plane. */
+  --tool-surface: rgb(32 34 35 / 5%);
+  --tool-surface-hover: rgb(32 34 35 / 9%);
+  --tool-well: rgb(32 34 35 / 8%);
+  --tool-edge: rgb(32 34 35 / 14%);
 
   --background: #eeeae4;
   --foreground: #202223;
