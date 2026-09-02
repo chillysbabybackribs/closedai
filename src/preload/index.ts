@@ -67,6 +67,10 @@ const api: ClosedaiApi = {
     models: () => ipcRenderer.invoke('operations:models'),
     create: (task: string, workspace: string, modelId: string) => ipcRenderer.invoke('operations:create', task, workspace, modelId),
     setStatus: (id: number, status) => ipcRenderer.invoke('operations:setStatus', id, status),
+    createSchedule: (name: string, task: string, workspace: string, modelId: string, frequency) => ipcRenderer.invoke('operations:createSchedule', name, task, workspace, modelId, frequency),
+    setScheduleEnabled: (id: number, enabled: boolean) => ipcRenderer.invoke('operations:setScheduleEnabled', id, enabled),
+    runScheduleNow: (id: number) => ipcRenderer.invoke('operations:runScheduleNow', id),
+    deleteSchedule: (id: number) => ipcRenderer.invoke('operations:deleteSchedule', id),
     onChanged: (listener) => subscribe('operations:changed', listener)
   }
 }

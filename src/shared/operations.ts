@@ -1,6 +1,7 @@
 import type { ChatModel } from './chat.js'
 
 export type RunStatus = 'attention' | 'completed' | 'failed' | 'paused' | 'queued' | 'running'
+export type ScheduleFrequency = 'hourly' | 'daily' | 'weekly'
 
 export type OperationsRun = {
   id: number
@@ -14,10 +15,25 @@ export type OperationsRun = {
   status: RunStatus
   runtime: string
   activity: string
+  scheduleId?: number | null
+}
+
+export type OperationsSchedule = {
+  id: number
+  name: string
+  task: string
+  workspace: string
+  modelId: string
+  frequency: ScheduleFrequency
+  enabled: boolean
+  nextRunAt: number
+  lastRunAt: number | null
+  createdAt: number
 }
 
 export type OperationsSnapshot = {
   runs: OperationsRun[]
+  schedules: OperationsSchedule[]
 }
 
 export type OperationsModelCatalog = {
@@ -28,6 +44,7 @@ export type OperationsModelCatalog = {
 export type OperationsEvent = {
   type: 'runs'
   runs: OperationsRun[]
+  schedules: OperationsSchedule[]
 }
 
 export const DEFAULT_OPERATIONS_RUNS: OperationsRun[] = [
