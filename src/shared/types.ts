@@ -76,10 +76,12 @@ export type BrowserDownload = {
 
 export type ChatPeerRecord = {
   paneId: string
-  provider: 'codex' | 'claude'
+  provider: 'codex' | 'claude' | 'antigravity'
   threadId: string | null
   codexThreadId: string | null
   claudeSessionId: string | null
+  /** The `agy` conversation this pane continues; absent on records saved before Antigravity existed. */
+  antigravityConversationId?: string | null
   modelId: string | null
   reasoningEffort: string | null
 }
@@ -90,7 +92,9 @@ export type AppSettings = {
   chatThreadId: string | null
   /** Last Claude Agent SDK session the chat surface showed; resumed on the next Claude turn. */
   chatClaudeSessionId: string | null
-  /** User's preferred model for new chats; a `claude:` prefix selects the Claude provider. */
+  /** Last Antigravity (`agy`) conversation the chat surface showed; resumed on the next Antigravity turn. */
+  chatAntigravityConversationId: string | null
+  /** User's preferred model for new chats; a `claude:` or `agy:` prefix selects that provider. */
   chatModelId: string | null
   /** User's preferred reasoning effort when the selected model supports it. */
   chatReasoningEffort: string | null

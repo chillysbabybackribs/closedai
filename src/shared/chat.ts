@@ -5,18 +5,21 @@ export type ChatConnection = {
   message: string
 }
 
-/** Which chat backend owns a model or thread. Codex is the app-server; Claude is the Claude Agent SDK. */
-export type ChatProvider = 'codex' | 'claude'
+/**
+ * Which chat backend owns a model or thread. Codex is the app-server; Claude is the Claude Agent
+ * SDK; Antigravity is Google's `agy` CLI on the user's Antigravity subscription.
+ */
+export type ChatProvider = 'codex' | 'claude' | 'antigravity'
 
 export type ChatAccount = {
-  type: 'chatgpt' | 'apiKey' | 'amazonBedrock' | 'claude' | 'other'
+  type: 'chatgpt' | 'apiKey' | 'amazonBedrock' | 'claude' | 'google' | 'other'
   email: string | null
   planType: string | null
 }
 
 export type ChatModel = {
   provider: ChatProvider
-  /** Unique across providers; Claude ids carry a `claude:` prefix so the hub routes without a lookup. */
+  /** Unique across providers; Claude and Antigravity ids carry a prefix (see chat-providers.ts) so the hub routes without a lookup. */
   id: string
   displayName: string
   description: string

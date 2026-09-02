@@ -1,5 +1,9 @@
 import type { AppSettings, ChatPeerRecord } from '../../shared/types.js'
+import { chatProviderOfId } from '../../shared/chat-providers.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
+
+// One pane's view of the flat settings: the pane's record projected onto the legacy
+// single-chat fields each provider reads (its own thread id, the model, the effort).
 
 export class PeerSettings implements AppSettingsAccess {
   constructor(
@@ -14,6 +18,7 @@ export class PeerSettings implements AppSettingsAccess {
       ...settings,
       chatThreadId: peer.codexThreadId,
       chatClaudeSessionId: peer.claudeSessionId,
+      chatAntigravityConversationId: peer.antigravityConversationId ?? null,
       chatModelId: peer.modelId,
       chatReasoningEffort: peer.reasoningEffort
     }
@@ -23,25 +28,29 @@ export class PeerSettings implements AppSettingsAccess {
     const current = this.root.get()
     const peer = this.peer(current)
     const modelId = patch.chatModelId === undefined ? peer.modelId : patch.chatModelId
-    const provider = modelId?.startsWith('claude:') ? 'claude' : peer.provider === 'claude' && modelId === null
-      ? 'claude'
-      : 'codex'
+    // A cleared model keeps the pane on its provider; a set one names the provider.
+    const provider = modelId === null ? peer.provider : chatProviderOfId(modelId)
+    const codexThreadId = patch.chatThreadId === undefined ? peer.codexThreadId : patch.chatThreadId
+    const claudeSessionId = patch.chatClaudeSessionId === undefined ? peer.claudeSessionId : patch.chatClaudeSessionId
+    const antigravityConversationId = patch.chatAntigravityConversationId === undefined
+      ? peer.antigravityConversationId ?? null
+      : patch.chatAntigravityConversationId
     const updated: ChatPeerRecord = {
       ...peer,
       provider,
       modelId,
       reasoningEffort: patch.chatReasoningEffort === undefined ? peer.reasoningEffort : patch.chatReasoningEffort,
-      codexThreadId: patch.chatThreadId === undefined ? peer.codexThreadId : patch.chatThreadId,
-      claudeSessionId: patch.chatClaudeSessionId === undefined ? peer.claudeSessionId : patch.chatClaudeSessionId,
-      threadId: provider === 'claude'
-        ? sessionThreadId(patch.chatClaudeSessionId === undefined ? peer.claudeSessionId : patch.chatClaudeSessionId)
-        : patch.chatThreadId === undefined ? peer.codexThreadId : patch.chatThreadId
+      codexThreadId,
+      claudeSessionId,
+      antigravityConversationId,
+      threadId: peerThreadId(provider, { codexThreadId, claudeSessionId, antigravityConversationId })
     }
     await this.root.set({
       chatPeers: current.chatPeers.map((entry) => entry.paneId === this.paneId ? updated : entry),
       ...(current.chatSelectedPaneId === this.paneId ? {
         chatThreadId: updated.codexThreadId,
         chatClaudeSessionId: updated.claudeSessionId,
+        chatAntigravityConversationId: updated.antigravityConversationId ?? null,
         chatModelId: updated.modelId,
         chatReasoningEffort: updated.reasoningEffort
       } : {})
@@ -56,6 +65,12 @@ export class PeerSettings implements AppSettingsAccess {
   }
 }
 
-function sessionThreadId(sessionId: string | null): string | null {
-  return sessionId ? `claude:${sessionId}` : null
+/** The pane's displayed thread id: the active provider's thread, in that provider's id form. */
+export function peerThreadId(
+  provider: ChatPeerRecord['provider'],
+  ids: { codexThreadId: string | null; claudeSessionId: string | null; antigravityConversationId: string | null }
+): string | null {
+  if (provider === 'claude') return ids.claudeSessionId ? `claude:${ids.claudeSessionId}` : null
+  if (provider === 'antigravity') return ids.antigravityConversationId ? `agy:${ids.antigravityConversationId}` : null
+  return ids.codexThreadId
 }
