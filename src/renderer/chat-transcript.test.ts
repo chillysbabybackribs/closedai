@@ -57,7 +57,8 @@ test('a streaming tool call is the first thing shown after the prompt', () => {
     }
   ]
   const html = renderTranscript({ items })
-  assert.match(html, /Searched for AGENTS.md/)
+  assert.match(html, /Searching for AGENTS.md/)
+  assert.match(html, /aria-label="Searching for AGENTS.md, running"/)
 })
 
 test('user turns are scroller rows and attachments render as attachment cards', () => {

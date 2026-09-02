@@ -4,7 +4,6 @@ export type CommandKind = 'read' | 'search' | 'list' | 'edit' | 'git' | 'test' |
 
 const FLAGS_WITH_VALUE = new Set([
   '-A', '-B', '-C', '-d', '-e', '-f', '-g', '-m', '-t', '-T', '-j',
-  '-n', '-c',
   '--glob', '--type', '--type-add', '--type-not', '--regexp', '--file',
   '--max-count', '--max-depth', '--max-filesize', '--max-columns',
   '--ignore-file', '--path-separator'
@@ -121,7 +120,7 @@ function readPhrase(args: string[], verb: string, running = false): string {
 }
 
 function readFiles(args: string[], verb: string): string[] {
-  const files = positionals(args)
+  const files = positionals(args, verb)
   if (verb === 'sed') return files.filter((token) => !isSedScript(token))
   return files
 }
@@ -138,7 +137,7 @@ function searchPhrase(args: string[], running = false): string {
 }
 
 function listPhrase(args: string[], verb: string, running = false): string {
-  const files = positionals(args)
+  const files = positionals(args, verb)
   const action = running ? 'Listing' : 'Listed'
   if (verb === 'rg' || verb === 'fd' || verb === 'find') {
     return files[0] ? `${action} files in ${fileName(files[0])}` : `${action} files`
@@ -184,11 +183,15 @@ function searchPattern(args: string[]): string | null {
   return null
 }
 
-function positionals(args: string[]): string[] {
+function positionals(args: string[], verb?: string): string[] {
   const files: string[] = []
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index]!
     if (arg.startsWith('-')) {
+      if ((verb === 'head' || verb === 'tail') && (arg === '-n' || arg === '-c')) {
+        index += 1
+        continue
+      }
       if (arg === '-e' || arg === '--regexp') {
         index += 1
         continue
