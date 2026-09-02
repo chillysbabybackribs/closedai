@@ -153,12 +153,14 @@ export class ToolRegistry {
     const lock = this.resourceLocks.tryAcquire(request, input as JsonObject, context.paneId ?? null, context.callId)
     if (typeof lock === 'string') return failureResult(`${label}: conflict — ${lock}`)
     try {
-      const run = definition.run(input as JsonObject, { ...context, signal: controller.signal })
+      const run = Promise.resolve().then(() =>
+        definition.run(input as JsonObject, { ...context, signal: controller.signal })
+      )
+      void run.then(lock, lock)
       return boundResult(await Promise.race([run, timeout]))
     } catch (error) {
       return failureResult(`${label}: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
-      lock()
       if (timer) clearTimeout(timer)
     }
   }
