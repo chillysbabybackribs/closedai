@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import type { CSSProperties, JSX } from 'react'
 import { memo, useEffect, useMemo, useState } from 'react'
 import { ChevronRight, ChevronUp, XCircle } from 'lucide-react'
 
@@ -199,8 +199,11 @@ const ToolActivity = memo(function ToolActivity({
             ) : null}
             {/* Live-ness is carried by the headline's own shimmer rather than a spinner beside it,
                 so a turn full of activity rows reads as one moving line instead of a column of
-                competing icons. */}
-            <span>{headline}</span>
+                competing icons. The band is sized from the text length the way the source
+                component does it — CSS cannot measure its own glyph count. */}
+            <span style={running ? { '--shimmer-spread': `${headline.length * 2}px` } as CSSProperties : undefined}>
+              {headline}
+            </span>
             <ChevronRight className={`size-3 prompt-process-chevron transition-transform duration-150 ${open ? 'rotate-90' : ''}`} aria-hidden="true" />
           </button>
         </CollapsibleTrigger>
