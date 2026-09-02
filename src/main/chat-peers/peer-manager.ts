@@ -155,15 +155,16 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   listReadable(callerPaneId: string | null): ChatPeerSummary[] {
-    return this.peerSummaries().filter((peer) => peer.paneId !== callerPaneId)
-      .flatMap((peer) => [peer, ...subagentSummaries(peer, this.requirePeer(peer.paneId).surface.snapshot())])
+    return this.peerSummaries().flatMap((peer) => [
+      ...(peer.paneId === callerPaneId ? [] : [peer]),
+      ...subagentSummaries(peer, this.requirePeer(peer.paneId).surface.snapshot())
+    ])
   }
 
   readReadable(chatId: string, callerPaneId: string | null, cursor = 0, limit = 50): PeerChatReadResult | null {
     const direct = this.peerSummaries().find((peer) => peer.paneId === chatId && peer.paneId !== callerPaneId)
     if (direct) return pageResult(direct, this.requirePeer(chatId).surface.snapshot().items, cursor, limit)
     for (const peer of this.peerSummaries()) {
-      if (peer.paneId === callerPaneId) continue
       const snapshot = this.requirePeer(peer.paneId).surface.snapshot()
       const subagent = subagentSummaries(peer, snapshot).find((entry) => entry.paneId === chatId)
       if (subagent) {
