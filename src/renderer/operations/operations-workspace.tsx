@@ -26,6 +26,16 @@ import { OperationsSidebar } from './operations-sidebar.js'
 import { RunDetailDrawer } from './run-detail-drawer.js'
 import { RunsTable } from './runs-table.js'
 import { WorkerChatDrawer } from './worker-chat-drawer.js'
+import type { ChatModel } from '../../shared/chat.js'
+import type { OperationsEvent } from '../../shared/operations.js'
+
+const PREVIEW_MODELS: ChatModel[] = [{
+  id: 'gpt-5.6-sol',
+  displayName: 'GPT-5.6 Sol',
+  description: 'Preview model',
+  defaultReasoningEffort: 'medium',
+  isDefault: true
+}]
 
 const RUN_TABS: Array<{ id: RunTab; label: string }> = [
   { id: 'all', label: 'All' },
@@ -55,7 +65,10 @@ function Metric({
 }
 
 export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCountChange?: (count: number) => void } = {}): JSX.Element {
+  const operationsApi = typeof window.closedai === 'undefined' ? null : window.closedai.operations
   const [runs, setRuns] = useState<OperationsRun[]>(() => readOperationsRuns(window.localStorage) ?? INITIAL_RUNS)
+  const [models, setModels] = useState<ChatModel[]>(PREVIEW_MODELS)
+  const [selectedModel, setSelectedModel] = useState<string | null>(PREVIEW_MODELS[0]?.id ?? null)
   const [tab, setTab] = useState<RunTab>('all')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<number[]>([])
@@ -69,24 +82,64 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
   const selectedRun = selectedRunId === null ? null : runs.find((run) => run.id === selectedRunId) ?? null
 
   useEffect(() => {
+    if (operationsApi) return undefined
     persistOperationsRuns(window.localStorage, runs)
     onAttentionCountChange?.(attentionRunCount(runs))
-  }, [onAttentionCountChange, runs])
+    return undefined
+  }, [onAttentionCountChange, operationsApi, runs])
+
+  useEffect(() => {
+    if (!operationsApi) return undefined
+    let active = true
+    const apply = (event: OperationsEvent): void => {
+      if (active) setRuns(event.runs)
+    }
+    const unsubscribe = operationsApi.onChanged(apply)
+    void operationsApi.snapshot().then((snapshot) => {
+      if (active) setRuns(snapshot.runs)
+    }).catch(() => {})
+    return () => { active = false; unsubscribe() }
+  }, [operationsApi])
+
+  useEffect(() => {
+    if (!newWorkerOpen) return undefined
+    if (!operationsApi) return undefined
+    let active = true
+    void operationsApi.models().then((catalog) => {
+      if (!active) return
+      setModels(catalog.models)
+      setSelectedModel(catalog.selectedModel ?? catalog.models[0]?.id ?? null)
+    }).catch(() => { if (active) setModels([]) })
+    return () => { active = false }
+  }, [newWorkerOpen, operationsApi])
 
   function updateSelectedStatus(status: RunStatus): void {
     if (selectedRunId === null) return
+    if (operationsApi) {
+      void operationsApi.setStatus(selectedRunId, status).catch(() => {})
+      return
+    }
     setRuns((current) => current.map((run) => run.id === selectedRunId
       ? { ...run, status, checkpoint: status === 'paused' ? 'Paused by operator' : status === 'queued' ? 'Queued to rerun' : 'Stopped by operator' }
       : run))
   }
 
-  function createWorker(task: string, workspace: string): void {
+  async function createWorker(task: string, workspace: string, modelId: string): Promise<void> {
+    if (operationsApi) {
+      const run = await operationsApi.create(task, workspace, modelId)
+      setTab('all')
+      setSearch('')
+      setNewWorkerOpen(false)
+      setSelectedRunId(run.id)
+      return
+    }
     const nextId = Math.max(...runs.map((run) => run.id), 0) + 1
     const run: OperationsRun = {
       id: nextId,
       task,
       worker: 'New worker',
       workspace,
+      modelId,
       checkpoint: 'Queued for initialization',
       status: 'queued',
       runtime: '—',
@@ -176,7 +229,14 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
         />
       ) : null}
       {chatOpen && selectedRun ? <WorkerChatDrawer run={selectedRun} onClose={() => setChatOpen(false)} /> : null}
-      {newWorkerOpen ? <NewWorkerDialog onClose={() => setNewWorkerOpen(false)} onCreate={createWorker} /> : null}
+      {newWorkerOpen ? (
+        <NewWorkerDialog
+          onClose={() => setNewWorkerOpen(false)}
+          onCreate={createWorker}
+          models={models}
+          defaultModel={selectedModel}
+        />
+      ) : null}
     </section>
   )
 }
