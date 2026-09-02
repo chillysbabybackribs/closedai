@@ -103,6 +103,7 @@ export function ChatPane({ controller }: { controller?: ReturnType<typeof useCha
         onReasoningEffortChange={chat.selectReasoningEffort}
         onSend={sendMessage}
         onStop={chat.interrupt}
+        onNewChat={() => void startNewChat()}
       />
     </aside>
   )

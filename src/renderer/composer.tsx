@@ -1,6 +1,6 @@
 import type { ClipboardEvent, DragEvent, FormEvent, JSX } from 'react'
 import { useRef, useState } from 'react'
-import { ArrowUp, Mic, Square } from 'lucide-react'
+import { ArrowUp, Plus, Square } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import {
@@ -26,9 +26,22 @@ export type ComposerProps = {
   onReasoningEffortChange: (effort: string) => Promise<void>
   onSend: (text: string, attachments: ChatAttachment[]) => Promise<void>
   onStop: () => Promise<void>
+  onNewChat?: () => void
 }
 
-export function Composer({ enabled, running, models, selectedModel, selectedReasoningEffort, contextUsage, onModelChange, onReasoningEffortChange, onSend, onStop }: ComposerProps): JSX.Element {
+export function Composer({
+  enabled,
+  running,
+  models,
+  selectedModel,
+  selectedReasoningEffort,
+  contextUsage,
+  onModelChange,
+  onReasoningEffortChange,
+  onSend,
+  onStop,
+  onNewChat
+}: ComposerProps): JSX.Element {
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<ChatAttachment[]>([])
   const [attachmentError, setAttachmentError] = useState('')
@@ -36,6 +49,13 @@ export function Composer({ enabled, running, models, selectedModel, selectedReas
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !sending && enabled && !running
   const waitingForInput = input.trim().length === 0 && attachments.length === 0 && enabled && !running && !sending
+
+  function handleNewChat(): void {
+    setInput('')
+    setAttachments([])
+    setAttachmentError('')
+    onNewChat?.()
+  }
 
   async function submit(event?: FormEvent): Promise<void> {
     event?.preventDefault()
@@ -107,14 +127,19 @@ export function Composer({ enabled, running, models, selectedModel, selectedReas
 
           <PromptInputActions className="prompt-composer-actions">
             <div className="flex items-center gap-1">
-              <AttachmentPicker
-                disabled={!enabled || running || sending}
-                inputRef={fileInputRef}
-                onChange={(event) => {
-                  if (event.target.files) void addFiles(event.target.files)
-                  event.target.value = ''
-                }}
-              />
+              <PromptInputAction tooltip="New chat">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="prompt-composer-tool prompt-composer-new-chat rounded-full"
+                  aria-label="New chat"
+                  disabled={!enabled || running}
+                  onClick={handleNewChat}
+                >
+                  <Plus size={19} strokeWidth={2.75} aria-hidden="true" />
+                </Button>
+              </PromptInputAction>
 
               <div className="prompt-model-controls">
                 <ModelMenu
@@ -130,9 +155,14 @@ export function Composer({ enabled, running, models, selectedModel, selectedReas
             </div>
 
             <div className="flex items-center gap-2">
-              <PlaceholderAction tooltip="Voice input (coming soon)" label="Voice input">
-                <Mic size={18} aria-hidden="true" />
-              </PlaceholderAction>
+              <AttachmentPicker
+                disabled={!enabled || running || sending}
+                inputRef={fileInputRef}
+                onChange={(event) => {
+                  if (event.target.files) void addFiles(event.target.files)
+                  event.target.value = ''
+                }}
+              />
 
               {running ? (
                 <PromptInputAction tooltip="Stop Codex">
@@ -166,31 +196,5 @@ export function Composer({ enabled, running, models, selectedModel, selectedReas
         </div>
       </PromptInput>
     </form>
-  )
-}
-
-/** Round outline icon button for actions that have no feature behind them yet. */
-function PlaceholderAction({
-  tooltip,
-  label,
-  children
-}: {
-  tooltip: string
-  label: string
-  children: JSX.Element
-}): JSX.Element {
-  return (
-    <PromptInputAction tooltip={tooltip}>
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        className="prompt-composer-tool rounded-full"
-        aria-label={label}
-        disabled
-      >
-        {children}
-      </Button>
-    </PromptInputAction>
   )
 }

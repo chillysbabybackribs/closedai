@@ -343,10 +343,12 @@
   color: #f0f0f1;
 }
 
+.prompt-composer-new-chat,
 .prompt-composer-attachment {
   color: #fff;
 }
 
+.prompt-composer-new-chat:not(:disabled):hover,
 .prompt-composer-attachment:not(:disabled):hover {
   color: #fff;
 }
