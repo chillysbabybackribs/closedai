@@ -73,10 +73,13 @@ export class PersistentSessionCookies {
   }
 
   private async promote(cookies: Electron.Cookie[]): Promise<void> {
-    for (const cookie of cookies) {
-      const details = toPersistentCookieDetails(cookie)
-      if (details) await this.browserSession.cookies.set(details)
+    const detailsToSet = cookies
+      .map((cookie) => toPersistentCookieDetails(cookie))
+      .filter((details) => details !== null) as Electron.CookiesSetDetails[]
+
+    if (detailsToSet.length > 0) {
+      await Promise.all(detailsToSet.map((details) => this.browserSession.cookies.set(details)))
+      await this.browserSession.cookies.flushStore()
     }
-    if (cookies.length > 0) await this.browserSession.cookies.flushStore()
   }
 }

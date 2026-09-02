@@ -102,7 +102,7 @@ export class ChatService extends EventEmitter {
       provider: 'codex',
       connection: { ...this.connection },
       account: this.account ? { ...this.account } : null,
-      models: this.modelState.models.map((model) => ({ ...model })),
+      models: this.modelState.models,
       selectedModel: this.modelState.selectedModel,
       selectedReasoningEffort: this.modelState.selectedReasoningEffort,
       cwd: this.cwd,
@@ -116,7 +116,7 @@ export class ChatService extends EventEmitter {
 
   async listModels(): Promise<ChatModel[]> {
     await this.ensureConnected()
-    return this.modelState.models.map((model) => ({ ...model }))
+    return this.modelState.models
   }
 
   start(): Promise<void> {
@@ -135,8 +135,7 @@ export class ChatService extends EventEmitter {
     try {
       const { prompt, input, summaries } = buildChatInput(text, shrinkPastedImages(attachments))
       if (input.length === 0) return
-      await this.ensureReady()
-      await this.compactor.idle()
+      await Promise.all([this.ensureReady(), this.compactor.idle()])
       if (this.activeTurnId) throw new Error('A Codex turn is already running')
       const threadId = await this.ensureThread()
       const clientUserMessageId = crypto.randomUUID()

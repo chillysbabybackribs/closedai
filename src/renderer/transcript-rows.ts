@@ -156,11 +156,19 @@ export function toolPart(item: ActivityItem): ToolPart {
 }
 
 export function activityState(items: ActivityItem[]): ToolPart['state'] {
-  const states = items.map((item) => toolPart(item).state)
-  if (states.includes('input-streaming')) return 'input-streaming'
-  if (states.includes('output-error')) return 'output-error'
-  if (states.includes('input-available')) return 'input-available'
+  for (const item of items) {
+    const state = getActivityItemState(item)
+    if (state === 'input-streaming') return 'input-streaming'
+    if (state === 'output-error') return 'output-error'
+    if (state === 'input-available') return 'input-available'
+  }
   return 'output-available'
+}
+
+function getActivityItemState(item: ActivityItem): ToolPart['state'] {
+  if (item.type === 'command') return toolState(item.status, item.exitCode)
+  if (item.type === 'fileChange') return toolState(item.status, null)
+  return toolState(item.status, null)
 }
 
 function clusterKey(item: ActivityItem): string {

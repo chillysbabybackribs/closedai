@@ -9,6 +9,9 @@ const googleAuthHostSuffixes = [
   'oauthaccountmanager.googleapis.com'
 ] as const
 
+const ELECTRON_PATTERN = /\sElectron\/\S+/gi
+const WHITESPACE_PATTERN = /\s{2,}/g
+
 export function isGoogleAuthHost(host: string): boolean {
   const normalized = host.trim().toLowerCase().replace(/\.$/, '')
   return googleAuthHostSuffixes.some(
@@ -65,7 +68,7 @@ export function rewriteRequestClientHints(
   hints: ClientHintHeaders
 ): boolean {
   let changed = false
-  for (const key of Object.keys(headers)) {
+  for (const [key, _] of Object.entries(headers)) {
     const lower = key.toLowerCase()
     if (lower === 'sec-ch-ua') {
       headers[key] = hints['sec-ch-ua']
@@ -85,7 +88,7 @@ export function forceGoogleClientHints(
   let changed = false
   let sawUa = false
   let sawFull = false
-  for (const key of Object.keys(headers)) {
+  for (const [key, _] of Object.entries(headers)) {
     const lower = key.toLowerCase()
     if (lower === 'sec-ch-ua') {
       headers[key] = hints['sec-ch-ua']
@@ -112,17 +115,16 @@ export function stripEmbedderFromUserAgent(
   headers: Record<string, string | string[]>,
   applicationName?: string
 ): boolean {
+  const patterns = [ELECTRON_PATTERN]
   const token = applicationName?.replace(/[^a-z0-9]/gi, '')
-  const patterns = [
-    /\sElectron\/\S+/gi,
-    ...(token ? [new RegExp(`\\s${escapeRegExp(token)}\\/\\S+`, 'gi')] : [])
-  ]
+  if (token) patterns.push(new RegExp(`\\s${escapeRegExp(token)}\\/\\S+`, 'gi'))
+
   let changed = false
-  for (const key of Object.keys(headers)) {
+  for (const [key, _] of Object.entries(headers)) {
     if (key.toLowerCase() !== 'user-agent') continue
     const value = Array.isArray(headers[key]) ? headers[key][0] ?? '' : String(headers[key])
     const cleaned = patterns.reduce((current, pattern) => current.replace(pattern, ''), value)
-      .replace(/\s{2,}/g, ' ')
+      .replace(WHITESPACE_PATTERN, ' ')
       .trim()
     if (cleaned !== value) {
       headers[key] = cleaned

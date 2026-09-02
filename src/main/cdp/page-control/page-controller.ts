@@ -173,12 +173,18 @@ export class CdpPageController {
     const center = await this.toMainViewport(
       local.center, frame.frame.id, rootFrameId, frames, inspected, quadCache
     )
-    const xs = quad.filter((_, index) => index % 2 === 0)
-    const ys = quad.filter((_, index) => index % 2 === 1)
-    const left = Math.min(...xs)
-    const right = Math.max(...xs)
-    const top = Math.min(...ys)
-    const bottom = Math.max(...ys)
+    let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity
+    for (let i = 0; i < quad.length; i++) {
+      if (i % 2 === 0) {
+        const x = quad[i]
+        if (x < left) left = x
+        if (x > right) right = x
+      } else {
+        const y = quad[i]
+        if (y < top) top = y
+        if (y > bottom) bottom = y
+      }
+    }
     const rootViewport = inspected.get(rootFrameId)?.local.viewport
     const insideMainViewport = !rootViewport || (
       right > 0 && bottom > 0 && left < rootViewport.width && top < rootViewport.height

@@ -233,6 +233,8 @@ export async function importCookies(
   let failed = 0
   let skipped = 0
 
+  const cookiesToSet: Electron.CookiesSetDetails[] = []
+
   for (const row of rows) {
     if (!matches(row.host_key)) {
       skipped++
@@ -250,25 +252,30 @@ export async function importCookies(
     const urlHost = domain.startsWith('.') ? domain.slice(1) : domain
     const url = `${scheme}://${urlHost}${row.path || '/'}`
 
-    try {
-      await targetSession.cookies.set({
-        url,
-        name: row.name,
-        value,
-        // Only set `domain` for domain cookies (leading dot); host-only cookies
-        // omit it so Electron scopes them to the exact host.
-        domain: domain.startsWith('.') ? domain : undefined,
-        path: row.path || '/',
-        secure: !!row.is_secure,
-        httpOnly: !!row.is_httponly,
-        expirationDate: chromeTimeToUnix(row.expires_utc),
-        sameSite: sameSiteFor(row.samesite)
-      })
-      imported++
-    } catch {
-      failed++
-    }
+    cookiesToSet.push({
+      url,
+      name: row.name,
+      value,
+      // Only set `domain` for domain cookies (leading dot); host-only cookies
+      // omit it so Electron scopes them to the exact host.
+      domain: domain.startsWith('.') ? domain : undefined,
+      path: row.path || '/',
+      secure: !!row.is_secure,
+      httpOnly: !!row.is_httponly,
+      expirationDate: chromeTimeToUnix(row.expires_utc),
+      sameSite: sameSiteFor(row.samesite)
+    })
   }
+
+  const results = await Promise.allSettled(
+    cookiesToSet.map((cookie) => targetSession.cookies.set(cookie))
+  )
+  results.forEach((result) => {
+    if (result.status === 'fulfilled') imported++
+    else failed++
+  })
+
+  if (cookiesToSet.length > 0) await targetSession.cookies.flushStore()
 
   return { source: source.name, imported, failed, skipped }
 }
