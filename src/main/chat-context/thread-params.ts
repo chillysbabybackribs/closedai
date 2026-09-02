@@ -1,17 +1,16 @@
 import { dynamicToolSpecs } from '../tools/app-server-tools.js'
 import type { ToolRegistry } from '../tools/registry.js'
 import { closedAiDeveloperInstructions } from './developer-instructions.js'
-import { workspaceMapSection } from './workspace-map.js'
+import { workspaceNavigationSection } from './workspace-navigation.js'
 
 /**
- * Product guidance plus, when the thread runs in the mapped checkout, the generated
- * workspace map. Threads pay this once at start/resume rather than re-deriving layout
- * through exec calls whose results replay on every later turn.
+ * Product guidance plus a small app-authored orientation capsule. Repository-derived
+ * details stay out of trusted instructions and are available through a deferred tool.
  */
 function threadInstructions(cwd: string): string {
   const instructions = closedAiDeveloperInstructions()
-  const map = workspaceMapSection(cwd)
-  return map ? `${instructions}\n\n${map}` : instructions
+  const navigation = workspaceNavigationSection(cwd)
+  return navigation ? `${instructions}\n\n${navigation}` : instructions
 }
 
 function sharedThreadParams(cwd: string, tools: ToolRegistry): Record<string, unknown> {

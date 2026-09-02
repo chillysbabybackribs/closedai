@@ -1,71 +1,39 @@
-// Generates the workspace map injected into Codex thread instructions.
-// Everything here is derived from the filesystem and from IPC channel literals, so the map
-// cannot drift from the code. Run with --check in the completion gate, --write to refresh.
-import { readdir, readFile, writeFile, stat } from 'node:fs/promises'
+// Generates the repository index queried by the read-only workspace navigation tool.
+// Run with --check in the completion gate and --write to refresh committed data.
+import { readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const output = path.join(root, 'src/main/chat-context/workspace-map.generated.ts')
-const sourceExtensions = new Set(['.ts', '.tsx'])
-// Past this many files a directory is listed as filename-prefix families instead of members,
-// so the map stays a fixed cost as the codebase grows. Exact names are worth more while a
-// directory is small; raise this only alongside a deliberate check of the rendered size.
-const collapseAbove = 60
-// The generated module is checked by the hygiene gate as ordinary code (450 lines).
-const maxRenderedLines = 380
+const output = path.join(root, 'src/main/chat-context/workspace-index.generated.ts')
+const indexedExtensions = new Set(['.css', '.html', '.js', '.json', '.md', '.mjs', '.ts', '.tsx'])
+const ignoredDirectories = new Set(['coverage', 'dist', 'node_modules', 'out'])
+const ignoredFiles = new Set(['package-lock.json', 'THIRD_PARTY_NOTICES.md'])
+const maxModuleBytes = 30_000
 
 function isTest(name) {
   return /\.test\.tsx?$/.test(name)
 }
 
-async function collect(directory) {
-  const entries = await readdir(directory, { withFileTypes: true })
+async function collectFiles(directory = root) {
   const files = []
-  const directories = []
-  for (const entry of entries) {
-    if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue
-    if (entry.isDirectory()) directories.push(await collect(path.join(directory, entry.name)))
-    else if (entry.isFile() && sourceExtensions.has(path.extname(entry.name))) files.push(entry.name)
-  }
-  return {
-    path: path.relative(root, directory).replaceAll(path.sep, '/'),
-    sources: files.filter((name) => !isTest(name)).sort(),
-    tests: new Set(files.filter(isTest)),
-    directories: directories.filter((child) => child.sources.length > 0 || child.directories.length > 0)
-  }
-}
-
-/** A source file is marked when a sibling test covers it, so test gaps are visible in place. */
-function hasTest(node, name) {
-  const base = name.replace(/\.tsx?$/, '')
-  return node.tests.has(`${base}.test.ts`) || node.tests.has(`${base}.test.tsx`)
-}
-
-function familiesOf(names) {
-  const families = new Map()
-  for (const name of names) {
-    const key = name.includes('-') ? `${name.slice(0, name.indexOf('-'))}-*` : name
-    families.set(key, (families.get(key) ?? 0) + 1)
-  }
-  return [...families].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-}
-
-function renderTree(node, lines = []) {
-  if (node.sources.length > 0 || node.directories.length === 0) lines.push(`${node.path}/`)
-  if (node.sources.length > collapseAbove) {
-    for (const [family, count] of familiesOf(node.sources)) {
-      lines.push(count > 1 ? `  ${family}  (${count} files)` : `  ${family}`)
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    if (entry.name.startsWith('.') || ignoredDirectories.has(entry.name)) continue
+    const target = path.join(directory, entry.name)
+    if (entry.isDirectory()) files.push(...await collectFiles(target))
+    else if (
+      entry.isFile() &&
+      indexedExtensions.has(path.extname(entry.name)) &&
+      !ignoredFiles.has(entry.name)
+    ) {
+      files.push(path.relative(root, target).replaceAll(path.sep, '/'))
     }
-  } else {
-    for (const name of node.sources) lines.push(`  ${name}${hasTest(node, name) ? ' *' : ''}`)
   }
-  for (const child of node.directories) renderTree(child, lines)
-  return lines
+  return files
 }
 
-// Matched against registration call sites only. A bare 'a:b' literal anywhere in a file is
-// not evidence that the file owns that channel.
+// Match registration call sites only. A bare "a:b" literal is not evidence that a file
+// owns an IPC namespace.
 const handlerPattern = /ipcMain\s*\.\s*(?:handle|handleOnce|on|once)\(\s*['"]([a-zA-Z][a-zA-Z0-9]*):[a-zA-Z][a-zA-Z0-9]*['"]/g
 const callerPattern = /ipcRenderer\s*\.\s*(?:invoke|send|on|once)\(\s*['"]([a-zA-Z][a-zA-Z0-9]*):[a-zA-Z][a-zA-Z0-9]*['"]/g
 
@@ -91,58 +59,34 @@ async function mainIpcFiles() {
   return found
 }
 
-/** Pairs each preload namespace with the main-process module that handles its channels. */
-async function renderFlows() {
+/** Maps each namespace exposed by preload to the main-process modules that handle it. */
+async function ipcFlows() {
   const exposed = await namespacesIn('src/preload/index.ts', callerPattern)
   const handlers = await mainIpcFiles()
-  const rows = []
-  for (const namespace of [...exposed].sort()) {
+  return Object.fromEntries([...exposed].sort().flatMap((namespace) => {
     const owners = handlers
       .filter((handler) => handler.namespaces.has(namespace))
-      .map((handler) => handler.file.replace(/^src\//, ''))
+      .map((handler) => handler.file)
       .sort()
-    if (owners.length > 0) rows.push([`${namespace}:*`, owners.join(', ')])
-  }
-  const width = Math.max(...rows.map(([channel]) => channel.length))
-  return rows.map(([channel, owners]) => `  ${channel.padEnd(width)}  ->  ${owners}`)
+    return owners.length > 0 ? [[namespace, owners]] : []
+  }))
 }
 
-function render(tree, flows) {
-  return [
-    'Workspace: closedai — Electron shell (main + preload + renderer) wrapping the Codex',
-    'app-server, with an embedded Chromium browser.',
-    '',
-    'Dependencies point one way: renderer and components -> shared <- preload <- main.',
-    'src/shared holds dependency-free contracts; src/shared/api.ts is the whole preload surface.',
-    'Enforced by scripts/hygiene-gate.mjs, which also caps files at 300 lines (.tsx) / 450 (.ts).',
-    '',
-    'Source files below, tests omitted. A trailing * means a sibling *.test.ts covers that file.',
-    '',
-    ...tree,
-    '',
-    'Renderer calls window.closedai.<namespace> in src/preload/index.ts, which forwards these',
-    'IPC channels to the main-process modules that own them:',
-    '',
-    ...flows,
-    '',
-    'To locate code: rg -n \'<symbol>\' src, then read only that line range.'
-  ].join('\n')
-}
-
-const tree = renderTree(await collect(path.join(root, 'src')))
-const flows = await renderFlows()
-const map = render(tree, flows)
-const rendered = map.split('\n').length
-
+const files = (await collectFiles()).sort()
+const flows = await ipcFlows()
 const module = `// GENERATED by scripts/repo-tree.mjs — do not edit. Run \`npm run map\` to refresh.
-/** Absolute path this map describes; injection is skipped for any other workspace. */
-export const WORKSPACE_MAP_ROOT = ${JSON.stringify(root)}
+/** Absolute checkout described by this index. */
+export const WORKSPACE_INDEX_ROOT = ${JSON.stringify(root)}
 
-export const WORKSPACE_MAP = ${JSON.stringify(map)}
+/** Navigable repository files. Test files remain data and are omitted only at query time. */
+export const WORKSPACE_FILES = ${JSON.stringify(files)} as const
+
+/** Preload IPC namespace -> main-process owner modules. */
+export const WORKSPACE_IPC_FLOWS = ${JSON.stringify(flows)} as const
 `
 
-if (rendered > maxRenderedLines) {
-  console.error(`✗ map is ${rendered} lines, above ${maxRenderedLines}; lower collapseAbove in scripts/repo-tree.mjs`)
+if (Buffer.byteLength(module) > maxModuleBytes) {
+  console.error(`✗ workspace index is ${Buffer.byteLength(module)} bytes, above ${maxModuleBytes}`)
   process.exit(1)
 }
 
@@ -151,13 +95,13 @@ const current = await readFile(output, 'utf8').catch(() => null)
 
 if (mode === '--check') {
   if (current === module) {
-    console.log(`✓ workspace map current (${rendered} lines, ${map.length} chars)`)
+    console.log(`✓ workspace index current (${files.length} files, ${Object.keys(flows).length} IPC namespaces)`)
   } else {
-    console.error('✗ workspace map is stale; run `npm run map`')
+    console.error('✗ workspace index is stale; run `npm run map`')
     process.exit(1)
   }
 } else {
   if (current !== module) await writeFile(output, module)
   const bytes = (await stat(output)).size
-  console.log(`map: ${rendered} lines, ${map.length} chars (~${Math.round(map.length / 4)} tokens), module ${bytes} bytes`)
+  console.log(`workspace index: ${files.length} files, ${Object.keys(flows).length} IPC namespaces, ${bytes} bytes`)
 }
