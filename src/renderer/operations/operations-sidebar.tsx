@@ -11,32 +11,35 @@ import {
 import { attentionRunCount, type OperationsRun } from './operations-data.js'
 
 const primaryItems = [
-  { Icon: Gauge, label: 'Overview' },
-  { Icon: Bot, label: 'Workers' },
-  { Icon: PlayCircle, label: 'Runs' },
-  { Icon: CircleAlert, label: 'Approvals' },
-  { Icon: CalendarClock, label: 'Schedules' },
-  { Icon: ServerCog, label: 'Runtimes' }
+  { Icon: Gauge, id: 'overview', label: 'Overview' },
+  { Icon: PlayCircle, id: 'runs', label: 'Runs' },
+  { Icon: CircleAlert, id: 'approvals', label: 'Approvals' },
+  { Icon: CalendarClock, id: 'schedules', label: 'Schedules' }
 ]
+
+export type OperationsView = typeof primaryItems[number]['id']
 
 function NavigationItem({
   Icon,
   label,
+  id,
   count,
-  enabled = false
+  active,
+  onSelect
 }: {
   Icon: typeof Gauge
   label: string
+  id: OperationsView
   count?: string
-  enabled?: boolean
+  active: boolean
+  onSelect: (view: OperationsView) => void
 }): JSX.Element {
   return (
     <button
       type="button"
-      className={enabled ? 'is-active' : ''}
-      disabled={!enabled}
-      aria-current={enabled ? 'page' : undefined}
-      title={enabled ? label : `${label} is planned for a later Operations slice`}
+      className={active ? 'is-active' : ''}
+      aria-current={active ? 'page' : undefined}
+      onClick={() => onSelect(id)}
     >
       <Icon size={16} />
       <span>{label}</span>
@@ -45,7 +48,15 @@ function NavigationItem({
   )
 }
 
-export function OperationsHeader({ runs }: { runs: OperationsRun[] }): JSX.Element {
+export function OperationsHeader({
+  runs,
+  view,
+  onViewChange
+}: {
+  runs: OperationsRun[]
+  view: OperationsView
+  onViewChange: (view: OperationsView) => void
+}): JSX.Element {
   return (
     <header className="ops-header">
       <div className="ops-header-brand">
@@ -53,9 +64,17 @@ export function OperationsHeader({ runs }: { runs: OperationsRun[] }): JSX.Eleme
         <div><strong>Operations</strong><span>Control room</span></div>
       </div>
       <nav className="ops-header-nav" aria-label="Operations navigation">
-        {primaryItems.map((item) => item.label === 'Runs'
-          ? <NavigationItem key={item.label} Icon={item.Icon} label={item.label} count={String(runs.length)} enabled />
-          : <NavigationItem key={item.label} {...item} count={item.label === 'Approvals' ? String(attentionRunCount(runs)) : undefined} />)}
+        {primaryItems.map((item) => (
+          <NavigationItem
+            key={item.id}
+            {...item}
+            active={view === item.id}
+            count={item.id === 'runs'
+              ? String(runs.length)
+              : item.id === 'approvals' ? String(attentionRunCount(runs)) : undefined}
+            onSelect={onViewChange}
+          />
+        ))}
       </nav>
       <div className="ops-header-tools">
         <span className="ops-runtime-chip"><span className="ops-runtime-dot" />Codex runtime</span>
