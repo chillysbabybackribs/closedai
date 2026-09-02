@@ -56,11 +56,6 @@
   overflow-wrap: anywhere;
 }
 
-.prompt-message-assistant-stack {
-  width: 100%;
-  min-width: 0;
-}
-
 .prompt-message-assistant-content {
   width: 100%;
   padding: 0;
@@ -78,22 +73,6 @@
 
 .prompt-message-assistant[data-phase='commentary'] .prompt-message-assistant-content {
   color: var(--transcript-secondary);
-}
-
-.prompt-message-actions {
-  min-height: 32px;
-  margin-top: 10px;
-  opacity: 0;
-  transition: opacity 120ms var(--ease-chrome);
-}
-
-.prompt-message-assistant:hover .prompt-message-actions,
-.prompt-message-actions:focus-within {
-  opacity: 1;
-}
-
-.prompt-message-actions [data-slot='button'] {
-  color: var(--muted-foreground);
 }
 
 .prompt-markdown {

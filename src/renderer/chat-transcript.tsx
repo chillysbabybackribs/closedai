@@ -1,10 +1,9 @@
 import type { JSX } from 'react'
 import { memo, useMemo, useState } from 'react'
-import { Check, ChevronDown, Copy, Loader2, XCircle } from 'lucide-react'
+import { ChevronDown, Loader2, XCircle } from 'lucide-react'
 
-import { Button } from '../components/ui/button.js'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible.js'
-import { Message, MessageAction, MessageActions, MessageContent } from '../components/ui/message.js'
+import { Message, MessageContent } from '../components/ui/message.js'
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '../components/ui/reasoning.js'
 import { TextShimmer } from '../components/ui/text-shimmer.js'
 import { Tool } from '../components/ui/tool.js'
@@ -141,35 +140,14 @@ const ToolActivity = memo(function ToolActivity({ items }: { items: ActivityItem
 }, sameGroup)
 
 const AssistantMessage = memo(function AssistantMessage({ item }: { item: Extract<ChatTranscriptItem, { type: 'assistant' }> }): JSX.Element {
-  const [copied, setCopied] = useState(false)
-  async function copy(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(item.text)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1400)
-    } catch {
-      setCopied(false)
-    }
-  }
   return (
     <Message className="prompt-message prompt-message-assistant" data-phase={item.phase ?? 'unknown'}>
-      <div className="prompt-message-assistant-stack">
-        <MessageContent
-          markdown
-          className="prompt-message-assistant-content prose max-w-none prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-h4:text-base prose-h5:text-sm prose-h6:text-xs dark:prose-invert"
-        >
-          {item.text}
-        </MessageContent>
-        <MessageActions className="prompt-message-actions">
-          {!item.streaming && (
-            <MessageAction tooltip={copied ? 'Copied' : 'Copy response'}>
-              <Button type="button" variant="ghost" size="icon-xs" aria-label="Copy response" onClick={() => void copy()}>
-                {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-              </Button>
-            </MessageAction>
-          )}
-        </MessageActions>
-      </div>
+      <MessageContent
+        markdown
+        className="prompt-message-assistant-content prose max-w-none prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-h4:text-base prose-h5:text-sm prose-h6:text-xs dark:prose-invert"
+      >
+        {item.text}
+      </MessageContent>
     </Message>
   )
 })
