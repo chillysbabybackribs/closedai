@@ -30,6 +30,8 @@ src/main/tools/
   action-tool.ts       defineActionTool: many action files -> one tool
   registry.ts          validation, timeouts, error handling
   app-server-tools.ts  Codex adapter (dynamicTools + item/tool/call)
+  manifest.ts          renderer-facing registry snapshot for the Tools modal
+  telemetry.ts         recent call stats + JSONL persistence
   index.ts             createToolRegistry: registers every namespace
   <namespace>/
     index.ts           the namespace: its verb tools
@@ -37,6 +39,20 @@ src/main/tools/
       index.ts         defineActionTool({ name, description, actions: [...] })
       <action>.ts      one ToolAction: verb, description, inputSchema, run
 ```
+
+## Current namespaces
+
+These are registered in `src/main/index.ts`, after the browser/capture accessors are created and
+before the app-server starts.
+
+| Namespace | Tool | Actions | Purpose |
+|---|---|---|---|
+| `embedded_browser` | `page` | `navigate`, `read_page`, `wait_for` | Browser-page inspection for the pane the user can see. It can open a URL or search query, wait for page readiness, and read visible text from the whole page or one selector. |
+| `closedai_ui` | `capture` | `app_window`, `browser_page` | Visual evidence. `app_window` captures the composed Electron window, including chat and browser chrome. `browser_page` captures only one browser page after deterministic readiness checks. |
+| `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `events` | Low-level Chrome DevTools Protocol access for ClosedAI tabs. See `docs/cdp-tool-foundation.md` for the lifecycle rules and handle caveats. |
+
+The model-facing names intentionally differ from OpenAI reserved namespaces. For example,
+ClosedAI uses `embedded_browser`, not `browser`.
 
 ## Writing an action
 
@@ -74,6 +90,10 @@ and its schema is flat: an `action` enum plus every action's fields, each annota
 actions require or use it. At call time the registry validates against the chosen action's
 schema, so errors are precise even though the advertised schema is the union.
 
+Codex integration is in `app-server-tools.ts`. The registry is converted to app-server
+`dynamicTools` for `thread/start` and `thread/resume`, and calls arrive as `item/tool/call`.
+The adapter maps registry text results to `inputText` and image results to `inputImage`.
+
 Codex extra: set `deferLoading: true` on a rarely used tool and it stays out of context until
 the model searches for it.
 
@@ -82,6 +102,11 @@ the model searches for it.
 The wrench button in the chat header opens the Tools modal (`src/renderer/tools/`). It reads
 the registry as data (`manifest.ts`): every namespace, tool, and action, the exact description
 and schema the model is sent, and which providers the registry is advertised to.
+
+The same modal owns persisted enable/disable switches. A disabled plain tool is not advertised to
+providers and calls are refused. A disabled action is removed from the action enum when the action
+tool supports restriction; otherwise the call is refused if the model still tries it. Toggle state
+is stored in `app-settings.json` and applied before each `ChatService` starts or resumes a thread.
 
 ## Telemetry
 
@@ -92,3 +117,6 @@ action, argument preview, duration, success, the failure text the model saw, and
 turn, and call ids. The modal shows per-tool calls, failures, average time, last call, and the
 recent calls with their arguments and output; it updates live while open. "Clear telemetry"
 empties both the window and the file.
+
+Telemetry is best-effort. Subscribers must not break tool calls, and the registry swallows
+subscriber errors after the model-visible result is produced.

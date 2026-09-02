@@ -1,9 +1,13 @@
 # closedai
 
-An Electron 44 shell around one embedded Chromium browser and a Prompt Kit-powered Codex app-server chat. The browser is
-the appv1 embedded browser (same tab strip, omnibox, downloads shelf, dark chrome, session
-partition, cookie import, popup-to-tab routing), with none of appv1's agents, providers,
-tools, settings, or sidebar. One long-lived local app-server process serves every chat turn.
+An Electron 44 workspace with two first-class panes: one embedded Chromium browser and one
+Prompt Kit-powered Codex app-server chat. The browser is the appv1 embedded browser lineage
+(same tab strip, omnibox, downloads shelf, dark chrome, session partition, cookie import, and
+popup-to-tab routing). The chat is a local Codex app-server client with thread history, model
+selection, approval handling, attachments, and ClosedAI-owned browser/capture/CDP tools.
+
+One long-lived local app-server process serves every chat turn. The renderer only talks to the
+main process through the typed `window.closedai` preload bridge.
 
 ## Run
 
@@ -25,13 +29,20 @@ runs on the Electron installed here.
 
 ## Layout
 
-- `src/main` — bootstrap (`index.ts`), `BrowserService` / `BrowserTab` (WebContentsView per
-  tab, no debugger), session identity + cookie persistence + first-launch cookie import,
-  downloads, tab-session/history/settings JSON stores, permission policy (allow-all, see
-  `docs/electron-browser-platform-review.md` §0), popup bridge, context menus.
-- `src/preload` — the `window.closedai` bridge (`src/shared/api.ts` is its type).
-- `src/renderer` — `App.tsx` (titlebar controls, split, browser pane, composer), the browser
-  pane family, and the CSS copied from appv1 unchanged.
+- `src/main` - bootstrap (`index.ts`), `ChatService`, `BrowserService` / `BrowserTab`
+  (WebContentsView per tab), browser session identity + cookie persistence + first-launch
+  cookie import, downloads, tab-session/history/settings JSON stores, permission policy
+  (allow-all, see `docs/electron-browser-platform-review.md` section 0), popup bridge,
+  context menus, and the model tool registry.
+- `src/main/tools` - provider-agnostic tools. Current namespaces are `embedded_browser`
+  (navigate/read/wait), `closedai_ui` (app/page screenshots), and `browser_cdp`
+  (raw Chrome DevTools Protocol access).
+- `src/preload` - the `window.closedai` bridge (`src/shared/api.ts` is its type).
+- `src/shared` - dependency-free IPC contracts for browser, chat, tools, and shared types.
+- `src/renderer` - `App.tsx`, the split workspace, browser pane, chat pane, history drawer,
+  composer, attachment handling, screenshots, and the Tools modal.
+- `docs/tools.md` - the model tool architecture, current namespaces, telemetry, and modal.
+- `docs/cdp-tool-foundation.md` - lifecycle and usage notes for the raw CDP tool.
 - `docs/electron-browser-platform-review.md` — the Electron/Chromium docs review and the
   owner decisions the build follows.
 - `THIRD_PARTY_NOTICES.md` — attribution for the Prompt Kit-derived chat components.
@@ -39,6 +50,18 @@ runs on the Electron installed here.
 ## State
 
 `~/.config/closedai/`: `browser-tabs.json` (restored on launch), `browser-history.json`
-(omnibox suggestions), `app-settings.json` (cookie-import latch and current Codex thread),
-`code-cache/`, and Chromium's
-`Partitions/browser` profile.
+(omnibox suggestions), `app-settings.json` (cookie-import latch, current Codex thread, selected
+model, and disabled tool ids), `tool-telemetry.jsonl` (recent tool calls), `code-cache/`, and
+Chromium's `Partitions/browser` profile.
+
+## Chat and tools
+
+`ChatService` starts `codex` from `PATH` (or `CLOSEDAI_CODEX_PATH`) in the workspace directory,
+keeps the current thread id in app settings, resumes the saved thread on startup, and restarts the
+app-server after unexpected exits. Each turn also gets lightweight active-browser context so the
+model knows which tab the user is looking at.
+
+Tools are advertised to Codex as app-server `dynamicTools` on `thread/start` and `thread/resume`.
+Codex calls them through `item/tool/call`; `src/main/tools/app-server-tools.ts` adapts that request
+into the provider-neutral registry and returns text or image content. The Tools modal reads the
+same registry through IPC, so the UI shows exactly what is currently advertised.
