@@ -45,10 +45,10 @@ function textOf(result: { content: Array<{ type: string; text?: string }> }): st
 test('capture tool advertises one tool with capture and crop actions', () => {
   const { registry } = harness()
   assert.deepEqual(registry.names(), ['closedai_ui.capture'])
-  assert.deepEqual(
-    registry.namespaces[0].tools[0].actions?.map((action) => action.name),
-    ['app_window', 'browser_page', 'crop']
-  )
+  const actions = registry.namespaces[0].tools[0].actions
+  assert.deepEqual(actions?.map((action) => action.name), ['app_window', 'browser_page', 'crop'])
+  const cropProperties = actions?.find((action) => action.name === 'crop')?.inputSchema.properties
+  assert.deepEqual((cropProperties as Record<string, Record<string, unknown>>).zoom.type, 'number')
 })
 
 test('app_window hands the model the scaled image and keeps the full capture for the transcript', async () => {
@@ -113,12 +113,12 @@ test('crop maps model-image coordinates to the retained full-resolution screensh
   calls.length = 0
 
   const result = await call({
-    action: 'crop', source_id: 'source_1', x: 100, y: 50, width: 400, height: 300, zoom: 2
+    action: 'crop', source_id: 'source_1', x: 100, y: 50, width: 400, height: 300, zoom: 1.2
   }, 'crop_1')
 
   assert.equal(result.isError, undefined)
-  assert.deepEqual(calls, [['crop', image.dataUrl, { x: 150, y: 75, width: 600, height: 450 }, 2]])
-  assert.match(textOf(result), /Crop of: source_1\nRegion: \(100, 50\) 400x300 of 1280x720\nZoom: 2x/)
+  assert.deepEqual(calls, [['crop', image.dataUrl, { x: 150, y: 75, width: 600, height: 450 }, 1.2]])
+  assert.match(textOf(result), /Crop of: source_1\nRegion: \(100, 50\) 400x300 of 1280x720\nZoom: 1\.2x/)
   assert.equal(store.get('crop_1')?.surface, 'crop')
 })
 
@@ -142,4 +142,10 @@ test('crop rejects missing, evicted, and out-of-bounds source regions', async ()
   })
   assert.equal(invalidZoom.isError, true)
   assert.match(textOf(invalidZoom), /capture: invalid arguments — \$\.zoom must be <= 4/)
+
+  const shrinkingZoom = await call({
+    action: 'crop', source_id: 'source_2', x: 0, y: 0, width: 100, height: 100, zoom: 0.9
+  })
+  assert.equal(shrinkingZoom.isError, true)
+  assert.match(textOf(shrinkingZoom), /capture: invalid arguments — \$\.zoom must be >= 1/)
 })

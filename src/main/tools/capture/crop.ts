@@ -24,8 +24,8 @@ export function cropAction(capture: UiCaptureHostProvider, store: ScreenshotStor
         width: { type: 'integer', minimum: 1, description: 'Crop width in source model-image pixels.' },
         height: { type: 'integer', minimum: 1, description: 'Crop height in source model-image pixels.' },
         zoom: {
-          type: 'integer', minimum: 1, maximum: MAX_ZOOM,
-          description: `Optional ${MAX_ZOOM}x maximum output magnification; defaults to 1.`
+          type: 'number', minimum: 1, maximum: MAX_ZOOM,
+          description: `Optional output magnification from 1x to ${MAX_ZOOM}x; fractional values are supported. Defaults to 1.`
         }
       },
       required: ['source_id', 'x', 'y', 'width', 'height'],
