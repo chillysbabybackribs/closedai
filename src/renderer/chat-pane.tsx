@@ -87,7 +87,9 @@ export function ChatPane(): JSX.Element {
         running={running}
         models={state.models}
         selectedModel={state.selectedModel}
+        selectedReasoningEffort={state.selectedReasoningEffort}
         onModelChange={chat.selectModel}
+        onReasoningEffortChange={chat.selectReasoningEffort}
         onSend={sendMessage}
         onStop={chat.interrupt}
       />

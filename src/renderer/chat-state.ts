@@ -6,6 +6,7 @@ export function initialChatState(): ChatSnapshot {
     account: null,
     models: [],
     selectedModel: null,
+    selectedReasoningEffort: null,
     cwd: '',
     threadId: null,
     threadName: null,
@@ -41,10 +42,13 @@ export function reduceChatEvent(state: ChatSnapshot, event: ChatEvent): ChatSnap
         connection: event.connection,
         account: event.account,
         models: event.models,
-        selectedModel: event.selectedModel
+        selectedModel: event.selectedModel,
+        selectedReasoningEffort: event.selectedReasoningEffort
       }
     case 'model':
-      return { ...state, selectedModel: event.selectedModel }
+      return { ...state, selectedModel: event.selectedModel, selectedReasoningEffort: event.selectedReasoningEffort }
+    case 'reasoningEffort':
+      return { ...state, selectedReasoningEffort: event.selectedReasoningEffort }
     case 'thread':
       return { ...state, threadId: event.threadId, threadName: event.threadName }
     case 'turn':

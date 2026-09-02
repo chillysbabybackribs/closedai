@@ -7,6 +7,7 @@ export type ChatController = {
   send: (text: string, attachments: ChatAttachment[]) => Promise<void>
   interrupt: () => Promise<void>
   selectModel: (modelId: string) => Promise<void>
+  selectReasoningEffort: (effort: string) => Promise<void>
   loginWithChatGPT: () => Promise<void>
   listThreads: () => Promise<ChatThreadSummary[]>
   newThread: () => Promise<void>
@@ -47,6 +48,7 @@ export function useChatController(): ChatController {
   const send = useCallback((text: string, attachments: ChatAttachment[]) => window.closedai.chat.send(text, attachments), [])
   const interrupt = useCallback(() => window.closedai.chat.interrupt(), [])
   const selectModel = useCallback((modelId: string) => window.closedai.chat.selectModel(modelId), [])
+  const selectReasoningEffort = useCallback((effort: string) => window.closedai.chat.selectReasoningEffort(effort), [])
   const loginWithChatGPT = useCallback(() => window.closedai.chat.loginWithChatGPT(), [])
   const listThreads = useCallback(() => window.closedai.chat.listThreads(), [])
   const newThread = useCallback(() => window.closedai.chat.newThread(), [])
@@ -54,5 +56,5 @@ export function useChatController(): ChatController {
   const openThread = useCallback((threadId: string) => window.closedai.chat.openThread(threadId), [])
   const archiveThread = useCallback((threadId: string) => window.closedai.chat.archiveThread(threadId), [])
 
-  return { state, send, interrupt, selectModel, loginWithChatGPT, listThreads, newThread, continueInNewThread, openThread, archiveThread }
+  return { state, send, interrupt, selectModel, selectReasoningEffort, loginWithChatGPT, listThreads, newThread, continueInNewThread, openThread, archiveThread }
 }

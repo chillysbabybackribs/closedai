@@ -17,12 +17,14 @@ export type ComposerProps = {
   running: boolean
   models: ChatModel[]
   selectedModel: string | null
+  selectedReasoningEffort: string | null
   onModelChange: (modelId: string) => Promise<void>
+  onReasoningEffortChange: (effort: string) => Promise<void>
   onSend: (text: string, attachments: ChatAttachment[]) => Promise<void>
   onStop: () => Promise<void>
 }
 
-export function Composer({ enabled, running, models, selectedModel, onModelChange, onSend, onStop }: ComposerProps): JSX.Element {
+export function Composer({ enabled, running, models, selectedModel, selectedReasoningEffort, onModelChange, onReasoningEffortChange, onSend, onStop }: ComposerProps): JSX.Element {
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<ChatAttachment[]>([])
   const [attachmentError, setAttachmentError] = useState('')
@@ -115,6 +117,12 @@ export function Composer({ enabled, running, models, selectedModel, onModelChang
                 selectedModel={selectedModel}
                 onChange={onModelChange}
               />
+              <ReasoningEffortPicker
+                enabled={enabled && !running}
+                model={models.find((model) => model.id === selectedModel)}
+                selectedEffort={selectedReasoningEffort}
+                onChange={onReasoningEffortChange}
+              />
             </div>
 
             <div className="flex items-center gap-2">
@@ -154,6 +162,44 @@ export function Composer({ enabled, running, models, selectedModel, onModelChang
       </PromptInput>
     </form>
   )
+}
+
+function ReasoningEffortPicker({
+  enabled,
+  model,
+  selectedEffort,
+  onChange
+}: {
+  enabled: boolean
+  model: ChatModel | undefined
+  selectedEffort: string | null
+  onChange: (effort: string) => Promise<void>
+}): JSX.Element | null {
+  if (!model?.supportedReasoningEfforts.length) return null
+  const selected = model.supportedReasoningEfforts.find((option) => option.reasoningEffort === selectedEffort)
+  return (
+    <label className="prompt-model-picker prompt-effort-picker" title={selected?.description || 'Choose reasoning effort'}>
+      <span className="sr-only">Reasoning effort</span>
+      <select
+        aria-label="Reasoning effort"
+        value={selectedEffort ?? ''}
+        disabled={!enabled}
+        onChange={(event) => { void onChange(event.target.value).catch(() => {}) }}
+      >
+        {!selectedEffort && <option value="">Choose effort</option>}
+        {model.supportedReasoningEfforts.map((option) => (
+          <option key={option.reasoningEffort} value={option.reasoningEffort}>
+            {displayEffort(option.reasoningEffort)}
+          </option>
+        ))}
+      </select>
+      <ChevronDown size={13} aria-hidden="true" />
+    </label>
+  )
+}
+
+function displayEffort(effort: string): string {
+  return effort.split(/[-_]/).map((part) => part ? `${part[0]!.toUpperCase()}${part.slice(1)}` : '').join(' ')
 }
 
 function ModelPicker({
