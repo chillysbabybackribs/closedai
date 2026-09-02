@@ -10,6 +10,7 @@ import { installPermissionPolicy } from './browser-permissions.js'
 import { TabRenderingPolicy } from './browser-tab-rendering.js'
 import { allSettledBounded } from './bounded-concurrency.js'
 import { restorePlan, type RestoredTabSession } from './browser-tab-session-store.js'
+import { browserSurfaceVisibility } from './browser-surface-visibility.js'
 
 type BrowserServiceOptions = {
   initialUrl?: string
@@ -222,8 +223,7 @@ export class BrowserService extends EventEmitter {
 
   setBounds(bounds: BrowserBounds): void {
     this.bounds = bounds
-    const paneVisible = bounds.visible !== false
-    const pageVisible = paneVisible && bounds.occluded !== true
+    const { paneVisible, pageVisible } = browserSurfaceVisibility(bounds)
     const active = this.active
     if (!paneVisible && !this.browserDetached) {
       this.browserDetached = true
