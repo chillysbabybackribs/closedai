@@ -8,7 +8,7 @@ import type {
   ChatSnapshot,
   ChatThreadSummary
 } from '../shared/chat.js'
-import type { AppSettingsStore } from './app-settings-store.js'
+import type { AppSettingsAccess } from './app-settings-store.js'
 import {
   AppServerClient,
   type AppServerNotification
@@ -67,7 +67,7 @@ export class ChatService extends EventEmitter {
 
   constructor(
     readonly cwd: string,
-    private readonly settings: AppSettingsStore,
+    private readonly settings: AppSettingsAccess,
     private readonly tools: ToolRegistry = new ToolRegistry([]),
     private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
     screenshots: Pick<ScreenshotStore, 'get'> | null = null,

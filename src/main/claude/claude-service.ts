@@ -8,7 +8,7 @@ import type {
   ChatSnapshot,
   ChatThreadSummary
 } from '../../shared/chat.js'
-import type { AppSettingsStore } from '../app-settings-store.js'
+import type { AppSettingsAccess } from '../app-settings-store.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { describeUsage, type ContextUsage } from '../chat-context/context-compaction.js'
 import { buildThreadHandoff, handoffAdditionalContext } from '../chat-context/thread-handoff.js'
@@ -50,7 +50,7 @@ export class ClaudeChatService extends EventEmitter {
 
   constructor(
     readonly cwd: string,
-    private readonly settings: AppSettingsStore,
+    private readonly settings: AppSettingsAccess,
     private readonly tools: ToolRegistry = new ToolRegistry([]),
     private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
     private readonly screenshots: Pick<ScreenshotStore, 'get'> | null = null

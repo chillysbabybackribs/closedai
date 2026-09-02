@@ -68,7 +68,6 @@
   min-width: 0;
   height: 34px;
   padding: 0 10px 0 12px;
-  border-bottom: 1px solid var(--hairline);
   background: var(--surface-card, #19191a);
 }
 

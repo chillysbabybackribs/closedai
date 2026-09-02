@@ -78,6 +78,8 @@ export type ChatPeerRecord = {
   paneId: string
   provider: 'codex' | 'claude'
   threadId: string | null
+  codexThreadId: string | null
+  claudeSessionId: string | null
   modelId: string | null
   reasoningEffort: string | null
 }

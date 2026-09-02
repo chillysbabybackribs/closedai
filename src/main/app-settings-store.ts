@@ -4,6 +4,11 @@ import { writeAtomic } from './atomic-write.js'
 import type { AppSettings, ChatPeerRecord } from '../shared/types.ts'
 import { DEFAULT_BATCH_MAX_CALLS, normalizeBatchMaxCalls } from './batch-config.js'
 
+export type AppSettingsAccess = {
+  get(): AppSettings
+  set(patch: Partial<AppSettings>): Promise<AppSettings>
+}
+
 // App-scoped preferences that must live in the main process because they shape how
 // the Codex app-server is driven (see codex-client thread/start + thread/resume).
 // Kept deliberately tiny: one flat JSON object, no debouncing or retention — settings
@@ -94,6 +99,9 @@ function normalizeChatPeers(
         paneId,
         provider,
         threadId: optionalString(record.threadId),
+        codexThreadId: optionalString(record.codexThreadId) ?? (provider === 'codex' ? optionalString(record.threadId) : null),
+        claudeSessionId: optionalString(record.claudeSessionId) ??
+          (provider === 'claude' ? optionalString(record.threadId)?.replace(/^claude:/, '') ?? null : null),
         modelId,
         reasoningEffort: optionalString(record.reasoningEffort)
       }]
@@ -108,6 +116,8 @@ function normalizeChatPeers(
     paneId: randomUUID(),
     provider,
     threadId,
+    codexThreadId: legacy.chatThreadId,
+    claudeSessionId: legacy.chatClaudeSessionId,
     modelId: legacy.chatModelId,
     reasoningEffort: legacy.chatReasoningEffort
   }]
