@@ -123,7 +123,7 @@ export function Composer({ enabled, running, models, selectedModel, onModelChang
               </PlaceholderAction>
 
               {running ? (
-                <PromptInputAction tooltip="Stop Codex">
+                <PromptInputAction tooltip="Stop Codex (Esc)">
                   <Button
                     type="button"
                     variant="secondary"

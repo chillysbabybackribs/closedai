@@ -114,6 +114,10 @@ export class ChatService extends EventEmitter {
     }
   }
 
+  isTurnActive(): boolean {
+    return this.activeTurnId !== null
+  }
+
   start(): Promise<void> {
     if (this.startPromise) return this.startPromise
     if (this.restartTimer) clearTimeout(this.restartTimer)
