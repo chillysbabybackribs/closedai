@@ -1,12 +1,12 @@
 # Auto-git
 
 `scripts/autogit.mjs` snapshots the working tree into commits so nobody has to think about
-git. It runs as a systemd user service, so it is on whenever you are logged in.
+git. After `npm run autogit:install`, it runs as a systemd user service whenever you are logged in.
 
 ## What it does
 
 Watches the repository. After 20 seconds of quiet (or at most 3 minutes after the first
-change), it stages everything and commits with a message like
+change), it stages every eligible change and commits with a message like
 `auto: src/renderer/tools (4), docs (1)`. The commit body lists the files and the result of
 a typecheck, so `git log` doubles as a "last known good" index. A 60-second tick catches
 anything the watcher missed.
@@ -16,8 +16,9 @@ anything the watcher missed.
 This is the whole point. Earlier auto-git attempts broke apps because they did more than
 snapshot.
 
-- Only `git add` and `git commit`. Never checkout, reset, stash, pull, rebase, merge, or
-  switch branches. The working tree is never touched.
+- Its normal snapshot mutations are only `git add` and `git commit`. Never checkout, reset,
+  stash, pull, rebase, merge, or switch branches. The working tree is never rewritten. An
+  explicit `AUTOGIT_PUSH=1` additionally permits `git push` after a successful commit.
 - Commits to the branch that is checked out. Refuses on a detached HEAD or during a
   merge, rebase, cherry-pick, revert, or bisect.
 - Refuses to stage secrets (`.env`, keys, tokens, `auth.json`, anything named like a

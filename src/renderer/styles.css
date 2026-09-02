@@ -190,14 +190,6 @@
   --code-text: #d1d1d2;
   --code-muted: #777779;
 
-  /* Tool disclosures are the one transcript element that must recede below the
-     reading surface rather than sit on it. Darker than the chat canvas, so a
-     collapsed batch reads as a closed hatch instead of competing with prose. */
-  --tool-surface: #0e0e0f;
-  --tool-surface-hover: #141416;
-  --tool-well: #0a0a0b;
-  --tool-edge: rgb(255 255 255 / 7%);
-
   /* Film-grain tile at ~2.5% alpha; reads as material, not pattern. Applied
      to chassis surfaces only — never the chat reading surface.
 

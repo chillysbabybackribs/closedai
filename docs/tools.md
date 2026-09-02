@@ -11,8 +11,8 @@ Decide where a capability goes before writing it. Pick the lowest level that fit
 | Level | What it is | Add a new one only when |
 |---|---|---|
 | **Namespace** | A domain, e.g. `search`, `browser`. One directory. | The domain differs. |
-| **Verb tool** | One tool to the model. Groups actions that share a result shape and a trust level. One `index.ts` per tool built with `defineActionTool`. | The result shape or the risk level differs (keep read-only and mutating actions apart). |
-| **Action** | One verb inside a tool, e.g. `search`, `fetch`. One file. | Always the default answer for a new capability. |
+| **Verb tool** | One tool to the model. A plain tool has one operation; an action tool groups operations that share a result shape and trust level. | The result shape or risk level differs (keep read-only and mutating capabilities apart). |
+| **Action** | One verb inside an action tool, e.g. `navigate`, `read_page`. Usually one file. | The default extension point when an existing action tool fits. |
 
 Namespace names the app-server reserves for OpenAI's own tools are rejected at `thread/start`
 (`browser` is one; the error names the collision). Prefix with what makes ours distinct,
@@ -34,11 +34,14 @@ src/main/tools/
   telemetry.ts         recent call stats + JSONL persistence
   index.ts             createToolRegistry: registers every namespace
   <namespace>/
-    index.ts           the namespace: its verb tools
-    <tool>/
-      index.ts         defineActionTool({ name, description, actions: [...] })
-      <action>.ts      one ToolAction: verb, description, inputSchema, run
+    index.ts           namespace and its tool definitions
+    <action>.ts        optional ToolAction modules for an action tool
+    <support>.ts       provider clients, routing, hosts, and other focused helpers
 ```
+
+Small namespaces may define a plain tool or assemble an action tool directly in their
+`index.ts`. Split a concern into a tool subdirectory only when its implementation needs the
+extra boundary; do not create a second registry or provider-specific execution path.
 
 ## Current namespaces
 
@@ -48,13 +51,24 @@ before the app-server starts.
 | Namespace | Tool | Actions | Purpose |
 |---|---|---|---|
 | `embedded_browser` | `page` | `navigate`, `read_page`, `wait_for` | Browser-page inspection for the pane the user can see. It can open a URL or search query, wait for page readiness, and read visible text from the whole page or one selector. |
-| `closedai_ui` | `capture` | `app_window`, `browser_page` | Visual evidence. `app_window` captures the composed Electron window, including chat and browser chrome. `browser_page` captures only one browser page after deterministic readiness checks. The model receives a scaled JPEG (max 1280x960); the full-resolution PNG goes to `ScreenshotStore` for the transcript. |
+| `closedai_ui` | `capture` | `app_window`, `browser_page`, `crop` | Visual evidence. The first two actions capture the composed app or one readiness-gated page; `crop` enlarges a retained region. The model receives a scaled JPEG (max 1280x960); the full-resolution image goes to `ScreenshotStore` for the transcript. |
 | `browser_cdp` | `page` | `inspect_page`, `click`, `click_at`, `type`, `press_key`, `scroll` | Agent-oriented page interaction: semantic element refs with real CDP mouse, keyboard, and wheel input. `type` inserts whole strings in one call; `press_key` sends chords. |
 | `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `events` | Raw Chrome DevTools Protocol escape hatch (`deferLoading`: out of context until searched for). `Input.*` and `Page.captureScreenshot` are refused with pointers to `page` and `capture`. See `docs/cdp-tool-foundation.md`. |
-| `closedai_workspace` | `inspect` | `map`, `related`, `tests`, `ipc_flow` | Deferred, read-only navigation for this checkout. It queries a generated file index, direct relative import relationships, candidate tests, and preload-to-main IPC ownership without placing repository-derived data in developer instructions. |
+| `search` | `query` | plain tool | Routed public-web search across Brave, Serper, Jina, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. |
+| `closedai_workspace` | `inspect` | `map`, `related`, `tests`, `ipc_flow` | Deferred, read-only navigation registered only when the app-server workspace is this checkout. It queries a generated file index, direct relative import relationships, candidate tests, and preload-to-main IPC ownership. |
+| `tool_batch` | `run` | plain tool | Runs up to eight other tools sequentially or, for independent calls, with bounded parallelism. Nested batches are refused. |
 
 The model-facing names intentionally differ from OpenAI reserved namespaces. For example,
 ClosedAI uses `embedded_browser`, not `browser`.
+
+### Search credentials
+
+Search providers read credentials from environment variables first and the Linux Secret
+Service keyring second. The supported environment variables are `BRAVE_SEARCH_API_KEY`,
+`SERPER_API_KEY`, `JINA_API_KEY`, `TAVILY_API_KEY`, and `YOU_API_KEY`. Desktop keyring entries use
+service `codeapp-vault` and accounts `brave_paid_search`, `serper_api_key`, `jina_api_key`,
+`tavily_api_key`, and `you_api_key`. A query succeeds when at least one selected provider succeeds;
+individual provider failures remain visible in the normalized result.
 
 ## Writing an action
 
@@ -129,7 +143,8 @@ turn, and only compacts by itself near the context limit. Three things keep that
   `-c model_auto_compact_token_limit=<n>` so Codex compacts mid-turn past `n` tokens. At 100k it
   fired every ~10 exec calls in a heavy turn, which is why it is off. See
   `src/main/chat-context/app-server-config.ts`.
-- Codex 0.152 runs gpt-5.6 in code mode: the model calls tools from JavaScript inside a generic
+- Observed 2026-09-02 with Codex 0.152 and gpt-5.6 in code mode (host behavior, not an app
+  contract): the model calls tools from JavaScript inside a generic
   `exec` tool whose result budget defaults to 10k tokens per call (the model can raise it to
   20k), and a dynamic tool's result reaches that JavaScript as one string with any image inline
   as a data URL. The capture tool's description carries the exact `text()`/`image()` split so

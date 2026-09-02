@@ -1,7 +1,7 @@
-/* A tool batch is machine chrome standing beside the answer, so it must not
-   read as body prose — which is exactly what mid-grey text at the transcript's
-   process size was doing. It is a chip on the transcript's darkest surface,
-   with details only on demand. */
+/* One quiet, live-updating disclosure per consecutive tool batch. It carries no
+   chrome of its own: no chip, no border, no caret. Just a counted verb line in
+   process ink that brightens on hover, so the transcript stays a reading
+   surface and the batch reads as a footnote to the answer. */
 
 .prompt-tool-activity {
   width: 100%;
@@ -13,31 +13,26 @@
   display: inline-flex;
   width: fit-content;
   max-width: 100%;
+  min-height: 22px;
   align-items: center;
   justify-content: flex-start;
-  gap: 7px;
+  gap: 6px;
   margin: 0;
-  padding: 5px 11px;
+  padding: 0;
+  border: 0;
   appearance: none;
-  border: 1px solid var(--tool-edge);
-  border-radius: 9px;
-  background: var(--tool-surface);
+  background: transparent;
   color: var(--transcript-activity);
   font-family: inherit;
   font-size: var(--chat-fs-process, 18px);
   font-weight: 500;
   line-height: 1.4;
   cursor: pointer;
-  transition:
-    color 120ms var(--ease-chrome),
-    background 120ms var(--ease-chrome),
-    border-color 120ms var(--ease-chrome);
+  transition: color 120ms var(--ease-chrome);
 }
 
 .prompt-tool-activity-trigger:hover,
 .prompt-tool-activity-trigger[aria-expanded='true'] {
-  border-color: var(--hairline-strong);
-  background: var(--tool-surface-hover);
   color: var(--transcript-activity-hover);
 }
 
@@ -66,27 +61,15 @@
   color: var(--destructive);
 }
 
-.prompt-tool-activity-caret {
-  width: 13px;
-  height: 13px;
-  margin-left: 1px;
-  opacity: 0.55;
-  transition: transform 120ms var(--ease-chrome);
-}
-
-.prompt-tool-activity-caret.is-open { transform: rotate(180deg); }
-
-/* Opening the hatch extends the same dark panel downward rather than switching
-   to a left-rule list, so the batch stays one object at both states. */
+/* Opening the batch indents its calls under a hairline rather than boxing them
+   in a panel: the disclosure is a list of what ran, not an object. */
 .prompt-tool-activity-content {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: 6px 0 2px;
-  padding: 5px;
-  border: 1px solid var(--tool-edge);
-  border-radius: 10px;
-  background: var(--tool-surface);
+  margin: 5px 0 2px 7px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
 }
 
 .prompt-transcript-tool {
@@ -129,16 +112,20 @@
   font-style: normal;
 }
 
+/* The detail panel is a code surface, not a transcript surface: its `pre` is
+   set in --code-text, which has no light-theme counterpart. So it draws from
+   the code ramp and stays a dark canvas under every theme, exactly as fenced
+   code blocks and diffs already do. */
 .prompt-tool-content {
   margin: 0 4px 5px 28px;
-  border: 1px solid var(--tool-edge);
+  border: 1px solid var(--code-border);
   border-radius: 8px;
-  background: var(--tool-well);
+  background: var(--code-canvas);
 }
 
 .prompt-tool-section { padding: 10px; }
-.prompt-tool-section + .prompt-tool-section { border-top: 1px solid var(--tool-edge); }
-.prompt-tool-section > strong { color: var(--transcript-secondary); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.prompt-tool-section + .prompt-tool-section { border-top: 1px solid var(--code-border); }
+.prompt-tool-section > strong { color: var(--code-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
 .prompt-tool-section > pre {
   max-height: 280px;
   margin: 7px 0 0;

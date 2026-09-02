@@ -15,9 +15,7 @@ main process through the typed `window.closedai` preload bridge.
 npm install --include=dev   # devDependencies hold electron/vite; NODE_ENV=production skips them
 npm run dev                 # electron-vite dev with hot reload
 npm run build && npm run preview
-npm run typecheck
-npm run closure             # import-closure gate: fails if anything outside the allowlist is reachable
-npm test
+npm run check               # map, hygiene, types, tests, production build, and import closure
 ```
 
 ClosedAI resolves `codex` from `PATH`. Set `CLOSEDAI_CODEX_PATH` to use a specific CLI
@@ -35,23 +33,27 @@ runs on the Electron installed here.
   (allow-all, see `docs/electron-browser-platform-review.md` section 0), popup bridge,
   context menus, and the model tool registry.
 - `src/main/tools` - provider-agnostic tools. Current namespaces are `embedded_browser`
-  (navigate/read/wait), `closedai_ui` (app/page screenshots), and `browser_cdp`
-  (raw Chrome DevTools Protocol access).
+  (page navigation and reading), `closedai_ui` (app/page screenshots and crops), `browser_cdp`
+  (semantic page interaction plus raw Chrome DevTools Protocol access), `search` (routed public-web
+  search), `tool_batch` (bounded sequential or parallel tool calls), and, when the app-server
+  workspace is this checkout, `closedai_workspace` (deferred repository navigation).
 - `src/preload` - the `window.closedai` bridge (`src/shared/api.ts` is its type).
 - `src/shared` - dependency-free IPC contracts for browser, chat, tools, and shared types.
 - `src/renderer` - `App.tsx`, the split workspace, browser pane, chat pane, history drawer,
   composer, attachment handling, screenshots, and the Tools modal.
 - `docs/tools.md` - the model tool architecture, current namespaces, telemetry, and modal.
 - `docs/cdp-tool-foundation.md` - lifecycle and usage notes for the raw CDP tool.
-- `docs/electron-browser-platform-review.md` — the Electron/Chromium docs review and the
-  owner decisions the build follows.
+- `docs/electron-browser-platform-review.md` — the dated Electron/Chromium design review,
+  owner decisions, and implementation-status matrix.
+- `docs/autogit.md` — optional automatic working-tree snapshots through a systemd user service.
 - `THIRD_PARTY_NOTICES.md` — attribution for the Prompt Kit-derived chat components.
 
 ## State
 
-`~/.config/closedai/`: `browser-tabs.json` (restored on launch), `browser-history.json`
+Electron's `app.getPath('userData')` directory (`~/.config/closedai/` on Linux):
+`browser-tabs.json` (restored on launch), `browser-history.json`
 (omnibox suggestions), `app-settings.json` (cookie-import latch, current Codex thread, selected
-model, disabled tool ids, `chatCompactAtPercent`, the context-usage percentage after which the
+model, disabled tool or action ids, `chatCompactAtPercent`, the context-usage percentage after which the
 app compacts between turns; default 80, 0 disables, and `chatMidTurnCompactTokens`, an opt-in
 context size in tokens past which Codex compacts mid-turn; default 0 keeps Codex's own limit),
 `tool-telemetry.jsonl` (recent tool calls), `code-cache/`, and
