@@ -12,6 +12,7 @@ import {
 } from 'react'
 
 import {
+  followingAfterViewportSync,
   preservedScrollTop,
   scrollEdges,
   type ScrollEdges,
@@ -73,12 +74,8 @@ export function MessageScrollerProvider({
     const direction = metrics.scrollTop < lastScrollTopRef.current ? 'up' : 'down'
     lastScrollTopRef.current = metrics.scrollTop
     const edges = scrollEdges(metrics, EDGE_THRESHOLD)
-    if (!edges.end) {
-      followingRef.current = autoScroll
-      if (scrollTargetRef.current === 'end') scrollTargetRef.current = null
-    } else if (scrollTargetRef.current !== 'end') {
-      followingRef.current = false
-    }
+    followingRef.current = followingAfterViewportSync(followingRef.current, autoScroll, edges)
+    if (!edges.end && scrollTargetRef.current === 'end') scrollTargetRef.current = null
     if (!edges.start && scrollTargetRef.current === 'start') scrollTargetRef.current = null
     setState((previous) => (
       previous.direction === direction &&

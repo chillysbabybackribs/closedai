@@ -19,6 +19,19 @@ export function formatMessageCount(count: number): string {
   return count === 1 ? '1 message' : `${count} messages`
 }
 
+/**
+ * Why a row refused to open, in the width a row has. Threads live in one `~/.codex` store shared by
+ * every Codex client on the machine, so a thread held by another app (the ChatGPT desktop app, a
+ * `codex` TUI) rejects with a writer conflict — a normal condition, not a fault, and the one case
+ * worth naming precisely so the row does not read as broken.
+ */
+export function openFailureMessage(error: unknown): string {
+  const text = error instanceof Error ? error.message : String(error)
+  if (/active writer|thread-store conflict/i.test(text)) return 'Open in another app'
+  if (/not found|no such thread|missing/i.test(text)) return 'Thread unavailable'
+  return 'Could not open'
+}
+
 export function basename(path: string): string {
   const trimmed = path.replace(/[/\\]+$/, '')
   const index = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'))

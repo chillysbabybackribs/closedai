@@ -1,8 +1,8 @@
-import type { JSX, MouseEvent } from 'react'
+import { useEffect, useState, type JSX, type MouseEvent } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { ProviderMark } from '../../components/ui/provider-mark.js'
 import type { ChatController } from '../chat-controller.js'
-import { formatChatTime, formatMessageCount } from './drawer-format.js'
+import { formatChatTime, formatMessageCount, openFailureMessage } from './drawer-format.js'
 import type { DrawerController } from './drawer-controller.js'
 import { DrawerRowActions, DiffBadge } from './drawer-row-actions.js'
 import type { RowMenuTarget } from './drawer-row-menu.js'
@@ -36,6 +36,15 @@ export function DrawerRow({
   onRowMenu,
   awaitingReview = false
 }: RowProps): JSX.Element {
+  const [openError, setOpenError] = useState<string | null>(null)
+  // The lock clears when the other client lets go, and nothing notifies us, so retire the notice on
+  // a timer rather than leaving a stale failure on a row that will open fine on the next click.
+  useEffect(() => {
+    if (!openError) return
+    const timer = window.setTimeout(() => setOpenError(null), 6000)
+    return () => window.clearTimeout(timer)
+  }, [openError])
+
   const isCurrent = row.threadId === activeChatId || (row.paneId !== undefined && row.paneId === chat.selectedPaneId)
   const isLive = row.running || row.status === 'running' || row.status === 'queued'
   const dot = isLive ? (row.status === 'queued' ? 'queued' : 'running') : (row.status === 'done' ? 'done' : row.status === 'failed' ? 'failed' : 'chat')
@@ -52,12 +61,14 @@ export function DrawerRow({
     })
   }
 
+  // Opening can legitimately fail — most often a thread another Codex client already holds the
+  // writer lock on. Unhandled, the rejection only reached the console and the click looked dead.
   const handleOpen = (): void => {
-    if (row.paneId && row.paneId !== chat.selectedPaneId) {
-      void chat.selectPane(row.paneId)
-    } else if (row.threadId) {
-      void chat.openThread(row.threadId)
-    }
+    setOpenError(null)
+    const attempt = row.paneId && row.paneId !== chat.selectedPaneId
+      ? chat.selectPane(row.paneId)
+      : row.threadId ? chat.openThread(row.threadId) : null
+    if (attempt) void attempt.catch((error: unknown) => setOpenError(openFailureMessage(error)))
   }
 
   return (
@@ -72,7 +83,11 @@ export function DrawerRow({
           type="button"
           className="agents-row-main"
           onClick={handleOpen}
-          title={row.completedUnviewed ? 'Finished — open to review' : 'Open this chat'}
+          title={
+            openError === 'Open in another app'
+              ? 'Another Codex client holds this thread’s writer lock — close it there, then retry'
+              : openError ?? (row.completedUnviewed ? 'Finished — open to review' : 'Open this chat')
+          }
           aria-current={isCurrent ? 'true' : undefined}
         >
           {dot === 'running' ? (
@@ -88,8 +103,14 @@ export function DrawerRow({
               {row.title}
             </span>
             <span className="agents-row-meta">
-              <span className="agents-row-meta-text">{buildRowMeta(row)}</span>
-              <DiffBadge added={row.linesAdded} removed={row.linesRemoved} />
+              {openError ? (
+                <span className="agents-row-open-error">{openError}</span>
+              ) : (
+                <>
+                  <span className="agents-row-meta-text">{buildRowMeta(row)}</span>
+                  <DiffBadge added={row.linesAdded} removed={row.linesRemoved} />
+                </>
+              )}
             </span>
           </span>
         </button>

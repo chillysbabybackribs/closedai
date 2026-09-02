@@ -131,6 +131,15 @@
   text-overflow: ellipsis;
 }
 
+/* Replaces the meta line when a click could not open the row. Amber, not red: a thread held by
+   another Codex client is an ordinary condition to retry, not a failure of this app. */
+.agents-row-open-error {
+  overflow: hidden;
+  color: #d8a657;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* +/− code-change totals */
 .agents-row-diff {
   display: inline-flex;

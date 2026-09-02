@@ -11,6 +11,20 @@ export type ScrollEdges = {
   end: boolean
 }
 
+/**
+ * Keep following through layout-driven scroll events. Images, disclosures, async syntax
+ * highlighting, and composer resizes can dispatch scroll before ResizeObserver runs; treating
+ * that event as user intent strands the viewport above the new bottom. Explicit wheel/touch/key
+ * handlers own escaping follow mode, while reaching the end opts back in.
+ */
+export function followingAfterViewportSync(
+  following: boolean,
+  autoScroll: boolean,
+  edges: ScrollEdges
+): boolean {
+  return edges.end ? following : autoScroll
+}
+
 /** Constant-time edge calculation; no transcript-row geometry is involved. */
 export function scrollEdges(metrics: ScrollMetrics, threshold: number): ScrollEdges {
   const maxScrollTop = Math.max(0, metrics.scrollHeight - metrics.clientHeight)
