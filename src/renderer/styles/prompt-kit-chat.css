@@ -290,7 +290,7 @@
 
 .prompt-composer-input {
   padding: 6px;
-  border: 1px solid rgb(255 255 255 / 11%);
+  border: 1px solid var(--composer-line);
   border-radius: 14px;
   background: var(--antigravity-card-bg, #252526);
   box-shadow: 0 2px 8px rgb(0 0 0 / 22%), 0 1px 2px rgb(0 0 0 / 14%);
@@ -298,8 +298,8 @@
 }
 
 .prompt-composer-input:focus-within {
-  border-color: var(--antigravity-blue, #8ab4f8);
-  box-shadow: 0 0 0 2px var(--antigravity-blue-glow, rgb(138 180 248 / 22%)), 0 4px 14px rgb(0 0 0 / 28%);
+  border-color: var(--composer-line-strong);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 22%), 0 1px 2px rgb(0 0 0 / 14%);
 }
 
 .prompt-composer-textarea {

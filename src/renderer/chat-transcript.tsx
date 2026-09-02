@@ -179,9 +179,9 @@ const ToolActivity = memo(function ToolActivity({
 }): JSX.Element {
   const [open, setOpen] = useState(false)
   const state = useMemo(() => activityState(items), [items])
-  const headline = useMemo(() => activityHeadline(items), [items])
-  const clusters = useMemo(() => activityClusters(items), [items])
   const running = isRunning ?? (state === 'input-streaming')
+  const headline = useMemo(() => activityHeadline(items, running), [items, running])
+  const clusters = useMemo(() => activityClusters(items, running), [items, running])
   const failed = state === 'output-error'
   const status = running ? 'running' : failed ? 'failed' : 'completed'
   return (

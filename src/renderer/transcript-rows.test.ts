@@ -128,9 +128,24 @@ test('stacked commands collapse to one counted headline', () => {
     command('c3', 't1', 'bash -lc "sed -n 1,20p package.json"')
   ] as Extract<ChatTranscriptItem, { type: 'command' }>[]
   assert.equal(activityHeadline(items), 'Ran 3 commands')
+  assert.equal(activityHeadline(items, true), 'Running 3 commands')
   assert.deepEqual(activityClusters(items).map((cluster) => cluster.title), ['Ran 3 commands'])
+  assert.deepEqual(activityClusters(items, true).map((cluster) => cluster.title), ['Running 3 commands'])
 })
 
 test('a single command keeps its short title instead of a count', () => {
-  assert.equal(activityHeadline([command('c1', 't1', 'bash -lc "git status"') as Extract<ChatTranscriptItem, { type: 'command' }>]), 'Checked git status')
+  const item = command('c1', 't1', 'bash -lc "git status"') as Extract<ChatTranscriptItem, { type: 'command' }>
+  assert.equal(activityHeadline([item]), 'Checked git status')
+  assert.equal(activityHeadline([item], true), 'Checking git status')
 })
+
+test('tool activity headlines dynamically reflect running and completed state', () => {
+  const readTool = { type: 'tool', id: 't1', turnId: 'turn-1', label: 'Read page', detail: '', status: 'inProgress' } as const
+  assert.equal(activityHeadline([readTool], true), 'Reading page')
+  assert.equal(activityHeadline([readTool], false), 'Read page')
+
+  const analyzeTool = { type: 'tool', id: 't2', turnId: 'turn-1', label: 'Analyze workspace', detail: '', status: 'inProgress' } as const
+  assert.equal(activityHeadline([analyzeTool], true), 'Analyzing workspace')
+  assert.equal(activityHeadline([analyzeTool], false), 'Analyzed workspace')
+})
+

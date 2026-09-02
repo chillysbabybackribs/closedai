@@ -6,6 +6,8 @@ test('read commands name the file instead of dumping sed', () => {
   assert.equal(commandPhrase("bash -lc 'sed -n 1,240p src/main/tools/manifest.ts'"), 'Read manifest.ts')
   assert.equal(commandPhrase("sed -n '1,20p' package.json"), 'Read package.json')
   assert.equal(commandPhrase('cat src/renderer/chat-pane.tsx'), 'Read chat-pane.tsx')
+  assert.equal(commandPhrase('head -n 260 src/main/tools/manifest.ts'), 'Read manifest.ts')
+  assert.equal(commandPhrase('head -n 260 src/main/tools/manifest.ts', true), 'Reading manifest.ts')
   assert.equal(commandKind("bash -lc 'sed -n 1,240p src/main/tools/manifest.ts'"), 'read')
 })
 
@@ -38,3 +40,20 @@ test('tool labels become process English', () => {
   assert.equal(toolPhrase('inspect', 2), 'Inspected 2')
   assert.equal(toolPhrase('Viewed image'), 'Viewed image')
 })
+
+test('tool phrases support dynamic running and completed states', () => {
+  assert.equal(toolPhrase('Read page'), 'Read page')
+  assert.equal(toolPhrase('Read page', 1, true), 'Reading page')
+  assert.equal(toolPhrase('page'), 'Read page')
+  assert.equal(toolPhrase('page', 1, true), 'Reading page')
+  assert.equal(toolPhrase('Open page'), 'Opened page')
+  assert.equal(toolPhrase('Open page', 1, true), 'Opening page')
+  assert.equal(toolPhrase('Analyze workspace'), 'Analyzed workspace')
+  assert.equal(toolPhrase('Analyze workspace', 1, true), 'Analyzing workspace')
+  assert.equal(toolPhrase('inspect', 1, true), 'Analyzing workspace')
+  assert.equal(toolPhrase('Analyze page'), 'Analyzed page')
+  assert.equal(toolPhrase('Analyze page', 1, true), 'Analyzing page')
+  assert.equal(toolPhrase('Web search', 1, true), 'Searching the web')
+  assert.equal(toolPhrase('Web search', 2, true), 'Searching the web 2 times')
+})
+

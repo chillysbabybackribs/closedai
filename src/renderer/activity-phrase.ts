@@ -76,7 +76,7 @@ const TOOL_PHRASES: Record<string, Phrased> = {
   'analyze page': { running: 'Analyzing page', completed: 'Analyzed page' },
   'analyze app': { running: 'Analyzing app', completed: 'Analyzed app' },
   'analyze workspace': { running: 'Analyzing workspace', completed: 'Analyzed workspace' },
-  inspect: { running: 'Analyzing workspace', completed: 'Analyzed workspace' },
+  inspect: { running: 'Analyzing workspace', completed: 'Inspected' },
   capture: { running: 'Capturing screenshot', completed: 'Captured' },
   'viewed image': { running: 'Viewing image', completed: 'Viewed image' },
   'fetch page': { running: 'Fetching page', completed: 'Fetched page' },

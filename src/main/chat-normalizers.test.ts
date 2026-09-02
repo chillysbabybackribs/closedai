@@ -88,3 +88,36 @@ test('reasoning and plan items stream until the item is completed', () => {
   const plan = normalizeItem({ type: 'plan', text: 'steps' }, 'p1', 't1', false)
   assert.equal(plan?.type === 'plan' && plan.streaming, true)
 })
+
+test('dynamic tool calls receive descriptive semantic labels', () => {
+  const readPage = normalizeItem({
+    type: 'dynamicToolCall', namespace: 'embedded_browser', tool: 'page', arguments: { action: 'read_page' }, status: 'inProgress'
+  }, 't1', 'turn-1', false)
+  assert.equal(readPage?.type === 'tool' && readPage.label, 'Read page')
+
+  const openPage = normalizeItem({
+    type: 'dynamicToolCall', namespace: 'embedded_browser', tool: 'page', arguments: { action: 'navigate', url: 'https://example.com' }, status: 'completed'
+  }, 't2', 'turn-1', true)
+  assert.equal(openPage?.type === 'tool' && openPage.label, 'Open page')
+
+  const cdpPage = normalizeItem({
+    type: 'dynamicToolCall', namespace: 'browser_cdp', tool: 'page', arguments: { action: 'inspect_page' }, status: 'completed'
+  }, 't3', 'turn-1', true)
+  assert.equal(cdpPage?.type === 'tool' && cdpPage.label, 'Analyze page')
+
+  const appPage = normalizeItem({
+    type: 'dynamicToolCall', namespace: 'closedai_app', tool: 'page', arguments: { action: 'inspect_app' }, status: 'completed'
+  }, 't4', 'turn-1', true)
+  assert.equal(appPage?.type === 'tool' && appPage.label, 'Analyze app')
+
+  const inspect = normalizeItem({
+    type: 'dynamicToolCall', namespace: 'closedai_workspace', tool: 'inspect', arguments: { action: 'map' }, status: 'completed'
+  }, 't5', 'turn-1', true)
+  assert.equal(inspect?.type === 'tool' && inspect.label, 'Analyze workspace')
+
+  const query = normalizeItem({
+    type: 'dynamicToolCall', namespace: 'search', tool: 'query', arguments: { query: 'codex' }, status: 'completed'
+  }, 't6', 'turn-1', true)
+  assert.equal(query?.type === 'tool' && query.label, 'Web search')
+})
+
