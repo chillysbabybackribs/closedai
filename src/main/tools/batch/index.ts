@@ -1,6 +1,6 @@
 import { allSettledBounded } from '../../bounded-concurrency.js'
+import { normalizeBatchMaxCalls } from '../../batch-config.js'
 import type { ToolRegistry } from '../registry.js'
-import { normalizeToolBatchMaxCalls } from '../../../shared/tool-batch.js'
 import {
   booleanArg,
   defineTool,
@@ -48,7 +48,7 @@ type BatchOutcome =
  * very registry it dispatches into (same pattern as the browser host providers).
  */
 export function batchTools(registry: ToolRegistryProvider, options: BatchToolOptions = {}): ToolNamespace {
-  const maxCalls = normalizeToolBatchMaxCalls(options.maxCalls)
+  const maxCalls = normalizeBatchMaxCalls(options.maxCalls)
   return {
     name: TOOL_BATCH_NAMESPACE,
     description: 'Run several tool calls from the other namespaces in one request.',

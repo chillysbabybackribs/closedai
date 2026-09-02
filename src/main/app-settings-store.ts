@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { writeAtomic } from './atomic-write.js'
 import type { AppSettings } from '../shared/types.ts'
-import { DEFAULT_TOOL_BATCH_MAX_CALLS, normalizeToolBatchMaxCalls } from '../shared/tool-batch.js'
+import { DEFAULT_BATCH_MAX_CALLS, normalizeBatchMaxCalls } from './batch-config.js'
 
 // App-scoped preferences that must live in the main process because they shape how
 // the Codex app-server is driven (see codex-client thread/start + thread/resume).
@@ -17,7 +17,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatModelId: null,
   chatReasoningEffort: null,
   disabledTools: [],
-  toolBatchMaxCalls: DEFAULT_TOOL_BATCH_MAX_CALLS,
+  toolBatchMaxCalls: DEFAULT_BATCH_MAX_CALLS,
   // Compaction is lossy and takes 60-90 seconds, and prompt caching keeps per-step latency
   // nearly flat with context size, so it waits for a genuinely full window: 80% leaves room
   // for one more long turn before Codex's own ~90% compaction would interrupt it mid-turn.
@@ -49,7 +49,7 @@ function normalize(parsed: unknown): AppSettings {
     disabledTools: Array.isArray(record.disabledTools)
       ? [...new Set(record.disabledTools.filter((id): id is string => typeof id === 'string' && id.length > 0))]
       : [],
-    toolBatchMaxCalls: normalizeToolBatchMaxCalls(record.toolBatchMaxCalls),
+    toolBatchMaxCalls: normalizeBatchMaxCalls(record.toolBatchMaxCalls),
     chatCompactAtPercent: typeof record.chatCompactAtPercent === 'number' && Number.isFinite(record.chatCompactAtPercent)
       ? Math.min(MAX_COMPACT_AT_PERCENT, Math.max(0, Math.round(record.chatCompactAtPercent)))
       : DEFAULT_APP_SETTINGS.chatCompactAtPercent,

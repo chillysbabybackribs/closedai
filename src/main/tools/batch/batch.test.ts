@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { ToolRegistry } from '../registry.js'
 import { textResult, type ToolNamespace, type ToolResult } from '../tool.js'
-import { DEFAULT_TOOL_BATCH_MAX_CALLS } from '../../../shared/tool-batch.ts'
+import { DEFAULT_BATCH_MAX_CALLS } from '../../batch-config.ts'
 import { batchTools } from './index.js'
 
 // Every test drives the batch through registry.call — the same path the Codex adapter
@@ -155,7 +155,7 @@ test('the batch size is bounded at both ends', async () => {
   assert.match(batchText(empty), /at least one call/)
 
   const oversized = await call(registry, {
-    calls: Array.from({ length: DEFAULT_TOOL_BATCH_MAX_CALLS + 1 }, () => ({ tool: 'lab.echo', arguments: { text: 'x' } }))
+    calls: Array.from({ length: DEFAULT_BATCH_MAX_CALLS + 1 }, () => ({ tool: 'lab.echo', arguments: { text: 'x' } }))
   })
   assert.equal(oversized.isError, true)
   assert.match(batchText(oversized), /the limit is 16/)
