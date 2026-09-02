@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { WORKSPACE_INDEX_ROOT } from '../../chat-context/workspace-index.generated.ts'
+import { WORKSPACE_INDEX_ROOT } from './workspace-index.generated.ts'
 import { ToolRegistry } from '../registry.ts'
 import { workspaceTools } from './index.ts'
 
@@ -23,7 +23,7 @@ test('workspace tools are advertised only for the indexed checkout', () => {
   assert.equal(workspaceTools('/some/other/checkout'), null)
   const { registry } = harness()
   assert.deepEqual(registry.names(), ['closedai_workspace.inspect'])
-  assert.equal(registry.namespaces[0].tools[0].deferLoading, true)
+  assert.equal(registry.namespaces[0].tools[0].deferLoading, undefined)
   assert.deepEqual(
     registry.namespaces[0].tools[0].actions?.map((action) => action.name),
     ['map', 'related', 'tests', 'ipc_flow']

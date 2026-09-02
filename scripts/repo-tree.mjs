@@ -5,7 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const output = path.join(root, 'src/main/chat-context/workspace-index.generated.ts')
+const output = path.join(root, 'src/main/tools/workspace/workspace-index.generated.ts')
 const indexedExtensions = new Set(['.css', '.html', '.js', '.json', '.md', '.mjs', '.ts', '.tsx'])
 const ignoredDirectories = new Set(['coverage', 'dist', 'node_modules', 'out'])
 const ignoredFiles = new Set(['package-lock.json', 'THIRD_PARTY_NOTICES.md'])

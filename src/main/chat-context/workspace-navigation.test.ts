@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { closedAiDeveloperInstructions } from './developer-instructions.ts'
 import { resumeThreadParams, startThreadParams } from './thread-params.ts'
-import { WORKSPACE_INDEX_ROOT } from './workspace-index.generated.ts'
+import { WORKSPACE_INDEX_ROOT } from '../tools/workspace/workspace-index.generated.ts'
 import { workspaceNavigationSection } from './workspace-navigation.ts'
 import { ToolRegistry } from '../tools/registry.ts'
 

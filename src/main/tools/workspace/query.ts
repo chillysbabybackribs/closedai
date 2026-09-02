@@ -3,7 +3,7 @@ import path from 'node:path'
 import {
   WORKSPACE_FILES,
   WORKSPACE_IPC_FLOWS
-} from '../../chat-context/workspace-index.generated.js'
+} from './workspace-index.generated.js'
 
 export const indexedFiles: readonly string[] = WORKSPACE_FILES
 export const fileSet = new Set<string>(indexedFiles)
