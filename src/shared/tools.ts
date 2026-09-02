@@ -51,38 +51,12 @@ export type ToolManifest = {
   providers: string[]
 }
 
-export type ToolCallRecord = {
-  id: string
-  /** Unix milliseconds when the call started. */
-  at: number
-  threadId: string | null
-  turnId: string | null
-  callId: string
+/** Aggregate-only call event. No arguments, results, messages, or conversation ids cross IPC. */
+export type ToolCallEvent = {
   /** `namespace.tool`, or the raw name for a call that matched no tool. */
   toolId: string
   action: string | null
-  /** Present for nested calls so one batch can be reconstructed from flat JSONL. */
-  parentCallId?: string | null
-  batchId?: string | null
-  source?: 'model' | 'batch' | 'system' | 'external'
-  /** JSON of the arguments, truncated. */
-  argumentsPreview: string
-  durationMs: number
   ok: boolean
-  /** The failure text the model saw, when `ok` is false. */
-  error: string | null
-  /** First text content of the result, truncated. */
-  outputPreview: string
-}
-
-export type ToolRegistration = {
-  toolId: string
-  namespace: string
-  name: string
-  actions: string[]
-  source: 'app' | 'external'
-  firstSeenAt: number
-  lastSeenAt: number
 }
 
 export type ToolStats = {
@@ -91,24 +65,15 @@ export type ToolStats = {
   action: string | null
   calls: number
   failures: number
-  averageMs: number
-  lastAt: number | null
 }
 
 export type ToolTelemetrySnapshot = {
   stats: ToolStats[]
-  /** Newest first. */
-  recent: ToolCallRecord[]
-  /** How many records the store keeps; stats cover only that window. */
-  retained: number
-  /** Total calls in the durable log, including calls older than the in-memory window. */
+  /** Total tool invocations represented by the aggregate counters. */
   totalCalls: number
-  /** Every tool/action definition observed by the registry across app starts. */
-  registeredTools: ToolRegistration[]
 }
 
 export type ToolsEvent =
-  | { type: 'call'; record: ToolCallRecord }
-  | { type: 'registered'; tool: ToolRegistration }
+  | { type: 'call'; record: ToolCallEvent }
   | { type: 'cleared' }
   | { type: 'enabled'; toolId: string; enabled: boolean }

@@ -1,4 +1,4 @@
-import type { ToolCallRecord } from '../../shared/tools.js'
+import type { ToolCallEvent } from '../../shared/tools.js'
 import { validateInput } from './schema.js'
 import { truncateText } from './truncate-json.js'
 import {
@@ -18,10 +18,7 @@ export type ToolCallRequest = {
 }
 
 export type ToolCallContext = Omit<ToolContext, 'signal'>
-export type ToolCallListener = (record: ToolCallRecord) => void
-
-const PREVIEW_ARGS = 400
-const PREVIEW_OUTPUT = 300
+export type ToolCallListener = (record: ToolCallEvent) => void
 // Tool results live in the thread history for every later turn. Code-mode models see a
 // dynamic tool result only through `exec`, whose own result cap is 10k tokens (~40k chars)
 // with a silent head/tail cut, so this ceiling sits well below it: ~6k tokens, and the model
@@ -117,9 +114,8 @@ export class ToolRegistry {
   }
 
   async call(request: ToolCallRequest, context: ToolCallContext): Promise<ToolResult> {
-    const started = Date.now()
     const result = await this.run(request, context)
-    this.report(request, context, result, Date.now() - started)
+    this.report(request, result)
     return result
   }
 
@@ -163,30 +159,16 @@ export class ToolRegistry {
     }
   }
 
-  private report(request: ToolCallRequest, context: ToolCallContext, result: ToolResult, durationMs: number): void {
+  private report(request: ToolCallRequest, result: ToolResult): void {
     if (this.listeners.size === 0) return
     const definition = this.find(request.namespace, request.tool)
     const namespace = request.namespace ?? this.namespaces.find((entry) => entry.tools.includes(definition!))?.name ?? null
     const args = request.arguments
     const action = args && typeof args === 'object' && typeof (args as JsonObject).action === 'string' ? String((args as JsonObject).action) : null
-    const firstText = result.content.find((item) => item.type === 'text')
-    const text = firstText && firstText.type === 'text' ? firstText.text : ''
-    const record: ToolCallRecord = {
-      id: crypto.randomUUID(),
-      at: Date.now() - durationMs,
-      threadId: context.threadId,
-      turnId: context.turnId,
-      callId: context.callId,
+    const record: ToolCallEvent = {
       toolId: namespace ? `${namespace}.${request.tool}` : request.tool,
       action,
-      parentCallId: context.parentCallId ?? null,
-      batchId: context.batchId ?? null,
-      source: context.source ?? 'model',
-      argumentsPreview: truncate(safeJson(args), PREVIEW_ARGS),
-      durationMs,
-      ok: !result.isError,
-      error: result.isError ? truncate(text, PREVIEW_OUTPUT) : null,
-      outputPreview: result.isError ? '' : truncate(text, PREVIEW_OUTPUT)
+      ok: !result.isError
     }
     for (const listener of this.listeners) {
       try { listener(record) } catch { /* telemetry must never break a call */ }
@@ -204,14 +186,6 @@ export function boundResult(result: ToolResult, maxChars = MAX_RESULT_TEXT_CHARS
       return { type: 'text', text: truncateText(item.text, maxChars, TRUNCATION_ADVICE).text }
     })
   }
-}
-
-function safeJson(value: unknown): string {
-  try { return JSON.stringify(value ?? {}) ?? '{}' } catch { return String(value) }
-}
-
-function truncate(text: string, max: number): string {
-  return text.length > max ? `${text.slice(0, max - 1)}…` : text
 }
 
 function assertWellFormed(namespaces: ToolNamespace[]): void {
