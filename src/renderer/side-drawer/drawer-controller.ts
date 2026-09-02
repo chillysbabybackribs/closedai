@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ChatThreadSummary } from '../../shared/chat.js'
+import type { ChatThreadSummary, ChatTranscriptItem } from '../../shared/chat.js'
 import type { ChatController } from '../chat-controller.js'
 import {
   countDrawerReviewQueue,
@@ -105,12 +105,9 @@ export function useDrawerController(chat: ChatController) {
     let removed = 0
     for (const item of chat.state.items) {
       if (item.type === 'fileChange') {
-        for (const change of item.changes) {
-          for (const line of change.diff.split('\n')) {
-            if (line.startsWith('+') && !line.startsWith('+++')) added += 1
-            if (line.startsWith('-') && !line.startsWith('---')) removed += 1
-          }
-        }
+        const counts = countFileChangeDiff(item)
+        added += counts.added
+        removed += counts.removed
       }
     }
     return { added, removed }
@@ -145,3 +142,21 @@ export function useDrawerController(chat: ChatController) {
 }
 
 export type DrawerController = ReturnType<typeof useDrawerController>
+
+const fileChangeDiffCache = new WeakMap<object, { added: number; removed: number }>()
+
+function countFileChangeDiff(item: Extract<ChatTranscriptItem, { type: 'fileChange' }>): { added: number; removed: number } {
+  const cached = fileChangeDiffCache.get(item)
+  if (cached) return cached
+  let added = 0
+  let removed = 0
+  for (const change of item.changes) {
+    for (const line of change.diff.split('\n')) {
+      if (line.startsWith('+') && !line.startsWith('+++')) added += 1
+      if (line.startsWith('-') && !line.startsWith('---')) removed += 1
+    }
+  }
+  const result = { added, removed }
+  fileChangeDiffCache.set(item, result)
+  return result
+}

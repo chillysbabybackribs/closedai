@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import { memo, type JSX } from 'react'
 import { Menubar } from 'radix-ui'
 
 /** One menu's worth of rows. `null` is a separator. */
@@ -59,7 +59,7 @@ const MENUS: Menu[] = [
 ]
 
 /** The shell's File / Edit / View / Help bar, sitting in the title bar's drag region. */
-export function TitlebarMenu(): JSX.Element {
+export const TitlebarMenu = memo(function TitlebarMenu(): JSX.Element {
   return (
     <Menubar.Root className="titlebar-nav-menu" aria-label="Application menu">
       <div className="titlebar-nav-group">
@@ -85,4 +85,4 @@ export function TitlebarMenu(): JSX.Element {
       </div>
     </Menubar.Root>
   )
-}
+})

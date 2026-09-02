@@ -1,6 +1,6 @@
-import type { JSX } from 'react'
+import { memo, type JSX } from 'react'
 
-export function AppWindowControls(): JSX.Element {
+export const AppWindowControls = memo(function AppWindowControls(): JSX.Element {
   return (
     <div className="shell-window-controls">
       <button
@@ -35,4 +35,4 @@ export function AppWindowControls(): JSX.Element {
       </button>
     </div>
   )
-}
+})

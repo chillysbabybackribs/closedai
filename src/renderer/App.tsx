@@ -36,7 +36,7 @@ function App(): JSX.Element {
   )
 }
 
-function DesktopWorkspace({ chat }: { chat: ChatController }): JSX.Element {
+const DesktopWorkspace = React.memo(function DesktopWorkspace({ chat }: { chat: ChatController }): JSX.Element {
   const browser = useBrowserController('browser')
   return (
     <WorkspaceSplit
@@ -50,7 +50,7 @@ function DesktopWorkspace({ chat }: { chat: ChatController }): JSX.Element {
       }
     />
   )
-}
+})
 
 // A file dropped anywhere outside the composer would otherwise navigate this window to it —
 // Chromium's default — which replaces the entire app UI and cannot be undone short of a reload.
