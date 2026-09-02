@@ -78,8 +78,14 @@ standalone GET SSE stream, so the transport is stateful (one per `mcp-session-id
 global and only through the CLI's verbs: `agy mcp add --type http <namespace> <url>` and
 `agy mcp enable`, which write `~/.gemini/config/mcp_config.json`. `mcp add` drops per-tool flags, so
 the bridge then rewrites the file to mark every non-deferred tool `{eager: true}`; without that the
-tools hide behind the generic `call_mcp_tool` gateway. The entries are removed at quit. While the app
-runs, a standalone `agy` session also sees the servers, which is harmless.
+tools hide behind the generic `call_mcp_tool` gateway. The entries are removed at quit by editing the
+file directly (the CLI does not rewrite it on exit, verified). While the app runs, a standalone `agy`
+session also sees the servers, which is harmless.
+
+The config is one file for every app instance. The default profile registers bare namespace names;
+any other profile (a second checkout, a headless test run with its own `--user-data-dir`) suffixes a
+stable hash of its userData path (`embedded_browser_1k2j9x`), so it never redirects the user's running
+app at its own bridge. The stream translator maps server names back to namespaces for the labels.
 
 Each `tools/call` carries `_meta['antigravity.google/conversation_id']`. The service binds
 conversation ids to its pane and turn as soon as the init event names one, and that binding becomes
