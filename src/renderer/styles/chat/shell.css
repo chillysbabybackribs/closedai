@@ -21,8 +21,9 @@
 .chat-pane {
   --chat-radius: 8px;
   position: relative;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -32,7 +33,7 @@
 
 /* Chat message scroller */
 .chat-scroll-root {
-  grid-row: 2;
+  flex: 1 1 0;
   min-width: 0;
   min-height: 0;
   position: relative;
@@ -57,23 +58,24 @@
   pointer-events: none;
 }
 
-/* Antigravity Chat Header: 36px clean toolbar */
+/* Antigravity Chat Header: 34px clean toolbar */
 .chat-header {
-  grid-row: 1;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
-  height: 38px;
-  padding: 0 12px;
+  height: 34px;
+  padding: 0 10px 0 14px;
   border-bottom: 1px solid var(--hairline);
   background: var(--surface-card, #19191a);
 }
 
 .chat-header-title {
+  flex: 1 1 auto;
   overflow: hidden;
   color: var(--chrome-fg-strong, #eceef0);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   letter-spacing: var(--tracking-ui);
   line-height: 1.2;

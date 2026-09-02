@@ -5,7 +5,10 @@
 --------------------------------------------------------------------------- */
 
 .prompt-chat {
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
   background: var(--background, #181818);
   --chat-fs-body: 13px;
   --chat-fs-process: 12px;
@@ -16,11 +19,37 @@
 }
 
 .prompt-chat-scroll {
-  grid-row: 2;
+  flex: 1 1 0;
   min-width: 0;
   min-height: 0;
   overscroll-behavior: contain;
   scrollbar-width: none;
+}
+
+.pinned-user-card-wrap {
+  flex: 0 0 auto;
+  padding: 10px clamp(12px, 2.5vw, 20px) 4px;
+  background: var(--background, #181818);
+}
+
+.pinned-user-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--antigravity-card-border, rgb(255 255 255 / 8%));
+  border-radius: 10px;
+  background: var(--antigravity-card-bg, #252526);
+  color: #ececee;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+}
+
+.pinned-user-text {
+  font-size: var(--chat-fs-body, 13px);
+  line-height: var(--chat-lh-body, 1.55);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .prompt-chat-content {
@@ -348,13 +377,13 @@
 }
 
 .prompt-composer-send:not(:disabled) {
-  background: #ececee;
-  color: #161617;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+  background: var(--antigravity-teal, #09b6a2);
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgb(9 182 162 / 36%);
 }
 
 .prompt-composer-send:not(:disabled):hover {
-  background: #ffffff;
+  background: #0bbfa9;
   transform: scale(1.04);
 }
 
