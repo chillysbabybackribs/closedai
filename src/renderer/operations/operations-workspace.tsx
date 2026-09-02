@@ -1,10 +1,12 @@
 import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
 import { NewWorkerDialog } from './new-worker-dialog.js'
+import { NewScheduleDialog } from './new-schedule-dialog.js'
 import {
   attentionRunCount,
   INITIAL_RUNS,
   type OperationsRun,
+  type OperationsSchedule,
   type RunStatus
 } from './operations-data.js'
 import { OperationsHeader, type OperationsView } from './operations-sidebar.js'
@@ -13,10 +15,12 @@ import { RunDetailDrawer } from './run-detail-drawer.js'
 import { WorkerChatDrawer } from './worker-chat-drawer.js'
 import type { ChatModel } from '../../shared/chat.js'
 import type { OperationsEvent } from '../../shared/operations.js'
+import type { ScheduleFrequency } from '../../shared/operations.js'
 
 export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCountChange?: (count: number) => void } = {}): JSX.Element {
   const operationsApi = typeof window.closedai === 'undefined' ? null : window.closedai.operations
   const [runs, setRuns] = useState<OperationsRun[]>(INITIAL_RUNS)
+  const [schedules, setSchedules] = useState<OperationsSchedule[]>([])
   const [models, setModels] = useState<ChatModel[]>([])
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
   const [modelError, setModelError] = useState('')
@@ -24,6 +28,7 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null)
   const [chatOpen, setChatOpen] = useState(false)
   const [newWorkerOpen, setNewWorkerOpen] = useState(false)
+  const [newScheduleOpen, setNewScheduleOpen] = useState(false)
   const selectedRun = selectedRunId === null ? null : runs.find((run) => run.id === selectedRunId) ?? null
 
   useEffect(() => {
@@ -34,17 +39,21 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
     if (!operationsApi) return undefined
     let active = true
     const apply = (event: OperationsEvent): void => {
-      if (active) setRuns(event.runs)
+      if (!active) return
+      setRuns(event.runs)
+      setSchedules(event.schedules)
     }
     const unsubscribe = operationsApi.onChanged(apply)
     void operationsApi.snapshot().then((snapshot) => {
-      if (active) setRuns(snapshot.runs)
+      if (!active) return
+      setRuns(snapshot.runs)
+      setSchedules(snapshot.schedules)
     }).catch(() => {})
     return () => { active = false; unsubscribe() }
   }, [operationsApi])
 
   useEffect(() => {
-    if (!newWorkerOpen) return undefined
+    if (!newWorkerOpen && !newScheduleOpen) return undefined
     if (!operationsApi) return undefined
     let active = true
     void operationsApi.models().then((catalog) => {
@@ -59,7 +68,7 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
       setModelError(reason instanceof Error ? reason.message : 'Could not load models from Codex.')
     })
     return () => { active = false }
-  }, [newWorkerOpen, operationsApi])
+  }, [newScheduleOpen, newWorkerOpen, operationsApi])
 
   function updateSelectedStatus(status: RunStatus): void {
     if (selectedRunId === null) return
@@ -85,6 +94,13 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
     throw new Error('Open the ClosedAI desktop app to run a worker with a live Codex model.')
   }
 
+  async function createSchedule(name: string, task: string, workspace: string, modelId: string, frequency: ScheduleFrequency): Promise<void> {
+    if (!operationsApi) throw new Error('Open the ClosedAI desktop app to create a live schedule.')
+    await operationsApi.createSchedule(name, task, workspace, modelId, frequency)
+    setNewScheduleOpen(false)
+    setView('schedules')
+  }
+
   return (
     <section className="operations-workspace" data-ui-surface="operations">
       <OperationsHeader runs={runs} view={view} onViewChange={changeView} />
@@ -92,7 +108,12 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
         <OperationsViewContent
           view={view}
           runs={runs}
+          schedules={schedules}
           onNewWorker={() => setNewWorkerOpen(true)}
+          onNewSchedule={() => setNewScheduleOpen(true)}
+          onToggleSchedule={(id, enabled) => { void operationsApi?.setScheduleEnabled(id, enabled).catch(() => {}) }}
+          onRunSchedule={(id) => { void operationsApi?.runScheduleNow(id).catch(() => {}) }}
+          onDeleteSchedule={(id) => { void operationsApi?.deleteSchedule(id).catch(() => {}) }}
           onOpenRun={setSelectedRunId}
         />
       </main>
@@ -116,6 +137,17 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
           modelsMessage={operationsApi
             ? modelError || 'No models are available from Codex.'
             : 'Open the ClosedAI desktop app to run a worker with a live Codex model.'}
+        />
+      ) : null}
+      {newScheduleOpen ? (
+        <NewScheduleDialog
+          onClose={() => setNewScheduleOpen(false)}
+          onCreate={createSchedule}
+          models={models}
+          defaultModel={selectedModel}
+          modelsMessage={operationsApi
+            ? modelError || 'No models are available from Codex.'
+            : 'Open the ClosedAI desktop app to create a live schedule.'}
         />
       ) : null}
     </section>
