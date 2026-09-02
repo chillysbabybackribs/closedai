@@ -153,20 +153,21 @@ export class OperationsService extends EventEmitter {
     if (this.stopping || this.activeRuns.has(id)) return
     const run = this.runs.find((item) => item.id === id)
     if (!run?.modelId) return
-    const cwd = this.runner.workspacePath(run.workspace)
-    const client = new AppServerClient(this.runner.executable, cwd, this.runner.launchArgs)
-    const active: ActiveRun = { client, threadId: null, turnId: null, startedAt: Date.now() }
-    this.activeRuns.set(id, active)
-    const tools = this.runner.tools ?? new ToolRegistry([])
-    const toolCalls = new AppServerToolCalls(tools, client)
-    client.on('request', (request: AppServerRequest) => {
-      if (!toolCalls.handle(request)) answerServerRequest(client, request)
-    })
-    client.on('notification', (notification: AppServerNotification) => this.onRunNotification(id, notification))
-    client.on('exit', () => {
-      if (this.activeRuns.get(id) === active) void this.finishRun(id, 'failed', 'Codex worker exited unexpectedly')
-    })
+    let active: ActiveRun | null = null
     try {
+      const cwd = this.runner.workspacePath(run.workspace)
+      const client = new AppServerClient(this.runner.executable, cwd, this.runner.launchArgs)
+      active = { client, threadId: null, turnId: null, startedAt: Date.now() }
+      this.activeRuns.set(id, active)
+      const tools = this.runner.tools ?? new ToolRegistry([])
+      const toolCalls = new AppServerToolCalls(tools, client)
+      client.on('request', (request: AppServerRequest) => {
+        if (!toolCalls.handle(request)) answerServerRequest(client, request)
+      })
+      client.on('notification', (notification: AppServerNotification) => this.onRunNotification(id, notification))
+      client.on('exit', () => {
+        if (this.activeRuns.get(id) === active) void this.finishRun(id, 'failed', 'Codex worker exited unexpectedly')
+      })
       await this.updateRun(id, { status: 'running', checkpoint: `Starting ${run.modelId}` })
       await client.start()
       const threadResponse = await client.request<{ thread?: unknown }>('thread/start', startThreadParams(cwd, tools, run.modelId))
@@ -184,7 +185,12 @@ export class OperationsService extends EventEmitter {
         await this.updateRun(id, { turnId: turn.id, checkpoint: 'Worker is running' })
       }
     } catch (error) {
-      await this.finishRun(id, 'failed', error instanceof Error ? error.message : String(error))
+      const checkpoint = error instanceof Error ? error.message : String(error)
+      if (active && this.activeRuns.get(id) === active) {
+        await this.finishRun(id, 'failed', checkpoint)
+      } else {
+        await this.updateRun(id, { status: 'failed', checkpoint, activity: 'Now' })
+      }
     }
   }
 

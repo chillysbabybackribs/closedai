@@ -29,14 +29,6 @@ import { WorkerChatDrawer } from './worker-chat-drawer.js'
 import type { ChatModel } from '../../shared/chat.js'
 import type { OperationsEvent } from '../../shared/operations.js'
 
-const PREVIEW_MODELS: ChatModel[] = [{
-  id: 'gpt-5.6-sol',
-  displayName: 'GPT-5.6 Sol',
-  description: 'Preview model',
-  defaultReasoningEffort: 'medium',
-  isDefault: true
-}]
-
 const RUN_TABS: Array<{ id: RunTab; label: string }> = [
   { id: 'all', label: 'All' },
   { id: 'running', label: 'Running' },
@@ -66,9 +58,10 @@ function Metric({
 
 export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCountChange?: (count: number) => void } = {}): JSX.Element {
   const operationsApi = typeof window.closedai === 'undefined' ? null : window.closedai.operations
-  const [runs, setRuns] = useState<OperationsRun[]>(() => readOperationsRuns(window.localStorage) ?? INITIAL_RUNS)
-  const [models, setModels] = useState<ChatModel[]>(PREVIEW_MODELS)
-  const [selectedModel, setSelectedModel] = useState<string | null>(PREVIEW_MODELS[0]?.id ?? null)
+  const [runs, setRuns] = useState<OperationsRun[]>(INITIAL_RUNS)
+  const [models, setModels] = useState<ChatModel[]>([])
+  const [selectedModel, setSelectedModel] = useState<string | null>(null)
+  const [modelError, setModelError] = useState('')
   const [tab, setTab] = useState<RunTab>('all')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<number[]>([])
@@ -82,11 +75,8 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
   const selectedRun = selectedRunId === null ? null : runs.find((run) => run.id === selectedRunId) ?? null
 
   useEffect(() => {
-    if (operationsApi) return undefined
-    persistOperationsRuns(window.localStorage, runs)
     onAttentionCountChange?.(attentionRunCount(runs))
-    return undefined
-  }, [onAttentionCountChange, operationsApi, runs])
+  }, [onAttentionCountChange, runs])
 
   useEffect(() => {
     if (!operationsApi) return undefined
@@ -107,9 +97,15 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
     let active = true
     void operationsApi.models().then((catalog) => {
       if (!active) return
+      setModelError('')
       setModels(catalog.models)
       setSelectedModel(catalog.selectedModel ?? catalog.models[0]?.id ?? null)
-    }).catch(() => { if (active) setModels([]) })
+    }).catch((reason) => {
+      if (!active) return
+      setModels([])
+      setSelectedModel(null)
+      setModelError(reason instanceof Error ? reason.message : 'Could not load models from Codex.')
+    })
     return () => { active = false }
   }, [newWorkerOpen, operationsApi])
 
@@ -133,25 +129,7 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
       setSelectedRunId(run.id)
       return
     }
-    const nextId = Math.max(...runs.map((run) => run.id), 0) + 1
-    const run: OperationsRun = {
-      id: nextId,
-      task,
-      worker: 'New worker',
-      workspace,
-      modelId,
-      threadId: null,
-      turnId: null,
-      checkpoint: 'Queued for initialization',
-      status: 'queued',
-      runtime: '—',
-      activity: 'Now'
-    }
-    setRuns((current) => [run, ...current])
-    setTab('all')
-    setSearch('')
-    setNewWorkerOpen(false)
-    setSelectedRunId(nextId)
+    throw new Error('Open the ClosedAI desktop app to run a worker with a live Codex model.')
   }
 
   return (
@@ -237,6 +215,9 @@ export function OperationsWorkspace({ onAttentionCountChange }: { onAttentionCou
           onCreate={createWorker}
           models={models}
           defaultModel={selectedModel}
+          modelsMessage={operationsApi
+            ? modelError || 'No models are available from Codex.'
+            : 'Open the ClosedAI desktop app to run a worker with a live Codex model.'}
         />
       ) : null}
     </section>

@@ -7,12 +7,14 @@ export function NewWorkerDialog({
   onClose,
   onCreate,
   models,
-  defaultModel
+  defaultModel,
+  modelsMessage
 }: {
   onClose: () => void
   onCreate: (task: string, workspace: string, modelId: string) => Promise<void>
   models: ChatModel[]
   defaultModel: string | null
+  modelsMessage: string
 }): JSX.Element {
   const [task, setTask] = useState('')
   const [workspace, setWorkspace] = useState('closedai')
@@ -73,7 +75,7 @@ export function NewWorkerDialog({
             {!modelId ? <option value="">Choose model</option> : null}
             {models.map((model) => <option key={model.id} value={model.id}>{model.displayName}</option>)}
           </select>
-          {models.length === 0 ? <small>Connect Codex to load available models.</small> : null}
+          {models.length === 0 ? <small>{modelsMessage}</small> : null}
           {error ? <small role="alert">{error}</small> : null}
         </label>
         <footer>

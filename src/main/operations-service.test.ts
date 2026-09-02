@@ -47,3 +47,23 @@ test('rejects a model that is not in the shared catalog', async () => {
     await rm(directory, { recursive: true, force: true })
   }
 })
+
+test('marks a worker failed when runner setup cannot resolve its workspace', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'closedai-operations-'))
+  try {
+    const service = await OperationsService.open(join(directory, 'runs.json'), async () => catalog, {
+      runWorkers: true,
+      workspacePath: () => { throw new Error('Workspace is unavailable') }
+    })
+    const run = await service.create('Run with a live model', 'closedai', 'gpt-5.6-sol')
+    for (let attempt = 0; attempt < 20 && service.snapshot().runs[0]?.status !== 'failed'; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 5))
+    }
+    assert.equal(service.snapshot().runs[0]?.id, run.id)
+    assert.equal(service.snapshot().runs[0]?.status, 'failed')
+    assert.equal(service.snapshot().runs[0]?.checkpoint, 'Workspace is unavailable')
+    service.stop()
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})

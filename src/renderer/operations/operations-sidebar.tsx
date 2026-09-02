@@ -11,13 +11,13 @@ import {
   Settings,
   SquareStack
 } from 'lucide-react'
-import type { OperationsRun } from '../../shared/operations.js'
+import { attentionRunCount, type OperationsRun } from './operations-data.js'
 
 const primaryItems = [
   { Icon: Gauge, label: 'Overview' },
   { Icon: Bot, label: 'Workers' },
   { Icon: PlayCircle, label: 'Runs' },
-  { Icon: CircleAlert, label: 'Approvals', count: '1' },
+  { Icon: CircleAlert, label: 'Approvals' },
   { Icon: CalendarClock, label: 'Schedules' }
 ]
 
@@ -60,7 +60,7 @@ export function OperationsSidebar({ runs }: { runs: OperationsRun[] }): JSX.Elem
         <p className="ops-section-label">Operations</p>
         {primaryItems.map((item) => item.label === 'Runs'
           ? <NavigationItem key={item.label} Icon={item.Icon} label={item.label} count={String(runs.length)} enabled />
-          : <NavigationItem key={item.label} {...item} />)}
+          : <NavigationItem key={item.label} {...item} count={item.label === 'Approvals' ? String(attentionRunCount(runs)) : undefined} />)}
         <p className="ops-section-label ops-section-label-spaced">Resources</p>
         {resourceItems.map((item) => <NavigationItem key={item.label} {...item} />)}
       </nav>
