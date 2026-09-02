@@ -142,6 +142,11 @@ export function commandTitle(command: string, max = 64): string {
   return `${inner.slice(0, max - 1).trimEnd()}…`
 }
 
+function activityDetail(item: ActivityItem): string {
+  if (item.type === 'command') return commandTitle(item.command)
+  return activityTitle(item)
+}
+
 export function activityClusters(items: ActivityItem[]): ActivityCluster[] {
   const clusters: Array<ActivityCluster & { key: string }> = []
   for (const item of items) {
@@ -174,7 +179,10 @@ export function toolPart(item: ActivityItem): ToolPart {
     return {
       type: activityTitle(item),
       state: toolState(item.status, item.exitCode),
-      input: item.cwd ? { cwd: item.cwd } : undefined,
+      input: {
+        command: commandTitle(item.command),
+        ...(item.cwd ? { cwd: item.cwd } : {})
+      },
       output: item.output ? { output: item.output, exitCode: item.exitCode } : undefined,
       errorText: item.exitCode !== null && item.exitCode !== 0 ? `Command exited with code ${item.exitCode}` : undefined,
       toolCallId: item.id
@@ -192,7 +200,7 @@ export function toolPart(item: ActivityItem): ToolPart {
     }
   }
   return {
-    type: item.label,
+    type: toolPhrase(item.label),
     state: toolState(item.status, null),
     input: item.detail ? { detail: item.detail } : undefined,
     toolCallId: item.id
@@ -208,33 +216,9 @@ export function activityState(items: ActivityItem[]): ToolPart['state'] {
 }
 
 function clusterKey(item: ActivityItem): string {
-  if (item.type === 'command') return `command:${commandVerb(item.command)}`
+  if (item.type === 'command') return 'command'
   if (item.type === 'fileChange') return 'fileChange'
   return `tool:${item.label}`
-}
-
-function clusterLabel(item: ActivityItem): string {
-  if (item.type === 'command') return commandVerb(item.command)
-  if (item.type === 'fileChange') return 'files'
-  return item.label
-}
-
-function commandVerb(command: string): string {
-  const token = unwrapShell(command).replace(/\s+/g, ' ').trim().split(/\s+/)[0] ?? 'command'
-  return fileName(token)
-}
-
-function unwrapShell(command: string): string {
-  const match = command.match(/^(?:\/usr)?(?:\/bin\/)?(?:ba)?sh\s+-lc\s+([\s\S]+)$/i)
-  if (!match) return command
-  return unquote(match[1]!.trim())
-}
-
-function unquote(value: string): string {
-  if (value.length >= 2 && ((value.startsWith("'") && value.endsWith("'")) || (value.startsWith('"') && value.endsWith('"')))) {
-    return value.slice(1, -1)
-  }
-  return value
 }
 
 function fileName(path: string): string {
@@ -257,7 +241,7 @@ function clusterOutput(items: ActivityItem[]): Record<string, unknown> | undefin
   const results: Record<string, unknown>[] = []
   for (const item of items) {
     if (item.type === 'command' && item.output) {
-      results.push({ title: activityTitle(item), output: item.output, exitCode: item.exitCode })
+      results.push({ title: activityDetail(item), output: item.output, exitCode: item.exitCode })
     } else if (item.type === 'fileChange' && item.changes.length) {
       results.push({ title: activityTitle(item), files: item.changes.map(({ path, kind }) => ({ path, kind })) })
     } else if (item.type === 'tool' && item.detail) {

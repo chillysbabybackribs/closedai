@@ -1,4 +1,10 @@
 import type { SearchProvider, SearchResult } from './types.js'
+import type { SearchKeyReader } from './keyring.js'
+
+export type ProviderDeps = {
+  fetch: typeof fetch
+  readKey: SearchKeyReader
+}
 
 export function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)

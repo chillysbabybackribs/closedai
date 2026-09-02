@@ -46,8 +46,8 @@ test('consecutive commands collapse to a counted headline', () => {
     }
   ]
   const html = renderTranscript({ items, activeTurnId: null })
-  assert.match(html, /Ran 2 commands/)
-  assert.match(html, /aria-label="Ran 2 commands, completed"/)
+  assert.match(html, /Searched 2 times/)
+  assert.match(html, /aria-label="Searched 2 times, completed"/)
 })
 
 test('thinking stays visible while tool calls stream on the same turn', () => {
@@ -60,7 +60,7 @@ test('thinking stays visible while tool calls stream on the same turn', () => {
   ]
   const html = renderTranscript({ items, activeTurnId: 't' })
   assert.match(html, /Thinking/)
-  assert.match(html, /rg AGENTS.md/)
+  assert.match(html, /Searched for AGENTS.md/)
 })
 
 test('user turns are scroller rows and attachments render as attachment cards', () => {
@@ -88,6 +88,6 @@ test('identically named tool calls collapse to a counted label', () => {
     { type: 'tool', id: 's2', turnId: 't', label: 'Web search', detail: 'q2', status: 'completed' }
   ]
   const html = renderTranscript({ items, activeTurnId: 't' })
-  assert.match(html, /Web search 2/)
-  assert.match(html, /aria-label="Web search 2, completed"/)
+  assert.match(html, /Searched the web 2 times/)
+  assert.match(html, /aria-label="Searched the web 2 times, completed"/)
 })

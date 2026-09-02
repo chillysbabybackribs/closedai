@@ -61,7 +61,7 @@ test('empty placeholders do not split identically named calls', () => {
   assert.equal(rows[0]?.kind, 'activity')
   if (rows[0]?.kind === 'activity') {
     assert.deepEqual(rows[0].items.map((item) => item.id), ['s1', 's2'])
-    assert.equal(activityHeadline(rows[0].items), 'Web search 2')
+    assert.equal(activityHeadline(rows[0].items), 'Searched the web 2 times')
   }
 })
 
@@ -72,8 +72,8 @@ test('different activity names stay on their own rows', () => {
     { type: 'tool', id: 's2', turnId: 't1', label: 'Web search', detail: 'q2', status: 'completed' }
   ])
   assert.deepEqual(rows.map((row) => row.kind === 'activity' ? activityHeadline(row.items) : ''), [
-    "sed -n 1,20p file",
-    'Web search 2'
+    'Read file',
+    'Searched the web 2 times'
   ])
 })
 
@@ -150,16 +150,16 @@ test('command titles unwrap bash -lc and truncate the working command', () => {
   assert.match(commandTitle(`bash -lc "${'x'.repeat(80)}"`, 20), /…$/)
 })
 
-test('stacked commands collapse to a counted headline and cluster by verb', () => {
+test('stacked commands collapse to one counted headline', () => {
   const items = [
     command('c1', 't1', 'bash -lc "rg AGENTS.md"'),
     command('c2', 't1', `/bin/bash -lc 'rg src'`),
     command('c3', 't1', 'bash -lc "sed -n 1,20p package.json"')
   ] as Extract<ChatTranscriptItem, { type: 'command' }>[]
   assert.equal(activityHeadline(items), 'Ran 3 commands')
-  assert.deepEqual(activityClusters(items).map((cluster) => cluster.title), ['rg 2', 'sed -n 1,20p package.json'])
+  assert.deepEqual(activityClusters(items).map((cluster) => cluster.title), ['Ran 3 commands'])
 })
 
 test('a single command keeps its short title instead of a count', () => {
-  assert.equal(activityHeadline([command('c1', 't1', 'bash -lc "git status"') as Extract<ChatTranscriptItem, { type: 'command' }>]), 'git status')
+  assert.equal(activityHeadline([command('c1', 't1', 'bash -lc "git status"') as Extract<ChatTranscriptItem, { type: 'command' }>]), 'Checked git status')
 })
