@@ -6,9 +6,11 @@ function harness(threshold = 60) {
   const requests: Array<[string, Record<string, unknown>]> = []
   const notices: Array<[string, string]> = []
   let fail: Error | null = null
+  let turnActive = false
   const compactor = new ContextCompactor({
     thresholdPercent: () => threshold,
     threadId: () => 'thread-1',
+    turnActive: () => turnActive,
     request: async (method, params) => {
       requests.push([method, params])
       if (fail) throw fail
@@ -16,7 +18,11 @@ function harness(threshold = 60) {
     },
     notice: (text, tone) => { notices.push([text, tone]) }
   })
-  return { compactor, requests, notices, setFail: (error: Error) => { fail = error } }
+  return {
+    compactor, requests, notices,
+    setFail: (error: Error) => { fail = error },
+    setTurnActive: (active: boolean) => { turnActive = active }
+  }
 }
 
 const tick = () => new Promise((resolve) => setImmediate(resolve))
@@ -93,6 +99,19 @@ test('a compacted notification or a failed request releases waiting sends', asyn
   done.compactor.compacted()
   assert.equal(done.compactor.inFlight, false)
   await done.compactor.idle()
+
+  // Compaction reported while its own turn is still open: the turn's end releases the wait.
+  const turn = harness(50)
+  turn.compactor.noteUsage({ usedTokens: 200_000, contextWindow: 258_400 })
+  turn.compactor.turnFinished()
+  await tick()
+  turn.setTurnActive(true)
+  turn.compactor.compacted()
+  assert.equal(turn.compactor.inFlight, true)
+  turn.setTurnActive(false)
+  turn.compactor.turnFinished()
+  assert.equal(turn.compactor.inFlight, false)
+  assert.equal(turn.requests.length, 1)
 
   const failed = harness(50)
   failed.setFail(new Error('unsupported'))

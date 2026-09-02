@@ -14,6 +14,8 @@ export type ContextUsage = {
 export type ContextCompactorDeps = {
   thresholdPercent: () => number
   threadId: () => string | null
+  /** True while the app-server has a turn open; compaction runs as one. */
+  turnActive: () => boolean
   request: (method: string, params: Record<string, unknown>) => Promise<unknown>
   notice: (text: string, tone: 'info' | 'error') => void
 }
@@ -74,9 +76,13 @@ export class ContextCompactor {
     void this.maybeStart()
   }
 
-  /** Call when the app-server reports its history was compacted. */
+  /**
+   * Call when the app-server reports its history was compacted. When the compaction ran
+   * as a turn, that turn's completion (which follows this) releases the wait, so a send
+   * cannot slip in between the two and be refused for a turn still being open.
+   */
   compacted(): void {
-    this.settle()
+    if (!this.deps.turnActive()) this.settle()
   }
 
   /** Resolves once no compaction is in flight, so a send never races the compaction turn. */

@@ -86,6 +86,7 @@ export class ChatService extends EventEmitter {
     this.compactor = new ContextCompactor({
       thresholdPercent: () => this.settings.get().chatCompactAtPercent,
       threadId: () => this.threadId,
+      turnActive: () => this.activeTurnId !== null,
       request: (method, params) => this.client.request(method, params),
       notice: (text, tone) => this.addNotice(text, tone, null)
     })
