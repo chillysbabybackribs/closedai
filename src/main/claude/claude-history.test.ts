@@ -29,12 +29,12 @@ test('threads list newest first from the workspace directory', async () => {
 
 test('a stored session replays into ordered transcript items', async () => {
   const items = await replayClaudeSession({
-    getSessionMessages: async () => [
+    getSessionMessages: (async () => [
       { type: 'user', uuid: 'u1', session_id: 's', parent_tool_use_id: null, message: { role: 'user', content: 'Run echo' } },
       { type: 'assistant', uuid: 'a1', session_id: 's', parent_tool_use_id: null, message: { content: [{ type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'echo hi' } }] } },
       { type: 'user', uuid: 'u2', session_id: 's', parent_tool_use_id: null, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: 'hi' }] } },
       { type: 'assistant', uuid: 'a2', session_id: 's', parent_tool_use_id: null, message: { content: [{ type: 'text', text: 'Done' }] } }
-    ]
+    ]) as never
   }, 's', { cwd: '/w', displayScreenshot: () => null })
   assert.deepEqual(items.map((item) => [item.type, item.turnId]), [['user', 'turn:u1'], ['command', 'turn:u1'], ['assistant', 'turn:u1']])
   assert.equal(items[1]!.type === 'command' && items[1]!.output, 'hi')

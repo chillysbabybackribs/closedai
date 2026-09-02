@@ -31,7 +31,7 @@ test('images attach as base64 blocks; files are listed for the Read tool', async
     { id: '2', kind: 'image', name: 'paste', source: { type: 'url', url: 'data:image/jpeg;base64,QUJD' } },
     { id: '3', kind: 'file', name: 'notes.md', source: undefined as never, path: join(dir, 'notes.md') } as never
   ], undefined, null)
-  const content = turn!.message.message.content as Array<Record<string, unknown>>
+  const content = turn!.message.message.content as unknown as Array<Record<string, unknown>>
   assert.deepEqual(content.map((block) => block.type), ['image', 'image', 'text', 'text'])
   assert.deepEqual(content[0]!.source, { type: 'base64', media_type: 'image/png', data: Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64') })
   assert.deepEqual(content[1]!.source, { type: 'base64', media_type: 'image/jpeg', data: 'QUJD' })
