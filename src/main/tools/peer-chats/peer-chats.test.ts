@@ -1,0 +1,66 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+import type { ChatPeerSummary } from '../../../shared/chat-peers.js'
+import { ToolRegistry } from '../registry.js'
+import { peerChatTools, type PeerChatDirectory } from './index.js'
+
+const peer: ChatPeerSummary = {
+  paneId: 'peer-b',
+  parentPaneId: null,
+  kind: 'peer',
+  provider: 'codex',
+  threadId: 'thread-b',
+  title: 'Research',
+  preview: 'working',
+  running: true,
+  activity: 'Searching',
+  updatedAt: 10
+}
+
+const directory: PeerChatDirectory = {
+  listReadable: (caller) => caller === 'peer-b' ? [] : [peer],
+  readReadable: (chatId, caller, cursor = 0, limit = 50) => {
+    if (chatId !== peer.paneId || caller === peer.paneId) return null
+    const items = [
+      { type: 'user' as const, id: 'u', turnId: 't', text: 'Investigate peers' },
+      { type: 'assistant' as const, id: 'a', turnId: 't', text: 'Working', phase: 'commentary' as const, streaming: true }
+    ].slice(cursor, cursor + limit)
+    return { ...peer, items, nextCursor: cursor + items.length < 2 ? cursor + items.length : null }
+  }
+}
+
+function text(result: Awaited<ReturnType<ToolRegistry['call']>>): string {
+  return result.content[0]?.type === 'text' ? result.content[0].text : ''
+}
+
+test('peer chat tools are read-only and exclude the caller', async () => {
+  const registry = new ToolRegistry([peerChatTools(() => directory)])
+  assert.deepEqual(registry.names(), ['peer_chats.list', 'peer_chats.read'])
+  const listed = await registry.call(
+    { namespace: 'peer_chats', tool: 'list', arguments: {} },
+    { paneId: 'peer-a', threadId: null, turnId: null, callId: 'list' }
+  )
+  assert.equal(JSON.parse(text(listed)).chats[0].paneId, 'peer-b')
+  const self = await registry.call(
+    { namespace: 'peer_chats', tool: 'list', arguments: {} },
+    { paneId: 'peer-b', threadId: null, turnId: null, callId: 'self' }
+  )
+  assert.deepEqual(JSON.parse(text(self)).chats, [])
+})
+
+test('reading a peer is bounded and unknown chats fail clearly', async () => {
+  const registry = new ToolRegistry([peerChatTools(() => directory)])
+  const read = await registry.call(
+    { namespace: 'peer_chats', tool: 'read', arguments: { chat_id: 'peer-b', limit: 1 } },
+    { paneId: 'peer-a', threadId: null, turnId: null, callId: 'read' }
+  )
+  const parsed = JSON.parse(text(read))
+  assert.equal(parsed.items.length, 1)
+  assert.equal(parsed.nextCursor, 1)
+  const missing = await registry.call(
+    { namespace: 'peer_chats', tool: 'read', arguments: { chat_id: 'gone' } },
+    { paneId: 'peer-a', threadId: null, turnId: null, callId: 'missing' }
+  )
+  assert.equal(missing.isError, true)
+  assert.match(text(missing), /Unknown or unavailable/)
+})

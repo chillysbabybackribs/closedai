@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { chatTitle, coalesceChatEvents, initialChatState, reduceChatEvent, summarizeMessage } from './chat-state.js'
+import {
+  chatTitle,
+  coalesceChatEvents,
+  initialChatState,
+  initialChatWorkspaceState,
+  reduceChatEvent,
+  reduceChatWorkspaceEvent,
+  summarizeMessage
+} from './chat-state.js'
 
 test('chat reducer upserts authoritative items without changing their order', () => {
   let state = initialChatState()
@@ -39,6 +47,25 @@ test('chat reducer tracks reasoning effort independently', () => {
     type: 'reasoningEffort', selectedReasoningEffort: 'xhigh'
   })
   assert.equal(state.selectedReasoningEffort, 'xhigh')
+})
+
+test('workspace events update only the selected pane transcript', () => {
+  let state = {
+    ...initialChatWorkspaceState(),
+    selectedPaneId: 'pane-a'
+  }
+  state = reduceChatWorkspaceEvent(state, {
+    type: 'pane',
+    paneId: 'pane-b',
+    event: { type: 'turn', turnId: 'background' }
+  })
+  assert.equal(state.selected.activeTurnId, null)
+  state = reduceChatWorkspaceEvent(state, {
+    type: 'pane',
+    paneId: 'pane-a',
+    event: { type: 'turn', turnId: 'selected' }
+  })
+  assert.equal(state.selected.activeTurnId, 'selected')
 })
 
 test('display-only screenshots are retained in renderer state like transcript messages', () => {

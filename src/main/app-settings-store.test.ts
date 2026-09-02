@@ -57,3 +57,24 @@ test('reasoning effort is persisted as a model preference', async () => {
   assert.equal(store.get().chatReasoningEffort, 'high')
   assert.match(await readFile(file, 'utf8'), /"chatReasoningEffort": "high"/)
 })
+
+test('legacy single-chat settings migrate into one selected peer', async () => {
+  const { store } = await storeWith(JSON.stringify({
+    chatThreadId: 'codex-thread',
+    chatClaudeSessionId: 'claude-session',
+    chatModelId: 'claude:opus',
+    chatReasoningEffort: 'high'
+  }))
+  const settings = store.get()
+  assert.equal(settings.chatPeers.length, 1)
+  assert.equal(settings.chatSelectedPaneId, settings.chatPeers[0]!.paneId)
+  assert.deepEqual(settings.chatPeers[0], {
+    paneId: settings.chatPeers[0]!.paneId,
+    provider: 'claude',
+    threadId: 'claude:claude-session',
+    codexThreadId: 'codex-thread',
+    claudeSessionId: 'claude-session',
+    modelId: 'claude:opus',
+    reasoningEffort: 'high'
+  })
+})
