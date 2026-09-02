@@ -23,7 +23,8 @@ import {
   clusterToolPart,
   transcriptRows,
   type ActivityItem,
-  type StandaloneItem
+  type StandaloneItem,
+  type TranscriptRow
 } from './transcript-rows.js'
 
 export const ChatTranscript = memo(function ChatTranscript({
@@ -64,13 +65,10 @@ export const ChatTranscript = memo(function ChatTranscript({
           </button>
         </div>
       ) : null}
-      {visibleRows.map((row) => {
+      {visibleRows.map((row, index) => {
         if (row.kind === 'activity') {
           const id = `activity:${row.id}:${row.items[0]?.id}`
-          const isRunning = Boolean(
-            (activeTurnId && row.items.some((item) => item.turnId === activeTurnId)) ||
-            row.items.some((item) => item.status === 'inProgress')
-          )
+          const isRunning = isActivityRowRunning(row, start + index, rows, activeTurnId)
           return (
             <MessageScrollerItem key={id} messageId={id}>
               <ToolActivity items={row.items} isRunning={isRunning} />
@@ -97,6 +95,32 @@ const REVEAL_ROW_COUNT = 80
 
 function initialWindowStart(rowCount: number): number {
   return Math.max(0, rowCount - INITIAL_VISIBLE_ROWS)
+}
+
+function rowTurnId(row: TranscriptRow): string | null {
+  return row.kind === 'activity' ? (row.items[0]?.turnId ?? null) : (row.item.turnId ?? null)
+}
+
+function isActivityRowRunning(
+  row: Extract<TranscriptRow, { kind: 'activity' }>,
+  index: number,
+  rows: TranscriptRow[],
+  activeTurnId: string | null | undefined
+): boolean {
+  if (row.items.some((item) => item.status === 'inProgress')) {
+    return true
+  }
+  if (!activeTurnId) return false
+  const turnId = row.items[0]?.turnId
+  if (!turnId || turnId !== activeTurnId) return false
+
+  // When the next section or step starts in this turn, the spinner stops for this section.
+  for (let j = index + 1; j < rows.length; j += 1) {
+    if (rowTurnId(rows[j]!) === activeTurnId) {
+      return false
+    }
+  }
+  return true
 }
 
 /** Consecutive batches can share a turn id; pin the first member so React does not reuse the wrong group. */
