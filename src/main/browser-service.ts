@@ -11,6 +11,7 @@ import { TabRenderingPolicy } from './browser-tab-rendering.js'
 import { allSettledBounded } from './bounded-concurrency.js'
 import { restorePlan, type RestoredTabSession } from './browser-tab-session-store.js'
 import { browserSurfaceVisibility } from './browser-surface-visibility.js'
+import { activateTabSurface } from './browser-tab-activation.js'
 
 type BrowserServiceOptions = {
   initialUrl?: string
@@ -184,17 +185,20 @@ export class BrowserService extends EventEmitter {
   private setActive(id: string): void {
     const next = this.tabs.find((tab) => tab.id === id)
     if (!next) return
-    for (const tab of this.tabs) {
-      if (tab.id !== id) tab.hide()
-    }
     this.activeId = id
-    this.rendering.setActive(id)
-    if (!this.browserDetached) {
+    // Prepare the real surface BEFORE it enters the window tree. Attaching an invisible
+    // previously-loaded view and revealing it afterward can leave Electron with no fresh
+    // compositor frame; new navigations hide that race, returning tabs expose it as blank.
+    activateTabSurface(
+      this.tabs,
+      next,
+      this.bounds,
+      browserSurfaceVisibility(this.bounds),
+      () => this.rendering.setActive(id),
       // Re-add the active view so it becomes the topmost child (Electron reorders an
       // already-present view to the top on re-add).
-      this.attachTabView(next.id)
-      next.applyBounds(this.bounds, true)
-    }
+      () => this.attachTabView(next.id)
+    )
     this.emit('state', next.getState())
     this.emitTabs()
   }
