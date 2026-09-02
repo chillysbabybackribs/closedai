@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer } from 'react'
-import type { ChatAttachment, ChatSnapshot, ChatThreadSummary } from '../shared/chat.js'
-import { initialChatState, reduceChatEvent } from './chat-state.js'
+import type { ChatAttachment, ChatEvent, ChatSnapshot, ChatThreadSummary } from '../shared/chat.js'
+import { coalesceChatEvents, initialChatState, reduceChatEvent } from './chat-state.js'
 
 export type ChatController = {
   state: ChatSnapshot
@@ -18,15 +18,27 @@ export function useChatController(): ChatController {
   const [state, dispatch] = useReducer(reduceChatEvent, undefined, initialChatState)
 
   useEffect(() => {
+    // Codex streams one event per token chunk. Queue them and apply a frame's worth at once so
+    // a long transcript renders once per frame instead of once per chunk.
     let active = true
-    const unsubscribe = window.closedai.chat.onEvent((event) => {
-      if (active) dispatch(event)
-    })
-    void window.closedai.chat.snapshot().then((snapshot) => {
-      if (active) dispatch({ type: 'replace', snapshot })
-    })
+    let queue: ChatEvent[] = []
+    let frame: number | null = null
+    const flush = (): void => {
+      frame = null
+      const batch = coalesceChatEvents(queue)
+      queue = []
+      for (const event of batch) dispatch(event)
+    }
+    const enqueue = (event: ChatEvent): void => {
+      if (!active) return
+      queue.push(event)
+      frame ??= window.requestAnimationFrame(flush)
+    }
+    const unsubscribe = window.closedai.chat.onEvent(enqueue)
+    void window.closedai.chat.snapshot().then((snapshot) => enqueue({ type: 'replace', snapshot }))
     return () => {
       active = false
+      if (frame !== null) window.cancelAnimationFrame(frame)
       unsubscribe()
     }
   }, [])

@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { Check, CheckCircle2, ChevronDown, CircleEllipsis, Copy, Loader2, XCircle } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
@@ -53,25 +53,35 @@ export function hasReasoningForTurn(items: ChatTranscriptItem[], turnId: string)
   return items.some((item) => item.turnId === turnId && isReasoning(item))
 }
 
-export function ChatTranscript({
+export const ChatTranscript = memo(function ChatTranscript({
   items,
   activeTurnId
 }: {
   items: ChatTranscriptItem[]
   activeTurnId: string | null
 }): JSX.Element {
+  const rows = useMemo(() => transcriptRows(items), [items])
   return (
     <>
-      {transcriptRows(items).map((row) => row.kind === 'activity'
+      {rows.map((row) => row.kind === 'activity'
         ? <ToolActivity key={`activity:${row.id}`} items={row.items} />
         : row.kind === 'reasoning'
           ? <ReasoningGroup key={`reasoning:${row.id}`} items={row.items} running={activeTurnId === row.id} />
           : <TranscriptItem key={row.item.id} item={row.item} />)}
     </>
   )
+})
+
+/** Grouped rows get a fresh array each pass; the group is unchanged when every member is. */
+function sameGroup<T extends { items: readonly unknown[] }>(previous: T, next: T): boolean {
+  if (previous.items.length !== next.items.length) return false
+  for (const [key, value] of Object.entries(next)) {
+    if (key !== 'items' && (previous as Record<string, unknown>)[key] !== value) return false
+  }
+  return previous.items.every((item, index) => item === next.items[index])
 }
 
-function TranscriptItem({
+const TranscriptItem = memo(function TranscriptItem({
   item
 }: {
   item: StandaloneItem
@@ -101,9 +111,9 @@ function TranscriptItem({
   }
   if (item.type === 'screenshot') return <ChatScreenshot item={item} />
   return null
-}
+})
 
-function ReasoningGroup({ items, running }: { items: ReasoningItem[]; running: boolean }): JSX.Element {
+const ReasoningGroup = memo(function ReasoningGroup({ items, running }: { items: ReasoningItem[]; running: boolean }): JSX.Element {
   const onlyPlans = items.every((item) => item.type === 'plan')
   const text = items.map((item) => item.text).filter(Boolean).join('\n\n')
   return (
@@ -116,11 +126,11 @@ function ReasoningGroup({ items, running }: { items: ReasoningItem[]; running: b
       </ReasoningContent>
     </Reasoning>
   )
-}
+}, sameGroup)
 
-function ToolActivity({ items }: { items: ActivityItem[] }): JSX.Element {
+const ToolActivity = memo(function ToolActivity({ items }: { items: ActivityItem[] }): JSX.Element {
   const [open, setOpen] = useState(false)
-  const state = activityState(items)
+  const state = useMemo(() => activityState(items), [items])
   const status = statusPresentation(state)
   const count = items.length
   return (
@@ -145,9 +155,9 @@ function ToolActivity({ items }: { items: ActivityItem[] }): JSX.Element {
       </Collapsible>
     </div>
   )
-}
+}, sameGroup)
 
-function AssistantMessage({ item }: { item: Extract<ChatTranscriptItem, { type: 'assistant' }> }): JSX.Element {
+const AssistantMessage = memo(function AssistantMessage({ item }: { item: Extract<ChatTranscriptItem, { type: 'assistant' }> }): JSX.Element {
   const [copied, setCopied] = useState(false)
   async function copy(): Promise<void> {
     try {
@@ -179,7 +189,7 @@ function AssistantMessage({ item }: { item: Extract<ChatTranscriptItem, { type: 
       </div>
     </Message>
   )
-}
+})
 
 function toolPart(item: ActivityItem): ToolPart {
   if (item.type === 'command') {

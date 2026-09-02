@@ -53,12 +53,42 @@ export function reduceChatEvent(state: ChatSnapshot, event: ChatEvent): ChatSnap
       return { ...state, contextUsage: event.usage }
     case 'item':
       return { ...state, items: upsertItem(state.items, event.item) }
-    case 'itemDelta':
-      return {
-        ...state,
-        items: state.items.map((item) => appendDelta(item, event.itemId, event.field, event.delta))
-      }
+    case 'itemDelta': {
+      const index = state.items.findIndex((item) => item.id === event.itemId)
+      if (index < 0) return state
+      const updated = appendDelta(state.items[index]!, event.field, event.delta)
+      if (updated === state.items[index]) return state
+      const items = [...state.items]
+      items[index] = updated
+      return { ...state, items }
+    }
   }
+}
+
+/**
+ * Merge a burst of events into the fewest equivalent ones. Streaming sends one `itemDelta`
+ * per token chunk; adjacent deltas for the same item and field collapse into one, and any
+ * `replace` discards everything before it, so a frame's worth of chunks costs one reduce.
+ */
+export function coalesceChatEvents(events: ChatEvent[]): ChatEvent[] {
+  const merged: ChatEvent[] = []
+  for (const event of events) {
+    if (event.type === 'replace') {
+      merged.length = 0
+      merged.push(event)
+      continue
+    }
+    const last = merged[merged.length - 1]
+    if (
+      event.type === 'itemDelta' && last?.type === 'itemDelta' &&
+      last.itemId === event.itemId && last.field === event.field
+    ) {
+      merged[merged.length - 1] = { ...last, delta: last.delta + event.delta }
+      continue
+    }
+    merged.push(event)
+  }
+  return merged
 }
 
 function upsertItem(items: ChatTranscriptItem[], next: ChatTranscriptItem): ChatTranscriptItem[] {
@@ -69,13 +99,7 @@ function upsertItem(items: ChatTranscriptItem[], next: ChatTranscriptItem): Chat
   return copy
 }
 
-function appendDelta(
-  item: ChatTranscriptItem,
-  itemId: string,
-  field: 'text' | 'output',
-  delta: string
-): ChatTranscriptItem {
-  if (item.id !== itemId) return item
+function appendDelta(item: ChatTranscriptItem, field: 'text' | 'output', delta: string): ChatTranscriptItem {
   if (field === 'text' && (item.type === 'assistant' || item.type === 'plan' || item.type === 'reasoning')) {
     return { ...item, text: item.text + delta }
   }

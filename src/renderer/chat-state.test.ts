@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { chatTitle, initialChatState, reduceChatEvent, summarizeMessage } from './chat-state.js'
+import { chatTitle, coalesceChatEvents, initialChatState, reduceChatEvent, summarizeMessage } from './chat-state.js'
 
 test('chat reducer upserts authoritative items without changing their order', () => {
   let state = initialChatState()
@@ -63,4 +63,43 @@ test('context usage updates replace the previous reading', () => {
   const state = reduceChatEvent(initialChatState(), { type: 'context', usage })
   assert.deepEqual(state.contextUsage, usage)
   assert.equal(reduceChatEvent(state, { type: 'context', usage: null }).contextUsage, null)
+})
+
+test('coalescing merges adjacent deltas for one item and keeps other events in order', () => {
+  const merged = coalesceChatEvents([
+    { type: 'itemDelta', itemId: 'a', field: 'text', delta: 'hel' },
+    { type: 'itemDelta', itemId: 'a', field: 'text', delta: 'lo' },
+    { type: 'itemDelta', itemId: 'c', field: 'output', delta: 'ok\n' },
+    { type: 'turn', turnId: null },
+    { type: 'itemDelta', itemId: 'a', field: 'text', delta: '!' }
+  ])
+  assert.deepEqual(merged, [
+    { type: 'itemDelta', itemId: 'a', field: 'text', delta: 'hello' },
+    { type: 'itemDelta', itemId: 'c', field: 'output', delta: 'ok\n' },
+    { type: 'turn', turnId: null },
+    { type: 'itemDelta', itemId: 'a', field: 'text', delta: '!' }
+  ])
+})
+
+test('coalescing drops everything queued before a snapshot replace', () => {
+  const snapshot = initialChatState()
+  const merged = coalesceChatEvents([
+    { type: 'itemDelta', itemId: 'a', field: 'text', delta: 'stale' },
+    { type: 'replace', snapshot },
+    { type: 'turn', turnId: 't' }
+  ])
+  assert.deepEqual(merged, [{ type: 'replace', snapshot }, { type: 'turn', turnId: 't' }])
+})
+
+test('a delta leaves untouched items and unknown targets referentially stable', () => {
+  const user = { type: 'user' as const, id: 'u', turnId: 't', text: 'hi' }
+  let state = reduceChatEvent(initialChatState(), { type: 'item', item: user })
+  state = reduceChatEvent(state, {
+    type: 'item',
+    item: { type: 'assistant', id: 'a', turnId: 't', text: '', phase: null, streaming: true }
+  })
+  const next = reduceChatEvent(state, { type: 'itemDelta', itemId: 'a', field: 'text', delta: 'x' })
+  assert.equal(next.items[0], state.items[0])
+  assert.equal(next.items[1]?.type === 'assistant' && next.items[1].text, 'x')
+  assert.equal(reduceChatEvent(state, { type: 'itemDelta', itemId: 'missing', field: 'text', delta: 'x' }), state)
 })
