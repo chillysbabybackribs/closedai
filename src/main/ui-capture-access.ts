@@ -1,7 +1,7 @@
-import { desktopCapturer, type BrowserWindow, type NativeImage, type WebContents } from 'electron'
+import { desktopCapturer, nativeImage, type BrowserWindow, type NativeImage, type WebContents } from 'electron'
 import type { BrowserService } from './browser-service.js'
 import { waitForPageReady, type PageReadiness, type PageReadyResult } from './browser-page-ready.js'
-import type { BrowserPageCapture, CapturedImage, UiCaptureHost } from './tools/capture/index.js'
+import type { BrowserPageCapture, CapturedImage, ImageCrop, UiCaptureHost } from './tools/capture/index.js'
 
 const MAX_IMAGE_WIDTH = 1_920
 const MAX_IMAGE_HEIGHT = 1_440
@@ -67,6 +67,18 @@ export class UiCaptureAccess implements UiCaptureHost {
     } finally {
       release()
     }
+  }
+
+  async cropImage(dataUrl: string, crop: ImageCrop, zoom: number): Promise<CapturedImage | null> {
+    const source = nativeImage.createFromDataURL(dataUrl)
+    const size = source.getSize()
+    if (source.isEmpty() || crop.x < 0 || crop.y < 0 || crop.width < 1 || crop.height < 1 ||
+        crop.x + crop.width > size.width || crop.y + crop.height > size.height) return null
+    const cropped = source.crop(crop)
+    const magnified = zoom > 1
+      ? cropped.resize({ width: Math.round(crop.width * zoom), height: Math.round(crop.height * zoom), quality: 'best' })
+      : cropped
+    return this.payload(magnified)
   }
 
   private payload(image: NativeImage): CapturedImage | null {

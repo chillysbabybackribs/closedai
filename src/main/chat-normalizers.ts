@@ -231,7 +231,8 @@ function normalizeScreenshot(
 ): Extract<ChatTranscriptItem, { type: 'screenshot' }> | null {
   if (item.namespace !== 'closedai_ui' || item.tool !== 'capture' || item.status !== 'completed') return null
   const args = recordOf(item.arguments)
-  const surface = args?.action === 'app_window' || args?.action === 'browser_page' ? args.action : null
+  const action = args?.action
+  const surface = action === 'app_window' || action === 'browser_page' || action === 'crop' ? action : null
   if (!surface || !Array.isArray(item.contentItems)) return null
   let imageUrl = ''
   let caption = ''

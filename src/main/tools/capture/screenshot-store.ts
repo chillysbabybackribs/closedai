@@ -8,9 +8,13 @@ export type StoredScreenshot = {
   dataUrl: string
   width: number
   height: number
-  surface: 'app_window' | 'browser_page'
+  modelWidth: number
+  modelHeight: number
+  surface: ScreenshotSurface
   capturedAt: string
 }
+
+export type ScreenshotSurface = 'app_window' | 'browser_page' | 'crop'
 
 const DEFAULT_MAX_ENTRIES = 60
 const DEFAULT_MAX_BYTES = 96 * 1024 * 1024

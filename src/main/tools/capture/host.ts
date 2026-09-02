@@ -27,10 +27,18 @@ export type BrowserPageCapture = {
   error?: string
 }
 
+export type ImageCrop = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 /** Provider-neutral surface used by the capture actions; the Electron adapter lives outside tools. */
 export type UiCaptureHost = {
   captureAppWindow(): Promise<CapturedImage | null>
   captureBrowserPage(tabId: string | undefined, ready: PageReadiness): Promise<BrowserPageCapture | null>
+  cropImage(dataUrl: string, crop: ImageCrop, zoom: number): Promise<CapturedImage | null>
 }
 
 export type UiCaptureHostProvider = () => UiCaptureHost | null

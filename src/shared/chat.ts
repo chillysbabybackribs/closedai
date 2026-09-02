@@ -78,7 +78,7 @@ export type ChatTranscriptItem =
       id: string
       turnId: string | null
       imageUrl: string
-      surface: 'app_window' | 'browser_page'
+      surface: 'app_window' | 'browser_page' | 'crop'
       caption: string
     }
   | { type: 'notice'; id: string; turnId: string | null; text: string; tone: 'info' | 'error' }
