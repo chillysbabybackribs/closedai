@@ -17,6 +17,9 @@ export type CdpToolHost = {
     sessionId?: string
   ): Promise<unknown>
   events(tabId: string | undefined, afterCursor: number, limit: number, methodPrefix?: string): CdpEventResult
+  inspectPage(tabId: string | undefined, maxElements: number): Promise<unknown>
+  clickElement(tabId: string | undefined, ref: string): Promise<unknown>
+  clickAt(tabId: string | undefined, x: number, y: number): Promise<unknown>
 }
 
 export type CdpHostProvider = () => CdpToolHost | null

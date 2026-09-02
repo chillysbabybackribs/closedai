@@ -1,5 +1,5 @@
 import { defineActionTool, type ToolAction } from '../action-tool.js'
-import { textResult, stringArg, type JsonObject, type ToolNamespace, type ToolResult } from '../tool.js'
+import { stringArg, type JsonObject, type ToolNamespace } from '../tool.js'
 import {
   eventCursorFrom,
   eventLimitFrom,
@@ -10,8 +10,8 @@ import {
   tabIdFrom
 } from './fields.js'
 import { requireCdp, type CdpHostProvider } from './host.js'
-
-const MAX_OUTPUT_CHARS = 200_000
+import { cdpPageTool } from './page.js'
+import { jsonResult, objectSchema } from './result.js'
 
 export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
   return {
@@ -28,7 +28,8 @@ export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
           'transient and may become invalid after navigation. Attach child targets with flatten=true and ' +
           'pass the returned session_id on later commands.',
         actions: actions(cdp)
-      })
+      }),
+      cdpPageTool(cdp)
     ]
   }
 }
@@ -85,23 +86,6 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
       ))
     }
   ]
-}
-
-function objectSchema(properties: Record<string, JsonObject>, required: string[] = []): JsonObject {
-  return { type: 'object', properties, required, additionalProperties: false }
-}
-
-function jsonResult(value: unknown): ToolResult {
-  let text: string
-  try {
-    text = JSON.stringify(value, null, 2)
-  } catch {
-    text = String(value)
-  }
-  if (text.length > MAX_OUTPUT_CHARS) {
-    text = `${text.slice(0, MAX_OUTPUT_CHARS)}\n… [ClosedAI truncated ${text.length - MAX_OUTPUT_CHARS} characters]`
-  }
-  return textResult(text)
 }
 
 export type { CdpHostProvider, CdpToolHost } from './host.js'
