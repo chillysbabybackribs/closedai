@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { placeRowMenu, rowMenuAnchor } from './row-menu-position.js'
+import { placeRowMenu, rowMenuAnchor } from './drawer-row-position.js'
 
 test('rowMenuAnchor extracts top-right coordinates', () => {
   const anchor = rowMenuAnchor({ right: 258, top: 120 })
@@ -13,8 +13,8 @@ test('placeRowMenu places menu downward when space permits', () => {
   const viewport = { width: 1200, height: 800 }
 
   const placement = placeRowMenu(anchor, menu, viewport)
-  assert.equal(placement.top, 104) // 100 + 4
-  assert.equal(placement.left, 262) // 258 + 4
+  assert.equal(placement.top, 104)
+  assert.equal(placement.left, 262)
   assert.equal(placement.maxHeight, 300)
 })
 
@@ -24,7 +24,6 @@ test('placeRowMenu flips upward when bottom is constrained and top has more room
   const viewport = { width: 1200, height: 800 }
 
   const placement = placeRowMenu(anchor, menu, viewport)
-  // Flips upward: top = 700 - 4 - 300 = 396
   assert.equal(placement.top, 396)
   assert.equal(placement.maxHeight, 300)
 })
@@ -35,7 +34,5 @@ test('placeRowMenu flips leftward if overflowing right viewport edge', () => {
   const viewport = { width: 1200, height: 800 }
 
   const placement = placeRowMenu(anchor, menu, viewport)
-  // anchor.x + 4 + 200 + 8 = 1312 > 1200 -> overflows right
-  // left = 1100 - 4 - 200 = 896
   assert.equal(placement.left, 896)
 })

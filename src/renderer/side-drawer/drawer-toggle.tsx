@@ -1,16 +1,16 @@
 import type { JSX } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import type { AgentsController } from './agents-controller.js'
+import type { DrawerController } from './drawer-controller.js'
 
-export function AgentsToggle({ controller }: { controller: AgentsController }): JSX.Element {
+export function DrawerToggle({ controller }: { controller: DrawerController }): JSX.Element {
   const collapsed = controller.isCollapsed
   return (
     <button
       type="button"
       className="agents-titlebar-toggle"
       onClick={controller.toggleCollapsed}
-      title={collapsed ? 'Open agents sidebar' : 'Close agents sidebar'}
-      aria-label={collapsed ? 'Open agents sidebar' : 'Close agents sidebar'}
+      title={collapsed ? 'Open side drawer' : 'Close side drawer'}
+      aria-label={collapsed ? 'Open side drawer' : 'Close side drawer'}
       aria-pressed={!collapsed}
     >
       {collapsed

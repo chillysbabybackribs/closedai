@@ -1,13 +1,13 @@
-export const AGENT_REVIEW_QUEUE_STORAGE_KEY = 'closedai.agents.reviewQueue'
+export const DRAWER_REVIEW_QUEUE_STORAGE_KEY = 'closedai.drawer.reviewQueue'
 
-export type AgentReviewQueue = Record<string, number>
+export type DrawerReviewQueue = Record<string, number>
 
 type StorageReader = Pick<Storage, 'getItem'>
 type StorageWriter = Pick<Storage, 'setItem'>
 
-export function readAgentReviewQueue(storage: StorageReader): AgentReviewQueue {
+export function readDrawerReviewQueue(storage: StorageReader): DrawerReviewQueue {
   try {
-    const raw = storage.getItem(AGENT_REVIEW_QUEUE_STORAGE_KEY)
+    const raw = storage.getItem(DRAWER_REVIEW_QUEUE_STORAGE_KEY)
     if (!raw) return {}
     const parsed: unknown = JSON.parse(raw)
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
@@ -24,31 +24,31 @@ export function readAgentReviewQueue(storage: StorageReader): AgentReviewQueue {
   }
 }
 
-export function persistAgentReviewQueue(storage: StorageWriter, queue: AgentReviewQueue): void {
+export function persistDrawerReviewQueue(storage: StorageWriter, queue: DrawerReviewQueue): void {
   try {
-    storage.setItem(AGENT_REVIEW_QUEUE_STORAGE_KEY, JSON.stringify(queue))
+    storage.setItem(DRAWER_REVIEW_QUEUE_STORAGE_KEY, JSON.stringify(queue))
   } catch {
-    // Storage access failures must not break UI flow
+    // Suppress storage errors
   }
 }
 
-export function enqueueAgentReview(
-  current: AgentReviewQueue,
+export function enqueueDrawerReview(
+  current: DrawerReviewQueue,
   id: string,
   queuedAt: number
-): AgentReviewQueue {
+): DrawerReviewQueue {
   if (!id) return current
   if (current[id] !== undefined) return current
   return { ...current, [id]: queuedAt }
 }
 
-export function dequeueAgentReview(current: AgentReviewQueue, id: string): AgentReviewQueue {
+export function dequeueDrawerReview(current: DrawerReviewQueue, id: string): DrawerReviewQueue {
   if (!(id in current)) return current
   const next = { ...current }
   delete next[id]
   return next
 }
 
-export function countAgentReviewQueue(queue: AgentReviewQueue): number {
+export function countDrawerReviewQueue(queue: DrawerReviewQueue): number {
   return Object.keys(queue).length
 }

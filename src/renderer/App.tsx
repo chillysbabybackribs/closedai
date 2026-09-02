@@ -4,9 +4,9 @@ import '@fontsource-variable/inter/wght-italic.css'
 import '@fontsource-variable/geist-mono/wght.css'
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { AgentsSidebar } from './agents/agents-sidebar.js'
-import { AgentsToggle } from './agents/agents-toggle.js'
-import { useAgentsController } from './agents/agents-controller.js'
+import { SideDrawer } from './side-drawer/side-drawer.js'
+import { DrawerToggle } from './side-drawer/drawer-toggle.js'
+import { useDrawerController } from './side-drawer/drawer-controller.js'
 import { AppWindowControls } from './app-window-controls.js'
 import { BrowserPane } from './browser-pane.js'
 import { useBrowserController } from './browser-controller.js'
@@ -18,18 +18,18 @@ import './styles.css'
 
 function App(): JSX.Element {
   const chat = useChatController()
-  const agents = useAgentsController(chat)
+  const drawer = useDrawerController(chat)
 
   return (
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
-        <AgentsToggle controller={agents} />
+        <DrawerToggle controller={drawer} />
         <TitlebarMenu />
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
-      <div className="workspace" data-mode="chat" data-agents={agents.isCollapsed ? 'closed' : 'open'}>
-        <AgentsSidebar controller={agents} chat={chat} />
+      <div className="workspace" data-mode="chat" data-agents={drawer.isCollapsed ? 'closed' : 'open'}>
+        <SideDrawer controller={drawer} chat={chat} />
         <DesktopWorkspace chat={chat} />
       </div>
     </div>

@@ -1,19 +1,19 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  buildAgentSections,
+  buildDrawerSections,
   countLiveRows,
   groupByDirectory,
   rowIsLive,
   splitChildren,
   subtreeIsLive
-} from './agent-sections.js'
-import type { AgentRowModel } from './agents-types.js'
+} from './drawer-sections.js'
+import type { DrawerRowModel } from './drawer-types.js'
 
 function makeRow(
   id: string,
-  overrides: Partial<AgentRowModel> = {}
-): AgentRowModel {
+  overrides: Partial<DrawerRowModel> = {}
+): DrawerRowModel {
   return {
     id,
     threadId: id,
@@ -65,7 +65,7 @@ test('groupByDirectory groups by cwd and puts No folder last', () => {
   assert.equal(groups[2]?.label, 'No folder')
 })
 
-test('buildAgentSections partitions rows into the 5 sections', () => {
+test('buildDrawerSections partitions rows into the 5 sections', () => {
   const now = 100_000
   const runningRow = makeRow('running-1', { running: true, status: 'running' })
   const reviewRow = makeRow('review-1', { status: 'done' })
@@ -76,7 +76,7 @@ test('buildAgentSections partitions rows into the 5 sections', () => {
   const reviewQueue = { 'review-1': now - 5000 }
   const recentlyCompleted = { 'recent-1': now - 1000 }
 
-  const sections = buildAgentSections(
+  const sections = buildDrawerSections(
     [runningRow, reviewRow, recentRow, completedRow, historyRow],
     reviewQueue,
     recentlyCompleted,

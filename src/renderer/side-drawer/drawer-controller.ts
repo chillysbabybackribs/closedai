@@ -2,24 +2,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChatThreadSummary } from '../../shared/chat.js'
 import type { ChatController } from '../chat-controller.js'
 import {
-  countAgentReviewQueue,
-  dequeueAgentReview,
-  enqueueAgentReview,
-  persistAgentReviewQueue,
-  readAgentReviewQueue,
-  type AgentReviewQueue
-} from './agent-review-queue.js'
-import type { AgentRowModel, AgentStatus } from './agents-types.js'
+  countDrawerReviewQueue,
+  dequeueDrawerReview,
+  enqueueDrawerReview,
+  persistDrawerReviewQueue,
+  readDrawerReviewQueue,
+  type DrawerReviewQueue
+} from './drawer-review-queue.js'
+import type { DrawerRowModel, DrawerRowStatus } from './drawer-types.js'
 
-const COLLAPSED_KEY = 'closedai.agents.collapsed'
-const HISTORY_OPEN_KEY = 'closedai.agents.historyOpen'
+const COLLAPSED_KEY = 'closedai.drawer.collapsed'
+const HISTORY_OPEN_KEY = 'closedai.drawer.historyOpen'
 
-export function useAgentsController(chat: ChatController) {
+export function useDrawerController(chat: ChatController) {
   const [isCollapsed, setIsCollapsed] = useState(() => window.localStorage.getItem(COLLAPSED_KEY) === '1')
   const [isHistoryOpen, setIsHistoryOpen] = useState(() => window.localStorage.getItem(HISTORY_OPEN_KEY) === '1')
   const [threads, setThreads] = useState<ChatThreadSummary[]>([])
-  const [reviewQueue, setReviewQueue] = useState<AgentReviewQueue>(() =>
-    readAgentReviewQueue(window.localStorage)
+  const [reviewQueue, setReviewQueue] = useState<DrawerReviewQueue>(() =>
+    readDrawerReviewQueue(window.localStorage)
   )
   const [recentlyCompleted, setRecentlyCompleted] = useState<Record<string, number>>({})
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -37,12 +37,10 @@ export function useAgentsController(chat: ChatController) {
     refreshThreads()
   }, [refreshThreads, chat.state.threadId])
 
-  // Track running -> settled transitions to put settled peers/turns into review queue or recently completed
   useEffect(() => {
     const prior = priorRunningRef.current
     const nextPrior = new Map<string, boolean>()
 
-    // Check active chat
     const activeId = chat.state.threadId ?? 'active-chat'
     const activeRunning = chat.state.activeTurnId !== null
     nextPrior.set(activeId, activeRunning)
@@ -50,11 +48,10 @@ export function useAgentsController(chat: ChatController) {
       setRecentlyCompleted((prev) => ({ ...prev, [activeId]: Date.now() }))
     }
 
-    // Check peers
     for (const peer of chat.peers) {
       nextPrior.set(peer.paneId, peer.running)
       if (prior.get(peer.paneId) && !peer.running) {
-        setReviewQueue((prev) => enqueueAgentReview(prev, peer.paneId, Date.now()))
+        setReviewQueue((prev) => enqueueDrawerReview(prev, peer.paneId, Date.now()))
         setRecentlyCompleted((prev) => ({ ...prev, [peer.paneId]: Date.now() }))
       }
     }
@@ -62,7 +59,7 @@ export function useAgentsController(chat: ChatController) {
   }, [chat.state.threadId, chat.state.activeTurnId, chat.peers])
 
   useEffect(() => {
-    persistAgentReviewQueue(window.localStorage, reviewQueue)
+    persistDrawerReviewQueue(window.localStorage, reviewQueue)
   }, [reviewQueue])
 
   const toggleCollapsed = useCallback(() => {
@@ -82,11 +79,11 @@ export function useAgentsController(chat: ChatController) {
   }, [])
 
   const acceptReview = useCallback((id: string) => {
-    setReviewQueue((current) => dequeueAgentReview(current, id))
+    setReviewQueue((current) => dequeueDrawerReview(current, id))
   }, [])
 
   const dismissReview = useCallback((id: string) => {
-    setReviewQueue((current) => dequeueAgentReview(current, id))
+    setReviewQueue((current) => dequeueDrawerReview(current, id))
   }, [])
 
   const deleteRow = useCallback(async (id: string, threadId: string | null, paneId?: string) => {
@@ -100,7 +97,6 @@ export function useAgentsController(chat: ChatController) {
     setPendingDeleteId(null)
   }, [chat, dismissReview, refreshThreads])
 
-  // Aggregate lines changed from transcript items if present
   const linesDiff = useMemo(() => {
     let added = 0
     let removed = 0
@@ -117,12 +113,10 @@ export function useAgentsController(chat: ChatController) {
     return { added, removed }
   }, [chat.state.items])
 
-  // Build unified row models
   const rows = useMemo(() => {
-    const list: AgentRowModel[] = []
+    const list: DrawerRowModel[] = []
     const seenThreads = new Set<string>()
 
-    // 1. Current active chat (if threadId or messages exist)
     const activeThreadId = chat.state.threadId
     const activeRunning = chat.state.activeTurnId !== null
     if (activeThreadId) {
@@ -144,12 +138,11 @@ export function useAgentsController(chat: ChatController) {
       })
     }
 
-    // 2. Open peers & subagents
-    const peerRows = new Map<string, AgentRowModel>()
+    const peerRows = new Map<string, DrawerRowModel>()
     for (const peer of chat.peers) {
       if (peer.threadId) seenThreads.add(peer.threadId)
-      const status: AgentStatus = peer.running ? 'running' : (peer.activity ? 'done' : 'chat')
-      const row: AgentRowModel = {
+      const status: DrawerRowStatus = peer.running ? 'running' : (peer.activity ? 'done' : 'chat')
+      const row: DrawerRowModel = {
         id: peer.paneId,
         threadId: peer.threadId,
         paneId: peer.paneId,
@@ -168,7 +161,6 @@ export function useAgentsController(chat: ChatController) {
       peerRows.set(peer.paneId, row)
     }
 
-    // Link subagents to parent peers if applicable
     for (const peer of chat.peers) {
       const row = peerRows.get(peer.paneId)!
       if (peer.parentPaneId && peerRows.has(peer.parentPaneId)) {
@@ -178,7 +170,6 @@ export function useAgentsController(chat: ChatController) {
       }
     }
 
-    // 3. Past threads from workspace
     for (const t of threads) {
       if (seenThreads.has(t.id)) continue
       list.push({
@@ -207,7 +198,7 @@ export function useAgentsController(chat: ChatController) {
     isHistoryOpen,
     toggleHistory,
     reviewQueue,
-    reviewQueueCount: countAgentReviewQueue(reviewQueue),
+    reviewQueueCount: countDrawerReviewQueue(reviewQueue),
     recentlyCompleted,
     pendingDeleteId,
     setPendingDeleteId,
@@ -219,4 +210,4 @@ export function useAgentsController(chat: ChatController) {
   }
 }
 
-export type AgentsController = ReturnType<typeof useAgentsController>
+export type DrawerController = ReturnType<typeof useDrawerController>

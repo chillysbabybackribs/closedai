@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
-const COLLAPSED_PARENTS_KEY = 'closedai.agents.collapsedParents'
-const EXPANDED_SETTLED_KEY = 'closedai.agents.expandedSettled'
+const COLLAPSED_PARENTS_KEY = 'closedai.drawer.collapsedParents'
+const EXPANDED_SETTLED_KEY = 'closedai.drawer.expandedSettled'
 
 export type FoldSet = [
   ReadonlySet<string>,

@@ -2,16 +2,16 @@ import type { JSX } from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Plus, Search, X } from 'lucide-react'
 import type { ChatController } from '../chat-controller.js'
-import { formatChatTime } from './agent-format.js'
-import { searchChats, segmentTitle, stepHighlight, type ChatSearchHit } from './agents-search.js'
-import type { AgentRowModel } from './agents-types.js'
+import { formatChatTime } from './drawer-format.js'
+import { searchChats, segmentTitle, stepHighlight, type ChatSearchHit } from './drawer-search.js'
+import type { DrawerRowModel } from './drawer-types.js'
 
-export function AgentsHeader({
+export function DrawerHeader({
   chat,
   rows
 }: {
   chat: ChatController
-  rows: AgentRowModel[]
+  rows: DrawerRowModel[]
 }): JSX.Element {
   return (
     <header className="agents-header">
@@ -26,17 +26,17 @@ export function AgentsHeader({
         <Plus size={14} aria-hidden="true" />
         <span>New Agent</span>
       </button>
-      <AgentsSearchInput chat={chat} rows={rows} />
+      <DrawerSearchInput chat={chat} rows={rows} />
     </header>
   )
 }
 
-function AgentsSearchInput({
+function DrawerSearchInput({
   chat,
   rows
 }: {
   chat: ChatController
-  rows: AgentRowModel[]
+  rows: DrawerRowModel[]
 }): JSX.Element {
   const [query, setQuery] = useState('')
   const [highlight, setHighlight] = useState(0)

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { removeId, toggleId } from './agent-fold-state.js'
+import { removeId, toggleId } from './drawer-fold-state.js'
 
 test('toggleId adds and removes ids purely', () => {
   const initial = new Set<string>()

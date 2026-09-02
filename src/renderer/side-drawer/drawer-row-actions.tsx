@@ -1,17 +1,17 @@
 import type { JSX } from 'react'
 import { Check, Square, Trash2, X } from 'lucide-react'
 import type { ChatController } from '../chat-controller.js'
-import type { AgentsController } from './agents-controller.js'
-import type { AgentRowModel } from './agents-types.js'
+import type { DrawerController } from './drawer-controller.js'
+import type { DrawerRowModel } from './drawer-types.js'
 
-export function AgentRowActions({
+export function DrawerRowActions({
   row,
   controller,
   chat,
   awaitingReview = false
 }: {
-  row: AgentRowModel
-  controller: AgentsController
+  row: DrawerRowModel
+  controller: DrawerController
   chat: ChatController
   awaitingReview?: boolean
 }): JSX.Element {

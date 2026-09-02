@@ -3,14 +3,14 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { GitBranch } from 'lucide-react'
 import type { ChatModel } from '../../shared/chat.js'
-import { placeRowMenu, type MenuPlacement } from './row-menu-position.js'
+import { placeRowMenu, type MenuPlacement } from './drawer-row-position.js'
 
 export type RowMenuTarget = { id: string; title: string; model?: string; x: number; y: number }
 
 const MENU_WIDTH = 208
 const MENU_MAX_HEIGHT = 460
 
-export function AgentRowMenu({
+export function DrawerRowMenu({
   target,
   inheritedModel,
   models,

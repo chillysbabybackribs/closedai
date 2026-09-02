@@ -1,21 +1,21 @@
-import { basename } from './agent-format.js'
-import type { AgentReviewQueue } from './agent-review-queue.js'
-import type { AgentRowModel, AgentSections, DirectoryGroup } from './agents-types.js'
+import { basename } from './drawer-format.js'
+import type { DrawerReviewQueue } from './drawer-review-queue.js'
+import type { DirectoryGroup, DrawerRowModel, DrawerSections } from './drawer-types.js'
 
 export const COMPLETION_DECAY_MS = 20 * 60 * 1000
 
-export function rowIsLive(row: AgentRowModel): boolean {
+export function rowIsLive(row: DrawerRowModel): boolean {
   return row.running || row.status === 'running' || row.status === 'queued'
 }
 
-export function subtreeIsLive(row: AgentRowModel, seen = new Set<string>()): boolean {
+export function subtreeIsLive(row: DrawerRowModel, seen = new Set<string>()): boolean {
   if (seen.has(row.id)) return false
   seen.add(row.id)
   if (rowIsLive(row)) return true
   return row.children.some((child) => subtreeIsLive(child, seen))
 }
 
-export function countLiveRows(rows: AgentRowModel[], seen = new Set<string>()): number {
+export function countLiveRows(rows: DrawerRowModel[], seen = new Set<string>()): number {
   let count = 0
   for (const row of rows) {
     if (seen.has(row.id)) continue
@@ -27,10 +27,10 @@ export function countLiveRows(rows: AgentRowModel[], seen = new Set<string>()): 
 }
 
 export function splitChildren(
-  row: AgentRowModel
-): { live: AgentRowModel[]; settled: AgentRowModel[] } {
-  const live: AgentRowModel[] = []
-  const settled: AgentRowModel[] = []
+  row: DrawerRowModel
+): { live: DrawerRowModel[]; settled: DrawerRowModel[] } {
+  const live: DrawerRowModel[] = []
+  const settled: DrawerRowModel[] = []
   for (const child of row.children) {
     if (subtreeIsLive(child)) live.push(child)
     else settled.push(child)
@@ -38,7 +38,7 @@ export function splitChildren(
   return { live, settled }
 }
 
-export function groupByDirectory(rows: AgentRowModel[]): DirectoryGroup[] {
+export function groupByDirectory(rows: DrawerRowModel[]): DirectoryGroup[] {
   const groups = new Map<string, DirectoryGroup>()
   for (const row of rows) {
     const cwd = row.cwd
@@ -58,17 +58,17 @@ export function groupByDirectory(rows: AgentRowModel[]): DirectoryGroup[] {
   return ordered
 }
 
-export function buildAgentSections(
-  rows: AgentRowModel[],
-  reviewQueue: AgentReviewQueue,
+export function buildDrawerSections(
+  rows: DrawerRowModel[],
+  reviewQueue: DrawerReviewQueue,
   recentlyCompleted: Record<string, number>,
   now: number = Date.now()
-): AgentSections {
-  const running: AgentRowModel[] = []
-  const review: AgentRowModel[] = []
-  const recent: AgentRowModel[] = []
-  const completed: AgentRowModel[] = []
-  const history: AgentRowModel[] = []
+): DrawerSections {
+  const running: DrawerRowModel[] = []
+  const review: DrawerRowModel[] = []
+  const recent: DrawerRowModel[] = []
+  const completed: DrawerRowModel[] = []
+  const history: DrawerRowModel[] = []
 
   for (const row of rows) {
     if (subtreeIsLive(row) || row.completedUnviewed) {

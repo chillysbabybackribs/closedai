@@ -2,29 +2,29 @@ import type { JSX } from 'react'
 import { memo, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, FolderOpen } from 'lucide-react'
 import type { ChatController } from '../chat-controller.js'
-import { useCollapsedParents, useExpandedSettled } from './agent-fold-state.js'
-import { AgentRow, type FoldState } from './agent-row.js'
-import { AgentRowMenu, type RowMenuTarget } from './agent-row-menu.js'
-import { buildAgentSections, countLiveRows, groupByDirectory } from './agent-sections.js'
-import type { AgentsController } from './agents-controller.js'
-import { AgentsHeader } from './agents-header.js'
-import type { AgentRowModel } from './agents-types.js'
-import { useAgentAgingClock } from './use-agent-aging-clock.js'
+import { useDrawerAgingClock } from './drawer-aging-clock.js'
+import type { DrawerController } from './drawer-controller.js'
+import { useCollapsedParents, useExpandedSettled } from './drawer-fold-state.js'
+import { DrawerHeader } from './drawer-header.js'
+import { DrawerRow, type FoldState } from './drawer-row.js'
+import { DrawerRowMenu, type RowMenuTarget } from './drawer-row-menu.js'
+import { buildDrawerSections, countLiveRows, groupByDirectory } from './drawer-sections.js'
+import type { DrawerRowModel } from './drawer-types.js'
 
-function AgentsSidebarView({
+function SideDrawerView({
   controller,
   chat
 }: {
-  controller: AgentsController
+  controller: DrawerController
   chat: ChatController
 }): JSX.Element | null {
-  const agingNow = useAgentAgingClock()
+  const agingNow = useDrawerAgingClock()
   const [collapsedParents, onToggleParent] = useCollapsedParents()
   const [expandedSettled, onToggleSettled] = useExpandedSettled()
   const [rowMenu, setRowMenu] = useState<RowMenuTarget | null>(null)
 
   const { running, reviewQueue, recentlyCompleted, completed, history } = useMemo(
-    () => buildAgentSections(controller.rows, controller.reviewQueue, controller.recentlyCompleted, agingNow),
+    () => buildDrawerSections(controller.rows, controller.reviewQueue, controller.recentlyCompleted, agingNow),
     [controller.rows, controller.reviewQueue, controller.recentlyCompleted, agingNow]
   )
 
@@ -35,7 +35,7 @@ function AgentsSidebarView({
   if (controller.isCollapsed) return null
 
   const renderRows = (
-    rows: AgentRowModel[],
+    rows: DrawerRowModel[],
     label: string,
     options: { review?: boolean } = {}
   ): JSX.Element => (
@@ -47,7 +47,7 @@ function AgentsSidebarView({
             <span>{group.label}</span>
           </div>
           {group.rows.map((row) => (
-            <AgentRow
+            <DrawerRow
               key={row.id}
               row={row}
               activeChatId={activeChatId}
@@ -73,10 +73,10 @@ function AgentsSidebarView({
   return (
     <aside
       className="agents-pane"
-      aria-label="Agents"
-      data-ui-surface="agents"
+      aria-label="Side drawer"
+      data-ui-surface="side-drawer"
     >
-      <AgentsHeader chat={chat} rows={controller.rows} />
+      <DrawerHeader chat={chat} rows={controller.rows} />
 
       <div className="agents-list">
         {running.length > 0 ? (
@@ -143,7 +143,7 @@ function AgentsSidebarView({
       </div>
 
       {rowMenu ? (
-        <AgentRowMenu
+        <DrawerRowMenu
           target={rowMenu}
           inheritedModel={chat.state.selectedModel}
           models={chat.state.models}
@@ -160,4 +160,4 @@ function AgentsSidebarView({
   )
 }
 
-export const AgentsSidebar = memo(AgentsSidebarView)
+export const SideDrawer = memo(SideDrawerView)

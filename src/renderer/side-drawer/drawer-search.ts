@@ -1,8 +1,8 @@
-import { basename } from './agent-format.js'
-import type { AgentRowModel } from './agents-types.js'
+import { basename } from './drawer-format.js'
+import type { DrawerRowModel } from './drawer-types.js'
 
 export type ChatSearchHit = {
-  row: AgentRowModel
+  row: DrawerRowModel
   titleRanges: Array<[number, number]>
   folder: string | null
   score: number
@@ -11,7 +11,7 @@ export type ChatSearchHit = {
 const DEFAULT_LIMIT = 8
 
 export function searchChats(
-  rows: AgentRowModel[],
+  rows: DrawerRowModel[],
   query: string,
   limit: number = DEFAULT_LIMIT
 ): ChatSearchHit[] {

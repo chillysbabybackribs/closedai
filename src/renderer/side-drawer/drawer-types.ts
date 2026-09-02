@@ -1,9 +1,9 @@
 import type { ChatThreadSummary } from '../../shared/chat.js'
 import type { ChatPeerSummary } from '../../shared/chat-peers.js'
 
-export type AgentStatus = 'running' | 'queued' | 'done' | 'failed' | 'stopped' | 'chat'
+export type DrawerRowStatus = 'running' | 'queued' | 'done' | 'failed' | 'stopped' | 'chat'
 
-export type AgentRowModel = {
+export type DrawerRowModel = {
   id: string
   threadId: string | null
   paneId?: string
@@ -14,24 +14,24 @@ export type AgentRowModel = {
   linesAdded: number
   linesRemoved: number
   running: boolean
-  status: AgentStatus
+  status: DrawerRowStatus
   peer?: ChatPeerSummary
   thread?: ChatThreadSummary
   completedUnviewed: boolean
-  children: AgentRowModel[]
+  children: DrawerRowModel[]
 }
 
-export type AgentSections = {
-  running: AgentRowModel[]
-  reviewQueue: AgentRowModel[]
-  recentlyCompleted: AgentRowModel[]
-  completed: AgentRowModel[]
-  history: AgentRowModel[]
+export type DrawerSections = {
+  running: DrawerRowModel[]
+  reviewQueue: DrawerRowModel[]
+  recentlyCompleted: DrawerRowModel[]
+  completed: DrawerRowModel[]
+  history: DrawerRowModel[]
 }
 
 export type DirectoryGroup = {
   key: string
   label: string
   fullPath: string | null
-  rows: AgentRowModel[]
+  rows: DrawerRowModel[]
 }

@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 
-const AGENT_AGING_TICK_MS = 30_000
+const AGING_TICK_MS = 30_000
 
-export function useAgentAgingClock(): number {
+export function useDrawerAgingClock(): number {
   const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
     const refresh = (): void => setNow(Date.now())
-    const interval = window.setInterval(refresh, AGENT_AGING_TICK_MS)
+    const interval = window.setInterval(refresh, AGING_TICK_MS)
     window.addEventListener('focus', refresh)
     document.addEventListener('visibilitychange', refresh)
     return () => {

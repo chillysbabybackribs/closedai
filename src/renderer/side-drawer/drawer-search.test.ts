@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { searchChats, segmentTitle, stepHighlight } from './agents-search.js'
-import type { AgentRowModel } from './agents-types.js'
+import { searchChats, segmentTitle, stepHighlight } from './drawer-search.js'
+import type { DrawerRowModel } from './drawer-types.js'
 
-function makeRow(id: string, title: string, cwd: string | null = null, updatedAt = 1000): AgentRowModel {
+function makeRow(id: string, title: string, cwd: string | null = null, updatedAt = 1000): DrawerRowModel {
   return {
     id,
     threadId: id,
@@ -29,7 +29,6 @@ test('searchChats matches titles by subsequence and ranks appropriately', () => 
 
   const hits = searchChats(rows, 'draw')
   assert.equal(hits.length, 2)
-  // "Drawer animation fixes" matches word-start and earlier
   assert.equal(hits[0]?.row.id, '3')
   assert.equal(hits[1]?.row.id, '1')
 })
@@ -48,7 +47,7 @@ test('searchChats falls back to folder matches when title does not match', () =>
 
 test('segmentTitle splits titles correctly into matched segments', () => {
   const title = 'Side drawer'
-  const ranges: Array<[number, number]> = [[5, 9]] // "draw"
+  const ranges: Array<[number, number]> = [[5, 9]]
   const segments = segmentTitle(title, ranges)
   assert.deepEqual(segments, [
     { text: 'Side ', matched: false },

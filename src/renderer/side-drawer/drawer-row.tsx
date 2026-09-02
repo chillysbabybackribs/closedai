@@ -1,13 +1,13 @@
 import type { JSX, MouseEvent } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { ChatController } from '../chat-controller.js'
-import { formatChatTime, formatMessageCount } from './agent-format.js'
-import type { RowMenuTarget } from './agent-row-menu.js'
-import { AgentRowActions, DiffBadge } from './agent-row-actions.js'
-import { splitChildren } from './agent-sections.js'
-import type { AgentsController } from './agents-controller.js'
-import type { AgentRowModel } from './agents-types.js'
-import { rowMenuAnchor } from './row-menu-position.js'
+import { formatChatTime, formatMessageCount } from './drawer-format.js'
+import type { DrawerController } from './drawer-controller.js'
+import { DrawerRowActions, DiffBadge } from './drawer-row-actions.js'
+import type { RowMenuTarget } from './drawer-row-menu.js'
+import { rowMenuAnchor } from './drawer-row-position.js'
+import { splitChildren } from './drawer-sections.js'
+import type { DrawerRowModel } from './drawer-types.js'
 
 export type FoldState = {
   collapsedParents: ReadonlySet<string>
@@ -17,16 +17,16 @@ export type FoldState = {
 }
 
 type RowProps = {
-  row: AgentRowModel
+  row: DrawerRowModel
   activeChatId: string | null
   fold: FoldState
-  controller: AgentsController
+  controller: DrawerController
   chat: ChatController
   onRowMenu: (target: RowMenuTarget) => void
   awaitingReview?: boolean
 }
 
-export function AgentRow({
+export function DrawerRow({
   row,
   activeChatId,
   fold,
@@ -66,7 +66,7 @@ export function AgentRow({
         role="listitem"
         onContextMenu={handleContextMenu}
       >
-        <AgentRowTwisty row={row} expanded={expanded} onToggle={fold.onToggleParent} />
+        <DrawerRowTwisty row={row} expanded={expanded} onToggle={fold.onToggleParent} />
         <button
           type="button"
           className="agents-row-main"
@@ -87,7 +87,7 @@ export function AgentRow({
             </span>
           </span>
         </button>
-        <AgentRowActions
+        <DrawerRowActions
           row={row}
           controller={controller}
           chat={chat}
@@ -95,7 +95,7 @@ export function AgentRow({
         />
       </div>
       {expanded ? (
-        <AgentSubtree
+        <DrawerSubtree
           row={row}
           activeChatId={activeChatId}
           fold={fold}
@@ -108,7 +108,7 @@ export function AgentRow({
   )
 }
 
-function buildRowMeta(row: AgentRowModel): string {
+function buildRowMeta(row: DrawerRowModel): string {
   const time = formatChatTime(row.updatedAt)
   if (row.running) return `Running · ${time}`
   if (row.status === 'done') return `Done · ${time}`
@@ -118,7 +118,7 @@ function buildRowMeta(row: AgentRowModel): string {
   return count ? `${time} · ${count}` : time
 }
 
-function AgentSubtree({
+function DrawerSubtree({
   row,
   activeChatId,
   fold,
@@ -129,8 +129,8 @@ function AgentSubtree({
   const { live, settled } = splitChildren(row)
   const settledOpen = fold.expandedSettled.has(row.id)
 
-  const renderChild = (child: AgentRowModel): JSX.Element => (
-    <AgentRow
+  const renderChild = (child: DrawerRowModel): JSX.Element => (
+    <DrawerRow
       key={child.id}
       row={child}
       activeChatId={activeChatId}
@@ -161,12 +161,12 @@ function AgentSubtree({
   )
 }
 
-function AgentRowTwisty({
+function DrawerRowTwisty({
   row,
   expanded,
   onToggle
 }: {
-  row: AgentRowModel
+  row: DrawerRowModel
   expanded: boolean
   onToggle: (id: string) => void
 }): JSX.Element {
