@@ -29,9 +29,11 @@ SOFTWARE.
 
 ## assistant-ui
 
-`src/components/ui/provider-logos.tsx` is vendored from
+`src/components/ui/provider-logos.tsx` and the pixel-matrix treatment in
+`src/components/ui/generation-loader.tsx` are adapted from
 [assistant-ui](https://github.com/assistant-ui/assistant-ui) via its shadcn
-registry (`https://r.assistant-ui.com/logos.json`).
+registry (`https://r.assistant-ui.com/logos.json` and
+`@assistant-ui/elements-loading-state`).
 
 MIT License
 

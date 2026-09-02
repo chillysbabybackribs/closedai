@@ -34,9 +34,10 @@ export function GenerationLoader({
       className={cn('task-generation-loader', className)}
       role="status"
       aria-live="polite"
-      aria-label={label}
+      aria-atomic="true"
       {...props}
     >
+      <span className="sr-only">{label}</span>
       <span aria-hidden="true" className="task-generation-grid">
         {Array.from({ length: 9 }, (_, index) => {
           const active = (index * 2 + pixelOffset) % 9 < 3
