@@ -85,7 +85,10 @@
   border-radius: 12px;
   background: var(--popover);
   color: var(--popover-foreground);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--foreground) 16%, transparent);
+  /* Keep the floating surface separated without casting a light halo onto the
+     chat canvas. The picker is monochrome in both themes, so the ambient edge
+     should be a neutral depth cue rather than foreground-colored chrome. */
+  box-shadow: 0 10px 24px rgb(0 0 0 / 42%);
 }
 
 .model-menu-label {

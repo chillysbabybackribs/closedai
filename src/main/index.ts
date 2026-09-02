@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeTheme, session } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, nativeTheme, session, type WebContents } from 'electron'
 import { mkdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { configureChromiumStartup } from './chromium-startup-policy.js'
@@ -61,6 +61,14 @@ let browserSessionFlush: Promise<void> | null = null
 let cdpAccess: BrowserCdpAccess | null = null
 let appAutomationAccess: AppAutomationAccess | null = null
 let quitting = false
+
+// The BrowserWindow reference can outlive its WebContents during Electron shutdown. Keep all
+// renderer notifications behind one liveness check so late browser/service events are harmless.
+function sendToMainWindow(...[channel, ...args]: Parameters<WebContents['send']>): void {
+  const window = mainWindow
+  if (!window || window.isDestroyed() || window.webContents.isDestroyed()) return
+  window.webContents.send(channel, ...args)
+}
 
 const userData = (): string => app.getPath('userData')
 
@@ -142,10 +150,10 @@ function createWindow(): void {
   browserDownloads = new BrowserDownloadService({ workspaceRoot: () => app.getPath('downloads') })
   browserDownloads.install(session.fromPartition(PARTITION))
   browserDownloads.on('changed', (downloads: BrowserDownload[]) =>
-    mainWindow?.webContents.send('browserDownloads:changed', downloads)
+    sendToMainWindow('browserDownloads:changed', downloads)
   )
-  chatService?.on('event', (event: ChatEvent) => mainWindow?.webContents.send('chat:event', event))
-  const sendToolsEvent = (event: ToolsEvent): void => { mainWindow?.webContents.send('tools:event', event) }
+  chatService?.on('event', (event: ChatEvent) => sendToMainWindow('chat:event', event))
+  const sendToolsEvent = (event: ToolsEvent): void => { sendToMainWindow('tools:event', event) }
   toolTelemetry?.on('record', (record) => sendToolsEvent({ type: 'call', record }))
   toolTelemetry?.on('cleared', () => sendToolsEvent({ type: 'cleared' }))
 
@@ -158,9 +166,9 @@ function createWindow(): void {
 }
 
 function wireBrowserEvents(service: BrowserService): void {
-  service.on('state', (state: BrowserState) => mainWindow?.webContents.send('browser:state', state))
+  service.on('state', (state: BrowserState) => sendToMainWindow('browser:state', state))
   service.on('tabs', (tabs: BrowserTabInfo[]) => {
-    mainWindow?.webContents.send('browser:tabs', tabs)
+    sendToMainWindow('browser:tabs', tabs)
     // Persist the strip on every change rather than only at quit: a crash never reaches a
     // quit hook, and the point is that the tabs come back regardless of how the app died.
     browserTabSession?.save(tabs)
@@ -187,7 +195,7 @@ function registerIpc(): void {
     providers: () => ['codex', 'claude'],
     onEnabledChanged: async (toolId, enabled, disabledIds) => {
       await settings?.set({ disabledTools: disabledIds })
-      mainWindow?.webContents.send('tools:event', { type: 'enabled', toolId, enabled } satisfies ToolsEvent)
+      sendToMainWindow('tools:event', { type: 'enabled', toolId, enabled } satisfies ToolsEvent)
     }
   })
 }
