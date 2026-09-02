@@ -22,8 +22,9 @@ export function captureTools(capture: UiCaptureHostProvider, store = new Screens
       defineActionTool({
         name: 'capture',
         description:
-          'Take a current screenshot when visual evidence is needed. Choose app_window for the ' +
-          'whole user-visible interface; choose browser_page for an isolated, readiness-gated web page. ' +
+          'Take and inspect screenshots when visual evidence is needed. Choose app_window for the ' +
+          'whole user-visible interface, browser_page for an isolated readiness-gated page, or crop ' +
+          'to enlarge a region from an earlier capture. ' +
           'Every screenshot stays in the conversation for later turns, so capture once per state you ' +
           'need to verify rather than after every small step.',
         actions: [appWindowAction(capture, store), browserPageAction(capture, store), cropAction(capture, store)]

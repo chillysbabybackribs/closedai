@@ -75,8 +75,9 @@ export class UiCaptureAccess implements UiCaptureHost {
     if (source.isEmpty() || crop.x < 0 || crop.y < 0 || crop.width < 1 || crop.height < 1 ||
         crop.x + crop.width > size.width || crop.y + crop.height > size.height) return null
     const cropped = source.crop(crop)
-    const magnified = zoom > 1
-      ? cropped.resize({ width: Math.round(crop.width * zoom), height: Math.round(crop.height * zoom), quality: 'best' })
+    const zoomed = fitWithin(crop.width * zoom, crop.height * zoom, MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT)
+    const magnified = zoomed.width > crop.width || zoomed.height > crop.height
+      ? cropped.resize({ ...zoomed, quality: 'best' })
       : cropped
     return this.payload(magnified)
   }

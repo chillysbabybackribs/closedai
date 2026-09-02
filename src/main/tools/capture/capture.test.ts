@@ -136,4 +136,10 @@ test('crop rejects missing, evicted, and out-of-bounds source regions', async ()
   assert.equal(outside.isError, true)
   assert.match(textOf(outside), /exceeds source image 1280x720/)
   assert.deepEqual(calls, [])
+
+  const invalidZoom = await call({
+    action: 'crop', source_id: 'source_2', x: 0, y: 0, width: 100, height: 100, zoom: 5
+  })
+  assert.equal(invalidZoom.isError, true)
+  assert.match(textOf(invalidZoom), /capture\.crop: invalid arguments — \$\.zoom must be <= 4/)
 })
