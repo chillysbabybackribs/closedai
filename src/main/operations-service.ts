@@ -5,11 +5,17 @@ import { answerServerRequest } from './chat-approvals.js'
 import { startThreadParams } from './chat-context/thread-params.js'
 import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
-import type { OperationsEvent, OperationsModelCatalog, OperationsRun, OperationsSnapshot, RunStatus } from '../shared/operations.js'
+import type { OperationsEvent, OperationsModelCatalog, OperationsRun, OperationsSchedule, OperationsSnapshot, RunStatus, ScheduleFrequency } from '../shared/operations.js'
 import { DEFAULT_OPERATIONS_RUNS } from '../shared/operations.js'
 import { writeAtomic } from './atomic-write.js'
 
 const RUN_STATUSES = new Set<RunStatus>(['attention', 'completed', 'failed', 'paused', 'queued', 'running'])
+const SCHEDULE_FREQUENCIES = new Set<ScheduleFrequency>(['hourly', 'daily', 'weekly'])
+const SCHEDULE_INTERVALS: Record<ScheduleFrequency, number> = {
+  hourly: 60 * 60 * 1000,
+  daily: 24 * 60 * 60 * 1000,
+  weekly: 7 * 24 * 60 * 60 * 1000
+}
 
 function isRun(value: unknown): value is OperationsRun {
   if (!value || typeof value !== 'object') return false
@@ -23,6 +29,20 @@ function isRun(value: unknown): value is OperationsRun {
     && typeof run.checkpoint === 'string'
     && typeof run.status === 'string' && RUN_STATUSES.has(run.status as RunStatus)
     && typeof run.runtime === 'string' && typeof run.activity === 'string'
+    && (run.scheduleId === undefined || run.scheduleId === null || typeof run.scheduleId === 'number')
+}
+
+function isSchedule(value: unknown): value is OperationsSchedule {
+  if (!value || typeof value !== 'object') return false
+  const schedule = value as Partial<OperationsSchedule>
+  return typeof schedule.id === 'number' && Number.isFinite(schedule.id)
+    && typeof schedule.name === 'string' && typeof schedule.task === 'string'
+    && typeof schedule.workspace === 'string' && typeof schedule.modelId === 'string'
+    && typeof schedule.frequency === 'string' && SCHEDULE_FREQUENCIES.has(schedule.frequency as ScheduleFrequency)
+    && typeof schedule.enabled === 'boolean'
+    && typeof schedule.nextRunAt === 'number' && Number.isFinite(schedule.nextRunAt)
+    && (schedule.lastRunAt === null || (typeof schedule.lastRunAt === 'number' && Number.isFinite(schedule.lastRunAt)))
+    && typeof schedule.createdAt === 'number' && Number.isFinite(schedule.createdAt)
 }
 
 type RunnerOptions = {
@@ -45,6 +65,7 @@ export class OperationsService extends EventEmitter {
     private readonly filePath: string,
     private readonly modelCatalog: () => Promise<OperationsModelCatalog>,
     private runs: OperationsRun[],
+    private schedules: OperationsSchedule[],
     private readonly runner: Required<Pick<RunnerOptions, 'runWorkers' | 'workspacePath' | 'launchArgs' | 'executable'>> & Pick<RunnerOptions, 'tools'>
   ) {
     super()
@@ -56,10 +77,17 @@ export class OperationsService extends EventEmitter {
     options: RunnerOptions = {}
   ): Promise<OperationsService> {
     let runs = DEFAULT_OPERATIONS_RUNS.map((run) => ({ ...run }))
+    let schedules: OperationsSchedule[] = []
     try {
       const parsed: unknown = JSON.parse(await readFile(filePath, 'utf8'))
       if (Array.isArray(parsed) && parsed.every(isRun)) {
         runs = parsed.map((run) => ({ ...run, modelId: run.modelId ?? null, threadId: run.threadId ?? null, turnId: run.turnId ?? null }))
+      } else if (parsed && typeof parsed === 'object') {
+        const state = parsed as { runs?: unknown; schedules?: unknown }
+        if (Array.isArray(state.runs) && state.runs.every(isRun)) {
+          runs = state.runs.map((run) => ({ ...run, modelId: run.modelId ?? null, threadId: run.threadId ?? null, turnId: run.turnId ?? null }))
+        }
+        if (Array.isArray(state.schedules) && state.schedules.every(isSchedule)) schedules = state.schedules.map((schedule) => ({ ...schedule }))
       }
     } catch (error) {
       const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
@@ -72,19 +100,21 @@ export class OperationsService extends EventEmitter {
       executable: options.executable ?? (process.env.CLOSEDAI_CODEX_PATH?.trim() || 'codex'),
       tools: options.tools
     }
-    const service = new OperationsService(filePath, modelCatalog, runs, runner)
+    const service = new OperationsService(filePath, modelCatalog, runs, schedules, runner)
     if (runner.runWorkers) {
       for (const run of runs) if (run.status === 'queued' && run.modelId) void service.startRun(run.id)
     }
+    for (const schedule of schedules) service.planSchedule(schedule)
     return service
   }
 
   private readonly activeRuns = new Map<number, ActiveRun>()
+  private readonly scheduleTimers = new Map<number, ReturnType<typeof setTimeout>>()
   private persistQueue: Promise<void> = Promise.resolve()
   private stopping = false
 
   snapshot(): OperationsSnapshot {
-    return { runs: this.runs.map((run) => ({ ...run })) }
+    return { runs: this.runs.map((run) => ({ ...run })), schedules: this.schedules.map((schedule) => ({ ...schedule })) }
   }
 
   models(): Promise<OperationsModelCatalog> {
@@ -110,12 +140,63 @@ export class OperationsService extends EventEmitter {
       checkpoint: 'Queued for initialization',
       status: 'queued',
       runtime: '—',
-      activity: 'Now'
+      activity: 'Now',
+      scheduleId: null
     }
-    this.runs = [run, ...this.runs]
+    return this.enqueueRun(run)
+  }
+
+  async createSchedule(name: string, task: string, workspace: string, modelId: string, frequency: ScheduleFrequency): Promise<OperationsSchedule> {
+    const normalizedName = name.trim()
+    const normalizedTask = task.trim()
+    const normalizedWorkspace = workspace.trim()
+    if (!normalizedName) throw new Error('Schedule name is required')
+    if (!normalizedTask) throw new Error('Schedule task is required')
+    if (!normalizedWorkspace) throw new Error('Schedule workspace is required')
+    if (!modelId.trim()) throw new Error('Choose a model for this schedule')
+    if (!SCHEDULE_FREQUENCIES.has(frequency)) throw new Error('Choose a valid schedule frequency')
+    const catalog = await this.modelCatalog()
+    if (!catalog.models.some((model) => model.id === modelId)) throw new Error('That model is not available')
+    const now = Date.now()
+    const schedule: OperationsSchedule = {
+      id: Math.max(...this.schedules.map((item) => item.id), 0) + 1,
+      name: normalizedName,
+      task: normalizedTask,
+      workspace: normalizedWorkspace,
+      modelId,
+      frequency,
+      enabled: true,
+      nextRunAt: nextOccurrence(now, frequency),
+      lastRunAt: null,
+      createdAt: now
+    }
+    this.schedules = [schedule, ...this.schedules]
     await this.persistAndEmit()
-    if (this.runner.runWorkers) void this.startRun(run.id)
-    return { ...run }
+    this.planSchedule(schedule)
+    return { ...schedule }
+  }
+
+  async setScheduleEnabled(id: number, enabled: boolean): Promise<void> {
+    const schedule = this.schedules.find((item) => item.id === id)
+    if (!schedule) throw new Error('Schedule not found')
+    this.clearScheduleTimer(id)
+    this.schedules = this.schedules.map((item) => item.id === id ? { ...item, enabled } : item)
+    await this.persistAndEmit()
+    const updated = this.schedules.find((item) => item.id === id)
+    if (updated?.enabled) this.planSchedule(updated)
+  }
+
+  async runScheduleNow(id: number): Promise<OperationsRun> {
+    const schedule = this.schedules.find((item) => item.id === id)
+    if (!schedule) throw new Error('Schedule not found')
+    return this.fireSchedule(schedule, true)
+  }
+
+  async deleteSchedule(id: number): Promise<void> {
+    if (!this.schedules.some((schedule) => schedule.id === id)) throw new Error('Schedule not found')
+    this.clearScheduleTimer(id)
+    this.schedules = this.schedules.filter((schedule) => schedule.id !== id)
+    await this.persistAndEmit()
   }
 
   async setStatus(id: number, status: RunStatus): Promise<void> {
@@ -147,6 +228,58 @@ export class OperationsService extends EventEmitter {
     this.stopping = true
     for (const active of this.activeRuns.values()) active.client.stop()
     this.activeRuns.clear()
+    for (const timer of this.scheduleTimers.values()) clearTimeout(timer)
+    this.scheduleTimers.clear()
+  }
+
+  private async enqueueRun(run: OperationsRun): Promise<OperationsRun> {
+    this.runs = [run, ...this.runs]
+    await this.persistAndEmit()
+    if (this.runner.runWorkers) void this.startRun(run.id)
+    return { ...run }
+  }
+
+  private planSchedule(schedule: OperationsSchedule): void {
+    this.clearScheduleTimer(schedule.id)
+    if (!schedule.enabled || this.stopping) return
+    const delay = Math.max(0, schedule.nextRunAt - Date.now())
+    const timer = setTimeout(() => {
+      this.scheduleTimers.delete(schedule.id)
+      void this.fireSchedule(schedule, false).catch((error) => console.warn('scheduled worker failed:', error))
+    }, delay)
+    this.scheduleTimers.set(schedule.id, timer)
+  }
+
+  private async fireSchedule(input: OperationsSchedule, manual: boolean): Promise<OperationsRun> {
+    const schedule = this.schedules.find((item) => item.id === input.id)
+    if (!schedule || (!schedule.enabled && !manual)) throw new Error('Schedule is disabled')
+    const now = Date.now()
+    const nextRunAt = nextOccurrence(now, schedule.frequency)
+    this.schedules = this.schedules.map((item) => item.id === schedule.id ? { ...item, lastRunAt: now, nextRunAt } : item)
+    await this.persistAndEmit()
+    const run: OperationsRun = {
+      id: Math.max(...this.runs.map((item) => item.id), 0) + 1,
+      task: schedule.task,
+      worker: 'Scheduled worker',
+      workspace: schedule.workspace,
+      modelId: schedule.modelId,
+      threadId: null,
+      turnId: null,
+      checkpoint: 'Queued from schedule',
+      status: 'queued',
+      runtime: '—',
+      activity: 'Now',
+      scheduleId: schedule.id
+    }
+    const created = await this.enqueueRun(run)
+    if (!manual) this.planSchedule({ ...schedule, lastRunAt: now, nextRunAt })
+    return created
+  }
+
+  private clearScheduleTimer(id: number): void {
+    const timer = this.scheduleTimers.get(id)
+    if (timer) clearTimeout(timer)
+    this.scheduleTimers.delete(id)
   }
 
   private async startRun(id: number): Promise<void> {
@@ -242,12 +375,16 @@ export class OperationsService extends EventEmitter {
   private async persistAndEmit(): Promise<void> {
     const next = this.persistQueue.then(async () => {
       await writeAtomic(this.filePath, `${JSON.stringify(this.runs, null, 2)}\n`)
-      const event: OperationsEvent = { type: 'runs', runs: this.runs.map((run) => ({ ...run })) }
+      const event: OperationsEvent = { type: 'runs', runs: this.runs.map((run) => ({ ...run })), schedules: this.schedules.map((schedule) => ({ ...schedule })) }
       this.emit('changed', event)
     })
     this.persistQueue = next.catch(() => {})
     await next
   }
+}
+
+function nextOccurrence(from: number, frequency: ScheduleFrequency): number {
+  return from + SCHEDULE_INTERVALS[frequency]
 }
 
 function recordOf(value: unknown): Record<string, unknown> | null {
