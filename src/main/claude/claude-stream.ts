@@ -1,7 +1,6 @@
 import type { ChatTranscriptItem } from '../../shared/chat.js'
 import type { ContextUsage } from '../chat-context/context-compaction.js'
 import {
-  jsonPreview,
   recordOf,
   stringOf,
   toolResultItem,
@@ -53,6 +52,8 @@ export class ClaudeTurnTranslator {
   private turnId: string | null
   private readonly blocks = new Map<number, StreamBlock>()
   private readonly tools = new Map<string, ChatTranscriptItem>()
+  /** SDK tool names by tool_use id, so a call re-derived with full input keeps its exact tool. */
+  private readonly toolNames = new Map<string, string>()
   private readonly settledIds = new Map<string, string>()
   private messageCount = 0
   private messageKey = 'm0'
@@ -260,17 +261,17 @@ export class ClaudeTurnTranslator {
     if (this.tools.has(use.id)) return []
     const item = toolUseItem(use, this.turnId, this.options.cwd)
     this.tools.set(use.id, item)
+    this.toolNames.set(use.id, use.name)
     return [{ type: 'item', item }]
   }
 
   /** Re-derive the item once the arguments are known; the id is stable so this upserts. */
   private enrichTool(id: string, input: Record<string, unknown>): TranscriptOp[] {
     const current = this.tools.get(id)
-    if (!current || Object.keys(input).length === 0) return []
-    const name = toolNameOf(current)
+    const name = this.toolNames.get(id)
+    if (!current || !name || Object.keys(input).length === 0 || !awaitingResult(current)) return []
     const item = toolUseItem({ id, name, input }, this.turnId, this.options.cwd)
-    if (current.type !== 'tool' || current.status !== 'inProgress') return []
-    this.tools.set(id, { ...item, ...(current.type === item.type ? {} : {}) })
+    this.tools.set(id, item)
     return [{ type: 'item', item }]
   }
 
@@ -308,26 +309,10 @@ export class ClaudeTurnTranslator {
   }
 }
 
-/** Tool name recovered from an item the translator minted, for re-deriving it with full input. */
-function toolNameOf(item: ChatTranscriptItem): string {
-  if (item.type === 'command') return 'Bash'
-  if (item.type === 'fileChange') return item.changes[0]?.kind === 'add' ? 'Write' : 'Edit'
-  if (item.type === 'tool') {
-    const [namespace, tool] = item.label.split(' · ')
-    if (namespace && tool) return `mcp__${namespace}__${tool}`
-    return BUILTIN_BY_LABEL[item.label] ?? item.label
-  }
-  return 'tool'
-}
-
-const BUILTIN_BY_LABEL: Record<string, string> = {
-  'Read file': 'Read',
-  'Search files': 'Grep',
-  'Web search': 'WebSearch',
-  'Fetch page': 'WebFetch',
-  Subagent: 'Task',
-  'Tool search': 'ToolSearch',
-  Skill: 'Skill'
+/** A tool item whose result has not landed yet; a settled one must not regress to in-progress. */
+function awaitingResult(item: ChatTranscriptItem): boolean {
+  if (item.type === 'command' || item.type === 'fileChange' || item.type === 'tool') return item.status === 'inProgress'
+  return item.type === 'plan'
 }
 
 function notice(text: string, tone: 'info' | 'error'): TranscriptOp {
@@ -364,5 +349,3 @@ function resetNote(value: unknown): string {
   const date = new Date(value < 10_000_000_000 ? value * 1000 : value)
   return Number.isNaN(date.getTime()) ? '' : ` Resets at ${date.toLocaleString()}.`
 }
-
-export { jsonPreview }
