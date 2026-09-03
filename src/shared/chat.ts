@@ -120,6 +120,35 @@ export type ChatContextUsage = {
   percent: number
 }
 
+export type ChatTurnContextAttachment = {
+  name: string
+  kind: 'file' | 'image'
+  delivery: string
+  /** Present for path-backed attachments; pasted image bytes are never copied into this report. */
+  path?: string
+}
+
+export type ChatTurnContextAddition = {
+  name: string
+  kind: 'application' | 'untrusted'
+  value: string
+  characters: number
+  estimatedTokens: number
+}
+
+/** What ClosedAI contributed to the latest provider turn, excluding provider-owned history. */
+export type ChatTurnContextReport = {
+  createdAt: number
+  provider: ChatProvider
+  model: string | null
+  threadId: string | null
+  message: { value: string; characters: number; estimatedTokens: number }
+  attachments: ChatTurnContextAttachment[]
+  additions: ChatTurnContextAddition[]
+  estimatedAddedTextTokens: number
+  retainedHistory: string
+}
+
 export type ChatSnapshot = {
   /** The provider whose thread the pane shows; its connection and account are the ones below. */
   provider: ChatProvider
@@ -134,6 +163,8 @@ export type ChatSnapshot = {
   threadName: string | null
   activeTurnId: string | null
   contextUsage: ChatContextUsage | null
+  /** Latest turn submitted since this provider surface was opened. */
+  turnContext: ChatTurnContextReport | null
   items: ChatTranscriptItem[]
 }
 
@@ -154,5 +185,6 @@ export type ChatEvent =
   | { type: 'thread'; threadId: string | null; threadName: string | null }
   | { type: 'turn'; turnId: string | null }
   | { type: 'context'; usage: ChatContextUsage | null }
+  | { type: 'turnContext'; report: ChatTurnContextReport }
   | { type: 'item'; item: ChatTranscriptItem }
   | { type: 'itemDelta'; itemId: string; field: 'text' | 'output'; delta: string }
