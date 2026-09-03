@@ -15,7 +15,7 @@ import type {
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { describeUsage, type ContextUsage } from '../chat-context/context-compaction.js'
-import { applyPlanUsageSignal, type ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
+import { applyPlanUsageSignal, planUsageUnavailable, type ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
 import { buildThreadHandoff, handoffAdditionalContext } from '../chat-context/thread-handoff.js'
 import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
@@ -141,7 +141,10 @@ export class ClaudeChatService extends EventEmitter {
    * spawn — in which case the last reading stands, dated, rather than being cleared.
    */
   async refreshPlanUsage(): Promise<void> {
-    this.setPlanUsage(await this.session?.planUsage().catch(() => null) ?? null)
+    const usage = await this.session?.planUsage().catch(() => null) ?? null
+    if (usage) this.setPlanUsage(usage)
+    // No process and nothing read yet: say so rather than leaving the card reading forever.
+    else if (!this.planUsage) this.setPlanUsage(planUsageUnavailable('Send a message to read plan usage.'))
   }
 
   async selectModel(modelId: string): Promise<void> {
