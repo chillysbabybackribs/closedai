@@ -1,7 +1,7 @@
 import type { ChatThreadSummary } from '../shared/chat.js'
 import type { AppServerClient } from './app-server-client.js'
 import { normalizeThreadSummaries } from './chat-normalizers.js'
-import { ownThreadRows } from './codex-thread-origin.js'
+import { ownThreadRows } from './chat-thread-origin.js'
 
 // Stateless app-server calls the chat service exposes as-is; they need a connected client
 // and nothing of the service's thread or turn state.

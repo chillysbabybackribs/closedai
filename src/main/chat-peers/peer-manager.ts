@@ -80,6 +80,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   private readonly peers = new Map<ChatPaneId, PeerEntry>()
   private selectedPaneId: ChatPaneId
   private readonly parking: PeerIdleParking
+  /** Tail of each pane's operation chain, so callers on one pane cannot interleave. */
+  private readonly paneOperations = new Map<ChatPaneId, Promise<void>>()
   private peersTimer: NodeJS.Timeout | null = null
   private peersPending = false
   private threads: { at: number; list: ChatThreadSummary[] } | null = null
@@ -504,13 +506,29 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     }
   }
 
+  /**
+   * One pane runs one operation at a time. Waking is asynchronous, so two callers could
+   * otherwise interleave: a model switch landing between another caller's wake and its send
+   * moves the pane to a different provider, and the send starts its turn on the surface the
+   * pane just left — invisibly, because the pane now reports on a surface with no turn.
+   */
   private async withAwake<T>(paneId: ChatPaneId, action: (surface: ChatSurface) => Promise<T>): Promise<T> {
-    const entry = await this.parking.wake(paneId)
-    this.parking.cancel(entry)
+    const queued = (this.paneOperations.get(paneId) ?? Promise.resolve()).then(async () => {
+      const entry = await this.parking.wake(paneId)
+      this.parking.cancel(entry)
+      try {
+        return await action(entry.surface)
+      } finally {
+        this.parking.schedule(paneId)
+      }
+    })
+    // A failed operation must not cancel the ones behind it, so the chain swallows its result.
+    const tail = queued.then(() => undefined, () => undefined)
+    this.paneOperations.set(paneId, tail)
     try {
-      return await action(entry.surface)
+      return await queued
     } finally {
-      this.parking.schedule(paneId)
+      if (this.paneOperations.get(paneId) === tail) this.paneOperations.delete(paneId)
     }
   }
 

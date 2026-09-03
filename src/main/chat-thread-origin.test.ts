@@ -3,7 +3,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { CLOSEDAI_ORIGINATOR, ownThreadRows, readThreadOriginator } from './codex-thread-origin.ts'
+import { CLOSEDAI_ORIGINATOR, ownThreadRows, readThreadOriginator } from './chat-thread-origin.ts'
 
 test('another app’s threads are dropped and this app’s are kept', async () => {
   const originators = new Map([

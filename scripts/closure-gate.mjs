@@ -19,7 +19,9 @@ const allowedPackages = new Set([
   // The Antigravity provider serves the tool registry to the `agy` CLI over MCP (docs/antigravity.md).
   '@modelcontextprotocol/sdk'
 ])
-const forbiddenPaths = /(claude|codex|cursor|antigravity|agent|mcp|tool-|plugin|recall|artifact|seo-|blender|ytdlp|vpn|tor-|workflow|credential)/i
+// `tor-` is anchored to a path-segment or word boundary: unanchored it also matches the tail of
+// "inspector-modal", which rejected a sanctioned UI file for containing the letters t-o-r.
+const forbiddenPaths = /(claude|codex|cursor|antigravity|agent|mcp|tool-|plugin|recall|artifact|seo-|blender|ytdlp|vpn|(?:^|[/-])tor-|workflow|credential)/i
 // The sanctioned homes for model-facing tools (docs/tools.md): the registry in main and
 // its inspector UI in the renderer, plus the Claude Code provider adapter (docs/claude-code.md)
 // and the Antigravity provider adapter (docs/antigravity.md). Everything else that smells like
