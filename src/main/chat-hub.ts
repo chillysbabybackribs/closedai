@@ -9,6 +9,7 @@ import type {
 } from '../shared/chat.js'
 import { CHAT_PROVIDERS, chatProviderOfId } from '../shared/chat-providers.js'
 import type { ChatHistoryWindow } from '../shared/chat.js'
+import type { AppSettingsAccess } from './app-settings-store.js'
 
 // One chat pane, several providers. Each provider owns its own thread, transcript, and
 // connection; the hub owns which one the pane shows, merges the model catalogs so the picker
@@ -53,7 +54,11 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   /** Set by `stop`, so a background provider start that lands afterwards does not leave a process. */
   private stopped = false
 
-  constructor(private readonly providers: ChatHubProviders, initialModelId: string | null) {
+  constructor(
+    private readonly providers: ChatHubProviders,
+    initialModelId: string | null,
+    private readonly settings: AppSettingsAccess
+  ) {
     super()
     this.active = chatProviderOfId(initialModelId)
     for (const name of CHAT_PROVIDERS) {
@@ -160,7 +165,26 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     if (this.current().snapshot({ limit: 0 }).activeTurnId) throw new Error('Stop the current turn before switching models')
     await action()
     this.active = target
+    await this.persistActiveModel()
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
+  }
+
+  /**
+   * The pane's saved model is what names its provider on the next launch, so a switch that came
+   * from opening another provider's thread — where nothing went through the picker — has to
+   * record the destination's model and effort too. Without it the pane reopens on the provider
+   * it left. A failed write is reported rather than thrown: the switch itself already happened.
+   */
+  private async persistActiveModel(): Promise<void> {
+    const { selectedModel, selectedReasoningEffort } = this.current().snapshot({ limit: 0 })
+    if (!selectedModel) return
+    const saved = this.settings.get()
+    if (saved.chatModelId === selectedModel && saved.chatReasoningEffort === selectedReasoningEffort) return
+    try {
+      await this.settings.set({ chatModelId: selectedModel, chatReasoningEffort: selectedReasoningEffort })
+    } catch (error) {
+      console.warn('[chat] could not persist the pane model:', error instanceof Error ? error.message : String(error))
+    }
   }
 
   private merge(snapshot: ChatSnapshot): ChatSnapshot {

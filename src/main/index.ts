@@ -203,7 +203,7 @@ async function main(): Promise<void> {
     antigravity: new AntigravityChatService(
       chatWorkspace, peerSettings, antigravityBridge!, antigravityStateDir, activeBrowserContext, screenshots, peerSettings.paneId
     )
-  }, modelId), undefined, workspaceSelector)
+  }, modelId, peerSettings), undefined, workspaceSelector)
   registerIpc()
   // The one-shot cookie import runs before the first tab loads, so a restored or home page
   // arrives already signed in rather than racing the import.

@@ -14,6 +14,7 @@ import type { ChatContinuation, ChatPeerRecord } from '../../shared/types.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import { buildThreadHandoff } from '../chat-context/thread-handoff.js'
+import { ChatMemory } from '../chat-context/chat-memory.js'
 import { PeerIdleParking, type ParkablePeer } from './peer-idle-parking.js'
 import { PeerSettings } from './peer-settings.js'
 import { traceLog } from '../trace/trace-log.js'
@@ -77,6 +78,7 @@ const PEERS_EMIT_INTERVAL_MS = 200
 const THREADS_CACHE_MS = 5_000
 
 export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurface {
+  readonly memory: ChatMemory
   private readonly peers = new Map<ChatPaneId, PeerEntry>()
   private selectedPaneId: ChatPaneId
   private readonly parking: PeerIdleParking
@@ -94,6 +96,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     private readonly workspaceSelector?: ChatWorkspaceSelector
   ) {
     super()
+    this.memory = new ChatMemory(settings, (paneId) => this.peers.get(paneId)?.surface ?? null)
     const saved = settings.get()
     const records = saved.chatPeers.length > 0
       ? saved.chatPeers
@@ -192,8 +195,18 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // switching chats feel stuck. The wake emits its own `replace` when it lands.
     this.emitWorkspace()
     const settings = this.settings.get()
+    // The flat chat* fields mirror whichever pane is selected (see PeerSettings). Selecting a
+    // pane has to move that mirror too, or a relaunch that falls back to it reads the model and
+    // threads of the pane the user left.
+    const destination = this.record(paneId)
     await this.settings.set({
       chatSelectedPaneId: paneId,
+      chatThreadId: destination.codexThreadId,
+      chatClaudeSessionId: destination.claudeSessionId,
+      chatAntigravityConversationId: destination.antigravityConversationId ?? null,
+      chatModelId: destination.modelId,
+      chatReasoningEffort: destination.reasoningEffort,
+      chatContinuation: destination.continuation ?? null,
       ...(discardEmptyPane
         ? { chatPeers: settings.chatPeers.filter((peer) => peer.paneId !== previousPaneId) }
         : {})
@@ -297,13 +310,16 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   async closePeer(paneId: ChatPaneId): Promise<void> {
     const entry = this.peers.get(paneId)
     if (!entry) return
+    const closing = entry.surface.snapshot({ limit: 0 })
     this.parking.stop(entry)
     this.peers.delete(paneId)
     traceLog.responses.forget(paneId)
     const settings = this.settings.get()
     const remaining = settings.chatPeers.filter((record) => record.paneId !== paneId)
     if (remaining.length === 0) {
-      const fresh = freshRecord(null, null)
+      // Closing the last chat opens an empty one; it keeps the model the workspace was on
+      // rather than dropping back to the first provider's default.
+      const fresh = freshRecord(closing.selectedModel, closing.selectedReasoningEffort)
       remaining.push(fresh)
       this.attach(fresh)
       this.selectedPaneId = fresh.paneId
@@ -351,7 +367,10 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       }
       items = items.slice(0, index + 1)
     }
-    const handoff = buildThreadHandoff(items, threadName)
+    const savedCheckpoint = source.paneId ? this.record(source.paneId).checkpoint : null
+    const checkpoint = savedCheckpoint?.threadId === sourceThreadId
+      && items.some((item) => item.id === savedCheckpoint.throughItemId) ? savedCheckpoint : null
+    const handoff = buildThreadHandoff(items, threadName, checkpoint)
     if (!handoff) throw new Error('There is no conversation to continue yet')
     const targetModel = modelId ?? sourceSnapshot?.selectedModel ?? current.selectedModel
     const targetEffort = targetModel === sourceSnapshot?.selectedModel
@@ -362,6 +381,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       sourceThreadId,
       sourceProvider,
       sourceTitle: handoff.title,
+      sourceThroughItemId: items.at(-1)?.id ?? null,
+      checkpoint,
       handoff: handoff.text,
       createdAt: Date.now()
     }

@@ -59,14 +59,14 @@ export function recallTranscript(
   return result
 }
 
-/** Never put images, encoded payloads, or private reasoning in memory-recall results. */
+/** Exclude screenshot and reasoning items; include only bounded excerpts of textual work. */
 function recallText(item: ChatTranscriptItem): string | null {
   switch (item.type) {
     case 'user':
     case 'assistant':
     case 'plan': return item.text
     case 'command': return `${item.command}\n${item.output}`
-    case 'tool': return `${item.label}\n${item.detail}\n${item.result ?? ''}`
+    case 'tool': return `${item.label}\n${item.detail}\n${item.output ?? ''}`
     case 'fileChange': return item.changes.map((change) => `${change.path}\n${change.diff ?? ''}`).join('\n')
     default: return null
   }

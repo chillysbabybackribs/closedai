@@ -364,7 +364,11 @@ export class ChatService extends EventEmitter {
     if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')
     this.threadId = thread.id
     this.threadName = nullableString(thread.name)
-    this.modelState.adopt(response.model, response.reasoningEffort)
+    // A resumed thread reports the model and effort it last ran with. Every turn is sent with
+    // the pane's own preference, so adopting the thread's here would quietly discard a choice
+    // the user made and saved; only a pane that has never chosen takes what the thread reports.
+    const saved = this.settings.get()
+    this.modelState.adopt(saved.chatModelId ?? response.model, saved.chatReasoningEffort ?? response.reasoningEffort)
     this.transcript.replaceFromThread(thread)
     this.compactor.reset()
     await this.settings.set({ chatThreadId: thread.id, chatContinuation: null })
