@@ -1,5 +1,5 @@
 import type { ClipboardEvent, DragEvent, FormEvent, JSX } from 'react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowUp, Plus, Square } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
@@ -49,9 +49,17 @@ export function Composer({
   const [attachments, setAttachments] = useState<ChatAttachment[]>([])
   const [attachmentError, setAttachmentError] = useState('')
   const [sending, setSending] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const focusAfterSendRef = useRef(false)
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !sending && enabled && !running
   const waitingForInput = input.trim().length === 0 && attachments.length === 0 && enabled && !running && !sending
+
+  useEffect(() => {
+    if (sending || !focusAfterSendRef.current) return
+    focusAfterSendRef.current = false
+    formRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus()
+  }, [sending])
 
   function handleNewChat(): void {
     setInput('')
@@ -69,6 +77,7 @@ export function Composer({
       setInput('')
       setAttachments([])
       setAttachmentError('')
+      focusAfterSendRef.current = true
     } catch {
       // The main process adds an actionable transcript notice. Preserve the draft.
     } finally {
@@ -99,6 +108,7 @@ export function Composer({
 
   return (
     <form
+      ref={formRef}
       className="prompt-composer"
       onSubmit={(event) => void submit(event)}
       onDragOver={(event) => event.preventDefault()}
