@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { appInspectionExpression, conditionProbeExpression } from './app-automation-dom.ts'
+import {
+  appInspectionExpression,
+  conditionProbeExpression,
+  selectorClickExpression,
+  selectorTypeExpression,
+  selectorValueExpression
+} from './app-automation-dom.ts'
 
 test('app inspection is one bounded renderer expression with reusable refs and visible text', () => {
   const expression = appInspectionExpression('a123', 40)
@@ -18,4 +24,37 @@ test('selector-only condition probes do not read the entire document text', () =
   assert.match(expression, /const selector = "\.ready"/)
   assert.doesNotMatch(expression, /document\.body\.innerText/)
   assert.match(expression, /matches: matched\.map\(describe\)/)
+})
+
+test('selector action expressions are valid renderer JavaScript', () => {
+  const expressions = [
+    selectorClickExpression('.target'),
+    selectorTypeExpression('input[aria-label="Search"]', true),
+    selectorValueExpression('input[aria-label="Search"]')
+  ]
+  for (const expression of expressions) {
+    assert.doesNotThrow(() => new Function(`return ${expression}`))
+    assert.doesNotMatch(expression, /\sas\sHTMLElement/)
+  }
+})
+
+test('selector clicks reject disabled controls before dispatch', async () => {
+  const element = {
+    isConnected: true,
+    disabled: true,
+    getAttribute: () => null,
+    getClientRects: () => [{ width: 80, height: 30 }]
+  }
+  const originalDocument = globalThis.document
+  const originalStyle = globalThis.getComputedStyle
+  Object.assign(globalThis, {
+    document: { querySelectorAll: () => [element] },
+    getComputedStyle: () => ({ display: 'block', visibility: 'visible', opacity: '1' })
+  })
+  try {
+    const execute = new Function(`return ${selectorClickExpression('.disabled')}`) as () => Promise<unknown>
+    await assert.rejects(execute(), /Element is disabled/)
+  } finally {
+    Object.assign(globalThis, { document: originalDocument, getComputedStyle: originalStyle })
+  }
 })

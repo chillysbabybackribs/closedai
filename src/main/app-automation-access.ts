@@ -11,6 +11,9 @@ import { dispatchAppClick } from './app-automation-input.js'
 import {
   appInspectionExpression,
   conditionProbeExpression,
+  selectorClickExpression,
+  selectorTypeExpression,
+  selectorValueExpression,
   type AppConditionProbe
 } from './app-automation-dom.js'
 import { CdpSession } from './cdp/cdp-session.js'
@@ -69,14 +72,10 @@ export class AppAutomationAccess implements AppToolHost {
       return { connectionId: session.connectionId, ...await this.clickAt(window, contents, page, { x: target.x, y: target.y }) }
     }
     if (target.selector) {
-      const point = await contents.executeJavaScript(`(() => {
-        const el = document.querySelector(${JSON.stringify(target.selector)});
-        if (!el) throw new Error('No element matched selector: ' + ${JSON.stringify(target.selector)});
-        el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-        const rect = el.getBoundingClientRect();
-        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-      })()`, true) as { x: number; y: number }
-      const clickResult = await this.clickAt(window, contents, page, point)
+      const prepared = await contents.executeJavaScript(
+        selectorClickExpression(target.selector), true
+      ) as { point: { x: number; y: number } }
+      const clickResult = await this.clickAt(window, contents, page, prepared.point)
       return { connectionId: session.connectionId, selector: target.selector, ...clickResult }
     }
     if (target.ref) {
@@ -90,23 +89,25 @@ export class AppAutomationAccess implements AppToolHost {
   }
 
   async typeText(target: AppTypeTarget): Promise<unknown> {
-    const { window, contents, session, page, input } = this.resolve()
+    const { window, contents, session, page } = this.resolve()
     if (target.selector) {
-      const point = await contents.executeJavaScript(`(() => {
-        const el = document.querySelector(${JSON.stringify(target.selector)});
-        if (!el) throw new Error('No element matched selector: ' + ${JSON.stringify(target.selector)});
-        el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-        if (typeof (el as HTMLElement).focus === 'function') (el as HTMLElement).focus();
-        const rect = el.getBoundingClientRect();
-        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-      })()`, true) as { x: number; y: number }
-      await this.clickAt(window, contents, page, point)
-      if (target.clear) {
-        await input.pressKey('a', ['ctrl'])
-        await input.pressKey('Backspace', [])
-      }
+      const prepared = await contents.executeJavaScript(
+        selectorClickExpression(target.selector), true
+      ) as { point: { x: number; y: number } }
+      await this.clickAt(window, contents, page, prepared.point)
+      await contents.executeJavaScript(
+        selectorTypeExpression(target.selector, target.clear), true
+      )
       await session.command('Input.insertText', { text: target.text })
-      return { connectionId: session.connectionId, selector: target.selector, text: target.text }
+      const read = await contents.executeJavaScript(
+        selectorValueExpression(target.selector), true
+      ) as { value: string | null }
+      return {
+        connectionId: session.connectionId,
+        selector: target.selector,
+        cleared: target.clear,
+        ...(read.value === null ? {} : { value: read.value })
+      }
     }
     if (target.ref) {
       const snapshotId = this.requireSnapshot(target.ref)

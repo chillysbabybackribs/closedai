@@ -7,6 +7,11 @@ export type AppConditionProbe = {
   matches: AppElementMatch[]
 }
 
+export type AppPreparedSelector = {
+  point: { x: number; y: number }
+  viewport: { width: number; height: number }
+}
+
 /** One bounded renderer evaluation; avoids the browser inspector's frame and geometry traversal. */
 export function appInspectionExpression(snapshotId: string, maxElements: number): string {
   const inspect = inspectionExpression(snapshotId, 'app', maxElements)
@@ -73,6 +78,103 @@ export function conditionProbeExpression(options: AppWaitOptions): string {
       matches: matched.map(describe)
     };
   })()`
+}
+
+/** Resolve a selector at action time and enforce the same click contract as inspected refs. */
+export function selectorClickExpression(selector: string): string {
+  return `(async () => {
+    const select = (${selectRenderedElement.toString()});
+    const prepare = (${prepareSelectedClick.toString()});
+    return await prepare(select(${JSON.stringify(selector)}));
+  })()`
+}
+
+/** Verify the selector still resolves to an editable control and prepare replacement typing. */
+export function selectorTypeExpression(selector: string, clear: boolean): string {
+  return `(() => {
+    const select = (${selectRenderedElement.toString()});
+    return (${prepareSelectedType.toString()})(select(${JSON.stringify(selector)}), ${clear});
+  })()`
+}
+
+/** Read the post-input value so callers can verify what the renderer accepted. */
+export function selectorValueExpression(selector: string): string {
+  return `(() => {
+    const select = (${selectRenderedElement.toString()});
+    return (${readSelectedValue.toString()})(select(${JSON.stringify(selector)}));
+  })()`
+}
+
+function selectRenderedElement(selector: string): Element {
+  const matches = Array.from(document.querySelectorAll(selector))
+  const element = matches.find((candidate) => {
+    if (!candidate.isConnected) return false
+    const style = getComputedStyle(candidate)
+    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false
+    return Array.from(candidate.getClientRects()).some((rect) => rect.width > 0 && rect.height > 0)
+  })
+  if (!element) throw new Error('No rendered element matched selector: ' + selector)
+  return element
+}
+
+async function prepareSelectedClick(element: Element): Promise<AppPreparedSelector> {
+  if (('disabled' in element && Boolean((element as HTMLButtonElement).disabled)) ||
+      element.getAttribute('aria-disabled') === 'true') {
+    throw new Error('Element is disabled')
+  }
+  element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })
+  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+  let point: { x: number; y: number } | null = null
+  let area = 0
+  for (const rect of Array.from(element.getClientRects())) {
+    const left = Math.max(0, rect.left)
+    const top = Math.max(0, rect.top)
+    const right = Math.min(window.innerWidth, rect.right)
+    const bottom = Math.min(window.innerHeight, rect.bottom)
+    const candidateArea = Math.max(0, right - left) * Math.max(0, bottom - top)
+    if (candidateArea > area) {
+      area = candidateArea
+      point = { x: (left + right) / 2, y: (top + bottom) / 2 }
+    }
+  }
+  if (!point) throw new Error('Element is not visible after scrolling')
+  const hit = document.elementFromPoint(point.x, point.y)
+  if (!hit || (hit !== element && !element.contains(hit))) {
+    throw new Error('Element is covered at its clickable center')
+  }
+  return { point, viewport: { width: window.innerWidth, height: window.innerHeight } }
+}
+
+function prepareSelectedType(element: Element, clear: boolean): boolean {
+  const field = element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element : null
+  if (field) {
+    if (field.readOnly || field.disabled) throw new Error('Element is read-only or disabled')
+    field.focus()
+    if (clear) field.select()
+    return true
+  }
+  if (element instanceof HTMLElement && element.isContentEditable) {
+    element.focus()
+    if (clear) {
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      const selection = getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+    }
+    return true
+  }
+  throw new Error('Element is not an input, textarea, or contenteditable element')
+}
+
+function readSelectedValue(element: Element): { value: string | null } {
+  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+    return { value: element.value.slice(0, 200) }
+  }
+  if (element instanceof HTMLElement && element.isContentEditable) {
+    return { value: (element.textContent ?? '').slice(0, 200) }
+  }
+  return { value: null }
 }
 
 function viewportVisible(element: Element): boolean {
