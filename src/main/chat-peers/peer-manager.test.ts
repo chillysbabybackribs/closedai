@@ -126,6 +126,23 @@ test('send captures provider dispatch and first text through the pane event path
   assert.ok(timing!.durationMs! >= 0)
 })
 
+test('operations on one pane run in order instead of interleaving', async (t) => {
+  const { manager, surfaces } = harness()
+  t.after(() => manager.stop())
+  const paneId = manager.snapshot().selectedPaneId
+  const surface = surfaces[0]!
+  let release: (() => void) | null = null
+  const held = new Promise<void>((resolve) => { release = resolve })
+  surface.selectModel = async (modelId) => { await held; surface.calls.push(`model:${modelId}`) }
+  // Issued together, as a tool batch does: unserialized, the send runs while the switch waits,
+  // starting a turn on the provider the pane is leaving.
+  const switching = manager.selectModel(paneId, 'claude:opus')
+  const sending = manager.send(paneId, 'Hello', [])
+  release!()
+  await Promise.all([switching, sending])
+  assert.deepEqual(surface.calls.filter((call) => /^(model|send):/.test(call)), ['model:claude:opus', 'send:Hello'])
+})
+
 test('startup and workspace history only wake the selected persisted pane', async () => {
   const paneA = 'pane-a'
   const paneB = 'pane-b'
