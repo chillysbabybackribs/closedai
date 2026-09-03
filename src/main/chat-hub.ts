@@ -13,9 +13,9 @@ import type { AppSettingsAccess } from './app-settings-store.js'
 
 // One chat pane, several providers. Each provider owns its own thread, transcript, and
 // connection; the hub owns which one the pane shows, merges the model catalogs so the picker
-// can switch providers from any state, and routes every call by the id it carries. Picking a
-// model from another provider switches the pane to that provider's current thread (the old one
-// stays in history), which keeps a thread bound to the backend that can actually continue it.
+// can switch providers from any state, and routes every call by the id it carries. Switching
+// provider keeps the visible chat history when the destination provider has no loaded history,
+// so the UI does not jump to a blank pane until the new backend begins receiving messages.
 
 /** What the chat IPC drives: the hub, or a single provider in tests. */
 export type ChatSurface = {
@@ -107,7 +107,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   async selectModel(modelId: string): Promise<void> {
     const target = chatProviderOfId(modelId)
     if (target === this.active) return this.current().selectModel(modelId)
-    await this.switchTo(target, () => this.providers[target].selectModel(modelId))
+    await this.switchTo(this.current().snapshot(), target, () => this.providers[target].selectModel(modelId))
   }
 
   selectReasoningEffort(effort: string): Promise<void> {
@@ -141,7 +141,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   async openThread(threadId: string): Promise<void> {
     const target = chatProviderOfId(threadId)
     if (target === this.active) return this.current().openThread(threadId)
-    await this.switchTo(target, () => this.providers[target].openThread(threadId))
+    await this.switchTo(this.current().snapshot(), target, () => this.providers[target].openThread(threadId))
   }
 
   archiveThread(threadId: string): Promise<void> {
@@ -160,13 +160,21 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     return this.providers[this.active]
   }
 
-  /** Switch the pane to another provider after its own action succeeds; the old thread stays put. */
-  private async switchTo(target: ChatProvider, action: () => Promise<void>): Promise<void> {
-    if (this.current().snapshot({ limit: 0 }).activeTurnId) throw new Error('Stop the current turn before switching models')
+  /** Switch the pane to another provider after its own action succeeds. */
+  private async switchTo(source: ChatSnapshot, target: ChatProvider, action: () => Promise<void>): Promise<void> {
+    if (source.activeTurnId) throw new Error('Stop the current turn before switching models')
     await action()
     this.active = target
     await this.persistActiveModel()
-    this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
+    const next = this.preserveSourceHistory(source, this.current().snapshot())
+    this.emitEvent({ type: 'replace', snapshot: this.merge(next) })
+  }
+
+  /** Keep the current messages visible if the destination provider does not yet have a thread UI. */
+  private preserveSourceHistory(source: ChatSnapshot, target: ChatSnapshot): ChatSnapshot {
+    if (source.activeTurnId || source.items.length === 0) return target
+    if (target.provider === source.provider || target.items.length > 0) return target
+    return { ...target, threadName: target.threadName ?? source.threadName, items: source.items }
   }
 
   /**

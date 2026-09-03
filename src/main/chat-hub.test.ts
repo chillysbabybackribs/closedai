@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import test from 'node:test'
-import type { ChatEvent, ChatModel, ChatProvider, ChatSnapshot, ChatThreadContent, ChatThreadSummary } from '../shared/chat.js'
+import type {
+  ChatEvent,
+  ChatModel,
+  ChatProvider,
+  ChatSnapshot,
+  ChatThreadContent,
+  ChatThreadSummary,
+  ChatTranscriptItem
+} from '../shared/chat.js'
 import type { AppSettings } from '../shared/types.js'
 import { DEFAULT_APP_SETTINGS, type AppSettingsAccess } from './app-settings-store.js'
 import { ChatHub, type ChatHubProviders } from './chat-hub.js'
@@ -26,13 +34,14 @@ class FakeProvider extends EventEmitter {
   threads: ChatThreadSummary[] = []
   failThreads = false
   effort: string | null = 'high'
+  items: ChatTranscriptItem[] = []
   constructor(readonly provider: ChatProvider, private readonly models: ChatModel[]) { super() }
   snapshot(): ChatSnapshot {
     return {
       provider: this.provider, connection: { state: 'ready', message: `${this.provider} ready` }, account: null,
       models: this.models, selectedModel: this.models[0]?.id ?? null, selectedReasoningEffort: this.effort, cwd: '/w',
       threadId: `${this.provider}-thread`, threadName: null, activeTurnId: this.activeTurnId,
-      contextUsage: null, planUsage: null, turnContext: null, items: []
+      contextUsage: null, planUsage: null, turnContext: null, items: this.items
     }
   }
   async start(options?: { warm?: boolean }): Promise<void> { this.calls.push(`start:${options?.warm ?? 'none'}`) }
@@ -115,6 +124,15 @@ test('selecting the other provider switches the pane after that provider accepts
   assert.deepEqual(codex.calls, [])
   await hub.selectModel('claude:opus[1m]')
   assert.equal(hub.activeProvider, 'claude')
+})
+
+test('switching provider keeps the current transcript when destination has none', async () => {
+  const { hub, codex, claude } = build()
+  codex.items = [{ type: 'user', id: 'user-1', turnId: 't1', text: 'Hello from the original chat' }]
+  await hub.selectModel('claude:opus[1m]')
+  assert.equal(hub.activeProvider, 'claude')
+  assert.deepEqual(hub.snapshot().items, codex.items)
+  assert.deepEqual(claude.calls.slice(-1), ['selectModel:claude:opus[1m]'])
 })
 
 test('a running turn blocks switching providers', async () => {
