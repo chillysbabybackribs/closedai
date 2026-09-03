@@ -210,7 +210,8 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   /** A thread opened from history replaces the messages on screen — unless it has none of its own. */
   private preserveSourceHistory(source: ChatSnapshot, target: ChatSnapshot): ChatSnapshot {
-    if (source.activeTurnId || source.items.length === 0) return target
+    // A carried conversation is already in every snapshot; adding it here would show it twice.
+    if (this.carriedHistory || source.activeTurnId || source.items.length === 0) return target
     if (target.provider === source.provider || target.items.length > 0) return target
     return { ...target, threadName: target.threadName ?? source.threadName, items: source.items }
   }

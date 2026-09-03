@@ -15,9 +15,12 @@ application and is shared across panes and project switches.
 Claude ids use `claude:` and Antigravity ids use `agy:`. Picking another provider's model keeps the
 pane in its conversation: the destination leaves whatever chat it last had open, starts a fresh
 thread carrying a digest of the visible one (the same handoff “Continue in new chat” builds, sent
-with the next message), and the pane keeps showing the transcript it had. The chat the destination
-left stays in history. Opening another provider's thread from history is the other direction and
-shows that thread. History merges the providers' workspace catalogs.
+with the next message), and the pane keeps showing the transcript it had. The hub holds those
+carried messages, so every later snapshot and history page shows them above the new provider's own
+until the pane leaves that conversation (a new chat, a thread opened from history, or the provider
+clearing itself); they are in memory only and a relaunch shows just the new provider's thread. The
+chat the destination left stays in history. Opening another provider's thread from history is the
+other direction and shows that thread. History merges the providers' workspace catalogs.
 Changing models or providers is refused while that pane has an active turn.
 
 The project menu below the composer offers a directory picker, recent projects, and “Don’t work

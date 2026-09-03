@@ -38,14 +38,17 @@ class FakeProvider extends EventEmitter {
   effort: string | null = 'high'
   items: ChatTranscriptItem[] = []
   continued: ThreadHandoffSource | null = null
-  constructor(readonly provider: ChatProvider, private readonly models: ChatModel[]) { super() }
+  constructor(readonly provider: ChatProvider, private readonly models: ChatModel[]) {
+    super()
+    this.threadId = `${provider}-thread`
+  }
   hasEarlier = false
   threadId: string | null = null
   snapshot(window?: ChatHistoryWindow): ChatSnapshot {
     return {
       provider: this.provider, connection: { state: 'ready', message: `${this.provider} ready` }, account: null,
       models: this.models, selectedModel: this.models[0]?.id ?? null, selectedReasoningEffort: this.effort, cwd: '/w',
-      threadId: this.threadId ?? `${this.provider}-thread`, threadName: null, activeTurnId: this.activeTurnId,
+      threadId: this.threadId, threadName: null, activeTurnId: this.activeTurnId,
       contextUsage: null, planUsage: null, turnContext: null, items: this.items,
       ...(window ? { history: { hasEarlier: this.hasEarlier } } : {})
     }
