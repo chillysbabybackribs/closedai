@@ -53,6 +53,28 @@ export type ChatFileChange = {
   diff: string
 }
 
+/**
+ * Wall-clock bounds of a command, file change, or tool call, stamped by the app when it
+ * first sees the item running and when it settles. Items replayed from provider history
+ * arrive already settled and carry neither, so no duration is invented for them.
+ * Unix milliseconds.
+ */
+export type ActivityTiming = {
+  startedAt?: number
+  finishedAt?: number
+}
+
+export type ActivityPhase = 'running' | 'pending' | 'failed' | 'done'
+
+/** Providers report free-form status strings; every consumer reads them through this one mapping. */
+export function activityPhase(status: string, exitCode: number | null = null): ActivityPhase {
+  const normalized = status.toLowerCase()
+  if (normalized.includes('progress') || normalized.includes('running')) return 'running'
+  if (normalized.includes('fail') || normalized.includes('error') || (exitCode !== null && exitCode !== 0)) return 'failed'
+  if (normalized.includes('pending') || normalized.includes('request')) return 'pending'
+  return 'done'
+}
+
 export type ChatTranscriptItem =
   | { type: 'user'; id: string; turnId: string | null; text: string; attachments?: ChatAttachmentSummary[] }
   | {
@@ -72,14 +94,14 @@ export type ChatTranscriptItem =
       status: string
       output: string
       exitCode: number | null
-    }
+    } & ActivityTiming
   | {
       type: 'fileChange'
       id: string
       turnId: string | null
       status: string
       changes: ChatFileChange[]
-    }
+    } & ActivityTiming
     | { type: 'plan'; id: string; turnId: string | null; text: string; streaming: boolean }
     | { type: 'reasoning'; id: string; turnId: string | null; text: string; streaming: boolean }
   | {
@@ -89,7 +111,7 @@ export type ChatTranscriptItem =
       label: string
       detail: string
       status: string
-    }
+    } & ActivityTiming
   | {
       /** Visual evidence produced by a capture tool. Display-only in the app transcript. */
       type: 'screenshot'

@@ -1,4 +1,4 @@
-import type { ChatAttachmentSummary, ChatEvent, ChatTranscriptItem } from '../shared/chat.js'
+import { activityPhase, type ActivityTiming, type ChatAttachmentSummary, type ChatEvent, type ChatTranscriptItem } from '../shared/chat.js'
 import { cloneItem, normalizeItem, nullableString, recordOf, stringOf } from './chat-normalizers.js'
 
 type EmitChatEvent = (event: ChatEvent) => void
@@ -14,7 +14,8 @@ export class ChatTranscript {
     private readonly cwd: string,
     private readonly activeTurn: () => string | null,
     private readonly emit: EmitChatEvent,
-    private readonly displayScreenshot: DisplayScreenshot = () => null
+    private readonly displayScreenshot: DisplayScreenshot = () => null,
+    private readonly now: () => number = Date.now
   ) {}
 
   snapshot(): ChatTranscriptItem[] {
@@ -72,10 +73,27 @@ export class ChatTranscript {
     }
   }
 
-  upsert(item: ChatTranscriptItem): void {
+  upsert(incoming: ChatTranscriptItem): void {
+    const item = this.stampTiming(incoming)
     if (!this.items.has(item.id)) this.order.push(item.id)
     this.items.set(item.id, item)
     this.emit({ type: 'item', item: cloneItem(item) })
+  }
+
+  /**
+   * Providers say what an activity is doing, never when: the app clock supplies the
+   * start when an item first shows up running and the finish when it settles. A settled
+   * item that was never seen running (history replay) stays unstamped rather than
+   * claiming a zero-length duration.
+   */
+  private stampTiming(item: ChatTranscriptItem): ChatTranscriptItem {
+    if (item.type !== 'command' && item.type !== 'fileChange' && item.type !== 'tool') return item
+    const previous = timingOf(this.items.get(item.id))
+    const running = activityPhase(item.status) === 'running'
+    const startedAt = item.startedAt ?? previous.startedAt ?? (running ? this.now() : undefined)
+    if (startedAt === undefined) return item
+    if (running) return { ...item, startedAt }
+    return { ...item, startedAt, finishedAt: item.finishedAt ?? previous.finishedAt ?? this.now() }
   }
 
   appendDelta(itemId: string, field: 'text' | 'output', delta: string): void {
@@ -107,4 +125,9 @@ export class ChatTranscript {
     this.order.length = 0
     this.optimisticUsers.clear()
   }
+}
+
+function timingOf(item: ChatTranscriptItem | undefined): ActivityTiming {
+  if (!item || (item.type !== 'command' && item.type !== 'fileChange' && item.type !== 'tool')) return {}
+  return { startedAt: item.startedAt, finishedAt: item.finishedAt }
 }
