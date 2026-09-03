@@ -5,6 +5,7 @@ import type { AppSettings, ChatContinuation, ChatPeerRecord, ChatWorkspaceRecord
 import { chatProviderOfId } from '../shared/chat-providers.js'
 import { peerThreadId } from './chat-peers/peer-settings.js'
 import { DEFAULT_BATCH_MAX_CALLS, normalizeBatchMaxCalls } from './batch-config.js'
+import { normalizeMemoryCheckpoint } from './chat-context/memory-checkpoint.js'
 
 export type AppSettingsAccess = {
   get(): AppSettings
@@ -133,6 +134,7 @@ function normalizeChatPeers(
         modelId,
         reasoningEffort: optionalString(record.reasoningEffort),
         continuation: normalizeContinuation(record.continuation),
+        ...(record.checkpoint !== undefined ? { checkpoint: normalizeMemoryCheckpoint(record.checkpoint) } : {}),
         ...peerDisplayFields(record)
       }]
     })
@@ -203,7 +205,9 @@ function normalizeContinuation(value: unknown): ChatContinuation | null {
     sourceProvider: record.sourceProvider,
     sourceTitle: typeof record.sourceTitle === 'string' ? record.sourceTitle : '',
     handoff: optionalString(record.handoff),
-    createdAt: record.createdAt
+    createdAt: record.createdAt,
+    ...(record.sourceThroughItemId !== undefined ? { sourceThroughItemId: optionalString(record.sourceThroughItemId) } : {}),
+    ...(record.checkpoint !== undefined ? { checkpoint: normalizeMemoryCheckpoint(record.checkpoint) } : {})
   }
 }
 

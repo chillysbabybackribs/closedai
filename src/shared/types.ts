@@ -83,6 +83,10 @@ export type ChatContinuation = {
   /** Cleared after the destination's first turn is accepted; lineage remains. */
   handoff: string | null
   createdAt: number
+  /** Snapshot boundary: source recall must not expose later messages, including after a branch. */
+  sourceThroughItemId?: string | null
+  /** Checkpoint captured at continuation time; not a live pointer to the source's latest notes. */
+  checkpoint?: import('./chat-memory.js').ChatMemoryCheckpoint | null
 }
 
 export type ChatPeerRecord = {
@@ -97,6 +101,8 @@ export type ChatPeerRecord = {
   reasoningEffort: string | null
   /** The chat this pane continued from, including a restart-safe one-shot digest. */
   continuation?: ChatContinuation | null
+  /** One bounded checkpoint for this pane; usable only for its recorded provider thread. */
+  checkpoint?: import('./chat-memory.js').ChatMemoryCheckpoint | null
   /**
    * Last known display title, kept so a parked pane (no runtime, empty snapshot) still names
    * itself after a relaunch. Refreshed whenever the live title changes.
