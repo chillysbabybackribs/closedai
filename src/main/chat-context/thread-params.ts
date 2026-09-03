@@ -1,5 +1,11 @@
 import { dynamicToolSpecs } from '../tools/app-server-tools.js'
 import type { ToolRegistry } from '../tools/registry.js'
+
+export type ThreadResponse = {
+  thread?: unknown
+  model?: unknown
+  reasoningEffort?: unknown
+}
 import { closedAiDeveloperInstructions } from './developer-instructions.js'
 import { workspaceNavigationSection } from './workspace-navigation.js'
 

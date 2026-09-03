@@ -23,7 +23,7 @@ import {
   buildTurnAdditionalContext,
   type ActiveBrowserContext
 } from './chat-context/turn-context.js'
-import { resumeThreadParams, startThreadParams } from './chat-context/thread-params.js'
+import { resumeThreadParams, startThreadParams, type ThreadResponse } from './chat-context/thread-params.js'
 import { ContextCompactor, describeUsage, type ContextUsage } from './chat-context/context-compaction.js'
 import { appServerConfigArgs } from './chat-context/app-server-config.js'
 import { buildThreadHandoff, handoffAdditionalContext } from './chat-context/thread-handoff.js'
@@ -36,21 +36,10 @@ import { buildChatInput } from './chat-input.js'
 import { shrinkPastedImages } from './chat-attachment-images.js'
 import type { ScreenshotStore } from './tools/capture/screenshot-store.js'
 
-type ThreadResponse = {
-  thread?: unknown
-  model?: unknown
-  reasoningEffort?: unknown
-}
-
-const DEFAULT_CONNECTION: ChatConnection = {
-  state: 'starting',
-  message: 'Starting Codex…'
-}
-
 /** The Codex provider: one long-lived app-server process serving every Codex turn. */
 export class ChatService extends EventEmitter {
   private readonly client: AppServerClient
-  private connection: ChatConnection = DEFAULT_CONNECTION
+  private connection: ChatConnection = { state: 'starting', message: 'Starting Codex…' }
   private account: ChatAccount | null = null
   private readonly modelState = new ChatModelState()
   private threadId: string | null = null
@@ -158,10 +147,11 @@ export class ChatService extends EventEmitter {
         ...(Object.keys(additionalContext).length ? { additionalContext } : {}),
         input
       })
-      this.setTurnContext(buildTurnContextReport({
+      this.turnContext = buildTurnContextReport({
         provider: 'codex', model: this.modelState.selectedModel, threadId, prompt,
         attachments: summaries, additionalContext
-      }))
+      })
+      this.emitEvent({ type: 'turnContext', report: this.turnContext })
       this.pendingHandoff = null
       const turn = recordOf(response.turn)
       if (typeof turn?.id === 'string') this.setTurn(turn.id)
@@ -436,11 +426,6 @@ export class ChatService extends EventEmitter {
 
   private emitEvent(event: ChatEvent): void {
     this.emit('event', event)
-  }
-
-  private setTurnContext(report: ChatTurnContextReport): void {
-    this.turnContext = report
-    this.emitEvent({ type: 'turnContext', report })
   }
 
   private onExit(): void {
