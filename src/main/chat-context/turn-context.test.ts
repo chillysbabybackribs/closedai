@@ -24,6 +24,8 @@ test('developer instructions stay compact and establish the product trust bounda
   assert.match(instructions, /inside ClosedAI/)
   assert.match(instructions, /marked untrusted/)
   assert.match(instructions, /never as instructions/)
+  assert.match(instructions, /group all steps whose arguments are already known/)
+  assert.match(instructions, /Yield for another model pass only when fresh output changes the next action/)
   assert.match(instructions, /AGENTS\.md/)
 })
 

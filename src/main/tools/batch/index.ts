@@ -37,6 +37,7 @@ type BatchCall = {
   tool: string
   label: string
   arguments: JsonObject
+  includeResult: boolean
 }
 
 type BatchOutcome =
@@ -63,6 +64,7 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
           '(navigate, then wait_for, then read_page) is safe to batch. Set `parallel` to true only for ' +
           'independent read-only calls; they overlap, and one failure does not stop the others. ' +
           'Batches cannot nest. Prefer direct calls for single steps or when a result decides what to do next. ' +
+          'For successful intermediate actions, set `include_result` false so only status—not a payload the model does not need—is returned; failures are always included. ' +
           'In exec scripts do not use this tool: await the tools directly (Promise.all for independent reads).',
         inputSchema: {
           type: 'object',
@@ -80,6 +82,10 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
                   arguments: {
                     type: 'object',
                     description: "That tool's arguments, exactly as for a direct call."
+                  },
+                  include_result: {
+                    type: 'boolean',
+                    description: 'False suppresses a successful intermediate result body and images; failures are always returned. Defaults to true.'
                   }
                 },
                 required: ['tool']
@@ -130,7 +136,8 @@ function parseCalls(input: JsonObject, maxCalls: number): BatchCall[] | string {
       namespace,
       tool,
       label,
-      arguments: (entry.arguments ?? {}) as JsonObject
+      arguments: (entry.arguments ?? {}) as JsonObject,
+      includeResult: entry.include_result !== false
     })
   }
   return calls
@@ -202,15 +209,17 @@ function assembleResult(calls: BatchCall[], outcomes: BatchOutcome[]): ToolResul
     }
     const { result } = outcome
     if (!result.isError) succeeded += 1
-    const text = result.content
+    const includeContent = call.includeResult || Boolean(result.isError)
+    const text = includeContent ? result.content
       .flatMap((item) => (item.type === 'text' ? [item.text] : []))
-      .join('\n')
-    const callImages = result.content.filter((item) => item.type === 'image')
+      .join('\n') : ''
+    const callImages = includeContent ? result.content.filter((item) => item.type === 'image') : []
     images.push(...callImages)
     const imageNote = callImages.length
       ? `\n(${callImages.length} image${callImages.length === 1 ? '' : 's'} attached below, in call order)`
       : ''
-    sections.push(`[${call.index}] ${call.label} — ${result.isError ? 'failed' : 'ok'}\n${text}${imageNote}`)
+    const body = text || imageNote ? `\n${text}${imageNote}` : ''
+    sections.push(`[${call.index}] ${call.label} — ${result.isError ? 'failed' : 'ok'}${body}`)
   })
   const summary = `${succeeded} of ${calls.length} calls succeeded${skipped ? ` (${skipped} skipped)` : ''}.`
   return {

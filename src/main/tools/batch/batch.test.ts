@@ -196,6 +196,25 @@ test('images from inner calls are re-attached after the combined text, in call o
   assert.deepEqual(result.content[1], { type: 'image', dataUrl: 'data:image/png;base64,AA==' })
 })
 
+test('successful intermediate results can be suppressed without hiding failures', async () => {
+  const { registry } = harness()
+  const result = await call(registry, {
+    parallel: true,
+    calls: [
+      { tool: 'lab.echo', arguments: { text: 'private intermediate' }, include_result: false },
+      { tool: 'lab.snap', include_result: false },
+      { tool: 'lab.boom', include_result: false }
+    ]
+  })
+  const text = batchText(result)
+  assert.match(text, /\[1\] lab\.echo — ok/)
+  assert.doesNotMatch(text, /private intermediate/)
+  assert.match(text, /\[2\] lab\.snap — ok/)
+  assert.doesNotMatch(text, /a picture/)
+  assert.match(text, /\[3\] lab\.boom — failed\nit broke/)
+  assert.equal(result.content.length, 1)
+})
+
 test('each inner call is reported to aggregate telemetry', async () => {
   const { registry } = harness()
   const events: string[] = []
