@@ -1,137 +1,189 @@
-import { inspectionExpression } from './cdp/page-control/runtime.js'
-import type { AppElementMatch, AppWaitOptions } from './tools/app/host.js'
+import type {
+  AppConditionProbe,
+  AppControl,
+  AppControlFilter,
+  AppUiState,
+  AppUiTarget,
+  AppWaitOptions
+} from './tools/app/host.js'
 
-export type AppConditionProbe = {
-  selectorMatched: boolean | null
-  textMatched: boolean | null
-  matches: AppElementMatch[]
-}
+// Renderer-side expressions for the ui host. Every function below that runs in the page is
+// stringified into the expression, so each takes its helpers as parameters instead of closing
+// over module scope. Controls are addressed by their manifest id (`data-ui`), never by refs
+// from an earlier snapshot, so no result has to be replayed for a later action to work.
 
-export type AppPreparedSelector = {
+export type AppPreparedClick = {
   point: { x: number; y: number }
   viewport: { width: number; height: number }
 }
 
-export type AppInspectionFilter = {
-  query?: string
-  surface?: string
-  includeText: boolean
+const helpers = (): string => `
+  const visible = (${viewportVisible.toString()});
+  const nameOf = (${accessibleName.toString()});
+  const surfaceOf = (${surfaceOfElement.toString()});
+  const describe = (${describeControl.toString()});
+  const select = (${selectRenderedElement.toString()});
+`
+
+/** List the rendered manifest controls, optionally scoped to a surface and filtered by text. */
+export function controlsExpression(filter: AppControlFilter): string {
+  return `(() => {
+    ${helpers()}
+    const filter = ${JSON.stringify(filter)};
+    const query = (filter.query || '').toLowerCase();
+    const surfaces = Array.from(document.querySelectorAll('[data-ui-surface]'))
+      .filter(visible).map((element) => element.getAttribute('data-ui-surface'));
+    const controls = [];
+    let total = 0;
+    for (const element of Array.from(document.querySelectorAll('[data-ui]'))) {
+      if (!visible(element)) continue;
+      const item = describe(element, nameOf, surfaceOf);
+      if (filter.surface && item.surface !== filter.surface) continue;
+      if (query) {
+        const haystack = [item.id, item.key, item.name, item.value].filter(Boolean).join(' ').toLowerCase();
+        if (!haystack.includes(query)) continue;
+      }
+      total += 1;
+      if (controls.length < filter.maxControls) controls.push(item);
+    }
+    return { surfaces, controls, total, omitted: total - controls.length };
+  })()`
 }
 
-/** One bounded renderer evaluation; avoids the browser inspector's frame and geometry traversal. */
-export function appInspectionExpression(
-  snapshotId: string,
-  maxElements: number,
-  filter: AppInspectionFilter = { includeText: true }
-): string {
-  const inspect = inspectionExpression(snapshotId, 'app', maxElements, {
-    query: filter.query,
-    surface: filter.surface
-  })
+/** Renderer-only facts the main process cannot know: open overlays, drawer, composer, focus. */
+export function uiStateExpression(): string {
   return `(() => {
-    const inspection = ${inspect};
-    const visible = (${viewportVisible.toString()});
-    const describe = (${describeElement.toString()});
-    const includeText = ${filter.includeText};
-    const visibleText = includeText ? (${readVisibleText.toString()})(3000) : null;
+    ${helpers()}
+    const byId = (id) => Array.from(document.querySelectorAll('[data-ui="' + id + '"]')).find(visible) || null;
+    const ids = (selector) => Array.from(document.querySelectorAll(selector)).filter(visible)
+      .map((element) => element.getAttribute('data-ui') || element.getAttribute('aria-label') || element.tagName.toLowerCase());
+    const input = byId('composer.input');
+    const send = byId('composer.send');
     const active = document.activeElement;
+    const focused = active && active.closest ? active.closest('[data-ui]') : null;
     return {
-      inspection,
-      filter: ${JSON.stringify(filter)},
-      document: {
-        title: document.title,
-        url: location.href,
-        readyState: document.readyState,
-        activeElement: active && active instanceof HTMLElement ? describe(active) : null,
-        surfaces: Array.from(document.querySelectorAll('[data-ui-surface], [role="dialog"], [role="alert"], [role="status"]'))
-          .filter(visible).slice(0, 100).map(describe),
-        ...(visibleText ? { visibleText: visibleText.text, textTruncated: visibleText.truncated } : {})
-      }
+      drawerOpen: Boolean(document.querySelector('[data-ui-surface="side-drawer"]')),
+      historyOpen: Boolean(byId('chat.history')),
+      downloadsOpen: Boolean(document.querySelector('[data-ui-surface="browser-downloads"]')),
+      dialogs: ids('[role="dialog"][data-ui]'),
+      menus: ids('[role="menu"], [role="listbox"], [role="menubar"] [data-state="open"]'),
+      composer: input ? {
+        enabled: !input.disabled,
+        running: Boolean(byId('composer.stop')),
+        canSend: Boolean(send) && !send.disabled,
+        draftLength: (input.value || '').length
+      } : null,
+      focused: focused ? {
+        id: focused.getAttribute('data-ui'),
+        ...(focused.getAttribute('data-ui-key') ? { key: focused.getAttribute('data-ui-key') } : {})
+      } : null,
+      viewport: { width: window.innerWidth, height: window.innerHeight }
     };
   })()`
 }
 
-/** Build a focused probe: selector-only waits never read or lay out the document's text. */
-export function conditionProbeExpression(options: AppWaitOptions): string {
+/** Resolve a target at action time and enforce the click contract (enabled, scrolled, unobscured). */
+export function targetClickExpression(target: AppUiTarget): string {
+  return `(async () => {
+    ${helpers()}
+    const prepare = (${prepareSelectedClick.toString()});
+    return await prepare(select(${JSON.stringify(target)}, visible, nameOf));
+  })()`
+}
+
+export function targetTypeExpression(target: AppUiTarget, clear: boolean): string {
   return `(() => {
-    const selector = ${JSON.stringify(options.selector ?? '')};
+    ${helpers()}
+    return (${prepareSelectedType.toString()})(select(${JSON.stringify(target)}, visible, nameOf), ${clear});
+  })()`
+}
+
+export function targetValueExpression(target: AppUiTarget): string {
+  return `(() => {
+    ${helpers()}
+    return (${readSelectedValue.toString()})(select(${JSON.stringify(target)}, visible, nameOf));
+  })()`
+}
+
+export function targetScrollExpression(target: AppUiTarget): string {
+  return `(() => {
+    ${helpers()}
+    const element = select(${JSON.stringify(target)}, visible, nameOf);
+    element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    return { scrolled: 'into_view', control: element.getAttribute('data-ui') || undefined };
+  })()`
+}
+
+/** One probe per poll: counts of rendered/enabled target matches and whether text is on screen. */
+export function conditionProbeExpression(options: AppWaitOptions): string {
+  const target = targetSelector(options)
+  return `(() => {
+    ${helpers()}
+    const selector = ${JSON.stringify(target)};
+    const match = ${JSON.stringify(options.match?.toLowerCase() ?? '')};
     const needle = ${JSON.stringify(options.text ?? '')};
-    const visible = (${viewportVisible.toString()});
-    const describe = (${describeElement.toString()});
-    const selected = selector ? Array.from(document.querySelectorAll(selector)).filter(visible) : [];
-    const textMatches = [];
+    let targetVisible = null;
+    let targetEnabled = null;
+    if (selector) {
+      const rendered = Array.from(document.querySelectorAll(selector)).filter(visible)
+        .filter((element) => !match || nameOf(element).toLowerCase().includes(match));
+      targetVisible = rendered.length;
+      targetEnabled = rendered.filter((element) => !element.disabled && element.getAttribute('aria-disabled') !== 'true').length;
+    }
+    let textMatched = null;
     if (needle && document.body) {
-      const seen = new Set();
-      const add = (element) => {
-        const semantic = element.closest('a[href],button,input,select,textarea,summary,[role],[tabindex],[contenteditable="true"]') || element;
-        if (!seen.has(semantic) && visible(semantic)) {
-          seen.add(semantic);
-          textMatches.push(semantic);
-        }
-      };
+      textMatched = false;
       for (const element of document.querySelectorAll('[aria-label],[title],[placeholder],[alt]')) {
-        const accessible = [
-          element.getAttribute('aria-label'), element.getAttribute('title'),
-          element.getAttribute('placeholder'), element.getAttribute('alt')
-        ].filter(Boolean).join(' ');
-        if (accessible.includes(needle)) add(element);
-        if (textMatches.length >= 5) break;
+        if (visible(element) && nameOf(element).includes(needle)) { textMatched = true; break; }
       }
-      if (textMatches.length < 5) {
+      if (!textMatched) {
         const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
         let node;
-        while ((node = walker.nextNode()) && textMatches.length < 5) {
-          if ((node.nodeValue || '').includes(needle) && node.parentElement) add(node.parentElement);
+        while ((node = walker.nextNode())) {
+          if ((node.nodeValue || '').includes(needle) && node.parentElement && visible(node.parentElement)) {
+            textMatched = true;
+            break;
+          }
         }
       }
     }
-    const matched = Array.from(new Set([...selected, ...textMatches])).slice(0, 5);
-    return {
-      selectorMatched: selector ? selected.length > 0 : null,
-      textMatched: needle ? textMatches.length > 0 : null,
-      matches: matched.map(describe)
-    };
+    return { targetVisible, targetEnabled, textMatched };
   })()`
 }
 
-/** Resolve a selector at action time and enforce the same click contract as inspected refs. */
-export function selectorClickExpression(selector: string): string {
-  return `(async () => {
-    const select = (${selectRenderedElement.toString()});
-    const prepare = (${prepareSelectedClick.toString()});
-    return await prepare(select(${JSON.stringify(selector)}));
-  })()`
+export function targetSelector(target: AppUiTarget): string {
+  if (target.selector) return target.selector
+  if (!target.control) return ''
+  return `[data-ui="${target.control}"]${target.key ? `[data-ui-key="${target.key}"]` : ''}`
 }
 
-/** Verify the selector still resolves to an editable control and prepare replacement typing. */
-export function selectorTypeExpression(selector: string, clear: boolean): string {
-  return `(() => {
-    const select = (${selectRenderedElement.toString()});
-    return (${prepareSelectedType.toString()})(select(${JSON.stringify(selector)}), ${clear});
-  })()`
+type Visible = (element: Element) => boolean
+type NameOf = (element: Element) => string
+type SurfaceOf = (element: Element) => string
+
+function selectRenderedElement(target: AppUiTarget, visible: Visible, nameOf: NameOf): Element {
+  const selector = target.selector ??
+    (target.control ? `[data-ui="${target.control}"]${target.key ? `[data-ui-key="${target.key}"]` : ''}` : '')
+  if (!selector) throw new Error('Pass control (with key or match when it repeats) or selector')
+  const all = Array.from(document.querySelectorAll(selector))
+  const rendered = all.filter((element) => element.isConnected && visible(element))
+  const match = target.match?.toLowerCase()
+  const candidates = match ? rendered.filter((element) => nameOf(element).toLowerCase().includes(match)) : rendered
+  if (candidates.length === 0) {
+    const where = target.control ?? selector
+    if (all.length === 0) throw new Error(`Control ${where} is not rendered now (open its surface or menu first)`)
+    if (rendered.length === 0) throw new Error(`Control ${where} exists but is not visible`)
+    throw new Error(`No visible ${where} matches "${target.match}"`)
+  }
+  if (candidates.length > 1) {
+    const options = candidates.slice(0, 8)
+      .map((element) => `${element.getAttribute('data-ui-key') ?? '?'}: ${nameOf(element).slice(0, 60)}`)
+    throw new Error(`Control ${target.control ?? selector} matches ${candidates.length} elements; pass key or match. Keys: ${options.join(' | ')}`)
+  }
+  return candidates[0]!
 }
 
-/** Read the post-input value so callers can verify what the renderer accepted. */
-export function selectorValueExpression(selector: string): string {
-  return `(() => {
-    const select = (${selectRenderedElement.toString()});
-    return (${readSelectedValue.toString()})(select(${JSON.stringify(selector)}));
-  })()`
-}
-
-function selectRenderedElement(selector: string): Element {
-  const matches = Array.from(document.querySelectorAll(selector))
-  const element = matches.find((candidate) => {
-    if (!candidate.isConnected) return false
-    const style = getComputedStyle(candidate)
-    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false
-    return Array.from(candidate.getClientRects()).some((rect) => rect.width > 0 && rect.height > 0)
-  })
-  if (!element) throw new Error('No rendered element matched selector: ' + selector)
-  return element
-}
-
-async function prepareSelectedClick(element: Element): Promise<AppPreparedSelector> {
+async function prepareSelectedClick(element: Element): Promise<AppPreparedClick> {
   if (('disabled' in element && Boolean((element as HTMLButtonElement).disabled)) ||
       element.getAttribute('aria-disabled') === 'true') {
     throw new Error('Element is disabled')
@@ -200,61 +252,44 @@ function viewportVisible(element: Element): boolean {
   ))
 }
 
-function describeElement(element: Element): AppElementMatch {
-  const html = element as HTMLElement
-  const rect = element.getBoundingClientRect()
+function accessibleName(element: Element): string {
   const labelledBy = element.getAttribute('aria-labelledby')
   const labelledText = labelledBy?.split(/\s+/)
     .map((id) => document.getElementById(id)?.innerText ?? '').join(' ').trim()
   const name = labelledText || element.getAttribute('aria-label') || element.getAttribute('title') ||
     element.getAttribute('placeholder') || element.getAttribute('alt') ||
-    (html.innerText || element.textContent || '').replace(/\s+/g, ' ').trim()
-  const state: Record<string, boolean | string> = {}
-  if ('disabled' in html) state.disabled = Boolean((html as HTMLButtonElement).disabled)
-  if ('checked' in html) state.checked = Boolean((html as HTMLInputElement).checked)
-  if ('value' in html && typeof (html as HTMLInputElement).value === 'string') {
-    state.value = (html as HTMLInputElement).value.slice(0, 500)
-  }
-  for (const key of ['expanded', 'pressed', 'selected'] as const) {
-    const value = element.getAttribute(`aria-${key}`)
-    if (value === 'true' || value === 'false') state[key] = value === 'true'
-  }
-  return {
-    tag: element.tagName.toLowerCase(),
-    role: element.getAttribute('role') || element.tagName.toLowerCase(),
-    name: name.slice(0, 500),
-    text: (html.innerText || element.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 500),
-    state,
-    bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
-  }
+    ((element as HTMLElement).innerText || element.textContent || '')
+  return name.replace(/\s+/g, ' ').trim().slice(0, 120)
 }
 
-function readVisibleText(limit: number): { text: string; truncated: boolean } {
-  if (!document.body) return { text: '', truncated: false }
-  const parts: string[] = []
-  let length = 0
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
-  let node: Node | null
-  while ((node = walker.nextNode())) {
-    const text = (node.nodeValue || '').replace(/\s+/g, ' ').trim()
-    const parent = node.parentElement
-    if (!text || !parent) continue
-    const style = getComputedStyle(parent)
-    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) continue
-    const range = document.createRange()
-    range.selectNodeContents(node)
-    const inViewport = Array.from(range.getClientRects()).some((rect) => (
-      rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.bottom > 0 &&
-      rect.left < window.innerWidth && rect.top < window.innerHeight
-    ))
-    if (!inViewport) continue
-    if (length + text.length + 1 > limit) {
-      const remaining = Math.max(0, limit - length)
-      if (remaining > 0) parts.push(text.slice(0, remaining))
-      return { text: parts.join(' '), truncated: true }
-    }
-    parts.push(text)
-    length += text.length + 1
-  }
-  return { text: parts.join(' '), truncated: false }
+function surfaceOfElement(element: Element): string {
+  return element.closest('[data-ui-surface]')?.getAttribute('data-ui-surface') ?? 'overlay'
 }
+
+function describeControl(element: Element, nameOf: NameOf, surfaceOf: SurfaceOf): AppControl {
+  const html = element as HTMLInputElement
+  const tag = element.tagName.toLowerCase()
+  const item: AppControl = {
+    id: element.getAttribute('data-ui') ?? '',
+    name: nameOf(element),
+    role: element.getAttribute('role') || (tag === 'input' ? html.type || 'text' : tag),
+    surface: surfaceOf(element)
+  }
+  const key = element.getAttribute('data-ui-key')
+  if (key) item.key = key
+  if (('disabled' in html && Boolean(html.disabled)) || element.getAttribute('aria-disabled') === 'true') item.disabled = true
+  if (tag === 'input' && (html.type === 'checkbox' || html.type === 'radio')) item.checked = html.checked
+  if (element.getAttribute('aria-checked') !== null) item.checked = element.getAttribute('aria-checked') === 'true'
+  for (const state of ['selected', 'expanded', 'pressed'] as const) {
+    const value = element.getAttribute(`aria-${state}`)
+    if (value === 'true' || value === 'false') item[state] = value === 'true'
+  }
+  if (element.getAttribute('aria-current') === 'true') item.current = true
+  if ((tag === 'input' && html.type !== 'file') || tag === 'textarea') {
+    const value = html.value ?? ''
+    if (value) item.value = value.slice(0, 120)
+  }
+  return item
+}
+
+export type { AppUiState, AppConditionProbe }
