@@ -118,10 +118,10 @@ test('commands route to the host with the selected pane as the default target', 
   ])
 })
 
-test('ui actions resolve controls by id, key, match, selector, or coordinates', async () => {
+test('ui actions resolve controls by id, item, match, selector, or coordinates', async () => {
   const { calls, call } = harness()
   await call('ui', { action: 'controls', surface: 'side-drawer', query: 'row' })
-  await call('ui', { action: 'click', control: 'drawer.row', key: 'row-1' })
+  await call('ui', { action: 'click', control: 'drawer.row', item: 'row-1' })
   await call('ui', { action: 'click', x: 100, y: 200 })
   await call('ui', { action: 'type', control: 'composer.input', text: 'hello' })
   await call('ui', { action: 'press_key', key: 'Enter', modifiers: ['ctrl'] })
@@ -129,12 +129,12 @@ test('ui actions resolve controls by id, key, match, selector, or coordinates', 
   await call('ui', { action: 'wait_for', control: 'composer.send', condition: 'enabled' })
   assert.deepEqual(calls, [
     ['controls', { surface: 'side-drawer', query: 'row', maxControls: 60 }],
-    ['click', { control: 'drawer.row', key: 'row-1', match: undefined, selector: undefined, x: undefined, y: undefined }],
-    ['click', { control: undefined, key: undefined, match: undefined, selector: undefined, x: 100, y: 200 }],
-    ['typeText', { control: 'composer.input', key: undefined, match: undefined, selector: undefined, text: 'hello', clear: true }],
+    ['click', { control: 'drawer.row', item: 'row-1', match: undefined, selector: undefined, x: undefined, y: undefined }],
+    ['click', { control: undefined, item: undefined, match: undefined, selector: undefined, x: 100, y: 200 }],
+    ['typeText', { control: 'composer.input', item: undefined, match: undefined, selector: undefined, text: 'hello', clear: true }],
     ['pressKey', 'Enter', ['ctrl']],
-    ['scroll', { control: undefined, key: undefined, match: undefined, selector: undefined, deltaX: 0, deltaY: 400 }],
-    ['waitFor', { control: 'composer.send', key: undefined, match: undefined, selector: undefined, text: undefined, condition: 'enabled', timeoutMs: 3_000 }, false]
+    ['scroll', { control: undefined, item: undefined, match: undefined, selector: undefined, deltaX: 0, deltaY: 400 }],
+    ['waitFor', { control: 'composer.send', item: undefined, match: undefined, selector: undefined, text: undefined, condition: 'enabled', timeoutMs: 3_000 }, false]
   ])
 })
 
@@ -151,7 +151,7 @@ test('wait marks a timeout as a tool failure and rejects unusable conditions', a
   assert.equal(result.isError, true)
   assert.equal(result.errorKind, 'timeout')
   assert.match(textOf(result), /"reached": false/)
-  assert.equal(calls.length, 1)
+  assert.deepEqual(calls, [])
 })
 
 test('schemas reject stale-shaped and oversized arguments before dispatch', async () => {

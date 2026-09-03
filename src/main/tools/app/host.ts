@@ -6,12 +6,12 @@ import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../../../sha
 // main process (the same services the renderer's IPC uses); the ui host drives real controls in
 // the renderer by their stable `data-ui` id when the interaction itself is what matters.
 
-/** How a ui action names its element: a manifest id (plus key/match to pick one row), or a raw selector. */
+/** How a ui action names its element: a manifest id (plus item/match to pick one row), or a raw selector. */
 export type AppUiTarget = {
   control?: string
   /** The control's data-ui-key when it repeats per row, tab, or item. */
   item?: string
-  /** Case-insensitive substring of the control's accessible name, for rows without a known key. */
+  /** Case-insensitive substring of the control's accessible name, for rows without a known item. */
   match?: string
   selector?: string
 }

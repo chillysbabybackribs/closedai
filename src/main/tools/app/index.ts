@@ -29,8 +29,8 @@ export function appTools(app: () => AppCommandHost | null, ui: () => AppUiHost |
         name: 'ui',
         description:
           'Drive the real ClosedAI renderer by stable control id. Start with controls (scoped by surface or ' +
-          `query) to see ids, keys, and state; families: ${uiControlFamilies().join(', ')}. Rows, tabs, and ` +
-          'menu items repeat, so pass key or match with their control. Menus and dialogs must be opened first; ' +
+          `query) to see ids, items, and state; families: ${uiControlFamilies().join(', ')}. Rows, tabs, and ` +
+          'menu items repeat, so pass item or match with their control. Menus and dialogs must be opened first; ' +
           'never read renderer source to find a control.',
         actions: appUiActions(ui)
       })
