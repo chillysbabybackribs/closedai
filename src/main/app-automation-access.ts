@@ -1,6 +1,7 @@
 import type { BrowserWindow, WebContents } from 'electron'
 import type {
   AppClickTarget,
+  AppElementMatch,
   AppScrollTarget,
   AppToolHost,
   AppTypeTarget,
@@ -10,6 +11,14 @@ import type {
 import { CdpSession } from './cdp/cdp-session.js'
 import { CdpPageController } from './cdp/page-control/page-controller.js'
 import { CdpPageInput } from './cdp/page-control/page-input.js'
+import {
+  inspectionExpression,
+  prepareClickExpression,
+  prepareTypeExpression,
+  readValueExpression,
+  scrollRefExpression,
+  type LocalInspection
+} from './cdp/page-control/runtime.js'
 
 type Connection = {
   session: CdpSession
@@ -20,6 +29,7 @@ type Connection = {
 type ConditionProbe = {
   selectorMatched: boolean | null
   textMatched: boolean | null
+  matches: AppElementMatch[]
 }
 
 const APP_TARGET_ID = 'closedai-app'
@@ -28,8 +38,31 @@ const POLL_MS = 75
 /** Electron adapter for semantic model interaction with the app renderer itself. */
 export class AppAutomationAccess implements AppToolHost {
   private connection: Connection | null = null
+  private snapshotId: string | null = null
 
   constructor(private readonly getWindow: () => BrowserWindow | null) {}
+
+  async inspect(maxElements: number): Promise<unknown> {
+    const { window, contents, session } = this.resolve()
+    const snapshotId = `a${crypto.randomUUID().slice(0, 8)}`
+    const result = await contents.executeJavaScript(
+      appInspectionExpression(snapshotId, maxElements), true
+    ) as { inspection: LocalInspection; document: unknown }
+    this.snapshotId = snapshotId
+    return {
+      window: {
+        title: window.getTitle(), focused: window.isFocused(), visible: window.isVisible(),
+        minimized: window.isMinimized(), maximized: window.isMaximized(), bounds: window.getBounds()
+      },
+      document: result.document,
+      connectionId: session.connectionId,
+      snapshotId,
+      coordinateSpace: 'main_viewport_css',
+      viewport: result.inspection.viewport,
+      elements: result.inspection.elements,
+      truncated: result.inspection.candidateCount > result.inspection.elements.length
+    }
+  }
 
   async click(target: AppClickTarget): Promise<unknown> {
     const { contents, session, page } = this.resolve()
@@ -48,7 +81,11 @@ export class AppAutomationAccess implements AppToolHost {
       return { connectionId: session.connectionId, selector: target.selector, ...clickResult }
     }
     if (target.ref) {
-      return { connectionId: session.connectionId, ...await page.click(target.ref) }
+      const snapshotId = this.requireSnapshot(target.ref)
+      const prepared = await contents.executeJavaScript(
+        prepareClickExpression(snapshotId, target.ref), true
+      ) as { point: { x: number; y: number } }
+      return { connectionId: session.connectionId, ref: target.ref, ...await page.clickAt(prepared.point) }
     }
     throw new Error('click requires selector, (x, y) coordinates, or ref')
   }
@@ -73,7 +110,22 @@ export class AppAutomationAccess implements AppToolHost {
       return { connectionId: session.connectionId, selector: target.selector, text: target.text }
     }
     if (target.ref) {
-      return { connectionId: session.connectionId, ...await input.type(target.ref, target.text, target.clear) }
+      const snapshotId = this.requireSnapshot(target.ref)
+      const prepared = await contents.executeJavaScript(
+        prepareClickExpression(snapshotId, target.ref), true
+      ) as { point: { x: number; y: number } }
+      await page.clickAt(prepared.point)
+      await contents.executeJavaScript(prepareTypeExpression(snapshotId, target.ref, target.clear), true)
+      await session.command('Input.insertText', { text: target.text })
+      const read = await contents.executeJavaScript(
+        readValueExpression(snapshotId, target.ref), true
+      ) as { value: string | null }
+      return {
+        connectionId: session.connectionId,
+        ref: target.ref,
+        cleared: target.clear,
+        ...(read.value === null ? {} : { value: read.value })
+      }
     }
     throw new Error('type requires selector or ref')
   }
@@ -93,12 +145,19 @@ export class AppAutomationAccess implements AppToolHost {
       })()`, true)
       return { connectionId: session.connectionId, scrolled: 'into_view', selector: target.selector }
     }
+    if (target.ref) {
+      const snapshotId = this.requireSnapshot(target.ref)
+      const result = await contents.executeJavaScript(
+        scrollRefExpression(snapshotId, target.ref), true
+      ) as { scrollX: number; scrollY: number }
+      return { connectionId: session.connectionId, scrolled: 'into_view', ref: target.ref, ...result }
+    }
     return { connectionId: session.connectionId, ...await input.scroll(target.ref, target.deltaX, target.deltaY) }
   }
 
   async waitFor(options: AppWaitOptions, signal: AbortSignal): Promise<AppWaitResult> {
     const started = Date.now()
-    let last: ConditionProbe = { selectorMatched: null, textMatched: null }
+    let last: ConditionProbe = { selectorMatched: null, textMatched: null, matches: [] }
     for (;;) {
       if (signal.aborted) throw new Error('ClosedAI app wait was aborted')
       const { contents } = this.resolve()
@@ -113,6 +172,14 @@ export class AppAutomationAccess implements AppToolHost {
   dispose(): void {
     this.connection?.session.dispose()
     this.connection = null
+    this.snapshotId = null
+  }
+
+  private requireSnapshot(ref: string): string {
+    if (!this.snapshotId || !ref.startsWith(`${this.snapshotId}:`)) {
+      throw new Error('Element reference is stale or unknown; inspect the app again')
+    }
+    return this.snapshotId
   }
 
   private resolve(): Connection & { window: BrowserWindow; contents: WebContents } {
@@ -122,6 +189,7 @@ export class AppAutomationAccess implements AppToolHost {
     const current = this.connection
     if (current?.session.contentsId === contents.id) return { window, contents, ...current }
     current?.session.dispose()
+    this.snapshotId = null
     const session = new CdpSession(APP_TARGET_ID, contents, (closed) => {
       if (this.connection?.session === closed) this.connection = null
     })
