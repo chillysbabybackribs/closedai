@@ -17,6 +17,16 @@ test('app inspection is one bounded renderer expression with reusable refs and v
   assert.match(expression, /textTruncated/)
 })
 
+test('focused app inspection scopes and filters controls without collecting document text', () => {
+  const expression = appInspectionExpression('a123', 20, {
+    surface: 'side-drawer', query: 'history', includeText: false
+  })
+  assert.match(expression, /"surface":"side-drawer"/)
+  assert.match(expression, /"query":"history"/)
+  assert.match(expression, /const includeText = false/)
+  assert.match(expression, /data-ui-surface/)
+})
+
 test('selector-only condition probes do not read the entire document text', () => {
   const expression = conditionProbeExpression({
     selector: '.ready', condition: 'visible', timeoutMs: 500

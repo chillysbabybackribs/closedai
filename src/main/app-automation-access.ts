@@ -1,12 +1,14 @@
 import type { BrowserWindow, WebContents } from 'electron'
 import type {
   AppClickTarget,
+  AppInspectOptions,
   AppScrollTarget,
   AppToolHost,
   AppTypeTarget,
   AppWaitOptions,
   AppWaitResult
 } from './tools/app/host.js'
+import { compactAppInspectionElements } from './app-automation-inspection.js'
 import { dispatchAppClick } from './app-automation-input.js'
 import {
   appInspectionExpression,
@@ -44,12 +46,13 @@ export class AppAutomationAccess implements AppToolHost {
 
   constructor(private readonly getWindow: () => BrowserWindow | null) {}
 
-  async inspect(maxElements: number): Promise<unknown> {
+  async inspect(options: AppInspectOptions): Promise<unknown> {
     const { window, contents, session } = this.resolve()
     const snapshotId = `a${crypto.randomUUID().slice(0, 8)}`
     const result = await contents.executeJavaScript(
-      appInspectionExpression(snapshotId, maxElements), true
-    ) as { inspection: LocalInspection; document: unknown }
+      appInspectionExpression(snapshotId, options.maxElements, options), true
+    ) as { inspection: LocalInspection; document: unknown; filter: unknown }
+    const compact = compactAppInspectionElements(result.inspection.elements)
     this.snapshotId = snapshotId
     return {
       window: {
@@ -57,12 +60,16 @@ export class AppAutomationAccess implements AppToolHost {
         minimized: window.isMinimized(), maximized: window.isMaximized(), bounds: window.getBounds()
       },
       document: result.document,
+      filter: result.filter,
       connectionId: session.connectionId,
       snapshotId,
       coordinateSpace: 'main_viewport_css',
       viewport: result.inspection.viewport,
-      elements: result.inspection.elements,
-      truncated: result.inspection.candidateCount > result.inspection.elements.length
+      elements: compact.elements,
+      candidateCount: result.inspection.candidateCount,
+      returnedElements: compact.elements.length,
+      surfaceFound: result.inspection.scopeFound ?? true,
+      truncated: result.inspection.candidateCount > compact.elements.length || compact.omitted > 0
     }
   }
 

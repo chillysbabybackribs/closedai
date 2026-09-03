@@ -12,17 +12,32 @@ export type AppPreparedSelector = {
   viewport: { width: number; height: number }
 }
 
+export type AppInspectionFilter = {
+  query?: string
+  surface?: string
+  includeText: boolean
+}
+
 /** One bounded renderer evaluation; avoids the browser inspector's frame and geometry traversal. */
-export function appInspectionExpression(snapshotId: string, maxElements: number): string {
-  const inspect = inspectionExpression(snapshotId, 'app', maxElements)
+export function appInspectionExpression(
+  snapshotId: string,
+  maxElements: number,
+  filter: AppInspectionFilter = { includeText: true }
+): string {
+  const inspect = inspectionExpression(snapshotId, 'app', maxElements, {
+    query: filter.query,
+    surface: filter.surface
+  })
   return `(() => {
     const inspection = ${inspect};
     const visible = (${viewportVisible.toString()});
     const describe = (${describeElement.toString()});
-    const visibleText = (${readVisibleText.toString()})(8000);
+    const includeText = ${filter.includeText};
+    const visibleText = includeText ? (${readVisibleText.toString()})(3000) : null;
     const active = document.activeElement;
     return {
       inspection,
+      filter: ${JSON.stringify(filter)},
       document: {
         title: document.title,
         url: location.href,
@@ -30,8 +45,7 @@ export function appInspectionExpression(snapshotId: string, maxElements: number)
         activeElement: active && active instanceof HTMLElement ? describe(active) : null,
         surfaces: Array.from(document.querySelectorAll('[data-ui-surface], [role="dialog"], [role="alert"], [role="status"]'))
           .filter(visible).slice(0, 100).map(describe),
-        visibleText: visibleText.text,
-        textTruncated: visibleText.truncated
+        ...(visibleText ? { visibleText: visibleText.text, textTruncated: visibleText.truncated } : {})
       }
     };
   })()`

@@ -23,6 +23,12 @@ export type LocalInspection = {
   viewport: { width: number; height: number; deviceScaleFactor: number; scrollX: number; scrollY: number }
   elements: LocalElement[]
   candidateCount: number
+  scopeFound?: boolean
+}
+
+export type InspectionFilter = {
+  query?: string
+  surface?: string
 }
 
 export type PreparedClick = {
@@ -53,8 +59,13 @@ export const SCROLL_FRAME_OWNER_FUNCTION = `async function () {
   return true
 }`
 
-export function inspectionExpression(snapshotId: string, frameId: string, maxElements: number): string {
-  return `(${inspectFrame.toString()})(${JSON.stringify(snapshotId)},${JSON.stringify(frameId)},${maxElements},${JSON.stringify(WORLD_STATE)})`
+export function inspectionExpression(
+  snapshotId: string,
+  frameId: string,
+  maxElements: number,
+  filter: InspectionFilter = {}
+): string {
+  return `(${inspectFrame.toString()})(${JSON.stringify(snapshotId)},${JSON.stringify(frameId)},${maxElements},${JSON.stringify(WORLD_STATE)},${JSON.stringify(filter)})`
 }
 
 export function prepareClickExpression(snapshotId: string, ref: string): string {
@@ -73,13 +84,35 @@ export function scrollRefExpression(snapshotId: string, ref: string): string {
   return `(${scrollRef.toString()})(${JSON.stringify(snapshotId)},${JSON.stringify(ref)},${JSON.stringify(WORLD_STATE)})`
 }
 
-function inspectFrame(snapshotId: string, frameId: string, maxElements: number, stateKey: string): LocalInspection {
+function inspectFrame(
+  snapshotId: string,
+  frameId: string,
+  maxElements: number,
+  stateKey: string,
+  filter: InspectionFilter = {}
+): LocalInspection {
   const selector = [
     'a[href]', 'button', 'input', 'select', 'textarea', 'summary',
     '[role]', '[tabindex]', '[contenteditable="true"]', '[onclick]',
     'audio[controls]', 'video[controls]'
   ].join(',')
-  const candidates = Array.from(document.querySelectorAll<HTMLElement>(selector))
+  const root: ParentNode | null = filter.surface
+    ? Array.from(document.querySelectorAll<HTMLElement>('[data-ui-surface]'))
+        .find((element) => element.dataset.uiSurface === filter.surface) ?? null
+    : document
+  const query = filter.query?.trim().toLocaleLowerCase() ?? ''
+  const candidates = root
+    ? Array.from(root.querySelectorAll<HTMLElement>(selector)).filter((element) => {
+        if (!query) return true
+        const value = 'value' in element && typeof (element as HTMLInputElement).value === 'string'
+          ? (element as HTMLInputElement).value
+          : ''
+        return [
+          element.tagName, roleOf(element), nameOf(element), element.innerText,
+          element.textContent, element.getAttribute('placeholder'), element.getAttribute('title'), value
+        ].filter(Boolean).join(' ').toLocaleLowerCase().includes(query)
+      })
+    : []
   const registry = new Map<string, HTMLElement>()
   const elements: LocalElement[] = []
 
@@ -129,7 +162,8 @@ function inspectFrame(snapshotId: string, frameId: string, maxElements: number, 
       scrollY: window.scrollY
     },
     elements,
-    candidateCount: candidates.length
+    candidateCount: candidates.length,
+    scopeFound: root !== null
   }
 
   function visibleRect(element: HTMLElement): DOMRect | null {
