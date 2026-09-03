@@ -80,6 +80,29 @@
 .trace-turn-meta { color: var(--muted-foreground); font-size: 11px; }
 .trace-turn-failed .trace-turn-name { color: var(--destructive); }
 
+.trace-performance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0 0 6px;
+}
+
+.trace-performance-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--foreground) 3%, transparent);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--foreground);
+}
+
+.trace-performance-label { color: var(--muted-foreground); font-family: var(--font-sans); }
+.trace-performance-metric strong { font-weight: 550; }
+
 .trace-turn-rows {
   display: flex;
   flex-direction: column;

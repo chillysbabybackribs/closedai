@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { TraceEntry, TraceKind } from '../../shared/trace.js'
+import { summarizeTracePerformance, type TracePerformance } from './trace-performance.js'
 
 // Loads the trace ring once the panel opens and keeps it live from push events. The renderer
 // keeps its own bound so a long-open panel cannot grow past what the main process holds.
@@ -14,6 +15,7 @@ export type TraceTurnGroup = {
   entries: TraceEntry[]
   startedAt: number
   durationMs: number | null
+  performance: TracePerformance
 }
 
 export type TraceController = {
@@ -84,8 +86,8 @@ export function useTraceController(active: boolean, paneId: string): TraceContro
   }, [])
 
   const groups = useMemo(() => {
-    const visible = entries.filter((entry) => (allPanes || entry.paneId === paneId) && kinds.has(entry.kind))
-    return groupByTurn(visible)
+    const scoped = entries.filter((entry) => allPanes || entry.paneId === paneId)
+    return filterTurnGroups(groupByTurn(scoped), kinds)
   }, [entries, allPanes, paneId, kinds])
 
   return { groups, total: entries.length, dropped, kinds, toggleKind, allPanes, setAllPanes, error, refresh, clear }
@@ -104,7 +106,10 @@ export function groupByTurn(entries: TraceEntry[]): TraceTurnGroup[] {
     if (entry.label === 'turn.start') openTurnId = entry.turnId
     const turnId: string | null = entry.turnId ?? openTurnId
     if (!current || current.turnId !== turnId) {
-      current = { turnId, entries: [], startedAt: entry.at, durationMs: null }
+      current = {
+        turnId, entries: [], startedAt: entry.at, durationMs: null,
+        performance: summarizeTracePerformance([], null)
+      }
       groups.push(current)
     }
     current.entries.push(entry)
@@ -113,5 +118,15 @@ export function groupByTurn(entries: TraceEntry[]): TraceTurnGroup[] {
       openTurnId = null
     }
   }
-  return groups.reverse()
+  return groups.reverse().map((group) => ({
+    ...group,
+    performance: summarizeTracePerformance(group.entries, group.durationMs)
+  }))
+}
+
+/** Hide row kinds only after grouping, preserving boundaries and performance evidence. */
+export function filterTurnGroups(groups: TraceTurnGroup[], kinds: Set<TraceKind>): TraceTurnGroup[] {
+  return groups
+    .map((group) => ({ ...group, entries: group.entries.filter((entry) => kinds.has(entry.kind)) }))
+    .filter((group) => group.entries.length > 0)
 }

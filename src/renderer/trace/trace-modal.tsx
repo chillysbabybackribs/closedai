@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button.js'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog.js'
 import type { TraceKind } from '../../shared/trace.js'
 import { TRACE_KINDS, useTraceController, type TraceTurnGroup } from './trace-controller.js'
+import { TracePerformanceSummary } from './trace-performance-summary.js'
 import { duration, TraceRow } from './trace-row.js'
 
 export type TraceModalProps = {
@@ -95,6 +96,7 @@ function TraceTurn({ group }: { group: TraceTurnGroup }): JSX.Element {
           {failed ? ' · has failures' : ''}
         </span>
       </h3>
+      {group.turnId !== null && <TracePerformanceSummary value={group.performance} />}
       <ul className="trace-turn-rows">
         {group.entries.map((entry) => <TraceRow key={entry.seq} entry={entry} turnStartedAt={group.startedAt} />)}
       </ul>
