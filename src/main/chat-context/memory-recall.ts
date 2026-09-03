@@ -17,7 +17,9 @@ export function recallTranscript(
   if (checkpoint) {
     const anchor = checkpoint.throughItemId
     const index = items.findIndex((item) => item.id === anchor)
-    if (checkpoint.threadId !== threadId || index < 0 || index >= end) checkpoint = null
+    // Current-thread notes survive native compaction removing their old anchor. A source
+    // checkpoint, however, must still prove it precedes the frozen continuation boundary.
+    if (checkpoint.threadId !== threadId || (throughItemId && (index < 0 || index >= end))) checkpoint = null
   }
   if (request.beforeItemId) {
     const index = items.findIndex((item) => item.id === request.beforeItemId)
@@ -52,7 +54,7 @@ export function recallTranscript(
     }
     if (serializedSize() > MAX_RECALL_CHARS) {
       result.hasMore = true
-      result.nextBeforeItemId = items[index + 1]?.id ?? null
+      result.nextBeforeItemId = result.matches.at(-1)?.itemId ?? null
       break
     }
     result.matches.push(entry)

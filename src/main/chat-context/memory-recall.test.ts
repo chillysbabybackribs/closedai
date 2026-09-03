@@ -37,6 +37,12 @@ test('source boundaries exclude later messages and later checkpoints, and fail c
   assert.equal(recallTranscript(items, 'thread', checkpoint, { scope: 'source', itemId: 'u2' }, 'u1').matches.length, 0)
 })
 
+test('current-thread checkpoint survives a missing old anchor after provider compaction', () => {
+  const result = recallTranscript([user('new', 'After compaction')], 'thread', checkpoint, { scope: 'current' }, null)
+  assert.deepEqual(result.checkpoint, checkpoint)
+  assert.equal(recallTranscript([], 'other-thread', checkpoint, { scope: 'current' }, null).checkpoint, null)
+})
+
 test('search pages older results by stable item ids, without rescanning newer matches into the page', () => {
   const items = Array.from({ length: 20 }, (_, i) => user(`u${i}`, `match ${i}`))
   const first = recallTranscript(items, 'thread', null, { scope: 'current', query: 'match', limit: 2 }, null)
