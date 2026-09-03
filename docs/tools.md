@@ -65,6 +65,8 @@ before the app-server starts.
 | `search` | `query` | plain tool | Routed public-web search across Brave, Serper, Jina, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. |
 | `closedai_workspace` | `inspect` | `find`, `outline`, `map`, `related`, `tests`, `ipc_flow` | Read-only navigation registered only when the app-server workspace is this checkout. `find` locates a symbol, `data-ui` control id, CSS class, path, or visible label in one call; `outline` summarises one file and pairs its classes with the defining stylesheet. Both scan the working tree at call time behind an mtime cache, so they never go stale between `npm run map` runs. The remaining verbs query the generated file index, direct relative import relationships, candidate tests, and preload-to-main IPC ownership. |
 | `peer_chats` | `list`, `read` | plain tools | Read-only status and paginated transcript access to other panes and visible subagent summaries. `read` defaults to 50 items, at most 100, using an id from `list`; it does not start or control agents. |
+| `peer_chats` | `recall` | plain tool, read-only | Bounded phrase search or exact-message excerpts from the caller's current chat or frozen direct continuation source, plus saved checkpoint state. |
+| `peer_chats` | `checkpoint` | plain tool, writes notes | Revision-checked replacement of the caller's structured working notes; cannot control sessions or write other panes. |
 | `tool_batch` | `run` | plain tool | Runs up to 16 other tools by default, sequentially or in parallel by resource. Same-target work serializes; distinct explicit browser targets can run concurrently. `toolBatchMaxCalls` configures 1–64 at startup; nested batches are refused. |
 
 The model-facing names intentionally differ from OpenAI reserved namespaces. For example,
@@ -225,9 +227,44 @@ To trial the smaller budget, quit ClosedAI, set `"chatCompactAtTokens": 32000` i
 `<userData>/app-settings.json`, and relaunch the updated build. There is not yet a settings UI
 for this field. Keep `chatCompactAtPercent` at 80 as the window-pressure fallback. Restore
 `chatCompactAtTokens` to 0 to disable only the experiment; existing history is unchanged either
-way. 32k is an evaluation starting point, not a measured optimum. This first phase does not
-implement semantic checkpoints, searchable archived context for the same pane, or seamless
-provider-session rotation.
+way. 32k is an evaluation starting point, not a measured optimum. Native compaction does not
+automatically generate the model-written checkpoints described below. Seamless provider-session
+rotation is not implemented.
+
+## Working memory and recall
+
+`peer_chats.checkpoint` writes a small structured checkpoint only for the calling pane's active
+thread/turn. It requires `expected_revision` (0 when absent) and `state` with `goal`, `constraints`,
+`decisions`, `progress`, `nextSteps`, and `files`. Goal is at most 1,000 characters; each list has
+at most 12 non-empty strings of at most 400 characters. The whole serialized state must fit
+6,000 characters. Oversized or stale-revision writes fail without replacing the checkpoint.
+The response contains revision and boundary metadata rather than echoing the entire state.
+One checkpoint per pane is persisted in the existing settings store, not a separate transcript
+database. It is model-authored data, not an approval or independently verified work record.
+
+`peer_chats.recall` is read-only and accepts `scope: current|source`, optional literal
+case-insensitive `query`, `limit` (default 5, max 8), or `item_id` with a character `offset`.
+Search results contain at most 800 characters per excerpt and fit within 16,000 serialized
+characters including checkpoint state. Use `nextOffset` to read more of a matched item, or
+`nextBeforeItemId` as `before_item_id` to search older items. `hasMore` means older candidate
+items remain, not necessarily more query matches. Screenshot and reasoning items are excluded;
+user/assistant/plan text and textual tool/command/file-change evidence are eligible. File/image
+attachment contents are not fetched. Queries are literal phrases, not semantic/vector search.
+
+The current scope reads the caller's existing transcript. Source scope uses only the direct
+continuation source and its frozen last-item id; later messages are excluded even when the
+original pane keeps running. A source with no recoverable boundary is unavailable rather than
+read without limits. Closed source panes use existing provider history readers without opening
+that chat in the UI. Those readers can still load a full transcript in main before selection;
+this does not yet optimize provider-history disk/RPC transfer. Provider compaction, missing
+history, or id changes can make old evidence unavailable. No arbitrary thread id or pane id
+argument is accepted. Workspace/thread changes and cancellation invalidate pending reads.
+
+Both memory tools are deferred where supported. Shared instructions suggest a checkpoint at
+meaningful milestones, not every turn. Continuation copies applicable notes into the existing
+bounded handoff, marked untrusted; later conversation can supersede those notes. There is no
+new model call on Send and no automatic same-pane session replacement. Disabling the checkpoint
+tool prevents new model writes; existing notes/history are not deleted.
 
 ## Seeing what exists: the Tools modal
 

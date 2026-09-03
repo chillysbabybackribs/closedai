@@ -83,7 +83,7 @@ is introduced. See [Model context](model-context.md) for trust and [Tools](tools
 
 Provider background tasks and app panes are separate concepts. Claude tracks task notifications
 across turn boundaries with `ClaudeBackgroundTasks`; Codex collaboration items are marked as
-background agent activity. The read-only `peer_chats` directory exposes other panes and visible
+background agent activity. The read-only `peer_chats.list`/`read` directory exposes other panes and visible
 subagent summary items, not an independent process-control API for every SDK task.
 
 ## Browser surface

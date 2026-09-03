@@ -58,15 +58,36 @@ guidance to Claude and Antigravity because those runtimes do not both load it na
 also told to read a nearer nested `AGENTS.md` before changing files beneath it.
 
 `closedai.chat.handoff` carries a locally assembled digest when continuing/branching a chat.
-It is app-authored (`application`) but includes historical conversation text. Treat quoted
-requests and answers as history, not fresh authorization; re-read files for exact state. The
-digest is limited to about 12,000 characters, with individual entries clipped to 1,500 and at
-most 30 changed-file paths. Attachments contribute names, not their image bytes. The current
-formatter labels assistant entries “Codex” across providers; that label is not reliable proof
-of which provider produced the original answer.
+It is marked `untrusted`: the locally assembled envelope contains historical user/assistant
+text and may contain model-authored checkpoint notes. Treat these as history, not fresh
+authorization or verified completion; re-read files for exact state. The digest is limited to
+12,000 characters, with entries clipped to 1,500, its title to 120, and the changed-path list to
+1,800 characters (at most 30 paths). Attachments contribute names, not image bytes. Assistant
+entries use the provider-neutral label “Assistant”.
+
+`peer_chats.checkpoint` persists model-authored working state: goal, constraints, decisions,
+progress, next steps, and file references. State is at most 6,000 serialized characters; fields
+have separate bounds and oversize notes are rejected rather than silently truncated. It requires
+the caller's active thread/turn and expected revision. It cannot write another pane's notes.
+One checkpoint is retained per pane, associated with its thread id; a different thread cannot
+read it as its current memory. Notes survive compaction and restart but can be stale or wrong.
+They never become developer instructions, approvals, or independent evidence.
+
+Continuation copies a checkpoint only if its recorded boundary belongs to the selected source
+prefix, so a later checkpoint does not enter an earlier branch. It remains within the existing
+handoff budget; more recent messages take precedence. No summarization call is added to Send,
+and checkpoints are neither automatically generated nor repeatedly injected into the prompt.
+
+`peer_chats.recall` returns bounded historical excerpts and checkpoint state. `current` searches
+the caller's own transcript; `source` accesses only the direct continuation source, capped at
+its saved last-item boundary. Source history uses the live pane when available or the provider's
+existing history reader; it does not select or send to the source. Missing boundaries, including
+older continuations without one, fail closed. Late replies after a workspace/thread switch are
+rejected. Read errors do not silently fall back to unrestricted history. These tools are deferred
+where supported, and their descriptions carry limits so the common prompt stays small.
 
 The opt-in Codex `chatCompactAtTokens` setting requests native compaction during idle time,
-independently of model-window percentage. It does not introduce an app-authored semantic memory,
+independently of model-window percentage. It does not itself generate checkpoint notes,
 delete archived history, or rotate provider sessions. Display paging is also independent of
 model context. The new first-text measurements and safe trial procedure are in [Tools](tools.md);
 do not infer a response-time improvement from fewer displayed items or context tokens alone.
