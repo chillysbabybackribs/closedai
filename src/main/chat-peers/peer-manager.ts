@@ -1,15 +1,18 @@
 import { EventEmitter } from 'node:events'
 import type { ChatAttachment, ChatEvent, ChatSnapshot, ChatThreadSummary } from '../../shared/chat.js'
 import type {
+  ChatContinuationSource,
   ChatPaneId,
   ChatPeerSummary,
   ChatWorkspaceEvent,
   ChatWorkspaceSnapshot,
   PeerChatReadResult
 } from '../../shared/chat-peers.js'
-import type { ChatPeerRecord } from '../../shared/types.js'
+import { chatProviderOfId } from '../../shared/chat-providers.js'
+import type { ChatContinuation, ChatPeerRecord } from '../../shared/types.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
+import { buildThreadHandoff } from '../chat-context/thread-handoff.js'
 import { PeerIdleParking, type ParkablePeer } from './peer-idle-parking.js'
 import { PeerSettings } from './peer-settings.js'
 
@@ -27,7 +30,7 @@ export interface ChatWorkspaceSurface {
   listThreads(): Promise<ChatThreadSummary[]>
   newPeer(): Promise<ChatPaneId>
   closePeer(paneId: ChatPaneId): Promise<void>
-  continueInNewPeer(paneId: ChatPaneId): Promise<ChatPaneId>
+  continueInNewPeer(source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId>
   openThread(paneId: ChatPaneId, threadId: string): Promise<void>
   archiveThread(threadId: string): Promise<void>
   beginLogin(): Promise<string | null>
@@ -172,20 +175,57 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.emitWorkspace()
   }
 
-  async continueInNewPeer(paneId: ChatPaneId): Promise<ChatPaneId> {
-    const source = (await this.parking.wake(paneId)).surface
-    const snapshot = source.snapshot()
-    if (snapshot.activeTurnId) throw new Error('Stop the current turn before continuing in a new chat')
-    if (!snapshot.items.some((item) => item.type === 'user')) throw new Error('There is no conversation to continue yet')
-    const sourceRecord = this.record(paneId)
-    const historyRecord = { ...sourceRecord, paneId: crypto.randomUUID() }
+  async continueInNewPeer(source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId> {
+    if (!source?.paneId && !source?.threadId) throw new Error('Choose a chat to continue')
+    const previousPaneId = this.selectedPaneId
+    const current = this.requirePeer(previousPaneId).surface.snapshot()
+    let sourceSnapshot: ChatSnapshot | null = null
+    let sourceThreadId = source.threadId
+    let sourceProvider = sourceThreadId ? chatProviderOfId(sourceThreadId) : current.provider
+    let items: ChatSnapshot['items']
+    let threadName: string | null
+
+    if (source.paneId) {
+      sourceSnapshot = await this.withAwake(source.paneId, async (surface) => surface.snapshot())
+      if (sourceSnapshot.activeTurnId) throw new Error('Stop the current turn before continuing in a new chat')
+      sourceThreadId = sourceSnapshot.threadId ?? sourceThreadId
+      sourceProvider = sourceSnapshot.provider
+      items = sourceSnapshot.items
+      threadName = sourceSnapshot.threadName
+    } else {
+      const content = await this.withAwake(previousPaneId, (surface) => surface.readThread(sourceThreadId!))
+      sourceThreadId = content.threadId
+      sourceProvider = chatProviderOfId(content.threadId)
+      items = content.items
+      threadName = content.threadName
+    }
+
+    const handoff = buildThreadHandoff(items, threadName)
+    if (!handoff) throw new Error('There is no conversation to continue yet')
+    const targetModel = modelId ?? sourceSnapshot?.selectedModel ?? current.selectedModel
+    const targetEffort = targetModel === sourceSnapshot?.selectedModel
+      ? sourceSnapshot?.selectedReasoningEffort ?? null
+      : targetModel === current.selectedModel ? current.selectedReasoningEffort : null
+    const continuation: ChatContinuation = {
+      sourcePaneId: source.paneId,
+      sourceThreadId,
+      sourceProvider,
+      sourceTitle: handoff.title,
+      handoff: handoff.text,
+      createdAt: Date.now()
+    }
+    const record = freshRecord(targetModel, targetEffort, continuation)
     const settings = this.settings.get()
-    await this.settings.set({ chatPeers: [...settings.chatPeers, historyRecord] })
-    this.attach(historyRecord)
-    await source.continueInNewThread()
+    await this.settings.set({
+      chatPeers: [...settings.chatPeers, record],
+      chatSelectedPaneId: record.paneId
+    })
+    this.attach(record)
+    this.selectedPaneId = record.paneId
+    this.parking.schedule(previousPaneId)
     this.emitWorkspace()
-    void this.parking.wake(historyRecord.paneId).then(() => this.parking.schedule(historyRecord.paneId))
-    return paneId
+    void this.parking.wake(record.paneId)
+    return record.paneId
   }
 
   async openThread(paneId: ChatPaneId, threadId: string): Promise<void> {
@@ -260,7 +300,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   private peerSummaries(): ChatPeerSummary[] {
-    return [...this.peers].map(([paneId, entry]) => summaryOf(paneId, entry.surface.snapshot(), entry.updatedAt))
+    return [...this.peers].map(([paneId, entry]) =>
+      summaryOf(paneId, entry.surface.snapshot(), entry.updatedAt, this.record(paneId).continuation ?? null)
+    )
   }
 
   private emitWorkspace(): void {
@@ -276,27 +318,39 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 }
 
-function freshRecord(modelId: string | null, reasoningEffort: string | null): ChatPeerRecord {
+function freshRecord(
+  modelId: string | null,
+  reasoningEffort: string | null,
+  continuation: ChatContinuation | null = null
+): ChatPeerRecord {
   return {
     paneId: crypto.randomUUID(),
-    provider: modelId?.startsWith('claude:') ? 'claude' : 'codex',
+    provider: chatProviderOfId(modelId),
     threadId: null,
     codexThreadId: null,
     claudeSessionId: null,
     modelId,
-    reasoningEffort
+    reasoningEffort,
+    continuation
   }
 }
 
-function summaryOf(paneId: string, snapshot: ChatSnapshot, updatedAt: number): ChatPeerSummary {
+function summaryOf(
+  paneId: string,
+  snapshot: ChatSnapshot,
+  updatedAt: number,
+  continuation: ChatContinuation | null
+): ChatPeerSummary {
   const firstUser = snapshot.items.find((item) => item.type === 'user')
   const latest = snapshot.items.at(-1)
-  const title = snapshot.threadName || (firstUser?.type === 'user' ? firstUser.text.trim().split('\n')[0] : '') || 'New chat'
+  const title = snapshot.threadName || (firstUser?.type === 'user' ? firstUser.text.trim().split('\n')[0] : '') ||
+    (continuation ? `Continuing: ${continuation.sourceTitle}` : 'New chat')
   return {
     paneId,
     parentPaneId: null,
     kind: 'peer',
     provider: snapshot.provider,
+    modelId: snapshot.selectedModel,
     threadId: snapshot.threadId,
     title: title.length > 60 ? `${title.slice(0, 59)}…` : title,
     preview: itemText(latest),
@@ -314,6 +368,7 @@ function subagentSummaries(parent: ChatPeerSummary, snapshot: ChatSnapshot): Cha
       parentPaneId: parent.paneId,
       kind: 'subagent',
       provider: parent.provider,
+      modelId: parent.modelId,
       threadId: parent.threadId,
       title: item.label,
       preview: item.detail,

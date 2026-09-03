@@ -6,7 +6,15 @@ import type { ChatModel } from '../../shared/chat.js'
 import { modelGroups } from '../model-menu-state.js'
 import { placeRowMenu, type MenuPlacement } from './drawer-row-position.js'
 
-export type RowMenuTarget = { id: string; title: string; model?: string; x: number; y: number }
+export type RowMenuTarget = {
+  id: string
+  title: string
+  paneId: string | null
+  threadId: string | null
+  modelId: string | null
+  x: number
+  y: number
+}
 
 const MENU_WIDTH = 208
 const MENU_MAX_HEIGHT = 460
@@ -75,11 +83,10 @@ export function DrawerRowMenu({
     >
       <div className="agents-row-menu-heading">
         <GitBranch size={11} aria-hidden="true" />
-        <span>Review in a new chat</span>
+        <span>Continue in a new chat</span>
       </div>
       <p className="agents-row-menu-note">
-        Opens an empty chat that reads this one and reports back. Nothing is sent until you
-        send it.
+        Starts a fresh chat with a compact summary of this conversation. The source stays unchanged.
       </p>
       <button
         type="button"
@@ -87,7 +94,7 @@ export function DrawerRowMenu({
         className="agents-row-menu-item"
         onClick={() => onFork(inheritedModel)}
       >
-        <span>Same model</span>
+        <span>Current model</span>
         {inheritedModel ? <span className="agents-row-menu-model">{inheritedModel}</span> : null}
       </button>
 

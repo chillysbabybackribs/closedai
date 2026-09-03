@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react'
 import type { ChatAttachment, ChatSnapshot, ChatThreadSummary } from '../shared/chat.js'
-import type { ChatPeerSummary, ChatWorkspaceEvent } from '../shared/chat-peers.js'
+import type { ChatContinuationSource, ChatPeerSummary, ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import { coalesceChatWorkspaceEvents, initialChatWorkspaceState, reduceChatWorkspaceEvent } from './chat-state.js'
 
 export type ChatController = {
@@ -15,6 +15,7 @@ export type ChatController = {
   listThreads: () => Promise<ChatThreadSummary[]>
   newThread: () => Promise<void>
   continueInNewThread: () => Promise<void>
+  continueFromChat: (source: ChatContinuationSource, modelId: string | null) => Promise<void>
   openThread: (threadId: string) => Promise<void>
   archiveThread: (threadId: string) => Promise<void>
   selectPane: (paneId: string) => Promise<void>
@@ -60,7 +61,12 @@ export function useChatController(): ChatController {
   const loginWithChatGPT = useCallback(() => window.closedai.chat.loginWithChatGPT(), [])
   const listThreads = useCallback(() => window.closedai.chat.listThreads(), [])
   const newThread = useCallback(() => window.closedai.chat.newPeer().then(() => undefined), [])
-  const continueInNewThread = useCallback(() => window.closedai.chat.continueInNewPeer(paneId).then(() => undefined), [paneId])
+  const continueFromChat = useCallback((source: ChatContinuationSource, modelId: string | null) =>
+    window.closedai.chat.continueInNewPeer(source, modelId).then(() => undefined), [])
+  const continueInNewThread = useCallback(() => continueFromChat(
+    { paneId, threadId: workspace.selected.threadId },
+    workspace.selected.selectedModel
+  ), [continueFromChat, paneId, workspace.selected.threadId, workspace.selected.selectedModel])
   const openThread = useCallback((threadId: string) => window.closedai.chat.openThread(paneId, threadId), [paneId])
   const archiveThread = useCallback((threadId: string) => window.closedai.chat.archiveThread(threadId), [])
   const selectPane = useCallback((nextPaneId: string) => window.closedai.chat.selectPane(nextPaneId), [])
@@ -81,6 +87,7 @@ export function useChatController(): ChatController {
     listThreads,
     newThread,
     continueInNewThread,
+    continueFromChat,
     openThread,
     archiveThread,
     selectPane,
@@ -88,6 +95,6 @@ export function useChatController(): ChatController {
   }), [
     workspace.selected, workspace.peers, workspace.selectedPaneId,
     send, interrupt, selectModel, selectReasoningEffort, loginWithChatGPT,
-    listThreads, newThread, continueInNewThread, openThread, archiveThread, selectPane, closePeer
+    listThreads, newThread, continueInNewThread, continueFromChat, openThread, archiveThread, selectPane, closePeer
   ])
 }

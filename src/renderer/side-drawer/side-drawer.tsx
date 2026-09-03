@@ -145,14 +145,15 @@ function SideDrawerView({
       {rowMenu ? (
         <DrawerRowMenu
           target={rowMenu}
-          inheritedModel={chat.state.selectedModel}
+          inheritedModel={rowMenu.modelId ?? chat.state.selectedModel}
           models={chat.state.models}
           onClose={() => setRowMenu(null)}
           onFork={(modelId) => {
             setRowMenu(null)
-            void chat.newThread().then(() => {
-              if (modelId) void chat.selectModel(modelId)
-            })
+            void chat.continueFromChat(
+              { paneId: rowMenu.paneId, threadId: rowMenu.threadId },
+              modelId
+            )
           }}
         />
       ) : null}

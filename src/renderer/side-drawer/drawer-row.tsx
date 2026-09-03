@@ -56,6 +56,9 @@ export function DrawerRow({
     onRowMenu({
       id: row.id,
       title: row.title,
+      paneId: row.paneId ?? null,
+      threadId: row.threadId,
+      modelId: row.peer?.modelId ?? (isCurrent ? chat.state.selectedModel : null),
       x: anchor.x,
       y: anchor.y
     })
