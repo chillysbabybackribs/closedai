@@ -3,7 +3,9 @@ import test from 'node:test'
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { ChatContinuation } from '../shared/types.ts'
 import { AppSettingsStore, DEFAULT_APP_SETTINGS } from './app-settings-store.ts'
+import { PeerSettings } from './chat-peers/peer-settings.ts'
 
 async function storeWith(contents: string | null): Promise<{ store: AppSettingsStore; file: string }> {
   const dir = await mkdtemp(join(tmpdir(), 'closedai-settings-'))
@@ -76,8 +78,36 @@ test('legacy single-chat settings migrate into one selected peer', async () => {
     claudeSessionId: 'claude-session',
     antigravityConversationId: null,
     modelId: 'claude:opus',
-    reasoningEffort: 'high'
+    reasoningEffort: 'high',
+    continuation: null
   })
+})
+
+test('a pending continuation digest and its source lineage survive settings reload', async () => {
+  const continuation: ChatContinuation = {
+    sourcePaneId: 'source-pane',
+    sourceThreadId: 'source-thread',
+    sourceProvider: 'codex',
+    sourceTitle: 'Original chat',
+    handoff: 'Compact handoff',
+    createdAt: 1234
+  }
+  const { store, file } = await storeWith(JSON.stringify({
+    chatPeers: [{
+      paneId: 'target-pane',
+      provider: 'claude',
+      threadId: null,
+      modelId: 'claude:opus',
+      continuation
+    }],
+    chatSelectedPaneId: 'target-pane'
+  }))
+
+  assert.deepEqual(store.get().chatPeers[0]!.continuation, continuation)
+  await new PeerSettings(store, 'target-pane').set({ chatContinuation: { ...continuation, handoff: null } })
+  const reopened = await AppSettingsStore.open(file)
+  assert.equal(reopened.get().chatPeers[0]!.continuation?.handoff, null)
+  assert.equal(reopened.get().chatPeers[0]!.continuation?.sourceThreadId, 'source-thread')
 })
 
 test('an antigravity model routes the legacy settings to its own conversation field', async () => {
