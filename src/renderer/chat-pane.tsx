@@ -17,6 +17,7 @@ import { ChatHistory } from './chat-history.js'
 import { chatTitle, PROVIDER_LABELS } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
+import { ContextInspectorModal } from './context-inspector-modal.js'
 import { TaskActivity } from './task-activity.js'
 import { ToolsModal } from './tools/tools-modal.js'
 import { TraceModal } from './trace/trace-modal.js'
@@ -38,6 +39,7 @@ export function ChatPane({
   const [historyOpen, setHistoryOpen] = useState(false)
   const [toolsOpen, setToolsOpen] = useState(false)
   const [traceOpen, setTraceOpen] = useState(false)
+  const [contextOpen, setContextOpen] = useState(false)
   const title = chatTitle(state)
   const hasMessages = state.items.length > 0
   // 'starting' is the step on the way to ready, not a failure. Treating it as one made every new
@@ -101,6 +103,12 @@ export function ChatPane({
         />
         <ToolsModal open={toolsOpen} onOpenChange={setToolsOpen} />
         <TraceModal open={traceOpen} onOpenChange={setTraceOpen} paneId={chat.selectedPaneId} />
+        <ContextInspectorModal
+          open={contextOpen}
+          onOpenChange={setContextOpen}
+          report={state.turnContext}
+          usage={state.contextUsage}
+        />
         {historyOpen ? (
           <ChatHistory
             activeThreadId={state.threadId}
@@ -134,6 +142,7 @@ export function ChatPane({
           onReasoningEffortChange={chat.selectReasoningEffort}
           onSend={sendMessage}
           onStop={chat.interrupt}
+          onInspectContext={() => setContextOpen(true)}
           onNewChat={() => void startNewChat()}
         />
       </div>

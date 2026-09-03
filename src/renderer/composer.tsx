@@ -28,6 +28,7 @@ export type ComposerProps = {
   onReasoningEffortChange: (effort: string) => Promise<void>
   onSend: (text: string, attachments: ChatAttachment[]) => Promise<void>
   onStop: () => Promise<void>
+  onInspectContext: () => void
   onNewChat?: () => void
 }
 
@@ -43,6 +44,7 @@ export function Composer({
   onReasoningEffortChange,
   onSend,
   onStop,
+  onInspectContext,
   onNewChat
 }: ComposerProps): JSX.Element {
   const [input, setInput] = useState('')
@@ -163,7 +165,7 @@ export function Composer({
                   onModelChange={onModelChange}
                   onReasoningEffortChange={onReasoningEffortChange}
                 />
-                {contextUsage && <ContextMeter usage={contextUsage} />}
+                <ContextMeter usage={contextUsage} onInspect={onInspectContext} />
               </div>
             </div>
 
