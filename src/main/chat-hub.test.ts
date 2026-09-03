@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events'
 import test from 'node:test'
 import type {
   ChatEvent,
+  ChatHistoryWindow,
   ChatModel,
   ChatProvider,
   ChatSnapshot,
@@ -38,14 +39,18 @@ class FakeProvider extends EventEmitter {
   items: ChatTranscriptItem[] = []
   continued: ThreadHandoffSource | null = null
   constructor(readonly provider: ChatProvider, private readonly models: ChatModel[]) { super() }
-  snapshot(): ChatSnapshot {
+  hasEarlier = false
+  threadId: string | null = null
+  snapshot(window?: ChatHistoryWindow): ChatSnapshot {
     return {
       provider: this.provider, connection: { state: 'ready', message: `${this.provider} ready` }, account: null,
       models: this.models, selectedModel: this.models[0]?.id ?? null, selectedReasoningEffort: this.effort, cwd: '/w',
-      threadId: `${this.provider}-thread`, threadName: null, activeTurnId: this.activeTurnId,
-      contextUsage: null, planUsage: null, turnContext: null, items: this.items
+      threadId: this.threadId ?? `${this.provider}-thread`, threadName: null, activeTurnId: this.activeTurnId,
+      contextUsage: null, planUsage: null, turnContext: null, items: this.items,
+      ...(window ? { history: { hasEarlier: this.hasEarlier } } : {})
     }
   }
+  replace(): void { this.emit('event', { type: 'replace', snapshot: this.snapshot() }) }
   async start(options?: { warm?: boolean }): Promise<void> { this.calls.push(`start:${options?.warm ?? 'none'}`) }
   stop(): void { this.calls.push('stop') }
   async send(text: string): Promise<void> { this.calls.push(`send:${text}`) }
@@ -136,7 +141,7 @@ test('a model switch carries the chat instead of reopening the destination\u2019
   const { hub, codex, claude, events } = build()
   codex.items = [
     { type: 'user', id: 'user-1', turnId: 't1', text: 'Hello from the original chat' },
-    { type: 'assistant', id: 'a-1', turnId: 't1', text: 'An answer', phase: 'final_answer' }
+    { type: 'assistant', id: 'a-1', turnId: 't1', text: 'An answer', phase: 'final_answer', streaming: false }
   ]
   claude.items = [{ type: 'user', id: 'old-1', turnId: 'x', text: 'An unrelated chat Claude had open' }]
   await hub.selectModel('claude:opus[1m]')
@@ -149,6 +154,46 @@ test('a model switch carries the chat instead of reopening the destination\u2019
   if (replaced?.type !== 'replace') return
   // The pane keeps showing the conversation it was in; Claude's old chat stays in history.
   assert.deepEqual(replaced.snapshot.items, codex.items)
+})
+
+test('the carried chat survives a re-read and the destination\u2019s own updates', async () => {
+  const { hub, codex, claude } = build()
+  codex.items = [{ type: 'user', id: 'user-1', turnId: 't1', text: 'Hello from the original chat' }]
+  await hub.selectModel('claude:opus[1m]')
+  // Not just the one replace event: any later snapshot the pane reads shows the carried chat.
+  assert.deepEqual(hub.snapshot().items.map((item) => item.id), ['user-1'])
+  claude.items = [{ type: 'user', id: 'claude-1', turnId: 'c1', text: 'The next message' }]
+  claude.replace()
+  assert.deepEqual(hub.snapshot().items.map((item) => item.id), ['user-1', 'claude-1'])
+  // A page that has not reached the start of Claude's own transcript yet leaves it out.
+  claude.hasEarlier = true
+  assert.deepEqual(hub.snapshot({ limit: 1 }).items.map((item) => item.id), ['claude-1'])
+  claude.hasEarlier = false
+  assert.deepEqual(hub.snapshot({ limit: 5 }).items.map((item) => item.id), ['user-1', 'claude-1'])
+})
+
+test('leaving the conversation drops the carried chat', async () => {
+  const started = build()
+  started.codex.items = [{ type: 'user', id: 'user-1', turnId: 't1', text: 'Hello' }]
+  await started.hub.selectModel('claude:opus[1m]')
+  await started.hub.newThread()
+  assert.deepEqual(started.hub.snapshot().items, [])
+
+  const opened = build()
+  opened.codex.items = [{ type: 'user', id: 'user-1', turnId: 't1', text: 'Hello' }]
+  await opened.hub.selectModel('claude:opus[1m]')
+  opened.claude.items = [{ type: 'user', id: 'other-1', turnId: 'o1', text: 'Another chat' }]
+  await opened.hub.openThread('claude:s1')
+  assert.deepEqual(opened.hub.snapshot().items.map((item) => item.id), ['other-1'])
+
+  const archived = build()
+  archived.codex.items = [{ type: 'user', id: 'user-1', turnId: 't1', text: 'Hello' }]
+  await archived.hub.selectModel('claude:opus[1m]')
+  // Claude clearing itself (an archive, a reset) ends the conversation the carried chat is part of.
+  archived.claude.items = []
+  archived.claude.threadId = null
+  archived.claude.replace()
+  assert.deepEqual(archived.hub.snapshot().items, [])
 })
 
 test('switching with nothing to carry starts the destination blank, keeping an undelivered digest', async () => {

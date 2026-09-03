@@ -181,18 +181,12 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   /** Switch the pane to another provider after its own action succeeds. */
-  private async switchTo(
-    source: ChatSnapshot,
-    target: ChatProvider,
-    action: () => Promise<void>,
-    carried = false
-  ): Promise<void> {
+  private async switchTo(source: ChatSnapshot, target: ChatProvider, action: () => Promise<void>): Promise<void> {
     if (source.activeTurnId) throw new Error('Stop the current turn before switching models')
     await action()
     this.active = target
     await this.persistActiveModel()
-    const next = this.preserveSourceHistory(source, this.current().snapshot(), carried)
-    this.emitEvent({ type: 'replace', snapshot: this.merge(next) })
+    this.emitEvent({ type: 'replace', snapshot: this.merge(this.preserveSourceHistory(source, this.current().snapshot())) })
   }
 
   /**
@@ -203,8 +197,10 @@ export class ChatHub extends EventEmitter implements ChatSurface {
    */
   private async carryConversation(source: ChatSnapshot, target: ChatProvider): Promise<void> {
     const handoff = buildThreadHandoff(source.items, source.threadName)
+    this.carriedHistory = null
     if (handoff) {
       await this.providers[target].continueInNewThread({ ...handoff, provider: source.provider, threadId: source.threadId })
+      this.carriedHistory = { provider: target, threadName: source.threadName, items: source.items }
       return
     }
     const pending = this.settings.get().chatContinuation
@@ -212,15 +208,26 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     if (pending?.handoff && !this.settings.get().chatContinuation) await this.settings.set({ chatContinuation: pending })
   }
 
-  /**
-   * Keep the pane's messages visible across the switch: a carried conversation stays put and the
-   * destination's fresh thread only appends to it, while a thread opened from history replaces it.
-   */
-  private preserveSourceHistory(source: ChatSnapshot, target: ChatSnapshot, carried: boolean): ChatSnapshot {
+  /** A thread opened from history replaces the messages on screen — unless it has none of its own. */
+  private preserveSourceHistory(source: ChatSnapshot, target: ChatSnapshot): ChatSnapshot {
     if (source.activeTurnId || source.items.length === 0) return target
-    if (target.provider === source.provider) return target
-    if (!carried && target.items.length > 0) return target
-    return { ...target, threadName: target.threadName ?? source.threadName, items: [...source.items, ...target.items] }
+    if (target.provider === source.provider || target.items.length > 0) return target
+    return { ...target, threadName: target.threadName ?? source.threadName, items: source.items }
+  }
+
+  /**
+   * Put the carried conversation back above the active provider's own messages. Every snapshot
+   * the pane reads goes through here, so the switch survives a re-read, and a windowed page only
+   * receives it once that page reaches the start of the provider's own transcript.
+   */
+  private withCarriedHistory(snapshot: ChatSnapshot): ChatSnapshot {
+    const carried = this.carriedHistory
+    if (!carried || carried.provider !== this.active || snapshot.history?.hasEarlier) return snapshot
+    return {
+      ...snapshot,
+      threadName: snapshot.threadName ?? carried.threadName,
+      items: [...carried.items, ...snapshot.items]
+    }
   }
 
   /**
@@ -242,7 +249,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   private merge(snapshot: ChatSnapshot): ChatSnapshot {
-    return { ...snapshot, models: this.models() }
+    return { ...this.withCarriedHistory(snapshot), models: this.models() }
   }
 
   private models(): ChatSnapshot['models'] {
@@ -266,7 +273,12 @@ export class ChatHub extends EventEmitter implements ChatSurface {
       return
     }
     if (source !== this.active) return
-    if (event.type === 'replace') this.emitEvent({ type: 'replace', snapshot: this.merge(event.snapshot) })
+    if (event.type === 'replace') {
+      // The provider clearing itself — archiving this chat, resetting after a failure — ends the
+      // conversation the carried messages belong to.
+      if (event.snapshot.items.length === 0 && !event.snapshot.threadId) this.carriedHistory = null
+      this.emitEvent({ type: 'replace', snapshot: this.merge(event.snapshot) })
+    }
     else this.emitEvent(event)
   }
 
