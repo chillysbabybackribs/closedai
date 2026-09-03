@@ -106,12 +106,12 @@ test('dynamic tool calls receive descriptive semantic labels', () => {
   assert.equal(cdpPage?.type === 'tool' && cdpPage.label, 'Analyze page')
 
   const appPage = normalizeItem({
-    type: 'dynamicToolCall', namespace: 'closedai_app', tool: 'inspect', arguments: {}, status: 'completed'
+    type: 'dynamicToolCall', namespace: 'closedai_app', tool: 'state', arguments: {}, status: 'completed'
   }, 't4', 'turn-1', true)
-  assert.equal(appPage?.type === 'tool' && appPage.label, 'Analyze app')
+  assert.equal(appPage?.type === 'tool' && appPage.label, 'Read app state')
 
   const appWait = normalizeItem({
-    type: 'dynamicToolCall', namespace: 'closedai_app', tool: 'page', arguments: { action: 'wait_for' }, status: 'completed'
+    type: 'dynamicToolCall', namespace: 'closedai_app', tool: 'ui', arguments: { action: 'wait_for' }, status: 'completed'
   }, 't4b', 'turn-1', true)
   assert.equal(appWait?.type === 'tool' && appWait.label, 'Wait for app')
 

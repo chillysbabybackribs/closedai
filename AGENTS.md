@@ -19,7 +19,7 @@ Prefer a feature directory once a concern needs three or more files. Keep tests 
 - Extend an existing namespace and verb tool when its domain, result shape, and trust level match. Otherwise add the smallest new layer required.
 - Keep read-only and mutating capabilities separate when their approval or trust requirements differ.
 - Design read tools for model context, not raw transport completeness: offer scope/query/projection controls and fit useful results within their output budget before the generic serializer has to truncate them.
-- For live-app diagnosis or QA, begin with scoped runtime inspection and returned element refs. Do not read renderer source merely to discover controls or selectors; inspect implementation only after runtime evidence identifies an unresolved failure.
+- For live-app work, prefer deterministic tools over DOM discovery: `closedai_app.state` for facts and assertions, `closedai_app.command` for actions that call the app's own services, and `closedai_app.ui` (by manifest control id) only when the real control must be exercised. Every interactive renderer control carries a `data-ui` id from `src/shared/ui-controls.ts`; add the id and its manifest entry together. Do not read renderer source merely to discover controls or selectors; inspect implementation only after runtime evidence identifies an unresolved failure.
 - Group deterministic tool sequences into one model pass, suppress successful intermediate payloads that are consumed within the sequence, and return only evidence needed for the next decision.
 
 ## Hard hygiene limits

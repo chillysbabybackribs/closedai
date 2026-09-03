@@ -23,7 +23,7 @@ export class ToolResourceLocks {
 function resourceKey(request: ToolCallRequest, input: JsonObject): string | null {
   const action = typeof input.action === 'string' ? input.action : ''
   const tab = typeof input.tab_id === 'string' ? input.tab_id : 'active'
-  if (request.namespace === 'closedai_app' && ['click', 'type', 'press_key', 'scroll'].includes(action)) {
+  if (request.namespace === 'closedai_app' && request.tool === 'ui' && ['click', 'type', 'press_key', 'scroll'].includes(action)) {
     return 'ClosedAI app input'
   }
   if (request.namespace === 'embedded_browser' && action === 'navigate') return `browser tab ${tab}`
