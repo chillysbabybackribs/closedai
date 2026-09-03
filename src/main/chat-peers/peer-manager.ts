@@ -10,6 +10,7 @@ import type {
 import type { ChatPeerRecord } from '../../shared/types.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
+import { PeerIdleParking, type ParkablePeer } from './peer-idle-parking.js'
 import { PeerSettings } from './peer-settings.js'
 
 export type ChatPeerFactory = (settings: PeerSettings, modelId: string | null) => ChatSurface
@@ -33,23 +34,19 @@ export interface ChatWorkspaceSurface {
   on(event: 'event', listener: (event: ChatWorkspaceEvent) => void): unknown
 }
 
-type PeerEntry = {
-  surface: ChatSurface
+type PeerEntry = ParkablePeer & {
   updatedAt: number
-  idleTimer: NodeJS.Timeout | null
-  parked: boolean
 }
-
-const DEFAULT_IDLE_PARK_MS = 5 * 60 * 1000
 
 export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurface {
   private readonly peers = new Map<ChatPaneId, PeerEntry>()
   private selectedPaneId: ChatPaneId
+  private readonly parking: PeerIdleParking
 
   constructor(
     private readonly settings: AppSettingsAccess,
     private readonly createSurface: ChatPeerFactory,
-    private readonly idleParkMs = DEFAULT_IDLE_PARK_MS
+    idleParkMs?: number
   ) {
     super()
     const saved = settings.get()
@@ -57,6 +54,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       ? saved.chatPeers
       : [freshRecord(saved.chatModelId, saved.chatReasoningEffort)]
     this.selectedPaneId = saved.chatSelectedPaneId ?? records[0]!.paneId
+    this.parking = new PeerIdleParking((paneId) => this.peers.get(paneId), () => this.selectedPaneId, idleParkMs)
     for (const record of records) this.attach(record)
     if (saved.chatPeers.length === 0) {
       void settings.set({ chatPeers: records, chatSelectedPaneId: this.selectedPaneId })
@@ -74,14 +72,12 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   async start(): Promise<void> {
     // Persisted panes are history, not live work. Warming every one creates an app-server per
     // pane after each relaunch; the selected pane is the only surface startup needs immediately.
-    await this.wake(this.selectedPaneId)
+    await this.parking.wake(this.selectedPaneId)
   }
 
   stop(): void {
     for (const entry of this.peers.values()) {
-      this.cancelPark(entry)
-      entry.parked = true
-      entry.surface.stop()
+      this.parking.stop(entry)
     }
   }
 
@@ -107,7 +103,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
     if (currentEmpty && currentEntry && this.peers.size > 1) {
       currentEntry.surface.stop()
-      this.cancelPark(currentEntry)
+      this.parking.cancel(currentEntry)
       this.peers.delete(previousPaneId)
       const settings = this.settings.get()
       await this.settings.set({
@@ -117,8 +113,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
     this.selectedPaneId = paneId
     await this.settings.set({ chatSelectedPaneId: paneId })
-    this.schedulePark(previousPaneId)
-    await this.wake(paneId)
+    this.parking.schedule(previousPaneId)
+    await this.parking.wake(paneId)
     this.emitWorkspace()
   }
 
@@ -147,18 +143,16 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     })
     this.attach(record)
     this.selectedPaneId = record.paneId
-    this.schedulePark(previousPaneId)
+    this.parking.schedule(previousPaneId)
     this.emitWorkspace()
-    void this.wake(record.paneId)
+    void this.parking.wake(record.paneId)
     return record.paneId
   }
 
   async closePeer(paneId: ChatPaneId): Promise<void> {
     const entry = this.peers.get(paneId)
     if (!entry) return
-    this.cancelPark(entry)
-    entry.parked = true
-    entry.surface.stop()
+    this.parking.stop(entry)
     this.peers.delete(paneId)
     const settings = this.settings.get()
     const remaining = settings.chatPeers.filter((record) => record.paneId !== paneId)
@@ -174,12 +168,12 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       chatPeers: remaining,
       chatSelectedPaneId: this.selectedPaneId
     })
-    await this.wake(this.selectedPaneId)
+    await this.parking.wake(this.selectedPaneId)
     this.emitWorkspace()
   }
 
   async continueInNewPeer(paneId: ChatPaneId): Promise<ChatPaneId> {
-    const source = (await this.wake(paneId)).surface
+    const source = (await this.parking.wake(paneId)).surface
     const snapshot = source.snapshot()
     if (snapshot.activeTurnId) throw new Error('Stop the current turn before continuing in a new chat')
     if (!snapshot.items.some((item) => item.type === 'user')) throw new Error('There is no conversation to continue yet')
@@ -190,7 +184,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.attach(historyRecord)
     await source.continueInNewThread()
     this.emitWorkspace()
-    void this.wake(historyRecord.paneId).then(() => this.schedulePark(historyRecord.paneId))
+    void this.parking.wake(historyRecord.paneId).then(() => this.parking.schedule(historyRecord.paneId))
     return paneId
   }
 
@@ -236,54 +230,21 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       entry.updatedAt = Date.now()
       this.emit('event', { type: 'pane', paneId: record.paneId, event } satisfies ChatWorkspaceEvent)
       this.emitPeers()
-      if (surface.snapshot().activeTurnId) this.cancelPark(entry)
-      else this.schedulePark(record.paneId)
+      if (surface.snapshot().activeTurnId) this.parking.cancel(entry)
+      else this.parking.schedule(record.paneId)
     })
     this.peers.set(record.paneId, entry)
     return entry
   }
 
   private async withAwake<T>(paneId: ChatPaneId, action: (surface: ChatSurface) => Promise<T>): Promise<T> {
-    const entry = await this.wake(paneId)
-    this.cancelPark(entry)
+    const entry = await this.parking.wake(paneId)
+    this.parking.cancel(entry)
     try {
       return await action(entry.surface)
     } finally {
-      this.schedulePark(paneId)
+      this.parking.schedule(paneId)
     }
-  }
-
-  private async wake(paneId: ChatPaneId): Promise<PeerEntry> {
-    const entry = this.requirePeer(paneId)
-    this.cancelPark(entry)
-    if (!entry.parked) return entry
-    entry.parked = false
-    try {
-      await entry.surface.start()
-      this.cancelPark(entry)
-    } catch (error) {
-      entry.parked = true
-      throw error
-    }
-    return entry
-  }
-
-  private schedulePark(paneId: ChatPaneId): void {
-    if (paneId === this.selectedPaneId) return
-    const entry = this.peers.get(paneId)
-    if (!entry || entry.parked || entry.idleTimer || entry.surface.snapshot().activeTurnId) return
-    entry.idleTimer = setTimeout(() => {
-      entry.idleTimer = null
-      if (paneId === this.selectedPaneId || entry.surface.snapshot().activeTurnId) return
-      entry.parked = true
-      entry.surface.stop()
-    }, this.idleParkMs)
-    entry.idleTimer.unref?.()
-  }
-
-  private cancelPark(entry: PeerEntry): void {
-    if (entry.idleTimer) clearTimeout(entry.idleTimer)
-    entry.idleTimer = null
   }
 
   private requirePeer(paneId: ChatPaneId): PeerEntry {
