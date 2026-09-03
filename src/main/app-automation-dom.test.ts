@@ -25,6 +25,7 @@ test('focused app inspection scopes and filters controls without collecting docu
   assert.match(expression, /"query":"history"/)
   assert.match(expression, /const includeText = false/)
   assert.match(expression, /data-ui-surface/)
+  assert.doesNotThrow(() => new Function(`return ${expression}`))
 })
 
 test('selector-only condition probes do not read the entire document text', () => {
