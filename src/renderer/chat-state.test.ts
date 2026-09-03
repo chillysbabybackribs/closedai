@@ -103,6 +103,22 @@ test('context usage updates replace the previous reading', () => {
   assert.equal(reduceChatEvent(state, { type: 'context', usage: null }).contextUsage, null)
 })
 
+test('latest turn context report replaces the previous report', () => {
+  const report = {
+    createdAt: 1,
+    provider: 'codex' as const,
+    model: 'gpt-5.6-sol',
+    threadId: 'thread-1',
+    message: { value: 'hello', characters: 5, estimatedTokens: 2 },
+    attachments: [],
+    additions: [],
+    estimatedAddedTextTokens: 2,
+    retainedHistory: 'Native history.'
+  }
+  const state = reduceChatEvent(initialChatState(), { type: 'turnContext', report })
+  assert.deepEqual(state.turnContext, report)
+})
+
 test('coalescing merges adjacent deltas for one item and keeps other events in order', () => {
   const merged = coalesceChatEvents([
     { type: 'itemDelta', itemId: 'a', field: 'text', delta: 'hel' },

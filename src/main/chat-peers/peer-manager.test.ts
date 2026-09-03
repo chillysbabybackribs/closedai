@@ -34,6 +34,7 @@ class FakeSurface extends EventEmitter implements ChatSurface {
       threadName: null,
       activeTurnId: null,
       contextUsage: null,
+      turnContext: null,
       items: []
     }
   }

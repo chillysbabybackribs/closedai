@@ -18,7 +18,8 @@ class FakeProvider extends EventEmitter {
     return {
       provider: this.provider, connection: { state: 'ready', message: `${this.provider} ready` }, account: null,
       models: this.models, selectedModel: this.models[0]?.id ?? null, selectedReasoningEffort: null, cwd: '/w',
-      threadId: `${this.provider}-thread`, threadName: null, activeTurnId: this.activeTurnId, contextUsage: null, items: []
+      threadId: `${this.provider}-thread`, threadName: null, activeTurnId: this.activeTurnId,
+      contextUsage: null, turnContext: null, items: []
     }
   }
   async start(options?: { warm?: boolean }): Promise<void> { this.calls.push(`start:${options?.warm ?? 'none'}`) }
