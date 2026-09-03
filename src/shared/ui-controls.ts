@@ -1,0 +1,92 @@
+// The stable control map of the ClosedAI renderer. Every interactive control carries a
+// `data-ui` id from this list (and `data-ui-key` when it repeats per row, tab, or item), so a
+// model drives the real UI by id instead of discovering it from an accessibility dump. The
+// guard test beside this file keeps the renderer source and this manifest in step.
+
+export const UI_CONTROLS = {
+  'titlebar.drawer-toggle': 'Open or close the side drawer',
+  'titlebar.menu': 'Application menu tab; key is file, edit, view, or help',
+  'titlebar.menu-item': 'Application menu row; key is the slugged label, for example new-chat',
+  'window.minimize': 'Minimize the window',
+  'window.maximize': 'Maximize or restore the window',
+  'window.close': 'Close the window',
+
+  'drawer.new-agent': 'Start a new agent chat pane',
+  'drawer.search': 'Search previous chats (combobox)',
+  'drawer.search-clear': 'Clear the drawer search',
+  'drawer.search-result': 'Drawer search hit; key is the row id',
+  'drawer.row': 'Open a running, review-queue, or history chat; key is the row id',
+  'drawer.row-twisty': 'Show or hide the sub-agents of a row; key is the row id',
+  'drawer.row-settled': 'Show or hide settled sub-agents; key is the row id',
+  'drawer.row-accept': 'Accept a review-queue row; key is the row id',
+  'drawer.row-dismiss': 'Dismiss a review-queue row; key is the row id',
+  'drawer.row-stop': 'Stop a running agent row; key is the row id',
+  'drawer.row-delete': 'Ask to delete a row; key is the row id',
+  'drawer.row-delete-confirm': 'Confirm deleting a row; key is the row id',
+  'drawer.row-delete-cancel': 'Cancel deleting a row; key is the row id',
+  'drawer.row-menu': 'Context menu of a drawer row (continue in a new chat)',
+  'drawer.row-menu-item': 'Fork the row into a new chat; key is current or a model id',
+
+  'chat.actions': 'Open the chat actions menu',
+  'chat.menu-item': 'Chat actions row; key is new-chat, history, continue, tools, or trace',
+  'chat.history': 'Chat history panel (present only while open)',
+  'chat.history-search': 'Filter the chat history list',
+  'chat.history-open': 'Open a thread from history; key is the thread id',
+  'chat.history-archive': 'Archive a thread from history; key is the thread id',
+  'chat.history-retry': 'Retry loading chat history',
+  'chat.sign-in': 'Sign in with ChatGPT when the pane is signed out',
+
+  'composer.input': 'Message textarea of the selected pane',
+  'composer.new-chat': 'Start a new chat from the composer',
+  'composer.model': 'Open the model and reasoning-effort menu',
+  'composer.model-item': 'Choose a model; key is the model id',
+  'composer.effort-item': 'Choose a reasoning effort; key is the effort',
+  'composer.context': 'Open the context inspector',
+  'composer.upload': 'Attach files',
+  'composer.attachment-remove': 'Remove a pending attachment; key is the attachment id',
+  'composer.stop': 'Stop the running turn (present only while running)',
+  'composer.send': 'Send the message (present only while idle)',
+
+  'browser.tab': 'Select a browser tab; key is the tab id',
+  'browser.tab-close': 'Close a browser tab; key is the tab id',
+  'browser.tab-new': 'Open a new browser tab',
+  'browser.back': 'Browser back',
+  'browser.forward': 'Browser forward',
+  'browser.reload': 'Browser reload',
+  'browser.address': 'Address bar',
+  'browser.downloads': 'Show or hide the downloads shelf',
+
+  'downloads.clear': 'Clear finished downloads',
+  'downloads.hide': 'Hide the downloads shelf',
+  'downloads.pause': 'Pause a download; key is the download id',
+  'downloads.resume': 'Resume a download; key is the download id',
+  'downloads.reveal': 'Show a download in its folder; key is the download id',
+  'downloads.cancel': 'Cancel a download; key is the download id',
+
+  'dialog.tools': 'Tools dialog root (present only while open)',
+  'dialog.trace': 'Turn trace dialog root (present only while open)',
+  'dialog.context': 'Context inspector dialog root (present only while open)',
+  'dialog.settings': 'Appearance settings dialog root (present only while open)',
+  'dialog.close': 'Close the open dialog',
+  'tools.refresh': 'Refresh the tools list',
+  'tools.clear': 'Clear tool usage counts',
+  'tools.toggle': 'Turn a tool or action on or off; key is the tool id',
+  'trace.refresh': 'Refresh the turn trace',
+  'trace.clear': 'Clear the turn trace',
+  'trace.filter': 'Toggle a trace filter; key is the entry kind or all-panes',
+  'settings.reset': 'Reset appearance settings',
+  'settings.decrease': 'Decrease an appearance value; key is chat-font-size or chat-zoom',
+  'settings.range': 'Appearance slider; key is chat-font-size or chat-zoom',
+  'settings.increase': 'Increase an appearance value; key is chat-font-size or chat-zoom'
+} as const
+
+export type UiControlId = keyof typeof UI_CONTROLS
+
+export const UI_SURFACES = ['shell', 'side-drawer', 'chat', 'browser', 'browser-downloads', 'overlay'] as const
+
+export type UiSurface = (typeof UI_SURFACES)[number]
+
+/** Control families, for the tool description: the model learns the shape, not every id. */
+export function uiControlFamilies(): string[] {
+  return [...new Set(Object.keys(UI_CONTROLS).map((id) => id.slice(0, id.indexOf('.'))))]
+}
