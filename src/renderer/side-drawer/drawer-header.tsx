@@ -21,6 +21,7 @@ export function DrawerHeader({
         onClick={() => void chat.newThread()}
         title="New agent chat"
         aria-label="New Agent"
+        data-ui="drawer.new-agent"
       >
         <Plus size={14} aria-hidden="true" />
         <span>New Agent</span>
@@ -88,6 +89,7 @@ function DrawerSearchInput({
           aria-expanded={isOpen}
           aria-autocomplete="list"
           role="combobox"
+          data-ui="drawer.search"
           onChange={(event) => {
             setQuery(event.target.value)
             setHighlight(0)
@@ -107,6 +109,7 @@ function DrawerSearchInput({
             }}
             title="Clear search"
             aria-label="Clear search"
+            data-ui="drawer.search-clear"
           >
             <X size={11} />
           </button>
@@ -123,6 +126,8 @@ function DrawerSearchInput({
                 key={hit.row.id}
                 type="button"
                 role="option"
+                data-ui="drawer.search-result"
+                data-ui-key={hit.row.id}
                 aria-selected={index === cursor}
                 className={`agents-search-result ${index === cursor ? 'is-active' : ''}`}
                 onMouseDown={(event) => {

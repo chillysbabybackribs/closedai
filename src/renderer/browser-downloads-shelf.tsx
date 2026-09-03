@@ -26,13 +26,14 @@ export function BrowserDownloadsShelf({
       <header className="browser-downloads-head">
         <span className="browser-downloads-title">Downloads</span>
         <div className="browser-downloads-head-actions">
-          <button type="button" className="browser-downloads-link" onClick={controller.clear}>
+          <button type="button" className="browser-downloads-link" data-ui="downloads.clear" onClick={controller.clear}>
             Clear finished
           </button>
           <button
             type="button"
             className="browser-downloads-close"
             aria-label="Hide downloads"
+            data-ui="downloads.hide"
             title="Hide downloads"
             onClick={controller.dismiss}
           >
@@ -82,22 +83,22 @@ function DownloadRow({
       ) : null}
       <div className="browser-downloads-row-actions">
         {actions.canPause ? (
-          <RowButton label={`Pause ${download.filename}`} onClick={() => controller.pause(download.id)}>
+          <RowButton control="downloads.pause" id={download.id} label={`Pause ${download.filename}`} onClick={() => controller.pause(download.id)}>
             <Pause size={12} />
           </RowButton>
         ) : null}
         {actions.canResume ? (
-          <RowButton label={`Resume ${download.filename}`} onClick={() => controller.resume(download.id)}>
+          <RowButton control="downloads.resume" id={download.id} label={`Resume ${download.filename}`} onClick={() => controller.resume(download.id)}>
             <Play size={12} />
           </RowButton>
         ) : null}
         {actions.canReveal ? (
-          <RowButton label={`Show ${download.filename} in folder`} onClick={() => controller.reveal(download.id)}>
+          <RowButton control="downloads.reveal" id={download.id} label={`Show ${download.filename} in folder`} onClick={() => controller.reveal(download.id)}>
             <FolderOpen size={12} />
           </RowButton>
         ) : null}
         {actions.canCancel ? (
-          <RowButton label={`Cancel ${download.filename}`} onClick={() => controller.cancel(download.id)}>
+          <RowButton control="downloads.cancel" id={download.id} label={`Cancel ${download.filename}`} onClick={() => controller.cancel(download.id)}>
             <X size={12} />
           </RowButton>
         ) : null}
@@ -107,16 +108,20 @@ function DownloadRow({
 }
 
 function RowButton({
+  control,
+  id,
   label,
   onClick,
   children
 }: {
+  control: string
+  id: string
   label: string
   onClick: () => void
   children: JSX.Element
 }): JSX.Element {
   return (
-    <button type="button" className="browser-downloads-action" aria-label={label} title={label} onClick={onClick}>
+    <button type="button" className="browser-downloads-action" data-ui={control} data-ui-key={id} aria-label={label} title={label} onClick={onClick}>
       {children}
     </button>
   )

@@ -75,6 +75,7 @@ export function DrawerRowMenu({
       className="agents-row-menu"
       role="menu"
       aria-label={`Actions for ${target.title}`}
+      data-ui="drawer.row-menu"
       style={
         placement
           ? { left: placement.left, top: placement.top, maxHeight: placement.maxHeight }
@@ -92,6 +93,8 @@ export function DrawerRowMenu({
         type="button"
         role="menuitem"
         className="agents-row-menu-item"
+        data-ui="drawer.row-menu-item"
+        data-ui-key="current"
         onClick={() => onFork(inheritedModel)}
       >
         <span>Current model</span>
@@ -107,6 +110,8 @@ export function DrawerRowMenu({
               role="menuitem"
               className={`agents-row-menu-item ${m.id === inheritedModel ? 'is-inherited' : ''}`}
               key={m.id}
+              data-ui="drawer.row-menu-item"
+              data-ui-key={m.id}
               onClick={() => onFork(m.id)}
               title={m.description}
             >

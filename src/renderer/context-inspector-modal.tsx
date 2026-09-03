@@ -14,7 +14,7 @@ export type ContextInspectorModalProps = {
 export function ContextInspectorModal({ open, onOpenChange, report, usage }: ContextInspectorModalProps): JSX.Element {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="context-inspector" aria-describedby="context-inspector-description">
+      <DialogContent className="context-inspector" aria-describedby="context-inspector-description" data-ui="dialog.context">
         <header className="context-inspector-header">
           <DialogTitle>Context inspector</DialogTitle>
           <DialogDescription id="context-inspector-description">

@@ -38,7 +38,7 @@ export function AppearanceSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="appearance-dialog" aria-describedby="appearance-description">
+      <DialogContent className="appearance-dialog" aria-describedby="appearance-description" data-ui="dialog.settings">
         <div className="appearance-dialog-heading">
           <div className="appearance-dialog-icon" aria-hidden="true"><Type size={18} /></div>
           <div>
@@ -79,6 +79,7 @@ export function AppearanceSettingsDialog({
             type="button"
             variant="ghost"
             className="appearance-reset"
+            data-ui="settings.reset"
             disabled={isDefault}
             onClick={() => onChange(DEFAULT_APPEARANCE_SETTINGS)}
           >
@@ -123,6 +124,8 @@ function AppearanceControl({
         <button
           type="button"
           aria-label={`Decrease ${label.toLowerCase()}`}
+          data-ui="settings.decrease"
+          data-ui-key={id}
           disabled={value <= min}
           onClick={() => onChange(value - step)}
         >
@@ -131,6 +134,8 @@ function AppearanceControl({
         <input
           id={id}
           type="range"
+          data-ui="settings.range"
+          data-ui-key={id}
           min={min}
           max={max}
           step={step}
@@ -141,6 +146,8 @@ function AppearanceControl({
         <button
           type="button"
           aria-label={`Increase ${label.toLowerCase()}`}
+          data-ui="settings.increase"
+          data-ui-key={id}
           disabled={value >= max}
           onClick={() => onChange(value + step)}
         >

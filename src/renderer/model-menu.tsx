@@ -32,6 +32,7 @@ export function ModelMenu({
         className="model-menu-trigger"
         disabled={!enabled || models.length === 0}
         aria-label="Model and reasoning effort"
+        data-ui="composer.model"
         title={trigger.description || 'Choose a model'}
       >
         {selected && <ProviderMark provider={selected.provider} className="model-menu-trigger-mark" />}
@@ -52,7 +53,7 @@ export function ModelMenu({
                   {group.label}
                 </DropdownMenu.Label>
                 {group.models.map((model) => (
-                  <DropdownMenu.RadioItem key={model.id} value={model.id} className="model-menu-item" textValue={model.displayName}>
+                  <DropdownMenu.RadioItem key={model.id} value={model.id} className="model-menu-item" textValue={model.displayName} data-ui="composer.model-item" data-ui-key={model.id}>
                     <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>
                     <span className="model-menu-item-name">{model.displayName}</span>
                     {model.description && <span className="model-menu-item-detail">{model.description}</span>}
@@ -70,7 +71,7 @@ export function ModelMenu({
                 onValueChange={(value) => { void onReasoningEffortChange(value).catch(() => {}) }}
               >
                 {efforts.map((option) => (
-                  <DropdownMenu.RadioItem key={option.reasoningEffort} value={option.reasoningEffort} className="model-menu-item model-menu-item-compact" textValue={option.reasoningEffort}>
+                  <DropdownMenu.RadioItem key={option.reasoningEffort} value={option.reasoningEffort} className="model-menu-item model-menu-item-compact" textValue={option.reasoningEffort} data-ui="composer.effort-item" data-ui-key={option.reasoningEffort}>
                     <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>
                     <span className="model-menu-item-name">{effortLabel(option.reasoningEffort)}</span>
                     {option.description && <span className="model-menu-item-detail">{option.description}</span>}

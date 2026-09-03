@@ -132,6 +132,7 @@ export function Composer({
           />
           <PromptInputTextarea
             aria-label="Message Codex"
+            data-ui="composer.input"
             placeholder={placeholder ?? (enabled ? 'Ask anything' : 'Codex is unavailable')}
             spellCheck={false}
             className="prompt-composer-textarea"
@@ -149,6 +150,7 @@ export function Composer({
                   size="icon"
                   className="prompt-composer-tool prompt-composer-new-chat rounded-full"
                   aria-label="New chat"
+                  data-ui="composer.new-chat"
                   disabled={!enabled}
                   onClick={handleNewChat}
                 >
@@ -187,6 +189,7 @@ export function Composer({
                     size="icon"
                     className="prompt-composer-stop"
                     aria-label="Stop Codex"
+                    data-ui="composer.stop"
                     onClick={() => void onStop()}
                   >
                     <Square size={16} fill="currentColor" aria-hidden="true" />
@@ -199,6 +202,7 @@ export function Composer({
                     size="icon"
                     className="prompt-composer-send"
                     aria-label="Send message"
+                    data-ui="composer.send"
                     data-waiting-for-input={waitingForInput || undefined}
                     disabled={!canSend}
                   >

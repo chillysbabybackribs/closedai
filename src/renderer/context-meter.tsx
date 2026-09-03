@@ -20,7 +20,7 @@ export function ContextMeter({ usage, onInspect }: { usage: ChatContextUsage | n
     ? `Inspect context — ${percent}% full, ${formatTokens(usage.usedTokens)} of ${formatTokens(usage.contextWindow)} tokens`
     : 'Inspect context for the latest turn'
   return (
-    <button type="button" className="context-meter" data-level={level} title={detail} aria-label={detail} onClick={onInspect}>
+    <button type="button" className="context-meter" data-ui="composer.context" data-level={level} title={detail} aria-label={detail} onClick={onInspect}>
       <svg className="context-meter-ring" viewBox="0 0 14 14" width="14" height="14" aria-hidden="true">
         <circle className="context-meter-track" cx="7" cy="7" r={RADIUS} />
         <circle

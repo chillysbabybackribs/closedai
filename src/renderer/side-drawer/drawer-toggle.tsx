@@ -12,6 +12,7 @@ export function DrawerToggle({ controller }: { controller: DrawerController }): 
       title={collapsed ? 'Open side drawer' : 'Close side drawer'}
       aria-label={collapsed ? 'Open side drawer' : 'Close side drawer'}
       aria-pressed={!collapsed}
+      data-ui="titlebar.drawer-toggle"
     >
       {collapsed
         ? <ChevronRight size={18} strokeWidth={1.6} />

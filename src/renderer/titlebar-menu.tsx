@@ -91,7 +91,9 @@ export const TitlebarMenu = memo(function TitlebarMenu({
       <div className="titlebar-nav-group">
         {MENUS.map((menu) => (
           <Menubar.Menu key={menu.label}>
-            <Menubar.Trigger className="titlebar-nav-tab">{menu.label}</Menubar.Trigger>
+            <Menubar.Trigger className="titlebar-nav-tab" data-ui="titlebar.menu" data-ui-key={menu.label.toLowerCase()}>
+              {menu.label}
+            </Menubar.Trigger>
             <Menubar.Portal>
               <Menubar.Content className="titlebar-menu-content" align="start" sideOffset={4} loop>
                 {menu.rows.map((row, index) =>
@@ -101,6 +103,8 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                     <Menubar.Item
                       key={row.label}
                       className="titlebar-menu-item"
+                      data-ui="titlebar.menu-item"
+                      data-ui-key={row.label.toLowerCase().replace(/\s+/g, '-')}
                       disabled={
                         (!row.command && !row.action) ||
                         (row.command ? zoomCommandIsDisabled(row.command, chatZoom) : false)

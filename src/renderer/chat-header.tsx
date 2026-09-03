@@ -40,6 +40,7 @@ export function ChatHeader({
             size="icon-sm"
             className="chat-header-action"
             aria-label="Chat actions"
+            data-ui="chat.actions"
             title="Chat actions"
           >
             <MoreHorizontal className="size-4" aria-hidden="true" />
@@ -50,6 +51,8 @@ export function ChatHeader({
             <DropdownMenu.Item
               className="chat-header-menu-item"
               disabled={!ready}
+              data-ui="chat.menu-item"
+              data-ui-key="new-chat"
               onSelect={onNewChat}
             >
               <Plus className="size-3.5" aria-hidden="true" />
@@ -58,6 +61,8 @@ export function ChatHeader({
             <DropdownMenu.Item
               className="chat-header-menu-item"
               disabled={!ready && !historyOpen}
+              data-ui="chat.menu-item"
+              data-ui-key="history"
               onSelect={onToggleHistory}
             >
               <History className="size-3.5" aria-hidden="true" />
@@ -66,6 +71,8 @@ export function ChatHeader({
             <DropdownMenu.Item
               className="chat-header-menu-item"
               disabled={!ready || running || !canContinue}
+              data-ui="chat.menu-item"
+              data-ui-key="continue"
               onSelect={onContinueInNewChat}
             >
               <MessageSquareShare className="size-3.5" aria-hidden="true" />
@@ -74,6 +81,8 @@ export function ChatHeader({
             <DropdownMenu.Separator className="chat-header-menu-separator" />
             <DropdownMenu.Item
               className="chat-header-menu-item"
+              data-ui="chat.menu-item"
+              data-ui-key="tools"
               onSelect={onOpenTools}
             >
               <Wrench className="size-3.5" aria-hidden="true" />
@@ -81,6 +90,8 @@ export function ChatHeader({
             </DropdownMenu.Item>
             <DropdownMenu.Item
               className="chat-header-menu-item"
+              data-ui="chat.menu-item"
+              data-ui-key="trace"
               onSelect={onOpenTrace}
             >
               <Activity className="size-3.5" aria-hidden="true" />

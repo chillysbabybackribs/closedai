@@ -25,6 +25,8 @@ export function DrawerRowActions({
           onClick={() => controller.acceptReview(row.id)}
           title="Accept — mark reviewed"
           aria-label={`Accept review: ${row.title}`}
+          data-ui="drawer.row-accept"
+          data-ui-key={row.id}
         >
           <Check size={12} />
         </button>
@@ -33,6 +35,8 @@ export function DrawerRowActions({
           onClick={() => controller.dismissReview(row.id)}
           title="Dismiss from review queue"
           aria-label={`Dismiss review: ${row.title}`}
+          data-ui="drawer.row-dismiss"
+          data-ui-key={row.id}
         >
           <X size={12} />
         </button>
@@ -48,6 +52,8 @@ export function DrawerRowActions({
           onClick={() => void chat.interrupt()}
           title="Stop agent"
           aria-label={`Stop agent: ${row.title}`}
+          data-ui="drawer.row-stop"
+          data-ui-key={row.id}
         >
           <Square size={12} />
         </button>
@@ -64,6 +70,8 @@ export function DrawerRowActions({
             onClick={() => void controller.deleteRow(row.id, row.threadId, row.paneId)}
             title="Confirm delete"
             aria-label={`Confirm delete ${row.title}`}
+            data-ui="drawer.row-delete-confirm"
+            data-ui-key={row.id}
           >
             <Check size={12} />
           </button>
@@ -72,6 +80,8 @@ export function DrawerRowActions({
             onClick={() => controller.setPendingDeleteId(null)}
             title="Cancel"
             aria-label="Cancel delete"
+            data-ui="drawer.row-delete-cancel"
+            data-ui-key={row.id}
           >
             <X size={12} />
           </button>
@@ -82,6 +92,8 @@ export function DrawerRowActions({
           onClick={() => controller.setPendingDeleteId(row.id)}
           title="Delete chat"
           aria-label={`Delete ${row.title}`}
+          data-ui="drawer.row-delete"
+          data-ui-key={row.id}
         >
           <Trash2 size={12} />
         </button>

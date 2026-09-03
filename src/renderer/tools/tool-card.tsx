@@ -28,6 +28,8 @@ export function ToolCard({ item, onToggle }: ToolCardProps): JSX.Element {
           checked={item.enabled}
           onCheckedChange={onToggle}
           aria-label={`${item.enabled ? 'Turn off' : 'Turn on'} ${item.id}`}
+          data-ui="tools.toggle"
+          data-ui-key={item.id}
           className="tool-card-switch"
         />
         <div className="tool-card-main">

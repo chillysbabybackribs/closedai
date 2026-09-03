@@ -34,6 +34,7 @@ function DialogContent({ className, children, ...props }: React.ComponentProps<t
       >
         {children}
         <DialogPrimitive.Close
+          data-ui="dialog.close"
           className="absolute top-3 right-3 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
           aria-label="Close"
         >

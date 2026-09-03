@@ -32,7 +32,7 @@ export function TraceModal({ open, onOpenChange, paneId }: TraceModalProps): JSX
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="trace-modal" aria-describedby="trace-modal-description">
+      <DialogContent className="trace-modal" aria-describedby="trace-modal-description" data-ui="dialog.trace">
         <header className="trace-modal-header">
           <div>
             <DialogTitle>Turn trace</DialogTitle>
@@ -41,10 +41,10 @@ export function TraceModal({ open, onOpenChange, paneId }: TraceModalProps): JSX
             </DialogDescription>
           </div>
           <div className="trace-modal-header-actions">
-            <Button type="button" variant="ghost" size="sm" onClick={() => void trace.refresh()}>
+            <Button type="button" variant="ghost" size="sm" data-ui="trace.refresh" onClick={() => void trace.refresh()}>
               <RefreshCw aria-hidden="true" /> Refresh
             </Button>
-            <Button type="button" variant="ghost" size="sm" disabled={trace.total === 0} onClick={() => void trace.clear()}>
+            <Button type="button" variant="ghost" size="sm" disabled={trace.total === 0} data-ui="trace.clear" onClick={() => void trace.clear()}>
               <Trash2 aria-hidden="true" /> Clear
             </Button>
           </div>
@@ -53,13 +53,13 @@ export function TraceModal({ open, onOpenChange, paneId }: TraceModalProps): JSX
         <div className="trace-modal-filters" role="group" aria-label="Trace filters">
           {TRACE_KINDS.map((kind) => (
             <label key={kind} className="trace-modal-filter">
-              <input type="checkbox" checked={trace.kinds.has(kind)} onChange={() => trace.toggleKind(kind)} />
+              <input type="checkbox" data-ui="trace.filter" data-ui-key={kind} checked={trace.kinds.has(kind)} onChange={() => trace.toggleKind(kind)} />
               <span>{KIND_LABELS[kind]}</span>
             </label>
           ))}
           <span className="trace-modal-filter-spacer" />
           <label className="trace-modal-filter">
-            <input type="checkbox" checked={trace.allPanes} onChange={(event) => trace.setAllPanes(event.target.checked)} />
+            <input type="checkbox" data-ui="trace.filter" data-ui-key="all-panes" checked={trace.allPanes} onChange={(event) => trace.setAllPanes(event.target.checked)} />
             <span>All panes</span>
           </label>
         </div>

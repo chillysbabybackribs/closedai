@@ -190,7 +190,7 @@ function EmptyState({
       <p>{message}</p>
       {/* Claude Code signs in from its own CLI; the message above says how. */}
       {state === 'signed-out' && provider === 'codex' && (
-        <Button type="button" variant="secondary" onClick={() => void onLogin()}>
+        <Button type="button" variant="secondary" data-ui="chat.sign-in" onClick={() => void onLogin()}>
           <LogIn className="size-4" aria-hidden="true" />
           Sign in with ChatGPT
         </Button>

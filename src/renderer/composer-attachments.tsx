@@ -77,6 +77,7 @@ export function AttachmentPicker({
           size="icon"
           className="prompt-composer-tool rounded-full"
           aria-label="Upload files"
+          data-ui="composer.upload"
           disabled={disabled}
           onClick={() => inputRef.current?.click()}
         >
@@ -153,6 +154,8 @@ function AttachmentCard({
               type="button"
               className="prompt-image-remove-btn"
               aria-label={`Remove ${attachment.name}`}
+              data-ui="composer.attachment-remove"
+              data-ui-key={attachment.id}
               onClick={onRemove}
             >
               <X aria-hidden="true" />
@@ -177,7 +180,7 @@ function AttachmentCard({
       </AttachmentContent>
       {onRemove ? (
         <AttachmentActions>
-          <AttachmentAction type="button" aria-label={`Remove ${attachment.name}`} onClick={onRemove}>
+          <AttachmentAction type="button" aria-label={`Remove ${attachment.name}`} data-ui="composer.attachment-remove" data-ui-key={attachment.id} onClick={onRemove}>
             <X aria-hidden="true" />
           </AttachmentAction>
         </AttachmentActions>

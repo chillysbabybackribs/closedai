@@ -31,7 +31,7 @@ export function ToolsModal({ open, onOpenChange }: ToolsModalProps): JSX.Element
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="tools-modal" aria-describedby="tools-modal-description">
+      <DialogContent className="tools-modal" aria-describedby="tools-modal-description" data-ui="dialog.tools">
         <header className="tools-modal-header">
           <div>
             <DialogTitle>Tools</DialogTitle>
@@ -42,10 +42,10 @@ export function ToolsModal({ open, onOpenChange }: ToolsModalProps): JSX.Element
             </DialogDescription>
           </div>
           <div className="tools-modal-header-actions">
-            <Button type="button" variant="ghost" size="sm" onClick={() => void tools.refresh()}>
+            <Button type="button" variant="ghost" size="sm" data-ui="tools.refresh" onClick={() => void tools.refresh()}>
               <RefreshCw aria-hidden="true" /> Refresh
             </Button>
-            <Button type="button" variant="ghost" size="sm" disabled={totalCalls === 0} onClick={() => void tools.clearTelemetry()}>
+            <Button type="button" variant="ghost" size="sm" disabled={totalCalls === 0} data-ui="tools.clear" onClick={() => void tools.clearTelemetry()}>
               <Trash2 aria-hidden="true" /> Clear counts
             </Button>
           </div>

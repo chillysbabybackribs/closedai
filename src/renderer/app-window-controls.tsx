@@ -7,6 +7,7 @@ export const AppWindowControls = memo(function AppWindowControls(): JSX.Element 
         type="button"
         className="shell-window-control"
         aria-label="Minimize"
+        data-ui="window.minimize"
         onClick={() => window.closedai.window.minimize()}
       >
         <svg viewBox="0 0 10 10" width="10" height="10">
@@ -17,6 +18,7 @@ export const AppWindowControls = memo(function AppWindowControls(): JSX.Element 
         type="button"
         className="shell-window-control"
         aria-label="Maximize"
+        data-ui="window.maximize"
         onClick={() => window.closedai.window.maximize()}
       >
         <svg viewBox="0 0 10 10" width="10" height="10">
@@ -27,6 +29,7 @@ export const AppWindowControls = memo(function AppWindowControls(): JSX.Element 
         type="button"
         className="shell-window-control shell-window-control-close"
         aria-label="Close"
+        data-ui="window.close"
         onClick={() => window.closedai.window.close()}
       >
         <svg viewBox="0 0 10 10" width="10" height="10">

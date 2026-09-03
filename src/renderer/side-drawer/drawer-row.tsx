@@ -85,6 +85,8 @@ export function DrawerRow({
         <button
           type="button"
           className="agents-row-main"
+          data-ui="drawer.row"
+          data-ui-key={row.id}
           onClick={handleOpen}
           title={
             openError === 'Open in another app'
@@ -178,6 +180,8 @@ function DrawerSubtree({
         <button
           type="button"
           className="agents-settled-toggle"
+          data-ui="drawer.row-settled"
+          data-ui-key={row.id}
           onClick={() => fold.onToggleSettled(row.id)}
           aria-expanded={settledOpen}
           aria-label={`${settledOpen ? 'Hide' : 'Show'} ${settled.length} settled sub-agents of ${row.title}`}
@@ -205,6 +209,8 @@ function DrawerRowTwisty({
     <button
       type="button"
       className="agents-row-twisty"
+      data-ui="drawer.row-twisty"
+      data-ui-key={row.id}
       onClick={() => onToggle(row.id)}
       aria-expanded={expanded}
       title={expanded ? 'Hide sub-agents' : `Show ${row.children.length} sub-agents`}

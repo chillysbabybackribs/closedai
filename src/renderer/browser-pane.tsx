@@ -75,6 +75,8 @@ function BrowserTabs({ controller }: { controller: BrowserController }): JSX.Ele
             aria-selected={tab.active}
             tabIndex={tab.active ? 0 : -1}
             className="browser-tab-select"
+            data-ui="browser.tab"
+            data-ui-key={tab.id}
             title={`Tab ${tab.pos} — ${tab.title || tab.url}`}
             aria-label={`Tab ${tab.pos}: ${tab.title || tab.url}`}
             onClick={() => selectTab(tab.id)}
@@ -92,6 +94,8 @@ function BrowserTabs({ controller }: { controller: BrowserController }): JSX.Ele
           <button
             type="button"
             className="browser-tab-close"
+            data-ui="browser.tab-close"
+            data-ui-key={tab.id}
             aria-label={`Close tab ${tab.pos}: ${tab.title || 'untitled'}`}
             title={`Close tab ${tab.pos}`}
             onClick={(event) => {
@@ -103,7 +107,7 @@ function BrowserTabs({ controller }: { controller: BrowserController }): JSX.Ele
           </button>
         </div>
       ))}
-      <button type="button" className="browser-tab-new" aria-label="New tab" title="New tab" onClick={() => void window.closedai.browser.newTab()}>
+      <button type="button" className="browser-tab-new" data-ui="browser.tab-new" aria-label="New tab" title="New tab" onClick={() => void window.closedai.browser.newTab()}>
         <Plus size={14} />
       </button>
     </div>
@@ -130,13 +134,13 @@ function BrowserToolbar({
   const { browser, blur, focus, ghost, handleOmniboxChange, handleOmniboxKeyDown, identity, location, navigate, omniboxRef } = controller
   return (
     <form className="browser-toolbar" onSubmit={navigate}>
-      <button type="button" className="browser-nav-button" disabled={!browser.canGoBack} onClick={() => { void window.closedai.browser.back().catch(() => {}) }} title="Back" aria-label="Back">
+      <button type="button" className="browser-nav-button" disabled={!browser.canGoBack} onClick={() => { void window.closedai.browser.back().catch(() => {}) }} title="Back" aria-label="Back" data-ui="browser.back">
         <ArrowLeft size={16} />
       </button>
-      <button type="button" className="browser-nav-button" disabled={!browser.canGoForward} onClick={() => { void window.closedai.browser.forward().catch(() => {}) }} title="Forward" aria-label="Forward">
+      <button type="button" className="browser-nav-button" disabled={!browser.canGoForward} onClick={() => { void window.closedai.browser.forward().catch(() => {}) }} title="Forward" aria-label="Forward" data-ui="browser.forward">
         <ArrowRight size={16} />
       </button>
-      <button type="button" className="browser-nav-button" onClick={() => { void window.closedai.browser.reload().catch(() => {}) }} title="Reload" aria-label="Reload">
+      <button type="button" className="browser-nav-button" onClick={() => { void window.closedai.browser.reload().catch(() => {}) }} title="Reload" aria-label="Reload" data-ui="browser.reload">
         {browser.isLoading ? <Loader2 className="spin" size={16} /> : <RefreshCw size={16} />}
       </button>
       <div className="omnibox-field">
@@ -147,6 +151,7 @@ function BrowserToolbar({
           spellCheck={false}
           autoComplete="off"
           aria-label="Address"
+          data-ui="browser.address"
           onFocus={focus}
           onBlur={blur}
           onChange={handleOmniboxChange}
@@ -174,6 +179,7 @@ function BrowserToolbar({
         onClick={downloads.toggle}
         title="Downloads"
         aria-label="Downloads"
+        data-ui="browser.downloads"
         aria-pressed={downloads.isOpen}
       >
         <Download size={16} />

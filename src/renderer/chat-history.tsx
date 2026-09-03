@@ -79,7 +79,7 @@ export function ChatHistory({ activeThreadId, busy, listThreads, openThread, arc
   }
 
   return (
-    <section className="chat-history" aria-label="Chat history">
+    <section className="chat-history" aria-label="Chat history" data-ui="chat.history">
       <label className="chat-history-search">
         <Search className="size-3.5" aria-hidden="true" />
         <input
@@ -88,6 +88,7 @@ export function ChatHistory({ activeThreadId, busy, listThreads, openThread, arc
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search chats"
           aria-label="Search chats"
+          data-ui="chat.history-search"
           spellCheck={false}
           autoFocus
         />
@@ -102,7 +103,7 @@ export function ChatHistory({ activeThreadId, busy, listThreads, openThread, arc
       {load.status === 'error' && (
         <div className="chat-history-status" role="alert">
           <p>{load.message}</p>
-          <Button type="button" variant="secondary" size="sm" onClick={() => setReloadKey((key) => key + 1)}>Try again</Button>
+          <Button type="button" variant="secondary" size="sm" data-ui="chat.history-retry" onClick={() => setReloadKey((key) => key + 1)}>Try again</Button>
         </div>
       )}
 
@@ -126,6 +127,8 @@ export function ChatHistory({ activeThreadId, busy, listThreads, openThread, arc
                 <button
                   type="button"
                   className="chat-history-open"
+                  data-ui="chat.history-open"
+                  data-ui-key={thread.id}
                   onClick={() => void open(thread.id)}
                   disabled={busy || pendingId !== null}
                   aria-current={current ? 'true' : undefined}
@@ -140,6 +143,8 @@ export function ChatHistory({ activeThreadId, busy, listThreads, openThread, arc
                   variant="ghost"
                   size="icon-xs"
                   className="chat-history-archive"
+                  data-ui="chat.history-archive"
+                  data-ui-key={thread.id}
                   aria-label={`Archive “${thread.title}”`}
                   title="Archive"
                   disabled={pendingId !== null || (current && busy)}
