@@ -57,7 +57,11 @@ export function summarizeTracePerformance(
     }
     if (entry.label === 'claude.in' && entry.summary.startsWith('assistant')) modelPasses += 1
     if (entry.label === 'claude.in' && entry.summary.startsWith('result')) {
-      tokens = claudeUsage(entry.detail) ?? tokens
+      const usage = claudeUsage(entry.detail)
+      if (usage) {
+        tokens = usage.tokens
+        modelPasses = Math.max(modelPasses, usage.modelPasses)
+      }
     }
   }
 
@@ -104,15 +108,32 @@ function codexUsage(detail: string): {
   }
 }
 
-function claudeUsage(detail: string): TraceTokenTotals | null {
+function claudeUsage(detail: string): { tokens: TraceTokenTotals; modelPasses: number } | null {
   const message = parseRecord(detail)
-  const usage = record(message?.usage)
-  if (!usage) return null
-  const input = number(usage.input_tokens)
-  const cachedInput = Math.min(input, number(usage.cache_read_input_tokens))
-  const output = number(usage.output_tokens)
+  const models = record(message?.modelUsage)
+  if (!message || !models) return null
+  let input = 0
+  let cachedInput = 0
+  let uncachedInput = 0
+  let output = 0
+  let reasoning = 0
+  for (const candidate of Object.values(models)) {
+    const usage = record(candidate)
+    if (!usage) continue
+    const cacheRead = number(usage.cacheReadInputTokens)
+    const cacheCreation = number(usage.cacheCreationInputTokens)
+    const directInput = number(usage.inputTokens)
+    input += directInput + cacheRead + cacheCreation
+    cachedInput += cacheRead
+    uncachedInput += directInput + cacheCreation
+    output += number(usage.outputTokens)
+    reasoning += number(usage.thinkingTokens)
+  }
   if (input + output === 0) return null
-  return { input, cachedInput, uncachedInput: Math.max(0, input - cachedInput), output, reasoning: 0 }
+  return {
+    tokens: { input, cachedInput, uncachedInput, output, reasoning },
+    modelPasses: number(message.num_turns)
+  }
 }
 
 function parseRecord(value: string): RecordValue | null {

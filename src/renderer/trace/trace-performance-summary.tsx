@@ -24,7 +24,11 @@ export function TracePerformanceSummary({ value }: { value: TracePerformance }):
     })
   }
   if (value.nonToolDurationMs !== null) {
-    metrics.push({ label: 'Model + orchestration', value: duration(value.nonToolDurationMs) })
+    metrics.push({
+      label: 'Model + orchestration',
+      value: duration(value.nonToolDurationMs),
+      title: 'Turn wall time minus traced tool execution time'
+    })
   }
   if (value.lastContext) {
     metrics.push({
