@@ -204,3 +204,17 @@ Failures from unknown, disabled, and invalid calls are counted too.
 
 Telemetry is best-effort. Subscribers must not break tool calls, and the registry swallows
 subscriber errors after the model-visible result is produced.
+
+## Turn trace
+
+Separate from telemetry, the chat menu's "Turn trace" opens a live view of everything the main
+process saw a model do: turn start and end with duration, every registry tool call with its
+full arguments and result (`registry.observe`), each normalized transcript item and context
+update, and the raw JSON lines exchanged with each provider process (Codex app-server, the
+Claude Agent SDK, the `agy` CLI). It exists so the user can see where a turn went wrong without
+reading logs.
+
+The trace is held in memory only (`src/main/trace/trace-log.ts`): a ring of 4,000 entries,
+each capped at 48 KB of detail, cleared at restart or with the panel's "Clear" button. Nothing
+is written to disk, so the telemetry file's no-content rule above still holds for anything that
+persists. Raw provider lines are off by default in the panel's filters.

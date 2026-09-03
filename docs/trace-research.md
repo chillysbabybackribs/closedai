@@ -146,7 +146,16 @@ trace-context struct: `paneId, threadId, turnId, callId, parentCallId, batchId, 
   per model call and per tool call, inputs/outputs attached, cost from usage, and hooks
   (PreToolUse/PostToolUse) used to synthesize tool spans when the runtime's own spans are incomplete.
 
-## 4. Design that follows
+## 4. What was built (2026-09-02)
+
+The minimal version: an in-memory turn trace with a viewer, no persistence, no OTel, no schema
+mapping. See `docs/tools.md` "Turn trace". Files: `src/shared/trace.ts`, `src/main/trace/`
+(`trace-log.ts`, `taps.ts`, `summaries.ts`, `ipc.ts`), `src/renderer/trace/`. Taps: a fourth
+`AppServerClient` argument, `traceScope` on the Claude and Antigravity session deps,
+`ToolRegistry.observe`, and the chat event stream in `src/main/index.ts`. Everything below this
+line is the larger design if the trace ever needs to persist or export.
+
+## 5. Design if it grows
 
 1. **Own the trace in main.** A `src/main/trace/` module with a `TraceRecorder` that receives events from
    the choke points above. Do not depend on any provider's OTel exporter for the app's own view; use

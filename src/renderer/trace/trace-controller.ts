@@ -91,19 +91,27 @@ export function useTraceController(active: boolean, paneId: string): TraceContro
   return { groups, total: entries.length, dropped, kinds, toggleKind, allPanes, setAllPanes, error, refresh, clear }
 }
 
-/** Consecutive runs of one turn id become a group, newest group first, entries in order. */
+/**
+ * Consecutive runs of one turn become a group, newest group first, entries in order. Entries
+ * without a turn id that arrive while a turn is open (context updates, the turn end itself,
+ * provider lines sent before the id is known to be over) belong to that turn.
+ */
 export function groupByTurn(entries: TraceEntry[]): TraceTurnGroup[] {
   const groups: TraceTurnGroup[] = []
   let current: TraceTurnGroup | null = null
+  let openTurnId: string | null = null
   for (const entry of entries) {
-    // A turn end carries no turn id but belongs to the turn it closes.
-    const turnId: string | null = entry.label === 'turn.end' && current ? current.turnId : entry.turnId
+    if (entry.label === 'turn.start') openTurnId = entry.turnId
+    const turnId: string | null = entry.turnId ?? openTurnId
     if (!current || current.turnId !== turnId) {
       current = { turnId, entries: [], startedAt: entry.at, durationMs: null }
       groups.push(current)
     }
     current.entries.push(entry)
-    if (entry.label === 'turn.end' && entry.durationMs !== undefined) current.durationMs = entry.durationMs
+    if (entry.label === 'turn.end') {
+      if (entry.durationMs !== undefined) current.durationMs = entry.durationMs
+      openTurnId = null
+    }
   }
   return groups.reverse()
 }
