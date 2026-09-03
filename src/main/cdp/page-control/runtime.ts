@@ -7,6 +7,7 @@ export type LocalElement = {
   tag: string
   role: string
   name: string
+  text?: string
   bounds: LocalBounds
   center: LocalPoint
   quad: number[]
@@ -103,6 +104,7 @@ function inspectFrame(snapshotId: string, frameId: string, maxElements: number, 
       tag: element.tagName.toLowerCase(),
       role: roleOf(element),
       name: nameOf(element).slice(0, 500),
+      text: (element.innerText || element.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 500),
       bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
       center,
       quad,

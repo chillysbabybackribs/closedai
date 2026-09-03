@@ -11,6 +11,7 @@ export type AgentPageElement = {
   tag: string
   role: string
   name: string
+  text?: string
   bounds: ViewportBounds
   center: ViewportPoint
   quad: number[]

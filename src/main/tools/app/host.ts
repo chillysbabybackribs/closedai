@@ -10,6 +10,16 @@ export type AppWaitResult = AppWaitOptions & {
   elapsedMs: number
   selectorMatched: boolean | null
   textMatched: boolean | null
+  matches: AppElementMatch[]
+}
+
+export type AppElementMatch = {
+  tag: string
+  role: string
+  name: string
+  text: string
+  state: Record<string, boolean | string>
+  bounds: { x: number; y: number; width: number; height: number }
 }
 
 export type AppClickTarget = {
@@ -34,6 +44,7 @@ export type AppScrollTarget = {
 }
 
 export type AppToolHost = {
+  inspect(maxElements: number): Promise<unknown>
   click(target: AppClickTarget): Promise<unknown>
   typeText(target: AppTypeTarget): Promise<unknown>
   pressKey(key: string, modifiers: string[]): Promise<unknown>

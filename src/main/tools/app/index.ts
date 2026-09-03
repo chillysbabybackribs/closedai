@@ -1,6 +1,6 @@
 import { defineActionTool, type ToolAction } from '../action-tool.js'
 import { jsonResult, objectSchema } from '../json-result.js'
-import { booleanArg, numberArg, stringArg, type JsonObject, type ToolNamespace } from '../tool.js'
+import { booleanArg, defineTool, numberArg, stringArg, type JsonObject, type ToolDefinition, type ToolNamespace } from '../tool.js'
 import { requireApp, type AppHostProvider } from './host.js'
 
 const selectorField: JsonObject = {
@@ -32,16 +32,33 @@ const modifiersField: JsonObject = {
 export function appTools(app: AppHostProvider): ToolNamespace {
   return {
     name: 'closedai_app',
-    description: 'Interaction for the ClosedAI desktop app renderer.',
-    tools: [defineActionTool({
+    description: 'Inspection and interaction for the ClosedAI desktop app renderer.',
+    tools: [inspectTool(app), defineActionTool({
       name: 'page',
       description:
         'Operate ClosedAI app chrome with real input. This targets the chat pane, tool dialogs, browser chrome, ' +
-        'and other renderer UI; use browser_cdp.page for the web page inside the embedded browser. For visual ' +
-        'inspection, use closedai_ui.capture with action app_window.',
+        'and other renderer UI; use browser_cdp.page for the web page inside the embedded browser. Use ' +
+        'closedai_app.inspect for structured app state and closedai_ui.capture for visual inspection.',
       actions: actions(app)
     })]
   }
+}
+
+function inspectTool(app: AppHostProvider): ToolDefinition {
+  return defineTool({
+    name: 'inspect',
+    description:
+      'Read the current ClosedAI renderer state without changing it. Returns bounded window and document state, ' +
+      'visible text, surfaces, focus, and interactive elements with refs, accessible names, text, state, and bounds. ' +
+      'Use the refs with closedai_app.page actions; they become stale after another inspection or a layout change.',
+    inputSchema: objectSchema({
+      max_elements: {
+        type: 'integer', minimum: 1, maximum: 500,
+        description: 'Maximum visible interactive elements to return; defaults to 120.'
+      }
+    }),
+    run: async (input) => jsonResult(await requireApp(app).inspect(numberArg(input, 'max_elements', 120)))
+  })
 }
 
 function optionalNumberArg(input: JsonObject, key: string): number | undefined {
@@ -166,6 +183,7 @@ function modifiersFrom(input: JsonObject): string[] {
 
 export type {
   AppClickTarget,
+  AppElementMatch,
   AppHostProvider,
   AppScrollTarget,
   AppToolHost,
