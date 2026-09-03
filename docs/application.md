@@ -37,6 +37,21 @@ message. Branching from a completed response limits that digest to the chosen re
 does not clone the provider's full session. User/assistant text is included, while tools,
 reasoning, and images stay in the original chat. See `chat-context/thread-handoff.ts`.
 
+Models can save a structured working checkpoint with `peer_chats.checkpoint`: goal, constraints,
+decisions, progress, next steps, and file references. One checkpoint per pane is stored with its
+thread id, revision, and transcript boundary in `app-settings.json`; it is usable only for that
+thread. State is capped at 6,000 serialized characters and oversized saves are rejected. Writes
+require the caller's active turn and matching expected revision. These are model-authored notes,
+not verified facts or authorization. They are not automatically regenerated or injected each turn.
+
+A continuation copies an applicable checkpoint into its existing ≤12k-character handoff, alongside
+recent conversation. It freezes the source's last item id, and `peer_chats.recall` can search the
+current transcript or read that direct source—even after the source pane closes—without opening
+it in the UI. Source recall stops at the saved boundary. A checkpoint newer than a branch point
+is not carried. Missing boundaries (including legacy continuations) fail closed. Retrieval uses
+existing provider stores; no second transcript archive or automatic provider-session rotation
+is introduced. See [Model context](model-context.md) for trust and [Tools](tools.md) for limits.
+
 ## Chat surface
 
 - The sidebar keeps only running chats in Current. Every finished turn moves immediately to

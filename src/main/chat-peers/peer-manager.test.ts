@@ -365,6 +365,7 @@ test('branching at a response excludes later messages and rejects unknown endpoi
   const handoff = settings.get().chatPeers.find((peer) => peer.paneId === target)?.continuation?.handoff ?? ''
   assert.match(handoff, /Original answer/)
   assert.doesNotMatch(handoff, /Later question/)
+  assert.equal(settings.get().chatPeers.find((peer) => peer.paneId === target)?.continuation?.sourceThroughItemId, 'a1')
   assert.equal(surfaces[0]!.state.items.length, 3)
 })
 
