@@ -273,10 +273,13 @@ export function dynamicToolLabel(item: Record<string, unknown>): string {
     return 'Analyze page'
   }
   if (namespace === 'closedai_app') {
-    if (action === 'inspect_app') return 'Analyze app'
+    if (tool === 'inspect' || action === 'inspect_app') return 'Analyze app'
     if (action === 'click') return 'Click app element'
     if (action === 'type') return 'Type in app'
-    return 'Analyze app'
+    if (action === 'wait_for') return 'Wait for app'
+    if (action === 'scroll') return 'Scroll app'
+    if (action === 'press_key') return 'Press app key'
+    return 'Use app'
   }
   if (namespace === 'closedai_workspace' || tool === 'inspect') {
     return 'Analyze workspace'
@@ -287,4 +290,3 @@ export function dynamicToolLabel(item: Record<string, unknown>): string {
   if (tool === 'page') return 'Read page'
   return tool || 'Tool call'
 }
-

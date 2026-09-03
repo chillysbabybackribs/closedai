@@ -53,7 +53,10 @@ test('tool phrases support dynamic running and completed states', () => {
   assert.equal(toolPhrase('inspect', 1, true), 'Analyzing workspace')
   assert.equal(toolPhrase('Analyze page'), 'Analyzed page')
   assert.equal(toolPhrase('Analyze page', 1, true), 'Analyzing page')
+  assert.equal(toolPhrase('Analyze app'), 'Analyzed app')
+  assert.equal(toolPhrase('Wait for app', 1, true), 'Waiting for app')
+  assert.equal(toolPhrase('Scroll app'), 'Scrolled app')
+  assert.equal(toolPhrase('Press app key'), 'Pressed app key')
   assert.equal(toolPhrase('Web search', 1, true), 'Searching the web')
   assert.equal(toolPhrase('Web search', 2, true), 'Searching the web 2 times')
 })
-
