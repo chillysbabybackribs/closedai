@@ -1,18 +1,21 @@
 import type { BrowserWindow, WebContents } from 'electron'
 import type {
   AppClickTarget,
-  AppElementMatch,
   AppScrollTarget,
   AppToolHost,
   AppTypeTarget,
   AppWaitOptions,
   AppWaitResult
 } from './tools/app/host.js'
+import {
+  appInspectionExpression,
+  conditionProbeExpression,
+  type AppConditionProbe
+} from './app-automation-dom.js'
 import { CdpSession } from './cdp/cdp-session.js'
 import { CdpPageController } from './cdp/page-control/page-controller.js'
 import { CdpPageInput } from './cdp/page-control/page-input.js'
 import {
-  inspectionExpression,
   prepareClickExpression,
   prepareTypeExpression,
   readValueExpression,
@@ -24,12 +27,6 @@ type Connection = {
   session: CdpSession
   page: CdpPageController
   input: CdpPageInput
-}
-
-type ConditionProbe = {
-  selectorMatched: boolean | null
-  textMatched: boolean | null
-  matches: AppElementMatch[]
 }
 
 const APP_TARGET_ID = 'closedai-app'
@@ -157,7 +154,7 @@ export class AppAutomationAccess implements AppToolHost {
 
   async waitFor(options: AppWaitOptions, signal: AbortSignal): Promise<AppWaitResult> {
     const started = Date.now()
-    let last: ConditionProbe = { selectorMatched: null, textMatched: null, matches: [] }
+    let last: AppConditionProbe = { selectorMatched: null, textMatched: null, matches: [] }
     for (;;) {
       if (signal.aborted) throw new Error('ClosedAI app wait was aborted')
       const { contents } = this.resolve()
@@ -202,153 +199,22 @@ export class AppAutomationAccess implements AppToolHost {
 
 function waitResult(
   options: AppWaitOptions,
-  probe: ConditionProbe,
+  probe: AppConditionProbe,
   reached: boolean,
   elapsedMs: number
 ): AppWaitResult {
   return { ...options, reached, elapsedMs, ...probe }
 }
 
-function conditionReached(probe: ConditionProbe, options: AppWaitOptions): boolean {
+function conditionReached(probe: AppConditionProbe, options: AppWaitOptions): boolean {
   const expected = options.condition === 'visible'
   return [probe.selectorMatched, probe.textMatched]
     .filter((value): value is boolean => value !== null)
     .every((value) => value === expected)
 }
 
-async function probeCondition(contents: WebContents, options: AppWaitOptions): Promise<ConditionProbe> {
-  const script = `(() => {
-    const selector = ${JSON.stringify(options.selector ?? '')};
-    const needle = ${JSON.stringify(options.text ?? '')};
-    const visible = (${viewportVisible.toString()});
-    const describe = (${describeElement.toString()});
-    const selected = selector ? Array.from(document.querySelectorAll(selector)).filter(visible) : [];
-    const textMatches = [];
-    if (needle && document.body) {
-      const seen = new Set();
-      const add = (element) => {
-        const semantic = element.closest('a[href],button,input,select,textarea,summary,[role],[tabindex],[contenteditable="true"]') || element;
-        if (!seen.has(semantic) && visible(semantic)) {
-          seen.add(semantic);
-          textMatches.push(semantic);
-        }
-      };
-      for (const element of document.querySelectorAll('[aria-label],[title],[placeholder],[alt]')) {
-        const accessible = [
-          element.getAttribute('aria-label'), element.getAttribute('title'),
-          element.getAttribute('placeholder'), element.getAttribute('alt')
-        ].filter(Boolean).join(' ');
-        if (accessible.includes(needle)) add(element);
-        if (textMatches.length >= 5) break;
-      }
-      if (textMatches.length < 5) {
-        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-        let node;
-        while ((node = walker.nextNode()) && textMatches.length < 5) {
-          if ((node.nodeValue || '').includes(needle) && node.parentElement) add(node.parentElement);
-        }
-      }
-    }
-    const matched = Array.from(new Set([...selected, ...textMatches])).slice(0, 5);
-    return {
-      selectorMatched: selector ? selected.length > 0 : null,
-      textMatched: needle ? textMatches.length > 0 : null,
-      matches: matched.map(describe)
-    };
-  })()`
-  return await contents.executeJavaScript(script, true) as ConditionProbe
-}
-
-function appInspectionExpression(snapshotId: string, maxElements: number): string {
-  const inspect = inspectionExpression(snapshotId, 'app', maxElements)
-  return `(() => {
-    const inspection = ${inspect};
-    const visible = (${viewportVisible.toString()});
-    const describe = (${describeElement.toString()});
-    const visibleText = (${readVisibleText.toString()})(8000);
-    const active = document.activeElement;
-    return {
-      inspection,
-      document: {
-        title: document.title,
-        url: location.href,
-        readyState: document.readyState,
-        activeElement: active && active instanceof HTMLElement ? describe(active) : null,
-        surfaces: Array.from(document.querySelectorAll('[data-ui-surface], [role="dialog"], [role="alert"], [role="status"]'))
-          .filter(visible).slice(0, 100).map(describe),
-        visibleText: visibleText.text,
-        textTruncated: visibleText.truncated
-      }
-    };
-  })()`
-}
-
-function viewportVisible(element: Element): boolean {
-  const style = getComputedStyle(element)
-  if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false
-  return Array.from(element.getClientRects()).some((rect) => (
-    rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.bottom > 0 &&
-    rect.left < window.innerWidth && rect.top < window.innerHeight
-  ))
-}
-
-function describeElement(element: Element): AppElementMatch {
-  const html = element as HTMLElement
-  const rect = element.getBoundingClientRect()
-  const labelledBy = element.getAttribute('aria-labelledby')
-  const labelledText = labelledBy?.split(/\s+/)
-    .map((id) => document.getElementById(id)?.innerText ?? '').join(' ').trim()
-  const name = labelledText || element.getAttribute('aria-label') || element.getAttribute('title') ||
-    element.getAttribute('placeholder') || element.getAttribute('alt') ||
-    (html.innerText || element.textContent || '').replace(/\s+/g, ' ').trim()
-  const state: Record<string, boolean | string> = {}
-  if ('disabled' in html) state.disabled = Boolean((html as HTMLButtonElement).disabled)
-  if ('checked' in html) state.checked = Boolean((html as HTMLInputElement).checked)
-  if ('value' in html && typeof (html as HTMLInputElement).value === 'string') {
-    state.value = (html as HTMLInputElement).value.slice(0, 500)
-  }
-  for (const key of ['expanded', 'pressed', 'selected'] as const) {
-    const value = element.getAttribute(`aria-${key}`)
-    if (value === 'true' || value === 'false') state[key] = value === 'true'
-  }
-  return {
-    tag: element.tagName.toLowerCase(),
-    role: element.getAttribute('role') || element.tagName.toLowerCase(),
-    name: name.slice(0, 500),
-    text: (html.innerText || element.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 500),
-    state,
-    bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
-  }
-}
-
-function readVisibleText(limit: number): { text: string; truncated: boolean } {
-  if (!document.body) return { text: '', truncated: false }
-  const parts: string[] = []
-  let length = 0
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
-  let node: Node | null
-  while ((node = walker.nextNode())) {
-    const text = (node.nodeValue || '').replace(/\s+/g, ' ').trim()
-    const parent = node.parentElement
-    if (!text || !parent) continue
-    const style = getComputedStyle(parent)
-    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) continue
-    const range = document.createRange()
-    range.selectNodeContents(node)
-    const inViewport = Array.from(range.getClientRects()).some((rect) => (
-      rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.bottom > 0 &&
-      rect.left < window.innerWidth && rect.top < window.innerHeight
-    ))
-    if (!inViewport) continue
-    if (length + text.length + 1 > limit) {
-      const remaining = Math.max(0, limit - length)
-      if (remaining > 0) parts.push(text.slice(0, remaining))
-      return { text: parts.join(' '), truncated: true }
-    }
-    parts.push(text)
-    length += text.length + 1
-  }
-  return { text: parts.join(' '), truncated: false }
+async function probeCondition(contents: WebContents, options: AppWaitOptions): Promise<AppConditionProbe> {
+  return await contents.executeJavaScript(conditionProbeExpression(options), true) as AppConditionProbe
 }
 
 async function abortableDelay(ms: number, signal: AbortSignal): Promise<void> {

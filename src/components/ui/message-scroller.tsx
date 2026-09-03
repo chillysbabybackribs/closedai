@@ -64,7 +64,7 @@ const MessageScrollerViewport = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDi
 
 const MessageScrollerContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function MessageScrollerContent({ className, ...props }, ref) {
-    const { setContent } = useScrollerContext()
+    const { setContent, setSpacer } = useScrollerContext()
     return (
       <div
         ref={mergeRefs(ref, setContent)}
@@ -73,7 +73,10 @@ const MessageScrollerContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDiv
         data-slot="message-scroller-content"
         className={cn('flex h-max min-h-full flex-col gap-8', className)}
         {...props}
-      />
+      >
+        {props.children}
+        <div ref={setSpacer} data-message-scroller-spacer="" aria-hidden="true" hidden />
+      </div>
     )
   }
 )
@@ -99,7 +102,7 @@ const MessageScrollerItem = forwardRef<HTMLDivElement, ItemProps>(
 )
 
 type ScrollerButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  direction?: ScrollPosition
+  direction?: Exclude<ScrollPosition, 'last-anchor'>
 }
 
 function MessageScrollerButton({

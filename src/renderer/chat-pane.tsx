@@ -150,7 +150,7 @@ function TranscriptScroller({
   children: JSX.Element
 }): JSX.Element {
   return (
-    <MessageScrollerProvider key={threadId ?? 'empty'} autoScroll defaultScrollPosition="end">
+    <MessageScrollerProvider key={threadId ?? 'empty'} autoScroll defaultScrollPosition="last-anchor">
       <MessageScroller className="chat-scroll-root prompt-chat-scroll">
         <MessageScrollerViewport className="chat-scroll">
           <MessageScrollerContent className="chat-scroll-content gap-0">

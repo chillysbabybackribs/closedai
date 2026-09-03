@@ -2,10 +2,35 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  anchorScrollLayout,
   followingAfterViewportSync,
   preservedScrollTop,
   scrollEdges
 } from './message-scroller-state.ts'
+
+test('a new prompt gets enough trailing space to sit at the top of the viewport', () => {
+  assert.deepEqual(anchorScrollLayout({
+    anchorTop: 1_400,
+    contentHeight: 1_600,
+    previousItemPeek: 0,
+    viewportHeight: 700
+  }), {
+    scrollTop: 1_400,
+    spacerHeight: 500
+  })
+})
+
+test('a prompt with a full response below it does not create trailing space', () => {
+  assert.deepEqual(anchorScrollLayout({
+    anchorTop: 1_400,
+    contentHeight: 2_400,
+    previousItemPeek: 0,
+    viewportHeight: 700
+  }), {
+    scrollTop: 1_400,
+    spacerHeight: 0
+  })
+})
 
 test('short content has no scrollable edge', () => {
   assert.deepEqual(scrollEdges({ clientHeight: 500, scrollHeight: 300, scrollTop: 0 }, 24), {

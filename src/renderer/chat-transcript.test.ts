@@ -72,7 +72,7 @@ test('user turns are scroller rows and attachments render as attachment cards', 
     }]
   })
   assert.match(html, /data-slot="message-scroller-item"/)
-  assert.doesNotMatch(html, /data-scroll-anchor="true"/)
+  assert.match(html, /data-scroll-anchor="true"/)
   assert.match(html, /data-slot="attachment"/)
   assert.match(html, /notes\.md/)
 })
