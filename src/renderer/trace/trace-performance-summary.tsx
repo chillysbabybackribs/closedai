@@ -5,6 +5,14 @@ import { duration } from './trace-row.js'
 
 export function TracePerformanceSummary({ value }: { value: TracePerformance }): JSX.Element | null {
   const metrics: Array<{ label: string; value: string; title?: string }> = []
+  if (value.response) {
+    metrics.push(
+      { label: 'First text', value: duration(value.response.firstTextMs), title: 'Send received in main → first non-empty assistant text, including commentary. Excludes renderer paint; not provider-only TTFT.' },
+      { label: 'Preparation', value: duration(value.response.preparationMs), title: 'Before provider dispatch, including pane wake-up and any compaction wait' },
+      { label: 'Compaction wait', value: duration(value.response.compactionWaitMs), title: 'Measured Codex send wait; a subset of preparation, not additional time. Provider-internal compaction is not separately measured.' },
+      { label: 'After dispatch', value: duration(value.response.afterDispatchMs), title: 'Provider dispatch → first assistant text; can include queueing, input processing, reasoning, and tools' }
+    )
+  }
   if (value.modelPasses > 0) metrics.push({ label: 'Model passes', value: String(value.modelPasses) })
   if (value.tokens) {
     const cachePercent = value.tokens.input > 0 ? (value.tokens.cachedInput / value.tokens.input) * 100 : 0

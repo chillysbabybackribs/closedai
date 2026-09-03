@@ -54,4 +54,23 @@ test('ignores malformed raw detail and does not invent provider metrics', () => 
   assert.equal(value.tokens, null)
   assert.equal(value.lastContext, null)
   assert.equal(value.nonToolDurationMs, null)
+  assert.equal(value.response, null)
+})
+
+test('reads self-contained first-text timing even after the send entry is evicted', () => {
+  const value = summarizeTracePerformance([
+    entry('turn', 'response.first_text', { detail: JSON.stringify({
+      elapsedMs: 2_000, preparationMs: 500, compactionWaitMs: 0, afterDispatchMs: 1_500
+    }) })
+  ], null)
+  assert.deepEqual(value.response, { firstTextMs: 2_000, preparationMs: 500, compactionWaitMs: 0, afterDispatchMs: 1_500 })
+})
+
+test('no-text turns and truncated or invalid timing detail do not fabricate latency', () => {
+  for (const event of [
+    entry('turn', 'response.no_text', { durationMs: 50 }),
+    entry('turn', 'response.first_text', { detail: '{' }),
+    entry('turn', 'response.first_text', { detail: '{}' }),
+    entry('turn', 'response.first_text', { detail: JSON.stringify({ elapsedMs: -1, preparationMs: 0, compactionWaitMs: 0, afterDispatchMs: 0 }) })
+  ]) assert.equal(summarizeTracePerformance([event], null).response, null)
 })

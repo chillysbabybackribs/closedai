@@ -9,6 +9,12 @@ export type TraceTokenTotals = {
 }
 
 export type TracePerformance = {
+  response: {
+    firstTextMs: number
+    preparationMs: number
+    compactionWaitMs: number
+    afterDispatchMs: number
+  } | null
   modelPasses: number
   tokens: TraceTokenTotals | null
   lastContext: { used: number; window: number; percent: number } | null
@@ -35,8 +41,10 @@ export function summarizeTracePerformance(
   let toolDurationMs = 0
   let transcriptEvents = 0
   let rawEvents = 0
+  let response: TracePerformance['response'] = null
 
   for (const entry of entries) {
+    if (entry.label === 'response.first_text') response ??= responseTiming(entry.detail)
     if (entry.kind === 'event') transcriptEvents += 1
     if (entry.kind === 'raw') rawEvents += 1
     if (entry.kind === 'tool' && entry.label === 'tool.call') toolCalls += 1
@@ -66,6 +74,7 @@ export function summarizeTracePerformance(
   }
 
   return {
+    response,
     modelPasses,
     tokens,
     lastContext,
@@ -76,6 +85,15 @@ export function summarizeTracePerformance(
     transcriptEvents,
     rawEvents
   }
+}
+
+function responseTiming(detail: string): TracePerformance['response'] {
+  const value = parseRecord(detail)
+  if (!value) return null
+  const { elapsedMs, preparationMs, compactionWaitMs, afterDispatchMs } = value
+  const valid = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0
+  if (!valid(elapsedMs) || !valid(preparationMs) || !valid(compactionWaitMs) || !valid(afterDispatchMs)) return null
+  return { firstTextMs: elapsedMs, preparationMs, compactionWaitMs, afterDispatchMs }
 }
 
 function codexUsage(detail: string): {
