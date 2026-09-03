@@ -52,7 +52,7 @@ test('every registered ClosedAI tool schema imports exactly', () => {
   const stub = (): never => { throw new Error('not called during schema conversion') }
   const registry = createToolRegistry([])
   const namespaces = [
-    appTools(stub as never),
+    appTools(stub as never, stub as never),
     browserTools(stub as never),
     cdpTools(stub as never),
     captureTools(stub as never),

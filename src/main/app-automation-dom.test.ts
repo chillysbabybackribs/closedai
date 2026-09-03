@@ -2,70 +2,90 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
-  appInspectionExpression,
   conditionProbeExpression,
-  selectorClickExpression,
-  selectorTypeExpression,
-  selectorValueExpression
+  controlsExpression,
+  targetClickExpression,
+  targetSelector,
+  targetTypeExpression,
+  targetValueExpression,
+  uiStateExpression
 } from './app-automation-dom.ts'
 
-test('app inspection is one bounded renderer expression with reusable refs and visible text', () => {
-  const expression = appInspectionExpression('a123', 40)
-  assert.match(expression, /function inspectFrame/)
-  assert.match(expression, /"a123","app",40/)
-  assert.match(expression, /visibleText/)
-  assert.match(expression, /textTruncated/)
-})
-
-test('focused app inspection scopes and filters controls without collecting document text', () => {
-  const expression = appInspectionExpression('a123', 20, {
-    surface: 'side-drawer', query: 'history', includeText: false
-  })
-  assert.match(expression, /"surface":"side-drawer"/)
-  assert.match(expression, /"query":"history"/)
-  assert.match(expression, /const includeText = false/)
-  assert.match(expression, /data-ui-surface/)
+const validJavaScript = (expression: string): void => {
   assert.doesNotThrow(() => new Function(`return ${expression}`))
+  assert.doesNotMatch(expression, /\sas\sHTML/)
+}
+
+test('control listing and ui state are bounded renderer expressions over data-ui ids', () => {
+  const listing = controlsExpression({ surface: 'side-drawer', query: 'row', maxControls: 20 })
+  validJavaScript(listing)
+  assert.match(listing, /querySelectorAll\('\[data-ui\]'\)/)
+  assert.match(listing, /"surface":"side-drawer"/)
+  assert.match(listing, /"maxControls":20/)
+  assert.doesNotMatch(listing, /innerText\s*\|\|\s*document/)
+  const state = uiStateExpression()
+  validJavaScript(state)
+  for (const id of ['composer.input', 'composer.send', 'composer.stop', 'chat.history']) assert.match(state, new RegExp(id))
 })
 
-test('selector-only condition probes do not read the entire document text', () => {
-  const expression = conditionProbeExpression({
-    selector: '.ready', condition: 'visible', timeoutMs: 500
-  })
-  assert.match(expression, /const selector = "\.ready"/)
-  assert.doesNotMatch(expression, /document\.body\.innerText/)
-  assert.match(expression, /matches: matched\.map\(describe\)/)
+test('targets become attribute selectors and action expressions stay valid', () => {
+  assert.equal(targetSelector({ control: 'drawer.row', key: 'r1' }), '[data-ui="drawer.row"][data-ui-key="r1"]')
+  assert.equal(targetSelector({ selector: '.x' }), '.x')
+  assert.equal(targetSelector({}), '')
+  for (const expression of [
+    targetClickExpression({ control: 'composer.send' }),
+    targetTypeExpression({ control: 'composer.input' }, true),
+    targetValueExpression({ selector: 'textarea' }),
+    conditionProbeExpression({ control: 'dialog.tools', text: 'Tools', condition: 'visible', timeoutMs: 500 })
+  ]) validJavaScript(expression)
 })
 
-test('selector action expressions are valid renderer JavaScript', () => {
-  const expressions = [
-    selectorClickExpression('.target'),
-    selectorTypeExpression('input[aria-label="Search"]', true),
-    selectorValueExpression('input[aria-label="Search"]')
-  ]
-  for (const expression of expressions) {
-    assert.doesNotThrow(() => new Function(`return ${expression}`))
-    assert.doesNotMatch(expression, /\sas\sHTMLElement/)
-  }
-})
-
-test('selector clicks reject disabled controls before dispatch', async () => {
-  const element = {
-    isConnected: true,
-    disabled: true,
-    getAttribute: () => null,
-    getClientRects: () => [{ width: 80, height: 30 }]
-  }
+function withDom(elements: unknown[], run: () => Promise<void> | void): Promise<void> | void {
   const originalDocument = globalThis.document
   const originalStyle = globalThis.getComputedStyle
+  const originalWindow = globalThis.window
   Object.assign(globalThis, {
-    document: { querySelectorAll: () => [element] },
-    getComputedStyle: () => ({ display: 'block', visibility: 'visible', opacity: '1' })
+    document: { querySelectorAll: () => elements },
+    getComputedStyle: () => ({ display: 'block', visibility: 'visible', opacity: '1' }),
+    window: { innerWidth: 1000, innerHeight: 800 }
   })
-  try {
-    const execute = new Function(`return ${selectorClickExpression('.disabled')}`) as () => Promise<unknown>
-    await assert.rejects(execute(), /Element is disabled/)
-  } finally {
-    Object.assign(globalThis, { document: originalDocument, getComputedStyle: originalStyle })
+  const restore = (): void => {
+    Object.assign(globalThis, { document: originalDocument, getComputedStyle: originalStyle, window: originalWindow })
   }
+  try {
+    const result = run()
+    if (result instanceof Promise) return result.finally(restore)
+    restore()
+  } catch (error) {
+    restore()
+    throw error
+  }
+}
+
+function fakeElement(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  const attributes: Record<string, string> = (overrides.attributes as Record<string, string>) ?? {}
+  return {
+    isConnected: true,
+    disabled: false,
+    tagName: 'BUTTON',
+    innerText: 'Open this chat',
+    getAttribute: (name: string) => attributes[name] ?? null,
+    getClientRects: () => [{ width: 80, height: 30, left: 10, top: 10, right: 90, bottom: 40 }],
+    ...overrides
+  }
+}
+
+test('control resolution names the failure: not rendered, disabled, or ambiguous', async () => {
+  const run = (expression: string) => (new Function(`return ${expression}`) as () => Promise<unknown>)()
+  await withDom([], () => assert.rejects(run(targetClickExpression({ control: 'dialog.tools' })), /not rendered now/))
+  await withDom([fakeElement({ disabled: true })], () =>
+    assert.rejects(run(targetClickExpression({ control: 'composer.send' })), /Element is disabled/))
+  const rows = [
+    fakeElement({ attributes: { 'data-ui-key': 'a' }, innerText: 'Alpha chat' }),
+    fakeElement({ attributes: { 'data-ui-key': 'b' }, innerText: 'Beta chat' })
+  ]
+  await withDom(rows, () =>
+    assert.rejects(run(targetClickExpression({ control: 'drawer.row' })), /matches 2 elements.*Keys: a: Alpha chat \| b: Beta chat/))
+  await withDom(rows, () =>
+    assert.rejects(run(targetClickExpression({ control: 'drawer.row', match: 'gamma' })), /No visible drawer\.row matches "gamma"/))
 })

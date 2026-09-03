@@ -2,48 +2,55 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { ToolRegistry } from '../registry.js'
 import { appTools } from './index.js'
-import type { AppToolHost } from './host.js'
+import type { AppCommandHost, AppUiHost } from './host.js'
 
-function harness(overrides: Partial<AppToolHost> = {}) {
+function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandHost> } = {}) {
   const calls: unknown[] = []
-  const host: AppToolHost = {
-    inspect: async (options) => {
-      calls.push(['inspect', options])
-      return { snapshotId: 'a1', elements: [] }
+  const ui: AppUiHost = {
+    controls: async (filter) => {
+      calls.push(['controls', filter])
+      return { surfaces: ['shell', 'chat'], controls: [], total: 0, omitted: 0 }
     },
-    click: async (target) => {
-      calls.push(['click', target])
-      return { target, point: { x: 10, y: 20 } }
-    },
-    typeText: async (target) => {
-      calls.push(['typeText', target])
-      return { target, value: target.text }
-    },
-    pressKey: async (key, modifiers) => {
-      calls.push(['pressKey', key, modifiers])
-      return { key, modifiers }
-    },
-    scroll: async (target) => {
-      calls.push(['scroll', target])
-      return { scrolled: target.ref || target.selector ? 'into_view' : 'wheel' }
-    },
-    waitFor: async (options, signal) => {
-      calls.push(['waitFor', options, signal.aborted])
+    uiState: async () => {
+      calls.push(['uiState'])
       return {
-        ...options,
-        reached: true,
-        elapsedMs: 75,
-        selectorMatched: options.selector ? options.condition === 'visible' : null,
-        textMatched: options.text ? options.condition === 'visible' : null,
-        matches: []
+        drawerOpen: true, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
+        composer: { enabled: true, running: false, canSend: false, draftLength: 0 }, focused: null,
+        viewport: { width: 1920, height: 1048 }
       }
     },
-    ...overrides
+    click: async (target) => { calls.push(['click', target]); return { point: { x: 10, y: 20 } } },
+    typeText: async (target) => { calls.push(['typeText', target]); return { value: target.text } },
+    pressKey: async (key, modifiers) => { calls.push(['pressKey', key, modifiers]); return { key, modifiers } },
+    scroll: async (target) => { calls.push(['scroll', target]); return { scrolled: target.control ? 'into_view' : 'wheel' } },
+    waitFor: async (options, signal) => {
+      calls.push(['waitFor', options, signal.aborted])
+      return { ...options, reached: true, elapsedMs: 75, targetVisible: 1, targetEnabled: 1, textMatched: null }
+    },
+    ...overrides.ui
   }
-  const registry = new ToolRegistry([appTools(() => host)])
-  const call = (arguments_: Record<string, unknown>, tool = 'page') => registry.call(
+  const app: AppCommandHost = {
+    state: (sections, paneId, callerPaneId) => {
+      calls.push(['state', sections, paneId, callerPaneId])
+      return Object.fromEntries(sections.map((section) => [section, { section }]))
+    },
+    selectedPaneId: () => 'pane-selected',
+    newChat: async () => { calls.push(['newChat']); return { paneId: 'pane-new' } },
+    sendMessage: async (request) => {
+      calls.push(['sendMessage', { ...request, signal: request.signal.aborted }])
+      return { paneId: request.paneId, turnStarted: true, turnCompleted: true, elapsedMs: 1200 }
+    },
+    stopAgent: async (paneId) => { calls.push(['stopAgent', paneId]) },
+    openChat: async (request) => { calls.push(['openChat', request]); return { paneId: request.paneId ?? 'pane-selected', threadId: 'thread-1' } },
+    closeChat: async (paneId) => { calls.push(['closeChat', paneId]) },
+    selectModel: async (paneId, modelId, effort) => { calls.push(['selectModel', paneId, modelId, effort]) },
+    browserTab: async (request) => { calls.push(['browserTab', request]); return { tabCount: 1 } },
+    ...overrides.app
+  }
+  const registry = new ToolRegistry([appTools(() => app, () => ui)])
+  const call = (tool: string, arguments_: Record<string, unknown>, paneId: string | null = 'pane-caller') => registry.call(
     { namespace: 'closedai_app', tool, arguments: arguments_ },
-    { threadId: null, turnId: null, callId: 'app-call' }
+    { threadId: null, turnId: null, callId: 'app-call', paneId }
   )
   return { calls, call, registry }
 }
@@ -52,95 +59,112 @@ function textOf(result: { content: Array<{ type: string; text?: string }> }): st
   return result.content[0]?.type === 'text' ? result.content[0].text ?? '' : ''
 }
 
-test('app tool advertises the semantic renderer actions', () => {
+test('namespace advertises state, deterministic commands, and control-level ui actions', () => {
   const { registry } = harness()
-  assert.deepEqual(registry.names(), ['closedai_app.inspect', 'closedai_app.page'])
-  assert.equal(registry.namespaces[0]!.tools[0]!.actions, undefined)
-  assert.deepEqual(registry.namespaces[0]!.tools[1]!.actions?.map((action) => action.name), [
-    'click', 'type', 'press_key', 'scroll', 'wait_for'
+  assert.deepEqual(registry.names(), ['closedai_app.state', 'closedai_app.command', 'closedai_app.ui'])
+  const [state, command, ui] = registry.namespaces[0]!.tools
+  assert.equal(state!.actions, undefined)
+  assert.deepEqual(command!.actions?.map((action) => action.name), [
+    'new_chat', 'send_message', 'stop_agent', 'open_chat', 'close_chat', 'select_model', 'browser_tab'
+  ])
+  assert.deepEqual(ui!.actions?.map((action) => action.name), [
+    'controls', 'click', 'type', 'press_key', 'scroll', 'wait_for'
+  ])
+  assert.match(ui!.description, /families: titlebar, window, drawer, chat, composer, browser, downloads, dialog, tools, trace, settings/)
+})
+
+test('state returns every section by default and only the requested ones otherwise', async () => {
+  const { calls, call } = harness()
+  const full = await call('state', {})
+  assert.match(textOf(full), /"drawerOpen": true/)
+  assert.deepEqual(calls[0], ['state', ['workspace', 'chat', 'browser', 'downloads', 'window'], undefined, 'pane-caller'])
+  calls.length = 0
+  const narrow = await call('state', { include: ['chat'], pane_id: 'pane-2' })
+  assert.doesNotMatch(textOf(narrow), /drawerOpen/)
+  assert.deepEqual(calls, [['state', ['chat'], 'pane-2', 'pane-caller']])
+})
+
+test('send_message defaults to awaiting the turn and refuses the calling pane', async () => {
+  const { calls, call } = harness()
+  const result = await call('command', { action: 'send_message', pane_id: 'pane-new', text: 'hello' })
+  assert.match(textOf(result), /"turnCompleted": true/)
+  assert.deepEqual(calls[0], ['sendMessage', { paneId: 'pane-new', text: 'hello', awaitTurn: true, timeoutMs: 60_000, signal: false }])
+  assert.deepEqual(calls[1], ['state', ['chat'], 'pane-new', 'pane-caller'])
+
+  const self = await call('command', { action: 'send_message', pane_id: 'pane-caller', text: 'loop' })
+  assert.equal(self.isError, true)
+  assert.match(textOf(self), /calling pane/)
+  const selected = await call('command', { action: 'stop_agent' }, 'pane-selected')
+  assert.equal(selected.isError, true)
+  assert.equal(calls.length, 2)
+})
+
+test('commands route to the host with the selected pane as the default target', async () => {
+  const { calls, call } = harness()
+  await call('command', { action: 'new_chat' })
+  await call('command', { action: 'stop_agent' })
+  await call('command', { action: 'open_chat', title: 'benchmark' })
+  await call('command', { action: 'close_chat', pane_id: 'pane-old' })
+  await call('command', { action: 'select_model', model_id: 'gpt-5', reasoning_effort: 'high' })
+  await call('command', { action: 'browser_tab', op: 'select', tab_id: '3' })
+  const verbs = calls.filter((entry) => Array.isArray(entry) && entry[0] !== 'state')
+  assert.deepEqual(verbs, [
+    ['newChat'],
+    ['stopAgent', 'pane-selected'],
+    ['openChat', { paneId: undefined, threadId: undefined, title: 'benchmark' }],
+    ['closeChat', 'pane-old'],
+    ['selectModel', 'pane-selected', 'gpt-5', 'high'],
+    ['browserTab', { op: 'select', tabId: '3', url: undefined }]
   ])
 })
 
-test('inspection is a separate bounded read-only tool', async () => {
+test('ui actions resolve controls by id, key, match, selector, or coordinates', async () => {
   const { calls, call } = harness()
-  const result = await call({ max_elements: 25 }, 'inspect')
-  assert.match(textOf(result), /"snapshotId": "a1"/)
-  assert.deepEqual(calls, [['inspect', {
-    maxElements: 25, query: undefined, surface: undefined, includeText: true
-  }]])
-})
-
-test('inspection prefers compact scoped reads when a surface or query is supplied', async () => {
-  const { calls, call } = harness()
-  await call({ surface: 'side-drawer', query: 'history' }, 'inspect')
-  await call({ query: 'downloads', max_elements: 12, include_text: true }, 'inspect')
+  await call('ui', { action: 'controls', surface: 'side-drawer', query: 'row' })
+  await call('ui', { action: 'click', control: 'drawer.row', key: 'row-1' })
+  await call('ui', { action: 'click', x: 100, y: 200 })
+  await call('ui', { action: 'type', control: 'composer.input', text: 'hello' })
+  await call('ui', { action: 'press_key', key: 'Enter', modifiers: ['ctrl'] })
+  await call('ui', { action: 'scroll', delta_y: 400 })
+  await call('ui', { action: 'wait_for', control: 'composer.send', condition: 'enabled' })
   assert.deepEqual(calls, [
-    ['inspect', {
-      maxElements: 40, query: 'history', surface: 'side-drawer', includeText: false
-    }],
-    ['inspect', {
-      maxElements: 12, query: 'downloads', surface: undefined, includeText: true
-    }]
-  ])
-})
-
-test('click, type, and scroll actions route to the app host with safe defaults', async () => {
-  const { calls, call } = harness()
-  await call({ action: 'click', selector: 'button[aria-label="New chat"]' })
-  await call({ action: 'click', x: 100, y: 200 })
-  await call({ action: 'type', selector: 'textarea', text: 'hello' })
-  await call({ action: 'press_key', key: 'Enter', modifiers: ['ctrl'] })
-  await call({ action: 'scroll', delta_y: 400 })
-  assert.deepEqual(calls, [
-    ['click', { selector: 'button[aria-label="New chat"]', ref: undefined, x: undefined, y: undefined }],
-    ['click', { selector: undefined, ref: undefined, x: 100, y: 200 }],
-    ['typeText', { selector: 'textarea', ref: undefined, text: 'hello', clear: true }],
+    ['controls', { surface: 'side-drawer', query: 'row', maxControls: 60 }],
+    ['click', { control: 'drawer.row', key: 'row-1', match: undefined, selector: undefined, x: undefined, y: undefined }],
+    ['click', { control: undefined, key: undefined, match: undefined, selector: undefined, x: 100, y: 200 }],
+    ['typeText', { control: 'composer.input', key: undefined, match: undefined, selector: undefined, text: 'hello', clear: true }],
     ['pressKey', 'Enter', ['ctrl']],
-    ['scroll', { selector: undefined, ref: undefined, deltaX: 0, deltaY: 400 }]
+    ['scroll', { control: undefined, key: undefined, match: undefined, selector: undefined, deltaX: 0, deltaY: 400 }],
+    ['waitFor', { control: 'composer.send', key: undefined, match: undefined, selector: undefined, text: undefined, condition: 'enabled', timeoutMs: 3_000 }, false]
   ])
 })
 
-test('wait forwards conditions and marks a timeout as a tool failure', async () => {
-  const timedOut: AppToolHost['waitFor'] = async (options) => ({
-    ...options,
-    reached: false,
-    elapsedMs: options.timeoutMs,
-    selectorMatched: false,
-    textMatched: null,
-    matches: []
+test('wait marks a timeout as a tool failure and rejects unusable conditions', async () => {
+  const timedOut: AppUiHost['waitFor'] = async (options) => ({
+    ...options, reached: false, elapsedMs: options.timeoutMs, targetVisible: 0, targetEnabled: 0, textMatched: null
   })
-  const { calls, call } = harness({ waitFor: timedOut })
-  const missingCondition = await call({ action: 'wait_for' })
-  assert.equal(missingCondition.isError, true)
-  assert.match(textOf(missingCondition), /selector.*wait_for_text/)
-
-  const result = await call({
-    action: 'wait_for', selector: '[role="dialog"]', condition: 'hidden', timeout_ms: 250
-  })
+  const { calls, call } = harness({ ui: { waitFor: timedOut } })
+  const missing = await call('ui', { action: 'wait_for' })
+  assert.equal(missing.isError, true)
+  const enabledWithoutTarget = await call('ui', { action: 'wait_for', wait_for_text: 'x', condition: 'enabled' })
+  assert.equal(enabledWithoutTarget.isError, true)
+  const result = await call('ui', { action: 'wait_for', control: 'dialog.tools', condition: 'hidden', timeout_ms: 250 })
   assert.equal(result.isError, true)
   assert.equal(result.errorKind, 'timeout')
   assert.match(textOf(result), /"reached": false/)
-  assert.deepEqual(calls, [])
+  assert.equal(calls.length, 1)
 })
 
-test('wait succeeds with default condition and timeout', async () => {
+test('schemas reject stale-shaped and oversized arguments before dispatch', async () => {
   const { calls, call } = harness()
-  const result = await call({ action: 'wait_for', wait_for_text: 'Tools' })
-  assert.equal(result.isError, undefined)
-  assert.deepEqual(calls[0], [
-    'waitFor',
-    { selector: undefined, text: 'Tools', condition: 'visible', timeoutMs: 3_000 },
-    false
-  ])
-})
-
-test('action schemas reject stale-shaped and oversized arguments before dispatch', async () => {
-  const { calls, call } = harness()
-  const missingTarget = await call({ action: 'click' })
-  assert.equal(missingTarget.isError, true)
-  const badModifier = await call({ action: 'press_key', key: 'Enter', modifiers: ['hyper'] })
+  const noTarget = await call('ui', { action: 'click' })
+  assert.equal(noTarget.isError, true)
+  const badModifier = await call('ui', { action: 'press_key', key: 'Enter', modifiers: ['hyper'] })
   assert.equal(badModifier.isError, true)
-  const badTimeout = await call({ action: 'wait_for', wait_for_text: 'x', timeout_ms: 30_000 })
+  const badTimeout = await call('ui', { action: 'wait_for', wait_for_text: 'x', timeout_ms: 30_000 })
   assert.equal(badTimeout.isError, true)
+  const staleInspect = await call('state', { max_elements: 5 })
+  assert.equal(staleInspect.isError, true)
+  const badOp = await call('command', { action: 'browser_tab', op: 'navigate' })
+  assert.equal(badOp.isError, true)
   assert.deepEqual(calls, [])
 })
