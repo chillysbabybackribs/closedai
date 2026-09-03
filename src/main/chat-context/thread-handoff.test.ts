@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatTranscriptItem } from '../../shared/chat.ts'
+import type { ChatMemoryCheckpoint } from '../../shared/chat-memory.js'
 import { buildThreadHandoff, handoffAdditionalContext, THREAD_HANDOFF_CONTEXT } from './thread-handoff.ts'
 
 const user = (id: string, text: string, turnId = id): ChatTranscriptItem => ({ type: 'user', id, turnId, text })
@@ -53,4 +54,35 @@ test('long conversations keep the opening request and the most recent exchanges 
   assert.match(handoff, /Assistant: Answer 40 y+…$/)
   assert.doesNotMatch(handoff, /Request 1 x/)
   assert.doesNotMatch(handoff, /y{1500}/)
+})
+
+test('a bounded structured checkpoint preserves old decisions alongside recent corrections', () => {
+  const checkpoint: ChatMemoryCheckpoint = {
+    version: 1, revision: 2, threadId: 'thread', throughItemId: 'a1', createdAt: 1,
+    state: { goal: 'Ship memory', constraints: ['Keep the production database read-only'],
+      decisions: ['Use local storage'], progress: ['Recall implemented'], nextSteps: ['Test branches'], files: ['memory.ts'] }
+  }
+  const items = [user('u1', 'Ship memory'), answer('a1', 't1', 'Storage decision made')]
+  for (let i = 2; i < 60; i++) items.push(user(`u${i}`, `Task ${i} ${'x'.repeat(1_000)}`))
+  items.push(user('latest', 'Correction: use the existing provider archive, not a second store'))
+  const handoff = buildThreadHandoff(items, 'Memory', checkpoint)!.text
+  assert.match(handoff, /production database read-only/)
+  assert.match(handoff, /Correction: use the existing provider archive/)
+  assert.match(handoff, /may be stale; later messages take precedence/)
+  assert.ok(handoff.length <= 12_000)
+  const earlierBranch = buildThreadHandoff(items.slice(0, 1), 'Memory', checkpoint)!.text
+  assert.doesNotMatch(earlierBranch, /production database|Storage decision/)
+})
+
+test('large checkpoint, title, and paths cannot crowd the handoff past its budget', () => {
+  const checkpoint: ChatMemoryCheckpoint = {
+    version: 1, revision: 1, threadId: 'thread', throughItemId: 'a1', createdAt: 1,
+    state: { goal: 'g'.repeat(1_000), constraints: Array.from({ length: 12 }, (_, i) => `${i}${'c'.repeat(340)}`),
+      decisions: [], progress: [], nextSteps: [], files: [] }
+  }
+  const items: ChatTranscriptItem[] = [user('u1', 'u'.repeat(3_000)), answer('a1', 't1', 'a'.repeat(3_000)), {
+    type: 'fileChange', id: 'f', turnId: 't', status: 'completed',
+    changes: Array.from({ length: 30 }, () => ({ path: 'p'.repeat(1_000), kind: 'update' as const, diff: '' }))
+  }, user('u2', 'The latest task')]
+  assert.ok(buildThreadHandoff(items, 'title'.repeat(10_000), checkpoint)!.text.length <= 12_000)
 })
