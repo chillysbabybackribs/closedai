@@ -49,9 +49,12 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
   read-only set and the model narrates diffs instead of editing. A `PreToolUse` hook denies the CLI's
   own browser, web-fetch, search, and image tools with a steer to the ClosedAI equivalents, because
   those drive a browser the user cannot see and carry none of their sessions.
-- **Shared application voice and context.** The agent includes the common application and
-  articulation contracts: project-scoped panes, one shared browser, app/tool routing, concise
-  result-led messages, and no first-person work log. Provider-specific grants remain here.
+- **Shared application voice and context.** The agent includes the common application,
+  articulation, and engineering contracts: project-scoped panes, one shared browser, app/tool
+  routing, concise result-led messages, native focused read/edit tools, narrow verification, and
+  preservation of Git state. ClosedAI also appends the selected workspace root's bounded
+  `AGENTS.md` policy because the CLI exposes no equivalent loading contract; nearer nested policies
+  are read before editing beneath them. Provider-specific grants remain here.
   The profile is refreshed on provider connection and loaded by a new CLI process; changing
   documentation alone does not update an already running agent. See [Model context](model-context.md).
 - **No context gauge.** `agy` reports token usage per step but no context window, and the transcript

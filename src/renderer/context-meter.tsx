@@ -29,7 +29,10 @@ export type ContextMeterProps = {
 /** How full the model's window is, drawn as a ring beside the model that owns that window.
  *  Silent until the first response reports usage, and self-explaining once it is warm: the
  *  ring carries the proportion, the label the number, and the card the token counts plus the
- *  subscription windows the turn is spending — the one place both meters belong together. */
+ *  subscription windows the turn is spending — the one place both meters belong together.
+ *
+ *  The card is one monochrome list: the meter itself already colours the one number that
+ *  warrants it, so repeating that colour per row made a quiet reading look like an alarm. */
 export function ContextMeter({ usage, provider, planUsage, onInspect, onRefreshPlanUsage }: ContextMeterProps): JSX.Element {
   const percent = Math.min(100, Math.max(0, usage?.percent ?? 0))
   const level = percent >= HOT_PERCENT ? 'hot' : percent >= WARM_PERCENT ? 'warm' : 'cool'
@@ -61,57 +64,53 @@ export function ContextMeter({ usage, provider, planUsage, onInspect, onRefreshP
         </button>
       </HoverCardTrigger>
       <HoverCardContent className="usage-card" align="end" side="top" data-ui="composer.usage-card">
-        <section className="usage-card-section">
-          <h3 className="usage-card-heading">Context window</h3>
-          {usage ? (
-            <UsageBar label={`${percent}% full`} percent={percent} aside={`${formatTokens(usage.usedTokens)}/${formatTokens(usage.contextWindow)}`} />
-          ) : (
-            <p className="usage-card-empty">Nothing yet — the first response reports it.</p>
-          )}
-        </section>
-        <PlanSection provider={provider} planUsage={planUsage} />
-        <p className="usage-card-footnote">Click the meter to inspect what this turn sent.</p>
+        <UsageCardBody provider={provider} usage={usage} planUsage={planUsage} />
       </HoverCardContent>
     </HoverCard>
   )
 }
 
-function PlanSection({ provider, planUsage }: { provider: ChatProvider; planUsage: ChatPlanUsage | null }): JSX.Element {
+function UsageCardBody({ provider, usage, planUsage }: {
+  provider: ChatProvider
+  usage: ChatContextUsage | null
+  planUsage: ChatPlanUsage | null
+}): JSX.Element {
   const now = useNow(planUsage !== null)
-  const heading = `${CHAT_PROVIDER_LABELS[provider]} plan${planUsage?.plan ? ` · ${planUsage.plan}` : ''}`
+  const stale = planUsage && planUsage.updatedAt > 0 && now - planUsage.updatedAt > STALE_MS
   return (
-    <section className="usage-card-section">
-      <h3 className="usage-card-heading">{heading}</h3>
-      {planUsage?.windows.length ? (
-        planUsage.windows.map((window) => (
-          <UsageBar
-            key={window.label}
-            label={window.label}
-            percent={window.percent}
-            aside={`${window.percent}%${window.resetsAt ? ` · ${resetNote(window.resetsAt, now)}` : ''}`}
-          />
-        ))
-      ) : (
-        <p className="usage-card-empty">{planUsage?.unavailable ?? 'Reading usage…'}</p>
-      )}
+    <>
+      <p className="usage-card-title">
+        {CHAT_PROVIDER_LABELS[provider]}{planUsage?.plan ? ` · ${planUsage.plan}` : ''}
+      </p>
+      <UsageRow
+        label="Context"
+        percent={usage?.percent ?? 0}
+        aside={usage ? `${formatTokens(usage.usedTokens)}/${formatTokens(usage.contextWindow)}` : '—'}
+      />
+      {planUsage?.windows.map((window) => (
+        <UsageRow
+          key={window.label}
+          label={window.label}
+          percent={window.percent}
+          aside={`${window.percent}%${window.resetsAt ? ` · ${resetNote(window.resetsAt, now)}` : ''}`}
+        />
+      ))}
+      {planUsage?.unavailable && <p className="usage-card-note">{planUsage.unavailable}</p>}
       {planUsage?.note && <p className="usage-card-note">{planUsage.note}</p>}
-      {planUsage && planUsage.updatedAt > 0 && now - planUsage.updatedAt > STALE_MS && (
-        <p className="usage-card-note">Last read {ageNote(now - planUsage.updatedAt)}.</p>
-      )}
-    </section>
+      {stale && <p className="usage-card-note">Read {ageNote(now - planUsage.updatedAt)}</p>}
+    </>
   )
 }
 
-function UsageBar({ label, percent, aside }: { label: string; percent: number; aside: string }): JSX.Element {
-  const level = percent >= HOT_PERCENT ? 'hot' : percent >= WARM_PERCENT ? 'warm' : 'cool'
+function UsageRow({ label, percent, aside }: { label: string; percent: number; aside: string }): JSX.Element {
   return (
-    <div className="usage-bar" data-level={level}>
-      <div className="usage-bar-line">
-        <span className="usage-bar-label">{label}</span>
-        <span className="usage-bar-aside">{aside}</span>
+    <div className="usage-row">
+      <div className="usage-row-line">
+        <span className="usage-row-label">{label}</span>
+        <span className="usage-row-aside">{aside}</span>
       </div>
-      <div className="usage-bar-track" role="presentation">
-        <div className="usage-bar-fill" style={{ width: `${Math.min(100, Math.max(0, percent))}%` }} />
+      <div className="usage-row-track" role="presentation">
+        <div className="usage-row-fill" style={{ width: `${Math.min(100, Math.max(0, percent))}%` }} />
       </div>
     </div>
   )
@@ -133,15 +132,13 @@ function formatTokens(tokens: number): string {
   return tokens >= 1_000 ? `${(tokens / 1_000).toFixed(tokens >= 100_000 ? 0 : 1)}k` : String(tokens)
 }
 
-/** When the window rolls over, phrased as the wait rather than a timestamp to decode. */
+/** The wait until a window rolls over, at one unit: the hour a weekly window resets is noise. */
 export function resetNote(resetsAt: number, now: number): string {
   const minutes = Math.round((resetsAt - now) / 60_000)
   if (minutes <= 0) return 'resetting'
-  if (minutes < 60) return `resets in ${minutes}m`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return minutes % 60 ? `resets in ${hours}h ${minutes % 60}m` : `resets in ${hours}h`
-  const days = Math.floor(hours / 24)
-  return hours % 24 ? `resets in ${days}d ${hours % 24}h` : `resets in ${days}d`
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.round(minutes / 60)
+  return hours < 24 ? `${hours}h` : `${Math.round(hours / 24)}d`
 }
 
 /** How old a reading is, for the line that admits it is not live. */

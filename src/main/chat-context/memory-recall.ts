@@ -15,7 +15,8 @@ export function recallTranscript(
     if (end === 0) throw new Error('The saved source boundary is unavailable; refusing to read beyond it')
   }
   if (checkpoint) {
-    const index = items.findIndex((item) => item.id === checkpoint.throughItemId)
+    const anchor = checkpoint.throughItemId
+    const index = items.findIndex((item) => item.id === anchor)
     if (checkpoint.threadId !== threadId || index < 0 || index >= end) checkpoint = null
   }
   if (request.beforeItemId) {

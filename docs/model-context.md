@@ -10,11 +10,12 @@ every running model's prompt.
 |---|---|---|
 | Common product facts and tool routing | `src/main/chat-context/application-instructions.ts` | Included by all three provider instruction builders |
 | Response style | `src/main/chat-context/articulation-instructions.ts` | Included by all three builders; outcome-first responses and meaningful updates without first-person work narration |
+| Engineering workflow | `src/main/chat-context/engineering-instructions.ts` | Shared narrow-read, structured-edit, verification, Git-state, and delegation policy plus each provider's native tool names |
 | Codex adapter guidance | `src/main/chat-context/developer-instructions.ts`, `thread-params.ts` | `developerInstructions` on thread start and resume, alongside Codex's base instructions |
 | Claude adapter guidance | `src/main/claude/claude-instructions.ts`, `claude-options.ts` | Appended to the SDK's `claude_code` system preset when a query runtime starts |
 | Antigravity adapter guidance | `src/main/antigravity/antigravity-instructions.ts`, `antigravity-profile.ts` | Written to the app-private `agent.md`; loaded through `--agent closedai` and `--add-dir` on CLI startup |
 | Checkout orientation | `src/main/chat-context/workspace-navigation.ts` | App-authored prose plus the generated repository map from `workspace-map.ts`, only when the session cwd matches `WORKSPACE_INDEX_ROOT` |
-| Repository rules | `AGENTS.md`, applicable `CLAUDE.md` | Provider-native discovery where supported, plus instruction to follow applicable workspace rules |
+| Repository rules | `src/main/chat-context/workspace-rules.ts`, root `AGENTS.md`, applicable `CLAUDE.md` | Codex loads `AGENTS.md` natively; Claude and Antigravity receive the selected workspace root policy explicitly; Claude also loads project `CLAUDE.md` through the SDK |
 
 The common product facts explain separate chat panes, their shared browser, and the distinction
 between pane turns and provider background work. App facts come from `closedai_app.state`,
@@ -26,6 +27,11 @@ The shared response style asks for results and evidence, with progress only when
 result, blocker, or required choice. It discourages “I have…”, “I am…”, and “I will…” work logs.
 It is prompt guidance, not a text filter or a guarantee of identical output across models.
 Quoted user text and historical transcripts are not rewritten.
+
+The engineering contract steers every lane toward focused reads, provider-native structured
+edits, one targeted verification pass, and preservation of Git stash/worktree state. Claude uses
+`Read`/`Grep`/`Glob` and `Edit`/`MultiEdit`; Antigravity uses `view_file`/`grep_search`/`find_by_name`
+and `replace_file_content`/`multi_replace_file_content`; Codex uses `rg` and `apply_patch`.
 
 The checkout capsule links [Application](application.md), this guide, and [Tools](tools.md).
 It does not inline their full contents. Models retrieve the relevant document or source when
@@ -46,8 +52,10 @@ automatically receive browser state or a full application snapshot.
 Claude and Antigravity receive context in `<closedai_context name="…" kind="…">` blocks.
 Codex receives typed `additionalContext`. `application` denotes app-authored context;
 `untrusted` denotes data such as pages, files, attachments, and tool output. Embedded instructions
-in a document are not the user's request. Applicable repository engineering instructions are
-handled through the workspace instruction policy, not promoted from arbitrary tool output.
+in an arbitrary document are not the user's request. The selected workspace root's `AGENTS.md` is
+an explicit exception: it is project policy, bounded to 20,000 characters, and delivered as trusted
+guidance to Claude and Antigravity because those runtimes do not both load it natively. Models are
+also told to read a nearer nested `AGENTS.md` before changing files beneath it.
 
 `closedai.chat.handoff` carries a locally assembled digest when continuing/branching a chat.
 It is app-authored (`application`) but includes historical conversation text. Treat quoted
@@ -85,9 +93,10 @@ before passing the URL to `image()`. Use direct awaited calls in an exec script;
 providers can use `tool_batch.run`. Suppress successful intermediate payloads, and keep failures
 visible. Output budgets, screenshot limits, and compaction settings are in [Tools](tools.md).
 
-The existing verification budgets are under 3,500 characters for Codex developer instructions
-and under 1,200 for the checkout capsule. Share repeated guidance and remove duplication when
-expanding prompts; do not solve drift by injecting the entire documentation tree.
+The existing verification budgets are under 3,500 characters for Codex developer instructions,
+4,500 for Claude, 5,000 for Antigravity, and 1,200 for the checkout capsule. The separately appended
+root `AGENTS.md` is capped at 20,000. Share repeated guidance and remove duplication when expanding
+prompts; do not solve drift by injecting the entire documentation tree.
 
 ## Refreshing and checking changes
 
@@ -99,7 +108,8 @@ inside an already loaded old build does not load new TypeScript prompt code.
 
 For an instruction change, run typecheck and the affected existing instruction tests:
 `model-efficiency-instructions.test.ts`, `chat-context/turn-context.test.ts`, and
-`chat-context/workspace-navigation.test.ts`; profile rendering is covered by
+`chat-context/workspace-navigation.test.ts`; root policy delivery is covered by
+`chat-context/workspace-rules.test.ts`, and profile rendering is covered by
 `antigravity/antigravity-profile.test.ts`. These verify assembly, budgets, and boundaries,
 not model compliance. A live response comparison is a separate check and should name the
 provider/model and whether the session was refreshed.

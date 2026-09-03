@@ -208,6 +208,7 @@ test('continue reads a history-only source without opening it in the selected pa
   const record = settings.get().chatPeers.find((peer) => peer.paneId === target)!
   assert.equal(record.continuation?.sourceThreadId, 'saved-thread')
   assert.equal(record.continuation?.sourceTitle, 'Saved chat')
+  assert.equal(record.continuation?.sourceThroughItemId, 'saved-answer')
 })
 
 test('switching away before the first send keeps a pending continuation pane', async () => {

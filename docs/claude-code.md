@@ -21,6 +21,8 @@ and transcript notes were reviewed against current source on 2026-09-03, without
   prompt tells the model to ask in its final message.
 - **Settings isolation.** `settingSources: ['project']` loads the workspace's `CLAUDE.md` and
   `.claude/settings.json` only; the user's `~/.claude` settings never shape an app session.
+  The SDK does not load `AGENTS.md`, so ClosedAI appends the selected workspace root's bounded
+  `AGENTS.md` policy explicitly and tells the model to check for nearer nested policies.
   `strictMcpConfig: true` keeps the user's own MCP connectors (claude.ai connectors were observed
   loading without it) out of the session.
 - **Tools** are the shared registry, exposed as one in-process MCP server per namespace
@@ -53,9 +55,10 @@ spawns to query the SDK and retires again. Signed-out reads are not cached, and 
 invalidate the cache. The outer pane manager parks unselected idle panes after five minutes;
 see the lifecycle boundary below.
 
-`claude-instructions.ts` appends the shared application and articulation contracts to the SDK
-preset. The same contracts reach Codex and Antigravity; only transport/tool-specific guidance
-differs. Updated prompt source is loaded by a new main-process build and query runtime. See
+`claude-instructions.ts` appends the shared application, articulation, and engineering contracts
+to the SDK preset. Its engineering clause names Claude's native read/edit tools and prevents shell
+rewrites, broad verification, and Git stash mutation by default. Updated prompt source is loaded by
+a new main-process build and query runtime. See
 [Model context](model-context.md).
 
 Nonessential CLI traffic is left enabled on purpose: `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` also
