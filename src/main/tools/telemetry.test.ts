@@ -5,25 +5,26 @@ import { join } from 'node:path'
 import test from 'node:test'
 import type { ToolCallEvent } from '../../shared/tools.js'
 import { ToolRegistry } from './registry.js'
-import { textResult } from './tool.js'
+import { textResult, timeoutResult } from './tool.js'
 import { ToolTelemetry } from './telemetry.js'
 
 const record = (overrides: Partial<ToolCallEvent> = {}): ToolCallEvent => ({
-  toolId: 'ns.tool', action: null, ok: true, ...overrides
+  toolId: 'ns.tool', action: null, ok: true, timedOut: false, ...overrides
 })
 
-test('telemetry keeps only aggregate run and failure counts', () => {
+test('telemetry keeps aggregate run, failure, and timeout counts separately', () => {
   const telemetry = ToolTelemetry.ephemeral()
   telemetry.record(record())
   telemetry.record(record({ action: 'read', ok: false }))
   telemetry.record(record({ action: 'write' }))
+  telemetry.record(record({ action: 'read', ok: false, timedOut: true }))
 
   assert.deepEqual(telemetry.snapshot(), {
-    totalCalls: 3,
+    totalCalls: 4,
     stats: [
-      { toolId: 'ns.tool', action: null, calls: 3, failures: 1 },
-      { toolId: 'ns.tool', action: 'read', calls: 1, failures: 1 },
-      { toolId: 'ns.tool', action: 'write', calls: 1, failures: 0 }
+      { toolId: 'ns.tool', action: null, calls: 4, failures: 1, timeouts: 1 },
+      { toolId: 'ns.tool', action: 'read', calls: 2, failures: 1, timeouts: 1 },
+      { toolId: 'ns.tool', action: 'write', calls: 1, failures: 0, timeouts: 0 }
     ]
   })
 })
@@ -69,8 +70,8 @@ test('opening aggregate telemetry migrates counters and removes the text-bearing
     assert.deepEqual(telemetry.snapshot(), {
       totalCalls: 2,
       stats: [
-        { toolId: 'ns.tool', action: null, calls: 2, failures: 1 },
-        { toolId: 'ns.tool', action: 'type', calls: 2, failures: 1 }
+        { toolId: 'ns.tool', action: null, calls: 2, failures: 1, timeouts: 0 },
+        { toolId: 'ns.tool', action: 'type', calls: 2, failures: 1, timeouts: 0 }
       ]
     })
     const contents = await readFile(file, 'utf8')
@@ -89,7 +90,7 @@ test('the registry reports aggregate-only events for successes, failures, and un
       name: 'echo',
       description: 'echoes',
       inputSchema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
-      run: async (input) => textResult(String(input.text))
+      run: async (input) => input.text === 'timeout' ? timeoutResult('not ready') : textResult(String(input.text))
     }]
   }])
   const seen: ToolCallEvent[] = []
@@ -97,13 +98,15 @@ test('the registry reports aggregate-only events for successes, failures, and un
   const context = { threadId: 't', turnId: 'u', callId: 'c1' }
   await registry.call({ namespace: 'ns', tool: 'echo', arguments: { text: 'PRIVATE_VALUE', action: 'say' } }, context)
   await registry.call({ namespace: 'ns', tool: 'echo', arguments: {} }, context)
+  await registry.call({ namespace: 'ns', tool: 'echo', arguments: { text: 'timeout' } }, context)
   await registry.call({ namespace: 'ns', tool: 'nope', arguments: {} }, context)
   stop()
 
   assert.deepEqual(seen, [
-    { toolId: 'ns.echo', action: 'say', ok: true },
-    { toolId: 'ns.echo', action: null, ok: false },
-    { toolId: 'ns.nope', action: null, ok: false }
+    { toolId: 'ns.echo', action: 'say', ok: true, timedOut: false },
+    { toolId: 'ns.echo', action: null, ok: false, timedOut: false },
+    { toolId: 'ns.echo', action: null, ok: false, timedOut: true },
+    { toolId: 'ns.nope', action: null, ok: false, timedOut: false }
   ])
   assert.doesNotMatch(JSON.stringify(seen), /PRIVATE_VALUE|required|unknown/i)
 })
