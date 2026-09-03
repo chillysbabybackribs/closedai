@@ -20,7 +20,7 @@ export function DrawerHeader({
         className="agents-new"
         onClick={() => void chat.newThread()}
         title="New agent chat"
-        aria-label="New agent chat"
+        aria-label="New Agent"
       >
         <Plus size={14} aria-hidden="true" />
         <span>New Agent</span>
