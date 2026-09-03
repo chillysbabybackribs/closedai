@@ -74,6 +74,17 @@ export type BrowserDownload = {
   error: string | null
 }
 
+export type ChatContinuation = {
+  /** Stable lineage retained after the one-shot handoff has been delivered. */
+  sourcePaneId: string | null
+  sourceThreadId: string | null
+  sourceProvider: 'codex' | 'claude' | 'antigravity'
+  sourceTitle: string
+  /** Cleared after the destination's first turn is accepted; lineage remains. */
+  handoff: string | null
+  createdAt: number
+}
+
 export type ChatPeerRecord = {
   paneId: string
   provider: 'codex' | 'claude' | 'antigravity'
@@ -84,6 +95,8 @@ export type ChatPeerRecord = {
   antigravityConversationId?: string | null
   modelId: string | null
   reasoningEffort: string | null
+  /** The chat this pane continued from, including a restart-safe one-shot digest. */
+  continuation?: ChatContinuation | null
 }
 
 export type AppSettings = {
@@ -98,6 +111,8 @@ export type AppSettings = {
   chatModelId: string | null
   /** User's preferred reasoning effort when the selected model supports it. */
   chatReasoningEffort: string | null
+  /** Selected-pane projection of `ChatPeerRecord.continuation`. */
+  chatContinuation: ChatContinuation | null
   /** Open chat panes. Legacy single-chat fields above are retained for migration. */
   chatPeers: ChatPeerRecord[]
   chatSelectedPaneId: string | null

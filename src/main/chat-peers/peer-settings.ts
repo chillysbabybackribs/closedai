@@ -20,7 +20,8 @@ export class PeerSettings implements AppSettingsAccess {
       chatClaudeSessionId: peer.claudeSessionId,
       chatAntigravityConversationId: peer.antigravityConversationId ?? null,
       chatModelId: peer.modelId,
-      chatReasoningEffort: peer.reasoningEffort
+      chatReasoningEffort: peer.reasoningEffort,
+      chatContinuation: peer.continuation ?? null
     }
   }
 
@@ -43,7 +44,8 @@ export class PeerSettings implements AppSettingsAccess {
       codexThreadId,
       claudeSessionId,
       antigravityConversationId,
-      threadId: peerThreadId(provider, { codexThreadId, claudeSessionId, antigravityConversationId })
+      threadId: peerThreadId(provider, { codexThreadId, claudeSessionId, antigravityConversationId }),
+      continuation: patch.chatContinuation === undefined ? peer.continuation ?? null : patch.chatContinuation
     }
     await this.root.set({
       chatPeers: current.chatPeers.map((entry) => entry.paneId === this.paneId ? updated : entry),
@@ -52,7 +54,8 @@ export class PeerSettings implements AppSettingsAccess {
         chatClaudeSessionId: updated.claudeSessionId,
         chatAntigravityConversationId: updated.antigravityConversationId ?? null,
         chatModelId: updated.modelId,
-        chatReasoningEffort: updated.reasoningEffort
+        chatReasoningEffort: updated.reasoningEffort,
+        chatContinuation: updated.continuation ?? null
       } : {})
     })
     return this.get()

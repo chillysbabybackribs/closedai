@@ -1,6 +1,6 @@
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatThreadSummary } from './chat.js'
-import type { ChatPaneId, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
+import type { ChatContinuationSource, ChatPaneId, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot } from './trace.js'
 
@@ -55,8 +55,8 @@ export type ClosedaiApi = {
     newPeer: () => Promise<ChatPaneId>
     /** Retire an open peer pane from the active workspace shelf back to history. */
     closePeer: (paneId: ChatPaneId) => Promise<void>
-    /** Clear the pane; the next message starts a fresh thread carrying a digest of this one. */
-    continueInNewPeer: (paneId: ChatPaneId) => Promise<ChatPaneId>
+    /** Create a new pane whose first message carries a compact digest of the exact source chat. */
+    continueInNewPeer: (source: ChatContinuationSource, modelId: string | null) => Promise<ChatPaneId>
     openThread: (paneId: ChatPaneId, threadId: string) => Promise<void>
     archiveThread: (threadId: string) => Promise<void>
     onEvent: (listener: (event: ChatWorkspaceEvent) => void) => Unsubscribe

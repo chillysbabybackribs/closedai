@@ -9,12 +9,18 @@ export type ChatPeerSummary = {
   parentPaneId: ChatPaneId | null
   kind: ChatPeerKind
   provider: ChatProvider
+  modelId: string | null
   threadId: string | null
   title: string
   preview: string
   running: boolean
   activity: string | null
   updatedAt: number
+}
+
+export type ChatContinuationSource = {
+  paneId: ChatPaneId | null
+  threadId: string | null
 }
 
 export type ChatWorkspaceSnapshot = {

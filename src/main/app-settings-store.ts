@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { writeAtomic } from './atomic-write.js'
-import type { AppSettings, ChatPeerRecord } from '../shared/types.ts'
+import type { AppSettings, ChatContinuation, ChatPeerRecord } from '../shared/types.ts'
 import { chatProviderOfId } from '../shared/chat-providers.js'
 import { peerThreadId } from './chat-peers/peer-settings.js'
 import { DEFAULT_BATCH_MAX_CALLS, normalizeBatchMaxCalls } from './batch-config.js'
@@ -26,6 +26,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatAntigravityConversationId: null,
   chatModelId: null,
   chatReasoningEffort: null,
+  chatContinuation: null,
   chatPeers: [],
   chatSelectedPaneId: null,
   disabledTools: [],
@@ -67,6 +68,7 @@ function normalize(parsed: unknown): AppSettings {
     chatAntigravityConversationId: optionalString(record.chatAntigravityConversationId),
     chatModelId,
     chatReasoningEffort,
+    chatContinuation: normalizeContinuation(record.chatContinuation),
     chatPeers,
     chatSelectedPaneId,
     disabledTools: Array.isArray(record.disabledTools)
@@ -107,7 +109,15 @@ function normalizeChatPeers(
         antigravityConversationId: optionalString(record.antigravityConversationId) ??
           (provider === 'antigravity' ? threadId?.replace(/^agy:/, '') ?? null : null)
       }
-      return [{ paneId, provider, threadId: peerThreadId(provider, ids), ...ids, modelId, reasoningEffort: optionalString(record.reasoningEffort) }]
+      return [{
+        paneId,
+        provider,
+        threadId: peerThreadId(provider, ids),
+        ...ids,
+        modelId,
+        reasoningEffort: optionalString(record.reasoningEffort),
+        continuation: normalizeContinuation(record.continuation)
+      }]
     })
     if (peers.length > 0) return peers
   }
@@ -123,8 +133,26 @@ function normalizeChatPeers(
     threadId: peerThreadId(provider, ids),
     ...ids,
     modelId: legacy.chatModelId,
-    reasoningEffort: legacy.chatReasoningEffort
+    reasoningEffort: legacy.chatReasoningEffort,
+    continuation: null
   }]
+}
+
+function normalizeContinuation(value: unknown): ChatContinuation | null {
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  if (!isProvider(record.sourceProvider) || typeof record.createdAt !== 'number' || !Number.isFinite(record.createdAt)) return null
+  const sourcePaneId = optionalString(record.sourcePaneId)
+  const sourceThreadId = optionalString(record.sourceThreadId)
+  if (!sourcePaneId && !sourceThreadId) return null
+  return {
+    sourcePaneId,
+    sourceThreadId,
+    sourceProvider: record.sourceProvider,
+    sourceTitle: typeof record.sourceTitle === 'string' ? record.sourceTitle : '',
+    handoff: optionalString(record.handoff),
+    createdAt: record.createdAt
+  }
 }
 
 function isProvider(value: unknown): value is ChatPeerRecord['provider'] {

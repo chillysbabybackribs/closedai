@@ -1,5 +1,6 @@
 import { shell, type IpcMain } from 'electron'
 import type { ChatAttachment } from '../shared/chat.js'
+import type { ChatContinuationSource } from '../shared/chat-peers.js'
 import type { ChatWorkspaceSurface } from './chat-peers/peer-manager.js'
 
 export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspaceSurface | null): void {
@@ -22,7 +23,9 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   ipcMain.handle('chat:listThreads', () => requireService().listThreads())
   ipcMain.handle('chat:newPeer', () => requireService().newPeer())
   ipcMain.handle('chat:closePeer', (_event, paneId: string) => requireService().closePeer(paneId))
-  ipcMain.handle('chat:continueInNewPeer', (_event, paneId: string) => requireService().continueInNewPeer(paneId))
+  ipcMain.handle('chat:continueInNewPeer', (_event, source: ChatContinuationSource, modelId: string | null) =>
+    requireService().continueInNewPeer(source, modelId)
+  )
   ipcMain.handle('chat:openThread', (_event, paneId: string, threadId: string) => requireService().openThread(paneId, threadId))
   ipcMain.handle('chat:archiveThread', (_event, threadId: string) => requireService().archiveThread(threadId))
   ipcMain.handle('chat:login', async () => {

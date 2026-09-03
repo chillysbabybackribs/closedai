@@ -112,6 +112,13 @@ export type ChatThreadSummary = {
   updatedAt: number
 }
 
+/** Read-only history used to build a compact continuation without resuming the source thread. */
+export type ChatThreadContent = {
+  threadId: string
+  threadName: string | null
+  items: ChatTranscriptItem[]
+}
+
 /** How full the model's context window was after the latest model response. */
 export type ChatContextUsage = {
   usedTokens: number
