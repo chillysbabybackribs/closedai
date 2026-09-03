@@ -16,9 +16,9 @@ import {
   followingAfterViewportSync,
   preservedScrollTop,
   scrollEdges,
-  type ScrollEdges,
-  type ScrollMetrics
+  type ScrollEdges
 } from './message-scroller-state.js'
+import { findLastScrollAnchor, viewportMetrics } from './message-scroller-dom.js'
 
 const EDGE_THRESHOLD = 24
 
@@ -37,7 +37,7 @@ export type ScrollerContextValue = {
     pending: boolean
   }
   syncFromViewport: () => void
-  userScrollIntent: () => void
+  userScrollIntent: (direction?: 'start' | 'end') => void
 }
 
 const ScrollerContext = createContext<ScrollerContextValue | null>(null)
@@ -79,6 +79,7 @@ export function MessageScrollerProvider({
   const setSpacerHeight = useCallback((height: number) => {
     if (!spacer) return
     const next = Math.max(0, Math.ceil(height))
+    if (spacerHeightRef.current === next) return
     spacerHeightRef.current = next
     spacer.hidden = next === 0
     spacer.style.height = `${next}px`
@@ -164,7 +165,8 @@ export function MessageScrollerProvider({
     scrollTargetRef.current = null
   }, [setSpacerHeight, viewport])
 
-  const userScrollIntent = useCallback(() => {
+  const userScrollIntent = useCallback((direction?: 'start' | 'end') => {
+    if (direction === 'end' && !anchoredRef.current) return
     anchoredRef.current = null
     setSpacerHeight(0)
     followingRef.current = false
@@ -173,7 +175,7 @@ export function MessageScrollerProvider({
 
   useLayoutEffect(() => {
     if (!viewport || !content) return
-    const lastAnchor = findLastAnchor(content, spacer)
+    const lastAnchor = findLastScrollAnchor(content, spacer)
     handledAnchorRef.current = lastAnchor
     if (defaultScrollPosition === 'last-anchor' && lastAnchor) {
       anchorToElement(lastAnchor)
@@ -187,7 +189,7 @@ export function MessageScrollerProvider({
   useEffect(() => {
     if (!viewport || !content) return
     const syncAfterResize = (): void => {
-      const lastAnchor = findLastAnchor(content, spacer)
+      const lastAnchor = findLastScrollAnchor(content, spacer)
       if (lastAnchor && lastAnchor !== handledAnchorRef.current) {
         handledAnchorRef.current = lastAnchor
         anchorToElement(lastAnchor)
@@ -232,22 +234,4 @@ export function MessageScrollerProvider({
   }), [prepareForPrepend, scheduleSync, scrollToEnd, scrollToStart, state, userScrollIntent])
 
   return <ScrollerContext.Provider value={value}>{children}</ScrollerContext.Provider>
-}
-
-function findLastAnchor(content: HTMLElement, spacer: HTMLElement | null): HTMLElement | null {
-  const children = Array.from(content.children)
-  for (let index = children.length - 1; index >= 0; index -= 1) {
-    const child = children[index]
-    if (child === spacer) continue
-    if (child instanceof HTMLElement && child.dataset.scrollAnchor === 'true') return child
-  }
-  return null
-}
-
-function viewportMetrics(viewport: HTMLElement): ScrollMetrics {
-  return {
-    clientHeight: viewport.clientHeight,
-    scrollHeight: viewport.scrollHeight,
-    scrollTop: viewport.scrollTop
-  }
 }

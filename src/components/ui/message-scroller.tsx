@@ -40,7 +40,8 @@ const MessageScrollerViewport = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDi
   function MessageScrollerViewport({ className, onKeyDown, onScroll, onTouchMove, onWheel, ...props }, ref) {
     const { setViewport, state, syncFromViewport, userScrollIntent } = useScrollerContext()
     const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-      if (userScrollKey(event)) userScrollIntent()
+      const direction = userScrollDirection(event)
+      if (direction) userScrollIntent(direction)
       onKeyDown?.(event)
     }
     return (
@@ -55,7 +56,10 @@ const MessageScrollerViewport = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDi
         onKeyDown={handleKeyDown}
         onScroll={(event) => { syncFromViewport(); onScroll?.(event) }}
         onTouchMove={(event) => { userScrollIntent(); onTouchMove?.(event) }}
-        onWheel={(event) => { if (event.deltaY < 0) userScrollIntent(); onWheel?.(event) }}
+        onWheel={(event) => {
+          if (event.deltaY !== 0) userScrollIntent(event.deltaY < 0 ? 'start' : 'end')
+          onWheel?.(event)
+        }}
         {...props}
       />
     )
@@ -75,7 +79,7 @@ const MessageScrollerContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDiv
         {...props}
       >
         {props.children}
-        <div ref={setSpacer} data-message-scroller-spacer="" aria-hidden="true" hidden />
+        <div ref={setSpacer} data-message-scroller-spacer="" aria-hidden="true" className="shrink-0" hidden />
       </div>
     )
   }
@@ -155,9 +159,12 @@ function useMessageScrollerScrollable(): ScrollEdges {
   return useScrollerContext().state.edges
 }
 
-function userScrollKey(event: KeyboardEvent): boolean {
-  return event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'PageUp' ||
-    (event.key === ' ' && event.shiftKey)
+function userScrollDirection(event: KeyboardEvent): 'start' | 'end' | null {
+  if (event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'PageUp' ||
+      (event.key === ' ' && event.shiftKey)) return 'start'
+  if (event.key === 'ArrowDown' || event.key === 'End' || event.key === 'PageDown' ||
+      (event.key === ' ' && !event.shiftKey)) return 'end'
+  return null
 }
 
 function mergeRefs<T>(...refs: Array<Ref<T> | undefined>): (value: T | null) => void {
