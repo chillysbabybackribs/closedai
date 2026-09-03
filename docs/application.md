@@ -12,10 +12,12 @@ pane can continue its turn while another pane is selected. The embedded browser 
 application and is shared across panes and project switches.
 
 `ChatHub` routes to Codex, Claude Code, or Antigravity. Codex model/thread ids are unprefixed;
-Claude ids use `claude:` and Antigravity ids use `agy:`. Changing provider rebinds the pane to the
-destination backend and keeps the current visible transcript until that backend produces a replacement
-history, so provider switches do not instantly replace the thread UI. History merges the providers'
-workspace catalogs.
+Claude ids use `claude:` and Antigravity ids use `agy:`. Picking another provider's model keeps the
+pane in its conversation: the destination leaves whatever chat it last had open, starts a fresh
+thread carrying a digest of the visible one (the same handoff “Continue in new chat” builds, sent
+with the next message), and the pane keeps showing the transcript it had. The chat the destination
+left stays in history. Opening another provider's thread from history is the other direction and
+shows that thread. History merges the providers' workspace catalogs.
 Changing models or providers is refused while that pane has an active turn.
 
 The project menu below the composer offers a directory picker, recent projects, and “Don’t work
