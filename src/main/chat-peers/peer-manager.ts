@@ -102,7 +102,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     const currentEmpty = currentSnapshot &&
       currentSnapshot.items.length === 0 &&
       currentSnapshot.threadId === null &&
-      !currentSnapshot.activeTurnId
+      !currentSnapshot.activeTurnId &&
+      !this.record(previousPaneId).continuation?.handoff
 
     if (currentEmpty && currentEntry && this.peers.size > 1) {
       currentEntry.surface.stop()

@@ -29,7 +29,10 @@ class FakeProvider extends EventEmitter {
   async selectModel(id: string): Promise<void> { this.calls.push(`selectModel:${id}`) }
   async selectReasoningEffort(effort: string): Promise<void> { this.calls.push(`effort:${effort}`) }
   async listThreads(): Promise<ChatThreadSummary[]> { if (this.failThreads) throw new Error('down'); return this.threads }
-  async readThread(threadId: string): Promise<ChatThreadContent> { return { threadId, threadName: null, items: [] } }
+  async readThread(threadId: string): Promise<ChatThreadContent> {
+    this.calls.push(`read:${threadId}`)
+    return { threadId, threadName: null, items: [] }
+  }
   async newThread(): Promise<void> { this.calls.push('newThread') }
   async continueInNewThread(): Promise<void> { this.calls.push('continue') }
   async openThread(id: string): Promise<void> { this.calls.push(`openThread:${id}`) }
@@ -48,7 +51,7 @@ function build(initialModel: string | null = null): { hub: ChatHub; codex: FakeP
 }
 
 test('an agy model routes to the Antigravity provider and its threads merge into history', async () => {
-  const { hub, antigravity, codex } = build('agy:gemini-3.8-flash')
+  const { hub, antigravity, claude, codex } = build('agy:gemini-3.8-flash')
   assert.equal(hub.activeProvider, 'antigravity')
   await hub.start()
   assert.deepEqual(antigravity.calls, ['start:true'])
@@ -60,6 +63,8 @@ test('an agy model routes to the Antigravity provider and its threads merge into
   assert.equal(hub.activeProvider, 'codex')
   await hub.archiveThread('agy:c1')
   assert.deepEqual(antigravity.calls.slice(-1), ['archive:agy:c1'])
+  await hub.readThread('claude:session-1')
+  assert.deepEqual(claude.calls.slice(-1), ['read:claude:session-1'])
 })
 
 test('the saved model decides the initial provider and which one starts warm', async () => {

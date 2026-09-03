@@ -177,6 +177,17 @@ test('continue reads a history-only source without opening it in the selected pa
   assert.equal(record.continuation?.sourceTitle, 'Saved chat')
 })
 
+test('switching away before the first send keeps a pending continuation pane', async () => {
+  const { manager, surfaces } = harness()
+  surfaces[0]!.state.items = [{ type: 'user', id: 'user-a', turnId: null, text: 'Keep me' }]
+  const target = await manager.continueInNewPeer({ paneId: 'pane-a', threadId: null }, 'gpt')
+
+  await manager.selectPane('pane-a')
+
+  assert.equal(manager.snapshot().peers.some((peer) => peer.paneId === target), true)
+  assert.equal(surfaces[1]!.calls.includes('stop'), false)
+})
+
 test('selection and interruption target one pane without stopping its peer', async () => {
   const { manager, surfaces } = harness()
   const paneB = await manager.newPeer()
