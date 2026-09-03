@@ -57,6 +57,12 @@ most 30 changed-file paths. Attachments contribute names, not their image bytes.
 formatter labels assistant entries “Codex” across providers; that label is not reliable proof
 of which provider produced the original answer.
 
+The opt-in Codex `chatCompactAtTokens` setting requests native compaction during idle time,
+independently of model-window percentage. It does not introduce an app-authored semantic memory,
+delete archived history, or rotate provider sessions. Display paging is also independent of
+model context. The new first-text measurements and safe trial procedure are in [Tools](tools.md);
+do not infer a response-time improvement from fewer displayed items or context tokens alone.
+
 ## Tool context and output budgets
 
 The registry supplies provider-neutral descriptions and schemas. Codex gets dynamic tool

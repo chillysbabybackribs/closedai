@@ -134,8 +134,24 @@ and effort fields coexist with per-pane records. New code should use `PeerSettin
 settings, not assume those top-level fields describe every chat. Provider session history lives
 in each provider's own store; closing a pane and archiving a thread are distinct operations.
 
-Codex-specific settings are `chatCompactAtPercent` (default 80, zero disables app-triggered
-between-turn compaction) and `chatMidTurnCompactTokens` (default zero, leaves the CLI's limit).
+Codex-specific settings are `chatCompactAtPercent` (default 80), `chatCompactAtTokens` (default
+zero, opt-in between-turn token threshold), and `chatMidTurnCompactTokens` (default zero, leaves
+the CLI's limit). The percentage and between-turn token triggers are independent; setting both
+to zero disables app-triggered compaction. The token trigger waits for 15 seconds of idle time;
+a new send cancels it if it has not started. Repeated token-triggered compactions require five
+minutes and at least max(4,000, 25% of the configured budget) token growth since the lowest usage
+observed from the last attempt onward. Window-percentage pressure bypasses that grace/cooldown.
+This is a soft trigger, not a hard context cap or a guarantee that native compaction reaches the
+target. Claude keeps SDK-native automatic/precomputed compaction; Antigravity has no equivalent
+app-configured token threshold. No provider history is deleted or session silently replaced.
+
+The Turn trace shows send-to-first-assistant-text timing for all three providers: preparation,
+Codex's measured compaction wait (a subset of preparation), and time after provider dispatch.
+The clock starts when the pane manager receives Send, before waking the pane. It ends when main
+receives non-empty assistant text, including commentary, not when the renderer paints it. Provider
+queueing, reasoning, tools, and internal compaction are not individually separated after dispatch.
+See [Tools](tools.md) for configuration and measurement limits.
+
 `toolBatchMaxCalls` defaults to 16, is clamped to 1–64, and takes effect on app startup.
 
 ## Known boundaries from this source review

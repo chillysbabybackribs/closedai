@@ -177,14 +177,21 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   the larger display capture in `capture/screenshot-store.ts`, keyed by the tool call id. The
   transcript looks the call id up when it renders the screenshot item and falls back to the
   model's copy once the store has evicted it (60 entries or 96 MB, newest kept).
-- Measured 2026-09-02 across ~1,200 model steps: with prompt caching (median 98% of input
+- Historical measurement, 2026-09-02 across ~1,200 model steps: with prompt caching (median 98% of input
   tokens cached) a step after a tool result takes a median 2.7 s under 40k context and 3.4-4.0 s
-  at 200k. Context size barely moves latency; the number of steps and the size of each tool
-  result do. Each compaction costs 60-90 s and loses detail, so compaction is kept rare.
+  at 200k. These are step durations, not Send-to-first-text measurements, and do not establish
+  that context size has little effect for other workloads or cold caches. Compaction took
+  60–90 s in those observations. Compare first-text timing, cache reuse, and recall before
+  adopting a smaller active-context target.
 - `ChatService` watches `thread/tokenUsage/updated` and asks for `thread/compact/start` after a
-  turn ends with the context above `chatCompactAtPercent` (default 80, 0 disables). One
-  compaction per completed turn at most; sends wait for a compaction in flight. See
-  `src/main/chat-context/context-compaction.ts`.
+  turn ends with the context above `chatCompactAtPercent` (default 80; 0 disables this trigger).
+  The independent `chatCompactAtTokens` trigger defaults to 0 (off), with nonzero values rounded
+  and clamped to 20,000–2,000,000. It schedules native compaction after 15 idle seconds. A new send
+  or provider turn cancels a queued attempt; a compaction already in flight still blocks sends.
+  Token retries require five minutes plus growth of max(4,000, 25% of the budget) from the lowest
+  usage observed since the previous attempt. Window-percentage pressure bypasses that protection.
+  One compaction per completed turn at most. This is a soft trigger: native compaction may retain
+  more than the target, and turns can grow past it. See `src/main/chat-context/context-compaction.ts`.
 - Opt-in: `chatMidTurnCompactTokens` (default 0) launches the app-server with
   `-c model_auto_compact_token_limit=<n>` so Codex compacts mid-turn past `n` tokens. At 100k it
   fired every ~10 exec calls in a heavy turn, which is why it is off. See
@@ -213,6 +220,14 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   Tool output, screenshots, and reasoning stay in the old thread. See
   `src/main/chat-context/thread-handoff.ts`. The header shows the context percentage so the
   user can see when to reach for it.
+
+To trial the smaller budget, quit ClosedAI, set `"chatCompactAtTokens": 32000` in
+`<userData>/app-settings.json`, and relaunch the updated build. There is not yet a settings UI
+for this field. Keep `chatCompactAtPercent` at 80 as the window-pressure fallback. Restore
+`chatCompactAtTokens` to 0 to disable only the experiment; existing history is unchanged either
+way. 32k is an evaluation starting point, not a measured optimum. This first phase does not
+implement semantic checkpoints, searchable archived context for the same pane, or seamless
+provider-session rotation.
 
 ## Seeing what exists: the Tools modal
 
@@ -262,3 +277,21 @@ The performance summary (`renderer/trace/trace-performance.ts`) derives model pa
 usage, context, and tool time from the available entries. Codex and Claude raw messages supply
 token summaries; Antigravity currently has no equivalent token-summary parser. Truncated or
 evicted entries limit these estimates. This is a local diagnostic view, not a persisted ledger.
+
+`trace/response-latency.ts` adds bounded, monotonic-clock request timing to that ring. For sends
+through the pane manager, `response.first_text` contains Send-to-first-text elapsed time,
+preparation before the actual outgoing provider message, the measured Codex compaction wait
+within preparation, and the remaining time after dispatch. These timings appear in the Turn
+trace summary without requiring raw rows to be visible. They include the first commentary text;
+reasoning, tool output, empty text, history replay, and pre-dispatch compaction turns do not count.
+A dispatched request ending without assistant text emits `response.no_text`, not a zero-latency
+sample. Failed sends are discarded; clearing the trace also discards pending measurements.
+
+These are main-process observations, not provider token-generation timestamps or renderer paint
+times. Provider-internal compaction, queueing, prefill, reasoning, and tool execution can all be
+inside the after-dispatch interval. A zero app compaction wait does not prove zero provider
+compaction. Background/provider-initiated turns have no Send timing. The new tracker stores no
+conversation text and retains at most 256 pending requests. Compare the same model/effort and
+representative task with the budget off/on, including warm/cold-cache cases; measure recall of
+old constraints as well as median/tail first-text latency. Unit tests establish timing/policy
+semantics, not a live performance improvement.
