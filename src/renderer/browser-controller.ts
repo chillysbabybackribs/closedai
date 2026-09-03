@@ -1,19 +1,13 @@
 import {
-  type ChangeEvent,
-  type FocusEvent,
-  type FormEvent,
-  type KeyboardEvent,
-  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState
 } from 'react'
 import { useNativeViewBounds } from './native-view-bounds.js'
 import type { BrowserState, BrowserTabInfo } from '../shared/types.js'
 import { useTitlebarBrowserFreeze } from './titlebar-browser-freeze.js'
 
-type GhostSuggestion = { base: string; remainder: string; url: string }
+import { useOmnibox } from './browser-omnibox.js'
 type BrowserIdentity = { kind: 'web' | 'file' | 'other'; secure: boolean; host: string; rest: string }
 
 export function useBrowserController(layoutKey?: string, visible = true, occluded = false) {
@@ -92,78 +86,6 @@ function useBrowserBounds(
     await window.closedai.browser.setBounds(bounds)
     if (!bounds.occluded) finishRestore?.()
   }, layoutKey, visible, occluded)
-}
-
-function useOmnibox(
-  browser: BrowserState,
-  location: string,
-  setLocation: (value: string) => void,
-  setIsEditingUrl: (value: boolean) => void
-) {
-  const [ghost, setGhost] = useState<GhostSuggestion | null>(null)
-  const omniboxRef = useRef<HTMLInputElement | null>(null)
-  const lastTypedRef = useRef('')
-
-  const navigate = useCallback(async (event: FormEvent): Promise<void> => {
-    event.preventDefault()
-    const target = ghost && ghost.base === location ? ghost.url : location
-    setGhost(null)
-    setIsEditingUrl(false)
-    omniboxRef.current?.blur()
-    await window.closedai.browser.navigate(target).catch(() => {})
-  }, [ghost, location, setIsEditingUrl])
-
-  const change = useCallback(async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
-    const input = event.target
-    const value = input.value
-    const previous = lastTypedRef.current
-    lastTypedRef.current = value
-    const caretAtEnd = input.selectionStart === value.length && input.selectionEnd === value.length
-    setLocation(value)
-    setGhost(null)
-    if (!value || !caretAtEnd || value.length <= previous.length) return
-    const suggestion = await window.closedai.browser.suggest(value).catch(() => null)
-    if (!suggestion || lastTypedRef.current !== value) return
-    if (!suggestion.completion.toLowerCase().startsWith(value.toLowerCase())) return
-    if (suggestion.completion.length === value.length) return
-    setGhost({ base: value, remainder: suggestion.completion.slice(value.length), url: suggestion.url })
-  }, [setLocation])
-
-  const keyDown = useCallback((event: KeyboardEvent<HTMLInputElement>): void => {
-    if (!ghost || ghost.base !== location) return
-    const input = event.currentTarget
-    const caretAtEnd = input.selectionStart === location.length && input.selectionEnd === location.length
-    const accept = event.key === 'Tab' || ((event.key === 'ArrowRight' || event.key === 'End') && caretAtEnd)
-    if (accept) {
-      event.preventDefault()
-      const completed = ghost.base + ghost.remainder
-      lastTypedRef.current = completed
-      setLocation(completed)
-      setGhost(null)
-      requestAnimationFrame(() => omniboxRef.current?.setSelectionRange(completed.length, completed.length))
-    } else if (event.key === 'Backspace' || event.key === 'Delete') setGhost(null)
-  }, [ghost, location, setLocation])
-
-  const focus = useCallback((event: FocusEvent<HTMLInputElement>): void => {
-    setIsEditingUrl(true)
-    lastTypedRef.current = ''
-    setGhost(null)
-    const stripped = location.replace(/^https?:\/\//, '')
-    if (stripped !== location) setLocation(stripped)
-    event.currentTarget.select()
-  }, [location, setLocation, setIsEditingUrl])
-
-  const blur = useCallback((): void => {
-    setGhost(null)
-    lastTypedRef.current = ''
-    setIsEditingUrl(false)
-    setLocation(browser.navigationError?.url ?? browser.url)
-  }, [browser.navigationError?.url, browser.url, setLocation, setIsEditingUrl])
-
-  return useMemo(
-    () => ({ ghost, omniboxRef, navigate, handleOmniboxChange: change, handleOmniboxKeyDown: keyDown, focus, blur }),
-    [ghost, navigate, change, keyDown, focus, blur]
-  )
 }
 
 function omniboxIdentity(rawUrl: string): BrowserIdentity | null {

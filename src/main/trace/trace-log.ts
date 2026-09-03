@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events'
 import type { ChatProvider } from '../../shared/chat.js'
 import type { TraceEntry, TraceEvent, TraceKind, TraceSnapshot } from '../../shared/trace.js'
+import { ResponseLatency } from './response-latency.js'
 
 // In-memory ring of everything the main process saw the model do. One instance per process;
 // the taps (provider clients, the tool registry, the chat event stream) record into it and the
@@ -29,6 +30,7 @@ export type TraceInput = {
 }
 
 export class TraceLog extends EventEmitter {
+  readonly responses = new ResponseLatency((scope, input) => this.record(scope, input))
   private entries: TraceEntry[] = []
   private totalChars = 0
   private dropped = 0
@@ -36,6 +38,7 @@ export class TraceLog extends EventEmitter {
   private readonly turnStarts = new Map<string, number>()
 
   record(scope: TraceScope, input: TraceInput): TraceEntry {
+    this.responses.outgoing(scope, input)
     const { text, truncated } = serialize(input.detail)
     const entry: TraceEntry = {
       seq: this.nextSeq++,
@@ -84,6 +87,7 @@ export class TraceLog extends EventEmitter {
   }
 
   clear(): void {
+    this.responses.clear()
     this.entries = []
     this.totalChars = 0
     this.dropped = 0

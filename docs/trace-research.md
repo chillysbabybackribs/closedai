@@ -4,12 +4,30 @@ Goal: record every step a model takes inside closedai — prompts sent, model ou
 call with arguments and result, token usage, timing — across all three providers
 (Codex app-server 0.152.1, Claude Agent SDK 0.3.258 / CLI 2.1.258, Antigravity `agy` 1.1.24).
 
-This file records what exists in the repo, what each provider already emits, what the 2026
-standards say, and the design that follows. It is a research record, not the implementation.
+This file preserves the investigation and proposals from 2026-09-02. Its baseline inventory,
+line numbers, and external-version observations are historical, not a description of the current
+checkout or instructions to implement every proposal.
 
-## 1. What the repo has today
+## Current implementation note (source review 2026-09-03)
 
-There is no tracing, span, logger, or timing infrastructure. Verified by grep on 2026-09-02.
+Tracing now exists in `src/main/trace/` and `src/renderer/trace/`: provider traffic, registry
+calls/results, turn timing, and normalized chat events feed an in-memory ring. The project rail's
+Turn trace opens the view. Limits are 4,000 entries, 24,000,000 total detail characters, and
+48,000 characters per detail before its truncation marker. Raw traffic is collected even when
+hidden by the view's filters. Restart clears the trace; there is no persistent trace database,
+OTel exporter, or opt-in persistent tracing implementation implied by the proposals below.
+
+Tool telemetry remains aggregate-only on disk. Native provider stores and Antigravity's app-side
+transcript copies are separate persistence paths. Transcript activity now records timing and
+bounded output; background tasks have dedicated normalized items. The trace's performance view
+derives model-pass and cache statistics from available raw provider messages, rather than adding
+a durable usage ledger. Current references: [Tools](tools.md#turn-trace),
+[Application](application.md), and [Model context](model-context.md).
+
+## 1. Baseline before tracing was implemented (2026-09-02)
+
+At the time of this baseline inspection there was no tracing, span, logger, or timing
+infrastructure. The current implementation note above supersedes that observation.
 
 | Thing | Where | Notes |
 | --- | --- | --- |
@@ -181,7 +199,8 @@ line is the larger design if the trace ever needs to persist or export.
    Update `docs/tools.md` privacy text when this ships; the change needs owner sign-off per AGENTS.md.
 6. **IPC + UI.** Fifth namespace `trace` (`listTurns`, `readTurn`, `onSpan`) copied from the `tools`
    pattern (`src/main/tools/ipc.ts`, preload block, `src/shared/api.ts`). Viewer builds on
-   `src/components/ui/tool.tsx` (`ToolPart` is already a tool-span shape),
+   the activity step list in `src/renderer/activity-step-list.tsx` (the generic `ToolPart` card it
+   once pointed at was retired on 2026-09-03 in favour of that per-step model),
    `src/components/ai-elements/chain-of-thought.tsx` for the waterfall, and the tools modal as host.
 7. **Optional export.** Later: an OTLP/HTTP serializer to a local collector, plus pass-through of the
    Claude and Codex native env/config so a backend like Langfuse or Phoenix sees provider-internal spans.

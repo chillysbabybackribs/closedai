@@ -1,13 +1,13 @@
 # Claude Code provider
 
-ClosedAI's chat has two providers behind one pane: Codex (the app-server, `src/main/chat-service.ts`)
-and Claude Code (the Claude Agent SDK, `src/main/claude/`). `src/main/chat-hub.ts` owns which one the
-pane shows, merges their model catalogs into one picker, and routes every call by the id it carries.
-Claude model ids and thread ids carry a `claude:` prefix (`src/main/claude/claude-ids.ts`); Codex ids
-never contain a colon.
+Each ClosedAI chat pane has three providers: Codex (the app-server), Claude Code (the Claude
+Agent SDK), and Antigravity (`agy`). `src/main/chat-hub.ts` routes one pane and merges its model
+catalogs; `src/main/chat-peers/` manages the project's pane set. Claude model and thread ids use
+`claude:`, Antigravity uses `agy:`, and Codex ids are unprefixed. See [Application](application.md).
 
-Everything below was verified live against `@anthropic-ai/claude-agent-sdk` 0.3.258 (pinned exactly:
-the package ships the CLI binary, so the two cannot drift) on 2026-09-02.
+The SDK protocol observations were verified live against `@anthropic-ai/claude-agent-sdk`
+0.3.258 on 2026-09-02. The package is pinned exactly and ships its CLI. Application lifecycle
+and transcript notes were reviewed against current source on 2026-09-03, without a new live run.
 
 ## Semantics
 
@@ -45,10 +45,18 @@ the package ships the CLI binary, so the two cannot drift) on 2026-09-02.
 ## Process lifecycle (`claude-session.ts`, `claude-runtime.ts`)
 
 One `query()` per live thread over a streaming input, so follow-up turns reuse the process and its prompt
-cache. The process is spawned on the first turn (with `resume` when the thread continues a stored
-session), kept across turns, and closed after 15 idle minutes; the next turn resumes the same session
-in a fresh process. At startup the provider spawns once to read the catalog and account, and closes it
-again unless Claude is the active provider.
+cache. A warm connection or the first turn starts the process (with `resume` when continuing a
+stored session). It stays across turns and closes after 15 idle minutes when no tracked background
+task is running; the next turn resumes in a fresh process. A cold catalog read can reuse the
+workspace's signed-in catalog/account cache for ten minutes (`claude-catalog.ts`); otherwise it
+spawns to query the SDK and retires again. Signed-out reads are not cached, and connection errors
+invalidate the cache. The outer pane manager parks unselected idle panes after five minutes;
+see the lifecycle boundary below.
+
+`claude-instructions.ts` appends the shared application and articulation contracts to the SDK
+preset. The same contracts reach Codex and Antigravity; only transport/tool-specific guidance
+differs. Updated prompt source is loaded by a new main-process build and query runtime. See
+[Model context](model-context.md).
 
 Nonessential CLI traffic is left enabled on purpose: `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` also
 disables the session titles the history shows (verified live: with it set, `summary` stays the raw
@@ -60,10 +68,12 @@ can outlive a turn or be reparented.
 ## History (`claude-history.ts`)
 
 The SDK's session store is the history. `listSessions({ dir: cwd, includeProgrammatic: true })` lists
-threads (the CLI titles them itself after the first turn; the header picks the title up at turn end),
+threads (the CLI titles them itself after the first turn; title lookup runs at turn end and retries
+an unnamed session after successive delays of 3, 8, and 20 seconds),
 `getSessionMessages` replays a session through the same translator that renders live turns, and
 archiving tags the session (`closedai-archived`) rather than deleting it. `app-settings.json` keeps
-`chatClaudeSessionId`, resumed on startup like `chatThreadId` for Codex.
+`chatClaudeSessionId` alongside per-pane `claudeSessionId` records. `PeerSettings` scopes each
+runtime to its pane; the outer manager retains display titles even while panes are dormant.
 
 ## Transcript (`claude-stream.ts`, `claude-tool-items.ts`)
 
@@ -78,13 +88,29 @@ Tool mapping: `Bash` → command; `Edit` / `MultiEdit` / `Write` / `NotebookEdit
 `-`/`+` diff; `TodoWrite` / `TaskCreate` / `TaskUpdate` → plan; `Read`, `Glob`, `Grep`, `WebSearch`,
 `WebFetch`, `Task`, `ToolSearch`, `Skill` → labelled tool rows; `mcp__<namespace>__<tool>` → the
 `namespace · tool` label Codex MCP calls use; a `closedai_ui · capture` result with an image → screenshot
-(full-resolution copy from the store when it is still held).
+(larger display copy from the store when it is still held).
 
 Context usage is the last request's prompt size (`input + cache_read + cache_creation` from
 `message_start`) over the resolved model's `contextWindow` from `result.modelUsage`. `modelUsage` has one
 entry per model the turn touched (the CLI's title generation runs on Haiku), so the window is matched by
 model id, never taken from the first entry. Compaction is the CLI's own; a `compact_boundary` shows as
-a notice.
+a notice. ClosedAI explicitly enables Claude's native auto-compaction and precomputes its summary; after
+each completed turn it also asks the SDK for its lightweight context summary, using the stream result as
+a fallback for older or shutting-down runtimes.
+
+### Background work
+
+`claude-background-tasks.ts` is session-owned, shared across per-turn translators. SDK
+`task_started`, `task_progress`, and `task_notification` system messages upsert one task item by
+task id, retaining its originating turn and linked tool id. Ambient/skip-transcript tasks are
+hidden. Completion after `result` updates the same item; later assistant output can open an
+autonomous turn. Retiring or losing the session marks tracked unfinished tasks stopped.
+
+The renderer groups background work separately and keeps running tasks visible across new user
+messages. Completed tasks stay in the current status indicator until the next user message.
+This is distinct from peer-pane control. The session's idle close respects running tasks, but
+the outer pane manager's parking, retirement, and project-switch checks use `activeTurnId`, so
+they can still stop work that outlives its turn. See [known boundaries](application.md#known-boundaries-from-this-source-review).
 
 ## Gates
 

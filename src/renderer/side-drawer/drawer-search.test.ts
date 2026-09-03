@@ -15,7 +15,6 @@ function makeRow(id: string, title: string, cwd: string | null = null, updatedAt
     linesRemoved: 0,
     running: false,
     status: 'chat',
-    completedUnviewed: false,
     children: []
   }
 }

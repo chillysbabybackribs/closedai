@@ -1,6 +1,9 @@
+import { ClaudeBackgroundTasks } from './claude-background-tasks.js'
 import { randomUUID } from 'node:crypto'
 import type { Options, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import type { ContextUsage } from '../chat-context/context-compaction.js'
+import type { ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
+import type { ChatPlanUsage } from '../../shared/chat.js'
 import { claudeQueryOptions } from './claude-options.js'
 import { ClaudeRuntime } from './claude-runtime.js'
 import type { ClaudeSdk } from './claude-sdk.js'
@@ -25,6 +28,8 @@ export type ClaudeSessionDeps = {
   onSessionId: (sessionId: string) => void
   onTurnEnd: (turnId: string, end: TurnEnd) => void
   onContextUsage: (usage: ContextUsage) => void
+  /** One plan window moved mid-turn; the full reading still comes from `planUsage`. */
+  onPlanUsageSignal: (signal: ClaudeRateLimitSignal) => void
   /** When set, every SDK message in either direction is recorded in the turn trace. */
   traceScope?: () => TraceScope
   idleMs?: number
@@ -41,6 +46,7 @@ export class ClaudeSession {
   activeTurnId: string | null = null
   private runtime: ClaudeRuntime | null = null
   private runtimeThinking = true
+  private readonly backgroundTasks = new ClaudeBackgroundTasks()
   private translator: ClaudeTurnTranslator | null = null
   private idleTimer: NodeJS.Timeout | null = null
 
@@ -92,6 +98,16 @@ export class ClaudeSession {
     await this.runtime.interrupt()
   }
 
+  /**
+   * The account's plan windows from the live process. Null when there is none: reading usage
+   * is not worth a spawn, so an idle chat keeps showing its last reading instead.
+   */
+  async planUsage(): Promise<ChatPlanUsage | null> {
+    const runtime = this.runtime
+    if (!runtime || runtime.closed) return null
+    return runtime.planUsage()
+  }
+
   async setModel(model: string | null, adaptiveThinking: boolean): Promise<void> {
     this.model = model
     this.adaptiveThinking = adaptiveThinking
@@ -116,6 +132,7 @@ export class ClaudeSession {
     this.clearIdleTimer()
     const runtime = this.runtime
     this.runtime = null
+    for (const item of this.backgroundTasks.stop()) this.deps.apply({ type: 'item', item })
     if (this.activeTurnId) this.endTurn({ status: 'failed', error: 'Claude Code was stopped before the turn completed' })
     if (runtime) await runtime.close()
   }
@@ -150,7 +167,7 @@ export class ClaudeSession {
     if (!this.translator && (message.type === 'stream_event' || message.type === 'assistant')) {
       this.beginTurn(`claude-turn-${randomUUID()}`)
     }
-    const translator = this.translator ?? new ClaudeTurnTranslator({ turnId: null, cwd: this.deps.cwd, displayScreenshot: this.deps.displayScreenshot })
+    const translator = this.translator ?? new ClaudeTurnTranslator({ backgroundTasks: this.backgroundTasks, turnId: null, cwd: this.deps.cwd, displayScreenshot: this.deps.displayScreenshot })
     const translation = translator.handle(message)
     if (translation.sessionId && translation.sessionId !== this.sessionId) {
       this.sessionId = translation.sessionId
@@ -158,11 +175,15 @@ export class ClaudeSession {
     }
     for (const op of translation.ops) this.deps.apply(op)
     if (translation.contextUsage) this.deps.onContextUsage(translation.contextUsage)
+    if (translation.rateLimit) this.deps.onPlanUsageSignal(translation.rateLimit)
     if (translation.turnEnd) this.endTurn(translation.turnEnd)
+    if (this.backgroundTasks.running) this.clearIdleTimer()
+    else if (!this.activeTurnId) this.scheduleIdleClose()
   }
 
   private onEnd(error: unknown): void {
     this.runtime = null
+    for (const item of this.backgroundTasks.stop()) this.deps.apply({ type: 'item', item })
     this.clearIdleTimer()
     if (this.activeTurnId) {
       const detail = error instanceof Error ? error.message : error ? String(error) : null
@@ -172,22 +193,28 @@ export class ClaudeSession {
 
   private beginTurn(turnId: string): void {
     this.activeTurnId = turnId
-    this.translator = new ClaudeTurnTranslator({ turnId, cwd: this.deps.cwd, displayScreenshot: this.deps.displayScreenshot })
+    this.translator = new ClaudeTurnTranslator({ backgroundTasks: this.backgroundTasks, turnId, cwd: this.deps.cwd, displayScreenshot: this.deps.displayScreenshot })
     this.deps.onTurn(turnId)
   }
 
   private endTurn(end: TurnEnd): void {
     const turnId = this.activeTurnId
+    const runtime = this.runtime
     this.activeTurnId = null
     this.translator = null
     if (turnId) this.deps.onTurnEnd(turnId, end)
     this.deps.onTurn(null)
+    if (runtime && !runtime.closed) {
+      void runtime.contextUsage().then((usage) => {
+        if (usage && this.runtime === runtime) this.deps.onContextUsage(usage)
+      })
+    }
     this.scheduleIdleClose()
   }
 
   private scheduleIdleClose(): void {
     this.clearIdleTimer()
-    if (!this.runtime) return
+    if (!this.runtime || this.backgroundTasks.running) return
     this.idleTimer = setTimeout(() => {
       this.idleTimer = null
       if (!this.activeTurnId) void this.retire()

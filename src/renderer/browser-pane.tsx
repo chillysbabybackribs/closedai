@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 import { memo, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Download, Globe2, Loader2, Lock, Plus, RefreshCw, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Download, Globe2, Loader2, Lock, Plus, RefreshCw, Search, X } from 'lucide-react'
+import { BrowserSiteIcon } from './browser-site-icon.js'
 import type { BrowserController } from './browser-controller.js'
 import type { BrowserTabInfo } from '../shared/types.js'
 import { tabIndexForKey } from './browser-tab-navigation.js'
@@ -151,6 +152,11 @@ function BrowserToolbar({
           spellCheck={false}
           autoComplete="off"
           aria-label="Address"
+          role="combobox"
+          aria-autocomplete="both"
+          aria-expanded={controller.suggestionsOpen && controller.suggestions.length > 0}
+          aria-controls="browser-suggestions"
+          aria-activedescendant={controller.suggestionsOpen && controller.selected >= 0 ? `browser-suggestion-${controller.selected}` : undefined}
           data-ui="browser.address"
           onFocus={focus}
           onBlur={blur}
@@ -161,6 +167,40 @@ function BrowserToolbar({
           <div className="omnibox-ghost" aria-hidden="true">
             <span className="og-typed">{ghost.base}</span>
             <span className="og-suggest">{ghost.remainder}</span>
+          </div>
+        ) : null}
+        {controller.suggestionsOpen && controller.suggestions.length > 0 ? (
+          <div className="browser-suggestions" id="browser-suggestions" role="listbox" aria-label="Address suggestions">
+            {controller.suggestions.map((row, index) => (
+              <div className={`browser-suggestion ${index === controller.selected ? 'is-selected' : ''}`} key={row.kind + row.url}>
+                <button
+                  type="button"
+                  role="option"
+                  id={`browser-suggestion-${index}`}
+                  aria-selected={index === controller.selected}
+                  className="browser-suggestion-open"
+                  data-ui="browser.suggestion"
+                  data-ui-key={row.url}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => controller.choose(row.url)}
+                >
+                  {row.kind === 'search' ? <Search size={17} /> : <BrowserSiteIcon favicon={row.favicon} />}
+                  <span className="browser-suggestion-title">{row.title || row.completion}</span>
+                  <span className="browser-suggestion-detail">{row.completion}</span>
+                </button>
+                {row.kind === 'history' ? (
+                  <button
+                    type="button"
+                    className="browser-suggestion-remove"
+                    data-ui="browser.suggestion-remove"
+                    data-ui-key={row.url}
+                    aria-label={`Remove ${row.title || row.completion} from history`}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => { void controller.removeHistory(row.url).catch(() => {}) }}
+                  ><X size={14} /></button>
+                ) : null}
+              </div>
+            ))}
           </div>
         ) : null}
         {identity ? (

@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChatThreadSummary, ChatTranscriptItem } from '../../shared/chat.js'
+import type { ChatPeerSummary } from '../../shared/chat-peers.js'
 import type { ChatController } from '../chat-controller.js'
 import {
   countDrawerReviewQueue,
   dequeueDrawerReview,
   enqueueDrawerReview,
+  expireDrawerReviews,
+  markDrawerReviewViewed,
+  nextDrawerReviewExpiry,
   persistDrawerReviewQueue,
+  pruneDrawerReviewQueue,
   readDrawerReviewQueue,
   type DrawerReviewQueue
 } from './drawer-review-queue.js'
@@ -14,6 +19,27 @@ import { buildDrawerRows } from './drawer-rows.js'
 const COLLAPSED_KEY = 'closedai.drawer.collapsed'
 const HISTORY_OPEN_KEY = 'closedai.drawer.historyOpen'
 
+/**
+ * Which panes finished a turn and which are running, from one peers update to the next. Every
+ * finish counts, watched or not, so a completed chat collects under "Recently completed" instead of
+ * sitting in Current wearing a status dot. Panes seen for the first time (startup, a fresh pane)
+ * never count as "just finished"; a pane running again has a new message and belongs in Current.
+ */
+export function reviewTransitions(
+  priorRunning: ReadonlyMap<string, boolean>,
+  peers: readonly ChatPeerSummary[]
+): { finished: string[]; runningAgain: string[]; nextRunning: Map<string, boolean> } {
+  const finished: string[] = []
+  const runningAgain: string[] = []
+  const nextRunning = new Map<string, boolean>()
+  for (const peer of peers) {
+    nextRunning.set(peer.paneId, peer.running)
+    if (peer.running) runningAgain.push(peer.paneId)
+    else if (priorRunning.get(peer.paneId) === true) finished.push(peer.paneId)
+  }
+  return { finished, runningAgain, nextRunning }
+}
+
 export function useDrawerController(chat: ChatController) {
   const [isCollapsed, setIsCollapsed] = useState(() => window.localStorage.getItem(COLLAPSED_KEY) === '1')
   const [isHistoryOpen, setIsHistoryOpen] = useState(() => window.localStorage.getItem(HISTORY_OPEN_KEY) === '1')
@@ -21,7 +47,6 @@ export function useDrawerController(chat: ChatController) {
   const [reviewQueue, setReviewQueue] = useState<DrawerReviewQueue>(() =>
     readDrawerReviewQueue(window.localStorage)
   )
-  const [recentlyCompleted, setRecentlyCompleted] = useState<Record<string, number>>({})
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const priorRunningRef = useRef<Map<string, boolean>>(new Map())
 
@@ -36,30 +61,50 @@ export function useDrawerController(chat: ChatController) {
     })
   }, [listThreads])
 
+  // Listing threads reads every session the provider has stored for this workspace. Switching
+  // chats changes the thread id, so running it inline made each switch pay for that scan before
+  // the destination could paint; the catalog only feeds row titles, so it can land a beat later.
   useEffect(() => {
-    refreshThreads()
+    const idle = window.requestIdleCallback?.(refreshThreads, { timeout: 2000 })
+    const timer = idle === undefined ? window.setTimeout(refreshThreads, 200) : null
+    return () => {
+      if (idle !== undefined) window.cancelIdleCallback?.(idle)
+      if (timer !== null) window.clearTimeout(timer)
+    }
   }, [refreshThreads, chat.state.threadId])
 
+  // A turn starting or ending is the only thing that moves a row: finishing drops a pane into
+  // "Recently completed", sending the next message lifts it back into Current. The pane the user
+  // is watching is recorded as completed too, but as already viewed, so it carries no unread mark.
   useEffect(() => {
-    const prior = priorRunningRef.current
-    const nextPrior = new Map<string, boolean>()
+    if (chat.peers.length === 0) return
+    const { finished, runningAgain, nextRunning } = reviewTransitions(priorRunningRef.current, chat.peers)
+    priorRunningRef.current = nextRunning
+    const livePaneIds = new Set(chat.peers.map((peer) => peer.paneId))
+    setReviewQueue((current) => {
+      let next = pruneDrawerReviewQueue(current, livePaneIds)
+      const now = Date.now()
+      for (const paneId of finished) next = enqueueDrawerReview(next, paneId, now)
+      for (const paneId of runningAgain) next = dequeueDrawerReview(next, paneId)
+      return markDrawerReviewViewed(next, chat.selectedPaneId)
+    })
+  }, [chat.peers, chat.selectedPaneId])
 
-    const activeId = chat.state.threadId ?? 'active-chat'
-    const activeRunning = chat.state.activeTurnId !== null
-    nextPrior.set(activeId, activeRunning)
-    if (prior.get(activeId) && !activeRunning) {
-      setRecentlyCompleted((prev) => ({ ...prev, [activeId]: Date.now() }))
-    }
+  // Opening a completed chat reviews it without moving it. It stays visible for a ten-minute
+  // grace period unless a new message starts first and returns it to Current.
+  useEffect(() => {
+    setReviewQueue((current) => markDrawerReviewViewed(current, chat.selectedPaneId))
+  }, [chat.selectedPaneId])
 
-    for (const peer of chat.peers) {
-      nextPrior.set(peer.paneId, peer.running)
-      if (prior.get(peer.paneId) && !peer.running) {
-        setReviewQueue((prev) => enqueueDrawerReview(prev, peer.paneId, Date.now()))
-        setRecentlyCompleted((prev) => ({ ...prev, [peer.paneId]: Date.now() }))
-      }
-    }
-    priorRunningRef.current = nextPrior
-  }, [chat.state.threadId, chat.state.activeTurnId, chat.peers])
+  useEffect(() => {
+    const expiresAt = nextDrawerReviewExpiry(reviewQueue)
+    if (expiresAt === null) return
+    const delay = Math.max(0, expiresAt - Date.now())
+    const timer = window.setTimeout(() => {
+      setReviewQueue((current) => expireDrawerReviews(current, Math.max(Date.now(), expiresAt)))
+    }, delay)
+    return () => window.clearTimeout(timer)
+  }, [reviewQueue])
 
   useEffect(() => {
     persistDrawerReviewQueue(window.localStorage, reviewQueue)
@@ -81,24 +126,18 @@ export function useDrawerController(chat: ChatController) {
     })
   }, [])
 
-  const acceptReview = useCallback((id: string) => {
-    setReviewQueue((current) => dequeueDrawerReview(current, id))
-  }, [])
-
-  const dismissReview = useCallback((id: string) => {
-    setReviewQueue((current) => dequeueDrawerReview(current, id))
-  }, [])
-
+  // Pane rows close (the thread stays in History); history rows archive the thread itself.
   const deleteRow = useCallback(async (id: string, threadId: string | null, paneId?: string) => {
-    if (paneId && paneId !== chat.selectedPaneId) {
+    if (paneId) {
       await chat.closePeer(paneId)
+      refreshThreads()
     } else if (threadId) {
       await chat.archiveThread(threadId)
       refreshThreads()
     }
-    dismissReview(id)
+    setReviewQueue((current) => dequeueDrawerReview(current, id))
     setPendingDeleteId(null)
-  }, [chat, dismissReview, refreshThreads])
+  }, [chat, refreshThreads])
 
   const linesDiff = useMemo(() => {
     let added = 0
@@ -130,11 +169,8 @@ export function useDrawerController(chat: ChatController) {
     toggleHistory,
     reviewQueue,
     reviewQueueCount: countDrawerReviewQueue(reviewQueue),
-    recentlyCompleted,
     pendingDeleteId,
     setPendingDeleteId,
-    acceptReview,
-    dismissReview,
     deleteRow,
     rows,
     refreshThreads

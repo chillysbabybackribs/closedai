@@ -49,7 +49,9 @@ export function toolResultItem(
   if (item.type === 'fileChange') return { ...item, status }
   if (item.type !== 'tool') return item
   const screenshot = captureScreenshot(item, result, displayScreenshot)
-  return screenshot ?? { ...item, status }
+  if (screenshot) return screenshot
+  const output = clip(text, MAX_DETAIL_CHARS).trim()
+  return output ? { ...item, status, output } : { ...item, status }
 }
 
 function captureScreenshot(

@@ -8,7 +8,8 @@ import {
 export function installPopupBridge(
   contents: WebContents,
   partition: string,
-  openTab: (request: PopupTabRequest) => void
+  openTab: (request: PopupTabRequest) => void,
+  registerNativePopup: (contents: WebContents) => void = () => {}
 ): void {
   contents.setWindowOpenHandler((details) => {
     const decision = decideWindowOpen(details, partition)
@@ -17,7 +18,8 @@ export function installPopupBridge(
   })
   contents.on('did-create-window', (window, details) => {
     window.setMenuBarVisibility(false)
-    installPopupBridge(window.webContents, partition, openTab)
+    registerNativePopup(window.webContents)
+    installPopupBridge(window.webContents, partition, openTab, registerNativePopup)
     if (details.options.show !== false) return
     // A featureless about:blank child has no useful routing signal until its first real
     // destination. Keep it invisible, then promote ordinary pages into CodeApp's tab strip;

@@ -1,5 +1,7 @@
-import { shell, type IpcMain } from 'electron'
+import { dialog, shell, type IpcMain } from 'electron'
+import { resolve } from 'node:path'
 import type { ChatAttachment } from '../shared/chat.js'
+import { CHAT_HISTORY_PAGE_SIZE } from '../shared/chat.js'
 import type { ChatContinuationSource } from '../shared/chat-peers.js'
 import type { ChatWorkspaceSurface } from './chat-peers/peer-manager.js'
 
@@ -10,7 +12,10 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
     return service
   }
 
-  ipcMain.handle('chat:snapshot', () => requireService().snapshot())
+  ipcMain.handle('chat:snapshot', () => requireService().snapshot({ limit: CHAT_HISTORY_PAGE_SIZE }))
+  ipcMain.handle('chat:historyPage', (_event, paneId: string, threadId: string | null, beforeItemId: string) =>
+    requireService().readHistoryPage(paneId, threadId, beforeItemId)
+  )
   ipcMain.handle('chat:send', (_event, paneId: string, text: string, attachments: ChatAttachment[]) =>
     requireService().send(paneId, text, attachments)
   )
@@ -20,6 +25,7 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   ipcMain.handle('chat:selectReasoningEffort', (_event, paneId: string, effort: string) =>
     requireService().selectReasoningEffort(paneId, effort)
   )
+  ipcMain.handle('chat:refreshPlanUsage', (_event, paneId: string) => requireService().refreshPlanUsage(paneId))
   ipcMain.handle('chat:listThreads', () => requireService().listThreads())
   ipcMain.handle('chat:newPeer', () => requireService().newPeer())
   ipcMain.handle('chat:closePeer', (_event, paneId: string) => requireService().closePeer(paneId))
@@ -28,6 +34,18 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   )
   ipcMain.handle('chat:openThread', (_event, paneId: string, threadId: string) => requireService().openThread(paneId, threadId))
   ipcMain.handle('chat:archiveThread', (_event, threadId: string) => requireService().archiveThread(threadId))
+  ipcMain.handle('chat:chooseProject', async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Choose a project folder',
+      properties: ['openDirectory', 'createDirectory']
+    })
+    if (!result.canceled && result.filePaths[0]) await requireService().selectProject(resolve(result.filePaths[0]))
+  })
+  ipcMain.handle('chat:selectProject', (_event, projectPath: string) => {
+    if (!projectPath.trim()) throw new Error('Choose a project folder')
+    return requireService().selectProject(resolve(projectPath))
+  })
+  ipcMain.handle('chat:clearProject', () => requireService().selectProject(null))
   ipcMain.handle('chat:login', async () => {
     const authUrl = await requireService().beginLogin()
     if (authUrl) await shell.openExternal(authUrl)

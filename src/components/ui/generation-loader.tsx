@@ -7,6 +7,9 @@ export type GenerationLoaderVariant = 'dots' | 'squares' | 'rounded'
 
 export type GenerationLoaderProps = Omit<ComponentProps<'div'>, 'children'> & {
   label: string
+  /** Widest label this loader will ever show. Its width is reserved up front so a growing
+   *  timer never drags the pixel grid across the rail character by character. */
+  reserveLabel?: string
   tick: number
   animateLabel?: boolean
   variant?: GenerationLoaderVariant
@@ -25,6 +28,7 @@ const CELL_SHAPES: Record<GenerationLoaderVariant, string> = {
 /** Horizontal adaptation of assistant-ui's pixel-matrix generation loader. */
 export function GenerationLoader({
   label,
+  reserveLabel,
   tick,
   animateLabel = true,
   variant = 'rounded',
@@ -57,8 +61,11 @@ export function GenerationLoader({
         })}
       </span>
       <span className="task-generation-copy" aria-hidden="true">
-        {typedLabel}
-        <span className="task-generation-caret" data-typing={typedLabel.length < label.length || undefined} />
+        {reserveLabel ? <span className="task-generation-reserve">{reserveLabel}</span> : null}
+        <span className="task-generation-text">
+          {typedLabel}
+          <span className="task-generation-caret" data-typing={typedLabel.length < label.length || undefined} />
+        </span>
       </span>
     </div>
   )

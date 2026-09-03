@@ -7,8 +7,13 @@ pane shows, merges their model catalogs into one picker, and routes every call b
 through `src/shared/chat-providers.ts`. Antigravity model ids and thread ids carry an `agy:` prefix
 (`src/main/antigravity/antigravity-ids.ts`).
 
-Everything below was verified live against `agy` 1.1.24 on 2026-09-02. The CLI self-updates, so the
-notes name what was measured rather than what the docs promise.
+Protocol observations were verified live against `agy` 1.1.24 on 2026-09-02. The CLI self-updates,
+so those measurements retain their date. Application notes were reviewed against current source
+on 2026-09-03 without a new live run. `ChatPeerManager` owns multiple project-scoped panes above
+each pane's hub; see [Application](application.md).
+
+Executable resolution uses `CLOSEDAI_ANTIGRAVITY_BIN`, then `~/.local/bin/agy` when installed,
+then `agy` on `PATH` (`antigravity-cli.ts`).
 
 ## Why the CLI
 
@@ -44,6 +49,11 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
   read-only set and the model narrates diffs instead of editing. A `PreToolUse` hook denies the CLI's
   own browser, web-fetch, search, and image tools with a steer to the ClosedAI equivalents, because
   those drive a browser the user cannot see and carry none of their sessions.
+- **Shared application voice and context.** The agent includes the common application and
+  articulation contracts: project-scoped panes, one shared browser, app/tool routing, concise
+  result-led messages, and no first-person work log. Provider-specific grants remain here.
+  The profile is refreshed on provider connection and loaded by a new CLI process; changing
+  documentation alone does not update an already running agent. See [Model context](model-context.md).
 - **No context gauge.** `agy` reports token usage per step but no context window, and the transcript
   shows a gauge only with a denominator.
 
@@ -54,6 +64,8 @@ Turns go in as one JSON line each (`{"event":"user","message":{"role":"user","co
 process stays alive across turns on one conversation, is closed after 15 idle minutes, and the next
 turn resumes the conversation in a fresh process with `--conversation <id>`. `--print=` with an
 empty value is load-bearing: a bare `--print` swallows the next flag as its prompt.
+The outer pane manager can park an unselected pane after five idle minutes, before the
+provider's 15-minute timer. Its conversation id remains available for resumption.
 
 `--add-dir <workspace>` must be passed and must come first. The spawn cwd alone does not reach the
 model's shell, which otherwise starts in the CLI's state dir; the first `--add-dir` does.
@@ -69,6 +81,8 @@ carries every step (`user_input`, `agent_response` with `text_delta`, `tool` wit
 with a status and the final `response`. The delta stream is not a reliable transcript (a one-word
 reply streamed only a newline), so the last assistant item is repaired from `result.response`.
 `result` arrives a few seconds after the last step.
+Native tool outputs are retained in normalized activity items for the shared step-list display.
+Screenshot items prefer the larger retained display capture when the store still has it.
 
 ## MCP bridge (`antigravity-mcp.ts`)
 
@@ -90,7 +104,7 @@ app at its own bridge. The stream translator maps server names back to namespace
 Each `tools/call` carries `_meta['antigravity.google/conversation_id']`. The service binds
 conversation ids to its pane and turn as soon as the init event names one, and that binding becomes
 the registry's call context. Completed calls are recorded per conversation so the transcript can
-attach the app's full-resolution capture to the matching `closedai_ui · capture` row.
+attach the app's retained display capture to the matching `closedai_ui · capture` row.
 
 ## History (`antigravity-history.ts`)
 

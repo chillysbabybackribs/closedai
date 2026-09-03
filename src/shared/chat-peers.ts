@@ -19,6 +19,8 @@ export type ChatPeerSummary = {
 }
 
 export type ChatContinuationSource = {
+  /** Include conversation only through this completed assistant message. */
+  throughItemId?: string
   paneId: ChatPaneId | null
   threadId: string | null
 }
@@ -27,6 +29,13 @@ export type ChatWorkspaceSnapshot = {
   selectedPaneId: ChatPaneId
   peers: ChatPeerSummary[]
   selected: ChatSnapshot
+  /** The directory used by newly created provider sessions and its optional project identity. */
+  workspace?: {
+    cwd: string
+    projectPath: string | null
+    /** Previously used project folders, newest first, excluding the active project. */
+    recentProjects?: Array<{ cwd: string; projectPath: string }>
+  }
 }
 
 export type ChatWorkspaceEvent =

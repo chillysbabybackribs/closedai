@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { writeAtomic } from './atomic-write.js'
-import type { AppSettings, ChatContinuation, ChatPeerRecord } from '../shared/types.ts'
+import type { AppSettings, ChatContinuation, ChatPeerRecord, ChatWorkspaceRecord } from '../shared/types.ts'
 import { chatProviderOfId } from '../shared/chat-providers.js'
 import { peerThreadId } from './chat-peers/peer-settings.js'
 import { DEFAULT_BATCH_MAX_CALLS, normalizeBatchMaxCalls } from './batch-config.js'
@@ -21,6 +21,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   // Cookies from the user's real browser have not been imported yet; the first
   // successful import flips this so it happens exactly once.
   browserCookiesImported: false,
+  chatWorkspacePath: null,
+  chatProjectPath: null,
+  chatWorkspaces: [],
   chatThreadId: null,
   chatClaudeSessionId: null,
   chatAntigravityConversationId: null,
@@ -31,10 +34,10 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatSelectedPaneId: null,
   disabledTools: [],
   toolBatchMaxCalls: DEFAULT_BATCH_MAX_CALLS,
-  // Compaction is lossy and takes 60-90 seconds, and prompt caching keeps per-step latency
-  // nearly flat with context size, so it waits for a genuinely full window: 80% leaves room
-  // for one more long turn before Codex's own ~90% compaction would interrupt it mid-turn.
+  // Preserve existing behavior until the optional smaller budget is evaluated against
+  // first-text timing and recall. Cached input size alone does not establish latency.
   chatCompactAtPercent: 80,
+  chatCompactAtTokens: 0,
   chatMidTurnCompactTokens: 0
 }
 
@@ -63,6 +66,9 @@ function normalize(parsed: unknown): AppSettings {
       typeof record.browserCookiesImported === 'boolean'
         ? record.browserCookiesImported
         : DEFAULT_APP_SETTINGS.browserCookiesImported,
+    chatWorkspacePath: optionalString(record.chatWorkspacePath),
+    chatProjectPath: optionalString(record.chatProjectPath),
+    chatWorkspaces: normalizeChatWorkspaces(record.chatWorkspaces),
     chatThreadId: optionalString(record.chatThreadId),
     chatClaudeSessionId: optionalString(record.chatClaudeSessionId),
     chatAntigravityConversationId: optionalString(record.chatAntigravityConversationId),
@@ -78,8 +84,18 @@ function normalize(parsed: unknown): AppSettings {
     chatCompactAtPercent: typeof record.chatCompactAtPercent === 'number' && Number.isFinite(record.chatCompactAtPercent)
       ? Math.min(MAX_COMPACT_AT_PERCENT, Math.max(0, Math.round(record.chatCompactAtPercent)))
       : DEFAULT_APP_SETTINGS.chatCompactAtPercent,
+    chatCompactAtTokens: normalizeAutoCompactTokens(record.chatCompactAtTokens),
     chatMidTurnCompactTokens: normalizeAutoCompactTokens(record.chatMidTurnCompactTokens)
   }
+}
+
+/** Title and last-activity time are optional on older records; absent keys stay absent. */
+function peerDisplayFields(record: Record<string, unknown>): Pick<ChatPeerRecord, 'title' | 'updatedAt'> {
+  const title = optionalString(record.title)
+  const updatedAt = typeof record.updatedAt === 'number' && Number.isFinite(record.updatedAt) && record.updatedAt > 0
+    ? Math.floor(record.updatedAt)
+    : null
+  return { ...(title ? { title } : {}), ...(updatedAt ? { updatedAt } : {}) }
 }
 
 function optionalString(value: unknown): string | null {
@@ -116,7 +132,8 @@ function normalizeChatPeers(
         ...ids,
         modelId,
         reasoningEffort: optionalString(record.reasoningEffort),
-        continuation: normalizeContinuation(record.continuation)
+        continuation: normalizeContinuation(record.continuation),
+        ...peerDisplayFields(record)
       }]
     })
     if (peers.length > 0) return peers
@@ -136,6 +153,41 @@ function normalizeChatPeers(
     reasoningEffort: legacy.chatReasoningEffort,
     continuation: null
   }]
+}
+
+function normalizeChatWorkspaces(value: unknown): ChatWorkspaceRecord[] {
+  if (!Array.isArray(value)) return []
+  const seen = new Set<string>()
+  return value.flatMap((candidate): ChatWorkspaceRecord[] => {
+    if (!candidate || typeof candidate !== 'object') return []
+    const record = candidate as Record<string, unknown>
+    const cwd = optionalString(record.cwd)
+    if (!cwd) return []
+    const projectPath = optionalString(record.projectPath)
+    const key = workspaceKey(cwd, projectPath)
+    if (seen.has(key)) return []
+    if (!Array.isArray(record.peers) || record.peers.length === 0) return []
+    const peers = normalizeChatPeers(record.peers, {
+      chatThreadId: null,
+      chatClaudeSessionId: null,
+      chatAntigravityConversationId: null,
+      chatModelId: null,
+      chatReasoningEffort: null
+    })
+    if (peers.length === 0) return []
+    seen.add(key)
+    const selectedPaneId = optionalString(record.selectedPaneId)
+    return [{
+      cwd,
+      projectPath,
+      peers,
+      selectedPaneId: peers.some((peer) => peer.paneId === selectedPaneId) ? selectedPaneId : peers[0]!.paneId
+    }]
+  })
+}
+
+function workspaceKey(cwd: string, projectPath: string | null): string {
+  return `${projectPath === null ? 'none' : 'project'}:${cwd}`
 }
 
 function normalizeContinuation(value: unknown): ChatContinuation | null {

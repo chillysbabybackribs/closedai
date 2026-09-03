@@ -170,3 +170,53 @@ test('click_at hit-tests before input and rejects points outside the viewport', 
     'Input.dispatchMouseEvent', 'Input.dispatchMouseEvent', 'Input.dispatchMouseEvent'
   ])
 })
+
+test('multiple snapshots coexist without invalidating earlier element references', async () => {
+  const seen: SeenCommand[] = []
+  const target: CdpCommandTarget = {
+    async command(method, params = {}) {
+      seen.push({ method, params })
+      if (method === 'Page.getFrameTree') {
+        return { frameTree: { frame: { id: 'main', url: 'https://closed.ai/' } } }
+      }
+      if (method === 'Page.createIsolatedWorld') return { executionContextId: 7 }
+      if (method === 'Runtime.evaluate') {
+        const expression = String(params.expression)
+        if (expression.includes('function inspectFrame')) {
+          const id = snapshotId(expression)
+          return { result: { value: localInspection([{
+            ref: `${id}:main:e1`,
+            frameId: 'main',
+            tag: 'button',
+            role: 'button',
+            name: `Btn-${id}`,
+            bounds: { x: 10, y: 20, width: 100, height: 40 },
+            center: { x: 60, y: 40 },
+            quad: [10, 20, 110, 20, 110, 60, 10, 60],
+            quadSource: 'client_rect',
+            visible: true,
+            hitTestable: true,
+            disabled: false
+          }]) } }
+        }
+        return { result: { value: { point: { x: 60, y: 40 }, viewport: { width: 800, height: 600 } } } }
+      }
+      if (method === 'DOM.getNodeForLocation') return { backendNodeId: 17, frameId: 'main' }
+      if (method === 'Input.dispatchMouseEvent') return {}
+      throw new Error(`Unexpected ${method}`)
+    }
+  }
+  const agent = new CdpPageController(target)
+  const inspection1 = await agent.inspect(10)
+  const ref1 = inspection1.elements[0]!.ref
+  const inspection2 = await agent.inspect(10)
+  const ref2 = inspection2.elements[0]!.ref
+
+  assert.notEqual(ref1, ref2)
+
+  const click1 = await agent.click(ref1)
+  assert.deepEqual(click1.ref, ref1)
+
+  const click2 = await agent.click(ref2)
+  assert.deepEqual(click2.ref, ref2)
+})

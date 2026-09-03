@@ -55,10 +55,16 @@ const NAMED_KEYS: Record<string, KeyDefinition> = {
 
 const MODIFIER_BITS: Record<KeyModifier, number> = { alt: 1, ctrl: 2, meta: 4, shift: 8 }
 
+// Chromium resolves a wheel dispatch only once the compositor acknowledges it. A view that stops
+// producing frames mid-call therefore never settles the command, which stalled callers for the
+// whole outer tool timeout. Bound it and say what went wrong instead.
+const WHEEL_ACK_TIMEOUT_MS = 5_000
+
 export class CdpPageInput {
   constructor(
     private readonly target: CdpCommandTarget,
-    private readonly page: PageInputPage
+    private readonly page: PageInputPage,
+    private readonly wheelAckTimeoutMs: number = WHEEL_ACK_TIMEOUT_MS
   ) {}
 
   /** Focus a ref with a real click, optionally select its contents, and insert text in one call. */
@@ -106,7 +112,7 @@ export class CdpPageInput {
     }
     if (deltaX === 0 && deltaY === 0) throw new Error('Pass a ref to scroll to, or a non-zero delta_x/delta_y')
     const point = await this.viewportCenter()
-    await this.target.command('Input.dispatchMouseEvent', {
+    await withWheelAckTimeout(this.target.command('Input.dispatchMouseEvent', {
       type: 'mouseWheel',
       x: point.x,
       y: point.y,
@@ -114,7 +120,7 @@ export class CdpPageInput {
       buttons: 0,
       deltaX,
       deltaY
-    })
+    }), this.wheelAckTimeoutMs)
     return { scrolled: 'wheel', point, deltaX, deltaY }
   }
 
@@ -128,6 +134,28 @@ export class CdpPageInput {
       throw new Error('CDP did not report a usable viewport to scroll in')
     }
     return { x: width / 2, y: height / 2 }
+  }
+}
+
+/** Reject rather than hang when the compositor never acks a wheel event. */
+async function withWheelAckTimeout(dispatch: Promise<unknown>, timeoutMs: number): Promise<void> {
+  // The abandoned dispatch may still settle later; swallow it so it cannot surface unhandled.
+  dispatch.catch(() => {})
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const expiry = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(
+        'The page never acknowledged the wheel event, so the scroll was abandoned. Its view is ' +
+        'most likely not rendering; scroll by ref instead, or bring the tab on screen.'
+      )),
+      timeoutMs
+    )
+    timer.unref?.()
+  })
+  try {
+    await Promise.race([dispatch, expiry])
+  } finally {
+    clearTimeout(timer)
   }
 }
 

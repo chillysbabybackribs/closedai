@@ -1,6 +1,7 @@
-import { desktopCapturer, nativeImage, type BrowserWindow, type NativeImage, type WebContents } from 'electron'
+import { desktopCapturer, nativeImage, type BrowserWindow, type NativeImage } from 'electron'
 import type { BrowserService } from './browser-service.js'
 import { waitForPageReady, type PageReadiness, type PageReadyResult } from './browser-page-ready.js'
+import { settleFrames } from './browser-frame-settle.js'
 import type { BrowserPageCapture, CapturedImage, ImageCrop, UiCaptureHost } from './tools/capture/index.js'
 
 const MAX_IMAGE_WIDTH = 1_920
@@ -10,7 +11,6 @@ const MAX_IMAGE_HEIGHT = 1_440
 const MODEL_MAX_WIDTH = 960
 const MODEL_MAX_HEIGHT = 720
 const MODEL_JPEG_QUALITY = 65
-const PAINT_TIMEOUT_MS = 1_500
 
 /** Electron implementation of the provider-neutral visual capture tool host. */
 export class UiCaptureAccess implements UiCaptureHost {
@@ -50,7 +50,7 @@ export class UiCaptureAccess implements UiCaptureHost {
       observedReady = readiness
       const base = { tabId: tab.id, url: readiness.url || tab.url, title: readiness.title || tab.title, ready: readiness }
       if (!readiness.reached || readiness.conditionMet === false) return { ...base, image: null }
-      await settlePaint(contents)
+      await settleFrames(contents)
       if (contents.isDestroyed()) return { ...base, image: null, error: 'The tab closed before capture' }
       const image = await contents.capturePage(undefined, { stayHidden: true, stayAwake: true })
       const payload = this.payload(image)
@@ -114,20 +114,6 @@ function fitImage(image: NativeImage, maxWidth: number, maxHeight: number): Nati
 function fitWithin(width: number, height: number, maxWidth: number, maxHeight: number): { width: number; height: number } {
   const scale = Math.min(1, maxWidth / Math.max(1, width), maxHeight / Math.max(1, height))
   return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) }
-}
-
-async function settlePaint(contents: WebContents): Promise<void> {
-  const paint = contents.executeJavaScript(
-    'new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))',
-    true
-  ).then(() => {})
-  await Promise.race([
-    paint,
-    new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, PAINT_TIMEOUT_MS)
-      timer.unref?.()
-    })
-  ])
 }
 
 function emptyReady(url: string, title: string): PageReadyResult {

@@ -69,6 +69,41 @@ test('workspace events update only the selected pane transcript', () => {
   assert.equal(state.selected.activeTurnId, 'selected')
 })
 
+test('history prepends preserve live updates and reject stale page responses', () => {
+  const current = { type: 'user' as const, id: 'new', turnId: null, text: 'current' }
+  const state = { ...initialChatWorkspaceState(), selectedPaneId: 'pane',
+    selected: { ...initialChatState(), threadId: 'thread', items: [current], history: { hasEarlier: true } }
+  }
+  const action = { type: 'historyPage' as const, paneId: 'pane', threadId: 'thread', beforeItemId: 'new',
+    page: { items: [{ ...current, id: 'old' }, { ...current, text: 'stale copy' }], hasEarlier: false }
+  }
+  const next = reduceChatWorkspaceEvent(state, action)
+  assert.deepEqual(next.selected.items.map((item) => item.id), ['old', 'new'])
+  assert.equal(next.selected.items[1], current)
+  assert.equal(next.selected.history?.hasEarlier, false)
+  assert.equal(reduceChatWorkspaceEvent(next, action), next)
+  assert.equal(reduceChatWorkspaceEvent(state, { ...action, threadId: 'other' }), state)
+  assert.equal(reduceChatWorkspaceEvent(state, { ...action, paneId: 'other' }), state)
+  const late = reduceChatEvent(state.selected, { type: 'item', appended: false, item: { ...current, id: 'unloaded' } })
+  assert.equal(late, state.selected)
+  assert.deepEqual(state.selected.items, [current])
+})
+
+test('unloaded background updates stay in status and merge into a subsequently loaded page', () => {
+  const task = { type: 'tool' as const, id: 'task', turnId: 'old', label: 'Agent', detail: 'working',
+    status: 'running', background: { taskId: 'task', kind: 'agent' as const } }
+  const tail = { type: 'user' as const, id: 'tail', turnId: null, text: 'latest' }
+  let selected = { ...initialChatState(), items: [tail], history: { hasEarlier: true, backgroundTasks: [task] } } as ReturnType<typeof initialChatState>
+  selected = reduceChatEvent(selected, { type: 'item', appended: false, item: { ...task, status: 'completed' } })
+  const state = { ...initialChatWorkspaceState(), selectedPaneId: 'pane', selected }
+  const next = reduceChatWorkspaceEvent(state, { type: 'historyPage', paneId: 'pane', threadId: null,
+    beforeItemId: 'tail', page: { hasEarlier: false, items: [task] } })
+  const loaded = next.selected.items[0]
+  assert.ok(loaded?.type === 'tool')
+  assert.equal(loaded.status, 'completed')
+  assert.deepEqual(next.selected.history?.backgroundTasks, [])
+})
+
 test('display-only screenshots are retained in renderer state like transcript messages', () => {
   const screenshot = {
     type: 'screenshot' as const,
@@ -89,6 +124,9 @@ test('chat title prefers the thread name, then the first user message', () => {
   assert.equal(chatTitle(state), 'Refactor the composer')
   state = reduceChatEvent(state, { type: 'thread', threadId: 't', threadName: 'Composer work' })
   assert.equal(chatTitle(state), 'Composer work')
+  const paged = { ...state, threadName: null, history: { hasEarlier: true, title: 'Original request' } }
+  assert.equal(chatTitle(paged), 'Original request')
+  assert.equal(chatTitle({ ...paged, history: { hasEarlier: false, title: 'New chat' } }), 'Refactor the composer')
 })
 
 test('summarizeMessage truncates long first lines', () => {

@@ -230,9 +230,15 @@ function splitPipeline(command: string): string[] {
       current += char
       continue
     }
-    if (char === '|' && command[index + 1] !== '|') {
+    if (char === ';' || char === '\n') {
       stages.push(current)
       current = ''
+      continue
+    }
+    if (char === '|') {
+      stages.push(current)
+      current = ''
+      if (command[index + 1] === '|') index += 1
       continue
     }
     if (char === '&' && command[index + 1] === '&') {

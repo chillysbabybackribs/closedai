@@ -8,6 +8,7 @@ import type {
   ChatThreadSummary
 } from '../shared/chat.js'
 import { CHAT_PROVIDERS, chatProviderOfId } from '../shared/chat-providers.js'
+import type { ChatHistoryWindow } from '../shared/chat.js'
 
 // One chat pane, several providers. Each provider owns its own thread, transcript, and
 // connection; the hub owns which one the pane shows, merges the model catalogs so the picker
@@ -17,13 +18,15 @@ import { CHAT_PROVIDERS, chatProviderOfId } from '../shared/chat-providers.js'
 
 /** What the chat IPC drives: the hub, or a single provider in tests. */
 export type ChatSurface = {
-  snapshot(): ChatSnapshot
+  snapshot(window?: ChatHistoryWindow): ChatSnapshot
   start(): Promise<void>
   stop(): void
   send(text: string, attachments: ChatAttachment[]): Promise<void>
   interrupt(): Promise<void>
   selectModel(modelId: string): Promise<void>
   selectReasoningEffort(effort: string): Promise<void>
+  /** Re-read the account's plan usage; providers that cannot report it do nothing. */
+  refreshPlanUsage(): Promise<void>
   listThreads(): Promise<ChatThreadSummary[]>
   readThread(threadId: string): Promise<ChatThreadContent>
   newThread(): Promise<void>
@@ -47,6 +50,8 @@ export type ChatHubProviders = {
 
 export class ChatHub extends EventEmitter implements ChatSurface {
   private active: ChatProvider
+  /** Set by `stop`, so a background provider start that lands afterwards does not leave a process. */
+  private stopped = false
 
   constructor(private readonly providers: ChatHubProviders, initialModelId: string | null) {
     super()
@@ -60,19 +65,29 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     return this.active
   }
 
-  snapshot(): ChatSnapshot {
-    return this.merge(this.current().snapshot())
+  snapshot(window?: ChatHistoryWindow): ChatSnapshot {
+    return this.merge(this.current().snapshot(window))
   }
 
-  /** Every provider starts; only the active one stays warm (the CLI-backed ones close again). */
+  /**
+   * Every provider starts; only the active one stays warm (the CLI-backed ones close again).
+   * Only the active one is waited for, though: the others exist to fill in the model picker,
+   * and awaiting all three made opening a chat cost three CLI start-ups instead of one.
+   */
   async start(): Promise<void> {
-    await Promise.all(CHAT_PROVIDERS.map((name) =>
-      this.providers[name].start({ warm: this.active === name })
+    this.stopped = false
+    await this.providers[this.active].start({ warm: true })
+      .catch((error: unknown) => console.warn(`[chat] ${this.active} start failed:`, error))
+    for (const name of CHAT_PROVIDERS) {
+      if (name === this.active) continue
+      void this.providers[name].start({ warm: false })
+        .then(() => { if (this.stopped) this.providers[name].stop() })
         .catch((error: unknown) => console.warn(`[chat] ${name} start failed:`, error))
-    ))
+    }
   }
 
   stop(): void {
+    this.stopped = true
     for (const name of CHAT_PROVIDERS) this.providers[name].stop()
   }
 
@@ -95,6 +110,10 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   /** Every provider's threads, newest first; one provider being down hides only its threads. */
+  refreshPlanUsage(): Promise<void> {
+    return this.current().refreshPlanUsage()
+  }
+
   async listThreads(): Promise<ChatThreadSummary[]> {
     const lists = await Promise.allSettled(CHAT_PROVIDERS.map((name) => this.providers[name].listThreads()))
     const threads = lists.flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
@@ -138,7 +157,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   /** Switch the pane to another provider after its own action succeeds; the old thread stays put. */
   private async switchTo(target: ChatProvider, action: () => Promise<void>): Promise<void> {
-    if (this.current().snapshot().activeTurnId) throw new Error('Stop the current turn before switching models')
+    if (this.current().snapshot({ limit: 0 }).activeTurnId) throw new Error('Stop the current turn before switching models')
     await action()
     this.active = target
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
@@ -149,14 +168,14 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   private models(): ChatSnapshot['models'] {
-    return CHAT_PROVIDERS.flatMap((name) => this.providers[name].snapshot().models)
+    return CHAT_PROVIDERS.flatMap((name) => this.providers[name].snapshot({ limit: 0 }).models)
   }
 
   private onProviderEvent(source: ChatProvider, event: ChatEvent): void {
     if (event.type === 'connection') {
       // Any provider's catalog or connection changing re-describes the pane in terms of the
       // active provider, with every model merged in so the picker can offer the others.
-      const active = this.current().snapshot()
+      const active = this.current().snapshot({ limit: 0 })
       this.emitEvent({
         type: 'connection',
         provider: this.active,

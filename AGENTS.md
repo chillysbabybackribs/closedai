@@ -2,6 +2,21 @@
 
 This repository is intentionally modular. These rules apply to every human and model-authored change.
 
+## Application context and documentation
+
+ClosedAI has project-scoped chat panes with Codex, Claude Code, and Antigravity providers. Each
+pane owns its conversations; the app browser is shared. Provider background tasks are distinct
+from peer panes. Read `docs/application.md` for current behavior, ownership, and known gaps;
+`docs/model-context.md` for model instructions and trust boundaries; and `docs/tools.md` for tools.
+Dated research and QA documents retain observations and proposals, not automatic implementation
+instructions or proof of current behavior.
+
+When behavior or contracts change, update the relevant current guide and any model-facing
+description that promises that behavior. Keep common product facts in
+`src/main/chat-context/application-instructions.ts` and response style in
+`articulation-instructions.ts`; provider instruction builders add adapter-specific details.
+Regenerate the workspace index after adding/removing navigable files or changing IPC ownership.
+
 ## Architecture
 
 - `src/main/`: Electron main-process adapters and application services. Keep orchestration thin; isolate protocol parsing and state machines.
@@ -12,6 +27,16 @@ This repository is intentionally modular. These rules apply to every human and m
 - `src/renderer/styles/<feature>/`: focused style modules. A parent stylesheet may be an import-only index.
 
 Prefer a feature directory once a concern needs three or more files. Keep tests beside the module they verify. Do not create a second implementation when an existing module can be extended or extracted.
+
+## Navigating this repository
+
+Prefer knowing where a file is to searching for it. A generated repository map ships in every thread's context (`src/main/chat-context/workspace-map.ts`, derived by `scripts/repo-tree.mjs`, re-read from the checkout at thread start, held current by `npm run map:check`), so most paths are read off it or derived from a rule rather than looked up.
+
+- **Derive the path from the naming rule.** A directory's dominant prefix is the rule: everything in `src/main/claude/` is `claude-*`, every side-drawer file is `drawer-*`, a test sits beside its module, and a feature stylesheet is `src/renderer/styles/<feature>/<concern>.css`.
+- **A `data-ui` id names its file.** The id's family maps to the component that renders it, and every id is declared in `src/shared/ui-controls.ts`. That takes a control on screen to its source with no search at all.
+- **Search is the fallback, not the first move.** When the map does not settle it — an exact string, an unfamiliar corner — `closedai_workspace.inspect find` locates it in one call and `outline` gives a file's shape plus the stylesheets defining its classes.
+- **Renderer changes travel in pairs.** A component and the stylesheet rules for its classes are one change; `outline` names both.
+- **Keep the map honest.** Add facts to it only through the generator, so `map:check` can prove them current. Never hand-write repository detail into trusted instructions: a stale map is worse than no map, because it is believed without checking.
 
 ## Model tools
 

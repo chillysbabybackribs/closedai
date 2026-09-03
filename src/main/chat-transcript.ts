@@ -1,5 +1,6 @@
 import { activityPhase, type ActivityTiming, type ChatAttachmentSummary, type ChatEvent, type ChatTranscriptItem } from '../shared/chat.js'
 import { cloneItem, normalizeItem, nullableString, recordOf, stringOf } from './chat-normalizers.js'
+import type { ChatHistoryPage, ChatHistoryWindow } from '../shared/chat.js'
 
 type EmitChatEvent = (event: ChatEvent) => void
 /** Full-resolution capture for a tool call id, when the app still holds one. */
@@ -8,7 +9,11 @@ type DisplayScreenshot = (callId: string) => { dataUrl: string } | null
 export class ChatTranscript {
   private readonly items = new Map<string, ChatTranscriptItem>()
   private readonly order: string[] = []
+  private readonly positions = new Map<string, number>()
+  private readonly backgroundIds = new Set<string>()
+  private lastUserPosition = -1
   private readonly optimisticUsers = new Map<string, string>()
+  private replaying = false
 
   constructor(
     private readonly cwd: string,
@@ -27,6 +32,25 @@ export class ChatTranscript {
 
   get isEmpty(): boolean {
     return this.order.length === 0
+  }
+
+  /** Clone only the requested display page. Stable item ids survive appends during paging. */
+  page(window: ChatHistoryWindow): ChatHistoryPage {
+    if (!Number.isInteger(window.limit) || window.limit < 0) throw new Error('Invalid history page size')
+    const end = window.beforeItemId === undefined ? this.order.length : this.positions.get(window.beforeItemId) ?? -1
+    if (end < 0) throw new Error('History changed; reopen this chat to reload earlier messages')
+    const start = Math.max(0, end - window.limit)
+    const backgroundTasks = window.limit > 0 && window.beforeItemId === undefined
+      ? [...this.backgroundIds].flatMap((id) => {
+        const item = this.items.get(id)!
+        const position = this.positions.get(id)!
+        if (position >= start || item.type !== 'tool') return []
+        const live = ['running', 'pending'].includes(activityPhase(item.status))
+        return live || position > this.lastUserPosition ? [cloneItem(item)] : []
+      })
+      : []
+    return { items: this.order.slice(start, end).map((id) => cloneItem(this.items.get(id)!)), hasEarlier: start > 0,
+      ...(backgroundTasks.length ? { backgroundTasks } : {}) }
   }
 
   addOptimisticUser(clientId: string, text: string, attachments: ChatAttachmentSummary[] = []): void {
@@ -56,11 +80,16 @@ export class ChatTranscript {
   replaceFromThread(thread: Record<string, unknown>): void {
     this.clear()
     if (!Array.isArray(thread.turns)) return
-    for (const rawTurn of thread.turns) {
-      const turn = recordOf(rawTurn)
-      if (!turn || !Array.isArray(turn.items)) continue
-      const turnId = stringOf(turn.id)
-      for (const item of turn.items) this.consume(item, turnId, true)
+    this.replaying = true
+    try {
+      for (const rawTurn of thread.turns) {
+        const turn = recordOf(rawTurn)
+        if (!turn || !Array.isArray(turn.items)) continue
+        const turnId = stringOf(turn.id)
+        for (const item of turn.items) this.consume(item, turnId, true)
+      }
+    } finally {
+      this.replaying = false
     }
   }
 
@@ -68,16 +97,27 @@ export class ChatTranscript {
   replaceItems(items: ChatTranscriptItem[]): void {
     this.clear()
     for (const item of items) {
-      if (!this.items.has(item.id)) this.order.push(item.id)
+      this.indexItem(item)
       this.items.set(item.id, cloneItem(item))
     }
   }
 
   upsert(incoming: ChatTranscriptItem): void {
     const item = this.stampTiming(incoming)
-    if (!this.items.has(item.id)) this.order.push(item.id)
+    const appended = !this.items.has(item.id)
+    this.indexItem(item)
     this.items.set(item.id, item)
-    this.emit({ type: 'item', item: cloneItem(item) })
+    if (!this.replaying) this.emit({ type: 'item', item: cloneItem(item), appended })
+  }
+
+  private indexItem(item: ChatTranscriptItem): void {
+    if (!this.positions.has(item.id)) {
+      this.positions.set(item.id, this.order.length)
+      this.order.push(item.id)
+    }
+    if (item.type === 'user') this.lastUserPosition = Math.max(this.lastUserPosition, this.positions.get(item.id)!)
+    if (item.type === 'tool' && item.background) this.backgroundIds.add(item.id)
+    else this.backgroundIds.delete(item.id)
   }
 
   /**
@@ -87,6 +127,12 @@ export class ChatTranscript {
    * claiming a zero-length duration.
    */
   private stampTiming(item: ChatTranscriptItem): ChatTranscriptItem {
+    if (item.type === 'assistant') {
+      const previous = this.items.get(item.id)
+      const createdAt = item.createdAt ?? (previous?.type === 'assistant' ? previous.createdAt : undefined)
+        ?? (item.streaming ? this.now() : undefined)
+      return createdAt === undefined ? item : { ...item, createdAt }
+    }
     if (item.type !== 'command' && item.type !== 'fileChange' && item.type !== 'tool') return item
     const previous = timingOf(this.items.get(item.id))
     const running = activityPhase(item.status) === 'running'
@@ -123,6 +169,9 @@ export class ChatTranscript {
   clear(): void {
     this.items.clear()
     this.order.length = 0
+    this.positions.clear()
+    this.backgroundIds.clear()
+    this.lastUserPosition = -1
     this.optimisticUsers.clear()
   }
 }

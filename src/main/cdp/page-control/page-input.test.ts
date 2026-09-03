@@ -103,3 +103,26 @@ test('scroll without a ref wheels at the viewport center and requires a delta', 
   assert.deepEqual(result, { scrolled: 'wheel', point: { x: 400, y: 300 }, deltaX: 0, deltaY: 500 })
   await assert.rejects(() => input.scroll(undefined, 0, 0), /non-zero delta_x\/delta_y/)
 })
+
+test('a wheel the compositor never acknowledges fails fast instead of hanging the caller', async () => {
+  const target: CdpCommandTarget = {
+    async command(method) {
+      if (method === 'Page.getLayoutMetrics') {
+        return { cssVisualViewport: { clientWidth: 800, clientHeight: 600 } }
+      }
+      // A view that is not rendering never settles the wheel dispatch.
+      return new Promise(() => {})
+    }
+  }
+  const page: PageInputPage = {
+    async click(ref) {
+      return { ref, point: { x: 0, y: 0 }, coordinateSpace: 'main_viewport_css', hitTest: null }
+    },
+    async evaluateOnRef() { return undefined as never }
+  }
+  const input = new CdpPageInput(target, page, 20)
+  await assert.rejects(
+    () => input.scroll(undefined, 0, 400),
+    /never acknowledged the wheel event/
+  )
+})

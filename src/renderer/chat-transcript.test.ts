@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createElement, type ReactNode } from 'react'
+import { createElement, type ComponentProps, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MessageScrollerProvider } from '../components/ui/message-scroller.tsx'
 import type { ChatTranscriptItem } from '../shared/chat.ts'
 import { ChatTranscript } from './chat-transcript.tsx'
 
-function renderTranscript(props: { items: ChatTranscriptItem[] }): string {
+function renderTranscript(props: ComponentProps<typeof ChatTranscript>): string {
   return renderToStaticMarkup(createElement(MessageScrollerProvider, null, createElement(ChatTranscript, props) as ReactNode))
 }
 
@@ -89,14 +89,64 @@ test('identically named tool calls collapse to a counted label', () => {
   assert.match(html, /aria-label="Searched the web 2 times, completed"/)
 })
 
-test('long transcripts initially mount only the latest bounded window', () => {
+test('opening a long transcript paints one screenful, with the rest behind the fold', () => {
   const items: ChatTranscriptItem[] = Array.from({ length: 250 }, (_, index) => ({
     type: 'user', id: `u${index}`, turnId: `t${index}`, text: `Message ${index}`
   }))
+  // The window grows to its full bound on idle frames after this first paint.
   const html = renderTranscript({ items })
-  assert.match(html, /130 earlier entries/)
-  assert.doesNotMatch(html, /Message 129</)
-  assert.match(html, /Message 130</)
+  assert.match(html, /226 earlier entries/)
+  assert.doesNotMatch(html, /Message 225</)
+  assert.match(html, /Message 226</)
   assert.match(html, /Message 249</)
-  assert.equal((html.match(/data-slot="message-scroller-item"/g) ?? []).length, 120)
+  assert.equal((html.match(/data-slot="message-scroller-item"/g) ?? []).length, 24)
+})
+
+
+test('response actions appear once per completed turn, never between model messages and tools', () => {
+  const actions = { threadKey: 'thread', running: true, branch: async () => {} }
+  const items: ChatTranscriptItem[] = [
+    { type: 'assistant', id: 'old', turnId: 'old-turn', text: 'Earlier answer', phase: null, streaming: false },
+    { type: 'user', id: 'u', turnId: 'turn', text: 'Do the task' },
+    { type: 'assistant', id: 'progress', turnId: 'turn', text: 'Let me verify', phase: null, streaming: false },
+    { type: 'tool', id: 'tool', turnId: 'turn', label: 'Run', detail: '', status: 'completed' },
+    { type: 'assistant', id: 'final', turnId: 'turn', text: 'Done', phase: null, streaming: false }
+  ]
+  const running = renderTranscript({ items, activeTurnId: 'turn', actions })
+  assert.equal((running.match(/data-ui="chat.message-copy"/g) ?? []).length, 1)
+  assert.doesNotMatch(running, /data-ui="chat.message-copy" data-ui-key="(?:progress|final)"/)
+  const completed = renderTranscript({ items, activeTurnId: null, actions: { ...actions, running: false } })
+  assert.equal((completed.match(/data-ui="chat.message-copy"/g) ?? []).length, 2)
+  assert.match(completed, /data-ui="chat.message-copy" data-ui-key="final"/)
+  assert.doesNotMatch(completed, /data-ui="chat.message-copy" data-ui-key="progress"/)
+})
+
+test('missing turn ids still yield one action row per user turn and none on the running tail', () => {
+  const items: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u1', turnId: null, text: 'First' },
+    { type: 'assistant', id: 'a1', turnId: null, text: 'First answer', phase: null, streaming: false },
+    { type: 'user', id: 'u2', turnId: null, text: 'Second' },
+    { type: 'assistant', id: 'a2', turnId: null, text: 'Progress', phase: null, streaming: false },
+    { type: 'assistant', id: 'a3', turnId: null, text: 'Second answer', phase: null, streaming: false }
+  ]
+  const actions = { threadKey: 'thread', running: false, branch: async () => {} }
+  const completed = renderTranscript({ items, actions })
+  assert.equal((completed.match(/data-ui="chat.message-copy"/g) ?? []).length, 2)
+  assert.doesNotMatch(completed, /data-ui="chat.message-copy" data-ui-key="a2"/)
+  const running = renderTranscript({ items, actions: { ...actions, running: true } })
+  assert.equal((running.match(/data-ui="chat.message-copy"/g) ?? []).length, 1)
+})
+
+test('background group shows live task details and collapses once completed', () => {
+  const task: ChatTranscriptItem = {
+    type: 'tool', id: 'bg', turnId: 't', label: 'Review adapters', detail: 'Inspect events',
+    status: 'inProgress', background: { taskId: 'bg', kind: 'agent', progress: 'Reading SDK events' }
+  }
+  const running = renderTranscript({ items: [task], activeTurnId: 't' })
+  assert.match(running, /Background work/)
+  assert.match(running, /Reading SDK events/)
+  assert.match(running, /Review adapters/)
+  const completed = renderTranscript({ items: [{ ...task, status: 'completed', output: 'All checked' }] })
+  assert.match(completed, /1 background task finished/)
+  assert.match(completed, /aria-expanded="false"/)
 })

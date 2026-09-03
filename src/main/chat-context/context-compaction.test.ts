@@ -2,13 +2,17 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { ContextCompactor, describeUsage, parseTokenUsage } from './context-compaction.ts'
 
-function harness(threshold = 60) {
+function harness(threshold = 60, budget = 0, idleDelayMs = 0) {
   const requests: Array<[string, Record<string, unknown>]> = []
   const notices: Array<[string, string]> = []
   let fail: Error | null = null
   let turnActive = false
+  let now = 0
   const compactor = new ContextCompactor({
     thresholdPercent: () => threshold,
+    thresholdTokens: () => budget,
+    idleDelayMs,
+    now: () => now,
     threadId: () => 'thread-1',
     turnActive: () => turnActive,
     request: async (method, params) => {
@@ -21,6 +25,7 @@ function harness(threshold = 60) {
   return {
     compactor, requests, notices,
     setFail: (error: Error) => { fail = error },
+    advance: (ms: number) => { now += ms },
     setTurnActive: (active: boolean) => { turnActive = active }
   }
 }
@@ -38,6 +43,112 @@ test('token usage is read from the last model request without reasoning output',
   assert.equal(parseTokenUsage({ last: { totalTokens: 10 }, modelContextWindow: null }), null)
   assert.equal(parseTokenUsage(null), null)
   assert.equal(describeUsage(null), null)
+})
+
+test('the absolute trigger runs while idle, independently of window size or percent trigger', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const h = harness(0, 32_000, 15_000)
+  h.compactor.noteUsage({ usedTokens: 40_000, contextWindow: 1_000_000 })
+  h.compactor.turnFinished()
+  assert.equal(h.compactor.scheduledForIdle, true)
+  assert.equal(h.compactor.inFlight, false)
+  t.mock.timers.tick(14_999)
+  assert.equal(h.requests.length, 0)
+  t.mock.timers.tick(1)
+  assert.equal(h.requests.length, 1)
+  assert.match(h.notices[0]![0], /40000 tokens \(target 32000\)/)
+  h.compactor.reset()
+})
+
+test('send and provider-start cancel a queued compaction without waiting', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const h = harness(0, 32_000, 15_000)
+  h.compactor.noteUsage({ usedTokens: 40_000, contextWindow: 200_000 })
+  h.compactor.turnFinished()
+  await h.compactor.prepareForSend()
+  t.mock.timers.tick(15_000)
+  assert.equal(h.requests.length, 0)
+  h.compactor.turnFinished()
+  h.compactor.turnStarted()
+  t.mock.timers.tick(15_000)
+  assert.equal(h.requests.length, 0)
+  h.compactor.turnFinished()
+  h.compactor.reset()
+  t.mock.timers.tick(15_000)
+  assert.equal(h.requests.length, 0)
+})
+
+test('token retries require cooldown and growth, using the post-compaction low watermark', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const h = harness(0, 32_000)
+  const finishAt = (tokens: number) => {
+    h.compactor.noteUsage({ usedTokens: tokens, contextWindow: 200_000 })
+    h.compactor.turnFinished()
+    t.mock.timers.tick(1)
+  }
+  finishAt(40_000)
+  assert.equal(h.requests.length, 1)
+  h.compactor.turnFinished() // compact turn ends without reducing usage
+  h.advance(300_000)
+  finishAt(41_000)
+  assert.equal(h.requests.length, 1)
+  finishAt(48_000)
+  assert.equal(h.requests.length, 2)
+  h.compactor.noteUsage({ usedTokens: 12_000, contextWindow: 200_000 })
+  h.compactor.turnFinished()
+  finishAt(32_000)
+  assert.equal(h.requests.length, 2) // cooldown still applies after successful compaction
+  h.advance(300_000)
+  finishAt(32_000)
+  assert.equal(h.requests.length, 3)
+  h.compactor.reset()
+})
+
+test('window pressure bypasses the optional token cooldown and idle grace', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const h = harness(80, 32_000, 15_000)
+  h.compactor.noteUsage({ usedTokens: 40_000, contextWindow: 200_000 })
+  h.compactor.turnFinished()
+  t.mock.timers.tick(15_000)
+  h.compactor.turnFinished()
+  h.compactor.noteUsage({ usedTokens: 160_000, contextWindow: 200_000 })
+  h.compactor.turnFinished()
+  assert.equal(h.requests.length, 2)
+  assert.equal(h.compactor.scheduledForIdle, false)
+  h.compactor.reset()
+})
+
+test('active turns prevent idle compaction, including a turn starting during the grace period', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const h = harness(0, 32_000, 15_000)
+  h.compactor.noteUsage({ usedTokens: 40_000, contextWindow: 200_000 })
+  h.compactor.turnFinished()
+  h.setTurnActive(true)
+  t.mock.timers.tick(15_000)
+  assert.equal(h.requests.length, 0)
+  h.compactor.turnFinished()
+  assert.equal(h.compactor.scheduledForIdle, false)
+})
+
+test('a rejection from a retired compaction cannot release a new thread wait', async () => {
+  const rejectors: Array<(error: Error) => void> = []
+  const compactor = new ContextCompactor({
+    thresholdPercent: () => 50, threadId: () => 'thread', turnActive: () => false,
+    notice: () => {}, request: () => new Promise((_, reject) => rejectors.push(reject))
+  })
+  const start = () => {
+    compactor.noteUsage({ usedTokens: 80, contextWindow: 100 })
+    compactor.turnFinished()
+  }
+  start()
+  compactor.reset()
+  start()
+  rejectors[0]!(new Error('old request'))
+  await tick()
+  assert.equal(compactor.inFlight, true)
+  rejectors[1]!(new Error('current request'))
+  await tick()
+  assert.equal(compactor.inFlight, false)
 })
 
 test('a turn that leaves the context past the threshold starts one compaction', async () => {

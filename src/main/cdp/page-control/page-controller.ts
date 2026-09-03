@@ -33,6 +33,7 @@ type SnapshotState = {
 
 /** Agent-oriented DOM geometry and input built only from CDP commands. */
 export class CdpPageController {
+  private readonly snapshots = new Map<string, SnapshotState>()
   private snapshot: SnapshotState | null = null
 
   constructor(private readonly target: CdpCommandTarget) {}
@@ -88,7 +89,13 @@ export class CdpPageController {
       if (elements.length === maxElements) break
     }
 
-    this.snapshot = { id: snapshotId, rootFrameId: graph.rootFrameId, frames: graph.frames, inspected, refs }
+    const snapshot: SnapshotState = { id: snapshotId, rootFrameId: graph.rootFrameId, frames: graph.frames, inspected, refs }
+    this.snapshot = snapshot
+    this.snapshots.set(snapshotId, snapshot)
+    if (this.snapshots.size > 20) {
+      const oldestKey = this.snapshots.keys().next().value
+      if (oldestKey) this.snapshots.delete(oldestKey)
+    }
     const root = inspected.get(graph.rootFrameId)?.local.viewport
     const viewport = root ?? await this.layoutViewport()
     const candidateCount = [...inspected.values()].reduce((sum, frame) => sum + frame.local.candidateCount, 0)
@@ -103,11 +110,7 @@ export class CdpPageController {
   }
 
   async click(ref: string): Promise<AgentPageClick> {
-    const snapshot = this.snapshot
-    const frame = snapshot?.refs.get(ref)
-    if (!snapshot || !frame || !ref.startsWith(`${snapshot.id}:`)) {
-      throw new Error('Element reference is stale or unknown; inspect the page again')
-    }
+    const { snapshot, frame } = this.resolveSnapshotForRef(ref)
     const prepared = await this.evaluate<PreparedClick>(
       prepareClickExpression(snapshot.id, ref), frame.contextId, true
     )
@@ -134,12 +137,20 @@ export class CdpPageController {
     build: (snapshotId: string, ref: string) => string,
     awaitPromise = false
   ): Promise<T> {
-    const snapshot = this.snapshot
+    const { snapshot, frame } = this.resolveSnapshotForRef(ref)
+    return this.evaluate<T>(build(snapshot.id, ref), frame.contextId, awaitPromise)
+  }
+
+  private resolveSnapshotForRef(ref: string): { snapshot: SnapshotState; frame: FrameInspection } {
+    const colon = ref.indexOf(':')
+    const snapshotId = colon > 0 ? ref.slice(0, colon) : null
+    const snapshot = (snapshotId ? this.snapshots.get(snapshotId) : null) ??
+      (this.snapshot && ref.startsWith(`${this.snapshot.id}:`) ? this.snapshot : null)
     const frame = snapshot?.refs.get(ref)
-    if (!snapshot || !frame || !ref.startsWith(`${snapshot.id}:`)) {
+    if (!snapshot || !frame) {
       throw new Error('Element reference is stale or unknown; inspect the page again')
     }
-    return this.evaluate<T>(build(snapshot.id, ref), frame.contextId, awaitPromise)
+    return { snapshot, frame }
   }
 
   async clickAt(point: ViewportPoint): Promise<AgentPageClick> {

@@ -1,4 +1,4 @@
-import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
+import type { ChatPeerSummary, ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import type { ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
 import type {
   AppBrowserTabRequest,
@@ -24,7 +24,7 @@ export type AppCommandDeps = {
   window: () => AppWindowInfo | null
 }
 
-const PEER_LIMIT = 20
+const PEER_LIMIT = 12
 const TAB_LIMIT = 16
 const DOWNLOAD_LIMIT = 8
 
@@ -165,11 +165,21 @@ export class AppCommandAccess implements AppCommandHost {
 
 function projectWorkspace(chat: AppChatWorkspace, callerPaneId: string | null): Record<string, unknown> {
   const snapshot = chat.snapshot()
+  // A workspace accumulates idle "New chat" panes, and a relaunch stamps them all with the same
+  // updatedAt. Rank the panes a caller acts on first, then real conversations over empty
+  // placeholders, so the pane it just created or is driving is never the one the limit drops.
+  const rank = (peer: ChatPeerSummary): number => (
+    (peer.paneId === snapshot.selectedPaneId ? 8 : 0) + (peer.paneId === callerPaneId ? 4 : 0) +
+    (peer.running ? 2 : 0) + (peer.threadId ? 1 : 0)
+  )
+  const ranked = [...snapshot.peers].sort((a, b) => rank(b) - rank(a) || b.updatedAt - a.updatedAt)
+  const shown = ranked.slice(0, PEER_LIMIT)
   return {
     selectedPaneId: snapshot.selectedPaneId,
     callerPaneId,
     paneCount: snapshot.peers.length,
-    panes: snapshot.peers.slice(0, PEER_LIMIT).map((peer) => ({
+    ...(snapshot.peers.length > shown.length ? { omittedPanes: snapshot.peers.length - shown.length } : {}),
+    panes: shown.map((peer) => ({
       paneId: peer.paneId,
       ...(peer.parentPaneId ? { parentPaneId: peer.parentPaneId } : {}),
       kind: peer.kind,

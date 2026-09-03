@@ -61,6 +61,49 @@ function batchText(result: ToolResult): string {
   return result.content[0].type === 'text' ? result.content[0].text : ''
 }
 
+function browserHarness(): { registry: ToolRegistry; starts: string[]; release: (id: string) => void } {
+  const starts: string[] = []
+  const pending = new Map<string, () => void>()
+  const browser: ToolNamespace = {
+    name: 'browser_cdp',
+    description: 'Browser automation',
+    tools: [{
+      name: 'protocol',
+      description: 'Test target work',
+      inputSchema: {
+        type: 'object',
+        properties: { action: { type: 'string', enum: ['command'] }, tab_id: { type: 'string' }, id: { type: 'string' } },
+        required: ['action', 'id']
+      },
+      run: async (input) => await new Promise<ToolResult>((resolve) => {
+        const id = String(input.id)
+        starts.push(id)
+        pending.set(id, () => resolve(textResult(id)))
+      })
+    }]
+  }
+  let registry: ToolRegistry
+  registry = new ToolRegistry([browser, batchTools(() => registry)])
+  return {
+    registry,
+    starts,
+    release: (id) => {
+      const resolve = pending.get(id)
+      if (!resolve) throw new Error(`No pending browser call ${id}`)
+      pending.delete(id)
+      resolve()
+    }
+  }
+}
+
+async function waitForStart(starts: readonly string[], expected: string): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (starts.includes(expected)) return
+    await new Promise<void>((resolve) => setImmediate(resolve))
+  }
+  assert.fail(`Timed out waiting for ${expected}; started: ${starts.join(', ')}`)
+}
+
 test('a sequential batch runs the calls in order and reports each result under its number', async () => {
   const { registry, log } = harness()
   const result = await call(registry, {
@@ -113,6 +156,46 @@ test('a parallel batch runs everything despite failures and keeps input order', 
   assert.ok(log.includes('echo:still runs'))
   const text = batchText(result)
   assert.match(text, /\[1\] lab\.boom — failed[\s\S]*\[2\] lab\.echo — ok/)
+})
+
+test('parallel batches serialize work on one explicit browser tab while other tabs run immediately', async () => {
+  const { registry, starts, release } = browserHarness()
+  const run = call(registry, {
+    parallel: true,
+    calls: [
+      { tool: 'browser_cdp.protocol', arguments: { action: 'command', tab_id: 'tab-a', id: 'a1' } },
+      { tool: 'browser_cdp.protocol', arguments: { action: 'command', tab_id: 'tab-a', id: 'a2' } },
+      { tool: 'browser_cdp.protocol', arguments: { action: 'command', tab_id: 'tab-b', id: 'b1' } }
+    ]
+  })
+  await waitForStart(starts, 'a1')
+  await waitForStart(starts, 'b1')
+  assert.equal(starts.includes('a2'), false)
+  release('a1')
+  await waitForStart(starts, 'a2')
+  release('a2')
+  release('b1')
+  await run
+})
+
+test('an active-tab browser call serializes every browser lane in its batch', async () => {
+  const { registry, starts, release } = browserHarness()
+  const run = call(registry, {
+    parallel: true,
+    calls: [
+      { tool: 'browser_cdp.protocol', arguments: { action: 'command', tab_id: 'tab-a', id: 'a' } },
+      { tool: 'browser_cdp.protocol', arguments: { action: 'command', id: 'active' } },
+      { tool: 'browser_cdp.protocol', arguments: { action: 'command', tab_id: 'tab-b', id: 'b' } }
+    ]
+  })
+  await waitForStart(starts, 'a')
+  assert.deepEqual(starts, ['a'])
+  release('a')
+  await waitForStart(starts, 'active')
+  release('active')
+  await waitForStart(starts, 'b')
+  release('b')
+  await run
 })
 
 test('a batch where every call fails is itself an error', async () => {

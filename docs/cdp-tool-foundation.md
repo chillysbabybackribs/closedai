@@ -1,8 +1,9 @@
 # CDP tool foundation
 
 ClosedAI uses Electron's in-process `webContents.debugger` transport. It does not open a
-remote-debugging port. The model-facing surface has a raw action tool,
-`browser_cdp.protocol`, and an agent-oriented geometry/input wrapper, `browser_cdp.page`.
+remote-debugging port. The primary model-facing browser interface is the eagerly advertised
+`browser_cdp.protocol`. `browser_cdp.page` supplies semantic element refs and an input wrapper.
+Source review: 2026-09-03; the behavior below follows the current implementation.
 
 ## Ownership model
 
@@ -11,6 +12,10 @@ remote-debugging port. The model-facing surface has a raw action tool,
 - Destroying that `WebContents` destroys the connection and its event history.
 - A connection id distinguishes event cursor generations after a reconnect or replacement.
 - Flat child-target sessions are routed by the optional CDP `session_id`.
+- Target discovery and flattened auto-attach are initialized lazily. Session detach clears stored
+  session ids; a later attachment retries discovery. Discovered targets need not all have sessions.
+- Native popup windows are addressable by app-owned `popup-<webContents id>` roots even though
+  they are absent from the regular tab strip.
 - DOM node ids, runtime object ids, execution contexts, frames, requests, and target sessions
   must be treated as navigation-sensitive handles.
 
@@ -24,20 +29,33 @@ assuming tip-of-tree support.
 
 ### `targets`
 
-Returns `Target.getTargetInfo` for the selected tab plus `Target.getTargets`. Use
-`Target.attachToTarget` with `flatten: true` before addressing an out-of-process iframe,
-worker, service worker, or other child target.
+Returns `Target.getTargetInfo` for the selected root, `Target.getTargets`, and the connection's
+live `inventory`. Each inventory entry includes type, title, URL, attachment status, `sessionId`,
+opener id, subtype, and waiting-for-debugger status. `Target.setDiscoverTargets` and
+`Target.setAutoAttach({ autoAttach: true, flatten: true, waitForDebuggerOnStart: false })` run
+on attachment. Use an inventory `sessionId` as `session_id` in subsequent commands. When a
+discovered target has no usable session, attach it explicitly; reacquire stale ids after navigation.
+
+### `target`
+
+Wraps `attach`, `detach`, `create`, `activate`, and `close`, then returns the operation result
+and refreshed target inventory. Attach/activate/close require `target_id`, detach requires
+`session_id`, and create requires `url`. Attach uses `flatten: true`. Use `command` for other
+Target parameters, or `closedai_app.command browser_tab` to manage the app's regular tab strip.
 
 ### `command`
 
 Sends any CDP `Domain.method` with its raw parameters. `tab_id` defaults to the active
 ClosedAI tab. `session_id` routes to a flat child-target session.
 
-Two families are refused with a pointer to the purpose-built tool: `Input.*` (use the `page`
-verbs — telemetry showed a model issuing 708 `Input.dispatchKeyEvent` calls to type text) and
-`Page.captureScreenshot` (returns base64 as a text result and bypasses the screenshot budget;
-use `closedai_ui` capture). The `protocol` tool is also marked `deferLoading`, so its schema
-stays out of the model's context until it searches for it.
+`Input.*` and `Page.captureScreenshot` are allowed, and `protocol` is no longer deferred. Raw
+commands do not invoke the semantic wrapper's foregrounding, readiness, or hit-testing. Input
+needs a rendered target; do not infer that a hidden page received it merely because CDP returned.
+Prefer whole-string `Input.insertText` to individual key events when entering text through CDP.
+
+Raw screenshot output remains JSON text containing base64, subject to the 16,000-character JSON
+result cap; it is not converted to an image or placed in `ScreenshotStore`, and larger payloads
+can be truncated. Use `closedai_ui.capture` for a budgeted image with a retained display copy.
 
 ### `events`
 
@@ -60,6 +78,10 @@ live content quad. Frames that cannot be inspected are reported instead of silen
 
 Refs intentionally expire. An inspection installs an isolated-world element registry for its
 snapshot; a later inspection replaces it, and navigation destroys its execution context.
+Inspection alone can read a background tab without selecting it. All input verbs, including
+both scroll forms, currently pass through `BrowserCdpAccess.realInput`: it foregrounds a regular
+tab, waits for frames after switching, and returns `activatedTab: true` when selection changed.
+An obscured/hidden browser page or a native popup root cannot use this semantic input path.
 
 ### `click`
 
@@ -98,14 +120,16 @@ offsets. Without one, dispatches a real `mouseWheel` at the main viewport's cent
 scrolling; inspect again before clicking.
 
 This first wrapper inspects frames reachable from the selected page target. Out-of-process
-frames that require their own flat target session are surfaced as uninspected frames; automatic
-OOPIF session ownership is a subsequent layer rather than an implicit fallback.
+frames that require their own flat target session are surfaced as uninspected frames. Automatic
+target attachment makes raw session commands possible; it does not extend semantic wrapper
+traversal to every OOPIF. Use the inventory and raw protocol for those frames.
 
 ## Deliberately deferred
 
 Security classification, command allowlists, user approvals, and human/agent interaction
-arbitration are not part of this foundation. They should be layered above the transport without
-changing its tab/session lifecycle model.
+arbitration are not implemented by this transport. Registry resource locks and parallel-batch
+scheduling cover a subset of browser operations; see [Tools](tools.md#application-facts-browser-targets-and-batching).
+Those locks do not arbitrate human input or make cross-tab foreground input sequences atomic.
 
 ## Primary references
 

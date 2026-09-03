@@ -114,16 +114,18 @@ export function normalizeItem(
         turnId,
         label: [stringOf(item.server), stringOf(item.tool)].filter(Boolean).join(' · ') || 'Tool call',
         detail: jsonPreview(item.arguments),
-        status: stringOf(item.status)
+        status: stringOf(item.status),
+        ...toolOutput(item)
       }
     case 'dynamicToolCall':
       return normalizeScreenshot(item, id, turnId) ?? {
         type: 'tool', id, turnId, label: dynamicToolLabel(item),
-        detail: jsonPreview(item.arguments), status: stringOf(item.status)
+        detail: jsonPreview(item.arguments), status: stringOf(item.status), ...toolOutput(item)
       }
     case 'collabAgentToolCall':
       return {
         type: 'tool', id, turnId, label: stringOf(item.tool) || 'Collaboration',
+        background: { taskId: id, kind: 'agent' },
         detail: nullableString(item.prompt) ?? '', status: stringOf(item.status)
       }
     case 'webSearch':
@@ -291,4 +293,25 @@ export function dynamicToolLabel(item: Record<string, unknown>): string {
   }
   if (tool === 'page') return 'Read page'
   return tool || 'Tool call'
+}
+
+const MAX_TOOL_OUTPUT_CHARS = 4_000
+
+/**
+ * What a tool call came back with: the error message when it failed, otherwise the text
+ * blocks of its result. MCP calls carry `result.content`; dynamic (app) tools carry
+ * `contentItems`. Either way only text is kept, clipped so a page read cannot bloat the
+ * transcript.
+ */
+function toolOutput(item: Record<string, unknown>): { output: string } | Record<never, never> {
+  const error = recordOf(item.error)
+  const message = error ? stringOf(error.message) : stringOf(item.error)
+  if (message.trim()) return { output: message.trim().slice(0, MAX_TOOL_OUTPUT_CHARS) }
+  const result = recordOf(item.result)
+  const blocks = Array.isArray(result?.content) ? result.content : Array.isArray(item.contentItems) ? item.contentItems : []
+  const text = blocks.flatMap((entry) => {
+    const block = recordOf(entry)
+    return block && typeof block.text === 'string' ? [block.text] : []
+  }).join('\n').trim()
+  return text ? { output: text.slice(0, MAX_TOOL_OUTPUT_CHARS) } : {}
 }

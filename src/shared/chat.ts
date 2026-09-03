@@ -79,6 +79,7 @@ export type ChatTranscriptItem =
   | { type: 'user'; id: string; turnId: string | null; text: string; attachments?: ChatAttachmentSummary[] }
   | {
       type: 'assistant'
+      createdAt?: number
       id: string
       turnId: string | null
       text: string
@@ -106,11 +107,20 @@ export type ChatTranscriptItem =
     | { type: 'reasoning'; id: string; turnId: string | null; text: string; streaming: boolean }
   | {
       type: 'tool'
+      background?: {
+        taskId: string
+        kind: 'agent' | 'command' | 'task'
+        linkedToolId?: string
+        progress?: string
+        durationMs?: number
+      }
       id: string
       turnId: string | null
       label: string
       detail: string
       status: string
+      /** Result text, or the error message when the call failed. Clipped by the adapter. */
+      output?: string
     } & ActivityTiming
   | {
       /** Visual evidence produced by a capture tool. Display-only in the app transcript. */
@@ -149,6 +159,32 @@ export type ChatContextUsage = {
   percent: number
 }
 
+/** One subscription window a provider reports, e.g. the 5-hour or weekly bucket. */
+export type ChatPlanUsageWindow = {
+  /** How the provider names the window: '5-hour', 'Weekly', 'Weekly (Opus)'. */
+  label: string
+  /** 0–100, rounded. */
+  percent: number
+  /** Epoch ms the window rolls over, when the provider says. */
+  resetsAt: number | null
+}
+
+/**
+ * The signed-in plan's usage, as the provider reports it. Separate from `ChatContextUsage`:
+ * that is this thread's window, this is the account's quota across every thread and device.
+ */
+export type ChatPlanUsage = {
+  /** Plan name the provider reports ('Pro', 'Max', 'prolite'), when it names one. */
+  plan: string | null
+  windows: ChatPlanUsageWindow[]
+  /** An aside the windows do not carry, e.g. a credit balance. */
+  note: string | null
+  /** Why there are no windows; set only when the provider cannot report them. */
+  unavailable: string | null
+  /** Epoch ms these numbers were read, so a stale reading can say so. */
+  updatedAt: number
+}
+
 export type ChatTurnContextAttachment = {
   name: string
   kind: 'file' | 'image'
@@ -178,6 +214,11 @@ export type ChatTurnContextReport = {
   retainedHistory: string
 }
 
+export const CHAT_HISTORY_PAGE_SIZE = 200
+
+export type ChatHistoryWindow = { beforeItemId?: string; limit: number }
+export type ChatHistoryPage = { items: ChatTranscriptItem[]; hasEarlier: boolean; backgroundTasks?: ChatTranscriptItem[] }
+
 export type ChatSnapshot = {
   /** The provider whose thread the pane shows; its connection and account are the ones below. */
   provider: ChatProvider
@@ -192,9 +233,13 @@ export type ChatSnapshot = {
   threadName: string | null
   activeTurnId: string | null
   contextUsage: ChatContextUsage | null
+  /** The account's plan usage; null until the provider answers, and cached between readings. */
+  planUsage: ChatPlanUsage | null
   /** Latest turn submitted since this provider surface was opened. */
   turnContext: ChatTurnContextReport | null
   items: ChatTranscriptItem[]
+  /** Present on windowed renderer snapshots; provider history remains complete. */
+  history?: { hasEarlier: boolean; title?: string; backgroundTasks?: ChatTranscriptItem[] }
 }
 
 export type ChatEvent =
@@ -214,6 +259,7 @@ export type ChatEvent =
   | { type: 'thread'; threadId: string | null; threadName: string | null }
   | { type: 'turn'; turnId: string | null }
   | { type: 'context'; usage: ChatContextUsage | null }
+  | { type: 'planUsage'; usage: ChatPlanUsage | null }
   | { type: 'turnContext'; report: ChatTurnContextReport }
-  | { type: 'item'; item: ChatTranscriptItem }
+  | { type: 'item'; item: ChatTranscriptItem; appended?: boolean }
   | { type: 'itemDelta'; itemId: string; field: 'text' | 'output'; delta: string }

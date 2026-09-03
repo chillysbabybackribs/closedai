@@ -53,6 +53,8 @@ test('CDP session attaches lazily and routes flat child-session commands', async
   assert.deepEqual(result, { method: 'Runtime.evaluate', ok: true })
   assert.equal(contents.debugger.attachCount, 1)
   assert.deepEqual(contents.debugger.commands, [
+    ['Target.setDiscoverTargets', { discover: true }, undefined],
+    ['Target.setAutoAttach', { autoAttach: true, flatten: true, waitForDebuggerOnStart: false }, undefined],
     ['Runtime.evaluate', { expression: '2 + 2' }, 'child-7']
   ])
 
@@ -106,6 +108,31 @@ test('a debugger detach is observable and the next command reattaches', async ()
   assert.equal(session.eventPage(0, 10).events[0].method, 'closedai.debuggerDetached')
   await session.command('Browser.getVersion')
   assert.equal(contents.debugger.attachCount, 2)
+  session.dispose()
+})
+
+test('target inventory follows creation, attachment, navigation, detachment, and destruction', () => {
+  const contents = new FakeContents()
+  const session = new CdpSession('tab-1', contents as unknown as WebContents)
+  session.ensureAttached()
+  const targetInfo = { targetId: 'worker-1', type: 'worker', title: 'Worker', url: 'https://one.test/worker.js' }
+  contents.debugger.emit('message', {}, 'Target.targetCreated', { targetInfo })
+  contents.debugger.emit('message', {}, 'Target.attachedToTarget', {
+    sessionId: 'child-1', targetInfo, waitingForDebugger: true
+  })
+  contents.debugger.emit('message', {}, 'Target.targetInfoChanged', {
+    targetInfo: { ...targetInfo, url: 'https://one.test/worker-v2.js' }
+  })
+  assert.deepEqual(session.targetInventory(), [{
+    targetId: 'worker-1', type: 'worker', title: 'Worker', url: 'https://one.test/worker-v2.js',
+    attached: true, sessionId: 'child-1', openerId: null, subtype: null, waitingForDebugger: true
+  }])
+
+  contents.debugger.emit('message', {}, 'Target.detachedFromTarget', { sessionId: 'child-1' })
+  assert.equal(session.targetInventory()[0]?.sessionId, null)
+  assert.equal(session.targetInventory()[0]?.attached, false)
+  contents.debugger.emit('message', {}, 'Target.targetDestroyed', { targetId: 'worker-1' })
+  assert.deepEqual(session.targetInventory(), [])
   session.dispose()
 })
 

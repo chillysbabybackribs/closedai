@@ -125,3 +125,26 @@ test('dynamic tool calls receive descriptive semantic labels', () => {
   }, 't6', 'turn-1', true)
   assert.equal(query?.type === 'tool' && query.label, 'Web search')
 })
+
+test('tool calls keep their error message or result text as output', () => {
+  const failed = normalizeItem({
+    type: 'mcpToolCall', server: 'closedai_app', tool: 'ui', arguments: { action: 'click' },
+    status: 'failed', error: { message: 'Control matches 2 elements' }
+  }, 'm1', 'turn-1', true)
+  assert.equal(failed?.type === 'tool' && failed.output, 'Control matches 2 elements')
+
+  const ok = normalizeItem({
+    type: 'mcpToolCall', server: 'search', tool: 'query', arguments: {}, status: 'completed',
+    result: { content: [{ type: 'text', text: 'first' }, { type: 'text', text: 'second' }] }
+  }, 'm2', 'turn-1', true)
+  assert.equal(ok?.type === 'tool' && ok.output, 'first\nsecond')
+
+  const dynamic = normalizeItem({
+    type: 'dynamicToolCall', namespace: 'closedai_app', tool: 'state', arguments: {}, status: 'completed',
+    contentItems: [{ type: 'inputText', text: '{"running":true}' }]
+  }, 'd1', 'turn-1', true)
+  assert.equal(dynamic?.type === 'tool' && dynamic.output, '{"running":true}')
+
+  const silent = normalizeItem({ type: 'mcpToolCall', server: 's', tool: 't', arguments: {}, status: 'completed' }, 'm3', 'turn-1', true)
+  assert.equal(silent?.type === 'tool' && 'output' in silent, false)
+})

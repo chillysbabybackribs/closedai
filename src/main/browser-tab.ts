@@ -56,7 +56,8 @@ export class BrowserTab extends EventEmitter {
   constructor(
     private readonly history: BrowserHistory,
     private readonly openLinkInNewTab: (request: PopupTabRequest) => void,
-    readonly partition: string = PARTITION
+    readonly partition: string = PARTITION,
+    private readonly registerNativePopup: (contents: WebContents) => void = () => {}
   ) {
     super()
     // Node throws on unhandled 'error'; the service subscribes, but keep a no-op fallback.
@@ -299,6 +300,7 @@ export class BrowserTab extends EventEmitter {
     })
     contents.on('page-favicon-updated', (_event, favicons) => {
       const next = selectFavicon(favicons)
+      if (next) this.history.updateFavicon?.(contents.getURL(), next)
       if (next === this.favicon) return
       this.favicon = next
       this.emitState()
@@ -342,7 +344,7 @@ export class BrowserTab extends EventEmitter {
         }
       })
     })
-    installPopupBridge(contents, this.partition, this.openLinkInNewTab)
+    installPopupBridge(contents, this.partition, this.openLinkInNewTab, this.registerNativePopup)
   }
 
   // Electron nulls WebContentsView.webContents once the contents are destroyed, despite the

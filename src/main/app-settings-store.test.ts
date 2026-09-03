@@ -18,6 +18,7 @@ test('a missing file yields the defaults, including the compaction threshold', a
   const { store } = await storeWith(null)
   assert.deepEqual(store.get(), DEFAULT_APP_SETTINGS)
   assert.equal(store.get().chatCompactAtPercent, 80)
+  assert.equal(store.get().chatCompactAtTokens, 0)
   assert.equal(store.get().chatMidTurnCompactTokens, 0)
   assert.equal(store.get().toolBatchMaxCalls, 16)
 })
@@ -51,6 +52,17 @@ test('the compaction threshold is clamped and bad values fall back', async () =>
   const updated = await store.set({ chatCompactAtPercent: 72.4 })
   assert.equal(updated.chatCompactAtPercent, 72)
   assert.match(await readFile(file, 'utf8'), /"chatCompactAtPercent": 72/)
+})
+
+test('the between-turn token budget is opt-in, bounded, and persists independently', async () => {
+  for (const [input, expected] of [[0, 0], [-1, 0], [500, 20_000], [32_000.4, 32_000], [9e9, 2_000_000], ['lots', 0]]) {
+    const { store } = await storeWith(JSON.stringify({ chatCompactAtTokens: input }))
+    assert.equal(store.get().chatCompactAtTokens, expected)
+  }
+  const { store, file } = await storeWith('{}')
+  await store.set({ chatCompactAtTokens: 32_000, chatCompactAtPercent: 0 })
+  assert.equal((await AppSettingsStore.open(file)).get().chatCompactAtTokens, 32_000)
+  assert.equal(store.get().chatMidTurnCompactTokens, 0)
 })
 
 test('reasoning effort is persisted as a model preference', async () => {
@@ -120,4 +132,38 @@ test('an antigravity model routes the legacy settings to its own conversation fi
   assert.equal(peer.provider, 'antigravity')
   assert.equal(peer.antigravityConversationId, 'conv-2')
   assert.equal(peer.threadId, 'agy:conv-2')
+})
+
+test('a pane title and activity time survive reload; junk values are dropped', async () => {
+  const { store } = await storeWith(JSON.stringify({
+    chatPeers: [
+      { paneId: 'a', provider: 'claude', modelId: 'claude:opus', title: 'Sidebar work', updatedAt: 1700000000000 },
+      { paneId: 'b', provider: 'codex', modelId: 'gpt', title: '', updatedAt: -5 }
+    ]
+  }))
+  const [a, b] = store.get().chatPeers
+  assert.equal(a!.title, 'Sidebar work')
+  assert.equal(a!.updatedAt, 1700000000000)
+  assert.equal('title' in b!, false)
+  assert.equal('updatedAt' in b!, false)
+})
+
+test('saved project workspaces retain their own selected pane sets', async () => {
+  const { store, file } = await storeWith(JSON.stringify({
+    chatWorkspaces: [{
+      cwd: '/projects/one',
+      projectPath: '/projects/one',
+      selectedPaneId: 'project-pane',
+      peers: [{ paneId: 'project-pane', provider: 'codex', threadId: 'thread-one', modelId: 'gpt' }]
+    }]
+  }))
+
+  const workspace = store.get().chatWorkspaces[0]!
+  assert.equal(workspace.cwd, '/projects/one')
+  assert.equal(workspace.selectedPaneId, 'project-pane')
+  assert.equal(workspace.peers[0]?.threadId, 'thread-one')
+
+  await store.set({ chatWorkspaces: [workspace] })
+  const reopened = await AppSettingsStore.open(file)
+  assert.equal(reopened.get().chatWorkspaces[0]?.peers[0]?.threadId, 'thread-one')
 })

@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatTranscriptItem } from '../shared/chat.ts'
 import {
-  activityClusters,
   activityHeadline,
+  activityState,
   commandTitle,
   transcriptRows
 } from './transcript-rows.ts'
@@ -72,10 +72,7 @@ test('different activity kinds in one turn consolidate into one counted row', ()
   assert.deepEqual(rows.map((row) => row.kind), ['activity'])
   const activity = rows[0] as Extract<(typeof rows)[0], { kind: 'activity' }>
   assert.equal(activityHeadline(activity.items), 'Read file, Searched the web 2 times')
-  assert.deepEqual(
-    activityClusters(activity.items).map((c) => c.title),
-    ['Read file', 'Searched the web 2 times']
-  )
+  assert.equal(activityState(activity.items), 'done')
 })
 
 test('tool activity never consolidates across a visible turn break', () => {
@@ -131,8 +128,15 @@ test('stacked commands collapse to one counted headline', () => {
   ] as Extract<ChatTranscriptItem, { type: 'command' }>[]
   assert.equal(activityHeadline(items), 'Ran 3 commands')
   assert.equal(activityHeadline(items, true), 'Running 3 commands')
-  assert.deepEqual(activityClusters(items).map((cluster) => cluster.title), ['Ran 3 commands'])
-  assert.deepEqual(activityClusters(items, true).map((cluster) => cluster.title), ['Running 3 commands'])
+})
+
+test('one running step keeps the row live and one failure marks it failed', () => {
+  const step = (id: string, status = 'completed'): Extract<ChatTranscriptItem, { type: 'command' }> => (
+    command(id, 't1', 'ls', status) as Extract<ChatTranscriptItem, { type: 'command' }>
+  )
+  assert.equal(activityState([step('c1'), step('c2', 'inProgress')]), 'running')
+  assert.equal(activityState([step('c1'), { ...step('c3', 'failed'), exitCode: 1 }]), 'failed')
+  assert.equal(activityState([step('c1')]), 'done')
 })
 
 test('a single command keeps its short title instead of a count', () => {
@@ -162,3 +166,26 @@ test('multiple read commands display file names in headline', () => {
   assert.equal(activityHeadline(items, true), 'Reading file1.ts, file2.ts, file3.ts (+1 more)')
 })
 
+
+test('background tasks group at their first occurrence and replace linked launch calls', () => {
+  const rows = transcriptRows([
+    { type: 'tool', id: 'launch', turnId: 't', label: 'Agent', detail: '', status: 'completed' },
+    { type: 'tool', id: 'task-a', turnId: 't', label: 'Review', detail: '', status: 'inProgress', background: { taskId: 'a', kind: 'agent', linkedToolId: 'launch' } },
+    { type: 'assistant', id: 'answer', turnId: 't', text: 'Working', phase: 'commentary', streaming: false },
+    { type: 'tool', id: 'task-b', turnId: 't', label: 'Inspect', detail: '', status: 'completed', background: { taskId: 'b', kind: 'task' } }
+  ])
+  assert.deepEqual(rows.map((row) => row.kind), ['background', 'item'])
+  assert.equal(rows[0]?.kind === 'background' && rows[0].items.length, 2)
+})
+
+test('a lone command inside a mixed row still describes itself', () => {
+  const rows = transcriptRows([
+    command('c1', 't1', 'bash -lc "cd /repo; rg -c activity-card out/*.css"'),
+    { type: 'tool', id: 's1', turnId: 't1', label: 'Web search', detail: 'q', status: 'completed' }
+  ])
+  const activity = rows[0]
+  assert.equal(activity?.kind, 'activity')
+  if (activity?.kind !== 'activity') return
+  assert.equal(activityHeadline(activity.items), 'Searched for activity-card, Searched the web')
+  assert.doesNotMatch(activityHeadline(activity.items), /1 times/)
+})

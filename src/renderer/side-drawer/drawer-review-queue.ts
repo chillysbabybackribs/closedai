@@ -1,6 +1,15 @@
 export const DRAWER_REVIEW_QUEUE_STORAGE_KEY = 'closedai.drawer.reviewQueue'
+export const DRAWER_REVIEW_RETENTION_MS = 10 * 60 * 1000
 
-export type DrawerReviewQueue = Record<string, number>
+export type DrawerReviewEntry = {
+  /** When the pane's most recent turn finished. */
+  queuedAt: number
+  /** When the user first opened the completed pane. Unreviewed entries do not expire. */
+  viewedAt: number | null
+}
+
+/** Keyed by pane id. Persisted so a relaunch keeps unreviewed work in the queue. */
+export type DrawerReviewQueue = Record<string, DrawerReviewEntry>
 
 type StorageReader = Pick<Storage, 'getItem'>
 type StorageWriter = Pick<Storage, 'setItem'>
@@ -11,17 +20,33 @@ export function readDrawerReviewQueue(storage: StorageReader): DrawerReviewQueue
     if (!raw) return {}
     const parsed: unknown = JSON.parse(raw)
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
-    const entries = Object.entries(parsed).filter(
-      (entry): entry is [string, number] =>
-        entry[0].length > 0 &&
-        typeof entry[1] === 'number' &&
-        Number.isFinite(entry[1]) &&
-        entry[1] >= 0
-    )
-    return Object.fromEntries(entries)
+    const queue: DrawerReviewQueue = {}
+    for (const [id, value] of Object.entries(parsed)) {
+      const entry = normalizeEntry(value)
+      if (id.length > 0 && entry) queue[id] = entry
+    }
+    return queue
   } catch {
     return {}
   }
+}
+
+/** Earlier builds stored a bare timestamp or a viewed flag. */
+function normalizeEntry(value: unknown): DrawerReviewEntry | null {
+  if (isTime(value)) return { queuedAt: value, viewedAt: null }
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  if (!isTime(record.queuedAt)) return null
+  const viewedAt = isTime(record.viewedAt)
+    ? record.viewedAt
+    : record.viewed === true
+      ? record.queuedAt
+      : null
+  return { queuedAt: record.queuedAt, viewedAt }
+}
+
+function isTime(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
 }
 
 export function persistDrawerReviewQueue(storage: StorageWriter, queue: DrawerReviewQueue): void {
@@ -32,20 +57,59 @@ export function persistDrawerReviewQueue(storage: StorageWriter, queue: DrawerRe
   }
 }
 
-export function enqueueDrawerReview(
-  current: DrawerReviewQueue,
-  id: string,
-  queuedAt: number
-): DrawerReviewQueue {
-  if (!id) return current
-  if (current[id] !== undefined) return current
-  return { ...current, [id]: queuedAt }
+export function enqueueDrawerReview(current: DrawerReviewQueue, id: string, queuedAt: number): DrawerReviewQueue {
+  if (!id || current[id] !== undefined) return current
+  return { ...current, [id]: { queuedAt, viewedAt: null } }
 }
 
 export function dequeueDrawerReview(current: DrawerReviewQueue, id: string): DrawerReviewQueue {
   if (!(id in current)) return current
   const next = { ...current }
   delete next[id]
+  return next
+}
+
+export function markDrawerReviewViewed(
+  current: DrawerReviewQueue,
+  id: string,
+  viewedAt: number = Date.now()
+): DrawerReviewQueue {
+  const entry = current[id]
+  if (!entry || entry.viewedAt !== null) return current
+  return { ...current, [id]: { ...entry, viewedAt } }
+}
+
+/** Reviewed completions age into History; unread completions remain until the user opens them. */
+export function expireDrawerReviews(
+  current: DrawerReviewQueue,
+  now: number,
+  retentionMs: number = DRAWER_REVIEW_RETENTION_MS
+): DrawerReviewQueue {
+  const expired = Object.entries(current)
+    .filter(([, entry]) => entry.viewedAt !== null && now - entry.viewedAt >= retentionMs)
+    .map(([id]) => id)
+  if (expired.length === 0) return current
+  const next = { ...current }
+  for (const id of expired) delete next[id]
+  return next
+}
+
+export function nextDrawerReviewExpiry(queue: DrawerReviewQueue): number | null {
+  let next: number | null = null
+  for (const entry of Object.values(queue)) {
+    if (entry.viewedAt === null) continue
+    const expiresAt = entry.viewedAt + DRAWER_REVIEW_RETENTION_MS
+    if (next === null || expiresAt < next) next = expiresAt
+  }
+  return next
+}
+
+/** Drop entries whose pane is gone — closed while the app was down, or from a stale store. */
+export function pruneDrawerReviewQueue(current: DrawerReviewQueue, livePaneIds: ReadonlySet<string>): DrawerReviewQueue {
+  const stale = Object.keys(current).filter((id) => !livePaneIds.has(id))
+  if (stale.length === 0) return current
+  const next = { ...current }
+  for (const id of stale) delete next[id]
   return next
 }
 

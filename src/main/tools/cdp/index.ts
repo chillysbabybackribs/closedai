@@ -1,5 +1,5 @@
 import { defineActionTool, type ToolAction } from '../action-tool.js'
-import { failureResult, stringArg, type ToolNamespace } from '../tool.js'
+import { stringArg, type ToolNamespace } from '../tool.js'
 import {
   eventCursorFrom,
   eventLimitFrom,
@@ -21,17 +21,17 @@ export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
       defineActionTool({
         name: 'protocol',
         description:
-          'Escape hatch: raw CDP commands to a ClosedAI browser tab and its instrumentation events, for ' +
-          'inspection and debugging the page tool cannot do. Interaction belongs in the page tool ' +
-          '(click, type, press_key, scroll) and screenshots in closedai_ui capture; Input.* and ' +
-          'Page.captureScreenshot are refused here. Use capabilities to inspect the bundled Chromium ' +
-          'protocol, targets to discover inspectable children, command for any domain method, and events ' +
+          'Primary browser interface: raw CDP commands to a ClosedAI browser tab and its instrumentation ' +
+          'events. Use this single browser surface first for capabilities, inspection, interaction, ' +
+          'screenshots, network, storage, debugging, and any other supported CDP domain. Use capabilities ' +
+          'to inspect the bundled Chromium ' +
+          'protocol, targets for a live inventory of children and sessions, command for any domain method, and events ' +
           'after enabling the relevant domain. DOM nodes, runtime objects, frames, execution contexts, ' +
           'target sessions, and request ids are transient and may become invalid after navigation. ' +
-          'Attach child targets with flatten=true and pass the returned session_id on later commands. ' +
+          'Child auto-attach uses flatten=true; pass an inventory sessionId as session_id on later commands. ' +
+          'Raw commands do not foreground tabs; use page for input that needs tab activation and closedai_ui capture for image results. ' +
           'Results are JSON text: JSON.parse the returned string in exec scripts; oversized results ' +
           'shrink structurally and carry a `_closedai_truncated` note.',
-        deferLoading: true,
         actions: actions(cdp)
       }),
       cdpPageTool(cdp)
@@ -49,7 +49,7 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
     },
     {
       action: 'targets',
-      description: 'Return the selected tab target and currently discoverable CDP targets.',
+      description: 'Return the selected tab target, Chromium’s discovered targets, and a live inventory with child session ids.',
       inputSchema: objectSchema({ tab_id: tabIdField }),
       run: async (input) => jsonResult(await requireCdp(cdp).targets(tabIdFrom(input)))
     },
@@ -68,11 +68,37 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
         if (!/^[A-Za-z][A-Za-z0-9]*\.[A-Za-z][A-Za-z0-9]*$/.test(method)) {
           throw new Error('`method` must use CDP Domain.method syntax')
         }
-        const denied = deniedMethodAdvice(method)
-        if (denied) return failureResult(denied)
         return jsonResult(await requireCdp(cdp).command(
           tabIdFrom(input), method, paramsFrom(input), sessionIdFrom(input)
         ))
+      }
+    },
+    {
+      action: 'target',
+      description:
+        'Perform a standard target lifecycle operation, then return the refreshed target inventory. ' +
+        'Detach requires session_id; use command for non-standard Target domain parameters.',
+      inputSchema: objectSchema({
+        tab_id: tabIdField,
+        operation: {
+          type: 'string',
+          enum: ['attach', 'detach', 'create', 'activate', 'close'],
+          description: 'Target lifecycle operation.'
+        },
+        target_id: { type: 'string', minLength: 1, description: 'Required for attach, activate, and close.' },
+        session_id: sessionIdField,
+        url: { type: 'string', minLength: 1, description: 'Required for create.' }
+      }, ['operation']),
+      run: async (input) => {
+        const operation = stringArg(input, 'operation')!
+        const targetId = stringArg(input, 'target_id')
+        const sessionId = stringArg(input, 'session_id')
+        const url = stringArg(input, 'url')
+        const lifecycle = targetLifecycleCommand(operation, targetId, sessionId, url)
+        const host = requireCdp(cdp)
+        const tabId = tabIdFrom(input)
+        const result = await host.command(tabId, lifecycle.method, lifecycle.params)
+        return jsonResult({ operation, result, inventory: await host.targets(tabId) })
       }
     },
     {
@@ -95,21 +121,31 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
   ]
 }
 
-/**
- * Raw methods with a purpose-built tool: refuse them with a pointer instead of letting the
- * model rebuild input event-by-event (observed: 708 dispatchKeyEvent calls in one workspace)
- * or pull base64 screenshots through a text result.
- */
-function deniedMethodAdvice(method: string): string | null {
-  if (method.startsWith('Input.')) {
-    return `${method} is disabled here: use the page tool instead — type inserts whole strings, ` +
-      'press_key sends key chords, click/click_at click, and scroll scrolls. One call replaces an event sequence.'
+function targetLifecycleCommand(
+  operation: string,
+  targetId: string | undefined,
+  sessionId: string | undefined,
+  url: string | undefined
+): { method: string; params: Record<string, unknown> } {
+  switch (operation) {
+    case 'attach':
+      return { method: 'Target.attachToTarget', params: { targetId: requiredTargetArgument('target_id', targetId), flatten: true } }
+    case 'detach':
+      return { method: 'Target.detachFromTarget', params: { sessionId: requiredTargetArgument('session_id', sessionId) } }
+    case 'create':
+      return { method: 'Target.createTarget', params: { url: requiredTargetArgument('url', url) } }
+    case 'activate':
+      return { method: 'Target.activateTarget', params: { targetId: requiredTargetArgument('target_id', targetId) } }
+    case 'close':
+      return { method: 'Target.closeTarget', params: { targetId: requiredTargetArgument('target_id', targetId) } }
+    default:
+      throw new Error('`operation` must be attach, detach, create, activate, or close')
   }
-  if (method === 'Page.captureScreenshot') {
-    return 'Page.captureScreenshot is disabled here: it returns base64 as text and bypasses the screenshot ' +
-      'budget. Use closedai_ui capture with action browser_page (or app_window) instead.'
-  }
-  return null
+}
+
+function requiredTargetArgument(name: string, value: string | undefined): string {
+  if (value) return value
+  throw new Error('`' + name + '` is required for this target operation')
 }
 
 export type { CdpHostProvider, CdpToolHost } from './host.js'

@@ -23,6 +23,8 @@ const api: ClosedaiApi = {
     back: () => ipcRenderer.invoke('browser:back'),
     forward: () => ipcRenderer.invoke('browser:forward'),
     reload: () => ipcRenderer.invoke('browser:reload'),
+    searchHistory: (input: string) => ipcRenderer.invoke('browser:searchHistory', input),
+    removeHistory: (url: string) => ipcRenderer.invoke('browser:removeHistory', url),
     suggest: (input: string) => ipcRenderer.invoke('browser:suggest', input),
     snapshot: () => ipcRenderer.invoke('browser:snapshot'),
     newTab: () => ipcRenderer.invoke('browser:newTab'),
@@ -44,12 +46,14 @@ const api: ClosedaiApi = {
   },
   chat: {
     snapshot: () => ipcRenderer.invoke('chat:snapshot'),
+    historyPage: (paneId, threadId, beforeItemId) => ipcRenderer.invoke('chat:historyPage', paneId, threadId, beforeItemId),
     send: (paneId, text, attachments) => ipcRenderer.invoke('chat:send', paneId, text, attachments),
     attachmentPath: (file) => webUtils.getPathForFile(file),
     interrupt: (paneId) => ipcRenderer.invoke('chat:interrupt', paneId),
     selectPane: (paneId) => ipcRenderer.invoke('chat:selectPane', paneId),
     selectModel: (paneId, modelId) => ipcRenderer.invoke('chat:selectModel', paneId, modelId),
     selectReasoningEffort: (paneId, effort) => ipcRenderer.invoke('chat:selectReasoningEffort', paneId, effort),
+    refreshPlanUsage: (paneId) => ipcRenderer.invoke('chat:refreshPlanUsage', paneId),
     loginWithChatGPT: () => ipcRenderer.invoke('chat:login'),
     listThreads: () => ipcRenderer.invoke('chat:listThreads'),
     newPeer: () => ipcRenderer.invoke('chat:newPeer'),
@@ -57,6 +61,9 @@ const api: ClosedaiApi = {
     continueInNewPeer: (source, modelId) => ipcRenderer.invoke('chat:continueInNewPeer', source, modelId),
     openThread: (paneId, threadId) => ipcRenderer.invoke('chat:openThread', paneId, threadId),
     archiveThread: (threadId: string) => ipcRenderer.invoke('chat:archiveThread', threadId),
+    chooseProject: () => ipcRenderer.invoke('chat:chooseProject'),
+    selectProject: (projectPath) => ipcRenderer.invoke('chat:selectProject', projectPath),
+    clearProject: () => ipcRenderer.invoke('chat:clearProject'),
     onEvent: (listener) => subscribe<ChatWorkspaceEvent>('chat:event', listener)
   },
   tools: {

@@ -1,0 +1,271 @@
+/* ---------------------------------------------------------------------------
+   Activity step list: what opens under a tool-activity headline.
+
+   No frame at this level. Steps are flat single lines, indented under the headline,
+   each with an icon for the kind of step, a verb, the literal command or path, and
+   timing on the right. Expanded step details keep the same unboxed text treatment.
+   Running steps use a quiet monochrome ring; failures retain their red accent.
+--------------------------------------------------------------------------- */
+
+.activity-steps {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: var(--chat-fs-process, 12px);
+  line-height: 1.4;
+  color: var(--transcript-activity, #9b9ba1);
+}
+
+.activity-steps-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 24px;
+  padding: 2px 6px 2px 6px;
+}
+
+.activity-steps-alert {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  margin: 0;
+  color: var(--destructive, #d28b8b);
+  font-weight: 500;
+}
+
+.activity-steps-alert > svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.activity-steps-alert > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-steps-summary {
+  flex: none;
+  margin-left: auto;
+  color: var(--transcript-activity, #9b9ba1);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-steps-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity-step { min-width: 0; }
+
+.activity-step-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 26px;
+  margin: 0;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 4px;
+  appearance: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+  transition: background 110ms ease, color 110ms ease;
+}
+
+.activity-step-row:not(:disabled) { cursor: pointer; }
+.activity-step-row:not(:disabled):hover { background: rgb(255 255 255 / 4%); }
+.activity-step-row:focus-visible {
+  outline: 1px solid var(--ring, rgb(255 255 255 / 35%));
+  outline-offset: -1px;
+}
+
+.activity-step-icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  stroke-width: 1.75;
+  color: var(--transcript-activity, #9b9ba1);
+}
+
+.activity-step-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--transcript-activity, #9b9ba1);
+}
+
+.activity-step-verb { font-weight: 500; }
+
+/* A line that opens something is the brighter one, as in a file list where the
+   entries with contents stand forward and the rest sit back. */
+.activity-step[data-expandable] .activity-step-text,
+.activity-step[data-expandable] .activity-step-icon,
+.activity-step-row:not(:disabled):hover .activity-step-text { color: var(--transcript-activity-hover, #d4d4d8); }
+
+.activity-step[data-phase='running'] .activity-step-icon {
+  color: var(--transcript-activity-hover, #d4d4d8);
+}
+
+.activity-step-spinner {
+  stroke-width: 2;
+  animation: activity-step-rotate 900ms linear infinite;
+  transform-origin: center;
+}
+
+@keyframes activity-step-rotate {
+  to { transform: rotate(360deg); }
+}
+.activity-step[data-phase='running'] .activity-step-text { color: var(--transcript-activity-hover, #d4d4d8); }
+
+.activity-step[data-phase='failed'] .activity-step-icon,
+.activity-step[data-phase='failed'] .activity-step-text,
+.activity-step[data-phase='failed'] .activity-step-meta { color: var(--destructive, #d28b8b); }
+
+.activity-step-meta {
+  flex: none;
+  color: var(--transcript-activity, #9b9ba1);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.activity-step-chevron {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  color: var(--transcript-activity, #9b9ba1);
+  transition: transform 150ms ease;
+}
+
+.activity-step-chevron.is-open { transform: rotate(90deg); }
+
+/* A step's invocation and output, opened under its line. Laid out like a terminal
+   transcript while keeping the activity reel's text-only treatment. */
+.activity-step-body {
+  margin: 3px 6px 10px 29px;
+  min-width: 0;
+}
+
+.activity-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+  font-family: var(--font-mono);
+  font-size: var(--chat-fs-code, 12px);
+  line-height: 1.55;
+  color: var(--code-text, #d1d1d2);
+}
+
+.activity-card-heading {
+  padding: 8px 14px 0;
+  color: var(--code-muted, #8a8a8f);
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.activity-card-invocation {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  width: 100%;
+  margin: 0;
+  padding: 6px 14px 10px;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  color: var(--code-text, #d1d1d2);
+  font: inherit;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.activity-card-invocation[data-full] { -webkit-line-clamp: unset; }
+.activity-card-invocation:focus-visible {
+  outline: 1px solid var(--ring, rgb(255 255 255 / 35%));
+  outline-offset: -2px;
+}
+
+.activity-card-prompt { color: var(--code-muted, #8a8a8f); }
+
+.activity-card-output {
+  max-height: 280px;
+  margin: 0;
+  padding: 10px 14px;
+  overflow: auto;
+  color: var(--code-text, #d1d1d2);
+  font: inherit;
+  white-space: pre;
+}
+
+.activity-card-output::-webkit-scrollbar { width: 6px; height: 6px; }
+.activity-card-output::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 15%); border-radius: 3px; }
+.activity-card-output::-webkit-scrollbar-thumb:hover { background: rgb(255 255 255 / 25%); }
+
+.activity-card[data-tone='error'] .activity-card-output { color: #e6a2a2; }
+
+.activity-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  padding: 6px 14px 8px;
+  color: var(--code-muted, #8a8a8f);
+  font-family: inherit;
+  font-size: 11.5px;
+}
+
+.activity-card-mark {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  stroke-width: 2;
+}
+
+.activity-card[data-tone='ok'] .activity-card-footer { color: #8fb87c; }
+.activity-card[data-tone='error'] .activity-card-footer { color: var(--destructive, #d28b8b); }
+.activity-card[data-tone='live'] .activity-card-footer { color: #09b6a2; }
+
+.activity-card-diff { border-top: 0; }
+
+.activity-card-diff-path {
+  padding: 8px 14px 0;
+  color: var(--code-muted, #8a8a8f);
+}
+
+.activity-card-diff pre {
+  max-height: 280px;
+  margin: 0;
+  padding: 6px 14px 10px;
+  overflow: auto;
+  font: inherit;
+  white-space: pre;
+}
+
+.activity-card-diff span[data-line='add'] { color: #9ccb85; background: rgb(122 174 102 / 10%); }
+.activity-card-diff span[data-line='remove'] { color: #e6a2a2; background: rgb(210 139 139 / 10%); }
+.activity-card-diff span[data-line='hunk'] { color: #7fbfd6; }
+.activity-card-diff span[data-line='meta'] { color: var(--code-muted, #8a8a8f); }
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-step-spinner { animation: none; }
+  .activity-step-chevron { transition: none; }
+}

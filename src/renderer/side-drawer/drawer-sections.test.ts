@@ -4,6 +4,7 @@ import {
   buildDrawerSections,
   countLiveRows,
   groupByDirectory,
+  rowIsCurrent,
   rowIsLive,
   splitChildren,
   subtreeIsLive
@@ -25,10 +26,13 @@ function makeRow(
     linesRemoved: 0,
     running: false,
     status: 'chat',
-    completedUnviewed: false,
     children: [],
     ...overrides
   }
+}
+
+function pane(id: string, overrides: Partial<DrawerRowModel> = {}): DrawerRowModel {
+  return makeRow(id, { paneId: id, threadId: `thread-${id}`, status: 'done', ...overrides })
 }
 
 test('rowIsLive and subtreeIsLive identify active work', () => {
@@ -65,36 +69,69 @@ test('groupByDirectory groups by cwd and puts No folder last', () => {
   assert.equal(groups[2]?.label, 'No folder')
 })
 
-test('buildDrawerSections partitions rows into the 5 sections', () => {
-  const now = 100_000
-  const runningRow = makeRow('running-1', { running: true, status: 'running' })
-  const reviewRow = makeRow('review-1', { status: 'done' })
-  const recentRow = makeRow('recent-1', { status: 'chat' })
-  const completedRow = makeRow('completed-1', { status: 'done' })
-  const historyRow = makeRow('history-1', { status: 'chat' })
+test('Current contains only running work; idle and brand-new panes belong in History', () => {
+  const fresh = pane('pane-new', { threadId: null, status: 'chat' })
+  const running = pane('pane-run', { running: true, status: 'running' })
+  const idle = pane('pane-idle')
+  const record = makeRow('thread-old')
 
-  const reviewQueue = { 'review-1': now - 5000 }
-  const recentlyCompleted = { 'recent-1': now - 1000 }
+  const sections = buildDrawerSections([fresh, running, idle, record], {})
+  assert.deepEqual(sections.current.map((row) => row.id), ['pane-run'])
+  assert.deepEqual(sections.reviewQueue, [])
+  assert.deepEqual(sections.history.map((row) => row.id), ['pane-new', 'pane-idle', 'thread-old'])
+})
 
-  const sections = buildDrawerSections(
-    [runningRow, reviewRow, recentRow, completedRow, historyRow],
-    reviewQueue,
-    recentlyCompleted,
-    now
-  )
+test('completed panes move to the recently completed section, newest completion first', () => {
+  const rows = [pane('pane-a'), pane('pane-b'), pane('pane-c')]
+  const queue = {
+    'pane-a': { queuedAt: 100, viewedAt: null },
+    'pane-c': { queuedAt: 300, viewedAt: 350 }
+  }
 
-  assert.equal(sections.running.length, 1)
-  assert.equal(sections.running[0]?.id, 'running-1')
+  const sections = buildDrawerSections(rows, queue)
+  assert.deepEqual(sections.current, [])
+  assert.deepEqual(sections.reviewQueue.map((row) => row.id), ['pane-c', 'pane-a'])
+  assert.deepEqual(sections.history.map((row) => row.id), ['pane-b'])
+})
 
-  assert.equal(sections.reviewQueue.length, 1)
-  assert.equal(sections.reviewQueue[0]?.id, 'review-1')
+test('opening a completed chat leaves it there; only running again returns it to Current', () => {
+  const queue = { 'pane-a': { queuedAt: 100, viewedAt: 150 } }
 
-  assert.equal(sections.recentlyCompleted.length, 1)
-  assert.equal(sections.recentlyCompleted[0]?.id, 'recent-1')
+  const read = buildDrawerSections([pane('pane-a')], queue)
+  assert.deepEqual(read.current, [])
+  assert.deepEqual(read.reviewQueue.map((row) => row.id), ['pane-a'])
 
-  assert.equal(sections.completed.length, 1)
-  assert.equal(sections.completed[0]?.id, 'completed-1')
+  const messaged = buildDrawerSections([pane('pane-a', { running: true, status: 'running' })], queue)
+  assert.deepEqual(messaged.current.map((row) => row.id), ['pane-a'])
+  assert.deepEqual(messaged.reviewQueue, [])
+})
 
-  assert.equal(sections.history.length, 1)
-  assert.equal(sections.history[0]?.id, 'history-1')
+test('a queued pane that is running again is shown as current, not awaiting review', () => {
+  const rows = [pane('pane-a', { running: true, status: 'running' })]
+  const sections = buildDrawerSections(rows, { 'pane-a': { queuedAt: 1, viewedAt: null } })
+  assert.deepEqual(sections.current.map((row) => row.id), ['pane-a'])
+  assert.deepEqual(sections.reviewQueue, [])
+})
+
+test('history rows never enter the review queue even if an entry matches their id', () => {
+  const sections = buildDrawerSections([makeRow('thread-1')], { 'thread-1': { queuedAt: 1, viewedAt: null } })
+  assert.deepEqual(sections.history.map((row) => row.id), ['thread-1'])
+  assert.deepEqual(sections.reviewQueue, [])
+})
+
+test('only the selected pane is current, even while no chat has a thread yet', () => {
+  const selected = makeRow('pane-1', { paneId: 'pane-1', threadId: null })
+  const otherFreshPane = makeRow('pane-2', { paneId: 'pane-2', threadId: null })
+
+  assert.equal(rowIsCurrent(selected, 'pane-1', null), true)
+  assert.equal(rowIsCurrent(otherFreshPane, 'pane-1', null), false)
+  // The old thread comparison matched null against null and lit up every idle pane at once.
+  assert.equal(rowIsCurrent(makeRow('pane-3', { paneId: 'pane-3', threadId: 'thread-9' }), 'pane-1', 'thread-9'), false)
+})
+
+test('a history record is current when its thread is the open one', () => {
+  const record = makeRow('thread-7', { threadId: 'thread-7' })
+  assert.equal(rowIsCurrent(record, 'pane-1', 'thread-7'), true)
+  assert.equal(rowIsCurrent(record, 'pane-1', 'thread-8'), false)
+  assert.equal(rowIsCurrent(makeRow('t', { threadId: null }), 'pane-1', null), false)
 })

@@ -70,3 +70,20 @@ export function anchorScrollLayout({
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value))
 }
+
+
+/** Prepending history never counts as a newly sent prompt. End mode never pins a prompt. */
+export function resizeScrollAction(input: {
+  prepending: boolean
+  newAnchor: boolean
+  anchorMode: boolean
+  anchored: boolean
+  following: boolean
+  autoScroll: boolean
+}): 'preserve' | 'anchor' | 'end' | 'none' {
+  if (input.prepending) return 'preserve'
+  if (input.newAnchor && input.anchorMode) return 'anchor'
+  if (input.newAnchor && input.autoScroll) return 'end'
+  if (input.anchored && input.anchorMode) return 'anchor'
+  return input.following ? 'end' : 'none'
+}

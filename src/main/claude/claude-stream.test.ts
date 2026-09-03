@@ -110,7 +110,7 @@ test('system notices: compaction, refusal fallback, denied tools, finished tasks
   assert.deepEqual(t.handle({ type: 'system', subtype: 'compact_boundary', compact_metadata: { trigger: 'auto', pre_tokens: 1 } }).ops, [{ type: 'notice', text: 'Conversation context compacted', tone: 'info' }])
   assert.match((t.handle({ type: 'system', subtype: 'model_refusal_fallback', original_model: 'claude-fable-5-1', fallback_model: 'claude-opus-5' }).ops[0] as { text: string }).text, /declined/)
   assert.equal((t.handle({ type: 'system', subtype: 'permission_denied', tool_name: 'Bash', message: 'no' }).ops[0] as { tone: string }).tone, 'error')
-  assert.match((t.handle({ type: 'system', subtype: 'task_notification', status: 'completed', summary: 'done' }).ops[0] as { text: string }).text, /Background task completed: done/)
+  assert.equal((t.handle({ type: 'system', subtype: 'task_notification', task_id: 'task', status: 'completed', summary: 'done' }).ops[0] as Extract<TranscriptOp, { type: 'item' }>).item.type, 'tool')
   assert.deepEqual(t.handle({ type: 'system', subtype: 'status', status: 'requesting' }).ops, [])
   assert.deepEqual(t.handle({ type: 'system', subtype: 'thinking_tokens', estimated_tokens: 5 }).ops, [])
 })

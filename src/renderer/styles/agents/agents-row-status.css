@@ -2,8 +2,8 @@
 
 .agents-status-dot {
   flex: 0 0 auto;
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   margin-top: 4px;
   border-radius: 50%;
   background: #6a6a6e;
@@ -11,10 +11,6 @@
 
 .agents-status-dot.is-queued {
   background: #c9a640;
-}
-
-.agents-status-dot.is-done {
-  background: #63b06a;
 }
 
 .agents-status-dot.is-failed {
@@ -32,8 +28,8 @@
 .agents-status-spinner {
   position: relative;
   flex: 0 0 auto;
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
   margin-top: 2px;
   border-radius: 50%;
   background: conic-gradient(

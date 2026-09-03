@@ -95,10 +95,11 @@ function access(workspace = new FakeWorkspace(), tabs = browser()) {
 test('state projects the workspace and a chat pane compactly', () => {
   const { host } = access()
   const state = host.state(['workspace', 'chat', 'browser', 'downloads', 'window'], undefined, 'pane-1')
-  const workspace = state.workspace as { panes: unknown[]; callerPaneId: string; selectedPaneId: string }
+  const workspace = state.workspace as { panes: unknown[]; callerPaneId: string; selectedPaneId: string; omittedPanes?: number }
   assert.equal(workspace.selectedPaneId, 'pane-1')
   assert.equal(workspace.callerPaneId, 'pane-1')
   assert.equal(workspace.panes.length, 2)
+  assert.equal(workspace.omittedPanes, undefined)
   const chat = state.chat as Record<string, unknown>
   assert.equal(chat.running, false)
   assert.equal(chat.lastUser, 'hello there')
@@ -109,6 +110,27 @@ test('state projects the workspace and a chat pane compactly', () => {
   assert.equal((state.browser as { tabCount: number }).tabCount, 1)
   assert.deepEqual(host.state(['chat'], 'missing', null).chat, { paneId: 'missing', error: 'Unknown pane' })
   assert.equal(JSON.stringify(state).length < 1_500, true)
+})
+
+test('workspace ranks the selected, calling, and running panes above idle ones', () => {
+  const workspace = new FakeWorkspace()
+  for (let index = 0; index < 15; index += 1) workspace.panes.set(`idle-${index}`, chatSnapshot({ threadId: null }))
+  workspace.selected = 'pane-1'
+  workspace.panes.set('pane-2', chatSnapshot({ activeTurnId: 'turn-live' }))
+  const { host } = access(workspace)
+  const projected = host.state(['workspace'], undefined, 'pane-2').workspace as {
+    paneCount: number
+    omittedPanes: number
+    panes: Array<{ paneId: string }>
+  }
+  assert.equal(projected.paneCount, 17)
+  assert.equal(projected.panes.length, 12)
+  assert.equal(projected.omittedPanes, 5)
+  assert.deepEqual(projected.panes.slice(0, 2).map((pane) => pane.paneId), ['pane-1', 'pane-2'])
+  // Real conversations outrank empty placeholders even when a relaunch gave them equal timestamps.
+  workspace.panes.set('idle-14', chatSnapshot({ threadId: 'thread-old' }))
+  const reranked = host.state(['workspace'], undefined, 'pane-2').workspace as { panes: Array<{ paneId: string }> }
+  assert.equal(reranked.panes[2]!.paneId, 'idle-14')
 })
 
 test('send_message awaits the turn and reports completion or timeout without failing', async () => {

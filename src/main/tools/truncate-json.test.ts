@@ -9,11 +9,18 @@ test('short text passes through untouched', () => {
   assert.equal(truncateJsonText('{"a":1}', 100, ADVICE), null)
 })
 
-test('plain text is cut with a footer that states the dropped size', () => {
+test('plain text and its truncation footer both fit inside the budget', () => {
   const out = truncateText('x'.repeat(1_500), 1_000, ADVICE)
   assert.equal(out.truncated, true)
-  assert.ok(out.text.startsWith('x'.repeat(1_000)))
-  assert.match(out.text, /\[ClosedAI truncated 500 characters\. Narrow it\.\]/)
+  assert.ok(out.text.startsWith('x'.repeat(900)))
+  assert.equal(out.text.length, 1_000)
+  assert.match(out.text, /ClosedAI truncated this result \(1500 characters\).*Narrow it/)
+})
+
+test('tiny JSON budgets still return parseable bounded data', () => {
+  const out = truncateText(JSON.stringify({ data: 'x'.repeat(10_000) }), 32, ADVICE)
+  assert.ok(out.text.length <= 32)
+  assert.doesNotThrow(() => JSON.parse(out.text))
 })
 
 test('a JSON object shrinks structurally and stays parseable', () => {

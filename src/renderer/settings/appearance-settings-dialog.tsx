@@ -11,6 +11,9 @@ import {
   CHAT_FONT_SIZE_DEFAULT,
   CHAT_FONT_SIZE_MAX,
   CHAT_FONT_SIZE_MIN,
+  COMPOSER_FONT_SIZE_DEFAULT,
+  COMPOSER_FONT_SIZE_MAX,
+  COMPOSER_FONT_SIZE_MIN,
   DEFAULT_APPEARANCE_SETTINGS,
   type AppearanceSettings
 } from './appearance-settings.js'
@@ -30,11 +33,14 @@ export type AppearanceSettingsDialogProps = AppearanceSettings & {
 export function AppearanceSettingsDialog({
   open,
   chatFontSize,
+  composerFontSize,
   chatZoom,
   onOpenChange,
   onChange
 }: AppearanceSettingsDialogProps): JSX.Element {
-  const isDefault = chatFontSize === CHAT_FONT_SIZE_DEFAULT && chatZoom === CHAT_ZOOM_DEFAULT
+  const isDefault = chatFontSize === CHAT_FONT_SIZE_DEFAULT
+    && composerFontSize === COMPOSER_FONT_SIZE_DEFAULT
+    && chatZoom === CHAT_ZOOM_DEFAULT
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -53,13 +59,24 @@ export function AppearanceSettingsDialog({
           <AppearanceControl
             id="chat-font-size"
             label="Chat text"
-            hint="Messages and the text you type"
+            hint="Messages in the transcript"
             value={chatFontSize}
             suffix="px"
             min={CHAT_FONT_SIZE_MIN}
             max={CHAT_FONT_SIZE_MAX}
             step={1}
             onChange={(value) => onChange({ chatFontSize: value })}
+          />
+          <AppearanceControl
+            id="composer-font-size"
+            label="Composer text"
+            hint="The text you type"
+            value={composerFontSize}
+            suffix="px"
+            min={COMPOSER_FONT_SIZE_MIN}
+            max={COMPOSER_FONT_SIZE_MAX}
+            step={1}
+            onChange={(value) => onChange({ composerFontSize: value })}
           />
           <AppearanceControl
             id="chat-zoom"

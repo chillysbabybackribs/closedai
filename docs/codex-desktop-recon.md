@@ -8,6 +8,10 @@ minified, so anything marked "inferred" was read from strings and structure, not
 License note: the app is proprietary. This document is for understanding architecture and
 interoperating with the public `codex app-server` protocol. Do not copy bundled code or assets.
 
+Scope note (2026-09-03): these are dated observations about the installed OpenAI desktop app,
+not ClosedAI's feature list or a fresh version check. ClosedAI's current behavior and model
+integration are documented in [Application](application.md) and [Model context](model-context.md).
+
 ## Identity
 
 | Item | Value |

@@ -13,6 +13,8 @@ export type ChatNotificationTarget = {
   addNotice: (text: string, tone: 'info' | 'error', turnId?: string | null) => void
   refreshSession: () => void
   noteContextUsage: (usage: ContextUsage) => void
+  /** The account's plan windows moved; the payload is the app-server's rate-limit snapshot. */
+  notePlanUsage: (snapshot: unknown) => void
   /** The app-server finished compacting the thread's history. */
   contextCompacted: () => void
   emit: (event: ChatEvent) => void
@@ -60,6 +62,9 @@ export function routeChatNotification(
     case 'item/completed':
       target.consumeItem(params?.item, stringOf(params?.turnId), true)
       if (recordOf(params?.item)?.type === 'contextCompaction') target.contextCompacted()
+      break
+    case 'account/rateLimits/updated':
+      target.notePlanUsage(params?.rateLimits)
       break
     case 'thread/compacted':
       target.contextCompacted()

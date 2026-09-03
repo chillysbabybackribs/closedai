@@ -37,8 +37,9 @@ const MessageScroller = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement
 )
 
 const MessageScrollerViewport = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  function MessageScrollerViewport({ className, onKeyDown, onScroll, onTouchMove, onWheel, ...props }, ref) {
+  function MessageScrollerViewport({ className, onKeyDown, onScroll, onTouchMove, onWheel, onPointerDown, ...props }, ref) {
     const { setViewport, state, syncFromViewport, userScrollIntent } = useScrollerContext()
+    const viewportRef = useMemo(() => mergeRefs(ref, setViewport), [ref, setViewport])
     const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
       const direction = userScrollDirection(event)
       if (direction) userScrollIntent(direction)
@@ -46,7 +47,7 @@ const MessageScrollerViewport = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDi
     }
     return (
       <div
-        ref={mergeRefs(ref, setViewport)}
+        ref={viewportRef}
         role="region"
         aria-label="Messages"
         tabIndex={0}
@@ -55,6 +56,14 @@ const MessageScrollerViewport = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDi
         className={cn('size-full min-h-0 min-w-0 overflow-y-auto overscroll-contain data-pending-scroll:invisible', className)}
         onKeyDown={handleKeyDown}
         onScroll={(event) => { syncFromViewport(); onScroll?.(event) }}
+        onPointerDown={(event) => {
+          const viewport = event.currentTarget
+          const rect = viewport.getBoundingClientRect()
+          // Native scrollbar drags do not emit wheel/touch/key events.
+          if (event.clientX >= rect.left + viewport.clientLeft + viewport.clientWidth ||
+              event.clientX < rect.left + viewport.clientLeft) userScrollIntent()
+          onPointerDown?.(event)
+        }}
         onTouchMove={(event) => { userScrollIntent(); onTouchMove?.(event) }}
         onWheel={(event) => {
           if (event.deltaY !== 0) userScrollIntent(event.deltaY < 0 ? 'start' : 'end')
@@ -69,9 +78,10 @@ const MessageScrollerViewport = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDi
 const MessageScrollerContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function MessageScrollerContent({ className, ...props }, ref) {
     const { setContent, setSpacer } = useScrollerContext()
+    const contentRef = useMemo(() => mergeRefs(ref, setContent), [ref, setContent])
     return (
       <div
-        ref={mergeRefs(ref, setContent)}
+        ref={contentRef}
         role="log"
         aria-relevant="additions"
         data-slot="message-scroller-content"
@@ -160,6 +170,9 @@ function useMessageScrollerScrollable(): ScrollEdges {
 }
 
 function userScrollDirection(event: KeyboardEvent): 'start' | 'end' | null {
+  const target = event.target
+  if (target instanceof HTMLElement && target !== event.currentTarget &&
+      target.closest('input, textarea, select, button, summary, [contenteditable="true"]')) return null
   if (event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'PageUp' ||
       (event.key === ' ' && event.shiftKey)) return 'start'
   if (event.key === 'ArrowDown' || event.key === 'End' || event.key === 'PageDown' ||

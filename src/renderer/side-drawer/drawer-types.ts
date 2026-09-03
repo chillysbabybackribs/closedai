@@ -20,15 +20,20 @@ export type DrawerRowModel = {
   provider?: ChatProvider
   peer?: ChatPeerSummary
   thread?: ChatThreadSummary
-  completedUnviewed: boolean
   children: DrawerRowModel[]
 }
 
+/**
+ * Three sections, each with a stable order. Rows move on turn boundaries and reviewed-completion
+ * expiry, never merely because selection changed.
+ */
 export type DrawerSections = {
-  running: DrawerRowModel[]
+  /** Running panes, plus parents needed to expose running descendants. */
+  current: DrawerRowModel[]
+  /** Panes whose turn has finished, newest completion first. They return to Current only when a
+   *  message is sent in them, so opening one to read it leaves it where it is. */
   reviewQueue: DrawerRowModel[]
-  recentlyCompleted: DrawerRowModel[]
-  completed: DrawerRowModel[]
+  /** Idle pane rows and thread records with no pane behind them. */
   history: DrawerRowModel[]
 }
 

@@ -23,7 +23,7 @@ export function DrawerHeader({
         aria-label="New Agent"
         data-ui="drawer.new-agent"
       >
-        <Plus size={14} aria-hidden="true" />
+        <Plus size={15} aria-hidden="true" />
         <span>New Agent</span>
       </button>
       <DrawerSearchInput chat={chat} rows={rows} />
@@ -78,7 +78,7 @@ function DrawerSearchInput({
   return (
     <div className="agents-search">
       <div className={`agents-search-field ${isOpen ? 'is-open' : ''}`}>
-        <Search size={12} aria-hidden="true" />
+        <Search size={13} aria-hidden="true" />
         <input
           ref={inputRef}
           type="text"
@@ -111,7 +111,7 @@ function DrawerSearchInput({
             aria-label="Clear search"
             data-ui="drawer.search-clear"
           >
-            <X size={11} />
+            <X size={12} />
           </button>
         ) : null}
       </div>

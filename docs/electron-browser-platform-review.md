@@ -8,6 +8,8 @@ marked **verify**.
 
 This is a dated design record, not a declaration that every recommendation is implemented.
 Section 4 compares the current checkout with the decisions and recommendations below.
+External version/support statements retain the review date. For the wider application and
+model integration, use [Application](application.md) and [Model context](model-context.md).
 
 ## 0. Owner decisions (2026-09-01) — these override the recommendations below
 
@@ -220,14 +222,14 @@ database that Chromium uses to store cookies stores the values in plaintext" —
   cross-origin iframes get their own processes in Electron is **verify** (compare
   `webFrameMain.processId` across frames in phase 4).
 
-## 4. Implementation status (2026-09-02)
+## 4. Implementation status (source review 2026-09-03)
 
 | Area | Status | Current checkout |
 |---|---|---|
 | Electron 44 scaffold | **Implemented** | `electron@^44` and Electron Vite are configured. There is not yet a packaging target or `.deb` pipeline. |
 | Sandbox owner decision (§0/§3.1) | **Implemented as accepted risk** | Linux appends `no-sandbox`; the launch scripts set `ELECTRON_DISABLE_SANDBOX=1`. The chrome window also has `sandbox: false`; tab preferences request `sandbox: true`, but the process-wide switch remains authoritative. |
 | Allow-all permissions (§0/§3.2) | **Implemented as accepted risk** | Permission request/check/device/display handlers allow access, and device-selection events choose the first candidate. There is no per-origin permission store or prompt. |
-| Popup adoption (§3.3) | **Implemented** | Ordinary page windows become tabs, background disposition stays unselected, POST data is preserved, and OAuth/utility-window cases retain a native opener bridge. |
+| Popup adoption (§3.3) | **Implemented** | Ordinary page windows become tabs, background disposition stays unselected, POST data is preserved, and OAuth/utility-window cases retain a native opener bridge. Native popup WebContents are also registered as app-owned CDP roots outside the tab strip. |
 | Session restoration (§3.4) | **Partial** | Tab order, active tab, URL, and title persist, capped at 24 tabs. Back/forward entries are not serialized and `navigationHistory.restore` is not called. |
 | Tab preferences and rendering (§3.5) | **Partial** | Context isolation, no Node integration, tab sandbox preference, background throttling, autoplay policy, WebSQL disablement, safe dialogs, and background-view detachment are present. Spellchecker language/configuration work is absent. Zoom is an Alt+wheel feature rather than the Ctrl shortcuts described above. |
 | Browser event set (§3.6) | **Partial** | Core navigation, title, favicon, failure, crash, unresponsive, unload, and context-menu events are handled. Recovery on `responsive`, HTTP basic auth, HTML fullscreen, audio state/muting, link preview, theme color, and find-in-page are not implemented. Certificate failures use the navigation-error surface rather than a dedicated `certificate-error` handler. |
@@ -236,3 +238,9 @@ database that Chromium uses to store cookies stores the values in plaintext" —
 | Window and theme (§3.9) | **Partial** | Frameless chrome, dark native theme, and removal of the application menu are implemented. `windowStatePersistence` is not configured. |
 | GPU/Linux startup (§3.10) | **Partial** | The launcher scrubs GPU-offload environment variables, GTK portal switches remain, and accelerated video decode is disabled unless overridden. GPU feature-status logging and `SpareRendererForSitePerProcess` are absent; the video-decode workaround still needs the documented Electron 44 retest. |
 | Verification (§3.11) | **Open** | Popup behavior has automated coverage. PDF rendering, site isolation, basic auth, fullscreen, persisted back/forward stacks, and the packaging/sandbox checks remain unverified or unimplemented. |
+
+Recent browser additions outside the original matrix: the omnibox now searches/removes history
+matches; CDP maintains a discovered target/session inventory with flattened auto-attach;
+semantic input foregrounds regular tabs and waits for frames after switching. Capture and input
+share frame-settling code. See [CDP](cdp-tool-foundation.md) for current raw-command and wrapper
+boundaries; this source review does not close the live verification items above.

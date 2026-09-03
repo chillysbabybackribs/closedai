@@ -1,5 +1,7 @@
+import { ClaudeBackgroundTasks } from './claude-background-tasks.js'
 import type { ChatTranscriptItem } from '../../shared/chat.js'
 import type { ContextUsage } from '../chat-context/context-compaction.js'
+import { claudeRateLimitSignal, type ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
 import {
   recordOf,
   stringOf,
@@ -34,6 +36,8 @@ export type ClaudeTranslation = {
   model?: string
   turnEnd?: TurnEnd
   contextUsage?: ContextUsage
+  /** The one plan window a mid-turn rate-limit event moved. */
+  rateLimit?: ClaudeRateLimitSignal
 }
 
 export type ClaudeTranslatorOptions = {
@@ -41,6 +45,7 @@ export type ClaudeTranslatorOptions = {
   cwd: string
   displayScreenshot: DisplayScreenshot
   /** Replaying a stored session: user text becomes transcript items and opens a new turn. */
+  backgroundTasks?: ClaudeBackgroundTasks
   replay?: boolean
 }
 
@@ -49,6 +54,7 @@ type StreamBlock = { id: string; kind: 'text' | 'thinking' | 'tool'; text: strin
 const ABORT_REASONS = new Set(['aborted_streaming', 'aborted_tools'])
 
 export class ClaudeTurnTranslator {
+  private readonly backgroundTasks: ClaudeBackgroundTasks
   private turnId: string | null
   private readonly blocks = new Map<number, StreamBlock>()
   private readonly tools = new Map<string, ChatTranscriptItem>()
@@ -62,6 +68,7 @@ export class ClaudeTurnTranslator {
   private lastPromptTokens: number | null = null
 
   constructor(private readonly options: ClaudeTranslatorOptions) {
+    this.backgroundTasks = options.backgroundTasks ?? new ClaudeBackgroundTasks()
     this.turnId = options.turnId
   }
 
@@ -79,7 +86,8 @@ export class ClaudeTurnTranslator {
       case 'rate_limit_event': {
         const info = recordOf(message.rate_limit_info)
         if (info.status === 'rejected') this.pendingError = `Claude usage limit reached.${resetNote(info.resetsAt)}`
-        return { ops: [] }
+        const rateLimit = claudeRateLimitSignal(info)
+        return rateLimit ? { ops: [], rateLimit } : { ops: [] }
       }
       case 'auth_status':
         return typeof message.error === 'string' && message.error
@@ -107,8 +115,12 @@ export class ClaudeTurnTranslator {
         return { ops: [notice(`${stringOf(message.original_model)} declined this request; continued on ${stringOf(message.fallback_model)}`, 'info')] }
       case 'permission_denied':
         return { ops: [notice(`${stringOf(message.tool_name)} was not allowed: ${stringOf(message.message)}`, 'error')] }
-      case 'task_notification':
-        return { ops: [notice(`Background task ${stringOf(message.status) || 'finished'}: ${stringOf(message.summary)}`, 'info')] }
+      case 'task_started':
+      case 'task_progress':
+      case 'task_notification': {
+        const item = this.backgroundTasks.handle(message, this.turnId, this.options.replay)
+        return { ops: item ? [{ type: 'item', item }] : [] }
+      }
       default:
         return { ops: [] }
     }

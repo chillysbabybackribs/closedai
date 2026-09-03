@@ -17,6 +17,7 @@ import {
   chatZoomCommandForKey,
   type ChatZoomCommand
 } from './chat-zoom.js'
+import { appShortcutForKey } from './app-shortcuts.js'
 import { TitlebarMenu } from './titlebar-menu.js'
 import { WorkspaceSplit } from './workspace-split.js'
 import { AppearanceSettingsDialog } from './settings/appearance-settings-dialog.js'
@@ -33,6 +34,9 @@ function App(): JSX.Element {
   const drawer = useDrawerController(chat)
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // Owned here because the title bar menu and Ctrl+H reach the panel that lives in the chat pane.
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const toggleHistory = useCallback(() => setHistoryOpen((open) => !open), [])
   const updateAppearance = useCallback((patch: Partial<AppearanceSettings>): void => {
     setAppearance((current) => {
       const next = normalizeAppearanceSettings({ ...current, ...patch })
@@ -56,14 +60,18 @@ function App(): JSX.Element {
         changeChatZoom(command)
         return
       }
-      if (!event.altKey && (event.ctrlKey || event.metaKey) && event.key === ',') {
+      const shortcut = appShortcutForKey(event)
+      if (shortcut === 'settings') {
         event.preventDefault()
         setSettingsOpen(true)
+      } else if (shortcut === 'history') {
+        event.preventDefault()
+        toggleHistory()
       }
     }
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [changeChatZoom])
+  }, [changeChatZoom, toggleHistory])
 
   return (
     <div className="shell" data-ui-surface="shell">
@@ -71,15 +79,22 @@ function App(): JSX.Element {
         <DrawerToggle controller={drawer} />
         <TitlebarMenu
           chatZoom={appearance.chatZoom}
+          historyOpen={historyOpen}
           onChatZoomChange={changeChatZoom}
           onOpenSettings={() => setSettingsOpen(true)}
+          onToggleHistory={toggleHistory}
         />
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
       <div className="workspace" data-mode="chat" data-agents={drawer.isCollapsed ? 'closed' : 'open'}>
         <SideDrawer controller={drawer} chat={chat} />
-        <DesktopWorkspace chat={chat} appearance={appearance} />
+        <DesktopWorkspace
+          chat={chat}
+          appearance={appearance}
+          historyOpen={historyOpen}
+          onHistoryOpenChange={setHistoryOpen}
+        />
       </div>
       <AppearanceSettingsDialog
         open={settingsOpen}
@@ -93,15 +108,28 @@ function App(): JSX.Element {
 
 const DesktopWorkspace = React.memo(function DesktopWorkspace({
   chat,
-  appearance
+  appearance,
+  historyOpen,
+  onHistoryOpenChange
 }: {
   chat: ChatController
   appearance: AppearanceSettings
+  historyOpen: boolean
+  onHistoryOpenChange: (open: boolean) => void
 }): JSX.Element {
   const browser = useBrowserController('browser')
   return (
     <WorkspaceSplit
-      chat={<ChatPane controller={chat} zoom={appearance.chatZoom} fontSize={appearance.chatFontSize} />}
+      chat={
+        <ChatPane
+          controller={chat}
+          zoom={appearance.chatZoom}
+          fontSize={appearance.chatFontSize}
+          composerFontSize={appearance.composerFontSize}
+          historyOpen={historyOpen}
+          onHistoryOpenChange={onHistoryOpenChange}
+        />
+      }
       workspace={
         <div className="workspace-right" data-mode="browser" data-with-browser="yes" data-refs="no">
           <div className="workspace-surface workspace-surface-browser">

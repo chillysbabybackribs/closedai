@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events'
 import test from 'node:test'
 import type { WebContents } from 'electron'
 import type { BrowserTabInfo } from '../../shared/types.ts'
-import { BrowserCdpAccess, type CdpBrowserSource } from './browser-cdp-access.ts'
+import { BrowserCdpAccess, type CdpBrowserSource, type CdpBrowserTarget } from './browser-cdp-access.ts'
 
 class FakeDebugger extends EventEmitter {
   attached = false
@@ -22,12 +22,15 @@ class FakeContents extends EventEmitter {
   destroyed = false
   constructor(readonly id: number) { super() }
   isDestroyed(): boolean { return this.destroyed }
+  async executeJavaScript(): Promise<unknown> { return undefined }
 }
 
 const tabs: BrowserTabInfo[] = [
   { id: 'tab-1', pos: 1, title: 'One', url: 'https://one.test', favicon: null, isLoading: false, active: true },
   { id: 'tab-2', pos: 2, title: 'Two', url: 'https://two.test', favicon: null, isLoading: false, active: false }
 ]
+
+const cdpTabs: CdpBrowserTarget[] = tabs.map((tab) => ({ ...tab, kind: 'tab' as const }))
 
 test('CDP access resolves ClosedAI tab ids and reports target metadata', async () => {
   const contents = new Map([
@@ -36,22 +39,117 @@ test('CDP access resolves ClosedAI tab ids and reports target metadata', async (
   ])
   const browser: CdpBrowserSource = {
     tabList: () => tabs,
-    contentsOf: (tabId) => contents.get(tabId ?? 'tab-1') as unknown as WebContents
+    contentsOf: (tabId) => contents.get(tabId ?? 'tab-1') as unknown as WebContents,
+    focusTabForInput: () => ({ activated: false })
   }
   const access = new BrowserCdpAccess(() => browser)
 
   const capabilities = await access.capabilities() as Record<string, unknown>
-  assert.deepEqual(capabilities.tab, tabs[0])
-  assert.deepEqual(contents.get('tab-1')?.debugger.commands, ['Browser.getVersion', 'Schema.getDomains'])
+  assert.deepEqual(capabilities.tab, cdpTabs[0])
+  assert.deepEqual(contents.get('tab-1')?.debugger.commands, [
+    'Target.setDiscoverTargets', 'Target.setAutoAttach', 'Browser.getVersion', 'Schema.getDomains'
+  ])
 
   const targets = await access.targets('tab-2') as Record<string, unknown>
-  assert.deepEqual(targets.tab, tabs[1])
-  assert.deepEqual(contents.get('tab-2')?.debugger.commands, ['Target.getTargetInfo', 'Target.getTargets'])
+  assert.deepEqual(targets.tab, cdpTabs[1])
+  assert.deepEqual(targets.inventory, [])
+  assert.deepEqual(targets.roots, cdpTabs)
+  assert.deepEqual(contents.get('tab-2')?.debugger.commands, [
+    'Target.setDiscoverTargets', 'Target.setAutoAttach', 'Target.getTargetInfo', 'Target.getTargets'
+  ])
   access.dispose()
 })
 
 test('CDP access rejects unknown tab ids before attaching', async () => {
-  const browser: CdpBrowserSource = { tabList: () => tabs, contentsOf: () => null }
+  const browser: CdpBrowserSource = {
+    tabList: () => tabs,
+    contentsOf: () => null,
+    focusTabForInput: () => ({ activated: false })
+  }
   const access = new BrowserCdpAccess(() => browser)
   await assert.rejects(() => access.command('missing', 'DOM.getDocument', {}), /does not exist/)
+})
+
+test('CDP access resolves a registered native popup without placing it in the tab strip', async () => {
+  const popup: CdpBrowserTarget = {
+    id: 'popup-9', pos: 0, title: 'OAuth', url: 'https://login.test', favicon: null,
+    isLoading: false, active: false, kind: 'popup', openerTabId: 'tab-1'
+  }
+  const contents = new Map([
+    ['tab-1', new FakeContents(1)],
+    ['popup-9', new FakeContents(9)]
+  ])
+  const browser: CdpBrowserSource = {
+    tabList: () => tabs,
+    cdpTargetList: () => [...cdpTabs, popup],
+    contentsOf: (tabId) => contents.get(tabId ?? 'tab-1') as unknown as WebContents,
+    focusTabForInput: () => ({ activated: false })
+  }
+  const access = new BrowserCdpAccess(() => browser)
+  const result = await access.command('popup-9', 'Runtime.evaluate', { expression: 'location.href' }) as Record<string, unknown>
+  assert.deepEqual(result.tab, popup)
+  assert.deepEqual(contents.get('popup-9')?.debugger.commands, [
+    'Target.setDiscoverTargets', 'Target.setAutoAttach', 'Runtime.evaluate'
+  ])
+  access.dispose()
+})
+
+test('target inventory exposes registered roots without inserting popups into the tab strip', async () => {
+  const popup: CdpBrowserTarget = {
+    id: 'popup-10', pos: 0, title: 'Sign in', url: 'https://signin.test', favicon: null,
+    isLoading: true, active: false, kind: 'popup', openerTabId: 'tab-2'
+  }
+  const contents = new Map([['tab-1', new FakeContents(1)]])
+  const browser: CdpBrowserSource = {
+    tabList: () => tabs,
+    cdpTargetList: () => [...cdpTabs, popup],
+    contentsOf: (tabId) => contents.get(tabId ?? 'tab-1') as unknown as WebContents,
+    focusTabForInput: () => ({ activated: false })
+  }
+  const access = new BrowserCdpAccess(() => browser)
+  const result = await access.targets() as Record<string, unknown>
+  assert.deepEqual(result.roots, [...cdpTabs, popup])
+  assert.equal((result.roots as CdpBrowserTarget[]).filter((target) => target.kind === 'popup').length, 1)
+  assert.equal(tabs.some((tab) => tab.id === popup.id), false)
+  access.dispose()
+})
+
+test('real input foregrounds a background tab and reports the switch', async () => {
+  const contents = new Map([
+    ['tab-1', new FakeContents(1)],
+    ['tab-2', new FakeContents(2)]
+  ])
+  const focused: string[] = []
+  const browser: CdpBrowserSource = {
+    tabList: () => tabs,
+    contentsOf: (tabId) => contents.get(tabId ?? 'tab-1') as unknown as WebContents,
+    focusTabForInput: (tabId) => {
+      focused.push(tabId)
+      return { activated: tabId !== 'tab-1' }
+    }
+  }
+  const access = new BrowserCdpAccess(() => browser)
+
+  const background = await access.pressKey('tab-2', 'Enter', []) as Record<string, unknown>
+  assert.deepEqual(focused, ['tab-2'])
+  assert.equal(background.activatedTab, true)
+  assert.ok(contents.get('tab-2')?.debugger.commands.includes('Input.dispatchKeyEvent'))
+
+  // The already-active tab is left alone, so no needless tab switch is reported.
+  const active = await access.pressKey('tab-1', 'Enter', []) as Record<string, unknown>
+  assert.equal(active.activatedTab, undefined)
+  access.dispose()
+})
+
+test('real input refuses when no tab can receive it, rather than silently doing nothing', async () => {
+  const contents = new Map([['tab-1', new FakeContents(1)]])
+  const browser: CdpBrowserSource = {
+    tabList: () => tabs,
+    contentsOf: (tabId) => contents.get(tabId ?? 'tab-1') as unknown as WebContents,
+    focusTabForInput: () => null
+  }
+  const access = new BrowserCdpAccess(() => browser)
+  await assert.rejects(() => access.clickElement('tab-1', 'p1:main:e1'), /not\s+on screen/)
+  assert.ok(!contents.get('tab-1')?.debugger.commands.includes('Input.dispatchMouseEvent'))
+  access.dispose()
 })

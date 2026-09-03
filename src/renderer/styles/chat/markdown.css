@@ -9,7 +9,7 @@
 
 .aui-md {
   min-width: 0;
-  font-size: var(--chat-fs-markdown, 15px);
+  font-size: var(--chat-fs-markdown, 14px);
   line-height: var(--chat-lh-markdown, 1.7);
   overflow-wrap: anywhere;
 }
@@ -148,7 +148,7 @@
   background: #141414;
 }
 
-.aui-md .aui-md-code-body { font-size: 13px; }
+.aui-md .aui-md-code-body { font-size: var(--chat-fs-code, 12px); }
 
 .aui-md table {
   width: 100%;

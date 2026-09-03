@@ -9,10 +9,11 @@ import {
   PromptInputActions,
   PromptInputTextarea
 } from '../components/ui/prompt-input.js'
-import type { ChatAttachment, ChatContextUsage, ChatModel } from '../shared/chat.js'
+import type { ChatAttachment, ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
 import { ContextMeter } from './context-meter.js'
 import { ModelMenu } from './model-menu.js'
+import { ProjectMenu } from './project-menu.js'
 
 export type ComposerProps = {
   enabled: boolean
@@ -24,12 +25,27 @@ export type ComposerProps = {
   selectedReasoningEffort: string | null
   /** How full the model's window was after the latest response; null before the first one. */
   contextUsage: ChatContextUsage | null
+  /** Which provider's plan the usage card names. */
+  provider: ChatProvider
+  /** The account's subscription windows, shown beside the context window on hover. */
+  planUsage: ChatPlanUsage | null
+  onRefreshPlanUsage: () => Promise<void>
   onModelChange: (modelId: string) => Promise<void>
   onReasoningEffortChange: (effort: string) => Promise<void>
   onSend: (text: string, attachments: ChatAttachment[]) => Promise<void>
   onStop: () => Promise<void>
   onInspectContext: () => void
   onNewChat?: () => void
+  cwd: string
+  projectPath: string | null
+  recentProjects: Array<{ cwd: string; projectPath: string }>
+  onChooseProject: () => Promise<void>
+  onSelectProject: (projectPath: string) => Promise<void>
+  onClearProject: () => Promise<void>
+  onOpenTools: () => void
+  onOpenTrace: () => void
+  /** Turn in flight, if any; shown as the working timer on the project rail. */
+  activeTurnId: string | null
 }
 
 export function Composer({
@@ -40,12 +56,24 @@ export function Composer({
   selectedModel,
   selectedReasoningEffort,
   contextUsage,
+  provider,
+  planUsage,
+  onRefreshPlanUsage,
   onModelChange,
   onReasoningEffortChange,
   onSend,
   onStop,
   onInspectContext,
-  onNewChat
+  onNewChat,
+  cwd,
+  projectPath,
+  recentProjects,
+  onChooseProject,
+  onSelectProject,
+  onClearProject,
+  onOpenTools,
+  onOpenTrace,
+  activeTurnId
 }: ComposerProps): JSX.Element {
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<ChatAttachment[]>([])
@@ -116,6 +144,18 @@ export function Composer({
       onDragOver={(event) => event.preventDefault()}
       onDrop={dropFiles}
     >
+      <ProjectMenu
+        cwd={cwd}
+        projectPath={projectPath}
+        recentProjects={recentProjects}
+        disabled={!enabled || running || sending}
+        onChooseProject={onChooseProject}
+        onSelectProject={onSelectProject}
+        onClearProject={onClearProject}
+        onOpenTools={onOpenTools}
+        onOpenTrace={onOpenTrace}
+        activeTurnId={activeTurnId}
+      />
       <PromptInput
         value={input}
         onValueChange={setInput}
@@ -167,7 +207,13 @@ export function Composer({
                   onModelChange={onModelChange}
                   onReasoningEffortChange={onReasoningEffortChange}
                 />
-                <ContextMeter usage={contextUsage} onInspect={onInspectContext} />
+                <ContextMeter
+                  usage={contextUsage}
+                  provider={provider}
+                  planUsage={planUsage}
+                  onInspect={onInspectContext}
+                  onRefreshPlanUsage={onRefreshPlanUsage}
+                />
               </div>
             </div>
 
@@ -185,14 +231,13 @@ export function Composer({
                 <PromptInputAction tooltip="Stop Codex">
                   <Button
                     type="button"
-                    variant="secondary"
                     size="icon"
-                    className="prompt-composer-stop"
+                    className="prompt-composer-stop rounded-full"
                     aria-label="Stop Codex"
                     data-ui="composer.stop"
                     onClick={() => void onStop()}
                   >
-                    <Square size={16} fill="currentColor" aria-hidden="true" />
+                    <Square size={14} fill="currentColor" aria-hidden="true" />
                   </Button>
                 </PromptInputAction>
               ) : (
@@ -200,7 +245,7 @@ export function Composer({
                   <Button
                     type="submit"
                     size="icon"
-                    className="prompt-composer-send"
+                    className="prompt-composer-send rounded-full"
                     aria-label="Send message"
                     data-ui="composer.send"
                     data-waiting-for-input={waitingForInput || undefined}

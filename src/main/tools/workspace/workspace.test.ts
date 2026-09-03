@@ -26,7 +26,7 @@ test('workspace tools are advertised only for the indexed checkout', () => {
   assert.equal(registry.namespaces[0].tools[0].deferLoading, undefined)
   assert.deepEqual(
     registry.namespaces[0].tools[0].actions?.map((action) => action.name),
-    ['map', 'related', 'tests', 'ipc_flow']
+    ['find', 'outline', 'map', 'related', 'tests', 'ipc_flow']
   )
 })
 
@@ -72,4 +72,54 @@ test('paths cannot escape the indexed workspace', async () => {
   const result = await call({ action: 'map', path: '../outside' })
   assert.equal(result.isError, true)
   assert.match(textOf(result), /must stay inside/)
+})
+
+test('find ranks the component that renders a label above prose that mentions it', async () => {
+  const { call } = harness()
+  const result = await call({ action: 'find', query: 'Turn trace' })
+  const text = textOf(result)
+  assert.equal(result.isError, undefined)
+  const component = text.indexOf('src/renderer/project-menu.tsx')
+  const prose = text.indexOf('docs/')
+  assert.ok(component >= 0, 'the rendering component is missing from the results')
+  assert.ok(prose === -1 || component < prose, 'prose outranked the component that renders the label')
+})
+
+test('find resolves a class to its rules, including a multi-line selector', async () => {
+  const { call } = harness()
+  const text = textOf(await call({ action: 'find', query: 'composer-strip-action', kind: 'style' }))
+  // The rule is written as ".composer-project-trigger,\n.composer-strip-action {".
+  assert.match(text, /style \(\d+\):/)
+  assert.match(text, /src\/renderer\/styles\/prompt-kit-chat\.css:\d+ +\.composer-strip-action/)
+  assert.doesNotMatch(text, /^text \(/m)
+})
+
+test('find locates an exported symbol at its declaration', async () => {
+  const { call } = harness()
+  const text = textOf(await call({ action: 'find', query: 'workspaceNavigationSection', kind: 'symbol' }))
+  assert.match(text, /src\/main\/chat-context\/workspace-navigation\.ts:\d+ +function workspaceNavigationSection/)
+})
+
+test('find reports no match with a usable next step instead of failing', async () => {
+  const { call } = harness()
+  const result = await call({ action: 'find', query: 'zzzz-not-in-this-repository' })
+  assert.equal(result.isError, undefined)
+  assert.match(textOf(result), /\(no match\)/)
+})
+
+test('outline summarises a component and pairs its classes with the defining stylesheet', async () => {
+  const { call } = harness()
+  const result = await call({ action: 'outline', path: 'src/renderer/project-menu.tsx' })
+  const text = textOf(result)
+  assert.equal(result.isError, undefined)
+  assert.match(text, /function ProjectMenu/)
+  assert.match(text, /composer\.trace/)
+  assert.match(text, /\.composer-strip-action -> src\/renderer\/styles\/prompt-kit-chat\.css:\d+/)
+})
+
+test('outline rejects a path outside the index', async () => {
+  const { call } = harness()
+  const result = await call({ action: 'outline', path: 'src/renderer/does-not-exist.tsx' })
+  assert.equal(result.isError, true)
+  assert.match(textOf(result), /is not an indexed file/)
 })

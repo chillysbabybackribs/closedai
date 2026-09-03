@@ -18,6 +18,14 @@ export const pathField = {
   description: 'Repository-relative file or directory path.'
 }
 
+/** Shared so the action tool advertises one `max_results`; per-action defaults differ. */
+export const maxResultsField = {
+  type: 'integer',
+  minimum: 1,
+  maximum: 200,
+  description: 'Maximum entries returned, per section where a result has sections. Defaults: find 40, outline 60, map 80.'
+}
+
 export function inputSchema(properties: Record<string, unknown>, required: string[] = []) {
   return { type: 'object', properties, required, additionalProperties: false }
 }

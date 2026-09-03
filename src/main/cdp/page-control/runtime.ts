@@ -55,7 +55,10 @@ export const FRAME_OWNER_QUAD_FUNCTION = `function () {
 
 export const SCROLL_FRAME_OWNER_FUNCTION = `async function () {
   this.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })
-  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+  await Promise.race([
+    new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    new Promise(resolve => setTimeout(resolve, 200))
+  ])
   return true
 }`
 
@@ -150,8 +153,21 @@ function inspectFrame(
     })
   }
 
+  const existing = (globalThis as typeof globalThis & {
+    [key: string]: {
+      snapshotId: string
+      registry: Map<string, HTMLElement>
+      snapshots?: Map<string, Map<string, HTMLElement>>
+    } | undefined
+  })[stateKey]
+  const snapshots = existing?.snapshots ?? new Map<string, Map<string, HTMLElement>>()
+  snapshots.set(snapshotId, registry)
+  if (snapshots.size > 20) {
+    const oldest = snapshots.keys().next().value
+    if (oldest) snapshots.delete(oldest)
+  }
   Object.defineProperty(globalThis, stateKey, {
-    value: { snapshotId, registry }, configurable: true, writable: true
+    value: { snapshotId, registry, snapshots }, configurable: true, writable: true
   })
   return {
     viewport: {
@@ -240,10 +256,15 @@ function inspectFrame(
 /** Verify the focused element is editable and optionally select its contents for replacement. */
 function prepareType(snapshotId: string, ref: string, clear: boolean, stateKey: string): boolean {
   const state = (globalThis as typeof globalThis & {
-    [key: string]: { snapshotId: string; registry: Map<string, HTMLElement> } | undefined
+    [key: string]: {
+      snapshotId: string
+      registry: Map<string, HTMLElement>
+      snapshots?: Map<string, Map<string, HTMLElement>>
+    } | undefined
   })[stateKey]
-  if (!state || state.snapshotId !== snapshotId) throw new Error('Element reference is stale; inspect the page again')
-  const element = state.registry.get(ref)
+  const registry = state?.snapshots?.get(snapshotId) ?? (state?.snapshotId === snapshotId ? state.registry : undefined)
+  if (!registry) throw new Error('Element reference is stale; inspect the page again')
+  const element = registry.get(ref)
   if (!element?.isConnected) throw new Error('Element reference is detached; inspect the page again')
   const field = element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element : null
   if (field) {
@@ -269,9 +290,14 @@ function prepareType(snapshotId: string, ref: string, clear: boolean, stateKey: 
 /** Read the element's value after typing so the model can confirm without re-inspecting. */
 function readValue(snapshotId: string, ref: string, stateKey: string): { value: string | null } {
   const state = (globalThis as typeof globalThis & {
-    [key: string]: { snapshotId: string; registry: Map<string, HTMLElement> } | undefined
+    [key: string]: {
+      snapshotId: string
+      registry: Map<string, HTMLElement>
+      snapshots?: Map<string, Map<string, HTMLElement>>
+    } | undefined
   })[stateKey]
-  const element = state?.snapshotId === snapshotId ? state.registry.get(ref) : undefined
+  const registry = state?.snapshots?.get(snapshotId) ?? (state?.snapshotId === snapshotId ? state.registry : undefined)
+  const element = registry ? registry.get(ref) : undefined
   if (!element?.isConnected) return { value: null }
   if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
     return { value: element.value.slice(0, 200) }
@@ -283,26 +309,42 @@ function readValue(snapshotId: string, ref: string, stateKey: string): { value: 
 /** Scroll a ref to the frame's viewport center and report the resulting scroll offsets. */
 async function scrollRef(snapshotId: string, ref: string, stateKey: string): Promise<{ scrollX: number; scrollY: number }> {
   const state = (globalThis as typeof globalThis & {
-    [key: string]: { snapshotId: string; registry: Map<string, HTMLElement> } | undefined
+    [key: string]: {
+      snapshotId: string
+      registry: Map<string, HTMLElement>
+      snapshots?: Map<string, Map<string, HTMLElement>>
+    } | undefined
   })[stateKey]
-  if (!state || state.snapshotId !== snapshotId) throw new Error('Element reference is stale; inspect the page again')
-  const element = state.registry.get(ref)
+  const registry = state?.snapshots?.get(snapshotId) ?? (state?.snapshotId === snapshotId ? state.registry : undefined)
+  if (!registry) throw new Error('Element reference is stale; inspect the page again')
+  const element = registry.get(ref)
   if (!element?.isConnected) throw new Error('Element reference is detached; inspect the page again')
   element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })
-  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+  await Promise.race([
+    new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+    new Promise<void>((resolve) => setTimeout(resolve, 200))
+  ])
   return { scrollX: window.scrollX, scrollY: window.scrollY }
 }
 
 async function prepareClick(snapshotId: string, ref: string, stateKey: string): Promise<PreparedClick> {
   const state = (globalThis as typeof globalThis & {
-    [key: string]: { snapshotId: string; registry: Map<string, HTMLElement> } | undefined
+    [key: string]: {
+      snapshotId: string
+      registry: Map<string, HTMLElement>
+      snapshots?: Map<string, Map<string, HTMLElement>>
+    } | undefined
   })[stateKey]
-  if (!state || state.snapshotId !== snapshotId) throw new Error('Element reference is stale; inspect the page again')
-  const element = state.registry.get(ref)
+  const registry = state?.snapshots?.get(snapshotId) ?? (state?.snapshotId === snapshotId ? state.registry : undefined)
+  if (!registry) throw new Error('Element reference is stale; inspect the page again')
+  const element = registry.get(ref)
   if (!element?.isConnected) throw new Error('Element reference is detached; inspect the page again')
   if ('disabled' in element && Boolean((element as HTMLButtonElement).disabled)) throw new Error('Element is disabled')
   element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })
-  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+  await Promise.race([
+    new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+    new Promise<void>((resolve) => setTimeout(resolve, 200))
+  ])
   const rects = Array.from(element.getClientRects())
   let point: LocalPoint | null = null
   let area = 0

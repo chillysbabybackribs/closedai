@@ -1,0 +1,87 @@
+.browser-toolbar:focus-within {
+  z-index: 3;
+}
+
+.browser-suggestions {
+  position: absolute;
+  z-index: 4;
+  top: calc(100% + 7px);
+  left: 0;
+  right: 0;
+  padding: 6px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-raised) 94%, transparent);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 28%);
+  max-height: min(360px, 55vh);
+  overflow-y: auto;
+}
+
+.browser-suggestion {
+  display: flex;
+  align-items: center;
+  border-radius: 9px;
+  min-width: 0;
+}
+
+.browser-suggestion:hover,
+.browser-suggestion.is-selected {
+  background: var(--surface-control-hover);
+}
+
+.browser-suggestion-open {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 13px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--chrome-fg);
+  text-align: left;
+}
+
+.browser-suggestion-open svg {
+  flex-shrink: 0;
+}
+
+.browser-suggestion-title,
+.browser-suggestion-detail {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.browser-suggestion-title {
+  flex: 1;
+}
+
+.browser-suggestion-detail {
+  max-width: 45%;
+  opacity: 0.55;
+}
+
+.browser-suggestion-remove {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--chrome-fg);
+}
+
+.browser-suggestion-remove:hover {
+  background: var(--surface-control-hover);
+}
+
+.browser-suggestion-favicon {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  object-fit: contain;
+}

@@ -97,10 +97,31 @@ export type ChatPeerRecord = {
   reasoningEffort: string | null
   /** The chat this pane continued from, including a restart-safe one-shot digest. */
   continuation?: ChatContinuation | null
+  /**
+   * Last known display title, kept so a parked pane (no runtime, empty snapshot) still names
+   * itself after a relaunch. Refreshed whenever the live title changes.
+   */
+  title?: string | null
+  /** Unix milliseconds of the pane's last turn boundary; survives relaunch like the title. */
+  updatedAt?: number | null
+}
+
+/** Open panes are scoped to their working directory so changing projects never discards chats. */
+export type ChatWorkspaceRecord = {
+  cwd: string
+  projectPath: string | null
+  peers: ChatPeerRecord[]
+  selectedPaneId: string | null
 }
 
 export type AppSettings = {
   browserCookiesImported: boolean
+  /** Current directory for new chat services; null uses the application checkout on first launch. */
+  chatWorkspacePath: string | null
+  /** The selected project directory. Null means the user chose the non-project workspace. */
+  chatProjectPath: string | null
+  /** Saved pane sets for projects that are not currently active. */
+  chatWorkspaces: ChatWorkspaceRecord[]
   /** Last app-server (Codex) thread selected by the single chat surface. */
   chatThreadId: string | null
   /** Last Claude Agent SDK session the chat surface showed; resumed on the next Claude turn. */
@@ -122,14 +143,15 @@ export type AppSettings = {
   toolBatchMaxCalls: number
   /**
    * Compact the Codex thread once a completed turn leaves the context this full, as a
-   * percentage of the model window. 0 leaves it to Codex's own near-limit compaction.
+   * percentage of the model window. 0 disables this trigger, independently of the token trigger.
    */
   chatCompactAtPercent: number
+  /** Opt-in Codex between-turn token threshold (not a hard cap). 0 disables; 20k–2M otherwise. */
+  chatCompactAtTokens: number
   /**
    * Opt-in: have Codex compact in the middle of a turn once the context passes this many tokens.
-   * 0 (default) keeps Codex's own near-limit compaction. Measured 2026-09-02: with prompt caching
-   * a model step costs about the same at 200k context as at 40k, while each compaction costs
-   * 60-90 seconds and loses detail, so an early limit only makes sense to cap spend.
+   * 0 (default) keeps Codex's own near-limit compaction. Compaction can lose detail and delay
+   * the next response; compare first-text timing and cache reuse before lowering this limit.
    */
   chatMidTurnCompactTokens: number
 }

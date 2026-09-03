@@ -1,5 +1,6 @@
+import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
-import type { ChatAttachment, ChatThreadSummary } from './chat.js'
+import type { ChatAttachment, ChatHistoryPage, ChatThreadSummary } from './chat.js'
 import type { ChatContinuationSource, ChatPaneId, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot } from './trace.js'
@@ -20,6 +21,8 @@ export type ClosedaiApi = {
     forward: () => Promise<void>
     reload: () => Promise<void>
     suggest: (input: string) => Promise<{ completion: string; url: string } | null>
+    searchHistory: (input: string) => Promise<BrowserHistoryMatch[]>
+    removeHistory: (url: string) => Promise<void>
     snapshot: () => Promise<{ state: BrowserState; tabs: BrowserTabInfo[] } | null>
     newTab: () => Promise<void>
     openTab: (input: string) => Promise<void>
@@ -41,6 +44,7 @@ export type ClosedaiApi = {
   }
   chat: {
     snapshot: () => Promise<ChatWorkspaceSnapshot>
+    historyPage: (paneId: ChatPaneId, threadId: string | null, beforeItemId: string) => Promise<ChatHistoryPage>
     send: (paneId: ChatPaneId, text: string, attachments: ChatAttachment[]) => Promise<void>
     /** Resolve an OS-backed File without exposing Electron APIs to the renderer. */
     attachmentPath: (file: File) => string
@@ -48,6 +52,8 @@ export type ClosedaiApi = {
     selectPane: (paneId: ChatPaneId) => Promise<void>
     selectModel: (paneId: ChatPaneId, modelId: string) => Promise<void>
     selectReasoningEffort: (paneId: ChatPaneId, effort: string) => Promise<void>
+    /** Re-read the pane provider's subscription usage; a no-op where it is not reported. */
+    refreshPlanUsage: (paneId: ChatPaneId) => Promise<void>
     loginWithChatGPT: () => Promise<void>
     /** Threads recorded for this workspace, newest first. */
     listThreads: () => Promise<ChatThreadSummary[]>
@@ -59,6 +65,12 @@ export type ClosedaiApi = {
     continueInNewPeer: (source: ChatContinuationSource, modelId: string | null) => Promise<ChatPaneId>
     openThread: (paneId: ChatPaneId, threadId: string) => Promise<void>
     archiveThread: (threadId: string) => Promise<void>
+    /** Choose a project directory and restore its saved panes, or create its first chat. */
+    chooseProject: () => Promise<void>
+    /** Switch directly to a project already stored in the recent-project list. */
+    selectProject: (projectPath: string) => Promise<void>
+    /** Switch to the non-project home workspace, restoring its saved panes when available. */
+    clearProject: () => Promise<void>
     onEvent: (listener: (event: ChatWorkspaceEvent) => void) => Unsubscribe
   }
   tools: {

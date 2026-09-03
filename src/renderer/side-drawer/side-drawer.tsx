@@ -2,7 +2,6 @@ import type { JSX } from 'react'
 import { memo, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, FolderOpen } from 'lucide-react'
 import type { ChatController } from '../chat-controller.js'
-import { useDrawerAgingClock } from './drawer-aging-clock.js'
 import type { DrawerController } from './drawer-controller.js'
 import { useCollapsedParents, useExpandedSettled } from './drawer-fold-state.js'
 import { DrawerHeader } from './drawer-header.js'
@@ -18,17 +17,16 @@ function SideDrawerView({
   controller: DrawerController
   chat: ChatController
 }): JSX.Element | null {
-  const agingNow = useDrawerAgingClock()
   const [collapsedParents, onToggleParent] = useCollapsedParents()
   const [expandedSettled, onToggleSettled] = useExpandedSettled()
   const [rowMenu, setRowMenu] = useState<RowMenuTarget | null>(null)
 
-  const { running, reviewQueue, recentlyCompleted, completed, history } = useMemo(
-    () => buildDrawerSections(controller.rows, controller.reviewQueue, controller.recentlyCompleted, agingNow),
-    [controller.rows, controller.reviewQueue, controller.recentlyCompleted, agingNow]
+  const { current, reviewQueue, history } = useMemo(
+    () => buildDrawerSections(controller.rows, controller.reviewQueue),
+    [controller.rows, controller.reviewQueue]
   )
 
-  const liveCount = useMemo(() => countLiveRows(running), [running])
+  const liveCount = useMemo(() => countLiveRows(current), [current])
   const activeChatId = chat.state.threadId
   const fold: FoldState = { collapsedParents, onToggleParent, expandedSettled, onToggleSettled }
 
@@ -43,7 +41,7 @@ function SideDrawerView({
       {groupByDirectory(rows).map((group) => (
         <div className="agents-dir-group" key={group.key}>
           <div className="agents-dir-label" title={group.fullPath ?? undefined}>
-            <FolderOpen size={11} aria-hidden="true" />
+            <FolderOpen size={12} aria-hidden="true" />
             <span>{group.label}</span>
           </div>
           {group.rows.map((row) => (
@@ -55,7 +53,7 @@ function SideDrawerView({
               controller={controller}
               chat={chat}
               onRowMenu={setRowMenu}
-              awaitingReview={options.review === true}
+              unread={options.review === true && controller.reviewQueue[row.id]?.viewedAt === null}
             />
           ))}
         </div>
@@ -63,12 +61,7 @@ function SideDrawerView({
     </div>
   )
 
-  const isEmpty =
-    running.length === 0 &&
-    reviewQueue.length === 0 &&
-    recentlyCompleted.length === 0 &&
-    completed.length === 0 &&
-    history.length === 0
+  const isEmpty = current.length === 0 && reviewQueue.length === 0 && history.length === 0
 
   return (
     <aside
@@ -79,37 +72,27 @@ function SideDrawerView({
       <DrawerHeader chat={chat} rows={controller.rows} />
 
       <div className="agents-list">
-        {running.length > 0 ? (
+        {current.length > 0 ? (
           <>
             <div className="agents-section-label">
-              <span>Running</span>
-              {liveCount > 0 ? <span className="agents-running-count">{liveCount}</span> : null}
+              <span>Current</span>
+              {liveCount > 0 ? (
+                <span className="agents-running-count" title={`${liveCount} running`}>
+                  {liveCount} running
+                </span>
+              ) : null}
             </div>
-            {renderRows(running, 'Running agents')}
+            {renderRows(current, 'Current chats')}
           </>
         ) : null}
 
         {reviewQueue.length > 0 ? (
           <>
             <div className="agents-section-label">
-              <span>Review Queue</span>
+              <span>Recently completed</span>
               <span className="agents-running-count">{reviewQueue.length}</span>
             </div>
-            {renderRows(reviewQueue, 'Agents awaiting review', { review: true })}
-          </>
-        ) : null}
-
-        {recentlyCompleted.length > 0 ? (
-          <>
-            <div className="agents-section-label">Recently completed</div>
-            {renderRows(recentlyCompleted, 'Recently completed chats')}
-          </>
-        ) : null}
-
-        {completed.length > 0 ? (
-          <>
-            <div className="agents-section-label">Completed</div>
-            {renderRows(completed, 'Completed agents')}
+            {renderRows(reviewQueue, 'Recently completed chats', { review: true })}
           </>
         ) : null}
 
@@ -122,9 +105,9 @@ function SideDrawerView({
               aria-expanded={controller.isHistoryOpen}
             >
               {controller.isHistoryOpen ? (
-                <ChevronDown size={12} aria-hidden="true" />
+                <ChevronDown size={13} aria-hidden="true" />
               ) : (
-                <ChevronRight size={12} aria-hidden="true" />
+                <ChevronRight size={13} aria-hidden="true" />
               )}
               <span>History</span>
               <span className="agents-section-count">{history.length}</span>

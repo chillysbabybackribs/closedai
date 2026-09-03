@@ -15,7 +15,7 @@ export const refField: JsonObject = {
 export const sessionIdField: JsonObject = {
   type: 'string',
   minLength: 1,
-  description: 'Flat CDP child-target session id returned by Target.attachToTarget.'
+  description: 'Flat CDP child-target session id from the target inventory or Target.attachToTarget.'
 }
 
 export function tabIdFrom(input: JsonObject): string | undefined {

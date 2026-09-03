@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { BrowserShot } from '../shared/types.js'
 
 // DOM surfaces that may paint over the browser column.
-const OVERLAY_SELECTOR = '.browser-downloads, [role="dialog"], [role="menu"]'
+const OVERLAY_SELECTOR = '.browser-suggestions, .browser-downloads, [role="dialog"], [role="menu"]'
 const BROWSER_HOST_SELECTOR = '#browser-page'
-const EAGER_CAPTURE_TRIGGER = '[aria-label="Downloads"], [aria-label="Tools"]'
+const EAGER_CAPTURE_TRIGGER = '[data-ui="browser.address"], [aria-label="Downloads"], [aria-label="Tools"]'
 
 export function rectsOverlap(a: DOMRectReadOnly, b: DOMRectReadOnly): boolean {
   return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top

@@ -1,0 +1,151 @@
+.background-tasks {
+  margin: 12px 0;
+  color: var(--transcript-activity, #9b9ba1);
+  font-size: 12px;
+}
+.background-tasks-heading, .background-task summary, .background-task-indicator {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 30px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.background-tasks-heading, .background-task-indicator {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 4px 6px;
+}
+.background-tasks-heading {
+  width: 100%;
+}
+.background-tasks svg, .background-task-indicator svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  stroke-width: 1.75;
+}
+.background-tasks-heading .is-open {
+  transform: rotate(90deg);
+}
+.background-task {
+  margin-left: 10px;
+}
+.background-task summary {
+  list-style: none;
+  padding: 3px 6px;
+}
+.background-task summary::-webkit-details-marker {
+  display: none;
+}
+.background-task-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--transcript-activity-hover, #d4d4d8);
+}
+.background-task-meta {
+  margin-left: auto;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.background-task-body {
+  margin: 4px 6px 8px 29px;
+  padding: 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+}
+.background-task-body p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.background-task-body pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 240px;
+  overflow: auto;
+}
+.background-task-progress {
+  margin: 0 12px 5px 39px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.background-task[data-failed] {
+  color: var(--destructive, #d28b8b);
+}
+.background-task-indicator {
+  color: var(--transcript-activity, #9b9ba1);
+  font-size: 12px;
+  align-self: flex-start;
+}
+.background-task-spinner {
+  animation: background-task-rotate 1s linear infinite;
+}
+.background-tasks-heading:hover, .background-task summary:hover, .background-task-indicator:hover {
+  background: var(--surface-control-hover);
+}
+.background-tasks button:focus-visible, .background-task summary:focus-visible, .background-task-indicator:focus-visible {
+  outline: 2px solid var(--focus-ink);
+  outline-offset: 2px;
+}
+@keyframes background-task-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .background-task-spinner {
+    animation: none;
+  }
+}
+
+.task-activity-strip .background-task-indicator {
+  margin-left: auto;
+  align-self: center;
+  min-width: 0;
+  font-size: 11px;
+}
+
+.background-task-popover {
+  z-index: 60;
+  width: min(460px, calc(100vw - 32px));
+  max-height: min(480px, var(--radix-popover-content-available-height));
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  color: var(--transcript-activity-hover, #d4d4d8);
+  box-shadow: 0 12px 36px rgb(0 0 0 / 30%);
+}
+
+.background-task-popover-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.background-task-popover-title button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.background-task-popover-title button:hover {
+  background: var(--surface-control-hover);
+}

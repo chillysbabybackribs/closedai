@@ -1,8 +1,17 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { antigravityAgentInstructions } from '../antigravity/antigravity-instructions.ts'
+import { claudeSystemPromptAppend } from '../claude/claude-instructions.ts'
 import { closedAiDeveloperInstructions } from './developer-instructions.ts'
 import { resumeThreadParams, startThreadParams } from './thread-params.ts'
-import { WORKSPACE_INDEX_ROOT } from '../tools/workspace/workspace-index.generated.ts'
+import {
+  WORKSPACE_AREAS,
+  WORKSPACE_CONTROL_FAMILIES,
+  WORKSPACE_FILES,
+  WORKSPACE_INDEX_ROOT,
+  WORKSPACE_IPC_FLOWS
+} from '../tools/workspace/workspace-index.generated.ts'
+import { currentWorkspaceIndex, workspaceMapSection } from './workspace-map.ts'
 import { workspaceNavigationSection } from './workspace-navigation.ts'
 import { ToolRegistry } from '../tools/registry.ts'
 
@@ -17,13 +26,75 @@ test('navigation accepts equivalent spellings of the indexed checkout', () => {
   assert.equal(workspaceNavigationSection(`${WORKSPACE_INDEX_ROOT}/src/..`), navigation)
 })
 
-test('the trusted capsule is small and contains only stable orientation', () => {
+test('the hand-written prose stays small and carries no volatile file names', () => {
+  const section = workspaceNavigationSection(WORKSPACE_INDEX_ROOT) ?? ''
+  const prose = section.slice(0, section.indexOf(workspaceMapSection()))
+  assert.ok(prose.length < 1200, `navigation prose grew to ${prose.length} chars`)
+  assert.match(prose, /renderer\/components -> shared <- preload <- main/)
+  assert.match(prose, /src\/shared\/api\.ts/)
+  assert.doesNotMatch(prose, /browser-service\.ts/)
+})
+
+test('the whole capsule stays inside its context budget', () => {
+  const section = workspaceNavigationSection(WORKSPACE_INDEX_ROOT) ?? ''
+  assert.ok(section.length < 5000, `orientation capsule grew to ${section.length} chars`)
+})
+
+test('the capsule points at the map first and demotes search to a fallback', () => {
+  const section = workspaceNavigationSection(WORKSPACE_INDEX_ROOT) ?? ''
+  assert.match(section, /read a path off it rather than searching for one/)
+  assert.match(section, /closedai_workspace\.inspect find and outline are the fallback/)
+  assert.match(section, /read only the range you will change/)
+})
+
+test('the map states where things are, derived rather than asserted', () => {
+  const map = workspaceMapSection()
+  // A control family names its rendering file: the composer rail question, answered with no call.
+  assert.match(map, /composer\.\* -> src\/renderer\/project-menu\.tsx/)
+  // A directory's prefix is the rule that makes a path derivable without a lookup.
+  assert.match(map, /src\/main\/claude \(\d+; claude-\* \d+\)/)
+  assert.match(map, /chat -> src\/main\/chat-ipc\.ts/)
+  // A list that reads as complete but is not gets acted on as complete; say which are which.
+  assert.match(map, /exhaustive for non-test source/)
+  assert.match(map, /dominant naming rules, not complete listings/)
+})
+
+test('the map is rendered from the checkout, not from the copy this build compiled', () => {
+  const index = currentWorkspaceIndex()
+  // The fallback carries identical data, so only the source distinguishes a real read from a
+  // silent fallback — and a fallback is what leaves a long-running app describing a stale tree.
+  assert.equal(index.source, 'checkout')
+  assert.deepEqual(index.files, WORKSPACE_FILES)
+  assert.deepEqual(index.areas, WORKSPACE_AREAS)
+  assert.deepEqual(index.families, WORKSPACE_CONTROL_FAMILIES)
+  assert.deepEqual(index.flows, WORKSPACE_IPC_FLOWS)
+})
+
+test('the map asks to be trusted without naming a command to audit it with', () => {
+  // A named command is an invitation: one model spent six calls re-running the gate the
+  // sentence cited instead of reading the answer already in front of it.
+  assert.doesNotMatch(workspaceMapSection(), /npm run|map:check|check gate/)
+})
+
+test('every file the map names is really in the checkout', () => {
+  const map = workspaceMapSection()
+  const indexed = new Set<string>(WORKSPACE_FILES)
+  const named = [...map.matchAll(/src\/[\w./-]+\.(?:tsx?|css)/g)].map(([file]) => file)
+  assert.ok(named.length > 20, 'the map named too few files to be a useful check')
+  for (const file of named) assert.ok(indexed.has(file), `${file} is named by the map but not indexed`)
+})
+
+test('all three provider lanes receive the navigation playbook in the indexed checkout', () => {
   const navigation = workspaceNavigationSection(WORKSPACE_INDEX_ROOT) ?? ''
-  assert.ok(navigation.length < 700, `navigation capsule grew to ${navigation.length} chars`)
-  assert.match(navigation, /renderer\/components -> shared <- preload <- main/)
-  assert.match(navigation, /src\/shared\/api\.ts/)
-  assert.match(navigation, /closedai_workspace\.inspect/)
-  assert.doesNotMatch(navigation, /browser-service\.ts/)
+  const lanes = [
+    String(startThreadParams(WORKSPACE_INDEX_ROOT, new ToolRegistry([]), null).developerInstructions),
+    claudeSystemPromptAppend(WORKSPACE_INDEX_ROOT),
+    antigravityAgentInstructions(WORKSPACE_INDEX_ROOT)
+  ]
+  for (const lane of lanes) {
+    assert.ok(lane.includes(navigation), 'a provider lane dropped the navigation capsule')
+    assert.match(lane, /closedai_workspace\.inspect find/)
+  }
 })
 
 test('mapped threads carry instructions plus navigation on start and resume', () => {

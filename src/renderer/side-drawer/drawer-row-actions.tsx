@@ -7,55 +7,47 @@ import type { DrawerRowModel } from './drawer-types.js'
 export function DrawerRowActions({
   row,
   controller,
-  chat,
-  awaitingReview = false
+  chat
 }: {
   row: DrawerRowModel
   controller: DrawerController
   chat: ChatController
-  awaitingReview?: boolean
 }): JSX.Element {
   const isConfirming = controller.pendingDeleteId === row.id
 
-  if (awaitingReview) {
-    return (
-      <div className="agents-row-actions is-review">
-        <button
-          type="button"
-          onClick={() => controller.acceptReview(row.id)}
-          title="Accept — mark reviewed"
-          aria-label={`Accept review: ${row.title}`}
-          data-ui="drawer.row-accept"
-          data-ui-key={row.id}
-        >
-          <Check size={12} />
-        </button>
-        <button
-          type="button"
-          onClick={() => controller.dismissReview(row.id)}
-          title="Dismiss from review queue"
-          aria-label={`Dismiss review: ${row.title}`}
-          data-ui="drawer.row-dismiss"
-          data-ui-key={row.id}
-        >
-          <X size={12} />
-        </button>
-      </div>
-    )
-  }
-
+  // Stop the row's own pane. Interrupting "the chat" stopped whichever pane was selected, so the
+  // stop button on a background row killed the turn the user was watching instead.
   if (row.running) {
     return (
       <div className="agents-row-actions">
         <button
           type="button"
-          onClick={() => void chat.interrupt()}
+          onClick={() => void (row.paneId ? chat.interruptPane(row.paneId) : chat.interrupt())}
           title="Stop agent"
           aria-label={`Stop agent: ${row.title}`}
           data-ui="drawer.row-stop"
           data-ui-key={row.id}
         >
-          <Square size={12} />
+          <Square size={13} />
+        </button>
+      </div>
+    )
+  }
+
+  // An open pane closes without ceremony: its thread stays in History and reopens from there.
+  // Only history rows delete (archive) the thread itself, which is what the confirmation guards.
+  if (row.paneId !== undefined) {
+    return (
+      <div className="agents-row-actions">
+        <button
+          type="button"
+          onClick={() => void controller.deleteRow(row.id, row.threadId, row.paneId)}
+          title="Close chat (keeps it in History)"
+          aria-label={`Close ${row.title}`}
+          data-ui="drawer.row-close"
+          data-ui-key={row.id}
+        >
+          <X size={13} />
         </button>
       </div>
     )
@@ -73,7 +65,7 @@ export function DrawerRowActions({
             data-ui="drawer.row-delete-confirm"
             data-ui-key={row.id}
           >
-            <Check size={12} />
+            <Check size={13} />
           </button>
           <button
             type="button"
@@ -83,7 +75,7 @@ export function DrawerRowActions({
             data-ui="drawer.row-delete-cancel"
             data-ui-key={row.id}
           >
-            <X size={12} />
+            <X size={13} />
           </button>
         </>
       ) : (
@@ -95,7 +87,7 @@ export function DrawerRowActions({
           data-ui="drawer.row-delete"
           data-ui-key={row.id}
         >
-          <Trash2 size={12} />
+          <Trash2 size={13} />
         </button>
       )}
     </div>

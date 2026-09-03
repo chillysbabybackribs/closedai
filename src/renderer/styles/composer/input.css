@@ -1,7 +1,7 @@
 /* ---- Composer Surface --------------------------------------------------- */
 
 .composer {
-  --composer-canvas: var(--antigravity-card-bg, #252526);
+  --composer-canvas: var(--codex-desktop-composer-background, #252526);
   --composer-rail: #1e1e1e;
   --composer-line: rgb(255 255 255 / 8%);
   --composer-line-strong: rgb(255 255 255 / 12%);
@@ -23,7 +23,7 @@
   min-width: 0;
   margin: 0;
   border: 1px solid var(--composer-line-strong);
-  border-radius: 14px;
+  border-radius: 16px;
   background: var(--composer-canvas);
   box-shadow: 0 2px 8px rgb(0 0 0 / 22%);
   transition: border-color 130ms var(--ease-chrome), box-shadow 130ms var(--ease-chrome);
@@ -63,4 +63,3 @@
   min-width: 0;
   padding: 4px 8px 8px;
 }
-

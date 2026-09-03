@@ -53,6 +53,7 @@ test('ClosedAI tools arrive namespaced and keep the Codex MCP label shape', () =
   assert.equal(item.type === 'tool' && item.label, 'embedded_browser · page')
   const failed = toolResultItem(item, { content: [{ type: 'text', text: '{"ok":false}' }], isError: true }, noScreenshot)
   assert.equal(failed.type === 'tool' && failed.status, 'failed')
+  assert.equal(failed.type === 'tool' && failed.output, '{"ok":false}')
 })
 
 test('a capture result becomes a screenshot item, preferring the full-resolution store copy', () => {

@@ -1,10 +1,14 @@
-import type { JSX } from 'react'
+import { useCallback, useState, type JSX } from 'react'
 import { DropdownMenu } from 'radix-ui'
-import { Check, ChevronDown } from 'lucide-react'
+import { Check, ChevronDown, MoreHorizontal } from 'lucide-react'
 
 import type { ChatModel } from '../shared/chat.js'
 import { ProviderMark } from '../components/ui/provider-mark.js'
-import { effortLabel, modelGroups, modelTriggerLabel } from './model-menu-state.js'
+import {
+  countModelUse, effortLabel, modelSections, modelTriggerLabel, parseModelUsage, type ModelUsage
+} from './model-menu-state.js'
+
+const MODEL_USAGE_KEY = 'closedai.composer.modelUsage'
 
 export type ModelMenuProps = {
   enabled: boolean
@@ -16,18 +20,24 @@ export type ModelMenuProps = {
 }
 
 /**
- * One pill for model and effort. The menu lists every provider's models under its own heading
- * and, below them, the effort levels the selected model supports. Rendered in a portal and
- * styled from the chat theme tokens, so it matches the pane instead of the OS select popup.
+ * One pill for model and effort. The menu opens on the handful of models this install picks
+ * most often, grouped under each provider's heading, with the rest of the catalogue one row
+ * away and the selected model's effort levels below. Rendered in a portal and styled from the
+ * chat theme tokens, so it matches the pane instead of the OS select popup.
  */
 export function ModelMenu({
   enabled, models, selectedModel, selectedReasoningEffort, onModelChange, onReasoningEffortChange
 }: ModelMenuProps): JSX.Element {
+  const [usage, recordModelUse] = useModelUsage()
+  // Reset on close so the menu always opens short; expanding is a per-visit choice, not a mode.
+  const [showAll, setShowAll] = useState(false)
   const trigger = modelTriggerLabel(models, selectedModel, selectedReasoningEffort)
   const selected = models.find((model) => model.id === selectedModel)
   const efforts = selected?.supportedReasoningEfforts ?? []
+  const sections = modelSections(models, usage, selectedModel)
+  const groups = showAll ? sections.all : sections.featured
   return (
-    <DropdownMenu.Root modal={false}>
+    <DropdownMenu.Root modal={false} onOpenChange={(open) => { if (!open) setShowAll(false) }}>
       <DropdownMenu.Trigger
         className="model-menu-trigger"
         disabled={!enabled || models.length === 0}
@@ -44,9 +54,9 @@ export function ModelMenu({
         <DropdownMenu.Content className="model-menu" align="start" side="top" sideOffset={8} collisionPadding={12}>
           <DropdownMenu.RadioGroup
             value={selectedModel ?? ''}
-            onValueChange={(value) => { void onModelChange(value).catch(() => {}) }}
+            onValueChange={(value) => { recordModelUse(value); void onModelChange(value).catch(() => {}) }}
           >
-            {modelGroups(models).map((group) => (
+            {groups.map((group) => (
               <DropdownMenu.Group key={group.provider} className="model-menu-group">
                 <DropdownMenu.Label className="model-menu-label">
                   <ProviderMark provider={group.provider} className="model-menu-label-mark" />
@@ -62,6 +72,17 @@ export function ModelMenu({
               </DropdownMenu.Group>
             ))}
           </DropdownMenu.RadioGroup>
+          {!showAll && sections.hiddenCount > 0 && (
+            <DropdownMenu.Item
+              className="model-menu-item model-menu-item-compact model-menu-more"
+              textValue="Show all models"
+              data-ui="composer.model-more"
+              onSelect={(event) => { event.preventDefault(); setShowAll(true) }}
+            >
+              <MoreHorizontal className="model-menu-more-mark" aria-hidden="true" />
+              <span className="model-menu-item-name">{`Show ${sections.hiddenCount} more models`}</span>
+            </DropdownMenu.Item>
+          )}
           {efforts.length > 0 && (
             <>
               <DropdownMenu.Separator className="model-menu-separator" />
@@ -84,4 +105,27 @@ export function ModelMenu({
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
   )
+}
+
+/** The picker's own memory of which models get chosen, kept in this window rather than settings. */
+function useModelUsage(): [ModelUsage, (modelId: string) => void] {
+  const [usage, setUsage] = useState<ModelUsage>(() => {
+    try {
+      return parseModelUsage(window.localStorage.getItem(MODEL_USAGE_KEY))
+    } catch {
+      return {}
+    }
+  })
+  const record = useCallback((modelId: string) => {
+    setUsage((previous) => {
+      const next = countModelUse(previous, modelId)
+      try {
+        window.localStorage.setItem(MODEL_USAGE_KEY, JSON.stringify(next))
+      } catch {
+        // Suppress storage failures: ranking is a convenience, not state the pane depends on.
+      }
+      return next
+    })
+  }, [])
+  return [usage, record]
 }

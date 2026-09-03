@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events'
 import type {
-  ChatAccount, ChatAttachment, ChatConnection, ChatEvent, ChatSnapshot,
+  ChatAccount, ChatAttachment, ChatConnection, ChatEvent, ChatHistoryWindow, ChatSnapshot,
   ChatThreadContent, ChatThreadSummary, ChatTurnContextReport
 } from '../../shared/chat.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
@@ -8,6 +8,7 @@ import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { buildThreadHandoff, handoffAdditionalContext } from '../chat-context/thread-handoff.js'
 import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
+import { planUsageUnavailable } from '../chat-context/plan-usage.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
@@ -26,6 +27,14 @@ import type { TranscriptOp, TurnEnd } from './antigravity-stream.js'
 // three. Everything model-facing is Google's `agy` CLI on the user's subscription: the process
 // per thread, the catalog (`agy models`), and the conversation store that backs the history.
 // Tools reach the CLI through the shared HTTP MCP bridge (antigravity-mcp.ts).
+
+/**
+ * `agy` reports no subscription usage: it has no usage subcommand, its stream carries only
+ * init/step_update/result, and nothing in its state dir records a quota. The quota RPCs live
+ * inside the binary but are never surfaced, so the card says so instead of showing a blank.
+ * Re-check when `agy` grows a usage command (measured on agy 1.1.24, 2026-09-03).
+ */
+const ANTIGRAVITY_PLAN_USAGE = planUsageUnavailable('The agy CLI does not report subscription usage.', 0)
 
 const SIGN_IN_MESSAGE = 'Sign in to Antigravity: run `agy` in a terminal, complete the Google login, then choose an Antigravity model again.'
 
@@ -56,7 +65,8 @@ export class AntigravityChatService extends EventEmitter {
     this.transcript = new ChatTranscript(cwd, () => this.activeTurnId, (event) => this.emitEvent(event), (callId) => screenshots?.get(callId) ?? null)
   }
 
-  snapshot(): ChatSnapshot {
+  snapshot(window?: ChatHistoryWindow): ChatSnapshot {
+    const page = window ? this.transcript.page(window) : null
     return {
       provider: 'antigravity',
       connection: { ...this.connection },
@@ -69,8 +79,10 @@ export class AntigravityChatService extends EventEmitter {
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
       contextUsage: null,
+      planUsage: ANTIGRAVITY_PLAN_USAGE,
       turnContext: this.turnContext,
-      items: this.transcript.snapshot()
+      items: page?.items ?? this.transcript.snapshot(),
+      ...(page ? { history: { hasEarlier: page.hasEarlier, backgroundTasks: page.backgroundTasks } } : {})
     }
   }
 
@@ -93,6 +105,9 @@ export class AntigravityChatService extends EventEmitter {
       const turn = await buildAntigravityPrompt(text, shrinkPastedImages(attachments), Object.keys(context).length ? context : undefined, this.stateDir)
       if (!turn) return
       await this.bridge.start()
+      // The CLI reads the agent file once, at process start. A spawn is therefore the only
+      // moment its instructions — including the repository map — can be brought up to date.
+      if (!session.live) this.profile = await ensureAntigravityProfile(this.stateDir, { cwd: this.cwd })
       this.transcript.addOptimisticUser(crypto.randomUUID(), turn.prompt, turn.summaries)
       session.send(turn.content)
       this.setTurnContext(buildTurnContextReport({
@@ -109,6 +124,9 @@ export class AntigravityChatService extends EventEmitter {
       throw error
     }
   }
+
+  /** Nothing to read; the constant reading is already in every snapshot. */
+  async refreshPlanUsage(): Promise<void> {}
 
   async interrupt(): Promise<void> {
     try {

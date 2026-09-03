@@ -103,8 +103,9 @@ test('oversized text results are cut with a hint so one call cannot flood the hi
   }])
   const result = await registry.call({ namespace: 'gamma', tool: 'dump', arguments: {} }, context)
   const first = result.content[0].type === 'text' ? result.content[0].text : ''
-  assert.ok(first.startsWith('x'.repeat(MAX_RESULT_TEXT_CHARS)))
-  assert.match(first, /\[ClosedAI truncated 500 characters\. Narrow the request/)
+  assert.ok(first.startsWith('x'.repeat(100)))
+  assert.match(first, /\[ClosedAI truncated this result.*Narrow the request/)
+  assert.ok(first.length + 5 <= MAX_RESULT_TEXT_CHARS)
   assert.deepEqual(result.content[1], { type: 'text', text: 'short' })
   assert.deepEqual(boundResult(textResult('small')), textResult('small'))
 })
@@ -117,4 +118,38 @@ test('oversized JSON results shrink structurally so a script can still JSON.pars
   const parsed = JSON.parse(text) as { _closedai_truncated: string; items: unknown[] }
   assert.match(parsed._closedai_truncated, /Structurally truncated/)
   assert.ok(parsed.items.length < 5_000)
+})
+
+test('multi-block results share one budget while retaining JSON, images and trailing errors', () => {
+  const image = { type: 'image' as const, dataUrl: 'data:image/png;base64,AA==' }
+  const result = boundResult({ isError: true, content: [
+    { type: 'text', text: JSON.stringify({ rows: Array.from({ length: 1000 }, () => 'x'.repeat(50)) }) },
+    image,
+    { type: 'text', text: 'y'.repeat(20_000) },
+    { type: 'text', text: 'Final error: retry a smaller range.' }
+  ] })
+  const texts = result.content.filter((item) => item.type === 'text')
+  assert.ok(texts.reduce((total, item) => total + item.text.length, 0) <= MAX_RESULT_TEXT_CHARS)
+  assert.doesNotThrow(() => JSON.parse(texts[0]!.text))
+  assert.equal(result.content[1], image)
+  assert.equal(texts.at(-1)?.text, 'Final error: retry a smaller range.')
+  assert.equal(result.isError, true)
+})
+
+test('many small blocks cannot bypass the aggregate budget', () => {
+  const result = boundResult({ content: Array.from({ length: 1000 }, () => ({ type: 'text' as const, text: 'a'.repeat(100) })) })
+  const texts = result.content.filter((item) => item.type === 'text')
+  assert.ok(texts.reduce((sum, item) => sum + item.text.length, 0) <= MAX_RESULT_TEXT_CHARS)
+  assert.match(texts.at(-1)!.text, /omitted.*text blocks/)
+})
+
+test('thrown tool errors obey the same context budget', async () => {
+  const registry = new ToolRegistry([{ name: 'errors', description: 'errors', tools: [{
+    name: 'fail', description: 'fail', inputSchema: { type: 'object', properties: {} },
+    run: async () => { throw new Error('large error '.repeat(5000)) }
+  }] }])
+  const result = await registry.call({ namespace: 'errors', tool: 'fail', arguments: {} }, context)
+  assert.equal(result.isError, true)
+  assert.ok(result.content[0]?.type === 'text')
+  assert.ok(result.content[0].text.length <= MAX_RESULT_TEXT_CHARS)
 })

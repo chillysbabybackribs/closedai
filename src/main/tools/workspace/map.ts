@@ -5,6 +5,7 @@ import {
   fileSet,
   indexedFiles,
   inputSchema,
+  maxResultsField,
   pathField,
   siblingTests,
   testPattern
@@ -19,7 +20,7 @@ export const mapAction: ToolAction = {
     path: pathField,
     depth: { type: 'integer', minimum: 0, maximum: 5, description: 'Directory levels below the requested path; default 2.' },
     include_tests: { type: 'boolean', description: 'Include test files; default false.' },
-    max_results: { type: 'integer', minimum: 1, maximum: 200, description: 'Maximum files; default 80.' }
+    max_results: maxResultsField
   }),
   async run(input) {
     const scope = cleanPath(stringArg(input, 'path', 'src') ?? 'src')

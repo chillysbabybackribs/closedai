@@ -45,6 +45,12 @@ export function claudeQueryOptions(config: ClaudeQueryConfig): Options {
     ...(effort ? { effort } : {}),
     ...(config.adaptiveThinking ? { thinking: { type: 'adaptive', display: 'summarized' } } : {}),
     ...(config.resume ? { resume: config.resume } : {}),
+    // Keep context management inside Claude Code, and prepare its summary before the window is
+    // full so the next user turn does not pay the entire compaction cost on the critical path.
+    settings: {
+      autoCompactEnabled: true,
+      precomputeCompactionEnabled: true
+    },
     env: {
       ...(config.env ?? process.env),
       [CLAUDE_RUNTIME_ID_ENV]: config.runtimeId,

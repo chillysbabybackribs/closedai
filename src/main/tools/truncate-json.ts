@@ -17,9 +17,9 @@ export function truncateText(text: string, maxChars: number, advice: string): Tr
   if (text.length <= maxChars) return { text, truncated: false }
   const structural = truncateJsonText(text, maxChars, advice)
   if (structural) return { text: structural, truncated: true }
-  const dropped = text.length - maxChars
+  const note = `\n\n[ClosedAI truncated this result (${text.length} characters). ${advice}]`
   return {
-    text: `${text.slice(0, maxChars)}\n\n[ClosedAI truncated ${dropped} characters. ${advice}]`,
+    text: note.length >= maxChars ? note.slice(0, maxChars) : text.slice(0, maxChars - note.length) + note,
     truncated: true
   }
 }
@@ -42,7 +42,10 @@ export function truncateJsonText(text: string, maxChars: number, advice: string)
     const out = JSON.stringify(noted, null, indent)
     if (out.length <= maxChars) return out
   }
-  return JSON.stringify(withNote({}, `Result of ${original} characters was too large to return. ${advice}`))
+  const fallback = JSON.stringify(withNote({}, `Result of ${original} characters was too large to return. ${advice}`))
+  if (fallback.length <= maxChars) return fallback
+  const minimal = JSON.stringify({ [TRUNCATION_NOTE_KEY]: true })
+  return minimal.length <= maxChars ? minimal : '{}'
 }
 
 function shrink(value: unknown, maxString: number, maxItems: number, depth: number): unknown {

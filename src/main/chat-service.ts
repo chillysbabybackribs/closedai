@@ -4,7 +4,9 @@ import type {
   ChatAttachment,
   ChatConnection,
   ChatEvent,
+  ChatHistoryWindow,
   ChatModel,
+  ChatPlanUsage,
   ChatSnapshot,
   ChatThreadContent,
   ChatThreadSummary,
@@ -26,6 +28,7 @@ import {
 } from './chat-context/turn-context.js'
 import { resumeThreadParams, startThreadParams, type ThreadResponse } from './chat-context/thread-params.js'
 import { ContextCompactor, describeUsage, type ContextUsage } from './chat-context/context-compaction.js'
+import { codexPlanUsage } from './chat-context/plan-usage.js'
 import { appServerConfigArgs } from './chat-context/app-server-config.js'
 import { buildThreadHandoff, handoffAdditionalContext } from './chat-context/thread-handoff.js'
 import { buildTurnContextReport } from './chat-context/turn-inspector.js'
@@ -36,6 +39,7 @@ import { ChatModelState } from './chat-model-state.js'
 import { buildChatInput } from './chat-input.js'
 import { shrinkPastedImages } from './chat-attachment-images.js'
 import type { ScreenshotStore } from './tools/capture/screenshot-store.js'
+import { traceLog } from './trace/trace-log.js'
 
 /** The Codex provider: one long-lived app-server process serving every Codex turn. */
 export class ChatService extends EventEmitter {
@@ -47,6 +51,7 @@ export class ChatService extends EventEmitter {
   private threadName: string | null = null
   private activeTurnId: string | null = null
   private turnContext: ChatTurnContextReport | null = null
+  private planUsage: ChatPlanUsage | null = null
   private readonly transcript: ChatTranscript
   private readonly toolCalls: AppServerToolCalls
   private readonly compactor: ContextCompactor
@@ -77,6 +82,7 @@ export class ChatService extends EventEmitter {
     this.toolCalls = new AppServerToolCalls(this.tools, this.client, this.paneId)
     this.compactor = new ContextCompactor({
       thresholdPercent: () => this.settings.get().chatCompactAtPercent,
+      thresholdTokens: () => this.settings.get().chatCompactAtTokens,
       threadId: () => this.threadId,
       turnActive: () => this.activeTurnId !== null,
       request: (method, params) => this.client.request(method, params),
@@ -90,7 +96,8 @@ export class ChatService extends EventEmitter {
     this.client.on('exit', () => this.onExit())
   }
 
-  snapshot(): ChatSnapshot {
+  snapshot(window?: ChatHistoryWindow): ChatSnapshot {
+    const page = window ? this.transcript.page(window) : null
     return {
       provider: 'codex',
       connection: { ...this.connection },
@@ -103,14 +110,30 @@ export class ChatService extends EventEmitter {
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
       contextUsage: describeUsage(this.compactor.current),
+      planUsage: this.planUsage,
       turnContext: this.turnContext,
-      items: this.transcript.snapshot()
+      items: page?.items ?? this.transcript.snapshot(),
+      ...(page ? { history: { hasEarlier: page.hasEarlier, backgroundTasks: page.backgroundTasks } } : {})
     }
   }
 
   async listModels(): Promise<ChatModel[]> {
     await this.ensureConnected()
     return this.modelState.models
+  }
+
+  /**
+   * Read the account's plan windows. Cheap (one local app-server round trip) and safe while a
+   * turn runs, so the hover card can ask for a fresh reading every time it opens.
+   */
+  async refreshPlanUsage(): Promise<void> {
+    if (this.connection.state !== 'ready') return
+    try {
+      const response = await this.client.request<{ rateLimits?: unknown }>('account/rateLimits/read', {})
+      this.notePlanUsage(codexPlanUsage(response.rateLimits))
+    } catch (error) {
+      console.warn('[app-server] could not read rate limits:', messageOf(error))
+    }
   }
 
   start(): Promise<void> {
@@ -129,7 +152,9 @@ export class ChatService extends EventEmitter {
     try {
       const { prompt, input, summaries } = buildChatInput(text, shrinkPastedImages(attachments))
       if (input.length === 0) return
-      await Promise.all([this.ensureReady(), this.compactor.idle()])
+      const endCompactionWait = this.compactor.inFlight
+        ? traceLog.responses.waitForCompaction(this.paneId) : () => {}
+      await Promise.all([this.ensureReady(), this.compactor.prepareForSend().finally(endCompactionWait)])
       if (this.activeTurnId) throw new Error('A Codex turn is already running')
       const threadId = await this.ensureThread()
       const clientUserMessageId = crypto.randomUUID()
@@ -277,6 +302,7 @@ export class ChatService extends EventEmitter {
       await this.client.start()
       await this.refreshAccountAndModels()
       if (this.connection.state === 'ready') await this.resumePersistedThread()
+      void this.refreshPlanUsage()
       this.restartAttempt = 0
     } catch (error) {
       this.setConnection({ state: 'unavailable', message: messageOf(error) })
@@ -408,6 +434,7 @@ export class ChatService extends EventEmitter {
       addNotice: (text, tone, turnId) => this.addNotice(text, tone, turnId),
       refreshSession: () => this.refreshSession(),
       noteContextUsage: (usage) => this.noteContextUsage(usage),
+      notePlanUsage: (snapshot) => this.notePlanUsage(codexPlanUsage(snapshot)),
       contextCompacted: () => this.compactor.compacted(),
       emit: (event) => this.emitEvent(event)
     })
@@ -439,13 +466,23 @@ export class ChatService extends EventEmitter {
   private setTurn(turnId: string | null): void {
     if (this.activeTurnId === turnId) return
     this.activeTurnId = turnId
+    if (turnId) this.compactor.turnStarted()
     this.emitEvent({ type: 'turn', turnId })
-    if (turnId === null) this.compactor.turnFinished()
+    if (turnId === null) {
+      this.compactor.turnFinished()
+      void this.refreshPlanUsage()
+    }
   }
 
   private noteContextUsage(usage: ContextUsage): void {
     this.compactor.noteUsage(usage)
     this.emitEvent({ type: 'context', usage: describeUsage(usage) })
+  }
+
+  private notePlanUsage(usage: ChatPlanUsage | null): void {
+    if (!usage) return
+    this.planUsage = usage
+    this.emitEvent({ type: 'planUsage', usage })
   }
 
   private emitEvent(event: ChatEvent): void {

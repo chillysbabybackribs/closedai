@@ -33,6 +33,7 @@ function selected(threadId: string, threadName: string): ChatSnapshot {
     threadName,
     activeTurnId: 'turn-1',
     contextUsage: null,
+    planUsage: null,
     turnContext: null,
     items: []
   }
@@ -94,4 +95,35 @@ test('live pane ids stay stable and suppress duplicate history threads', () => {
   assert.deepEqual(rows.map((row) => row.id), ['pane-a', 'thread-old'])
   assert.equal(rows[0]?.threadId, 'thread-a')
   assert.equal(rows[0]?.linesAdded, 3)
+})
+
+test('a cold pane names itself from the thread catalog and reads as done, not a blank chat', () => {
+  const cold = { ...peer('pane-cold', 'thread-cold', 100), title: 'New chat', running: false }
+  const rows = buildDrawerRows({
+    selected: selected('thread-a', 'Selected A'),
+    selectedPaneId: 'pane-a',
+    peers: [peer('pane-a', 'thread-a', 100), cold],
+    threads: [{ id: 'thread-cold', title: 'Catalog title', preview: '', createdAt: 1, updatedAt: 2 }],
+    selectedDiff: { added: 0, removed: 0 }
+  })
+
+  const coldRow = rows.find((row) => row.id === 'pane-cold')
+  assert.equal(coldRow?.title, 'Catalog title')
+  assert.equal(coldRow?.status, 'done')
+  // The catalog row is folded into the pane row rather than listed twice.
+  assert.deepEqual(rows.map((row) => row.id), ['pane-cold', 'pane-a'])
+})
+
+test('an idle pane is done regardless of which item came last; a blank pane is a chat', () => {
+  const idle = { ...peer('pane-idle', 'thread-idle', 100), running: false, activity: null }
+  const blank = { ...peer('pane-blank', 'thread-blank', 100), threadId: null, running: false, title: 'New chat' }
+  const rows = buildDrawerRows({
+    selected: selected('thread-a', 'Selected A'),
+    selectedPaneId: 'pane-a',
+    peers: [peer('pane-a', 'thread-a', 100), idle, blank],
+    threads: [],
+    selectedDiff: { added: 0, removed: 0 }
+  })
+  assert.equal(rows.find((row) => row.id === 'pane-idle')?.status, 'done')
+  assert.equal(rows.find((row) => row.id === 'pane-blank')?.status, 'chat')
 })

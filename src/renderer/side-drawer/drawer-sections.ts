@@ -2,10 +2,22 @@ import { basename } from './drawer-format.js'
 import type { DrawerReviewQueue } from './drawer-review-queue.js'
 import type { DirectoryGroup, DrawerRowModel, DrawerSections } from './drawer-types.js'
 
-export const COMPLETION_DECAY_MS = 20 * 60 * 1000
-
 export function rowIsLive(row: DrawerRowModel): boolean {
   return row.running || row.status === 'running' || row.status === 'queued'
+}
+
+/**
+ * The row the user is looking at. Open panes are identified by pane, history records by thread:
+ * matching thread ids on a pane row marks every threadless "New chat" as current the moment the
+ * selected chat has no thread of its own yet, which is most of a fresh chat's life.
+ */
+export function rowIsCurrent(
+  row: DrawerRowModel,
+  selectedPaneId: string | null,
+  activeThreadId: string | null
+): boolean {
+  if (row.paneId !== undefined) return row.paneId === selectedPaneId
+  return row.threadId !== null && row.threadId === activeThreadId
 }
 
 export function subtreeIsLive(row: DrawerRowModel, seen = new Set<string>()): boolean {
@@ -58,40 +70,22 @@ export function groupByDirectory(rows: DrawerRowModel[]): DirectoryGroup[] {
   return ordered
 }
 
-export function buildDrawerSections(
-  rows: DrawerRowModel[],
-  reviewQueue: DrawerReviewQueue,
-  recentlyCompleted: Record<string, number>,
-  now: number = Date.now()
-): DrawerSections {
-  const running: DrawerRowModel[] = []
+/**
+ * Current is strictly active work. Completed panes stay in the review section until their reviewed
+ * grace period expires; every other idle pane joins History alongside provider thread records.
+ */
+export function buildDrawerSections(rows: DrawerRowModel[], reviewQueue: DrawerReviewQueue): DrawerSections {
+  const current: DrawerRowModel[] = []
   const review: DrawerRowModel[] = []
-  const recent: DrawerRowModel[] = []
-  const completed: DrawerRowModel[] = []
   const history: DrawerRowModel[] = []
 
   for (const row of rows) {
-    if (subtreeIsLive(row) || row.completedUnviewed) {
-      running.push(row)
-    } else if (reviewQueue[row.id] !== undefined || (row.threadId && reviewQueue[row.threadId] !== undefined)) {
-      review.push(row)
-    } else if (
-      recentlyCompleted[row.id] !== undefined &&
-      now - recentlyCompleted[row.id]! < COMPLETION_DECAY_MS
-    ) {
-      recent.push(row)
-    } else if (row.status === 'done' || row.status === 'failed' || row.status === 'stopped') {
-      completed.push(row)
-    } else {
-      history.push(row)
-    }
+    if (row.paneId === undefined) history.push(row)
+    else if (subtreeIsLive(row)) current.push(row)
+    else if (reviewQueue[row.id] !== undefined) review.push(row)
+    else history.push(row)
   }
+  review.sort((a, b) => (reviewQueue[b.id]?.queuedAt ?? 0) - (reviewQueue[a.id]?.queuedAt ?? 0))
 
-  return {
-    running,
-    reviewQueue: review,
-    recentlyCompleted: recent,
-    completed,
-    history
-  }
+  return { current, reviewQueue: review, history }
 }

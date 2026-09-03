@@ -5,6 +5,7 @@ import {
   anchorScrollLayout,
   followingAfterViewportSync,
   preservedScrollTop,
+  resizeScrollAction,
   scrollEdges
 } from './message-scroller-state.ts'
 
@@ -71,4 +72,37 @@ test('layout growth cannot silently break bottom following before ResizeObserver
 test('explicitly escaped readers stay put until they return to the bottom', () => {
   assert.equal(followingAfterViewportSync(false, true, { start: true, end: true }), false)
   assert.equal(followingAfterViewportSync(false, true, { start: true, end: false }), true)
+})
+
+
+const bottomFollowing = {
+  prepending: false, newAnchor: false, anchorMode: false,
+  anchored: false, following: true, autoScroll: true
+}
+
+test('streaming, delayed history, and late layout changes follow the real bottom', () => {
+  assert.equal(resizeScrollAction(bottomFollowing), 'end')
+  assert.equal(resizeScrollAction({ ...bottomFollowing, newAnchor: true }), 'end')
+  assert.equal(resizeScrollAction({ ...bottomFollowing, anchored: true }), 'end')
+})
+
+test('a reader above the bottom stays put during streaming but a new prompt resumes following', () => {
+  const reading = { ...bottomFollowing, following: false }
+  assert.equal(resizeScrollAction(reading), 'none')
+  assert.equal(resizeScrollAction({ ...reading, newAnchor: true }), 'end')
+})
+
+test('revealing older history preserves position even when the visible anchor changes', () => {
+  assert.equal(resizeScrollAction({
+    ...bottomFollowing, prepending: true, newAnchor: true
+  }), 'preserve')
+})
+
+test('prompt anchoring is opt-in and does not leak into bottom-following mode', () => {
+  assert.equal(resizeScrollAction({
+    ...bottomFollowing, anchorMode: true, newAnchor: true
+  }), 'anchor')
+  assert.equal(resizeScrollAction({
+    ...bottomFollowing, autoScroll: false, following: false, newAnchor: true
+  }), 'none')
 })

@@ -15,6 +15,7 @@ import {
   anchorScrollLayout,
   followingAfterViewportSync,
   preservedScrollTop,
+  resizeScrollAction,
   scrollEdges,
   type ScrollEdges
 } from './message-scroller-state.js'
@@ -190,18 +191,26 @@ export function MessageScrollerProvider({
     if (!viewport || !content) return
     const syncAfterResize = (): void => {
       const lastAnchor = findLastScrollAnchor(content, spacer)
-      if (lastAnchor && lastAnchor !== handledAnchorRef.current) {
-        handledAnchorRef.current = lastAnchor
-        anchorToElement(lastAnchor)
-        return
-      }
       const prepended = prependRef.current
-      if (prepended) {
+      const action = resizeScrollAction({
+        prepending: Boolean(prepended),
+        newAnchor: Boolean(lastAnchor && lastAnchor !== handledAnchorRef.current),
+        anchorMode: defaultScrollPosition === 'last-anchor',
+        anchored: Boolean(anchoredRef.current),
+        following: followingRef.current,
+        autoScroll
+      })
+      handledAnchorRef.current = lastAnchor
+      if (action === 'preserve' && prepended) {
         prependRef.current = null
         viewport.scrollTop = preservedScrollTop(prepended, viewport.scrollHeight)
-      } else if (anchoredRef.current) {
-        anchorToElement(anchoredRef.current)
-      } else if (followingRef.current) {
+      } else if (action === 'anchor') {
+        const target = lastAnchor ?? anchoredRef.current
+        if (target) anchorToElement(target)
+      } else if (action === 'end') {
+        anchoredRef.current = null
+        setSpacerHeight(0)
+        followingRef.current = autoScroll
         viewport.scrollTop = viewport.scrollHeight
       }
       scheduleSync()
@@ -210,12 +219,12 @@ export function MessageScrollerProvider({
     observer.observe(viewport)
     observer.observe(content)
     const mutations = new MutationObserver(syncAfterResize)
-    mutations.observe(content, { childList: true })
+    mutations.observe(content, { childList: true, subtree: true, characterData: true })
     return () => {
       observer.disconnect()
       mutations.disconnect()
     }
-  }, [anchorToElement, content, scheduleSync, spacer, viewport])
+  }, [anchorToElement, autoScroll, content, defaultScrollPosition, scheduleSync, setSpacerHeight, spacer, viewport])
 
   useEffect(() => () => {
     if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current)

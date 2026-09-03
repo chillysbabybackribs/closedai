@@ -7,7 +7,7 @@ import type { DrawerController } from './drawer-controller.js'
 import { DrawerRowActions, DiffBadge } from './drawer-row-actions.js'
 import type { RowMenuTarget } from './drawer-row-menu.js'
 import { rowMenuAnchor } from './drawer-row-position.js'
-import { splitChildren } from './drawer-sections.js'
+import { rowIsCurrent, splitChildren } from './drawer-sections.js'
 import type { DrawerRowModel } from './drawer-types.js'
 
 export type FoldState = {
@@ -24,7 +24,8 @@ type RowProps = {
   controller: DrawerController
   chat: ChatController
   onRowMenu: (target: RowMenuTarget) => void
-  awaitingReview?: boolean
+  /** Finished while another chat was selected and not opened since. */
+  unread?: boolean
 }
 
 export function DrawerRow({
@@ -34,7 +35,7 @@ export function DrawerRow({
   controller,
   chat,
   onRowMenu,
-  awaitingReview = false
+  unread = false
 }: RowProps): JSX.Element {
   const [openError, setOpenError] = useState<string | null>(null)
   // The lock clears when the other client lets go, and nothing notifies us, so retire the notice on
@@ -45,9 +46,11 @@ export function DrawerRow({
     return () => window.clearTimeout(timer)
   }, [openError])
 
-  const isCurrent = row.threadId === activeChatId || (row.paneId !== undefined && row.paneId === chat.selectedPaneId)
+  const isCurrent = rowIsCurrent(row, chat.selectedPaneId, activeChatId)
   const isLive = row.running || row.status === 'running' || row.status === 'queued'
-  const dot = isLive ? (row.status === 'queued' ? 'queued' : 'running') : (row.status === 'done' ? 'done' : row.status === 'failed' ? 'failed' : 'chat')
+  // A finished chat gets no colour of its own: completion is carried by the "Recently completed"
+  // section it moves into, so only failure still needs a mark on the row.
+  const dot = isLive ? (row.status === 'queued' ? 'queued' : 'running') : (row.status === 'failed' ? 'failed' : 'chat')
   const expanded = row.children.length > 0 && !fold.collapsedParents.has(row.id)
 
   const handleContextMenu = (event: MouseEvent<HTMLDivElement>): void => {
@@ -66,18 +69,22 @@ export function DrawerRow({
 
   // Opening can legitimately fail — most often a thread another Codex client already holds the
   // writer lock on. Unhandled, the rejection only reached the console and the click looked dead.
+  // A history thread normally replaces the selected pane's thread; while that pane is mid-turn
+  // it cannot switch, so the thread opens in a fresh pane instead of failing.
   const handleOpen = (): void => {
     setOpenError(null)
-    const attempt = row.paneId && row.paneId !== chat.selectedPaneId
-      ? chat.selectPane(row.paneId)
-      : row.threadId ? chat.openThread(row.threadId) : null
+    const attempt = row.paneId !== undefined
+      ? (row.paneId !== chat.selectedPaneId ? chat.selectPane(row.paneId) : null)
+      : row.threadId
+        ? (chat.state.activeTurnId ? chat.openThreadInNewPane(row.threadId) : chat.openThread(row.threadId))
+        : null
     if (attempt) void attempt.catch((error: unknown) => setOpenError(openFailureMessage(error)))
   }
 
   return (
     <>
       <div
-        className={`agents-row ${isCurrent ? 'is-current' : ''}`}
+        className={`agents-row ${isCurrent ? 'is-current' : ''} ${unread ? 'is-unread' : ''}`}
         role="listitem"
         onContextMenu={handleContextMenu}
       >
@@ -91,7 +98,7 @@ export function DrawerRow({
           title={
             openError === 'Open in another app'
               ? 'Another Codex client holds this thread’s writer lock — close it there, then retry'
-              : openError ?? (row.completedUnviewed ? 'Finished — open to review' : 'Open this chat')
+              : openError ?? (unread ? 'Finished while you were away — open to review' : 'Open this chat')
           }
           aria-current={isCurrent ? 'true' : undefined}
         >
@@ -106,6 +113,7 @@ export function DrawerRow({
                   no mark and the absence itself reads as "not a running chat". */}
               {row.provider && <ProviderMark provider={row.provider} className="agents-row-provider" />}
               {row.title}
+              {unread ? <span className="agents-row-unread" aria-label="Unreviewed" /> : null}
             </span>
             <span className="agents-row-meta">
               {openError ? (
@@ -123,7 +131,6 @@ export function DrawerRow({
           row={row}
           controller={controller}
           chat={chat}
-          awaitingReview={awaitingReview}
         />
       </div>
       {expanded ? (
@@ -141,13 +148,16 @@ export function DrawerRow({
 }
 
 function buildRowMeta(row: DrawerRowModel): string {
+  const parts: string[] = []
+  if (row.running) parts.push('Running')
+  else if (row.status === 'done') parts.push('Done')
+  else if (row.status === 'failed') parts.push('Failed')
+  else if (row.status === 'queued') parts.push('Queued')
   const time = formatChatTime(row.updatedAt)
-  if (row.running) return `Running · ${time}`
-  if (row.status === 'done') return `Done · ${time}`
-  if (row.status === 'failed') return `Failed · ${time}`
-  if (row.status === 'queued') return `Queued · ${time}`
+  if (time) parts.push(time)
   const count = formatMessageCount(row.messageCount)
-  return count ? `${time} · ${count}` : time
+  if (count && !row.running) parts.push(count)
+  return parts.join(' · ')
 }
 
 function DrawerSubtree({
@@ -186,7 +196,7 @@ function DrawerSubtree({
           aria-expanded={settledOpen}
           aria-label={`${settledOpen ? 'Hide' : 'Show'} ${settled.length} settled sub-agents of ${row.title}`}
         >
-          {settledOpen ? <ChevronDown size={10} aria-hidden="true" /> : <ChevronRight size={10} aria-hidden="true" />}
+          {settledOpen ? <ChevronDown size={11} aria-hidden="true" /> : <ChevronRight size={11} aria-hidden="true" />}
           <span>{settled.length} done</span>
         </button>
       ) : null}
@@ -216,7 +226,7 @@ function DrawerRowTwisty({
       title={expanded ? 'Hide sub-agents' : `Show ${row.children.length} sub-agents`}
       aria-label={`${expanded ? 'Hide' : 'Show'} ${row.children.length} sub-agents of ${row.title}`}
     >
-      {expanded ? <ChevronDown size={11} aria-hidden="true" /> : <ChevronRight size={11} aria-hidden="true" />}
+      {expanded ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
       {expanded ? null : <span className="agents-twisty-count">{row.children.length}</span>}
     </button>
   )

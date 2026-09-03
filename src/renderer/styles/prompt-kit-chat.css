@@ -12,10 +12,14 @@
   background: var(--background, #181818);
   --chat-column-width: 720px;
   --chat-column-gutter: clamp(18px, 4vw, 32px);
-  --chat-fs-body: 15px;
-  --chat-fs-markdown: 15px;
+  --chat-fs-body: 14px;
+  --chat-fs-markdown: 14px;
+  /* Code — fenced blocks and tool/diff cards — sits one step below UI text. */
+  --chat-fs-code: 12px;
   --chat-lh-markdown: 1.7;
-  --chat-fs-process: 13px;
+  /* Codex keeps model narration and its tool-call headlines on the same text
+     scale; contrast, rather than a smaller type size, establishes hierarchy. */
+  --chat-fs-process: var(--chat-fs-body);
   --chat-fs-meta: 12px;
   --chat-lh-body: 1.68;
   --chat-gap: 12px;
@@ -68,19 +72,20 @@
   padding: 0;
   border-radius: 0;
   background: transparent;
-  color: #cccccc;
+  color: var(--transcript-strong, #f5f5f6);
   font-size: var(--chat-fs-body);
+  font-weight: 450;
   line-height: var(--chat-lh-body);
 }
 
 .prompt-chat .prose {
   font-size: var(--chat-fs-body);
   line-height: var(--chat-lh-body);
-  color: #cccccc;
+  color: var(--transcript-strong, #f5f5f6);
 }
 
 .prompt-message-assistant[data-phase='commentary'] .prompt-message-assistant-content {
-  color: var(--transcript-secondary, #8f8f95);
+  color: var(--transcript-strong, #f5f5f6);
 }
 
 /* Markdown element styling lives in styles/chat/markdown.css. */
@@ -169,7 +174,7 @@
 .prompt-composer {
   grid-row: 3;
   min-width: 0;
-  padding: 6px var(--chat-column-gutter) 14px;
+  padding: 18px var(--chat-column-gutter) 14px;
   border-top: none;
   background: transparent;
 }
@@ -197,6 +202,104 @@
   transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
+/* The project rail deliberately tucks behind the prompt card, as in Codex Desktop: it gives
+   the working directory its own durable home without turning the composer into a toolbar. */
+.composer-project-strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  /* The rail is 16 px narrower on either side than the composing surface. This creates the
+     Codex-like tab silhouette instead of making the rail read as a second full-width card. */
+  width: min(calc(var(--chat-column-width) + 32px), calc(100% - 32px));
+  min-height: 52px;
+  margin: 0 auto -10px;
+  padding: 5px 10px 15px;
+  border: 1px solid rgb(255 255 255 / 5%);
+  border-bottom: 0;
+  border-radius: 16px 16px 0 0;
+  background: #1e1e1f;
+}
+
+.composer-project-trigger,
+.composer-strip-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 9px;
+  border-radius: 8px;
+  color: #dedee0;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.composer-project-trigger:hover:not(:disabled),
+.composer-strip-action:hover:not(:disabled) {
+  background: rgb(255 255 255 / 7%);
+  color: #fff;
+}
+
+.composer-project-trigger svg,
+.composer-strip-action svg { color: #c8c8ca; }
+.composer-project-strip-spacer { flex: 1 1 auto; }
+.composer-strip-action { color: #a9a9ad; }
+
+/* The working timer sits on the left of the rail, opposite the folder and its two actions. */
+.composer-strip-activity {
+  flex: 0 1 auto;
+  gap: 8px;
+  padding-left: 6px;
+  color: #a9a9ad;
+}
+
+.composer-strip-activity .task-generation-copy { font-size: 12px; }
+
+.composer-project-menu {
+  z-index: 70;
+  width: min(21rem, calc(100vw - 24px));
+  padding: 6px;
+  border: 1px solid #464648;
+  border-radius: 14px;
+  background: #303032;
+  color: #e8e8e9;
+  box-shadow: 0 18px 40px rgb(0 0 0 / 45%);
+}
+
+.composer-project-current,
+.composer-project-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 9px;
+  outline: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.composer-project-current { background: rgb(255 255 255 / 9%); }
+.composer-project-current span { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.composer-project-current svg:last-child { color: #fff; }
+.composer-project-item[data-highlighted] { background: rgb(255 255 255 / 9%); }
+.composer-project-item[data-disabled] { opacity: .42; cursor: default; }
+.composer-project-menu-separator { height: 1px; margin: 6px 5px; background: rgb(255 255 255 / 10%); }
+.composer-project-menu-label { padding: 2px 10px 5px; color: #a4a4a7; font-size: 11px; font-weight: 600; }
+.composer-project-recent {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  min-height: 44px;
+  padding: 5px 10px;
+  border-radius: 9px;
+  outline: none;
+  cursor: pointer;
+}
+.composer-project-recent svg { grid-row: span 2; align-self: center; }
+.composer-project-recent span, .composer-project-recent small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.composer-project-recent small { color: #a2a2a5; font-size: 11px; }
+.composer-project-recent[data-highlighted] { background: rgb(255 255 255 / 9%); }
+
 .prompt-composer-input:focus-within {
   border-color: #454545;
   box-shadow: 0 2px 8px rgb(0 0 0 / 22%), 0 1px 2px rgb(0 0 0 / 14%);
@@ -207,7 +310,7 @@
   max-height: min(34vh, 260px);
   padding: 10px 12px 8px;
   color: #fff;
-  font-size: calc(var(--chat-font-size, 16px) + 1px);
+  font-size: var(--composer-font-size, 15px);
   font-weight: 600;
   line-height: 1.55;
 }
@@ -260,7 +363,7 @@
 .prompt-composer-stop {
   width: 36px;
   height: 36px;
-  border-radius: 8px;
+  border-radius: 9999px;
   display: grid;
   place-items: center;
   transition: all 120ms ease;
@@ -290,14 +393,15 @@
 }
 
 .prompt-composer-stop {
-  background: rgb(255 143 143 / 16%);
-  border: 1px solid rgb(255 143 143 / 32%);
-  color: var(--stop-ink, #ff8f8f);
+  background: #fff;
+  border: none;
+  color: #000;
+  box-shadow: 0 1px 4px rgb(255 255 255 / 22%);
 }
 
 .prompt-composer-stop:hover {
-  background: rgb(255 143 143 / 26%);
-  color: #ffaaaa;
+  background: #e8e8e8;
+  color: #000;
   transform: scale(1.04);
 }
 

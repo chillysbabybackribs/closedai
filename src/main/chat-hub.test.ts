@@ -19,7 +19,7 @@ class FakeProvider extends EventEmitter {
       provider: this.provider, connection: { state: 'ready', message: `${this.provider} ready` }, account: null,
       models: this.models, selectedModel: this.models[0]?.id ?? null, selectedReasoningEffort: null, cwd: '/w',
       threadId: `${this.provider}-thread`, threadName: null, activeTurnId: this.activeTurnId,
-      contextUsage: null, turnContext: null, items: []
+      contextUsage: null, planUsage: null, turnContext: null, items: []
     }
   }
   async start(options?: { warm?: boolean }): Promise<void> { this.calls.push(`start:${options?.warm ?? 'none'}`) }
@@ -28,6 +28,7 @@ class FakeProvider extends EventEmitter {
   async interrupt(): Promise<void> { this.calls.push('interrupt') }
   async selectModel(id: string): Promise<void> { this.calls.push(`selectModel:${id}`) }
   async selectReasoningEffort(effort: string): Promise<void> { this.calls.push(`effort:${effort}`) }
+  async refreshPlanUsage(): Promise<void> { this.calls.push('refreshPlanUsage') }
   async listThreads(): Promise<ChatThreadSummary[]> { if (this.failThreads) throw new Error('down'); return this.threads }
   async readThread(threadId: string): Promise<ChatThreadContent> {
     this.calls.push(`read:${threadId}`)

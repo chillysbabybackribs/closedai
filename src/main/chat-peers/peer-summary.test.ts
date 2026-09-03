@@ -1,0 +1,85 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+import type { ChatSnapshot } from '../../shared/chat.js'
+import type { ChatPeerRecord } from '../../shared/types.js'
+import { MAX_PEER_PREVIEW_CHARS, PeerSummaryCache, paneTitle, summaryOf } from './peer-summary.js'
+
+function snapshot(overrides: Partial<ChatSnapshot> = {}): ChatSnapshot {
+  return {
+    provider: 'claude',
+    connection: { state: 'ready', message: 'ready' },
+    account: null,
+    models: [],
+    selectedModel: null,
+    selectedReasoningEffort: null,
+    cwd: '/workspace',
+    threadId: null,
+    threadName: null,
+    activeTurnId: null,
+    contextUsage: null,
+    planUsage: null,
+    turnContext: null,
+    items: [],
+    ...overrides
+  }
+}
+
+function record(overrides: Partial<ChatPeerRecord> = {}): ChatPeerRecord {
+  return {
+    paneId: 'pane-a',
+    provider: 'claude',
+    threadId: null,
+    codexThreadId: null,
+    claudeSessionId: null,
+    modelId: 'claude:opus',
+    reasoningEffort: null,
+    ...overrides
+  }
+}
+
+test('the provider name wins, then the first message, then the saved title', () => {
+  const userItem = { type: 'user' as const, id: 'u1', turnId: 't1', text: '  Fix the sidebar\nmore detail' }
+  assert.equal(paneTitle(snapshot({ threadName: 'Sidebar fixes', items: [userItem] }), record()), 'Sidebar fixes')
+  assert.equal(paneTitle(snapshot({ items: [userItem] }), record({ title: 'Saved' })), 'Fix the sidebar')
+  assert.equal(paneTitle(snapshot(), record({ title: 'Saved' })), 'Saved')
+  assert.equal(paneTitle(snapshot(), record()), 'New chat')
+})
+
+test('a parked pane still reports its persisted thread and title', () => {
+  const summary = summaryOf('pane-a', snapshot(), 0, record({ title: 'Agent sidebar bugs', threadId: 'claude:s1' }))
+  assert.equal(summary.title, 'Agent sidebar bugs')
+  assert.equal(summary.threadId, 'claude:s1')
+  assert.equal(summary.running, false)
+  assert.equal(summary.modelId, 'claude:opus')
+})
+
+test('long titles are clipped like before', () => {
+  const long = 'x'.repeat(80)
+  assert.equal(paneTitle(snapshot({ threadName: long }), record()).length, 60)
+})
+
+test('late upserts preserve the latest preview and streaming previews stay bounded', () => {
+  const cache = new PeerSummaryCache('pane-a', record())
+  const old = { type: 'tool' as const, id: 'tool', turnId: 'turn', label: 'Read', detail: 'file', status: 'inProgress' }
+  const answer = { type: 'assistant' as const, id: 'answer', turnId: 'turn', text: 'latest', phase: null, streaming: true }
+  cache.update({ type: 'replace', snapshot: snapshot({ items: [old, answer] }) }, 1)
+  cache.update({ type: 'item', item: { ...old, status: 'completed' } }, 2)
+  assert.equal(cache.current.preview, 'latest')
+  cache.update({ type: 'itemDelta', itemId: 'answer', field: 'text', delta: 'x'.repeat(10_000) }, 3)
+  assert.equal(cache.current.preview.length, MAX_PEER_PREVIEW_CHARS)
+  assert.equal(cache.current.activity, null)
+  cache.update({ type: 'replace', snapshot: snapshot() }, 4)
+  cache.update({ type: 'item', item: { ...answer, text: 'new chat' } }, 5)
+  assert.equal(cache.current.preview, 'new chat')
+})
+
+test('cache titles follow the first user message and bounded provider name', () => {
+  const cache = new PeerSummaryCache('pane-a', record({ title: 'Saved title' }))
+  cache.update({ type: 'item', item: { type: 'user', id: 'first', turnId: null, text: 'First request' } }, 1)
+  cache.update({ type: 'item', item: { type: 'user', id: 'next', turnId: null, text: 'Later request' } }, 2)
+  assert.equal(cache.current.title, 'First request')
+  cache.update({ type: 'thread', threadId: 'claude:s', threadName: 'z'.repeat(1000) }, 3)
+  assert.equal(cache.current.title.length, 60)
+  cache.update({ type: 'turn', turnId: 'running' }, 4)
+  assert.equal(cache.current.running, true)
+})

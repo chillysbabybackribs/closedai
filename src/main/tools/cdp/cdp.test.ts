@@ -55,11 +55,11 @@ function textOf(result: { content: Array<{ type: string; text?: string }> }): st
   return result.content[0]?.type === 'text' ? result.content[0].text ?? '' : ''
 }
 
-test('CDP tool advertises the four foundational protocol actions', () => {
+test('CDP tool advertises its foundational protocol and target lifecycle actions', () => {
   const { registry } = harness()
   assert.deepEqual(registry.names(), ['browser_cdp.protocol', 'browser_cdp.page'])
   assert.deepEqual(registry.namespaces[0].tools[0].actions?.map((action) => action.name), [
-    'capabilities', 'targets', 'command', 'events'
+    'capabilities', 'targets', 'command', 'target', 'events'
   ])
 })
 
@@ -101,6 +101,31 @@ test('command passes arbitrary params and a flat child session id', async () => 
   ])
 })
 
+test('target lifecycle operations use raw Target commands and return refreshed inventory', async () => {
+  const { calls, call } = harness()
+  const result = await call({ action: 'target', operation: 'attach', target_id: 'worker-7', tab_id: 'tab-2' })
+  assert.equal(result.isError, undefined)
+  assert.match(textOf(result), /"operation": "attach"/)
+  assert.deepEqual(calls, [
+    ['command', 'tab-2', 'Target.attachToTarget', { targetId: 'worker-7', flatten: true }, undefined],
+    ['targets', 'tab-2']
+  ])
+
+  const missingTarget = await call({ action: 'target', operation: 'close' })
+  assert.equal(missingTarget.isError, true)
+  assert.match(textOf(missingTarget), /`target_id` is required/)
+
+  const detached = await call({ action: 'target', operation: 'detach', session_id: 'child-8' })
+  assert.equal(detached.isError, undefined)
+  assert.deepEqual(calls.slice(-2), [
+    ['command', undefined, 'Target.detachFromTarget', { sessionId: 'child-8' }, undefined],
+    ['targets', undefined]
+  ])
+  const missingSession = await call({ action: 'target', operation: 'detach' })
+  assert.equal(missingSession.isError, true)
+  assert.match(textOf(missingSession), /`session_id` is required/)
+})
+
 test('events use cursor defaults and accept method-prefix filtering', async () => {
   const { calls, call } = harness()
   await call({ action: 'events', method_prefix: 'Network.' })
@@ -127,16 +152,17 @@ test('page input verbs route typing, key chords, and scrolling to the host', asy
   assert.equal(badModifier.isError, true)
 })
 
-test('protocol defers loading and refuses raw input and screenshot commands', async () => {
+test('protocol is immediately available and allows raw input and screenshot commands', async () => {
   const { calls, call, registry } = harness()
-  assert.equal(registry.namespaces[0]!.tools[0]!.deferLoading, true)
+  assert.equal(registry.namespaces[0]!.tools[0]!.deferLoading, undefined)
   const input = await call({ action: 'command', method: 'Input.dispatchKeyEvent', params: { type: 'keyDown' } })
-  assert.equal(input.isError, true)
-  assert.match(textOf(input), /type inserts whole strings/)
+  assert.equal(input.isError, undefined)
   const screenshot = await call({ action: 'command', method: 'Page.captureScreenshot' })
-  assert.equal(screenshot.isError, true)
-  assert.match(textOf(screenshot), /closedai_ui capture/)
-  assert.deepEqual(calls, [])
+  assert.equal(screenshot.isError, undefined)
+  assert.deepEqual(calls, [
+    ['command', undefined, 'Input.dispatchKeyEvent', { type: 'keyDown' }, undefined],
+    ['command', undefined, 'Page.captureScreenshot', {}, undefined]
+  ])
 })
 
 test('command validates CDP method syntax and action-specific fields', async () => {

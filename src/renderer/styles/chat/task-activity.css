@@ -1,4 +1,7 @@
 .task-activity-strip {
+  display: flex;
+  align-items: center;
+  gap: 24px;
   flex: 0 0 auto;
   width: calc(100% - var(--chat-column-gutter) - var(--chat-column-gutter));
   max-width: calc(var(--chat-column-width) + 64px);
@@ -36,14 +39,28 @@
 }
 
 .task-generation-copy {
+  display: grid;
   min-width: 0;
   overflow: hidden;
   font-size: var(--chat-fs-process, 13px);
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* Reserve and copy share one grid cell, so the box is as wide as the longest label and the
+   timer counts up inside a fixed footprint instead of pushing everything left of it. */
+.task-generation-reserve,
+.task-generation-text {
+  grid-area: 1 / 1;
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.task-generation-reserve { visibility: hidden; }
 
 .task-generation-caret {
   display: inline-block;

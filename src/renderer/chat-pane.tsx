@@ -1,3 +1,4 @@
+import { BackgroundTaskIndicator, currentBackgroundTasks } from './background-tasks.js'
 import type { JSX } from 'react'
 import { useState } from 'react'
 import { LogIn } from 'lucide-react'
@@ -12,9 +13,8 @@ import {
 } from '../components/ui/message-scroller.js'
 import type { ChatAttachment, ChatConnectionState, ChatProvider } from '../shared/chat.js'
 import { useChatController } from './chat-controller.js'
-import { ChatHeader } from './chat-header.js'
 import { ChatHistory } from './chat-history.js'
-import { chatTitle, PROVIDER_LABELS } from './chat-state.js'
+import { PROVIDER_LABELS } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { ContextInspectorModal } from './context-inspector-modal.js'
@@ -25,22 +25,32 @@ import { TraceModal } from './trace/trace-modal.js'
 export function ChatPane({
   controller,
   zoom = 100,
-  fontSize = 16
+  fontSize = 14,
+  composerFontSize = 15,
+  historyOpen: controlledHistoryOpen,
+  onHistoryOpenChange
 }: {
   controller?: ReturnType<typeof useChatController>
   zoom?: number
   fontSize?: number
+  composerFontSize?: number
+  /** Supplied by the shell so the title bar menu and Ctrl+H reach this panel. */
+  historyOpen?: boolean
+  onHistoryOpenChange?: (open: boolean) => void
 } = {}): JSX.Element {
-  const internalChat = useChatController()
+  const internalChat = useChatController(!controller)
   const chat = controller ?? internalChat
   const { state } = chat
+  const backgroundItems = state.history?.backgroundTasks?.length
+    ? [...state.history.backgroundTasks, ...state.items] : state.items
   const ready = state.connection.state === 'ready'
   const running = state.activeTurnId !== null
-  const [historyOpen, setHistoryOpen] = useState(false)
+  const [ownHistoryOpen, setOwnHistoryOpen] = useState(false)
+  const historyOpen = controlledHistoryOpen ?? ownHistoryOpen
+  const setHistoryOpen = onHistoryOpenChange ?? setOwnHistoryOpen
   const [toolsOpen, setToolsOpen] = useState(false)
   const [traceOpen, setTraceOpen] = useState(false)
   const [contextOpen, setContextOpen] = useState(false)
-  const title = chatTitle(state)
   const hasMessages = state.items.length > 0
   // 'starting' is the step on the way to ready, not a failure. Treating it as one made every new
   // chat flash the connection guidance and drop the composer to the bottom for the frames before
@@ -63,15 +73,6 @@ export function ChatPane({
     }
   }
 
-  async function continueInNewChat(): Promise<void> {
-    setHistoryOpen(false)
-    try {
-      await chat.continueInNewThread()
-    } catch {
-      // As above: the reason lands in the transcript.
-    }
-  }
-
   return (
     <aside
       className={`chat-pane prompt-chat${centerComposer ? ' prompt-chat-composer-centered' : ''}`}
@@ -85,22 +86,10 @@ export function ChatPane({
           '--chat-zoom-inverse': 100 / zoom,
           '--chat-font-size': `${fontSize}px`,
           '--chat-fs-body': `${fontSize}px`,
-          '--chat-fs-markdown': `${fontSize}px`
+          '--chat-fs-markdown': `${fontSize}px`,
+          '--composer-font-size': `${composerFontSize}px`
         } as React.CSSProperties}
       >
-        <ChatHeader
-          title={title}
-          cwd={state.cwd}
-          ready={ready}
-          running={running}
-          historyOpen={historyOpen}
-          canContinue={state.items.some((item) => item.type === 'user')}
-          onNewChat={() => void startNewChat()}
-          onContinueInNewChat={() => void continueInNewChat()}
-          onToggleHistory={() => setHistoryOpen((open) => !open)}
-          onOpenTools={() => setToolsOpen(true)}
-          onOpenTrace={() => setTraceOpen(true)}
-        />
         <ToolsModal open={toolsOpen} onOpenChange={setToolsOpen} />
         <TraceModal open={traceOpen} onOpenChange={setTraceOpen} paneId={chat.selectedPaneId} />
         <ContextInspectorModal
@@ -119,17 +108,28 @@ export function ChatPane({
             onClose={() => setHistoryOpen(false)}
           />
         ) : (
-          <TranscriptScroller threadId={state.threadId}>
+          <TranscriptScroller threadId={state.threadId} paneId={chat.selectedPaneId}>
             {!hasMessages && blocked ? (
               <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
             ) : hasMessages ? (
-              <ChatTranscript items={state.items} activeTurnId={state.activeTurnId} />
+              <ChatTranscript items={state.items} activeTurnId={state.activeTurnId}
+                hasEarlier={state.history?.hasEarlier} loadEarlier={chat.loadEarlier} actions={{
+                threadKey: state.threadId ?? chat.selectedPaneId,
+                running,
+                branch: (itemId) => chat.continueFromChat({
+                  paneId: chat.selectedPaneId, threadId: state.threadId, throughItemId: itemId
+                }, state.selectedModel)
+              }} />
             ) : (
               <div aria-hidden="true" />
             )}
           </TranscriptScroller>
         )}
-        <TaskActivity activeTurnId={state.activeTurnId} />
+        <TaskActivity>
+          {currentBackgroundTasks(backgroundItems).length ? (
+            <BackgroundTaskIndicator key={state.items.filter((item) => item.type === 'user').at(-1)?.id ?? state.threadId} items={backgroundItems} />
+          ) : null}
+        </TaskActivity>
         <Composer
           enabled={ready}
           running={running}
@@ -138,12 +138,24 @@ export function ChatPane({
           selectedModel={state.selectedModel}
           selectedReasoningEffort={state.selectedReasoningEffort}
           contextUsage={state.contextUsage}
+          provider={state.provider}
+          planUsage={state.planUsage}
+          onRefreshPlanUsage={chat.refreshPlanUsage}
           onModelChange={chat.selectModel}
           onReasoningEffortChange={chat.selectReasoningEffort}
           onSend={sendMessage}
           onStop={chat.interrupt}
           onInspectContext={() => setContextOpen(true)}
           onNewChat={() => void startNewChat()}
+          cwd={chat.workspace?.cwd ?? state.cwd}
+          projectPath={chat.workspace?.projectPath ?? state.cwd}
+          recentProjects={chat.workspace?.recentProjects ?? []}
+          onChooseProject={() => window.closedai.chat.chooseProject()}
+          onSelectProject={(projectPath) => window.closedai.chat.selectProject(projectPath)}
+          onClearProject={() => window.closedai.chat.clearProject()}
+          onOpenTools={() => setToolsOpen(true)}
+          onOpenTrace={() => setTraceOpen(true)}
+          activeTurnId={state.activeTurnId}
         />
       </div>
     </aside>
@@ -153,13 +165,15 @@ export function ChatPane({
 
 function TranscriptScroller({
   threadId,
+  paneId,
   children
 }: {
   threadId: string | null
+  paneId: string
   children: JSX.Element
 }): JSX.Element {
   return (
-    <MessageScrollerProvider key={threadId ?? 'empty'} autoScroll defaultScrollPosition="last-anchor">
+    <MessageScrollerProvider key={JSON.stringify([paneId, threadId])} autoScroll defaultScrollPosition="end">
       <MessageScroller className="chat-scroll-root prompt-chat-scroll">
         <MessageScrollerViewport className="chat-scroll">
           <MessageScrollerContent className="chat-scroll-content gap-0">

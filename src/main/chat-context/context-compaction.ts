@@ -13,6 +13,10 @@ export type ContextUsage = {
 
 export type ContextCompactorDeps = {
   thresholdPercent: () => number
+  thresholdTokens?: () => number
+  /** Injectable clock and grace period for deterministic policy tests. */
+  now?: () => number
+  idleDelayMs?: number
   threadId: () => string | null
   /** True while the app-server has a turn open; compaction runs as one. */
   turnActive: () => boolean
@@ -23,6 +27,8 @@ export type ContextCompactorDeps = {
 const COMPACT_METHOD = 'thread/compact/start'
 /** Compaction is one model call; well past this it is safer to unblock sends than wait. */
 const COMPACTION_TIMEOUT_MS = 90_000
+const TOKEN_COMPACTION_IDLE_MS = 15_000
+const TOKEN_COMPACTION_COOLDOWN_MS = 5 * 60_000
 
 /** Shape of the app-server's `thread/tokenUsage/updated` payload. */
 export function parseTokenUsage(value: unknown): ContextUsage | null {
@@ -51,6 +57,8 @@ export class ContextCompactor {
   // Set when a turn other than our own compaction finishes; one compaction per such turn
   // at most, so a compaction that does not shrink the history cannot loop.
   private armed = false
+  private scheduled: NodeJS.Timeout | null = null
+  private lastTokenAttempt: { at: number; tokens: number; budget: number } | null = null
 
   constructor(private readonly deps: ContextCompactorDeps) {}
 
@@ -62,8 +70,13 @@ export class ContextCompactor {
     return this.pending !== null
   }
 
+  get scheduledForIdle(): boolean {
+    return this.scheduled !== null
+  }
+
   noteUsage(usage: ContextUsage): void {
     this.usage = usage
+    if (this.lastTokenAttempt) this.lastTokenAttempt.tokens = Math.min(this.lastTokenAttempt.tokens, usage.usedTokens)
   }
 
   /** Call when the app-server reports a turn finished. May start a compaction. */
@@ -73,7 +86,7 @@ export class ContextCompactor {
       return
     }
     this.armed = true
-    void this.maybeStart()
+    this.checkAfterTurn()
   }
 
   /**
@@ -90,42 +103,100 @@ export class ContextCompactor {
     return this.pending?.promise ?? Promise.resolve()
   }
 
+  /** User input wins over a not-yet-started idle compaction. An active one must finish. */
+  prepareForSend(): Promise<void> {
+    this.cancelScheduled()
+    this.armed = false
+    return this.idle()
+  }
+
+  turnStarted(): void {
+    this.cancelScheduled()
+  }
+
   /** Forget the thread: switching or losing it invalidates the usage and any wait. */
   reset(): void {
+    this.cancelScheduled()
     this.settle()
     this.usage = null
     this.armed = false
+    this.lastTokenAttempt = null
+  }
+
+  private checkAfterTurn(): void {
+    this.cancelScheduled()
+    const reason = this.trigger()
+    if (!reason) return
+    if (reason === 'percent') {
+      void this.maybeStart()
+      return
+    }
+    this.scheduled = setTimeout(() => {
+      this.scheduled = null
+      void this.maybeStart()
+    }, this.deps.idleDelayMs ?? TOKEN_COMPACTION_IDLE_MS)
+    this.scheduled.unref?.()
+  }
+
+  private trigger(): 'percent' | 'tokens' | null {
+    if (!this.armed || this.pending || !this.usage || !this.deps.threadId() || this.deps.turnActive()) return null
+    const percent = this.deps.thresholdPercent()
+    if (percent > 0 && usagePercent(this.usage) >= percent) return 'percent'
+    const budget = this.deps.thresholdTokens?.() ?? 0
+    if (budget <= 0 || this.usage.usedTokens < budget) return null
+    const last = this.lastTokenAttempt
+    if (last && last.budget === budget) {
+      const growth = this.usage.usedTokens - last.tokens
+      if (this.now() - last.at < TOKEN_COMPACTION_COOLDOWN_MS || growth < Math.max(4_000, budget * 0.25)) return null
+    }
+    return 'tokens'
   }
 
   private async maybeStart(): Promise<void> {
-    const threshold = this.deps.thresholdPercent()
+    const reason = this.trigger()
     const threadId = this.deps.threadId()
-    if (threshold <= 0 || !threadId || !this.usage || !this.armed) return
+    if (!reason || !threadId || !this.usage) return
     const percent = usagePercent(this.usage)
-    if (percent < threshold) return
     this.armed = false
-    this.begin()
-    this.deps.notice(`Context is at ${percent}% of the model window; compacting older history`, 'info')
+    const budget = this.deps.thresholdTokens?.() ?? 0
+    if (budget > 0) this.lastTokenAttempt = { at: this.now(), tokens: this.usage.usedTokens, budget }
+    const pending = this.begin()
+    this.deps.notice(reason === 'tokens'
+      ? `Context has ${this.usage.usedTokens} tokens (target ${budget}); compacting older history while idle`
+      : `Context is at ${percent}% of the model window; compacting older history`, 'info')
     try {
       await this.deps.request(COMPACT_METHOD, { threadId })
     } catch (error) {
+      // An old RPC rejection must not settle a new thread's compaction after reset.
+      if (this.pending !== pending) return
       this.deps.notice(`Could not compact the conversation: ${error instanceof Error ? error.message : String(error)}`, 'error')
       this.settle()
     }
   }
 
-  private begin(): void {
+  private begin(): NonNullable<ContextCompactor['pending']> {
     let settle: () => void = () => {}
     const promise = new Promise<void>((resolve) => { settle = resolve })
-    const timer = setTimeout(() => this.settle(), COMPACTION_TIMEOUT_MS)
+    const timer = setTimeout(() => { if (this.pending === pending) this.settle() }, COMPACTION_TIMEOUT_MS)
     timer.unref?.()
-    this.pending = {
+    const pending = {
       promise,
       settle: () => {
         clearTimeout(timer)
         settle()
       }
     }
+    this.pending = pending
+    return pending
+  }
+
+  private now(): number {
+    return this.deps.now?.() ?? Date.now()
+  }
+
+  private cancelScheduled(): void {
+    if (this.scheduled) clearTimeout(this.scheduled)
+    this.scheduled = null
   }
 
   private settle(): void {

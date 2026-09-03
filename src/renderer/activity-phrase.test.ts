@@ -60,3 +60,12 @@ test('tool phrases support dynamic running and completed states', () => {
   assert.equal(toolPhrase('Web search', 1, true), 'Searching the web')
   assert.equal(toolPhrase('Web search', 2, true), 'Searching the web 2 times')
 })
+
+test('semicolons and newlines end a stage, so the last command names the phrase', () => {
+  assert.equal(
+    commandPhrase('cd /repo; ls -l out/*.css | head -4; date +%H:%M:%S; grep -c "activity-step-row" out/*.css'),
+    'Searched for activity-step-row'
+  )
+  assert.equal(commandPhrase('npm run build\ngit status'), 'Checked git status')
+  assert.equal(commandPhrase('test -f a || cat b.ts'), 'Read b.ts')
+})

@@ -1,6 +1,7 @@
 import { allSettledBounded } from '../../bounded-concurrency.js'
 import { normalizeBatchMaxCalls } from '../../batch-config.js'
 import type { ToolRegistry } from '../registry.js'
+import { resourceKey } from '../resource-locks.js'
 import {
   booleanArg,
   defineTool,
@@ -18,8 +19,6 @@ import {
 // batch adds sequencing and result assembly, never a second execution path.
 
 export const TOOL_BATCH_NAMESPACE = 'tool_batch'
-/** Independent calls overlap, but a runaway page cannot monopolise the browser host. */
-const PARALLEL_WIDTH = 4
 /** Must contain a full sequential batch of slow inner calls (navigate is ~20s worst case). */
 const BATCH_TIMEOUT_MS = 180_000
 
@@ -61,8 +60,8 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
           'Each entry names a tool as `namespace.tool` and carries the exact arguments a direct call would use; ' +
           'each call reports its own ok/failed status and results are returned in call order, numbered `[1]`, `[2]`, … ' +
           'By default the calls run in order and a failure skips the rest, so a dependent sequence ' +
-          '(navigate, then wait_for, then read_page) is safe to batch. Set `parallel` to true only for ' +
-          'independent read-only calls; they overlap, and one failure does not stop the others. ' +
+          '(navigate, then wait_for, then read_page) is safe to batch. Set `parallel` to true for ' +
+          'independent work; explicit browser targets run in parallel while same-target work serializes. ' +
           'Batches cannot nest. Prefer direct calls for single steps or when a result decides what to do next. ' +
           'For successful intermediate actions, set `include_result` false so only status—not a payload the model does not need—is returned; failures are always included. ' +
           'In exec scripts do not use this tool: await the tools directly (Promise.all for independent reads).',
@@ -94,8 +93,10 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
             parallel: {
               type: 'boolean',
               description:
-                'true runs the calls concurrently and never skips one because another failed. ' +
-                'Default false: calls run in order and a failure skips everything after it.'
+                'true runs the calls concurrently and never skips one because another failed. Use it for ' +
+                'independent CDP work, including independent mutations on different targets; serialize ' +
+                'dependent or same-target mutations. Default false: calls run in order and a failure skips ' +
+                'everything after it.'
             }
           },
           required: ['calls']
@@ -148,6 +149,7 @@ function dispatch(registry: ToolRegistry, call: BatchCall, context: ToolContext)
   return registry.call(
     { namespace: call.namespace, tool: call.tool, arguments: call.arguments },
     {
+      paneId: context.paneId,
       threadId: context.threadId,
       turnId: context.turnId,
       callId: `${context.callId}#${call.index}`,
@@ -180,15 +182,46 @@ async function runSequential(registry: ToolRegistry, calls: BatchCall[], context
 }
 
 async function runParallel(registry: ToolRegistry, calls: BatchCall[], context: ToolContext): Promise<BatchOutcome[]> {
-  const settled = await allSettledBounded(calls, PARALLEL_WIDTH, (call) => dispatch(registry, call, context))
-  return settled.map((entry) => ({
-    status: 'ran',
-    // The registry converts tool errors to results; a rejection here is a registry bug,
-    // but the model still deserves a readable per-call failure over a lost batch.
-    result: entry.status === 'fulfilled'
-      ? entry.value
-      : failureResult(entry.reason instanceof Error ? entry.reason.message : String(entry.reason))
-  }))
+  const outcomes = new Map<number, BatchOutcome>()
+  const groups = parallelGroups(calls)
+  // Each group is one serial target lane. Run every independent lane immediately rather than
+  // imposing an arbitrary global width; explicit tab ids are what unlock browser concurrency.
+  await allSettledBounded(groups, groups.length, async (group) => {
+    for (const call of group) {
+      try {
+        outcomes.set(call.index, { status: 'ran', result: await dispatch(registry, call, context) })
+      } catch (error) {
+        outcomes.set(call.index, {
+          status: 'ran',
+          result: failureResult(error instanceof Error ? error.message : String(error))
+        })
+      }
+    }
+  })
+  return calls.map((call) => outcomes.get(call.index) ?? {
+    status: 'ran', result: failureResult(`call [${call.index}] did not produce a result`)
+  })
+}
+
+/**
+ * Calls with a known tab id share one lane. An active-tab fallback or tab-strip mutation can
+ * change which WebContents is active, so it becomes a browser-wide barrier for the whole batch.
+ * Unrelated calls each receive their own lane and therefore retain maximum concurrency.
+ */
+function parallelGroups(calls: BatchCall[]): BatchCall[][] {
+  const scopes = calls.map((call) => resourceKey({
+    namespace: call.namespace, tool: call.tool, arguments: call.arguments
+  }, call.arguments))
+  const hasBrowserBarrier = scopes.includes('browser:global')
+  const grouped = new Map<string, BatchCall[]>()
+  calls.forEach((call, index) => {
+    const scope = scopes[index]
+    const key = scope?.startsWith('browser:') && hasBrowserBarrier ? 'browser:global' : scope ?? `independent:${call.index}`
+    const group = grouped.get(key)
+    if (group) group.push(call)
+    else grouped.set(key, [call])
+  })
+  return [...grouped.values()]
 }
 
 /**

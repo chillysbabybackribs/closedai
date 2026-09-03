@@ -12,6 +12,9 @@ test('every model lane receives the deterministic batching contract', () => {
     antigravityAgentInstructions('/outside-index')
   ]
   for (const value of instructions) {
+    assert.match(value, /outcome-first, user-facing articulation/)
+    assert.match(value, /Never begin a progress update with “I have”, “I’ve”, “I am”, or “I will”/)
+    assert.match(value, /Let the app activity state carry routine in-progress status/)
     assert.match(value, /group all steps whose arguments are (?:already )?known/)
     assert.match(value, /Yield for another model pass only when fresh output changes the next action/)
     assert.match(value, /closedai_app\.state for facts/)

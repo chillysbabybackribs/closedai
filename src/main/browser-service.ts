@@ -12,6 +12,7 @@ import { allSettledBounded } from './bounded-concurrency.js'
 import { restorePlan, type RestoredTabSession } from './browser-tab-session-store.js'
 import { browserSurfaceVisibility } from './browser-surface-visibility.js'
 import { activateTabSurface, prepareTabSurfaceForTool } from './browser-tab-activation.js'
+import type { CdpBrowserTarget } from './cdp/browser-cdp-access.js'
 
 type BrowserServiceOptions = {
   initialUrl?: string
@@ -27,6 +28,9 @@ const RESTORE_LOAD_CONCURRENCY = 4
 // (persist:browser), so a login in one tab applies to all.
 export class BrowserService extends EventEmitter {
   private tabs: BrowserTab[] = []
+  // Native popup windows intentionally stay outside the visible tab strip, but CDP still needs
+  // a stable application-owned id to address their WebContents directly.
+  private readonly nativePopups = new Map<string, { contents: WebContents; openerTabId: string }>()
   private activeId: string | null = null
   private disposed = false
   private bounds: BrowserBounds = { x: 0, y: 0, width: 1, height: 1 }
@@ -82,7 +86,13 @@ export class BrowserService extends EventEmitter {
   }
 
   private createTab(activate: boolean): BrowserTab {
-    const tab = new BrowserTab(this.history, (request) => { this.openTab(request.url, request.activate, request.options) })
+    let tab!: BrowserTab
+    tab = new BrowserTab(
+      this.history,
+      (request) => { this.openTab(request.url, request.activate, request.options) },
+      PARTITION,
+      (contents) => this.registerNativePopup(tab.id, contents)
+    )
     this.registerTab(tab)
     if (activate) this.setActive(tab.id)
     else {
@@ -256,12 +266,56 @@ export class BrowserService extends EventEmitter {
     return this.tabInfos()
   }
 
+  /** Browser-owned CDP roots, including native popup windows that never appear in the tab strip. */
+  cdpTargetList(): CdpBrowserTarget[] {
+    const tabs = this.tabInfos().map((tab) => ({ ...tab, kind: 'tab' as const }))
+    const popups: CdpBrowserTarget[] = []
+    for (const [id, popup] of this.nativePopups) {
+      if (popup.contents.isDestroyed()) {
+        this.nativePopups.delete(id)
+        continue
+      }
+      popups.push({
+        id,
+        pos: 0,
+        title: popup.contents.getTitle() || 'Popup',
+        url: popup.contents.getURL() || 'about:blank',
+        favicon: null,
+        isLoading: popup.contents.isLoading(),
+        active: false,
+        kind: 'popup',
+        openerTabId: popup.openerTabId
+      })
+    }
+    return [...tabs, ...popups]
+  }
+
   /** Live WebContents of a tab (the active one when omitted); null if unknown or destroyed. */
   contentsOf(tabId?: string): WebContents | null {
+    const popup = tabId ? this.nativePopups.get(tabId)?.contents : null
+    if (popup && !popup.isDestroyed()) return popup
     const tab = tabId ? this.tabs.find((candidate) => candidate.id === tabId) ?? null : this.active
     if (tab) this.prepareTabForTool(tab)
     const contents = tab?.view.webContents
     return contents && !contents.isDestroyed() ? contents : null
+  }
+
+  /**
+   * Bring a tab to the front so it can receive real input, reporting whether that switched tabs.
+   * Null means no tab can: the pane is gone or the page is covered by app chrome.
+   *
+   * A background tab keeps honest bounds (so CDP geometry still reads correctly) but is
+   * setVisible(false). Chromium routes trusted input through the compositor, so an invisible
+   * view silently drops clicks and keystrokes and never acks a wheel event. Foregrounding the
+   * tab is the only way to deliver one.
+   */
+  focusTabForInput(tabId: string): { activated: boolean } | null {
+    const tab = this.tabs.find((candidate) => candidate.id === tabId)
+    if (!tab) return null
+    if (!browserSurfaceVisibility(this.bounds).pageVisible) return null
+    if (this.activeId === tabId) return { activated: false }
+    this.setActive(tabId)
+    return { activated: true }
   }
 
   /** Keep a tab's compositor attached while a frame-dependent tool operates on it. */
@@ -274,6 +328,12 @@ export class BrowserService extends EventEmitter {
 
   private prepareTabForTool(tab: BrowserTab): void {
     prepareTabSurfaceForTool(tab, this.activeId, this.bounds, browserSurfaceVisibility(this.bounds))
+  }
+
+  private registerNativePopup(openerTabId: string, contents: WebContents): void {
+    const id = `popup-${contents.id}`
+    this.nativePopups.set(id, { contents, openerTabId })
+    contents.once('destroyed', () => { this.nativePopups.delete(id) })
   }
 
   /** Navigate the active tab, or a new active tab, and resolve with the tab id once usable. */
@@ -315,6 +375,14 @@ export class BrowserService extends EventEmitter {
     if (!imageUrl) return null
     const state = tab.getState()
     return { imageUrl, tabId: tab.id, url: state.url, title: state.title }
+  }
+
+  searchHistory(input: string) {
+    return this.history.search?.(input) ?? []
+  }
+
+  removeHistory(url: string): void {
+    this.history.remove?.(url)
   }
 
   // Best omnibox inline-completion for the current input, or null if none.

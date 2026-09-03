@@ -131,7 +131,7 @@ export class ToolRegistry {
   async call(request: ToolCallRequest, context: ToolCallContext): Promise<ToolResult> {
     const startedAt = performance.now()
     this.notifyObservers({ phase: 'start', request, context })
-    const result = await this.run(request, context)
+    const result = boundResult(await this.run(request, context))
     this.notifyObservers({ phase: 'end', request, context, result, durationMs: performance.now() - startedAt })
     this.report(request, result)
     return result
@@ -180,7 +180,7 @@ export class ToolRegistry {
         definition.run(input as JsonObject, { ...context, signal: controller.signal })
       )
       void run.then(lock, lock)
-      return boundResult(await Promise.race([run, timeout]))
+      return await Promise.race([run, timeout])
     } catch (error) {
       return failureResult(`${label}: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
@@ -206,14 +206,35 @@ export class ToolRegistry {
   }
 }
 
-/** Cap each text item so one call cannot permanently occupy a large slice of the context. */
+/** Share one text budget across a result, preserving small blocks and separate image content. */
 export function boundResult(result: ToolResult, maxChars = MAX_RESULT_TEXT_CHARS): ToolResult {
-  if (!result.content.some((item) => item.type === 'text' && item.text.length > maxChars)) return result
+  const total = result.content.reduce((sum, item) => sum + (item.type === 'text' ? item.text.length : 0), 0)
+  if (total <= maxChars) return result
+  const textCount = result.content.filter((item) => item.type === 'text').length
+  const maxBlocks = Math.max(1, Math.floor(maxChars / 256))
+  let seen = 0
+  const content = result.content.flatMap((item): ToolResult['content'] => {
+    if (item.type !== 'text' || textCount <= maxBlocks) return [item]
+    seen += 1
+    if (seen < maxBlocks) return [item]
+    if (seen > maxBlocks) return []
+    return [{ type: 'text', text: `[ClosedAI omitted ${textCount - maxBlocks + 1} text blocks. ${TRUNCATION_ADVICE}]` }]
+  })
+  // Allocate short blocks first so a large dump cannot hide a trailing error or result id.
+  const sizes = content.flatMap((item, index) => item.type === 'text' ? [{ index, length: item.text.length }] : [])
+    .sort((a, b) => a.length - b.length)
+  const budgets = new Map<number, number>()
+  let remaining = maxChars
+  for (const [position, item] of sizes.entries()) {
+    const budget = Math.min(item.length, Math.floor(remaining / (sizes.length - position)))
+    budgets.set(item.index, budget)
+    remaining -= budget
+  }
   return {
     ...result,
-    content: result.content.map((item) => {
-      if (item.type !== 'text' || item.text.length <= maxChars) return item
-      return { type: 'text', text: truncateText(item.text, maxChars, TRUNCATION_ADVICE).text }
+    content: content.map((item, index) => {
+      if (item.type !== 'text') return item
+      return { ...item, text: truncateText(item.text, budgets.get(index)!, TRUNCATION_ADVICE).text }
     })
   }
 }

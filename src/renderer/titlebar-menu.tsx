@@ -12,7 +12,7 @@ type MenuRow = {
   label: string
   shortcut?: string
   command?: ChatZoomCommand
-  action?: 'settings'
+  action?: 'settings' | 'history'
 } | null
 
 type Menu = { label: string; rows: MenuRow[] }
@@ -30,7 +30,7 @@ const MENUS: Menu[] = [
     label: 'File',
     rows: [
       { label: 'New chat', shortcut: 'Ctrl+N' },
-      { label: 'Open chat history', shortcut: 'Ctrl+H' },
+      { label: 'Open chat history', shortcut: 'Ctrl+H', action: 'history' },
       null,
       { label: 'Settings', shortcut: 'Ctrl+,', action: 'settings' },
       null,
@@ -76,15 +76,19 @@ const MENUS: Menu[] = [
 
 export type TitlebarMenuProps = {
   chatZoom: number
+  historyOpen: boolean
   onChatZoomChange: (command: ChatZoomCommand) => void
   onOpenSettings: () => void
+  onToggleHistory: () => void
 }
 
 /** The shell's File / Edit / View / Help bar, sitting in the title bar's drag region. */
 export const TitlebarMenu = memo(function TitlebarMenu({
   chatZoom,
+  historyOpen,
   onChatZoomChange,
-  onOpenSettings
+  onOpenSettings,
+  onToggleHistory
 }: TitlebarMenuProps): JSX.Element {
   return (
     <Menubar.Root className="titlebar-nav-menu" aria-label="Application menu">
@@ -112,9 +116,11 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                       onSelect={() => {
                         if (row.command) onChatZoomChange(row.command)
                         if (row.action === 'settings') onOpenSettings()
+                        if (row.action === 'history') onToggleHistory()
                       }}
                     >
-                      <span>{row.label}</span>
+                      {/* The row keeps its manifest key; only the wording follows the panel. */}
+                      <span>{row.action === 'history' && historyOpen ? 'Close chat history' : row.label}</span>
                       {row.shortcut && (
                         <span className="titlebar-menu-shortcut">
                           {row.command === 'reset' ? `${chatZoom}%  ` : ''}{row.shortcut}

@@ -97,7 +97,58 @@ async function main(): Promise<void> {
     AppSettingsStore.open(join(userData(), 'app-settings.json'))
   ])
   const configuredWorkspace = process.env.CLOSEDAI_WORKSPACE?.trim()
-  const chatWorkspace = configuredWorkspace ? resolve(configuredWorkspace) : app.getAppPath()
+  // An environment-supplied workspace wins for the initial launch, but project changes are
+  // still user-owned afterwards. A missing saved selection keeps the existing checkout as the
+  // pleasant first-run project rather than dropping people into their home folder unexpectedly.
+  let chatWorkspace = configuredWorkspace
+    ? resolve(configuredWorkspace)
+    : settings.get().chatWorkspacePath ?? app.getAppPath()
+  let projectPath: string | null = configuredWorkspace
+    ? chatWorkspace
+    : settings.get().chatProjectPath ?? chatWorkspace
+  const workspaceSelector = {
+    current: () => ({
+      cwd: chatWorkspace,
+      projectPath,
+      recentProjects: [...settings!.get().chatWorkspaces]
+        .reverse()
+        .filter((workspace) => workspace.projectPath && !sameChatWorkspace(workspace, { cwd: chatWorkspace, projectPath }))
+        .map((workspace) => ({ cwd: workspace.cwd, projectPath: workspace.projectPath! }))
+    }),
+    select: async (
+      nextProjectPath: string | null,
+      preference: { modelId: string | null; reasoningEffort: string | null }
+    ): Promise<void> => {
+      const current = settings!.get()
+      const previous = {
+        cwd: chatWorkspace,
+        projectPath,
+        peers: current.chatPeers,
+        selectedPaneId: current.chatSelectedPaneId
+      }
+      const nextCwd = nextProjectPath ?? app.getPath('home')
+      const saved = current.chatWorkspaces.filter((workspace) => !sameChatWorkspace(workspace, previous))
+      const destination = saved.find((workspace) =>
+        workspace.cwd === nextCwd && workspace.projectPath === nextProjectPath
+      )
+      const destinationPeer = destination?.peers.find((peer) => peer.paneId === destination.selectedPaneId) ?? destination?.peers[0]
+      projectPath = nextProjectPath
+      chatWorkspace = nextCwd
+      await settings!.set({
+        chatWorkspaces: [...saved, previous],
+        chatWorkspacePath: chatWorkspace,
+        chatProjectPath: projectPath,
+        chatPeers: destination?.peers ?? [],
+        chatSelectedPaneId: destination?.selectedPaneId ?? null,
+        chatThreadId: destinationPeer?.codexThreadId ?? null,
+        chatClaudeSessionId: destinationPeer?.claudeSessionId ?? null,
+        chatAntigravityConversationId: destinationPeer?.antigravityConversationId ?? null,
+        chatModelId: destinationPeer?.modelId ?? preference.modelId,
+        chatReasoningEffort: destinationPeer?.reasoningEffort ?? preference.reasoningEffort,
+        chatContinuation: destinationPeer?.continuation ?? null
+      })
+    }
+  }
   // Tools resolve the browser lazily: it is created with the window, after the chat service.
   const pageAccess = new BrowserPageAccess(() => browserService)
   cdpAccess = new BrowserCdpAccess(() => browserService)
@@ -152,7 +203,7 @@ async function main(): Promise<void> {
     antigravity: new AntigravityChatService(
       chatWorkspace, peerSettings, antigravityBridge!, antigravityStateDir, activeBrowserContext, screenshots, peerSettings.paneId
     )
-  }, modelId))
+  }, modelId), undefined, workspaceSelector)
   registerIpc()
   // The one-shot cookie import runs before the first tab loads, so a restored or home page
   // arrives already signed in rather than racing the import.
@@ -168,6 +219,13 @@ function profileKeyFor(userDataDir: string): string | null {
   let hash = 0
   for (let index = 0; index < userDataDir.length; index += 1) hash = (hash * 31 + userDataDir.charCodeAt(index)) >>> 0
   return hash.toString(36)
+}
+
+function sameChatWorkspace(
+  left: { cwd: string; projectPath: string | null },
+  right: { cwd: string; projectPath: string | null }
+): boolean {
+  return left.cwd === right.cwd && left.projectPath === right.projectPath
 }
 
 function createWindow(): void {

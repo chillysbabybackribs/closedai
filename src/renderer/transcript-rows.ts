@@ -1,5 +1,4 @@
-import type { ChatTranscriptItem } from '../shared/chat.js'
-import type { ToolPart } from '../components/ui/tool.js'
+import { activityPhase, type ActivityPhase, type ChatTranscriptItem } from '../shared/chat.js'
 import { commandKind, commandPhrase, firstStage, readFiles, tokenize, toolPhrase, unwrapShell } from './activity-phrase.js'
 
 export type ActivityItem = Extract<ChatTranscriptItem, { type: 'command' | 'fileChange' | 'tool' }>
@@ -8,13 +7,8 @@ export type StandaloneItem = Exclude<ChatTranscriptItem, ActivityItem | Reasonin
 
 export type TranscriptRow =
   | { kind: 'item'; item: StandaloneItem }
+  | { kind: 'background'; id: string; items: Extract<ChatTranscriptItem, { type: 'tool' }>[] }
   | { kind: 'activity'; id: string; items: ActivityItem[] }
-
-export type ActivityCluster = {
-  id: string
-  title: string
-  items: ActivityItem[]
-}
 
 export function isActivity(item: ChatTranscriptItem): item is ActivityItem {
   return item.type === 'command' || item.type === 'fileChange' || item.type === 'tool'
@@ -33,7 +27,21 @@ export function isReasoning(item: ChatTranscriptItem): item is ReasoningItem {
 /** Consecutive activity in the same turn stays one row. Commentary splits batches. */
 export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {
   const rows: TranscriptRow[] = []
+  const groups = new Map<string, Extract<TranscriptRow, { kind: 'background' }>>()
+  const linked = new Set(items.flatMap((item) => item.type === 'tool' && item.background?.linkedToolId ? [item.background.linkedToolId] : []))
   for (const item of items) {
+    if (linked.has(item.id)) continue
+    if (item.type === 'tool' && item.background) {
+      const key = item.turnId ?? 'background'
+      let group = groups.get(key)
+      if (!group) {
+        group = { kind: 'background', id: key, items: [] }
+        groups.set(key, group)
+        rows.push(group)
+      }
+      group.items.push(item)
+      continue
+    }
     if (isReasoning(item) || !rowVisible(item)) continue
     if (isActivity(item)) {
       const turnKey = item.turnId ?? `activity:${item.id}`
@@ -48,6 +56,32 @@ export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {
     rows.push({ kind: 'item', item })
   }
   return rows
+}
+
+/** Message completion is not turn completion: tools may run after a settled message. */
+export function turnActionMessageIds(
+  items: ChatTranscriptItem[],
+  activeTurnId?: string | null,
+  running = Boolean(activeTurnId)
+): Set<string> {
+  const lastAnswers = new Map<string, Extract<ChatTranscriptItem, { type: 'assistant' }>>()
+  const unfinished = new Set<string>()
+  let fallbackKey = 'unattributed'
+  let lastKey: string | null = null
+  for (const item of items) {
+    if (item.type === 'user') fallbackKey = item.turnId ?? `user:${item.id}`
+    const key = item.turnId ?? fallbackKey
+    lastKey = key
+    if (item.turnId === activeTurnId && activeTurnId) unfinished.add(key)
+    if ('streaming' in item && item.streaming) unfinished.add(key)
+    if (isActivity(item) && ['running', 'pending'].includes(itemPhase(item))) unfinished.add(key)
+    if (item.type === 'assistant' && item.text.trim()) lastAnswers.set(key, item)
+  }
+  // Providers can omit turn ids; the current tail still belongs to the running turn.
+  if (running && lastKey) unfinished.add(lastKey)
+  return new Set([...lastAnswers].flatMap(([key, item]) =>
+    !unfinished.has(key) && !item.streaming && item.phase !== 'commentary' ? [item.id] : []
+  ))
 }
 
 function sameTurn(last: Extract<TranscriptRow, { kind: 'activity' }>, item: ActivityItem): boolean {
@@ -119,6 +153,8 @@ export function activityTitle(item: ActivityItem, running = false): string {
 }
 
 function commandHeadline(items: ActivityItem[], running = false): string {
+  // One command describes itself; only a group needs counting.
+  if (items.length === 1) return activityTitle(items[0]!, running)
   const kinds = new Set(items.map((item) => item.type === 'command' ? commandKind(item.command) : 'run'))
   if (kinds.size === 1 && kinds.has('read')) return readHeadline(items, running)
   if (kinds.size === 1 && kinds.has('search')) return `${running ? 'Searching' : 'Searched'} ${items.length} times`
@@ -151,95 +187,17 @@ export function commandTitle(command: string, max = 64): string {
   return `${inner.slice(0, max - 1).trimEnd()}…`
 }
 
-function activityDetail(item: ActivityItem): string {
-  if (item.type === 'command') return commandTitle(item.command)
-  return activityTitle(item)
+/** The row-level phase: one running step keeps the row live, one failure marks it failed. */
+export function activityState(items: ActivityItem[]): ActivityPhase {
+  const phases = items.map(itemPhase)
+  if (phases.includes('running')) return 'running'
+  if (phases.includes('failed')) return 'failed'
+  if (phases.includes('pending')) return 'pending'
+  return 'done'
 }
 
-export function activityClusters(items: ActivityItem[], running = false): ActivityCluster[] {
-  const byKey = new Map<string, ActivityCluster & { key: string }>()
-  for (const item of items) {
-    const key = clusterKey(item)
-    const existing = byKey.get(key)
-    if (existing) {
-      existing.items.push(item)
-    } else {
-      byKey.set(key, { id: item.id, title: '', items: [item], key })
-    }
-  }
-  return Array.from(byKey.values()).map((cluster) => ({
-    id: cluster.id,
-    title: activityHeadline(cluster.items, running),
-    items: cluster.items
-  }))
-}
-
-export function clusterToolPart(cluster: ActivityCluster): ToolPart {
-  if (cluster.items.length === 1) return toolPart(cluster.items[0]!)
-  return {
-    type: cluster.title,
-    state: activityState(cluster.items),
-    input: { steps: cluster.items.map(activityDetail) },
-    output: clusterOutput(cluster.items),
-    errorText: clusterError(cluster.items),
-    toolCallId: cluster.items[0]!.id
-  }
-}
-
-export function toolPart(item: ActivityItem): ToolPart {
-  const running = item.status.toLowerCase().includes('progress') || item.status.toLowerCase().includes('running')
-  if (item.type === 'command') {
-    return {
-      type: activityTitle(item, running),
-      state: toolState(item.status, item.exitCode),
-      input: {
-        command: commandTitle(item.command),
-        ...(item.cwd ? { cwd: item.cwd } : {})
-      },
-      output: item.output ? { output: item.output, exitCode: item.exitCode } : undefined,
-      errorText: item.exitCode !== null && item.exitCode !== 0 ? `Command exited with code ${item.exitCode}` : undefined,
-      toolCallId: item.id
-    }
-  }
-  if (item.type === 'fileChange') {
-    return {
-      type: activityTitle(item, running),
-      state: toolState(item.status, null),
-      input: { files: item.changes.map(({ path, kind }) => ({ path, kind })) },
-      output: item.changes.some((change) => change.diff)
-        ? { diffs: item.changes.filter((change) => change.diff).map(({ path, diff }) => ({ path, diff })) }
-        : undefined,
-      toolCallId: item.id
-    }
-  }
-  return {
-    type: toolPhrase(item.label, 1, running),
-    state: toolState(item.status, null),
-    input: item.detail ? { detail: item.detail } : undefined,
-    toolCallId: item.id
-  }
-}
-
-export function activityState(items: ActivityItem[]): ToolPart['state'] {
-  for (const item of items) {
-    const state = getActivityItemState(item)
-    if (state === 'input-streaming') return 'input-streaming'
-    if (state === 'output-error') return 'output-error'
-    if (state === 'input-available') return 'input-available'
-  }
-  return 'output-available'
-}
-
-function getActivityItemState(item: ActivityItem): ToolPart['state'] {
-  if (item.type === 'command') return toolState(item.status, item.exitCode)
-  if (item.type === 'fileChange') return toolState(item.status, null)
-  return toolState(item.status, null)
-}
-
-function clusterKey(item: ActivityItem): string {
-  if (item.type === 'command') return 'command'
-  if (item.type === 'fileChange') return 'fileChange'
-  return `tool:${item.label}`
+export function itemPhase(item: ActivityItem): ActivityPhase {
+  return activityPhase(item.status, item.type === 'command' ? item.exitCode : null)
 }
 
 function fileName(path: string): string {
@@ -248,35 +206,4 @@ function fileName(path: string): string {
 
 function counted(verb: string, count: number, one: string, many: string): string {
   return count === 1 ? `${verb} 1 ${one}` : `${verb} ${count} ${many}`
-}
-
-function toolState(status: string, exitCode: number | null): ToolPart['state'] {
-  const normalized = status.toLowerCase()
-  if (normalized.includes('progress') || normalized.includes('running')) return 'input-streaming'
-  if (normalized.includes('fail') || normalized.includes('error') || (exitCode !== null && exitCode !== 0)) return 'output-error'
-  if (normalized.includes('pending') || normalized.includes('request')) return 'input-available'
-  return 'output-available'
-}
-
-function clusterOutput(items: ActivityItem[]): Record<string, unknown> | undefined {
-  const results: Record<string, unknown>[] = []
-  for (const item of items) {
-    if (item.type === 'command' && item.output) {
-      results.push({ title: activityDetail(item), output: item.output, exitCode: item.exitCode })
-    } else if (item.type === 'fileChange' && item.changes.length) {
-      results.push({ title: activityTitle(item), files: item.changes.map(({ path, kind }) => ({ path, kind })) })
-    } else if (item.type === 'tool' && item.detail) {
-      results.push({ title: item.label, detail: item.detail })
-    }
-  }
-  return results.length ? { results } : undefined
-}
-
-function clusterError(items: ActivityItem[]): string | undefined {
-  const failed = items.filter((item) => toolPart(item).state === 'output-error')
-  if (!failed.length) return undefined
-  return failed.map((item) => {
-    if (item.type === 'command') return `${activityTitle(item)} exited with code ${item.exitCode}`
-    return `${activityTitle(item)} failed`
-  }).join('\n')
 }

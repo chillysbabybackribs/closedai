@@ -21,9 +21,12 @@ export function cdpPageTool(cdp: CdpHostProvider): ToolDefinition {
     name: 'page',
     description:
       'Real page interaction over CDP: inspect elements, then click, type, press keys, and scroll ' +
-      'by ref. Always prefer these verbs over raw protocol commands — one type call replaces a whole ' +
-      'keystroke sequence. Coordinates are snapshot-time CSS pixels in the main frame viewport and ' +
-      'can become stale after any layout change. Results are JSON text: JSON.parse the returned ' +
+      'by ref when semantic targeting is useful; use protocol for known CDP methods and target sessions. ' +
+      'One type call inserts a whole string. Coordinates are snapshot-time CSS pixels in the main frame viewport and ' +
+      'can become stale after any layout change. Every verb that sends real input (click, click_at, ' +
+      'type, press_key, and scroll) needs its tab on screen, so it brings that tab to the ' +
+      'front first and reports `activatedTab: true` when doing so switched tabs; only inspect_page ' +
+      'reads a background tab in place. Results are JSON text: JSON.parse the returned ' +
       'string in exec scripts. Oversized results shrink structurally and carry a `_closedai_truncated` note.',
     actions: pageActions(cdp)
   })
@@ -35,7 +38,8 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
       action: 'inspect_page',
       description:
         'Return visible interactive elements with semantic names, stable snapshot refs, bounds, centers, quads, ' +
-        'frame ids, hit-test state, and explicitly labelled main-viewport CSS coordinates.',
+        'frame ids, hit-test state, and explicitly labelled main-viewport CSS coordinates. Reads a background ' +
+        'tab without foregrounding it.',
       inputSchema: objectSchema({
         tab_id: tabIdField,
         max_elements: {
@@ -51,7 +55,8 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
       action: 'click',
       description:
         'Re-resolve a ref from the latest inspection, scroll it into view, verify its center is unobscured, ' +
-        'then send a real CDP mouse click. Stale, detached, disabled, or covered refs fail without clicking.',
+        'then send a real CDP mouse click. Brings the tab to the front first, because an off-screen view ' +
+        'drops real input. Stale, detached, disabled, or covered refs fail without clicking.',
       inputSchema: objectSchema({ tab_id: tabIdField, ref: refField }, ['ref']),
       run: async (input) => jsonResult(await requireCdp(cdp).clickElement(
         tabIdFrom(input), stringArg(input, 'ref')!
@@ -78,7 +83,8 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
     {
       action: 'type',
       description:
-        'Click a ref to focus it, then insert text in one call (never simulate keystrokes one by one). ' +
+        'Fallback semantic interaction for cases where direct CDP is impractical. Click a ref to focus it, ' +
+        'then insert text in one call; prefer direct protocol commands when the required CDP method is known. ' +
         'Replaces the existing value by default; the result echoes the field value so no re-inspection is needed. ' +
         'Works on inputs, textareas, and contenteditable elements.',
       inputSchema: objectSchema({
@@ -115,7 +121,9 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
       action: 'scroll',
       description:
         'Scroll a ref into view (pass ref), or wheel-scroll the main viewport by delta_x/delta_y CSS pixels ' +
-        '(positive scrolls right/down). Re-inspect after scrolling: coordinates and refs may be stale.',
+        '(positive scrolls right/down). Both forms foreground the tab through the page input wrapper. ' +
+        'An off-screen view cannot acknowledge a wheel event. Re-inspect after scrolling: ' +
+        'coordinates and refs may be stale.',
       inputSchema: objectSchema({
         tab_id: tabIdField,
         ref: refField,

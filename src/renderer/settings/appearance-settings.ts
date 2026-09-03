@@ -1,12 +1,18 @@
 import { CHAT_ZOOM_DEFAULT, clampChatZoom } from '../chat-zoom.js'
 
-export const CHAT_FONT_SIZE_DEFAULT = 16
+export const CHAT_FONT_SIZE_DEFAULT = 14
 export const CHAT_FONT_SIZE_MIN = 13
 export const CHAT_FONT_SIZE_MAX = 22
+/* The composer used to render one step above the transcript. It now carries its
+   own size so tuning message text never moves the box you type in. */
+export const COMPOSER_FONT_SIZE_DEFAULT = 15
+export const COMPOSER_FONT_SIZE_MIN = 13
+export const COMPOSER_FONT_SIZE_MAX = 22
 export const APPEARANCE_STORAGE_KEY = 'closedai.appearance.v1'
 
 export type AppearanceSettings = {
   chatFontSize: number
+  composerFontSize: number
   chatZoom: number
 }
 
@@ -14,13 +20,20 @@ type AppearanceStorage = Pick<Storage, 'getItem' | 'setItem'>
 
 export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
   chatFontSize: CHAT_FONT_SIZE_DEFAULT,
+  composerFontSize: COMPOSER_FONT_SIZE_DEFAULT,
   chatZoom: CHAT_ZOOM_DEFAULT
 }
 
 export function normalizeAppearanceSettings(value: unknown): AppearanceSettings {
   const record = value && typeof value === 'object' ? value as Record<string, unknown> : {}
   return {
-    chatFontSize: clampChatFontSize(record.chatFontSize),
+    chatFontSize: clampFontSize(record.chatFontSize, CHAT_FONT_SIZE_MIN, CHAT_FONT_SIZE_MAX, CHAT_FONT_SIZE_DEFAULT),
+    composerFontSize: clampFontSize(
+      record.composerFontSize,
+      COMPOSER_FONT_SIZE_MIN,
+      COMPOSER_FONT_SIZE_MAX,
+      COMPOSER_FONT_SIZE_DEFAULT
+    ),
     chatZoom: clampChatZoom(typeof record.chatZoom === 'number' ? record.chatZoom : CHAT_ZOOM_DEFAULT)
   }
 }
@@ -45,7 +58,7 @@ export function persistAppearanceSettings(
   }
 }
 
-function clampChatFontSize(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return CHAT_FONT_SIZE_DEFAULT
-  return Math.min(CHAT_FONT_SIZE_MAX, Math.max(CHAT_FONT_SIZE_MIN, Math.round(value)))
+function clampFontSize(value: unknown, min: number, max: number, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
+  return Math.min(max, Math.max(min, Math.round(value)))
 }

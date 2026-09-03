@@ -14,6 +14,7 @@ function target() {
     addNotice: (text, tone) => log.push(['notice', text, tone]),
     refreshSession: () => {},
     noteContextUsage: (usage) => log.push(['usage', usage]),
+    notePlanUsage: (snapshot) => log.push(['planUsage', snapshot]),
     contextCompacted: () => log.push(['compacted']),
     emit: () => {}
   }

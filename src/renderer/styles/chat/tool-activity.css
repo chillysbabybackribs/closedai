@@ -1,5 +1,6 @@
 /* ---------------------------------------------------------------------------
-   Antigravity Tool Activity Disclosure & Step Cards
+   Tool activity disclosure: the counted headline and the card that opens beneath it.
+   The step list inside the card lives in activity-steps.css.
 --------------------------------------------------------------------------- */
 
 .prompt-tool-activity {
@@ -103,109 +104,18 @@
 /* A failure stays quiet while the reel is collapsed — a red headline shouts at
    the user for a step they may not care about. The colour only appears once
    they open the disclosure and are actually looking at the error. */
-.prompt-tool-activity[data-state='output-error']
+.prompt-tool-activity[data-state='failed']
   .prompt-tool-activity-trigger[aria-expanded='true'] {
   color: var(--destructive, #d28b8b);
 }
 
 .prompt-tool-activity-content {
-  margin: 6px 0 5px 0;
+  margin: 2px 0 4px 0;
 }
 
+/* The opened reel is not boxed: the steps sit flush under the headline, indented to its
+   text, and keep the same text-only treatment (activity-steps.css). */
 .prompt-tool-activity-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 280px;
-  overflow-y: auto;
-  padding: 8px 10px;
-  border: 1px solid var(--code-border, rgb(255 255 255 / 9%));
-  border-radius: 6px;
-  background: var(--code-canvas, #141414);
-}
-
-.prompt-tool-activity-card::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.prompt-tool-activity-card::-webkit-scrollbar-thumb {
-  background: rgb(255 255 255 / 15%);
-  border-radius: 3px;
-}
-
-.prompt-tool-activity-card::-webkit-scrollbar-thumb:hover {
-  background: rgb(255 255 255 / 25%);
-}
-
-.prompt-transcript-tool {
-  flex: 0 0 auto;
-  width: 100%;
-  margin: 0;
-  background: transparent;
-}
-
-.prompt-tool-trigger {
   min-width: 0;
-  border-radius: 6px;
-  color: var(--transcript-activity, #9b9ba1);
-  background: transparent;
-  padding: 5px 7px;
+  padding-left: 6px;
 }
-
-.prompt-tool-trigger:hover {
-  background: rgb(255 255 255 / 5%);
-  color: #ececee;
-}
-
-.prompt-tool-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.prompt-tool-title > span {
-  min-width: 0;
-  overflow: hidden;
-  color: #ececee;
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.prompt-tool-title > em {
-  flex: 0 0 auto;
-  color: var(--muted-foreground, #858585);
-  font-size: 11px;
-  font-style: normal;
-}
-
-.prompt-tool-content {
-  margin: 2px 2px 4px 20px;
-  border: 1px solid var(--code-border, rgb(255 255 255 / 9%));
-  border-radius: 6px;
-  background: var(--code-canvas, #141414);
-}
-
-.prompt-tool-section { padding: 8px 10px; }
-.prompt-tool-section + .prompt-tool-section { border-top: 1px solid var(--code-border, rgb(255 255 255 / 9%)); }
-.prompt-tool-section > strong {
-  color: var(--code-muted, #777779);
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-}
-.prompt-tool-section > pre {
-  max-height: 240px;
-  margin: 5px 0 0;
-  overflow: auto;
-  color: var(--code-text, #d1d1d2);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.prompt-tool-section[data-tone='error'] > pre { color: #e6a2a2; }

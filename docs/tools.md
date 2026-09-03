@@ -2,9 +2,11 @@
 
 Everything the app offers a model lives under `src/main/tools/`. Tools are provider-agnostic:
 the registry is the single source of truth, and a provider adapter translates it to that provider's
-protocol: `app-server-tools.ts` for Codex (`dynamicTools` + `item/tool/call`) and
-`src/main/claude/claude-tools.ts` for Claude Code (one in-process MCP server per namespace, so the
-model sees `mcp__embedded_browser__page`; see `docs/claude-code.md`).
+protocol: `app-server-tools.ts` for Codex (`dynamicTools` + `item/tool/call`),
+`src/main/claude/claude-tools.ts` for Claude Code (in-process MCP), and
+`src/main/antigravity/antigravity-mcp.ts` for Antigravity (HTTP MCP). The same page tool appears as
+`embedded_browser.page`, `mcp__embedded_browser__page`, and `mcp_embedded_browser_page`, respectively.
+Source review: 2026-09-03. See [Model context](model-context.md) for instruction assembly.
 
 ## Three levels, three rules
 
@@ -54,15 +56,16 @@ before the app-server starts.
 | Namespace | Tool | Actions | Purpose |
 |---|---|---|---|
 | `embedded_browser` | `page` | `navigate`, `read_page`, `wait_for` | Browser-page inspection for the pane the user can see. It can open a URL or search query, wait for page readiness, and read visible text from the whole page or one selector. |
-| `closedai_ui` | `capture` | `app_window`, `browser_page`, `crop` | Visual evidence. The first two actions capture the composed app or one readiness-gated page; `crop` enlarges a retained region. The model receives a scaled JPEG (max 1280x960); the full-resolution image goes to `ScreenshotStore` for the transcript. |
+| `closedai_ui` | `capture` | `app_window`, `browser_page`, `crop` | Visual evidence. The first two actions capture the composed app or one readiness-gated page; `crop` enlarges a retained region. The model receives a scaled JPEG (max 960×720); the retained display image (up to 1920×1440) goes to `ScreenshotStore`. |
 | `closedai_app` | `state` | plain tool | Compact app facts from the main process (workspace panes, a chat pane, browser tabs, downloads, window) plus renderer-only ui facts (open dialogs and menus, drawer, history panel, composer state, focused control). No DOM walk; sections are selectable. |
 | `closedai_app` | `command` | `new_chat`, `send_message`, `stop_agent`, `open_chat`, `close_chat`, `select_model`, `browser_tab` | Deterministic commands over the same services the renderer's IPC calls. `send_message` can await the target pane's turn; commands aimed at the calling pane are refused. |
 | `closedai_app` | `ui` | `controls`, `click`, `type`, `press_key`, `scroll`, `wait_for` | Real interaction with the renderer by stable control id (`data-ui`, manifest in `src/shared/ui-controls.ts`) plus `item`/`match` for repeated rows. `controls` lists ids and state without bounds or refs; `wait_for` supports visible, hidden, enabled, and disabled. |
 | `browser_cdp` | `page` | `inspect_page`, `click`, `click_at`, `type`, `press_key`, `scroll` | Agent-oriented page interaction: semantic element refs with real CDP mouse, keyboard, and wheel input. `type` inserts whole strings in one call; `press_key` sends chords. |
-| `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `events` | Raw Chrome DevTools Protocol escape hatch (`deferLoading`: out of context until searched for). `Input.*` and `Page.captureScreenshot` are refused with pointers to `page` and `capture`. See `docs/cdp-tool-foundation.md`. |
+| `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `target`, `events` | Primary raw Chrome DevTools Protocol interface, eagerly advertised. Input and screenshot commands are allowed. Target inventory exposes flattened child sessions; `target` wraps attach/detach/create/activate/close. Raw screenshots remain bounded JSON text, not capture image results. See [CDP](cdp-tool-foundation.md). |
 | `search` | `query` | plain tool | Routed public-web search across Brave, Serper, Jina, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. |
-| `closedai_workspace` | `inspect` | `map`, `related`, `tests`, `ipc_flow` | Read-only navigation registered only when the app-server workspace is this checkout. It queries a generated file index, direct relative import relationships, candidate tests, and preload-to-main IPC ownership. |
-| `tool_batch` | `run` | plain tool | Runs up to 16 other tools by default, sequentially or with bounded parallelism. `toolBatchMaxCalls` configures 1–64 at startup; nested batches are refused. |
+| `closedai_workspace` | `inspect` | `find`, `outline`, `map`, `related`, `tests`, `ipc_flow` | Read-only navigation registered only when the app-server workspace is this checkout. `find` locates a symbol, `data-ui` control id, CSS class, path, or visible label in one call; `outline` summarises one file and pairs its classes with the defining stylesheet. Both scan the working tree at call time behind an mtime cache, so they never go stale between `npm run map` runs. The remaining verbs query the generated file index, direct relative import relationships, candidate tests, and preload-to-main IPC ownership. |
+| `peer_chats` | `list`, `read` | plain tools | Read-only status and paginated transcript access to other panes and visible subagent summaries. `read` defaults to 50 items, at most 100, using an id from `list`; it does not start or control agents. |
+| `tool_batch` | `run` | plain tool | Runs up to 16 other tools by default, sequentially or in parallel by resource. Same-target work serializes; distinct explicit browser targets can run concurrently. `toolBatchMaxCalls` configures 1–64 at startup; nested batches are refused. |
 
 The model-facing names intentionally differ from OpenAI reserved namespaces. For example,
 ClosedAI uses `embedded_browser`, not `browser`.
@@ -70,6 +73,33 @@ ClosedAI uses `embedded_browser`, not `browser`.
 `tool_batch` reads `toolBatchMaxCalls` from `<userData>/app-settings.json` when ClosedAI starts.
 The default is 16; configured values are rounded and clamped to 1–64. Restart the app after
 editing the setting so the model-facing description and runtime enforcement use the new limit.
+
+The workspace navigation namespace is chosen once from the initial cwd when the registry is
+created. Switching projects does not rebuild it; it continues to describe the indexed checkout.
+The model's orientation capsule is independently scoped to its session cwd.
+
+### Application facts, browser targets, and batching
+
+Use `closedai_app.state` for app facts, `closedai_app.command` for service operations, and
+`closedai_app.ui` for exercising real controls by manifest id. Browser-page DOM and CDP targets
+belong to the browser tools; app renderer controls belong to `closedai_app.ui`. Workspace state
+shows at most 12 panes, prioritizing selection, caller, running panes, and real conversations;
+`omittedPanes` reports any remainder. Browser/download lists are also bounded.
+
+`tool_batch.run` defaults to sequential execution with stop-on-error. In parallel mode, calls
+with the same resource key keep their input order. Explicit `tab_id` values allow independent
+browser targets to run concurrently; active-tab operations and tab-strip mutations form a
+browser-wide barrier for the resource-scoped calls in that batch. Unscoped calls stay independent.
+Each nested call retains validation, switches, timing, and telemetry. Set `include_result: false`
+for successful intermediate payloads; failures are always included. In Codex exec scripts use
+direct `await`/`Promise.all` instead of wrapping another batch tool.
+
+`resource-locks.ts` shares those keys with registry locking. Lock conflicts fail with a busy
+target message rather than wait indefinitely. Current keys cover app input, navigation, semantic
+page input, raw `protocol.command`, browser-page captures, and app tab commands. The newer
+`protocol.target` convenience action currently has no resource key. These locks do not coordinate
+human input or provider-native tools, and distinct tab locks do not serialize the shared foreground
+tab: batch independent reads, but sequence semantic inputs that switch between visible tabs.
 
 ### Search credentials
 
@@ -126,10 +156,12 @@ the model searches for it.
 ## Results live in the thread history
 
 The app-server replays the whole thread (every tool result, every image) to the model on every
-turn, and only compacts by itself near the context limit. Three things keep that history small:
+turn, and only compacts by itself near the context limit. Several mechanisms keep that history small:
 
-- The registry caps each text item of a result at `MAX_RESULT_TEXT_CHARS` (24k characters, about
-  6k tokens). That sits below the 10k-token result budget of Codex's code-mode `exec` tool, so
+- The registry shares `MAX_RESULT_TEXT_CHARS` (24k characters, about 6k tokens) across all text
+  blocks in one result, including truncation notices. Small blocks are allocated first, so trailing
+  errors or ids survive a large dump. Excess block counts receive an explicit omission notice;
+  image blocks stay separate under the capture budget. This sits below the 10k-token result budget of Codex's code-mode `exec` tool, so
   the model reads ClosedAI's "narrow the request" advice rather than Codex's silent head/tail
   cut. JSON results shrink structurally (`tools/truncate-json.ts`: shorter strings, fewer array
   items, shallower nesting, plus a `_closedai_truncated` note) so a script's `JSON.parse` never
@@ -142,7 +174,7 @@ turn, and only compacts by itself near the context limit. Three things keep that
   its source width tells the model to crop for detail rather than capture again
   (`capture/budget.ts`, `capture/result.ts`).
 - Capture actions return a bounded image to the model (image tokens scale with pixels) and keep
-  the full-resolution capture in `capture/screenshot-store.ts`, keyed by the tool call id. The
+  the larger display capture in `capture/screenshot-store.ts`, keyed by the tool call id. The
   transcript looks the call id up when it renders the screenshot item and falls back to the
   model's copy once the store has evicted it (60 entries or 96 MB, newest kept).
 - Measured 2026-09-02 across ~1,200 model steps: with prompt caching (median 98% of input
@@ -174,16 +206,17 @@ turn, and only compacts by itself near the context limit. Three things keep that
 - Pasted screenshots are bounded to 1600x1200 JPEG before they are sent
   (`src/main/chat-attachment-images.ts`): Codex re-sends user messages verbatim through every
   compaction, so a full-size paste is paid for on every call for the life of the thread.
-- "Continue in new chat" (chat header) leaves the thread behind entirely: the next message opens
+- Continuation/branch actions create a fresh pane: its next message opens
   a fresh thread whose first turn carries a digest of the old one as `additionalContext`
   (`closedai.chat.handoff`, built from the app transcript without a model call, ≤12k chars).
+  Branching from a response includes conversation only through that completed message.
   Tool output, screenshots, and reasoning stay in the old thread. See
   `src/main/chat-context/thread-handoff.ts`. The header shows the context percentage so the
   user can see when to reach for it.
 
 ## Seeing what exists: the Tools modal
 
-The wrench button in the chat header opens the Tools modal (`src/renderer/tools/`). It reads
+The Tools button on the composer's project rail opens the Tools modal (`src/renderer/tools/`). It reads
 the registry as data (`manifest.ts`): every namespace, tool, and action, the exact description
 and schema the model is sent, and which providers the registry is advertised to.
 
@@ -212,14 +245,20 @@ subscriber errors after the model-visible result is produced.
 
 ## Turn trace
 
-Separate from telemetry, the chat menu's "Turn trace" opens a live view of everything the main
+Separate from telemetry, the project rail's "Turn trace" opens a live view of everything the main
 process saw a model do: turn start and end with duration, every registry tool call with its
 full arguments and result (`registry.observe`), each normalized transcript item and context
 update, and the raw JSON lines exchanged with each provider process (Codex app-server, the
 Claude Agent SDK, the `agy` CLI). It exists so the user can see where a turn went wrong without
 reading logs.
 
-The trace is held in memory only (`src/main/trace/trace-log.ts`): a ring of 4,000 entries,
-each capped at 48 KB of detail, cleared at restart or with the panel's "Clear" button. Nothing
-is written to disk, so the telemetry file's no-content rule above still holds for anything that
-persists. Raw provider lines are off by default in the panel's filters.
+The trace is held in memory only (`src/main/trace/trace-log.ts`): at most 4,000 entries and
+24,000,000 detail characters, each detail clipped at 48,000 characters before its truncation
+marker. It clears at restart or with the panel's "Clear" button. Trace data is not written to
+disk; providers separately retain their own conversation histories. Raw provider lines are
+hidden by default in the panel's filters, but still collected in the in-memory ring.
+
+The performance summary (`renderer/trace/trace-performance.ts`) derives model passes, cache/token
+usage, context, and tool time from the available entries. Codex and Claude raw messages supply
+token summaries; Antigravity currently has no equivalent token-summary parser. Truncated or
+evicted entries limit these estimates. This is a local diagnostic view, not a persisted ledger.

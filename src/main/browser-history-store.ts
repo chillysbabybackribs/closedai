@@ -1,3 +1,5 @@
+import { selectFavicon } from './browser-favicon.js'
+import type { BrowserHistoryMatch } from '../shared/browser-history.js'
 import { EventEmitter } from 'node:events'
 import { readFile } from 'node:fs/promises'
 import { writeAtomic } from './atomic-write.js'
@@ -8,6 +10,7 @@ export type HistoryEntry = {
   key: string
   url: string
   title: string
+  favicon?: string
   visitCount: number
   lastVisitedAt: number
 }
@@ -24,7 +27,10 @@ const MAX_ENTRIES = 2000
 export interface BrowserHistory {
   record(rawUrl: string, title: string): void
   updateTitle(rawUrl: string, title: string): void
+  updateFavicon?(rawUrl: string, favicon: string): void
   suggest(input: string): { completion: string; url: string } | null
+  search?(input: string): BrowserHistoryMatch[]
+  remove?(url: string): void
   setAgentDriven?(driven: boolean): void
 }
 
@@ -58,6 +64,10 @@ export class LeasedTabBrowserHistory implements BrowserHistory {
 
   suggest(input: string): { completion: string; url: string } | null {
     return this.persisted.suggest(input)
+  }
+
+  updateFavicon(rawUrl: string, favicon: string): void {
+    this.writable().updateFavicon?.(rawUrl, favicon)
   }
 
   private writable(): BrowserHistory {
@@ -124,6 +134,14 @@ export class BrowserHistoryStore extends EventEmitter implements BrowserHistory 
     this.scheduleWrite()
   }
 
+  updateFavicon(rawUrl: string, favicon: string): void {
+    const safeIcon = selectFavicon([favicon])
+    const entry = this.state.entries.find((candidate) => candidate.key === historyKey(rawUrl))
+    if (!entry || !safeIcon || entry.favicon === safeIcon) return
+    entry.favicon = safeIcon
+    this.scheduleWrite()
+  }
+
   // Best inline-autocomplete for what the user has typed so far. Matches against
   // the scheme-less key (people type "git", not "https://git"), ranks by visit
   // frequency then recency, and returns both the value to display in the omnibox
@@ -149,6 +167,23 @@ export class BrowserHistoryStore extends EventEmitter implements BrowserHistory 
     }
     if (!best) return null
     return { completion: best.key, url: best.url }
+  }
+
+  search(input: string): BrowserHistoryMatch[] {
+    const query = historyKeyFromTyped(input.trim().toLowerCase()).replace(/\/$/, '')
+    return this.state.entries
+      .filter((entry) => !query || entry.key.includes(query) || entry.title.toLowerCase().includes(query))
+      .sort((a, b) => Number(b.key.startsWith(query)) - Number(a.key.startsWith(query))
+        || b.visitCount - a.visitCount || b.lastVisitedAt - a.lastVisitedAt)
+      .slice(0, 6)
+      .map((entry) => ({ url: entry.url, title: entry.title, completion: entry.key,
+        favicon: entry.favicon ?? new URL('/favicon.ico', entry.url).href }))
+  }
+
+  remove(url: string): void {
+    const key = historyKey(url)
+    this.state.entries = this.state.entries.filter((entry) => entry.key !== key)
+    this.scheduleWrite()
   }
 
   private prune(): void {
@@ -222,11 +257,13 @@ function normalizeEntry(value: unknown): HistoryEntry | null {
   if (!value || typeof value !== 'object') return null
   const entry = value as Partial<HistoryEntry>
   if (typeof entry.url !== 'string') return null
+  if (!historyKey(entry.url)) return null
   const key = typeof entry.key === 'string' && entry.key ? entry.key : historyKey(entry.url)
   if (!key) return null
   return {
     key,
     url: entry.url,
+    ...(entry.favicon && selectFavicon([entry.favicon]) ? { favicon: entry.favicon } : {}),
     title: typeof entry.title === 'string' ? entry.title : '',
     visitCount: typeof entry.visitCount === 'number' && entry.visitCount > 0 ? entry.visitCount : 1,
     lastVisitedAt: typeof entry.lastVisitedAt === 'number' ? entry.lastVisitedAt : 0

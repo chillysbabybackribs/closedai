@@ -5,6 +5,8 @@ import type {
   ChatAttachment,
   ChatConnection,
   ChatEvent,
+  ChatHistoryWindow,
+  ChatPlanUsage,
   ChatSnapshot,
   ChatThreadContent,
   ChatThreadSummary,
@@ -13,6 +15,7 @@ import type {
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { describeUsage, type ContextUsage } from '../chat-context/context-compaction.js'
+import { applyPlanUsageSignal, type ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
 import { buildThreadHandoff, handoffAdditionalContext } from '../chat-context/thread-handoff.js'
 import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
@@ -21,6 +24,7 @@ import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
 import type { ScreenshotStore } from '../tools/capture/screenshot-store.js'
 import { ToolRegistry } from '../tools/registry.js'
+import { forgetClaudeCatalog, readClaudeCatalog, rememberClaudeCatalog } from './claude-catalog.js'
 import { archiveClaudeThread, claudeThreadName, listClaudeThreads, replayClaudeSession } from './claude-history.js'
 import { claudeModelValue, claudeSessionIdOf, claudeThreadId } from './claude-ids.js'
 import { buildClaudeUserMessage } from './claude-input.js'
@@ -35,6 +39,9 @@ import { claudeMcpServers } from './claude-tools.js'
 // Everything model-facing is the Claude Agent SDK: the process, the tools (as in-process MCP
 // servers over the shared registry), the session store that is also the chat history.
 
+/** Waits between checks for a still-untitled session after a turn ends, then stop asking. */
+const THREAD_NAME_RETRY_MS = [3_000, 8_000, 20_000]
+
 const SIGN_IN_MESSAGE = 'Sign in to Claude Code: run `claude` in a terminal, complete /login, then choose a Claude model again.'
 
 export class ClaudeChatService extends EventEmitter {
@@ -47,6 +54,7 @@ export class ClaudeChatService extends EventEmitter {
   private threadName: string | null = null
   private activeTurnId: string | null = null
   private contextUsage: ContextUsage | null = null
+  private planUsage: ChatPlanUsage | null = null
   private turnContext: ChatTurnContextReport | null = null
   private readonly transcript: ChatTranscript
   private startPromise: Promise<void> | null = null
@@ -63,7 +71,8 @@ export class ClaudeChatService extends EventEmitter {
     this.transcript = new ChatTranscript(cwd, () => this.activeTurnId, (event) => this.emitEvent(event), (callId) => screenshots?.get(callId) ?? null)
   }
 
-  snapshot(): ChatSnapshot {
+  snapshot(window?: ChatHistoryWindow): ChatSnapshot {
+    const page = window ? this.transcript.page(window) : null
     return {
       provider: 'claude',
       connection: { ...this.connection },
@@ -76,8 +85,10 @@ export class ClaudeChatService extends EventEmitter {
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
       contextUsage: describeUsage(this.contextUsage),
+      planUsage: this.planUsage,
       turnContext: this.turnContext,
-      items: this.transcript.snapshot()
+      items: page?.items ?? this.transcript.snapshot(),
+      ...(page ? { history: { hasEarlier: page.hasEarlier, backgroundTasks: page.backgroundTasks } } : {})
     }
   }
 
@@ -123,6 +134,14 @@ export class ClaudeChatService extends EventEmitter {
       this.addNotice(`Could not stop the turn: ${messageOf(error)}`, 'error')
       throw error
     }
+  }
+
+  /**
+   * Read the plan windows from the live process. There may be none — usage is not worth a
+   * spawn — in which case the last reading stands, dated, rather than being cleared.
+   */
+  async refreshPlanUsage(): Promise<void> {
+    this.setPlanUsage(await this.session?.planUsage().catch(() => null) ?? null)
   }
 
   async selectModel(modelId: string): Promise<void> {
@@ -223,19 +242,37 @@ export class ClaudeChatService extends EventEmitter {
       this.sdk ??= await loadClaudeSdk()
       this.session ??= this.createSession(this.sdk)
       await this.resumePersistedSession()
-      const runtime = this.session.ensureRuntime()
-      const [infos, account] = await Promise.all([runtime.supportedModels(), runtime.accountInfo().catch(() => null)])
-      this.modelInfos = infos
+      // Asking the CLI for the catalogue costs a process spawn and about a second, and the
+      // answer is the same for every pane in this workspace. Reuse it when the workspace has
+      // one, so a new chat's composer is live immediately.
+      let catalog = readClaudeCatalog(this.cwd)
+      if (!catalog) {
+        const runtime = this.session.ensureRuntime()
+        const [models, account] = await Promise.all([runtime.supportedModels(), runtime.accountInfo().catch(() => null)])
+        catalog = { models, account }
+        rememberClaudeCatalog(this.cwd, catalog)
+      }
+      this.modelInfos = catalog.models
       const saved = this.settings.get()
-      this.modelState.load(claudeModelCatalog(infos, saved.chatModelId, saved.chatReasoningEffort))
+      this.modelState.load(claudeModelCatalog(catalog.models, saved.chatModelId, saved.chatReasoningEffort))
+      // Applied before the process exists, this only records the preference the spawn will use.
       await this.applyModelPreference()
+      const account = catalog.account
       this.account = account && (account.email || account.apiProvider)
         ? { type: 'claude', email: account.email ?? null, planType: account.subscriptionType ?? null }
         : null
       if (!this.account) this.setConnection({ state: 'signed-out', message: SIGN_IN_MESSAGE })
       else this.setConnection({ state: 'ready', message: 'Claude Code is ready' })
-      if (!warm && !this.activeTurnId) await this.session.retire()
+      if (!this.activeTurnId) {
+        // A warm start is on its way to a turn, so its process starts here rather than on the
+        // message — but nothing waits for it: the queue holds the turn until the process is up.
+        if (warm) {
+          this.session.ensureRuntime()
+          void this.refreshPlanUsage()
+        } else await this.session.retire()
+      }
     } catch (error) {
+      forgetClaudeCatalog(this.cwd)
       const message = messageOf(error)
       this.setConnection(/log ?in|authenticat|not signed|credential/i.test(message)
         ? { state: 'signed-out', message: SIGN_IN_MESSAGE }
@@ -261,6 +298,7 @@ export class ClaudeChatService extends EventEmitter {
       onSessionId: (sessionId) => this.adoptSessionId(sessionId),
       onTurnEnd: (turnId, end) => this.onTurnEnd(turnId, end),
       onContextUsage: (usage) => this.noteContextUsage(usage),
+      onPlanUsageSignal: (signal) => this.notePlanUsageSignal(signal),
       traceScope: () => ({ paneId: this.paneId, provider: 'claude', turnId: this.activeTurnId })
     })
   }
@@ -345,21 +383,42 @@ export class ClaudeChatService extends EventEmitter {
     if (end.status === 'interrupted') this.addNotice('Turn stopped', 'info', turnId)
     if (end.status === 'failed') this.addNotice(end.error ?? 'The turn failed', 'error', turnId)
     void this.refreshThreadName()
+    void this.refreshPlanUsage()
   }
 
-  /** The CLI titles a session shortly after its first turn; pick that up for the header. */
-  private async refreshThreadName(): Promise<void> {
+  /**
+   * The CLI titles a session in the background around its first turn. A short first turn can end
+   * before the title lands, so an unnamed session is re-checked a few times before giving up
+   * until the next turn; a renamed session (`/rename`, a later generated title) is picked up too.
+   */
+  private async refreshThreadName(attempt = 0): Promise<void> {
     const sessionId = this.session?.sessionId
     if (!sessionId || !this.sdk) return
     const name = await claudeThreadName(this.sdk, sessionId, this.cwd).catch(() => null)
-    if (!name || name === this.threadName || sessionId !== this.session?.sessionId) return
-    this.threadName = name
-    this.emitEvent({ type: 'thread', threadId: claudeThreadId(sessionId), threadName: name })
+    if (sessionId !== this.session?.sessionId) return
+    if (name && name !== this.threadName) {
+      this.threadName = name
+      this.emitEvent({ type: 'thread', threadId: claudeThreadId(sessionId), threadName: name })
+      return
+    }
+    const delay = THREAD_NAME_RETRY_MS[attempt]
+    if (this.threadName || delay === undefined) return
+    setTimeout(() => { void this.refreshThreadName(attempt + 1) }, delay).unref?.()
   }
 
   private noteContextUsage(usage: ContextUsage): void {
     this.contextUsage = usage
     this.emitEvent({ type: 'context', usage: describeUsage(usage) })
+  }
+
+  private notePlanUsageSignal(signal: ClaudeRateLimitSignal): void {
+    this.setPlanUsage(applyPlanUsageSignal(this.planUsage, signal))
+  }
+
+  private setPlanUsage(usage: ChatPlanUsage | null): void {
+    if (!usage) return
+    this.planUsage = usage
+    this.emitEvent({ type: 'planUsage', usage })
   }
 
   private addNotice(text: string, tone: 'info' | 'error', turnId: string | null = this.activeTurnId): void {

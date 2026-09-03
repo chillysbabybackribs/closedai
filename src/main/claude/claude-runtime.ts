@@ -4,10 +4,14 @@ import type {
   Options,
   Query,
   SDKMessage,
-  SDKUserMessage
+  SDKUserMessage,
+  SDKControlGetContextUsageResponse
 } from '@anthropic-ai/claude-agent-sdk'
 import type { ClaudeSdk } from './claude-sdk.js'
 import { terminateClaudeRuntimeProcesses } from './claude-process-tree.js'
+import type { ContextUsage } from '../chat-context/context-compaction.js'
+import { claudePlanUsage } from '../chat-context/plan-usage.js'
+import type { ChatPlanUsage } from '../../shared/chat.js'
 
 // One live Claude Code process: a single `query()` over a streaming input, so follow-up turns
 // reuse the process and its prompt cache instead of paying a spawn per message. Control calls
@@ -68,6 +72,35 @@ export class ClaudeRuntime {
 
   accountInfo(): Promise<AccountInfo> {
     return this.query.accountInfo()
+  }
+
+  /** Read Claude's current context after a turn, including its compaction/tool accounting. */
+  async contextUsage(): Promise<ContextUsage | null> {
+    try {
+      const usage: SDKControlGetContextUsageResponse = await this.query.getContextUsage({ detail: 'summary' })
+      const contextWindow = usage.rawMaxTokens > 0 ? usage.rawMaxTokens : usage.maxTokens
+      return usage.totalTokens > 0 && contextWindow > 0
+        ? { usedTokens: usage.totalTokens, contextWindow }
+        : null
+    } catch {
+      // Older or shutting-down SDK processes may not answer control requests. The stream result
+      // remains the fallback context signal in that case.
+      return null
+    }
+  }
+
+  /**
+   * The account's plan windows, the same reading `/usage` renders. Experimental in the SDK, so
+   * a build without it (or a process on its way out) simply reports nothing.
+   */
+  async planUsage(): Promise<ChatPlanUsage | null> {
+    try {
+      const read = this.query.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET
+      if (typeof read !== 'function') return null
+      return claudePlanUsage(await read.call(this.query))
+    } catch {
+      return null
+    }
   }
 
   /** End the input, close the query, and terminate every process carrying this runtime's id. */

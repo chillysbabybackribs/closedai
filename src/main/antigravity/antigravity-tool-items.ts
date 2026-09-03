@@ -15,6 +15,7 @@ export type ResolvedAntigravityTool = { namespace: string | null; tool: string; 
 export type AntigravityServerName = { server: string; namespace: string }
 
 const MAX_OUTPUT_CHARS = 24_000
+const MAX_TOOL_OUTPUT_CHARS = 4_000
 
 /** Split an MCP declaration into the ClosedAI namespace and tool it names; native tools keep no namespace. */
 export function resolveAntigravityTool(name: string, parameters: Record<string, unknown>, servers: readonly AntigravityServerName[]): ResolvedAntigravityTool {
@@ -42,6 +43,11 @@ export function antigravityToolItem(call: AntigravityToolCall, turnId: string | 
   if (name === 'run_command') {
     return { type: 'command', id, turnId, command: stringOf(input.CommandLine), cwd: stringOf(input.Cwd) || cwd, status: 'inProgress', output: '', exitCode: null }
   }
+  if (name === 'browser_subagent') {
+    return { type: 'tool', id, turnId, label: stringOf(input.TaskName) || 'Browser agent',
+      detail: stringOf(input.Task) || jsonPreview(input), status: 'inProgress',
+      background: { taskId: id, kind: 'agent' } }
+  }
   const change = fileChange(name, input)
   if (change) return { type: 'fileChange', id, turnId, status: 'inProgress', changes: [change] }
   const { label, detail } = nativeLabel(name, input)
@@ -54,7 +60,10 @@ export function antigravityToolResult(item: ChatTranscriptItem, outcome: Antigra
   const output = clip(outcome.output)
   if (item.type === 'command') return { ...item, status, output, exitCode: outcome.failed ? exitCodeIn(output) : 0 }
   if (item.type === 'fileChange') return { ...item, status }
-  if (item.type === 'tool') return { ...item, status, detail: item.detail || (outcome.failed ? output : '') }
+  if (item.type === 'tool') {
+    const result = output.slice(0, MAX_TOOL_OUTPUT_CHARS).trim()
+    return result ? { ...item, status, output: result } : { ...item, status }
+  }
   return item
 }
 

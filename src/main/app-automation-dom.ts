@@ -189,7 +189,10 @@ async function prepareSelectedClick(element: Element): Promise<AppPreparedClick>
     throw new Error('Element is disabled')
   }
   element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })
-  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+  await Promise.race([
+    new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+    new Promise<void>((resolve) => setTimeout(resolve, 200))
+  ])
   let point: { x: number; y: number } | null = null
   let area = 0
   for (const rect of Array.from(element.getClientRects())) {

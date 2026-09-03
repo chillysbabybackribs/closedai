@@ -36,10 +36,10 @@ export class PeerIdleParking {
   schedule(paneId: ChatPaneId): void {
     if (paneId === this.selectedPaneId()) return
     const entry = this.peer(paneId)
-    if (!entry || entry.parked || entry.idleTimer || entry.surface.snapshot().activeTurnId) return
+    if (!entry || entry.parked || entry.idleTimer || entry.surface.snapshot({ limit: 0 }).activeTurnId) return
     entry.idleTimer = setTimeout(() => {
       entry.idleTimer = null
-      if (paneId === this.selectedPaneId() || entry.surface.snapshot().activeTurnId) return
+      if (paneId === this.selectedPaneId() || entry.surface.snapshot({ limit: 0 }).activeTurnId) return
       entry.parked = true
       entry.surface.stop()
     }, this.idleMs)

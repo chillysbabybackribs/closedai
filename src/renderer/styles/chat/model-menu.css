@@ -91,15 +91,29 @@
   box-shadow: 0 10px 24px rgb(0 0 0 / 42%);
 }
 
+/* Providers read as sections, not as a run of names: a hairline between them, a little air
+   above each heading, and a heading that stays put while the list scrolls, so a glance
+   anywhere in an expanded menu still answers "whose model is this?". */
+.model-menu-group + .model-menu-group {
+  margin-top: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+}
+
 .model-menu-label {
+  position: sticky;
+  /* Cancels the menu's own 5px padding so a stuck heading parks flush with the top edge. */
+  top: -5px;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 10px 4px;
-  color: var(--muted-foreground);
+  gap: 7px;
+  margin-bottom: 1px;
+  padding: 10px 10px 6px;
+  background: var(--popover);
+  color: color-mix(in srgb, var(--foreground) 76%, transparent);
   font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
+  font-weight: 700;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
@@ -113,8 +127,8 @@
 
 .model-menu-label-mark {
   flex: none;
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
 }
 
 .model-menu-item {
@@ -180,6 +194,28 @@
   font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The row that unfolds the rest of the catalogue. Quiet as a label so it reads as the end of
+   the short list rather than another model to pick. */
+.model-menu-more {
+  align-items: center;
+  margin-top: 4px;
+  padding-left: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+  border-radius: 0 0 8px 8px;
+  color: var(--muted-foreground);
+  font-weight: 450;
+}
+
+.model-menu-more .model-menu-item-name {
+  color: inherit;
+}
+
+.model-menu-more-mark {
+  flex: none;
+  width: 14px;
+  height: 14px;
 }
 
 .model-menu-separator {
@@ -251,17 +287,96 @@
   font-weight: 500;
 }
 
-/* Kept out of the resting layout entirely, not just faded: an inline max-width
-   animation here would nudge the composer's send button on every hover. */
-.context-meter-detail {
-  display: none;
+/* ---- Usage card -----------------------------------------------------------
+   The token counts used to unfold inline on hover; they live in this card now,
+   next to the subscription windows the turn is actually spending. Hover, not
+   click, because it has to be readable while a turn runs — clicking the meter
+   still opens the inspector. */
+.usage-card {
+  width: 268px;
+  padding: 10px 12px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.usage-card-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.usage-card-heading {
+  margin: 0;
   color: var(--muted-foreground, #959598);
-  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.usage-card-empty,
+.usage-card-note,
+.usage-card-footnote {
+  margin: 0;
+  color: var(--muted-foreground, #959598);
   font-size: 11.5px;
 }
 
-.context-meter:hover .context-meter-detail {
-  display: inline;
+.usage-card-footnote {
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);
+  font-size: 11px;
+}
+
+.usage-bar {
+  --usage-bar-ink: var(--foreground);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.usage-bar[data-level='warm'] {
+  --usage-bar-ink: #d9a45c;
+}
+
+.usage-bar[data-level='hot'] {
+  --usage-bar-ink: #e0705e;
+}
+
+.usage-bar-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.usage-bar-label {
+  color: var(--foreground);
+}
+
+.usage-bar-aside {
+  color: var(--muted-foreground, #959598);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.usage-bar-track {
+  height: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 12%, transparent);
+  overflow: hidden;
+}
+
+.usage-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--usage-bar-ink);
+  transition: width 260ms var(--ease-chrome);
 }
 
 @media (prefers-reduced-motion: reduce) {

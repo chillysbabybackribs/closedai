@@ -12,6 +12,8 @@ export function registerBrowserCoreIpc(
   ipcMain.handle('browser:back', () => getBrowserService()?.back())
   ipcMain.handle('browser:forward', () => getBrowserService()?.forward())
   ipcMain.handle('browser:reload', () => getBrowserService()?.reload())
+  ipcMain.handle('browser:searchHistory', (_event, input: string) => getBrowserService()?.searchHistory(input) ?? [])
+  ipcMain.handle('browser:removeHistory', (_event, url: string) => getBrowserService()?.removeHistory(url))
   ipcMain.handle('browser:suggest', (_event, input: string) => getBrowserService()?.suggest(input) ?? null)
   ipcMain.handle('browser:newTab', () => getBrowserService()?.newTab())
   ipcMain.handle('browser:openTab', (_event, input: string) => getBrowserService()?.openNewTab(input))

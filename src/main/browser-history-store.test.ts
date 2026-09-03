@@ -81,3 +81,40 @@ test('human navigation still persists, updates, and round-trips through suggesti
     url: 'https://www.example.com/docs/start'
   })
 })
+
+test('dropdown matches titles and URLs, bounds results, and persists removal', async () => {
+  const filePath = await historyFile()
+  const store = await BrowserHistoryStore.open(filePath)
+  store.record('https://google.com/', 'Google')
+  store.record('https://example.org/article', 'Google research')
+  store.record('https://google.com/', 'Google')
+  for (let index = 0; index < 8; index++) {
+    store.record(`https://other.example/${index}`, `Page ${index}`)
+  }
+  assert.deepEqual(store.search('GOOGLE').map((row) => row.title), ['Google', 'Google research'])
+  assert.equal(store.search('https://google.com/')[0]?.title, 'Google')
+  assert.equal(store.search('').length, 6)
+  assert.equal(store.search('missing').length, 0)
+  store.remove('https://www.google.com/')
+  assert.deepEqual(store.search('google').map((row) => row.title), ['Google research'])
+  await store.flush()
+  const reopened = await BrowserHistoryStore.open(filePath)
+  assert.deepEqual(reopened.search('google'), store.search('google'))
+})
+
+test('history icons use site fallbacks, persist discovered icons, and reject unsafe URLs', async () => {
+  const filePath = await historyFile()
+  const store = await BrowserHistoryStore.open(filePath)
+  store.record('https://example.com/article', 'Article')
+  assert.equal(store.search('article')[0]?.favicon, 'https://example.com/favicon.ico')
+  store.updateFavicon('https://example.com/article', 'https://cdn.example.com/site.png')
+  store.updateFavicon('https://example.com/article', 'javascript:alert(1)')
+  assert.equal(store.search('article')[0]?.favicon, 'https://cdn.example.com/site.png')
+  const leased = new LeasedTabBrowserHistory(store)
+  leased.setAgentDriven(true)
+  leased.updateFavicon('https://example.com/article', 'https://example.com/agent.png')
+  assert.equal(store.search('article')[0]?.favicon, 'https://cdn.example.com/site.png')
+  await store.flush()
+  const reopened = await BrowserHistoryStore.open(filePath)
+  assert.equal(reopened.search('article')[0]?.favicon, 'https://cdn.example.com/site.png')
+})
