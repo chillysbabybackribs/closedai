@@ -1,7 +1,9 @@
 import type { ChatPeerSummary, PeerChatReadResult } from '../../../shared/chat-peers.js'
 import { defineTool, failureResult, numberArg, stringArg, textResult, type ToolNamespace } from '../tool.js'
+import { memoryTools, type PeerMemoryAccess } from './memory-tools.js'
 
 export type PeerChatDirectory = {
+  memory?: PeerMemoryAccess
   listReadable(callerPaneId: string | null): ChatPeerSummary[]
   readReadable(
     chatId: string,
@@ -14,7 +16,7 @@ export type PeerChatDirectory = {
 export function peerChatTools(getDirectory: () => PeerChatDirectory | null): ToolNamespace {
   return {
     name: 'peer_chats',
-    description: 'Read live status and transcripts from other peer and subagent chats. This namespace is read-only.',
+    description: 'Read peer status and bounded historical evidence. The separate checkpoint tool only writes the caller’s working notes; no tool here starts or controls agents.',
     tools: [
       defineTool({
         name: 'list',
@@ -51,7 +53,8 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
           )
           return result ? textResult(JSON.stringify(result)) : failureResult(`Unknown or unavailable peer chat: ${chatId}`)
         }
-      })
+      }),
+      ...memoryTools(() => getDirectory()?.memory ?? null)
     ]
   }
 }

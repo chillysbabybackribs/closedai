@@ -43,6 +43,16 @@ export class ChatModelState {
     this.selectedReasoningEffort = preference.effort
   }
 
+  /**
+   * Take what a resumed thread reports about itself, but only where the pane has no saved
+   * choice of its own. Every turn is sent with the pane's model and effort, so letting the
+   * thread's overwrite a saved preference is what made a model selection last only until the
+   * next relaunch.
+   */
+  adoptResumed(saved: { model: string | null; effort: string | null }, reported: { model: unknown; effort: unknown }): void {
+    this.adopt(saved.model ?? reported.model, saved.effort ?? reported.effort)
+  }
+
   adopt(model: unknown, effort?: unknown): void {
     if (typeof model !== 'string' || !this.models.some((entry) => entry.id === model)) return
     this.apply({

@@ -2,7 +2,19 @@ import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import test from 'node:test'
 import type { ChatEvent, ChatModel, ChatProvider, ChatSnapshot, ChatThreadContent, ChatThreadSummary } from '../shared/chat.js'
+import type { AppSettings } from '../shared/types.js'
+import { DEFAULT_APP_SETTINGS, type AppSettingsAccess } from './app-settings-store.js'
 import { ChatHub, type ChatHubProviders } from './chat-hub.js'
+
+/** The pane's slice of settings, which is all the hub writes to. */
+class FakeSettings implements AppSettingsAccess {
+  saved: AppSettings = { ...DEFAULT_APP_SETTINGS }
+  get(): AppSettings { return { ...this.saved } }
+  async set(patch: Partial<AppSettings>): Promise<AppSettings> {
+    this.saved = { ...this.saved, ...patch }
+    return this.get()
+  }
+}
 
 function model(provider: ChatProvider, id: string): ChatModel {
   return { provider, id, displayName: id, description: '', defaultReasoningEffort: 'high', supportedReasoningEfforts: [], isDefault: false }
@@ -13,11 +25,12 @@ class FakeProvider extends EventEmitter {
   activeTurnId: string | null = null
   threads: ChatThreadSummary[] = []
   failThreads = false
+  effort: string | null = 'high'
   constructor(readonly provider: ChatProvider, private readonly models: ChatModel[]) { super() }
   snapshot(): ChatSnapshot {
     return {
       provider: this.provider, connection: { state: 'ready', message: `${this.provider} ready` }, account: null,
-      models: this.models, selectedModel: this.models[0]?.id ?? null, selectedReasoningEffort: null, cwd: '/w',
+      models: this.models, selectedModel: this.models[0]?.id ?? null, selectedReasoningEffort: this.effort, cwd: '/w',
       threadId: `${this.provider}-thread`, threadName: null, activeTurnId: this.activeTurnId,
       contextUsage: null, planUsage: null, turnContext: null, items: []
     }
@@ -41,14 +54,19 @@ class FakeProvider extends EventEmitter {
   async beginChatGptLogin(): Promise<string> { this.calls.push('login'); return 'https://auth' }
 }
 
-function build(initialModel: string | null = null): { hub: ChatHub; codex: FakeProvider; claude: FakeProvider; antigravity: FakeProvider; events: ChatEvent[] } {
+function build(initialModel: string | null = null): {
+  hub: ChatHub; codex: FakeProvider; claude: FakeProvider; antigravity: FakeProvider
+  events: ChatEvent[]; settings: FakeSettings
+} {
   const codex = new FakeProvider('codex', [model('codex', 'gpt-5.6-sol')])
   const claude = new FakeProvider('claude', [model('claude', 'claude:opus[1m]')])
   const antigravity = new FakeProvider('antigravity', [model('antigravity', 'agy:gemini-3.8-flash')])
-  const hub = new ChatHub({ codex, claude, antigravity } as unknown as ChatHubProviders, initialModel)
+  const settings = new FakeSettings()
+  settings.saved.chatModelId = initialModel
+  const hub = new ChatHub({ codex, claude, antigravity } as unknown as ChatHubProviders, initialModel, settings)
   const events: ChatEvent[] = []
   hub.on('event', (event: ChatEvent) => events.push(event))
-  return { hub, codex, claude, antigravity, events }
+  return { hub, codex, claude, antigravity, events, settings }
 }
 
 test('an agy model routes to the Antigravity provider and its threads merge into history', async () => {
@@ -145,4 +163,26 @@ test('login goes to ChatGPT on Codex and re-checks Claude Code otherwise', async
   await hub.selectModel('claude:opus[1m]')
   assert.equal(await hub.beginLogin(), null)
   assert.deepEqual(claude.calls.at(-1), 'start:true')
+})
+
+test('opening another provider\u2019s thread saves the model that names the pane\u2019s provider', async () => {
+  const { hub, claude, settings } = build('gpt-5.6-sol')
+  claude.effort = 'medium'
+  await hub.openThread('claude:s1')
+  assert.equal(hub.activeProvider, 'claude')
+  // Without this the pane record still reads gpt-5.6-sol and the next launch reopens on Codex.
+  assert.equal(settings.saved.chatModelId, 'claude:opus[1m]')
+  assert.equal(settings.saved.chatReasoningEffort, 'medium')
+})
+
+test('a switch the picker already saved is not written again', async () => {
+  const { hub, settings } = build('gpt-5.6-sol')
+  settings.saved.chatModelId = 'claude:opus[1m]'
+  settings.saved.chatReasoningEffort = 'high'
+  let writes = 0
+  const set = settings.set.bind(settings)
+  settings.set = async (patch) => { writes += 1; return set(patch) }
+  await hub.selectModel('claude:opus[1m]')
+  assert.equal(writes, 0)
+  assert.equal(hub.activeProvider, 'claude')
 })
