@@ -40,7 +40,7 @@ export function controlsExpression(filter: AppControlFilter): string {
       const item = describe(element, nameOf, surfaceOf);
       if (filter.surface && item.surface !== filter.surface) continue;
       if (query) {
-        const haystack = [item.id, item.key, item.name, item.value].filter(Boolean).join(' ').toLowerCase();
+        const haystack = [item.id, item.item, item.name, item.value].filter(Boolean).join(' ').toLowerCase();
         if (!haystack.includes(query)) continue;
       }
       total += 1;
@@ -75,7 +75,7 @@ export function uiStateExpression(): string {
       } : null,
       focused: focused ? {
         id: focused.getAttribute('data-ui'),
-        ...(focused.getAttribute('data-ui-key') ? { key: focused.getAttribute('data-ui-key') } : {})
+        ...(focused.getAttribute('data-ui-key') ? { item: focused.getAttribute('data-ui-key') } : {})
       } : null,
       viewport: { width: window.innerWidth, height: window.innerHeight }
     };
@@ -154,7 +154,7 @@ export function conditionProbeExpression(options: AppWaitOptions): string {
 export function targetSelector(target: AppUiTarget): string {
   if (target.selector) return target.selector
   if (!target.control) return ''
-  return `[data-ui="${target.control}"]${target.key ? `[data-ui-key="${target.key}"]` : ''}`
+  return `[data-ui="${target.control}"]${target.item ? `[data-ui-key="${target.item}"]` : ''}`
 }
 
 type Visible = (element: Element) => boolean
@@ -163,8 +163,8 @@ type SurfaceOf = (element: Element) => string
 
 function selectRenderedElement(target: AppUiTarget, visible: Visible, nameOf: NameOf): Element {
   const selector = target.selector ??
-    (target.control ? `[data-ui="${target.control}"]${target.key ? `[data-ui-key="${target.key}"]` : ''}` : '')
-  if (!selector) throw new Error('Pass control (with key or match when it repeats) or selector')
+    (target.control ? `[data-ui="${target.control}"]${target.item ? `[data-ui-key="${target.item}"]` : ''}` : '')
+  if (!selector) throw new Error('Pass control (with item or match when it repeats) or selector')
   const all = Array.from(document.querySelectorAll(selector))
   const rendered = all.filter((element) => element.isConnected && visible(element))
   const match = target.match?.toLowerCase()
@@ -178,7 +178,7 @@ function selectRenderedElement(target: AppUiTarget, visible: Visible, nameOf: Na
   if (candidates.length > 1) {
     const options = candidates.slice(0, 8)
       .map((element) => `${element.getAttribute('data-ui-key') ?? '?'}: ${nameOf(element).slice(0, 60)}`)
-    throw new Error(`Control ${target.control ?? selector} matches ${candidates.length} elements; pass key or match. Keys: ${options.join(' | ')}`)
+    throw new Error(`Control ${target.control ?? selector} matches ${candidates.length} elements; pass item or match. Items: ${options.join(' | ')}`)
   }
   return candidates[0]!
 }
@@ -276,7 +276,7 @@ function describeControl(element: Element, nameOf: NameOf, surfaceOf: SurfaceOf)
     surface: surfaceOf(element)
   }
   const key = element.getAttribute('data-ui-key')
-  if (key) item.key = key
+  if (key) item.item = key
   if (('disabled' in html && Boolean(html.disabled)) || element.getAttribute('aria-disabled') === 'true') item.disabled = true
   if (tag === 'input' && (html.type === 'checkbox' || html.type === 'radio')) item.checked = html.checked
   if (element.getAttribute('aria-checked') !== null) item.checked = element.getAttribute('aria-checked') === 'true'

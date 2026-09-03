@@ -140,7 +140,7 @@ export class AppAutomationAccess implements AppUiHost {
 function describeTarget(target: AppUiTarget): Record<string, string> {
   return {
     ...(target.control ? { control: target.control } : {}),
-    ...(target.key ? { key: target.key } : {}),
+    ...(target.item ? { item: target.item } : {}),
     ...(target.match ? { match: target.match } : {}),
     ...(target.selector ? { selector: target.selector } : {})
   }

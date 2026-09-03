@@ -6,8 +6,8 @@ import { requireHost, type AppUiHost, type AppUiTarget, type AppWaitCondition } 
 
 const targetFields: Record<string, JsonObject> = {
   control: { type: 'string', minLength: 1, maxLength: 80, description: 'Manifest control id, for example composer.send or drawer.row.' },
-  key: { type: 'string', minLength: 1, maxLength: 200, description: 'Row/tab/item key when the control repeats (see controls).' },
-  match: { type: 'string', minLength: 1, maxLength: 200, description: 'Case-insensitive substring of the control name, when the key is unknown.' },
+  item: { type: 'string', minLength: 1, maxLength: 200, description: 'The item value from controls when the control repeats (row id, tab id, model id).' },
+  match: { type: 'string', minLength: 1, maxLength: 200, description: 'Case-insensitive substring of the control name, when the item is unknown.' },
   selector: { type: 'string', minLength: 1, maxLength: 1_000, description: 'Raw CSS selector; only when no manifest control fits.' }
 }
 
@@ -23,12 +23,12 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
     {
       action: 'controls',
       description:
-        'List rendered manifest controls: id, key, name, role, surface, and state (disabled, checked, selected, ' +
+        'List rendered manifest controls: id, item, name, role, surface, and state (disabled, checked, selected, ' +
         'expanded, pressed, current, value). Scope by surface and/or query; no bounds or refs are returned because ' +
         'actions resolve controls by id at click time.',
       inputSchema: objectSchema({
         surface: { type: 'string', enum: [...UI_SURFACES], description: 'Only controls inside this surface; overlay means dialogs and menus.' },
-        query: { type: 'string', minLength: 1, maxLength: 200, description: 'Case-insensitive filter over id, key, name, and value.' },
+        query: { type: 'string', minLength: 1, maxLength: 200, description: 'Case-insensitive filter over id, item, name, and value.' },
         max_controls: { type: 'integer', minimum: 1, maximum: 200, description: 'Default 60.' }
       }),
       run: async (input) => jsonResult(await requireHost(ui, 'app automation').controls({
@@ -39,7 +39,7 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
     },
     {
       action: 'click',
-      description: 'Click a control (control + key/match), a selector, or explicit viewport coordinates with real input. Disabled or covered targets fail without clicking.',
+      description: 'Click a control (control + item/match), a selector, or explicit viewport coordinates with real input. Disabled or covered targets fail without clicking.',
       inputSchema: objectSchema({
         ...targetFields,
         x: { type: 'number', minimum: 0, description: 'Viewport CSS x, with y.' },
@@ -129,7 +129,7 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
 function targetFrom(input: JsonObject): AppUiTarget {
   return {
     control: stringArg(input, 'control'),
-    key: stringArg(input, 'key'),
+    item: stringArg(input, 'item'),
     match: stringArg(input, 'match'),
     selector: stringArg(input, 'selector')
   }

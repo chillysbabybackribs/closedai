@@ -9,7 +9,8 @@ import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../../../sha
 /** How a ui action names its element: a manifest id (plus key/match to pick one row), or a raw selector. */
 export type AppUiTarget = {
   control?: string
-  key?: string
+  /** The control's data-ui-key when it repeats per row, tab, or item. */
+  item?: string
   /** Case-insensitive substring of the control's accessible name, for rows without a known key. */
   match?: string
   selector?: string
@@ -23,7 +24,7 @@ export type AppControlFilter = { surface?: string; query?: string; maxControls: 
 
 export type AppControl = {
   id: string
-  key?: string
+  item?: string
   name: string
   role: string
   surface: string
@@ -50,7 +51,7 @@ export type AppUiState = {
   dialogs: string[]
   menus: string[]
   composer: { enabled: boolean; running: boolean; canSend: boolean; draftLength: number } | null
-  focused: { id: string; key?: string } | null
+  focused: { id: string; item?: string } | null
   viewport: { width: number; height: number }
 }
 
