@@ -1,50 +1,63 @@
 import type { JSX } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { GenerationLoader } from '../components/ui/generation-loader.js'
-import type { ChatTranscriptItem } from '../shared/chat.js'
-import { isActivity } from './transcript-rows.js'
 
 export function TaskActivity({
-  items,
   activeTurnId
 }: {
-  items: ChatTranscriptItem[]
   activeTurnId: string | null
 }): JSX.Element | null {
-  const label = useMemo(() => taskActivityLabel(items, activeTurnId), [items, activeTurnId])
-  const tick = useLoaderTick(Boolean(label))
+  const elapsedSeconds = useTurnElapsed(activeTurnId)
+  const tick = useLoaderTick(activeTurnId !== null)
 
-  if (!label) return null
+  if (!activeTurnId) return null
   return (
     <div className="task-activity-strip">
-      <GenerationLoader label={label} tick={tick} variant="rounded" />
+      <GenerationLoader
+        label={formatElapsedTime(elapsedSeconds)}
+        tick={tick}
+        animateLabel={false}
+        variant="rounded"
+      />
     </div>
   )
 }
 
-export function taskActivityLabel(items: ChatTranscriptItem[], activeTurnId: string | null): string {
-  if (!activeTurnId) return ''
+export function formatElapsedTime(totalSeconds: number): string {
+  const elapsed = Math.max(0, Math.floor(totalSeconds))
+  const seconds = elapsed % 60
+  const totalMinutes = Math.floor(elapsed / 60)
+  const minutes = totalMinutes % 60
+  const hours = Math.floor(totalMinutes / 60)
+  if (hours > 0) return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
 
-  for (let index = items.length - 1; index >= 0; index -= 1) {
-    const item = items[index]!
-    if (item.turnId !== activeTurnId) continue
-    if (item.type === 'reasoning' || item.type === 'plan' || item.type === 'user') return 'Thinking'
-    if (item.type === 'assistant') return item.streaming && item.text ? 'Responding' : 'Thinking'
-    if (isActivity(item)) {
-      const status = item.status.toLowerCase()
-      if (status.includes('pending') || status.includes('request')) return 'Needs your approval'
-      // Deliberately not the activity's own title: that exact string is already the headline of the
-      // row directly above this strip, and repeating it made the two read as one stuttering line.
-      // The row names what is happening; the strip only says that something still is.
-      if (status.includes('progress') || status.includes('running')) return 'Working'
-      return 'Thinking'
+function useTurnElapsed(activeTurnId: string | null): number {
+  const [clock, setClock] = useState<{ turnId: string | null; seconds: number }>({
+    turnId: null,
+    seconds: 0
+  })
+
+  useEffect(() => {
+    if (!activeTurnId) {
+      setClock({ turnId: null, seconds: 0 })
+      return
     }
-    if (item.type === 'screenshot') return 'Looking'
-    return 'Working'
-  }
 
-  return 'Thinking'
+    const startedAt = Date.now()
+    setClock({ turnId: activeTurnId, seconds: 0 })
+    const id = window.setInterval(() => {
+      const seconds = Math.floor((Date.now() - startedAt) / 1_000)
+      setClock((current) => current.turnId === activeTurnId && current.seconds === seconds
+        ? current
+        : { turnId: activeTurnId, seconds })
+    }, 250)
+    return () => window.clearInterval(id)
+  }, [activeTurnId])
+
+  return clock.turnId === activeTurnId ? clock.seconds : 0
 }
 
 function useLoaderTick(active: boolean): number {

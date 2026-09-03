@@ -8,6 +8,7 @@ export type GenerationLoaderVariant = 'dots' | 'squares' | 'rounded'
 export type GenerationLoaderProps = Omit<ComponentProps<'div'>, 'children'> & {
   label: string
   tick: number
+  animateLabel?: boolean
   variant?: GenerationLoaderVariant
 }
 
@@ -25,11 +26,12 @@ const CELL_SHAPES: Record<GenerationLoaderVariant, string> = {
 export function GenerationLoader({
   label,
   tick,
+  animateLabel = true,
   variant = 'rounded',
   className,
   ...props
 }: GenerationLoaderProps): JSX.Element {
-  const typedLabel = useTypewriter(label)
+  const typedLabel = useTypewriter(label, animateLabel)
   const pixelOffset = Math.floor(tick / 3)
 
   return (
@@ -62,7 +64,7 @@ export function GenerationLoader({
   )
 }
 
-function useTypewriter(label: string): string {
+function useTypewriter(label: string, enabled: boolean): string {
   const [visible, setVisible] = useState('')
   const [reduceMotion, setReduceMotion] = useState(false)
 
@@ -75,6 +77,7 @@ function useTypewriter(label: string): string {
   }, [])
 
   useEffect(() => {
+    if (!enabled) return
     if (reduceMotion) {
       setVisible(label)
       return
@@ -87,7 +90,7 @@ function useTypewriter(label: string): string {
       if (index >= label.length) window.clearInterval(id)
     }, TYPE_INTERVAL_MS)
     return () => window.clearInterval(id)
-  }, [label, reduceMotion])
+  }, [enabled, label, reduceMotion])
 
-  return visible
+  return enabled ? visible : label
 }

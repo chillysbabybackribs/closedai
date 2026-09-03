@@ -121,7 +121,7 @@ export function ChatPane({
             )}
           </TranscriptScroller>
         )}
-        <TaskActivity items={state.items} activeTurnId={state.activeTurnId} />
+        <TaskActivity activeTurnId={state.activeTurnId} />
         <Composer
           enabled={ready}
           running={running}
