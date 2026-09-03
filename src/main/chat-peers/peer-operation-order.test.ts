@@ -19,9 +19,9 @@ class MemorySettings implements AppSettingsAccess {
 
 class Surface extends EventEmitter implements ChatSurface {
   calls: string[] = []
-  /** Held by the model switch so an unserialized send can overtake it. */
-  release: (() => void) | null = null
-  private readonly held = new Promise<void>((resolve) => { queueMicrotask(() => { this.release = resolve }) })
+  /** Released by the test: the model switch waits on it so an unserialized send can overtake. */
+  release!: () => void
+  private readonly held = new Promise<void>((resolve) => { this.release = resolve })
 
   constructor(private readonly modelId: string | null) { super() }
   snapshot(): ChatSnapshot {
@@ -70,8 +70,7 @@ test('operations on one pane run in order instead of interleaving', async (t) =>
   const switching = manager.selectModel('pane-a', 'claude:opus')
   const sending = manager.send('pane-a', 'Hello', [])
   const surface = surfaces[0]!
-  await Promise.resolve()
-  surface.release?.()
+  surface.release()
   await Promise.all([switching, sending])
   assert.deepEqual(surface.calls, ['model:claude:opus', 'send:Hello'])
 })

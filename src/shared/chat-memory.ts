@@ -23,6 +23,7 @@ export type ChatRecallRequest = {
   itemId?: string
   offset?: number
   limit?: number
+  beforeItemId?: string
 }
 
 export type ChatRecallResult = {
@@ -30,6 +31,7 @@ export type ChatRecallResult = {
   checkpoint: ChatMemoryCheckpoint | null
   matches: Array<{ itemId: string; turnId: string | null; role: string; text: string; offset: number; nextOffset: number | null }>
   hasMore: boolean
+  nextBeforeItemId: string | null
   /** The explicit bound used when recalling a continuation's source. */
   throughItemId: string | null
   trust: 'historical-data'
