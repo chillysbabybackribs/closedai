@@ -7,6 +7,7 @@ import type { AppSettings } from '../../shared/types.js'
 import { DEFAULT_APP_SETTINGS, type AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import { ChatPeerManager } from './peer-manager.js'
+import { traceLog } from '../trace/trace-log.js'
 
 class MemorySettings implements AppSettingsAccess {
   constructor(private value: AppSettings) {}
@@ -103,6 +104,27 @@ function harness(idleParkMs?: number): { manager: ChatPeerManager; surfaces: Fak
   }, idleParkMs)
   return { manager, surfaces, settings }
 }
+
+test('send captures provider dispatch and first text through the pane event path', async (t) => {
+  traceLog.clear()
+  const { manager, surfaces } = harness()
+  t.after(() => { manager.stop(); traceLog.clear() })
+  const paneId = manager.snapshot().selectedPaneId
+  surfaces[0]!.send = async () => {
+    traceLog.record({ paneId, provider: 'codex', turnId: null }, {
+      kind: 'raw', label: 'codex.out', direction: 'out', summary: 'turn/start #1', detail: {}
+    })
+    surfaces[0]!.emit('event', { type: 'turn', turnId: 't' } satisfies ChatEvent)
+    surfaces[0]!.emit('event', { type: 'item', item: {
+      type: 'assistant', id: 'a', turnId: 't', text: 'Hello', phase: 'commentary', streaming: true
+    } } satisfies ChatEvent)
+  }
+  await manager.send(paneId, 'Hello', [])
+  const timing = traceLog.snapshot().entries.find((entry) => entry.label === 'response.first_text')
+  assert.equal(timing?.paneId, paneId)
+  assert.equal(timing?.turnId, 't')
+  assert.ok(timing!.durationMs! >= 0)
+})
 
 test('startup and workspace history only wake the selected persisted pane', async () => {
   const paneA = 'pane-a'

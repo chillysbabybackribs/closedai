@@ -285,6 +285,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       if (!entry) continue
       this.parking.stop(entry)
       this.peers.delete(paneId)
+      traceLog.responses.forget(paneId)
     }
     await this.settings.set({
       chatPeers: this.settings.get().chatPeers.filter((record) => !retiring.has(record.paneId))
@@ -296,6 +297,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     if (!entry) return
     this.parking.stop(entry)
     this.peers.delete(paneId)
+    traceLog.responses.forget(paneId)
     const settings = this.settings.get()
     const remaining = settings.chatPeers.filter((record) => record.paneId !== paneId)
     if (remaining.length === 0) {
