@@ -102,6 +102,7 @@ test('wait forwards conditions and marks a timeout as a tool failure', async () 
     action: 'wait_for', selector: '[role="dialog"]', condition: 'hidden', timeout_ms: 250
   })
   assert.equal(result.isError, true)
+  assert.equal(result.errorKind, 'timeout')
   assert.match(textOf(result), /"reached": false/)
   assert.deepEqual(calls, [])
 })

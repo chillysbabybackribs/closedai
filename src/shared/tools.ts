@@ -66,6 +66,7 @@ export type ToolStats = {
   action: string | null
   calls: number
   failures: number
+  /** Condition or execution timeouts; excluded from `failures`. */
   timeouts: number
 }
 

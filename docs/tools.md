@@ -55,6 +55,8 @@ before the app-server starts.
 |---|---|---|---|
 | `embedded_browser` | `page` | `navigate`, `read_page`, `wait_for` | Browser-page inspection for the pane the user can see. It can open a URL or search query, wait for page readiness, and read visible text from the whole page or one selector. |
 | `closedai_ui` | `capture` | `app_window`, `browser_page`, `crop` | Visual evidence. The first two actions capture the composed app or one readiness-gated page; `crop` enlarges a retained region. The model receives a scaled JPEG (max 1280x960); the full-resolution image goes to `ScreenshotStore` for the transcript. |
+| `closedai_app` | `inspect` | plain tool | Bounded, read-only renderer inspection. Returns window/document state and visible interactive elements with reusable refs, accessible names, text, state, and bounds. |
+| `closedai_app` | `page` | `click`, `type`, `press_key`, `scroll`, `wait_for` | Real interaction with the ClosedAI renderer. `wait_for` polls only the requested selector or visible text and returns bounded match details. |
 | `browser_cdp` | `page` | `inspect_page`, `click`, `click_at`, `type`, `press_key`, `scroll` | Agent-oriented page interaction: semantic element refs with real CDP mouse, keyboard, and wheel input. `type` inserts whole strings in one call; `press_key` sends chords. |
 | `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `events` | Raw Chrome DevTools Protocol escape hatch (`deferLoading`: out of context until searched for). `Input.*` and `Page.captureScreenshot` are refused with pointers to `page` and `capture`. See `docs/cdp-tool-foundation.md`. |
 | `search` | `query` | plain tool | Routed public-web search across Brave, Serper, Jina, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. |
@@ -202,7 +204,9 @@ text-bearing log. The Tools modal shows the on/off switch, run count, and error 
 switchable capability and updates those counters live. "Clear counts" resets every aggregate.
 Failures from unknown, disabled, and invalid calls are counted too.
 
-Telemetry is best-effort. Subscribers must not break tool calls, and the registry swallows
+Timeouts are counted separately from genuine failures. This includes registry execution limits
+and a `wait_for` condition that was not reached, so exploratory waits no longer inflate the error
+count. Telemetry is best-effort: subscribers must not break tool calls, and the registry swallows
 subscriber errors after the model-visible result is produced.
 
 ## Turn trace

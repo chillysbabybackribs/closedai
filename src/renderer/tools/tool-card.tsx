@@ -15,7 +15,7 @@ export type ToolCardProps = {
   onToggle: (enabled: boolean) => void
 }
 
-/** One aggregate-only row: switch, name, run count, and error count. */
+/** One aggregate-only row: switch, name, run count, error count, and timeout count. */
 export function ToolCard({ item, onToggle }: ToolCardProps): JSX.Element {
   const calls = item.stat?.calls ?? 0
   const failures = item.stat?.failures ?? 0
