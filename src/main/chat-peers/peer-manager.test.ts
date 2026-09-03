@@ -57,7 +57,7 @@ class FakeSurface extends EventEmitter implements ChatSurface {
   async beginLogin(): Promise<string | null> { return null }
 }
 
-function harness(): { manager: ChatPeerManager; surfaces: FakeSurface[] } {
+function harness(idleParkMs?: number): { manager: ChatPeerManager; surfaces: FakeSurface[] } {
   const paneId = 'pane-a'
   const settings = new MemorySettings({
     ...DEFAULT_APP_SETTINGS,
@@ -77,7 +77,7 @@ function harness(): { manager: ChatPeerManager; surfaces: FakeSurface[] } {
     const surface = new FakeSurface(modelId)
     surfaces.push(surface)
     return surface
-  })
+  }, idleParkMs)
   return { manager, surfaces }
 }
 
@@ -180,4 +180,34 @@ test('switching away from an empty new chat discards it so it does not linger', 
   assert.equal(manager.snapshot().peers.length, 1)
   assert.equal(manager.snapshot().selectedPaneId, 'pane-a')
   assert.ok(surfaces[1]!.calls.includes('stop'))
+})
+
+test('unfocused idle panes park after the grace period and wake when selected', async () => {
+  const { manager, surfaces } = harness(5)
+  await manager.start()
+  surfaces[0]!.state.items = [{ type: 'user', id: 'user-a', text: 'keep me', attachmentNames: [] }]
+
+  const paneB = await manager.newPeer()
+  surfaces[1]!.state.items = [{ type: 'user', id: 'user-b', text: 'keep me too', attachmentNames: [] }]
+  await new Promise((resolve) => setTimeout(resolve, 20))
+
+  assert.deepEqual(surfaces[0]!.calls, ['start', 'stop'])
+  await manager.selectPane('pane-a')
+  assert.equal(manager.snapshot().selectedPaneId, 'pane-a')
+  assert.deepEqual(surfaces[0]!.calls, ['start', 'stop', 'start'])
+  assert.equal(paneB, manager.snapshot().peers.find((peer) => peer.paneId === paneB)?.paneId)
+})
+
+test('an unfocused running pane parks only after its turn finishes', async () => {
+  const { manager, surfaces } = harness(5)
+  await manager.start()
+  await manager.send('pane-a', 'background work', [])
+  await manager.newPeer()
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  assert.equal(surfaces[0]!.calls.includes('stop'), false)
+
+  surfaces[0]!.state.activeTurnId = null
+  surfaces[0]!.emit('event', { type: 'turn', turnId: null } satisfies ChatEvent)
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  assert.equal(surfaces[0]!.calls.includes('stop'), true)
 })

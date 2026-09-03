@@ -36,7 +36,11 @@ export interface ChatWorkspaceSurface {
 type PeerEntry = {
   surface: ChatSurface
   updatedAt: number
+  idleTimer: NodeJS.Timeout | null
+  parked: boolean
 }
+
+const DEFAULT_IDLE_PARK_MS = 5 * 60 * 1000
 
 export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurface {
   private readonly peers = new Map<ChatPaneId, PeerEntry>()
@@ -44,7 +48,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   constructor(
     private readonly settings: AppSettingsAccess,
-    private readonly createSurface: ChatPeerFactory
+    private readonly createSurface: ChatPeerFactory,
+    private readonly idleParkMs = DEFAULT_IDLE_PARK_MS
   ) {
     super()
     const saved = settings.get()
@@ -69,26 +74,31 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   async start(): Promise<void> {
     // Persisted panes are history, not live work. Warming every one creates an app-server per
     // pane after each relaunch; the selected pane is the only surface startup needs immediately.
-    await this.requirePeer(this.selectedPaneId).surface.start()
+    await this.wake(this.selectedPaneId)
   }
 
   stop(): void {
-    for (const entry of this.peers.values()) entry.surface.stop()
+    for (const entry of this.peers.values()) {
+      this.cancelPark(entry)
+      entry.parked = true
+      entry.surface.stop()
+    }
   }
 
-  send(paneId: ChatPaneId, text: string, attachments: ChatAttachment[]): Promise<void> {
-    return this.requirePeer(paneId).surface.send(text, attachments)
+  async send(paneId: ChatPaneId, text: string, attachments: ChatAttachment[]): Promise<void> {
+    await this.withAwake(paneId, (surface) => surface.send(text, attachments))
   }
 
-  interrupt(paneId: ChatPaneId): Promise<void> {
-    return this.requirePeer(paneId).surface.interrupt()
+  async interrupt(paneId: ChatPaneId): Promise<void> {
+    await this.withAwake(paneId, (surface) => surface.interrupt())
   }
 
   async selectPane(paneId: ChatPaneId): Promise<void> {
     this.requirePeer(paneId)
     if (paneId === this.selectedPaneId) return
 
-    const currentEntry = this.peers.get(this.selectedPaneId)
+    const previousPaneId = this.selectedPaneId
+    const currentEntry = this.peers.get(previousPaneId)
     const currentSnapshot = currentEntry?.surface.snapshot()
     const currentEmpty = currentSnapshot &&
       currentSnapshot.items.length === 0 &&
@@ -97,34 +107,38 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
     if (currentEmpty && currentEntry && this.peers.size > 1) {
       currentEntry.surface.stop()
-      this.peers.delete(this.selectedPaneId)
+      this.cancelPark(currentEntry)
+      this.peers.delete(previousPaneId)
       const settings = this.settings.get()
       await this.settings.set({
-        chatPeers: settings.chatPeers.filter((p) => p.paneId !== this.selectedPaneId)
+        chatPeers: settings.chatPeers.filter((p) => p.paneId !== previousPaneId)
       })
     }
 
     this.selectedPaneId = paneId
     await this.settings.set({ chatSelectedPaneId: paneId })
+    this.schedulePark(previousPaneId)
+    await this.wake(paneId)
     this.emitWorkspace()
   }
 
-  selectModel(paneId: ChatPaneId, modelId: string): Promise<void> {
-    return this.requirePeer(paneId).surface.selectModel(modelId)
+  async selectModel(paneId: ChatPaneId, modelId: string): Promise<void> {
+    await this.withAwake(paneId, (surface) => surface.selectModel(modelId))
   }
 
-  selectReasoningEffort(paneId: ChatPaneId, effort: string): Promise<void> {
-    return this.requirePeer(paneId).surface.selectReasoningEffort(effort)
+  async selectReasoningEffort(paneId: ChatPaneId, effort: string): Promise<void> {
+    await this.withAwake(paneId, (surface) => surface.selectReasoningEffort(effort))
   }
 
   async listThreads(): Promise<ChatThreadSummary[]> {
     // Thread history is workspace-wide, so every pane returns the same catalog. Querying each
     // persisted pane needlessly wakes all of their provider runtimes during the drawer's mount.
-    return this.requirePeer(this.selectedPaneId).surface.listThreads()
+    return this.withAwake(this.selectedPaneId, (surface) => surface.listThreads())
   }
 
   async newPeer(): Promise<ChatPaneId> {
-    const current = this.requirePeer(this.selectedPaneId).surface.snapshot()
+    const previousPaneId = this.selectedPaneId
+    const current = this.requirePeer(previousPaneId).surface.snapshot()
     const record = freshRecord(current.selectedModel, current.selectedReasoningEffort)
     const settings = this.settings.get()
     await this.settings.set({
@@ -133,14 +147,17 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     })
     const entry = this.attach(record)
     this.selectedPaneId = record.paneId
+    this.schedulePark(previousPaneId)
     this.emitWorkspace()
-    void entry.surface.start()
+    void this.wake(record.paneId)
     return record.paneId
   }
 
   async closePeer(paneId: ChatPaneId): Promise<void> {
     const entry = this.peers.get(paneId)
     if (!entry) return
+    this.cancelPark(entry)
+    entry.parked = true
     entry.surface.stop()
     this.peers.delete(paneId)
     const settings = this.settings.get()
@@ -150,7 +167,6 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       remaining.push(fresh)
       this.attach(fresh)
       this.selectedPaneId = fresh.paneId
-      void this.requirePeer(fresh.paneId).surface.start()
     } else if (this.selectedPaneId === paneId) {
       this.selectedPaneId = remaining[0]!.paneId
     }
@@ -158,11 +174,12 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       chatPeers: remaining,
       chatSelectedPaneId: this.selectedPaneId
     })
+    await this.wake(this.selectedPaneId)
     this.emitWorkspace()
   }
 
   async continueInNewPeer(paneId: ChatPaneId): Promise<ChatPaneId> {
-    const source = this.requirePeer(paneId).surface
+    const source = (await this.wake(paneId)).surface
     const snapshot = source.snapshot()
     if (snapshot.activeTurnId) throw new Error('Stop the current turn before continuing in a new chat')
     if (!snapshot.items.some((item) => item.type === 'user')) throw new Error('There is no conversation to continue yet')
@@ -173,21 +190,24 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     const history = this.attach(historyRecord)
     await source.continueInNewThread()
     this.emitWorkspace()
-    void history.surface.start()
+    void this.wake(historyRecord.paneId).then(() => this.schedulePark(historyRecord.paneId))
     return paneId
   }
 
-  openThread(paneId: ChatPaneId, threadId: string): Promise<void> {
-    return this.requirePeer(paneId).surface.openThread(threadId)
+  async openThread(paneId: ChatPaneId, threadId: string): Promise<void> {
+    await this.withAwake(paneId, (surface) => surface.openThread(threadId))
   }
 
   async archiveThread(threadId: string): Promise<void> {
     const matching = [...this.peers.values()].find((entry) => entry.surface.snapshot().threadId === threadId)
-    await (matching ?? this.requirePeer(this.selectedPaneId)).surface.archiveThread(threadId)
+    const paneId = matching
+      ? [...this.peers].find(([, entry]) => entry === matching)![0]
+      : this.selectedPaneId
+    await this.withAwake(paneId, (surface) => surface.archiveThread(threadId))
   }
 
   beginLogin(): Promise<string | null> {
-    return this.requirePeer(this.selectedPaneId).surface.beginLogin()
+    return this.withAwake(this.selectedPaneId, (surface) => surface.beginLogin())
   }
 
   listReadable(callerPaneId: string | null): ChatPeerSummary[] {
@@ -213,14 +233,57 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   private attach(record: ChatPeerRecord): PeerEntry {
     const surface = this.createSurface(new PeerSettings(this.settings, record.paneId), record.modelId)
-    const entry = { surface, updatedAt: Date.now() }
+    const entry: PeerEntry = { surface, updatedAt: Date.now(), idleTimer: null, parked: true }
     surface.on('event', (event: ChatEvent) => {
       entry.updatedAt = Date.now()
       this.emit('event', { type: 'pane', paneId: record.paneId, event } satisfies ChatWorkspaceEvent)
       this.emitPeers()
+      if (surface.snapshot().activeTurnId) this.cancelPark(entry)
+      else this.schedulePark(record.paneId)
     })
     this.peers.set(record.paneId, entry)
     return entry
+  }
+
+  private async withAwake<T>(paneId: ChatPaneId, action: (surface: ChatSurface) => Promise<T>): Promise<T> {
+    const entry = await this.wake(paneId)
+    try {
+      return await action(entry.surface)
+    } finally {
+      this.schedulePark(paneId)
+    }
+  }
+
+  private async wake(paneId: ChatPaneId): Promise<PeerEntry> {
+    const entry = this.requirePeer(paneId)
+    this.cancelPark(entry)
+    if (!entry.parked) return entry
+    entry.parked = false
+    try {
+      await entry.surface.start()
+    } catch (error) {
+      entry.parked = true
+      throw error
+    }
+    return entry
+  }
+
+  private schedulePark(paneId: ChatPaneId): void {
+    if (paneId === this.selectedPaneId) return
+    const entry = this.peers.get(paneId)
+    if (!entry || entry.parked || entry.idleTimer || entry.surface.snapshot().activeTurnId) return
+    entry.idleTimer = setTimeout(() => {
+      entry.idleTimer = null
+      if (paneId === this.selectedPaneId || entry.surface.snapshot().activeTurnId) return
+      entry.parked = true
+      entry.surface.stop()
+    }, this.idleParkMs)
+    entry.idleTimer.unref?.()
+  }
+
+  private cancelPark(entry: PeerEntry): void {
+    if (entry.idleTimer) clearTimeout(entry.idleTimer)
+    entry.idleTimer = null
   }
 
   private requirePeer(paneId: ChatPaneId): PeerEntry {
