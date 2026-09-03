@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import test from 'node:test'
-import type { ChatEvent, ChatModel, ChatProvider, ChatSnapshot, ChatThreadSummary } from '../shared/chat.js'
+import type { ChatEvent, ChatModel, ChatProvider, ChatSnapshot, ChatThreadContent, ChatThreadSummary } from '../shared/chat.js'
 import { ChatHub, type ChatHubProviders } from './chat-hub.js'
 
 function model(provider: ChatProvider, id: string): ChatModel {
@@ -29,6 +29,7 @@ class FakeProvider extends EventEmitter {
   async selectModel(id: string): Promise<void> { this.calls.push(`selectModel:${id}`) }
   async selectReasoningEffort(effort: string): Promise<void> { this.calls.push(`effort:${effort}`) }
   async listThreads(): Promise<ChatThreadSummary[]> { if (this.failThreads) throw new Error('down'); return this.threads }
+  async readThread(threadId: string): Promise<ChatThreadContent> { return { threadId, threadName: null, items: [] } }
   async newThread(): Promise<void> { this.calls.push('newThread') }
   async continueInNewThread(): Promise<void> { this.calls.push('continue') }
   async openThread(id: string): Promise<void> { this.calls.push(`openThread:${id}`) }

@@ -9,6 +9,7 @@ const peer: ChatPeerSummary = {
   parentPaneId: null,
   kind: 'peer',
   provider: 'codex',
+  modelId: 'gpt-5.6-sol',
   threadId: 'thread-b',
   title: 'Research',
   preview: 'working',

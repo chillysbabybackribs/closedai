@@ -10,6 +10,7 @@ function peer(paneId: string, threadId: string, updatedAt: number): ChatPeerSumm
     parentPaneId: null,
     kind: 'peer',
     provider: 'codex',
+    modelId: 'gpt-5.6-sol',
     threadId,
     title: `Chat ${paneId}`,
     preview: '',

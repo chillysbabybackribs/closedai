@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import test from 'node:test'
-import type { ChatAttachment, ChatEvent, ChatSnapshot } from '../../shared/chat.js'
+import type { ChatAttachment, ChatEvent, ChatSnapshot, ChatThreadContent } from '../../shared/chat.js'
 import type { AppSettings } from '../../shared/types.js'
 import { DEFAULT_APP_SETTINGS, type AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
@@ -48,9 +48,20 @@ class FakeSurface extends EventEmitter implements ChatSurface {
     this.emit('event', { type: 'turn', turnId: this.state.activeTurnId } satisfies ChatEvent)
   }
   async interrupt(): Promise<void> { this.calls.push('interrupt'); this.state.activeTurnId = null }
-  async selectModel(modelId: string): Promise<void> { this.calls.push(`model:${modelId}`) }
+  async selectModel(modelId: string): Promise<void> { this.calls.push(`model:${modelId}`); this.state.selectedModel = modelId }
   async selectReasoningEffort(effort: string): Promise<void> { this.calls.push(`effort:${effort}`) }
   async listThreads(): Promise<[]> { this.calls.push('listThreads'); return [] }
+  async readThread(threadId: string): Promise<ChatThreadContent> {
+    this.calls.push(`read:${threadId}`)
+    return {
+      threadId,
+      threadName: 'Saved chat',
+      items: [
+        { type: 'user', id: 'saved-user', turnId: 'saved-turn', text: 'Original request' },
+        { type: 'assistant', id: 'saved-answer', turnId: 'saved-turn', text: 'Original answer', phase: 'final_answer', streaming: false }
+      ]
+    }
+  }
   async newThread(): Promise<void> { this.calls.push('newThread') }
   async continueInNewThread(): Promise<void> { this.calls.push('continue') }
   async openThread(threadId: string): Promise<void> { this.calls.push(`open:${threadId}`) }
@@ -58,7 +69,7 @@ class FakeSurface extends EventEmitter implements ChatSurface {
   async beginLogin(): Promise<string | null> { return null }
 }
 
-function harness(idleParkMs?: number): { manager: ChatPeerManager; surfaces: FakeSurface[] } {
+function harness(idleParkMs?: number): { manager: ChatPeerManager; surfaces: FakeSurface[]; settings: MemorySettings } {
   const paneId = 'pane-a'
   const settings = new MemorySettings({
     ...DEFAULT_APP_SETTINGS,
@@ -79,7 +90,7 @@ function harness(idleParkMs?: number): { manager: ChatPeerManager; surfaces: Fak
     surfaces.push(surface)
     return surface
   }, idleParkMs)
-  return { manager, surfaces }
+  return { manager, surfaces, settings }
 }
 
 test('startup and workspace history only wake the selected persisted pane', async () => {
@@ -123,6 +134,47 @@ test('new chat keeps a running peer alive and selects an independent surface', a
   assert.equal(surfaces[0]!.state.activeTurnId, 'turn:first')
   await manager.send(paneB, 'second', [])
   assert.equal(surfaces[1]!.state.activeTurnId, 'turn:second')
+})
+
+test('continue creates an independent target-model pane and persists source lineage plus handoff', async () => {
+  const { manager, surfaces, settings } = harness()
+  surfaces[0]!.state.threadId = 'thread-a'
+  surfaces[0]!.state.threadName = 'Fix continuation'
+  surfaces[0]!.state.items = [
+    { type: 'user', id: 'user-a', turnId: 'turn-a', text: 'Keep this context' },
+    { type: 'assistant', id: 'answer-a', turnId: 'turn-a', text: 'Context kept', phase: 'final_answer', streaming: false }
+  ]
+
+  const target = await manager.continueInNewPeer(
+    { paneId: 'pane-a', threadId: 'thread-a' },
+    'claude:opus'
+  )
+
+  assert.notEqual(target, 'pane-a')
+  assert.equal(manager.snapshot().selectedPaneId, target)
+  assert.equal(manager.snapshot().peers.length, 2)
+  assert.equal(surfaces[0]!.state.threadId, 'thread-a')
+  assert.equal(surfaces[0]!.calls.includes('continue'), false)
+  assert.equal(surfaces[1]!.state.selectedModel, 'claude:opus')
+  const record = settings.get().chatPeers.find((peer) => peer.paneId === target)!
+  assert.equal(record.continuation?.sourcePaneId, 'pane-a')
+  assert.equal(record.continuation?.sourceThreadId, 'thread-a')
+  assert.equal(record.continuation?.sourceTitle, 'Fix continuation')
+  assert.match(record.continuation?.handoff ?? '', /User: Keep this context/)
+})
+
+test('continue reads a history-only source without opening it in the selected pane', async () => {
+  const { manager, surfaces, settings } = harness()
+  const target = await manager.continueInNewPeer(
+    { paneId: null, threadId: 'saved-thread' },
+    'gpt-5'
+  )
+
+  assert.deepEqual(surfaces[0]!.calls, ['start', 'read:saved-thread'])
+  assert.equal(surfaces[0]!.calls.some((call) => call.startsWith('open:')), false)
+  const record = settings.get().chatPeers.find((peer) => peer.paneId === target)!
+  assert.equal(record.continuation?.sourceThreadId, 'saved-thread')
+  assert.equal(record.continuation?.sourceTitle, 'Saved chat')
 })
 
 test('selection and interruption target one pane without stopping its peer', async () => {
