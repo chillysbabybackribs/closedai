@@ -18,6 +18,9 @@ Prefer a feature directory once a concern needs three or more files. Keep tests 
 - Keep model tools provider-agnostic under `src/main/tools/`; provider adapters only translate the shared contract.
 - Extend an existing namespace and verb tool when its domain, result shape, and trust level match. Otherwise add the smallest new layer required.
 - Keep read-only and mutating capabilities separate when their approval or trust requirements differ.
+- Design read tools for model context, not raw transport completeness: offer scope/query/projection controls and fit useful results within their output budget before the generic serializer has to truncate them.
+- For live-app diagnosis or QA, begin with scoped runtime inspection and returned element refs. Do not read renderer source merely to discover controls or selectors; inspect implementation only after runtime evidence identifies an unresolved failure.
+- Group deterministic tool sequences into one model pass, suppress successful intermediate payloads that are consumed within the sequence, and return only evidence needed for the next decision.
 
 ## Hard hygiene limits
 

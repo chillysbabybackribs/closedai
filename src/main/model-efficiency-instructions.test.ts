@@ -14,6 +14,8 @@ test('every model lane receives the deterministic batching contract', () => {
   for (const value of instructions) {
     assert.match(value, /group all steps whose arguments are (?:already )?known/)
     assert.match(value, /Yield for another model pass only when fresh output changes the next action/)
+    assert.match(value, /closedai_app\.inspect scoped by surface\/query/)
+    assert.match(value, /Do not read renderer source merely to locate controls or selectors/)
   }
   assert.match(instructions[1]!, /tool_batch/)
   assert.match(instructions[2]!, /tool_batch/)
