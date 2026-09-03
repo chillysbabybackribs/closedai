@@ -301,9 +301,10 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   private peerSummaries(): ChatPeerSummary[] {
-    return [...this.peers].map(([paneId, entry]) =>
-      summaryOf(paneId, entry.surface.snapshot(), entry.updatedAt, this.record(paneId).continuation ?? null)
-    )
+    return [...this.peers].map(([paneId, entry]) => {
+      const record = this.record(paneId)
+      return summaryOf(paneId, entry.surface.snapshot(), entry.updatedAt, record.modelId, record.continuation ?? null)
+    })
   }
 
   private emitWorkspace(): void {
@@ -340,6 +341,7 @@ function summaryOf(
   paneId: string,
   snapshot: ChatSnapshot,
   updatedAt: number,
+  persistedModelId: string | null,
   continuation: ChatContinuation | null
 ): ChatPeerSummary {
   const firstUser = snapshot.items.find((item) => item.type === 'user')
@@ -351,7 +353,7 @@ function summaryOf(
     parentPaneId: null,
     kind: 'peer',
     provider: snapshot.provider,
-    modelId: snapshot.selectedModel,
+    modelId: snapshot.selectedModel ?? persistedModelId,
     threadId: snapshot.threadId,
     title: title.length > 60 ? `${title.slice(0, 59)}…` : title,
     preview: itemText(latest),
