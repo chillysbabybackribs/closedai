@@ -185,10 +185,10 @@ test('switching away from an empty new chat discards it so it does not linger', 
 test('unfocused idle panes park after the grace period and wake when selected', async () => {
   const { manager, surfaces } = harness(5)
   await manager.start()
-  surfaces[0]!.state.items = [{ type: 'user', id: 'user-a', text: 'keep me', attachmentNames: [] }]
+  surfaces[0]!.state.items = [{ type: 'user', id: 'user-a', turnId: null, text: 'keep me' }]
 
   const paneB = await manager.newPeer()
-  surfaces[1]!.state.items = [{ type: 'user', id: 'user-b', text: 'keep me too', attachmentNames: [] }]
+  surfaces[1]!.state.items = [{ type: 'user', id: 'user-b', turnId: null, text: 'keep me too' }]
   await new Promise((resolve) => setTimeout(resolve, 20))
 
   assert.deepEqual(surfaces[0]!.calls, ['start', 'stop'])

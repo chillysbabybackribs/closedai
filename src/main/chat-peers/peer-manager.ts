@@ -145,7 +145,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       chatPeers: [...settings.chatPeers, record],
       chatSelectedPaneId: record.paneId
     })
-    const entry = this.attach(record)
+    this.attach(record)
     this.selectedPaneId = record.paneId
     this.schedulePark(previousPaneId)
     this.emitWorkspace()
@@ -187,7 +187,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     const historyRecord = { ...sourceRecord, paneId: crypto.randomUUID() }
     const settings = this.settings.get()
     await this.settings.set({ chatPeers: [...settings.chatPeers, historyRecord] })
-    const history = this.attach(historyRecord)
+    this.attach(historyRecord)
     await source.continueInNewThread()
     this.emitWorkspace()
     void this.wake(historyRecord.paneId).then(() => this.schedulePark(historyRecord.paneId))
@@ -199,10 +199,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async archiveThread(threadId: string): Promise<void> {
-    const matching = [...this.peers.values()].find((entry) => entry.surface.snapshot().threadId === threadId)
-    const paneId = matching
-      ? [...this.peers].find(([, entry]) => entry === matching)![0]
-      : this.selectedPaneId
+    const matching = [...this.peers].find(([, entry]) => entry.surface.snapshot().threadId === threadId)
+    const paneId = matching?.[0] ?? this.selectedPaneId
     await this.withAwake(paneId, (surface) => surface.archiveThread(threadId))
   }
 
@@ -247,6 +245,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   private async withAwake<T>(paneId: ChatPaneId, action: (surface: ChatSurface) => Promise<T>): Promise<T> {
     const entry = await this.wake(paneId)
+    this.cancelPark(entry)
     try {
       return await action(entry.surface)
     } finally {
@@ -261,6 +260,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     entry.parked = false
     try {
       await entry.surface.start()
+      this.cancelPark(entry)
     } catch (error) {
       entry.parked = true
       throw error
