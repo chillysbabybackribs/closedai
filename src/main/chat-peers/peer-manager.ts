@@ -138,8 +138,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     if (this.peersTimer) clearTimeout(this.peersTimer)
     this.peersTimer = null
     this.peersPending = false
-    for (const entry of this.peers.values()) {
+    for (const [paneId, entry] of this.peers) {
       this.parking.stop(entry)
+      traceLog.responses.forget(paneId)
     }
   }
 
@@ -178,6 +179,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       currentEntry.surface.stop()
       this.parking.cancel(currentEntry)
       this.peers.delete(previousPaneId)
+      traceLog.responses.forget(previousPaneId)
     }
 
     this.selectedPaneId = paneId
@@ -396,7 +398,10 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     const selection = this.workspaceSelector.current()
     if (selection.projectPath === projectPath) return
 
-    for (const entry of this.peers.values()) this.parking.stop(entry)
+    for (const [paneId, entry] of this.peers) {
+      this.parking.stop(entry)
+      traceLog.responses.forget(paneId)
+    }
     this.peers.clear()
     await this.workspaceSelector.select(projectPath, {
       modelId: current.selectedModel,

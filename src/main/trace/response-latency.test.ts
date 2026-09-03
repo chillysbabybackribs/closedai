@@ -19,7 +19,7 @@ function harness(provider: ChatProvider = 'codex') {
 }
 
 const assistant = (text: string, id = 'answer', turnId = 't'): ChatEvent => ({
-  type: 'item', item: { type: 'assistant', id, turnId, text, streaming: true }
+  type: 'item', item: { type: 'assistant', id, turnId, text, phase: null, streaming: true }
 })
 
 for (const provider of ['codex', 'claude', 'antigravity'] as const) {

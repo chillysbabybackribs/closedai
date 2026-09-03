@@ -87,6 +87,10 @@ export class ResponseLatency {
     this.requests.clear()
   }
 
+  forget(paneId: string): void {
+    this.requests.delete(paneId)
+  }
+
   private firstText(request: Request): void {
     request.firstText = true
     request.assistantIds.clear()

@@ -64,6 +64,23 @@ test('clear empties the ring and announces it', () => {
   assert.deepEqual(seen, [{ type: 'cleared' }])
 })
 
+test('outgoing provider traces dispatch first-text timing and clear invalidates pending measurements', () => {
+  const log = new TraceLog()
+  log.responses.begin(scope)
+  log.record(scope, { kind: 'raw', label: 'codex.out', summary: 'turn/start #1', direction: 'out', detail: {} })
+  log.responses.event('pane-1', { type: 'item', item: {
+    type: 'assistant', id: 'answer', turnId: 'turn-1', text: 'Hello', phase: 'commentary', streaming: true
+  } })
+  const timing = log.snapshot().entries.at(-1)!
+  assert.equal(timing.label, 'response.first_text')
+  assert.equal(timing.turnId, 'turn-1')
+  assert.ok(timing.durationMs! >= 0)
+  log.clear()
+  log.responses.event('pane-1', { type: 'turn', turnId: null })
+  assert.equal(log.snapshot().entries.length, 0)
+  assert.ok(log.responses.begin(scope))
+})
+
 test('provider is read from the turn id prefix', () => {
   assert.equal(providerOfTurn('claude-turn-x'), 'claude')
   assert.equal(providerOfTurn('agy-turn-x'), 'antigravity')
