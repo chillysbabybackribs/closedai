@@ -265,7 +265,7 @@ function appInspectionExpression(snapshotId: string, maxElements: number): strin
     const inspection = ${inspect};
     const visible = (${viewportVisible.toString()});
     const describe = (${describeElement.toString()});
-    const bodyText = document.body ? document.body.innerText || '' : '';
+    const visibleText = (${readVisibleText.toString()})(8000);
     const active = document.activeElement;
     return {
       inspection,
@@ -276,8 +276,8 @@ function appInspectionExpression(snapshotId: string, maxElements: number): strin
         activeElement: active && active instanceof HTMLElement ? describe(active) : null,
         surfaces: Array.from(document.querySelectorAll('[data-ui-surface], [role="dialog"], [role="alert"], [role="status"]'))
           .filter(visible).slice(0, 100).map(describe),
-        visibleText: bodyText.slice(0, 8000),
-        textTruncated: bodyText.length > 8000
+        visibleText: visibleText.text,
+        textTruncated: visibleText.truncated
       }
     };
   })()`
@@ -319,6 +319,36 @@ function describeElement(element: Element): AppElementMatch {
     state,
     bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
   }
+}
+
+function readVisibleText(limit: number): { text: string; truncated: boolean } {
+  if (!document.body) return { text: '', truncated: false }
+  const parts: string[] = []
+  let length = 0
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+  let node: Node | null
+  while ((node = walker.nextNode())) {
+    const text = (node.nodeValue || '').replace(/\s+/g, ' ').trim()
+    const parent = node.parentElement
+    if (!text || !parent) continue
+    const style = getComputedStyle(parent)
+    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) continue
+    const range = document.createRange()
+    range.selectNodeContents(node)
+    const inViewport = Array.from(range.getClientRects()).some((rect) => (
+      rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.bottom > 0 &&
+      rect.left < window.innerWidth && rect.top < window.innerHeight
+    ))
+    if (!inViewport) continue
+    if (length + text.length + 1 > limit) {
+      const remaining = Math.max(0, limit - length)
+      if (remaining > 0) parts.push(text.slice(0, remaining))
+      return { text: parts.join(' '), truncated: true }
+    }
+    parts.push(text)
+    length += text.length + 1
+  }
+  return { text: parts.join(' '), truncated: false }
 }
 
 async function abortableDelay(ms: number, signal: AbortSignal): Promise<void> {
