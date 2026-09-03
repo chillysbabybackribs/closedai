@@ -6,13 +6,15 @@ import type {
   ChatConnection,
   ChatEvent,
   ChatSnapshot,
-  ChatThreadSummary
+  ChatThreadSummary,
+  ChatTurnContextReport
 } from '../../shared/chat.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { describeUsage, type ContextUsage } from '../chat-context/context-compaction.js'
 import { buildThreadHandoff, handoffAdditionalContext } from '../chat-context/thread-handoff.js'
 import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
+import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
@@ -44,6 +46,7 @@ export class ClaudeChatService extends EventEmitter {
   private threadName: string | null = null
   private activeTurnId: string | null = null
   private contextUsage: ContextUsage | null = null
+  private turnContext: ChatTurnContextReport | null = null
   private pendingHandoff: string | null = null
   private readonly transcript: ChatTranscript
   private startPromise: Promise<void> | null = null
@@ -73,6 +76,7 @@ export class ClaudeChatService extends EventEmitter {
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
       contextUsage: describeUsage(this.contextUsage),
+      turnContext: this.turnContext,
       items: this.transcript.snapshot()
     }
   }
@@ -96,6 +100,14 @@ export class ClaudeChatService extends EventEmitter {
       if (!turn) return
       this.transcript.addOptimisticUser(crypto.randomUUID(), turn.prompt, turn.summaries)
       session.send(turn.message)
+      this.setTurnContext(buildTurnContextReport({
+        provider: 'claude',
+        model: this.modelState.selectedModel,
+        threadId: session.sessionId ? claudeThreadId(session.sessionId) : null,
+        prompt: turn.prompt,
+        attachments: turn.summaries,
+        additionalContext: Object.keys(context).length ? context : undefined
+      }))
       this.pendingHandoff = null
     } catch (error) {
       this.addNotice(messageOf(error), 'error')
@@ -260,6 +272,7 @@ export class ClaudeChatService extends EventEmitter {
     this.contextUsage = null
     this.pendingHandoff = null
     this.activeTurnId = null
+    this.turnContext = null
     await this.settings.set({ chatClaudeSessionId: null })
   }
 
@@ -347,5 +360,10 @@ export class ClaudeChatService extends EventEmitter {
 
   private emitEvent(event: ChatEvent): void {
     this.emit('event', event)
+  }
+
+  private setTurnContext(report: ChatTurnContextReport): void {
+    this.turnContext = report
+    this.emitEvent({ type: 'turnContext', report })
   }
 }

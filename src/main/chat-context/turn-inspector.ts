@@ -51,7 +51,7 @@ export function estimateTokens(text: string): number {
 }
 
 function attachmentReport(provider: ChatProvider, attachment: ChatAttachmentSummary): ChatTurnContextAttachment {
-  const path = attachment.path ?? attachment.source?.type === 'path' ? attachment.source?.path : undefined
+  const path = attachment.path ?? (attachment.source?.type === 'path' ? attachment.source.path : undefined)
   return {
     name: attachment.name,
     kind: attachment.kind,

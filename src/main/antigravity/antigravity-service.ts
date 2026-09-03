@@ -1,9 +1,13 @@
 import { EventEmitter } from 'node:events'
-import type { ChatAccount, ChatAttachment, ChatConnection, ChatEvent, ChatSnapshot, ChatThreadSummary } from '../../shared/chat.js'
+import type {
+  ChatAccount, ChatAttachment, ChatConnection, ChatEvent, ChatSnapshot,
+  ChatThreadSummary, ChatTurnContextReport
+} from '../../shared/chat.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { buildThreadHandoff, handoffAdditionalContext } from '../chat-context/thread-handoff.js'
 import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
+import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
@@ -34,6 +38,7 @@ export class AntigravityChatService extends EventEmitter {
   private readonly history: AntigravityHistory
   private threadName: string | null = null
   private activeTurnId: string | null = null
+  private turnContext: ChatTurnContextReport | null = null
   private pendingHandoff: string | null = null
   private readonly transcript: ChatTranscript
   private startPromise: Promise<void> | null = null
@@ -65,6 +70,7 @@ export class AntigravityChatService extends EventEmitter {
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
       contextUsage: null,
+      turnContext: this.turnContext,
       items: this.transcript.snapshot()
     }
   }
@@ -89,6 +95,14 @@ export class AntigravityChatService extends EventEmitter {
       await this.bridge.start()
       this.transcript.addOptimisticUser(crypto.randomUUID(), turn.prompt, turn.summaries)
       session.send(turn.content)
+      this.setTurnContext(buildTurnContextReport({
+        provider: 'antigravity',
+        model: this.modelState.selectedModel,
+        threadId: session.conversationId ? antigravityThreadId(session.conversationId) : null,
+        prompt: turn.prompt,
+        attachments: turn.summaries,
+        additionalContext: Object.keys(context).length ? context : undefined
+      }))
       this.pendingHandoff = null
     } catch (error) {
       this.addNotice(messageOf(error), 'error')
@@ -248,6 +262,7 @@ export class AntigravityChatService extends EventEmitter {
     this.threadName = null
     this.pendingHandoff = null
     this.activeTurnId = null
+    this.turnContext = null
     await this.settings.set({ chatAntigravityConversationId: null })
   }
 
@@ -336,5 +351,10 @@ export class AntigravityChatService extends EventEmitter {
 
   private emitEvent(event: ChatEvent): void {
     this.emit('event', event)
+  }
+
+  private setTurnContext(report: ChatTurnContextReport): void {
+    this.turnContext = report
+    this.emitEvent({ type: 'turnContext', report })
   }
 }

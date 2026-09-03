@@ -6,7 +6,8 @@ import type {
   ChatEvent,
   ChatModel,
   ChatSnapshot,
-  ChatThreadSummary
+  ChatThreadSummary,
+  ChatTurnContextReport
 } from '../shared/chat.js'
 import type { AppSettingsAccess } from './app-settings-store.js'
 import {
@@ -26,6 +27,7 @@ import { resumeThreadParams, startThreadParams } from './chat-context/thread-par
 import { ContextCompactor, describeUsage, type ContextUsage } from './chat-context/context-compaction.js'
 import { appServerConfigArgs } from './chat-context/app-server-config.js'
 import { buildThreadHandoff, handoffAdditionalContext } from './chat-context/thread-handoff.js'
+import { buildTurnContextReport } from './chat-context/turn-inspector.js'
 import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
 import { loadChatModels } from './chat-model-catalog.js'
@@ -54,6 +56,7 @@ export class ChatService extends EventEmitter {
   private threadId: string | null = null
   private threadName: string | null = null
   private activeTurnId: string | null = null
+  private turnContext: ChatTurnContextReport | null = null
   private readonly transcript: ChatTranscript
   private readonly toolCalls: AppServerToolCalls
   private readonly compactor: ContextCompactor
@@ -112,6 +115,7 @@ export class ChatService extends EventEmitter {
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
       contextUsage: describeUsage(this.compactor.current),
+      turnContext: this.turnContext,
       items: this.transcript.snapshot()
     }
   }
@@ -154,6 +158,10 @@ export class ChatService extends EventEmitter {
         ...(Object.keys(additionalContext).length ? { additionalContext } : {}),
         input
       })
+      this.setTurnContext(buildTurnContextReport({
+        provider: 'codex', model: this.modelState.selectedModel, threadId, prompt,
+        attachments: summaries, additionalContext
+      }))
       this.pendingHandoff = null
       const turn = recordOf(response.turn)
       if (typeof turn?.id === 'string') this.setTurn(turn.id)
@@ -335,6 +343,7 @@ export class ChatService extends EventEmitter {
     this.compactor.reset()
     this.pendingHandoff = null
     this.activeTurnId = null
+    this.turnContext = null
   }
 
   private async ensureReady(): Promise<void> {
@@ -427,6 +436,11 @@ export class ChatService extends EventEmitter {
 
   private emitEvent(event: ChatEvent): void {
     this.emit('event', event)
+  }
+
+  private setTurnContext(report: ChatTurnContextReport): void {
+    this.turnContext = report
+    this.emitEvent({ type: 'turnContext', report })
   }
 
   private onExit(): void {
