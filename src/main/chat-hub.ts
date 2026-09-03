@@ -5,7 +5,8 @@ import type {
   ChatProvider,
   ChatSnapshot,
   ChatThreadContent,
-  ChatThreadSummary
+  ChatThreadSummary,
+  ChatTranscriptItem
 } from '../shared/chat.js'
 import { CHAT_PROVIDERS, chatProviderOfId } from '../shared/chat-providers.js'
 import type { ChatHistoryWindow } from '../shared/chat.js'
@@ -54,10 +55,15 @@ export type ChatHubProviders = {
   antigravity: ChatProviderService
 }
 
+/** The chat a model switch brought with it, shown above the destination provider's own messages. */
+type CarriedHistory = { provider: ChatProvider; threadName: string | null; items: ChatTranscriptItem[] }
+
 export class ChatHub extends EventEmitter implements ChatSurface {
   private active: ChatProvider
   /** Set by `stop`, so a background provider start that lands afterwards does not leave a process. */
   private stopped = false
+  /** Cleared whenever the pane leaves that conversation; in memory only, like the pane itself. */
+  private carriedHistory: CarriedHistory | null = null
 
   constructor(
     private readonly providers: ChatHubProviders,
@@ -112,11 +118,12 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   async selectModel(modelId: string): Promise<void> {
     const target = chatProviderOfId(modelId)
     if (target === this.active) return this.current().selectModel(modelId)
-    const source = this.current().snapshot()
+    // The visible conversation, not just this provider's part of it, is what moves.
+    const source = this.snapshot()
     await this.switchTo(source, target, async () => {
       await this.providers[target].selectModel(modelId)
       await this.carryConversation(source, target)
-    }, true)
+    })
   }
 
   selectReasoningEffort(effort: string): Promise<void> {
@@ -140,17 +147,21 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   newThread(): Promise<void> {
+    this.carriedHistory = null
     return this.current().newThread()
   }
 
   continueInNewThread(): Promise<void> {
+    this.carriedHistory = null
     return this.current().continueInNewThread()
   }
 
   async openThread(threadId: string): Promise<void> {
     const target = chatProviderOfId(threadId)
+    const source = this.snapshot()
+    this.carriedHistory = null
     if (target === this.active) return this.current().openThread(threadId)
-    await this.switchTo(this.current().snapshot(), target, () => this.providers[target].openThread(threadId))
+    await this.switchTo(source, target, () => this.providers[target].openThread(threadId))
   }
 
   archiveThread(threadId: string): Promise<void> {
