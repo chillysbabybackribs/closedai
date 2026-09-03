@@ -12,6 +12,7 @@ import type {
 } from '../shared/chat.js'
 import type { AppSettings } from '../shared/types.js'
 import { DEFAULT_APP_SETTINGS, type AppSettingsAccess } from './app-settings-store.js'
+import type { ThreadHandoffSource } from './chat-context/thread-handoff.js'
 import { ChatHub, type ChatHubProviders } from './chat-hub.js'
 
 /** The pane's slice of settings, which is all the hub writes to. */
@@ -35,6 +36,7 @@ class FakeProvider extends EventEmitter {
   failThreads = false
   effort: string | null = 'high'
   items: ChatTranscriptItem[] = []
+  continued: ThreadHandoffSource | null = null
   constructor(readonly provider: ChatProvider, private readonly models: ChatModel[]) { super() }
   snapshot(): ChatSnapshot {
     return {
@@ -56,8 +58,12 @@ class FakeProvider extends EventEmitter {
     this.calls.push(`read:${threadId}`)
     return { threadId, threadName: null, items: [] }
   }
-  async newThread(): Promise<void> { this.calls.push('newThread') }
-  async continueInNewThread(): Promise<void> { this.calls.push('continue') }
+  async newThread(): Promise<void> { this.calls.push('newThread'); this.items = [] }
+  async continueInNewThread(from?: ThreadHandoffSource): Promise<void> {
+    this.calls.push(from ? `continue:${from.provider}` : 'continue')
+    this.continued = from ?? null
+    this.items = []
+  }
   async openThread(id: string): Promise<void> { this.calls.push(`openThread:${id}`) }
   async archiveThread(id: string): Promise<void> { this.calls.push(`archive:${id}`) }
   async beginChatGptLogin(): Promise<string> { this.calls.push('login'); return 'https://auth' }

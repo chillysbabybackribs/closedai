@@ -1,4 +1,4 @@
-import type { ChatTranscriptItem } from '../../shared/chat.js'
+import type { ChatProvider, ChatTranscriptItem } from '../../shared/chat.js'
 import type { AdditionalContext } from './turn-context.js'
 import type { ChatMemoryCheckpoint } from '../../shared/chat-memory.js'
 import { normalizeMemoryCheckpoint } from './memory-checkpoint.js'
@@ -22,6 +22,12 @@ export type ThreadHandoff = {
   /** The thread's name, else its opening request as the history list would show it. */
   title: string
   text: string
+}
+
+/** A digest plus the chat it came from, so a provider can continue a chat it never held itself. */
+export type ThreadHandoffSource = ThreadHandoff & {
+  provider: ChatProvider
+  threadId: string | null
 }
 
 /** Digest of a transcript for the thread that continues it, or null when there is nothing to carry. */

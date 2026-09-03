@@ -10,12 +10,15 @@ import type {
 import { CHAT_PROVIDERS, chatProviderOfId } from '../shared/chat-providers.js'
 import type { ChatHistoryWindow } from '../shared/chat.js'
 import type { AppSettingsAccess } from './app-settings-store.js'
+import { buildThreadHandoff, type ThreadHandoffSource } from './chat-context/thread-handoff.js'
 
 // One chat pane, several providers. Each provider owns its own thread, transcript, and
 // connection; the hub owns which one the pane shows, merges the model catalogs so the picker
-// can switch providers from any state, and routes every call by the id it carries. Switching
-// provider keeps the visible chat history when the destination provider has no loaded history,
-// so the UI does not jump to a blank pane until the new backend begins receiving messages.
+// can switch providers from any state, and routes every call by the id it carries. Picking
+// another provider's model stays in the pane's conversation: the destination leaves whatever
+// chat it last had open and starts a fresh thread carrying a digest of this one, and the pane
+// keeps showing the visible history. Opening another provider's thread from history is the
+// other direction — there the destination's own thread is what the pane is asking for.
 
 /** What the chat IPC drives: the hub, or a single provider in tests. */
 export type ChatSurface = {
@@ -39,8 +42,10 @@ export type ChatSurface = {
   on(event: 'event', listener: (event: ChatEvent) => void): unknown
 }
 
-export type ChatProviderService = Omit<ChatSurface, 'beginLogin' | 'start'> & {
+export type ChatProviderService = Omit<ChatSurface, 'beginLogin' | 'start' | 'continueInNewThread'> & {
   start(options?: { warm?: boolean }): Promise<void>
+  /** With `from`, the new thread continues a chat this provider never held — a model switch. */
+  continueInNewThread(from?: ThreadHandoffSource): Promise<void>
 }
 
 export type ChatHubProviders = {
@@ -107,7 +112,11 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   async selectModel(modelId: string): Promise<void> {
     const target = chatProviderOfId(modelId)
     if (target === this.active) return this.current().selectModel(modelId)
-    await this.switchTo(this.current().snapshot(), target, () => this.providers[target].selectModel(modelId))
+    const source = this.current().snapshot()
+    await this.switchTo(source, target, async () => {
+      await this.providers[target].selectModel(modelId)
+      await this.carryConversation(source, target)
+    }, true)
   }
 
   selectReasoningEffort(effort: string): Promise<void> {
@@ -161,20 +170,46 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   /** Switch the pane to another provider after its own action succeeds. */
-  private async switchTo(source: ChatSnapshot, target: ChatProvider, action: () => Promise<void>): Promise<void> {
+  private async switchTo(
+    source: ChatSnapshot,
+    target: ChatProvider,
+    action: () => Promise<void>,
+    carried = false
+  ): Promise<void> {
     if (source.activeTurnId) throw new Error('Stop the current turn before switching models')
     await action()
     this.active = target
     await this.persistActiveModel()
-    const next = this.preserveSourceHistory(source, this.current().snapshot())
+    const next = this.preserveSourceHistory(source, this.current().snapshot(), carried)
     this.emitEvent({ type: 'replace', snapshot: this.merge(next) })
   }
 
-  /** Keep the current messages visible if the destination provider does not yet have a thread UI. */
-  private preserveSourceHistory(source: ChatSnapshot, target: ChatSnapshot): ChatSnapshot {
+  /**
+   * Take the pane's conversation with it. The destination starts a thread of its own carrying a
+   * digest of the visible chat, so a model switch continues here instead of reopening the chat
+   * that provider last worked in. With nothing to carry it simply starts blank — but a digest
+   * this pane has not delivered yet outlives a second switch made before the first message.
+   */
+  private async carryConversation(source: ChatSnapshot, target: ChatProvider): Promise<void> {
+    const handoff = buildThreadHandoff(source.items, source.threadName)
+    if (handoff) {
+      await this.providers[target].continueInNewThread({ ...handoff, provider: source.provider, threadId: source.threadId })
+      return
+    }
+    const pending = this.settings.get().chatContinuation
+    await this.providers[target].newThread()
+    if (pending?.handoff && !this.settings.get().chatContinuation) await this.settings.set({ chatContinuation: pending })
+  }
+
+  /**
+   * Keep the pane's messages visible across the switch: a carried conversation stays put and the
+   * destination's fresh thread only appends to it, while a thread opened from history replaces it.
+   */
+  private preserveSourceHistory(source: ChatSnapshot, target: ChatSnapshot, carried: boolean): ChatSnapshot {
     if (source.activeTurnId || source.items.length === 0) return target
-    if (target.provider === source.provider || target.items.length > 0) return target
-    return { ...target, threadName: target.threadName ?? source.threadName, items: source.items }
+    if (target.provider === source.provider) return target
+    if (!carried && target.items.length > 0) return target
+    return { ...target, threadName: target.threadName ?? source.threadName, items: [...source.items, ...target.items] }
   }
 
   /**

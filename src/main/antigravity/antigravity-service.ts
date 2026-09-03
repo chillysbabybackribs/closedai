@@ -5,7 +5,7 @@ import type {
 } from '../../shared/chat.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
-import { buildThreadHandoff, handoffAdditionalContext } from '../chat-context/thread-handoff.js'
+import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource } from '../chat-context/thread-handoff.js'
 import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { planUsageUnavailable } from '../chat-context/plan-usage.js'
@@ -179,24 +179,30 @@ export class AntigravityChatService extends EventEmitter {
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }
 
-  async continueInNewThread(): Promise<void> {
+  async continueInNewThread(from?: ThreadHandoffSource): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before continuing in a new chat')
-    const handoff = buildThreadHandoff(this.transcript.snapshot(), this.threadName)
-    if (!handoff) throw new Error('There is no conversation to continue yet')
-    const sourceThreadId = this.session?.conversationId ? antigravityThreadId(this.session.conversationId) : null
+    const source = from ?? this.ownHandoff()
+    if (!source) throw new Error('There is no conversation to continue yet')
     await this.detachThread()
     await this.settings.set({
       chatContinuation: {
         sourcePaneId: this.paneId,
-        sourceThreadId,
-        sourceProvider: 'antigravity',
-        sourceTitle: handoff.title,
-        handoff: handoff.text,
+        sourceThreadId: source.threadId,
+        sourceProvider: source.provider,
+        sourceTitle: source.title,
+        handoff: source.text,
         createdAt: Date.now()
       }
     })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
-    this.addNotice(`Continuing from “${handoff.title}”. A short summary of that chat goes with your next message.`, 'info', null)
+    this.addNotice(`Continuing from “${source.title}”. A short summary of that chat goes with your next message.`, 'info', null)
+  }
+
+  /** This conversation as the digest its successor carries, or null when there is nothing to carry. */
+  private ownHandoff(): ThreadHandoffSource | null {
+    const handoff = buildThreadHandoff(this.transcript.snapshot(), this.threadName)
+    if (!handoff) return null
+    return { ...handoff, provider: 'antigravity', threadId: this.session?.conversationId ? antigravityThreadId(this.session.conversationId) : null }
   }
 
   async openThread(threadId: string): Promise<void> {
