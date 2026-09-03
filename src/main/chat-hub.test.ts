@@ -122,7 +122,7 @@ test('the snapshot is the active provider with every catalog merged', () => {
 test('selecting the other provider switches the pane after that provider accepts the model', async () => {
   const { hub, codex, claude, events } = build()
   await hub.selectModel('claude:opus[1m]')
-  assert.deepEqual(claude.calls, ['selectModel:claude:opus[1m]'])
+  assert.deepEqual(claude.calls, ['selectModel:claude:opus[1m]', 'newThread'])
   assert.equal(hub.activeProvider, 'claude')
   assert.equal(events.at(-1)?.type, 'replace')
   await hub.send('hi', [])
@@ -132,13 +132,46 @@ test('selecting the other provider switches the pane after that provider accepts
   assert.equal(hub.activeProvider, 'claude')
 })
 
-test('switching provider keeps the current transcript when destination has none', async () => {
-  const { hub, codex, claude } = build()
-  codex.items = [{ type: 'user', id: 'user-1', turnId: 't1', text: 'Hello from the original chat' }]
+test('a model switch carries the chat instead of reopening the destination\u2019s last one', async () => {
+  const { hub, codex, claude, events } = build()
+  codex.items = [
+    { type: 'user', id: 'user-1', turnId: 't1', text: 'Hello from the original chat' },
+    { type: 'assistant', id: 'a-1', turnId: 't1', text: 'An answer', phase: 'final_answer' }
+  ]
+  claude.items = [{ type: 'user', id: 'old-1', turnId: 'x', text: 'An unrelated chat Claude had open' }]
   await hub.selectModel('claude:opus[1m]')
   assert.equal(hub.activeProvider, 'claude')
-  assert.deepEqual(hub.snapshot().items, codex.items)
-  assert.deepEqual(claude.calls.slice(-1), ['selectModel:claude:opus[1m]'])
+  assert.deepEqual(claude.calls, ['selectModel:claude:opus[1m]', 'continue:codex'])
+  assert.equal(claude.continued?.threadId, 'codex-thread')
+  assert.match(claude.continued?.text ?? '', /Hello from the original chat/)
+  const replaced = events.at(-1)
+  assert.equal(replaced?.type, 'replace')
+  if (replaced?.type !== 'replace') return
+  // The pane keeps showing the conversation it was in; Claude's old chat stays in history.
+  assert.deepEqual(replaced.snapshot.items, codex.items)
+})
+
+test('switching with nothing to carry starts the destination blank, keeping an undelivered digest', async () => {
+  const { hub, claude, settings } = build()
+  const pending = {
+    sourcePaneId: null, sourceThreadId: 'codex-thread', sourceProvider: 'codex' as const,
+    sourceTitle: 'Earlier chat', handoff: 'digest', createdAt: 1
+  }
+  settings.saved.chatContinuation = pending
+  claude.items = [{ type: 'user', id: 'old-1', turnId: 'x', text: 'An unrelated chat Claude had open' }]
+  await hub.selectModel('claude:opus[1m]')
+  assert.deepEqual(claude.calls, ['selectModel:claude:opus[1m]', 'newThread'])
+  assert.deepEqual(settings.saved.chatContinuation, pending)
+  assert.deepEqual(hub.snapshot().items, [])
+})
+
+test('opening another provider\u2019s thread from history shows that thread', async () => {
+  const { hub, codex, claude } = build()
+  codex.items = [{ type: 'user', id: 'user-1', turnId: 't1', text: 'Hello from the original chat' }]
+  claude.items = [{ type: 'user', id: 'old-1', turnId: 'x', text: 'The chat being opened' }]
+  await hub.openThread('claude:s1')
+  assert.deepEqual(claude.calls, ['openThread:claude:s1'])
+  assert.deepEqual(hub.snapshot().items, claude.items)
 })
 
 test('a running turn blocks switching providers', async () => {
