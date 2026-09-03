@@ -57,6 +57,7 @@ export type ToolCallEvent = {
   toolId: string
   action: string | null
   ok: boolean
+  timedOut: boolean
 }
 
 export type ToolStats = {
@@ -65,6 +66,7 @@ export type ToolStats = {
   action: string | null
   calls: number
   failures: number
+  timeouts: number
 }
 
 export type ToolTelemetrySnapshot = {

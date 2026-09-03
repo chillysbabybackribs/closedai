@@ -97,9 +97,16 @@ export function applyRecord(snapshot: ToolTelemetrySnapshot, record: ToolCallEve
       ? {
           ...existing,
           calls: existing.calls + 1,
-          failures: existing.failures + (record.ok ? 0 : 1)
+          failures: existing.failures + (!record.ok && !record.timedOut ? 1 : 0),
+          timeouts: existing.timeouts + (record.timedOut ? 1 : 0)
         }
-      : { toolId: record.toolId, action, calls: 1, failures: record.ok ? 0 : 1 }
+      : {
+          toolId: record.toolId,
+          action,
+          calls: 1,
+          failures: !record.ok && !record.timedOut ? 1 : 0,
+          timeouts: record.timedOut ? 1 : 0
+        }
     stats = [updated, ...stats.filter((stat) => !(stat.toolId === record.toolId && stat.action === action))]
   }
   return { ...snapshot, stats, totalCalls: snapshot.totalCalls + 1 }

@@ -14,6 +14,8 @@ export type ToolResult = {
   content: ToolContent[]
   /** True when the call failed; the model sees the content as the failure reason. */
   isError?: boolean
+  /** Internal aggregate classification; provider adapters intentionally do not expose it. */
+  errorKind?: 'timeout'
 }
 
 export type ToolContext = {
@@ -75,6 +77,10 @@ export function textResult(text: string): ToolResult {
 
 export function failureResult(text: string): ToolResult {
   return { content: [{ type: 'text', text }], isError: true }
+}
+
+export function timeoutResult(text: string): ToolResult {
+  return { content: [{ type: 'text', text }], isError: true, errorKind: 'timeout' }
 }
 
 /** Read a string argument, or the fallback when absent. Throws on the wrong type. */

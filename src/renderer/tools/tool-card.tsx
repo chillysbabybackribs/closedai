@@ -19,6 +19,7 @@ export type ToolCardProps = {
 export function ToolCard({ item, onToggle }: ToolCardProps): JSX.Element {
   const calls = item.stat?.calls ?? 0
   const failures = item.stat?.failures ?? 0
+  const timeouts = item.stat?.timeouts ?? 0
 
   return (
     <li className="tool-card" data-enabled={item.enabled}>
@@ -38,6 +39,9 @@ export function ToolCard({ item, onToggle }: ToolCardProps): JSX.Element {
           <span className="tool-card-usage-count">{calls} run{calls === 1 ? '' : 's'}</span>
           <span className="tool-card-error-count" data-tone={failures > 0 ? 'bad' : undefined}>
             {failures} error{failures === 1 ? '' : 's'}
+          </span>
+          <span className="tool-card-timeout-count" data-tone={timeouts > 0 ? 'warn' : undefined}>
+            {timeouts} timeout{timeouts === 1 ? '' : 's'}
           </span>
         </span>
       </div>

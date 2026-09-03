@@ -165,7 +165,10 @@ function actions(app: AppHostProvider): ToolAction[] {
           selector, text, condition, timeoutMs: numberArg(input, 'timeout_ms', 3_000)
         }, context.signal)
         const output = jsonResult(result)
-        if (!result.reached) output.isError = true
+        if (!result.reached) {
+          output.isError = true
+          output.errorKind = 'timeout'
+        }
         return output
       }
     }

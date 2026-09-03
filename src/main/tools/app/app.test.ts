@@ -7,6 +7,10 @@ import type { AppToolHost } from './host.js'
 function harness(overrides: Partial<AppToolHost> = {}) {
   const calls: unknown[] = []
   const host: AppToolHost = {
+    inspect: async (maxElements) => {
+      calls.push(['inspect', maxElements])
+      return { snapshotId: 'a1', elements: [] }
+    },
     click: async (target) => {
       calls.push(['click', target])
       return { target, point: { x: 10, y: 20 } }
@@ -30,14 +34,15 @@ function harness(overrides: Partial<AppToolHost> = {}) {
         reached: true,
         elapsedMs: 75,
         selectorMatched: options.selector ? options.condition === 'visible' : null,
-        textMatched: options.text ? options.condition === 'visible' : null
+        textMatched: options.text ? options.condition === 'visible' : null,
+        matches: []
       }
     },
     ...overrides
   }
   const registry = new ToolRegistry([appTools(() => host)])
-  const call = (arguments_: Record<string, unknown>) => registry.call(
-    { namespace: 'closedai_app', tool: 'page', arguments: arguments_ },
+  const call = (arguments_: Record<string, unknown>, tool = 'page') => registry.call(
+    { namespace: 'closedai_app', tool, arguments: arguments_ },
     { threadId: null, turnId: null, callId: 'app-call' }
   )
   return { calls, call, registry }
@@ -49,10 +54,18 @@ function textOf(result: { content: Array<{ type: string; text?: string }> }): st
 
 test('app tool advertises the semantic renderer actions', () => {
   const { registry } = harness()
-  assert.deepEqual(registry.names(), ['closedai_app.page'])
-  assert.deepEqual(registry.namespaces[0]!.tools[0]!.actions?.map((action) => action.name), [
+  assert.deepEqual(registry.names(), ['closedai_app.inspect', 'closedai_app.page'])
+  assert.equal(registry.namespaces[0]!.tools[0]!.actions, undefined)
+  assert.deepEqual(registry.namespaces[0]!.tools[1]!.actions?.map((action) => action.name), [
     'click', 'type', 'press_key', 'scroll', 'wait_for'
   ])
+})
+
+test('inspection is a separate bounded read-only tool', async () => {
+  const { calls, call } = harness()
+  const result = await call({ max_elements: 25 }, 'inspect')
+  assert.match(textOf(result), /"snapshotId": "a1"/)
+  assert.deepEqual(calls, [['inspect', 25]])
 })
 
 test('click, type, and scroll actions route to the app host with safe defaults', async () => {
@@ -77,7 +90,8 @@ test('wait forwards conditions and marks a timeout as a tool failure', async () 
     reached: false,
     elapsedMs: options.timeoutMs,
     selectorMatched: false,
-    textMatched: null
+    textMatched: null,
+    matches: []
   })
   const { calls, call } = harness({ waitFor: timedOut })
   const missingCondition = await call({ action: 'wait_for' })

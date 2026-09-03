@@ -4,6 +4,7 @@ import { truncateText } from './truncate-json.js'
 import {
   DEFAULT_TOOL_TIMEOUT_MS,
   failureResult,
+  timeoutResult,
   type JsonObject,
   type ToolContext,
   type ToolDefinition,
@@ -169,7 +170,7 @@ export class ToolRegistry {
     const timeout = new Promise<ToolResult>((resolve) => {
       timer = setTimeout(() => {
         controller.abort()
-        resolve(failureResult(`${label}: timed out after ${Math.round(timeoutMs / 1000)}s`))
+        resolve(timeoutResult(`${label}: timed out after ${Math.round(timeoutMs / 1000)}s`))
       }, timeoutMs)
     })
     const lock = this.resourceLocks.tryAcquire(request, input as JsonObject, context.paneId ?? null, context.callId)
@@ -196,7 +197,8 @@ export class ToolRegistry {
     const record: ToolCallEvent = {
       toolId: namespace ? `${namespace}.${request.tool}` : request.tool,
       action,
-      ok: !result.isError
+      ok: !result.isError,
+      timedOut: result.errorKind === 'timeout'
     }
     for (const listener of this.listeners) {
       try { listener(record) } catch { /* telemetry must never break a call */ }
