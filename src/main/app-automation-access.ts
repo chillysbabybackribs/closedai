@@ -7,6 +7,7 @@ import type {
   AppWaitOptions,
   AppWaitResult
 } from './tools/app/host.js'
+import { dispatchAppClick } from './app-automation-input.js'
 import {
   appInspectionExpression,
   conditionProbeExpression,
@@ -15,6 +16,7 @@ import {
 import { CdpSession } from './cdp/cdp-session.js'
 import { CdpPageController } from './cdp/page-control/page-controller.js'
 import { CdpPageInput } from './cdp/page-control/page-input.js'
+import type { AgentPageClick } from './cdp/page-control/types.js'
 import {
   prepareClickExpression,
   prepareTypeExpression,
@@ -62,9 +64,9 @@ export class AppAutomationAccess implements AppToolHost {
   }
 
   async click(target: AppClickTarget): Promise<unknown> {
-    const { contents, session, page } = this.resolve()
+    const { window, contents, session, page } = this.resolve()
     if (typeof target.x === 'number' && typeof target.y === 'number') {
-      return { connectionId: session.connectionId, ...await page.clickAt({ x: target.x, y: target.y }) }
+      return { connectionId: session.connectionId, ...await this.clickAt(window, contents, page, { x: target.x, y: target.y }) }
     }
     if (target.selector) {
       const point = await contents.executeJavaScript(`(() => {
@@ -74,7 +76,7 @@ export class AppAutomationAccess implements AppToolHost {
         const rect = el.getBoundingClientRect();
         return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
       })()`, true) as { x: number; y: number }
-      const clickResult = await page.clickAt(point)
+      const clickResult = await this.clickAt(window, contents, page, point)
       return { connectionId: session.connectionId, selector: target.selector, ...clickResult }
     }
     if (target.ref) {
@@ -82,13 +84,13 @@ export class AppAutomationAccess implements AppToolHost {
       const prepared = await contents.executeJavaScript(
         prepareClickExpression(snapshotId, target.ref), true
       ) as { point: { x: number; y: number } }
-      return { connectionId: session.connectionId, ref: target.ref, ...await page.clickAt(prepared.point) }
+      return { connectionId: session.connectionId, ref: target.ref, ...await this.clickAt(window, contents, page, prepared.point) }
     }
     throw new Error('click requires selector, (x, y) coordinates, or ref')
   }
 
   async typeText(target: AppTypeTarget): Promise<unknown> {
-    const { contents, session, page, input } = this.resolve()
+    const { window, contents, session, page, input } = this.resolve()
     if (target.selector) {
       const point = await contents.executeJavaScript(`(() => {
         const el = document.querySelector(${JSON.stringify(target.selector)});
@@ -98,7 +100,7 @@ export class AppAutomationAccess implements AppToolHost {
         const rect = el.getBoundingClientRect();
         return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
       })()`, true) as { x: number; y: number }
-      await page.clickAt(point)
+      await this.clickAt(window, contents, page, point)
       if (target.clear) {
         await input.pressKey('a', ['ctrl'])
         await input.pressKey('Backspace', [])
@@ -111,7 +113,7 @@ export class AppAutomationAccess implements AppToolHost {
       const prepared = await contents.executeJavaScript(
         prepareClickExpression(snapshotId, target.ref), true
       ) as { point: { x: number; y: number } }
-      await page.clickAt(prepared.point)
+      await this.clickAt(window, contents, page, prepared.point)
       await contents.executeJavaScript(prepareTypeExpression(snapshotId, target.ref, target.clear), true)
       await session.command('Input.insertText', { text: target.text })
       const read = await contents.executeJavaScript(
@@ -170,6 +172,17 @@ export class AppAutomationAccess implements AppToolHost {
     this.connection?.session.dispose()
     this.connection = null
     this.snapshotId = null
+  }
+
+  private async clickAt(
+    window: BrowserWindow,
+    contents: WebContents,
+    page: CdpPageController,
+    point: { x: number; y: number }
+  ): Promise<AgentPageClick> {
+    const result = await page.inspectPoint(point)
+    dispatchAppClick(window, contents, point)
+    return result
   }
 
   private requireSnapshot(ref: string): string {

@@ -69,6 +69,24 @@ test('inspect returns labelled main-viewport coordinates and click re-resolves i
   assert.equal(seen.filter((entry) => entry.method === 'Input.dispatchMouseEvent').length, 3)
 })
 
+test('inspectPoint validates and hit-tests without dispatching browser input', async () => {
+  const seen: SeenCommand[] = []
+  const target: CdpCommandTarget = {
+    async command(method, params = {}) {
+      seen.push({ method, params })
+      if (method === 'Page.getLayoutMetrics') {
+        return { cssVisualViewport: { clientWidth: 640, clientHeight: 480, pageX: 0, pageY: 0, scale: 1 } }
+      }
+      if (method === 'DOM.getNodeForLocation') return { backendNodeId: 22, frameId: 'main' }
+      throw new Error(`Unexpected ${method}`)
+    }
+  }
+
+  const result = await new CdpPageController(target).inspectPoint({ x: 80, y: 40 })
+  assert.deepEqual(result.hitTest, { backendNodeId: 22, frameId: 'main' })
+  assert.equal(seen.some((entry) => entry.method === 'Input.dispatchMouseEvent'), false)
+})
+
 test('inspect normalizes child-frame geometry through its owner content quad', async () => {
   const seen: SeenCommand[] = []
   const target: CdpCommandTarget = {

@@ -143,6 +143,14 @@ export class CdpPageController {
   }
 
   async clickAt(point: ViewportPoint): Promise<AgentPageClick> {
+    const result = await this.inspectPoint(point)
+    await this.dispatchClick(point)
+    return result
+  }
+
+  /** Validate and hit-test a point without dispatching input. App automation uses this before
+   * handing the same CSS coordinates to Electron's focused native input channel. */
+  async inspectPoint(point: ViewportPoint): Promise<AgentPageClick> {
     const viewport = await this.layoutViewport()
     if (point.x < 0 || point.y < 0 || point.x >= viewport.width || point.y >= viewport.height) {
       throw new Error(
@@ -150,7 +158,6 @@ export class CdpPageController {
       )
     }
     const hitTest = await this.hitTest(point)
-    await this.dispatchClick(point)
     return { point, coordinateSpace: COORDINATE_SPACE, hitTest }
   }
 
