@@ -72,6 +72,11 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     }
   }
 
+  /** One pane's live snapshot without waking a parked peer; null for an unknown pane. */
+  paneSnapshot(paneId: ChatPaneId): ChatSnapshot | null {
+    return this.peers.get(paneId)?.surface.snapshot() ?? null
+  }
+
   async start(): Promise<void> {
     // Persisted panes are history, not live work. Warming every one creates an app-server per
     // pane after each relaunch; the selected pane is the only surface startup needs immediately.
