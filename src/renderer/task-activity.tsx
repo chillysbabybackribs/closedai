@@ -12,13 +12,16 @@ export function TaskActivity({
   const tick = useLoaderTick(activeTurnId !== null)
 
   if (!activeTurnId) return null
+  const label = formatElapsedTime(elapsedSeconds)
   return (
     <div className="task-activity-strip">
       <GenerationLoader
-        label={formatElapsedTime(elapsedSeconds)}
+        label={label}
         tick={tick}
         animateLabel={false}
         variant="rounded"
+        aria-label={`Elapsed time ${label}`}
+        aria-live="off"
       />
     </div>
   )

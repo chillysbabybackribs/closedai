@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 
-import { formatElapsedTime } from './task-activity.tsx'
+import { formatElapsedTime, TaskActivity } from './task-activity.tsx'
+
+test('an active turn renders a fresh timer instead of a thinking label', () => {
+  const html = renderToStaticMarkup(createElement(TaskActivity, { activeTurnId: 'turn-1' }))
+  assert.match(html, />0:00</)
+  assert.doesNotMatch(html, /Thinking/)
+})
 
 test('turn elapsed time starts at zero and uses minute-second notation', () => {
   assert.equal(formatElapsedTime(0), '0:00')
