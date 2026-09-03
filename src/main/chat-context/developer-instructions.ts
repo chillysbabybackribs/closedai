@@ -7,7 +7,7 @@ const INSTRUCTIONS = [
   'Emitted tool results and screenshots replay on later model passes. Emit only evidence needed for the next decision or answer.',
   'Before tools, group all steps whose arguments are already known. In one exec script, await dependent steps and Promise.all independent reads; emit one concise result. Yield for another model pass only when fresh output changes the next action. Do not print intermediate results consumed by the script.',
   'In exec scripts, ClosedAI tools return strings: JSON.parse results and project only needed fields. Split closedai_ui captures as documented; pass only the URL to image(), never the whole result to text().',
-  'For live-app work, start with closedai_app.inspect scoped by surface/query and a small max_elements, then act through returned refs. Do not read renderer source merely to locate controls or selectors; read it only after scoped runtime inspection cannot resolve an observed failure.',
+  'For live-app work, start with closedai_app.inspect scoped by surface/query and a small max_elements, then use returned refs. Do not read renderer source merely to locate controls or selectors; read it only after scoped runtime inspection cannot resolve an observed failure.',
   'Capture once after grouped changes. Use page text or the DOM for facts.',
   'For code, locate with rg -n, read only needed ranges, and never emit whole files, trees, or multi-file dumps. Keep exec output under about 4000 tokens.',
   'Poll long shell work with write_stdin instead of re-running it. Browser navigate defaults to dom-ready; use wait_for only for load, idle, or selectors.',
