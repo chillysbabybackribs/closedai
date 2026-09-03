@@ -34,9 +34,9 @@ function text(result: Awaited<ReturnType<ToolRegistry['call']>>): string {
   return result.content[0]?.type === 'text' ? result.content[0].text : ''
 }
 
-test('peer chat tools are read-only and exclude the caller', async () => {
+test('peer reads exclude the caller; memory read and write are separate tools', async () => {
   const registry = new ToolRegistry([peerChatTools(() => directory)])
-  assert.deepEqual(registry.names(), ['peer_chats.list', 'peer_chats.read'])
+  assert.deepEqual(registry.names(), ['peer_chats.list', 'peer_chats.read', 'peer_chats.recall', 'peer_chats.checkpoint'])
   const listed = await registry.call(
     { namespace: 'peer_chats', tool: 'list', arguments: {} },
     { paneId: 'peer-a', threadId: null, turnId: null, callId: 'list' }

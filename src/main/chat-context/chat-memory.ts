@@ -13,6 +13,8 @@ export class ChatMemory {
 
   async save(caller: MemoryCaller, expectedRevision: number, state: unknown): Promise<ChatMemoryCheckpoint> {
     const { pane, surface } = this.resolve(caller)
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || expectedRevision >= Number.MAX_SAFE_INTEGER
+      || caller.threadId!.length > 256) throw new Error('Invalid checkpoint revision or thread id')
     if (!caller.turnId || surface.snapshot({ limit: 0 }).activeTurnId !== caller.turnId) throw new Error('Checkpoint requires the caller’s active turn')
     const current = pane.checkpoint?.threadId === caller.threadId ? pane.checkpoint : null
     if (expectedRevision !== (current?.revision ?? 0)) throw new Error('Checkpoint revision changed; recall current memory before replacing it')
@@ -25,7 +27,7 @@ export class ChatMemory {
     // No await between scope/revision validation and the synchronous settings update.
     await this.settings.set({ chatPeers: this.settings.get().chatPeers.map((entry) => entry.paneId === pane.paneId
       ? { ...entry, checkpoint } : entry) })
-    this.resolve(caller) // never acknowledge a late write as belonging to a different pane/session
+    if (this.resolve(caller).surface !== surface) throw new Error('Chat changed while saving memory')
     return checkpoint
   }
 
@@ -45,7 +47,9 @@ export class ChatMemory {
     const live = sourceSurface?.snapshot({ limit: 0 }).threadId === source.sourceThreadId
       ? sourceSurface.snapshot() : null
     const content = live ?? await surface.readThread(source.sourceThreadId)
-    const latest = this.resolve(caller).pane.continuation
+    const resolved = this.resolve(caller)
+    if (resolved.surface !== surface) throw new Error('Workspace changed while loading memory')
+    const latest = resolved.pane.continuation
     if (latest?.sourceThreadId !== source.sourceThreadId || latest.sourceThroughItemId !== source.sourceThroughItemId) {
       throw new Error('Continuation changed while loading its source')
     }

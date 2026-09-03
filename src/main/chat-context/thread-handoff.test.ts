@@ -27,9 +27,9 @@ test('the digest keeps requests, one answer per turn, and changed files, and dro
   const handoff = digest.text
   assert.match(handoff, /^Handoff from the previous chat "Header work"\./)
   assert.match(handoff, /Files changed there: src\/header\.tsx/)
-  assert.match(handoff, /User: Make the header sticky\nCodex: Done: the header is sticky\.\nUser: Now match this \[attached: mock\.png\]\nCodex: Working on it$/)
+  assert.match(handoff, /User: Make the header sticky\nAssistant: Done: the header is sticky\.\nUser: Now match this \[attached: mock\.png\]\nAssistant: Working on it$/)
   assert.doesNotMatch(handoff, /thinking hard|lots of output|data:image|compacted/)
-  assert.deepEqual(handoffAdditionalContext('digest'), { [THREAD_HANDOFF_CONTEXT]: { kind: 'application', value: 'digest' } })
+  assert.deepEqual(handoffAdditionalContext('digest'), { [THREAD_HANDOFF_CONTEXT]: { kind: 'untrusted', value: 'digest' } })
 })
 
 test('an empty or tool-only transcript has nothing to hand off', () => {
@@ -50,7 +50,7 @@ test('long conversations keep the opening request and the most recent exchanges 
   assert.ok(handoff.length <= 12_000, `digest is ${handoff.length} chars`)
   assert.match(handoff, /^Handoff from the previous chat "The original goal"\./)
   assert.match(handoff, /User: The original goal\n\[\d+ earlier messages omitted\]\n/)
-  assert.match(handoff, /Codex: Answer 40 y+…$/)
+  assert.match(handoff, /Assistant: Answer 40 y+…$/)
   assert.doesNotMatch(handoff, /Request 1 x/)
   assert.doesNotMatch(handoff, /y{1500}/)
 })
