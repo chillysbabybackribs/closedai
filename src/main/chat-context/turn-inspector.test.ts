@@ -32,6 +32,7 @@ test('turn inspector reports message, safe attachment delivery, and exact app ad
     characters: 16,
     estimatedTokens: 4
   })
+  assert.ok(report.estimatedAddedTextTokens > report.message.estimatedTokens + report.additions[0]!.estimatedTokens)
   assert.match(report.retainedHistory, /native SDK session/)
 })
 

@@ -33,6 +33,11 @@ export function buildTurnContextReport(input: TurnContextReportInput): ChatTurnC
   }))
   const attachments = input.attachments.map((attachment) => attachmentReport(input.provider, attachment))
   const messageTokens = estimateTokens(input.prompt)
+  const transportedText = [
+    input.prompt,
+    ...Object.entries(input.additionalContext ?? {}).map(([name, fragment]) => contextWireText(input.provider, name, fragment)),
+    ...attachmentWireText(input.provider, input.attachments)
+  ].filter(Boolean).join('\n')
   return {
     createdAt: input.createdAt ?? Date.now(),
     provider: input.provider,
@@ -41,9 +46,23 @@ export function buildTurnContextReport(input: TurnContextReportInput): ChatTurnC
     message: { value: input.prompt, characters: input.prompt.length, estimatedTokens: messageTokens },
     attachments,
     additions,
-    estimatedAddedTextTokens: messageTokens + additions.reduce((total, addition) => total + addition.estimatedTokens, 0),
+    estimatedAddedTextTokens: estimateTokens(transportedText),
     retainedHistory: HISTORY_DESCRIPTIONS[input.provider]
   }
+}
+
+function contextWireText(provider: ChatProvider, name: string, fragment: AdditionalContext[string]): string {
+  if (provider === 'codex') return `${name}\n${fragment.kind}\n${fragment.value}`
+  return `<closedai_context name="${name}" kind="${fragment.kind}">\n${fragment.value}\n</closedai_context>`
+}
+
+function attachmentWireText(provider: ChatProvider, attachments: ChatAttachmentSummary[]): string[] {
+  return attachments.flatMap((attachment) => {
+    const path = attachment.path ?? (attachment.source?.type === 'path' ? attachment.source.path : undefined)
+    if (attachment.kind === 'file' && path) return [`${attachment.name}\n${path}`]
+    if (attachment.kind === 'image' && path && provider !== 'claude') return [path]
+    return []
+  })
 }
 
 export function estimateTokens(text: string): number {
