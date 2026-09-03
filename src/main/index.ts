@@ -69,6 +69,7 @@ let antigravityBridge: AntigravityToolBridge | null = null
 let browserSessionFlush: Promise<void> | null = null
 let cdpAccess: BrowserCdpAccess | null = null
 let appAutomationAccess: AppAutomationAccess | null = null
+let appCommandAccess: AppCommandAccess | null = null
 let quitting = false
 
 // The BrowserWindow reference can outlive its WebContents during Electron shutdown. Keep all
@@ -100,12 +101,15 @@ async function main(): Promise<void> {
   const pageAccess = new BrowserPageAccess(() => browserService)
   cdpAccess = new BrowserCdpAccess(() => browserService)
   appAutomationAccess = new AppAutomationAccess(() => mainWindow)
+  appCommandAccess = new AppCommandAccess({
+    chat: () => chatService, browser: () => browserService, downloads: () => browserDownloads, window: () => mainWindow
+  })
   const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService)
   // Full-resolution captures for the transcript; the model only ever receives the scaled copy.
   const screenshots = new ScreenshotStore()
   const workspaceNamespace = workspaceTools(chatWorkspace)
   toolRegistry = createToolRegistry([
-    appTools(() => appAutomationAccess),
+    appTools(() => appCommandAccess, () => appAutomationAccess),
     browserTools(() => pageAccess),
     cdpTools(() => cdpAccess),
     captureTools(() => captureAccess, screenshots),
