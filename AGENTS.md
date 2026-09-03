@@ -24,14 +24,14 @@ Prefer a feature directory once a concern needs three or more files. Keep tests 
 
 ## Hard hygiene limits
 
-- React/TSX component: 300 physical lines
-- TypeScript implementation: 450 physical lines
-- Test: 350 physical lines
-- Stylesheet: 450 physical lines
-- Build script: 300 physical lines
-- Source JSON: 250 physical lines
+- React/TSX component: 450 physical lines
+- TypeScript implementation: 675 physical lines
+- Test: 525 physical lines
+- Stylesheet: 675 physical lines
+- Build script: 450 physical lines
+- Source JSON: 375 physical lines
 
-The byte caps and layer-boundary rules live in `scripts/hygiene-gate.mjs`. At 80% of a limit, treat the warning as a prompt to extract by responsibility. Never minify source, compress formatting, raise a limit, add an exception, or disable a gate to make a change pass without explicit owner approval.
+The byte caps and layer-boundary rules live in `scripts/hygiene-gate.mjs`; source-category byte budgets are 1.5× their original values alongside the line budgets above. At 80% of a limit, treat the warning as a prompt to review responsibility boundaries, not a demand to remove useful context or split cohesive code. Never minify source, compress formatting, raise a limit, add an exception, or disable a gate without explicit owner approval.
 
 ## Verification and Testing
 

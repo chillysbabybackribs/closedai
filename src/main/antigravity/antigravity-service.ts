@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events'
 import type {
   ChatAccount, ChatAttachment, ChatConnection, ChatEvent, ChatSnapshot,
-  ChatThreadSummary, ChatTurnContextReport
+  ChatThreadContent, ChatThreadSummary, ChatTurnContextReport
 } from '../../shared/chat.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
@@ -39,7 +39,6 @@ export class AntigravityChatService extends EventEmitter {
   private threadName: string | null = null
   private activeTurnId: string | null = null
   private turnContext: ChatTurnContextReport | null = null
-  private pendingHandoff: string | null = null
   private readonly transcript: ChatTranscript
   private startPromise: Promise<void> | null = null
 
@@ -86,9 +85,10 @@ export class AntigravityChatService extends EventEmitter {
       await this.ensureReady()
       const session = this.session!
       if (this.activeTurnId) throw new Error('An Antigravity turn is already running')
+      const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const context = {
         ...this.turnAdditionalContext(text),
-        ...(this.pendingHandoff ? handoffAdditionalContext(this.pendingHandoff) : {})
+        ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
       }
       const turn = await buildAntigravityPrompt(text, shrinkPastedImages(attachments), Object.keys(context).length ? context : undefined, this.stateDir)
       if (!turn) return
@@ -103,7 +103,7 @@ export class AntigravityChatService extends EventEmitter {
         attachments: turn.summaries,
         additionalContext: Object.keys(context).length ? context : undefined
       }))
-      this.pendingHandoff = null
+      await this.clearDeliveredHandoff()
     } catch (error) {
       this.addNotice(messageOf(error), 'error')
       throw error
@@ -143,11 +143,21 @@ export class AntigravityChatService extends EventEmitter {
     return this.history.listThreads(this.cwd)
   }
 
+  async readThread(threadId: string): Promise<ChatThreadContent> {
+    const conversationId = antigravityConversationIdOf(threadId)
+    if (!conversationId) throw new Error('Invalid Antigravity thread')
+    const items = await this.history.loadTranscript(conversationId)
+    if (!items) throw new Error('Earlier messages of this Antigravity chat were not recorded by ClosedAI')
+    const threadName = await this.history.threadName(conversationId).catch(() => null)
+    return { threadId, threadName, items }
+  }
+
   /** Clear the pane; the next message starts a fresh conversation. */
   async newThread(): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before starting a new chat')
-    if (!this.session?.conversationId && this.transcript.isEmpty) return
+    if (!this.session?.conversationId && this.transcript.isEmpty && !this.settings.get().chatContinuation) return
     await this.detachThread()
+    await this.settings.set({ chatContinuation: null })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }
 
@@ -155,8 +165,18 @@ export class AntigravityChatService extends EventEmitter {
     if (this.activeTurnId) throw new Error('Stop the current turn before continuing in a new chat')
     const handoff = buildThreadHandoff(this.transcript.snapshot(), this.threadName)
     if (!handoff) throw new Error('There is no conversation to continue yet')
+    const sourceThreadId = this.session?.conversationId ? antigravityThreadId(this.session.conversationId) : null
     await this.detachThread()
-    this.pendingHandoff = handoff.text
+    await this.settings.set({
+      chatContinuation: {
+        sourcePaneId: this.paneId,
+        sourceThreadId,
+        sourceProvider: 'antigravity',
+        sourceTitle: handoff.title,
+        handoff: handoff.text,
+        createdAt: Date.now()
+      }
+    })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
     this.addNotice(`Continuing from “${handoff.title}”. A short summary of that chat goes with your next message.`, 'info', null)
   }
@@ -247,9 +267,8 @@ export class AntigravityChatService extends EventEmitter {
     const items = await this.history.loadTranscript(conversationId)
     await this.session!.adopt(conversationId)
     this.transcript.replaceItems(items ?? [])
-    this.pendingHandoff = null
     this.threadName = await this.history.threadName(conversationId).catch(() => null)
-    await this.settings.set({ chatAntigravityConversationId: conversationId })
+    await this.settings.set({ chatAntigravityConversationId: conversationId, chatContinuation: null })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
     if (!items) this.addNotice('Earlier messages of this chat were not recorded by ClosedAI; the conversation continues from where Antigravity left it.', 'info', null)
   }
@@ -260,7 +279,6 @@ export class AntigravityChatService extends EventEmitter {
     if (previous) this.bridge.unbind(previous)
     this.transcript.clear()
     this.threadName = null
-    this.pendingHandoff = null
     this.activeTurnId = null
     this.turnContext = null
     await this.settings.set({ chatAntigravityConversationId: null })
@@ -270,6 +288,11 @@ export class AntigravityChatService extends EventEmitter {
     await this.ensureConnected()
     if (this.connection.state === 'signed-out') throw new Error(SIGN_IN_MESSAGE)
     if (this.connection.state !== 'ready') throw new Error(this.connection.message)
+  }
+
+  private async clearDeliveredHandoff(): Promise<void> {
+    const continuation = this.settings.get().chatContinuation
+    if (continuation?.handoff) await this.settings.set({ chatContinuation: { ...continuation, handoff: null } })
   }
 
   private async ensureConnected(): Promise<void> {

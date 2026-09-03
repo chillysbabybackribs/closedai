@@ -4,6 +4,7 @@ import type {
   ChatEvent,
   ChatProvider,
   ChatSnapshot,
+  ChatThreadContent,
   ChatThreadSummary
 } from '../shared/chat.js'
 import { CHAT_PROVIDERS, chatProviderOfId } from '../shared/chat-providers.js'
@@ -24,6 +25,7 @@ export type ChatSurface = {
   selectModel(modelId: string): Promise<void>
   selectReasoningEffort(effort: string): Promise<void>
   listThreads(): Promise<ChatThreadSummary[]>
+  readThread(threadId: string): Promise<ChatThreadContent>
   newThread(): Promise<void>
   continueInNewThread(): Promise<void>
   openThread(threadId: string): Promise<void>
@@ -98,6 +100,10 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     const threads = lists.flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
     if (lists.every((result) => result.status === 'rejected')) throw (lists[0] as PromiseRejectedResult).reason
     return threads.sort((a, b) => b.updatedAt - a.updatedAt)
+  }
+
+  readThread(threadId: string): Promise<ChatThreadContent> {
+    return this.providers[chatProviderOfId(threadId)].readThread(threadId)
   }
 
   newThread(): Promise<void> {

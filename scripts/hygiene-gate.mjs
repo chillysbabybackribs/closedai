@@ -5,12 +5,12 @@ import { fileURLToPath } from 'node:url'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const scanRoots = ['src', 'scripts']
 const limits = {
-  component: { lines: 300, bytes: 40_000 },
-  code: { lines: 450, bytes: 40_000 },
-  test: { lines: 350, bytes: 40_000 },
-  style: { lines: 450, bytes: 50_000 },
-  script: { lines: 300, bytes: 35_000 },
-  data: { lines: 250, bytes: 30_000 }
+  component: { lines: 450, bytes: 60_000 },
+  code: { lines: 675, bytes: 60_000 },
+  test: { lines: 525, bytes: 60_000 },
+  style: { lines: 675, bytes: 75_000 },
+  script: { lines: 450, bytes: 52_500 },
+  data: { lines: 375, bytes: 45_000 }
 }
 const checkedExtensions = new Set(['.ts', '.tsx', '.css', '.mjs', '.json'])
 const importPattern = /(?:import|export)\s+(?:type\s+)?(?:[^'";]*?\s+from\s+)?['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g

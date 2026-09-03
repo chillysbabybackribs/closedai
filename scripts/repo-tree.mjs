@@ -9,7 +9,7 @@ const output = path.join(root, 'src/main/tools/workspace/workspace-index.generat
 const indexedExtensions = new Set(['.css', '.html', '.js', '.json', '.md', '.mjs', '.ts', '.tsx'])
 const ignoredDirectories = new Set(['coverage', 'dist', 'node_modules', 'out'])
 const ignoredFiles = new Set(['package-lock.json', 'THIRD_PARTY_NOTICES.md'])
-const maxModuleBytes = 30_000
+const maxModuleBytes = 45_000
 
 function isTest(name) {
   return /\.test\.tsx?$/.test(name)

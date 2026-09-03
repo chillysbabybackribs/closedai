@@ -6,6 +6,7 @@ import type {
   ChatConnection,
   ChatEvent,
   ChatSnapshot,
+  ChatThreadContent,
   ChatThreadSummary,
   ChatTurnContextReport
 } from '../../shared/chat.js'
@@ -47,7 +48,6 @@ export class ClaudeChatService extends EventEmitter {
   private activeTurnId: string | null = null
   private contextUsage: ContextUsage | null = null
   private turnContext: ChatTurnContextReport | null = null
-  private pendingHandoff: string | null = null
   private readonly transcript: ChatTranscript
   private startPromise: Promise<void> | null = null
 
@@ -92,9 +92,10 @@ export class ClaudeChatService extends EventEmitter {
       await this.ensureReady()
       const session = this.session!
       if (this.activeTurnId) throw new Error('A Claude turn is already running')
+      const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const context = {
         ...this.turnAdditionalContext(text),
-        ...(this.pendingHandoff ? handoffAdditionalContext(this.pendingHandoff) : {})
+        ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
       }
       const turn = await buildClaudeUserMessage(text, shrinkPastedImages(attachments), Object.keys(context).length ? context : undefined, session.sessionId)
       if (!turn) return
@@ -108,7 +109,7 @@ export class ClaudeChatService extends EventEmitter {
         attachments: turn.summaries,
         additionalContext: Object.keys(context).length ? context : undefined
       }))
-      this.pendingHandoff = null
+      await this.clearDeliveredHandoff()
     } catch (error) {
       this.addNotice(messageOf(error), 'error')
       throw error
@@ -148,11 +149,24 @@ export class ClaudeChatService extends EventEmitter {
     return listClaudeThreads(this.sdk!, this.cwd)
   }
 
+  async readThread(threadId: string): Promise<ChatThreadContent> {
+    const sessionId = claudeSessionIdOf(threadId)
+    if (!sessionId) throw new Error('Invalid Claude thread')
+    await this.ensureConnected()
+    const items = await replayClaudeSession(this.sdk!, sessionId, {
+      cwd: this.cwd,
+      displayScreenshot: (callId) => this.screenshots?.get(callId) ?? null
+    })
+    const threadName = await claudeThreadName(this.sdk!, sessionId, this.cwd).catch(() => null)
+    return { threadId, threadName, items }
+  }
+
   /** Clear the pane; the next message starts a fresh SDK session. */
   async newThread(): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before starting a new chat')
-    if (!this.session?.sessionId && this.transcript.isEmpty) return
+    if (!this.session?.sessionId && this.transcript.isEmpty && !this.settings.get().chatContinuation) return
     await this.detachThread()
+    await this.settings.set({ chatContinuation: null })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }
 
@@ -160,8 +174,18 @@ export class ClaudeChatService extends EventEmitter {
     if (this.activeTurnId) throw new Error('Stop the current turn before continuing in a new chat')
     const handoff = buildThreadHandoff(this.transcript.snapshot(), this.threadName)
     if (!handoff) throw new Error('There is no conversation to continue yet')
+    const sourceThreadId = this.session?.sessionId ? claudeThreadId(this.session.sessionId) : null
     await this.detachThread()
-    this.pendingHandoff = handoff.text
+    await this.settings.set({
+      chatContinuation: {
+        sourcePaneId: this.paneId,
+        sourceThreadId,
+        sourceProvider: 'claude',
+        sourceTitle: handoff.title,
+        handoff: handoff.text,
+        createdAt: Date.now()
+      }
+    })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
     this.addNotice(`Continuing from “${handoff.title}”. A short summary of that chat goes with your next message.`, 'info', null)
   }
@@ -259,9 +283,8 @@ export class ClaudeChatService extends EventEmitter {
     await this.session!.adopt(sessionId)
     this.transcript.replaceItems(items)
     this.contextUsage = null
-    this.pendingHandoff = null
     this.threadName = await claudeThreadName(sdk, sessionId, this.cwd).catch(() => null)
-    await this.settings.set({ chatClaudeSessionId: sessionId })
+    await this.settings.set({ chatClaudeSessionId: sessionId, chatContinuation: null })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }
 
@@ -270,7 +293,6 @@ export class ClaudeChatService extends EventEmitter {
     this.transcript.clear()
     this.threadName = null
     this.contextUsage = null
-    this.pendingHandoff = null
     this.activeTurnId = null
     this.turnContext = null
     await this.settings.set({ chatClaudeSessionId: null })
@@ -281,6 +303,11 @@ export class ClaudeChatService extends EventEmitter {
     const value = claudeModelValue(this.modelState.selectedModel)
     await this.session.setModel(value, supportsAdaptiveThinking(this.modelInfos, value))
     await this.session.setEffort(this.modelState.selectedReasoningEffort)
+  }
+
+  private async clearDeliveredHandoff(): Promise<void> {
+    const continuation = this.settings.get().chatContinuation
+    if (continuation?.handoff) await this.settings.set({ chatContinuation: { ...continuation, handoff: null } })
   }
 
   private async ensureReady(): Promise<void> {

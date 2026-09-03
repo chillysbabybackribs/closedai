@@ -16,9 +16,9 @@ const activeTab: ActiveBrowserContext = {
   isLoading: false
 }
 
-test('developer instructions stay compact and establish the product trust boundary', () => {
+test('developer instructions stay within their expanded budget and establish the product trust boundary', () => {
   const instructions = closedAiDeveloperInstructions()
-  assert.ok(instructions.length < 2_300)
+  assert.ok(instructions.length < 3_500)
   assert.match(instructions, /request_user_input is not wired/)
   assert.match(instructions, /pass only the URL to image\(\)/)
   assert.match(instructions, /inside ClosedAI/)

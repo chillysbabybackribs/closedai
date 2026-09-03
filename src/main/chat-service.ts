@@ -6,6 +6,7 @@ import type {
   ChatEvent,
   ChatModel,
   ChatSnapshot,
+  ChatThreadContent,
   ChatThreadSummary,
   ChatTurnContextReport
 } from '../shared/chat.js'
@@ -49,8 +50,6 @@ export class ChatService extends EventEmitter {
   private readonly transcript: ChatTranscript
   private readonly toolCalls: AppServerToolCalls
   private readonly compactor: ContextCompactor
-  /** Digest of the chat the user chose to continue from; rides on the next turn, once. */
-  private pendingHandoff: string | null = null
   private startPromise: Promise<void> | null = null
   private resumePromise: Promise<void> | null = null
   private restartTimer: NodeJS.Timeout | null = null
@@ -134,9 +133,10 @@ export class ChatService extends EventEmitter {
       if (this.activeTurnId) throw new Error('A Codex turn is already running')
       const threadId = await this.ensureThread()
       const clientUserMessageId = crypto.randomUUID()
+      const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const additionalContext = {
         ...this.turnAdditionalContext(prompt),
-        ...(this.pendingHandoff ? handoffAdditionalContext(this.pendingHandoff) : {})
+        ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
       }
       this.transcript.addOptimisticUser(clientUserMessageId, prompt, summaries)
       const response = await this.client.request<{ turn?: unknown }>('turn/start', {
@@ -152,7 +152,7 @@ export class ChatService extends EventEmitter {
         attachments: summaries, additionalContext
       })
       this.emitEvent({ type: 'turnContext', report: this.turnContext })
-      this.pendingHandoff = null
+      await this.clearDeliveredHandoff()
       const turn = recordOf(response.turn)
       if (typeof turn?.id === 'string') this.setTurn(turn.id)
     } catch (error) {
@@ -195,12 +195,22 @@ export class ChatService extends EventEmitter {
     return listWorkspaceThreads(this.client, this.cwd)
   }
 
+  async readThread(threadId: string): Promise<ChatThreadContent> {
+    await this.ensureConnected()
+    const response = await this.client.request<ThreadResponse>('thread/read', { threadId, includeTurns: true })
+    const thread = recordOf(response.thread)
+    if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')
+    const replay = new ChatTranscript(this.cwd, () => null, () => undefined)
+    replay.replaceFromThread(thread)
+    return { threadId: thread.id, threadName: nullableString(thread.name), items: replay.snapshot() }
+  }
+
   /** Clear the pane. The next `send` lazily starts a fresh app-server thread. */
   async newThread(): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before starting a new chat')
-    if (!this.threadId && this.transcript.isEmpty) return
+    if (!this.threadId && this.transcript.isEmpty && !this.settings.get().chatContinuation) return
     this.detachThread()
-    await this.settings.set({ chatThreadId: null })
+    await this.settings.set({ chatThreadId: null, chatContinuation: null })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }
 
@@ -212,9 +222,19 @@ export class ChatService extends EventEmitter {
     if (this.activeTurnId) throw new Error('Stop the current turn before continuing in a new chat')
     const handoff = buildThreadHandoff(this.transcript.snapshot(), this.threadName)
     if (!handoff) throw new Error('There is no conversation to continue yet')
+    const sourceThreadId = this.threadId
     this.detachThread()
-    this.pendingHandoff = handoff.text
-    await this.settings.set({ chatThreadId: null })
+    await this.settings.set({
+      chatThreadId: null,
+      chatContinuation: {
+        sourcePaneId: this.paneId,
+        sourceThreadId,
+        sourceProvider: 'codex',
+        sourceTitle: handoff.title,
+        handoff: handoff.text,
+        createdAt: Date.now()
+      }
+    })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
     this.addNotice(`Continuing from “${handoff.title}”. A short summary of that chat goes with your next message.`, 'info', null)
   }
@@ -321,7 +341,7 @@ export class ChatService extends EventEmitter {
     this.modelState.adopt(response.model, response.reasoningEffort)
     this.transcript.replaceFromThread(thread)
     this.compactor.reset()
-    await this.settings.set({ chatThreadId: thread.id })
+    await this.settings.set({ chatThreadId: thread.id, chatContinuation: null })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }
 
@@ -331,7 +351,6 @@ export class ChatService extends EventEmitter {
     this.threadName = null
     this.transcript.clear()
     this.compactor.reset()
-    this.pendingHandoff = null
     this.activeTurnId = null
     this.turnContext = null
   }
@@ -340,6 +359,11 @@ export class ChatService extends EventEmitter {
     await this.ensureConnected()
     if (this.connection.state === 'signed-out') throw new Error('Sign in to ChatGPT before sending a message')
     if (this.connection.state !== 'ready') throw new Error(this.connection.message)
+  }
+
+  private async clearDeliveredHandoff(): Promise<void> {
+    const continuation = this.settings.get().chatContinuation
+    if (continuation?.handoff) await this.settings.set({ chatContinuation: { ...continuation, handoff: null } })
   }
 
   private async ensureConnected(): Promise<void> {
