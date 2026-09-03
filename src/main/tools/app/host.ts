@@ -5,6 +5,13 @@ export type AppWaitOptions = {
   timeoutMs: number
 }
 
+export type AppInspectOptions = {
+  maxElements: number
+  query?: string
+  surface?: 'shell' | 'side-drawer' | 'chat' | 'browser' | 'browser-downloads'
+  includeText: boolean
+}
+
 export type AppWaitResult = AppWaitOptions & {
   reached: boolean
   elapsedMs: number
@@ -44,7 +51,7 @@ export type AppScrollTarget = {
 }
 
 export type AppToolHost = {
-  inspect(maxElements: number): Promise<unknown>
+  inspect(options: AppInspectOptions): Promise<unknown>
   click(target: AppClickTarget): Promise<unknown>
   typeText(target: AppTypeTarget): Promise<unknown>
   pressKey(key: string, modifiers: string[]): Promise<unknown>

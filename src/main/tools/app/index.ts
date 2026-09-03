@@ -48,16 +48,41 @@ function inspectTool(app: AppHostProvider): ToolDefinition {
   return defineTool({
     name: 'inspect',
     description:
-      'Read the current ClosedAI renderer state without changing it. Returns bounded window and document state, ' +
-      'visible text, surfaces, focus, and interactive elements with refs, accessible names, text, state, and bounds. ' +
-      'Use the refs with closedai_app.page actions; they become stale after another inspection or a layout change.',
+      'Read the current ClosedAI renderer state without changing it. Prefer a surface and/or query with a small ' +
+      'max_elements value; focused results preserve relevant interactive controls without a broad UI dump. Returns ' +
+      'refs, accessible names, state, and bounds. Use refs with closedai_app.page actions; they become stale after ' +
+      'another inspection or a layout change. Request include_text only when interactive controls are insufficient.',
     inputSchema: objectSchema({
       max_elements: {
         type: 'integer', minimum: 1, maximum: 500,
-        description: 'Maximum visible interactive elements to return; defaults to 120.'
+        description: 'Maximum matching interactive elements considered; defaults to 40 for focused reads and 120 otherwise.'
+      },
+      surface: {
+        type: 'string',
+        enum: ['shell', 'side-drawer', 'chat', 'browser', 'browser-downloads'],
+        description: 'Optional data-ui-surface scope. Use side-drawer, chat, or browser for the main product areas.'
+      },
+      query: {
+        type: 'string', minLength: 1, maxLength: 200,
+        description: 'Case-insensitive filter over accessible name, text, role, tag, placeholder, title, and value.'
+      },
+      include_text: {
+        type: 'boolean',
+        description: 'Include bounded visible document text. Defaults to false for focused reads and true for an unfiltered orientation read.'
       }
     }),
-    run: async (input) => jsonResult(await requireApp(app).inspect(numberArg(input, 'max_elements', 120)))
+    run: async (input) => {
+      const query = stringArg(input, 'query')?.trim()
+      const surface = stringArg(input, 'surface') as
+        | 'shell' | 'side-drawer' | 'chat' | 'browser' | 'browser-downloads' | undefined
+      const focused = Boolean(query || surface)
+      return jsonResult(await requireApp(app).inspect({
+        maxElements: numberArg(input, 'max_elements', focused ? 40 : 120),
+        query,
+        surface,
+        includeText: booleanArg(input, 'include_text', !focused)
+      }))
+    }
   })
 }
 

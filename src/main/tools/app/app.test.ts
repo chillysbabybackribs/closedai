@@ -7,8 +7,8 @@ import type { AppToolHost } from './host.js'
 function harness(overrides: Partial<AppToolHost> = {}) {
   const calls: unknown[] = []
   const host: AppToolHost = {
-    inspect: async (maxElements) => {
-      calls.push(['inspect', maxElements])
+    inspect: async (options) => {
+      calls.push(['inspect', options])
       return { snapshotId: 'a1', elements: [] }
     },
     click: async (target) => {
@@ -65,7 +65,23 @@ test('inspection is a separate bounded read-only tool', async () => {
   const { calls, call } = harness()
   const result = await call({ max_elements: 25 }, 'inspect')
   assert.match(textOf(result), /"snapshotId": "a1"/)
-  assert.deepEqual(calls, [['inspect', 25]])
+  assert.deepEqual(calls, [['inspect', {
+    maxElements: 25, query: undefined, surface: undefined, includeText: true
+  }]])
+})
+
+test('inspection prefers compact scoped reads when a surface or query is supplied', async () => {
+  const { calls, call } = harness()
+  await call({ surface: 'side-drawer', query: 'history' }, 'inspect')
+  await call({ query: 'downloads', max_elements: 12, include_text: true }, 'inspect')
+  assert.deepEqual(calls, [
+    ['inspect', {
+      maxElements: 40, query: 'history', surface: 'side-drawer', includeText: false
+    }],
+    ['inspect', {
+      maxElements: 12, query: 'downloads', surface: undefined, includeText: true
+    }]
+  ])
 })
 
 test('click, type, and scroll actions route to the app host with safe defaults', async () => {
