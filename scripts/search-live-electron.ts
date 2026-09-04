@@ -6,6 +6,9 @@ import { BrowserService } from '../src/main/browser-service.js'
 import { EPHEMERAL_BROWSER_HISTORY } from '../src/main/browser-history-store.js'
 import { createResearchRuntime } from '../src/main/research-runtime.js'
 import { ToolRegistry } from '../src/main/tools/registry.js'
+import { searchTools } from '../src/main/tools/search/index.js'
+import { SearchBrowserTabs } from '../src/main/tools/search/presentation.js'
+import type { ResearchService } from '../src/main/tools/search/research/service.js'
 
 const profile = process.env.CLOSEDAI_SEARCH_CHECK_PROFILE
 if (!profile) throw new Error('Run through scripts/search-live-check.mjs')
@@ -32,6 +35,9 @@ async function verify(profile: string): Promise<void> {
     root: join(profile, 'research-runs'), browser: () => browser, workspace: () => profile,
     peers: () => ({ paneSnapshot: () => ({ threadId: 'thread', activeTurnId: 'turn' }) }) as never
   })
+  let queryService: ResearchService | undefined
+  let releaseSearch: (() => void) | undefined
+  let releaseSlowProvider: (() => void) | undefined
   try {
     const context = { paneId: 'pane', threadId: 'thread', turnId: 'turn', callId: 'call', signal: new AbortController().signal }
     const registry = new ToolRegistry([runtime.namespace])
@@ -52,17 +58,67 @@ async function verify(profile: string): Promise<void> {
     assert.equal(browser.tabList().find((tab) => tab.active)?.id, run.presentation.tabId)
     assert.equal(runtime.service.read(run.runId, context).state, 'running')
     assert.ok(finishSource)
+
+    // Query-only discovery must also show a real document, before all providers finish.
+    const searchGate = new Promise<void>((resolve) => { releaseSearch = resolve })
+    const providerGate = new Promise<void>((resolve) => { releaseSlowProvider = resolve })
+    const opened: string[] = []
+    const tabs = new SearchBrowserTabs({
+      exists: (id) => !!browser.contentsOf(id),
+      open: (url) => { opened.push(url); return browser.openNewTab(url, true) }
+    })
+    const queryRegistry = new ToolRegistry([searchTools({
+      readKey: async () => 'fixture',
+      fetch: async (url) => {
+        if (String(url).includes('serper.dev')) { await providerGate; return Response.json({ organic: [] }) }
+        await searchGate
+        return Response.json({ web: { results: [
+          { title: 'Not a source', url: 'https://www.google.com/search?q=fixture' },
+          { title: 'Source', url: `${base}/article` }
+        ] } })
+      },
+      onResearchCreated: (service) => { queryService = service },
+      research: {
+        owner: () => ({ paneId: 'pane', threadId: 'thread', turnId: 'turn', workspace: profile }),
+        collect: async () => { throw new Error('query-only fixture') }, read: async () => '', remove: async () => {},
+        openLive: (url, caller) => tabs.open(url, caller)
+      }
+    })])
+    let queryFinished = false
+    const queryPending = queryRegistry.call({ namespace: 'search', tool: 'query', arguments: {
+      query: 'fixture evidence', intent: 'general', providers: ['brave', 'serper']
+    } }, context)
+    void queryPending.then(() => { queryFinished = true })
+    await new Promise((resolve) => setTimeout(resolve, 25))
+    assert.deepEqual(opened, [])
+    releaseSearch!()
+    for (let i = 0; i < 100 && browser.activeContents().getTitle() !== 'Live search verification'; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 25))
+    }
+    // The previous tab already has this title, so also wait for the newly opened article URL.
+    for (let i = 0; i < 100 && (!opened.length || browser.activeContents().getURL() !== `${base}/article` || browser.activeContents().isLoading()); i++) {
+      await new Promise((resolve) => setTimeout(resolve, 25))
+    }
+    assert.deepEqual(opened, [`${base}/article`])
+    assert.equal(await browser.activeContents().executeJavaScript('document.querySelector("main").innerText'), 'Browser evidence')
+    assert.equal(queryFinished, false)
+    assert.equal(runtime.service.read(run.runId, context).state, 'running')
+    releaseSlowProvider!()
+    assert.equal((await queryPending).isError, undefined)
     finishSource()
     for (let i = 0; i < 100 && runtime.service.read(run.runId, context).state === 'running'; i++) {
       await new Promise((resolve) => setTimeout(resolve, 25))
     }
     assert.equal(runtime.service.read(run.runId, context).sources.filter((source) => source.state === 'ready').length, 2)
-    console.log(JSON.stringify({ ok: true, tabId: run.presentation.tabId, pageText, backgroundWhileBrowserReady: 'running', readySources: 2 }))
+    console.log(JSON.stringify({ ok: true, tabId: run.presentation.tabId, pageText, querySourceUrl: opened[0], searchPagesOpened: 0, backgroundWhileBrowserReady: 'running', readySources: 2 }))
   } catch (error) {
     console.error(error)
     process.exitCode = 1
   } finally {
     clearTimeout(watchdog)
+    releaseSearch?.()
+    releaseSlowProvider?.()
+    queryService?.dispose()
     runtime.service.dispose()
     browser.dispose()
     window.destroy()
