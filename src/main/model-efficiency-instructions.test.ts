@@ -4,12 +4,14 @@ import test from 'node:test'
 import { antigravityAgentInstructions } from './antigravity/antigravity-instructions.js'
 import { closedAiDeveloperInstructions } from './chat-context/developer-instructions.js'
 import { claudeSystemPromptAppend } from './claude/claude-instructions.js'
+import { cursorSystemInstructions } from './cursor/cursor-instructions.js'
 
 test('every model lane receives the deterministic batching and engineering contracts', () => {
   const instructions = {
     codex: closedAiDeveloperInstructions(),
     claude: claudeSystemPromptAppend('/outside-index'),
-    antigravity: antigravityAgentInstructions('/outside-index')
+    antigravity: antigravityAgentInstructions('/outside-index'),
+    cursor: cursorSystemInstructions('/outside-index')
   }
   for (const value of Object.values(instructions)) {
     assert.match(value, /outcome-first, user-facing articulation/)
@@ -42,7 +44,9 @@ test('every model lane receives the deterministic batching and engineering contr
   assert.match(instructions.antigravity, /view_file, grep_search, and find_by_name.*replace_file_content or multi_replace_file_content.*write_to_file only for new files/)
   assert.match(instructions.claude, /tool_batch/)
   assert.match(instructions.antigravity, /tool_batch/)
+  assert.match(instructions.cursor, /tool_batch/)
   assert.ok(instructions.codex.length < 5_625, `Codex instructions grew to ${instructions.codex.length} chars`)
   assert.ok(instructions.claude.length < 6_500, `Claude instructions grew to ${instructions.claude.length} chars`)
   assert.ok(instructions.antigravity.length < 7_750, `Antigravity instructions grew to ${instructions.antigravity.length} chars`)
+  assert.ok(instructions.cursor.length < 7_000, `Cursor instructions grew to ${instructions.cursor.length} chars`)
 })

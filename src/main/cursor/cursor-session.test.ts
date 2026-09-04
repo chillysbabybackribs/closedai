@@ -50,3 +50,11 @@ test('continuing a replayed session announces the change and keeps the process',
   thread.continueWith('opened-from-history')
   assert.deepEqual(adopted, ['opened-from-history'])
 })
+
+test('closedai.instructions are delivered once until the thread changes', () => {
+  const { session: thread } = session()
+  assert.equal(thread.consumeInstructionsPending(), true)
+  assert.equal(thread.consumeInstructionsPending(), false)
+  thread.continueWith('other-session')
+  assert.equal(thread.consumeInstructionsPending(), true)
+})

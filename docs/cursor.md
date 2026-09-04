@@ -66,6 +66,7 @@ opportunistic — do not design as though all file IO routes through the app.
 | `cursor-stream.ts` | `session/update` → transcript operations. |
 | `cursor-tool-items.ts` | ACP tool calls → the command / fileChange / tool vocabulary Codex items use. |
 | `cursor-models.ts` | `availableModels` → the composer catalog. |
+| `cursor-instructions.ts` | Shared ClosedAI product guidance injected once per session as `closedai.instructions`. |
 | `cursor-input.ts` | One user turn as ACP prompt blocks, including images (`promptCapabilities.image` is true). |
 | `cursor-mcp.ts` | The `session/new` server list, on the shared `McpHttpBridge`. |
 | `cursor-archive.ts` | The locally archived session ids. |
