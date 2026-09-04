@@ -31,9 +31,11 @@ direct-call provider even when it supplies a reason. Direct-call batches contain
 be sequential and include a later read, wait, or capture assertion.
 
 The shared response style asks for results and evidence, with progress only when it adds a new
-result, blocker, or required choice. It discourages “I have…”, “I am…”, and “I will…” work logs.
-It is prompt guidance, not a text filter or a guarantee of identical output across models.
-Quoted user text and historical transcripts are not rewritten.
+result, blocker, required choice, or tool/action error. Every error must be disclosed even when the
+model recovers: recovered errors get one concise sentence, while unresolved errors include their
+effect on the result. It discourages “I have…”, “I am…”, and “I will…” work logs. It is prompt
+guidance, not a text filter or a guarantee of identical output across models. Quoted user text and
+historical transcripts are not rewritten.
 
 The engineering contract steers every lane toward focused reads, provider-native structured
 edits, one targeted verification pass, and preservation of Git stash/worktree state. Claude uses
