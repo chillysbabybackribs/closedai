@@ -6,6 +6,7 @@ import type { AppSettings } from '../../shared/types.js'
 import { DEFAULT_APP_SETTINGS, type AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import { ChatStore } from '../chat-store/chat-store.js'
+import type { ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
 import { ChatPeerManager } from './peer-manager.js'
 
 // Test doubles shared by the peer-manager test files: an in-memory settings store, an in-memory
@@ -123,7 +124,13 @@ export function harness(idleParkMs?: number): Harness {
 }
 
 /** A workspace holding the given chats, with `openIds` (default: all of them) attached and one selected. */
-export function harnessWith(records: ChatRecord[], selected: string, idleParkMs?: number, openIds?: string[]): Harness {
+export function harnessWith(
+  records: ChatRecord[],
+  selected: string,
+  idleParkMs?: number,
+  openIds?: string[],
+  transcripts?: ChatTranscriptCache
+): Harness {
   const settings = new MemorySettings({
     ...DEFAULT_APP_SETTINGS,
     chatWorkspacePath: HARNESS_CWD,
@@ -137,6 +144,6 @@ export function harnessWith(records: ChatRecord[], selected: string, idleParkMs?
     const surface = new FakeSurface(record.modelId)
     surfaces.push(surface)
     return surface
-  }, idleParkMs)
+  }, idleParkMs, undefined, transcripts)
   return { manager, surfaces, settings, store }
 }
