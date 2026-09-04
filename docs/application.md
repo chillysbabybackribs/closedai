@@ -4,12 +4,18 @@ Source review: 2026-09-03, including the current uncommitted changes. This descr
 behavior, not a new live UI or provider verification. Protocol measurements retain their dates
 in the provider guides.
 
-## Projects, panes, and conversations
+## Projects, chats, panes, and conversations
 
-`ChatPeerManager` owns the active project's open chat panes. Each pane has its own `ChatHub`,
-provider settings, and conversation state; only the selected pane is displayed. A background
-pane can continue its turn while another pane is selected. The embedded browser belongs to the
-application and is shared across panes and project switches.
+A chat is an app-owned `ChatRecord` in `ChatStore` (`chats.json`): a stable id, its project
+directory, provider, model and effort, per-provider thread ids, title, preview, timestamps, an
+archived flag, and any continuation digest or checkpoint. Records outlive panes, provider
+processes, and relaunches. `ChatPeerManager` owns the active project's *attached* chats: an
+attached chat has a pane, and **the pane id is the chat id**. Each attached chat has its own
+`ChatHub`, provider settings (`PeerSettings`, a projection of the record), and conversation state;
+only the selected pane is displayed. A background pane can continue its turn while another pane is
+selected. Detaching a pane stops its runtime and keeps the record, so the drawer row and its review
+state never change identity. The embedded browser belongs to the application and is shared across
+panes and project switches.
 
 `ChatHub` routes to Codex, Claude Code, Antigravity, or Cursor. Codex model/thread ids are
 unprefixed; Claude ids use `claude:`, Antigravity ids use `agy:`, and Cursor ids use `cursor:`. Picking another provider's model keeps the
@@ -25,19 +31,29 @@ Changing models or providers is refused while that pane has an active turn.
 
 The project menu below the composer offers a directory picker, recent projects, and “Don’t work
 in a project” (uses the home directory). A project switch is refused while any pane has an active
-turn. `index.ts` saves the departing pane set and restores the destination's saved set, including
-selection and provider conversation ids. A directory without saved panes receives a fresh chat.
-This is directory selection; it does not create a Git branch or worktree.
+turn. `index.ts` saves the departing project's open chat ids and restores the destination's,
+including selection; conversation ids live on the records. A directory without saved open chats
+receives a fresh chat. This is directory selection; it does not create a Git branch or worktree.
 
 On launch only the selected pane is warmed. Selecting another pane immediately displays its
 available snapshot, then wakes its runtime asynchronously. Unselected panes without an active
-turn are parked after five minutes. Titles and last turn-boundary times are persisted so dormant
-panes can still be named after a restart.
+turn are parked after five minutes, and at most two unselected idle panes stay awake: creating or
+opening a chat parks the least recently active beyond that at once, so consecutive new chats do
+not stack provider processes. Parking keeps the pane and the record. Titles and last turn-boundary
+times are persisted on the record so dormant chats can still be named after a restart.
 
-Startup and ordinary new-chat creation trim excess panes toward eight, oldest eligible first.
-The selected pane, active turns, and undelivered continuation digests are protected, so this is
-not a hard concurrency limit. Retiring a pane preserves its provider thread for reopening from
-history. Leaving an unused empty pane can discard that placeholder.
+Startup, new chat, and opening a chat trim attached panes toward eight, least recently active
+first. The selected pane, active turns, operations in flight, and undelivered continuation
+digests are protected, so this is not a hard concurrency limit. Detaching keeps the record and
+its provider thread; the chat reopens from the drawer under the same id. A blank new chat (no
+thread, no messages, no continuation, no open or wake in flight) is discarded when the user leaves
+it; anything else is kept.
+
+`newChat` creates the record, attaches and selects it, announces the workspace before any
+settings write, then wakes it; “Continue in new chat” takes the same path. `openChat(chatId)`
+selects an attached chat, or attaches a detached one and resumes from its thread ids without
+minting a new id. Main decides where it opens: in place only when the selected chat is blank,
+otherwise beside it.
 
 Continuation creates a new pane with a local transcript digest, delivered once on its next
 message. Branching from a completed response limits that digest to the chosen response; it
@@ -45,8 +61,8 @@ does not clone the provider's full session. User/assistant text is included, whi
 reasoning, and images stay in the original chat. See `chat-context/thread-handoff.ts`.
 
 Models can save a structured working checkpoint with `peer_chats.checkpoint`: goal, constraints,
-decisions, progress, next steps, and file references. One checkpoint per pane is stored with its
-thread id, revision, and transcript boundary in `app-settings.json`; it is usable only for that
+decisions, progress, next steps, and file references. One checkpoint per chat is stored with its
+thread id, revision, and transcript boundary on the chat record; it is usable only for that
 thread. State is capped at 6,000 serialized characters and oversized saves are rejected. Writes
 require the caller's active turn and matching expected revision. These are model-authored notes,
 not verified facts or authorization. They are not automatically regenerated or injected each turn.
@@ -61,15 +77,24 @@ is introduced. See [Model context](model-context.md) for trust and [Tools](tools
 
 ## Chat surface
 
-- The sidebar keeps only running chats in Current. Every finished turn moves immediately to
-  Recently completed, whether or not the pane was selected; opening it marks it reviewed without
-  moving it. A new turn returns it to Current, while a reviewed chat with no new activity moves to
-  History after ten minutes. Unreviewed completions remain in Recently completed. History is
-  ordered by last activity. Opening a History thread never replaces the selected chat: it opens in
-  place only when the selected pane is blank, otherwise in a new pane. Leaving a chat (new chat,
-  continue) clears the pane's saved title, so a parked pane cannot duplicate its old thread's row.
-  Thread history is cached for five seconds, and peer-summary updates are throttled to 200 ms
-  during streaming. Summaries update from events, retain transcript order during late tool updates,
+- The sidebar is driven by the workspace's chat records: the `chats` event carries one
+  `ChatRowSummary` per record (attached or not) plus `running`, and every row is keyed by chat id.
+  Placement does not depend on selection. Current holds only running chats, newest created first
+  (not by streaming activity, so rows do not reshuffle per token). Every finished turn moves
+  immediately to Recently completed, whether or not the pane was selected; opening it marks it
+  reviewed without moving it. A new turn returns it to Current, while a reviewed chat with no new
+  activity moves to History after ten minutes. Unreviewed completions never expire, and the queue
+  is pruned against the store's chat ids, not attached panes, so a completion survives detaching
+  and relaunch. History is ordered by last activity. Clicking any row calls `openChat`; main decides
+  in-place versus beside. Closing an attached row keeps the chat in History; deleting a detached
+  row archives it. Failures from opening, new chat, stop, archive, search, or the background
+  catalog refresh show in the drawer footer for eight seconds instead of being swallowed.
+  `listChats` answers from the store at once, then reconciles the providers' thread catalogs in
+  the background (adopting threads the store has not seen, cached five seconds, invalidated on turn
+  end, archive, open, and project switch; a scan that lands after a project switch is dropped).
+  Peer-summary updates are throttled to 200 ms during streaming and a pending update is flushed on
+  stop. Summaries update from events, carry `running` from one source (the hub's active turn),
+  never reset a title to a placeholder on a wake, retain transcript order during late tool updates,
   and cap previews at 240 characters. Message deltas still go to the selected conversation.
 - The renderer initially receives the newest 200 transcript items. "Show earlier" fetches older
   pages by stable item id; stale responses after a chat switch are ignored. Background-task status
@@ -140,7 +165,9 @@ shared frame settling lives in `browser-frame-settle.ts`. See [CDP](cdp-tool-fou
 | Concern | Source of truth |
 |---|---|
 | Bootstrap, service composition, project persistence | `src/main/index.ts`, `src/main/app-settings-store.ts` |
-| Pane lifecycle, summaries, per-pane settings, idle parking | `src/main/chat-peers/` |
+| Chat records and persistence, settings migration | `src/main/chat-store/`, `src/shared/chat-store.ts` |
+| Attach/detach lifecycle, summaries, per-chat settings, idle parking, catalog reconciliation | `src/main/chat-peers/` |
+| Per-workspace provider model catalog cache | `src/main/chat-context/provider-catalog-cache.ts` |
 | Provider routing and id families | `src/main/chat-hub.ts`, `src/shared/chat-providers.ts` |
 | Codex runtime and transcript normalization | `src/main/chat-service.ts`, `src/main/app-server-client.ts`, `src/main/chat-normalizers.ts` |
 | Claude / Antigravity / Cursor sessions and translation | `src/main/claude/`, `src/main/antigravity/`, `src/main/cursor/` |
@@ -164,7 +191,8 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 
 | Store | Contents |
 |---|---|
-| `app-settings.json` | Cookie-import latch; active workspace/project; active `chatPeers` and `chatSelectedPaneId`; saved project pane sets in `chatWorkspaces`; per-pane model, effort, provider ids, title, activity time, and continuation digest; tool switches and context/batch settings |
+| `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, parent chat, continuation digest, checkpoint. Debounced atomic writes; flushed on quit |
+| `app-settings.json` | Cookie-import latch; active workspace/project; the open chat ids (`chatOpenIds`) and `chatSelectedPaneId`; saved per-project open ids and selection in `chatWorkspaces`; tool switches and context/batch settings. Legacy `chatPeers` and `chatWorkspaces[].peers` are imported into `chats.json` once, keeping each pane id as the chat id, and removed |
 | `browser-tabs.json`, `browser-history.json` | Restored tabs and omnibox history |
 | `Partitions/browser`, `code-cache/` | Chromium session data and app-configured code cache |
 | `tool-telemetry.json` | Aggregate run/error/timeout counters; no arguments or conversation text |
@@ -173,9 +201,10 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 | In-memory trace | At most 4,000 entries and 24,000,000 detail characters, 48,000 characters per detail before its truncation marker; cleared on restart |
 
 Legacy top-level `chatThreadId`, `chatClaudeSessionId`, `chatAntigravityConversationId`, model,
-and effort fields coexist with per-pane records. New code should use `PeerSettings` for a pane's
-settings, not assume those top-level fields describe every chat. Provider session history lives
-in each provider's own store; closing a pane and archiving a thread are distinct operations.
+and effort fields coexist with chat records. New code should use `PeerSettings` (a projection of
+the chat record) for a chat's settings, not assume those top-level fields describe every chat.
+Provider session history lives in each provider's own store; closing a pane, archiving a chat, and
+archiving a provider thread are distinct operations.
 
 Codex-specific settings are `chatCompactAtPercent` (default 80), `chatCompactAtTokens` (default
 zero, opt-in between-turn token threshold), and `chatMidTurnCompactTokens` (default zero, leaves
@@ -201,8 +230,8 @@ See [Tools](tools.md) for configuration and measurement limits.
 
 - The saved “No project” identity is currently coalesced to the working directory on startup in
   `index.ts`; the home directory can therefore return with a project label after relaunch.
-- `ChatPeerManager.selectProject` does not invalidate its five-second history cache or an
-  in-flight history read, so the departing project's history can briefly appear after a switch.
+- Provider threads the store has never seen appear in the drawer only after the background
+  reconciliation adopts them, so a chat created in a provider's own CLI can lag one refresh.
 - Claude's session idle timer respects background tasks, but outer pane parking and project
   switching check `activeTurnId`. Background work after a turn is not protected from those
   lifecycle operations. Explicit session retirement marks tracked unfinished tasks stopped.
