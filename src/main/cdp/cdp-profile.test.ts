@@ -155,8 +155,19 @@ test('metrics fold to a plain record and missing payloads stay empty', () => {
   assert.deepEqual(foldScriptCoverage(null, 5).entries, [])
 })
 
-test('channels default to everything and start arms exactly what was asked for', async () => {
-  assert.deepEqual(channelsFrom([]), { script: true, style: true, cpu: true, heap: true })
+test('cpu stays out of the default set and cannot be armed alongside script', async () => {
+  // Measured: precise coverage plus the sampling profiler breaks the next heavy navigation.
+  assert.deepEqual(channelsFrom([]), { script: true, style: true, cpu: false, heap: true })
+  assert.deepEqual(channelsFrom(['all']), { script: true, style: true, cpu: false, heap: true })
+  assert.deepEqual(channelsFrom(['cpu']), { script: false, style: false, cpu: true, heap: false })
+
+  await assert.rejects(
+    () => startProfiling(async () => ({}), channelsFrom(['script', 'cpu'])),
+    /cannot be armed together/
+  )
+})
+
+test('channels arm exactly what was asked for', async () => {
   assert.deepEqual(channelsFrom(['style']), { script: false, style: true, cpu: false, heap: false })
 
   const sent: string[] = []
@@ -172,15 +183,22 @@ test('channels default to everything and start arms exactly what was asked for',
   ])
 })
 
-test('a heap stop addressed at a replaced isolate reports why instead of hanging', async () => {
-  const report = await stopProfiling(async (method) => {
-    // The command a dead sampler answers with nothing at all.
-    if (method === 'HeapProfiler.stopSampling') return new Promise(() => {})
-    return {}
-  }, channelsFrom(['heap']), { limit: 5, styleSheets: [], heapStopTimeoutMs: 20 })
+test('every channel stop is bounded, so a dead renderer reports instead of hanging', async () => {
+  const report = await stopProfiling(
+    // A crashed target answers nothing at all, on any of these commands.
+    async () => new Promise(() => {}),
+    { script: true, style: true, cpu: true, heap: true },
+    { limit: 5, styleSheets: [], stopTimeoutMs: 20 }
+  )
 
-  assert.equal(report.heap, undefined)
-  assert.match(String(report.heapUnavailable), /isolate this tab has since replaced/)
+  assert.deepEqual(
+    [report.scriptCoverage, report.styleCoverage, report.cpu, report.heap],
+    [undefined, undefined, undefined, undefined]
+  )
+  assert.deepEqual(Object.keys(report.unavailable ?? {}), ['script', 'style', 'cpu', 'heap'])
+  assert.match(String(report.unavailable?.heap), /isolate this tab has since replaced/)
+  assert.match(String(report.unavailable?.cpu), /Profiler.stop did not answer/)
+  assert.deepEqual(report.metrics, {})
 })
 
 test('stop folds only the armed channels and always reports metrics', async () => {

@@ -11,7 +11,11 @@ const channelsField: JsonObject = {
   type: 'array',
   items: { type: 'string', enum: ['script', 'style', 'cpu', 'heap', 'all'] },
   maxItems: 5,
-  description: 'What to record: script (JS byte coverage), style (CSS rule coverage), cpu (sampling profiler), heap (allocation sampling). Defaults to all.'
+  description:
+    'What to record: script (JS byte coverage), style (CSS rule coverage), cpu (sampling profiler), ' +
+    'heap (allocation sampling). Defaults to script, style and heap. cpu must be asked for explicitly ' +
+    'and cannot be combined with script: both are Profiler-domain recordings over one V8 isolate, and ' +
+    'arming both makes the next navigation to a heavy page fail and can crash the tab.'
 }
 
 const limitField: JsonObject = {
@@ -59,8 +63,9 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
         'Stop the recorders armed by start and return the folded report: per-URL used/unused bytes for ' +
         'script and style coverage, per-function self time for cpu, per-site retained bytes for heap, ' +
         'plus page metrics. Entries are ranked worst-first and cut to limit. Heap sampling is re-armed ' +
-        'on every main-frame commit, so a navigation between start and stop reports the new document; ' +
-        'when a sampler is lost anyway the report says so in heapUnavailable instead of stalling.',
+        'on every main-frame commit, so a navigation between start and stop reports the new document. ' +
+        'Every channel stop is bounded: one addressed at a crashed or replaced renderer is reported ' +
+        'under unavailable rather than stalling the call.',
       inputSchema: objectSchema({ tab_id: tabIdField, channels: channelsField, limit: limitField }),
       run: async (input) => jsonResult(await requireCdp(cdp).profile(tabIdFrom(input), 'stop', {
         channels: channelsFrom(input),

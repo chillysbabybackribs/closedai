@@ -305,21 +305,34 @@ export function foldMetrics(raw: unknown): Record<string, number> {
 
 export type ProfileChannels = { script: boolean; style: boolean; cpu: boolean; heap: boolean }
 
+/**
+ * `cpu` is not part of the default set. Measured in this app against a real tab: arming precise
+ * coverage and the sampling profiler together makes the next cross-process navigation to a heavy
+ * page fail with `ERR_FAILED`, and repeating it crashes the renderer. Both are Profiler-domain
+ * recordings over one V8 isolate, which is also why DevTools separates its Coverage and
+ * Performance panels. Everything else composes, so the default arms the three that do.
+ */
 export function channelsFrom(requested: string[]): ProfileChannels {
   const all = requested.length === 0 || requested.includes('all')
   return {
     script: all || requested.includes('script'),
     style: all || requested.includes('style'),
-    cpu: all || requested.includes('cpu'),
+    cpu: !all && requested.includes('cpu'),
     heap: all || requested.includes('heap')
   }
 }
+
+export const SCRIPT_WITH_CPU_REFUSAL =
+  'profile: script and cpu cannot be armed together. Precise coverage and the sampling profiler are ' +
+  'both Profiler-domain recordings over one V8 isolate; measured here, arming both makes the next ' +
+  'navigation to a heavy page fail with ERR_FAILED and can crash the tab. Run two profiles instead.'
 
 /**
  * Coverage and sampling must be armed before the code under test runs, so `start` is a separate
  * call from `stop` and the caller navigates or interacts in between.
  */
 export async function startProfiling(send: ProfileSend, channels: ProfileChannels): Promise<string[]> {
+  if (channels.script && channels.cpu) throw new Error(SCRIPT_WITH_CPU_REFUSAL)
   const started: string[] = []
   if (channels.script) {
     await send('Profiler.enable')
@@ -358,8 +371,12 @@ export async function armHeapSampling(send: ProfileSend): Promise<void> {
   await send('HeapProfiler.startSampling', { samplingInterval: 16_384 })
 }
 
-/** Bound for a stop that may be addressed to a dead isolate, well under the tool's own budget. */
-const HEAP_STOP_TIMEOUT_MS = 8_000
+/**
+ * Bound for a stop addressed at a renderer that may be gone. Any of these commands can be left
+ * unanswered by a crashed or replaced target, and an unbounded one consumes the whole tool budget
+ * and returns nothing — so every channel gets the same deadline, not just the heap sampler.
+ */
+const STOP_TIMEOUT_MS = 8_000
 
 async function withDeadline<T>(work: Promise<T>, timeoutMs: number): Promise<T | null> {
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -376,39 +393,54 @@ export type ProfileReport = {
   styleCoverage?: CoverageSummary
   cpu?: CpuSummary
   heap?: HeapSummary
-  heapUnavailable?: string
+  /** Channels whose stop command went unanswered, and why, instead of a stalled call. */
+  unavailable?: Record<string, string>
   metrics: Record<string, number>
 }
+
+const HEAP_LOST_ISOLATE =
+  'the sampler was armed in an isolate this tab has since replaced; arm it again and stop it without ' +
+  'an intervening cross-process navigation'
 
 export async function stopProfiling(
   send: ProfileSend,
   channels: ProfileChannels,
-  options: { limit: number; styleSheets: StyleSheetRecord[]; heapStopTimeoutMs?: number }
+  options: { limit: number; styleSheets: StyleSheetRecord[]; stopTimeoutMs?: number }
 ): Promise<ProfileReport> {
-  const heapTimeoutMs = options.heapStopTimeoutMs ?? HEAP_STOP_TIMEOUT_MS
+  const timeoutMs = options.stopTimeoutMs ?? STOP_TIMEOUT_MS
   const report: ProfileReport = { metrics: {} }
+  const unavailable: Record<string, string> = {}
+  const ask = (method: string): Promise<unknown> =>
+    withDeadline(send(method).catch(() => null), timeoutMs)
+  const lost = (channel: string, method: string, detail?: string): void => {
+    unavailable[channel] = `${method} did not answer within ${timeoutMs / 1_000}s: `
+      + (detail ?? 'the tab\'s renderer is gone or was replaced')
+  }
+
   if (channels.script) {
-    report.scriptCoverage = foldScriptCoverage(await send('Profiler.takePreciseCoverage'), options.limit)
-    await send('Profiler.stopPreciseCoverage')
+    const raw = await ask('Profiler.takePreciseCoverage')
+    if (raw) {
+      report.scriptCoverage = foldScriptCoverage(raw, options.limit)
+      await ask('Profiler.stopPreciseCoverage')
+    } else lost('script', 'Profiler.takePreciseCoverage')
   }
   if (channels.style) {
-    report.styleCoverage = foldRuleCoverage(
-      await send('CSS.stopRuleUsageTracking'),
-      options.styleSheets,
-      options.limit
-    )
+    const raw = await ask('CSS.stopRuleUsageTracking')
+    if (raw) report.styleCoverage = foldRuleCoverage(raw, options.styleSheets, options.limit)
+    else lost('style', 'CSS.stopRuleUsageTracking')
   }
-  if (channels.cpu) report.cpu = foldCpuProfile(await send('Profiler.stop'), options.limit)
+  if (channels.cpu) {
+    const raw = await ask('Profiler.stop')
+    if (raw) report.cpu = foldCpuProfile(raw, options.limit)
+    else lost('cpu', 'Profiler.stop')
+  }
   if (channels.heap) {
-    const raw = await withDeadline(send('HeapProfiler.stopSampling').catch(() => null), heapTimeoutMs)
+    const raw = await ask('HeapProfiler.stopSampling')
     if (raw) report.heap = foldHeapProfile(raw, options.limit)
-    else {
-      report.heapUnavailable = 'HeapProfiler.stopSampling did not answer within '
-        + `${heapTimeoutMs / 1_000}s: the sampler was armed in an isolate this tab has since replaced. `
-        + 'Arm heap sampling again and stop it without an intervening cross-process navigation.'
-    }
+    else lost('heap', 'HeapProfiler.stopSampling', HEAP_LOST_ISOLATE)
   }
+  if (Object.keys(unavailable).length) report.unavailable = unavailable
   await send('Performance.enable').catch(() => undefined)
-  report.metrics = foldMetrics(await send('Performance.getMetrics'))
+  report.metrics = foldMetrics(await withDeadline(send('Performance.getMetrics').catch(() => null), timeoutMs))
   return report
 }

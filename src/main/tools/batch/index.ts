@@ -1,5 +1,6 @@
 import { allSettledBounded } from '../../bounded-concurrency.js'
 import { normalizeBatchMaxCalls } from '../../batch-config.js'
+import { compensationFor, releases, type Compensation } from './compensation.js'
 import type { ToolRegistry } from '../registry.js'
 import { resourceKey } from '../resource-locks.js'
 import {
@@ -61,7 +62,10 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
           'Each entry names a tool as `namespace.tool` and carries the exact arguments a direct call would use; ' +
           'each call reports its own ok/failed status and results are returned in call order, numbered `[1]`, `[2]`, … ' +
           'By default the calls run in order and a failure skips the rest, so a dependent sequence ' +
-          '(navigate, then wait_for, then read_page) is safe to batch. Set `parallel` to true for ' +
+          '(navigate, then wait_for, then read_page) is safe to batch. A sequential batch also unwinds ' +
+          'itself: when a step fails, invisible browser state armed by earlier steps — profiling ' +
+          'recorders, a pre-document hook, device emulation — is released again and the release is ' +
+          'reported, so a broken plan does not leave a tab instrumented. Set `parallel` to true for ' +
           'independent work; explicit browser targets run in parallel while same-target work serializes. ' +
           'Batches cannot nest, and only ClosedAI tools are routable: the tools your own harness gives you ' +
           '(file read/search/edit, shell, web fetch) must be called directly, outside a batch. ' +
@@ -114,10 +118,9 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
           const parallel = booleanArg(input, 'parallel', false)
           const policyProblem = validateRealInputBatch(parsed, parallel)
           if (policyProblem) return usageResult(`tool_batch.run: ${policyProblem}`)
-          const outcomes = parallel
-            ? await runParallel(registry(), parsed, context)
-            : await runSequential(registry(), parsed, context)
-          return assembleResult(parsed, outcomes)
+          if (parallel) return assembleResult(parsed, await runParallel(registry(), parsed, context), [])
+          const { outcomes, unwound } = await runSequential(registry(), parsed, context)
+          return assembleResult(parsed, outcomes, unwound)
         }
       })
     ]
@@ -234,9 +237,18 @@ function dispatch(registry: ToolRegistry, call: BatchCall, context: ToolContext)
  * In-order execution treats the batch as one plan: a failed step invalidates the steps
  * behind it (they usually depend on it), so they are reported as skipped rather than run
  * against a state the model did not intend.
+ *
+ * The same reasoning applies to what already ran. A step that armed invisible browser state
+ * belongs to the plan that just failed, so it is released again before the batch returns rather
+ * than left running on a tab the caller has stopped reasoning about.
  */
-async function runSequential(registry: ToolRegistry, calls: BatchCall[], context: ToolContext): Promise<BatchOutcome[]> {
+async function runSequential(
+  registry: ToolRegistry,
+  calls: BatchCall[],
+  context: ToolContext
+): Promise<{ outcomes: BatchOutcome[]; unwound: UnwindRecord[] }> {
   const outcomes: BatchOutcome[] = []
+  const armed: Compensation[] = []
   let skipReason: string | null = null
   for (const call of calls) {
     if (!skipReason && context.signal.aborted) skipReason = 'the batch timed out'
@@ -246,9 +258,53 @@ async function runSequential(registry: ToolRegistry, calls: BatchCall[], context
     }
     const result = await dispatch(registry, call, context)
     outcomes.push({ status: 'ran', result })
-    if (result.isError) skipReason = `call [${call.index}] failed and the batch is sequential`
+    if (result.isError) {
+      skipReason = `call [${call.index}] failed and the batch is sequential`
+      continue
+    }
+    // A successful release settles what the plan armed; nothing is left to compensate.
+    for (let index = armed.length - 1; index >= 0; index -= 1) {
+      if (releases(call, armed[index]!)) armed.splice(index, 1)
+    }
+    const compensation = compensationFor(call)
+    if (compensation) armed.push(compensation)
   }
-  return outcomes
+  return { outcomes, unwound: skipReason ? await unwind(registry, armed, context) : [] }
+}
+
+export type UnwindRecord = { label: string; ok: boolean; detail?: string }
+
+/**
+ * Release in reverse order, and deliberately without the batch's abort signal: a batch that ran
+ * out of time is exactly when armed state must still be cleaned up.
+ */
+async function unwind(
+  registry: ToolRegistry,
+  armed: Compensation[],
+  context: ToolContext
+): Promise<UnwindRecord[]> {
+  const records: UnwindRecord[] = []
+  for (const compensation of [...armed].reverse()) {
+    try {
+      const result = await registry.call(compensation.call, {
+        paneId: context.paneId,
+        threadId: context.threadId,
+        turnId: context.turnId,
+        callId: `${context.callId}#unwind${records.length + 1}`,
+        parentCallId: context.callId,
+        batchId: context.callId,
+        source: 'batch'
+      })
+      records.push({ label: compensation.label, ok: !result.isError })
+    } catch (error) {
+      records.push({
+        label: compensation.label,
+        ok: false,
+        detail: error instanceof Error ? error.message : String(error)
+      })
+    }
+  }
+  return records
 }
 
 async function runParallel(registry: ToolRegistry, calls: BatchCall[], context: ToolContext): Promise<BatchOutcome[]> {
@@ -318,7 +374,7 @@ function batchResourceKey(call: BatchCall): string | null {
 }
 
 /** Separate call blocks let the registry's aggregate budget preserve short failures and ids. */
-function assembleResult(calls: BatchCall[], outcomes: BatchOutcome[]): ToolResult {
+function assembleResult(calls: BatchCall[], outcomes: BatchOutcome[], unwound: UnwindRecord[]): ToolResult {
   const sections: string[] = []
   const images: ToolContent[] = []
   let succeeded = 0
@@ -345,6 +401,12 @@ function assembleResult(calls: BatchCall[], outcomes: BatchOutcome[]): ToolResul
     sections.push(`[${call.index}] ${call.label} — ${result.isError ? 'failed' : 'ok'}${body}`)
   })
   const summary = `${succeeded} of ${calls.length} calls succeeded${skipped ? ` (${skipped} skipped)` : ''}.`
+  if (unwound.length) {
+    const released = unwound
+      .map((record) => `${record.label} — ${record.ok ? 'released' : `still armed: ${record.detail ?? 'the release failed'}`}`)
+      .join('; ')
+    sections.push(`Unwound after the failure: ${released}.`)
+  }
   return {
     content: [
       { type: 'text', text: summary },
