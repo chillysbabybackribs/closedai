@@ -1,25 +1,30 @@
-import type { ChatProvider, ChatThreadSummary } from '../../shared/chat.js'
-import type { ChatPeerSummary } from '../../shared/chat-peers.js'
+import type { ChatProvider } from '../../shared/chat.js'
+import type { ChatRowSummary } from '../../shared/chat-peers.js'
 
 export type DrawerRowStatus = 'running' | 'queued' | 'done' | 'failed' | 'stopped' | 'chat'
 
+/**
+ * One drawer row per chat record. The id is the chat's stable store id — also its pane id while
+ * attached — so a row keeps its identity, and its completion mark, across detaching, relaunch, and
+ * every move between sections.
+ */
 export type DrawerRowModel = {
   id: string
   threadId: string | null
+  /** Set (equal to `id`) while the chat has a pane; absent for a detached record. */
   paneId?: string
   title: string
   cwd: string | null
+  createdAt: number
   updatedAt: number
   messageCount: number
   linesAdded: number
   linesRemoved: number
   running: boolean
   status: DrawerRowStatus
-  /** Drives the provider mark. A pane row reports its live provider; a history record derives one
-   *  from its thread id, so every row names its provider whether or not a pane is behind it. */
-  provider?: ChatProvider
-  peer?: ChatPeerSummary
-  thread?: ChatThreadSummary
+  /** Drives the provider mark; every record names its provider, attached or not. */
+  provider: ChatProvider
+  chat: ChatRowSummary
   children: DrawerRowModel[]
 }
 
@@ -28,12 +33,12 @@ export type DrawerRowModel = {
  * expiry, never merely because selection changed.
  */
 export type DrawerSections = {
-  /** Running panes, plus parents needed to expose running descendants. */
+  /** Running chats, newest created first, plus parents needed to expose running descendants. */
   current: DrawerRowModel[]
-  /** Panes whose turn has finished, newest completion first. They return to Current only when a
+  /** Chats whose turn has finished, newest completion first. They return to Current only when a
    *  message is sent in them, so opening one to read it leaves it where it is. */
   reviewQueue: DrawerRowModel[]
-  /** Idle pane rows and thread records with no pane behind them. */
+  /** Every other chat of the workspace, attached or not, newest activity first. */
   history: DrawerRowModel[]
 }
 
