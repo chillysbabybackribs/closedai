@@ -295,7 +295,10 @@ export const search: ToolAction = {
 
 Descriptions are for the model: say what it does, when to use it over its siblings, and what
 comes back. Return `failureResult(...)` for expected failures so the model can recover; throw
-for bugs and the registry reports them.
+for bugs and the registry reports them. Use `usageResult(...)` when the call itself was wrong —
+a name, argument, or rule the model got wrong — and make that message name the valid options
+rather than only the mistake, because the failure text is the only correction the model gets.
+Those calls are counted as misuse, so a description that keeps failing this way is visible.
 
 ## How the model sees it
 
@@ -449,6 +452,13 @@ old `tool-telemetry.jsonl`, writes the aggregate JSON file with mode `0600`, and
 text-bearing log. The Tools modal shows the on/off switch, run count, and error count for each
 switchable capability and updates those counters live. "Clear counts" resets every aggregate.
 Failures from unknown, disabled, and invalid calls are counted too.
+
+Misuse is counted separately as a subset of failures: calls the app refused before the tool ran —
+an unknown name, a switched-off tool, invalid arguments, a wrong action verb, or a documented rule
+a tool enforces itself with `usageResult(...)`. The Tools modal shows a misuse count on a card only
+once that tool has one. Treat a rising misuse count as a defect in that tool's directions, not as
+noise: it names the description models keep misreading, which is the loop that keeps this honest
+instead of relying on anyone noticing a bad call.
 
 Timeouts are counted separately from genuine failures. This includes registry execution limits
 and a `wait_for` condition that was not reached, so exploratory waits no longer inflate the error
