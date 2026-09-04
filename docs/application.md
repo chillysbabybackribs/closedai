@@ -27,10 +27,16 @@ until the pane leaves that conversation (a new chat, a thread opened from histor
 clearing itself); they are in memory only and a relaunch shows just the new provider's thread. The
 chat the destination left stays in history. Opening another provider's thread from history is the
 other direction and shows that thread. History merges the providers' workspace catalogs.
-Changing models or providers is refused while that pane has an active turn. A switch repaints the
-pane on the new provider at once — picked model, connection state “Starting…”, the transcript it
-had — and starts the provider's process behind that; sends and further switches made meanwhile wait
-for the hand-over, and a switch whose provider fails to come up puts the pane back.
+Changing models or providers is refused while that pane has an active turn. Picking a model is a
+UI act and starts no process: the pick is written to the chat record, the pane repaints at once on
+the new provider — ready, on that model, with the transcript it had — and the provider is
+*dormant* until the first message needs it, when the hub starts it and hands the pick over. A pick
+made while the provider is still coming up (at launch, say) is kept the same way. Only a provider
+the workspace has never listed (nothing cached to validate the pick against) starts on the switch;
+sends and further switches made meanwhile wait for that hand-over, and a switch whose provider
+fails to come up puts the pane back. The composer is usable while a provider is “Starting…”: the
+picker lists the cached catalog and a send waits for the provider itself. Waking a pane never
+reconnects a provider that is already ready.
 
 The project menu below the composer offers a directory picker, recent projects, and “Don’t work
 in a project” (uses the home directory). A project switch is refused while any pane has an active

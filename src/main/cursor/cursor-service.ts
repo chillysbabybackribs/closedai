@@ -164,6 +164,8 @@ export class CursorChatService extends EventEmitter {
     const preference = this.modelState.preferenceForModel(modelId)
     await this.settings.set({ chatModelId: modelId, chatReasoningEffort: preference.effort })
     this.modelState.apply(preference)
+    // The pick shows first; the round trip to the live session follows it.
+    this.emitEvent({ type: 'model', selectedModel: modelId, selectedReasoningEffort: preference.effort })
     const acpModelId = cursorAcpModelId(modelId)
     // ACP changes the model on the live session, so an open chat keeps its history.
     if (acpModelId) {
@@ -171,7 +173,6 @@ export class CursorChatService extends EventEmitter {
         this.addNotice(`Cursor did not accept that model: ${messageOf(error)}`, 'error')
       })
     }
-    this.emitEvent({ type: 'model', selectedModel: modelId, selectedReasoningEffort: preference.effort })
   }
 
   /**
