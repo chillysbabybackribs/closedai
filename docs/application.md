@@ -391,9 +391,12 @@ See [Tools](tools.md) for configuration and measurement limits.
 ## Credential vault
 
 `File ▸ Credential Vault` opens the app's store of API keys and logins. The fixed-size card keeps
-the vault list and create form at the same dimensions. The list shows one row per entry with its
-brand mark, the fields it holds, and masked secrets; reveal and copy each ask the main process for
-that single field, so the renderer never holds more plaintext than the user asked to see.
+the vault list and create form at the same dimensions. Entries render as a card grid — brand mark
+on a 44px tile, entry name and service tag, the service description, its fields with masked
+secrets, and a state dot showing whether the OS keychain encrypted them — closing on a dashed
+`Create new` tile. An entry the catalog has no brand mark for wears the icon of the site its URL
+field points at. Reveal and copy each ask the main process for that single field, so the renderer
+never holds more plaintext than the user asked to see.
 `Create credential` replaces the list in place with one editor. Pasting a service URL selects the
 service that claims that host, names the entry after it, and fills any URL field it has; a host no
 catalog service claims becomes a Custom entry named after the domain, wearing that site's own icon
