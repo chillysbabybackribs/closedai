@@ -21,7 +21,7 @@ const peer: ChatPeerSummary = {
 
 const directory: PeerChatDirectory = {
   listReadable: (caller) => caller === 'peer-b' ? [] : [peer],
-  readReadable: (chatId, caller, options) => {
+  readReadable: async (chatId, caller, options) => {
     if (chatId !== peer.paneId || caller === peer.paneId) return null
     lastOptions = options
     const all = [
@@ -31,7 +31,7 @@ const directory: PeerChatDirectory = {
     const items = options.order === 'oldest'
       ? all.slice(options.cursor, options.cursor + options.limit)
       : all.slice(Math.max(0, all.length - options.cursor - options.limit), all.length - options.cursor)
-    return { ...peer, items, totalItems: all.length, nextCursor: options.cursor + items.length < 2 ? options.cursor + items.length : null }
+    return { ...peer, items, totalItems: all.length, itemSource: 'live', nextCursor: options.cursor + items.length < 2 ? options.cursor + items.length : null }
   }
 }
 

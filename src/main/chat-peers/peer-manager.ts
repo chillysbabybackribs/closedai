@@ -470,18 +470,32 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     ])
   }
 
-  readReadable(chatId: string, callerPaneId: string | null, options: PeerChatReadOptions): PeerChatReadResult | null {
+  async readReadable(chatId: string, callerPaneId: string | null, options: PeerChatReadOptions): Promise<PeerChatReadResult | null> {
     const direct = this.peerSummaries().find((peer) => peer.paneId === chatId && peer.paneId !== callerPaneId)
-    if (direct) return pageResult(direct, this.lifecycle.require(chatId).surface.snapshot().items, options)
+    if (direct) {
+      const { snapshot, source } = await this.readableView(chatId)
+      return pageResult(direct, snapshot.items, options, source)
+    }
     for (const peer of this.peerSummaries()) {
-      const snapshot = this.lifecycle.require(peer.paneId).surface.snapshot()
+      const { snapshot, source } = await this.readableView(peer.paneId)
       const subagent = subagentSummaries(peer, snapshot).find((entry) => entry.paneId === chatId)
       if (subagent) {
         const itemId = chatId.slice(peer.paneId.length + 1)
-        return pageResult(subagent, snapshot.items.filter((item) => item.id === itemId), options)
+        return pageResult(subagent, snapshot.items.filter((item) => item.id === itemId), options, source)
       }
     }
     return null
+  }
+
+  /** A parked pane has no live transcript, so a peer read a real conversation as empty. The saved
+   *  view that pane paints from stands in, marked `saved` rather than passed off as a full replay:
+   *  it holds the newest items, and the conversation reaches further back than they do. */
+  private async readableView(paneId: string): Promise<{ snapshot: ChatSnapshot; source: 'live' | 'saved' }> {
+    const live = this.lifecycle.require(paneId).surface.snapshot()
+    if (live.items.length > 0) return { snapshot: live, source: 'live' }
+    await this.transcripts.load(paneId)
+    const filled = cachedPaneView(live, this.store.get(paneId), this.transcripts.peek(paneId))
+    return { snapshot: filled, source: filled === live ? 'live' : 'saved' }
   }
 
   /**

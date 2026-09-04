@@ -7,8 +7,10 @@ import { writeAtomic } from '../atomic-write.js'
 // up. A transcript belongs to the provider that owns the thread, and reaching it costs a process
 // start and a full replay — seconds for the CLI providers — during which the pane had nothing to
 // show but the empty "new chat" layout, no model on the composer, and no context reading. This
-// cache is display-only: the provider's replay replaces it the moment it lands, nothing is ever
-// sent to a model from here, and a missing or unreadable entry only costs the old blank wait.
+// cache is never authoritative: the provider's replay replaces it the moment it lands, and a
+// missing or unreadable entry only costs the old blank wait. A peer reading a parked chat is
+// served from here too, marked `saved` (2026-09-04: the alternative was reporting a real
+// conversation as empty), so it is the app's own record of a chat, not model-supplied content.
 
 /** How much of the tail is kept: enough to fill the first screen, not the whole conversation. */
 export const CACHED_TRANSCRIPT_ITEMS = 60

@@ -13,7 +13,7 @@ export type PeerChatDirectory = {
     chatId: string,
     callerPaneId: string | null,
     options: PeerChatReadOptions
-  ): PeerChatReadResult | null
+  ): Promise<PeerChatReadResult | null>
 }
 
 export function peerChatTools(getDirectory: () => PeerChatDirectory | null): ToolNamespace {
@@ -33,7 +33,7 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
       }),
       defineTool({
         name: 'read',
-        description: 'Read a page of transcript and live status from one peer or subagent chat returned by peer_chats.list. Defaults to the newest end — what that chat is doing now or just concluded — inside a serialized character budget, clipping long tool output rather than returning a transcript the serializer has to cut blind. `cursor` pages further back from there (use the returned nextCursor), `order: "oldest"` follows a chat forward from its first message instead, and `types` narrows to the item kinds you need (["user","assistant"] drops tool traffic). `totalItems` is how many readable items match the filter.',
+        description: 'Read a page of transcript and live status from one peer or subagent chat returned by peer_chats.list. Defaults to the newest end — what that chat is doing now or just concluded — inside a serialized character budget, clipping long tool output rather than returning a transcript the serializer has to cut blind. `cursor` pages further back from there (use the returned nextCursor), `order: "oldest"` follows a chat forward from its first message instead, and `types` narrows to the item kinds you need (["user","assistant"] drops tool traffic). `totalItems` is how many readable items match the filter, and `itemSource: "saved"` means the chat is parked, so its newest items come from the app’s saved tail and the conversation reaches further back than the page shows.',
         inputSchema: {
           type: 'object',
           additionalProperties: false,
@@ -51,7 +51,7 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
           const directory = getDirectory()
           if (!directory) return failureResult('Peer chats are not available')
           const chatId = stringArg(input, 'chat_id')!
-          const result = directory.readReadable(chatId, context.paneId ?? null, {
+          const result = await directory.readReadable(chatId, context.paneId ?? null, {
             cursor: numberArg(input, 'cursor', 0),
             limit: numberArg(input, 'limit', 30),
             order: stringArg(input, 'order', 'newest') === 'oldest' ? 'oldest' : 'newest',
