@@ -10,7 +10,7 @@ import { createToolRegistry } from '../tools/index.js'
 import { searchTools } from '../tools/search/index.js'
 import { WORKSPACE_INDEX_ROOT } from '../tools/workspace/workspace-index.generated.js'
 import { workspaceTools } from '../tools/workspace/index.js'
-import { zodShapeFromJsonSchema } from './claude-schema.js'
+import { zodShapeFromJsonSchema } from './json-schema-zod.js'
 
 test('a typical action-tool schema imports exactly with descriptions, enums, and bounds', () => {
   const { shape, exact } = zodShapeFromJsonSchema({

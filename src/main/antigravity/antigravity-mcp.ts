@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { readFile, writeFile } from 'node:fs/promises'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import { zodShapeFromJsonSchema } from '../claude/claude-schema.js'
+import { zodShapeFromJsonSchema } from '../tools/json-schema-zod.js'
 import { claudeToolResult } from '../claude/claude-tools.js'
 import type { ToolRegistry } from '../tools/registry.js'
 import { ANTIGRAVITY_MCP_CONFIG_PATH, runAntigravityCommand } from './antigravity-cli.js'

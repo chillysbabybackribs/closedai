@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import { zodShapeFromJsonSchema } from '../claude/claude-schema.js'
-import { claudeToolResult } from './mcp-tool-result.js'
+import { zodShapeFromJsonSchema } from './json-schema-zod.js'
+import { mcpToolResult } from './mcp-tool-result.js'
 import type { ToolRegistry } from './registry.js'
 
 // Serving the ToolRegistry over MCP to a provider that runs in its own process. Two do: the
@@ -180,7 +180,7 @@ export class McpHttpBridge {
             { paneId: context.paneId, threadId: context.threadId, turnId: context.turnId, callId }
           )
           if (key) this.recordCall(key, { namespace: namespaceName, tool: tool.name, callId })
-          return claudeToolResult(result)
+          return mcpToolResult(result)
         }
       )
     }

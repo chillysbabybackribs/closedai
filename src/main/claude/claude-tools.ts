@@ -1,8 +1,8 @@
 import type { McpSdkServerConfigWithInstance } from '@anthropic-ai/claude-agent-sdk'
+import { mcpToolResult, type McpToolContent, type McpToolResult } from '../tools/mcp-tool-result.js'
 import type { ToolRegistry } from '../tools/registry.js'
-import type { ToolResult } from '../tools/tool.js'
 import type { ClaudeSdk } from './claude-sdk.js'
-import { zodShapeFromJsonSchema } from './claude-schema.js'
+import { zodShapeFromJsonSchema } from '../tools/json-schema-zod.js'
 
 // Adapter between the ToolRegistry and the Claude Agent SDK: every enabled namespace becomes
 // one in-process MCP server named after it, so the model sees `mcp__embedded_browser__page`
@@ -14,12 +14,12 @@ import { zodShapeFromJsonSchema } from './claude-schema.js'
 
 export type ClaudeToolContext = () => { paneId?: string | null; threadId: string | null; turnId: string | null }
 
-/** MCP content blocks the SDK accepts back from a tool handler. */
-export type ClaudeToolContent =
-  | { type: 'text'; text: string }
-  | { type: 'image'; data: string; mimeType: string }
+/** MCP content blocks the SDK accepts back from a tool handler; the shape is MCP's, not the SDK's. */
+export type ClaudeToolContent = McpToolContent
+export type ClaudeToolResult = McpToolResult
 
-export type ClaudeToolResult = { content: ClaudeToolContent[]; isError?: boolean }
+/** The shared serializer under the name this lane's call sites and tests already use. */
+export const claudeToolResult = mcpToolResult
 
 type ToolFactory = Pick<ClaudeSdk, 'tool' | 'createSdkMcpServer'>
 
@@ -40,7 +40,7 @@ export function claudeMcpServers(
           { namespace: namespace.name, tool: tool.name, arguments: args },
           { paneId, threadId, turnId, callId: toolUseIdOf(extra) ?? crypto.randomUUID() }
         )
-        return claudeToolResult(result)
+        return mcpToolResult(result)
       },
       { alwaysLoad: !tool.deferLoading }
     ))
@@ -59,19 +59,4 @@ export function toolUseIdOf(extra: unknown): string | null {
   const meta = extra !== null && typeof extra === 'object' ? (extra as { _meta?: unknown })._meta : null
   const id = meta !== null && typeof meta === 'object' ? (meta as Record<string, unknown>)['claudecode/toolUseId'] : null
   return typeof id === 'string' && id ? id : null
-}
-
-/** A registry result in the MCP content vocabulary; data URLs become image blocks. */
-export function claudeToolResult(result: ToolResult): ClaudeToolResult {
-  const content = result.content.flatMap((item): ClaudeToolContent[] => {
-    if (item.type === 'text') return [{ type: 'text', text: item.text }]
-    const image = imageBlock(item.dataUrl)
-    return image ? [image] : [{ type: 'text', text: '[image could not be encoded]' }]
-  })
-  return { content, ...(result.isError ? { isError: true } : {}) }
-}
-
-function imageBlock(dataUrl: string): ClaudeToolContent | null {
-  const match = /^data:([^;,]+);base64,(.+)$/s.exec(dataUrl)
-  return match ? { type: 'image', data: match[2]!, mimeType: match[1]! } : null
 }
