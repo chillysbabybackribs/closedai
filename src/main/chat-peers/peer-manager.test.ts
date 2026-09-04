@@ -163,7 +163,7 @@ test('selection and interruption target one pane without stopping its peer', asy
   assert.equal(surfaces[1]!.calls.includes('interrupt'), false)
 })
 
-test('peer awareness exposes child subagent activity without duplicating the caller', () => {
+test('peer awareness exposes child subagent activity without duplicating the caller', async () => {
   const { manager, surfaces } = harness()
   surfaces[0]!.state.items = [{
     type: 'tool',
@@ -178,7 +178,7 @@ test('peer awareness exposes child subagent activity without duplicating the cal
   assert.equal(visible[0]!.kind, 'subagent')
   assert.equal(visible[0]!.parentPaneId, 'pane-a')
   assert.equal(visible[0]!.running, true)
-  const read = manager.readReadable(visible[0]!.paneId, 'pane-a', { cursor: 0, limit: 30, order: 'newest', maxChars: PEER_READ_DEFAULT_CHARS })
+  const read = await manager.readReadable(visible[0]!.paneId, 'pane-a', { cursor: 0, limit: 30, order: 'newest', maxChars: PEER_READ_DEFAULT_CHARS })
   assert.equal(read?.items[0]?.id, 'sub-1')
 })
 

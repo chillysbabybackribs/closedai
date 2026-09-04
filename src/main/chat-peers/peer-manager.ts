@@ -22,7 +22,7 @@ import type { ChatStore } from '../chat-store/chat-store.js'
 import { CACHED_TRANSCRIPT_ITEMS, ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
 import { traceLog } from '../trace/trace-log.js'
 import { PeerChatCatalog } from './peer-chat-catalog.js'
-import { cachedPaneView, PeerEmitThrottle, rendererSnapshot, rowSummary } from './peer-events.js'
+import { cachedPaneView, PeerEmitThrottle, readableView, rendererSnapshot, rowSummary } from './peer-events.js'
 import { PeerIdleParking } from './peer-idle-parking.js'
 import { PeerLifecycle, type ChatPeerFactory, type PeerEntry } from './peer-lifecycle.js'
 import { selectedMirror } from './peer-settings.js'
@@ -473,11 +473,11 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   async readReadable(chatId: string, callerPaneId: string | null, options: PeerChatReadOptions): Promise<PeerChatReadResult | null> {
     const direct = this.peerSummaries().find((peer) => peer.paneId === chatId && peer.paneId !== callerPaneId)
     if (direct) {
-      const { snapshot, source } = await this.readableView(chatId)
+      const { snapshot, source } = await this.peerView(chatId)
       return pageResult(direct, snapshot.items, options, source)
     }
     for (const peer of this.peerSummaries()) {
-      const { snapshot, source } = await this.readableView(peer.paneId)
+      const { snapshot, source } = await this.peerView(peer.paneId)
       const subagent = subagentSummaries(peer, snapshot).find((entry) => entry.paneId === chatId)
       if (subagent) {
         const itemId = chatId.slice(peer.paneId.length + 1)
@@ -487,15 +487,11 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     return null
   }
 
-  /** A parked pane has no live transcript, so a peer read a real conversation as empty. The saved
-   *  view that pane paints from stands in, marked `saved` rather than passed off as a full replay:
-   *  it holds the newest items, and the conversation reaches further back than they do. */
-  private async readableView(paneId: string): Promise<{ snapshot: ChatSnapshot; source: 'live' | 'saved' }> {
+  /** The transcript a peer may read, loading the saved view a parked pane would need first. */
+  private async peerView(paneId: string): Promise<ReturnType<typeof readableView>> {
     const live = this.lifecycle.require(paneId).surface.snapshot()
-    if (live.items.length > 0) return { snapshot: live, source: 'live' }
-    await this.transcripts.load(paneId)
-    const filled = cachedPaneView(live, this.store.get(paneId), this.transcripts.peek(paneId))
-    return { snapshot: filled, source: filled === live ? 'live' : 'saved' }
+    if (live.items.length === 0) await this.transcripts.load(paneId)
+    return readableView(live, this.store.get(paneId), this.transcripts.peek(paneId))
   }
 
   /**

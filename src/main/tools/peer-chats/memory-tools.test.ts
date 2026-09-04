@@ -11,7 +11,7 @@ const context = { paneId: 'p', threadId: 'thread', turnId: 't', callId: 'call' }
 function harness() {
   const calls: unknown[] = []
   const registry = new ToolRegistry([peerChatTools(() => ({
-    listReadable: () => [], readReadable: () => null,
+    listReadable: () => [], readReadable: async () => null,
     memory: {
       recall: async (caller, request) => {
         calls.push({ caller, request })

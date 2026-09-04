@@ -109,6 +109,22 @@ export function cachedPaneView(
   }
 }
 
+/**
+ * What a peer reading this pane may see, and where it came from. A parked pane's snapshot is empty,
+ * so a peer read a real conversation as empty (found 2026-09-04, after a restart left every pane
+ * parked). The saved view the pane itself paints from stands in, reported as `saved` rather than
+ * passed off as a full replay: it holds the newest items, and the chat reaches further back.
+ */
+export function readableView(
+  live: ChatSnapshot,
+  record: ChatRecord | undefined,
+  cached: CachedChatView | null
+): { snapshot: ChatSnapshot; source: 'live' | 'saved' } {
+  if (live.items.length > 0) return { snapshot: live, source: 'live' }
+  const filled = cachedPaneView(live, record, cached)
+  return { snapshot: filled, source: filled === live ? 'live' : 'saved' }
+}
+
 /** The renderer receives a bounded tail of the transcript plus what the earlier part held. */
 export function rendererSnapshot(snapshot: ChatSnapshot, title: string): ChatSnapshot {
   const start = Math.max(0, snapshot.items.length - CHAT_HISTORY_PAGE_SIZE)
