@@ -29,6 +29,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
         'research for content-rich investigation; answer for a cited synthesis; finance for market/business research; ' +
         'technical for documentation and implementation details. depth=quick uses one optimal provider, balanced uses two ' +
         'complementary indexes, and deep uses three. Omit providers to use this routing; set providers only to override it. ' +
+        'Set live=true when current results matter; it bypasses the ten-minute cache and refreshes it. ' +
         'Results are normalized, interleaved, deduplicated, and marked when another provider corroborates the same URL. ' +
         'The result is JSON text; JSON.parse the returned string in exec scripts.',
       timeoutMs: 45_000,
@@ -38,6 +39,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
           query: { type: 'string', minLength: 1, maxLength: 1_000, description: 'Search query or question.' },
           intent: { type: 'string', enum: [...SEARCH_INTENTS], description: 'Evidence shape used to select providers.' },
           depth: { type: 'string', enum: [...SEARCH_DEPTHS], description: 'quick=1 provider, balanced=2, deep=3. Default balanced.' },
+          live: { type: 'boolean', description: 'Bypass the ten-minute cache and refresh it with current provider results.' },
           providers: { type: 'array', items: { type: 'string', enum: [...SEARCH_PROVIDERS] }, description: 'Optional explicit provider override.' },
           count: { type: 'integer', minimum: 1, maximum: 20, description: 'Maximum results per provider; default 5.' },
           freshness: { type: 'string', enum: ['day', 'week', 'month', 'year'], description: 'Optional recency filter.' },
@@ -55,6 +57,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
           intent: stringArg(input, 'intent') as SearchIntent,
           depth: stringArg(input, 'depth', 'balanced') as SearchDepth,
           count: numberArg(input, 'count', 5),
+          ...(input.live === true ? { live: true } : {}),
           ...optionalString(input, 'freshness'),
           ...optionalString(input, 'country'),
           ...optionalString(input, 'language'),

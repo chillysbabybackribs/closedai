@@ -47,9 +47,12 @@ export class SearchRouter {
 
   async search(request: SearchRequest, signal: AbortSignal): Promise<SearchResponse> {
     const providers = selectProviders(request)
-    const cacheKey = JSON.stringify({ ...request, providers })
-    const cached = this.cache.get(cacheKey)
-    if (cached && this.now() - cached.at < CACHE_TTL_MS) return { ...cached.response, cached: true }
+    const { live: _live, ...cacheableRequest } = request
+    const cacheKey = JSON.stringify({ ...cacheableRequest, providers })
+    if (!request.live) {
+      const cached = this.cache.get(cacheKey)
+      if (cached && this.now() - cached.at < CACHE_TTL_MS) return { ...cached.response, cached: true }
+    }
 
     const settled = await Promise.allSettled(providers.map(async (provider) => {
       const client = this.clients.get(provider)

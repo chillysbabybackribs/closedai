@@ -12,6 +12,7 @@ export type SearchRequest = {
   intent: SearchIntent
   depth: SearchDepth
   count: number
+  live?: boolean
   providers?: SearchProvider[]
   freshness?: 'day' | 'week' | 'month' | 'year'
   country?: string
