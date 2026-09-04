@@ -192,7 +192,12 @@ async function main(): Promise<void> {
   const workspaceNamespace = workspaceTools(chatWorkspace)
   const research = await createResearchRuntime({
     root: join(userData(), 'research-runs'), browser: () => browserService,
-    peers: () => chatService, workspace: () => chatWorkspace
+    peers: () => process.env.CLOSEDAI_LIVE_VERIFY?.trim()
+      ? ({
+          paneSnapshot: () => ({ threadId: 'live-verify-thread', activeTurnId: 'live-verify-turn' })
+        } as unknown as ChatPeerManager)
+      : chatService,
+    workspace: () => chatWorkspace
   })
   researchService = research.service
   toolRegistry = createToolRegistry([
@@ -273,6 +278,20 @@ async function main(): Promise<void> {
   createWindow()
   void chatService.start()
   void pruneOversizedBrowserCacheOnce(userData()).catch(() => {})
+  const liveVerify = process.env.CLOSEDAI_LIVE_VERIFY?.trim()
+  if (liveVerify && toolRegistry && researchService) {
+    void import('./live-verify/search-pipeline.js')
+      .then(({ runLiveVerify }) => runLiveVerify(liveVerify, toolRegistry!, researchService!))
+      .then((result) => {
+        console.log(`[live-verify:${liveVerify}]`, JSON.stringify(result))
+        app.quit()
+      })
+      .catch((error: unknown) => {
+        console.error(`[live-verify:${liveVerify}]`, error)
+        process.exitCode = 1
+        app.quit()
+      })
+  }
 }
 
 /** Null for Electron's default userData; a short stable hash for any other profile. */
