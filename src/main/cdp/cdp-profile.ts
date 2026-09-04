@@ -440,7 +440,7 @@ export async function stopProfiling(
     else lost('heap', 'HeapProfiler.stopSampling', HEAP_LOST_ISOLATE)
   }
   if (Object.keys(unavailable).length) report.unavailable = unavailable
-  await send('Performance.enable').catch(() => undefined)
-  report.metrics = foldMetrics(await withDeadline(send('Performance.getMetrics').catch(() => null), timeoutMs))
+  await ask('Performance.enable')
+  report.metrics = foldMetrics(await ask('Performance.getMetrics'))
   return report
 }
