@@ -155,14 +155,17 @@ export async function applyEmulation(
       maxTouchPoints: preset.mobile ? 5 : 1
     })
     applied.push(`viewport ${preset.width}x${preset.height}@${preset.deviceScaleFactor}x${preset.mobile ? ' mobile' : ''}`)
-    if (preset.userAgent) {
-      await send('Emulation.setUserAgentOverride', { userAgent: preset.userAgent })
-      applied.push('userAgent')
-    }
   }
-  if (request.userAgent && !preset?.userAgent) {
-    await send('Emulation.setUserAgentOverride', { userAgent: request.userAgent })
-    applied.push('userAgent')
+  // `setLocaleOverride` moves Intl but not `navigator.language`, which follows the user agent
+  // override's acceptLanguage. The two therefore travel in one command, and a locale asked for on
+  // its own keeps whatever user agent is currently effective rather than reverting the override.
+  const userAgent = request.userAgent ?? preset?.userAgent
+  if (userAgent || request.locale) {
+    await send('Emulation.setUserAgentOverride', {
+      userAgent: userAgent ?? await currentUserAgent(send),
+      ...(request.locale ? { acceptLanguage: request.locale } : {})
+    })
+    if (userAgent) applied.push('userAgent')
   }
   if (request.colorScheme || request.reducedMotion !== undefined) {
     const features: { name: string; value: string }[] = []
@@ -230,6 +233,12 @@ export async function resetEmulation(target: DeviceEmulationTarget, send: Emulat
     offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1
   })
   return { applied: cleared, page: await verify(send) }
+}
+
+/** The user agent the page reports now, which includes an override an earlier call installed. */
+async function currentUserAgent(send: EmulateSend): Promise<string> {
+  const evaluated = await send('Runtime.evaluate', { expression: 'navigator.userAgent', returnByValue: true })
+  return String((evaluated as { result?: { value?: unknown } } | null)?.result?.value ?? '')
 }
 
 async function verify(send: EmulateSend): Promise<Record<string, unknown>> {

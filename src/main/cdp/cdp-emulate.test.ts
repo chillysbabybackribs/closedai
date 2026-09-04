@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   applyEmulation,
+  DEVICE_PRESETS,
   emulationParameters,
   resetEmulation,
   resolvePreset,
@@ -22,11 +23,12 @@ function fakeTarget() {
   }
 }
 
-function recorder(page: Record<string, unknown> = {}) {
+function recorder(page: Record<string, unknown> = {}, userAgent = 'UA') {
   const sent: { method: string; params: Record<string, unknown> }[] = []
   const send = async (method: string, params: Record<string, unknown> = {}) => {
     sent.push({ method, params })
-    return method === 'Runtime.evaluate' ? { result: { value: page } } : {}
+    if (method !== 'Runtime.evaluate') return {}
+    return { result: { value: params.expression === 'navigator.userAgent' ? userAgent : page } }
   }
   return { sent, send }
 }
@@ -83,8 +85,26 @@ test('apply drives the embedder for size, CDP for the rest, and reports the page
     sent.find((call) => call.method === 'Network.emulateNetworkConditions')?.params,
     { offline: false, latency: 400, downloadThroughput: 50_000, uploadThroughput: 50_000 }
   )
+  // navigator.language follows acceptLanguage, so the locale rides on the user agent override.
+  assert.deepEqual(sent.find((call) => call.method === 'Emulation.setUserAgentOverride')?.params, {
+    userAgent: DEVICE_PRESETS['iphone-15'].userAgent,
+    acceptLanguage: 'ja-JP'
+  })
   assert.deepEqual(outcome.page, { innerWidth: 393, timeZone: 'Asia/Tokyo' })
   assert.ok(outcome.applied.some((entry) => entry.startsWith('viewport 393x852')))
+})
+
+test('a locale on its own carries acceptLanguage without dropping the effective user agent', async () => {
+  const { sent, send } = recorder({ language: 'ja-JP' }, 'UA-in-effect')
+  const outcome = await applyEmulation(fakeTarget(), send, { locale: 'ja-JP' })
+
+  assert.deepEqual(sent.find((call) => call.method === 'Emulation.setUserAgentOverride')?.params, {
+    userAgent: 'UA-in-effect',
+    acceptLanguage: 'ja-JP'
+  })
+  assert.ok(outcome.applied.includes('locale ja-JP'))
+  // Nothing was asked of the user agent, so it is not claimed as an applied override.
+  assert.ok(!outcome.applied.includes('userAgent'))
 })
 
 test('only the requested overrides are sent', async () => {
