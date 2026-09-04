@@ -24,6 +24,8 @@ export type ChatModel = {
   id: string
   displayName: string
   description: string
+  /** Maximum context the provider exposes for this model, when its catalog reports one. */
+  contextWindow?: number
   defaultReasoningEffort: string
   supportedReasoningEfforts: ChatReasoningEffort[]
   isDefault: boolean

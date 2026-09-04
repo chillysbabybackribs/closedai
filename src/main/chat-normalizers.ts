@@ -17,7 +17,7 @@ export function normalizeAccount(value: unknown): ChatAccount | null {
   return { type: 'other', email: null, planType: null }
 }
 
-export function normalizeModels(value: unknown): ChatModel[] {
+export function normalizeModels(value: unknown, contextWindows: ReadonlyMap<string, number> = new Map()): ChatModel[] {
   if (!Array.isArray(value)) return []
   return value.flatMap((entry) => {
     const model = recordOf(entry)
@@ -27,6 +27,7 @@ export function normalizeModels(value: unknown): ChatModel[] {
       id: model.id,
       displayName: typeof model.displayName === 'string' ? model.displayName : model.id,
       description: stringOf(model.description),
+      ...(contextWindows.get(model.id) ? { contextWindow: contextWindows.get(model.id) } : {}),
       defaultReasoningEffort: stringOf(model.defaultReasoningEffort) || 'medium',
       supportedReasoningEfforts: normalizeReasoningEfforts(model.supportedReasoningEfforts),
       isDefault: model.isDefault === true

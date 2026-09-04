@@ -10,6 +10,7 @@ import {
 } from './app-server-client.js'
 import { appServerConfigArgs } from './chat-context/app-server-config.js'
 import { loadChatModels } from './chat-model-catalog.js'
+import { loadCodexModelContextWindows } from './codex-model-context.js'
 import type { TraceScope } from './trace/trace-log.js'
 
 export type RuntimeSessionState = {
@@ -189,7 +190,8 @@ export class CodexWorkspaceRuntime {
     )
     let models: ChatModel[] = []
     try {
-      models = (await loadChatModels(this.transport, null, null)).models
+      const contextWindows = await loadCodexModelContextWindows()
+      models = (await loadChatModels(this.transport, null, null, contextWindows)).models
     } catch (error) {
       console.warn('[app-server] could not list models:', error instanceof Error ? error.message : String(error))
     }

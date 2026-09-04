@@ -17,7 +17,8 @@ export type ChatModelCatalog = {
 export async function loadChatModels(
   client: Pick<AppServerClient, 'request'>,
   preferredModel: string | null,
-  preferredReasoningEffort: string | null = null
+  preferredReasoningEffort: string | null = null,
+  contextWindows: ReadonlyMap<string, number> = new Map()
 ): Promise<ChatModelCatalog> {
   const models: ChatModel[] = []
   const seenIds = new Set<string>()
@@ -30,7 +31,7 @@ export async function loadChatModels(
       includeHidden: false,
       ...(cursor ? { cursor } : {})
     })
-    for (const model of normalizeModels(response.data)) {
+    for (const model of normalizeModels(response.data, contextWindows)) {
       if (seenIds.has(model.id)) continue
       seenIds.add(model.id)
       models.push(model)
