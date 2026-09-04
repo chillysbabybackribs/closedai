@@ -402,8 +402,12 @@ test('consecutive new chats park the runtimes of older idle chats instead of sta
   surfaces[0]!.emit('event', { type: 'turn', turnId: null })
   surfaces[0]!.state.activeTurnId = null
 
+  // Each new chat wakes in the background; let it, as a user typing into it would.
+  const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
   const second = await manager.newPeer()
+  await settle()
   const third = await manager.newPeer()
+  await settle()
   assert.equal(surfaces[0]!.calls.includes('stop'), false, 'two idle chats stay awake for a quick return')
 
   await manager.newPeer()
@@ -417,9 +421,10 @@ test('consecutive new chats park the runtimes of older idle chats instead of sta
 test('a running chat is never parked for the awake budget', async () => {
   const { manager, surfaces } = harness()
   await manager.send('pane-a', 'first', [])
-  await manager.newPeer()
-  await manager.newPeer()
-  await manager.newPeer()
+  for (let i = 0; i < 3; i += 1) {
+    await manager.newPeer()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  }
   assert.equal(surfaces[0]!.calls.includes('stop'), false)
   assert.equal(surfaces[0]!.state.activeTurnId, 'turn:first')
 })
