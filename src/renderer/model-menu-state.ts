@@ -41,7 +41,10 @@ export function modelTriggerLabel(
 /** Compact, stable context labels for both the resting trigger and catalog rows. */
 export function modelContextLabel(tokens: number | undefined): string | null {
   if (!tokens || !Number.isFinite(tokens) || tokens <= 0) return null
-  if (tokens >= 1_000_000) return `${Number((tokens / 1_000_000).toFixed(1))}M`
+  // Codex's active-input maximum can reserve output space from a nominal million-token model.
+  // Present that 800K–1.1M band as the product tier users recognize, as Cursor does.
+  if (tokens >= 800_000 && tokens <= 1_100_000) return '1M'
+  if (tokens > 1_100_000) return `${Number((tokens / 1_000_000).toFixed(1))}M`
   if (tokens >= 1_000) return `${Math.round(tokens / 1_000)}K`
   return String(Math.round(tokens))
 }

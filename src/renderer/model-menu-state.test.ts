@@ -43,7 +43,7 @@ test('groups keep a fixed provider order and drop empty providers', () => {
 })
 
 test('the trigger reads the model name with the effort as a suffix only when it applies', () => {
-  assert.deepEqual(modelTriggerLabel(models, 'gpt-5.6-sol', 'xhigh'), { name: 'GPT-5.6-Sol', context: '872K', effort: 'Xhigh', description: 'GPT-5.6-Sol description' })
+  assert.deepEqual(modelTriggerLabel(models, 'gpt-5.6-sol', 'xhigh'), { name: 'GPT-5.6-Sol', context: '1M', effort: 'Xhigh', description: 'GPT-5.6-Sol description' })
   assert.equal(modelTriggerLabel(models, 'claude:haiku', 'high').effort, null)
   assert.equal(modelTriggerLabel(models, 'gpt-5.6-sol', 'ultra').effort, null)
   assert.deepEqual(modelTriggerLabel(models, null, null), { name: 'Choose model', context: null, effort: null, description: '' })
@@ -58,8 +58,9 @@ test('effort labels are title-cased', () => {
 test('context labels stay compact at common model-window sizes', () => {
   assert.equal(modelContextLabel(128_000), '128K')
   assert.equal(modelContextLabel(400_000), '400K')
+  assert.equal(modelContextLabel(872_000), '1M')
   assert.equal(modelContextLabel(1_000_000), '1M')
-  assert.equal(modelContextLabel(1_050_000), '1.1M')
+  assert.equal(modelContextLabel(1_050_000), '1M')
   assert.equal(modelContextLabel(undefined), null)
 })
 
