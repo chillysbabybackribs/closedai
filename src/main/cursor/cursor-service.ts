@@ -14,7 +14,8 @@ import { buildChatInput } from '../chat-input.js'
 import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
 import type { ScreenshotStore } from '../tools/capture/screenshot-store.js'
-import type { AcpSessionSetup } from './cursor-acp.js'
+import { PROVIDER_CATALOG_TTL_MS, type WorkspaceCatalogs } from '../chat-context/provider-catalog-cache.js'
+import type { AcpModel, AcpSessionSetup } from './cursor-acp.js'
 import { CursorArchive } from './cursor-archive.js'
 import type { CursorToolBridge } from './cursor-mcp.js'
 import { isCursorAuthFailure, parseCursorAccountEmail, parseCursorPlan, readCursorAbout } from './cursor-cli.js'
@@ -60,7 +61,8 @@ export class CursorChatService extends EventEmitter {
     stateDir: string,
     private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
     private readonly screenshots: Pick<ScreenshotStore, 'get'> | null = null,
-    private readonly paneId: string | null = null
+    private readonly paneId: string | null = null,
+    private readonly catalogs: WorkspaceCatalogs | null = null
   ) {
     super()
     this.archive = new CursorArchive(stateDir)
@@ -277,15 +279,26 @@ export class CursorChatService extends EventEmitter {
     void this.session?.retire()
   }
 
+  /**
+   * Starting Cursor used to cost three serial waits before the pane could be used: the ACP
+   * handshake (~1s), a `session/new` purely to read the catalog (~1.5s), and `cursor-agent about`
+   * for the account (~1.5s). The catalog now comes from the workspace's cached reading when there
+   * is one, so a start that only needs the picker spawns nothing at all; the account is read
+   * behind the ready state rather than in front of it; and the pane's saved session is what any
+   * open loads, so warming continues the conversation instead of minting a new session beside it.
+   */
   private async connect(warm: boolean): Promise<void> {
     this.setConnection({ state: 'starting', message: 'Starting Cursor…' })
     try {
       this.session ??= this.createSession()
-      const setup = await this.session.warm()
-      if (setup.models.length === 0) throw new Error('Cursor reported no available models')
-      this.supportsImages = this.session.capabilities?.image !== false
-      await this.readAccount()
+      this.session.adoptSaved(this.settings.get().chatCursorSessionId)
+      if (!this.loadCachedCatalog()) {
+        const setup = await this.session.warm()
+        if (setup.models.length === 0) throw new Error('Cursor reported no available models')
+        this.supportsImages = this.session.capabilities?.image !== false
+      }
       this.setConnection({ state: 'ready', message: 'Cursor is ready' })
+      void this.readAccount()
       if (!warm) await this.session.retire()
       else await this.resumePersistedSession()
       void this.refreshPlanUsage()
@@ -298,11 +311,34 @@ export class CursorChatService extends EventEmitter {
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }
 
-  /** `about` is the only place the signed-in email appears; a failure leaves the account unnamed. */
+  /**
+   * `about` is the only place the signed-in email appears, and it is a whole `cursor-agent`
+   * process. It runs behind the ready state: the pane is usable while it lands, and the account
+   * it names — or the sign-out it reports — is announced when it does.
+   */
   private async readAccount(): Promise<void> {
     const about = await readCursorAbout()
     const email = about.ok ? parseCursorAccountEmail(about.stdout) : null
     this.account = { type: 'other', email, planType: about.ok ? parseCursorPlan(about.stdout) : null }
+    if (about.ok && !email && this.connection.state === 'ready') {
+      this.setConnection({ state: 'signed-out', message: SIGN_IN_MESSAGE })
+      return
+    }
+    // The account is part of the connection the pane shows, so it is announced when it lands.
+    this.setConnection({ ...this.connection })
+  }
+
+  /**
+   * The workspace's last reading of the Cursor catalog. Reading one costs a process and a session,
+   * so a pane that has one skips both; the entry is refreshed whenever a session reports its own.
+   */
+  private loadCachedCatalog(): boolean {
+    if (this.modelState.models.length > 0) return true
+    const cached = this.catalogs?.read<AcpModel[]>('cursor', PROVIDER_CATALOG_TTL_MS)?.raw
+    if (!cached?.length) return false
+    const saved = this.settings.get()
+    this.modelState.load(cursorModelCatalog(cached, null, saved.chatModelId, saved.chatReasoningEffort))
+    return true
   }
 
   private createSession(): CursorSession {
@@ -328,6 +364,7 @@ export class CursorChatService extends EventEmitter {
     const saved = this.settings.get()
     const previous = this.modelState.selectedModel
     this.modelState.load(cursorModelCatalog(setup.models, setup.currentModelId, saved.chatModelId, saved.chatReasoningEffort))
+    this.catalogs?.remember('cursor', this.modelState.models, setup.models)
     if (this.modelState.selectedModel !== previous) {
       this.emitEvent({
         type: 'model',
@@ -337,9 +374,14 @@ export class CursorChatService extends EventEmitter {
     }
   }
 
+  /**
+   * Bring the saved conversation back. The condition is the pane's own transcript, not the
+   * session id: warming adopts that id before the catalog read, and keying on it meant a
+   * restarted pane silently skipped its history and answered from an empty session.
+   */
   private async resumePersistedSession(): Promise<void> {
     const persisted = this.settings.get().chatCursorSessionId
-    if (!persisted || this.session!.sessionId) return
+    if (!persisted || !this.transcript.isEmpty || this.activeTurnId) return
     try {
       await this.resumeSession(persisted)
     } catch (error) {
@@ -350,7 +392,8 @@ export class CursorChatService extends EventEmitter {
 
   private async resumeSession(sessionId: string): Promise<void> {
     const items = await this.session!.replay(sessionId)
-    await this.session!.adopt(sessionId)
+    // The replay loaded the session on this process; keeping it is what the next turn needs.
+    this.session!.continueWith(sessionId)
     this.transcript.replaceItems(items)
     this.threadName = null
     await this.settings.set({ chatCursorSessionId: sessionId, chatContinuation: null })

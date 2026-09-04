@@ -250,7 +250,7 @@ async function main(): Promise<void> {
       chatWorkspace, peerSettings, antigravityBridge!, antigravityStateDir, activeBrowserContext, screenshots, peerSettings.paneId, catalogs
     ),
     cursor: new CursorChatService(
-      chatWorkspace, peerSettings, cursorBridge!, cursorStateDir, activeBrowserContext, screenshots, peerSettings.paneId
+      chatWorkspace, peerSettings, cursorBridge!, cursorStateDir, activeBrowserContext, screenshots, peerSettings.paneId, catalogs
     )
   }, record.modelId, peerSettings, { provider: record.provider, catalogs })
   }, undefined, workspaceSelector, chatTranscripts, (paneId) => {
