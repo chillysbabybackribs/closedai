@@ -42,6 +42,7 @@ export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenC
     </div>
     {(layout.error || actionError) && <div className="chat-layout-error" role="alert">{layout.error || actionError}</div>}
     <WorkspaceSplit browserVisible={layout.browserVisible} chatMinimumWidth={minimumSize(layout.tree).width}
+      onBrowserHide={layout.toggleBrowser}
       chat={<ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
         title={(id) => chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat'}
         onSelect={select} onDock={(id, target, edge) => { void layout.dock(id, target, edge) }}

@@ -18,12 +18,14 @@ export function WorkspaceSplit({
   chat,
   workspace,
   browserVisible = true,
-  chatMinimumWidth = CHAT_PANE_MIN_PX
+  chatMinimumWidth = CHAT_PANE_MIN_PX,
+  onBrowserHide
 }: {
   chat: ReactNode
   workspace: ReactNode
   browserVisible?: boolean
   chatMinimumWidth?: number
+  onBrowserHide?: () => void
 }): JSX.Element {
   const [defaultChatWidth] = useState(
     () => Math.max(readChatPaneWidth(window.localStorage) ?? defaultChatPaneWidth(window.innerWidth), chatMinimumWidth)
@@ -95,6 +97,10 @@ export function WorkspaceSplit({
         disabled={!browserVisible}
         onResize={(size) => {
           if (browserVisible && previousVisible.current && size.inPixels > 0) browserWidth.current = size.inPixels
+          if (browserVisible && previousVisible.current && size.inPixels === 0 && browserWidth.current !== null) {
+            previousVisible.current = false
+            onBrowserHide?.()
+          }
         }}
         className="workspace-context-panel"
         minSize={WORKSPACE_PANE_MIN_PX}

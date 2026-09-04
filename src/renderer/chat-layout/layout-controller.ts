@@ -66,6 +66,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       if (paneIds(current.current.tree).length >= 32 && (!id || !paneIds(current.current.tree).includes(id))) {
         throw new Error('The workspace already has 32 visible chats')
       }
+      if (!id) await window.closedai.chat.selectPane(target)
       const added = id ? await window.closedai.chat.openChat(id) : await window.closedai.chat.newPeer()
       selected.current = added
       setLayout((value) => ({ ...value, tree: dockPane(value.tree, added, target, edge, crypto.randomUUID()) }))

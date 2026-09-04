@@ -19,6 +19,7 @@ export function ChatCanvas({ tree, selectedId, busy, title, renderPane, onSelect
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [dragging, setDragging] = useState<string | null>(null)
   const [drop, setDrop] = useState<{ target: string; edge: DockEdge } | null>(null)
+  const dropTarget = useRef<typeof drop>(null)
   const resize = useRef<{ id: string; start: number; ratio: number; length: number; axis: string; min: number; max: number } | null>(null)
   useEffect(() => {
     const host = viewport.current!
@@ -27,7 +28,7 @@ export function ChatCanvas({ tree, selectedId, busy, title, renderPane, onSelect
     return () => observer.disconnect()
   }, [])
   useEffect(() => {
-    const clear = (): void => { setDragging(null); setDrop(null) }
+    const clear = (): void => { setDragging(null); setDrop(null); dropTarget.current = null }
     window.addEventListener('dragend', clear)
     window.addEventListener('drop', clear)
     return () => { window.removeEventListener('dragend', clear); window.removeEventListener('drop', clear) }
@@ -51,17 +52,23 @@ export function ChatCanvas({ tree, selectedId, busy, title, renderPane, onSelect
           const y = (event.clientY - bounds.top) / bounds.height
           const edges: Array<[DockEdge, number]> = [['left', x], ['right', 1 - x], ['top', y], ['bottom', 1 - y]]
           const edge = edges.sort((a, b) => a[1] - b[1])[0]![0]
-          setDrop({ target: id, edge })
+          dropTarget.current = { target: id, edge }
+          setDrop(dropTarget.current)
         }}
         onDragLeave={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDrop(null)
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            dropTarget.current = null
+            setDrop(null)
+          }
         }}
         onDrop={(event) => {
           const source = event.dataTransfer.getData(CHAT_DRAG_TYPE)
-          if (!source || !drop || drop.target !== id) return
+          const target = dropTarget.current
+          if (!source || !target || target.target !== id) return
           event.preventDefault()
           event.stopPropagation()
-          onDock(source, id, drop.edge)
+          onDock(source, id, target.edge)
+          dropTarget.current = null
           setDragging(null)
           setDrop(null)
         }}>
