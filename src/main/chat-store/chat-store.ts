@@ -1,10 +1,9 @@
 import { EventEmitter } from 'node:events'
 import { readFile } from 'node:fs/promises'
 import type { ChatThreadSummary } from '../../shared/chat.js'
-import type { ChatRecord, ChatRecordPatch, ChatRecordSeed, ChatStoreFile } from '../../shared/chat-store.js'
+import { chatRecordThreadId, type ChatRecord, type ChatRecordPatch, type ChatRecordSeed, type ChatStoreFile } from '../../shared/chat-store.js'
 import { bareChatId, chatProviderOfId } from '../../shared/chat-providers.js'
 import { writeAtomic } from '../atomic-write.js'
-import { peerThreadId } from '../chat-peers/peer-settings.js'
 import { normalizeChatRecord } from './chat-record.js'
 
 // Every chat the app has shown, in one file. Reads are synchronous from memory because the
@@ -95,7 +94,7 @@ export class ChatStore extends EventEmitter {
       modelId: seed.modelId,
       reasoningEffort: seed.reasoningEffort,
       ...ids,
-      threadId: peerThreadId(seed.provider, ids),
+      threadId: chatRecordThreadId(seed.provider, ids),
       title: seed.title ?? null,
       preview: seed.preview ?? '',
       createdAt: seed.createdAt ?? now,
@@ -121,7 +120,7 @@ export class ChatStore extends EventEmitter {
     const modelId = patch.modelId === undefined ? current.modelId : patch.modelId
     const provider = patch.provider ?? (patch.modelId !== undefined && modelId !== null ? chatProviderOfId(modelId) : current.provider)
     const merged: ChatRecord = { ...current, ...patch, modelId, provider, id, createdAt: current.createdAt }
-    merged.threadId = peerThreadId(provider, merged)
+    merged.threadId = chatRecordThreadId(provider, merged)
     merged.preview = merged.preview.slice(0, CHAT_STORE_MAX_PREVIEW)
     this.chats.set(id, merged)
     this.changed([id])

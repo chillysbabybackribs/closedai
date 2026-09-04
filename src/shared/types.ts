@@ -121,6 +121,9 @@ export type ChatPeerRecord = {
 export type ChatWorkspaceRecord = {
   cwd: string
   projectPath: string | null
+  /** Chat ids attached as panes in this workspace; their records live in the chat store. */
+  openIds: string[]
+  /** Pane records written before the chat store existed; imported once, then emptied. */
   peers: ChatPeerRecord[]
   selectedPaneId: string | null
 }
@@ -147,7 +150,13 @@ export type AppSettings = {
   chatReasoningEffort: string | null
   /** Selected-pane projection of `ChatPeerRecord.continuation`. */
   chatContinuation: ChatContinuation | null
-  /** Open chat panes. Legacy single-chat fields above are retained for migration. */
+  /** Chat ids attached as panes in the active workspace; their records live in the chat store. */
+  chatOpenIds: string[]
+  /**
+   * Pane records written before the chat store existed. Imported into the store on the first
+   * launch that has one and emptied afterwards; the legacy single-chat fields above are the
+   * still older form of the same data.
+   */
   chatPeers: ChatPeerRecord[]
   chatSelectedPaneId: string | null
   /** `namespace.tool` ids the user switched off in the Tools modal. */

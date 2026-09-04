@@ -1,5 +1,6 @@
 import type { ChatProvider } from './chat.js'
 import type { ChatMemoryCheckpoint } from './chat-memory.js'
+import { prefixChatId } from './chat-providers.js'
 import type { ChatContinuation } from './types.js'
 
 // The app's own record of a chat. A chat used to exist only as a live pane (discarded when empty,
@@ -49,4 +50,21 @@ export type ChatRecordPatch = Partial<Omit<ChatRecord, 'id' | 'createdAt' | 'cwd
 export type ChatStoreFile = {
   version: 1
   chats: ChatRecord[]
+}
+
+export type ChatProviderThreadIds = Pick<ChatRecord, 'codexThreadId' | 'claudeSessionId' | 'antigravityConversationId' | 'cursorSessionId'>
+
+/** The chat's displayed thread id: the active provider's thread, in that provider's prefixed form. */
+export function chatRecordThreadId(provider: ChatProvider, ids: ChatProviderThreadIds): string | null {
+  if (provider === 'claude') return ids.claudeSessionId ? prefixChatId(provider, ids.claudeSessionId) : null
+  if (provider === 'antigravity') {
+    return ids.antigravityConversationId ? prefixChatId(provider, ids.antigravityConversationId) : null
+  }
+  if (provider === 'cursor') return ids.cursorSessionId ? prefixChatId(provider, ids.cursorSessionId) : null
+  return ids.codexThreadId
+}
+
+/** Whether a chat has anything worth keeping: a thread, a title, or a pending continuation. */
+export function chatRecordIsBlank(record: Pick<ChatRecord, 'threadId' | 'title' | 'continuation'>): boolean {
+  return record.threadId === null && record.title === null && record.continuation === null
 }
