@@ -14,6 +14,7 @@ import type {
 import type { AppSettings } from '../shared/types.js'
 import { DEFAULT_APP_SETTINGS, type AppSettingsAccess } from './app-settings-store.js'
 import type { ThreadHandoffSource } from './chat-context/thread-handoff.js'
+import { WorkspaceCatalogs } from './chat-context/provider-catalog-cache.js'
 import { ChatHub, type ChatHubProviders } from './chat-hub.js'
 
 /** The pane's slice of settings, which is all the hub writes to. */
@@ -39,7 +40,7 @@ class FakeProvider extends EventEmitter {
   items: ChatTranscriptItem[] = []
   continued: ThreadHandoffSource | null = null
   compactConversation?: () => Promise<void>
-  constructor(readonly provider: ChatProvider, private readonly models: ChatModel[]) {
+  constructor(readonly provider: ChatProvider, public models: ChatModel[]) {
     super()
     this.threadId = `${provider}-thread`
   }
@@ -78,7 +79,7 @@ class FakeProvider extends EventEmitter {
   async beginChatGptLogin(): Promise<string> { this.calls.push('login'); return 'https://auth' }
 }
 
-function build(initialModel: string | null = null): {
+function build(initialModel: string | null = null, catalogs?: WorkspaceCatalogs): {
   hub: ChatHub; codex: FakeProvider; claude: FakeProvider; antigravity: FakeProvider; cursor: FakeProvider
   events: ChatEvent[]; settings: FakeSettings
 } {
@@ -92,7 +93,7 @@ function build(initialModel: string | null = null): {
   const cursor = new FakeProvider('cursor', [model('cursor', 'cursor:claude-opus-5[effort=high]')])
   const settings = new FakeSettings()
   settings.saved.chatModelId = initialModel
-  const hub = new ChatHub({ codex, claude, antigravity, cursor } as unknown as ChatHubProviders, initialModel, settings)
+  const hub = new ChatHub({ codex, claude, antigravity, cursor } as unknown as ChatHubProviders, initialModel, settings, { catalogs })
   const events: ChatEvent[] = []
   hub.on('event', (event: ChatEvent) => events.push(event))
   return { hub, codex, claude, antigravity, cursor, events, settings }
@@ -125,6 +126,48 @@ test('the saved model decides the initial provider and which one starts warm', a
   await claudeFirst.hub.start()
   assert.deepEqual(claudeFirst.claude.calls, ['start:true'])
   assert.deepEqual(claudeFirst.codex.calls, ['start:false', 'stop'])
+})
+
+test('with the workspace catalogs cached, only the active provider starts and the picker still lists every model', async () => {
+  const catalogs = new WorkspaceCatalogs()
+  catalogs.remember('claude', [model('claude', 'claude:opus[1m]')])
+  catalogs.remember('antigravity', [model('antigravity', 'agy:gemini-3.8-flash')])
+  catalogs.remember('cursor', [model('cursor', 'cursor:claude-opus-5[effort=high]')])
+  const { hub, codex, claude, antigravity, cursor } = build('gpt-5.6-sol', catalogs)
+  // The fakes report their own catalogs; empty them so the merged picker has to come from the cache.
+  for (const fake of [claude, antigravity, cursor]) fake.models = []
+
+  await hub.start()
+  assert.deepEqual(codex.calls, ['start:true'])
+  assert.deepEqual(claude.calls, [])
+  assert.deepEqual(antigravity.calls, [])
+  assert.deepEqual(cursor.calls, [])
+  assert.deepEqual(
+    hub.snapshot().models.map((entry) => entry.id),
+    ['gpt-5.6-sol', 'claude:opus[1m]', 'agy:gemini-3.8-flash', 'cursor:claude-opus-5[effort=high]']
+  )
+
+  // Selecting a cached provider is when it starts; the one being left stops.
+  await hub.selectModel('claude:opus[1m]')
+  assert.deepEqual(claude.calls.slice(0, 2), ['start:true', 'selectModel:claude:opus[1m]'])
+  assert.deepEqual(codex.calls, ['start:true', 'stop'])
+})
+
+test('a provider a pane reads cold shares its catalog with the workspace and stops again', async () => {
+  const catalogs = new WorkspaceCatalogs()
+  const { hub, claude } = build('gpt-5.6-sol', catalogs)
+  await hub.start()
+  assert.deepEqual(claude.calls, ['start:false', 'stop'])
+  claude.emit('event', {
+    type: 'connection',
+    provider: 'claude',
+    connection: { state: 'ready', message: 'ok' },
+    account: null,
+    models: [model('claude', 'claude:opus[1m]')],
+    selectedModel: 'claude:opus[1m]',
+    selectedReasoningEffort: null
+  })
+  assert.deepEqual(catalogs.read('claude')?.models.map((entry) => entry.id), ['claude:opus[1m]'])
 })
 
 test('the snapshot is the active provider with every catalog merged', () => {
