@@ -25,6 +25,24 @@ export function compactText(...values: unknown[]): string {
     .map(text).filter(Boolean).join('\n').trim()
 }
 
+export function queryWithDomains(query: string, includeDomains?: string[], excludeDomains?: string[]): string {
+  const include = domains(includeDomains)
+  const exclude = domains(excludeDomains)
+  const includeFilter = include.length === 0
+    ? ''
+    : include.length === 1
+      ? `site:${include[0]}`
+      : `(${include.map((domain) => `site:${domain}`).join(' OR ')})`
+  return [query, includeFilter, ...exclude.map((domain) => `-site:${domain}`)].filter(Boolean).join(' ')
+}
+
+function domains(values: string[] | undefined): string[] {
+  return [...new Set((values ?? []).map((value) => {
+    const trimmed = value.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0] ?? ''
+    return /^[a-z0-9.-]+$/.test(trimmed) ? trimmed.replace(/^\.+|\.+$/g, '') : ''
+  }).filter(Boolean))]
+}
+
 export function result(
   provider: SearchProvider,
   item: Record<string, unknown>,

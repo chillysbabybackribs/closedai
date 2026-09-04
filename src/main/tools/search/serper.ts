@@ -1,7 +1,7 @@
-import { checkedJson, freshnessCode, records, result, type ProviderDeps } from './provider-utils.js'
+import { checkedJson, freshnessCode, queryWithDomains, records, result, type ProviderDeps } from './provider-utils.js'
 import type { SearchProviderClient } from './types.js'
 
-const BASE = 'https://google.serper.dev/search'
+const BASE = 'https://google.serper.dev'
 
 export function serperClient(deps: ProviderDeps): SearchProviderClient {
   return {
@@ -9,11 +9,12 @@ export function serperClient(deps: ProviderDeps): SearchProviderClient {
     async search(request, signal) {
       const key = await deps.readKey('serper')
       const freshness = freshnessCode(request.freshness)
-      const response = await deps.fetch(BASE, {
+      const endpoint = request.intent === 'news' ? `${BASE}/news` : `${BASE}/search`
+      const response = await deps.fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-KEY': key },
         body: JSON.stringify({
-          q: request.query,
+          q: queryWithDomains(request.query, request.includeDomains, request.excludeDomains),
           num: Math.min(request.count, 100),
           ...(request.country ? { gl: request.country.toLowerCase() } : {}),
           ...(request.language ? { hl: request.language.toLowerCase() } : {}),

@@ -1,4 +1,4 @@
-import { checkedJson, records, result, type ProviderDeps } from './provider-utils.js'
+import { checkedJson, queryWithDomains, records, result, type ProviderDeps } from './provider-utils.js'
 import type { SearchProviderClient } from './types.js'
 
 const BASE = 'https://api.search.brave.com/res/v1/web/search'
@@ -10,11 +10,12 @@ export function braveClient(deps: ProviderDeps): SearchProviderClient {
     async search(request, signal) {
       const key = await deps.readKey('brave')
       const params = new URLSearchParams({
-        q: request.query,
+        q: queryWithDomains(request.query, request.includeDomains, request.excludeDomains),
         count: String(Math.min(request.count, 20)),
-        extra_snippets: '1'
+        extra_snippets: 'true'
       })
       if (request.country) params.set('country', request.country.toUpperCase())
+      if (request.language) params.set('search_lang', request.language.toLowerCase())
       if (request.freshness) params.set('freshness', FRESHNESS[request.freshness])
       const response = await deps.fetch(`${BASE}?${params}`, {
         headers: { Accept: 'application/json', 'X-Subscription-Token': key },
