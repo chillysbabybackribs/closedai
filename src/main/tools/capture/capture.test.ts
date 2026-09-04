@@ -43,10 +43,12 @@ function textOf(result: { content: Array<{ type: string; text?: string }> }): st
   return result.content[0]?.type === 'text' ? result.content[0].text ?? '' : ''
 }
 
-test('capture tool advertises one tool with capture and crop actions', () => {
+test('capture tool advertises one deferred tool with capture and crop actions', () => {
   const { registry } = harness()
   assert.deepEqual(registry.names(), ['closedai_ui.capture'])
-  const actions = registry.namespaces[0].tools[0].actions
+  const tool = registry.namespaces[0].tools[0]
+  assert.equal(tool.deferLoading, true)
+  const actions = tool.actions
   assert.deepEqual(actions?.map((action) => action.name), ['app_window', 'browser_page', 'crop'])
   const cropProperties = actions?.find((action) => action.name === 'crop')?.inputSchema.properties
   assert.deepEqual((cropProperties as Record<string, Record<string, unknown>>).zoom.type, 'number')

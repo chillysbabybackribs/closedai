@@ -44,6 +44,8 @@ function text(result: Awaited<ReturnType<ToolRegistry['call']>>): string {
 test('peer reads exclude the caller; memory read and write are separate tools', async () => {
   const registry = new ToolRegistry([peerChatTools(() => directory)])
   assert.deepEqual(registry.names(), ['peer_chats.list', 'peer_chats.read', 'peer_chats.recall', 'peer_chats.checkpoint'])
+  const readTool = registry.namespaces[0].tools.find((tool) => tool.name === 'read')
+  assert.equal(readTool?.deferLoading, true)
   const listed = await registry.call(
     { namespace: 'peer_chats', tool: 'list', arguments: {} },
     { paneId: 'peer-a', threadId: null, turnId: null, callId: 'list' }

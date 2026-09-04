@@ -10,11 +10,7 @@ export function appStateTool(app: () => AppCommandHost | null, ui: () => AppUiHo
   return defineTool({
     name: 'state',
     description:
-      'Read compact ClosedAI app state without touching the DOM: workspace panes (ids, titles, running), the ' +
-      'selected or given chat pane (connection, model, thread, running, context usage, last user/assistant text), ' +
-      'browser tabs, downloads, window, and ui (open dialogs and menus, drawer, history panel, composer enabled/' +
-      'running/canSend, focused control). Use it for facts and assertions before and after commands; pass include ' +
-      'to return only the sections you need.',
+      'Compact app state without DOM: workspace, chat (model, thread, usage, last messages), browser, downloads, window, ui. Pass include for subsets only.',
     inputSchema: objectSchema({
       include: {
         type: 'array', minItems: 1, uniqueItems: true,

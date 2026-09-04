@@ -12,10 +12,7 @@ export function browserPageAction(capture: UiCaptureHostProvider, store: Screens
   return {
     action: 'browser_page',
     description:
-      'Capture only a browser page, without app chrome. The active tab is used unless tab_id is ' +
-      'given. Waits deterministically for the requested load state and optional selector or text; ' +
-      'if the condition is not reached, it fails instead of returning an ambiguous frame. Returns a ' +
-      'scaled JPEG; the user sees the full-resolution capture in the transcript.',
+      'Capture one browser page without app chrome (active tab unless tab_id). Waits for load state and optional selector/text; fails if unmet. Returns a scaled JPEG.',
     inputSchema: {
       type: 'object',
       properties: { tab_id: tabIdField, ...readinessProperties },

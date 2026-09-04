@@ -26,15 +26,10 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
   const query = defineTool({
       name: 'query',
       description:
-        'One normalized search surface backed by Brave, Serper, Tavily, and You.com. ' +
-        'Choose intent by the evidence needed: general for broad discovery; news for current reporting; ' +
-        'research for content-rich investigation; answer for a cited synthesis; finance for market/business research; ' +
-        'technical for documentation and implementation details. Default depth=quick (one provider); use balanced or deep only when corroboration or breadth is worth the wait. ' +
-        'Set live=true when current results matter; it bypasses the ten-minute cache and refreshes it. ' +
-        'Live mode opens an actual source URL as API results arrive; it never opens Google or other search results. presentation=background opts out. ' +
-        'Inspect relevant source pages using returned presentation.tabId. For ongoing parallel research prefer search.run. ' +
-        'Results are normalized, interleaved, deduplicated, and marked when multiple indexes list the same URL (not factual corroboration). ' +
-        'The result is JSON text; JSON.parse the returned string in exec scripts.',
+        'Search via Brave, Serper, Tavily, and You.com. Pick intent by evidence: general, news, research, answer, finance, technical. ' +
+        'Default depth=quick (one provider); balanced/deep when corroboration matters. live=true bypasses the ten-minute cache. ' +
+        'Live opens source URLs, never search-engine pages; presentation=background opts out. Prefer search.run for parallel research. ' +
+        'Results are normalized JSON; JSON.parse the returned string in exec scripts.',
       timeoutMs: 45_000,
       inputSchema: {
         type: 'object',

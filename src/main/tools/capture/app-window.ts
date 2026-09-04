@@ -8,11 +8,7 @@ import type { ScreenshotStore } from './screenshot-store.js'
 export function appWindowAction(capture: UiCaptureHostProvider, store: ScreenshotStore): ToolAction {
   return {
     action: 'app_window',
-    description:
-      'Capture the entire composed application window exactly as the user sees it, including ' +
-      'the app chrome, chat, and embedded browser pane. Use this to understand layout, visual ' +
-      'state, dialogs, or interactions across the whole app. Returns a scaled JPEG; the user ' +
-      'sees the full-resolution capture in the transcript.',
+    description: 'Capture the composed app window (chrome, chat, browser). Returns a scaled JPEG; full resolution stays in the transcript.',
     inputSchema: {
       type: 'object',
       properties: {},

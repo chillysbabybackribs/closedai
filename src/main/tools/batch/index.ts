@@ -58,22 +58,11 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
       defineTool({
         name: 'run',
         description:
-          'Run up to ' + maxCalls + ' tool calls in one request instead of a turn per call. ' +
-          'Each entry names a tool as `namespace.tool` and carries the exact arguments a direct call would use; ' +
-          'each call reports its own ok/failed status and results are returned in call order, numbered `[1]`, `[2]`, … ' +
-          'By default the calls run in order and a failure skips the rest, so a dependent sequence ' +
-          '(navigate, then wait_for, then read_page) is safe to batch. A sequential batch also unwinds ' +
-          'itself: when a step fails, invisible browser state armed by earlier steps — profiling ' +
-          'recorders, a pre-document hook, device emulation — is released again and the release is ' +
-          'reported, so a broken plan does not leave a tab instrumented. Set `parallel` to true for ' +
-          'independent work; explicit browser targets run in parallel while same-target work serializes. ' +
-          'Batches cannot nest, and only ClosedAI tools are routable: the tools your own harness gives you ' +
-          '(file read/search/edit, shell, web fetch) must be called directly, outside a batch. ' +
-          'Use this when a known sequence or independent group benefits from batching; direct calls are fine. Real-input fallbacks must include their ' +
-          'inspection and post-action verification in the same sequential batch. ' +
-          'For successful intermediate actions, set `include_result` false so only status—not a payload the model does not need—is returned; failures are always included. ' +
-          'Any failed or skipped call makes the batch an error; successful results remain available. Retry only failed work after inspecting its error. ' +
-          'In exec scripts do not use this tool: await the tools directly (Promise.allSettled for independent reads).',
+          'Run up to ' + maxCalls + ' tool calls in one request. Each entry is `namespace.tool` with direct-call arguments; ' +
+          'results are numbered [1], [2], …. Default sequential: failure skips the rest and unwinds armed browser state. ' +
+          '`parallel` true for independent work; same-target work still serializes. Only ClosedAI tools routable — call native ' +
+          'file/shell tools directly. Real-input fallbacks need inspection and verification in the same sequential batch. ' +
+          '`include_result` false omits successful intermediate bodies; any failure makes the batch an error. In exec, await tools directly.',
         inputSchema: {
           type: 'object',
           properties: {

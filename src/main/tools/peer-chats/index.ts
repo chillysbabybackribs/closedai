@@ -33,7 +33,10 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
       }),
       defineTool({
         name: 'read',
-        description: 'Read a page of transcript and live status from one peer or subagent chat returned by peer_chats.list. Defaults to the newest end — what that chat is doing now or just concluded — inside a serialized character budget, clipping long tool output rather than returning a transcript the serializer has to cut blind. `cursor` pages further back from there (use the returned nextCursor), `order: "oldest"` follows a chat forward from its first message instead, and `types` narrows to the item kinds you need (["user","assistant"] drops tool traffic). `totalItems` is how many readable items match the filter, and `itemSource: "saved"` means the chat is parked, so its newest items come from the app’s saved tail and the conversation reaches further back than the page shows.',
+        deferLoading: true,
+        description:
+          'Paginated transcript from peer_chats.list. Default: newest items within max_chars (clips long tool output). ' +
+          'cursor pages back; order oldest follows forward; types filters item kinds. itemSource saved means a parked chat.',
         inputSchema: {
           type: 'object',
           additionalProperties: false,

@@ -11,10 +11,7 @@ export function cropAction(capture: UiCaptureHostProvider, store: ScreenshotStor
   return {
     action: 'crop',
     description:
-      'Crop and optionally magnify a previous capture for close visual inspection. Pass the ' +
-      'Capture ID reported by app_window, browser_page, or another crop. Coordinates use pixels ' +
-      'from the model-visible image size reported for that capture, with the origin at its top-left. ' +
-      'The crop becomes a new persistent screenshot, so use its Capture ID for further inspection.',
+      'Crop and optionally zoom a retained capture by Capture ID. Coordinates are model-image pixels from that capture\'s reported size.',
     inputSchema: {
       type: 'object',
       properties: {

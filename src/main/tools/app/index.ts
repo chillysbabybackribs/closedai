@@ -19,10 +19,8 @@ export function appTools(app: () => AppCommandHost | null, ui: () => AppUiHost |
       defineActionTool({
         name: 'command',
         description:
-          'Deterministic ClosedAI app commands: they call the same main-process services the UI does, so they ' +
-          'need no inspection, refs, or waits. Use these to operate the app (open or send to another pane, stop ' +
-          'it, switch model, manage browser tabs) and closedai_app.state to check results. Use closedai_app.ui ' +
-          'only when the real control must be exercised as a recorded, batched fallback.',
+          'Deterministic app commands via main-process services — no DOM inspection. Operate panes, models, and ' +
+          'browser tabs; use closedai_app.state for facts. Use closedai_app.ui only when a real control must be exercised as a batched fallback.',
         actions: appCommandActions(app)
       }),
       defineActionTool({

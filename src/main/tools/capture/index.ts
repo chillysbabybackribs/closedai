@@ -28,19 +28,12 @@ export function captureTools(
     tools: [
       defineActionTool({
         name: 'capture',
+        deferLoading: true,
         description:
-          'Take and inspect screenshots when visual evidence is needed. Choose app_window for the ' +
-          'whole user-visible interface, browser_page for an isolated readiness-gated page, or crop ' +
-          'to enlarge a region from an earlier capture. ' +
-          `Every screenshot stays in the conversation for later turns, and at most ${budget.maxPerTurn} ` +
-          'images are allowed per turn across all actions. Make a batch of changes, then capture once ' +
-          'to verify the result; never capture after each small step. Whether an element exists or ' +
-          'what it says comes from embedded_browser.page read_page, not a screenshot. On a wide window app_window is scaled down ' +
-          'hard, so prefer browser_page for page content and crop for detail. ' +
-          'When called from exec (code mode) the result is one string: the text summary followed by ' +
-          'the image as a data: URL. Split it exactly like this and never pass the whole string to ' +
-          'text(), which would dump the image as base64 text: ' +
-          'const i = r.indexOf("data:image/"); text(r.slice(0, i)); image(r.slice(i));',
+          'Screenshots when visual evidence is needed: app_window (whole UI), browser_page (one readiness-gated page), ' +
+          'or crop (enlarge a retained region). At most ' +
+          `${budget.maxPerTurn} images per turn; prefer embedded_browser.page read_page for text. ` +
+          'Batch changes, then capture once. Exec mode: split the text summary from the data:image/ URL before text().',
         actions: actions.map((action) => withBudget(action, budget))
       })
     ]

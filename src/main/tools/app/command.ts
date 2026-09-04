@@ -26,9 +26,7 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
     {
       action: 'send_message',
       description:
-        'Submit a user message to another pane. With await_turn (default true) the call returns when that pane\'s ' +
-        'turn completes or timeout_ms elapses (turnCompleted tells which); read state.chat afterwards for the reply. ' +
-        'Refused for the calling pane itself.',
+        'Submit a message to another pane. await_turn (default true) waits for completion; read state.chat for the reply. Refused for the calling pane.',
       inputSchema: objectSchema({
         pane_id: paneField,
         text: { type: 'string', minLength: 1, maxLength: 20_000, description: 'Message text.' },
@@ -66,8 +64,7 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
     {
       action: 'open_chat',
       description:
-        'Select a pane (pane_id alone), or open a thread by thread_id or by a unique title substring in the given ' +
-        'or selected pane. Ambiguous titles fail with candidate ids.',
+        'Select a pane, or open a thread by thread_id or unique title substring. Ambiguous titles fail with candidate ids.',
       inputSchema: objectSchema({
         pane_id: paneField,
         thread_id: { type: 'string', minLength: 1 },
@@ -110,9 +107,7 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
     {
       action: 'browser_tab',
       description:
-        'Manage the visible browser strip: new (optionally with url), new_right, select, close, close_others, ' +
-        'close_right, duplicate, rename, back, forward, reload. ' +
-        'Use embedded_browser.page to navigate and read pages. Returns the browser state.',
+        'Browser strip: new, new_right, select, close, close_others, close_right, duplicate, rename, back, forward, reload. Returns browser state.',
       inputSchema: objectSchema({
         op: {
           type: 'string',
