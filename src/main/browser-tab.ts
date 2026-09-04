@@ -58,6 +58,8 @@ export class BrowserTab extends EventEmitter {
   readonly id: string
   readonly view: WebContentsView
   private bounds: BrowserBounds = hiddenBounds
+  /** Emulated viewport size; the native surface shrinks to it so the page really lays out there. */
+  private emulatedViewport: { width: number; height: number } | null = null
   private visible = false
   private favicon: string | null = null
   private customTitle: string | null = null
@@ -159,12 +161,41 @@ export class BrowserTab extends EventEmitter {
       // Keep the loaded native surface visible and full-sized so Chromium continues producing
       // frames. The renderer's freeze still covers the browser box while this view sits beyond
       // it; restoring the real bounds therefore avoids the setVisible(false/true) blanking bug.
-      this.view.setBounds(browserOccludedBounds(this.bounds))
+      this.view.setBounds(browserOccludedBounds(this.surfaceBounds()))
       this.view.setVisible(true)
       return
     }
-    this.view.setBounds(this.keepRealSurface() ? this.bounds : hiddenBounds)
+    this.view.setBounds(this.keepRealSurface() ? this.surfaceBounds() : hiddenBounds)
     this.view.setVisible(this.visible)
+  }
+
+  /**
+   * Size the native surface to an emulated viewport, or null to go back to filling the pane.
+   *
+   * A headful compositing widget ignores the view size in `Emulation.setDeviceMetricsOverride`:
+   * screen metrics, pixel ratio and touch points all apply, but the layout viewport keeps
+   * following the real widget, so a responsive site keeps serving its desktop breakpoint. DevTools
+   * device mode resizes the inspected view for exactly this reason, and so does this — the page
+   * then lays out at the width it was asked for instead of only believing it did.
+   */
+  setEmulatedViewport(size: { width: number; height: number } | null): void {
+    this.emulatedViewport = size
+    this.applyBounds(this.bounds, this.visible)
+  }
+
+  /** Pane bounds, or the emulated viewport centred inside them. */
+  private surfaceBounds(): BrowserBounds {
+    const emulated = this.emulatedViewport
+    if (!emulated) return this.bounds
+    const width = Math.max(1, Math.min(emulated.width, this.bounds.width))
+    const height = Math.max(1, Math.min(emulated.height, this.bounds.height))
+    return {
+      ...this.bounds,
+      x: this.bounds.x + Math.round((this.bounds.width - width) / 2),
+      y: this.bounds.y,
+      width,
+      height
+    }
   }
 
   // A tab collapsed to 1x1 reports useless element geometry and breaks IntersectionObserver;
@@ -177,7 +208,7 @@ export class BrowserTab extends EventEmitter {
   hide(): void {
     this.visible = false
     this.view.setVisible(false)
-    this.view.setBounds(this.bounds.width > 1 ? this.bounds : hiddenBounds)
+    this.view.setBounds(this.bounds.width > 1 ? this.surfaceBounds() : hiddenBounds)
   }
 
   // Park a freshly created background tab at the pane's real bounds so its first layout
@@ -187,7 +218,7 @@ export class BrowserTab extends EventEmitter {
     this.bounds = sanitizeBounds(bounds)
     this.visible = false
     this.view.setVisible(false)
-    this.view.setBounds(this.bounds)
+    this.view.setBounds(this.surfaceBounds())
   }
 
   async navigate(input: string, options?: LoadURLOptions): Promise<void> {

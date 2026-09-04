@@ -370,6 +370,18 @@ export class BrowserService extends EventEmitter {
     return null
   }
 
+  /**
+   * Size a tab's native surface to an emulated viewport, or null to fill the pane again.
+   * False when the tab is unknown. See BrowserTab.setEmulatedViewport for why the surface has
+   * to move rather than the protocol override alone.
+   */
+  setEmulatedViewport(tabId: string | undefined, size: { width: number; height: number } | null): boolean {
+    const tab = tabId ? this.tabs.find((candidate) => candidate.id === tabId) ?? null : this.active
+    if (!tab) return false
+    tab.setEmulatedViewport(size)
+    return true
+  }
+
   /** Live WebContents of a tab (the active one when omitted); null if unknown or destroyed. */
   contentsOf(tabId?: string): WebContents | null {
     const popup = tabId ? this.nativePopups.get(tabId)?.contents : null

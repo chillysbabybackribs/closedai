@@ -1,9 +1,11 @@
-// Viewport emulation has to go through the embedder, not the protocol. Blink applies CDP's
-// `Emulation.setDeviceMetricsOverride` screen metrics, but the layout viewport of a tab hosted
-// in a WebContentsView follows the native widget, so `innerWidth` never moves and a page that
-// branches on width keeps serving its desktop layout. Electron's `enableDeviceEmulation` resizes
-// the emulated widget itself; everything else — locale, geolocation, media, network, CPU — is
-// CDP. This module owns the split and the verification that the page really changed.
+// Viewport emulation needs the embedder as well as the protocol. Measured against a real tab in
+// this app: `Emulation.setDeviceMetricsOverride` applies screen metrics, devicePixelRatio and
+// touch points, but `innerWidth` does not move — a headful compositing widget keeps its own size,
+// so a responsive site keeps serving its desktop breakpoint while reporting a phone. DevTools
+// device mode resizes the inspected view for this reason and so does this: the host shrinks the
+// tab's native surface to the emulated viewport, and the page then genuinely lays out there.
+// Everything else — user agent, media features, locale, geolocation, network, CPU — is CDP.
+// Every result carries the page's own measurement, so an override that did not land is visible.
 
 export type EmulateSend = (method: string, params?: Record<string, unknown>) => Promise<unknown>
 
@@ -19,6 +21,13 @@ export type DeviceEmulationParameters = {
 export type DeviceEmulationTarget = {
   enableDeviceEmulation(parameters: DeviceEmulationParameters): void
   disableDeviceEmulation(): void
+  /**
+   * Resize the hosting view to the emulated viewport, or null to restore it. A headful
+   * compositing widget ignores the view size in the protocol override, so this is what actually
+   * moves the layout viewport; without it a responsive site keeps its desktop breakpoint while
+   * screen metrics and pixel ratio report the phone.
+   */
+  setEmulatedViewport?(size: { width: number; height: number } | null): void
 }
 
 export type DevicePreset = {
@@ -133,6 +142,7 @@ export async function applyEmulation(
   const applied: string[] = []
   const preset = resolvePreset(request)
   if (preset) {
+    target.setEmulatedViewport?.({ width: preset.width, height: preset.height })
     target.enableDeviceEmulation(emulationParameters(preset))
     await send('Emulation.setDeviceMetricsOverride', {
       width: preset.width,
@@ -197,6 +207,7 @@ export async function applyEmulation(
 }
 
 export async function resetEmulation(target: DeviceEmulationTarget, send: EmulateSend): Promise<EmulateOutcome> {
+  target.setEmulatedViewport?.(null)
   target.disableDeviceEmulation()
   const cleared: string[] = []
   const clear = async (method: string, params?: Record<string, unknown>) => {

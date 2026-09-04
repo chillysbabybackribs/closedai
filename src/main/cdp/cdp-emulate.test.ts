@@ -9,12 +9,16 @@ import {
   type DeviceEmulationParameters
 } from './cdp-emulate.js'
 
+type Viewport = { width: number; height: number } | null
+
 function fakeTarget() {
-  const calls: { enabled: DeviceEmulationParameters[]; disabled: number } = { enabled: [], disabled: 0 }
+  const calls: { enabled: DeviceEmulationParameters[]; disabled: number; viewports: Viewport[] } =
+    { enabled: [], disabled: 0, viewports: [] }
   return {
     calls,
     enableDeviceEmulation(parameters: DeviceEmulationParameters) { calls.enabled.push(parameters) },
-    disableDeviceEmulation() { calls.disabled += 1 }
+    disableDeviceEmulation() { calls.disabled += 1 },
+    setEmulatedViewport(size: Viewport) { calls.viewports.push(size) }
   }
 }
 
@@ -67,6 +71,8 @@ test('apply drives the embedder for size, CDP for the rest, and reports the page
 
   assert.equal(target.calls.enabled.length, 1)
   assert.deepEqual(target.calls.enabled[0].viewSize, { width: 393, height: 852 })
+  // The host surface must move too: the protocol override alone leaves innerWidth untouched.
+  assert.deepEqual(target.calls.viewports, [{ width: 393, height: 852 }])
   const methods = sent.map((call) => call.method)
   assert.ok(methods.includes('Emulation.setUserAgentOverride'))
   assert.ok(methods.includes('Emulation.setTimezoneOverride'))
@@ -87,6 +93,7 @@ test('only the requested overrides are sent', async () => {
   await applyEmulation(target, send, { colorScheme: 'dark' })
 
   assert.equal(target.calls.enabled.length, 0)
+  assert.deepEqual(target.calls.viewports, [])
   assert.deepEqual(sent.map((call) => call.method), ['Emulation.setEmulatedMedia', 'Runtime.evaluate'])
   await assert.rejects(applyEmulation(target, send, { network: 'dial-up' }), /network must be one of/)
 })
@@ -101,6 +108,7 @@ test('reset disables embedder emulation and survives domains that were never ena
   })
 
   assert.equal(target.calls.disabled, 1)
+  assert.deepEqual(target.calls.viewports, [null])
   assert.ok(sent.includes('Emulation.clearDeviceMetricsOverride'))
   assert.ok(sent.includes('Network.emulateNetworkConditions'))
   assert.ok(!outcome.applied.includes('Emulation.setLocaleOverride'))

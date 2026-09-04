@@ -28,7 +28,12 @@ import {
   RECORDING_EXPRESSION,
   REMOVE_EXPRESSION
 } from './cdp-instrument.js'
-import { applyEmulation, resetEmulation, type EmulateRequest } from './cdp-emulate.js'
+import {
+  applyEmulation,
+  resetEmulation,
+  type DeviceEmulationParameters,
+  type EmulateRequest
+} from './cdp-emulate.js'
 
 /** How much of the event buffer a request listing folds; the buffer itself holds 1,000. */
 const EVENT_SCAN_LIMIT = 1_000
@@ -49,6 +54,8 @@ export type CdpBrowserSource = {
   contentsOf(tabId?: string): WebContents | null
   /** Foreground a tab for real input; null when no tab can currently receive any. */
   focusTabForInput(tabId: string): { activated: boolean } | null
+  /** Resize a tab's native surface for viewport emulation; false when the tab is unknown. */
+  setEmulatedViewport?(tabId: string, size: { width: number; height: number } | null): boolean
 }
 
 export type CdpBrowserTarget = BrowserTabInfo & {
@@ -259,9 +266,17 @@ export class BrowserCdpAccess implements CdpToolHost {
   async emulate(tabId: string | undefined, request: EmulateRequest | null): Promise<unknown> {
     const { tab, session } = this.resolve(tabId)
     const send = (method: string, params?: Record<string, unknown>) => session.command(method, params ?? {})
+    const browser = this.browser()
+    const target = {
+      enableDeviceEmulation: (parameters: DeviceEmulationParameters) => session.contents.enableDeviceEmulation(parameters),
+      disableDeviceEmulation: () => session.contents.disableDeviceEmulation(),
+      setEmulatedViewport: (size: { width: number; height: number } | null) => {
+        browser?.setEmulatedViewport?.(tab.id, size)
+      }
+    }
     const outcome = request
-      ? await applyEmulation(session.contents, send, request)
-      : await resetEmulation(session.contents, send)
+      ? await applyEmulation(target, send, request)
+      : await resetEmulation(target, send)
     return { tab, connectionId: session.connectionId, reset: request === null, ...outcome }
   }
 
