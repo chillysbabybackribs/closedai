@@ -215,12 +215,25 @@ export function MessageScrollerProvider({
       }
       scheduleSync()
     }
+    // Mutations arrive as microtasks, so a transcript filling in — or a turn streaming a token at
+    // a time — delivers many batches inside one frame, and each one re-anchored the viewport with
+    // its own forced layout. Collapsing them into a single animation frame keeps the correction
+    // before paint (the frame has not rendered yet) while paying for it once.
+    let mutationFrame: number | null = null
+    const syncAfterMutations = (): void => {
+      if (mutationFrame !== null) return
+      mutationFrame = window.requestAnimationFrame(() => {
+        mutationFrame = null
+        syncAfterResize()
+      })
+    }
     const observer = new ResizeObserver(syncAfterResize)
     observer.observe(viewport)
     observer.observe(content)
-    const mutations = new MutationObserver(syncAfterResize)
+    const mutations = new MutationObserver(syncAfterMutations)
     mutations.observe(content, { childList: true, subtree: true, characterData: true })
     return () => {
+      if (mutationFrame !== null) window.cancelAnimationFrame(mutationFrame)
       observer.disconnect()
       mutations.disconnect()
     }
