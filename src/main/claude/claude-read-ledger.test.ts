@@ -95,6 +95,31 @@ test('shell reads are recognised, recorded, and denied when fully covered', () =
   assert.equal(instance.before('main', 'Bash', { command: "sed -n '10,20p' src/main/chat-hub.ts; rg -n foo src" }, cwd).kind, 'allow')
 })
 
+test('volatile files and paths outside the workspace are never ledgered, so polling them stays allowed', () => {
+  const { instance } = ledger()
+  for (const path of ['/w/out/main/index.js', '/w/node_modules/x/index.js', '/w/tasks/abc.output', '/elsewhere/file.ts']) {
+    instance.after('main', 'Read', { file_path: path }, { file: { filePath: path, startLine: 1, numLines: 10, totalLines: 10 } }, cwd)
+    assert.equal(instance.before('main', 'Read', { file_path: path }, cwd).kind, 'allow', path)
+  }
+  const poll = { command: 'cat /w/tasks/abc.output 2>/dev/null | tail -3' }
+  instance.after('main', 'Bash', poll, {}, cwd)
+  assert.equal(instance.before('main', 'Bash', poll, cwd).kind, 'allow')
+})
+
+test('an identical pure text-search shell command is denied until something is edited', () => {
+  const { instance } = ledger()
+  const search = { command: 'rg -n "markdown|Markdown" src --type ts' }
+  assert.equal(instance.before('main', 'Bash', search, cwd).kind, 'allow')
+  instance.after('main', 'Bash', search, { stdout: 'x' }, cwd)
+  assert.equal(instance.before('main', 'Bash', search, cwd).kind, 'deny')
+  assert.equal(instance.before('main', 'Bash', { command: 'rg -n "markdown|Markdown" src' }, cwd).kind, 'allow', 'a different query is a new search')
+  const listing = { command: 'ls src/main' }
+  instance.after('main', 'Bash', listing, {}, cwd)
+  assert.equal(instance.before('main', 'Bash', listing, cwd).kind, 'allow', 'listings are not deduplicated')
+  instance.before('main', 'Edit', { file_path: file, old_string: 'a', new_string: 'b' }, cwd)
+  assert.equal(instance.before('main', 'Bash', search, cwd).kind, 'allow')
+})
+
 test('an identical Grep or Glob is denied until something is edited', () => {
   const { instance } = ledger()
   const input = { pattern: 'continueInNewThread', path: 'src', output_mode: 'files_with_matches' }

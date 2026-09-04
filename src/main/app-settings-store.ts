@@ -221,7 +221,7 @@ function workspaceKey(cwd: string, projectPath: string | null): string {
   return `${projectPath === null ? 'none' : 'project'}:${cwd}`
 }
 
-function normalizeContinuation(value: unknown): ChatContinuation | null {
+export function normalizeContinuation(value: unknown): ChatContinuation | null {
   if (!value || typeof value !== 'object') return null
   const record = value as Record<string, unknown>
   if (!isChatProvider(record.sourceProvider) || typeof record.createdAt !== 'number' || !Number.isFinite(record.createdAt)) return null

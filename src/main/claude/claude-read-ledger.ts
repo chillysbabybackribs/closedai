@@ -28,6 +28,7 @@ export type LedgerSkip = {
 type Scope = {
   files: Map<string, LineRange[]>
   totals: Map<string, number>
+  /** Identical Grep/Glob inputs and identical pure text-search shell commands already answered. */
   searches: Set<string>
 }
 
@@ -45,6 +46,10 @@ const EDIT_TOOLS: Record<string, string> = {
 const READ_COMMANDS = new Set(['cat', 'head', 'tail', 'nl', 'wc', 'rg', 'grep', 'ugrep', 'ls', 'find', 'fd', 'tree',
   'echo', 'printf', 'pwd', 'stat', 'file', 'jq', 'sort', 'uniq', 'cut', 'tr', 'awk', 'diff', 'realpath', 'basename', 'dirname', 'which', 'type', 'test', 'true'])
 const READ_GIT_VERBS = new Set(['status', 'diff', 'log', 'show', 'blame', 'ls-files', 'rev-parse', 'branch', 'grep'])
+const TEXT_SEARCHES = new Set(['rg', 'grep', 'ugrep', 'fd'])
+// Only source under the workspace is ledgered: a task log, a build product, or anything outside
+// the checkout can change between reads, and re-reading it (polling) is the point.
+const VOLATILE_PATH = /(?:^|\/)(?:node_modules|out|dist|build|coverage|\.git)\/|\.(?:log|out|output|jsonl|pid|lock|tmp)$/
 const TREE_CHANGERS = /\bgit\s+(?:checkout|switch|stash|reset|apply|pull|merge|rebase|restore|clean)\b|\b(?:mv|rm|cp|tee|patch|apply_patch)\b|\bsed\s+-[a-zA-Z]*i|\bperl\s+-[a-zA-Z]*i|--write\b|\bnpm\s+run\s+map\b/
 
 export class ClaudeReadLedger {
@@ -86,7 +91,7 @@ export class ClaudeReadLedger {
     const args = record(input)
     if (tool === 'Read') {
       const path = args.file_path ? resolve(String(args.file_path)) : ''
-      if (!path) return
+      if (!path || !ledgered(path, cwd)) return
       const file = record(record(response).file)
       const total = numberOf(file.totalLines)
       if (total !== null) state.totals.set(path, total)
@@ -96,9 +101,11 @@ export class ClaudeReadLedger {
       return
     }
     if (tool === 'Bash') {
-      const parsed = parseShell(String(args.command ?? ''), cwd)
+      const command = String(args.command ?? '')
+      const parsed = parseShell(command, cwd)
       if (!parsed.pureRead) return
-      for (const read of parsed.reads) this.remember(state, read.path, read.range)
+      for (const read of parsed.reads) if (ledgered(read.path, cwd)) this.remember(state, read.path, read.range)
+      if (parsed.textSearch && parsed.reads.length === 0) state.searches.add(`Bash ${command.trim()}`)
       return
     }
     if (SEARCH_TOOLS.has(tool)) state.searches.add(searchKey(tool, args))
@@ -166,7 +173,12 @@ export class ClaudeReadLedger {
       state.searches.clear()
       return { kind: 'allow' }
     }
+    if (parsed.textSearch && parsed.reads.length === 0 && state.searches.has(`Bash ${command.trim()}`)) {
+      this.onSkip?.({ tool: 'Bash', path: command.trim().slice(0, 120), lines: 0, verdict: 'deny' })
+      return { kind: 'deny', reason: 'This exact search command was already answered earlier in this turn and nothing has been edited since; reuse that output or change the query.' }
+    }
     if (parsed.reads.length === 0 || parsed.readSegments !== parsed.segments) return { kind: 'allow' }
+    if (!parsed.reads.every((read) => ledgered(read.path, cwd))) return { kind: 'allow' }
     const covered = parsed.reads.every((read) => {
       const seen = state.files.get(read.path)
       if (!seen) return false
@@ -198,6 +210,12 @@ export class ClaudeReadLedger {
     state.files.delete(path)
     state.totals.delete(path)
   }
+}
+
+/** Whether a path is stable source worth remembering: inside the workspace and not a volatile file. */
+function ledgered(path: string, cwd: string): boolean {
+  const root = resolve(cwd)
+  return (path === root || path.startsWith(`${root}/`)) && !VOLATILE_PATH.test(path)
 }
 
 function scopeOf(input: HookInput): string {
@@ -264,7 +282,7 @@ function mentions(command: string, path: string, cwd: string): boolean {
 }
 
 type ShellRead = { path: string; range: LineRange }
-type ParsedShell = { pureRead: boolean; segments: number; readSegments: number; reads: ShellRead[] }
+type ParsedShell = { pureRead: boolean; segments: number; readSegments: number; reads: ShellRead[]; textSearch: boolean }
 
 /**
  * A conservative reading of a shell command: pure when every segment is a known read-only
@@ -276,6 +294,7 @@ export function parseShell(command: string, cwd: string): ParsedShell {
   const reads: ShellRead[] = []
   let pureRead = segments.length > 0
   let readSegments = 0
+  let textSearch = false
   for (const segment of segments) {
     const before = reads.length
     const words = shellWords(segment)
@@ -303,6 +322,7 @@ export function parseShell(command: string, cwd: string): ParsedShell {
       continue
     }
     if (!READ_COMMANDS.has(program)) { pureRead = false; continue }
+    if (TEXT_SEARCHES.has(program)) textSearch = true
     if (program === 'cat' || program === 'nl') {
       for (const word of rest) if (!word.startsWith('-') && looksLikePath(word)) reads.push({ path: resolve(cwd, word), range: { start: 1, end: WHOLE } })
     } else if (program === 'head') {
@@ -319,7 +339,7 @@ export function parseShell(command: string, cwd: string): ParsedShell {
     }
     if (reads.length > before) readSegments++
   }
-  return { pureRead, segments: segments.length, readSegments, reads }
+  return { pureRead, segments: segments.length, readSegments, reads, textSearch }
 }
 
 function looksLikePath(word: string): boolean {
