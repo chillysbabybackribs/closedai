@@ -204,3 +204,13 @@ test('enrichment remains bounded and related opt-out avoids type and test bodies
   const plain = await f.call({ action: 'read', path: otherSource, symbol: 'run', include_related: false })
   assert.doesNotMatch(plain.text, /Referenced local type:|Test candidate:/)
 })
+
+test('tests using static members of named and namespace imports are relevant to their class', async (t) => {
+  const f = await fixture(t)
+  await f.write(otherSource, 'export class Runner { static run() { return 1 } }\n')
+  await f.write(testFile, 'import test from "node:test"\nimport { Runner as Job } from "./workspace-navigation.js"\n' +
+    'import * as source from "./workspace-navigation.js"\ntest("named member", () => Job.run())\ntest("namespace member", () => source.Runner.run())\n')
+  const result = await f.call({ action: 'read', path: otherSource, symbol: 'Runner' })
+  assert.match(result.text, /Test candidate: named member/)
+  assert.match(result.text, /Test candidate: namespace member/)
+})

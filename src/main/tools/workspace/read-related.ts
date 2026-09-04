@@ -39,7 +39,9 @@ export async function readRelated(root: string, primary: FileFacts, start: numbe
     const imports = facts.imports.filter((binding) => resolveImport(facts.file, binding.from) === primary.file)
     for (const candidate of facts.tests) {
       const matched = candidate.references.filter((ref) => imports.some((binding) =>
-        binding.imported === '*' ? ref.startsWith(`${binding.local}.`) && selected.has(ref.slice(binding.local.length + 1)) : ref === binding.local && selected.has(binding.imported)))
+        binding.imported === '*'
+          ? ref.startsWith(`${binding.local}.`) && selected.has(ref.slice(binding.local.length + 1).split('.')[0]!)
+          : (ref === binding.local || ref.startsWith(`${binding.local}.`)) && selected.has(binding.imported)))
       if (!testPattern.test(facts.file) || !matched.length) continue
       testCount++
       if (result.tests.length < MAX_TESTS) result.tests.push({ facts, start: candidate.line, end: candidate.end,
