@@ -129,7 +129,7 @@ export class AntigravityChatService extends EventEmitter {
       // The CLI reads the agent file once, at process start. A spawn is therefore the only
       // moment its instructions — including the repository map — can be brought up to date.
       if (!session.live) this.profile = await ensureAntigravityProfile(this.stateDir, { cwd: this.cwd })
-      if (this.session !== session || session.conversationId !== conversationId || this.activeTurnId) throw new Error('Antigravity conversation changed while preparing the turn')
+      if (this.session !== session || (conversationId && session.conversationId !== conversationId) || this.activeTurnId) throw new Error('Antigravity conversation changed while preparing the turn')
       this.transcript.addOptimisticUser(crypto.randomUUID(), turn.prompt, turn.summaries)
       session.send(turn.content)
       this.setTurnContext(buildTurnContextReport({

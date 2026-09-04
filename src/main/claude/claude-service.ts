@@ -115,7 +115,7 @@ export class ClaudeChatService extends EventEmitter {
       }
       const turn = await buildClaudeUserMessage(text, shrinkPastedImages(attachments), Object.keys(context).length ? context : undefined, session.sessionId)
       if (!turn) return
-      if (this.session !== session || session.sessionId !== sessionId || this.activeTurnId) throw new Error('Claude conversation changed while preparing the turn')
+      if (this.session !== session || (sessionId && session.sessionId !== sessionId) || this.activeTurnId) throw new Error('Claude conversation changed while preparing the turn')
       this.transcript.addOptimisticUser(crypto.randomUUID(), turn.prompt, turn.summaries)
       session.send(turn.message)
       this.setTurnContext(buildTurnContextReport({

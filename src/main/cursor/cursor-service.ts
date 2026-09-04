@@ -120,7 +120,7 @@ export class CursorChatService extends EventEmitter {
       )
       if (!turn) return
       await this.bridge.start()
-      if (this.session !== session || session.sessionId !== sessionId || this.activeTurnId) throw new Error('Cursor conversation changed while preparing the turn')
+      if (this.session !== session || (sessionId && session.sessionId !== sessionId) || this.activeTurnId) throw new Error('Cursor conversation changed while preparing the turn')
       this.transcript.addOptimisticUser(randomUUID(), turn.prompt, turn.summaries)
       await session.send(turn.blocks)
       this.setTurnContext(buildTurnContextReport({

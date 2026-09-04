@@ -5,6 +5,7 @@ import { resumeThreadParams, startThreadParams } from './thread-params.ts'
 import {
   buildTurnAdditionalContext,
   needsActiveBrowserContext,
+  withSourceChanges,
   type ActiveBrowserContext
 } from './turn-context.ts'
 import { ToolRegistry } from '../tools/registry.ts'
@@ -71,4 +72,22 @@ test('active tab metadata is a timestamped untrusted fragment', () => {
 
 test('a browser-relevant turn stays context-free when no active tab exists', () => {
   assert.equal(buildTurnAdditionalContext('Read the current page', null), undefined)
+})
+
+test('source changes coexist with browser context and remain untrusted observation data', async () => {
+  const browser = buildTurnAdditionalContext('this page', activeTab)
+  const changes = { checkedAt: 'now', checkedFiles: 1, changes: [{ path: 'src/example.ts', previousHash: 'old', hash: 'new', status: 'changed' as const }], omittedChanges: 0 }
+  const context = await withSourceChanges(browser, { changes: async () => changes }, { paneId: 'p', threadId: 't', cwd: '/w' })
+  assert.deepEqual(context!['closedai.browser.active-tab'], browser!['closedai.browser.active-tab'])
+  const fragment = context!['closedai.workspace.source-changes']!
+  assert.equal(fragment.kind, 'untrusted')
+  assert.deepEqual(JSON.parse(fragment.value).changes, changes.changes)
+  assert.match(JSON.parse(fragment.value).basis, /not model-context coverage/)
+})
+
+test('unchanged or unavailable source enrichment adds no context and preserves existing fragments', async () => {
+  const scope = { paneId: 'p', threadId: 't', cwd: '/w' }
+  assert.equal(await withSourceChanges(undefined, { changes: async () => null }, scope), undefined)
+  const browser = buildTurnAdditionalContext('this page', activeTab)
+  assert.equal(await withSourceChanges(browser, { changes: async () => { throw new Error('offline') } }, scope), browser)
 })

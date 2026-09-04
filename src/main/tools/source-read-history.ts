@@ -1,4 +1,4 @@
-import { isAbsolute, relative, resolve } from 'node:path'
+import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { readFileSnapshot } from './file-snapshot.js'
 
 export type SourceReadScope = { paneId?: string | null; threadId: string | null; cwd: string }
@@ -27,7 +27,7 @@ export class SourceReadHistory {
     const key = scopeKey(scope)
     const path = resolve(version.path)
     const local = relative(resolve(scope.cwd), path)
-    if (!key || !isAbsolute(version.path) || !local || local === '..' || local.startsWith('../') || isAbsolute(local) ||
+    if (!key || !isAbsolute(version.path) || !local || local.split(sep)[0] === '..' || isAbsolute(local) ||
       local.length > 500 || !/^sha256:[a-f0-9]{64}$/.test(version.hash)) return
     const files = this.scopes.get(key) ?? new Map<string, string>()
     files.delete(path)
