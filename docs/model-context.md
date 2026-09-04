@@ -19,13 +19,16 @@ every running model's prompt.
 | Repository rules | `src/main/chat-context/workspace-rules.ts`, root `AGENTS.md`, applicable `CLAUDE.md` | Codex loads `AGENTS.md` natively; Claude and Antigravity receive the selected workspace root policy explicitly; Claude also loads project `CLAUDE.md` through the SDK |
 
 The common product facts explain independently arranged, simultaneously visible chat panes, their
-hideable shared browser, and the distinction
+hideable shared browser, per-tile conversation tabs, and the distinction
 between pane turns and provider background work. App facts come from `closedai_app.state`,
 service operations from `closedai_app.command`, and real renderer interaction from manifest
 control ids through `closedai_app.ui`. Other panes are readable through `peer_chats`.
 Renderer chat/composer control ids target the focused tile; use `layout.pane-drag` with a chat id
 to focus another tile before exercising its controls. The UI state includes visible pane ids and
 browser visibility. Browser pages use the CDP tools described in [Tools](tools.md) and [CDP](cdp-tool-foundation.md).
+Use `layout.new-chat` to add a conversation tab, `layout.tab` to select one, and `layout.tab-close`
+to remove it from the tile; each control's item is the chat id. Switching or removing a tab does
+not stop its running turn or delete its history.
 The common routing policy prefers deterministic commands, page APIs, fetch/extract, and non-input
 CDP. Real clicks, manual typing, key presses, and raw `Input.*` commands are recorded escape hatches:
 the call requires `fallback_reason` and belongs in one batch with inspection and post-action

@@ -35,6 +35,18 @@ function harness(overrides: Partial<BrowserToolHost> = {}) {
       calls.push(['waitFor', tabId, readiness])
       return { ...ready, reached: false, readyState: 'interactive', elapsedMs: readiness.timeoutMs }
     },
+    evaluate: async (tabId, request) => {
+      calls.push(['evaluate', tabId, request])
+      return tabId === 'missing' ? null : { ok: true, type: 'object', value: { title: 'A' }, truncated: false }
+    },
+    query: async (tabId, request) => {
+      calls.push(['query', tabId, request])
+      return tabId === 'missing' ? null : { selector: request.selector, matched: 1, returned: 1, items: [] }
+    },
+    consoleMessages: (tabId, filter) => {
+      calls.push(['console', tabId, filter])
+      return tabId === 'missing' ? null : { matched: 0, returned: 0, nextCursor: 0, lastNavigationAt: null, entries: [] }
+    },
     ...overrides
   }
   const registry = new ToolRegistry([browserTools(() => host)])
@@ -51,7 +63,7 @@ test('browser tool advertises one tool with browser page actions', () => {
   const { registry } = harness()
   assert.deepEqual(registry.names(), ['embedded_browser.page'])
   assert.deepEqual(registry.namespaces[0].tools[0].actions?.map((action) => action.name), [
-    'navigate', 'read_page', 'wait_for', 'fetch', 'extract'
+    'navigate', 'read_page', 'wait_for', 'fetch', 'extract', 'query', 'evaluate', 'console'
   ])
 })
 
@@ -184,4 +196,29 @@ test('invalid arguments are rejected per action', async () => {
   const missing = await call({ action: 'navigate' })
   assert.equal(missing.isError, true)
   assert.match(textOf(missing), /page\.navigate: invalid arguments — \$\.url is required/)
+})
+
+test('query passes selector options through and returns the structured result', async () => {
+  const { calls, call } = harness()
+  const result = await call({ action: 'query', selector: 'a.nav', text_contains: 'Docs', attributes: ['data-id'], visible_only: true, max_matches: 5 })
+  assert.equal(result.isError, undefined)
+  assert.deepEqual(calls[0], ['query', undefined, { selector: 'a.nav', text: 'Docs', attributes: ['data-id'], visibleOnly: true, limit: 5, maxText: 200 }])
+  assert.equal((JSON.parse(textOf(result)) as { matched: number }).matched, 1)
+  const missing = await call({ action: 'query', selector: 'a', tab_id: 'missing' })
+  assert.equal(missing.isError, true)
+})
+
+test('evaluate returns the page value as JSON and defaults its bound', async () => {
+  const { calls, call } = harness()
+  const result = await call({ action: 'evaluate', expression: 'document.title' })
+  assert.deepEqual(calls[0], ['evaluate', undefined, { expression: 'document.title', maxChars: 20_000 }])
+  assert.deepEqual(JSON.parse(textOf(result)), { ok: true, type: 'object', value: { title: 'A' }, truncated: false })
+})
+
+test('console forwards its filters and reports a missing tab', async () => {
+  const { calls, call } = harness()
+  await call({ action: 'console', min_level: 'error', since_navigation: true, after_cursor: 3, max_entries: 10 })
+  assert.deepEqual(calls[0], ['console', undefined, { minLevel: 'error', contains: undefined, sinceNavigation: true, afterCursor: 3, limit: 10 }])
+  const missing = await call({ action: 'console', tab_id: 'missing' })
+  assert.equal(missing.isError, true)
 })

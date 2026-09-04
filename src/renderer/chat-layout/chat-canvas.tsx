@@ -26,6 +26,15 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
   const [dragging, setDragging] = useState<string | null>(null)
   const [drop, setDrop] = useState<{ target: string; edge: DockEdge } | null>(null)
   const dropTarget = useRef<typeof drop>(null)
+  const tabFocus = useRef<string | null>(null)
+  useEffect(() => {
+    if (!tabFocus.current) return
+    const tab = document.getElementById(`chat-tab-${tabFocus.current}`)
+    if (tab?.getAttribute('aria-selected') === 'true') {
+      tabFocus.current = null
+      tab.focus()
+    }
+  }, [tree])
   const resize = useRef<{ id: string; pointerId: number; start: number; ratio: number; length: number; axis: string; min: number; max: number } | null>(null)
   useEffect(() => {
     // Follow the gesture even when Chromium delivers its next move over a sibling tile.
@@ -99,6 +108,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
         }}>
         {id === activeId && <header className="chat-layout-header">
           <button className="chat-layout-title" draggable={!busy} data-ui="layout.pane-drag" data-ui-key={id}
+            aria-label={`Move pane: ${title(id)}`}
             title="Drag to move this chat to the left, right, above, or below another chat"
             onClick={() => onSelect(id)}
             onDragStart={(event) => {
@@ -109,7 +119,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
             <GripVertical size={13} aria-hidden="true" />
           </button>
           <ChatTabs ids={tabs} activeId={id} busy={busy} canClose={tabs.length > 1 || geometry.panes.length > 1}
-            title={title} onSelect={onSelectTab} onClose={onCloseTab} />
+            title={title} onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab} />
           <button type="button" className="chat-layout-new-chat"
             data-ui="layout.new-chat" data-ui-key={id} disabled={busy}
             title="New chat tab" aria-label="New chat tab" onClick={() => onNewChat(id)}>

@@ -32,3 +32,20 @@ test('visibility rejects missing ids and ignores an old project update', async (
   assert.equal(manager.snapshot().selectedPaneId, 'pane-a')
   manager.stop()
 })
+
+test('inactive empty tabs survive switching without receiving display subscriptions', async () => {
+  const { manager, store } = harnessWith([chatRecord('pane-a', null), chatRecord('pane-b', null)], 'pane-a')
+  try {
+    await manager.setVisiblePanes(HARNESS_CWD, ['pane-a'], ['pane-a', 'pane-b'])
+    await manager.selectPane('pane-b')
+    await manager.setVisiblePanes(HARNESS_CWD, ['pane-b'], ['pane-a', 'pane-b'])
+    assert.deepEqual(Object.keys(manager.snapshot({ limit: 200 }).panes!), ['pane-b'])
+    await manager.selectPane('pane-a')
+    assert.ok(store.get('pane-b'), 'switching away must not discard an empty tab')
+    await manager.setVisiblePanes(HARNESS_CWD, ['pane-a'], ['pane-a'])
+    await manager.selectPane('pane-b')
+    await manager.selectPane('pane-a')
+    assert.equal(store.get('pane-b'), undefined, 'once removed from tabs, normal blank cleanup resumes')
+    await assert.rejects(manager.setVisiblePanes(HARNESS_CWD, ['pane-a'], ['missing']), /tab is no longer available/)
+  } finally { manager.stop() }
+})

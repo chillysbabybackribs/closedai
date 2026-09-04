@@ -86,7 +86,9 @@ The renderer can show several chats at once. `closedai_app.state` UI facts inclu
 `layout.visiblePaneIds` and `layout.browserVisible`; composer facts describe the focused tile.
 `closedai_app.ui` chat/composer control ids resolve within that tile. Focus a different tile with
 `layout.pane-drag` and its chat id before interacting, or use deterministic pane-id commands.
-The `layout` control family exposes split, hide, browser-toggle, and resize controls. Split actions
+The `layout` control family exposes conversation-tab, split, hide, browser-toggle, and resize controls.
+`layout.new-chat` adds a tab in the target tile, `layout.tab` selects one, and `layout.tab-close`
+removes it from the tile without stopping its turn or deleting history; items are chat ids. Split actions
 and the browser toggle live in each chat's title header; their item is the chat id.
 With multiple visible tiles, `layout.new-chat` starts a fresh chat in the tile named by its item
 without changing the other tiles or the split geometry.

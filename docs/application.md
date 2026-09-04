@@ -126,10 +126,14 @@ its existing toggle. Chat headers offer **New chat to the right**, **New chat be
 chat pane**. Hiding a tile neither detaches its runtime nor stops its turn; closing a drawer row
 still detaches and stops it.
 
-When multiple chat tiles are visible, each title header also shows a **+** button for **New chat
-in this pane**. It uses that pane's model and replaces only its displayed conversation, preserving
-the other tiles and divider sizes. The previous chat stays in the sidebar and any running turn
-continues in the background.
+Each tile header shows conversation tabs and a **+** button for **New chat tab**. It uses that
+tile's active chat model, adds a tab, and selects it while retaining the previous tabs and the
+other tiles and divider sizes. Click a tab to return to its conversation; arrow keys and Home/End
+also switch tabs. Tab strips scroll horizontally when full. Mounted drafts and attachments survive
+switching tabs. Each tab's close button removes it from the layout without deleting its history
+or stopping a running turn. Closing the active tab selects a neighbor; closing the last tab in a
+tile removes that tile when another tile remains. The workspace always keeps at least one tab.
+Hidden tabs can be parked or detached by normal runtime trimming and are reattached when selected.
 
 Drag a chat header or sidebar chat row onto another tile's left, right, top, or bottom edge. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its
@@ -139,20 +143,23 @@ are added by dragging their sidebar rows onto a tile edge or right-clicking a ro
 chat alongside the focused pane, moving its tile if already visible; they are disabled for the
 focused chat itself to avoid displaying the same conversation twice. New chats are added using the split
 controls in each chat's title header. There is no separate layout toolbar or add-chat dropdown.
-A normal sidebar click focuses an existing tile
-or replaces the focused tile, leaving the other tiles in place. New Agent and continuation select
-a chat in the focused tile; the split buttons explicitly add another tile.
+A normal sidebar click selects an existing tab wherever it lives, or replaces the focused tab,
+leaving the other tabs and tiles in place. New Agent and continuation select a chat in the focused
+tab; the split buttons explicitly add another tile. Moving a visible tile carries its tab group;
+dragging a hidden tab's sidebar row to a tile edge splits that conversation out of its group.
 
 Dividers resize horizontal and vertical splits independently; arrow keys resize a focused chat
 divider and double-click resets it to equal proportions. Nested splits support columns, rows,
 and quadrants, up to 32 visible chats. A tile has a 300 × 280 px minimum; the chat area scrolls
 when a small window cannot fit the chosen arrangement. Narrow tiles use compact composer
 controls. Browser visibility and the chat tree, including divider ratios, are saved per project
-in renderer localStorage. Missing/archived chats are removed from a restored layout.
+in renderer localStorage, including tab order and each tile's active tab. Missing/archived chats
+are removed from a restored layout; layouts saved before tabs remain compatible.
 
 `src/renderer/chat-layout/` owns the tree, geometry, persistence, and tile controls.
-`chat.setVisiblePanes(cwd, paneIds)` registers display subscriptions and protects visible chats
-from attachment trimming and blank-chat cleanup. It ignores stale project updates. The shared
+`chat.setVisiblePanes(cwd, paneIds, retainedTabIds?)` registers display subscriptions and protects visible chats
+from attachment trimming and blank-chat cleanup. Retained tab ids also protect empty tabs from
+blank-chat cleanup without waking or subscribing to inactive tabs. It ignores stale project updates. The shared
 snapshot's `panes` map contains the bounded visible views; `selected` remains the focus view for
 existing consumers. Hidden panes retain their main-process state but do not stream text over IPC.
 
