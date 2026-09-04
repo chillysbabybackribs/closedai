@@ -178,12 +178,17 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     await this.withAwake(paneId, (surface) => surface.refreshPlanUsage())
   }
 
+  /**
+   * A model pick is a UI act: it never waits for a runtime. A parked chat takes it on its saved
+   * state (the hub records the pick for the provider to read when it starts), so the picker is
+   * as fast on a chat whose process is gone as on one that is running.
+   */
   async selectModel(paneId: ChatPaneId, modelId: string): Promise<void> {
-    await this.withAwake(paneId, (surface) => surface.selectModel(modelId))
+    await this.lifecycle.require(paneId).surface.selectModel(modelId)
   }
 
   async selectReasoningEffort(paneId: ChatPaneId, effort: string): Promise<void> {
-    await this.withAwake(paneId, (surface) => surface.selectReasoningEffort(effort))
+    await this.lifecycle.require(paneId).surface.selectReasoningEffort(effort)
   }
 
   async listChats(): Promise<ChatRowSummary[]> {

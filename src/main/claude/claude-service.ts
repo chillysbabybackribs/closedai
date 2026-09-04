@@ -154,8 +154,9 @@ export class ClaudeChatService extends EventEmitter {
     const preference = this.modelState.preferenceForModel(modelId)
     await this.settings.set({ chatModelId: modelId, chatReasoningEffort: preference.effort })
     this.modelState.apply(preference)
-    await this.applyModelPreference()
+    // The pick shows first; telling the live session is a round trip the picker need not wait for.
     this.emitEvent({ type: 'model', selectedModel: modelId, selectedReasoningEffort: preference.effort })
+    await this.applyModelPreference()
   }
 
   async selectReasoningEffort(effort: string): Promise<void> {

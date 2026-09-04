@@ -152,7 +152,11 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     const target = chatProviderOfId(modelId)
     const cached = this.cachedModel(modelId)
     if (target === this.active) {
-      if (this.dormant.has(target) && cached) {
+      // Dormant, or still coming up: the provider cannot take the pick yet, so the pane keeps it
+      // and hands it over when the process is ready (see startIfDormant).
+      const ready = this.current().snapshot({ limit: 0 }).connection.state === 'ready'
+      if ((this.dormant.has(target) || !ready) && cached) {
+        this.dormant.add(target)
         const effort = await this.rememberChoice(cached)
         this.emitEvent({ type: 'model', selectedModel: cached.id, selectedReasoningEffort: effort })
         return
@@ -255,11 +259,23 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     if (this.switching) await this.switching.catch(() => {})
   }
 
-  /** The first call that needs the picked provider's process starts it; the pick itself never did. */
+  /**
+   * The first call that needs the picked provider's process starts it; the pick itself never did.
+   * A provider that connected before the pick reached it (it was already starting) loaded the
+   * model it had saved then, so the pane's choice is handed over once it is up.
+   */
   private async startIfDormant(): Promise<void> {
     if (!this.dormant.has(this.active)) return
+    const provider = this.providers[this.active]
     this.dormant.delete(this.active)
-    await this.providers[this.active].start({ warm: true })
+    await provider.start({ warm: true })
+    const saved = this.settings.get()
+    const loaded = provider.snapshot({ limit: 0 })
+    if (saved.chatModelId && loaded.selectedModel !== saved.chatModelId) {
+      await provider.selectModel(saved.chatModelId)
+    } else if (saved.chatReasoningEffort && loaded.selectedReasoningEffort !== saved.chatReasoningEffort) {
+      await provider.selectReasoningEffort(saved.chatReasoningEffort)
+    }
   }
 
   /** A model as the workspace last saw it, from the provider's own catalog or the shared cache. */
@@ -283,20 +299,21 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   /**
-   * Switch providers without starting anything: the pick goes to the pane's settings, the
-   * conversation's digest goes where the provider's first message will find it, the provider
-   * being left stops, and the pane repaints as the new provider — ready, with the transcript it
-   * had. `switching` is held for the few settings writes so the target's own `replace` (from
-   * its thread being detached) cannot blank the transcript on the way through.
+   * Switch providers without starting anything: the pick goes to the pane's settings and the pane
+   * repaints at once as the new provider — ready, on that model, with the transcript it had. The
+   * conversation's digest then goes where the provider's first message will find it and the
+   * provider being left stops. `switching` is held for that hand-over so the target's own
+   * `replace` (from its thread being detached) cannot blank the transcript on the way through.
    */
   private async switchDormant(source: ChatSnapshot, target: ChatProvider, model: ChatModel): Promise<void> {
     if (source.activeTurnId) throw new Error('Stop the current turn before switching models')
     const previous = this.active
+    await this.rememberChoice(model)
     this.active = target
     this.dormant.add(target)
+    this.emitEvent({ type: 'replace', snapshot: this.merge(this.preserveSourceHistory(source, this.current().snapshot())) })
     this.switching = (async () => {
       try {
-        await this.rememberChoice(model)
         await this.carryConversation(source, target)
         this.providers[previous].stop()
         this.emitEvent({ type: 'replace', snapshot: this.merge(this.preserveSourceHistory(source, this.current().snapshot())) })
@@ -319,12 +336,10 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   private dormantView(snapshot: ChatSnapshot): ChatSnapshot {
     if (!this.dormant.has(this.active) || snapshot.provider !== this.active) return snapshot
     const saved = this.settings.get()
-    return {
-      ...snapshot,
-      connection: { state: 'ready', message: `${CHAT_PROVIDER_LABELS[this.active]} starts with your first message` },
-      selectedModel: saved.chatModelId,
-      selectedReasoningEffort: saved.chatReasoningEffort
-    }
+    const connection = snapshot.connection.state === 'ready'
+      ? snapshot.connection
+      : { state: 'ready' as const, message: `${CHAT_PROVIDER_LABELS[this.active]} starts with your first message` }
+    return { ...snapshot, connection, selectedModel: saved.chatModelId, selectedReasoningEffort: saved.chatReasoningEffort }
   }
 
   /**

@@ -195,8 +195,9 @@ export class AntigravityChatService extends EventEmitter {
     const preference = this.modelState.preferenceForModel(modelId)
     await this.settings.set({ chatModelId: modelId, chatReasoningEffort: preference.effort })
     this.modelState.apply(preference)
-    await this.session?.retire()
     this.emitEvent({ type: 'model', selectedModel: modelId, selectedReasoningEffort: preference.effort })
+    // The model is part of the wire process; the live one winds down behind the pick, not in front of it.
+    this.retireQuietly()
   }
 
   async selectReasoningEffort(effort: string): Promise<void> {
@@ -205,9 +206,16 @@ export class AntigravityChatService extends EventEmitter {
     if (this.modelState.selectedReasoningEffort === effort) return
     await this.settings.set({ chatReasoningEffort: effort })
     this.modelState.apply(preference)
-    // Effort is part of the wire model name, so it takes effect with the next process.
-    await this.session?.retire()
     this.emitEvent({ type: 'reasoningEffort', selectedReasoningEffort: effort })
+    // Effort is part of the wire model name, so it takes effect with the next process.
+    this.retireQuietly()
+  }
+
+  /** Close the live process without holding the caller; the next turn starts a fresh one. */
+  private retireQuietly(): void {
+    void this.session?.retire().catch((error: unknown) => {
+      console.warn('[antigravity] could not retire the process:', error instanceof Error ? error.message : String(error))
+    })
   }
 
   listThreads(): Promise<ChatThreadSummary[]> {

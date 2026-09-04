@@ -58,6 +58,10 @@ export function ChatPane({
   // the pane's provider came up, so only a settled failure replaces the centered empty layout.
   const connecting = state.connection.state === 'starting'
   const blocked = !ready && !connecting
+  // The composer is usable while the provider comes up: the picker lists the cached catalog, a
+  // pick is a settings write, and a send waits for the provider itself. Locking it out until the
+  // process was ready made every launch and every provider switch a pause the user could feel.
+  const usable = ready || connecting
   const centerComposer = !blocked && !hasMessages && !historyOpen
 
   async function sendMessage(text: string, attachments: ChatAttachment[]): Promise<void> {
@@ -132,7 +136,7 @@ export function ChatPane({
           ) : null}
         </TaskActivity>
         <Composer
-          enabled={ready}
+          enabled={usable}
           running={running}
           placeholder={connecting ? state.connection.message : undefined}
           models={state.models}
