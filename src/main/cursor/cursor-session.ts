@@ -5,6 +5,7 @@ import {
 import { cursorTurnId } from './cursor-ids.js'
 import { CursorTurnTranslator, cursorTurnEnd, type TranscriptOp, type TurnEnd } from './cursor-stream.js'
 import type { ChatTranscriptItem } from '../../shared/chat.js'
+import { IdleProcessGuard } from '../idle-process-guard.js'
 import type { TraceScope } from '../trace/trace-log.js'
 
 // The chat pane's one Cursor thread: which ACP session it continues, the live `cursor-agent acp`
@@ -35,8 +36,6 @@ export type CursorSessionDeps = {
   idleMs?: number
 }
 
-const DEFAULT_IDLE_MS = 15 * 60 * 1000
-
 export class CursorSession {
   /** The ACP session this thread continues; set from the first `session/new` and used to reload. */
   sessionId: string | null = null
@@ -45,7 +44,7 @@ export class CursorSession {
   /** The session `this.client` currently holds, so one process never loads the same one twice. */
   private loadedSessionId: string | null = null
   private translator: CursorTurnTranslator | null = null
-  private idleTimer: NodeJS.Timeout | null = null
+  private readonly idleGuard: IdleProcessGuard
   private opening: Promise<CursorAcpClient> | null = null
   /** The last setup the agent reported, reused while its session stays open on this process. */
   private setup: AcpSessionSetup | null = null
@@ -55,7 +54,12 @@ export class CursorSession {
   private replaying: { sessionId: string; translator: CursorTurnTranslator; items: Map<string, ChatTranscriptItem> } | null = null
   private stopping = false
 
-  constructor(private readonly deps: CursorSessionDeps) {}
+  constructor(private readonly deps: CursorSessionDeps) {
+    this.idleGuard = new IdleProcessGuard(
+      () => { if (!this.activeTurnId) void this.retire() },
+      deps.idleMs
+    )
+  }
 
   get live(): boolean {
     return this.client?.connected === true
@@ -301,17 +305,10 @@ export class CursorSession {
   }
 
   private scheduleIdleClose(): void {
-    this.clearIdleTimer()
-    if (!this.client) return
-    this.idleTimer = setTimeout(() => {
-      this.idleTimer = null
-      if (!this.activeTurnId) void this.retire()
-    }, this.deps.idleMs ?? DEFAULT_IDLE_MS)
-    this.idleTimer.unref?.()
+    this.idleGuard.schedule(Boolean(this.client))
   }
 
   private clearIdleTimer(): void {
-    if (this.idleTimer) clearTimeout(this.idleTimer)
-    this.idleTimer = null
+    this.idleGuard.clear()
   }
 }

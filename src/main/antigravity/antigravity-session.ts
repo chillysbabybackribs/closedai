@@ -7,6 +7,7 @@ import {
 } from './antigravity-runtime-prompts.js'
 import { AntigravityTurnTranslator, type TranscriptOp, type TurnEnd } from './antigravity-stream.js'
 import type { AntigravityServerName } from './antigravity-tool-items.js'
+import { IdleProcessGuard } from '../idle-process-guard.js'
 import { traceLog, type TraceScope } from '../trace/trace-log.js'
 import { summarizeAntigravityEvent } from '../trace/summaries.js'
 
@@ -34,8 +35,6 @@ export type AntigravitySessionDeps = {
   idleMs?: number
 }
 
-const DEFAULT_IDLE_MS = 15 * 60 * 1000
-
 export class AntigravitySession {
   /** The CLI conversation this thread continues; set from the first init and used to resume. */
   conversationId: string | null = null
@@ -44,12 +43,17 @@ export class AntigravitySession {
   pendingSeed: string | null = null
   private process: AntigravityProcess | null = null
   private translator: AntigravityTurnTranslator | null = null
-  private idleTimer: NodeJS.Timeout | null = null
+  private readonly idleGuard: IdleProcessGuard
   private stopping = false
   private priming = false
   private queuedTurn: { turnId: string; content: string } | null = null
 
-  constructor(private readonly deps: AntigravitySessionDeps) {}
+  constructor(private readonly deps: AntigravitySessionDeps) {
+    this.idleGuard = new IdleProcessGuard(
+      () => { if (!this.activeTurnId) void this.retire() },
+      deps.idleMs
+    )
+  }
 
   get live(): boolean {
     return this.process?.alive === true
@@ -267,18 +271,11 @@ export class AntigravitySession {
   }
 
   private scheduleIdleClose(): void {
-    this.clearIdleTimer()
-    if (!this.process) return
-    this.idleTimer = setTimeout(() => {
-      this.idleTimer = null
-      if (!this.activeTurnId) void this.retire()
-    }, this.deps.idleMs ?? DEFAULT_IDLE_MS)
-    this.idleTimer.unref?.()
+    this.idleGuard.schedule(Boolean(this.process))
   }
 
   private clearIdleTimer(): void {
-    if (this.idleTimer) clearTimeout(this.idleTimer)
-    this.idleTimer = null
+    this.idleGuard.clear()
   }
 }
 

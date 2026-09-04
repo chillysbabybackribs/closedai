@@ -11,6 +11,7 @@ import { ClaudeRuntime } from './claude-runtime.js'
 import type { ClaudeSdk } from './claude-sdk.js'
 import { ClaudeTurnTranslator, type TranscriptOp, type TurnEnd } from './claude-stream.js'
 import type { DisplayScreenshot } from './claude-tool-items.js'
+import { IdleProcessGuard } from '../idle-process-guard.js'
 import { traceLog, type TraceScope } from '../trace/trace-log.js'
 import { summarizeClaudeMessage } from '../trace/summaries.js'
 
@@ -38,8 +39,6 @@ export type ClaudeSessionDeps = {
   onSourceRead?: (receipt: ReadReceipt) => void
 }
 
-const DEFAULT_IDLE_MS = 15 * 60 * 1000
-
 export class ClaudeSession {
   /** The SDK session this thread continues; set from the first init and used for `resume`. */
   sessionId: string | null = null
@@ -52,9 +51,14 @@ export class ClaudeSession {
   private readonly backgroundTasks = new ClaudeBackgroundTasks()
   private readonly readLedger = new ClaudeReadLedger((skip) => this.traceSkip(skip), (receipt) => this.deps.onSourceRead?.(receipt))
   private translator: ClaudeTurnTranslator | null = null
-  private idleTimer: NodeJS.Timeout | null = null
+  private readonly idleGuard: IdleProcessGuard
 
-  constructor(private readonly deps: ClaudeSessionDeps) {}
+  constructor(private readonly deps: ClaudeSessionDeps) {
+    this.idleGuard = new IdleProcessGuard(
+      () => { if (!this.activeTurnId) void this.retire() },
+      deps.idleMs
+    )
+  }
 
   get live(): boolean {
     return this.runtime !== null && !this.runtime.closed
@@ -230,16 +234,10 @@ export class ClaudeSession {
   }
 
   private scheduleIdleClose(): void {
-    this.clearIdleTimer()
-    if (!this.runtime || this.backgroundTasks.running) return
-    this.idleTimer = setTimeout(() => {
-      this.idleTimer = null
-      if (!this.activeTurnId) void this.retire()
-    }, this.deps.idleMs ?? DEFAULT_IDLE_MS)
+    this.idleGuard.schedule(Boolean(this.runtime && !this.backgroundTasks.running))
   }
 
   private clearIdleTimer(): void {
-    if (this.idleTimer) clearTimeout(this.idleTimer)
-    this.idleTimer = null
+    this.idleGuard.clear()
   }
 }
