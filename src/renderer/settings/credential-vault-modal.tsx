@@ -1,6 +1,5 @@
 import { useEffect, useState, type JSX } from 'react'
-import { ArrowLeft, KeyRound } from 'lucide-react'
-import { Button } from '../../components/ui/button.js'
+import { KeyRound } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -8,7 +7,7 @@ import {
   DialogTitle
 } from '../../components/ui/dialog.js'
 import { CredentialVaultList } from './credential-vault-list.js'
-import { CredentialWizard } from './credential-wizard.js'
+import { CredentialCreateForm } from './credential-create-form.js'
 import { useCredentialVault } from './credential-vault-store.js'
 
 export type CredentialVaultModalProps = {
@@ -17,21 +16,17 @@ export type CredentialVaultModalProps = {
 }
 
 /**
- * The credential vault: a list of saved entries and a three-step wizard for adding one.
+ * The credential vault: a list of saved entries and an in-place editor for adding one.
  * Storage is the OS-keychain-backed main-process vault; this component only ever holds
  * masked previews plus whatever single field the user explicitly reveals.
  */
 export function CredentialVaultModal({ open, onOpenChange }: CredentialVaultModalProps): JSX.Element {
   const vault = useCredentialVault(open)
-  const [view, setView] = useState<'list' | 'wizard'>('list')
+  const [view, setView] = useState<'list' | 'create'>('list')
 
   useEffect(() => {
     if (open) setView('list')
   }, [open])
-
-  const openDocs = (url: string): void => {
-    void window.closedai?.browser?.openTab(url)
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -41,30 +36,13 @@ export function CredentialVaultModal({ open, onOpenChange }: CredentialVaultModa
         aria-describedby="credential-description"
       >
         <div className="appearance-dialog-heading">
-          {view === 'wizard' ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              data-ui="credentials.cancel"
-              className="appearance-dialog-icon h-8 w-8 border-0 p-0 !rounded-full"
-              aria-label="Back to the credential list"
-              onClick={() => setView('list')}
-            >
-              <ArrowLeft size={16} />
-            </Button>
-          ) : (
-            <div className="appearance-dialog-icon">
-              <KeyRound size={18} />
-            </div>
-          )}
+          <div className="appearance-dialog-icon">
+            <KeyRound size={18} />
+          </div>
           <div>
-            <DialogTitle className="appearance-dialog-title">
-              {view === 'wizard' ? 'Add credential' : 'Credential Vault'}
-            </DialogTitle>
+            <DialogTitle className="appearance-dialog-title">Credential Vault</DialogTitle>
             <DialogDescription id="credential-description">
-              {view === 'wizard'
-                ? 'Pick the services, enter their keys, then review and save.'
-                : 'API keys and logins the app and its agents can use, encrypted by your OS keychain.'}
+              API keys and logins the app and its agents can use, encrypted by your OS keychain.
             </DialogDescription>
           </div>
         </div>
@@ -77,15 +55,14 @@ export function CredentialVaultModal({ open, onOpenChange }: CredentialVaultModa
             migrated={vault.migrated}
             encryptionAvailable={vault.status?.encryptionAvailable ?? false}
             backend={vault.status?.backend ?? 'the OS keychain'}
-            onAdd={() => setView('wizard')}
+            onAdd={() => setView('create')}
             onRemove={vault.remove}
             reveal={vault.reveal}
           />
         ) : (
-          <CredentialWizard
+          <CredentialCreateForm
             save={vault.save}
             encryptionAvailable={vault.status?.encryptionAvailable ?? false}
-            onOpenDocs={openDocs}
             onCancel={() => setView('list')}
             onSaved={() => setView('list')}
           />

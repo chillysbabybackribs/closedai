@@ -46,7 +46,7 @@ export function CredentialVaultList({
         </div>
         <Button size="sm" data-ui="credentials.add" onClick={onAdd}>
           <Plus />
-          Add credential
+          Create credential
         </Button>
       </div>
 
@@ -60,11 +60,14 @@ export function CredentialVaultList({
         <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</p>
       ) : null}
 
-      {credentials.length === 0 && !loading ? (
+      {loading ? (
+        <div className="credential-empty-state" aria-live="polite">
+          <p>Loading credentials…</p>
+        </div>
+      ) : credentials.length === 0 ? (
         <div className="credential-empty-state">
-          <Lock className="credential-empty-icon" size={32} />
-          <p>No credentials stored yet.</p>
-          <span className="text-xs text-muted-foreground">Add an API key or account login to get started.</span>
+          <p>Your vault is empty</p>
+          <span className="text-xs text-muted-foreground">Create an API key or account login to get started.</span>
         </div>
       ) : (
         <div className="credential-list min-h-0 flex-1 overflow-y-auto">

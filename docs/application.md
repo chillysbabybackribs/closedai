@@ -390,20 +390,20 @@ See [Tools](tools.md) for configuration and measurement limits.
 
 ## Credential vault
 
-`File ▸ Credential Vault` opens the app's store of API keys and logins. The list shows one row
-per entry with its brand mark, the fields it holds, and masked secrets; reveal and copy each ask
-the main process for that single field, so the renderer never holds more plaintext than the user
-asked to see. `Add credential` runs a three-step wizard — choose up to three services from the
-grid, enter their fields, review and save — with each step gated on the previous one: the grid
-ignores a fourth selection, and Next refuses to leave the field step while a required value is
-blank, marking the offenders.
+`File ▸ Credential Vault` opens the app's store of API keys and logins. The fixed-size card keeps
+the vault list and create form at the same dimensions. The list shows one row per entry with its
+brand mark, the fields it holds, and masked secrets; reveal and copy each ask the main process for
+that single field, so the renderer never holds more plaintext than the user asked to see.
+`Create credential` replaces the list in place with one editor: choose API key or login, enter a
+name and optional service URL, then provide either the API key or a username and password. The
+form validates its required fields and saves directly; there is no service picker or review step.
 
 The service catalog in `src/shared/credentials.ts` is the single definition of which fields a
-service takes and which are required, so the renderer's gating and the store's validation cannot
-drift. `CredentialVault` encrypts secret fields with Electron `safeStorage` before writing;
+service takes and which are required, so the store validates every saved draft. The create form
+saves these two common shapes as custom credentials. `CredentialVault` encrypts secret fields with Electron `safeStorage` before writing;
 `safeStorage` is injected rather than imported, which is what lets `credential-vault.test.ts`
 exercise the round trip outside Electron. When no OS keychain is available the vault still works
-but says so — the review step warns before saving and the saved row carries an `Unencrypted`
+but says so — the create form warns before saving and the saved row carries an `Unencrypted`
 badge — rather than silently degrading. A decrypt that fails against a changed keyring raises
 instead of returning ciphertext as if it were the secret.
 
