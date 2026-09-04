@@ -265,11 +265,9 @@ using a temporary bundle and profile without rebuilding or restarting the user's
 
 Browser tool regression includes unit tests with fakes under `src/main/tools/browser/browser.test.ts`
 and an isolated Chromium check: `npm run browser:live` (`scripts/browser-live-check.mjs`). That
-fixture drives the production `embedded_browser.page`, `network`, and `session` tools against a
-local HTTP document the test owns — real Chromium, deterministic DOM, no mocked `BrowserToolHost`
-and no ad-hoc public URL list. It also asserts the research-source URL contract from
-`isResearchSourceUrl`: search-engine result pages are rejected; eligible source documents open
-through the same `presentSearch` path `search.run` uses.
+check drives the production `embedded_browser.page`, `network`, and `session` tools against
+`HOME_URL` from `src/main/browser-url.ts` — real Chromium, real network, the same landing URL
+the app uses. Research-source URL rules are covered by `src/main/tools/search/presentation.test.ts`.
 
 ### Search credentials
 
