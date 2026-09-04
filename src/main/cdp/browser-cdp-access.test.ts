@@ -141,6 +141,41 @@ test('real input foregrounds a background tab and reports the switch', async () 
   access.dispose()
 })
 
+test('heap sampling is re-armed for every new document, which V8 does not do itself', async () => {
+  const contents = new Map([['tab-1', new FakeContents(1)]])
+  const browser: CdpBrowserSource = {
+    tabList: () => tabs,
+    contentsOf: (tabId) => contents.get(tabId ?? 'tab-1') as unknown as WebContents,
+    focusTabForInput: () => ({ activated: false })
+  }
+  const access = new BrowserCdpAccess(() => browser)
+  const target = contents.get('tab-1')!
+  const armCount = (): number => target.debugger.commands.filter((c) => c === 'HeapProfiler.startSampling').length
+  const navigate = async (frame: Record<string, unknown>): Promise<void> => {
+    target.debugger.emit('message', {}, 'Page.frameNavigated', { frame })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  }
+
+  await access.profile('tab-1', 'start', { channels: ['heap'], limit: 5 })
+  assert.equal(armCount(), 1)
+
+  // A subframe commit keeps the tab's isolate, so it must not re-arm and discard the samples.
+  await navigate({ id: 'child', parentId: 'root' })
+  assert.equal(armCount(), 1)
+
+  await navigate({ id: 'root' })
+  assert.equal(armCount(), 2)
+
+  const report = await access.profile('tab-1', 'stop', { channels: [], limit: 5 }) as Record<string, unknown>
+  assert.ok(report.heap, 'stop folds the heap channel armed by start')
+  assert.ok(target.debugger.commands.includes('HeapProfiler.stopSampling'))
+
+  // The watch ends with the profiling run rather than re-arming a tab nobody is measuring.
+  await navigate({ id: 'root' })
+  assert.equal(armCount(), 2)
+  access.dispose()
+})
+
 test('real input refuses when no tab can receive it, rather than silently doing nothing', async () => {
   const contents = new Map([['tab-1', new FakeContents(1)]])
   const browser: CdpBrowserSource = {
