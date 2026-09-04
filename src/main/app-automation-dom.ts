@@ -54,7 +54,8 @@ export function controlsExpression(filter: AppControlFilter): string {
 export function uiStateExpression(): string {
   return `(() => {
     ${helpers()}
-    const byId = (id) => Array.from(document.querySelectorAll('[data-ui="' + id + '"]')).find(visible) || null;
+    const byId = (id) => Array.from(document.querySelectorAll('[data-ui="' + id + '"]'))
+      .find((element) => visible(element) && (!element.closest('[data-pane-id]') || element.closest('[data-pane-id]').getAttribute('data-selected') === 'true')) || null;
     const ids = (selector) => Array.from(document.querySelectorAll(selector)).filter(visible)
       .map((element) => element.getAttribute('data-ui') || element.getAttribute('aria-label') || element.tagName.toLowerCase());
     const input = byId('composer.input');
@@ -63,6 +64,10 @@ export function uiStateExpression(): string {
     const focused = active && active.closest ? active.closest('[data-ui]') : null;
     return {
       drawerOpen: Boolean(document.querySelector('[data-ui-surface="side-drawer"]')),
+      layout: {
+        visiblePaneIds: Array.from(document.querySelectorAll('[data-pane-id]')).map((element) => element.getAttribute('data-pane-id')),
+        browserVisible: document.querySelector('[data-ui="layout.browser-toggle"]')?.getAttribute('aria-pressed') !== 'false'
+      },
       historyOpen: Boolean(byId('chat.history')),
       downloadsOpen: Boolean(document.querySelector('[data-ui-surface="browser-downloads"]')),
       dialogs: ids('[role="dialog"][data-ui]'),
@@ -166,7 +171,14 @@ function selectRenderedElement(target: AppUiTarget, visible: Visible, nameOf: Na
     (target.control ? `[data-ui="${target.control}"]${target.item ? `[data-ui-key="${target.item}"]` : ''}` : '')
   if (!selector) throw new Error('Pass control (with item or match when it repeats) or selector')
   const all = Array.from(document.querySelectorAll(selector))
-  const rendered = all.filter((element) => element.isConnected && visible(element))
+  const rendered = all.filter((element) => {
+    if (!element.isConnected || !visible(element)) return false
+    if (!target.selector && /^(chat|composer)\./.test(target.control ?? '')) {
+      const pane = element.closest?.('[data-pane-id]')
+      if (pane && pane.getAttribute('data-selected') !== 'true') return false
+    }
+    return true
+  })
   const match = target.match?.toLowerCase()
   const candidates = match ? rendered.filter((element) => nameOf(element).toLowerCase().includes(match)) : rendered
   if (candidates.length === 0) {

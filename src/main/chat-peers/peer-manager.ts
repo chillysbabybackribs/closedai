@@ -214,6 +214,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     if (revision !== this.visibilityRevision || cwd !== this.workspace().cwd) return
     this.emitWorkspace()
     await this.persistOpenChats()
+    if (revision !== this.visibilityRevision || cwd !== this.workspace().cwd) return
     for (const id of paneIds) this.wakeLater(id, 'show chat')
   }
 

@@ -9,6 +9,7 @@ import type { RowMenuTarget } from './drawer-row-menu.js'
 import { rowMenuAnchor } from './drawer-row-position.js'
 import { rowIsCurrent, splitChildren } from './drawer-sections.js'
 import type { DrawerRowModel } from './drawer-types.js'
+import { CHAT_DRAG_TYPE } from '../chat-layout/layout-tree.js'
 
 export type FoldState = {
   collapsedParents: ReadonlySet<string>
@@ -88,6 +89,11 @@ export function DrawerRow({
           className="agents-row-main"
           data-ui="drawer.row"
           data-ui-key={row.id}
+          draggable
+          onDragStart={(event) => {
+            event.dataTransfer.setData(CHAT_DRAG_TYPE, row.id)
+            event.dataTransfer.effectAllowed = 'move'
+          }}
           onClick={handleOpen}
           title={
             openError === 'Open in another app'
