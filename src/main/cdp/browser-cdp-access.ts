@@ -108,7 +108,7 @@ export class BrowserCdpAccess implements CdpToolHost {
     })
     const timing = parseResourceTiming(evaluationValue(evaluated))
     const buffered = session.eventPage(0, EVENT_SCAN_LIMIT, 'Network.')
-    const requests = mergeRequests(foldNetworkEvents(buffered.events), timing, filter)
+    const merged = mergeRequests(foldNetworkEvents(buffered.events), timing, filter)
     return {
       tab,
       connectionId: session.connectionId,
@@ -116,7 +116,9 @@ export class BrowserCdpAccess implements CdpToolHost {
       bufferedEvents: buffered.events.length,
       missedEvents: buffered.missedEvents,
       timingEntries: timing.length,
-      requests
+      matched: merged.matched,
+      returned: merged.requests.length,
+      requests: merged.requests
     }
   }
 

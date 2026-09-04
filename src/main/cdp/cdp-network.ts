@@ -125,18 +125,27 @@ export function decodeResponseBody(body: string, base64Encoded: boolean): Decode
   return { text, base64Encoded: true, byteLength: bytes.byteLength }
 }
 
+export type MergedRequests = {
+  /** Requests matching the filter before `limit` was applied. */
+  matched: number
+  requests: NetworkRequestRecord[]
+}
+
 /** Merge both sources on URL, preferring event data and marking what corroborated it. */
 export function mergeRequests(
   fromEvents: NetworkRequestRecord[],
   fromTiming: ResourceTimingEntry[],
   filter: RequestFilter
-): NetworkRequestRecord[] {
+): MergedRequests {
   const merged = new Map<string, NetworkRequestRecord>()
   for (const record of fromEvents) merged.set(record.url, { ...record })
   for (const entry of fromTiming) {
     const existing = merged.get(entry.url)
     if (existing) {
-      existing.source = 'both'
+      // Only an event record corroborates a timing entry. A page that fetches the same URL
+      // twice produces two timing entries, and calling that "both" would claim a captured
+      // request id the record does not have.
+      if (existing.source === 'events') existing.source = 'both'
       existing.type = existing.type ?? entry.type
       existing.sizeBytes = existing.sizeBytes ?? entry.sizeBytes
       continue
@@ -160,5 +169,7 @@ export function mergeRequests(
   })
   // Requests with a captured id sort first: those are the ones whose body can be read.
   kept.sort((left, right) => Number(Boolean(right.requestId)) - Number(Boolean(left.requestId)))
-  return kept.slice(0, filter.limit)
+  // `matched` is what the filter found, not what fitted: without it a listing cut by `limit`
+  // reads as "the endpoint is not there" rather than "narrow the filter".
+  return { matched: kept.length, requests: kept.slice(0, filter.limit) }
 }

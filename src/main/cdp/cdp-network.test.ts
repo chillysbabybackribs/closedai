@@ -39,7 +39,7 @@ test('parseResourceTiming keeps well-formed entries and skips the rest', () => {
 })
 
 test('mergeRequests marks a URL both sources saw and fills gaps from timing', () => {
-  const merged = mergeRequests(
+  const { requests: merged, matched } = mergeRequests(
     [{ url: 'https://a.test/api', method: 'POST', status: 200, type: null, requestId: 'r1', sizeBytes: null, source: 'events' }],
     [
       { url: 'https://a.test/api', type: 'xmlhttprequest', sizeBytes: 512 },
@@ -48,6 +48,7 @@ test('mergeRequests marks a URL both sources saw and fills gaps from timing', ()
     { limit: 10 }
   )
   assert.equal(merged.length, 2)
+  assert.equal(matched, 2)
   const api = merged.find((record) => record.url.endsWith('/api'))
   assert.equal(api?.source, 'both')
   assert.equal(api?.type, 'xmlhttprequest')
@@ -61,15 +62,27 @@ test('mergeRequests filters by url and type, and sorts readable bodies first', (
     { url: 'https://a.test/api/other', type: 'fetch', sizeBytes: 1 },
     { url: 'https://a.test/vendor.js', type: 'script', sizeBytes: 2 }
   ]
-  const byUrl = mergeRequests(events, timing, { url: '/api/', limit: 10 })
+  const byUrl = mergeRequests(events, timing, { url: '/api/', limit: 10 }).requests
   assert.deepEqual(byUrl.map((record) => record.url), ['https://a.test/api/items', 'https://a.test/api/other'])
   assert.equal(byUrl[0]?.requestId, 'r1')
-  assert.deepEqual(mergeRequests(events, timing, { type: 'script', limit: 10 }).map((r) => r.url), ['https://a.test/vendor.js'])
+  assert.deepEqual(mergeRequests(events, timing, { type: 'script', limit: 10 }).requests.map((r) => r.url), ['https://a.test/vendor.js'])
 })
 
-test('mergeRequests honours the limit', () => {
+test('mergeRequests honours the limit and still reports what matched', () => {
   const timing = Array.from({ length: 5 }, (_unused, index) => ({ url: `https://a.test/${index}`, type: null, sizeBytes: null }))
-  assert.equal(mergeRequests([], timing, { limit: 2 }).length, 2)
+  const merged = mergeRequests([], timing, { limit: 2 })
+  assert.equal(merged.requests.length, 2)
+  assert.equal(merged.matched, 5)
+})
+
+test('a URL fetched twice stays "timing": a repeat is not corroboration from events', () => {
+  const merged = mergeRequests([], [
+    { url: 'https://a.test/api/session', type: 'fetch', sizeBytes: 540 },
+    { url: 'https://a.test/api/session', type: 'fetch', sizeBytes: 540 }
+  ], { limit: 10 })
+  assert.equal(merged.requests.length, 1)
+  assert.equal(merged.requests[0]?.source, 'timing')
+  assert.equal(merged.requests[0]?.requestId, null)
 })
 
 test('decodeResponseBody returns text as-is and decodes base64 text', () => {
