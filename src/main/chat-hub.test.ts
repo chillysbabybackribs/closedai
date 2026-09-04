@@ -78,18 +78,19 @@ class FakeProvider extends EventEmitter {
 }
 
 function build(initialModel: string | null = null): {
-  hub: ChatHub; codex: FakeProvider; claude: FakeProvider; antigravity: FakeProvider
+  hub: ChatHub; codex: FakeProvider; claude: FakeProvider; antigravity: FakeProvider; cursor: FakeProvider
   events: ChatEvent[]; settings: FakeSettings
 } {
   const codex = new FakeProvider('codex', [model('codex', 'gpt-5.6-sol')])
   const claude = new FakeProvider('claude', [model('claude', 'claude:opus[1m]')])
   const antigravity = new FakeProvider('antigravity', [model('antigravity', 'agy:gemini-3.8-flash')])
+  const cursor = new FakeProvider('cursor', [model('cursor', 'cursor:claude-opus-5[effort=high]')])
   const settings = new FakeSettings()
   settings.saved.chatModelId = initialModel
-  const hub = new ChatHub({ codex, claude, antigravity } as unknown as ChatHubProviders, initialModel, settings)
+  const hub = new ChatHub({ codex, claude, antigravity, cursor } as unknown as ChatHubProviders, initialModel, settings)
   const events: ChatEvent[] = []
   hub.on('event', (event: ChatEvent) => events.push(event))
-  return { hub, codex, claude, antigravity, events, settings }
+  return { hub, codex, claude, antigravity, cursor, events, settings }
 }
 
 test('an agy model routes to the Antigravity provider and its threads merge into history', async () => {
@@ -124,7 +125,9 @@ test('the snapshot is the active provider with every catalog merged', () => {
   const { hub } = build()
   const snapshot = hub.snapshot()
   assert.equal(snapshot.provider, 'codex')
-  assert.deepEqual(snapshot.models.map((entry) => entry.id), ['gpt-5.6-sol', 'claude:opus[1m]', 'agy:gemini-3.8-flash'])
+  assert.deepEqual(snapshot.models.map((entry) => entry.id), [
+    'gpt-5.6-sol', 'claude:opus[1m]', 'agy:gemini-3.8-flash', 'cursor:claude-opus-5[effort=high]'
+  ])
 })
 
 test('selecting the other provider switches the pane after that provider accepts the model', async () => {
@@ -230,7 +233,7 @@ test('a running turn blocks switching providers', async () => {
 })
 
 test('threads merge newest first and route by id; one failing provider hides only its threads', async () => {
-  const { hub, codex, claude, antigravity } = build()
+  const { hub, codex, claude, antigravity, cursor } = build()
   codex.threads = [{ id: 'c1', title: 'Codex', preview: '', createdAt: 1, updatedAt: 5 }]
   claude.threads = [{ id: 'claude:s1', title: 'Claude', preview: '', createdAt: 1, updatedAt: 9 }]
   assert.deepEqual((await hub.listThreads()).map((thread) => thread.id), ['claude:s1', 'c1'])
@@ -238,6 +241,7 @@ test('threads merge newest first and route by id; one failing provider hides onl
   assert.deepEqual((await hub.listThreads()).map((thread) => thread.id), ['c1'])
   codex.failThreads = true
   antigravity.failThreads = true
+  cursor.failThreads = true
   await assert.rejects(hub.listThreads(), /down/)
   claude.failThreads = false
   await hub.openThread('claude:s1')
@@ -255,7 +259,7 @@ test('connection events from either provider re-describe the active one with mer
   if (event?.type !== 'connection') return
   assert.equal(event.provider, 'codex')
   assert.equal(event.connection.message, 'codex ready')
-  assert.equal(event.models.length, 3)
+  assert.equal(event.models.length, 4)
   claude.emit('event', { type: 'turn', turnId: 't' })
   assert.equal(events.at(-1)?.type, 'connection')
   assert.equal(hub.activeProvider, 'codex')
