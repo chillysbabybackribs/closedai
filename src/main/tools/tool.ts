@@ -104,3 +104,19 @@ export function booleanArg(input: JsonObject, key: string, fallback: boolean): b
   if (typeof value !== 'boolean') throw new Error(`\`${key}\` must be a boolean`)
   return value
 }
+
+/** Shared schema field for exceptional pointer/keyboard input. Kept in the call trace for auditability. */
+export const REAL_INPUT_FALLBACK_FIELD: JsonObject = {
+  type: 'string',
+  minLength: 1,
+  maxLength: 500,
+  description:
+    'Why deterministic commands, fetch/extract, or non-input CDP could not complete this step. ' +
+    'Real input is an escape hatch and must be grouped with inspection and verification in the same batch.'
+}
+
+export function requireRealInputFallback(input: JsonObject): string {
+  const reason = stringArg(input, 'fallback_reason')?.trim()
+  if (!reason) throw new Error('`fallback_reason` is required for real pointer or keyboard input')
+  return reason
+}

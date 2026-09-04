@@ -1,6 +1,6 @@
 import type { ToolAction } from '../action-tool.js'
 import { jsonResult, objectSchema } from '../json-result.js'
-import { booleanArg, numberArg, stringArg, type JsonObject } from '../tool.js'
+import { booleanArg, numberArg, REAL_INPUT_FALLBACK_FIELD, stringArg, type JsonObject } from '../tool.js'
 import { UI_SURFACES } from '../../../shared/ui-controls.js'
 import { requireHost, type AppUiHost, type AppUiTarget, type AppWaitCondition } from './host.js'
 
@@ -39,12 +39,13 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
     },
     {
       action: 'click',
-      description: 'Click a control (control + item/match), a selector, or explicit viewport coordinates with real input. Disabled or covered targets fail without clicking.',
+      description: 'Escape hatch only: click a control, selector, or viewport point with real input after deterministic commands cannot do the job.',
       inputSchema: objectSchema({
         ...targetFields,
         x: { type: 'number', minimum: 0, description: 'Viewport CSS x, with y.' },
-        y: { type: 'number', minimum: 0, description: 'Viewport CSS y, with x.' }
-      }),
+        y: { type: 'number', minimum: 0, description: 'Viewport CSS y, with x.' },
+        fallback_reason: REAL_INPUT_FALLBACK_FIELD
+      }, ['fallback_reason']),
       run: async (input) => {
         const target = targetFrom(input)
         const x = optionalNumber(input, 'x')
@@ -55,12 +56,13 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
     },
     {
       action: 'type',
-      description: 'Focus an input, textarea, or contenteditable control and insert text in one call; echoes the resulting value.',
+      description: 'Escape hatch only: focus a renderer field and insert text when no deterministic app command is available.',
       inputSchema: objectSchema({
         ...targetFields,
         text: { type: 'string', maxLength: 20_000, description: 'Literal text to insert.' },
-        clear: { type: 'boolean', description: 'Replace the current value (default true); false inserts at the caret.' }
-      }, ['text']),
+        clear: { type: 'boolean', description: 'Replace the current value (default true); false inserts at the caret.' },
+        fallback_reason: REAL_INPUT_FALLBACK_FIELD
+      }, ['text', 'fallback_reason']),
       run: async (input) => {
         const target = targetFrom(input)
         if (!hasTarget(target)) throw new Error('Pass control or selector to type into')
@@ -71,11 +73,12 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
     },
     {
       action: 'press_key',
-      description: 'Send one real key press to the focused app element: Enter, Escape, Tab, arrows, or a chord such as ctrl+n.',
+      description: 'Escape hatch only: send one real key press to the focused app element.',
       inputSchema: objectSchema({
         key: { type: 'string', minLength: 1, maxLength: 20, description: 'A single character or Enter, Tab, Escape, Backspace, Delete, an arrow key, Home, End, PageUp, or PageDown.' },
-        modifiers: modifiersField
-      }, ['key']),
+        modifiers: modifiersField,
+        fallback_reason: REAL_INPUT_FALLBACK_FIELD
+      }, ['key', 'fallback_reason']),
       run: async (input) => jsonResult(await requireHost(ui, 'app automation').pressKey(
         stringArg(input, 'key')!, modifiersFrom(input)
       ))

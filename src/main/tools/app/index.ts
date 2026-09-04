@@ -22,7 +22,7 @@ export function appTools(app: () => AppCommandHost | null, ui: () => AppUiHost |
           'Deterministic ClosedAI app commands: they call the same main-process services the UI does, so they ' +
           'need no inspection, refs, or waits. Use these to operate the app (open or send to another pane, stop ' +
           'it, switch model, manage browser tabs) and closedai_app.state to check results. Use closedai_app.ui ' +
-          'only when the real control must be exercised.',
+          'only when the real control must be exercised as a recorded, batched fallback.',
         actions: appCommandActions(app)
       }),
       defineActionTool({
@@ -30,8 +30,9 @@ export function appTools(app: () => AppCommandHost | null, ui: () => AppUiHost |
         description:
           'Drive the real ClosedAI renderer by stable control id. Start with controls (scoped by surface or ' +
           `query) to see ids, items, and state; families: ${uiControlFamilies().join(', ')}. Rows, tabs, and ` +
-          'menu items repeat, so pass item or match with their control. Menus and dialogs must be opened first; ' +
-          'never read renderer source to find a control.',
+          'menu items repeat, so pass item or match with their control. Prefer state and command; real click/type/key ' +
+          'actions require fallback_reason and belong in one batch with inspection and verification. Menus and dialogs ' +
+          'must be opened first; never read renderer source to find a control.',
         actions: appUiActions(ui)
       })
     ]

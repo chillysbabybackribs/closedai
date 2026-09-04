@@ -62,7 +62,8 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
           'By default the calls run in order and a failure skips the rest, so a dependent sequence ' +
           '(navigate, then wait_for, then read_page) is safe to batch. Set `parallel` to true for ' +
           'independent work; explicit browser targets run in parallel while same-target work serializes. ' +
-          'Batches cannot nest. Prefer direct calls for single steps or when a result decides what to do next. ' +
+          'Batches cannot nest. Use this for every multi-call workflow; real-input fallbacks must include their ' +
+          'inspection and post-action verification in the same sequential batch. ' +
           'For successful intermediate actions, set `include_result` false so only status—not a payload the model does not need—is returned; failures are always included. ' +
           'In exec scripts do not use this tool: await the tools directly (Promise.all for independent reads).',
         inputSchema: {

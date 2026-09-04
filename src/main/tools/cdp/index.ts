@@ -1,5 +1,5 @@
 import { defineActionTool, type ToolAction } from '../action-tool.js'
-import { stringArg, type ToolNamespace } from '../tool.js'
+import { REAL_INPUT_FALLBACK_FIELD, requireRealInputFallback, stringArg, type ToolNamespace } from '../tool.js'
 import {
   eventCursorFrom,
   eventLimitFrom,
@@ -23,7 +23,7 @@ export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
         name: 'protocol',
         description:
           'Primary browser interface: raw CDP commands to a ClosedAI browser tab and its instrumentation ' +
-          'events. Use this single browser surface first for capabilities, inspection, interaction, ' +
+          'events. Use this single browser surface first for capabilities, inspection, ' +
           'screenshots, network, storage, debugging, and any other supported CDP domain. Use capabilities ' +
           'to inspect the bundled Chromium ' +
           'protocol, targets for a live inventory of children and sessions, command for any domain method, and events ' +
@@ -31,7 +31,8 @@ export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
           'what the tab already fetched without a reload — then body for a captured response. DOM nodes, runtime objects, frames, execution contexts, ' +
           'target sessions, and request ids are transient and may become invalid after navigation. ' +
           'Child auto-attach uses flatten=true; pass an inventory sessionId as session_id on later commands. ' +
-          'Raw commands do not foreground tabs; use page for input that needs tab activation and closedai_ui capture for image results. ' +
+          'Raw Input.* commands are real-input escape hatches and require fallback_reason; use page when input also needs tab activation. ' +
+          'Use closedai_ui capture for image results. ' +
           'Results are JSON text: JSON.parse the returned string in exec scripts; oversized results ' +
           'shrink structurally and carry a `_closedai_truncated` note.',
         actions: actions(cdp)
@@ -58,18 +59,21 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
     {
       action: 'command',
       description:
-        'Send an arbitrary CDP Domain.method with a JSON params object. Optional session_id routes it to a flat child-target session.',
+        'Send an arbitrary CDP Domain.method with a JSON params object. Optional session_id routes it to a flat child-target session. ' +
+        'Input.* methods require fallback_reason and must be batched with inspection and verification.',
       inputSchema: objectSchema({
         tab_id: tabIdField,
         method: { type: 'string', minLength: 3, description: 'CDP method, for example DOM.getDocument or Network.enable.' },
         params: { type: 'object', description: 'The command parameters; defaults to an empty object.' },
-        session_id: sessionIdField
+        session_id: sessionIdField,
+        fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['method']),
       run: async (input) => {
         const method = stringArg(input, 'method')!
         if (!/^[A-Za-z][A-Za-z0-9]*\.[A-Za-z][A-Za-z0-9]*$/.test(method)) {
           throw new Error('`method` must use CDP Domain.method syntax')
         }
+        if (method.startsWith('Input.')) requireRealInputFallback(input)
         return jsonResult(await requireCdp(cdp).command(
           tabIdFrom(input), method, paramsFrom(input), sessionIdFrom(input)
         ))

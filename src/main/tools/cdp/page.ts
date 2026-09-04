@@ -1,5 +1,12 @@
 import { defineActionTool, type ToolAction } from '../action-tool.js'
-import { booleanArg, numberArg, stringArg, type JsonObject, type ToolDefinition } from '../tool.js'
+import {
+  booleanArg,
+  numberArg,
+  REAL_INPUT_FALLBACK_FIELD,
+  stringArg,
+  type JsonObject,
+  type ToolDefinition
+} from '../tool.js'
 import { refField, tabIdField, tabIdFrom } from './fields.js'
 import { requireCdp, type CdpHostProvider } from './host.js'
 import { jsonResult, objectSchema } from '../json-result.js'
@@ -20,8 +27,9 @@ export function cdpPageTool(cdp: CdpHostProvider): ToolDefinition {
   return defineActionTool({
     name: 'page',
     description:
-      'Real page interaction over CDP: inspect elements, then click, type, press keys, and scroll ' +
-      'by ref when semantic targeting is useful; use protocol for known CDP methods and target sessions. ' +
+      'Semantic page inspection plus exceptional real input over CDP. Use fetch/extract, site APIs, or ' +
+      'non-input protocol commands first. Click, type, press_key, and dismiss_overlay are escape hatches: ' +
+      'each requires fallback_reason and must be grouped with inspection and verification in one batch. ' +
       'One type call inserts a whole string. Coordinates are snapshot-time CSS pixels in the main frame viewport and ' +
       'can become stale after any layout change. Every verb that sends real input (click, click_at, ' +
       'type, press_key, and scroll) needs its tab on screen, so it brings that tab to the ' +
@@ -55,9 +63,9 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
       action: 'click',
       description:
         'Re-resolve a ref from the latest inspection, scroll it into view, verify its center is unobscured, ' +
-        'then send a real CDP mouse click. Brings the tab to the front first, because an off-screen view ' +
+         'then send a real CDP mouse click as an escape hatch. Brings the tab to the front first, because an off-screen view ' +
         'drops real input. Stale, detached, disabled, or covered refs fail without clicking.',
-      inputSchema: objectSchema({ tab_id: tabIdField, ref: refField }, ['ref']),
+      inputSchema: objectSchema({ tab_id: tabIdField, ref: refField, fallback_reason: REAL_INPUT_FALLBACK_FIELD }, ['ref', 'fallback_reason']),
       run: async (input) => jsonResult(await requireCdp(cdp).clickElement(
         tabIdFrom(input), stringArg(input, 'ref')!
       ))
@@ -65,13 +73,14 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
     {
       action: 'click_at',
       description:
-        'Hit-test and click an explicit point in the main frame viewport. Prefer click with a ref when an element is known.',
+        'Last-resort coordinate fallback: hit-test and click an explicit point in the main frame viewport. Prefer a ref.',
       inputSchema: objectSchema({
         tab_id: tabIdField,
         x: { type: 'number', minimum: 0, description: 'Horizontal CSS-pixel coordinate from the viewport left edge.' },
         y: { type: 'number', minimum: 0, description: 'Vertical CSS-pixel coordinate from the viewport top edge.' },
-        coordinate_space: coordinateSpaceField
-      }, ['x', 'y']),
+        coordinate_space: coordinateSpaceField,
+        fallback_reason: REAL_INPUT_FALLBACK_FIELD
+      }, ['x', 'y', 'fallback_reason']),
       run: async (input) => {
         const coordinateSpace = stringArg(input, 'coordinate_space', 'main_viewport_css')
         if (coordinateSpace !== 'main_viewport_css') throw new Error('Unsupported coordinate space')
@@ -83,8 +92,8 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
     {
       action: 'type',
       description:
-        'Fallback semantic interaction for cases where direct CDP is impractical. Click a ref to focus it, ' +
-        'then insert text in one call; prefer direct protocol commands when the required CDP method is known. ' +
+         'Escape-hatch semantic input after deterministic and non-input protocol options fail. Click a ref to focus it, ' +
+         'then insert text in one call. ' +
         'Replaces the existing value by default; the result echoes the field value so no re-inspection is needed. ' +
         'Works on inputs, textareas, and contenteditable elements.',
       inputSchema: objectSchema({
@@ -94,8 +103,9 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
           type: 'string', maxLength: 20_000,
           description: 'The literal text to insert. An empty string with clear left on erases the field.'
         },
-        clear: { type: 'boolean', description: 'Replace the existing value (default true). Pass false to insert at the caret instead.' }
-      }, ['ref', 'text']),
+        clear: { type: 'boolean', description: 'Replace the existing value (default true). Pass false to insert at the caret instead.' },
+        fallback_reason: REAL_INPUT_FALLBACK_FIELD
+      }, ['ref', 'text', 'fallback_reason']),
       run: async (input) => jsonResult(await requireCdp(cdp).typeText(
         tabIdFrom(input), stringArg(input, 'ref')!, stringArg(input, 'text')!, booleanArg(input, 'clear', true)
       ))
@@ -103,7 +113,7 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
     {
       action: 'press_key',
       description:
-        'Press one key as a real keyDown+keyUp pair, with optional modifiers — for Enter to submit, ' +
+        'Escape-hatch real keyDown+keyUp input, with optional modifiers — for Enter to submit, ' +
         'Escape to dismiss, Tab, arrows, or shortcut chords like ctrl+a. For text entry use type instead.',
       inputSchema: objectSchema({
         tab_id: tabIdField,
@@ -111,8 +121,9 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
           type: 'string', minLength: 1, maxLength: 20,
           description: 'A single character, or a named key: Enter, Tab, Escape, Backspace, Delete, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Home, End, PageUp, PageDown.'
         },
-        modifiers: modifiersField
-      }, ['key']),
+        modifiers: modifiersField,
+        fallback_reason: REAL_INPUT_FALLBACK_FIELD
+      }, ['key', 'fallback_reason']),
       run: async (input) => jsonResult(await requireCdp(cdp).pressKey(
         tabIdFrom(input), stringArg(input, 'key')!, modifiersFrom(input)
       ))
@@ -152,8 +163,9 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
         verify_timeout_ms: {
           type: 'integer', minimum: 100, maximum: 2_000,
           description: 'Milliseconds to wait for dismissal verification after each strategy.'
-        }
-      }),
+        },
+        fallback_reason: REAL_INPUT_FALLBACK_FIELD
+      }, ['fallback_reason']),
       run: async (input) => jsonResult(await requireCdp(cdp).dismissOverlay(
         tabIdFrom(input),
         stringArg(input, 'kind', 'auto') ?? 'auto',
