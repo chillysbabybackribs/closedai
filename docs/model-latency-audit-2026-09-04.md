@@ -85,8 +85,9 @@ complete bound on serialization work.
 ## Verification and measurement limits
 
 The initial four-module pass had 35 passing targeted tests, typecheck, generated-map verification,
-hygiene, and a production build. The follow-up has 23 targeted tests covering telemetry, Cursor
-startup/session behavior, and Antigravity session/stream/compaction behavior.
+hygiene, and a production build. The follow-up has 26 passing targeted tests covering telemetry,
+Cursor startup/session behavior, Antigravity session/stream/compaction behavior, and shared pause
+handling. Typecheck, generated-map verification, hygiene, and the production build also passed.
 
 Live follow-up used `gemini-3.8-flash-low`, a temporary generated ClosedAI profile, and a uniquely
 named MCP registration serving the real `embedded_browser.page` schema over a controlled browser
