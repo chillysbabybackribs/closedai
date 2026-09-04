@@ -1,4 +1,4 @@
-import { asRecord, checkedJson, compactText, queryWithDomains, records, result, text, type ProviderDeps } from './provider-utils.js'
+import { asRecord, checkedJson, compactText, normalizedDomains, queryWithDomains, records, result, text, type ProviderDeps } from './provider-utils.js'
 import type { SearchProviderClient, SearchResult } from './types.js'
 
 const BASE = 'https://ydc-index.io/v1/search'
@@ -25,21 +25,23 @@ export function youClient(deps: ProviderDeps): SearchProviderClient {
     provider: 'you',
     async search(request, signal) {
       const key = await deps.readKey('you')
-      const hasInclude = Boolean(request.includeDomains?.length)
-      const hasExclude = Boolean(request.excludeDomains?.length)
+      const includeDomains = normalizedDomains(request.includeDomains).slice(0, 500)
+      const excludeDomains = normalizedDomains(request.excludeDomains).slice(0, 500)
+      const hasInclude = includeDomains.length > 0
+      const hasExclude = excludeDomains.length > 0
       const response = await deps.fetch(BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-Key': key },
         body: JSON.stringify({
           query: hasInclude && hasExclude
-            ? queryWithDomains(request.query, request.includeDomains, request.excludeDomains)
+            ? queryWithDomains(request.query, includeDomains, excludeDomains)
             : request.query,
           count: Math.min(request.count, 100),
           ...(request.freshness ? { freshness: request.freshness } : {}),
           ...(request.country ? { country: request.country.toUpperCase() } : {}),
           ...(request.language ? { language: request.language.toUpperCase() } : {}),
-          ...(hasInclude && !hasExclude ? { include_domains: request.includeDomains?.slice(0, 500) } : {}),
-          ...(hasExclude && !hasInclude ? { exclude_domains: request.excludeDomains?.slice(0, 500) } : {}),
+          ...(hasInclude && !hasExclude ? { include_domains: includeDomains } : {}),
+          ...(hasExclude && !hasInclude ? { exclude_domains: excludeDomains } : {}),
           ...(request.intent === 'answer' ? { knowledge: 'core' } : {})
         }),
         signal

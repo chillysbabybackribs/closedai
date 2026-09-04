@@ -26,8 +26,8 @@ export function compactText(...values: unknown[]): string {
 }
 
 export function queryWithDomains(query: string, includeDomains?: string[], excludeDomains?: string[]): string {
-  const include = domains(includeDomains)
-  const exclude = domains(excludeDomains)
+  const include = normalizedDomains(includeDomains)
+  const exclude = normalizedDomains(excludeDomains)
   const includeFilter = include.length === 0
     ? ''
     : include.length === 1
@@ -36,7 +36,7 @@ export function queryWithDomains(query: string, includeDomains?: string[], exclu
   return [query, includeFilter, ...exclude.map((domain) => `-site:${domain}`)].filter(Boolean).join(' ')
 }
 
-function domains(values: string[] | undefined): string[] {
+export function normalizedDomains(values: string[] | undefined): string[] {
   return [...new Set((values ?? []).map((value) => {
     const trimmed = value.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0] ?? ''
     return /^[a-z0-9.-]+$/.test(trimmed) ? trimmed.replace(/^\.+|\.+$/g, '') : ''

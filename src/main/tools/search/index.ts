@@ -49,7 +49,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
           count: { type: 'integer', minimum: 1, maximum: 20, description: 'Maximum results per provider; default 5.' },
           freshness: { type: 'string', enum: ['day', 'week', 'month', 'year'], description: 'Optional recency filter.' },
           country: { type: 'string', minLength: 2, maxLength: 2, description: 'Optional two-letter country code.' },
-          language: { type: 'string', minLength: 2, maxLength: 2, description: 'Optional two-letter language code.' },
+          language: { type: 'string', minLength: 2, maxLength: 12, description: 'Optional BCP 47 language code.' },
           include_domains: { type: 'array', items: { type: 'string' }, description: 'Restrict supported providers to these domains.' },
           exclude_domains: { type: 'array', items: { type: 'string' }, description: 'Exclude these domains on supported providers.' }
         },

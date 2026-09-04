@@ -81,7 +81,7 @@ test('provider requests use current search endpoints, filters, depth modes, and 
 
   await call({
     query: 'release notes', intent: 'news', depth: 'quick', providers: ['brave', 'serper', 'tavily', 'you'],
-    freshness: 'day', country: 'us', language: 'en',
+    freshness: 'day', country: 'us', language: 'en-GB',
     include_domains: ['https://Example.com/path'], exclude_domains: ['bad.example']
   })
   const brave = calls.find((item) => item.url.includes('brave.com'))!
@@ -102,15 +102,15 @@ test('provider requests use current search endpoints, filters, depth modes, and 
   assert.deepEqual(tavily.body, {
     query: 'release notes', search_depth: 'fast', topic: 'news', max_results: 4,
     include_answer: false, chunks_per_source: 1, time_range: 'day',
-    include_domains: ['https://Example.com/path'], exclude_domains: ['bad.example'],
-    language: 'en', filter_by_language: true
+    include_domains: ['example.com'], exclude_domains: ['bad.example'],
+    language: 'en-gb', filter_by_language: true
   })
 
   const you = calls.find((item) => item.url.includes('ydc-index.io'))!
   assert.equal(you.url, 'https://ydc-index.io/v1/search')
   assert.deepEqual(you.body, {
     query: 'release notes site:example.com -site:bad.example', count: 4,
-    freshness: 'day', country: 'US', language: 'EN'
+    freshness: 'day', country: 'US', language: 'EN-GB'
   })
 
   await call({ query: 'regional topic', intent: 'general', depth: 'balanced', providers: ['tavily'], country: 'us' })

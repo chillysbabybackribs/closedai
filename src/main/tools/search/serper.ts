@@ -17,7 +17,7 @@ export function serperClient(deps: ProviderDeps): SearchProviderClient {
           q: queryWithDomains(request.query, request.includeDomains, request.excludeDomains),
           num: Math.min(request.count, 100),
           ...(request.country ? { gl: request.country.toLowerCase() } : {}),
-          ...(request.language ? { hl: request.language.toLowerCase() } : {}),
+          ...(request.language ? { hl: request.language.toLowerCase().split('-')[0] } : {}),
           ...(freshness ? { tbs: freshness } : {})
         }),
         signal

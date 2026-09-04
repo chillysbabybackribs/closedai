@@ -1,4 +1,4 @@
-import { checkedJson, records, result, text, type ProviderDeps } from './provider-utils.js'
+import { checkedJson, normalizedDomains, records, result, text, type ProviderDeps } from './provider-utils.js'
 import type { SearchProviderClient } from './types.js'
 
 const BASE = 'https://api.tavily.com/search'
@@ -12,6 +12,8 @@ export function tavilyClient(deps: ProviderDeps): SearchProviderClient {
       const includeAnswer = ['answer', 'research', 'finance'].includes(request.intent) || request.depth === 'deep'
       const topic = request.intent === 'news' ? 'news' : request.intent === 'finance' ? 'finance' : 'general'
       const country = topic === 'general' && request.country ? countryName(request.country) : undefined
+      const includeDomains = normalizedDomains(request.includeDomains).slice(0, 300)
+      const excludeDomains = normalizedDomains(request.excludeDomains).slice(0, 150)
       const response = await deps.fetch(BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
@@ -23,8 +25,8 @@ export function tavilyClient(deps: ProviderDeps): SearchProviderClient {
           include_answer: includeAnswer ? (request.depth === 'deep' ? 'advanced' : 'basic') : false,
           chunks_per_source: request.depth === 'quick' ? 1 : 3,
           ...(request.freshness ? { time_range: request.freshness } : {}),
-          ...(request.includeDomains?.length ? { include_domains: request.includeDomains.slice(0, 300) } : {}),
-          ...(request.excludeDomains?.length ? { exclude_domains: request.excludeDomains.slice(0, 150) } : {}),
+          ...(includeDomains.length ? { include_domains: includeDomains } : {}),
+          ...(excludeDomains.length ? { exclude_domains: excludeDomains } : {}),
           ...(country ? { country } : {}),
           ...(request.language ? { language: request.language.toLowerCase(), filter_by_language: true } : {})
         }),

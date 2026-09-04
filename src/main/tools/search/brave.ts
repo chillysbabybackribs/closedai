@@ -15,7 +15,7 @@ export function braveClient(deps: ProviderDeps): SearchProviderClient {
         extra_snippets: 'true'
       })
       if (request.country) params.set('country', request.country.toUpperCase())
-      if (request.language) params.set('search_lang', request.language.toLowerCase())
+      if (request.language) params.set('search_lang', request.language.toLowerCase().split('-')[0]!)
       if (request.freshness) params.set('freshness', FRESHNESS[request.freshness])
       const response = await deps.fetch(`${BASE}?${params}`, {
         headers: { Accept: 'application/json', 'X-Subscription-Token': key },
