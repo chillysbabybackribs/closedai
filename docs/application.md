@@ -326,6 +326,7 @@ recorded request on the session.
 | Deterministic app commands and renderer control access | `src/main/app-commands.ts`, `src/main/app-automation-*.ts`, `src/shared/ui-controls.ts` |
 | Browser, history, popups, CDP sessions and input | `src/main/browser-*.ts`, `src/main/cdp/` |
 | Session network record, interception rules, console capture, session fetch and cookies | `src/main/browser-network/`, `src/main/browser-network-access.ts` |
+| Stored API keys and logins, OS-keychain encryption | `src/main/credential-vault.ts`, `src/shared/credentials.ts`, `src/renderer/settings/credential-*` |
 | Typed IPC contract and narrow preload | `src/shared/api.ts`, `src/preload/index.ts` |
 | Chat/project/sidebar orchestration | `src/renderer/chat-pane.tsx`, `src/renderer/project-menu.tsx`, `src/renderer/side-drawer/` |
 | Transcript steps, background work, response actions | `src/renderer/transcript-rows.ts`, `src/renderer/activity-steps.ts`, `src/renderer/background-tasks.tsx`, `src/renderer/message-actions.tsx` |
@@ -356,6 +357,7 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 | `browser-tabs.json`, `browser-history.json` | Restored tabs and omnibox history |
 | `Partitions/browser`, `code-cache/` | Chromium session data and app-configured code cache |
 | `tool-telemetry.json` | Aggregate run/error/timeout counters; no arguments or conversation text |
+| `credential-vault.json` | Saved credentials: service id, entry label, timestamps, and one record per field. Secret fields are `safeStorage` ciphertext (base64); hosts, usernames and URLs stay readable so the list renders without decrypting. Written atomically at 0600. Entries the earlier localStorage vault held are moved here on first open and the localStorage copy is cleared only after every entry lands |
 | `antigravity/profile/`, `antigravity/attachments/`, `antigravity/transcripts/` | Generated agent plugin, materialized image attachments, and app-recorded transcripts; the CLI retains its own conversation store |
 | Renderer localStorage | Appearance, model-picker usage, drawer state/review queue (including review time), message timestamps and local feedback |
 | In-memory trace | At most 4,000 entries and 24,000,000 detail characters, 48,000 characters per detail before its truncation marker; cleared on restart |
@@ -385,6 +387,25 @@ queueing, reasoning, tools, and internal compaction are not individually separat
 See [Tools](tools.md) for configuration and measurement limits.
 
 `toolBatchMaxCalls` defaults to 16, is clamped to 1–64, and takes effect on app startup.
+
+## Credential vault
+
+`File ▸ Credential Vault` opens the app's store of API keys and logins. The list shows one row
+per entry with its brand mark, the fields it holds, and masked secrets; reveal and copy each ask
+the main process for that single field, so the renderer never holds more plaintext than the user
+asked to see. `Add credential` runs a three-step wizard — choose up to three services from the
+grid, enter their fields, review and save — with each step gated on the previous one: the grid
+ignores a fourth selection, and Next refuses to leave the field step while a required value is
+blank, marking the offenders.
+
+The service catalog in `src/shared/credentials.ts` is the single definition of which fields a
+service takes and which are required, so the renderer's gating and the store's validation cannot
+drift. `CredentialVault` encrypts secret fields with Electron `safeStorage` before writing;
+`safeStorage` is injected rather than imported, which is what lets `credential-vault.test.ts`
+exercise the round trip outside Electron. When no OS keychain is available the vault still works
+but says so — the review step warns before saving and the saved row carries an `Unencrypted`
+badge — rather than silently degrading. A decrypt that fails against a changed keyring raises
+instead of returning ciphertext as if it were the secret.
 
 ## Known boundaries from this source review
 
