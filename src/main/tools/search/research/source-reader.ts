@@ -17,7 +17,7 @@ export type SourceReader = (url: string, runId: string, sourceId: string, signal
 export function publicUrl(value: string): string {
   const url = new URL(value)
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.href.length > 2048) {
-    throw new Error('Research sources must be HTTP(S) URLs without embedded credentials')
+    throw new Error('Research sources must be HTTP(S) URLs without embedded credentials, at most 2048 characters')
   }
   return url.href
 }
@@ -108,7 +108,7 @@ export class SourceStore {
         const chunk = await abortable(reader.read(), signal)
         if (chunk.done) break
         const kept = chunk.value.subarray(0, MAX_BYTES - bytes)
-        await file.write(kept)
+        await file.writeFile(kept)
         raw += decoder.decode(kept, { stream: true })
         bytes += kept.length
         if (bytes >= MAX_BYTES) { incomplete = true; break }
