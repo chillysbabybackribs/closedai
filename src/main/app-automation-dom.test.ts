@@ -75,13 +75,13 @@ function fakeElement(overrides: Record<string, unknown> = {}): Record<string, un
   }
 }
 
-test('repeated composer controls resolve to the focused tile', () => {
-  const a = fakeElement({ value: 'draft A', closest: () => ({ getAttribute: () => 'false' }) })
-  const b = fakeElement({ value: 'draft B', closest: () => ({ getAttribute: () => 'true' }) })
-  withDom([a, b], () => {
-    const result = new Function(`return ${targetValueExpression({ control: 'composer.input' })}`)()
-    assert.equal(result, 'draft B')
-  })
+test('repeated composer controls resolve to the focused tile', async () => {
+  const a = fakeElement({ closest: () => ({ getAttribute: () => 'false' }) })
+  const b = fakeElement({ disabled: true, closest: () => ({ getAttribute: () => 'true' }) })
+  await withDom([a, b], () => assert.rejects(
+    new Function(`return ${targetClickExpression({ control: 'composer.send' })}`)(),
+    /Element is disabled/
+  ))
 })
 
 test('control resolution names the failure: not rendered, disabled, or ambiguous', async () => {
