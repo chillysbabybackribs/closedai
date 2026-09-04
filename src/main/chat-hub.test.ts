@@ -84,6 +84,10 @@ function build(initialModel: string | null = null): {
   const codex = new FakeProvider('codex', [model('codex', 'gpt-5.6-sol')])
   const claude = new FakeProvider('claude', [model('claude', 'claude:opus[1m]')])
   const antigravity = new FakeProvider('antigravity', [model('antigravity', 'agy:gemini-3.8-flash')])
+  antigravity.compactConversation = async function(this: FakeProvider) {
+    this.calls.push('compactConversation')
+    this.threadId = null
+  }
   const cursor = new FakeProvider('cursor', [model('cursor', 'cursor:claude-opus-5[effort=high]')])
   const settings = new FakeSettings()
   settings.saved.chatModelId = initialModel
