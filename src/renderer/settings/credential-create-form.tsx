@@ -66,7 +66,9 @@ export function CredentialCreateForm({
         <div className="mx-auto flex max-w-xl flex-col gap-5">
           <div>
             <h2 className="text-base font-semibold">Create credential</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Save an API key or an account login for the app and its agents.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Save an API key or an account login for the app and its agents.
+            </p>
           </div>
 
           <fieldset className="flex flex-col gap-2">
@@ -92,7 +94,12 @@ export function CredentialCreateForm({
           </fieldset>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Name" htmlFor="credential-label" required error={showErrors && missingLabel ? 'Name is required.' : undefined}>
+            <Field
+              label="Name"
+              htmlFor="credential-label"
+              required
+              error={showErrors && missingLabel ? 'Name is required.' : undefined}
+            >
               <Input
                 id="credential-label"
                 data-ui="credentials.label"
@@ -143,7 +150,11 @@ export function CredentialCreateForm({
               label={type === 'login' ? 'Password' : 'API key'}
               htmlFor="credential-secret"
               required
-              error={showErrors && missingSecret ? `${type === 'login' ? 'Password' : 'API key'} is required.` : undefined}
+              error={
+                showErrors && missingSecret
+                  ? `${type === 'login' ? 'Password' : 'API key'} is required.`
+                  : undefined
+              }
             >
               <div className="relative">
                 <Input
@@ -164,7 +175,11 @@ export function CredentialCreateForm({
                   data-ui="credentials.peek"
                   data-ui-key="custom.secret"
                   className="absolute top-1/2 right-1 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label={secretVisible ? `Hide ${type === 'login' ? 'password' : 'API key'}` : `Show ${type === 'login' ? 'password' : 'API key'}`}
+                  aria-label={
+                    secretVisible
+                      ? `Hide ${type === 'login' ? 'password' : 'API key'}`
+                      : `Show ${type === 'login' ? 'password' : 'API key'}`
+                  }
                   onClick={() => setSecretVisible((current) => !current)}
                 >
                   {secretVisible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
@@ -181,7 +196,11 @@ export function CredentialCreateForm({
                 : 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400'
             )}
           >
-            {encryptionAvailable ? <Lock className="mt-px size-3.5 shrink-0" /> : <ShieldAlert className="mt-px size-3.5 shrink-0" />}
+            {encryptionAvailable ? (
+              <Lock className="mt-px size-3.5 shrink-0" />
+            ) : (
+              <ShieldAlert className="mt-px size-3.5 shrink-0" />
+            )}
             <p>
               {encryptionAvailable
                 ? 'The secret is encrypted with your OS keychain before it is written to disk.'
@@ -253,7 +272,11 @@ function Field({ label, htmlFor, required, help, error, children }: FieldProps):
         {required ? <span className="text-destructive">*</span> : null}
       </label>
       {children}
-      {error ? <p className="text-xs text-destructive">{error}</p> : help ? <p className="text-xs text-muted-foreground">{help}</p> : null}
+      {error ? (
+        <p className="text-xs text-destructive">{error}</p>
+      ) : help ? (
+        <p className="text-xs text-muted-foreground">{help}</p>
+      ) : null}
     </div>
   )
 }
