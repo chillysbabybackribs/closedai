@@ -408,6 +408,9 @@ The registry reports an aggregate-only event after every call (`registry.subscri
 optional action name, and whether it succeeded. `ToolTelemetry` stores only per-tool and
 per-action run/error counters in `<userData>/tool-telemetry.json`, so counts survive restarts
 without retaining arguments, results, error messages, timing, or conversation identifiers.
+Persistence uses one writer: bursts share the next snapshot instead of queuing one atomic
+write per call. Updates received during a write trigger a subsequent snapshot, and clearing
+counts waits for pending writes to drain.
 
 On the first start after this format was introduced, ClosedAI reads only the counters from the
 old `tool-telemetry.jsonl`, writes the aggregate JSON file with mode `0600`, and removes the old
