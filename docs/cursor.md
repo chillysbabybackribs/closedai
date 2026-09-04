@@ -39,7 +39,8 @@ open protocol, so the wire format is not the fragile part — the subcommand's a
 | Tools | The ClosedAI registry is served over MCP by the shared HTTP bridge (`src/main/tools/mcp-http-bridge.ts`), passed to `session/new` as `mcpServers`. Each pane's endpoints carry its own key (`/mcp/<key>/<namespace>`), so a served call is attributed to that pane and turn exactly. |
 | Archiving | ACP has no delete verb, so `cursor-archive.ts` keeps a local set of session ids the drawer stops listing. Cursor's own store is untouched. |
 | Plan usage | Not reported. `cursor-agent about` names the tier only, so the hover card shows the plan with an explicit "unavailable" rather than an invented number. |
-| Context usage | Not reported by ACP, so the pane shows no context gauge. |
+| Context capacity | A model id's `context` parameter is parsed into tokens and shown in the model selector (for example, `context=1m` becomes `1M`). |
+| Context usage | Not reported by ACP, so the pane shows no live context gauge. |
 
 ## Client capabilities
 

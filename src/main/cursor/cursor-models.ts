@@ -45,15 +45,28 @@ export function describeCursorModel(params: Record<string, string>): string {
   return parts.length ? `${parts.join(' · ')} — on your Cursor subscription` : 'On your Cursor subscription'
 }
 
+/** Context capacity encoded by Cursor in an ACP model id, expressed as tokens. */
+export function cursorContextWindow(value: string | undefined): number | undefined {
+  if (!value) return undefined
+  const match = /^(\d+(?:\.\d+)?)\s*([km])?$/.exec(value.trim().toLowerCase())
+  if (!match) return undefined
+  const amount = Number(match[1])
+  const multiplier = match[2] === 'm' ? 1_000_000 : match[2] === 'k' ? 1_000 : 1
+  const tokens = amount * multiplier
+  return Number.isSafeInteger(tokens) && tokens > 0 ? tokens : undefined
+}
+
 /** Composer models: one per ACP entry, since only a listed id can be selected. */
 export function cursorModelsFromAcp(acpModels: readonly AcpModel[], currentModelId: string | null): ChatModel[] {
   const models = acpModels.map((model): ChatModel => {
     const { params } = parseCursorModelId(model.modelId)
+    const contextWindow = cursorContextWindow(params.context)
     return {
       provider: 'cursor',
       id: cursorModelId(model.modelId),
       displayName: model.name,
       description: describeCursorModel(params),
+      ...(contextWindow ? { contextWindow } : {}),
       // The effort is baked into the id the agent accepts, so the pane offers no effort control.
       defaultReasoningEffort: '',
       supportedReasoningEfforts: [],

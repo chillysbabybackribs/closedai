@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { cursorModelId, cursorSessionIdOf, cursorThreadId, isCursorId } from './cursor-ids.ts'
-import { cursorAcpModelId, cursorModelCatalog, cursorModelsFromAcp, describeCursorModel, parseCursorModelId } from './cursor-models.ts'
+import {
+  cursorAcpModelId, cursorContextWindow, cursorModelCatalog, cursorModelsFromAcp,
+  describeCursorModel, parseCursorModelId
+} from './cursor-models.ts'
 
 // Shapes taken verbatim from a live `session/new` (cursor-agent 2026.09.02-c22c1a3).
 const ACP_MODELS = [
@@ -35,12 +38,22 @@ test('the bracket becomes the description, covering both effort keys', () => {
   assert.equal(describeCursorModel({}), 'On your Cursor subscription')
 })
 
+test('Cursor context parameters become selector token capacities', () => {
+  assert.equal(cursorContextWindow('1M'), 1_000_000)
+  assert.equal(cursorContextWindow('400k'), 400_000)
+  assert.equal(cursorContextWindow('272000'), 272_000)
+  assert.equal(cursorContextWindow('unknown'), undefined)
+})
+
 test('the catalog is one entry per listed model and offers no effort ladder', () => {
   const models = cursorModelsFromAcp(ACP_MODELS, 'gpt-5.6-sol[context=272k,reasoning=medium,fast=false]')
   assert.equal(models.length, 4)
   assert.deepEqual(models.map((model) => model.displayName), ['Auto', 'claude-opus-5', 'gpt-5.6-sol', 'composer-2.5'])
   // `session/set_model` only accepts a listed id, so an id must round-trip verbatim.
   assert.equal(cursorAcpModelId(models[1]!.id), ACP_MODELS[1]!.modelId)
+  assert.equal(models[1]!.contextWindow, 300_000)
+  assert.equal(models[2]!.contextWindow, 272_000)
+  assert.equal(models[3]!.contextWindow, undefined)
   // Effort is baked into each id, so offering a ladder would build ids the agent rejects.
   assert.deepEqual(models.flatMap((model) => model.supportedReasoningEfforts), [])
   assert.deepEqual(models.filter((model) => model.isDefault).map((model) => model.displayName), ['gpt-5.6-sol'])
