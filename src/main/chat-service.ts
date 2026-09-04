@@ -40,7 +40,7 @@ import type { ScreenshotStore } from './tools/capture/screenshot-store.js'
 import { traceLog } from './trace/trace-log.js'
 import { CodexWorkspaceRuntime, type CodexRuntimeSession } from './codex-workspace-runtime.js'
 
-/** The Codex provider: one long-lived app-server process serving every Codex turn. */
+/** One pane's Codex state, backed by the workspace's shared app-server runtime. */
 export class ChatService extends EventEmitter {
   private readonly client: CodexRuntimeSession
   private connection: ChatConnection = { state: 'starting', message: 'Starting Codex…' }

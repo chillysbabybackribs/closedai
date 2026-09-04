@@ -124,17 +124,24 @@ export function Composer({
     if (!canSend) return
     const submittedInput = input.trim()
     const submittedAttachments = attachments
+    const clearImmediately = provider === 'codex'
     setSending(true)
-    // The main process paints an optimistic transcript item immediately. Clear the matching draft
-    // at acceptance time instead of holding it through provider startup and thread creation.
-    setInput('')
-    setAttachments([])
-    setAttachmentError('')
+    if (clearImmediately) {
+      // Codex paints an optimistic transcript item before its shared runtime or thread is ready.
+      setInput('')
+      setAttachments([])
+      setAttachmentError('')
+    }
     try {
       await onSend(submittedInput, submittedAttachments)
+      if (!clearImmediately) {
+        setInput('')
+        setAttachments([])
+        setAttachmentError('')
+      }
       focusAfterSendRef.current = true
     } catch {
-      // The optimistic transcript item and the actionable main-process notice preserve the attempt.
+      // Codex keeps the optimistic item; other providers keep the draft. Main adds the notice.
     } finally {
       setSending(false)
     }

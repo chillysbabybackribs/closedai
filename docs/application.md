@@ -48,13 +48,16 @@ On launch only the selected pane is warmed. Selecting another pane immediately d
 available snapshot, then wakes its runtime asynchronously. Unselected panes without an active
 turn are parked after five minutes, the selected pane after twenty, and at most two unselected
 idle panes stay awake: creating or opening a chat parks the least recently active beyond that at
-once, so consecutive new chats do not stack provider processes. Parking stops the pane's provider
-processes but keeps the pane, its in-memory transcript, and the record; the next message wakes
-it. Each pane keeps its own Codex app-server while awake. Provider processes are spawned in their
-own process group and stopped as a group (SIGTERM, then SIGKILL after three seconds), so the
-worker a CLI launcher forks dies with it, and every tracked group is killed at quit
-(`src/main/process-tree.ts`). Titles and last turn-boundary times are persisted on the record so
-dormant chats can still be named after a restart.
+once, so consecutive new chats do not stack pane-owned provider processes. Parking stops those
+pane-owned processes but keeps the pane, its in-memory transcript, and the record; the next message
+wakes it. Codex instead has one app-server per active workspace. Every Codex pane keeps independent
+thread, transcript, model, turn, tool, and trace state while its routed session shares that process,
+account read, and model catalog. Parking a Codex pane keeps the workspace process; detaching it
+releases the routed session, while a project switch or app quit stops the process. Provider
+processes are spawned in their own process group and stopped as a group (SIGTERM, then SIGKILL
+after three seconds), so the worker a CLI launcher forks dies with it, and every tracked group is
+killed at quit (`src/main/process-tree.ts`). Titles and last turn-boundary times are persisted on
+the record so dormant chats can still be named after a restart.
 
 Startup, new chat, and opening a chat trim attached panes toward eight, least recently active
 first. The selected pane, active turns, operations in flight, and undelivered continuation
@@ -196,7 +199,7 @@ shared frame settling lives in `browser-frame-settle.ts`. See [CDP](cdp-tool-fou
 | Attach/detach lifecycle, summaries, per-chat settings, idle parking, catalog reconciliation | `src/main/chat-peers/` |
 | Per-workspace provider model catalog cache | `src/main/chat-context/provider-catalog-cache.ts` |
 | Provider routing and id families | `src/main/chat-hub.ts`, `src/shared/chat-providers.ts` |
-| Codex runtime and transcript normalization | `src/main/chat-service.ts`, `src/main/app-server-client.ts`, `src/main/chat-normalizers.ts` |
+| Workspace Codex process, pane routing, and transcript normalization | `src/main/codex-workspace-runtime.ts`, `src/main/chat-service.ts`, `src/main/app-server-client.ts`, `src/main/chat-normalizers.ts` |
 | Claude / Antigravity / Cursor sessions and translation | `src/main/claude/`, `src/main/antigravity/`, `src/main/cursor/` |
 | Model instructions, trust and handoff | `src/main/chat-context/`, provider `*-instructions.ts` files |
 | Provider-neutral tool definitions and execution | `src/main/tools/` |

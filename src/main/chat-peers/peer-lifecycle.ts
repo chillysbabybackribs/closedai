@@ -25,9 +25,10 @@ export type PeerEntry = ParkablePeer & {
 }
 
 /**
- * How many chats stay attached as panes. Each attached chat can hold a provider process, and
- * nothing used to retire one, so every chat ever started stayed in the workspace. Detaching keeps
- * the record: the chat stays in the drawer and reattaches when opened.
+ * How many chats stay attached as panes. Pane-owned providers can hold a process, while Codex
+ * holds a routed session on the workspace process. Nothing used to retire either kind, so every
+ * chat ever started stayed in the workspace. Detaching keeps the record: the chat stays in the
+ * drawer and reattaches when opened.
  */
 export const MAX_ATTACHED_CHATS = 8
 
