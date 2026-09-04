@@ -21,6 +21,7 @@ import { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { ChatStore } from './chat-store/chat-store.js'
 import { migrateChatPeersIntoStore } from './chat-store/chat-store-migration.js'
 import { ProviderCatalogCache } from './chat-context/provider-catalog-cache.js'
+import { stopAllProcessGroups } from './process-tree.js'
 import { ClaudeChatService } from './claude/claude-service.js'
 import { AntigravityChatService } from './antigravity/antigravity-service.js'
 import { CursorChatService } from './cursor/cursor-service.js'
@@ -390,5 +391,9 @@ app.on('before-quit', (event) => {
     antigravityBridge?.stop(),
     // Nothing outside the app to clean up here; this only closes the listener.
     cursorBridge?.stop()
-  ]).finally(() => app.quit())
+  ]).finally(() => {
+    // Provider processes were asked to stop above; none may outlive the app.
+    stopAllProcessGroups()
+    app.quit()
+  })
 })
