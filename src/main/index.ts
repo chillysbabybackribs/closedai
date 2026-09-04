@@ -42,7 +42,8 @@ import { cdpTools } from './tools/cdp/index.js'
 import { captureTools, ScreenshotStore } from './tools/capture/index.js'
 import { batchTools } from './tools/batch/index.js'
 import { workspaceTools } from './tools/workspace/index.js'
-import { searchTools } from './tools/search/index.js'
+import { createResearchRuntime } from './research-runtime.js'
+import type { ResearchService } from './tools/search/research/service.js'
 import { peerChatTools } from './tools/peer-chats/index.js'
 import { ToolTelemetry } from './tools/telemetry.js'
 import { registerToolsIpc } from './tools/ipc.js'
@@ -79,6 +80,7 @@ let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
 let codexRuntime: CodexWorkspaceRuntime | null = null
 let toolRegistry: ToolRegistry | null = null
+let researchService: ResearchService | null = null
 let toolTelemetry: ToolTelemetry | null = null
 let antigravityBridge: AntigravityToolBridge | null = null
 let cursorBridge: CursorToolBridge | null = null
@@ -184,12 +186,17 @@ async function main(): Promise<void> {
   // Full-resolution captures for the transcript; the model only ever receives the scaled copy.
   const screenshots = new ScreenshotStore()
   const workspaceNamespace = workspaceTools(chatWorkspace)
+  const research = await createResearchRuntime({
+    root: join(userData(), 'research-runs'), browser: () => browserService,
+    peers: () => chatService, workspace: () => chatWorkspace
+  })
+  researchService = research.service
   toolRegistry = createToolRegistry([
     appTools(() => appCommandAccess, () => appAutomationAccess),
     browserTools(() => pageAccess),
     cdpTools(() => cdpAccess),
     captureTools(() => captureAccess, screenshots),
-    searchTools(),
+    research.namespace,
     peerChatTools(() => chatService),
     ...(workspaceNamespace ? [workspaceNamespace] : []),
     // Lazy self-reference: the batch dispatches into the registry it is registered in.
@@ -246,7 +253,12 @@ async function main(): Promise<void> {
       chatWorkspace, peerSettings, cursorBridge!, cursorStateDir, activeBrowserContext, screenshots, peerSettings.paneId
     )
   }, record.modelId, peerSettings, { provider: record.provider, catalogs })
-  }, undefined, workspaceSelector, chatTranscripts)
+  }, undefined, workspaceSelector, chatTranscripts, (paneId) => researchService?.cancelPane(paneId))
+  chatService.on('event', (event: ChatWorkspaceEvent) => {
+    if (event.type !== 'pane' || !['turn', 'replace'].includes(event.event.type)) return
+    const snapshot = chatService?.paneSnapshot(event.paneId)
+    researchService?.reconcile(event.paneId, snapshot?.threadId ?? null, snapshot?.activeTurnId ?? null)
+  })
   registerIpc()
   // The one-shot cookie import runs before the first tab loads, so a restored or home page
   // arrives already signed in rather than racing the import.
@@ -374,6 +386,7 @@ async function importDefaultBrowserCookies(): Promise<void> {
 }
 
 function disposeWindowServices(): void {
+  researchService?.dispose()
   browserSessionFlush = browserService?.flushSessionData() ?? null
   appAutomationAccess?.dispose()
   cdpAccess?.dispose()

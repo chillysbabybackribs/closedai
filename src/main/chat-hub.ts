@@ -49,8 +49,14 @@ export type ChatSurface = {
   on(event: 'event', listener: (event: ChatEvent) => void): unknown
 }
 
-export type ChatProviderService = Omit<ChatSurface, 'beginLogin' | 'start' | 'continueInNewThread' | 'compactConversation'> & {
+export type ChatProviderService = Omit<ChatSurface, 'beginLogin' | 'start' | 'continueInNewThread' | 'compactConversation' | 'send'> & {
   start(options?: { warm?: boolean }): Promise<void>
+  /**
+   * `prepare` is the hub's work for this message — starting a dormant provider and handing it the
+   * pane's model. A provider runs it once the message is painted and before it builds the turn, so
+   * the wait for a process happens behind the message rather than in front of it.
+   */
+  send(text: string, attachments: ChatAttachment[], prepare?: () => Promise<void>): Promise<void>
   /** With `from`, the new thread continues a chat this provider never held — a model switch. */
   continueInNewThread(from?: ThreadHandoffSource): Promise<void>
   compactConversation?(): Promise<void>
@@ -152,8 +158,10 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   async send(text: string, attachments: ChatAttachment[]): Promise<void> {
     await this.settled()
-    await this.startIfDormant()
-    return this.current().send(text, attachments)
+    // Starting here, ahead of the provider, meant the first message of every chat on a dormant
+    // provider — which is every chat whose model was picked rather than inherited — waited out a
+    // process start with nothing on screen. The provider now calls it back after it paints.
+    return this.current().send(text, attachments, () => this.startIfDormant())
   }
 
   interrupt(): Promise<void> {

@@ -124,24 +124,18 @@ export function Composer({
     if (!canSend) return
     const submittedInput = input.trim()
     const submittedAttachments = attachments
-    const clearImmediately = provider === 'codex'
     setSending(true)
-    if (clearImmediately) {
-      // Codex paints an optimistic transcript item before its shared runtime or thread is ready.
-      setInput('')
-      setAttachments([])
-      setAttachmentError('')
-    }
+    // Every provider paints an optimistic transcript item before its process or thread is ready,
+    // so the composer empties on submit. Holding the draft until the send resolved was the visible
+    // half of a slow first message: the text sat in the box and the chat stayed empty.
+    setInput('')
+    setAttachments([])
+    setAttachmentError('')
     try {
       await onSend(submittedInput, submittedAttachments)
-      if (!clearImmediately) {
-        setInput('')
-        setAttachments([])
-        setAttachmentError('')
-      }
       focusAfterSendRef.current = true
     } catch {
-      // Codex keeps the optimistic item; other providers keep the draft. Main adds the notice.
+      // The message stays in the transcript and main adds the notice explaining what failed.
     } finally {
       setSending(false)
     }

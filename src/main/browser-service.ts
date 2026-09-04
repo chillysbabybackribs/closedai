@@ -187,8 +187,8 @@ export class BrowserService extends EventEmitter {
     this.openTab(HOME_URL, true, undefined, index + 1)
   }
 
-  openNewTab(input: string, activate = true): void {
-    this.openTab(input, activate)
+  openNewTab(input: string, activate = true): string {
+    return this.openTab(input, activate).id
   }
 
   selectTab(id: string): void {

@@ -20,6 +20,7 @@ import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource 
 import { buildTurnAdditionalContext, withSourceChanges, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { ChatModelState } from '../chat-model-state.js'
+import { buildChatInput } from '../chat-input.js'
 import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
 import type { ScreenshotStore } from '../tools/capture/screenshot-store.js'
@@ -100,8 +101,17 @@ export class ClaudeChatService extends EventEmitter {
     return this.startPromise
   }
 
-  async send(text: string, attachments: ChatAttachment[] = []): Promise<void> {
+  async send(text: string, attachments: ChatAttachment[] = [], prepare?: () => Promise<void>): Promise<void> {
     try {
+      const shrunk = shrinkPastedImages(attachments)
+      const { prompt, input, summaries } = buildChatInput(text, shrunk)
+      if (input.length === 0) return
+      if (this.activeTurnId) throw new Error('A Claude turn is already running')
+      // Paint the accepted message before anything that can take a moment. Painting it last held
+      // a new chat on its empty state — composer text and all — through the provider's start, the
+      // catalog read and the turn context, which is most of the wait before a first reply.
+      this.transcript.addOptimisticUser(crypto.randomUUID(), prompt, summaries)
+      await prepare?.()
       await this.ensureReady()
       const session = this.session!
       if (this.activeTurnId) throw new Error('A Claude turn is already running')
@@ -113,10 +123,9 @@ export class ClaudeChatService extends EventEmitter {
         }),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
       }
-      const turn = await buildClaudeUserMessage(text, shrinkPastedImages(attachments), Object.keys(context).length ? context : undefined, session.sessionId)
+      const turn = await buildClaudeUserMessage(text, shrunk, Object.keys(context).length ? context : undefined, session.sessionId)
       if (!turn) return
       if (this.session !== session || (sessionId && session.sessionId !== sessionId) || this.activeTurnId) throw new Error('Claude conversation changed while preparing the turn')
-      this.transcript.addOptimisticUser(crypto.randomUUID(), turn.prompt, turn.summaries)
       session.send(turn.message)
       this.setTurnContext(buildTurnContextReport({
         provider: 'claude',

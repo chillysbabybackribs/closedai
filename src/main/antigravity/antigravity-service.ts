@@ -11,6 +11,7 @@ import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { buildCompactionSeed, compactedAdditionalContext } from '../chat-context/provider-compaction.js'
 import { antigravityPlanUsage, planUsageUnavailable } from '../chat-context/plan-usage.js'
 import { PROVIDER_CATALOG_TTL_MS, type WorkspaceCatalogs } from '../chat-context/provider-catalog-cache.js'
+import { buildChatInput } from '../chat-input.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
@@ -108,8 +109,15 @@ export class AntigravityChatService extends EventEmitter {
     return this.startPromise
   }
 
-  async send(text: string, attachments: ChatAttachment[] = []): Promise<void> {
+  async send(text: string, attachments: ChatAttachment[] = [], prepare?: () => Promise<void>): Promise<void> {
     try {
+      const shrunk = shrinkPastedImages(attachments)
+      const { prompt, input, summaries } = buildChatInput(text, shrunk)
+      if (input.length === 0) return
+      if (this.activeTurnId) throw new Error('An Antigravity turn is already running')
+      // Paint the accepted message before the provider starts; see the Claude lane for why.
+      this.transcript.addOptimisticUser(crypto.randomUUID(), prompt, summaries)
+      await prepare?.()
       await this.ensureReady()
       const session = this.session!
       if (this.activeTurnId) throw new Error('An Antigravity turn is already running')
@@ -123,14 +131,13 @@ export class AntigravityChatService extends EventEmitter {
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {}),
         ...(pendingCompaction ? compactedAdditionalContext(pendingCompaction) : {})
       }
-      const turn = await buildAntigravityPrompt(text, shrinkPastedImages(attachments), Object.keys(context).length ? context : undefined, this.stateDir)
+      const turn = await buildAntigravityPrompt(text, shrunk, Object.keys(context).length ? context : undefined, this.stateDir)
       if (!turn) return
       await this.bridge.start()
       // The CLI reads the agent file once, at process start. A spawn is therefore the only
       // moment its instructions — including the repository map — can be brought up to date.
       if (!session.live) this.profile = await ensureAntigravityProfile(this.stateDir, { cwd: this.cwd })
       if (this.session !== session || (conversationId && session.conversationId !== conversationId) || this.activeTurnId) throw new Error('Antigravity conversation changed while preparing the turn')
-      this.transcript.addOptimisticUser(crypto.randomUUID(), turn.prompt, turn.summaries)
       session.send(turn.content)
       this.setTurnContext(buildTurnContextReport({
         provider: 'antigravity',

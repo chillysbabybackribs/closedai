@@ -49,7 +49,8 @@ export class PeerLifecycle {
     private readonly settings: AppSettingsAccess,
     private readonly createSurface: ChatPeerFactory,
     private readonly parking: PeerIdleParking,
-    private readonly onEvent: (entry: PeerEntry, event: ChatEvent) => void
+    private readonly onEvent: (entry: PeerEntry, event: ChatEvent) => void,
+    private readonly cancelPaneWork: (paneId: ChatPaneId) => void = () => {}
   ) {}
 
   get(chatId: ChatPaneId): PeerEntry | undefined {
@@ -93,6 +94,7 @@ export class PeerLifecycle {
   detach(chatId: ChatPaneId): void {
     const entry = this.peers.get(chatId)
     if (!entry) return
+    this.cancelPaneWork(chatId)
     this.parking.cancel(entry)
     if (entry.surface.dispose) entry.surface.dispose()
     else entry.surface.stop()

@@ -87,12 +87,13 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     createSurface: ChatPeerFactory,
     idleParkMs?: number,
     private readonly workspaceSelector?: ChatWorkspaceSelector,
-    private readonly transcripts: ChatTranscriptCache = ChatTranscriptCache.inMemory()
+    private readonly transcripts: ChatTranscriptCache = ChatTranscriptCache.inMemory(),
+    private readonly cancelPaneWork: (paneId: ChatPaneId) => void = () => {}
   ) {
     super()
     this.memory = new ChatMemory(store, (paneId) => this.lifecycle.get(paneId)?.surface ?? null)
     this.parking = new PeerIdleParking((paneId) => this.lifecycle.get(paneId), () => this.selectedPaneId, idleParkMs)
-    this.lifecycle = new PeerLifecycle(store, settings, createSurface, this.parking, (entry, event) => this.onPaneEvent(entry, event))
+    this.lifecycle = new PeerLifecycle(store, settings, createSurface, this.parking, (entry, event) => this.onPaneEvent(entry, event), cancelPaneWork)
     this.catalog = new PeerChatCatalog(store, () => this.workspace(), (fn) => this.withAwake(this.selectedPaneId, fn))
     const saved = settings.get()
     this.selectedPaneId = this.restoreOpenChats(saved.chatOpenIds, saved.chatSelectedPaneId, null, null)
@@ -164,6 +165,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async interrupt(paneId: ChatPaneId): Promise<void> {
+    this.cancelPaneWork(paneId)
     await this.withAwake(paneId, (surface) => surface.interrupt())
   }
 

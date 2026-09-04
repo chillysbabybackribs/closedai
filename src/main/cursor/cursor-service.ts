@@ -10,6 +10,7 @@ import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource 
 import { buildTurnAdditionalContext, withSourceChanges, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { ChatModelState } from '../chat-model-state.js'
+import { buildChatInput } from '../chat-input.js'
 import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
 import type { ScreenshotStore } from '../tools/capture/screenshot-store.js'
@@ -99,8 +100,15 @@ export class CursorChatService extends EventEmitter {
     return this.startPromise
   }
 
-  async send(text: string, attachments: ChatAttachment[] = []): Promise<void> {
+  async send(text: string, attachments: ChatAttachment[] = [], prepare?: () => Promise<void>): Promise<void> {
     try {
+      const shrunk = shrinkPastedImages(attachments)
+      const { prompt, input, summaries } = buildChatInput(text, shrunk)
+      if (input.length === 0) return
+      if (this.activeTurnId) throw new Error('A Cursor turn is already running')
+      // Paint the accepted message before the provider starts; see the Claude lane for why.
+      this.transcript.addOptimisticUser(randomUUID(), prompt, summaries)
+      await prepare?.()
       await this.ensureReady()
       const session = this.session!
       if (this.activeTurnId) throw new Error('A Cursor turn is already running')
@@ -114,14 +122,13 @@ export class CursorChatService extends EventEmitter {
       }
       const turn = await buildCursorPrompt(
         text,
-        shrinkPastedImages(attachments),
+        shrunk,
         Object.keys(context).length ? context : undefined,
         { images: this.supportsImages }
       )
       if (!turn) return
       await this.bridge.start()
       if (this.session !== session || (sessionId && session.sessionId !== sessionId) || this.activeTurnId) throw new Error('Cursor conversation changed while preparing the turn')
-      this.transcript.addOptimisticUser(randomUUID(), turn.prompt, turn.summaries)
       await session.send(turn.blocks)
       this.setTurnContext(buildTurnContextReport({
         provider: 'cursor',

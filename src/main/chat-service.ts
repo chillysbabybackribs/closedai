@@ -153,7 +153,7 @@ export class ChatService extends EventEmitter {
     return this.startPromise
   }
 
-  async send(text: string, attachments: ChatAttachment[] = []): Promise<void> {
+  async send(text: string, attachments: ChatAttachment[] = [], prepare?: () => Promise<void>): Promise<void> {
     try {
       const { prompt, input, summaries } = buildChatInput(text, shrinkPastedImages(attachments))
       if (input.length === 0) return
@@ -161,6 +161,7 @@ export class ChatService extends EventEmitter {
       const clientUserMessageId = crypto.randomUUID()
       // Paint the accepted message before a cold workspace runtime or fresh thread is ready.
       this.transcript.addOptimisticUser(clientUserMessageId, prompt, summaries)
+      await prepare?.()
       const endCompactionWait = this.compactor.inFlight
         ? traceLog.responses.waitForCompaction(this.paneId) : () => {}
       await Promise.all([this.ensureReady(), this.compactor.prepareForSend().finally(endCompactionWait)])
