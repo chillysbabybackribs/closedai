@@ -11,7 +11,10 @@ import {
 } from './fields.js'
 import { requireCdp, type CdpHostProvider } from './host.js'
 import { bodyAction, requestsAction } from './network.js'
+import { cdpEmulateTool } from './emulate.js'
+import { cdpInstrumentTool } from './instrument.js'
 import { cdpPageTool } from './page.js'
+import { cdpProfileTool } from './profile.js'
 import { jsonResult, objectSchema } from '../json-result.js'
 
 export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
@@ -37,7 +40,10 @@ export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
           'shrink structurally and carry a `_closedai_truncated` note.',
         actions: actions(cdp)
       }),
-      cdpPageTool(cdp)
+      cdpPageTool(cdp),
+      cdpProfileTool(cdp),
+      cdpInstrumentTool(cdp),
+      cdpEmulateTool(cdp)
     ]
   }
 }
