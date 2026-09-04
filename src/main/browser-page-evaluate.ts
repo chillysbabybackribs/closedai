@@ -94,14 +94,38 @@ const SERIALIZE_SOURCE = `
   };
 `
 
-export function evaluateScript(request: PageEvaluateRequest): string {
+export type CompiledEvaluation = { ok: true; body: string } | { ok: false; error: string }
+
+/**
+ * Choosing between expression and statement form happens here, in the main process, and the
+ * chosen form is inlined into the injected script. Building the function inside the page with
+ * `new AsyncFunction(source)` is code generation from a string, which any site serving a
+ * Content-Security-Policy without `unsafe-eval` refuses — so evaluation used to fail outright on
+ * exactly the hardened sites where it matters most. Nothing is generated in the page now.
+ */
+export function compileEvaluation(expression: string): CompiledEvaluation {
+  const asExpression = `return (${expression}\n);`
+  if (!parseError(asExpression)) return { ok: true, body: asExpression }
+  const statementError = parseError(expression)
+  if (!statementError) return { ok: true, body: expression }
+  return { ok: false, error: `SyntaxError: ${statementError}` }
+}
+
+function parseError(body: string): string | null {
+  try {
+    new Function(`return (async () => {\n${body}\n})`)
+    return null
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error)
+  }
+}
+
+export function evaluateScript(body: string, request: PageEvaluateRequest): string {
   return `(async () => {
   ${SERIALIZE_SOURCE}
-  const source = ${JSON.stringify(request.expression)};
-  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-  let run;
-  try { run = new AsyncFunction('return (' + source + '\\n);'); }
-  catch (error) { run = new AsyncFunction(source); }
+  const run = async () => {
+${body}
+  };
   try {
     const value = await run();
     const text = JSON.stringify({ ok: true, type: typeof value, value: serialize(value, 0) });
@@ -168,7 +192,9 @@ export function queryScript(request: PageQueryRequest): string {
 
 export async function evaluateInPage(contents: ScriptRunner, request: PageEvaluateRequest): Promise<PageEvaluateResult | null> {
   if (contents.isDestroyed()) return null
-  const raw = await contents.executeJavaScript(evaluateScript(request), true)
+  const compiled = compileEvaluation(request.expression)
+  if (!compiled.ok) return { ok: false, error: compiled.error }
+  const raw = await contents.executeJavaScript(evaluateScript(compiled.body, request), true)
   return parseEvaluation(raw)
 }
 
