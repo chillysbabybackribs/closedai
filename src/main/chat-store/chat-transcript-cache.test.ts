@@ -112,3 +112,25 @@ test('an unreadable or outdated entry reads as no entry at all', async () => {
   assert.equal(normalizeCachedView({ version: 1, threadId: 't', items: [{ nonsense: true }] }), null)
   assert.equal(normalizeCachedView(null), null)
 })
+
+test('a replayed thread keeps the context reading it was measured with', async () => {
+  const dir = await cacheDir()
+  const cache = new ChatTranscriptCache(dir)
+  cache.remember('pane-a', 'thread-1', snapshotWith(messages(2)))
+  await cache.flush()
+
+  // A resumed provider has the transcript but no reading of its own until the next turn.
+  const resumed = { ...snapshotWith(messages(3)), contextUsage: null }
+  cache.remember('pane-a', 'thread-1', resumed)
+  assert.equal(cache.peek('pane-a')?.contextUsage?.percent, 10)
+  assert.equal(cache.peek('pane-a')?.items.length, 3)
+
+  // A different thread is a different window, so its reading starts empty.
+  cache.remember('pane-a', 'thread-2', resumed)
+  assert.equal(cache.peek('pane-a')?.contextUsage, null)
+
+  // And a resume that beats the read of the saved view does not lose it either.
+  const racing = new ChatTranscriptCache(dir)
+  racing.remember('pane-a', 'thread-1', resumed)
+  assert.equal((await racing.load('pane-a'))?.contextUsage?.percent, 10)
+})

@@ -85,8 +85,10 @@ export class ChatTranscriptCache {
     let read = this.reads.get(chatId)
     if (!read) {
       read = this.readView(chatId).then((view) => {
-        // A write that landed while the read was in flight is the newer truth.
-        if (this.views.get(chatId) === undefined) this.views.set(chatId, view)
+        // A write that landed while the read was in flight is the newer truth — but it was taken
+        // from a provider that had just replayed, so the reading it lacks is still this one's.
+        const current = this.views.get(chatId)
+        this.views.set(chatId, current ? carryReading(view, current) : current === undefined ? view : null)
         this.reads.delete(chatId)
         return this.views.get(chatId) ?? null
       })
@@ -98,8 +100,8 @@ export class ChatTranscriptCache {
   /** Record what the chat looks like now; the write follows shortly after the last change. */
   remember(chatId: string, threadId: string, snapshot: ChatSnapshot): void {
     if (snapshot.items.length === 0) return
-    const view = cachedViewOf(threadId, snapshot)
-    const current = this.views.get(chatId)
+    const current = this.views.get(chatId) ?? null
+    const view = carryReading(current, cachedViewOf(threadId, snapshot))
     this.views.set(chatId, view)
     if (current && sameView(current, view)) return
     this.schedule(chatId)
@@ -216,6 +218,16 @@ function normalizeUsage(usage: unknown): ChatContextUsage | null {
   const { usedTokens, contextWindow, percent } = usage as Partial<ChatContextUsage>
   if (typeof usedTokens !== 'number' || typeof contextWindow !== 'number' || typeof percent !== 'number') return null
   return { usedTokens, contextWindow, percent }
+}
+
+/**
+ * The newer view wins, except that a context reading outlives it while the thread is the same:
+ * providers report the window per turn and clear it when they replay a thread, so saving a
+ * resumed pane over a measured one would blank the composer's meter for good.
+ */
+function carryReading(previous: CachedChatView | null, next: CachedChatView): CachedChatView {
+  if (next.contextUsage || !previous || previous.threadId !== next.threadId || !previous.contextUsage) return next
+  return { ...next, contextUsage: previous.contextUsage }
 }
 
 /** Whether a new view says anything the stored one does not, so a re-read costs no write. */
