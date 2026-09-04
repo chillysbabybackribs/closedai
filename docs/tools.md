@@ -263,6 +263,13 @@ background, and an isolated Chromium check: `node scripts/search-live-check.mjs`
 a real browser page through the production runtime while a local source response remains pending,
 using a temporary bundle and profile without rebuilding or restarting the user's app.
 
+Browser tool regression includes unit tests with fakes under `src/main/tools/browser/browser.test.ts`
+and an isolated Chromium check: `npm run browser:live` (`scripts/browser-live-check.mjs`). That
+fixture drives the production `embedded_browser.page`, `network`, and `session` tools against a
+real public URL (default [https://www.google.com/](https://www.google.com/)). Override the target
+with `CLOSEDAI_BROWSER_LIVE_URL`. It proves navigation, read/query/evaluate, passive network
+recording, and session fetch — not mocked `a.test` hosts.
+
 ### Search credentials
 
 Search providers read credentials from environment variables first and the Linux Secret

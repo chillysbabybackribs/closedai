@@ -55,5 +55,8 @@ is documented in the application, model-context, and tool guides.
 
 For routine edits, use `npm run typecheck`, the specific tests exercising changed code, and
 `npm run hygiene` for changed file lengths or structure. Run `npm run map` when navigable files
-or IPC ownership change, then `npm run map:check`. The full `npm run check` gate is for release
-preparation or an explicit request; see [AGENTS.md](AGENTS.md).
+or IPC ownership change, then `npm run map:check`. For real Chromium browser paths (navigation,
+read/query/evaluate, network log, session fetch), run `npm run browser:live`; it hits the
+production tool stack against a public URL (default [https://www.google.com/](https://www.google.com/))
+in an isolated temporary profile. Override with `CLOSEDAI_BROWSER_LIVE_URL`. The full `npm run check`
+gate is for release preparation or an explicit request; see [AGENTS.md](AGENTS.md).
