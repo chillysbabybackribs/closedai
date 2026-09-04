@@ -13,6 +13,7 @@ import type {
   ChatTranscriptItem
 } from '../shared/chat.js'
 import type { AppSettings } from '../shared/types.js'
+import type { ChatMemoryCheckpoint } from '../shared/chat-memory.js'
 import { DEFAULT_APP_SETTINGS, type AppSettingsAccess } from './app-settings-store.js'
 import type { ThreadHandoffSource } from './chat-context/thread-handoff.js'
 import { WorkspaceCatalogs } from './chat-context/provider-catalog-cache.js'
@@ -90,7 +91,7 @@ class FakeProvider extends EventEmitter {
   async beginChatGptLogin(): Promise<string> { this.calls.push('login'); return 'https://auth' }
 }
 
-function build(initialModel: string | null = null, catalogs?: WorkspaceCatalogs): {
+function build(initialModel: string | null = null, catalogs?: WorkspaceCatalogs, checkpoint?: () => ChatMemoryCheckpoint | null): {
   hub: ChatHub; codex: FakeProvider; claude: FakeProvider; antigravity: FakeProvider; cursor: FakeProvider
   events: ChatEvent[]; settings: FakeSettings
 } {
@@ -104,7 +105,12 @@ function build(initialModel: string | null = null, catalogs?: WorkspaceCatalogs)
   const cursor = new FakeProvider('cursor', [model('cursor', 'cursor:claude-opus-5[effort=high]')])
   const settings = new FakeSettings()
   settings.saved.chatModelId = initialModel
-  const hub = new ChatHub({ codex, claude, antigravity, cursor } as unknown as ChatHubProviders, initialModel, settings, { catalogs })
+  const hub = new ChatHub(
+    { codex, claude, antigravity, cursor } as unknown as ChatHubProviders,
+    initialModel,
+    settings,
+    { catalogs, checkpoint }
+  )
   const events: ChatEvent[] = []
   hub.on('event', (event: ChatEvent) => events.push(event))
   return { hub, codex, claude, antigravity, cursor, events, settings }
@@ -283,6 +289,28 @@ test('a model switch carries the chat instead of reopening the destination\u2019
   if (replaced?.type !== 'replace') return
   // The pane keeps showing the conversation it was in; Claude's old chat stays in history.
   assert.deepEqual(replaced.snapshot.items, codex.items)
+})
+
+test('a Claude to Codex switch carries applicable working memory and bounded recall lineage', async () => {
+  const checkpoint: ChatMemoryCheckpoint = {
+    version: 1, revision: 2, threadId: 'claude-thread', throughItemId: 'a-1', createdAt: 1,
+    state: { goal: 'Finish the provider handoff', constraints: ['Preserve the public API'],
+      decisions: ['Use the existing transcript store'], progress: ['Claude completed discovery'],
+      nextSteps: ['Implement with Codex'], files: ['src/handoff.ts'] }
+  }
+  const { hub, claude, codex } = build('claude:opus[1m]', undefined, () => checkpoint)
+  claude.items = [
+    { type: 'user', id: 'u-1', turnId: 't-1', text: 'Investigate the handoff' },
+    { type: 'assistant', id: 'a-1', turnId: 't-1', text: 'Discovery complete', phase: 'final_answer', streaming: false }
+  ]
+
+  await hub.selectModel('gpt-5.6-sol')
+
+  assert.equal(hub.activeProvider, 'codex')
+  assert.match(codex.continued?.text ?? '', /Preserve the public API/)
+  assert.match(codex.continued?.text ?? '', /Use the existing transcript store/)
+  assert.equal(codex.continued?.sourceThroughItemId, 'a-1')
+  assert.deepEqual(codex.continued?.checkpoint, checkpoint)
 })
 
 test('the carried chat survives a re-read and the destination\u2019s own updates', async () => {

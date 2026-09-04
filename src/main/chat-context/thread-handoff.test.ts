@@ -2,7 +2,12 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatTranscriptItem } from '../../shared/chat.ts'
 import type { ChatMemoryCheckpoint } from '../../shared/chat-memory.js'
-import { buildThreadHandoff, handoffAdditionalContext, THREAD_HANDOFF_CONTEXT } from './thread-handoff.ts'
+import {
+  buildThreadHandoff,
+  continuationFromThreadHandoff,
+  handoffAdditionalContext,
+  THREAD_HANDOFF_CONTEXT
+} from './thread-handoff.ts'
 
 const user = (id: string, text: string, turnId = id): ChatTranscriptItem => ({ type: 'user', id, turnId, text })
 const answer = (id: string, turnId: string, text: string, phase: 'commentary' | 'final_answer' | null = 'final_answer'): ChatTranscriptItem =>
@@ -36,6 +41,22 @@ test('the digest keeps requests, one answer per turn, and changed files, and dro
 test('an empty or tool-only transcript has nothing to hand off', () => {
   assert.equal(buildThreadHandoff([], null), null)
   assert.equal(buildThreadHandoff([{ type: 'notice', id: 'n', turnId: null, text: 'hi', tone: 'info' }], null), null)
+})
+
+test('a destination continuation keeps the frozen source boundary and checkpoint', () => {
+  const checkpoint: ChatMemoryCheckpoint = {
+    version: 1, revision: 3, threadId: 'claude:source', throughItemId: 'a1', createdAt: 10,
+    state: { goal: 'Finish the migration', constraints: ['Keep the legacy API compatible'],
+      decisions: [], progress: [], nextSteps: [], files: ['src/api.ts'] }
+  }
+  const continuation = continuationFromThreadHandoff('pane-1', {
+    provider: 'claude', threadId: 'claude:source', title: 'Migration', text: 'digest',
+    sourceThroughItemId: 'a2', checkpoint
+  }, 20)
+  assert.deepEqual(continuation, {
+    sourcePaneId: 'pane-1', sourceThreadId: 'claude:source', sourceProvider: 'claude',
+    sourceTitle: 'Migration', sourceThroughItemId: 'a2', checkpoint, handoff: 'digest', createdAt: 20
+  })
 })
 
 test('long conversations keep the opening request and the most recent exchanges within budget', () => {
