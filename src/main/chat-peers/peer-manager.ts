@@ -8,6 +8,7 @@ import type {
   ChatRowSummary,
   ChatWorkspaceEvent,
   ChatWorkspaceSnapshot,
+  PeerChatReadOptions,
   PeerChatReadResult
 } from '../../shared/chat-peers.js'
 import { chatProviderOfId } from '../../shared/chat-providers.js'
@@ -469,15 +470,15 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     ])
   }
 
-  readReadable(chatId: string, callerPaneId: string | null, cursor = 0, limit = 50): PeerChatReadResult | null {
+  readReadable(chatId: string, callerPaneId: string | null, options: PeerChatReadOptions): PeerChatReadResult | null {
     const direct = this.peerSummaries().find((peer) => peer.paneId === chatId && peer.paneId !== callerPaneId)
-    if (direct) return pageResult(direct, this.lifecycle.require(chatId).surface.snapshot().items, cursor, limit)
+    if (direct) return pageResult(direct, this.lifecycle.require(chatId).surface.snapshot().items, options)
     for (const peer of this.peerSummaries()) {
       const snapshot = this.lifecycle.require(peer.paneId).surface.snapshot()
       const subagent = subagentSummaries(peer, snapshot).find((entry) => entry.paneId === chatId)
       if (subagent) {
         const itemId = chatId.slice(peer.paneId.length + 1)
-        return pageResult(subagent, snapshot.items.filter((item) => item.id === itemId), cursor, limit)
+        return pageResult(subagent, snapshot.items.filter((item) => item.id === itemId), options)
       }
     }
     return null

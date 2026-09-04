@@ -1,6 +1,10 @@
-import type { ChatPeerSummary, PeerChatReadResult } from '../../../shared/chat-peers.js'
+import type { ChatPeerSummary, PeerChatReadOptions, PeerChatReadResult } from '../../../shared/chat-peers.js'
+import { PEER_READ_DEFAULT_CHARS, PEER_READ_MAX_CHARS } from '../../../shared/chat-peers.js'
 import { defineTool, failureResult, numberArg, stringArg, textResult, type ToolNamespace } from '../tool.js'
 import { memoryTools, type PeerMemoryAccess } from './memory-tools.js'
+
+/** Every transcript item type a peer may see; reasoning stays with the model that produced it. */
+const READABLE_ITEM_TYPES = ['user', 'assistant', 'tool', 'command', 'fileChange', 'plan', 'notice', 'screenshot']
 
 export type PeerChatDirectory = {
   memory?: PeerMemoryAccess
@@ -8,8 +12,7 @@ export type PeerChatDirectory = {
   readReadable(
     chatId: string,
     callerPaneId: string | null,
-    cursor?: number,
-    limit?: number
+    options: PeerChatReadOptions
   ): PeerChatReadResult | null
 }
 
@@ -30,7 +33,7 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
       }),
       defineTool({
         name: 'read',
-        description: 'Read a bounded page of transcript and live status from one peer or subagent chat returned by peer_chats.list.',
+        description: 'Read a page of transcript and live status from one peer or subagent chat returned by peer_chats.list. Defaults to the newest end — what that chat is doing now or just concluded — inside a serialized character budget, clipping long tool output rather than returning a transcript the serializer has to cut blind. `cursor` pages further back from there (use the returned nextCursor), `order: "oldest"` follows a chat forward from its first message instead, and `types` narrows to the item kinds you need (["user","assistant"] drops tool traffic). `totalItems` is how many readable items match the filter.',
         inputSchema: {
           type: 'object',
           additionalProperties: false,
@@ -38,19 +41,23 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
           properties: {
             chat_id: { type: 'string', minLength: 1 },
             cursor: { type: 'number', minimum: 0 },
-            limit: { type: 'number', minimum: 1, maximum: 100 }
+            limit: { type: 'number', minimum: 1, maximum: 100 },
+            order: { type: 'string', enum: ['newest', 'oldest'] },
+            types: { type: 'array', maxItems: 8, items: { type: 'string', enum: READABLE_ITEM_TYPES } },
+            max_chars: { type: 'number', minimum: 500, maximum: PEER_READ_MAX_CHARS }
           }
         },
         run: async (input, context) => {
           const directory = getDirectory()
           if (!directory) return failureResult('Peer chats are not available')
           const chatId = stringArg(input, 'chat_id')!
-          const result = directory.readReadable(
-            chatId,
-            context.paneId ?? null,
-            numberArg(input, 'cursor', 0),
-            numberArg(input, 'limit', 50)
-          )
+          const result = directory.readReadable(chatId, context.paneId ?? null, {
+            cursor: numberArg(input, 'cursor', 0),
+            limit: numberArg(input, 'limit', 30),
+            order: stringArg(input, 'order', 'newest') === 'oldest' ? 'oldest' : 'newest',
+            types: Array.isArray(input.types) ? (input.types as PeerChatReadOptions['types']) : undefined,
+            maxChars: numberArg(input, 'max_chars', PEER_READ_DEFAULT_CHARS)
+          })
           return result ? textResult(JSON.stringify(result)) : failureResult(`Unknown or unavailable peer chat: ${chatId}`)
         }
       }),

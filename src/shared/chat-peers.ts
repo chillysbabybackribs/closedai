@@ -60,7 +60,25 @@ export type ChatWorkspaceEvent =
   | { type: 'pane'; paneId: ChatPaneId; event: import('./chat.js').ChatEvent }
   | { type: 'chats'; selectedPaneId: ChatPaneId; chats: ChatRowSummary[] }
 
+/** Serialized character budget for one peer page, and the ceiling a caller may raise it to. */
+export const PEER_READ_DEFAULT_CHARS = 6_000
+export const PEER_READ_MAX_CHARS = 16_000
+
+export type PeerChatReadOptions = {
+  /** Readable items already seen at the paging end: the newest for `newest`, the first for `oldest`. */
+  cursor: number
+  limit: number
+  /** `newest` pages backwards from the live end of the transcript, `oldest` forwards from its start. */
+  order: 'newest' | 'oldest'
+  /** Transcript item types to keep; every readable type when omitted or empty. */
+  types?: readonly ChatTranscriptItem['type'][]
+  /** Budget for the returned items. Long fields are clipped to fit it before items are dropped. */
+  maxChars: number
+}
+
 export type PeerChatReadResult = ChatPeerSummary & {
   items: ChatTranscriptItem[]
+  /** Readable items matching `types` in the whole transcript, so a page can be placed in it. */
+  totalItems: number
   nextCursor: number | null
 }

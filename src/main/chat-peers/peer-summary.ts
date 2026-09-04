@@ -1,5 +1,6 @@
 import type { ChatEvent, ChatSnapshot, ChatTranscriptItem } from '../../shared/chat.js'
-import type { ChatPeerSummary, PeerChatReadResult } from '../../shared/chat-peers.js'
+import type { ChatPeerSummary, PeerChatReadOptions, PeerChatReadResult } from '../../shared/chat-peers.js'
+import { PEER_READ_MAX_CHARS } from '../../shared/chat-peers.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 
 // How one pane describes itself to the drawer and to peer-reading tools. A parked pane has no
@@ -177,12 +178,74 @@ export function subagentSummaries(parent: ChatPeerSummary, snapshot: ChatSnapsho
   })
 }
 
-export function pageResult(summary: ChatPeerSummary, items: ChatSnapshot['items'], cursor: number, limit: number): PeerChatReadResult {
-  const readable = items.filter(peerReadable)
-  const start = Math.max(0, Math.floor(cursor))
-  const count = Math.min(100, Math.max(1, Math.floor(limit)))
-  const page = readable.slice(start, start + count)
-  return { ...summary, items: page, nextCursor: start + page.length < readable.length ? start + page.length : null }
+/**
+ * A page of another chat's transcript, taken from its live end by default: what a peer is doing
+ * now, or just concluded, is nearly always the question, and paging forward from the first message
+ * spent the whole budget on prelude (measured 2026-09-04: every 60-item read of a working pane was
+ * cut blind by the tool serializer, one of them from 519k characters).
+ */
+export function pageResult(
+  summary: ChatPeerSummary,
+  items: ChatSnapshot['items'],
+  options: PeerChatReadOptions
+): PeerChatReadResult {
+  const types = options.types?.length ? new Set<string>(options.types) : null
+  const readable = items.filter((item) => peerReadable(item) && (!types || types.has(item.type)))
+  const skip = Math.max(0, Math.floor(options.cursor))
+  const count = Math.min(100, Math.max(1, Math.floor(options.limit)))
+  const end = Math.max(0, readable.length - skip)
+  const window = options.order === 'oldest'
+    ? readable.slice(skip, skip + count)
+    : readable.slice(Math.max(0, end - count), end)
+  const page = withinBudget(window, options)
+  return {
+    ...summary,
+    items: page,
+    totalItems: readable.length,
+    nextCursor: skip + page.length < readable.length ? skip + page.length : null
+  }
+}
+
+/** Fill the budget from the paging end, so a trimmed page keeps the items nearest the cursor. */
+function withinBudget(window: ChatTranscriptItem[], options: PeerChatReadOptions): ChatTranscriptItem[] {
+  const budget = Math.min(PEER_READ_MAX_CHARS, Math.max(500, Math.floor(options.maxChars)))
+  const fieldChars = Math.max(300, Math.floor(budget / 4))
+  const ordered = options.order === 'newest' ? [...window].reverse() : window
+  const kept: ChatTranscriptItem[] = []
+  let used = 0
+  for (const item of ordered) {
+    const clipped = clipItem(item, fieldChars)
+    const size = JSON.stringify(clipped).length + 1
+    if (kept.length > 0 && used + size > budget) break
+    kept.push(clipped)
+    used += size
+  }
+  return options.order === 'newest' ? kept.reverse() : kept
+}
+
+/**
+ * Long fields carry nearly all of a transcript's bytes, so clip them here rather than let the tool
+ * serializer cut the whole result blind. A screenshot's data URL is pure weight to another model,
+ * which cannot see it; the caption and surface still say a capture happened.
+ */
+function clipItem(item: ChatTranscriptItem, max: number): ChatTranscriptItem {
+  if (item.type === 'user' || item.type === 'assistant' || item.type === 'plan' || item.type === 'notice') {
+    return { ...item, text: clipText(item.text, max) }
+  }
+  if (item.type === 'tool') {
+    const output = item.output === undefined ? undefined : clipText(item.output, max)
+    return { ...item, detail: clipText(item.detail, max), ...(output === undefined ? {} : { output }) }
+  }
+  if (item.type === 'command') return { ...item, output: clipText(item.output, max) }
+  if (item.type === 'fileChange') {
+    return { ...item, changes: item.changes.map((change) => ({ ...change, diff: clipText(change.diff, max) })) }
+  }
+  if (item.type === 'screenshot') return { ...item, imageUrl: clipText(item.imageUrl, 48) }
+  return item
+}
+
+function clipText(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max)}…[+${text.length - max} chars]` : text
 }
 
 export function itemText(item: ChatSnapshot['items'][number] | undefined): string {

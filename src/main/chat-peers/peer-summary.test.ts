@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatSnapshot } from '../../shared/chat.js'
+import type { PeerChatReadOptions } from '../../shared/chat-peers.js'
+import { PEER_READ_DEFAULT_CHARS } from '../../shared/chat-peers.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import { MAX_PEER_PREVIEW_CHARS, PeerSummaryCache, pageResult, paneTitle, summaryOf } from './peer-summary.js'
 
@@ -122,10 +124,66 @@ test('reasoning never reaches a peer: previews skip it and pages leave it out', 
   cache.update({ type: 'itemDelta', itemId: 'think', field: 'text', delta: ' more thinking' }, 3)
   assert.equal(cache.current.preview, 'the answer')
 
-  const page = pageResult(summary, [thinking, answer, { ...thinking, id: 'think-2' }], 0, 50)
+  const page = pageResult(summary, [thinking, answer, { ...thinking, id: 'think-2' }], readOptions())
   assert.deepEqual(page.items.map((item) => item.id), ['answer'])
+  assert.equal(page.totalItems, 1)
   assert.equal(page.nextCursor, null)
   assert.equal(JSON.stringify(page).includes('private working state'), false)
+})
+
+function readOptions(overrides: Partial<PeerChatReadOptions> = {}): PeerChatReadOptions {
+  return { cursor: 0, limit: 50, order: 'newest', maxChars: PEER_READ_DEFAULT_CHARS, ...overrides }
+}
+
+function answerItem(id: string, text: string) {
+  return { type: 'assistant' as const, id, turnId: 't', text, phase: null, streaming: false }
+}
+
+test('a page is taken from the live end of the chat and walks backwards from there', () => {
+  const summary = summaryOf('pane-a', snapshot(), 1, record())
+  const items = Array.from({ length: 10 }, (_, index) => answerItem(`a${index}`, `answer ${index}`))
+  const newest = pageResult(summary, items, readOptions({ limit: 3 }))
+  assert.deepEqual(newest.items.map((item) => item.id), ['a7', 'a8', 'a9'])
+  assert.equal(newest.totalItems, 10)
+  assert.equal(newest.nextCursor, 3)
+
+  const older = pageResult(summary, items, readOptions({ limit: 3, cursor: newest.nextCursor! }))
+  assert.deepEqual(older.items.map((item) => item.id), ['a4', 'a5', 'a6'])
+
+  const fromStart = pageResult(summary, items, readOptions({ limit: 3, order: 'oldest' }))
+  assert.deepEqual(fromStart.items.map((item) => item.id), ['a0', 'a1', 'a2'])
+  assert.equal(fromStart.nextCursor, 3)
+  assert.equal(pageResult(summary, items, readOptions({ cursor: 10 })).items.length, 0)
+})
+
+test('a page fits its character budget by clipping long fields, then by dropping the far items', () => {
+  const summary = summaryOf('pane-a', snapshot(), 1, record())
+  const items = Array.from({ length: 8 }, (_, index) => answerItem(`a${index}`, 'x'.repeat(4_000)))
+  const page = pageResult(summary, items, readOptions({ maxChars: 2_000 }))
+  assert.ok(JSON.stringify(page.items).length <= 2_000, `page items are ${JSON.stringify(page.items).length} chars`)
+  assert.ok(page.items.length >= 1 && page.items.length < 8)
+  assert.deepEqual(page.items.at(-1)?.id, 'a7')
+  assert.match((page.items[0] as { text: string }).text, /x+…\[\+\d+ chars\]$/)
+  assert.equal(page.nextCursor, page.items.length)
+})
+
+test('types narrow a page, and a screenshot never carries its data URL to a peer', () => {
+  const summary = summaryOf('pane-a', snapshot(), 1, record())
+  const items = [
+    { type: 'user' as const, id: 'u', turnId: 't', text: 'the request' },
+    { type: 'tool' as const, id: 'x', turnId: 't', label: 'Read', detail: 'a'.repeat(9_000), status: 'completed', output: 'b'.repeat(9_000) },
+    { type: 'screenshot' as const, id: 's', turnId: 't', surface: 'app_window' as const, imageUrl: `data:image/png;base64,${'A'.repeat(50_000)}`, caption: 'the window' },
+    answerItem('a', 'the answer')
+  ]
+  const conversation = pageResult(summary, items, readOptions({ types: ['user', 'assistant'] }))
+  assert.deepEqual(conversation.items.map((item) => item.id), ['u', 'a'])
+  assert.equal(conversation.totalItems, 2)
+
+  const everything = pageResult(summary, items, readOptions())
+  const serialized = JSON.stringify(everything)
+  assert.equal(serialized.includes('A'.repeat(100)), false)
+  assert.ok(serialized.length < 10_000, `page is ${serialized.length} chars`)
+  assert.deepEqual(everything.items.map((item) => item.id), ['u', 'x', 's', 'a'])
 })
 
 test('cache titles follow the first user message and bounded provider name', () => {
