@@ -10,12 +10,31 @@ import { jsonPreview, recordOf, stringOf } from '../claude/claude-tool-items.js'
 // Verified live (cursor-agent 2026.09.02-c22c1a3, 2026-09-03): a shell call arrives as
 // `kind: "execute"` with `rawInput.command` and title `` `echo hi` ``; a file read arrives as
 // `kind: "read"` with `rawInput.path`, `locations`, and `rawOutput.content`.
+//
+// A ClosedAI tool served over MCP arrives as `kind: "other"`, announced uselessly as
+// `title: "MCP: tool"` with an empty `rawInput`, and only named on the first update:
+// `title: "embedded_browser: page"` with
+// `rawInput: {providerIdentifier, toolName, args}`. Its result is NOT echoed back — the
+// completion carries `rawOutput: {success: true}` and nothing else — so an MCP row shows the
+// call and its arguments but no output text, unlike the Antigravity lane where the CLI
+// repeats it.
 
 export type CursorToolCall = {
   id: string
   title: string
   kind: string
   rawInput: Record<string, unknown>
+}
+
+/** A ClosedAI tool call the bridge served, split into the namespace and tool it names. */
+export type ResolvedCursorTool = { namespace: string; tool: string; args: Record<string, unknown> }
+
+/** Null for a native Cursor tool; the namespace and tool for one of ours arriving over MCP. */
+export function resolveCursorTool(rawInput: Record<string, unknown>): ResolvedCursorTool | null {
+  const namespace = stringOf(rawInput.providerIdentifier)
+  const tool = stringOf(rawInput.toolName)
+  if (!namespace || !tool) return null
+  return { namespace, tool, args: recordOf(rawInput.args) }
 }
 
 export type CursorToolOutcome = {
@@ -40,6 +59,18 @@ export function cursorStatus(status: unknown): 'pending' | 'inProgress' | 'compl
 /** The transcript item for a tool call as it starts. */
 export function cursorToolItem(call: CursorToolCall, turnId: string | null, cwd: string): ChatTranscriptItem {
   const { id, rawInput } = call
+  const served = resolveCursorTool(rawInput)
+  if (served) {
+    // The same `namespace · tool` label the other adapters give a ClosedAI tool call.
+    return {
+      type: 'tool',
+      id,
+      turnId,
+      label: `${served.namespace} · ${served.tool}`,
+      detail: Object.keys(served.args).length ? jsonPreview(served.args) : '',
+      status: 'inProgress'
+    }
+  }
   if (call.kind === 'execute') {
     return {
       type: 'command',
@@ -95,8 +126,15 @@ export function cursorToolContent(content: unknown, rawOutput: unknown): { text:
   const raw = recordOf(rawOutput)
   const rawText = stringOf(raw.content) || stringOf(raw.output) || stringOf(raw.result)
   if (rawText) parts.push(rawText)
-  else if (!parts.length && rawOutput !== undefined && Object.keys(raw).length) parts.push(jsonPreview(raw))
+  // `{success: true}` is the whole payload of a served MCP call; printing it says nothing.
+  else if (!parts.length && rawOutput !== undefined && Object.keys(raw).length && !isBareSuccess(raw)) {
+    parts.push(jsonPreview(raw))
+  }
   return { text: parts.join('\n').trim(), diffs }
+}
+
+function isBareSuccess(raw: Record<string, unknown>): boolean {
+  return Object.keys(raw).length === 1 && raw.success === true
 }
 
 function detailOf(rawInput: Record<string, unknown>): string {
