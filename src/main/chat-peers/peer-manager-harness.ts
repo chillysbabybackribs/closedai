@@ -120,13 +120,13 @@ export function harness(idleParkMs?: number): Harness {
   return harnessWith([chatRecord('pane-a', 'gpt')], 'pane-a', idleParkMs)
 }
 
-/** A workspace with the given chats attached and one of them selected. */
-export function harnessWith(records: ChatRecord[], selected: string, idleParkMs?: number): Harness {
+/** A workspace holding the given chats, with `openIds` (default: all of them) attached and one selected. */
+export function harnessWith(records: ChatRecord[], selected: string, idleParkMs?: number, openIds?: string[]): Harness {
   const settings = new MemorySettings({
     ...DEFAULT_APP_SETTINGS,
     chatWorkspacePath: HARNESS_CWD,
     chatProjectPath: HARNESS_CWD,
-    chatOpenIds: records.map((record) => record.id),
+    chatOpenIds: openIds ?? records.map((record) => record.id),
     chatSelectedPaneId: selected
   })
   const store = ChatStore.inMemory(records)

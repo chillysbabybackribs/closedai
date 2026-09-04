@@ -258,8 +258,7 @@ test('opening a detached chat attaches it under its own id and replaces a blank 
   const { manager, surfaces, store } = harnessWith([
     chatRecord('pane-a', 'gpt'),
     chatRecord('old', 'gpt', { codexThreadId: 'thread-old', threadId: 'thread-old', title: 'Old chat' })
-  ], 'pane-a')
-  store.update('old', {})
+  ], 'pane-a', undefined, ['pane-a'])
   // Only pane-a is attached; `old` is a history row.
   assert.deepEqual(attached(manager), ['pane-a'])
 
@@ -276,7 +275,7 @@ test('opening a detached chat beside a real conversation keeps both', async () =
   const { manager, surfaces } = harnessWith([
     chatRecord('pane-a', 'gpt'),
     chatRecord('old', 'gpt', { codexThreadId: 'thread-old', threadId: 'thread-old', title: 'Old chat' })
-  ], 'pane-a')
+  ], 'pane-a', undefined, ['pane-a'])
   surfaces[0]!.state.items = [{ type: 'user', id: 'u', turnId: null, text: 'busy here' }]
 
   await manager.openChat('old')

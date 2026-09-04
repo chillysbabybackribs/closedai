@@ -219,8 +219,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.selectedPaneId = record.id
     this.parking.schedule(previousPaneId)
     this.emitWorkspace()
-    await this.trimAttached()
     await this.persistOpenChats()
+    await this.trimAttached()
     this.wakeLater(record.id, 'start the new chat')
     return record.id
   }
@@ -319,8 +319,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     if (this.lifecycle.peers.size > 1) this.lifecycle.discardIfBlank(previousPaneId)
     this.parking.schedule(previousPaneId)
     this.emitWorkspace()
-    await this.trimAttached()
     await this.persistOpenChats()
+    await this.trimAttached()
     this.catalog.invalidate()
     this.scheduleWarm(chatId)
     this.wakeLater(chatId, 'open chat')
@@ -429,9 +429,12 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     return { cwd: saved.chatWorkspacePath ?? '', projectPath: saved.chatProjectPath }
   }
 
+  /** Detach beyond the cap and record the open set; the drawer learns of the change at once. */
   private async trimAttached(): Promise<void> {
     const detached = this.lifecycle.trim([this.selectedPaneId])
-    if (detached.length > 0) this.chatsEmit.schedule()
+    if (detached.length === 0) return
+    this.chatsEmit.schedule()
+    await this.persistOpenChats()
   }
 
   /** Which chats are open and which is selected, plus the flat mirror of the selected one. */
