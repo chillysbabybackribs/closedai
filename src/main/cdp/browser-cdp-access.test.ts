@@ -67,7 +67,7 @@ test('CDP access rejects unknown tab ids before attaching', async () => {
     focusTabForInput: () => ({ activated: false })
   }
   const access = new BrowserCdpAccess(() => browser)
-  await assert.rejects(() => access.command('missing', 'DOM.getDocument', {}), /does not exist/)
+  await assert.rejects(() => access.command('missing', 'DOM.getDocument', {}), /No tab with id missing/)
 })
 
 test('CDP access resolves a registered native popup without placing it in the tab strip', async () => {
