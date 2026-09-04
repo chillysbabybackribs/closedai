@@ -83,8 +83,8 @@ complete bound on serialization work.
 
 ## Verification and measurement limits
 
-The four changed modules have 35 passing targeted tests. Typecheck passed. Map generation,
-hygiene, and the production build are checked when delivering this audit.
+The four changed modules have 35 passing targeted tests. Typecheck, generated-map verification,
+hygiene, and the production build all passed.
 
 The Turn trace measures from pane-manager Send to the first nonempty assistant text received
 in main, including commentary. It splits preparation, Codex compaction wait within preparation,
