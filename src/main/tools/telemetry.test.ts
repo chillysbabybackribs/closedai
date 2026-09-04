@@ -103,10 +103,12 @@ test('the registry reports aggregate-only events for successes, failures, and un
   stop()
 
   assert.deepEqual(seen, [
-    { toolId: 'ns.echo', action: 'say', ok: true, timedOut: false },
-    { toolId: 'ns.echo', action: null, ok: false, timedOut: false },
-    { toolId: 'ns.echo', action: null, ok: false, timedOut: true },
-    { toolId: 'ns.nope', action: null, ok: false, timedOut: false }
+    { toolId: 'ns.echo', action: 'say', ok: true, timedOut: false, misuse: false },
+    // Missing a required argument and naming a tool that does not exist are both the app
+    // refusing the call, so they are misuse rather than the tool failing at runtime.
+    { toolId: 'ns.echo', action: null, ok: false, timedOut: false, misuse: true },
+    { toolId: 'ns.echo', action: null, ok: false, timedOut: true, misuse: false },
+    { toolId: 'ns.nope', action: null, ok: false, timedOut: false, misuse: true }
   ])
   assert.doesNotMatch(JSON.stringify(seen), /PRIVATE_VALUE|required|unknown/i)
 })

@@ -41,6 +41,30 @@ test('successful source observations are scoped and stripped, while failed calls
   assert.equal(seen.length, 1)
 })
 
+test('a wrong name is answered with the tools that exist, and counted as misuse not a failure', async () => {
+  const registry = new ToolRegistry(namespaces())
+  const records: Array<{ toolId: string; ok: boolean; misuse: boolean }> = []
+  registry.subscribe((record) => records.push({ toolId: record.toolId, ok: record.ok, misuse: record.misuse }))
+
+  const foreign = await registry.call({ namespace: null, tool: 'Grep', arguments: {} }, context)
+  assert.equal(foreign.isError, true)
+  const foreignText = foreign.content[0].type === 'text' ? foreign.content[0].text : ''
+  assert.match(foreignText, /Unknown tool: Grep\. This app's tools are: alpha\.one, alpha\.two, beta\.three\./)
+  assert.match(foreignText, /your own harness provides .* call those directly/)
+
+  const sibling = await registry.call({ namespace: 'alpha', tool: 'nope', arguments: {} }, context)
+  const siblingText = sibling.content[0].type === 'text' ? sibling.content[0].text : ''
+  assert.match(siblingText, /Unknown tool: alpha\.nope\. alpha has: one, two\./)
+
+  const ran = await registry.call({ namespace: 'alpha', tool: 'one', arguments: {} }, context)
+  assert.equal(ran.isError, undefined)
+  assert.deepEqual(records, [
+    { toolId: 'Grep', ok: false, misuse: true },
+    { toolId: 'alpha.nope', ok: false, misuse: true },
+    { toolId: 'alpha.one', ok: true, misuse: false }
+  ])
+})
+
 test('switching a tool off hides it from providers and refuses its calls; on restores it', async () => {
   const registry = new ToolRegistry(namespaces())
   assert.deepEqual(registry.setEnabled('alpha.one', false), ['alpha.one'])
