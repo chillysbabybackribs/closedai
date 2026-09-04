@@ -15,7 +15,7 @@ export function isResearchSourceUrl(value: string): boolean {
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.href.length > 2048) return false
     const host = url.hostname.toLowerCase().replace(/\.$/, '')
     const path = url.pathname.toLowerCase().replace(/\/+$/, '') || '/'
-    if (/(^|\.)google\.(?:com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$/.test(host)) {
+    if (/^(?:(?:www|encrypted|images|news|scholar)\.)?google\.(?:com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$/.test(host)) {
       return !/^\/(?:$|search(?:\/|$)|webhp(?:\/|$)|url(?:\/|$)|imgres(?:\/|$)|aclk(?:\/|$)|sorry(?:\/|$))/.test(path)
     }
     if (/(^|\.)(?:bing\.com|duckduckgo\.com|search\.brave\.com|search\.yahoo\.com|yandex\.(?:com|ru))$/.test(host)) {

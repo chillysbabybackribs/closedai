@@ -207,8 +207,9 @@ PDFs, empty JS shells, and unsupported MIME are reported for browser follow-up. 
 execute JavaScript or resolve CSS visibility and is not a rendered-page verification.
 
 Both `search.query` and `search.run.start` default to `presentation: live`. The first live search
-in a pane/thread/turn opens the first supplied URL, or a Google search for its query, in a new
-normal browser tab alongside API/background work. Further searches in that turn reuse the tab
+in a pane/thread/turn opens the first eligible supplied source URL, or waits for an actual source
+URL from the search APIs. It never opens search-engine results pages for discovery. The first
+source opens while other providers and background reads continue. Further searches reuse the tab
 without navigating away from a source the model or user is reading; a closed tab is recreated.
 The visible tab uses the normal browser session. The result reports `presentation.tabId` and
 that it opened, not that navigation completed. Models should inspect relevant sources in that
@@ -216,7 +217,11 @@ tab while background research continues and capture pages when making visual cla
 does not automatically follow results or close the tab on cancellation. Explicit
 `presentation: background` suppresses opening/reusing a tab when the user requests headless work.
 For multi-query runs, presentation is a run-level field, not an individual query field.
-Browser failures are reported as `presentation.state: failed` while API research continues.
+Before a source arrives, `presentation.state` is `waiting_for_source`; `search.read` returns the
+tab id once opened. If discovery finishes without an eligible source, state becomes `no_source`
+and no tab opens. Search-engine result URLs returned by providers are skipped for collection and
+presentation; explicitly supplying them as run source URLs is rejected. Browser failures are
+reported as `presentation.state: failed` while API research continues.
 Hidden rendered workers,
 live target transfer, dedicated progress UI, and Follow/Take over controls remain later slices.
 `live: true` on each query still controls cache freshness only.

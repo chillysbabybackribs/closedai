@@ -7,7 +7,9 @@ This document does not change the current application or model-tool contract.
 
 Implementation update, 2026-09-04: the first slice now adds `search.run`/`search.read`, incremental
 provider delivery, shared admission budgets, retained static source reading, turn/pane
-cancellation, and one-time live tab opening in parallel. The current contract is in
+cancellation, and live source tab opening as API results arrive. Search-engine results pages
+are never opened for gathering sources; the initial query-to-Google fallback was removed.
+The current contract is in
 [Tools](tools.md#parallel-research-runs). Rendered workers, progress UI, target transfer, retry
 policies, and Follow/Take over remain proposed; the full architecture below is not yet shipped.
 
