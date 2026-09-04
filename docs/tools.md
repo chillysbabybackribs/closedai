@@ -196,6 +196,13 @@ completion schedules source reading without waiting for other providers. Follow-
 as retrieved document evidence. Index overlap is reported as `discoveredBy`, not factual
 corroboration. The legacy query's `corroboratedBy` field likewise means URL overlap only.
 
+Brave discovery uses its `/res/v1/llm/context` endpoint rather than human-oriented Web Search.
+The adapter returns extracted grounding chunks as normalized snippets and uses source metadata for
+page age. Quick, balanced, and deep requests consider 10, 20, and 50 candidates with 2,048,
+8,192, and 16,384-token context budgets respectively; the requested result count remains the
+maximum number of returned URLs. Relevance thresholds progress from strict to balanced to lenient,
+and `live: true` adds Brave's best-effort `Cache-Control: no-cache` request header.
+
 One registry-wide router admits four provider requests, at most two per provider, across both
 synchronous queries and research runs. Providers have twenty-second deadlines. A separate source
 reader admits eight HTTP reads, at most two per starting origin. Both queues alternate eligible
