@@ -2,13 +2,14 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatModel } from '../shared/chat.js'
 import {
-  countModelUse, effortLabel, modelGroups, modelTriggerLabel, parseModelUsage, providerSections
+  countModelUse, effortLabel, modelContextLabel, modelGroups, modelTriggerLabel, parseModelUsage, providerSections
 } from './model-menu-state.js'
 
-function model(provider: ChatModel['provider'], id: string, displayName: string, efforts: string[] = [], isDefault = false): ChatModel {
+function model(provider: ChatModel['provider'], id: string, displayName: string, efforts: string[] = [], isDefault = false, contextWindow?: number): ChatModel {
   return {
     provider, id, displayName, description: `${displayName} description`, defaultReasoningEffort: 'high',
-    supportedReasoningEfforts: efforts.map((reasoningEffort) => ({ reasoningEffort, description: '' })), isDefault
+    supportedReasoningEfforts: efforts.map((reasoningEffort) => ({ reasoningEffort, description: '' })), isDefault,
+    ...(contextWindow ? { contextWindow } : {})
   }
 }
 
@@ -29,7 +30,7 @@ function featuredIds(sections: ReturnType<typeof providerSections>): string[] {
 
 const models = [
   model('claude', 'claude:opus[1m]', 'Opus 5 (1M)', ['low', 'high']),
-  model('codex', 'gpt-5.6-sol', 'GPT-5.6-Sol', ['low', 'xhigh']),
+  model('codex', 'gpt-5.6-sol', 'GPT-5.6-Sol', ['low', 'xhigh'], false, 872_000),
   model('claude', 'claude:haiku', 'Haiku 4.5')
 ]
 
@@ -42,16 +43,24 @@ test('groups keep a fixed provider order and drop empty providers', () => {
 })
 
 test('the trigger reads the model name with the effort as a suffix only when it applies', () => {
-  assert.deepEqual(modelTriggerLabel(models, 'gpt-5.6-sol', 'xhigh'), { name: 'GPT-5.6-Sol', effort: 'Xhigh', description: 'GPT-5.6-Sol description' })
+  assert.deepEqual(modelTriggerLabel(models, 'gpt-5.6-sol', 'xhigh'), { name: 'GPT-5.6-Sol', context: '872K', effort: 'Xhigh', description: 'GPT-5.6-Sol description' })
   assert.equal(modelTriggerLabel(models, 'claude:haiku', 'high').effort, null)
   assert.equal(modelTriggerLabel(models, 'gpt-5.6-sol', 'ultra').effort, null)
-  assert.deepEqual(modelTriggerLabel(models, null, null), { name: 'Choose model', effort: null, description: '' })
+  assert.deepEqual(modelTriggerLabel(models, null, null), { name: 'Choose model', context: null, effort: null, description: '' })
   assert.equal(modelTriggerLabel([], null, null).name, 'No models')
 })
 
 test('effort labels are title-cased', () => {
   assert.equal(effortLabel('medium'), 'Medium')
   assert.equal(effortLabel('x-high'), 'X High')
+})
+
+test('context labels stay compact at common model-window sizes', () => {
+  assert.equal(modelContextLabel(128_000), '128K')
+  assert.equal(modelContextLabel(400_000), '400K')
+  assert.equal(modelContextLabel(1_000_000), '1M')
+  assert.equal(modelContextLabel(1_050_000), '1.1M')
+  assert.equal(modelContextLabel(undefined), null)
 })
 
 const wide = catalogue.concat(model('codex', 'nova', 'Nova'), model('codex', 'pulse', 'Pulse'))

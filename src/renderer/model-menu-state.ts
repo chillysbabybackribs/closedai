@@ -26,11 +26,24 @@ export function modelTriggerLabel(
   models: ChatModel[],
   selectedModel: string | null,
   selectedEffort: string | null
-): { name: string; effort: string | null; description: string } {
+): { name: string; context: string | null; effort: string | null; description: string } {
   const model = models.find((entry) => entry.id === selectedModel)
-  if (!model) return { name: models.length ? 'Choose model' : 'No models', effort: null, description: '' }
+  if (!model) return { name: models.length ? 'Choose model' : 'No models', context: null, effort: null, description: '' }
   const effort = model.supportedReasoningEfforts.find((option) => option.reasoningEffort === selectedEffort)
-  return { name: model.displayName, effort: effort ? effortLabel(effort.reasoningEffort) : null, description: model.description }
+  return {
+    name: model.displayName,
+    context: modelContextLabel(model.contextWindow),
+    effort: effort ? effortLabel(effort.reasoningEffort) : null,
+    description: model.description
+  }
+}
+
+/** Compact, stable context labels for both the resting trigger and catalog rows. */
+export function modelContextLabel(tokens: number | undefined): string | null {
+  if (!tokens || !Number.isFinite(tokens) || tokens <= 0) return null
+  if (tokens >= 1_000_000) return `${Number((tokens / 1_000_000).toFixed(1))}M`
+  if (tokens >= 1_000) return `${Math.round(tokens / 1_000)}K`
+  return String(Math.round(tokens))
 }
 
 /** How many of each provider's models the menu shows before the rest are folded away. */

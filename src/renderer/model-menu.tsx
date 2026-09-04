@@ -5,7 +5,7 @@ import { Check, ChevronDown, ChevronRight, ChevronUp, MoreHorizontal } from 'luc
 import type { ChatModel, ChatProvider } from '../shared/chat.js'
 import { ProviderMark } from '../components/ui/provider-mark.js'
 import {
-  countModelUse, effortLabel, modelTriggerLabel, parseModelUsage, providerSections,
+  countModelUse, effortLabel, modelContextLabel, modelTriggerLabel, parseModelUsage, providerSections,
   type ModelUsage, type ProviderSection
 } from './model-menu-state.js'
 
@@ -54,6 +54,7 @@ export function ModelMenu({
       >
         {selected && <ProviderMark provider={selected.provider} className="model-menu-trigger-mark" />}
         <span className="model-menu-trigger-name">{trigger.name}</span>
+        {trigger.context && <span className="model-menu-trigger-context">{trigger.context}</span>}
         {trigger.effort && <span className="model-menu-trigger-effort">{trigger.effort}</span>}
         <ChevronDown className="model-menu-trigger-caret" aria-hidden="true" />
       </DropdownMenu.Trigger>
@@ -127,7 +128,12 @@ function ProviderSubmenu({ section, selectedModel, expanded, onToggleExpanded, o
             {listed.map((model) => (
               <DropdownMenu.RadioItem key={model.id} value={model.id} className="model-menu-item" textValue={model.displayName} data-ui="composer.model-item" data-ui-key={model.id}>
                 <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>
-                <span className="model-menu-item-name">{model.displayName}</span>
+                <span className="model-menu-item-heading">
+                  <span className="model-menu-item-name">{model.displayName}</span>
+                  {modelContextLabel(model.contextWindow) && (
+                    <span className="model-menu-item-context">{modelContextLabel(model.contextWindow)}</span>
+                  )}
+                </span>
                 {model.description && <span className="model-menu-item-detail">{model.description}</span>}
               </DropdownMenu.RadioItem>
             ))}

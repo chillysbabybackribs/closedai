@@ -56,6 +56,7 @@
 }
 
 /* Effort is a qualifier on the model, never the louder of the two. */
+.model-menu-trigger-context,
 .model-menu-trigger-effort {
   flex: none;
   color: color-mix(in srgb, var(--foreground) 48%, transparent);
@@ -63,6 +64,7 @@
   font-weight: 450;
 }
 
+.model-menu-trigger-context::before,
 .model-menu-trigger-effort::before {
   content: '· ';
 }
@@ -184,6 +186,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.model-menu-item-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.model-menu-item-context {
+  flex: none;
+  color: color-mix(in srgb, var(--foreground) 52%, transparent);
+  font-size: 10.5px;
+  font-weight: 550;
+  letter-spacing: 0.025em;
 }
 
 .model-menu-item-detail {
