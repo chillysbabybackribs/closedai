@@ -27,7 +27,10 @@ until the pane leaves that conversation (a new chat, a thread opened from histor
 clearing itself); they are in memory only and a relaunch shows just the new provider's thread. The
 chat the destination left stays in history. Opening another provider's thread from history is the
 other direction and shows that thread. History merges the providers' workspace catalogs.
-Changing models or providers is refused while that pane has an active turn.
+Changing models or providers is refused while that pane has an active turn. A switch repaints the
+pane on the new provider at once — picked model, connection state “Starting…”, the transcript it
+had — and starts the provider's process behind that; sends and further switches made meanwhile wait
+for the hand-over, and a switch whose provider fails to come up puts the pane back.
 
 The project menu below the composer offers a directory picker, recent projects, and “Don’t work
 in a project” (uses the home directory). A project switch is refused while any pane has an active
@@ -191,6 +194,7 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 
 | Store | Contents |
 |---|---|
+| `provider-catalogs.json` | The last model catalog read per workspace and provider, so a relaunch starts only the active provider and the picker still offers every model; a provider refreshes its own entry when selected |
 | `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, parent chat, continuation digest, checkpoint. Debounced atomic writes; flushed on quit |
 | `app-settings.json` | Cookie-import latch; active workspace/project; the open chat ids (`chatOpenIds`) and `chatSelectedPaneId`; saved per-project open ids and selection in `chatWorkspaces`; tool switches and context/batch settings. Legacy `chatPeers` and `chatWorkspaces[].peers` are imported into `chats.json` once, keeping each pane id as the chat id, and removed |
 | `browser-tabs.json`, `browser-history.json` | Restored tabs and omnibox history |

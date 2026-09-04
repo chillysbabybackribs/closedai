@@ -14,6 +14,8 @@ export type TraceKind =
   | 'event'
   /** One raw line between the app and the provider process, either direction. */
   | 'raw'
+  /** A provider-side observation worth keeping beside the turn, such as a token-usage reading. */
+  | 'note'
 
 export type TraceEntry = {
   /** Monotonic across the process; the renderer orders and de-duplicates by it. */

@@ -30,9 +30,10 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
 - **Sign-in is per provider.** `agy models` at startup both fills the catalog and proves the sign-in;
   an authentication failure shows the pane's sign-in message (run `agy` in a terminal and complete the
   Google login), and choosing an Antigravity model re-checks. The listing is shared per workspace
-  through the provider catalog cache (`chat-context/provider-catalog-cache.ts`, ten-minute TTL): a
-  pane whose workspace read it recently becomes ready without spawning `agy models`, and a pane that
-  is not on Antigravity fills the picker from the cache without starting the provider at all.
+  through the provider catalog cache (`chat-context/provider-catalog-cache.ts`, persisted in
+  `provider-catalogs.json`): a pane whose workspace read it within ten minutes becomes ready without
+  spawning `agy models`, and a pane that is not on Antigravity fills the picker from the cache — at
+  any age, across relaunches — without starting the provider at all.
 - **No approval prompts**, matching the other lanes: `--dangerously-skip-permissions` (without it the
   init event reports `permission_mode: request-review` and a headless turn stalls on a prompt nobody
   answers).
@@ -116,8 +117,8 @@ Screenshot items prefer the larger retained display capture when the store still
 
 The HTTP listener, the per-namespace MCP servers, the registry dispatch, and the call ledger are
 the shared `src/main/tools/mcp-http-bridge.ts`, which the Cursor lane also uses (`docs/cursor.md`).
-What stays here is Antigravity's own: the `agy mcp add/enable` registration, the config-file
-rewriting, and reading a call's conversation id off its `_meta`. Because that registration is
+What stays here is Antigravity's own: the registration written into the CLI's MCP config, and
+reading a call's conversation id off its `_meta`. Because that registration is
 global there is no per-session URL to carry a caller key, which is why this lane keys calls by
 `_meta` where Cursor keys them by path.
 
@@ -125,12 +126,14 @@ global there is no per-session URL to carry a caller key, which is why this lane
 The main process hosts one streamable-HTTP MCP endpoint per enabled namespace on
 `127.0.0.1:<random port>/mcp/<namespace>` (MCP SDK 1.30). The CLI POSTs `initialize` and then opens a
 standalone GET SSE stream, so the transport is stateful (one per `mcp-session-id`). Registration is
-global and only through the CLI's verbs: `agy mcp add --type http <namespace> <url>` and
-`agy mcp enable`, which write `~/.gemini/config/mcp_config.json`. `mcp add` drops per-tool flags, so
-the bridge then rewrites the file to mark every non-deferred tool `{eager: true}`; without that the
-tools hide behind the generic `call_mcp_tool` gateway. The entries are removed at quit by editing the
-file directly (the CLI does not rewrite it on exit, verified). While the app runs, a standalone `agy`
-session also sees the servers, which is harmless.
+global, in `~/.gemini/config/mcp_config.json`. The bridge writes its entries there itself in one
+pass — `{serverUrl, tools: {<name>: {eager: true}}}` per namespace, the same shape `agy mcp add
+--type http` plus `agy mcp enable` produce, with the eager map that keeps tools out of the generic
+`call_mcp_tool` gateway. It used to run those two verbs per namespace: sixteen `agy` processes of a
+second or more each on every first Antigravity start, which was most of what switching to
+Antigravity cost. The entries are removed at quit by editing the file the same way (the CLI does
+not rewrite it on exit, verified). While the app runs, a standalone `agy` session also sees the
+servers, which is harmless.
 
 The config is one file for every app instance. The default profile registers bare namespace names;
 any other profile (a second checkout, a headless test run with its own `--user-data-dir`) suffixes a

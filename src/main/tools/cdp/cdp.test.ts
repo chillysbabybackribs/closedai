@@ -49,8 +49,12 @@ function harness(overrides: Partial<CdpToolHost> = {}) {
       calls.push(['scrollPage', tabId, ref, deltaX, deltaY])
       return { scrolled: ref ? 'into_view' : 'wheel' }
     },
+    dismissOverlay: async (tabId, kind, verifyTimeoutMs) => {
+      calls.push(['dismissOverlay', tabId, kind, verifyTimeoutMs])
+      return { dismissed: true }
+    },
     ...overrides
-  }
+  } as CdpToolHost
   const registry = new ToolRegistry([cdpTools(() => host)])
   const call = (arguments_: Record<string, unknown>) => registry.call(
     { namespace: 'browser_cdp', tool: 'protocol', arguments: arguments_ },
