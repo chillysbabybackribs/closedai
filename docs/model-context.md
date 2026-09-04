@@ -9,7 +9,7 @@ every running model's prompt.
 | Layer | Owner | Delivery |
 |---|---|---|
 | Common product facts and tool routing | `src/main/chat-context/application-instructions.ts` | Included by all three provider instruction builders |
-| Response style | `src/main/chat-context/articulation-instructions.ts` | Included by all three builders; outcome-first responses and meaningful updates without first-person work narration |
+| Response style | `src/main/chat-context/articulation-instructions.ts` | Included by all three builders; outcome-first responses, meaningful updates without first-person work narration, and full `https://` markdown links for referenced pages |
 | Engineering workflow | `src/main/chat-context/engineering-instructions.ts` | Shared narrow-read, structured-edit, verification, Git-state, and delegation policy plus each provider's native tool names |
 | Codex adapter guidance | `src/main/chat-context/developer-instructions.ts`, `thread-params.ts` | `developerInstructions` on thread start and resume, alongside Codex's base instructions |
 | Claude adapter guidance | `src/main/claude/claude-instructions.ts`, `claude-options.ts` | Appended to the SDK's `claude_code` system preset when a query runtime starts |

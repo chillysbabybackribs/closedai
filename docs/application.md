@@ -183,6 +183,12 @@ is introduced. See [Model context](model-context.md) for trust and [Tools](tools
   (defaults 14 and 15 px, range 13–22) from chat zoom.
 - Ctrl/Cmd+, opens settings. Ctrl/Cmd+H opens chat history. Browser and chat zoom have separate
   controls; these shell shortcuts are handled in `renderer/app-shortcuts.ts`.
+- Every http(s) URL a response references is clickable and opens in the app browser through
+  `browser.openTab`, rendered as a favicon source chip with a hover preview. `components/ui/markdown.tsx`
+  runs `remarkBareUrls` (`markdown-links.ts`) after remark-gfm so scheme-less hosts such as
+  `example.com/path` become links too; the transformer skips code, existing links, and hosts outside
+  its curated TLD list, which is what keeps `chat-transcript.tsx` and `package.json` as plain text.
+  Non-http schemes stay inert. This is renderer-side, so it holds for every provider lane.
 
 Provider background tasks and app panes are separate concepts. Claude tracks task notifications
 across turn boundaries with `ClaudeBackgroundTasks`; Codex collaboration items are marked as
