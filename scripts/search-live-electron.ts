@@ -10,7 +10,9 @@ import { ToolRegistry } from '../src/main/tools/registry.js'
 const profile = process.env.CLOSEDAI_SEARCH_CHECK_PROFILE
 if (!profile) throw new Error('Run through scripts/search-live-check.mjs')
 app.setPath('userData', profile)
-const watchdog = setTimeout(() => app.exit(1), 20_000)
+const watchdog = setTimeout(() => { console.error('Live search fixture exceeded twenty seconds'); app.exit(1) }, 20_000)
+// Do not await ready at module top level: Electron must finish loading its ESM entry first.
+async function verify(): Promise<void> {
 await app.whenReady()
 let finishSource: (() => void) | undefined
 const server = createServer((request, response) => {
@@ -68,3 +70,6 @@ try {
   server.close()
   app.exit(process.exitCode ? 1 : 0)
 }
+}
+
+void verify().catch((error: unknown) => { console.error(error); app.exit(1) })
