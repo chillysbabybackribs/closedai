@@ -43,6 +43,7 @@ export class CursorChatService extends EventEmitter {
   private planUsage: ChatPlanUsage | null = null
   private readonly transcript: ChatTranscript
   private startPromise: Promise<void> | null = null
+  /** Set from the handshake; images are only put on the wire when the agent accepts them. */
   private supportsImages = true
   /**
    * This pane's key in the tool bridge URLs. One per pane rather than per session: the key names
@@ -268,6 +269,7 @@ export class CursorChatService extends EventEmitter {
       this.session ??= this.createSession()
       const setup = await this.session.warm()
       if (setup.models.length === 0) throw new Error('Cursor reported no available models')
+      this.supportsImages = this.session.capabilities?.image !== false
       await this.readAccount()
       this.setConnection({ state: 'ready', message: 'Cursor is ready' })
       if (!warm) await this.session.retire()

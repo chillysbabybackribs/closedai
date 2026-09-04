@@ -1,4 +1,7 @@
-import { CursorAcpClient, type AcpMcpServer, type AcpPromptBlock, type AcpSessionSetup } from './cursor-acp.js'
+import {
+  CursorAcpClient,
+  type AcpCapabilities, type AcpMcpServer, type AcpPromptBlock, type AcpSessionSetup
+} from './cursor-acp.js'
 import { cursorTurnId } from './cursor-ids.js'
 import { CursorTurnTranslator, cursorTurnEnd, type TranscriptOp, type TurnEnd } from './cursor-stream.js'
 import type { ChatTranscriptItem } from '../../shared/chat.js'
@@ -50,6 +53,11 @@ export class CursorSession {
 
   get live(): boolean {
     return this.client?.connected === true
+  }
+
+  /** What the agent said it can do, or null before a handshake has completed. */
+  get capabilities(): AcpCapabilities | null {
+    return this.client?.capabilities ?? null
   }
 
   /** Prove the CLI answers and read the catalog, without committing the pane to a turn. */
