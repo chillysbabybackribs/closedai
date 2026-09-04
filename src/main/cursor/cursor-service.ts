@@ -22,6 +22,7 @@ import type { CursorToolBridge } from './cursor-mcp.js'
 import { isCursorAuthFailure, parseCursorAccountEmail, parseCursorPlan, readCursorAbout } from './cursor-cli.js'
 import { cursorSessionIdOf, cursorThreadId } from './cursor-ids.js'
 import { buildCursorPrompt } from './cursor-input.js'
+import { cursorSystemInstructions } from './cursor-instructions.js'
 import { cursorAcpModelId, cursorModelCatalog } from './cursor-models.js'
 import { CursorSession } from './cursor-session.js'
 import type { TranscriptOp, TurnEnd } from './cursor-stream.js'
@@ -117,7 +118,11 @@ export class CursorChatService extends EventEmitter {
       if (this.activeTurnId) throw new Error('A Cursor turn is already running')
       const sessionId = session.sessionId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
+      const instructionContext = session.consumeInstructionsPending()
+        ? { 'closedai.instructions': { kind: 'application' as const, value: cursorSystemInstructions(this.cwd) } }
+        : {}
       const context = {
+        ...instructionContext,
         ...await withSourceChanges(this.turnAdditionalContext(text), this.bridge.sourceReads, {
           paneId: this.paneId, threadId: sessionId ? cursorThreadId(sessionId) : null, cwd: this.cwd
         }),

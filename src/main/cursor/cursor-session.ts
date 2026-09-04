@@ -49,6 +49,8 @@ export class CursorSession {
   private opening: Promise<CursorAcpClient> | null = null
   /** The last setup the agent reported, reused while its session stays open on this process. */
   private setup: AcpSessionSetup | null = null
+  /** Send closedai.instructions on the next turn; cleared after one delivery until the thread changes. */
+  private instructionsPending = true
   /** Set only while `replay` is collecting another session's history off the same process. */
   private replaying: { sessionId: string; translator: CursorTurnTranslator; items: Map<string, ChatTranscriptItem> } | null = null
   private stopping = false
@@ -72,6 +74,7 @@ export class CursorSession {
   adoptSaved(sessionId: string | null): void {
     if (!sessionId || this.sessionId || this.activeTurnId) return
     this.sessionId = sessionId
+    this.instructionsPending = true
   }
 
   /** Prove the CLI answers and read the catalog, without committing the pane to a turn. */
@@ -143,6 +146,7 @@ export class CursorSession {
   async reset(): Promise<void> {
     await this.retire()
     this.sessionId = null
+    this.instructionsPending = true
   }
 
   /**
@@ -153,7 +157,15 @@ export class CursorSession {
   continueWith(sessionId: string): void {
     if (this.sessionId === sessionId) return
     this.sessionId = sessionId
+    this.instructionsPending = true
     this.deps.onSessionId(sessionId)
+  }
+
+  /** Whether this thread still needs the one-time ClosedAI instruction block for its session. */
+  consumeInstructionsPending(): boolean {
+    if (!this.instructionsPending) return false
+    this.instructionsPending = false
+    return true
   }
 
   /** Sessions the agent holds for this workspace, newest first. */
