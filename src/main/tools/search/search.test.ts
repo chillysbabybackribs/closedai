@@ -12,6 +12,20 @@ const baseRequest: SearchRequest = {
   query: 'closedai search', intent: 'general', depth: 'balanced', count: 5
 }
 
+test('search.query defaults to quick depth when omitted', async () => {
+  const providers: SearchProvider[] = []
+  const fetchMock: typeof fetch = async (input) => {
+    const url = String(input)
+    if (url.includes('brave.com')) return json({ grounding: { generic: [] }, sources: {} })
+    if (url.includes('serper.dev')) return json({ organic: [] })
+    if (url.includes('tavily.com')) return json({ results: [] })
+    return json({ results: { web: [] } })
+  }
+  const registry = new ToolRegistry([searchTools({ fetch: fetchMock, readKey: async (provider) => { providers.push(provider); return 'key' } })])
+  await registry.call({ namespace: 'search', tool: 'query', arguments: { query: 'topic', intent: 'general' } }, context)
+  assert.deepEqual(providers, ['brave'])
+})
+
 test('intent and depth select complementary provider sets', () => {
   assert.deepEqual(selectProviders(baseRequest), ['brave', 'serper'])
   assert.deepEqual(selectProviders({ ...baseRequest, intent: 'research', depth: 'deep' }), ['tavily', 'you', 'brave'])

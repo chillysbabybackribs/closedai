@@ -12,10 +12,7 @@ export function queryAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'query',
     description:
-      'Find elements by CSS selector and return structured facts for each: tag, id, classes, role, ' +
-      'accessible name, text, value, href, src, type, disabled, checked, visibility, and bounds, plus ' +
-      'any attributes you name. text_contains narrows to elements whose text includes a substring; ' +
-      'visible_only drops hidden ones. matched is the total before max_matches.',
+      'List elements matching a selector with tag, role, text, bounds, and named attributes.',
     inputSchema: {
       type: 'object',
       properties: {

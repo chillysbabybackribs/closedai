@@ -11,13 +11,13 @@ export const MAX_CHARS = 100_000
 
 export const tabIdField: JsonObject = {
   type: 'string',
-  description: 'A tab id as reported by navigate. Defaults to the active tab. Ids survive an app restart for tabs that were restored; a stale id fails with the list of open tabs.'
+  description: 'Tab id from navigate; defaults to the active tab.'
 }
 
 export const selectorField: JsonObject = {
   type: 'string',
   minLength: 1,
-  description: 'CSS selector evaluated in the main frame. read_page reads the first match instead of the whole page; query reports every match.'
+  description: 'CSS selector in the main frame.'
 }
 
 export const maxCharsField: JsonObject = {
@@ -30,13 +30,13 @@ export const maxCharsField: JsonObject = {
 export const urlField: JsonObject = {
   type: 'string',
   minLength: 1,
-  description: 'An absolute URL, or a path relative to the tab. navigate also accepts a search query.'
+  description: 'Absolute URL, relative path, or search query (navigate only).'
 }
 
 export const waitUntilField: JsonObject = {
   type: 'string',
   enum: ['dom_ready', 'load', 'idle'],
-  description: 'How loaded the page must be: dom_ready (DOM parsed; default), load (all resources), or idle (loaded and text stopped changing).'
+  description: 'Load state: dom_ready (default), load, or idle (text stable).'
 }
 
 export const waitForSelectorField: JsonObject = {

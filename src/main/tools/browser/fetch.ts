@@ -50,11 +50,7 @@ export function parseBody(text: string, contentType: string | null): { json: unk
 export function fetchAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'fetch',
-    description:
-      'Request a URL from inside a tab, so it inherits that tab\'s origin, cookies, and signed-in ' +
-      'session — the way to reach an API the page itself calls. A JSON response comes back parsed ' +
-      'and structurally bounded rather than cut mid-document. Use this to discover a response shape; ' +
-      'once you know it, use extract to return only the fields you need.',
+    description: 'Fetch a URL inside the tab (inherits cookies/origin); returns bounded JSON or text.',
     inputSchema: {
       type: 'object',
       properties: {

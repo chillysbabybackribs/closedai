@@ -7,10 +7,7 @@ import { missingTabResult, requireBrowser, type BrowserHostProvider } from './ho
 export function waitForAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'wait_for',
-    description:
-      'Wait until a tab reaches a load state, and optionally until a selector matches or text appears. ' +
-      'Use it after navigate reported the page was not ready, or when a page updates itself after loading. ' +
-      'Returns which state was reached and whether the condition was met.',
+    description: 'Wait for load state and optional selector or text; use after incomplete navigate.',
     inputSchema: {
       type: 'object',
       properties: { tab_id: tabIdField, ...readinessProperties },

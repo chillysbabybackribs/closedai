@@ -29,8 +29,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
         'One normalized search surface backed by Brave, Serper, Tavily, and You.com. ' +
         'Choose intent by the evidence needed: general for broad discovery; news for current reporting; ' +
         'research for content-rich investigation; answer for a cited synthesis; finance for market/business research; ' +
-        'technical for documentation and implementation details. depth=quick uses one optimal provider, balanced uses two ' +
-        'complementary indexes, and deep uses three. Omit providers to use this routing; set providers only to override it. ' +
+        'technical for documentation and implementation details. Default depth=quick (one provider); use balanced or deep only when corroboration or breadth is worth the wait. ' +
         'Set live=true when current results matter; it bypasses the ten-minute cache and refreshes it. ' +
         'Live mode opens an actual source URL as API results arrive; it never opens Google or other search results. presentation=background opts out. ' +
         'Inspect relevant source pages using returned presentation.tabId. For ongoing parallel research prefer search.run. ' +
@@ -42,7 +41,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
         properties: {
           query: { type: 'string', minLength: 1, maxLength: 1_000, description: 'Search query or question.' },
           intent: { type: 'string', enum: [...SEARCH_INTENTS], description: 'Evidence shape used to select providers.' },
-          depth: { type: 'string', enum: [...SEARCH_DEPTHS], description: 'quick=1 provider, balanced=2, deep=3. Default balanced.' },
+          depth: { type: 'string', enum: [...SEARCH_DEPTHS], description: 'quick=1 provider (default), balanced=2, deep=3.' },
           live: { type: 'boolean', description: 'Bypass the ten-minute cache and refresh it with current provider results.' },
           presentation: SEARCH_PRESENTATION_FIELD,
           providers: { type: 'array', items: { type: 'string', enum: [...SEARCH_PROVIDERS] }, description: 'Optional explicit provider override.' },
@@ -60,7 +59,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
         const request = {
           query: stringArg(input, 'query')!,
           intent: stringArg(input, 'intent') as SearchIntent,
-          depth: stringArg(input, 'depth', 'balanced') as SearchDepth,
+          depth: stringArg(input, 'depth', 'quick') as SearchDepth,
           count: numberArg(input, 'count', 5),
           ...(input.live === true ? { live: true } : {}),
           ...optionalString(input, 'freshness'),

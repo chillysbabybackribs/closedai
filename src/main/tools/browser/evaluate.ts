@@ -10,11 +10,7 @@ const EVALUATE_TIMEOUT_MS = 30_000
 export function evaluateAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'evaluate',
-    description:
-      'Run JavaScript in the page and return the result as JSON. Write an expression, or statements ' +
-      'ending in an explicit return; promises are awaited. DOM nodes come back as summaries (tag, id, ' +
-      'classes, text), collections as arrays, cycles are cut, and the value is bounded by max_chars. ' +
-      'Errors return ok false with the message and stack. For selector lookups prefer query, which is structured.',
+    description: 'Run JavaScript in the page and return bounded JSON; prefer query for selectors.',
     inputSchema: {
       type: 'object',
       properties: {

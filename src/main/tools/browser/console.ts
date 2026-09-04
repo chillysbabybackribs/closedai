@@ -11,10 +11,7 @@ const MAX_LIMIT = 300
 export function consoleAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'console',
-    description:
-      'Console messages and page errors a tab has logged, captured continuously by the app with no ' +
-      'setup, plus navigation markers. min_level error returns only errors; since_navigation keeps ' +
-      'entries from the latest load; after_cursor reads incrementally. Uncaught exceptions appear as errors.',
+    description: 'Console messages and page errors for a tab, with level and cursor filters.',
     inputSchema: {
       type: 'object',
       properties: {

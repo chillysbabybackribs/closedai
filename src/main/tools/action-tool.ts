@@ -73,7 +73,7 @@ export function defineActionTool(options: ActionToolOptions): ToolDefinition {
 
 function assembleDescription(preamble: string, actions: ToolAction[]): string {
   const sections = actions.map((action) => `- \`${action.action}\`: ${action.description.trim()}`)
-  return `${preamble.trim()}\n\nSet \`action\` to one of the verbs below and pass that action's fields.\n${sections.join('\n')}`
+  return `${preamble.trim()}\n\n${sections.join('\n')}`
 }
 
 /**

@@ -9,12 +9,7 @@ import { projectJson } from './project.js'
 export function extractAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'extract',
-    description:
-      'Pull named fields out of a JSON document and return only those. Reads the current tab when ' +
-      'url is omitted, otherwise fetches the URL from inside the tab (method, headers, and body work ' +
-      'as they do for fetch, so a POST endpoint is reachable). path selects the subtree, fields names ' +
-      'what to keep from each item, limit caps the rows — the projection happens before the result is ' +
-      'serialised, so a large response costs only the part you asked for.',
+    description: 'Project named fields from JSON in the tab or from a fetched URL.',
     inputSchema: {
       type: 'object',
       properties: {

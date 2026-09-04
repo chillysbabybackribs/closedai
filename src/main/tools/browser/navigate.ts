@@ -8,10 +8,7 @@ export function navigateAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'navigate',
     description:
-      'Open a URL (or a search query) in the embedded browser, then wait until the page is ready. ' +
-      'Returns the final URL, title, and exactly which ready state was reached, so you know whether ' +
-      'read_page will see complete content. Loads in tab_id when given, otherwise the active tab; ' +
-      'new_tab opens and activates a new tab.',
+      'Open a URL or search query, wait for readiness, and return final URL, title, and load state.',
     inputSchema: {
       type: 'object',
       properties: {

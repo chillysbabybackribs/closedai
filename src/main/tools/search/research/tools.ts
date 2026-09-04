@@ -18,7 +18,7 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
   const parseQueries = (input: JsonObject): SearchRequest[] => {
     return ((input.queries ?? []) as JsonObject[]).map((query) => ({
       query: String(query.query), intent: query.intent as SearchRequest['intent'],
-      depth: (query.depth ?? 'balanced') as SearchRequest['depth'], count: Number(query.count ?? 5),
+      depth: (query.depth ?? 'quick') as SearchRequest['depth'], count: Number(query.count ?? 5),
       live: query.live === true, providers: query.providers as SearchRequest['providers'],
       freshness: query.freshness as SearchRequest['freshness'], country: query.country as string | undefined,
       language: query.language as string | undefined,

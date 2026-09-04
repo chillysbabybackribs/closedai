@@ -10,13 +10,7 @@ const TRUNCATION_ADVICE =
 export function readPageAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'read_page',
-    description:
-      'Read the visible text of a tab (the active tab unless tab_id is given) with its title, URL, ' +
-      'and load state. Pass selector to read one element instead of the whole page. Long pages are ' +
-      'truncated; raise max_chars if you need more. A JSON body is shrunk structurally (shorter ' +
-      'strings, fewer array items) so it stays parseable instead of being cut mid-document — but ' +
-      'prefer extract for JSON, which returns only the fields you name. If the load state is not ' +
-      '"complete", call wait_for first.',
+    description: 'Read visible page text with title, URL, and load state; use selector for one element.',
     inputSchema: {
       type: 'object',
       properties: {
