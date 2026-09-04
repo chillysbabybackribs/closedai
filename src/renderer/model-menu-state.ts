@@ -39,35 +39,41 @@ export const FEATURED_MODELS_PER_PROVIDER = 4
 /** How many times the picker has been used for each model id. */
 export type ModelUsage = Readonly<Record<string, number>>
 
-export type ModelSections = {
-  /** The short list the menu opens on, grouped by provider. */
-  featured: ModelGroup[]
-  /** Every model, grouped, for when the list is expanded. */
-  all: ModelGroup[]
-  /** How many models the short list leaves out. */
+export type ProviderSection = {
+  provider: ChatProvider
+  label: string
+  /** The short list this provider's submenu opens on. */
+  featured: ChatModel[]
+  /** Every model this provider offers. */
+  all: ChatModel[]
+  /** How many models `featured` leaves out; 0 when the submenu already shows everything. */
   hiddenCount: number
 }
 
 /**
- * The catalogue is long enough that the menu became a wall of names, so it opens on each
- * provider's top few models and folds the rest behind one row. Every provider keeps its own
- * slots, so a backend never disappears from the short list because another one is used more.
+ * The menu opens on the providers rather than the catalogue: one row each, and the models
+ * behind it. That already answers the wall-of-names problem the flat list had, but a single
+ * provider can still be long on its own (37 Cursor models against four Codex ones), so each
+ * submenu keeps the same short-list rule the flat menu used to apply globally.
+ *
  * Within a provider the ranking is by how often the picker has been used for a model, then its
  * default, then catalogue order. The selected model is always featured — its checkmark has to
  * be visible without expanding — and a remainder of one is featured too, rather than hidden
  * behind a row that reveals a single name.
  */
-export function modelSections(
+export function providerSections(
   models: ChatModel[],
   usage: ModelUsage,
   selectedModel: string | null,
   limit = FEATURED_MODELS_PER_PROVIDER
-): ModelSections {
-  const all = modelGroups(models)
-  const featured = all.map((group) => ({ ...group, models: featuredModels(group.models, usage, selectedModel, limit) }))
-  const hiddenCount = models.length - featured.reduce((total, group) => total + group.models.length, 0)
-  if (hiddenCount <= 1) return { featured: all, all, hiddenCount: 0 }
-  return { featured, all, hiddenCount }
+): ProviderSection[] {
+  return modelGroups(models).map(({ provider, label, models: all }) => {
+    const featured = featuredModels(all, usage, selectedModel, limit)
+    const hiddenCount = all.length - featured.length
+    return hiddenCount <= 1
+      ? { provider, label, featured: all, all, hiddenCount: 0 }
+      : { provider, label, featured, all, hiddenCount }
+  })
 }
 
 /** One provider's featured slots, filled by rank but listed back in catalogue order. */
