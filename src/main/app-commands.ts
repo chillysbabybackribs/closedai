@@ -177,13 +177,15 @@ function projectWorkspace(chat: AppChatWorkspace, callerPaneId: string | null): 
     (peer.paneId === snapshot.selectedPaneId ? 8 : 0) + (peer.paneId === callerPaneId ? 4 : 0) +
     (peer.running ? 2 : 0) + (peer.threadId ? 1 : 0)
   )
-  const ranked = [...snapshot.peers].sort((a, b) => rank(b) - rank(a) || b.updatedAt - a.updatedAt)
+  // Panes are the attached chats; detached records are history and stay out of the pane list.
+  const panes = snapshot.chats.filter((chat) => chat.attached)
+  const ranked = [...panes].sort((a, b) => rank(b) - rank(a) || b.updatedAt - a.updatedAt)
   const shown = ranked.slice(0, PEER_LIMIT)
   return {
     selectedPaneId: snapshot.selectedPaneId,
     callerPaneId,
-    paneCount: snapshot.peers.length,
-    ...(snapshot.peers.length > shown.length ? { omittedPanes: snapshot.peers.length - shown.length } : {}),
+    paneCount: panes.length,
+    ...(panes.length > shown.length ? { omittedPanes: panes.length - shown.length } : {}),
     panes: shown.map((peer) => ({
       paneId: peer.paneId,
       ...(peer.parentPaneId ? { parentPaneId: peer.parentPaneId } : {}),
