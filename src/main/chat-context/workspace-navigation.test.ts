@@ -30,8 +30,9 @@ test('the hand-written prose stays small and carries no volatile file names', ()
   const section = workspaceNavigationSection(WORKSPACE_INDEX_ROOT) ?? ''
   const prose = section.slice(0, section.indexOf(workspaceMapSection()))
   assert.ok(prose.length < 1200, `navigation prose grew to ${prose.length} chars`)
-  assert.match(prose, /renderer\/components -> shared <- preload <- main/)
-  assert.match(prose, /src\/shared\/api\.ts/)
+  assert.match(prose, /docs\/application\.md/)
+  assert.match(prose, /docs\/model-context\.md/)
+  assert.match(prose, /docs\/tools\.md/)
   assert.doesNotMatch(prose, /browser-service\.ts/)
 })
 
@@ -42,16 +43,16 @@ test('the whole capsule stays inside its context budget', () => {
 
 test('the capsule points at the map first and demotes search to a fallback', () => {
   const section = workspaceNavigationSection(WORKSPACE_INDEX_ROOT) ?? ''
-  assert.match(section, /read a path off it rather than searching for one/)
+  assert.match(section, /Use the generated map for paths/)
   assert.match(section, /closedai_workspace\.inspect find for unknown locations/)
-  assert.match(section, /For a known path use read with a symbol or range/)
-  assert.match(section, /pass known_hash only for source still in context/)
+  assert.match(section, /read for a known symbol\/range/)
+  assert.match(section, /Supply known_hash only for source still in context/)
 })
 
 test('the map states where things are, derived rather than asserted', () => {
   const map = workspaceMapSection()
   // A control family names its rendering file: the composer rail question, answered with no call.
-  assert.match(map, /composer\.\* -> src\/renderer\/project-menu\.tsx/)
+  assert.match(map, /composer\.\* -> [^\n]*src\/renderer\/project-menu\.tsx/)
   // A directory's prefix is the rule that makes a path derivable without a lookup.
   assert.match(map, /src\/main\/claude \(\d+; claude-\* \d+\)/)
   assert.match(map, /chat -> src\/main\/chat-ipc\.ts/)

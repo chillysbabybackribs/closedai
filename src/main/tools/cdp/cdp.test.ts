@@ -75,6 +75,12 @@ test('CDP tool advertises its foundational protocol and target lifecycle actions
   assert.deepEqual(registry.namespaces[0].tools[0].actions?.map((action) => action.name), [
     'capabilities', 'targets', 'command', 'target', 'events', 'requests', 'body'
   ])
+  for (const tool of registry.namespaces[0].tools) {
+    assert.equal(Boolean(tool.deferLoading), tool.name !== 'page')
+    if (tool.name !== 'page' && tool.actions?.length) {
+      assert.equal(tool.restrictActions?.([tool.actions[0].name])?.deferLoading, true)
+    }
+  }
 })
 
 test('requests lists network traffic and body reads one captured response', async () => {
