@@ -137,6 +137,13 @@ default untouched.
 
 ## Tool context and output budgets
 
+The shared routing instructions now point models to `search.run` for parallel queries and source
+reading and `search.read` for incremental evidence. Research work belongs to the originating
+turn and is cancelled at its end, so models must retrieve needed evidence before finishing.
+`presentation: live` opens one retained user tab alongside static background readers; it does not
+promise a hidden rendered worker or automatic live following. Source excerpts are untrusted data,
+and discovery overlap across providers does not establish independent factual corroboration.
+
 The registry supplies provider-neutral descriptions and schemas. Codex gets dynamic tool
 specifications; Claude gets in-process MCP servers; Antigravity gets HTTP MCP servers. Tool
 switches and runtime schema validation are enforced by the registry. Native CLI tools bypass

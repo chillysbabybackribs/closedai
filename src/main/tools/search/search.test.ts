@@ -68,6 +68,8 @@ test('partial provider failures are returned while useful evidence survives', as
   const response = await router.search(baseRequest, context.signal)
   assert.equal(response.results.length, 1)
   assert.deepEqual(response.errors, [{ provider: 'serper', message: 'quota exceeded' }])
+  const retried = await router.search(baseRequest, context.signal)
+  assert.equal(retried.cached, undefined, 'a partial failure must not be cached as a healthy search')
 })
 
 function fakeClient(provider: SearchProvider, results: Parameters<typeof Promise.resolve>[0][] | never[]): SearchProviderClient {

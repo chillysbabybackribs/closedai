@@ -5,6 +5,12 @@ Status: implementation proposal, 2026-09-04. Based on source inspection of Close
 live UX tests were performed. Numbers proposed below are starting budgets, not measurements.
 This document does not change the current application or model-tool contract.
 
+Implementation update, 2026-09-04: the first slice now adds `search.run`/`search.read`, incremental
+provider delivery, shared admission budgets, retained static source reading, turn/pane
+cancellation, and one-time live tab opening in parallel. The current contract is in
+[Tools](tools.md#parallel-research-runs). Rendered workers, progress UI, target transfer, retry
+policies, and Follow/Take over remain proposed; the full architecture below is not yet shipped.
+
 ## Recommendation
 
 Extend ClosedAI's existing search router with an app-owned research run. A run concurrently

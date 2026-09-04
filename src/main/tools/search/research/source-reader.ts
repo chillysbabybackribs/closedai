@@ -16,7 +16,7 @@ export type SourceReader = (url: string, runId: string, sourceId: string, signal
 
 export function publicUrl(value: string): string {
   const url = new URL(value)
-  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.href.length > 2048) {
     throw new Error('Research sources must be HTTP(S) URLs without embedded credentials')
   }
   return url.href
@@ -74,7 +74,7 @@ export class SourceStore {
           await response.body?.cancel()
           throw new Error(`Source returned HTTP ${response.status}`)
         }
-        const type = (response.headers.get('content-type') ?? '').toLowerCase()
+        const type = (response.headers.get('content-type') ?? '').toLowerCase().slice(0, 120)
         if (!/^text\/|application\/(?:json|[^;]+\+json|xhtml\+xml)/.test(type)) {
           await response.body?.cancel()
           throw new Error(`Unsupported source type: ${type || 'missing content-type'}; open it in the browser`)

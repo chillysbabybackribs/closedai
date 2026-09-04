@@ -63,6 +63,8 @@ before the app-server starts.
 | `browser_cdp` | `page` | `inspect_page`, `click`, `click_at`, `type`, `press_key`, `scroll`, `dismiss_overlay` | Semantic page inspection plus exceptional real CDP mouse and keyboard input. Input actions require `fallback_reason`; `fetch`/`extract`, site APIs, and non-input protocol operations come first. |
 | `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `target`, `events`, `requests`, `body` | Primary raw Chrome DevTools Protocol interface, eagerly advertised. `requests` lists the network traffic a tab has made and `body` reads captured responses. This is the supported way to find the endpoint behind a page. Raw `Input.*` commands require `fallback_reason`; screenshots remain ordinary commands. Target inventory exposes flattened child sessions; `target` wraps attach/detach/create/activate/close. See [CDP](cdp-tool-foundation.md). |
 | `search` | `query` | plain tool | Routed public-web search across Brave, Serper, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. `live: true` bypasses the ten-minute cache and refreshes it with current provider results. |
+| `search` | `run` | `start`, `extend`, `cancel` | Incremental public-web research: independent queries and static source readers overlap inside one app-owned run. Optional `presentation: live` opens a retained browser tab immediately. |
+| `search` | `read` | `results`, `wait`, `source` | Cursor-based source updates, bounded event waits, and retained document excerpts. Observes the calling pane/thread's runs without starting more requests. |
 | `closedai_workspace` | `inspect` | `find`, `outline`, `map`, `related`, `tests`, `ipc_flow`, `read` | Read-only source/navigation registered for this indexed checkout. `find` locates code and enriches unique exact declarations with hashed source, local types, test excerpts, and styles. `read` returns the same context for a known symbol/range; a stale `known_hash` returns fresh source in the same call. `outline` provides shape, hash, and all matching style locations without claiming source coverage. Parsing is cached by absolute path and content hash, with fresh byte reads independent of timestamps. Other verbs query the generated index, direct imports, candidate tests, and IPC ownership. |
 | `peer_chats` | `list`, `read` | plain tools | Read-only status and paginated transcript access to other panes and visible subagent summaries. `read` defaults to 50 items, at most 100, using an id from `list`; it does not start or control agents. Reasoning items are excluded from both previews and pages, matching `recall` and thread handoff, so one model's thinking never enters another model's context. |
 | `peer_chats` | `recall` | plain tool, read-only | Bounded phrase search or exact-message excerpts from the caller's current chat or frozen direct continuation source, plus saved checkpoint state. |
@@ -165,6 +167,51 @@ page input, raw `protocol.command`, browser-page captures, and app tab commands.
 `protocol.target` convenience action currently has no resource key. These locks do not coordinate
 human input or provider-native tools, and distinct tab locks do not serialize the shared foreground
 tab: batch independent reads, but sequence semantic inputs that switch between visible tabs.
+
+### Parallel research runs
+
+`search.run.start` accepts up to six query objects (the same fields as `search.query`) and
+twenty known URLs. At least one is required. It returns a run id immediately. Each provider's
+completion schedules source reading without waiting for other providers. Follow-ups use
+`extend` while the run is active, up to twelve queries total. Provider answers are not retained
+as retrieved document evidence. Index overlap is reported as `discoveredBy`, not factual
+corroboration. The legacy query's `corroboratedBy` field likewise means URL overlap only.
+
+One registry-wide router admits four provider requests, at most two per provider, across both
+synchronous queries and research runs. Providers have twenty-second deadlines. A separate source
+reader admits eight HTTP reads, at most two per starting origin. Both queues alternate eligible
+owners. The source reader currently does not retry or honor Retry-After; failures remain visible.
+Redirects stay under the starting-origin slot. These are initial bounds, not measured optimal
+settings or a complete per-origin rate policy.
+
+Runs default to twelve documents and a 45-second deadline; callers may select 1–20 documents
+and 1–120 seconds. At most eight runs are active, and 32 completed/active runs are retained.
+Stop, pane detachment/project switching, turn replacement/completion, and shutdown cancel owned
+background work. Finish retrieval before ending the model turn. Completed runs remain readable
+in the same pane/thread until eviction or app restart. Run files are an app-owned session cache
+under `<userData>/research-runs`, cleared on the next launch; eviction also removes their files.
+
+`search.read.results` returns source states and errors under a 16k-character target budget.
+Keep records by source id; later deltas replace earlier states. Continue from the returned cursor,
+including when `omittedSources` is nonzero. `wait` returns on a revision change or a bounded wait
+(default ten seconds, maximum twenty); aborting that wait does not cancel the run. `source`
+returns retained text by id, offset, optional literal query, and character budget (default 6k,
+maximum 12k), with hash, retrieval time, MIME, and incomplete status. Completion means all work
+settled, not that every provider or source succeeded.
+
+Static sources use an isolated nonpersistent Electron session and omit credentials. Bodies are
+streamed to a bounded raw file (512 KiB), HTML is parsed inertly with parse5, and extracted text
+is retained up to 120k characters. Truncation is explicit. JSON and text are also supported;
+PDFs, empty JS shells, and unsupported MIME are reported for browser follow-up. Parsing does not
+execute JavaScript or resolve CSS visibility and is not a rendered-page verification.
+
+`presentation: live` opens the first supplied URL, or a Google search for the first query, in a
+new normal browser tab alongside background work. This visible tab uses the normal browser
+session. The result reports its id and that it opened, not that navigation completed. It is
+retained for the user; the run does not drive it after opening, follow results, or close it on
+cancellation. Models can use existing browser tools on its explicit id. Hidden rendered workers,
+live target transfer, dedicated progress UI, and Follow/Take over controls remain later slices.
+`live: true` on each query still controls cache freshness only.
 
 ### Search credentials
 

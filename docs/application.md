@@ -306,6 +306,15 @@ See [Tools](tools.md) for configuration and measurement limits.
 
 ## Known boundaries from this source review
 
+Parallel research now has an initial model-facing implementation: `search.run` starts several
+queries and begins static source collection as each provider responds; `search.read` retrieves
+incremental results and retained excerpts. A live presentation opens a new browser tab concurrently
+and leaves it under user control. Source fetching is unauthenticated; the visible tab uses the
+normal browser session. Runs are tied to the calling pane/thread/turn and stop with that turn or
+pane. There is no dedicated research activity panel or hidden rendered-worker pool yet. See
+[Tools](tools.md#parallel-research-runs) for exact limits and the
+[design proposal](parallel-web-research-2026-09-04.md) for the remaining work.
+
 - The saved “No project” identity is currently coalesced to the working directory on startup in
   `index.ts`; the home directory can therefore return with a project label after relaunch.
 - Provider threads the store has never seen appear in the drawer only after the background
