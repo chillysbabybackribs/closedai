@@ -204,6 +204,37 @@ test('a parallel batch runs everything despite failures and keeps input order', 
   assert.match(text, /\[1\] lab\.boom — failed[\s\S]*\[2\] lab\.echo — ok/)
 })
 
+test('a stale-target failure keeps its recovery text local while a parallel sibling succeeds', async () => {
+  const tabs: ToolNamespace = {
+    name: 'embedded_browser',
+    description: 'Browser reads',
+    tools: [{
+      name: 'page',
+      description: 'Read a page',
+      inputSchema: {
+        type: 'object',
+        properties: { action: { type: 'string' }, tab_id: { type: 'string' } },
+        required: ['action', 'tab_id']
+      },
+      run: async (input) => input.tab_id === 'stale'
+        ? { content: [{ type: 'text', text: 'No tab with id stale. Open tabs: tab-1 "A".' }], isError: true }
+        : textResult(`read ${String(input.tab_id)}`)
+    }]
+  }
+  let registry: ToolRegistry
+  registry = new ToolRegistry([tabs, batchTools(() => registry)])
+  const result = await call(registry, {
+    parallel: true,
+    calls: [
+      { tool: 'embedded_browser.page', arguments: { action: 'read_page', tab_id: 'stale' } },
+      { tool: 'embedded_browser.page', arguments: { action: 'read_page', tab_id: 'tab-1' } }
+    ]
+  })
+
+  assert.equal(result.isError, undefined)
+  assert.match(batchText(result), /\[1\] embedded_browser\.page — failed\nNo tab with id stale[\s\S]*\[2\] embedded_browser\.page — ok\nread tab-1/)
+})
+
 test('real-input fallbacks require a sequential batch with a later verification read', async () => {
   const { registry, log } = inputPolicyHarness()
   const click = {
@@ -267,7 +298,7 @@ test('an active-tab browser call serializes every browser lane in its batch', as
 })
 
 test('an aborted parallel batch does not dispatch queued work in a same-tab lane', async () => {
-  const { registry, starts, release } = browserHarness()
+  const { registry, starts } = browserHarness()
   const controller = new AbortController()
   const batch = registry.find('tool_batch', 'run')
   assert.ok(batch)
@@ -280,10 +311,10 @@ test('an aborted parallel batch does not dispatch queued work in a same-tab lane
   }, { ...context, signal: controller.signal })
   await waitForStart(starts, 'a1')
   controller.abort()
-  release('a1')
   const result = await run
 
   assert.deepEqual(starts, ['a1'])
+  assert.match(batchText(result), /\[1\] browser_cdp\.protocol — failed\nbrowser_cdp\.protocol: cancelled because its parent call ended/)
   assert.match(batchText(result), /\[2\] browser_cdp\.protocol — skipped: the batch timed out/)
 })
 

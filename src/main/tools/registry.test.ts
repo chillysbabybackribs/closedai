@@ -227,3 +227,34 @@ test('a timed-out tool releases its resource lock even when its run promise neve
   const retry = await registry.call(request(false), { ...context, paneId: 'pane-b', callId: 'retry' })
   assert.deepEqual(retry, textResult('recovered'))
 })
+
+test('a target-closed failure releases its browser-tab resource lock', async () => {
+  const browser: ToolNamespace = {
+    name: 'browser_cdp',
+    description: 'Browser automation',
+    tools: [{
+      name: 'protocol',
+      description: 'Test target work',
+      inputSchema: {
+        type: 'object',
+        properties: { action: { type: 'string' }, tab_id: { type: 'string' }, closed: { type: 'boolean' } },
+        required: ['action', 'tab_id']
+      },
+      run: async (input) => {
+        if (input.closed) throw new Error('target-closed: WebContents destroyed')
+        return textResult('new target work ran')
+      }
+    }]
+  }
+  const registry = new ToolRegistry([browser])
+  const request = (closed: boolean) => ({
+    namespace: 'browser_cdp', tool: 'protocol',
+    arguments: { action: 'command', tab_id: 'tab-1', closed }
+  })
+
+  const closed = await registry.call(request(true), { ...context, paneId: 'pane-a', callId: 'closed' })
+  assert.equal(closed.isError, true)
+  assert.match(closed.content[0]?.type === 'text' ? closed.content[0].text : '', /target-closed/)
+  const retry = await registry.call(request(false), { ...context, paneId: 'pane-b', callId: 'retry' })
+  assert.deepEqual(retry, textResult('new target work ran'))
+})

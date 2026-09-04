@@ -21,7 +21,10 @@ export type ToolCallRequest = {
   arguments: unknown
 }
 
-export type ToolCallContext = Omit<ToolContext, 'signal'>
+export type ToolCallContext = Omit<ToolContext, 'signal'> & {
+  /** Internal cancellation inherited from an orchestrating tool such as tool_batch. */
+  parentSignal?: AbortSignal
+}
 export type ToolCallListener = (record: ToolCallEvent) => void
 
 /** Full-fidelity view of one call for the turn trace: the request as made and the result as returned. */
@@ -180,17 +183,26 @@ export class ToolRegistry {
         resolve(timeoutResult(`${label}: timed out after ${Math.round(timeoutMs / 1000)}s`))
       }, timeoutMs)
     })
+    let cancel: (result: ToolResult) => void = () => {}
+    const cancelled = new Promise<ToolResult>((resolve) => { cancel = resolve })
+    const cancelFromParent = () => {
+      controller.abort()
+      cancel(failureResult(`${label}: cancelled because its parent call ended`))
+    }
+    if (context.parentSignal?.aborted) cancelFromParent()
+    else context.parentSignal?.addEventListener('abort', cancelFromParent, { once: true })
     const lock = this.resourceLocks.tryAcquire(request, input as JsonObject, context.paneId ?? null, context.callId)
     if (typeof lock === 'string') return failureResult(`${label}: conflict — ${lock}`)
     try {
       const run = Promise.resolve().then(() =>
         definition.run(input as JsonObject, { ...context, signal: controller.signal })
       )
-      return await Promise.race([run, timeout])
+      return await Promise.race([run, timeout, cancelled])
     } catch (error) {
       return failureResult(`${label}: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
       if (timer) clearTimeout(timer)
+      context.parentSignal?.removeEventListener('abort', cancelFromParent)
       // A timed-out tool may ignore its abort signal and never settle. Its public call has
       // ended, so retaining the resource lock would permanently strand that target.
       lock()

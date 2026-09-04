@@ -224,7 +224,8 @@ function dispatch(registry: ToolRegistry, call: BatchCall, context: ToolContext)
       callId: `${context.callId}#${call.index}`,
       parentCallId: context.callId,
       batchId: context.callId,
-      source: 'batch'
+      source: 'batch',
+      parentSignal: context.signal
     }
   )
 }
