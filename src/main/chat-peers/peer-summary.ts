@@ -1,6 +1,6 @@
 import type { ChatEvent, ChatSnapshot, ChatTranscriptItem } from '../../shared/chat.js'
 import type { ChatPeerSummary, PeerChatReadResult } from '../../shared/chat-peers.js'
-import type { ChatPeerRecord } from '../../shared/types.js'
+import type { ChatRecord } from '../../shared/chat-store.js'
 
 // How one pane describes itself to the drawer and to peer-reading tools. A parked pane has no
 // runtime and an empty snapshot, so every field that names the chat falls back to the persisted
@@ -25,11 +25,11 @@ export class PeerSummaryCache {
    * settings before the surface replays, and a frozen copy would keep naming the pane after the
    * conversation it just left.
    */
-  constructor(private readonly paneId: string, private readonly readRecord: () => ChatPeerRecord) {
+  constructor(private readonly paneId: string, private readonly readRecord: () => ChatRecord) {
     this.current = summaryForRecord(paneId, readRecord())
   }
 
-  private get record(): ChatPeerRecord {
+  private get record(): ChatRecord {
     return this.readRecord()
   }
 
@@ -78,7 +78,7 @@ export class PeerSummaryCache {
 }
 
 /** The drawer can be described from persisted pane state before its provider is awake. */
-export function summaryForRecord(paneId: string, record: ChatPeerRecord): ChatPeerSummary {
+export function summaryForRecord(paneId: string, record: ChatRecord): ChatPeerSummary {
   return {
     paneId,
     parentPaneId: null,
@@ -87,10 +87,10 @@ export function summaryForRecord(paneId: string, record: ChatPeerRecord): ChatPe
     modelId: record.modelId,
     threadId: record.threadId,
     title: titleFromParts(null, null, record),
-    preview: '',
+    preview: record.preview,
     running: false,
     activity: null,
-    updatedAt: record.updatedAt ?? 0
+    updatedAt: record.updatedAt
   }
 }
 
@@ -106,7 +106,7 @@ export function titleFromUserText(text: string): string {
   return formatTitle(firstLine(text))
 }
 
-type TitleRecord = Pick<ChatPeerRecord, 'title' | 'threadId' | 'continuation'>
+type TitleRecord = Pick<ChatRecord, 'title' | 'threadId' | 'continuation'>
 
 /**
  * A saved title names the saved thread. Once the record holds neither a thread nor a pending
@@ -128,7 +128,7 @@ export function summaryOf(
   paneId: string,
   snapshot: ChatSnapshot,
   updatedAt: number,
-  record: ChatPeerRecord
+  record: ChatRecord
 ): ChatPeerSummary {
   const latest = snapshot.items.at(-1)
   return {
