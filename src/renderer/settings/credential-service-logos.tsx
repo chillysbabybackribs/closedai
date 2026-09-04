@@ -1,21 +1,12 @@
 import type { JSX } from 'react'
+import { KeyRound } from 'lucide-react'
+import type { CredentialServiceId } from '../../shared/credentials.js'
 
 /**
  * Brand marks used by the "Import from other services" step. Extracted from the
  * rendered ReUI `settings-1` block (https://reui.io/blocks/application/settings)
  * so the credential-vault import screen matches it pixel for pixel.
  */
-export type CredentialServiceId =
-  | 'stripe'
-  | 'supabase'
-  | 'openai'
-  | 'discord'
-  | 'anthropic'
-  | 'resend'
-  | 'neon'
-  | 'planetscale'
-  | 'redis'
-
 const LOGO_CLASS = 'size-6'
 
 const StripeLogo = (): JSX.Element => (
@@ -158,6 +149,8 @@ const RedisLogo = (): JSX.Element => (
   </svg>
 )
 
+const CustomLogo = (): JSX.Element => <KeyRound className={LOGO_CLASS} aria-hidden="true" />
+
 export const CREDENTIAL_SERVICE_LOGOS: Record<CredentialServiceId, () => JSX.Element> = {
   stripe: StripeLogo,
   supabase: SupabaseLogo,
@@ -167,5 +160,6 @@ export const CREDENTIAL_SERVICE_LOGOS: Record<CredentialServiceId, () => JSX.Ele
   resend: ResendLogo,
   neon: NeonLogo,
   planetscale: PlanetScaleLogo,
-  redis: RedisLogo
+  redis: RedisLogo,
+  custom: CustomLogo
 }
