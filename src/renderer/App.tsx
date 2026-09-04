@@ -18,6 +18,7 @@ import { appShortcutForKey } from './app-shortcuts.js'
 import { TitlebarMenu } from './titlebar-menu.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
 import { AppearanceSettingsDialog } from './settings/appearance-settings-dialog.js'
+import { CredentialVaultModal } from './settings/credential-vault-modal.js'
 import {
   normalizeAppearanceSettings,
   persistAppearanceSettings,
@@ -31,6 +32,7 @@ function App(): JSX.Element {
   const drawer = useDrawerController(chat.sidebar)
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [credentialsOpen, setCredentialsOpen] = useState(false)
   const workspaceRef = useRef<ChatLayoutHandle>(null)
   const splitSidebarChat = useCallback((chatId: string, edge: 'right' | 'bottom'): Promise<void> => {
     if (!workspaceRef.current) return Promise.reject(new Error('The workspace is still loading'))
@@ -96,6 +98,7 @@ function App(): JSX.Element {
           historyOpen={historyOpen}
           onChatZoomChange={changeChatZoom}
           onOpenSettings={() => setSettingsOpen(true)}
+          onOpenCredentials={() => setCredentialsOpen(true)}
           onToggleHistory={toggleHistory}
         />
         <AppWindowControls />
@@ -117,6 +120,10 @@ function App(): JSX.Element {
         {...appearance}
         onOpenChange={setSettingsOpen}
         onChange={updateAppearance}
+      />
+      <CredentialVaultModal
+        open={credentialsOpen}
+        onOpenChange={setCredentialsOpen}
       />
     </div>
   )

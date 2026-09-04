@@ -12,7 +12,7 @@ type MenuRow = {
   label: string
   shortcut?: string
   command?: ChatZoomCommand
-  action?: 'settings' | 'history'
+  action?: 'settings' | 'history' | 'credentials'
 } | null
 
 type Menu = { label: string; rows: MenuRow[] }
@@ -32,6 +32,7 @@ const MENUS: Menu[] = [
       { label: 'New chat', shortcut: 'Ctrl+N' },
       { label: 'Open chat history', shortcut: 'Ctrl+H', action: 'history' },
       null,
+      { label: 'Credential Vault', action: 'credentials' },
       { label: 'Settings', shortcut: 'Ctrl+,', action: 'settings' },
       null,
       { label: 'Close window', shortcut: 'Ctrl+W' }
@@ -79,6 +80,7 @@ export type TitlebarMenuProps = {
   historyOpen: boolean
   onChatZoomChange: (command: ChatZoomCommand) => void
   onOpenSettings: () => void
+  onOpenCredentials: () => void
   onToggleHistory: () => void
 }
 
@@ -116,6 +118,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                       onSelect={() => {
                         if (row.command) onChatZoomChange(row.command)
                         if (row.action === 'settings') onOpenSettings()
+                        if (row.action === 'credentials') onOpenCredentials()
                         if (row.action === 'history') onToggleHistory()
                       }}
                     >
