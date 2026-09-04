@@ -107,7 +107,8 @@ class SourceBudget {
       room -= value.length
     }
     if (!lines.length) {
-      this.add(`${prefix}No complete lines fit for requested range ${start}-${end}.\n`)
+      const notice = `${prefix}No complete lines fit for requested range ${start}-${end}.\n`
+      if (this.text.length + notice.length <= budget - 180) this.add(notice)
       this.omitted = true
       return
     }

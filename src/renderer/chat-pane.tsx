@@ -13,7 +13,7 @@ import {
 } from '../components/ui/message-scroller.js'
 import { CHAT_RESUME_PROMPT } from '../shared/chat.js'
 import type { ChatAttachment, ChatConnectionState, ChatProvider } from '../shared/chat.js'
-import { useChatController } from './chat-controller.js'
+import { useChatController, type ChatController } from './chat-controller.js'
 import { ChatHistory } from './chat-history.js'
 import { PROVIDER_LABELS } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
@@ -31,7 +31,7 @@ export function ChatPane({
   historyOpen: controlledHistoryOpen,
   onHistoryOpenChange
 }: {
-  controller?: ReturnType<typeof useChatController>
+  controller?: ChatController
   zoom?: number
   fontSize?: number
   composerFontSize?: number

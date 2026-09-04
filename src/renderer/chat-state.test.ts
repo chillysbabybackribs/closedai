@@ -6,10 +6,42 @@ import {
   coalesceChatWorkspaceEvents,
   initialChatState,
   initialChatWorkspaceState,
+  initialChatRendererState,
+  reduceChatRendererEvent,
   reduceChatEvent,
   reduceChatWorkspaceEvent,
   summarizeMessage
 } from './chat-state.js'
+
+test('a burst of text and output deltas leaves sidebar state stable until a meaningful event', () => {
+  let state = initialChatRendererState()
+  state = reduceChatRendererEvent(state, { type: 'workspace', snapshot: {
+    ...initialChatWorkspaceState(), selectedPaneId: 'pane-a', selected: { ...initialChatState(), items: [
+      { type: 'assistant', id: 'a', turnId: 't', text: '', phase: null, streaming: true },
+      { type: 'command', id: 'c', turnId: 't', command: 'test', cwd: '/', status: 'inProgress', output: '', exitCode: null }
+    ] }
+  } })
+  const sidebar = state.sidebar
+  for (let i = 0; i < 100; i++) {
+    for (const [itemId, field] of [['a', 'text'], ['c', 'output']] as const) {
+      state = reduceChatRendererEvent(state, { type: 'pane', paneId: 'pane-a',
+        event: { type: 'itemDelta', itemId, field, delta: 'x' } })
+      assert.equal(state.sidebar, sidebar)
+    }
+  }
+  assert.equal(state.workspace.selected.items[0]?.type === 'assistant' && state.workspace.selected.items[0].text, 'x'.repeat(100))
+  state = reduceChatRendererEvent(state, { type: 'chats', selectedPaneId: 'pane-a', chats: [] })
+  assert.equal(state.sidebar, sidebar)
+  state = reduceChatRendererEvent(state, { type: 'pane', paneId: 'pane-a', event: { type: 'turn', turnId: null } })
+  assert.equal(state.sidebar, state.workspace.selected)
+  assert.notEqual(state.sidebar, sidebar)
+
+  state = reduceChatRendererEvent(state, { type: 'workspace', snapshot: {
+    ...initialChatWorkspaceState(), selectedPaneId: 'pane-b'
+  } })
+  assert.equal(state.sidebar, state.workspace.selected)
+  assert.deepEqual(state.sidebar.items, [])
+})
 
 test('chat reducer upserts authoritative items without changing their order', () => {
   let state = initialChatState()

@@ -117,7 +117,14 @@ is introduced. See [Model context](model-context.md) for trust and [Tools](tools
   Peer-summary updates are throttled to 200 ms during streaming and a pending update is flushed on
   stop. Summaries update from events, carry `running` from one source (the hub's active turn),
   never reset a title to a placeholder on a wake, retain transcript order during late tool updates,
-  and cap previews at 240 characters. Message deltas still go to the selected conversation.
+  and cap previews at 240 characters. Only the selected pane's events cross chat IPC; main-process
+  transcripts and trace observers still receive every pane's events. Selecting a background pane
+  delivers its current snapshot before subsequent deltas. The sidebar uses a separate snapshot
+  that stays stable during text/output deltas, keeping its row calculations out of the token stream.
+- Chat events are batched by animation frame. Markdown renders that frame's current text without
+  another timer, including the final chunk when a task completes. Code highlighting remains
+  throttled to 250 ms and limited to 20,000 characters, but pending highlights show the current
+  plain code rather than an older highlighted version.
 - The renderer initially receives the newest 200 transcript items. "Show earlier" fetches older
   pages by stable item id; stale responses after a chat switch are ignored. Background-task status
   remains available outside the loaded page. Provider sessions and the main-process transcript

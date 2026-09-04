@@ -3,6 +3,39 @@ import test from 'node:test'
 import type { ChatEvent } from '../../shared/chat.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import { chatRecord, harness, harnessWith } from './peer-manager-harness.js'
+import { rendererChatForwarder } from './peer-events.js'
+
+test('IPC skips background streams while main observers retain them and selection restores current text', async () => {
+  const { manager, surfaces } = harnessWith([
+    chatRecord('pane-a', 'gpt'), chatRecord('pane-b', 'gpt')
+  ], 'pane-a')
+  const observed: ChatWorkspaceEvent[] = []
+  const delivered: ChatWorkspaceEvent[] = []
+  const forward = rendererChatForwarder('pane-a', (event) => delivered.push(event))
+  manager.on('event', (event: ChatWorkspaceEvent) => { observed.push(event); forward(event) })
+  const background = surfaces[1]!
+  const item = { type: 'assistant' as const, id: 'answer', turnId: 't', text: 'hello', phase: null, streaming: true }
+  background.state.items = [item]
+  background.emit('event', { type: 'item', item } satisfies ChatEvent)
+  item.text += ' world'
+  background.emit('event', { type: 'itemDelta', itemId: item.id, field: 'text', delta: ' world' } satisfies ChatEvent)
+  assert.equal(observed.filter((event) => event.type === 'pane' && event.paneId === 'pane-b').length, 2)
+  assert.equal(delivered.filter((event) => event.type === 'pane' && event.paneId === 'pane-b').length, 0)
+  assert.ok(delivered.some((event) => event.type === 'chats'))
+  assert.equal(manager.snapshot().chats.find((chat) => chat.paneId === 'pane-b')?.preview, 'hello world')
+
+  await manager.selectPane('pane-b')
+  const selected = delivered.find((event) => event.type === 'workspace' && event.snapshot.selectedPaneId === 'pane-b')
+  assert.ok(selected?.type === 'workspace')
+  assert.equal(selected.snapshot.selected.items[0]?.type === 'assistant' && selected.snapshot.selected.items[0].text, 'hello world')
+  delivered.length = 0
+  background.emit('event', { type: 'itemDelta', itemId: item.id, field: 'text', delta: '!' } satisfies ChatEvent)
+  surfaces[0]!.emit('event', { type: 'itemDelta', itemId: 'old', field: 'text', delta: 'hidden' } satisfies ChatEvent)
+  const chunks = delivered.filter((event) => event.type === 'pane')
+  assert.equal(chunks.length, 1)
+  assert.equal(chunks[0]?.type === 'pane' && chunks[0].paneId, 'pane-b')
+  manager.stop()
+})
 
 // How a pane describes itself to the drawer: titles, persisted display fields, bounded summaries.
 
