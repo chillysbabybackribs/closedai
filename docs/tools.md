@@ -336,10 +336,12 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
 - Pasted screenshots are bounded to 1600x1200 JPEG before they are sent
   (`src/main/chat-attachment-images.ts`): Codex re-sends user messages verbatim through every
   compaction, so a full-size paste is paid for on every call for the life of the thread.
-- Continuation/branch actions create a fresh pane: its next message opens
-  a fresh thread whose first turn carries a digest of the old one as `additionalContext`
-  (`closedai.chat.handoff`, built from the app transcript without a model call, ≤12k chars).
-  Branching from a response includes conversation only through that completed message.
+- Continuation/branch actions create a fresh pane, and a provider switch creates a fresh thread
+  in the existing pane: the next message carries a digest of the old thread as
+  `additionalContext` (`closedai.chat.handoff`, built from the app transcript without a model
+  call, ≤12k chars). An applicable checkpoint and frozen source boundary accompany the handoff
+  so bounded source recall remains available. Branching from a response includes conversation
+  only through that completed message.
   Tool output, screenshots, and reasoning stay in the old thread. See
   `src/main/chat-context/thread-handoff.ts`. The header shows the context percentage so the
   user can see when to reach for it.

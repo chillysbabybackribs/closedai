@@ -104,10 +104,12 @@ One checkpoint is retained per pane, associated with its thread id; a different 
 read it as its current memory. Notes survive compaction and restart but can be stale or wrong.
 They never become developer instructions, approvals, or independent evidence.
 
-Continuation copies a checkpoint only if its recorded boundary belongs to the selected source
-prefix, so a later checkpoint does not enter an earlier branch. It remains within the existing
-handoff budget; more recent messages take precedence. No summarization call is added to Send,
-and checkpoints are neither automatically generated nor repeatedly injected into the prompt.
+Continuation and provider switching copy a checkpoint only if its thread and recorded boundary
+belong to the selected source prefix, so a later checkpoint does not enter an earlier branch or a
+different provider thread. They retain the frozen source boundary for bounded
+`peer_chats.recall`. The checkpoint remains within the existing handoff budget; more recent
+messages take precedence. No summarization call is added to Send, and checkpoints are neither
+automatically generated nor repeatedly injected into the prompt.
 
 `peer_chats.recall` returns bounded historical excerpts and checkpoint state. `current` searches
 the caller's own transcript; `source` accesses only the direct continuation source, capped at
