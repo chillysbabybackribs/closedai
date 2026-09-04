@@ -31,7 +31,15 @@ test('both registry search paths open live by default, before API completion; ba
   const tabs = new SearchBrowserTabs({ exists: () => true, open: (url) => { urls.push(url); return 'live-tab' } })
   const registry = new ToolRegistry([searchTools({
     readKey: async () => 'test',
-    fetch: async () => { await gate; return new Response('{"web":{"results":[]}}', { headers: { 'content-type': 'application/json' } }) },
+    fetch: async (input) => {
+      if (String(input).includes('api.search.brave.com')) {
+        return new Response('{"web":{"results":[{"title":"Source","url":"https://source.example/article","description":"Evidence"}]}}', {
+          headers: { 'content-type': 'application/json' }
+        })
+      }
+      await gate
+      return new Response('{"organic":[]}', { headers: { 'content-type': 'application/json' } })
+    },
     onResearchCreated: (value) => { service = value },
     research: {
       owner: (ctx) => ({ paneId: ctx.paneId!, threadId: ctx.threadId!, turnId: ctx.turnId, workspace: '/test' }),
@@ -41,14 +49,17 @@ test('both registry search paths open live by default, before API completion; ba
   })])
   t.after(() => { release(); service.dispose() })
   const call = (tool: string, args: unknown) => registry.call({ namespace: 'search', tool, arguments: args }, context)
-  const query = { query: 'design libraries', intent: 'technical', providers: ['brave'] }
+  const query = { query: 'design libraries', intent: 'technical', providers: ['brave', 'serper'] }
   const pending = call('query', query)
   await new Promise<void>((resolve) => setImmediate(resolve))
   assert.equal(urls.length, 1, 'query opens a real target before the API returns')
   const started = await call('run', { action: 'start', queries: [query, { ...query, query: 'other libraries' }] })
   const body = JSON.parse(started.content[0].type === 'text' ? started.content[0].text : '')
-  assert.equal(body.presentation.state, 'opened', 'omitting presentation must no longer select background')
-  assert.equal(body.presentation.tabId, 'live-tab')
+  assert.equal(body.presentation.state, 'waiting_for_source', 'omitting presentation must no longer select background')
+  await new Promise<void>((resolve) => setImmediate(resolve))
+  const live = service.read(body.runId, context)
+  assert.equal(live.presentation.state, 'opened')
+  assert.equal(live.presentation.tabId, 'live-tab')
   assert.equal(urls.length, 1, 'query and run share their turn tab')
   const background = await call('run', { action: 'start', queries: [query], presentation: 'background' })
   assert.match(background.content[0].type === 'text' ? background.content[0].text : '', /"state":"none"/)
