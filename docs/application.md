@@ -398,6 +398,12 @@ that single field, so the renderer never holds more plaintext than the user aske
 name and optional service URL, then provide either the API key or a username and password. The
 form validates its required fields and saves directly; there is no service picker or review step.
 
+Every provider receives the same `credential_vault` model tools. `list` discovers saved entries
+and masked field ids without decryption; `read` requires the chosen credential id, exact field ids,
+and a reason before returning only those values to the requesting model. Sensitive reads cannot run
+inside `tool_batch`, and their Turn Trace result is redacted. Shared model instructions restrict
+access to the current user-requested operation and prohibit echoing, logging, or persisting secrets.
+
 The service catalog in `src/shared/credentials.ts` is the single definition of which fields a
 service takes and which are required, so the store validates every saved draft. The create form
 saves the two common shapes as distinct API Key and Login entries. `CredentialVault` encrypts

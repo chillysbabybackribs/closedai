@@ -137,12 +137,15 @@ export class ToolRegistry {
   async call(request: ToolCallRequest, context: ToolCallContext): Promise<ToolResult> {
     const startedAt = performance.now()
     this.notifyObservers({ phase: 'start', request, context })
-    const { sourceReads, ...publicResult } = await this.run(request, context)
+    const { sourceReads, sensitive, ...publicResult } = await this.run(request, context)
     const result = boundResult(publicResult)
     if (!result.isError) for (const read of sourceReads ?? []) {
       this.sourceReads.remember({ paneId: context.paneId, threadId: context.threadId, cwd: read.cwd }, read)
     }
-    this.notifyObservers({ phase: 'end', request, context, result, durationMs: performance.now() - startedAt })
+    const observedResult = sensitive
+      ? { ...result, content: [{ type: 'text' as const, text: '<sensitive credential result redacted>' }] }
+      : result
+    this.notifyObservers({ phase: 'end', request, context, result: observedResult, durationMs: performance.now() - startedAt })
     this.report(request, result)
     return result
   }

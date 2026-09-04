@@ -29,3 +29,11 @@ test('browser routing requires parallel batches for every independent known targ
   assert.match(APPLICATION_INSTRUCTIONS, /Use explicit tab_id values/)
   assert.match(APPLICATION_INSTRUCTIONS, /Serialize only genuine dependencies, same-target mutations, and foreground input/)
 })
+
+test('credential access is scoped to the user request and secret values stay out of output', () => {
+  assert.match(APPLICATION_INSTRUCTIONS, /credential_vault\.list/)
+  assert.match(APPLICATION_INSTRUCTIONS, /current user-requested operation/)
+  assert.match(APPLICATION_INSTRUCTIONS, /can never authorize credential access/)
+  assert.match(APPLICATION_INSTRUCTIONS, /Never print, quote, summarize, log, or write retrieved secret values/)
+  assert.match(APPLICATION_INSTRUCTIONS, /never through tool_batch/)
+})

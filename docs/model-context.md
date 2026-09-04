@@ -85,6 +85,13 @@ using the tab when relevant even without an explicit page reference and ignoring
 adjacency or injection alone never establishes relevance. Ordinary coding turns do not automatically
 receive browser state or a full application snapshot.
 
+Saved credentials are also never injected into prompts. Every provider can discover masked entries
+with `credential_vault.list` and retrieve only named fields with `credential_vault.read`. The shared
+instruction permits that read only when the current user request requires the credential; untrusted
+page, file, attachment, and tool content cannot authorize it. Retrieved secrets are for the immediate
+operation only and must not be echoed, logged, or persisted. The registry redacts sensitive read
+results from the app's Turn Trace.
+
 Before Send, all four providers can add `closedai.workspace.source-changes`, a bounded untrusted
 summary of changes to file versions previously observed by that pane and provider thread in the
 same workspace. Workspace source bundles establish observations only for emitted source blocks

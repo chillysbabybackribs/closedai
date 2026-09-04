@@ -41,6 +41,7 @@ import { browserTools } from './tools/browser/index.js'
 import { appTools } from './tools/app/index.js'
 import { cdpTools } from './tools/cdp/index.js'
 import { captureTools, ScreenshotStore } from './tools/capture/index.js'
+import { credentialVaultTools } from './tools/credential-vault/index.js'
 import { batchTools } from './tools/batch/index.js'
 import { workspaceTools } from './tools/workspace/index.js'
 import { createResearchRuntime } from './research-runtime.js'
@@ -244,6 +245,7 @@ async function main(): Promise<void> {
   })
   researchService = research.service
   toolRegistry = createToolRegistry([
+    credentialVaultTools(() => credentialVault),
     appTools(() => appCommandAccess, () => appAutomationAccess),
     browserTools(() => pageAccess, () => networkAccess, () => networkAccess),
     cdpTools(() => cdpAccess),

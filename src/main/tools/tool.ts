@@ -24,6 +24,8 @@ export type ToolResult = {
   errorKind?: 'timeout' | 'usage'
   /** Internal source-version observations; stripped by the registry before provider delivery. */
   sourceReads?: SourceReadObservation[]
+  /** Internal marker: redact content from the app's Turn Trace, then strip before provider delivery. */
+  sensitive?: boolean
 }
 
 export type ToolContext = {
