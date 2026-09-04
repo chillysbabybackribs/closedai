@@ -5,6 +5,11 @@ export type BrowserSurfaceVisibility = {
   pageVisible: boolean
 }
 
+export type RefreshableBrowserSurface = {
+  setBounds(bounds: BrowserBounds): void
+  setVisible(visible: boolean): void
+}
+
 const OCCLUDED_SURFACE_GUTTER = 64
 
 /** Distinguish a removed workspace pane from a live page temporarily covered by app chrome. */
@@ -27,4 +32,16 @@ export function browserOccludedBounds(bounds: BrowserBounds): BrowserBounds {
   const width = Math.max(1, Math.round(bounds.width))
   const height = Math.max(1, Math.round(bounds.height))
   return { x: x + width + OCCLUDED_SURFACE_GUTTER, y, width, height }
+}
+
+/** Reassert a loaded on-screen view after Chromium replaces its navigation frame sink. */
+export function refreshVisibleBrowserSurface(
+  surface: RefreshableBrowserSurface,
+  bounds: BrowserBounds,
+  visible: boolean
+): boolean {
+  if (!visible || bounds.width <= 1 || bounds.height <= 1) return false
+  surface.setBounds(bounds)
+  surface.setVisible(true)
+  return true
 }

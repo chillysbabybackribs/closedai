@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { browserOccludedBounds, browserSurfaceVisibility } from './browser-surface-visibility.js'
+import {
+  browserOccludedBounds,
+  browserSurfaceVisibility,
+  refreshVisibleBrowserSurface
+} from './browser-surface-visibility.js'
 
 const rect = { x: 20, y: 40, width: 800, height: 600 }
 
@@ -26,4 +30,22 @@ test('overlay occlusion keeps the compositor viewport intact outside the browser
   const occluded = browserOccludedBounds(rect)
   assert.deepEqual(occluded, { x: 884, y: 40, width: 800, height: 600 })
   assert.ok(occluded.x > rect.x + rect.width)
+})
+
+test('navigation refresh reasserts bounds and visibility only for an on-screen surface', () => {
+  const calls: Array<{ kind: 'bounds'; value: typeof rect } | { kind: 'visible'; value: boolean }> = []
+  const surface = {
+    setBounds: (value: typeof rect) => calls.push({ kind: 'bounds', value }),
+    setVisible: (value: boolean) => calls.push({ kind: 'visible', value })
+  }
+
+  assert.equal(refreshVisibleBrowserSurface(surface, rect, true), true)
+  assert.deepEqual(calls, [
+    { kind: 'bounds', value: rect },
+    { kind: 'visible', value: true }
+  ])
+
+  calls.length = 0
+  assert.equal(refreshVisibleBrowserSurface(surface, rect, false), false)
+  assert.deepEqual(calls, [])
 })

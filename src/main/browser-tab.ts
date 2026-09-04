@@ -21,7 +21,7 @@ import {
   PageBackgroundMemory,
   pageBackgroundColor
 } from './browser-page-background.js'
-import { browserOccludedBounds } from './browser-surface-visibility.js'
+import { browserOccludedBounds, refreshVisibleBrowserSurface } from './browser-surface-visibility.js'
 export { HOME_URL, normalizeUrl, PARTITION } from './browser-url.js'
 
 // One tab = one WebContentsView plus its navigation state. BrowserService owns the collection
@@ -189,6 +189,10 @@ export class BrowserTab extends EventEmitter {
       // Double-rAF = first-paint scripts have run: a visible page answers in ~2 frames
       // instead of the fixed settle; a throttled hidden tab falls back to the fixed wait.
       await waitForUsableLoad(this.view.webContents, load, undefined, undefined, () => this.framePainted())
+      // A cross-origin redirect can replace Chromium's frame sink while leaving this attached
+      // WebContentsView marked visible. Reasserting the unchanged presentation revives the
+      // compositor; without it DOM/CDP remain live while the user sees a blank native surface.
+      this.refreshVisibleSurface()
     } catch (error) {
       // Superseded and closing loads abort normally; classify everything else for callers.
       if (isAbortedNavigation(error)) return
@@ -208,6 +212,10 @@ export class BrowserTab extends EventEmitter {
       probe.then(() => {}),
       new Promise<void>((_resolve, reject) => setTimeout(() => reject(new Error('paint probe timed out')), PAINT_PROBE_MS))
     ])
+  }
+
+  private refreshVisibleSurface(): void {
+    refreshVisibleBrowserSurface(this.view, this.bounds, this.visible)
   }
 
   back(): void {
@@ -380,6 +388,9 @@ export class BrowserTab extends EventEmitter {
     contents.on('did-stop-loading', () => {
       this.refreshState()
       this.emitState()
+      // Covers user/page/history navigations that do not pass through navigate(), and pages
+      // whose subresources outlive the earlier usable-load checkpoint.
+      this.refreshVisibleSurface()
     })
     // Before the new document's first paint: the one moment where correcting the base colour
     // is free. did-finish-load repeats it because a late stylesheet or a theme script can

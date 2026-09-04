@@ -213,6 +213,9 @@ default of white. The renderer's overlay freeze waits for its still, then moves 
 native page outside the browser box instead of toggling its visibility; `browser:setBounds` waits
 for a painted frame before resolving the return. This avoids both a blank capture gap and Electron's
 loaded-view blanking failure when a `WebContentsView` is hidden and shown around an overlay.
+After a navigation becomes usable, and again when loading stops, the tab reasserts its unchanged
+bounds and visibility. This revives Electron's frame sink when a redirect leaves DOM/CDP alive
+but the attached native surface blank.
 
 Browser inspection can read a background tab without selecting it. Semantic page input brings
 the tab forward, waits for rendering after a switch, and reports `activatedTab: true`. It fails
