@@ -31,8 +31,8 @@ export function workspaceTools(cwd: string): ToolNamespace | null {
           mapAction,
           relatedAction(WORKSPACE_INDEX_ROOT),
           testsAction(WORKSPACE_INDEX_ROOT),
-          ipcFlowAction
-          ,readAction(WORKSPACE_INDEX_ROOT)
+          ipcFlowAction,
+          readAction(WORKSPACE_INDEX_ROOT)
         ]
       })
     ]

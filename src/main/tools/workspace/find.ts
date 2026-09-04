@@ -2,6 +2,8 @@ import type { ToolAction } from '../action-tool.js'
 import { booleanArg, numberArg, stringArg, textResult } from '../tool.js'
 import { inputSchema, ipcFlows, maxResultsField, testPattern } from './query.js'
 import { scanWorkspace, type FileFacts } from './scan.js'
+import { includeRelatedField, maxCharsField, sourceBundle } from './read.js'
+import { truncateText } from '../truncate-json.js'
 
 // One call answers "where does this live?" whatever the model has in hand: an exported
 // symbol, a `data-ui` control id read off a screenshot, a CSS class, a path fragment, an IPC
@@ -24,11 +26,15 @@ export function findAction(root: string): ToolAction {
       'against exported symbols, `data-ui` control ids, CSS class definitions, file paths, IPC ' +
       'namespaces, and finally the text of every indexed line. Results are `file:line` grouped ' +
       'by match kind, definitions before mentions. This is the first move for "where is X"; ' +
-      'reach for a raw text search only when a query needs a regex.',
+      'a unique exact exported declaration also returns hashed source, related CSS rules and sibling test paths. ' +
+      'Reuse that source instead of following with outline/read. Ambiguous matches return locations only.',
     inputSchema: inputSchema({
       query: { type: 'string', minLength: 2, description: 'Symbol, control id, class name, path fragment, or visible label.' },
       kind: { type: 'string', enum: [...KINDS], description: 'Restrict results to one match kind.' },
       include_tests: { type: 'boolean', description: 'Include test files; default false.' },
+      include_source: { type: 'boolean', description: 'Enrich a unique exact exported declaration with source; default true.' },
+      include_related: includeRelatedField,
+      max_chars: maxCharsField,
       max_results: maxResultsField
     }, ['query']),
     async run(input) {
@@ -41,7 +47,16 @@ export function findAction(root: string): ToolAction {
       const scanned = await scanWorkspace(root)
       const files = scanned.filter((facts) => includeTests || !testPattern.test(facts.file))
       const hits = collectHits(files, query, kind)
-      return textResult(render(query, kind, includeTests, hits, maxResults))
+      const navigation = render(query, kind, includeTests, hits, maxResults)
+      const exact = (!kind || kind === 'symbol') ? files.flatMap((facts) => facts.exports
+        .filter((symbol) => symbol.name.toLowerCase() === query.toLowerCase())
+        .map((symbol) => ({ facts, symbol }))) : []
+      if (!booleanArg(input, 'include_source', true) || exact.length !== 1 || exact[0]!.symbol.kind === 'reexport') return textResult(navigation)
+      const { facts, symbol } = exact[0]!
+      const source = sourceBundle(facts, symbol.line, symbol.end, scanned, {
+        related: booleanArg(input, 'include_related', true), maxChars: numberArg(input, 'max_chars', 12_000)
+      })
+      return textResult(`${truncateText(navigation, 6_000, 'Narrow the query for more locations.').text}\n\n${source}`)
     }
   }
 }

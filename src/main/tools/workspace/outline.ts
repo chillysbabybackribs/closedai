@@ -14,10 +14,10 @@ export function outlineAction(root: string): ToolAction {
   return {
     action: 'outline',
     description:
-      'Summarise one file without reading it: exported symbols with the line span each occupies, ' +
+      'Summarise one file without returning its source: SHA-256 snapshot hash, exported symbols with line spans, ' +
       'the `data-ui` control ids it renders, and the CSS classes it defines or references. For a ' +
-      'component the stylesheets defining its classes are resolved too. Then read exactly the span ' +
-      'of the symbol you need to change.',
+      'component all matching stylesheet locations are resolved too. If the target is already known, use read ' +
+      'with a symbol or line range to get source and related styles in one call.',
     inputSchema: inputSchema({
       path: pathField,
       max_results: maxResultsField
@@ -40,7 +40,7 @@ export function outlineAction(root: string): ToolAction {
           : []),
         list('Same-basename tests', siblingTests(file), limit)
       ]
-      return textResult([`Outline of ${file} (${facts.lines.length} lines)`, ...sections].join('\n\n'))
+      return textResult([`Outline of ${file} (${facts.lines.length} lines)\n${facts.hash} (outline only; no source coverage)`, ...sections].join('\n\n'))
     }
   }
 }
@@ -48,15 +48,17 @@ export function outlineAction(root: string): ToolAction {
 /** Each referenced class paired with the stylesheet that defines it, when one does. */
 async function styleOwners(root: string, facts: FileFacts): Promise<string[]> {
   const scanned = await scanWorkspace(root)
-  const owners = new Map<string, string>()
+  const owners = new Map<string, Set<string>>()
   for (const candidate of scanned) {
     for (const style of candidate.styleDefs) {
-      if (!owners.has(style.name)) owners.set(style.name, `${candidate.file}:${style.line}`)
+      const locations = owners.get(style.name) ?? new Set<string>()
+      locations.add(`${candidate.file}:${style.line}-${style.end}${style.conditions.length ? ` [${style.conditions.join(' > ')}]` : ''}`)
+      owners.set(style.name, locations)
     }
   }
   return facts.styleRefs.map((name) => {
     const owner = owners.get(name)
-    return owner ? `.${name} -> ${owner}` : `.${name} (no stylesheet rule; utility or dynamic)`
+    return owner ? `.${name} -> ${[...owner].join(', ')}` : `.${name} (no stylesheet rule; utility or dynamic)`
   })
 }
 
