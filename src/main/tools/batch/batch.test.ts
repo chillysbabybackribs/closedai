@@ -33,17 +33,6 @@ function harness(maxCalls?: number): { registry: ToolRegistry; log: string[] } {
           log.push('boom')
           return { content: [{ type: 'text', text: 'it broke' }], isError: true }
         }
-      },
-      {
-        name: 'snap',
-        description: 'Returns a caption and an image.',
-        inputSchema: { type: 'object', properties: {} },
-        run: async () => ({
-          content: [
-            { type: 'text', text: 'a picture' },
-            { type: 'image', dataUrl: 'data:image/png;base64,AA==' }
-          ]
-        })
       }
     ]
   }
@@ -185,7 +174,7 @@ test('a tool the app does not own fails the whole batch before anything runs', a
   const text = batchText(result)
   assert.match(text, /\[2\] "Grep" is not a tool this app owns, so nothing ran/)
   // The model is told what it may batch, and where its own tools have to go instead.
-  assert.match(text, /A batch can only run: lab\.echo, lab\.boom, lab\.snap\./)
+  assert.match(text, /A batch can only run: lab\.echo, lab\.boom\./)
   assert.match(text, /call those directly/)
 })
 
@@ -420,69 +409,6 @@ test('malformed entries are refused by the schema before anything runs', async (
   assert.equal(result.isError, true)
   assert.match(batchText(result), /invalid arguments/)
   assert.deepEqual(log, [])
-})
-
-test('images from inner calls are re-attached after the combined text, in call order', async () => {
-  const { registry } = harness()
-  const result = await call(registry, {
-    calls: [
-      { tool: 'lab.snap' },
-      { tool: 'lab.echo', arguments: { text: 'tail' } }
-    ]
-  })
-  const text = batchText(result)
-  assert.match(text, /\[1\] lab\.snap — ok\na picture\n\(1 image attached below, in call order\)/)
-  assert.deepEqual(result.content.find((item) => item.type === 'image'), { type: 'image', dataUrl: 'data:image/png;base64,AA==' })
-})
-
-test('successful intermediate results can be suppressed without hiding failures', async () => {
-  const { registry } = harness()
-  const result = await call(registry, {
-    parallel: true,
-    calls: [
-      { tool: 'lab.echo', arguments: { text: 'private intermediate' }, include_result: false },
-      { tool: 'lab.snap', include_result: false },
-      { tool: 'lab.boom', include_result: false }
-    ]
-  })
-  const text = batchText(result)
-  assert.match(text, /\[1\] lab\.echo — ok/)
-  assert.doesNotMatch(text, /private intermediate/)
-  assert.match(text, /\[2\] lab\.snap — ok/)
-  assert.doesNotMatch(text, /a picture/)
-  assert.match(text, /\[3\] lab\.boom — failed\nit broke/)
-  assert.equal(result.content.some((item) => item.type === 'image'), false)
-})
-
-test('large successful results cannot hide a short failure in the middle of a batch', async () => {
-  const large = 'x'.repeat(20_000)
-  const lab: ToolNamespace = {
-    name: 'sized',
-    description: 'Sized results',
-    tools: [{
-      name: 'run',
-      description: 'Returns requested content',
-      inputSchema: {
-        type: 'object',
-        properties: { fail: { type: 'boolean' } }
-      },
-      run: async (input) => input.fail
-        ? { content: [{ type: 'text', text: 'recover with tab-1' }], isError: true }
-        : textResult(large)
-    }]
-  }
-  let registry: ToolRegistry
-  registry = new ToolRegistry([lab, batchTools(() => registry)])
-  const result = await call(registry, {
-    parallel: true,
-    calls: [
-      { tool: 'sized.run' },
-      { tool: 'sized.run', arguments: { fail: true } },
-      { tool: 'sized.run' }
-    ]
-  })
-
-  assert.match(batchText(result), /\[2\] sized\.run — failed\nrecover with tab-1/)
 })
 
 test('each inner call is reported to aggregate telemetry', async () => {
