@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react'
-import type { ChatAttachment, ChatSnapshot, ChatThreadSummary } from '../shared/chat.js'
-import type { ChatContinuationSource, ChatPeerSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../shared/chat-peers.js'
-import { threadOpensInPlace } from './chat-open-target.js'
+import type { ChatAttachment, ChatSnapshot } from '../shared/chat.js'
+import type { ChatContinuationSource, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../shared/chat-peers.js'
 import { coalesceChatWorkspaceEvents, initialChatWorkspaceState, reduceChatWorkspaceEvent } from './chat-state.js'
 
 export type ChatController = {
   state: ChatSnapshot
   workspace: ChatWorkspaceSnapshot['workspace']
-  peers: ChatPeerSummary[]
+  /** Every chat of the workspace, attached or not; the drawer's rows. */
+  chats: ChatRowSummary[]
   selectedPaneId: string
   send: (text: string, attachments: ChatAttachment[]) => Promise<void>
   interrupt: () => Promise<void>
@@ -18,14 +18,14 @@ export type ChatController = {
   /** Re-read the provider's subscription usage, e.g. when the usage card opens. */
   refreshPlanUsage: () => Promise<void>
   loginWithChatGPT: () => Promise<void>
-  listThreads: () => Promise<ChatThreadSummary[]>
+  /** The store's chats now; the main process reconciles provider catalogs behind the answer. */
+  listChats: () => Promise<ChatRowSummary[]>
   newThread: () => Promise<void>
   continueInNewThread: () => Promise<void>
   continueFromChat: (source: ChatContinuationSource, modelId: string | null) => Promise<void>
-  openThread: (threadId: string) => Promise<void>
-  /** Open a history thread without disturbing the selected pane: a fresh pane takes it. */
-  openThreadInNewPane: (threadId: string) => Promise<void>
-  archiveThread: (threadId: string) => Promise<void>
+  /** Show a chat by id. Main decides whether it replaces a blank selected chat or opens beside it. */
+  openChat: (chatId: string) => Promise<void>
+  archiveChat: (chatId: string) => Promise<void>
   compactConversation: () => Promise<void>
   selectPane: (paneId: string) => Promise<void>
   closePeer: (paneId: string) => Promise<void>
@@ -72,7 +72,7 @@ export function useChatController(enabled = true): ChatController {
     window.closedai.chat.selectReasoningEffort(paneId, effort), [paneId])
   const refreshPlanUsage = useCallback(() => window.closedai.chat.refreshPlanUsage(paneId), [paneId])
   const loginWithChatGPT = useCallback(() => window.closedai.chat.loginWithChatGPT(), [])
-  const listThreads = useCallback(() => window.closedai.chat.listThreads(), [])
+  const listChats = useCallback(() => window.closedai.chat.listChats(), [])
   const newThread = useCallback(() => window.closedai.chat.newPeer().then(() => undefined), [])
   const continueFromChat = useCallback((source: ChatContinuationSource, modelId: string | null) =>
     window.closedai.chat.continueInNewPeer(source, modelId).then(() => undefined), [])
@@ -80,14 +80,8 @@ export function useChatController(enabled = true): ChatController {
     { paneId, threadId: workspace.selected.threadId },
     workspace.selected.selectedModel
   ), [continueFromChat, paneId, workspace.selected.threadId, workspace.selected.selectedModel])
-  const openThreadInNewPane = useCallback((threadId: string) =>
-    window.closedai.chat.newPeer().then((freshPaneId) => window.closedai.chat.openThread(freshPaneId, threadId)), [])
-  // A history thread never displaces a conversation: only a blank pane takes it in place.
-  const openInPlace = threadOpensInPlace(workspace.selected)
-  const openThread = useCallback((threadId: string) =>
-    openInPlace ? window.closedai.chat.openThread(paneId, threadId) : openThreadInNewPane(threadId),
-  [paneId, openInPlace, openThreadInNewPane])
-  const archiveThread = useCallback((threadId: string) => window.closedai.chat.archiveThread(threadId), [])
+  const openChat = useCallback((chatId: string) => window.closedai.chat.openChat(chatId).then(() => undefined), [])
+  const archiveChat = useCallback((chatId: string) => window.closedai.chat.archiveChat(chatId), [])
   const compactConversation = useCallback(() => window.closedai.chat.compactConversation(paneId), [paneId])
   const selectPane = useCallback((nextPaneId: string) => window.closedai.chat.selectPane(nextPaneId), [])
   const closePeer = useCallback((targetPaneId: string) => window.closedai.chat.closePeer(targetPaneId), [])
@@ -106,7 +100,7 @@ export function useChatController(enabled = true): ChatController {
   return useMemo(() => ({
     state: workspace.selected,
     workspace: workspace.workspace,
-    peers: workspace.peers,
+    chats: workspace.chats,
     selectedPaneId: workspace.selectedPaneId,
     send,
     interrupt,
@@ -115,21 +109,20 @@ export function useChatController(enabled = true): ChatController {
     selectReasoningEffort,
     refreshPlanUsage,
     loginWithChatGPT,
-    listThreads,
+    listChats,
     newThread,
     continueInNewThread,
     continueFromChat,
-    openThread,
-    openThreadInNewPane,
-    archiveThread,
+    openChat,
+    archiveChat,
     compactConversation,
     selectPane,
     closePeer,
     loadEarlier
   }), [
-    workspace.selected, workspace.workspace, workspace.peers, workspace.selectedPaneId,
+    workspace.selected, workspace.workspace, workspace.chats, workspace.selectedPaneId,
     send, interrupt, interruptPane, selectModel, selectReasoningEffort, refreshPlanUsage, loginWithChatGPT,
-    listThreads, newThread, continueInNewThread, continueFromChat, openThread, openThreadInNewPane,
-    archiveThread, compactConversation, selectPane, closePeer, loadEarlier
+    listChats, newThread, continueInNewThread, continueFromChat, openChat,
+    archiveChat, compactConversation, selectPane, closePeer, loadEarlier
   ])
 }

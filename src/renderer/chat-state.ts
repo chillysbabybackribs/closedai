@@ -23,7 +23,7 @@ export function initialChatState(): ChatSnapshot {
 }
 
 export function initialChatWorkspaceState(): ChatWorkspaceSnapshot {
-  return { selectedPaneId: '', peers: [], selected: initialChatState() }
+  return { selectedPaneId: '', chats: [], selected: initialChatState() }
 }
 
 export type ChatWorkspaceAction = ChatWorkspaceEvent | {
@@ -48,8 +48,8 @@ export function reduceChatWorkspaceEvent(
     } }
   }
   if (event.type === 'workspace') return event.snapshot
-  if (event.type === 'peers') {
-    return { ...state, selectedPaneId: event.selectedPaneId, peers: event.peers }
+  if (event.type === 'chats') {
+    return { ...state, selectedPaneId: event.selectedPaneId, chats: event.chats }
   }
   if (event.paneId !== state.selectedPaneId) return state
   return { ...state, selected: reduceChatEvent(state.selected, event.event) }

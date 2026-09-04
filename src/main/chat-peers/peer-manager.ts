@@ -60,6 +60,8 @@ export interface ChatWorkspaceSurface {
   /** Show a chat: select it if attached, else attach it, replacing the selected chat only when that one is blank. */
   openChat(chatId: string): Promise<ChatPaneId>
   openThread(paneId: ChatPaneId, threadId: string): Promise<void>
+  /** Hide a chat: archive its provider thread if it has one, keep the record as archived, detach its pane. */
+  archiveChat(chatId: string): Promise<void>
   archiveThread(threadId: string): Promise<void>
   compactConversation(paneId: ChatPaneId): Promise<void>
   selectProject(projectPath: string | null): Promise<void>
@@ -336,16 +338,25 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     await this.openChat(record.id)
   }
 
+  async archiveChat(chatId: string): Promise<void> {
+    const record = this.store.get(chatId)
+    if (!record) return
+    const attached = this.lifecycle.get(chatId) !== undefined
+    if (record.threadId) {
+      const threadId = record.threadId
+      await this.withAwake(attached ? chatId : this.selectedPaneId, (surface) => surface.archiveThread(threadId))
+    }
+    this.store.archive(chatId)
+    if (attached) await this.closePeer(chatId)
+    // The drawer refreshes right after this; it must not be handed the list with the row still in it.
+    this.catalog.invalidate()
+    this.emitChats()
+  }
+
   async archiveThread(threadId: string): Promise<void> {
     const record = this.store.findByThreadId(threadId)
-    const attached = record && this.lifecycle.get(record.id) ? record.id : null
-    const paneId = attached ?? this.selectedPaneId
-    await this.withAwake(paneId, (surface) => surface.archiveThread(threadId))
-    if (record) {
-      this.store.archive(record.id)
-      if (attached && attached !== this.selectedPaneId) this.lifecycle.detach(attached)
-    }
-    // The drawer refreshes right after this; it must not be handed the list with the row still in it.
+    if (record) return this.archiveChat(record.id)
+    await this.withAwake(this.selectedPaneId, (surface) => surface.archiveThread(threadId))
     this.catalog.invalidate()
     this.emitChats()
   }

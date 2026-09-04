@@ -26,14 +26,14 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
     requireService().selectReasoningEffort(paneId, effort)
   )
   ipcMain.handle('chat:refreshPlanUsage', (_event, paneId: string) => requireService().refreshPlanUsage(paneId))
-  ipcMain.handle('chat:listThreads', () => requireService().listThreads())
+  ipcMain.handle('chat:listChats', () => requireService().listChats())
   ipcMain.handle('chat:newPeer', () => requireService().newPeer())
   ipcMain.handle('chat:closePeer', (_event, paneId: string) => requireService().closePeer(paneId))
   ipcMain.handle('chat:continueInNewPeer', (_event, source: ChatContinuationSource, modelId: string | null) =>
     requireService().continueInNewPeer(source, modelId)
   )
-  ipcMain.handle('chat:openThread', (_event, paneId: string, threadId: string) => requireService().openThread(paneId, threadId))
-  ipcMain.handle('chat:archiveThread', (_event, threadId: string) => requireService().archiveThread(threadId))
+  ipcMain.handle('chat:openChat', (_event, chatId: string) => requireService().openChat(chatId))
+  ipcMain.handle('chat:archiveChat', (_event, chatId: string) => requireService().archiveChat(chatId))
   ipcMain.handle('chat:compactConversation', (_event, paneId: string) => requireService().compactConversation(paneId))
   ipcMain.handle('chat:chooseProject', async () => {
     const result = await dialog.showOpenDialog({

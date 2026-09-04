@@ -1,7 +1,7 @@
 import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
-import type { ChatAttachment, ChatHistoryPage, ChatThreadSummary } from './chat.js'
-import type { ChatContinuationSource, ChatPaneId, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
+import type { ChatAttachment, ChatHistoryPage } from './chat.js'
+import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot } from './trace.js'
 
@@ -61,16 +61,18 @@ export type ClosedaiApi = {
     /** Re-read the pane provider's subscription usage; a no-op where it is not reported. */
     refreshPlanUsage: (paneId: ChatPaneId) => Promise<void>
     loginWithChatGPT: () => Promise<void>
-    /** Threads recorded for this workspace, newest first. */
-    listThreads: () => Promise<ChatThreadSummary[]>
+    /** Every chat of this workspace from the app's own store, newest first; provider catalogs are reconciled behind it. */
+    listChats: () => Promise<ChatRowSummary[]>
     /** Clear the pane; the next message starts a fresh app-server thread. */
     newPeer: () => Promise<ChatPaneId>
     /** Retire an open peer pane from the active workspace shelf back to history. */
     closePeer: (paneId: ChatPaneId) => Promise<void>
     /** Create a new pane whose first message carries a compact digest of the exact source chat. */
     continueInNewPeer: (source: ChatContinuationSource, modelId: string | null) => Promise<ChatPaneId>
-    openThread: (paneId: ChatPaneId, threadId: string) => Promise<void>
-    archiveThread: (threadId: string) => Promise<void>
+    /** Show a chat by its stable id. Main selects it if attached, else attaches it — replacing the selected chat only when that one is blank. */
+    openChat: (chatId: string) => Promise<ChatPaneId>
+    /** Hide a chat from the workspace: its provider thread is archived and its pane, if any, closed. */
+    archiveChat: (chatId: string) => Promise<void>
     /** Re-seed provider-side context from a bounded summary when the active provider supports it. */
     compactConversation: (paneId: ChatPaneId) => Promise<void>
     /** Choose a project directory and restore its saved panes, or create its first chat. */
