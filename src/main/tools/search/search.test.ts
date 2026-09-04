@@ -50,16 +50,16 @@ test('one tool can call all five providers, normalize results, deduplicate, and 
   assert.deepEqual(output.answers, [{ provider: 'tavily', text: 'Tavily synthesis' }])
   assert.doesNotMatch(JSON.stringify(output), /secret-/)
 
-    const second = await registry.call({ namespace: 'search', tool: 'query', arguments: args }, context)
-    const cached = JSON.parse(second.content[0]!.type === 'text' ? second.content[0].text : '')
-    assert.equal(cached.cached, true)
-    assert.equal(calls.length, 5)
+  const second = await registry.call({ namespace: 'search', tool: 'query', arguments: args }, context)
+  const cached = JSON.parse(second.content[0]!.type === 'text' ? second.content[0].text : '')
+  assert.equal(cached.cached, true)
+  assert.equal(calls.length, 5)
 
-    const live = await registry.call({ namespace: 'search', tool: 'query', arguments: { ...args, live: true } }, context)
-    const refreshed = JSON.parse(live.content[0]!.type === 'text' ? live.content[0].text : '')
-    assert.equal(refreshed.cached, undefined)
-    assert.equal(calls.length, 10)
-  })
+  const live = await registry.call({ namespace: 'search', tool: 'query', arguments: { ...args, live: true } }, context)
+  const refreshed = JSON.parse(live.content[0]!.type === 'text' ? live.content[0].text : '')
+  assert.equal(refreshed.cached, undefined)
+  assert.equal(calls.length, 10)
+})
 
 test('partial provider failures are returned while useful evidence survives', async () => {
   const router = new SearchRouter([
