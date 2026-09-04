@@ -1,31 +1,32 @@
 import { EventEmitter } from 'node:events'
 import type { ChatAttachment, ChatEvent, ChatSnapshot, ChatThreadSummary } from '../../shared/chat.js'
-import { activityPhase, CHAT_HISTORY_PAGE_SIZE, type ChatHistoryPage, type ChatHistoryWindow } from '../../shared/chat.js'
+import { CHAT_HISTORY_PAGE_SIZE, type ChatHistoryPage, type ChatHistoryWindow } from '../../shared/chat.js'
 import type {
   ChatContinuationSource,
   ChatPaneId,
   ChatPeerSummary,
+  ChatRowSummary,
   ChatWorkspaceEvent,
   ChatWorkspaceSnapshot,
   PeerChatReadResult
 } from '../../shared/chat-peers.js'
 import { chatProviderOfId } from '../../shared/chat-providers.js'
-import type { ChatContinuation, ChatPeerRecord } from '../../shared/types.js'
+import type { ChatRecord } from '../../shared/chat-store.js'
+import type { ChatContinuation } from '../../shared/types.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import { buildThreadHandoff } from '../chat-context/thread-handoff.js'
 import { ChatMemory } from '../chat-context/chat-memory.js'
-import { PeerIdleParking, type ParkablePeer } from './peer-idle-parking.js'
-import { PeerSettings } from './peer-settings.js'
+import type { ChatStore } from '../chat-store/chat-store.js'
 import { traceLog } from '../trace/trace-log.js'
-import {
-  PLACEHOLDER_TITLE,
-  PeerSummaryCache,
-  pageResult,
-  subagentSummaries
-} from './peer-summary.js'
+import { PeerChatCatalog } from './peer-chat-catalog.js'
+import { PeerEmitThrottle, rendererSnapshot, rowSummary } from './peer-events.js'
+import { PeerIdleParking } from './peer-idle-parking.js'
+import { PeerLifecycle, type ChatPeerFactory, type PeerEntry } from './peer-lifecycle.js'
+import { selectedMirror } from './peer-settings.js'
+import { pageResult, subagentSummaries } from './peer-summary.js'
 
-export type ChatPeerFactory = (settings: PeerSettings, modelId: string | null) => ChatSurface
+export type { ChatPeerFactory } from './peer-lifecycle.js'
 
 export type ChatWorkspaceSelection = {
   cwd: string
@@ -48,10 +49,15 @@ export interface ChatWorkspaceSurface {
   selectModel(paneId: ChatPaneId, modelId: string): Promise<void>
   selectReasoningEffort(paneId: ChatPaneId, effort: string): Promise<void>
   refreshPlanUsage(paneId: ChatPaneId): Promise<void>
+  /** The workspace's chats now, from the store; provider catalogs are reconciled in the background. */
+  listChats(): Promise<ChatRowSummary[]>
+  /** Every thread the providers and the store know, reconciled first; for tools that search by title. */
   listThreads(): Promise<ChatThreadSummary[]>
   newPeer(): Promise<ChatPaneId>
   closePeer(paneId: ChatPaneId): Promise<void>
   continueInNewPeer(source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId>
+  /** Show a chat: select it if attached, else attach it, replacing the selected chat only when that one is blank. */
+  openChat(chatId: string): Promise<ChatPaneId>
   openThread(paneId: ChatPaneId, threadId: string): Promise<void>
   archiveThread(threadId: string): Promise<void>
   selectProject(projectPath: string | null): Promise<void>
@@ -59,62 +65,38 @@ export interface ChatWorkspaceSurface {
   on(event: 'event', listener: (event: ChatWorkspaceEvent) => void): unknown
 }
 
-type PeerEntry = ParkablePeer & {
-  updatedAt: number
-  display: PeerSummaryCache
-}
-
-/**
- * How many chats stay open as panes. Nothing used to retire a pane, so every chat ever started
- * stayed in the workspace — 22 of them here — and the drawer listed all of them as open work.
- * Retiring a pane keeps its thread: it reopens from History, in a fresh pane.
- */
-const MAX_OPEN_PANES = 8
-
-/** Floor between two `peers` updates while a turn streams. */
-const PEERS_EMIT_INTERVAL_MS = 200
-
-/** How long the thread catalog is reused before the providers are scanned again. */
-const THREADS_CACHE_MS = 5_000
-
 export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurface {
   readonly memory: ChatMemory
-  private readonly peers = new Map<ChatPaneId, PeerEntry>()
   private selectedPaneId: ChatPaneId
+  private readonly lifecycle: PeerLifecycle
   private readonly parking: PeerIdleParking
+  private readonly catalog: PeerChatCatalog
   /** Tail of each pane's operation chain, so callers on one pane cannot interleave. */
   private readonly paneOperations = new Map<ChatPaneId, Promise<void>>()
-  private peersTimer: NodeJS.Timeout | null = null
-  private peersPending = false
-  private threads: { at: number; list: ChatThreadSummary[] } | null = null
-  private threadsInFlight: Promise<ChatThreadSummary[]> | null = null
+  private readonly chatsEmit = new PeerEmitThrottle(() => this.emitChats())
 
   constructor(
     private readonly settings: AppSettingsAccess,
-    private readonly createSurface: ChatPeerFactory,
+    private readonly store: ChatStore,
+    createSurface: ChatPeerFactory,
     idleParkMs?: number,
     private readonly workspaceSelector?: ChatWorkspaceSelector
   ) {
     super()
-    this.memory = new ChatMemory(settings, (paneId) => this.peers.get(paneId)?.surface ?? null)
-    const saved = settings.get()
-    const records = saved.chatPeers.length > 0
-      ? saved.chatPeers
-      : [freshRecord(saved.chatModelId, saved.chatReasoningEffort)]
-    this.selectedPaneId = saved.chatSelectedPaneId ?? records[0]!.paneId
-    this.parking = new PeerIdleParking((paneId) => this.peers.get(paneId), () => this.selectedPaneId, idleParkMs)
-    for (const record of records) this.attach(record)
-    if (saved.chatPeers.length === 0) {
-      void settings.set({ chatPeers: records, chatSelectedPaneId: this.selectedPaneId })
-    }
+    this.memory = new ChatMemory(store, (paneId) => this.lifecycle.get(paneId)?.surface ?? null)
+    this.parking = new PeerIdleParking((paneId) => this.lifecycle.get(paneId), () => this.selectedPaneId, idleParkMs)
+    this.lifecycle = new PeerLifecycle(store, settings, createSurface, this.parking, (entry, event) => this.onPaneEvent(entry, event))
+    this.catalog = new PeerChatCatalog(store, () => this.workspace(), (fn) => this.withAwake(this.selectedPaneId, fn))
+    this.selectedPaneId = this.restoreOpenChats(settings.get().chatOpenIds, settings.get().chatSelectedPaneId, null, null)
+    store.on('change', () => this.chatsEmit.schedule())
   }
 
   snapshot(window?: ChatHistoryWindow): ChatWorkspaceSnapshot {
-    const entry = this.requirePeer(this.selectedPaneId)
+    const entry = this.lifecycle.require(this.selectedPaneId)
     const selected = entry.surface.snapshot(window)
     return {
       selectedPaneId: this.selectedPaneId,
-      peers: this.peerSummaries(),
+      chats: this.chatRows(),
       selected: window ? rendererSnapshot(selected, entry.display.current.title) : selected,
       workspace: this.workspaceSelector?.current()
     }
@@ -122,35 +104,31 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   readHistoryPage(paneId: ChatPaneId, threadId: string | null, beforeItemId: string): ChatHistoryPage {
     if (typeof beforeItemId !== 'string' || !beforeItemId) throw new Error('Choose a history cursor')
-    const snapshot = this.requirePeer(paneId).surface.snapshot({ beforeItemId, limit: CHAT_HISTORY_PAGE_SIZE })
+    const snapshot = this.lifecycle.require(paneId).surface.snapshot({ beforeItemId, limit: CHAT_HISTORY_PAGE_SIZE })
     if (snapshot.threadId !== threadId) throw new Error('The chat changed while loading history')
     return { items: snapshot.items, hasEarlier: snapshot.history?.hasEarlier ?? false }
   }
 
   /** One pane's live snapshot without waking a parked peer; null for an unknown pane. */
   paneSnapshot(paneId: ChatPaneId): ChatSnapshot | null {
-    return this.peers.get(paneId)?.surface.snapshot() ?? null
+    return this.lifecycle.get(paneId)?.surface.snapshot() ?? null
   }
 
   async start(): Promise<void> {
     // Persisted panes are history, not live work. Warming every one creates an app-server per
     // pane after each relaunch; the selected pane is the only surface startup needs immediately.
-    await this.parking.wake(this.selectedPaneId)
-    await this.retireExcessPanes()
+    await this.wake(this.selectedPaneId)
+    await this.trimAttached()
   }
 
   stop(): void {
-    if (this.peersTimer) clearTimeout(this.peersTimer)
-    this.peersTimer = null
-    this.peersPending = false
-    for (const [paneId, entry] of this.peers) {
-      this.parking.stop(entry)
-      traceLog.responses.forget(paneId)
-    }
+    // A turn that ended just before quit has a `chats` update waiting; deliver it so the row moves.
+    this.chatsEmit.flush()
+    this.lifecycle.detachAll()
   }
 
   async send(paneId: ChatPaneId, text: string, attachments: ChatAttachment[]): Promise<void> {
-    const entry = this.requirePeer(paneId)
+    const entry = this.lifecycle.require(paneId)
     const cancelTiming = text.trim() || attachments.length
       ? traceLog.responses.begin({ paneId, provider: entry.display.current.provider, turnId: null })
       : null
@@ -167,52 +145,21 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async selectPane(paneId: ChatPaneId): Promise<void> {
-    this.requirePeer(paneId)
+    this.lifecycle.require(paneId)
     if (paneId === this.selectedPaneId) return
-
     const previousPaneId = this.selectedPaneId
-    const currentEntry = this.peers.get(previousPaneId)
-    const currentSnapshot = currentEntry?.surface.snapshot({ limit: 1 })
-    const currentEmpty = currentSnapshot &&
-      currentSnapshot.items.length === 0 &&
-      currentSnapshot.threadId === null &&
-      !currentSnapshot.activeTurnId &&
-      !this.record(previousPaneId).continuation?.handoff
-
-    const discardEmptyPane = currentEmpty && currentEntry && this.peers.size > 1
-    if (discardEmptyPane) {
-      currentEntry.surface.stop()
-      this.parking.cancel(currentEntry)
-      this.peers.delete(previousPaneId)
-      traceLog.responses.forget(previousPaneId)
-    }
-
     this.selectedPaneId = paneId
+    // A blank chat the user clicked away from never became one; keep it and the drawer fills
+    // with "New chat" rows. One mid-open (busy) is not blank, it is about to hold a thread.
+    if (this.lifecycle.peers.size > 1) this.lifecycle.discardIfBlank(previousPaneId)
     this.parking.schedule(previousPaneId)
     // Paint the destination from the snapshot it already holds before its runtime is back.
     // Waking replays the thread from the provider's store and starts a CLI process; awaiting
-    // that here kept the pane on the previous chat for the whole start-up, which is what made
-    // switching chats feel stuck. The wake emits its own `replace` when it lands.
+    // that here kept the pane on the previous chat for the whole start-up. The wake emits its
+    // own `replace` when it lands.
     this.emitWorkspace()
-    const settings = this.settings.get()
-    // The flat chat* fields mirror whichever pane is selected (see PeerSettings). Selecting a
-    // pane has to move that mirror too, or a relaunch that falls back to it reads the model and
-    // threads of the pane the user left.
-    const destination = this.record(paneId)
-    await this.settings.set({
-      chatSelectedPaneId: paneId,
-      chatThreadId: destination.codexThreadId,
-      chatClaudeSessionId: destination.claudeSessionId,
-      chatAntigravityConversationId: destination.antigravityConversationId ?? null,
-      chatCursorSessionId: destination.cursorSessionId ?? null,
-      chatModelId: destination.modelId,
-      chatReasoningEffort: destination.reasoningEffort,
-      chatContinuation: destination.continuation ?? null,
-      ...(discardEmptyPane
-        ? { chatPeers: settings.chatPeers.filter((peer) => peer.paneId !== previousPaneId) }
-        : {})
-    })
-    void this.parking.wake(paneId).catch((error: unknown) => {
+    await this.persistOpenChats()
+    void this.wake(paneId).catch((error: unknown) => {
       console.warn('[chat-peers] could not wake pane:', error instanceof Error ? error.message : String(error))
     })
   }
@@ -230,122 +177,80 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     await this.withAwake(paneId, (surface) => surface.selectReasoningEffort(effort))
   }
 
+  async listChats(): Promise<ChatRowSummary[]> {
+    void this.catalog.reconcile().catch((error: unknown) => {
+      console.warn('[chat-peers] thread catalog scan failed:', error instanceof Error ? error.message : String(error))
+    })
+    return this.chatRows()
+  }
+
   async listThreads(): Promise<ChatThreadSummary[]> {
-    // Thread history is workspace-wide, so every pane returns the same catalog. Querying each
-    // persisted pane needlessly wakes all of their provider runtimes during the drawer's mount.
-    //
-    // The scan reads every session each provider has stored — seconds of main-process work on a
-    // busy workspace — and the drawer asks for it again on every chat switch. Callers within the
-    // window share one answer, and a request in flight is joined rather than started twice.
-    const fresh = this.threads && Date.now() - this.threads.at < THREADS_CACHE_MS ? this.threads.list : null
-    if (fresh) return fresh
-    this.threadsInFlight ??= this.withAwake(this.selectedPaneId, (surface) => surface.listThreads())
-      .then((list) => {
-        this.threads = { at: Date.now(), list }
-        return list
-      })
-      .finally(() => { this.threadsInFlight = null })
-    return this.threadsInFlight
+    await this.catalog.reconcile()
+    return this.store.list(this.workspace().cwd).filter((record) => record.threadId).map((record) => ({
+      id: record.threadId!,
+      title: record.title ?? 'New chat',
+      preview: record.preview,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt
+    }))
   }
 
   async newPeer(): Promise<ChatPaneId> {
-    const previousPaneId = this.selectedPaneId
-    const current = this.requirePeer(previousPaneId).surface.snapshot({ limit: 0 })
-    const record = freshRecord(current.selectedModel, current.selectedReasoningEffort)
-    const settings = this.settings.get()
-    await this.settings.set({
-      chatPeers: [...settings.chatPeers, record],
-      chatSelectedPaneId: record.paneId
-    })
-    this.attach(record)
-    this.selectedPaneId = record.paneId
-    this.parking.schedule(previousPaneId)
-    await this.retireExcessPanes()
-    this.emitWorkspace()
-    void this.parking.wake(record.paneId)
-    return record.paneId
+    const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
+    return this.newChat(current.selectedModel, current.selectedReasoningEffort, null)
   }
 
   /**
-   * Close the least recently active panes once the workspace holds more than it should. The
-   * selected pane, any pane mid-turn, and any pane still holding an undelivered continuation
-   * digest are never retired — the first two are in use and the last is state stored nowhere else.
+   * Create a chat, attach it, and select it. The workspace event goes out before any write so
+   * the pane paints at once; settings and the LRU trim follow, and the wake last.
    */
-  private async retireExcessPanes(): Promise<void> {
-    const records = this.settings.get().chatPeers
-    const excess = records.length - MAX_OPEN_PANES
-    if (excess <= 0) return
-
-    const keep = new Set<ChatPaneId>([this.selectedPaneId])
-    for (const [paneId, entry] of this.peers) {
-      if (entry.surface.snapshot({ limit: 0 }).activeTurnId) keep.add(paneId)
-    }
-    for (const record of records) {
-      if (record.continuation?.handoff) keep.add(record.paneId)
-    }
-
-    const retiring = new Set(
-      records
-        .map((record, index) => ({ record, index }))
-        .filter(({ record }) => !keep.has(record.paneId))
-        // Oldest activity first; records saved before panes tracked a time fall back to their
-        // creation order, which is the order they were appended to settings.
-        .sort((a, b) => (a.record.updatedAt ?? 0) - (b.record.updatedAt ?? 0) || a.index - b.index)
-        .slice(0, excess)
-        .map(({ record }) => record.paneId)
-    )
-    if (retiring.size === 0) return
-
-    for (const paneId of retiring) {
-      const entry = this.peers.get(paneId)
-      if (!entry) continue
-      this.parking.stop(entry)
-      this.peers.delete(paneId)
-      traceLog.responses.forget(paneId)
-    }
-    await this.settings.set({
-      chatPeers: this.settings.get().chatPeers.filter((record) => !retiring.has(record.paneId))
+  private async newChat(modelId: string | null, reasoningEffort: string | null, continuation: ChatContinuation | null): Promise<ChatPaneId> {
+    const previousPaneId = this.selectedPaneId
+    const { cwd, projectPath } = this.workspace()
+    const record = this.store.create({ cwd, projectPath, provider: chatProviderOfId(modelId), modelId, reasoningEffort, continuation })
+    this.lifecycle.attach(record)
+    this.selectedPaneId = record.id
+    this.parking.schedule(previousPaneId)
+    this.emitWorkspace()
+    await this.trimAttached()
+    await this.persistOpenChats()
+    void this.wake(record.id).catch((error: unknown) => {
+      console.warn('[chat-peers] could not start the new chat:', error instanceof Error ? error.message : String(error))
     })
+    return record.id
   }
 
   async closePeer(paneId: ChatPaneId): Promise<void> {
-    const entry = this.peers.get(paneId)
-    if (!entry) return
-    const closing = entry.surface.snapshot({ limit: 0 })
-    this.parking.stop(entry)
-    this.peers.delete(paneId)
-    traceLog.responses.forget(paneId)
-    const settings = this.settings.get()
-    const remaining = settings.chatPeers.filter((record) => record.paneId !== paneId)
-    if (remaining.length === 0) {
+    if (!this.lifecycle.get(paneId)) return
+    const closing = this.lifecycle.require(paneId).surface.snapshot({ limit: 0 })
+    if (!this.lifecycle.discardIfBlank(paneId)) this.lifecycle.detach(paneId)
+    if (this.lifecycle.peers.size === 0) {
       // Closing the last chat opens an empty one; it keeps the model the workspace was on
       // rather than dropping back to the first provider's default.
-      const fresh = freshRecord(closing.selectedModel, closing.selectedReasoningEffort)
-      remaining.push(fresh)
-      this.attach(fresh)
-      this.selectedPaneId = fresh.paneId
+      const { cwd, projectPath } = this.workspace()
+      const fresh = this.store.create({
+        cwd, projectPath, provider: chatProviderOfId(closing.selectedModel), modelId: closing.selectedModel, reasoningEffort: closing.selectedReasoningEffort
+      })
+      this.lifecycle.attach(fresh)
+      this.selectedPaneId = fresh.id
     } else if (this.selectedPaneId === paneId) {
-      this.selectedPaneId = remaining[0]!.paneId
+      this.selectedPaneId = this.lifecycle.ids()[0]!
     }
-    await this.settings.set({
-      chatPeers: remaining,
-      chatSelectedPaneId: this.selectedPaneId
-    })
-    await this.parking.wake(this.selectedPaneId)
+    await this.persistOpenChats()
+    await this.wake(this.selectedPaneId)
     this.emitWorkspace()
   }
 
   async continueInNewPeer(source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId> {
     if (!source?.paneId && !source?.threadId) throw new Error('Choose a chat to continue')
-    const previousPaneId = this.selectedPaneId
-    const current = this.requirePeer(previousPaneId).surface.snapshot()
+    const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot()
     let sourceSnapshot: ChatSnapshot | null = null
     let sourceThreadId = source.threadId
     let sourceProvider = sourceThreadId ? chatProviderOfId(sourceThreadId) : current.provider
     let items: ChatSnapshot['items']
     let threadName: string | null
 
-    if (source.paneId) {
+    if (source.paneId && this.lifecycle.get(source.paneId)) {
       sourceSnapshot = await this.withAwake(source.paneId, async (surface) => surface.snapshot())
       if (sourceSnapshot.activeTurnId) throw new Error('Stop the current turn before continuing in a new chat')
       sourceThreadId = sourceSnapshot.threadId ?? sourceThreadId
@@ -353,7 +258,10 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       items = sourceSnapshot.items
       threadName = sourceSnapshot.threadName
     } else {
-      const content = await this.withAwake(previousPaneId, (surface) => surface.readThread(sourceThreadId!))
+      // A detached chat is read from its thread without attaching it.
+      const threadId = sourceThreadId ?? (source.paneId ? this.store.get(source.paneId)?.threadId ?? null : null)
+      if (!threadId) throw new Error('There is no conversation to continue yet')
+      const content = await this.withAwake(this.selectedPaneId, (surface) => surface.readThread(threadId))
       sourceThreadId = content.threadId
       sourceProvider = chatProviderOfId(content.threadId)
       items = content.items
@@ -368,7 +276,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       }
       items = items.slice(0, index + 1)
     }
-    const savedCheckpoint = source.paneId ? this.record(source.paneId).checkpoint : null
+    const savedCheckpoint = source.paneId ? this.store.get(source.paneId)?.checkpoint ?? null : null
     const checkpoint = savedCheckpoint?.threadId === sourceThreadId
       && items.some((item) => item.id === savedCheckpoint.throughItemId) ? savedCheckpoint : null
     const handoff = buildThreadHandoff(items, threadName, checkpoint)
@@ -387,68 +295,80 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       handoff: handoff.text,
       createdAt: Date.now()
     }
-    const record = freshRecord(targetModel, targetEffort, continuation)
-    const settings = this.settings.get()
-    await this.settings.set({
-      chatPeers: [...settings.chatPeers, record],
-      chatSelectedPaneId: record.paneId
-    })
-    this.attach(record)
-    this.selectedPaneId = record.paneId
-    this.parking.schedule(previousPaneId)
-    this.emitWorkspace()
-    void this.parking.wake(record.paneId)
-    return record.paneId
+    return this.newChat(targetModel, targetEffort, continuation)
   }
 
-  async openThread(paneId: ChatPaneId, threadId: string): Promise<void> {
-    await this.withAwake(paneId, (surface) => surface.openThread(threadId))
+  async openChat(chatId: string): Promise<ChatPaneId> {
+    const record = this.store.get(chatId)
+    if (!record || record.archived) throw new Error('That chat is no longer available')
+    if (record.cwd !== this.workspace().cwd) throw new Error('That chat belongs to another project')
+    if (this.lifecycle.get(chatId)) {
+      await this.selectPane(chatId)
+      return chatId
+    }
+    // A blank selected chat is replaced, so reading history from a fresh "New chat" does not leave
+    // that empty pane behind; anything else keeps its conversation and the chat opens beside it.
+    const previousPaneId = this.selectedPaneId
+    this.lifecycle.attach(record)
+    this.selectedPaneId = chatId
+    if (this.lifecycle.peers.size > 1) this.lifecycle.discardIfBlank(previousPaneId)
+    this.parking.schedule(previousPaneId)
+    this.emitWorkspace()
+    await this.trimAttached()
+    await this.persistOpenChats()
+    this.catalog.invalidate()
+    void this.wake(chatId).catch((error: unknown) => {
+      console.warn('[chat-peers] could not open chat:', error instanceof Error ? error.message : String(error))
+    })
+    return chatId
+  }
+
+  /** Open a provider thread by id: the chat that holds it, adopted first if the store has none. */
+  async openThread(_paneId: ChatPaneId, threadId: string): Promise<void> {
+    const { cwd, projectPath } = this.workspace()
+    const record = this.store.findByThreadId(threadId) ?? this.store.adopt(cwd, projectPath, {
+      id: threadId, title: 'New chat', preview: '', createdAt: Date.now(), updatedAt: Date.now()
+    }, null)
+    await this.openChat(record.id)
   }
 
   async archiveThread(threadId: string): Promise<void> {
-    const matching = [...this.peers].find(([, entry]) => entry.surface.snapshot({ limit: 0 }).threadId === threadId)
-    const paneId = matching?.[0] ?? this.selectedPaneId
+    const record = this.store.findByThreadId(threadId)
+    const attached = record && this.lifecycle.get(record.id) ? record.id : null
+    const paneId = attached ?? this.selectedPaneId
     await this.withAwake(paneId, (surface) => surface.archiveThread(threadId))
+    if (record) {
+      this.store.archive(record.id)
+      if (attached && attached !== this.selectedPaneId) this.lifecycle.detach(attached)
+    }
     // The drawer refreshes right after this; it must not be handed the list with the row still in it.
-    this.threads = null
+    this.catalog.invalidate()
+    this.emitChats()
   }
 
   /** A provider process cannot safely change directories mid-turn. Swap the active pane set
    * only after its project-scoped state has been persisted and the destination restored. */
   async selectProject(projectPath: string | null): Promise<void> {
     if (!this.workspaceSelector) throw new Error('Project selection is unavailable')
-    if ([...this.peers.values()].some((entry) => entry.surface.snapshot({ limit: 0 }).activeTurnId)) {
+    if (this.lifecycle.ids().some((chatId) => this.lifecycle.isRunning(chatId))) {
       throw new Error('Stop running chats before changing projects')
     }
-    const current = this.requirePeer(this.selectedPaneId).surface.snapshot({ limit: 0 })
+    const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
     const selection = this.workspaceSelector.current()
     if (selection.projectPath === projectPath) return
 
-    for (const [paneId, entry] of this.peers) {
-      this.parking.stop(entry)
-      traceLog.responses.forget(paneId)
-    }
-    this.peers.clear()
-    this.threads = null
-    this.threadsInFlight = null
+    this.lifecycle.detachAll()
+    this.catalog.invalidate()
     await this.workspaceSelector.select(projectPath, {
       modelId: current.selectedModel,
       reasoningEffort: current.selectedReasoningEffort
     })
 
     const restored = this.settings.get()
-    const records = restored.chatPeers.length > 0
-      ? restored.chatPeers
-      : [freshRecord(current.selectedModel, current.selectedReasoningEffort)]
-    this.selectedPaneId = restored.chatSelectedPaneId && records.some((record) => record.paneId === restored.chatSelectedPaneId)
-      ? restored.chatSelectedPaneId
-      : records[0]!.paneId
-    if (restored.chatPeers.length === 0) {
-      await this.settings.set({ chatPeers: records, chatSelectedPaneId: this.selectedPaneId })
-    }
-    for (const record of records) this.attach(record)
+    this.selectedPaneId = this.restoreOpenChats(restored.chatOpenIds, restored.chatSelectedPaneId, current.selectedModel, current.selectedReasoningEffort)
+    await this.persistOpenChats()
     this.emitWorkspace()
-    void this.parking.wake(this.selectedPaneId)
+    void this.wake(this.selectedPaneId)
   }
 
   beginLogin(): Promise<string | null> {
@@ -458,15 +378,15 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   listReadable(callerPaneId: string | null): ChatPeerSummary[] {
     return this.peerSummaries().flatMap((peer) => [
       ...(peer.paneId === callerPaneId ? [] : [peer]),
-      ...subagentSummaries(peer, this.requirePeer(peer.paneId).surface.snapshot())
+      ...subagentSummaries(peer, this.lifecycle.require(peer.paneId).surface.snapshot())
     ])
   }
 
   readReadable(chatId: string, callerPaneId: string | null, cursor = 0, limit = 50): PeerChatReadResult | null {
     const direct = this.peerSummaries().find((peer) => peer.paneId === chatId && peer.paneId !== callerPaneId)
-    if (direct) return pageResult(direct, this.requirePeer(chatId).surface.snapshot().items, cursor, limit)
+    if (direct) return pageResult(direct, this.lifecycle.require(chatId).surface.snapshot().items, cursor, limit)
     for (const peer of this.peerSummaries()) {
-      const snapshot = this.requirePeer(peer.paneId).surface.snapshot()
+      const snapshot = this.lifecycle.require(peer.paneId).surface.snapshot()
       const subagent = subagentSummaries(peer, snapshot).find((entry) => entry.paneId === chatId)
       if (subagent) {
         const itemId = chatId.slice(peer.paneId.length + 1)
@@ -476,63 +396,71 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     return null
   }
 
-  private attach(record: ChatPeerRecord): PeerEntry {
-    const surface = this.createSurface(new PeerSettings(this.settings, record.paneId), record.modelId)
-    const entry: PeerEntry = {
-      surface,
-      updatedAt: record.updatedAt ?? 0,
-      idleTimer: null,
-      parked: true,
-      display: new PeerSummaryCache(record.paneId, () => this.recordOf(record.paneId) ?? record)
-    }
-    surface.on('event', (event: ChatEvent) => {
-      // A stopped provider can finish unwinding after a project switch. Its last event belongs
-      // to the retired workspace and must not look up a record that has already been discarded.
-      if (this.peers.get(record.paneId) !== entry) return
-      traceLog.responses.event(record.paneId, event)
-      entry.updatedAt = Date.now()
-      const oldTitle = entry.display.current.title
-      entry.display.update(event, entry.updatedAt)
-      const rendererEvent = event.type === 'replace'
-        ? { ...event, snapshot: rendererSnapshot(event.snapshot, entry.display.current.title) }
-        : event
-      this.emit('event', { type: 'pane', paneId: record.paneId, event: rendererEvent } satisfies ChatWorkspaceEvent)
-      this.schedulePeers()
-      if (event.type === 'turn' || entry.display.current.title !== oldTitle) {
-        void this.rememberDisplay(record.paneId, entry.display.current, entry.updatedAt, event.type === 'turn')
-      }
-      if (entry.display.current.running) this.parking.cancel(entry)
-      else this.parking.schedule(record.paneId)
-    })
-    this.peers.set(record.paneId, entry)
-    return entry
-  }
-
-  private recordOf(paneId: ChatPaneId): ChatPeerRecord | undefined {
-    return this.settings.get().chatPeers.find((peer) => peer.paneId === paneId)
-  }
-
   /**
-   * Keep the record's title and activity time current so the drawer names a parked pane after a
-   * relaunch. Titles change rarely (first message, provider naming) and turn boundaries twice per
-   * turn, so this never writes settings on a streaming delta. A pane back at the placeholder has
-   * left its conversation, so the saved name goes with it.
+   * Attach the workspace's saved open chats, or a fresh one when it has none, and pick the
+   * selection. Ids whose records are gone (archived, removed) are skipped rather than failing.
    */
-  private async rememberDisplay(paneId: ChatPaneId, summary: ChatPeerSummary, updatedAt: number, turnBoundary: boolean): Promise<void> {
-    const settings = this.settings.get()
-    const record = settings.chatPeers.find((peer) => peer.paneId === paneId)
-    if (!record) return
-    const title = summary.title === PLACEHOLDER_TITLE ? null : summary.title
-    const titleChanged = title !== (record.title ?? null)
-    if (!titleChanged && !turnBoundary) return
-    const updated: ChatPeerRecord = { ...record, title, updatedAt }
-    try {
-      await this.settings.set({
-        chatPeers: settings.chatPeers.map((peer) => (peer.paneId === paneId ? updated : peer))
-      })
-    } catch (error) {
-      console.warn('[chat-peers] could not persist pane title:', error instanceof Error ? error.message : String(error))
+  private restoreOpenChats(openIds: string[], selectedId: string | null, modelId: string | null, effort: string | null): ChatPaneId {
+    const { cwd, projectPath } = this.workspace()
+    const records = openIds.map((id) => this.store.get(id)).filter((record): record is ChatRecord =>
+      record !== undefined && !record.archived && record.cwd === cwd)
+    if (records.length === 0) {
+      const saved = this.settings.get()
+      const model = modelId ?? saved.chatModelId
+      records.push(this.store.create({
+        cwd, projectPath, provider: chatProviderOfId(model), modelId: model, reasoningEffort: effort ?? saved.chatReasoningEffort
+      }))
     }
+    for (const record of records) this.lifecycle.attach(record)
+    return selectedId && records.some((record) => record.id === selectedId) ? selectedId : records[0]!.id
+  }
+
+  private workspace(): ChatWorkspaceSelection {
+    if (this.workspaceSelector) return this.workspaceSelector.current()
+    const saved = this.settings.get()
+    return { cwd: saved.chatWorkspacePath ?? '', projectPath: saved.chatProjectPath }
+  }
+
+  private async trimAttached(): Promise<void> {
+    const detached = this.lifecycle.trim([this.selectedPaneId])
+    if (detached.length > 0) this.chatsEmit.schedule()
+  }
+
+  /** Which chats are open and which is selected, plus the flat mirror of the selected one. */
+  private async persistOpenChats(): Promise<void> {
+    const selected = this.store.get(this.selectedPaneId) ?? null
+    await this.settings.set({
+      chatOpenIds: this.lifecycle.ids(),
+      chatSelectedPaneId: this.selectedPaneId,
+      ...selectedMirror(selected)
+    })
+  }
+
+  private wake(paneId: ChatPaneId): Promise<PeerEntry> {
+    return this.lifecycle.withBusy(paneId, () => this.parking.wake(paneId) as Promise<PeerEntry>)
+  }
+
+  private onPaneEvent(entry: PeerEntry, event: ChatEvent): void {
+    const paneId = entry.chatId
+    traceLog.responses.event(paneId, event)
+    entry.updatedAt = Date.now()
+    const oldTitle = entry.display.current.title
+    const oldPreview = entry.display.current.preview
+    const wasRunning = entry.display.current.running
+    entry.display.update(event, entry.updatedAt)
+    const rendererEvent = event.type === 'replace'
+      ? { ...event, snapshot: rendererSnapshot(event.snapshot, entry.display.current.title) }
+      : event
+    this.emit('event', { type: 'pane', paneId, event: rendererEvent } satisfies ChatWorkspaceEvent)
+    this.chatsEmit.schedule()
+    const running = entry.display.current.running
+    const turnBoundary = wasRunning !== running
+    if (turnBoundary || entry.display.current.title !== oldTitle || (event.type === 'item' && entry.display.current.preview !== oldPreview)) {
+      this.lifecycle.rememberDisplay(paneId, entry.display.current, entry.updatedAt, turnBoundary ? wasRunning && !running : null)
+    }
+    if (turnBoundary && !running) this.catalog.invalidate()
+    if (running) this.parking.cancel(entry)
+    else this.parking.schedule(paneId)
   }
 
   /**
@@ -543,7 +471,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
    */
   private async withAwake<T>(paneId: ChatPaneId, action: (surface: ChatSurface) => Promise<T>): Promise<T> {
     const queued = (this.paneOperations.get(paneId) ?? Promise.resolve()).then(async () => {
-      const entry = await this.parking.wake(paneId)
+      const entry = await this.wake(paneId)
       this.parking.cancel(entry)
       try {
         return await action(entry.surface)
@@ -561,84 +489,21 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     }
   }
 
-  private requirePeer(paneId: ChatPaneId): PeerEntry {
-    const peer = this.peers.get(paneId)
-    if (!peer) throw new Error(`Unknown chat pane: ${paneId}`)
-    return peer
-  }
-
-  private record(paneId: ChatPaneId): ChatPeerRecord {
-    const record = this.settings.get().chatPeers.find((peer) => peer.paneId === paneId)
-    if (!record) throw new Error(`Unknown chat pane: ${paneId}`)
-    return record
-  }
-
   private peerSummaries(): ChatPeerSummary[] {
-    return [...this.peers.values()].map((entry) => ({ ...entry.display.current }))
+    return [...this.lifecycle.peers.values()].map((entry) => ({ ...entry.display.current }))
+  }
+
+  /** Every chat of the workspace: attached ones as their live summary, the rest from the store. */
+  private chatRows(): ChatRowSummary[] {
+    return this.store.list(this.workspace().cwd).map((record) =>
+      rowSummary(record, this.lifecycle.get(record.id)?.display.current ?? null))
   }
 
   private emitWorkspace(): void {
     this.emit('event', { type: 'workspace', snapshot: this.snapshot({ limit: CHAT_HISTORY_PAGE_SIZE }) } satisfies ChatWorkspaceEvent)
   }
 
-  private emitPeers(): void {
-    this.emit('event', {
-      type: 'peers',
-      selectedPaneId: this.selectedPaneId,
-      peers: this.peerSummaries()
-    } satisfies ChatWorkspaceEvent)
-  }
-
-  /**
-   * Peer summaries are drawer decoration — a title, a preview line, a running dot. Streaming
-   * emits one chat event per token chunk, and each one rebuilt every pane's summary, sent it
-   * across the bridge, and re-rendered the whole drawer. Emit the first one straight away, then
-   * at most one per interval, so a running turn cannot starve the panes the user is working in.
-   */
-  private schedulePeers(): void {
-    if (this.peersTimer) {
-      this.peersPending = true
-      return
-    }
-    this.emitPeers()
-    this.peersTimer = setTimeout(() => {
-      this.peersTimer = null
-      if (!this.peersPending) return
-      this.peersPending = false
-      this.schedulePeers()
-    }, PEERS_EMIT_INTERVAL_MS)
-    this.peersTimer.unref?.()
-  }
-}
-
-function freshRecord(
-  modelId: string | null,
-  reasoningEffort: string | null,
-  continuation: ChatContinuation | null = null
-): ChatPeerRecord {
-  return {
-    paneId: crypto.randomUUID(),
-    provider: chatProviderOfId(modelId),
-    threadId: null,
-    codexThreadId: null,
-    claudeSessionId: null,
-    cursorSessionId: null,
-    modelId,
-    reasoningEffort,
-    continuation,
-    updatedAt: Date.now()
-  }
-}
-
-function rendererSnapshot(snapshot: ChatSnapshot, title: string): ChatSnapshot {
-  const start = Math.max(0, snapshot.items.length - CHAT_HISTORY_PAGE_SIZE)
-  let lastUser = snapshot.items.length - 1
-  while (lastUser >= 0 && snapshot.items[lastUser]?.type !== 'user') lastUser -= 1
-  const backgroundTasks = snapshot.history?.backgroundTasks ?? snapshot.items.slice(0, start).filter((item, index) =>
-    item.type === 'tool' && item.background && (index > lastUser || ['running', 'pending'].includes(activityPhase(item.status))))
-  return {
-    ...snapshot,
-    items: snapshot.items.slice(-CHAT_HISTORY_PAGE_SIZE),
-    history: { hasEarlier: start > 0 || Boolean(snapshot.history?.hasEarlier), title, backgroundTasks }
+  private emitChats(): void {
+    this.emit('event', { type: 'chats', selectedPaneId: this.selectedPaneId, chats: this.chatRows() } satisfies ChatWorkspaceEvent)
   }
 }
