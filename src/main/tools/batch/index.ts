@@ -62,7 +62,9 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
           'By default the calls run in order and a failure skips the rest, so a dependent sequence ' +
           '(navigate, then wait_for, then read_page) is safe to batch. Set `parallel` to true for ' +
           'independent work; explicit browser targets run in parallel while same-target work serializes. ' +
-          'Batches cannot nest. Use this for every multi-call workflow; real-input fallbacks must include their ' +
+          'Batches cannot nest, and only ClosedAI tools are routable: the tools your own harness gives you ' +
+          '(file read/search/edit, shell, web fetch) must be called directly, outside a batch. ' +
+          'Use this for every multi-call workflow; real-input fallbacks must include their ' +
           'inspection and post-action verification in the same sequential batch. ' +
           'For successful intermediate actions, set `include_result` false so only status—not a payload the model does not need—is returned; failures are always included. ' +
           'In exec scripts do not use this tool: await the tools directly (Promise.all for independent reads).',
@@ -106,6 +108,8 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
         async run(input, context) {
           const parsed = parseCalls(input, maxCalls)
           if (typeof parsed === 'string') return failureResult(`tool_batch.run: ${parsed}`)
+          const unresolved = unresolvedCalls(registry(), parsed)
+          if (unresolved) return failureResult(`tool_batch.run: ${unresolved}`)
           const parallel = booleanArg(input, 'parallel', false)
           const policyProblem = validateRealInputBatch(parsed, parallel)
           if (policyProblem) return failureResult(`tool_batch.run: ${policyProblem}`)
@@ -117,6 +121,22 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
       })
     ]
   }
+}
+
+/**
+ * Every name is resolved against the registry before the first call runs. A batch that names a
+ * tool the app does not own — most often one of the model's own harness tools, which look like
+ * peers of these in its tool list but are not dispatchable here — fails as a unit and says what
+ * is routable, instead of half-executing and reporting a bare "Unknown tool" from mid-sequence.
+ */
+function unresolvedCalls(registry: ToolRegistry, calls: BatchCall[]): string | null {
+  const unresolved = calls.filter((call) => !registry.find(call.namespace, call.tool))
+  if (unresolved.length === 0) return null
+  const named = unresolved.map((call) => `[${call.index}] "${call.label}"`).join(', ')
+  const routable = registry.names().filter((name) => !name.startsWith(`${TOOL_BATCH_NAMESPACE}.`))
+  return `${named} ${unresolved.length === 1 ? 'is not a tool' : 'are not tools'} this app owns, so nothing ran. ` +
+    `A batch can only run: ${routable.join(', ')}. Tools your own harness provides (file read/search/edit, ` +
+    'shell, web fetch) are not routable through a batch — call those directly.'
 }
 
 /** Real input cannot hide in a one-call or parallel batch; a later read must assert the outcome. */

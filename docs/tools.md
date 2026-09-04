@@ -159,6 +159,9 @@ shows at most 12 panes, prioritizing selection, caller, running panes, and real 
 with the same resource key keep their input order. Explicit `tab_id` values allow independent
 browser targets to run concurrently; active-tab operations and tab-strip mutations form a
 browser-wide barrier for the resource-scoped calls in that batch. Unscoped calls stay independent.
+Every call name is resolved against the registry before the first one runs: a batch naming a tool
+the app does not own — typically one of the model's own harness tools, which are not routable here —
+fails as a unit, names the tools a batch can run, and executes nothing.
 Each nested call retains validation, switches, timing, and telemetry. Set `include_result: false`
 for successful intermediate payloads; failures are always included. In Codex exec scripts use
 direct `await`/`Promise.all` instead of wrapping another batch tool.

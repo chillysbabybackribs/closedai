@@ -155,6 +155,23 @@ test('a bare tool name resolves when unambiguous, like a direct call', async () 
   assert.match(batchText(result), /\[1\] echo — ok\nechoed plain/)
 })
 
+test('a tool the app does not own fails the whole batch before anything runs', async () => {
+  const { registry, log } = harness()
+  const result = await call(registry, {
+    calls: [
+      { tool: 'lab.echo', arguments: { text: 'would run' } },
+      { tool: 'Grep', arguments: { pattern: 'x' } }
+    ]
+  })
+  assert.equal(result.isError, true)
+  assert.deepEqual(log, [])
+  const text = batchText(result)
+  assert.match(text, /\[2\] "Grep" is not a tool this app owns, so nothing ran/)
+  // The model is told what it may batch, and where its own tools have to go instead.
+  assert.match(text, /A batch can only run: lab\.echo, lab\.boom, lab\.snap\./)
+  assert.match(text, /call those directly/)
+})
+
 test('after a sequential failure the remaining calls are skipped, not run', async () => {
   const { registry, log } = harness()
   const result = await call(registry, {
@@ -256,21 +273,20 @@ test('a batch where every call fails is itself an error', async () => {
   assert.match(batchText(result), /^0 of 2 calls succeeded\./)
 })
 
-test('unknown tools and switched-off tools fail their call with the standard registry message', async () => {
+test('switched-off tools fail their own call with the standard registry message', async () => {
   const { registry } = harness()
   registry.setEnabled('lab.boom', false)
   const result = await call(registry, {
     calls: [
-      { tool: 'lab.nothing' },
       { tool: 'lab.boom' },
       { tool: 'lab.echo', arguments: { text: 'x' } }
     ],
     parallel: true
   })
   const text = batchText(result)
-  assert.match(text, /\[1\] lab\.nothing — failed\nUnknown tool: lab\.nothing/)
-  assert.match(text, /\[2\] lab\.boom — failed\nlab\.boom is switched off/)
-  assert.match(text, /\[3\] lab\.echo — ok/)
+  // A switched-off tool exists, so it is the call that fails, not the batch: the rest still runs.
+  assert.match(text, /\[1\] lab\.boom — failed\nlab\.boom is switched off/)
+  assert.match(text, /\[2\] lab\.echo — ok/)
 })
 
 test('batches cannot nest', async () => {

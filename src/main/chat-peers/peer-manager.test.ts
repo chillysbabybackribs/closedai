@@ -29,7 +29,7 @@ test('pins publish immediately, survive closing a blank pane, and reject unavail
   assert.equal(store.require('pane-a').pinnedAt, pinnedAt)
   assert.equal(manager.snapshot().chats.find((chat) => chat.paneId === 'pane-a')?.attached, false)
   await manager.setChatPinned('pane-a', false)
-  assert.equal(manager.snapshot().chats.find((chat) => chat.paneId === 'pane-a')?.pinnedAt, null)
+  assert.equal(manager.snapshot().chats.find((chat) => chat.paneId === 'pane-a'), undefined)
   const foreign = store.create({ ...store.require('pane-a'), id: 'foreign', cwd: '/elsewhere' })
   await assert.rejects(manager.setChatPinned(foreign.id, true), /another project/)
   await assert.rejects(manager.setChatPinned('missing', true), /no longer available/)
