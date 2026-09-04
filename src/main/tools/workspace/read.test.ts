@@ -34,11 +34,12 @@ async function fixture(t: { after(fn: () => Promise<void>): void }) {
     name: 'inspect', description: 'test', actions: [findAction(root), outlineAction(root), readAction(root)]
   })] }])
   const call = async (args: Record<string, unknown>) => {
-    const result = await registry.call({ namespace: 'workspace', tool: 'inspect', arguments: args }, { threadId: 't', turnId: 'u', callId: 'r' })
+    const result = await registry.call({ namespace: 'workspace', tool: 'inspect', arguments: args }, { paneId: 'pane', threadId: 't', turnId: 'u', callId: 'r' })
+    assert.equal('sourceReads' in result, false, 'internal observations must not reach the provider result')
     const text = result.content.map((item) => item.type === 'text' ? item.text : '').join('\n')
     return { text, error: result.isError }
   }
-  return { root, write, call }
+  return { root, write, call, reads: registry.sourceReads }
 }
 
 test('exact symbol lookup includes implementation, all style owners, conditions and test paths', async (t) => {
@@ -213,4 +214,17 @@ test('tests using static members of named and namespace imports are relevant to 
   const result = await f.call({ action: 'read', path: otherSource, symbol: 'Runner' })
   assert.match(result.text, /Test candidate: named member/)
   assert.match(result.text, /Test candidate: namespace member/)
+})
+
+test('source results record emitted file versions for follow-up context, not every scanned file', async (t) => {
+  const f = await fixture(t)
+  await f.call({ action: 'find', query: 'Widget', include_source: false })
+  const scope = { paneId: 'pane', threadId: 't', cwd: f.root }
+  assert.equal(await f.reads.changes(scope), null)
+  await f.call({ action: 'read', path: component, symbol: 'Widget' })
+  await f.write(component, 'export function Widget() { return null }\n')
+  await f.write(stylesheet, '.widget { color: green; }\n')
+  const report = (await f.reads.changes(scope))!
+  assert.deepEqual(report.changes.map((entry) => entry.path).sort(), [component, stylesheet].sort())
+  assert.equal(await f.reads.changes({ ...scope, threadId: 'other' }), null)
 })

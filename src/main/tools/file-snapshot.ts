@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { constants } from 'node:fs'
 import { open, realpath } from 'node:fs/promises'
 
 export type FileSnapshot = {
@@ -15,7 +16,8 @@ export async function readFileSnapshot(path: string, signal?: AbortSignal): Prom
   signal?.throwIfAborted()
   const canonical = await realpath(path)
   signal?.throwIfAborted()
-  const handle = await open(canonical, 'r')
+  // A previously regular source file can be replaced by a FIFO; do not block opening it.
+  const handle = await open(canonical, constants.O_RDONLY | constants.O_NONBLOCK)
   try {
     const info = await handle.stat()
     if (!info.isFile() || info.size > MAX_FILE_BYTES) throw new Error('Source reads require a regular file of at most 2 MB')

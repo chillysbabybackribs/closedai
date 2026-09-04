@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { ClaudeReadLedger, merge, subtract, type LedgerSkip } from './claude-read-ledger.js'
+import { ClaudeReadLedger, merge, subtract, type LedgerSkip, type ReadReceipt } from './claude-read-ledger.js'
 
 async function fixture(t: { after(fn: () => Promise<void>): void }) {
   const cwd = await mkdtemp(join(tmpdir(), 'closedai-ledger-'))
@@ -11,7 +11,8 @@ async function fixture(t: { after(fn: () => Promise<void>): void }) {
   const path = join(cwd, 'source.ts')
   await writeFile(path, Array.from({ length: 20 }, (_, index) => 'line ' + (index + 1)).join('\n') + '\n')
   const skips: LedgerSkip[] = []
-  const ledger = new ClaudeReadLedger((skip) => skips.push(skip))
+  const observed: ReadReceipt[] = []
+  const ledger = new ClaudeReadLedger((skip) => skips.push(skip), (receipt) => { observed.push(receipt) })
   const response = async (start = 1, count = 20) => {
     const lines = (await readFile(path, 'utf8')).trimEnd().split('\n')
     return { type: 'text', file: {
@@ -20,7 +21,7 @@ async function fixture(t: { after(fn: () => Promise<void>): void }) {
     } }
   }
   const args = { file_path: path }
-  return { cwd, path, args, skips, ledger, response }
+  return { cwd, path, args, skips, ledger, response, observed }
 }
 
 test('range arithmetic coalesces coverage and retains all missing gaps', () => {
@@ -116,6 +117,8 @@ test('native hooks preserve output, add the receipt, and forget coverage on comp
   const updated = (result as { hookSpecificOutput: { updatedToolOutput: typeof response & { closedai_read: { hash: string } } } }).hookSpecificOutput.updatedToolOutput
   assert.deepEqual(updated.file, response.file)
   assert.match(updated.closedai_read.hash, /^sha256:/)
+  assert.equal(f.observed.length, 1)
+  assert.equal(f.observed[0]!.hash, updated.closedai_read.hash)
   assert.equal((await f.ledger.before('main', 'Read', f.args, f.cwd)).kind, 'deny')
   await hooks.PreCompact![0]!.hooks[0]!({ ...base, hook_event_name: 'PreCompact', trigger: 'auto', custom_instructions: null }, undefined, options)
   assert.equal((await f.ledger.before('main', 'Read', f.args, f.cwd)).kind, 'allow')
@@ -128,6 +131,7 @@ test('native hooks preserve output, add the receipt, and forget coverage on comp
     tool_response: response, tool_use_id: 'late'
   }, 'late', options)
   assert.deepEqual(late, {})
+  assert.equal(f.observed.length, 1, 'a stale native result must not become a source observation')
   assert.equal((await f.ledger.before('main', 'Read', f.args, f.cwd)).kind, 'allow')
 })
 
