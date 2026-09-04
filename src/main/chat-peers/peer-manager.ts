@@ -18,9 +18,10 @@ import type { ChatSurface } from '../chat-hub.js'
 import { buildThreadHandoff } from '../chat-context/thread-handoff.js'
 import { ChatMemory } from '../chat-context/chat-memory.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
+import { CACHED_TRANSCRIPT_ITEMS, ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
 import { traceLog } from '../trace/trace-log.js'
 import { PeerChatCatalog } from './peer-chat-catalog.js'
-import { PeerEmitThrottle, rendererSnapshot, rowSummary } from './peer-events.js'
+import { cachedPaneView, PeerEmitThrottle, rendererSnapshot, rowSummary } from './peer-events.js'
 import { PeerIdleParking } from './peer-idle-parking.js'
 import { PeerLifecycle, type ChatPeerFactory, type PeerEntry } from './peer-lifecycle.js'
 import { selectedMirror } from './peer-settings.js'
@@ -41,7 +42,7 @@ export type ChatWorkspaceSelector = {
 
 export interface ChatWorkspaceSurface {
   snapshot(window?: ChatHistoryWindow): ChatWorkspaceSnapshot
-  readHistoryPage(paneId: ChatPaneId, threadId: string | null, beforeItemId: string): ChatHistoryPage
+  readHistoryPage(paneId: ChatPaneId, threadId: string | null, beforeItemId: string): Promise<ChatHistoryPage>
   start(): Promise<void>
   stop(): void
   send(paneId: ChatPaneId, text: string, attachments: ChatAttachment[]): Promise<void>
@@ -85,7 +86,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     private readonly store: ChatStore,
     createSurface: ChatPeerFactory,
     idleParkMs?: number,
-    private readonly workspaceSelector?: ChatWorkspaceSelector
+    private readonly workspaceSelector?: ChatWorkspaceSelector,
+    private readonly transcripts: ChatTranscriptCache = ChatTranscriptCache.inMemory()
   ) {
     super()
     this.memory = new ChatMemory(store, (paneId) => this.lifecycle.get(paneId)?.surface ?? null)
@@ -108,14 +110,15 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     return {
       selectedPaneId: this.selectedPaneId,
       chats: this.chatRows(),
-      selected: window ? rendererSnapshot(selected, entry.display.current.title) : selected,
+      selected: window ? this.rendererView(entry, selected) : selected,
       workspace: this.workspaceSelector?.current()
     }
   }
 
-  readHistoryPage(paneId: ChatPaneId, threadId: string | null, beforeItemId: string): ChatHistoryPage {
+  /** Earlier messages come from the provider, so a pane showing its cached tail wakes first. */
+  async readHistoryPage(paneId: ChatPaneId, threadId: string | null, beforeItemId: string): Promise<ChatHistoryPage> {
     if (typeof beforeItemId !== 'string' || !beforeItemId) throw new Error('Choose a history cursor')
-    const snapshot = this.lifecycle.require(paneId).surface.snapshot({ beforeItemId, limit: CHAT_HISTORY_PAGE_SIZE })
+    const snapshot = await this.withAwake(paneId, async (surface) => surface.snapshot({ beforeItemId, limit: CHAT_HISTORY_PAGE_SIZE }))
     if (snapshot.threadId !== threadId) throw new Error('The chat changed while loading history')
     return { items: snapshot.items, hasEarlier: snapshot.history?.hasEarlier ?? false }
   }
@@ -126,6 +129,13 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async start(): Promise<void> {
+    // The chat the user left is on screen before any provider runs: its saved view paints now,
+    // and the replay below replaces it.
+    await this.transcripts.load(this.selectedPaneId)
+    this.emitWorkspace()
+    void this.transcripts.prune(new Set(this.store.ids())).catch((error: unknown) => {
+      console.warn('[chat-peers] could not prune saved transcripts:', error instanceof Error ? error.message : String(error))
+    })
     // Persisted panes are history, not live work. Warming every one creates an app-server per
     // pane after each relaunch; the selected pane is the only surface startup needs immediately.
     await this.wake(this.selectedPaneId)
@@ -135,6 +145,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   stop(): void {
     // A turn that ended just before quit has a `chats` update waiting; deliver it so the row moves.
     this.chatsEmit.flush()
+    // Each attached pane saves what it is showing, so the next launch paints it without a replay.
+    for (const entry of this.lifecycle.peers.values()) this.rememberTranscript(entry)
     this.lifecycle.detachAll()
   }
 

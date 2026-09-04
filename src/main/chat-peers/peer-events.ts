@@ -2,6 +2,7 @@ import type { ChatSnapshot } from '../../shared/chat.js'
 import { activityPhase, CHAT_HISTORY_PAGE_SIZE } from '../../shared/chat.js'
 import type { ChatPeerSummary, ChatRowSummary, ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
+import type { CachedChatView } from '../chat-store/chat-transcript-cache.js'
 import { summaryForRecord } from './peer-summary.js'
 
 // What the workspace tells the renderer about its chats, and how often. Streaming emits one chat
@@ -72,6 +73,35 @@ export function rowSummary(record: ChatRecord, live: ChatPeerSummary | null): Ch
     cwd: record.cwd,
     createdAt: record.createdAt,
     lastTurnEndedAt: record.lastTurnEndedAt
+  }
+}
+
+/**
+ * Show a pane whose provider has not replayed yet as the app last saw that chat. A parked,
+ * detached, or just-relaunched pane snapshots empty, so opening one used to paint the "new chat"
+ * layout — centred composer, no messages, no context reading — for the seconds a provider takes
+ * to start and replay. The cached view stands in until the replay lands, and only while the chat
+ * still holds the thread it was taken from, so a new chat or a provider switch shows nothing
+ * stale. The context reading outlives the replay too: providers report it per turn, and a
+ * resumed thread has none until the next one.
+ */
+export function cachedPaneView(
+  snapshot: ChatSnapshot,
+  record: ChatRecord | undefined,
+  cached: CachedChatView | null
+): ChatSnapshot {
+  if (!cached || !record?.threadId || cached.threadId !== record.threadId) return snapshot
+  const contextUsage = snapshot.contextUsage ?? cached.contextUsage
+  if (snapshot.items.length > 0 || snapshot.activeTurnId) {
+    return contextUsage === snapshot.contextUsage ? snapshot : { ...snapshot, contextUsage }
+  }
+  return {
+    ...snapshot,
+    threadId: snapshot.threadId ?? record.threadId,
+    threadName: snapshot.threadName ?? cached.threadName,
+    contextUsage,
+    items: cached.items,
+    history: { ...snapshot.history, hasEarlier: cached.hasEarlier }
   }
 }
 
