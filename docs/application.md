@@ -11,8 +11,8 @@ provider settings, and conversation state; only the selected pane is displayed. 
 pane can continue its turn while another pane is selected. The embedded browser belongs to the
 application and is shared across panes and project switches.
 
-`ChatHub` routes to Codex, Claude Code, or Antigravity. Codex model/thread ids are unprefixed;
-Claude ids use `claude:` and Antigravity ids use `agy:`. Picking another provider's model keeps the
+`ChatHub` routes to Codex, Claude Code, Antigravity, or Cursor. Codex model/thread ids are
+unprefixed; Claude ids use `claude:`, Antigravity ids use `agy:`, and Cursor ids use `cursor:`. Picking another provider's model keeps the
 pane in its conversation: the destination leaves whatever chat it last had open, starts a fresh
 thread carrying a digest of the visible one (the same handoff “Continue in new chat” builds, sent
 with the next message), and the pane keeps showing the transcript it had. The hub holds those
@@ -125,7 +125,7 @@ shared frame settling lives in `browser-frame-settle.ts`. See [CDP](cdp-tool-fou
 | Pane lifecycle, summaries, per-pane settings, idle parking | `src/main/chat-peers/` |
 | Provider routing and id families | `src/main/chat-hub.ts`, `src/shared/chat-providers.ts` |
 | Codex runtime and transcript normalization | `src/main/chat-service.ts`, `src/main/app-server-client.ts`, `src/main/chat-normalizers.ts` |
-| Claude / Antigravity sessions and translation | `src/main/claude/`, `src/main/antigravity/` |
+| Claude / Antigravity / Cursor sessions and translation | `src/main/claude/`, `src/main/antigravity/`, `src/main/cursor/` |
 | Model instructions, trust and handoff | `src/main/chat-context/`, provider `*-instructions.ts` files |
 | Provider-neutral tool definitions and execution | `src/main/tools/` |
 | Deterministic app commands and renderer control access | `src/main/app-commands.ts`, `src/main/app-automation-*.ts`, `src/shared/ui-controls.ts` |

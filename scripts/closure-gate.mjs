@@ -24,12 +24,12 @@ const allowedPackages = new Set([
 // "inspector-modal", which rejected a sanctioned UI file for containing the letters t-o-r.
 const forbiddenPaths = /(claude|codex|cursor|antigravity|agent|mcp|tool-|plugin|recall|artifact|seo-|blender|ytdlp|vpn|(?:^|[/-])tor-|workflow|credential)/i
 // The sanctioned homes for model-facing tools (docs/tools.md): the registry in main and
-// its inspector UI in the renderer, plus the Claude Code provider adapter (docs/claude-code.md)
-// and the Antigravity provider adapter (docs/antigravity.md), plus the transcript memory the
-// `peer_chats` recall and checkpoint tools read. Everything else that smells like
-// agent/provider/tool code is still rejected.
+// its inspector UI in the renderer, plus the Claude Code provider adapter (docs/claude-code.md),
+// the Antigravity provider adapter (docs/antigravity.md), and the Cursor provider adapter
+// (docs/cursor.md), plus the transcript memory the `peer_chats` recall and checkpoint tools read.
+// Everything else that smells like agent/provider/tool code is still rejected.
 const sanctionedPaths =
-  /^src\/(main|renderer)\/tools\/|^src\/main\/(claude|antigravity)\/|^src\/main\/chat-context\/memory-/
+  /^src\/(main|renderer)\/tools\/|^src\/main\/(claude|antigravity|cursor)\/|^src\/main\/chat-context\/memory-/
 
 const importRe = /(?:import|export)\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g
 function resolveLocal(from, spec) {
