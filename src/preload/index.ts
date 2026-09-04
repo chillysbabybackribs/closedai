@@ -57,6 +57,7 @@ const api: ClosedaiApi = {
     attachmentPath: (file) => webUtils.getPathForFile(file),
     interrupt: (paneId) => ipcRenderer.invoke('chat:interrupt', paneId),
     selectPane: (paneId) => ipcRenderer.invoke('chat:selectPane', paneId),
+    setVisiblePanes: (cwd, paneIds) => ipcRenderer.invoke('chat:setVisiblePanes', cwd, paneIds),
     selectModel: (paneId, modelId) => ipcRenderer.invoke('chat:selectModel', paneId, modelId),
     selectReasoningEffort: (paneId, effort) => ipcRenderer.invoke('chat:selectReasoningEffort', paneId, effort),
     refreshPlanUsage: (paneId) => ipcRenderer.invoke('chat:refreshPlanUsage', paneId),

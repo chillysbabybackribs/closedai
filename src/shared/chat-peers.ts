@@ -44,6 +44,8 @@ export type ChatWorkspaceSnapshot = {
   /** Every chat of the active workspace, attached or not; see `ChatRowSummary`. */
   chats: ChatRowSummary[]
   selected: ChatSnapshot
+  /** Bounded snapshots for chats displayed together; selection is keyboard focus, not visibility. */
+  panes?: Record<ChatPaneId, ChatSnapshot>
   /** The directory used by newly created provider sessions and its optional project identity. */
   workspace?: {
     cwd: string

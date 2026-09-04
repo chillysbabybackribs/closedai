@@ -19,10 +19,14 @@ export function rendererChatForwarder(
   selectedPaneId: string,
   send: (event: ChatWorkspaceEvent) => void
 ): (event: ChatWorkspaceEvent) => void {
+  let visible = new Set([selectedPaneId])
   return (event) => {
-    if (event.type === 'workspace') selectedPaneId = event.snapshot.selectedPaneId
+    if (event.type === 'workspace') {
+      selectedPaneId = event.snapshot.selectedPaneId
+      visible = new Set(Object.keys(event.snapshot.panes ?? {}))
+    }
     else if (event.type === 'chats') selectedPaneId = event.selectedPaneId
-    else if (event.paneId !== selectedPaneId) return
+    else if (event.paneId !== selectedPaneId && !visible.has(event.paneId)) return
     send(event)
   }
 }

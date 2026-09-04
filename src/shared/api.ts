@@ -56,6 +56,7 @@ export type ClosedaiApi = {
     attachmentPath: (file: File) => string
     interrupt: (paneId: ChatPaneId) => Promise<void>
     selectPane: (paneId: ChatPaneId) => Promise<void>
+    setVisiblePanes: (cwd: string, paneIds: ChatPaneId[]) => Promise<void>
     selectModel: (paneId: ChatPaneId, modelId: string) => Promise<void>
     selectReasoningEffort: (paneId: ChatPaneId, effort: string) => Promise<void>
     /** Re-read the pane provider's subscription usage; a no-op where it is not reported. */

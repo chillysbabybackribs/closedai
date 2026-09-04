@@ -48,6 +48,7 @@ export interface ChatWorkspaceSurface {
   send(paneId: ChatPaneId, text: string, attachments: ChatAttachment[]): Promise<void>
   interrupt(paneId: ChatPaneId): Promise<void>
   selectPane(paneId: ChatPaneId): Promise<void>
+  setVisiblePanes(cwd: string, paneIds: ChatPaneId[]): Promise<void>
   selectModel(paneId: ChatPaneId, modelId: string): Promise<void>
   selectReasoningEffort(paneId: ChatPaneId, effort: string): Promise<void>
   refreshPlanUsage(paneId: ChatPaneId): Promise<void>
@@ -74,6 +75,8 @@ export interface ChatWorkspaceSurface {
 export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurface {
   readonly memory: ChatMemory
   private selectedPaneId: ChatPaneId
+  private visiblePaneIds = new Set<ChatPaneId>()
+  private visibilityRevision = 0
   private readonly lifecycle: PeerLifecycle
   private readonly parking: PeerIdleParking
   private readonly catalog: PeerChatCatalog
@@ -112,6 +115,11 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       selectedPaneId: this.selectedPaneId,
       chats: this.chatRows(),
       selected: window ? this.rendererView(entry, selected) : selected,
+      panes: window ? Object.fromEntries([...new Set([...this.visiblePaneIds, this.selectedPaneId])]
+        .flatMap((id) => {
+          const peer = this.lifecycle.get(id)
+          return peer ? [[id, this.rendererView(peer, peer.surface.snapshot(window))]] : []
+        })) : undefined,
       workspace: this.workspaceSelector?.current()
     }
   }
@@ -176,7 +184,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.selectedPaneId = paneId
     // A blank chat the user clicked away from never became one; keep it and the drawer fills
     // with "New chat" rows. One mid-open (busy) is not blank, it is about to hold a thread.
-    if (this.lifecycle.peers.size > 1) this.lifecycle.discardIfBlank(previousPaneId)
+    if (this.lifecycle.peers.size > 1 && !this.visiblePaneIds.has(previousPaneId)) this.lifecycle.discardIfBlank(previousPaneId)
     this.parking.schedule(previousPaneId)
     // Paint the destination from the view it already holds — the live snapshot when its runtime
     // is up, the saved one when it is parked — before waking it. Waking replays the thread from
@@ -187,6 +195,26 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     await this.persistOpenChats()
     this.scheduleWarm(paneId)
     this.wakeLater(paneId, 'wake pane')
+  }
+
+  /** Register the renderer's tiles without changing focus or stopping hidden turns. */
+  async setVisiblePanes(cwd: string, paneIds: ChatPaneId[]): Promise<void> {
+    if (cwd !== this.workspace().cwd) return
+    if (!Array.isArray(paneIds) || paneIds.length > 32 || paneIds.some((id) => typeof id !== 'string')) {
+      throw new Error('Choose up to 32 visible chats')
+    }
+    const records = [...new Set(paneIds)].map((id) => this.store.get(id))
+    if (records.some((record) => !record || record.archived || record.cwd !== cwd)) {
+      throw new Error('A visible chat is no longer available in this project')
+    }
+    const revision = ++this.visibilityRevision
+    this.visiblePaneIds = new Set(paneIds)
+    for (const record of records) if (record) this.lifecycle.attach(record)
+    await Promise.all(paneIds.map((id) => this.transcripts.load(id)))
+    if (revision !== this.visibilityRevision || cwd !== this.workspace().cwd) return
+    this.emitWorkspace()
+    await this.persistOpenChats()
+    for (const id of paneIds) this.wakeLater(id, 'show chat')
   }
 
   /** Read the pane's provider plan usage now; the hover card asks each time it opens. */
@@ -343,7 +371,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // The chat's last known messages, model, and context reading paint now; the provider's
     // replay lands behind them rather than in front of an empty pane.
     await this.transcripts.load(chatId)
-    if (this.lifecycle.peers.size > 1) this.lifecycle.discardIfBlank(previousPaneId)
+    if (this.lifecycle.peers.size > 1 && !this.visiblePaneIds.has(previousPaneId)) this.lifecycle.discardIfBlank(previousPaneId)
     this.parking.schedule(previousPaneId)
     this.lifecycle.parkExcessIdle(chatId)
     this.emitWorkspace()
@@ -412,6 +440,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     const selection = this.workspaceSelector.current()
     if (selection.projectPath === projectPath) return
 
+    this.visibilityRevision += 1
+    this.visiblePaneIds.clear()
     this.lifecycle.detachAll()
     this.catalog.invalidate()
     await this.workspaceSelector.select(projectPath, {
@@ -478,7 +508,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   /** Detach beyond the cap and record the open set; the drawer learns of the change at once. */
   private async trimAttached(): Promise<void> {
-    const detached = this.lifecycle.trim([this.selectedPaneId])
+    const detached = this.lifecycle.trim([this.selectedPaneId, ...this.visiblePaneIds])
     if (detached.length === 0) return
     this.chatsEmit.schedule()
     await this.persistOpenChats()
@@ -513,7 +543,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
    */
   private wakeLater(paneId: ChatPaneId, what: string): void {
     void this.wake(paneId).then(async () => {
-      if (paneId !== this.selectedPaneId && this.lifecycle.peers.size > 1 && this.lifecycle.discardIfBlank(paneId)) {
+      if (paneId !== this.selectedPaneId && !this.visiblePaneIds.has(paneId) && this.lifecycle.peers.size > 1 && this.lifecycle.discardIfBlank(paneId)) {
         await this.persistOpenChats()
       }
     }).catch((error: unknown) => {
