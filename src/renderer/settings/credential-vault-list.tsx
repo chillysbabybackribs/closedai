@@ -1,7 +1,7 @@
 import { useState, type JSX } from 'react'
 import { Check, CheckCircle2, Copy, Eye, EyeOff, Lock, Plus, ShieldAlert, Trash2 } from 'lucide-react'
-import { credentialService, type CredentialSummary } from '../../shared/credentials.js'
-import { CREDENTIAL_SERVICE_LOGOS } from './credential-service-logos.js'
+import { credentialDomain, credentialService, type CredentialSummary } from '../../shared/credentials.js'
+import { CREDENTIAL_SERVICE_LOGOS, RemoteServiceLogo } from './credential-service-logos.js'
 
 export type CredentialVaultListProps = {
   credentials: CredentialSummary[]
@@ -90,6 +90,12 @@ function CredentialCard({ credential, onRemove, reveal }: CredentialCardProps): 
   const Logo = CREDENTIAL_SERVICE_LOGOS[credential.serviceId]
   const description = credentialService(credential.serviceId)?.description ?? ''
 
+  // Entries the catalog has no mark for wear the icon of the site they point at:
+  // URL fields are stored readable, so the domain is already on this card.
+  const brandless = !credentialService(credential.serviceId)?.domains
+  const storedUrl = credential.fields.find((field) => field.kind === 'url')?.preview ?? ''
+  const domain = brandless ? credentialDomain(storedUrl) : ''
+
   const toggleReveal = async (fieldId: string): Promise<void> => {
     if (revealed[fieldId] !== undefined) {
       setRevealed(({ [fieldId]: _hidden, ...rest }) => rest)
@@ -128,7 +134,7 @@ function CredentialCard({ credential, onRemove, reveal }: CredentialCardProps): 
 
         <div className="credential-panel-body">
           <div className="credential-icon-tile">
-            <Logo />
+            {domain ? <RemoteServiceLogo domain={domain} name={credential.label} /> : <Logo />}
           </div>
 
           <div className="credential-name-row">
