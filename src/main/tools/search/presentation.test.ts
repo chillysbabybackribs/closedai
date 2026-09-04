@@ -33,14 +33,13 @@ test('both search paths wait for sources, open before slower providers finish, a
   const tabs = new SearchBrowserTabs({ exists: () => true, open: (url) => { urls.push(url); return 'live-tab' } })
   const registry = new ToolRegistry([searchTools({
     readKey: async () => 'test',
-    fetch: async (input) => {
-      if (String(input).includes('api.search.brave.com')) {
-        return new Response('{"web":{"results":[{"title":"Source","url":"https://source.example/article","description":"Evidence"}]}}', {
-          headers: { 'content-type': 'application/json' }
-        })
-      }
+    fetch: async (url) => {
+      if (String(url).includes('serper.dev')) { await slow; return Response.json({ organic: [] }) }
       await gate
-      return new Response('{"organic":[]}', { headers: { 'content-type': 'application/json' } })
+      return Response.json({ web: { results: [
+        { title: 'Search results', url: 'https://www.google.com/search?q=libraries' },
+        { title: 'Source', url: 'https://docs.example.com/libraries' }
+      ] } })
     },
     onResearchCreated: (value) => { service = value },
     research: {
@@ -59,12 +58,15 @@ test('both search paths wait for sources, open before slower providers finish, a
   assert.equal(urls.length, 0, 'no browser discovery or placeholder search page')
   const started = await call('run', { action: 'start', queries: [query] })
   const body = JSON.parse(started.content[0].type === 'text' ? started.content[0].text : '')
-  assert.equal(body.presentation.state, 'waiting_for_source', 'omitting presentation must no longer select background')
+  assert.deepEqual(body.presentation, { state: 'waiting_for_source' })
+  release()
   await new Promise<void>((resolve) => setImmediate(resolve))
-  const live = service.read(body.runId, context)
-  assert.equal(live.presentation.state, 'opened')
-  assert.equal(live.presentation.tabId, 'live-tab')
-  assert.equal(urls.length, 1, 'query and run share their turn tab')
+  assert.deepEqual(urls, ['https://docs.example.com/libraries'])
+  assert.equal(queryFinished, false, 'source is live while another provider is pending')
+  const partial = service.read(body.runId, context)
+  assert.equal(partial.state, 'running')
+  assert.deepEqual(partial.presentation, { state: 'opened', tabId: 'live-tab' })
+  assert.deepEqual(partial.sources.map((source) => source.url), urls)
   const background = await call('run', { action: 'start', queries: [query], presentation: 'background' })
   assert.match(background.content[0].type === 'text' ? background.content[0].text : '', /"state":"none"/)
   finishSlow()
