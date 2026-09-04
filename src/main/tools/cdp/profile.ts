@@ -58,7 +58,9 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
       description:
         'Stop the recorders armed by start and return the folded report: per-URL used/unused bytes for ' +
         'script and style coverage, per-function self time for cpu, per-site retained bytes for heap, ' +
-        'plus page metrics. Entries are ranked worst-first and cut to limit.',
+        'plus page metrics. Entries are ranked worst-first and cut to limit. Heap sampling is re-armed ' +
+        'on every main-frame commit, so a navigation between start and stop reports the new document; ' +
+        'when a sampler is lost anyway the report says so in heapUnavailable instead of stalling.',
       inputSchema: objectSchema({ tab_id: tabIdField, channels: channelsField, limit: limitField }),
       run: async (input) => jsonResult(await requireCdp(cdp).profile(tabIdFrom(input), 'stop', {
         channels: channelsFrom(input),
