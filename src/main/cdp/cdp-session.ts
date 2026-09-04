@@ -30,6 +30,8 @@ export type CdpTargetRecord = {
   waitingForDebugger: boolean
 }
 
+export type CdpEventListener = (method: string, params: unknown) => void
+
 const EVENT_CAPACITY = 1_000
 const MAX_EVENT_CHARS = 64_000
 const EVENT_PREVIEW_CHARS = 8_000
@@ -46,6 +48,7 @@ export class CdpSession {
   private attachmentEpoch = 0
   private readonly targets = new Map<string, CdpTargetRecord>()
   private readonly targetIdBySession = new Map<string, string>()
+  private readonly observers = new Set<CdpEventListener>()
 
   constructor(
     readonly tabId: string,
@@ -83,6 +86,15 @@ export class CdpSession {
       .sort((left, right) => left.targetId.localeCompare(right.targetId))
   }
 
+  /**
+   * Watch this attachment's events from the main process. Used to restore agent state Chromium
+   * does not carry into a new document; returns the unsubscribe.
+   */
+  observe(listener: CdpEventListener): () => void {
+    this.observers.add(listener)
+    return () => { this.observers.delete(listener) }
+  }
+
   eventPage(afterCursor: number, limit: number, methodPrefix?: string): CdpEventPage {
     this.ensureAttached()
     void this.ensureTargetDiscovery()
@@ -113,6 +125,7 @@ export class CdpSession {
     this.disposed = true
     this.attachmentEpoch += 1
     this.targetSetup = null
+    this.observers.clear()
     this.contents.debugger.off('message', this.onMessage)
     this.contents.debugger.off('detach', this.onDetach)
     this.contents.off('destroyed', this.onDestroyed)
@@ -129,6 +142,13 @@ export class CdpSession {
   ): void => {
     this.recordTargetEvent(method, params)
     this.push(method, params, sessionId ?? null)
+    for (const observer of [...this.observers]) {
+      try {
+        observer(method, params)
+      } catch {
+        // An observer is main-process bookkeeping; it must never break event recording.
+      }
+    }
   }
 
   private readonly onDetach = (_event: Electron.Event, reason: string): void => {

@@ -15,11 +15,13 @@ import {
 import { settleFrames } from '../browser-frame-settle.js'
 import { dismissOverlayWithCdp } from './overlay/overlay-dismiss-cdp.js'
 import {
+  armHeapSampling,
   channelsFrom as profileChannelsFrom,
   foldMetrics,
+  liveStyleSheets,
   startProfiling,
   stopProfiling,
-  styleSheetUrls
+  styleSheetIndex
 } from './cdp-profile.js'
 import {
   channelsFrom as instrumentChannelsFrom,
@@ -69,7 +71,10 @@ type ResolvedTab = { tab: CdpBrowserTarget; session: CdpSession; page: CdpPageCo
 export class BrowserCdpAccess implements CdpToolHost {
   private readonly connections = new Map<string, { session: CdpSession; page: CdpPageController; input: CdpPageInput }>()
   /** Channels armed by `profile start`, so `stop` folds exactly what was started. */
-  private readonly profiling = new Map<string, ReturnType<typeof profileChannelsFrom>>()
+  private readonly profiling = new Map<
+    string,
+    { channels: ReturnType<typeof profileChannelsFrom>; stopWatch?: () => void }
+  >()
   /** `Page.addScriptToEvaluateOnNewDocument` identifiers, so a hook can be removed again. */
   private readonly instruments = new Map<string, string>()
 
@@ -215,15 +220,19 @@ export class BrowserCdpAccess implements CdpToolHost {
     const channels = profileChannelsFrom(options.channels)
     if (action === 'start') {
       const started = await startProfiling(send, channels)
-      this.profiling.set(tab.id, channels)
+      this.endProfileWatch(tab.id)
+      this.profiling.set(tab.id, {
+        channels,
+        stopWatch: channels.heap ? this.watchForHeapRearm(session) : undefined
+      })
       return { ...head, started, note: 'Exercise the page, then call stop.' }
     }
-    const active = this.profiling.get(tab.id) ?? channels
-    this.profiling.delete(tab.id)
-    const report = await stopProfiling(send, active, {
-      limit: options.limit,
-      styleSheetUrls: styleSheetUrls(session.eventPage(0, EVENT_SCAN_LIMIT, 'CSS.').events)
-    })
+    const active = this.profiling.get(tab.id)?.channels ?? channels
+    this.endProfileWatch(tab.id)
+    const styleSheets = active.style
+      ? await liveStyleSheets(send, styleSheetIndex(session.eventPage(0, EVENT_SCAN_LIMIT, 'CSS.').events))
+      : []
+    const report = await stopProfiling(send, active, { limit: options.limit, styleSheets })
     return { ...head, ...report }
   }
 

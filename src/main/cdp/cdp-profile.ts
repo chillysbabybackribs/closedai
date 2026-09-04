@@ -140,36 +140,93 @@ export function foldScriptCoverage(raw: unknown, limit: number): CoverageSummary
   return summarize(byUrl, limit)
 }
 
-/** `CSS.stopRuleUsageTracking` folded to used vs unused bytes per stylesheet URL. */
-export function foldRuleCoverage(raw: unknown, urls: Record<string, string>, limit: number): CoverageSummary {
-  const rules = list(record(raw).ruleUsage)
-  if (!rules.length) return EMPTY_COVERAGE
-  const byUrl = new Map<string, { total: number; used: number }>()
-  for (const entry of rules) {
+export type StyleSheetRecord = { id: string; url: string; length: number }
+
+/** How many stylesheets a stop verifies; a document with more is already past useful ranking. */
+const MAX_TRACKED_STYLESHEETS = 40
+
+/**
+ * `CSS.stopRuleUsageTracking` answers with a coverage *delta* — the rules whose used flag changed
+ * since tracking began — so it lists what ran and never mentions what did not. Totals therefore
+ * have to come from the stylesheets themselves; folding the delta against itself would report
+ * every sheet as 100% used.
+ */
+export function foldRuleCoverage(raw: unknown, sheets: StyleSheetRecord[], limit: number): CoverageSummary {
+  const usedRanges = new Map<string, CoverageRange[]>()
+  for (const entry of list(record(raw).ruleUsage)) {
     const rule = record(entry)
-    const start = Number(rule.startOffset)
-    const end = Number(rule.endOffset)
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue
+    if (rule.used !== true) continue
+    const startOffset = Number(rule.startOffset)
+    const endOffset = Number(rule.endOffset)
+    if (!Number.isFinite(startOffset) || !Number.isFinite(endOffset) || endOffset <= startOffset) continue
     const sheetId = String(rule.styleSheetId ?? '')
-    const url = urls[sheetId] || '(inline stylesheet)'
-    const totals = byUrl.get(url) ?? { total: 0, used: 0 }
-    totals.total += end - start
-    if (rule.used === true) totals.used += end - start
-    byUrl.set(url, totals)
+    const ranges = usedRanges.get(sheetId) ?? []
+    ranges.push({ startOffset, endOffset, count: 1 })
+    usedRanges.set(sheetId, ranges)
+  }
+  if (!sheets.length && !usedRanges.size) return EMPTY_COVERAGE
+
+  const byUrl = new Map<string, { total: number; used: number }>()
+  for (const sheet of sheets) {
+    if (sheet.length <= 0) continue
+    const totals = byUrl.get(sheet.url) ?? { total: 0, used: 0 }
+    totals.total += sheet.length
+    totals.used += Math.min(sheet.length, disjointUsedBytes(usedRanges.get(sheet.id) ?? []))
+    usedRanges.delete(sheet.id)
+    byUrl.set(sheet.url, totals)
+  }
+  // Rules whose stylesheet header never reached the event buffer still ran: count them as fully
+  // used rather than dropping the bytes, so the totals stay honest about what was measured.
+  for (const ranges of usedRanges.values()) {
+    const used = disjointUsedBytes(ranges)
+    if (used <= 0) continue
+    const totals = byUrl.get('(untracked stylesheet)') ?? { total: 0, used: 0 }
+    totals.total += used
+    totals.used += used
+    byUrl.set('(untracked stylesheet)', totals)
   }
   return summarize(byUrl, limit)
 }
 
-/** Stylesheet id to URL, read from the buffered `CSS.styleSheetAdded` events. */
-export function styleSheetUrls(events: { method: string; params: unknown }[]): Record<string, string> {
-  const urls: Record<string, string> = {}
+/** The stylesheets currently known to the tab, from the buffered `CSS` lifecycle events. */
+export function styleSheetIndex(events: { method: string; params: unknown }[]): StyleSheetRecord[] {
+  const sheets = new Map<string, StyleSheetRecord>()
   for (const event of events) {
-    if (event.method !== 'CSS.styleSheetAdded') continue
-    const header = record(record(event.params).header)
-    const id = String(header.styleSheetId ?? '')
-    if (id) urls[id] = String(header.sourceURL || '(inline stylesheet)')
+    const params = record(event.params)
+    if (event.method === 'CSS.styleSheetAdded') {
+      const header = record(params.header)
+      const id = String(header.styleSheetId ?? '')
+      if (!id) continue
+      sheets.set(id, {
+        id,
+        url: String(header.sourceURL || '(inline stylesheet)'),
+        length: Number(header.length) || 0
+      })
+      continue
+    }
+    if (event.method === 'CSS.styleSheetRemoved') {
+      const id = String(params.styleSheetId ?? '')
+      if (id) sheets.delete(id)
+    }
   }
-  return urls
+  return [...sheets.values()]
+}
+
+/**
+ * Ask the page for each stylesheet's text. Ids from a document that has since been discarded fail
+ * here, which is what separates the current document's sheets from stale buffer entries, and the
+ * returned text is the authoritative byte total for the unused-bytes arithmetic.
+ */
+export async function liveStyleSheets(send: ProfileSend, sheets: StyleSheetRecord[]): Promise<StyleSheetRecord[]> {
+  const checked = await Promise.all(sheets.slice(-MAX_TRACKED_STYLESHEETS).map(async (sheet) => {
+    try {
+      const text = String(record(await send('CSS.getStyleSheetText', { styleSheetId: sheet.id })).text ?? '')
+      return { ...sheet, length: text.length || sheet.length }
+    } catch {
+      return null
+    }
+  }))
+  return checked.filter((sheet): sheet is StyleSheetRecord => sheet !== null)
 }
 
 /** `Profiler.stop` folded to the functions that actually held the main thread. */
@@ -282,11 +339,36 @@ export async function startProfiling(send: ProfileSend, channels: ProfileChannel
     started.push('cpu')
   }
   if (channels.heap) {
-    await send('HeapProfiler.enable')
-    await send('HeapProfiler.startSampling', { samplingInterval: 16_384 })
+    // Page events drive the re-arm below; without them a navigation silently ends heap sampling.
+    await send('Page.enable').catch(() => undefined)
+    await armHeapSampling(send)
     started.push('heap')
   }
   return started
+}
+
+/**
+ * V8 restores the profiler and coverage agents into a new document itself, but not the sampling
+ * heap profiler: after a navigation the sampler armed by `start` belongs to an isolate that no
+ * longer exists, and `stopSampling` never answers at all. Re-arming on each main-frame commit is
+ * what keeps `stop` able to report the document the caller actually asked about.
+ */
+export async function armHeapSampling(send: ProfileSend): Promise<void> {
+  await send('HeapProfiler.enable')
+  await send('HeapProfiler.startSampling', { samplingInterval: 16_384 })
+}
+
+/** Bound for a stop that may be addressed to a dead isolate, well under the tool's own budget. */
+const HEAP_STOP_TIMEOUT_MS = 8_000
+
+async function withDeadline<T>(work: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const deadline = new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), timeoutMs) })
+  try {
+    return await Promise.race([work, deadline])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
 }
 
 export type ProfileReport = {
@@ -294,13 +376,14 @@ export type ProfileReport = {
   styleCoverage?: CoverageSummary
   cpu?: CpuSummary
   heap?: HeapSummary
+  heapUnavailable?: string
   metrics: Record<string, number>
 }
 
 export async function stopProfiling(
   send: ProfileSend,
   channels: ProfileChannels,
-  options: { limit: number; styleSheetUrls: Record<string, string> }
+  options: { limit: number; styleSheets: StyleSheetRecord[] }
 ): Promise<ProfileReport> {
   const report: ProfileReport = { metrics: {} }
   if (channels.script) {
@@ -310,12 +393,20 @@ export async function stopProfiling(
   if (channels.style) {
     report.styleCoverage = foldRuleCoverage(
       await send('CSS.stopRuleUsageTracking'),
-      options.styleSheetUrls,
+      options.styleSheets,
       options.limit
     )
   }
   if (channels.cpu) report.cpu = foldCpuProfile(await send('Profiler.stop'), options.limit)
-  if (channels.heap) report.heap = foldHeapProfile(await send('HeapProfiler.stopSampling'), options.limit)
+  if (channels.heap) {
+    const raw = await withDeadline(send('HeapProfiler.stopSampling').catch(() => null), HEAP_STOP_TIMEOUT_MS)
+    if (raw) report.heap = foldHeapProfile(raw, options.limit)
+    else {
+      report.heapUnavailable = 'HeapProfiler.stopSampling did not answer within '
+        + `${HEAP_STOP_TIMEOUT_MS / 1_000}s: the sampler was armed in an isolate this tab has since replaced. `
+        + 'Arm heap sampling again and stop it without an intervening cross-process navigation.'
+    }
+  }
   await send('Performance.enable').catch(() => undefined)
   report.metrics = foldMetrics(await send('Performance.getMetrics'))
   return report
