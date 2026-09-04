@@ -2,11 +2,23 @@ import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-/** The Codex-managed catalog is richer than app-server `model/list`: it includes each model's
- * maximum supported active-context size. Keep that provider detail here, outside shared types. */
+/** The Codex-managed catalog is richer than app-server `model/list`: it includes context metadata.
+ * Keep that provider detail here, outside shared types. */
 export type CodexModelContextWindows = ReadonlyMap<string, number>
 
-/** Read maximum context windows from the same cache the installed Codex CLI owns. */
+/** Native capacities from OpenAI's public model catalog. Codex's cache can advertise a lower
+ * product default in `max_context_window`, so known exact model ids must take precedence. */
+const NATIVE_CONTEXT_WINDOWS: Readonly<Record<string, number>> = Object.freeze({
+  'gpt-5.6-sol': 1_050_000,
+  'gpt-5.6-terra': 1_050_000,
+  'gpt-5.6-luna': 1_050_000,
+  'gpt-5.5': 1_050_000,
+  'gpt-5.4': 1_050_000,
+  'gpt-5.4-mini': 400_000,
+  'gpt-5.3-codex-spark': 400_000
+})
+
+/** Read model ids from the installed Codex CLI cache and resolve their native context windows. */
 export async function loadCodexModelContextWindows(
   cachePath = join(process.env.CODEX_HOME?.trim() || join(homedir(), '.codex'), 'models_cache.json')
 ): Promise<CodexModelContextWindows> {
@@ -19,7 +31,7 @@ export async function loadCodexModelContextWindows(
   }
 }
 
-/** Parse only positive integer maxima; malformed entries never become runtime overrides. */
+/** Prefer known native capacities, then accept only positive integer cache maxima as a fallback. */
 export function parseCodexModelContextWindows(value: unknown): CodexModelContextWindows {
   if (!value || typeof value !== 'object') return new Map()
   const models = (value as { models?: unknown }).models
@@ -29,7 +41,9 @@ export function parseCodexModelContextWindows(value: unknown): CodexModelContext
     if (!entry || typeof entry !== 'object') continue
     const model = entry as Record<string, unknown>
     const id = typeof model.slug === 'string' ? model.slug : typeof model.id === 'string' ? model.id : ''
-    const maximum = positiveInteger(model.max_context_window) ?? positiveInteger(model.context_window)
+    const maximum = NATIVE_CONTEXT_WINDOWS[id]
+      ?? positiveInteger(model.max_context_window)
+      ?? positiveInteger(model.context_window)
     if (id && maximum) windows.set(id, maximum)
   }
   return windows
