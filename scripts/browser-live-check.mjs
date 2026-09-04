@@ -17,7 +17,6 @@ try {
   const env = {
     ...sanitizeGpuEnv().env,
     CLOSEDAI_BROWSER_CHECK_PROFILE: join(root, 'profile'),
-    ...process.env.CLOSEDAI_BROWSER_LIVE_URL ? { CLOSEDAI_BROWSER_LIVE_URL: process.env.CLOSEDAI_BROWSER_LIVE_URL } : {},
     ...process.env.CLOSEDAI_BROWSER_CHECK_TIMEOUT_MS ? { CLOSEDAI_BROWSER_CHECK_TIMEOUT_MS: process.env.CLOSEDAI_BROWSER_CHECK_TIMEOUT_MS } : {}
   }
   for (const key of ['ELECTRON_RUN_AS_NODE', 'ELECTRON_EXEC_PATH', 'ELECTRON_CLI_ARGS', 'NODE_OPTIONS']) delete env[key]
