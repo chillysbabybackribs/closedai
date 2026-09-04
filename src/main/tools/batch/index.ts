@@ -257,6 +257,10 @@ async function runParallel(registry: ToolRegistry, calls: BatchCall[], context: 
   // imposing an arbitrary global width; explicit tab ids are what unlock browser concurrency.
   await allSettledBounded(groups, groups.length, async (group) => {
     for (const call of group) {
+      if (context.signal.aborted) {
+        outcomes.set(call.index, { status: 'skipped', reason: 'the batch timed out' })
+        continue
+      }
       try {
         outcomes.set(call.index, { status: 'ran', result: await dispatch(registry, call, context) })
       } catch (error) {

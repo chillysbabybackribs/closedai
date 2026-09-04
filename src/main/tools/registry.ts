@@ -186,12 +186,14 @@ export class ToolRegistry {
       const run = Promise.resolve().then(() =>
         definition.run(input as JsonObject, { ...context, signal: controller.signal })
       )
-      void run.then(lock, lock)
       return await Promise.race([run, timeout])
     } catch (error) {
       return failureResult(`${label}: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
       if (timer) clearTimeout(timer)
+      // A timed-out tool may ignore its abort signal and never settle. Its public call has
+      // ended, so retaining the resource lock would permanently strand that target.
+      lock()
     }
   }
 

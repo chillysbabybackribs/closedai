@@ -197,3 +197,33 @@ test('thrown tool errors obey the same context budget', async () => {
   assert.ok(result.content[0]?.type === 'text')
   assert.ok(result.content[0].text.length <= MAX_RESULT_TEXT_CHARS)
 })
+
+test('a timed-out tool releases its resource lock even when its run promise never settles', async () => {
+  const browser: ToolNamespace = {
+    name: 'browser_cdp',
+    description: 'Browser automation',
+    tools: [{
+      name: 'protocol',
+      description: 'Test target work',
+      timeoutMs: 5,
+      inputSchema: {
+        type: 'object',
+        properties: { action: { type: 'string' }, tab_id: { type: 'string' }, hang: { type: 'boolean' } },
+        required: ['action', 'tab_id']
+      },
+      run: async (input) => input.hang
+        ? await new Promise(() => {})
+        : textResult('recovered')
+    }]
+  }
+  const registry = new ToolRegistry([browser])
+  const request = (hang: boolean) => ({
+    namespace: 'browser_cdp', tool: 'protocol',
+    arguments: { action: 'command', tab_id: 'tab-1', hang }
+  })
+
+  const timedOut = await registry.call(request(true), { ...context, paneId: 'pane-a', callId: 'hang' })
+  assert.equal(timedOut.errorKind, 'timeout')
+  const retry = await registry.call(request(false), { ...context, paneId: 'pane-b', callId: 'retry' })
+  assert.deepEqual(retry, textResult('recovered'))
+})

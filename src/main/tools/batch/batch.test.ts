@@ -266,6 +266,27 @@ test('an active-tab browser call serializes every browser lane in its batch', as
   await run
 })
 
+test('an aborted parallel batch does not dispatch queued work in a same-tab lane', async () => {
+  const { registry, starts, release } = browserHarness()
+  const controller = new AbortController()
+  const batch = registry.find('tool_batch', 'run')
+  assert.ok(batch)
+  const run = batch.run({
+    parallel: true,
+    calls: [
+      { tool: 'browser_cdp.protocol', arguments: { action: 'command', tab_id: 'tab-a', id: 'a1' } },
+      { tool: 'browser_cdp.protocol', arguments: { action: 'command', tab_id: 'tab-a', id: 'a2' } }
+    ]
+  }, { ...context, signal: controller.signal })
+  await waitForStart(starts, 'a1')
+  controller.abort()
+  release('a1')
+  const result = await run
+
+  assert.deepEqual(starts, ['a1'])
+  assert.match(batchText(result), /\[2\] browser_cdp\.protocol — skipped: the batch timed out/)
+})
+
 test('a batch where every call fails is itself an error', async () => {
   const { registry } = harness()
   const result = await call(registry, { parallel: true, calls: [{ tool: 'lab.boom' }, { tool: 'lab.boom' }] })
