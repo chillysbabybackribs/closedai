@@ -9,7 +9,7 @@ every running model's prompt.
 | Layer | Owner | Delivery |
 |---|---|---|
 | Common product facts and tool routing | `src/main/chat-context/application-instructions.ts` | Included by Codex, Claude, Antigravity, and Cursor instruction builders |
-| Response style | `src/main/chat-context/articulation-instructions.ts` | Included by all four builders; outcome-first responses, meaningful updates without first-person work narration, and full `https://` markdown links for referenced pages |
+| Response style | `src/main/chat-context/articulation-instructions.ts` | Included by all four builders; direct responses, useful progress, verification and limitations, and Markdown links for referenced pages |
 | Engineering workflow | `src/main/chat-context/engineering-instructions.ts` | Shared narrow-read, structured-edit, verification, Git-state, and delegation policy plus each provider's native tool names |
 | Codex adapter guidance | `src/main/chat-context/developer-instructions.ts`, `thread-params.ts` | `developerInstructions` on thread start and resume, alongside Codex's base instructions |
 | Claude adapter guidance | `src/main/claude/claude-instructions.ts`, `claude-options.ts` | Appended to the SDK's `claude_code` system preset when a query runtime starts |
@@ -197,7 +197,8 @@ providers can use `tool_batch.run`. Suppress successful intermediate payloads, a
 visible. Output budgets, screenshot limits, and compaction settings are in [Tools](tools.md).
 
 The verification budgets are under 5,625 characters for Codex developer instructions, 6,500 for
-Claude, 7,750 for Antigravity, 7,000 for Cursor, and 1,200 for the checkout capsule. The separately appended
+Claude, 7,750 for Antigravity, 7,000 for Cursor, 1,200 for checkout orientation prose, and 5,000 for
+the full orientation capsule including the generated map. The separately appended
 root `AGENTS.md` is capped at 20,000. Share repeated guidance and remove duplication when expanding
 prompts; do not solve drift by injecting the entire documentation tree.
 

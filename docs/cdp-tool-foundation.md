@@ -1,8 +1,10 @@
 # CDP tool foundation
 
 ClosedAI uses Electron's in-process `webContents.debugger` transport. It does not open a
-remote-debugging port. The primary model-facing browser interface is the eagerly advertised
-`browser_cdp.protocol`. `browser_cdp.page` supplies semantic element refs and an input wrapper.
+remote-debugging port. Models start with `embedded_browser.page`, `network`, and `session`.
+`browser_cdp.protocol` is the advanced fallback; protocol, profiling, instrumentation, and
+emulation tools are deferred on providers supporting tool discovery. `browser_cdp.page` remains
+eagerly available for semantic element refs and an input wrapper.
 Source review: 2026-09-04; the behavior below follows the current implementation.
 
 ## Ownership model
