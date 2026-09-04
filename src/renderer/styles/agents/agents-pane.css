@@ -231,7 +231,7 @@
 .agents-footer-error {
   min-width: 0;
   overflow: hidden;
-  color: var(--status-failed, #e5484d);
+  color: #d8a657;
   font-family: var(--font-sans, system-ui, sans-serif);
   font-size: 11.5px;
   line-height: 1.2;

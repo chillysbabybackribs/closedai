@@ -19,7 +19,6 @@ export type FoldState = {
 
 type RowProps = {
   row: DrawerRowModel
-  activeChatId: string | null
   fold: FoldState
   controller: DrawerController
   chat: ChatController
@@ -30,7 +29,6 @@ type RowProps = {
 
 export function DrawerRow({
   row,
-  activeChatId,
   fold,
   controller,
   chat,
@@ -46,7 +44,7 @@ export function DrawerRow({
     return () => window.clearTimeout(timer)
   }, [openError])
 
-  const isCurrent = rowIsCurrent(row, chat.selectedPaneId, activeChatId)
+  const isCurrent = rowIsCurrent(row, chat.selectedPaneId)
   const isLive = row.running || row.status === 'running' || row.status === 'queued'
   // A finished chat gets no colour of its own: completion is carried by the "Recently completed"
   // section it moves into, so only failure still needs a mark on the row.
@@ -61,7 +59,7 @@ export function DrawerRow({
       title: row.title,
       paneId: row.paneId ?? null,
       threadId: row.threadId,
-      modelId: row.peer?.modelId ?? (isCurrent ? chat.state.selectedModel : null),
+      modelId: row.chat.modelId ?? (isCurrent ? chat.state.selectedModel : null),
       x: anchor.x,
       y: anchor.y
     })
@@ -69,16 +67,11 @@ export function DrawerRow({
 
   // Opening can legitimately fail — most often a thread another Codex client already holds the
   // writer lock on. Unhandled, the rejection only reached the console and the click looked dead.
-  // A history thread never replaces the selected chat: the controller opens it in place only when
-  // the selected pane is blank, and beside it otherwise.
+  // Attached or not, the row opens by its chat id; the main process decides whether it takes a
+  // blank selected pane or opens beside the current one.
   const handleOpen = (): void => {
     setOpenError(null)
-    const attempt = row.paneId !== undefined
-      ? (row.paneId !== chat.selectedPaneId ? chat.selectPane(row.paneId) : null)
-      : row.threadId
-        ? chat.openThread(row.threadId)
-        : null
-    if (attempt) void attempt.catch((error: unknown) => setOpenError(openFailureMessage(error)))
+    controller.openRow(row.id).catch((error: unknown) => setOpenError(openFailureMessage(error)))
   }
 
   return (
@@ -135,7 +128,6 @@ export function DrawerRow({
       {expanded ? (
         <DrawerSubtree
           row={row}
-          activeChatId={activeChatId}
           fold={fold}
           controller={controller}
           chat={chat}
@@ -161,7 +153,6 @@ function buildRowMeta(row: DrawerRowModel): string {
 
 function DrawerSubtree({
   row,
-  activeChatId,
   fold,
   controller,
   chat,
@@ -174,7 +165,6 @@ function DrawerSubtree({
     <DrawerRow
       key={child.id}
       row={child}
-      activeChatId={activeChatId}
       fold={fold}
       controller={controller}
       chat={chat}
