@@ -32,7 +32,6 @@ type Scope = {
 }
 
 const WHOLE = Number.POSITIVE_INFINITY
-const READ_TOOLS = new Set(['Read', 'Bash'])
 const SEARCH_TOOLS = new Set(['Grep', 'Glob'])
 const EDIT_TOOLS: Record<string, string> = {
   Edit: 'file_path',
@@ -86,7 +85,7 @@ export class ClaudeReadLedger {
     const state = this.scope(scope)
     const args = record(input)
     if (tool === 'Read') {
-      const path = String(args.file_path ?? '')
+      const path = args.file_path ? resolve(String(args.file_path)) : ''
       if (!path) return
       const file = record(record(response).file)
       const total = numberOf(file.totalLines)
@@ -131,7 +130,7 @@ export class ClaudeReadLedger {
   }
 
   private beforeRead(state: Scope, args: Record<string, unknown>): LedgerVerdict {
-    const path = String(args.file_path ?? '')
+    const path = args.file_path ? resolve(String(args.file_path)) : ''
     const seen = state.files.get(path)
     if (!path || !seen) return { kind: 'allow' }
     const total = state.totals.get(path) ?? WHOLE
@@ -144,10 +143,11 @@ export class ClaudeReadLedger {
       return { kind: 'deny', reason: `${describe(path, wanted, total)} already returned earlier in this turn, and the file has not changed since. Use that copy, or read lines outside it.` }
     }
     if (missing.length !== 1 || span(missing[0]!) >= span(wanted)) return { kind: 'allow' }
-    const [gap] = missing
-    const omitted = subtract(wanted, [gap!])
-    const input = { ...args, offset: gap!.start, ...(gap!.end === WHOLE ? {} : { limit: gap!.end - gap!.start + 1 }) }
-    if (gap!.end === WHOLE) delete input.limit
+    const gap = missing[0]!
+    const omitted = subtract(wanted, [gap])
+    const input: Record<string, unknown> = { ...args, offset: gap.start }
+    delete input.limit
+    if (gap.end !== WHOLE) input.limit = gap.end - gap.start + 1
     this.onSkip?.({ tool: 'Read', path, lines: omitted.reduce((sum, range) => sum + span(range), 0), verdict: 'narrow' })
     const note = `${describe(path, omitted, total)} left out of this read: those lines were already returned earlier in this turn and are unchanged.`
     return { kind: 'narrow', input, note }
@@ -166,7 +166,7 @@ export class ClaudeReadLedger {
       state.searches.clear()
       return { kind: 'allow' }
     }
-    if (parsed.reads.length === 0 || parsed.segments !== parsed.reads.length) return { kind: 'allow' }
+    if (parsed.reads.length === 0 || parsed.readSegments !== parsed.segments) return { kind: 'allow' }
     const covered = parsed.reads.every((read) => {
       const seen = state.files.get(read.path)
       if (!seen) return false
@@ -242,9 +242,9 @@ export function subtract(wanted: LineRange, seen: readonly LineRange[]): LineRan
     if (range.start > wanted.end) break
     if (range.start > cursor) gaps.push({ start: cursor, end: range.start - 1 })
     cursor = Math.max(cursor, range.end + 1)
-    if (cursor > wanted.end) break
+    if (cursor > wanted.end || cursor === WHOLE) break
   }
-  if (cursor <= wanted.end) gaps.push({ start: cursor, end: wanted.end })
+  if (cursor <= wanted.end && cursor !== WHOLE) gaps.push({ start: cursor, end: wanted.end })
   return gaps
 }
 
@@ -263,7 +263,7 @@ function mentions(command: string, path: string, cwd: string): boolean {
 }
 
 type ShellRead = { path: string; range: LineRange }
-type ParsedShell = { pureRead: boolean; segments: number; reads: ShellRead[] }
+type ParsedShell = { pureRead: boolean; segments: number; readSegments: number; reads: ShellRead[] }
 
 /**
  * A conservative reading of a shell command: pure when every segment is a known read-only
@@ -274,7 +274,9 @@ export function parseShell(command: string, cwd: string): ParsedShell {
   const segments = splitSegments(command)
   const reads: ShellRead[] = []
   let pureRead = segments.length > 0
+  let readSegments = 0
   for (const segment of segments) {
+    const before = reads.length
     const words = shellWords(segment)
     if (words.some((word) => /^\d*>{1,2}/.test(word) || word === '>' || word === '>>' || word === '&>')) pureRead = false
     let index = 0
@@ -296,6 +298,7 @@ export function parseShell(command: string, cwd: string): ParsedShell {
           for (const path of paths) reads.push({ path: resolve(cwd, path), range: { start: Number(match[1]), end: Number(match[2] ?? match[1]) } })
         }
       }
+      if (reads.length > before) readSegments++
       continue
     }
     if (!READ_COMMANDS.has(program)) { pureRead = false; continue }
@@ -313,8 +316,9 @@ export function parseShell(command: string, cwd: string): ParsedShell {
       }
       if (Number.isFinite(count)) for (const path of paths) reads.push({ path: resolve(cwd, path), range: { start: 1, end: count } })
     }
+    if (reads.length > before) readSegments++
   }
-  return { pureRead, segments: segments.length, reads }
+  return { pureRead, segments: segments.length, readSegments, reads }
 }
 
 function looksLikePath(word: string): boolean {
