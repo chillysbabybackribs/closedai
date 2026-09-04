@@ -65,19 +65,16 @@ export class NetworkRules {
 
   /** The first block or redirect rule that applies; block wins over redirect. */
   decide(url: string, tabId: string | null): { cancel: true; ruleId: string } | { redirectUrl: string; ruleId: string } | null {
-    let redirect: { redirectUrl: string; ruleId: string } | null = null
-    for (const rule of this.rules.values()) {
-      if (!applies(rule, url, tabId)) continue
-      if (rule.action === 'block') {
-        rule.hits += 1
-        return { cancel: true, ruleId: rule.id }
-      }
-      if (rule.action === 'redirect' && rule.redirectUrl && !redirect) {
-        rule.hits += 1
-        redirect = { redirectUrl: rule.redirectUrl, ruleId: rule.id }
-      }
+    const applicable = [...this.rules.values()].filter((rule) => applies(rule, url, tabId))
+    const block = applicable.find((rule) => rule.action === 'block')
+    if (block) {
+      block.hits += 1
+      return { cancel: true, ruleId: block.id }
     }
-    return redirect
+    const redirect = applicable.find((rule) => rule.action === 'redirect' && rule.redirectUrl)
+    if (!redirect || !redirect.redirectUrl) return null
+    redirect.hits += 1
+    return { redirectUrl: redirect.redirectUrl, ruleId: redirect.id }
   }
 
   applyRequestHeaders(url: string, tabId: string | null, headers: Record<string, string | string[]>): void {

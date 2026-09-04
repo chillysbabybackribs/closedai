@@ -14,6 +14,12 @@ export const tabIdField: JsonObject = {
   description: 'A tab id as reported by navigate. Defaults to the active tab.'
 }
 
+export const selectorField: JsonObject = {
+  type: 'string',
+  minLength: 1,
+  description: 'CSS selector evaluated in the main frame. read_page reads the first match instead of the whole page; query reports every match.'
+}
+
 export const maxCharsField: JsonObject = {
   type: 'integer',
   minimum: 200,

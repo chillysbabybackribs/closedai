@@ -1,7 +1,7 @@
 import type { ToolAction } from '../action-tool.js'
 import { jsonResult } from '../json-result.js'
 import { booleanArg, failureResult, numberArg, stringArg } from '../tool.js'
-import { tabIdField } from './fields.js'
+import { selectorField, tabIdField } from './fields.js'
 import { requireBrowser, type BrowserHostProvider } from './host.js'
 
 const DEFAULT_LIMIT = 20
@@ -20,7 +20,7 @@ export function queryAction(browser: BrowserHostProvider): ToolAction {
       type: 'object',
       properties: {
         tab_id: tabIdField,
-        selector: { type: 'string', minLength: 1, description: 'CSS selector evaluated in the main frame.' },
+        selector: selectorField,
         text_contains: { type: 'string', minLength: 1, description: 'Case-insensitive substring the element text must contain.' },
         attributes: { type: 'array', maxItems: 20, items: { type: 'string', minLength: 1 }, description: 'Extra attribute names to report per element.' },
         visible_only: { type: 'boolean', description: 'Only elements with a non-empty box that are not hidden. Default false.' },

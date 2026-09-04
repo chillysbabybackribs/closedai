@@ -26,8 +26,8 @@ test('evaluate accepts statements with a return and reports thrown errors', asyn
   const statements = await evaluateInPage(contents, { expression: 'const a = 2; const b = 3; return a * b', maxChars: 1_000 })
   assert.deepEqual(statements, { ok: true, type: 'number', value: 6, truncated: false })
   const failed = await evaluateInPage(contents, { expression: 'null.missing', maxChars: 1_000 })
-  assert.equal(failed.ok, false)
-  assert.match(!failed.ok ? failed.error : '', /TypeError/)
+  assert.equal(failed?.ok, false)
+  assert.match(failed && !failed.ok ? failed.error : '', /TypeError/)
 })
 
 test('evaluate serialises awkward values and bounds the result', async () => {
@@ -41,8 +41,8 @@ test('evaluate serialises awkward values and bounds the result', async () => {
     value: { f: '[Function f]', d: '1970-01-01T00:00:00.000Z', m: [['k', 1]], big: '10n', self: '[Circular]' }
   })
   const bounded = await evaluateInPage(contents, { expression: '"x".repeat(5000)', maxChars: 1_000 })
-  assert.equal(bounded.ok && bounded.truncated, true)
-  assert.equal(bounded.ok && typeof bounded.value === 'string' && bounded.value.length, 1_000)
+  assert.equal(bounded?.ok === true && bounded.truncated, true)
+  assert.equal(bounded?.ok === true && typeof bounded.value === 'string' ? bounded.value.length : -1, 1_000)
 })
 
 test('parseEvaluation tolerates a page that returns nothing usable', () => {
