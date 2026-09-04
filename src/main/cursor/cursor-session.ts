@@ -159,6 +159,7 @@ export class CursorSession {
    * making the next turn pay another start; the agent holds several sessions at once.
    */
   continueWith(sessionId: string): void {
+    if (this.loadedSessionId === sessionId && this.setup) this.deps.onSetup(this.setup)
     if (this.sessionId === sessionId) return
     this.sessionId = sessionId
     this.instructionsPending = true

@@ -16,6 +16,8 @@ export class ToolTelemetry extends EventEmitter {
   private readonly stats = new Map<string, ToolStats>()
   private totalCalls = 0
   private writes: Promise<void> = Promise.resolve()
+  private writing = false
+  private dirty = false
 
   private constructor(private readonly filePath: string | null, snapshot?: ToolTelemetrySnapshot) {
     super()
@@ -72,8 +74,24 @@ export class ToolTelemetry extends EventEmitter {
 
   private enqueuePersist(): void {
     if (!this.filePath) return
-    this.writes = this.writes.then(() => this.persistNow()).catch((error: unknown) => {
-      console.warn('[tools] telemetry write failed:', messageOf(error))
+    this.dirty = true
+    if (this.writing) return
+    this.writing = true
+    this.writes = Promise.resolve().then(async () => {
+      try {
+        // Keep one writer and fold bursts into its next snapshot, including updates received
+        // while an atomic write is in flight. clear() awaits this entire drain.
+        while (this.dirty) {
+          this.dirty = false
+          try {
+            await this.persistNow()
+          } catch (error) {
+            console.warn('[tools] telemetry write failed:', messageOf(error))
+          }
+        }
+      } finally {
+        this.writing = false
+      }
     })
   }
 

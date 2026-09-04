@@ -294,6 +294,9 @@ export class CursorChatService extends EventEmitter {
     try {
       this.session ??= this.createSession()
       this.session.adoptSaved(this.settings.get().chatCursorSessionId)
+      // A saved-session replay also supplies the catalog. Load it first so an uncached
+      // catalog does not cause an initial load whose history would be discarded.
+      if (warm) await this.resumePersistedSession()
       if (!this.loadCachedCatalog()) {
         const setup = await this.session.warm()
         if (setup.models.length === 0) throw new Error('Cursor reported no available models')
@@ -302,7 +305,6 @@ export class CursorChatService extends EventEmitter {
       this.setConnection({ state: 'ready', message: 'Cursor is ready' })
       void this.readAccount()
       if (!warm) await this.session.retire()
-      else await this.resumePersistedSession()
       void this.refreshPlanUsage()
     } catch (error) {
       const message = messageOf(error)
