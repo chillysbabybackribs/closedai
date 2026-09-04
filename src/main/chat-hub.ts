@@ -115,7 +115,8 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     for (const name of CHAT_PROVIDERS) {
       if (name === this.active || this.catalogs?.read(name)) continue
       void this.providers[name].start({ warm: false })
-        .then(() => { if (this.stopped) this.providers[name].stop() })
+        // Its catalog is now cached; the process it needed to read it has no further use here.
+        .then(() => { if (this.stopped || name !== this.active) this.providers[name].stop() })
         .catch((error: unknown) => console.warn(`[chat] ${name} start failed:`, error))
     }
   }
@@ -212,9 +213,8 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   private async switchTo(source: ChatSnapshot, target: ChatProvider, action: () => Promise<void>): Promise<void> {
     if (source.activeTurnId) throw new Error('Stop the current turn before switching models')
     const previous = this.active
-    if (this.providers[target].snapshot({ limit: 0 }).connection.state === 'starting') {
-      await this.providers[target].start({ warm: true })
-    }
+    const targetState = this.providers[target].snapshot({ limit: 0 }).connection.state
+    if (targetState !== 'ready' && targetState !== 'signed-out') await this.providers[target].start({ warm: true })
     await action()
     this.active = target
     this.providers[previous].stop()

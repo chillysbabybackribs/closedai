@@ -1,5 +1,6 @@
 import type { ChatTranscriptItem } from '../../shared/chat.js'
 import { recordOf, stringOf } from '../claude/claude-tool-items.js'
+import { classifyAntigravityCache } from './antigravity-cache-diagnostics.js'
 import { antigravityToolItem, antigravityToolResult, resolveAntigravityTool, type AntigravityServerName } from './antigravity-tool-items.js'
 
 // Pure translation from the `agy` stream-json events of one turn to transcript operations, so
@@ -24,7 +25,14 @@ export type TranscriptOp =
 
 export type TurnEnd = { status: 'completed' | 'interrupted' | 'failed'; error?: string }
 
-export type AntigravityTranslation = { ops: TranscriptOp[]; conversationId?: string; model?: string; turnEnd?: TurnEnd }
+export type AntigravityTranslation = {
+  ops: TranscriptOp[]
+  conversationId?: string
+  model?: string
+  turnEnd?: TurnEnd
+  /** Session should send the empty-success recovery prompt on the live process. */
+  requestEmptySuccessRecovery?: boolean
+}
 
 export type AntigravityTranslatorOptions = {
   turnId: string
@@ -34,6 +42,10 @@ export type AntigravityTranslatorOptions = {
   displayScreenshot: (callId: string) => { dataUrl: string } | null
   /** The registry call id behind the ClosedAI tool the CLI just reported, when the bridge served one. */
   takeCallId: (namespace: string, tool: string) => string | null
+  /** When SUCCESS arrives without assistant text, return true to queue one internal recovery turn. */
+  requestEmptySuccessRecovery?: () => boolean
+  /** Token accounting from the turn, for trace telemetry. */
+  onTokenUsage?: (usage: { inputTokens: number; cacheReadTokens?: number; cacheAnomaly: boolean }) => void
 }
 
 const INTERRUPTED_STATUSES = new Set(['CANCELED', 'CANCELLED', 'INTERRUPTED'])
@@ -43,6 +55,8 @@ export class AntigravityTurnTranslator {
   private readonly texts = new Map<number, string>()
   private lastText: { id: string; text: string } | null = null
   private settled = false
+  private emptySuccessRecoveries = 0
+  private lastStepUsage: Record<string, unknown> | null = null
 
   constructor(private readonly options: AntigravityTranslatorOptions) {}
 
@@ -82,6 +96,8 @@ export class AntigravityTurnTranslator {
   }
 
   private handleStep(step: Record<string, unknown>): AntigravityTranslation {
+    const usage = recordOf(step.usage)
+    if (Object.keys(usage).length > 0) this.lastStepUsage = usage
     const conversationId = typeof step.conversation_id === 'string' ? { conversationId: step.conversation_id } : {}
     const index = typeof step.step_index === 'number' ? step.step_index : -1
     if (index < 0) return { ops: [], ...conversationId }
@@ -145,21 +161,59 @@ export class AntigravityTurnTranslator {
     const conversationId = typeof result.conversation_id === 'string' ? { conversationId: result.conversation_id } : {}
     const status = stringOf(result.status) || 'SUCCESS'
     const response = stringOf(result.response)
+    const resultUsage = recordOf(result.usage)
+    if (Object.keys(resultUsage).length > 0) this.lastStepUsage = resultUsage
     const ops = this.finish()
     if (status === 'SUCCESS') {
+      const finalText = response.trim()
+      if (!finalText && (!this.lastText || !this.lastText.text.trim())) {
+        if (this.emptySuccessRecoveries === 0 && this.tryEmptySuccessRecovery()) {
+          this.emptySuccessRecoveries = 1
+          this.settled = false
+          return { ops, ...conversationId, requestEmptySuccessRecovery: true }
+        }
+        const message = this.emptySuccessRecoveries > 0
+          ? 'Antigravity finished twice without a reply'
+          : 'Antigravity finished the turn without a reply'
+        ops.push({ type: 'notice', text: message, tone: 'info' })
+        this.emitTokenUsage()
+        return { ops, ...conversationId, turnEnd: { status: 'completed' } }
+      }
       ops.push(...this.repairFinalText(response))
+      this.emitTokenUsage()
       return { ops, ...conversationId, turnEnd: { status: 'completed' } }
     }
-    if (INTERRUPTED_STATUSES.has(status)) return { ops, ...conversationId, turnEnd: { status: 'interrupted' } }
+    if (INTERRUPTED_STATUSES.has(status)) {
+      this.emitTokenUsage()
+      return { ops, ...conversationId, turnEnd: { status: 'interrupted' } }
+    }
     const error = stringOf(result.error) || `Antigravity turn ended: ${status.toLowerCase()}`
+    this.emitTokenUsage()
     return { ops, ...conversationId, turnEnd: { status: 'failed', error } }
+  }
+
+  private tryEmptySuccessRecovery(): boolean {
+    try {
+      return this.options.requestEmptySuccessRecovery?.() === true
+    } catch {
+      return false
+    }
+  }
+
+  private emitTokenUsage(): void {
+    const usage = this.lastStepUsage
+    if (!usage || !this.options.onTokenUsage) return
+    const inputTokens = usage.input_tokens
+    if (typeof inputTokens !== 'number' || !Number.isFinite(inputTokens) || inputTokens < 0) return
+    const cacheRead = usage.cache_read_tokens
+    const cacheReadTokens = typeof cacheRead === 'number' && Number.isFinite(cacheRead) && cacheRead >= 0 ? cacheRead : undefined
+    const { anomaly } = classifyAntigravityCache({ inputTokens, cacheReadTokens })
+    this.options.onTokenUsage({ inputTokens, cacheReadTokens, cacheAnomaly: anomaly })
   }
 
   /** `result.response` is the final assistant text; trust it over a delta stream that came up short. */
   private repairFinalText(response: string): TranscriptOp[] {
-    if (!response.trim()) {
-      return this.lastText ? [] : [{ type: 'notice', text: 'Antigravity finished the turn without a reply', tone: 'info' }]
-    }
+    if (!response.trim()) return this.lastText ? [] : []
     if (!this.lastText) return [{ type: 'item', item: this.assistantItem(`${this.options.turnId}:final`, response, false) }]
     if (this.lastText.text.trim() === response.trim() || this.lastText.text.length >= response.length) return []
     return [{ type: 'item', item: this.assistantItem(this.lastText.id, response, false) }]

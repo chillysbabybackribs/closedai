@@ -25,6 +25,7 @@ import { PeerIdleParking } from './peer-idle-parking.js'
 import { PeerLifecycle, type ChatPeerFactory, type PeerEntry } from './peer-lifecycle.js'
 import { selectedMirror } from './peer-settings.js'
 import { pageResult, subagentSummaries } from './peer-summary.js'
+import { schedulePaneWarm } from './provider-warm.js'
 
 export type { ChatPeerFactory } from './peer-lifecycle.js'
 
@@ -166,6 +167,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // own `replace` when it lands.
     this.emitWorkspace()
     await this.persistOpenChats()
+    this.scheduleWarm(paneId)
     this.wakeLater(paneId, 'wake pane')
   }
 
@@ -320,6 +322,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     await this.trimAttached()
     await this.persistOpenChats()
     this.catalog.invalidate()
+    this.scheduleWarm(chatId)
     this.wakeLater(chatId, 'open chat')
     return chatId
   }
@@ -443,6 +446,14 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   private wake(paneId: ChatPaneId): Promise<PeerEntry> {
     return this.lifecycle.withBusy(paneId, () => this.parking.wake(paneId) as Promise<PeerEntry>)
+  }
+
+  /** Warm the provider after the user dwells on a pane, without blocking selection paint. */
+  private scheduleWarm(paneId: ChatPaneId): void {
+    schedulePaneWarm(paneId, async (target) => {
+      if (target !== this.selectedPaneId) return
+      await this.withAwake(target, (surface) => surface.start())
+    })
   }
 
   /**

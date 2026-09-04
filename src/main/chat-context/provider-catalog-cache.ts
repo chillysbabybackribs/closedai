@@ -32,10 +32,13 @@ export class WorkspaceCatalogs {
     return entry as ProviderCatalogEntry<Raw>
   }
 
-  /** An empty catalog is a failed read, not a fact worth sharing. */
+  /**
+   * An empty catalog is a failed read, not a fact worth sharing. A reading without the native
+   * listing (the hub learns catalogs from connection events) keeps the listing already held.
+   */
   remember<Raw = unknown>(provider: ChatProvider, models: ChatModel[], raw: Raw | null = null): void {
     if (models.length === 0) return
-    this.entries.set(provider, { at: this.now(), models, raw })
+    this.entries.set(provider, { at: this.now(), models, raw: raw ?? this.entries.get(provider)?.raw ?? null })
   }
 
   forget(provider?: ChatProvider): void {

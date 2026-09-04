@@ -10,6 +10,7 @@ import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-c
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { buildCompactionSeed, compactedAdditionalContext } from '../chat-context/provider-compaction.js'
 import { antigravityPlanUsage, planUsageUnavailable } from '../chat-context/plan-usage.js'
+import type { WorkspaceCatalogs } from '../chat-context/provider-catalog-cache.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
@@ -19,7 +20,7 @@ import { AntigravityHistory } from './antigravity-history.js'
 import { antigravityConversationIdOf, antigravityThreadId } from './antigravity-ids.js'
 import { buildAntigravityPrompt } from './antigravity-input.js'
 import type { AntigravityToolBridge } from './antigravity-mcp.js'
-import { antigravityModelCatalog, antigravityWireModel, parseAntigravityModelList } from './antigravity-models.js'
+import { antigravityModelCatalog, antigravityWireModel, parseAntigravityModelList, type AntigravityCliModel } from './antigravity-models.js'
 import { ensureAntigravityProfile, type AntigravityProfile } from './antigravity-profile.js'
 import { AntigravitySession } from './antigravity-session.js'
 import type { TranscriptOp, TurnEnd } from './antigravity-stream.js'
@@ -33,6 +34,21 @@ import type { TranscriptOp, TurnEnd } from './antigravity-stream.js'
 const ANTIGRAVITY_PLAN_USAGE_UNAVAILABLE = planUsageUnavailable('The agy CLI does not report subscription usage.', 0)
 
 const SIGN_IN_MESSAGE = 'Sign in to Antigravity: run `agy` in a terminal, complete the Google login, then choose an Antigravity model again.'
+
+/**
+ * How long a quota reading serves every pane before a start-up asks the CLI again. `/quota` is a
+ * two-second `agy` process; with one per new chat and one per turn end, quota reads were most of
+ * what Antigravity spent on a chat that had not said anything yet. Hover and turn end still read
+ * fresh, since those are the moments the user is looking at the number.
+ */
+export const ANTIGRAVITY_QUOTA_REUSE_MS = 60_000
+
+let lastQuotaReading: { at: number; usage: ChatPlanUsage } | null = null
+
+/** Test seam: forget the shared quota reading. */
+export function forgetAntigravityQuota(): void {
+  lastQuotaReading = null
+}
 
 export class AntigravityChatService extends EventEmitter {
   private session: AntigravitySession | null = null
@@ -274,19 +290,25 @@ export class AntigravityChatService extends EventEmitter {
   private async connect(warm: boolean): Promise<void> {
     this.setConnection({ state: 'starting', message: 'Starting Antigravity…' })
     try {
-      const listing = await runAntigravityCommand(['models'])
-      if (!listing.ok) throw new Error(listing.stderr.trim() || listing.stdout.trim() || `agy models exited with ${listing.code ?? 'a signal'}`)
-      const cliModels = parseAntigravityModelList(listing.stdout)
-      if (cliModels.length === 0) throw new Error('agy models listed no models')
+      // `agy models` is a process spawn that also proves sign-in. The workspace's last listing,
+      // when it is recent, lets this pane be ready without one; a listing read here is shared.
+      let cliModels = this.catalogs?.read<AntigravityCliModel[]>('antigravity')?.raw ?? null
+      if (!cliModels) {
+        const listing = await runAntigravityCommand(['models'])
+        if (!listing.ok) throw new Error(listing.stderr.trim() || listing.stdout.trim() || `agy models exited with ${listing.code ?? 'a signal'}`)
+        cliModels = parseAntigravityModelList(listing.stdout)
+        if (cliModels.length === 0) throw new Error('agy models listed no models')
+      }
       const saved = this.settings.get()
       this.modelState.load(antigravityModelCatalog(cliModels, saved.chatModelId, saved.chatReasoningEffort))
+      this.catalogs?.remember('antigravity', this.modelState.models, cliModels)
       this.profile = await ensureAntigravityProfile(this.stateDir, { cwd: this.cwd })
       this.session ??= this.createSession()
       await this.resumePersistedConversation()
       this.account = { type: 'google', email: null, planType: null }
       this.setConnection({ state: 'ready', message: 'Antigravity is ready' })
       if (warm) await this.bridge.start()
-      void this.refreshPlanUsage()
+      void this.refreshPlanUsage(ANTIGRAVITY_QUOTA_REUSE_MS)
     } catch (error) {
       const message = messageOf(error)
       this.setConnection(isAntigravityAuthFailure(message)
