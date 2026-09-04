@@ -184,6 +184,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
         this.dormant.add(target)
         const effort = await this.rememberChoice(cached)
         this.emitEvent({ type: 'model', selectedModel: cached.id, selectedReasoningEffort: effort })
+        this.prefetchDormant()
         return
       }
       return this.current().selectModel(modelId)
@@ -289,6 +290,12 @@ export class ChatHub extends EventEmitter implements ChatSurface {
    * A provider that connected before the pick reached it (it was already starting) loaded the
    * model it had saved then, so the pane's choice is handed over once it is up.
    */
+  /** Warm a picked-but-dormant provider in the background so the first Send skips cold startup. */
+  private prefetchDormant(): void {
+    if (!this.dormant.has(this.active)) return
+    void this.startIfDormant().catch(() => undefined)
+  }
+
   private async startIfDormant(): Promise<void> {
     if (!this.dormant.has(this.active)) return
     const provider = this.providers[this.active]
@@ -345,6 +352,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
       try {
         await this.carryConversation(source, target)
         this.providers[previous].stop()
+        this.prefetchDormant()
         this.emitEvent({ type: 'replace', snapshot: this.merge(this.preserveSourceHistory(source, this.current().snapshot())) })
       } catch (error) {
         this.active = previous

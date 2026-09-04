@@ -27,6 +27,7 @@ const modifiersField: JsonObject = {
 export function cdpPageTool(cdp: CdpHostProvider): ToolDefinition {
   return defineActionTool({
     name: 'page',
+    deferLoading: true,
     description:
       'Semantic page inspection plus exceptional real input over CDP. Use fetch/extract, site APIs, or ' +
       'non-input protocol commands first. Click, type, press_key, and dismiss_overlay are escape hatches: ' +

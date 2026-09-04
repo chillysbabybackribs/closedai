@@ -109,11 +109,9 @@ function assembleSchema(name: string, actions: ToolAction[]): JsonObject {
     const requiredBy = actions
       .filter((action) => Array.isArray(action.inputSchema.required) && action.inputSchema.required.includes(key))
       .map((action) => action.action)
-    const note = requiredBy.length
-      ? `Required for: ${requiredBy.join(', ')}.`
-      : `Used by: ${verbs.join(', ')}.`
-    const base = typeof schema.description === 'string' ? `${schema.description.trim()} ` : ''
-    properties[key] = { ...schema, description: `${base}${note}` }
+    const note = requiredBy.length ? ` Required for: ${requiredBy.join(', ')}.` : ''
+    const base = typeof schema.description === 'string' ? schema.description.trim() : ''
+    properties[key] = { ...schema, description: base ? `${base}${note}` : note.trim() || undefined }
   }
   return { type: 'object', properties, required: ['action'] }
 }

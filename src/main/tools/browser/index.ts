@@ -36,15 +36,8 @@ export function browserTools(
       defineActionTool({
         name: 'page',
         description:
-          'Primary page tools for the embedded browser. Navigate changes the page; evaluate and fetch can mutate it or send requests. Use navigate to open a page, ' +
-          'read_page to get its text, wait_for when content loads late, query for structured facts about ' +
-          'elements matching a selector, evaluate to run JavaScript and get a bounded JSON result, and ' +
-          'console for the tab\'s logged messages and errors. For data rather than rendered text, use ' +
-          'fetch to call an endpoint from inside the tab (inheriting its origin and session) and extract ' +
-          'to return only the fields you name from a JSON response; for cross-origin APIs use ' +
-          'embedded_browser.session fetch instead. Every load reports the ready state it reached; trust ' +
-          '"complete", re-check anything else. navigate, read_page, and wait_for return plain text (a ' +
-          'Title / URL / Load state header, then the content); the rest return JSON.',
+          'Inspect and script the embedded browser page. navigate, read_page, and wait_for return plain text; ' +
+          'the rest return JSON. For cross-origin APIs prefer embedded_browser.session fetch.',
         actions: [
           navigateAction(browser),
           readPageAction(browser),
