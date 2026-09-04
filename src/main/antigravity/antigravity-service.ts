@@ -24,7 +24,7 @@ import type { AntigravityToolBridge } from './antigravity-mcp.js'
 import { antigravityModelCatalog, antigravityWireModel, parseAntigravityModelList, type AntigravityCliModel } from './antigravity-models.js'
 import { ensureAntigravityProfile, type AntigravityProfile } from './antigravity-profile.js'
 import { AntigravitySession } from './antigravity-session.js'
-import type { TranscriptOp, TurnEnd } from './antigravity-stream.js'
+import { applyTranscriptOp, handleProviderTurnEnd, type TranscriptOp, type TurnEnd } from '../chat-transcript-ops.js'
 
 // The Antigravity provider, mirroring ChatService's surface so the hub can route to any of the
 // three. Everything model-facing is Google's `agy` CLI on the user's subscription: the process
@@ -426,9 +426,7 @@ export class AntigravityChatService extends EventEmitter {
   }
 
   private applyOp(op: TranscriptOp): void {
-    if (op.type === 'item') this.transcript.upsert(op.item)
-    else if (op.type === 'delta') this.transcript.appendDelta(op.itemId, op.field, op.delta)
-    else this.addNotice(op.text, op.tone)
+    applyTranscriptOp(this.transcript, (text, tone) => this.addNotice(text, tone), op)
   }
 
   private adoptConversationId(conversationId: string): void {
@@ -445,13 +443,13 @@ export class AntigravityChatService extends EventEmitter {
   }
 
   private onTurnEnd(turnId: string, end: TurnEnd): void {
-    if (end.status === 'interrupted') {
-      this.addNotice(end.undelivered
-        ? 'Turn paused before the message was sent; Antigravity never received it'
-        : 'Turn paused', 'info', turnId)
-      this.setPaused(end.undelivered ? null : turnId)
-    }
-    if (end.status === 'failed') this.addNotice(end.error ?? 'The turn failed', 'error', turnId)
+    handleProviderTurnEnd(turnId, end, {
+      addNotice: (text, tone, id) => this.addNotice(text, tone, id),
+      setPaused: (id) => this.setPaused(id),
+      pauseMessage: (paused) => paused.undelivered
+        ? { text: 'Turn paused before the message was sent; Antigravity never received it', pausedTurnId: null }
+        : { text: 'Turn paused', pausedTurnId: turnId }
+    })
     const conversationId = this.session?.conversationId
     if (!conversationId) return
     const items = this.transcript.snapshot()

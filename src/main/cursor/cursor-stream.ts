@@ -1,4 +1,5 @@
 import type { ChatTranscriptItem } from '../../shared/chat.js'
+import type { TranscriptOp, TurnEnd } from '../chat-transcript-ops.js'
 import { recordOf, stringOf } from '../claude/claude-tool-items.js'
 import {
   cursorStatus, cursorToolContent, cursorToolItem, cursorToolResult, resolveCursorTool,
@@ -19,12 +20,7 @@ import {
 // starts a new one. That keeps a reply that resumes after a tool from being appended to text
 // the user already saw settle.
 
-export type TranscriptOp =
-  | { type: 'item'; item: ChatTranscriptItem }
-  | { type: 'delta'; itemId: string; field: 'text'; delta: string }
-  | { type: 'notice'; text: string; tone: 'info' | 'error' }
-
-export type TurnEnd = { status: 'completed' | 'interrupted' | 'failed'; error?: string }
+export type { TranscriptOp, TurnEnd } from '../chat-transcript-ops.js'
 
 export type CursorTranslation = { ops: TranscriptOp[]; title?: string; modeId?: string }
 

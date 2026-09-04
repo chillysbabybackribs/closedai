@@ -1,4 +1,5 @@
 import type { ChatTranscriptItem } from '../../shared/chat.js'
+import type { TranscriptOp, TurnEnd } from '../chat-transcript-ops.js'
 import { recordOf, stringOf } from '../claude/claude-tool-items.js'
 import { classifyAntigravityCache } from './antigravity-cache-diagnostics.js'
 import { antigravityToolItem, antigravityToolResult, resolveAntigravityTool, type AntigravityServerName } from './antigravity-tool-items.js'
@@ -18,17 +19,7 @@ import { antigravityToolItem, antigravityToolResult, resolveAntigravityTool, typ
 //   word streamed only "\n". So the last assistant item is repaired from `response` on close.
 // - Usage carries no context window, so the transcript shows no context gauge.
 
-export type TranscriptOp =
-  | { type: 'item'; item: ChatTranscriptItem }
-  | { type: 'delta'; itemId: string; field: 'text'; delta: string }
-  | { type: 'notice'; text: string; tone: 'info' | 'error' }
-
-export type TurnEnd = {
-  status: 'completed' | 'interrupted' | 'failed'
-  error?: string
-  /** Paused while the prompt was still queued behind the primer, so the CLI never saw it. */
-  undelivered?: boolean
-}
+export type { TranscriptOp, TurnEnd } from '../chat-transcript-ops.js'
 
 export type AntigravityTranslation = {
   ops: TranscriptOp[]

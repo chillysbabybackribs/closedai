@@ -2,6 +2,7 @@ import { ClaudeBackgroundTasks } from './claude-background-tasks.js'
 import type { ChatTranscriptItem } from '../../shared/chat.js'
 import type { ContextUsage } from '../chat-context/context-compaction.js'
 import { claudeRateLimitSignal, type ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
+import type { TranscriptOp, TurnEnd } from '../chat-transcript-ops.js'
 import {
   recordOf,
   stringOf,
@@ -10,6 +11,8 @@ import {
   type DisplayScreenshot,
   type ToolUse
 } from './claude-tool-items.js'
+
+export type { TranscriptOp, TurnEnd } from '../chat-transcript-ops.js'
 
 // Pure translation from the Claude Agent SDK's message stream to transcript operations, so the
 // service only applies ops and the same code replays stored sessions. Stream contracts this
@@ -22,13 +25,6 @@ import {
 //   messages carry the matching tool_result blocks keyed by tool_use id.
 // - `result` closes the turn; a non-success subtype, an is_error flag, or an aborted
 //   terminal_reason decides whether the turn completed, failed, or was stopped by the user.
-
-export type TranscriptOp =
-  | { type: 'item'; item: ChatTranscriptItem }
-  | { type: 'delta'; itemId: string; field: 'text'; delta: string }
-  | { type: 'notice'; text: string; tone: 'info' | 'error' }
-
-export type TurnEnd = { status: 'completed' | 'interrupted' | 'failed'; error?: string }
 
 export type ClaudeTranslation = {
   ops: TranscriptOp[]

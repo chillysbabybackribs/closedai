@@ -33,7 +33,7 @@ import { claudeSystemPromptAppend } from './claude-instructions.js'
 import { claudeModelCatalog, supportsAdaptiveThinking } from './claude-models.js'
 import { loadClaudeSdk, type ClaudeSdk } from './claude-sdk.js'
 import { ClaudeSession } from './claude-session.js'
-import type { TranscriptOp, TurnEnd } from './claude-stream.js'
+import { applyTranscriptOp, handleProviderTurnEnd, type TranscriptOp, type TurnEnd } from '../chat-transcript-ops.js'
 import { claudeMcpServers } from './claude-tools.js'
 
 // The Claude Code provider, mirroring ChatService's surface so the hub can route to either.
@@ -400,9 +400,7 @@ export class ClaudeChatService extends EventEmitter {
   }
 
   private applyOp(op: TranscriptOp): void {
-    if (op.type === 'item') this.transcript.upsert(op.item)
-    else if (op.type === 'delta') this.transcript.appendDelta(op.itemId, op.field, op.delta)
-    else this.addNotice(op.text, op.tone)
+    applyTranscriptOp(this.transcript, (text, tone) => this.addNotice(text, tone), op)
   }
 
   private adoptSessionId(sessionId: string): void {
@@ -411,11 +409,10 @@ export class ClaudeChatService extends EventEmitter {
   }
 
   private onTurnEnd(turnId: string, end: TurnEnd): void {
-    if (end.status === 'interrupted') {
-      this.addNotice('Turn paused', 'info', turnId)
-      this.setPaused(turnId)
-    }
-    if (end.status === 'failed') this.addNotice(end.error ?? 'The turn failed', 'error', turnId)
+    handleProviderTurnEnd(turnId, end, {
+      addNotice: (text, tone, id) => this.addNotice(text, tone, id),
+      setPaused: (id) => this.setPaused(id)
+    })
     void this.refreshThreadName()
     void this.refreshPlanUsage()
   }

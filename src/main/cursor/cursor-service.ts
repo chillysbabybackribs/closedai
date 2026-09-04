@@ -25,7 +25,7 @@ import { buildCursorPrompt } from './cursor-input.js'
 import { cursorSystemInstructions } from './cursor-instructions.js'
 import { cursorAcpModelId, cursorModelCatalog } from './cursor-models.js'
 import { CursorSession } from './cursor-session.js'
-import type { TranscriptOp, TurnEnd } from './cursor-stream.js'
+import { applyTranscriptOp, handleProviderTurnEnd, type TranscriptOp, type TurnEnd } from '../chat-transcript-ops.js'
 
 // The Cursor provider, mirroring ChatService's surface so the hub can route to any of the four.
 // Everything model-facing is the `cursor-agent acp` server on the user's Cursor subscription:
@@ -461,9 +461,7 @@ export class CursorChatService extends EventEmitter {
   }
 
   private applyOp(op: TranscriptOp): void {
-    if (op.type === 'item') this.transcript.upsert(op.item)
-    else if (op.type === 'delta') this.transcript.appendDelta(op.itemId, op.field, op.delta)
-    else this.addNotice(op.text, op.tone)
+    applyTranscriptOp(this.transcript, (text, tone) => this.addNotice(text, tone), op)
   }
 
   private adoptSessionId(sessionId: string): void {
@@ -481,11 +479,10 @@ export class CursorChatService extends EventEmitter {
   }
 
   private onTurnEnd(turnId: string, end: TurnEnd): void {
-    if (end.status === 'interrupted') {
-      this.addNotice('Turn paused', 'info', turnId)
-      this.setPaused(turnId)
-    }
-    if (end.status === 'failed') this.addNotice(end.error ?? 'The turn failed', 'error', turnId)
+    handleProviderTurnEnd(turnId, end, {
+      addNotice: (text, tone, id) => this.addNotice(text, tone, id),
+      setPaused: (id) => this.setPaused(id)
+    })
   }
 
   private addNotice(text: string, tone: 'info' | 'error', turnId: string | null = this.activeTurnId): void {
