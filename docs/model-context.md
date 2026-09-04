@@ -129,8 +129,9 @@ before passing the URL to `image()`. Use direct awaited calls in an exec script;
 providers can use `tool_batch.run`. Suppress successful intermediate payloads, and keep failures
 visible. Output budgets, screenshot limits, and compaction settings are in [Tools](tools.md).
 
-The existing verification budgets are under 3,500 characters for Codex developer instructions,
-4,500 for Claude, 5,000 for Antigravity, and 1,200 for the checkout capsule. The separately appended
+The existing verification budgets are under 4,500 characters for Codex developer instructions,
+5,200 for Claude, 6,200 for Antigravity, and 1,200 for the checkout capsule (raised 2026-09-03 for
+the per-lane batching mechanics, the re-read rule, and the nested-rules fact). The separately appended
 root `AGENTS.md` is capped at 20,000. Share repeated guidance and remove duplication when expanding
 prompts; do not solve drift by injecting the entire documentation tree.
 
