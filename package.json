@@ -20,6 +20,7 @@
     "map": "node scripts/repo-tree.mjs --write",
     "map:check": "node scripts/repo-tree.mjs --check",
     "browser:live": "node scripts/browser-live-check.mjs",
+    "search:pipeline": "node scripts/search-pipeline-live-check.mjs",
     "check": "npm run map:check && npm run hygiene && npm run typecheck && npm test && npm run build && npm run closure",
     "autogit": "node scripts/autogit.mjs run",
     "autogit:once": "node scripts/autogit.mjs once",
