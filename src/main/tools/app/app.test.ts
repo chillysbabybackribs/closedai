@@ -50,7 +50,7 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
   const registry = new ToolRegistry([appTools(() => app, () => ui)])
   const call = (tool: string, arguments_: Record<string, unknown>, paneId: string | null = 'pane-caller') => registry.call(
     { namespace: 'closedai_app', tool, arguments: arguments_ },
-    { threadId: null, turnId: null, callId: 'app-call', paneId }
+    { threadId: null, turnId: null, callId: 'app-call', paneId, source: 'exec' }
   )
   return { calls, call, registry }
 }
@@ -151,6 +151,21 @@ test('wait marks a timeout as a tool failure and rejects unusable conditions', a
   assert.equal(result.isError, true)
   assert.equal(result.errorKind, 'timeout')
   assert.match(textOf(result), /"reached": false/)
+  assert.deepEqual(calls, [])
+})
+
+test('direct-call providers must dispatch renderer input through tool_batch', async () => {
+  const { calls, registry } = harness()
+  const result = await registry.call(
+    {
+      namespace: 'closedai_app',
+      tool: 'ui',
+      arguments: { action: 'click', control: 'drawer.row', fallback_reason: 'Testing a rendered interaction.' }
+    },
+    { threadId: null, turnId: null, callId: 'app-direct', paneId: 'pane-caller', source: 'model' }
+  )
+  assert.equal(result.isError, true)
+  assert.match(textOf(result), /tool_batch\.run/)
   assert.deepEqual(calls, [])
 })
 

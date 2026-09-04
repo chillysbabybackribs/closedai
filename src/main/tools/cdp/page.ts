@@ -72,8 +72,8 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
         ref: refField,
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['ref', 'fallback_reason']),
-      run: async (input) => {
-        requireRealInputFallback(input)
+      run: async (input, context) => {
+        requireRealInputFallback(input, context)
         return jsonResult(await requireCdp(cdp).clickElement(tabIdFrom(input), stringArg(input, 'ref')!))
       }
     },
@@ -88,8 +88,8 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
         coordinate_space: coordinateSpaceField,
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['x', 'y', 'fallback_reason']),
-      run: async (input) => {
-        requireRealInputFallback(input)
+      run: async (input, context) => {
+        requireRealInputFallback(input, context)
         const coordinateSpace = stringArg(input, 'coordinate_space', 'main_viewport_css')
         if (coordinateSpace !== 'main_viewport_css') throw new Error('Unsupported coordinate space')
         return jsonResult(await requireCdp(cdp).clickAt(
@@ -114,8 +114,8 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
         clear: { type: 'boolean', description: 'Replace the existing value (default true). Pass false to insert at the caret instead.' },
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['ref', 'text', 'fallback_reason']),
-      run: async (input) => {
-        requireRealInputFallback(input)
+      run: async (input, context) => {
+        requireRealInputFallback(input, context)
         return jsonResult(await requireCdp(cdp).typeText(
           tabIdFrom(input), stringArg(input, 'ref')!, stringArg(input, 'text')!, booleanArg(input, 'clear', true)
         ))
@@ -135,8 +135,8 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
         modifiers: modifiersField,
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['key', 'fallback_reason']),
-      run: async (input) => {
-        requireRealInputFallback(input)
+      run: async (input, context) => {
+        requireRealInputFallback(input, context)
         return jsonResult(await requireCdp(cdp).pressKey(
           tabIdFrom(input), stringArg(input, 'key')!, modifiersFrom(input)
         ))
@@ -180,8 +180,8 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
         },
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['fallback_reason']),
-      run: async (input) => {
-        requireRealInputFallback(input)
+      run: async (input, context) => {
+        requireRealInputFallback(input, context)
         return jsonResult(await requireCdp(cdp).dismissOverlay(
           tabIdFrom(input),
           stringArg(input, 'kind', 'auto') ?? 'auto',

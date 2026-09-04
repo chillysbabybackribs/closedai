@@ -74,7 +74,8 @@ export class AppServerToolCalls {
           paneId: this.paneId,
           threadId: typeof params.threadId === 'string' ? params.threadId : null,
           turnId: typeof params.turnId === 'string' ? params.turnId : null,
-          callId: typeof params.callId === 'string' ? params.callId : String(request.id)
+          callId: typeof params.callId === 'string' ? params.callId : String(request.id),
+          source: 'exec'
         }
       )
       .then((result) => this.client.respond(request.id, toolCallResponse(result)))

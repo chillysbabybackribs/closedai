@@ -53,8 +53,8 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
         y: { type: 'number', minimum: 0, description: 'Viewport CSS y, with x.' },
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['fallback_reason']),
-      run: async (input) => {
-        requireRealInputFallback(input)
+      run: async (input, context) => {
+        requireRealInputFallback(input, context)
         const target = targetFrom(input)
         const x = optionalNumber(input, 'x')
         const y = optionalNumber(input, 'y')
@@ -71,8 +71,8 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
         clear: { type: 'boolean', description: 'Replace the current value (default true); false inserts at the caret.' },
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['text', 'fallback_reason']),
-      run: async (input) => {
-        requireRealInputFallback(input)
+      run: async (input, context) => {
+        requireRealInputFallback(input, context)
         const target = targetFrom(input)
         if (!hasTarget(target)) throw new Error('Pass control or selector to type into')
         return jsonResult(await requireHost(ui, 'app automation').typeText({
@@ -88,8 +88,8 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
         modifiers: modifiersField,
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['key', 'fallback_reason']),
-      run: async (input) => {
-        requireRealInputFallback(input)
+      run: async (input, context) => {
+        requireRealInputFallback(input, context)
         return jsonResult(await requireHost(ui, 'app automation').pressKey(
           stringArg(input, 'key')!, modifiersFrom(input)
         ))

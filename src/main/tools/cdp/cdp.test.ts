@@ -58,7 +58,7 @@ function harness(overrides: Partial<CdpToolHost> = {}) {
   const registry = new ToolRegistry([cdpTools(() => host)])
   const call = (arguments_: Record<string, unknown>) => registry.call(
     { namespace: 'browser_cdp', tool: 'protocol', arguments: arguments_ },
-    { threadId: null, turnId: null, callId: 'call-1' }
+    { threadId: null, turnId: null, callId: 'call-1', source: 'exec' }
   )
   return { calls, call, registry }
 }
@@ -93,7 +93,7 @@ test('agent page wrapper inspects and clicks refs or explicit coordinates', asyn
   const { calls, registry } = harness()
   const callPage = (arguments_: Record<string, unknown>) => registry.call(
     { namespace: 'browser_cdp', tool: 'page', arguments: arguments_ },
-    { threadId: null, turnId: null, callId: 'call-page' }
+    { threadId: null, turnId: null, callId: 'call-page', source: 'exec' }
   )
   assert.match(textOf(await callPage({ action: 'inspect_page', tab_id: 'tab-3' })), /"snapshotId": "p1"/)
   await callPage({ action: 'click', ref: 'p1:main:e1', fallback_reason: 'No endpoint exposes this control.' })
@@ -162,7 +162,7 @@ test('page input verbs route typing, key chords, and scrolling to the host', asy
   const { calls, registry } = harness()
   const callPage = (arguments_: Record<string, unknown>) => registry.call(
     { namespace: 'browser_cdp', tool: 'page', arguments: arguments_ },
-    { threadId: null, turnId: null, callId: 'call-input' }
+    { threadId: null, turnId: null, callId: 'call-input', source: 'exec' }
   )
   await callPage({ action: 'type', ref: 'p1:main:e2', text: 'hello', clear: false, fallback_reason: 'The site has no writable API.' })
   await callPage({ action: 'press_key', key: 'Enter', modifiers: ['ctrl'], fallback_reason: 'The form only submits from a key chord.' })
@@ -203,7 +203,7 @@ test('semantic real-input actions reject calls without a fallback reason before 
   const { calls, registry } = harness()
   const callPage = (arguments_: Record<string, unknown>) => registry.call(
     { namespace: 'browser_cdp', tool: 'page', arguments: arguments_ },
-    { threadId: null, turnId: null, callId: 'call-policy' }
+    { threadId: null, turnId: null, callId: 'call-policy', source: 'exec' }
   )
   for (const arguments_ of [
     { action: 'click', ref: 'p1:main:e1' },
@@ -219,6 +219,21 @@ test('semantic real-input actions reject calls without a fallback reason before 
   const blank = await callPage({ action: 'click', ref: 'p1:main:e1', fallback_reason: '   ' })
   assert.equal(blank.isError, true)
   assert.match(textOf(blank), /fallback_reason/)
+  assert.deepEqual(calls, [])
+})
+
+test('direct-call providers must dispatch real input through tool_batch', async () => {
+  const { calls, registry } = harness()
+  const result = await registry.call(
+    {
+      namespace: 'browser_cdp',
+      tool: 'page',
+      arguments: { action: 'click', ref: 'p1:main:e1', fallback_reason: 'The site exposes no API.' }
+    },
+    { threadId: null, turnId: null, callId: 'call-direct', source: 'model' }
+  )
+  assert.equal(result.isError, true)
+  assert.match(textOf(result), /tool_batch\.run/)
   assert.deepEqual(calls, [])
 })
 

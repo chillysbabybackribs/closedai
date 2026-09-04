@@ -29,7 +29,7 @@ export type ToolContext = {
   /** Groups nested calls under the outer batch or orchestration request. */
   batchId?: string | null
   /** The boundary that initiated the call. */
-  source?: 'model' | 'batch' | 'system' | 'external'
+  source?: 'model' | 'exec' | 'batch' | 'system' | 'external'
   /** Aborted when the registry times the call out. Long-running tools should honour it. */
   signal: AbortSignal
 }
@@ -115,8 +115,11 @@ export const REAL_INPUT_FALLBACK_FIELD: JsonObject = {
     'Real input is an escape hatch and must be grouped with inspection and verification in the same batch.'
 }
 
-export function requireRealInputFallback(input: JsonObject): string {
+export function requireRealInputFallback(input: JsonObject, context: ToolContext): string {
   const reason = stringArg(input, 'fallback_reason')?.trim()
   if (!reason) throw new Error('`fallback_reason` is required for real pointer or keyboard input')
+  if (context.source !== 'batch' && context.source !== 'exec') {
+    throw new Error('real pointer or keyboard input must run inside tool_batch.run (or one Codex exec script)')
+  }
   return reason
 }

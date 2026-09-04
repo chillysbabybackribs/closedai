@@ -146,7 +146,8 @@ Real pointer and keyboard input is an escape hatch, not a normal navigation stra
 CDP `Input.*` command requires a non-empty `fallback_reason`, which is preserved in the turn trace.
 Group the fallback with the inspection that identified its target and a post-action assertion in
 the same sequential batch. A Codex exec script is the batching boundary; direct-call providers use
-`tool_batch.run`. Coordinate clicks remain the last fallback after semantic refs.
+`tool_batch.run`, and the runtime refuses their unbatched input calls. Coordinate clicks remain the
+last fallback after semantic refs.
 
 `resource-locks.ts` shares those keys with registry locking. Lock conflicts fail with a busy
 target message rather than wait indefinitely. Current keys cover app input, navigation, semantic

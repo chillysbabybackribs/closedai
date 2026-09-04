@@ -68,12 +68,12 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
         session_id: sessionIdField,
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['method']),
-      run: async (input) => {
+      run: async (input, context) => {
         const method = stringArg(input, 'method')!
         if (!/^[A-Za-z][A-Za-z0-9]*\.[A-Za-z][A-Za-z0-9]*$/.test(method)) {
           throw new Error('`method` must use CDP Domain.method syntax')
         }
-        if (method.startsWith('Input.')) requireRealInputFallback(input)
+        if (method.startsWith('Input.')) requireRealInputFallback(input, context)
         return jsonResult(await requireCdp(cdp).command(
           tabIdFrom(input), method, paramsFrom(input), sessionIdFrom(input)
         ))

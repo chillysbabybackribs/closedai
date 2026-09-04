@@ -38,7 +38,7 @@ export function claudeMcpServers(
         const { paneId, threadId, turnId } = context()
         const result = await registry.call(
           { namespace: namespace.name, tool: tool.name, arguments: args },
-          { paneId, threadId, turnId, callId: toolUseIdOf(extra) ?? crypto.randomUUID() }
+          { paneId, threadId, turnId, callId: toolUseIdOf(extra) ?? crypto.randomUUID(), source: 'model' }
         )
         return mcpToolResult(result)
       },

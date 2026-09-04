@@ -177,7 +177,7 @@ export class McpHttpBridge {
           const callId = randomUUID()
           const result = await this.registry.call(
             { namespace: namespaceName, tool: tool.name, arguments: args as Record<string, unknown> },
-            { paneId: context.paneId, threadId: context.threadId, turnId: context.turnId, callId }
+            { paneId: context.paneId, threadId: context.threadId, turnId: context.turnId, callId, source: 'model' }
           )
           if (key) this.recordCall(key, { namespace: namespaceName, tool: tool.name, callId })
           return mcpToolResult(result)

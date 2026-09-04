@@ -26,6 +26,8 @@ The common routing policy prefers deterministic commands, page APIs, fetch/extra
 CDP. Real clicks, manual typing, key presses, and raw `Input.*` commands are recorded escape hatches:
 the call requires `fallback_reason` and belongs in one batch with inspection and post-action
 verification. For Codex the containing exec script is the batch; direct-call lanes use `tool_batch`.
+The tool runtime distinguishes those two dispatch sources and refuses unbatched real input from a
+direct-call provider even when it supplies a reason.
 
 The shared response style asks for results and evidence, with progress only when it adds a new
 result, blocker, or required choice. It discourages “I have…”, “I am…”, and “I will…” work logs.
