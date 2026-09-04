@@ -214,7 +214,7 @@ export function CredentialVaultModal({ open, onOpenChange }: CredentialVaultModa
                       <Button
                         key={t}
                         type="button"
-                        variant={newType === t ? 'secondary' : 'outline'}
+                        variant={newType === t ? 'default' : 'outline'}
                         className="flex-1"
                         onClick={() => setNewType(t)}
                       >
