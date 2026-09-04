@@ -62,10 +62,13 @@ function useClock(live: boolean): number {
 const StepRow = memo(function StepRow({ step }: { step: ActivityStep }): JSX.Element {
   const expandable = step.body !== null
   const [open, setOpen] = useState(step.phase === 'failed')
+  // Opening a group mounts every step at once; a body Radix has to measure on mount is a forced
+  // layout each, so a closed step keeps its body unmounted the way a closed group does.
+  const [opened, setOpened] = useState(step.phase === 'failed')
   const text = step.label ? `${step.verb} ${step.label}` : step.verb
   return (
     <li className="activity-step" data-phase={step.phase} data-expandable={expandable || undefined}>
-      <Collapsible open={open && expandable} onOpenChange={setOpen}>
+      <Collapsible open={open && expandable} onOpenChange={(next) => { if (next) setOpened(true); setOpen(next) }}>
         <CollapsibleTrigger asChild disabled={!expandable}>
           <button type="button" className="activity-step-row" aria-label={`${text}, ${PHASE_LABEL[step.phase]}`}>
             <StepIcon step={step} />
@@ -79,7 +82,7 @@ const StepRow = memo(function StepRow({ step }: { step: ActivityStep }): JSX.Ele
             ) : null}
           </button>
         </CollapsibleTrigger>
-        {step.body ? (
+        {step.body && opened ? (
           <CollapsibleContent className="activity-step-body">
             <StepBodyView body={step.body} />
           </CollapsibleContent>

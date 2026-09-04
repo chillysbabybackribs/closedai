@@ -279,6 +279,11 @@ const ToolActivity = memo(function ToolActivity({
   isRunning?: boolean
 }): JSX.Element {
   const [open, setOpen] = useState(false)
+  // Radix measures its content on mount — a computed style for the animation name and a bounding
+  // rect for the height variable — and a transcript is mostly collapsed groups, so mounting the
+  // body of every one of them made opening a chat pay for a forced layout per tool group. The
+  // body arrives with the first open instead; a group never opened never costs anything.
+  const [opened, setOpened] = useState(false)
   const state = useMemo(() => activityState(items), [items])
   const running = isRunning ?? (state === 'running')
   const headline = useMemo(() => activityHeadline(items, running), [items, running])
@@ -286,7 +291,7 @@ const ToolActivity = memo(function ToolActivity({
   const status = running ? 'running' : failed ? 'failed' : 'completed'
   return (
     <div className="prompt-tool-activity" data-state={state}>
-      <Collapsible open={open} onOpenChange={setOpen}>
+      <Collapsible open={open} onOpenChange={(next) => { if (next) setOpened(true); setOpen(next) }}>
         <CollapsibleTrigger asChild>
           <button
             type="button"
@@ -307,11 +312,13 @@ const ToolActivity = memo(function ToolActivity({
             <ChevronRight className={`size-3 prompt-process-chevron transition-transform duration-150 ${open ? 'rotate-90' : ''}`} aria-hidden="true" />
           </button>
         </CollapsibleTrigger>
-        <CollapsibleContent className="prompt-tool-activity-content">
-          <div className="prompt-tool-activity-card">
-            <ActivitySteps items={items} />
-          </div>
-        </CollapsibleContent>
+        {opened ? (
+          <CollapsibleContent className="prompt-tool-activity-content">
+            <div className="prompt-tool-activity-card">
+              <ActivitySteps items={items} />
+            </div>
+          </CollapsibleContent>
+        ) : null}
       </Collapsible>
     </div>
   )
