@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatSnapshot } from '../../shared/chat.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
-import { MAX_PEER_PREVIEW_CHARS, PeerSummaryCache, paneTitle, summaryOf } from './peer-summary.js'
+import { MAX_PEER_PREVIEW_CHARS, PeerSummaryCache, pageResult, paneTitle, summaryOf } from './peer-summary.js'
 
 function snapshot(overrides: Partial<ChatSnapshot> = {}): ChatSnapshot {
   return {
@@ -104,6 +104,25 @@ test('late upserts preserve the latest preview and streaming previews stay bound
   cache.update({ type: 'replace', snapshot: snapshot() }, 4)
   cache.update({ type: 'item', item: { ...answer, text: 'new chat' } }, 5)
   assert.equal(cache.current.preview, 'new chat')
+})
+
+test('reasoning never reaches a peer: previews skip it and pages leave it out', () => {
+  const answer = { type: 'assistant' as const, id: 'answer', turnId: 'turn', text: 'the answer', phase: null, streaming: false }
+  const thinking = { type: 'reasoning' as const, id: 'think', turnId: 'turn', text: 'private working state', streaming: true }
+  const summary = summaryOf('pane-a', snapshot({ items: [answer, thinking] }), 1, record())
+  assert.equal(summary.preview, 'the answer')
+
+  const cache = new PeerSummaryCache('pane-a', () => record())
+  cache.update({ type: 'replace', snapshot: snapshot({ items: [answer] }) }, 1)
+  cache.update({ type: 'item', item: thinking }, 2)
+  assert.equal(cache.current.preview, 'the answer')
+  cache.update({ type: 'itemDelta', itemId: 'think', field: 'text', delta: ' more thinking' }, 3)
+  assert.equal(cache.current.preview, 'the answer')
+
+  const page = pageResult(summary, [thinking, answer, { ...thinking, id: 'think-2' }], 0, 50)
+  assert.deepEqual(page.items.map((item) => item.id), ['answer'])
+  assert.equal(page.nextCursor, null)
+  assert.equal(JSON.stringify(page).includes('private working state'), false)
 })
 
 test('cache titles follow the first user message and bounded provider name', () => {

@@ -10,6 +10,18 @@ export const PLACEHOLDER_TITLE = 'New chat'
 const MAX_TITLE = 60
 export const MAX_PEER_PREVIEW_CHARS = 240
 
+// A model's reasoning is its own working state, not a fact about the chat. Recall and thread
+// handoff already leave it behind; peer previews and pages do the same, so one pane's thinking
+// never lands verbatim in another model's context (found 2026-09-03: both paths passed it through).
+export function peerReadable(item: ChatTranscriptItem): boolean {
+  return item.type !== 'reasoning'
+}
+
+function latestReadable(items: readonly ChatTranscriptItem[]): ChatTranscriptItem | undefined {
+  for (let index = items.length - 1; index >= 0; index--) if (peerReadable(items[index]!)) return items[index]
+  return undefined
+}
+
 /** Keeps only ordering ids and a bounded preview; transcript content stays with the provider. */
 export class PeerSummaryCache {
   private readonly ids = new Set<string>()
@@ -43,7 +55,7 @@ export class PeerSummaryCache {
       this.firstUserText = first?.type === 'user' ? titleFromUserText(first.text) : null
       this.threadName = event.snapshot.threadName
       summary = summaryOf(this.paneId, event.snapshot, updatedAt, this.record)
-      this.setLatest(event.snapshot.items.at(-1))
+      this.setLatest(latestReadable(event.snapshot.items))
     } else if (event.type === 'connection') {
       summary = { ...summary, provider: event.provider, modelId: event.selectedModel ?? this.record.modelId }
     } else if (event.type === 'model') {
@@ -53,7 +65,7 @@ export class PeerSummaryCache {
       summary = { ...summary, threadId: event.threadId }
     } else if (event.type === 'turn') {
       summary = { ...summary, running: event.turnId !== null }
-    } else if (event.type === 'item') {
+    } else if (event.type === 'item' && peerReadable(event.item)) {
       const item = event.item
       const isNew = !this.ids.has(item.id)
       this.ids.add(item.id)
@@ -73,7 +85,7 @@ export class PeerSummaryCache {
 
   private setLatest(item: ChatTranscriptItem | undefined): void {
     this.latestId = item?.id ?? null
-    this.textDelta = item?.type === 'assistant' || item?.type === 'plan' || item?.type === 'reasoning'
+    this.textDelta = item?.type === 'assistant' || item?.type === 'plan'
   }
 }
 
@@ -130,7 +142,7 @@ export function summaryOf(
   updatedAt: number,
   record: ChatRecord
 ): ChatPeerSummary {
-  const latest = snapshot.items.at(-1)
+  const latest = latestReadable(snapshot.items)
   return {
     paneId,
     parentPaneId: null,
@@ -166,15 +178,16 @@ export function subagentSummaries(parent: ChatPeerSummary, snapshot: ChatSnapsho
 }
 
 export function pageResult(summary: ChatPeerSummary, items: ChatSnapshot['items'], cursor: number, limit: number): PeerChatReadResult {
+  const readable = items.filter(peerReadable)
   const start = Math.max(0, Math.floor(cursor))
   const count = Math.min(100, Math.max(1, Math.floor(limit)))
-  const page = items.slice(start, start + count)
-  return { ...summary, items: page, nextCursor: start + page.length < items.length ? start + page.length : null }
+  const page = readable.slice(start, start + count)
+  return { ...summary, items: page, nextCursor: start + page.length < readable.length ? start + page.length : null }
 }
 
 export function itemText(item: ChatSnapshot['items'][number] | undefined): string {
   if (!item) return ''
-  if (item.type === 'user' || item.type === 'assistant' || item.type === 'notice' || item.type === 'plan' || item.type === 'reasoning') return item.text
+  if (item.type === 'user' || item.type === 'assistant' || item.type === 'notice' || item.type === 'plan') return item.text
   if (item.type === 'tool') return item.detail || item.label
   if (item.type === 'command') return item.command
   return item.type === 'screenshot' ? item.caption : item.type === 'fileChange' ? `${item.changes.length} file changes` : ''
