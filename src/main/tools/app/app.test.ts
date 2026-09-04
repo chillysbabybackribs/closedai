@@ -121,10 +121,10 @@ test('commands route to the host with the selected pane as the default target', 
 test('ui actions resolve controls by id, item, match, selector, or coordinates', async () => {
   const { calls, call } = harness()
   await call('ui', { action: 'controls', surface: 'side-drawer', query: 'row' })
-  await call('ui', { action: 'click', control: 'drawer.row', item: 'row-1' })
-  await call('ui', { action: 'click', x: 100, y: 200 })
-  await call('ui', { action: 'type', control: 'composer.input', text: 'hello' })
-  await call('ui', { action: 'press_key', key: 'Enter', modifiers: ['ctrl'] })
+  await call('ui', { action: 'click', control: 'drawer.row', item: 'row-1', fallback_reason: 'Testing the rendered control itself.' })
+  await call('ui', { action: 'click', x: 100, y: 200, fallback_reason: 'No manifest control exists at this test point.' })
+  await call('ui', { action: 'type', control: 'composer.input', text: 'hello', fallback_reason: 'Testing real composer input.' })
+  await call('ui', { action: 'press_key', key: 'Enter', modifiers: ['ctrl'], fallback_reason: 'Testing the renderer shortcut.' })
   await call('ui', { action: 'scroll', delta_y: 400 })
   await call('ui', { action: 'wait_for', control: 'composer.send', condition: 'enabled' })
   assert.deepEqual(calls, [
@@ -158,7 +158,7 @@ test('schemas reject stale-shaped and oversized arguments before dispatch', asyn
   const { calls, call } = harness()
   const noTarget = await call('ui', { action: 'click' })
   assert.equal(noTarget.isError, true)
-  const badModifier = await call('ui', { action: 'press_key', key: 'Enter', modifiers: ['hyper'] })
+  const badModifier = await call('ui', { action: 'press_key', key: 'Enter', modifiers: ['hyper'], fallback_reason: 'Testing validation.' })
   assert.equal(badModifier.isError, true)
   const badTimeout = await call('ui', { action: 'wait_for', wait_for_text: 'x', timeout_ms: 30_000 })
   assert.equal(badTimeout.isError, true)
@@ -166,5 +166,19 @@ test('schemas reject stale-shaped and oversized arguments before dispatch', asyn
   assert.equal(staleInspect.isError, true)
   const badOp = await call('command', { action: 'browser_tab', op: 'navigate' })
   assert.equal(badOp.isError, true)
+  assert.deepEqual(calls, [])
+})
+
+test('renderer real-input actions require a fallback reason before dispatch', async () => {
+  const { calls, call } = harness()
+  for (const arguments_ of [
+    { action: 'click', control: 'drawer.row' },
+    { action: 'type', control: 'composer.input', text: 'hello' },
+    { action: 'press_key', key: 'Enter' }
+  ]) {
+    const result = await call('ui', arguments_)
+    assert.equal(result.isError, true)
+    assert.match(textOf(result), /fallback_reason/)
+  }
   assert.deepEqual(calls, [])
 })

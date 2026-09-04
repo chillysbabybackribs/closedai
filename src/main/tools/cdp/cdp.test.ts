@@ -96,8 +96,8 @@ test('agent page wrapper inspects and clicks refs or explicit coordinates', asyn
     { threadId: null, turnId: null, callId: 'call-page' }
   )
   assert.match(textOf(await callPage({ action: 'inspect_page', tab_id: 'tab-3' })), /"snapshotId": "p1"/)
-  await callPage({ action: 'click', ref: 'p1:main:e1' })
-  await callPage({ action: 'click_at', x: 12.5, y: 18, coordinate_space: 'main_viewport_css' })
+  await callPage({ action: 'click', ref: 'p1:main:e1', fallback_reason: 'No endpoint exposes this control.' })
+  await callPage({ action: 'click_at', x: 12.5, y: 18, coordinate_space: 'main_viewport_css', fallback_reason: 'No semantic ref was available.' })
   assert.deepEqual(calls, [
     ['inspectPage', 'tab-3', 200],
     ['clickElement', undefined, 'p1:main:e1'],
@@ -164,8 +164,8 @@ test('page input verbs route typing, key chords, and scrolling to the host', asy
     { namespace: 'browser_cdp', tool: 'page', arguments: arguments_ },
     { threadId: null, turnId: null, callId: 'call-input' }
   )
-  await callPage({ action: 'type', ref: 'p1:main:e2', text: 'hello', clear: false })
-  await callPage({ action: 'press_key', key: 'Enter', modifiers: ['ctrl'] })
+  await callPage({ action: 'type', ref: 'p1:main:e2', text: 'hello', clear: false, fallback_reason: 'The site has no writable API.' })
+  await callPage({ action: 'press_key', key: 'Enter', modifiers: ['ctrl'], fallback_reason: 'The form only submits from a key chord.' })
   await callPage({ action: 'scroll', ref: 'p1:main:e3' })
   await callPage({ action: 'scroll', delta_y: 500 })
   assert.deepEqual(calls, [
@@ -174,14 +174,22 @@ test('page input verbs route typing, key chords, and scrolling to the host', asy
     ['scrollPage', undefined, 'p1:main:e3', 0, 0],
     ['scrollPage', undefined, undefined, 0, 500]
   ])
-  const badModifier = await callPage({ action: 'press_key', key: 'Enter', modifiers: ['hyper'] })
+  const badModifier = await callPage({ action: 'press_key', key: 'Enter', modifiers: ['hyper'], fallback_reason: 'Testing validation.' })
   assert.equal(badModifier.isError, true)
 })
 
-test('protocol is immediately available and allows raw input and screenshot commands', async () => {
+test('raw input commands require an auditable fallback reason while screenshots remain ordinary commands', async () => {
   const { calls, call, registry } = harness()
   assert.equal(registry.namespaces[0]!.tools[0]!.deferLoading, undefined)
-  const input = await call({ action: 'command', method: 'Input.dispatchKeyEvent', params: { type: 'keyDown' } })
+  const refused = await call({ action: 'command', method: 'Input.dispatchKeyEvent', params: { type: 'keyDown' } })
+  assert.equal(refused.isError, true)
+  assert.match(textOf(refused), /fallback_reason/)
+  const input = await call({
+    action: 'command',
+    method: 'Input.dispatchKeyEvent',
+    params: { type: 'keyDown' },
+    fallback_reason: 'No deterministic submit operation exists.'
+  })
   assert.equal(input.isError, undefined)
   const screenshot = await call({ action: 'command', method: 'Page.captureScreenshot' })
   assert.equal(screenshot.isError, undefined)
@@ -189,6 +197,26 @@ test('protocol is immediately available and allows raw input and screenshot comm
     ['command', undefined, 'Input.dispatchKeyEvent', { type: 'keyDown' }, undefined],
     ['command', undefined, 'Page.captureScreenshot', {}, undefined]
   ])
+})
+
+test('semantic real-input actions reject calls without a fallback reason before reaching the host', async () => {
+  const { calls, registry } = harness()
+  const callPage = (arguments_: Record<string, unknown>) => registry.call(
+    { namespace: 'browser_cdp', tool: 'page', arguments: arguments_ },
+    { threadId: null, turnId: null, callId: 'call-policy' }
+  )
+  for (const arguments_ of [
+    { action: 'click', ref: 'p1:main:e1' },
+    { action: 'click_at', x: 1, y: 2 },
+    { action: 'type', ref: 'p1:main:e2', text: 'hello' },
+    { action: 'press_key', key: 'Enter' },
+    { action: 'dismiss_overlay' }
+  ]) {
+    const result = await callPage(arguments_)
+    assert.equal(result.isError, true)
+    assert.match(textOf(result), /fallback_reason/)
+  }
+  assert.deepEqual(calls, [])
 })
 
 test('command validates CDP method syntax and action-specific fields', async () => {

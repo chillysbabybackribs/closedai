@@ -3,7 +3,7 @@
 ClosedAI uses Electron's in-process `webContents.debugger` transport. It does not open a
 remote-debugging port. The primary model-facing browser interface is the eagerly advertised
 `browser_cdp.protocol`. `browser_cdp.page` supplies semantic element refs and an input wrapper.
-Source review: 2026-09-03; the behavior below follows the current implementation.
+Source review: 2026-09-04; the behavior below follows the current implementation.
 
 ## Ownership model
 
@@ -48,10 +48,11 @@ Target parameters, or `closedai_app.command browser_tab` to manage the app's reg
 Sends any CDP `Domain.method` with its raw parameters. `tab_id` defaults to the active
 ClosedAI tab. `session_id` routes to a flat child-target session.
 
-`Input.*` and `Page.captureScreenshot` are allowed, and `protocol` is no longer deferred. Raw
+`Input.*` requires a non-empty `fallback_reason`; `Page.captureScreenshot` remains an ordinary
+command, and `protocol` is not deferred. Raw
 commands do not invoke the semantic wrapper's foregrounding, readiness, or hit-testing. Input
 needs a rendered target; do not infer that a hidden page received it merely because CDP returned.
-Prefer whole-string `Input.insertText` to individual key events when entering text through CDP.
+Real input must be grouped with inspection and post-action verification in one batch.
 
 Raw screenshot output remains JSON text containing base64, subject to the 16,000-character JSON
 result cap; it is not converted to an image or placed in `ScreenshotStore`, and larger payloads
@@ -82,6 +83,8 @@ Inspection alone can read a background tab without selecting it. All input verbs
 both scroll forms, currently pass through `BrowserCdpAccess.realInput`: it foregrounds a regular
 tab, waits for frames after switching, and returns `activatedTab: true` when selection changed.
 An obscured/hidden browser page or a native popup root cannot use this semantic input path.
+Click, type, press-key, and overlay-dismiss actions require `fallback_reason`; scroll does not,
+because it is commonly needed for inspection rather than committing a UI action.
 
 ### `click`
 
@@ -126,8 +129,8 @@ traversal to every OOPIF. Use the inventory and raw protocol for those frames.
 
 ## Deliberately deferred
 
-Security classification, command allowlists, user approvals, and human/agent interaction
-arbitration are not implemented by this transport. Registry resource locks and parallel-batch
+Broad CDP command allowlists, user approvals, and human/agent interaction arbitration are not
+implemented by this transport. Real-input calls are reason-gated and traced, while registry resource locks and parallel-batch
 scheduling cover a subset of browser operations; see [Tools](tools.md#application-facts-browser-targets-and-batching).
 Those locks do not arbitrate human input or make cross-tab foreground input sequences atomic.
 

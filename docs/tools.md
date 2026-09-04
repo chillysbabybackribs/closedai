@@ -59,9 +59,9 @@ before the app-server starts.
 | `closedai_ui` | `capture` | `app_window`, `browser_page`, `crop` | Visual evidence. The first two actions capture the composed app or one readiness-gated page; `crop` enlarges a retained region. The model receives a scaled JPEG (max 960×720); the retained display image (up to 1920×1440) goes to `ScreenshotStore`. |
 | `closedai_app` | `state` | plain tool | Compact app facts from the main process (workspace panes, a chat pane, browser tabs, downloads, window) plus renderer-only ui facts (open dialogs and menus, drawer, history panel, composer state, focused control). No DOM walk; sections are selectable. |
 | `closedai_app` | `command` | `new_chat`, `send_message`, `stop_agent`, `open_chat`, `close_chat`, `select_model`, `browser_tab` | Deterministic commands over the same services the renderer's IPC calls. `browser_tab` covers tab-strip actions including targeted reload, duplicate, rename, and bulk close. `send_message` can await the target pane's turn; commands aimed at the calling pane are refused. |
-| `closedai_app` | `ui` | `controls`, `click`, `type`, `press_key`, `scroll`, `wait_for` | Real interaction with the renderer by stable control id (`data-ui`, manifest in `src/shared/ui-controls.ts`) plus `item`/`match` for repeated rows. `controls` lists ids and state without bounds or refs; `wait_for` supports visible, hidden, enabled, and disabled. |
-| `browser_cdp` | `page` | `inspect_page`, `click`, `click_at`, `type`, `press_key`, `scroll` | Agent-oriented page interaction: semantic element refs with real CDP mouse, keyboard, and wheel input. `type` inserts whole strings in one call; `press_key` sends chords. |
-| `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `target`, `events`, `requests`, `body` | Primary raw Chrome DevTools Protocol interface, eagerly advertised. `requests` lists the network traffic a tab has made — resource timing answers retroactively, so a page that loaded before anyone was watching still reports its XHR and fetch URLs with no reload, and the call enables Network capture so the next one also carries methods, statuses, and the request ids `body` reads. That is the supported way to find the endpoint behind a page; reading bundle source for it is the fallback. Input and screenshot commands are allowed. Target inventory exposes flattened child sessions; `target` wraps attach/detach/create/activate/close. Raw screenshots remain bounded JSON text, not capture image results. See [CDP](cdp-tool-foundation.md). |
+| `closedai_app` | `ui` | `controls`, `click`, `type`, `press_key`, `scroll`, `wait_for` | Renderer inspection plus exceptional real interaction by stable control id (`data-ui`, manifest in `src/shared/ui-controls.ts`). Click, type, and key actions require `fallback_reason`; deterministic `state`/`command` operations come first. |
+| `browser_cdp` | `page` | `inspect_page`, `click`, `click_at`, `type`, `press_key`, `scroll`, `dismiss_overlay` | Semantic page inspection plus exceptional real CDP mouse and keyboard input. Input actions require `fallback_reason`; `fetch`/`extract`, site APIs, and non-input protocol operations come first. |
+| `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `target`, `events`, `requests`, `body` | Primary raw Chrome DevTools Protocol interface, eagerly advertised. `requests` lists the network traffic a tab has made and `body` reads captured responses. This is the supported way to find the endpoint behind a page. Raw `Input.*` commands require `fallback_reason`; screenshots remain ordinary commands. Target inventory exposes flattened child sessions; `target` wraps attach/detach/create/activate/close. See [CDP](cdp-tool-foundation.md). |
 | `search` | `query` | plain tool | Routed public-web search across Brave, Serper, Jina, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. |
 | `closedai_workspace` | `inspect` | `find`, `outline`, `map`, `related`, `tests`, `ipc_flow`, `read` | Read-only source/navigation registered for this indexed checkout. `find` locates code and enriches unique exact declarations with hashed source, local types, test excerpts, and styles. `read` returns the same context for a known symbol/range; a stale `known_hash` returns fresh source in the same call. `outline` provides shape, hash, and all matching style locations without claiming source coverage. Parsing is cached by absolute path and content hash, with fresh byte reads independent of timestamps. Other verbs query the generated index, direct imports, candidate tests, and IPC ownership. |
 | `peer_chats` | `list`, `read` | plain tools | Read-only status and paginated transcript access to other panes and visible subagent summaries. `read` defaults to 50 items, at most 100, using an id from `list`; it does not start or control agents. Reasoning items are excluded from both previews and pages, matching `recall` and thread handoff, so one model's thinking never enters another model's context. |
@@ -127,7 +127,8 @@ live task comparisons are needed to measure an improvement.
 ### Application facts, browser targets, and batching
 
 Use `closedai_app.state` for app facts, `closedai_app.command` for service operations, and
-`closedai_app.ui` for exercising real controls by manifest id. Browser-page DOM and CDP targets
+`closedai_app.ui` only for exercising real controls when deterministic service operations cannot
+complete the task. Browser-page DOM and CDP targets
 belong to the browser tools; app renderer controls belong to `closedai_app.ui`. Workspace state
 shows at most 12 panes, prioritizing selection, caller, running panes, and real conversations;
 `omittedPanes` reports any remainder. Browser/download lists are also bounded.
@@ -139,6 +140,13 @@ browser-wide barrier for the resource-scoped calls in that batch. Unscoped calls
 Each nested call retains validation, switches, timing, and telemetry. Set `include_result: false`
 for successful intermediate payloads; failures are always included. In Codex exec scripts use
 direct `await`/`Promise.all` instead of wrapping another batch tool.
+
+Real pointer and keyboard input is an escape hatch, not a normal navigation strategy. Every
+`closedai_app.ui` click/type/key action, semantic browser click/type/key/dismiss action, and raw
+CDP `Input.*` command requires a non-empty `fallback_reason`, which is preserved in the turn trace.
+Group the fallback with the inspection that identified its target and a post-action assertion in
+the same sequential batch. A Codex exec script is the batching boundary; direct-call providers use
+`tool_batch.run`. Coordinate clicks remain the last fallback after semantic refs.
 
 `resource-locks.ts` shares those keys with registry locking. Lock conflicts fail with a busy
 target message rather than wait indefinitely. Current keys cover app input, navigation, semantic

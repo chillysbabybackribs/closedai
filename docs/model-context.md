@@ -22,6 +22,10 @@ between pane turns and provider background work. App facts come from `closedai_a
 service operations from `closedai_app.command`, and real renderer interaction from manifest
 control ids through `closedai_app.ui`. Other panes are readable through `peer_chats`.
 Browser pages use the CDP tools described in [Tools](tools.md) and [CDP](cdp-tool-foundation.md).
+The common routing policy prefers deterministic commands, page APIs, fetch/extract, and non-input
+CDP. Real clicks, manual typing, key presses, and raw `Input.*` commands are recorded escape hatches:
+the call requires `fallback_reason` and belongs in one batch with inspection and post-action
+verification. For Codex the containing exec script is the batch; direct-call lanes use `tool_batch`.
 
 The shared response style asks for results and evidence, with progress only when it adds a new
 result, blocker, or required choice. It discourages “I have…”, “I am…”, and “I will…” work logs.
