@@ -80,6 +80,14 @@ const api: ClosedaiApi = {
     clearProject: () => invoke(IPC.invoke.chat.clearProject),
     onEvent: (listener) => subscribe(IPC.event.chatEvent, listener)
   },
+  credentials: {
+    status: () => invoke(IPC.invoke.credentials.status),
+    list: () => invoke(IPC.invoke.credentials.list),
+    save: (draft) => invoke(IPC.invoke.credentials.save, draft),
+    reveal: (id: string, fieldId: string) => invoke(IPC.invoke.credentials.reveal, id, fieldId),
+    remove: (id: string) => invoke(IPC.invoke.credentials.remove, id),
+    rename: (id: string, label: string) => invoke(IPC.invoke.credentials.rename, id, label)
+  },
   tools: {
     manifest: () => invoke(IPC.invoke.tools.manifest),
     telemetry: () => invoke(IPC.invoke.tools.telemetry),

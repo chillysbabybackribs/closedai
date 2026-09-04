@@ -2,6 +2,7 @@ import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
+import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot } from './trace.js'
 
@@ -57,6 +58,12 @@ export type IpcInvokeChannels = {
   'chat:chooseProject': { args: []; result: void }
   'chat:selectProject': { args: [string]; result: void }
   'chat:clearProject': { args: []; result: void }
+  'credentials:status': { args: []; result: CredentialVaultStatus }
+  'credentials:list': { args: []; result: CredentialSummary[] }
+  'credentials:save': { args: [CredentialDraft]; result: CredentialSummary }
+  'credentials:reveal': { args: [string, string]; result: string }
+  'credentials:remove': { args: [string]; result: void }
+  'credentials:rename': { args: [string, string]; result: CredentialSummary }
   'tools:manifest': { args: []; result: ToolManifest }
   'tools:telemetry': { args: []; result: ToolTelemetrySnapshot }
   'tools:clearTelemetry': { args: []; result: void }
@@ -140,6 +147,14 @@ export const IPC = {
       chooseProject: 'chat:chooseProject',
       selectProject: 'chat:selectProject',
       clearProject: 'chat:clearProject'
+    },
+    credentials: {
+      status: 'credentials:status',
+      list: 'credentials:list',
+      save: 'credentials:save',
+      reveal: 'credentials:reveal',
+      remove: 'credentials:remove',
+      rename: 'credentials:rename'
     },
     tools: {
       manifest: 'tools:manifest',

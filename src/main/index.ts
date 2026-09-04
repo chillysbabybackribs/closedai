@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeTheme, session } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, nativeTheme, safeStorage, session } from 'electron'
 import { mkdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { configureChromiumStartup } from './chromium-startup-policy.js'
@@ -55,6 +55,8 @@ import type { TraceEvent } from '../shared/trace.js'
 import type { ToolsEvent } from '../shared/tools.js'
 import { registerChatIpc } from './chat-ipc.js'
 import { registerWindowIpc } from './window-ipc.js'
+import { CredentialVault } from './credential-vault.js'
+import { registerCredentialVaultIpc } from './credential-vault-ipc.js'
 import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
 import { CHAT_PROVIDERS } from '../shared/chat-providers.js'
@@ -81,6 +83,7 @@ let chatStore: ChatStore | null = null
 let chatTranscripts: ChatTranscriptCache | null = null
 let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
+let credentialVault: CredentialVault | null = null
 let codexRuntime: CodexWorkspaceRuntime | null = null
 let toolRegistry: ToolRegistry | null = null
 let researchService: ResearchService | null = null
@@ -147,6 +150,16 @@ async function main(): Promise<void> {
     AppSettingsStore.open(join(userData(), 'app-settings.json')),
     ChatStore.open(join(userData(), 'chats.json'))
   ])
+  credentialVault = new CredentialVault(join(userData(), 'credential-vault.json'), {
+    isAvailable: () => safeStorage.isEncryptionAvailable(),
+    encrypt: (plain) => safeStorage.encryptString(plain).toString('base64'),
+    decrypt: (payload) => safeStorage.decryptString(Buffer.from(payload, 'base64')),
+    // Linux reports which keyring backend was selected; elsewhere safeStorage is the OS store.
+    backend: () =>
+      safeStorage.isEncryptionAvailable()
+        ? (process.platform === 'linux' ? safeStorage.getSelectedStorageBackend() : process.platform === 'darwin' ? 'keychain' : 'dpapi')
+        : 'unavailable'
+  })
   const configuredWorkspace = process.env.CLOSEDAI_WORKSPACE?.trim()
   // An environment-supplied workspace wins for the initial launch, but project changes are
   // still user-owned afterwards. A missing saved selection keeps the existing checkout as the
@@ -381,6 +394,7 @@ function registerIpc(): void {
   registerBrowserDownloadsIpc(ipcMain, () => browserDownloads)
   registerChatIpc(ipcMain, () => chatService)
   registerTraceIpc(ipcMain, traceLog)
+  registerCredentialVaultIpc(ipcMain, () => credentialVault)
   registerToolsIpc(ipcMain, {
     registry: () => toolRegistry,
     telemetry: () => toolTelemetry,

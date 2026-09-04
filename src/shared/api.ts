@@ -2,6 +2,7 @@ import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
+import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot } from './trace.js'
 
@@ -84,6 +85,16 @@ export type ClosedaiApi = {
     /** Switch to the non-project home workspace, restoring its saved panes when available. */
     clearProject: () => Promise<void>
     onEvent: (listener: (event: ChatWorkspaceEvent) => void) => Unsubscribe
+  }
+  /** OS-keychain-backed credential store. Secrets cross the bridge one field at a time, on request. */
+  credentials: {
+    status: () => Promise<CredentialVaultStatus>
+    list: () => Promise<CredentialSummary[]>
+    save: (draft: CredentialDraft) => Promise<CredentialSummary>
+    /** Decrypt a single stored field; used by reveal and copy. */
+    reveal: (id: string, fieldId: string) => Promise<string>
+    remove: (id: string) => Promise<void>
+    rename: (id: string, label: string) => Promise<CredentialSummary>
   }
   tools: {
     manifest: () => Promise<ToolManifest>
