@@ -60,6 +60,70 @@ test('one tool can call all four providers, normalize results, deduplicate, and 
   assert.equal(calls.length, 8)
 })
 
+test('provider requests use current search endpoints, filters, depth modes, and response fields', async () => {
+  const calls: Array<{ url: string; body: Record<string, unknown> }> = []
+  const fetchMock: typeof fetch = async (input, init) => {
+    const url = String(input)
+    const body = typeof init?.body === 'string' ? JSON.parse(init.body) as Record<string, unknown> : {}
+    calls.push({ url, body })
+    if (url.includes('brave.com')) return json({ web: { results: [] } })
+    if (url.includes('serper.dev')) return json({ news: [] })
+    if (url.includes('tavily.com')) return json({ results: [] })
+    return json({ results: {
+      web: [{ title: 'You result', url: 'https://you.example/result', contents: { highlights: ['Useful highlight'] } }],
+      ...(body.knowledge === 'core' ? { knowledge: [{ type: 'answer', description: 'Knowledge answer' }] } : {})
+    } })
+  }
+  const registry = new ToolRegistry([searchTools({ fetch: fetchMock, readKey: async () => 'test' })])
+  const call = (args: Record<string, unknown>) => registry.call({
+    namespace: 'search', tool: 'query', arguments: { count: 4, ...args }
+  }, context)
+
+  await call({
+    query: 'release notes', intent: 'news', depth: 'quick', providers: ['brave', 'serper', 'tavily', 'you'],
+    freshness: 'day', country: 'us', language: 'en',
+    include_domains: ['https://Example.com/path'], exclude_domains: ['bad.example']
+  })
+  const brave = calls.find((item) => item.url.includes('brave.com'))!
+  const braveUrl = new URL(brave.url)
+  assert.equal(braveUrl.searchParams.get('q'), 'release notes site:example.com -site:bad.example')
+  assert.equal(braveUrl.searchParams.get('extra_snippets'), 'true')
+  assert.equal(braveUrl.searchParams.get('freshness'), 'pd')
+  assert.equal(braveUrl.searchParams.get('country'), 'US')
+  assert.equal(braveUrl.searchParams.get('search_lang'), 'en')
+
+  const serper = calls.find((item) => item.url.includes('serper.dev'))!
+  assert.equal(serper.url, 'https://google.serper.dev/news')
+  assert.deepEqual(serper.body, {
+    q: 'release notes site:example.com -site:bad.example', num: 4, gl: 'us', hl: 'en', tbs: 'qdr:d'
+  })
+
+  const tavily = calls.find((item) => item.url.includes('tavily.com'))!
+  assert.deepEqual(tavily.body, {
+    query: 'release notes', search_depth: 'fast', topic: 'news', max_results: 4,
+    include_answer: false, chunks_per_source: 1, time_range: 'day',
+    include_domains: ['https://Example.com/path'], exclude_domains: ['bad.example'],
+    language: 'en', filter_by_language: true
+  })
+
+  const you = calls.find((item) => item.url.includes('ydc-index.io'))!
+  assert.equal(you.url, 'https://ydc-index.io/v1/search')
+  assert.deepEqual(you.body, {
+    query: 'release notes site:example.com -site:bad.example', count: 4,
+    freshness: 'day', country: 'US', language: 'EN'
+  })
+
+  await call({ query: 'regional topic', intent: 'general', depth: 'balanced', providers: ['tavily'], country: 'us' })
+  assert.equal(calls.at(-1)!.body.country, 'united states')
+  assert.equal(calls.at(-1)!.body.search_depth, 'basic')
+
+  const answerResponse = await call({ query: 'explain it', intent: 'answer', providers: ['you'] })
+  const answer = JSON.parse(answerResponse.content[0]!.type === 'text' ? answerResponse.content[0].text : '')
+  assert.equal(calls.at(-1)!.body.knowledge, 'core')
+  assert.deepEqual(answer.answers, [{ provider: 'you', text: 'Knowledge answer' }])
+  assert.equal(answer.results[0].snippet, 'Useful highlight')
+})
+
 test('partial provider failures are returned while useful evidence survives', async () => {
   const router = new SearchRouter([
     fakeClient('brave', [{ title: 'Good', url: 'https://example.com', snippet: 'ok', provider: 'brave' }]),

@@ -78,6 +78,15 @@ test('multiple queries start before either resolves and follow-ups join the same
   assert.equal(service.read(run.runId, context).totalQueries, 2)
 })
 
+test('extending a finished run gives an actionable recovery', async (t) => {
+  const service = new ResearchService(new SearchRouter([]), dependencies())
+  t.after(() => service.dispose())
+  const run = service.start({ ...input, queries: [], urls: [document.url] }, context)
+  await tick()
+  assert.equal(service.read(run.runId, context).state, 'completed')
+  assert.throws(() => service.extend(run.runId, [query], [], context), /completed; start a new run/)
+})
+
 test('search-only and cancelled discovery never open a browser; explicit search URLs are rejected', async (t) => {
   const gate = deferred<ProviderSearchResult>()
   const opened: string[] = []
@@ -189,11 +198,13 @@ test('registry exposes provider-neutral run/read actions, rejects oversize array
   assert.equal(run.presentation.tabId, 'live-tab')
   await tick()
   const state = service.read(run.runId, context)
-  const result = await call('read', { action: 'source', run_id: run.runId, source_id: state.sources[0].id, query: 'evidence' })
+  const result = await call('read', { action: 'source', run_id: run.runId, source_id: state.sources[0].id, query: 'evidence', max_chars: 18_000 })
   const source = JSON.parse(result.content[0].type === 'text' ? result.content[0].text : '')
   assert.equal(source.text, 'evidence')
   assert.equal(source.evidence, 'retrieved_document')
   assert.equal(source.untrusted, true)
+  const waited = await call('read', { action: 'wait', run_id: run.runId, after_cursor: state.cursor, timeout_ms: 30_000 })
+  assert.equal(waited.isError, undefined)
 })
 
 test('source metadata is bounded and cursors do not skip omitted sources', async (t) => {

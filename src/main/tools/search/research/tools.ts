@@ -4,6 +4,9 @@ import type { SearchRequest } from '../types.js'
 import { ResearchService } from './service.js'
 import { SEARCH_PRESENTATION_FIELD } from '../presentation.js'
 
+const MAX_EVENT_WAIT_MS = 20_000
+const MAX_SOURCE_CHARS = 12_000
+
 export function researchTools(service: ResearchService, queryTool: ToolDefinition): ToolDefinition[] {
   const runId = { type: 'string', minLength: 1, maxLength: 100, description: 'Id returned by search.run.' }
   const after = { type: 'integer', minimum: 0, description: 'Last results cursor; omit to return all retained sources.' }
@@ -43,7 +46,7 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
           }
         },
         {
-          action: 'extend', description: 'Add follow-up queries or URLs to an active run without waiting for other work. Keeps its original document budget and deadline.',
+          action: 'extend', description: 'Add follow-up queries or URLs while a run is active, without waiting for other work. If it has completed, start a new run. Keeps the active run\'s original document budget and deadline.',
           inputSchema: schema({ run_id: runId, queries, urls }, ['run_id']),
           async run(input, context) { return result(service.extend(stringArg(input, 'run_id')!, parseQueries(input), (input.urls ?? []) as string[], context)) }
         },
@@ -67,19 +70,19 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
           action: 'wait', description: 'Wait for a revision change, completion, or timeout, then return result deltas. This wait does not cancel the research run when the tool call ends.',
           timeoutMs: 25_000,
           inputSchema: schema({ run_id: runId, after_cursor: after,
-            timeout_ms: { type: 'integer', minimum: 1, maximum: 20_000, description: 'Maximum event wait, default ten seconds.' }
+            timeout_ms: { type: 'integer', minimum: 1, description: 'Requested event wait, default ten seconds; larger requests are capped at twenty seconds.' }
           }, ['run_id', 'after_cursor']),
-          async run(input, context) { return result(await service.wait(stringArg(input, 'run_id')!, context, numberArg(input, 'after_cursor', 0), numberArg(input, 'timeout_ms', 10_000))) }
+          async run(input, context) { return result(await service.wait(stringArg(input, 'run_id')!, context, numberArg(input, 'after_cursor', 0), Math.min(numberArg(input, 'timeout_ms', 10_000), MAX_EVENT_WAIT_MS))) }
         },
         {
           action: 'source', description: 'Read retained document text with its content hash and retrieval metadata. offset/nextOffset page through text; query finds a literal phrase at or after offset. HTML is statically parsed, so hidden CSS content may remain and JavaScript content may be missing.',
           inputSchema: schema({ run_id: runId,
             source_id: { type: 'string', minLength: 1, maxLength: 100 },
             offset: { type: 'integer', minimum: 0 },
-            max_chars: { type: 'integer', minimum: 200, maximum: 12_000 },
+            max_chars: { type: 'integer', minimum: 200, description: 'Requested excerpt size; default 6000, capped at 12000 characters.' },
             query: { type: 'string', minLength: 1, maxLength: 500 }
           }, ['run_id', 'source_id']),
-          async run(input, context) { return result(await service.source(stringArg(input, 'run_id')!, stringArg(input, 'source_id')!, context, numberArg(input, 'offset', 0), numberArg(input, 'max_chars', 6000), stringArg(input, 'query'))) }
+          async run(input, context) { return result(await service.source(stringArg(input, 'run_id')!, stringArg(input, 'source_id')!, context, numberArg(input, 'offset', 0), Math.min(numberArg(input, 'max_chars', 6000), MAX_SOURCE_CHARS), stringArg(input, 'query'))) }
         }
       ]
     })

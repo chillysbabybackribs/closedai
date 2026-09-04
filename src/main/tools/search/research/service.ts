@@ -61,7 +61,7 @@ export class ResearchService {
 
   extend(id: string, queries: SearchRequest[], urls: string[], context: ToolContext): ResearchSnapshot {
     const run = this.owned(id, context)
-    if (run.state !== 'running') throw new Error('Only a running research run can be extended')
+    if (run.state !== 'running') throw new Error(`Research run is ${run.state}; start a new run for follow-up queries or URLs`)
     if (run.owner.turnId !== this.deps.owner(context).turnId) throw new Error('Research belongs to a different turn')
     this.validate(queries, urls)
     if (run.totalQueries + queries.length > 12) throw new Error('At most twelve queries per run')
