@@ -5,8 +5,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ChatSnapshot, ChatThreadContent } from '../../shared/chat.js'
 import type { ChatContinuation } from '../../shared/types.js'
-import { AppSettingsStore, DEFAULT_APP_SETTINGS, type AppSettingsAccess } from '../app-settings-store.js'
+import { DEFAULT_APP_SETTINGS } from '../app-settings-store.js'
+import { chatRecord, MemorySettings } from '../chat-peers/peer-manager-harness.js'
 import { PeerSettings } from '../chat-peers/peer-settings.js'
+import { ChatStore } from '../chat-store/chat-store.js'
 import { ChatMemory } from './chat-memory.js'
 
 const state = { goal: 'Optimize long chats', constraints: ['Keep history'], decisions: [], progress: [], nextSteps: ['Measure recall'], files: [] }
@@ -19,29 +21,22 @@ function harness() {
     contextUsage: null, planUsage: null, turnContext: null,
     items: [{ type: 'user', id: 'u1', turnId: 't', text: 'Keep the old constraints' }]
   }
-  let settings = { ...DEFAULT_APP_SETTINGS, chatSelectedPaneId: 'p', chatPeers: [{
-    paneId: 'p', provider: 'codex' as const, threadId: 'thread', codexThreadId: 'thread', claudeSessionId: null,
-    modelId: null, reasoningEffort: null
-  }] } as typeof DEFAULT_APP_SETTINGS
+  const store = ChatStore.inMemory([chatRecord('p', null, { codexThreadId: 'thread', threadId: 'thread' })])
   let reads = 0
   let read = async (threadId: string): Promise<ChatThreadContent> => ({ threadId, threadName: null, items: [
     { type: 'user', id: 'old', turnId: 'old-t', text: 'Earlier decision' },
     { type: 'user', id: 'future', turnId: 'future-t', text: 'After the branch' }
   ] })
-  const store: AppSettingsAccess = {
-    get: () => settings,
-    set: async (patch) => { settings = { ...settings, ...patch }; return settings }
-  }
   const surface = {
     snapshot: () => snapshot,
     readThread: async (id: string) => { reads++; return read(id) }
   }
   const memory = new ChatMemory(store, (paneId) => paneId === 'p' ? surface : null)
   const source = (patch: Partial<ChatContinuation> = {}) => {
-    settings.chatPeers[0]!.continuation = {
+    store.update('p', { continuation: {
       sourcePaneId: 'closed-pane', sourceThreadId: 'old-thread', sourceProvider: 'codex', sourceTitle: 'Old',
       sourceThroughItemId: 'old', handoff: null, createdAt: 1, ...patch
-    }
+    } })
   }
   return { memory, store, snapshot, source, surface, reads: () => reads,
     setRead: (value: typeof read) => { read = value } }
@@ -61,7 +56,7 @@ test('save is caller-scoped, revision checked, and read back without provider tr
   await assert.rejects(h.memory.save({ ...caller, threadId: 'other' }, 2, state), /calling pane/)
   await assert.rejects(h.memory.save({ ...caller, turnId: 'old' }, 2, state), /active turn/)
   await assert.rejects(h.memory.save(caller, 2, { ...state, goal: 'x'.repeat(2_000) }), /Goal/)
-  assert.equal(h.store.get().chatPeers[0]!.checkpoint!.revision, 2)
+  assert.equal(h.store.require('p').checkpoint!.revision, 2)
 })
 
 test('recalls a closed continuation source without opening or changing the current conversation', async () => {
@@ -105,13 +100,17 @@ test('checkpoints and frozen source boundaries survive disk reload and ordinary 
   const checkpoint = await h.memory.save(caller, 0, state)
   h.source({ checkpoint })
   const dir = await mkdtemp(join(tmpdir(), 'closedai-memory-'))
-  const file = join(dir, 'app-settings.json')
-  const store = await AppSettingsStore.open(file)
-  await store.set(h.store.get())
-  const peer = new PeerSettings(store, 'p')
+  const file = join(dir, 'chats.json')
+  const onDisk = await ChatStore.open(file)
+  onDisk.create(h.store.require('p'))
+  const settings = new MemorySettings({ ...DEFAULT_APP_SETTINGS, chatSelectedPaneId: 'p', chatOpenIds: ['p'] })
+  const peer = new PeerSettings(settings, onDisk, 'p')
   await peer.set({ chatReasoningEffort: 'high' })
-  const loaded = await AppSettingsStore.open(file)
-  assert.deepEqual(loaded.get().chatPeers[0]!.checkpoint, checkpoint)
-  assert.deepEqual(loaded.get().chatPeers[0]!.continuation?.checkpoint, checkpoint)
-  assert.equal(loaded.get().chatPeers[0]!.continuation?.sourceThroughItemId, 'old')
+  await onDisk.flush()
+  const loaded = await ChatStore.open(file)
+  assert.deepEqual(loaded.require('p').checkpoint, checkpoint)
+  assert.deepEqual(loaded.require('p').continuation?.checkpoint, checkpoint)
+  assert.equal(loaded.require('p').continuation?.sourceThroughItemId, 'old')
+  assert.equal(loaded.require('p').reasoningEffort, 'high')
+  assert.equal(settings.get().chatReasoningEffort, 'high', 'the selected chat mirrors into the flat fields')
 })

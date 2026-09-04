@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatSnapshot } from '../../shared/chat.js'
-import type { ChatPeerRecord } from '../../shared/types.js'
+import type { ChatRecord } from '../../shared/chat-store.js'
 import { MAX_PEER_PREVIEW_CHARS, PeerSummaryCache, paneTitle, summaryOf } from './peer-summary.js'
 
 function snapshot(overrides: Partial<ChatSnapshot> = {}): ChatSnapshot {
@@ -24,15 +24,28 @@ function snapshot(overrides: Partial<ChatSnapshot> = {}): ChatSnapshot {
   }
 }
 
-function record(overrides: Partial<ChatPeerRecord> = {}): ChatPeerRecord {
+function record(overrides: Partial<ChatRecord> = {}): ChatRecord {
   return {
-    paneId: 'pane-a',
+    id: 'pane-a',
+    cwd: '/workspace',
+    projectPath: '/workspace',
     provider: 'claude',
     threadId: null,
     codexThreadId: null,
     claudeSessionId: null,
+    antigravityConversationId: null,
+    cursorSessionId: null,
     modelId: 'claude:opus',
     reasoningEffort: null,
+    title: null,
+    preview: '',
+    createdAt: 0,
+    updatedAt: 0,
+    lastTurnEndedAt: null,
+    archived: false,
+    continuation: null,
+    checkpoint: null,
+    parentChatId: null,
     ...overrides
   }
 }

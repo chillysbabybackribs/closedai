@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events'
-import type { ChatAttachment, ChatEvent, ChatHistoryWindow, ChatSnapshot, ChatThreadContent } from '../../shared/chat.js'
+import type { ChatAttachment, ChatEvent, ChatHistoryWindow, ChatSnapshot, ChatThreadContent, ChatThreadSummary } from '../../shared/chat.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import { chatProviderOfId } from '../../shared/chat-providers.js'
 import type { AppSettings } from '../../shared/types.js'
@@ -94,7 +94,7 @@ export class FakeSurface extends EventEmitter implements ChatSurface {
   async selectModel(modelId: string): Promise<void> { this.calls.push(`model:${modelId}`); this.state.selectedModel = modelId }
   async selectReasoningEffort(effort: string): Promise<void> { this.calls.push(`effort:${effort}`) }
   async refreshPlanUsage(): Promise<void> { this.calls.push('refreshPlanUsage') }
-  async listThreads(): Promise<[]> { this.calls.push('listThreads'); return [] }
+  async listThreads(): Promise<ChatThreadSummary[]> { this.calls.push('listThreads'); return [] }
   async readThread(threadId: string): Promise<ChatThreadContent> {
     this.calls.push(`read:${threadId}`)
     return {
