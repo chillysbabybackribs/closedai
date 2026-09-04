@@ -209,6 +209,17 @@ export class ChatService extends EventEmitter {
     if (this.activeTurnId) throw new Error('Stop the current turn before changing models')
     const preference = this.modelState.preferenceForModel(modelId)
     if (this.modelState.selectedModel === modelId && this.modelState.selectedReasoningEffort === preference.effort) return
+    if (this.threadId) {
+      await this.client.request('thread/resume', {
+        ...resumeThreadParams(
+          this.threadId,
+          this.cwd,
+          this.tools,
+          this.threadModelSettings(preference.model, preference.effort)
+        ),
+        excludeTurns: true
+      })
+    }
     await this.settings.set({ chatModelId: modelId, chatReasoningEffort: preference.effort })
     this.modelState.apply(preference)
     this.emitEvent({ type: 'model', selectedModel: modelId, selectedReasoningEffort: preference.effort })
@@ -377,7 +388,7 @@ export class ChatService extends EventEmitter {
   private async resumeThread(threadId: string): Promise<void> {
     const response = await this.client.request<ThreadResponse>(
       'thread/resume',
-      resumeThreadParams(threadId, this.cwd, this.tools, this.modelState.selectedReasoningEffort)
+      resumeThreadParams(threadId, this.cwd, this.tools, this.selectedThreadModelSettings())
     )
     const thread = recordOf(response.thread)
     if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')
@@ -424,7 +435,7 @@ export class ChatService extends EventEmitter {
     if (this.threadId) return this.threadId
     const response = await this.client.request<ThreadResponse>(
       'thread/start',
-      startThreadParams(this.cwd, this.tools, this.modelState.selectedModel, this.modelState.selectedReasoningEffort)
+      startThreadParams(this.cwd, this.tools, this.selectedThreadModelSettings())
     )
     const thread = recordOf(response.thread)
     if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')
@@ -434,6 +445,19 @@ export class ChatService extends EventEmitter {
     await this.settings.set({ chatThreadId: thread.id })
     this.emitEvent({ type: 'thread', threadId: thread.id, threadName: this.threadName })
     return thread.id
+  }
+
+  private selectedThreadModelSettings(): ReturnType<ChatService['threadModelSettings']> {
+    return this.threadModelSettings(this.modelState.selectedModel, this.modelState.selectedReasoningEffort)
+  }
+
+  private threadModelSettings(model: string | null, effort: string | null): {
+    model: string | null
+    effort: string | null
+    contextWindow?: number
+  } {
+    const contextWindow = this.modelState.models.find((entry) => entry.id === model)?.contextWindow
+    return { model, effort, ...(contextWindow ? { contextWindow } : {}) }
   }
 
   /** Context is optional enrichment: stale UI state must never prevent a send. */

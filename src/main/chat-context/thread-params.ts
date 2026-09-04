@@ -6,6 +6,12 @@ export type ThreadResponse = {
   model?: unknown
   reasoningEffort?: unknown
 }
+
+export type ThreadModelSettings = {
+  model: string | null
+  effort: string | null
+  contextWindow?: number
+}
 import { closedAiDeveloperInstructions } from './developer-instructions.js'
 import { workspaceNavigationSection } from './workspace-navigation.js'
 
@@ -33,26 +39,37 @@ export function resumeThreadParams(
   threadId: string,
   cwd: string,
   tools: ToolRegistry,
-  effort: string | null = null
+  modelSettings: ThreadModelSettings = { model: null, effort: null }
 ): Record<string, unknown> {
   return {
     threadId,
     ...sharedThreadParams(cwd, tools),
     excludeTurns: false,
-    ...(effort ? { config: { model_reasoning_effort: effort } } : {})
+    ...(modelSettings.model ? { model: modelSettings.model } : {}),
+    ...threadConfig(modelSettings)
   }
 }
 
 export function startThreadParams(
   cwd: string,
   tools: ToolRegistry,
-  model: string | null,
-  effort: string | null = null
+  modelSettings: ThreadModelSettings = { model: null, effort: null }
 ): Record<string, unknown> {
   return {
     ...sharedThreadParams(cwd, tools),
     serviceName: 'closedai',
-    ...(model ? { model } : {}),
-    ...(effort ? { config: { model_reasoning_effort: effort } } : {})
+    ...(modelSettings.model ? { model: modelSettings.model } : {}),
+    ...threadConfig(modelSettings)
   }
+}
+
+function threadConfig(settings: ThreadModelSettings): { config?: Record<string, unknown> } {
+  const contextWindow = settings.contextWindow
+  const config = {
+    ...(settings.effort ? { model_reasoning_effort: settings.effort } : {}),
+    ...(typeof contextWindow === 'number' && Number.isSafeInteger(contextWindow) && contextWindow > 0
+      ? { model_context_window: contextWindow }
+      : {})
+  }
+  return Object.keys(config).length ? { config } : {}
 }
