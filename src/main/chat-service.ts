@@ -301,6 +301,11 @@ export class ChatService extends EventEmitter {
   }
 
   stop(): void {
+    // A parked or provider-switched pane releases no process: Codex is workspace-owned now.
+    // Its scoped listener stays registered so returning to the pane needs no reconnect path.
+  }
+
+  dispose(): void {
     this.stopping = true
     if (this.restartTimer) clearTimeout(this.restartTimer)
     this.restartTimer = null

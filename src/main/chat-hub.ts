@@ -28,6 +28,8 @@ export type ChatSurface = {
   snapshot(window?: ChatHistoryWindow): ChatSnapshot
   start(): Promise<void>
   stop(): void
+  /** Permanently release listeners/resources when the pane detaches; unlike stop, it is not parking. */
+  dispose?(): void
   send(text: string, attachments: ChatAttachment[]): Promise<void>
   interrupt(): Promise<void>
   selectModel(modelId: string): Promise<void>
@@ -137,6 +139,15 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   stop(): void {
     this.stopped = true
     for (const name of CHAT_PROVIDERS) this.providers[name].stop()
+  }
+
+  dispose(): void {
+    this.stopped = true
+    for (const name of CHAT_PROVIDERS) {
+      const provider = this.providers[name]
+      if (provider.dispose) provider.dispose()
+      else provider.stop()
+    }
   }
 
   async send(text: string, attachments: ChatAttachment[]): Promise<void> {

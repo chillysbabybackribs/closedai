@@ -92,7 +92,9 @@ export class PeerLifecycle {
   detach(chatId: ChatPaneId): void {
     const entry = this.peers.get(chatId)
     if (!entry) return
-    this.parking.stop(entry)
+    this.parking.cancel(entry)
+    if (entry.surface.dispose) entry.surface.dispose()
+    else entry.surface.stop()
     this.peers.delete(chatId)
     traceLog.responses.forget(chatId)
   }

@@ -12,17 +12,17 @@ import { appServerConfigArgs } from './chat-context/app-server-config.js'
 import { loadChatModels } from './chat-model-catalog.js'
 import type { TraceScope } from './trace/trace-log.js'
 
-type RuntimeSessionState = {
+export type RuntimeSessionState = {
   account: unknown
   requiresOpenaiAuth: boolean
   models: ChatModel[]
 }
 
 type RuntimeTarget = {
+  session: CodexRuntimeSession
   paneId: string | null
   threadId: () => string | null
   turnId: () => string | null
-  events: EventEmitter
 }
 
 type RuntimeTransport = EventEmitter & Pick<
@@ -58,6 +58,10 @@ export class CodexRuntimeSession extends EventEmitter {
   }
 
   request<T>(method: string, params?: unknown, timeoutMs?: number): Promise<T> {
+    if (!this.active) {
+      this.active = true
+      this.runtime.activate(this.target())
+    }
     return this.runtime.request<T>(this.scope(), method, params, timeoutMs)
   }
 
@@ -75,10 +79,10 @@ export class CodexRuntimeSession extends EventEmitter {
 
   private target(): RuntimeTarget {
     return {
+      session: this,
       paneId: this.paneId,
       threadId: this.currentThreadId,
-      turnId: this.currentTurnId,
-      events: this
+      turnId: this.currentTurnId
     }
   }
 
@@ -146,10 +150,7 @@ export class CodexWorkspaceRuntime {
   }
 
   activate(target: RuntimeTarget): void {
-    for (const [session] of this.targets) {
-      if (session === target.events) this.targets.set(session, target)
-    }
-    this.targets.set(target.events as CodexRuntimeSession, target)
+    this.targets.set(target.session, target)
   }
 
   deactivate(session: CodexRuntimeSession): void {
@@ -201,16 +202,25 @@ export class CodexWorkspaceRuntime {
 
   private route(event: 'notification' | 'request', message: AppServerNotification | AppServerRequest): void {
     const scope = messageScope(message)
-    const targets = scope.threadId
+    let targets = scope.threadId
       ? [...this.targets.values()].filter((target) => target.threadId() === scope.threadId)
       : scope.turnId
         ? [...this.targets.values()].filter((target) => target.turnId() === scope.turnId)
         : [...this.targets.values()]
-    for (const target of targets) target.events.emit(event, message)
+    // Account notifications belong to every pane. An unscoped server request must have exactly
+    // one answer, while a scoped request with no owner is failed instead of timing out.
+    if (event === 'request') {
+      targets = targets.slice(0, 1)
+      if (targets.length === 0) {
+        this.transport.respondWithError((message as AppServerRequest).id, -32603, 'No active pane owns this Codex request')
+        return
+      }
+    }
+    for (const target of targets) target.session.emit(event, message)
   }
 
   private broadcast(event: 'protocolError' | 'exit', detail: unknown): void {
-    for (const target of this.targets.values()) target.events.emit(event, detail)
+    for (const target of this.targets.values()) target.session.emit(event, detail)
   }
 
   private scopeFor(message: unknown): TraceScope {
