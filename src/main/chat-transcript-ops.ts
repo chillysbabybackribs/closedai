@@ -8,8 +8,6 @@ export type TranscriptOp =
 export type TurnEnd = {
   status: 'completed' | 'interrupted' | 'failed'
   error?: string
-  /** Paused while the prompt was still queued, so the provider never received it. */
-  undelivered?: boolean
 }
 
 export type TranscriptSink = {

@@ -441,10 +441,7 @@ export class AntigravityChatService extends EventEmitter {
   private onTurnEnd(turnId: string, end: TurnEnd): void {
     handleProviderTurnEnd(turnId, end, {
       addNotice: (text, tone, id) => this.addNotice(text, tone, id),
-      setPaused: (id) => this.setPaused(id),
-      pauseMessage: (paused) => paused.undelivered
-        ? { text: 'Turn paused before the message was sent; Antigravity never received it', pausedTurnId: null }
-        : { text: 'Turn paused', pausedTurnId: turnId }
+      setPaused: (id) => this.setPaused(id)
     })
     const conversationId = this.session?.conversationId
     if (!conversationId) return
