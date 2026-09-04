@@ -1,6 +1,8 @@
 import path from 'node:path'
 import { readFileSnapshot, type FileSnapshot } from '../file-snapshot.js'
 import { styleRules, type StyleRule } from './style-rules.js'
+import type { SourceAnalysis } from './source-analysis.js'
+export type { ExportedSymbol } from './source-analysis.js'
 
 import { indexedFiles } from './query.js'
 
@@ -10,14 +12,9 @@ import { indexedFiles } from './query.js'
 // so a full scan is cheap. Content hashes reuse parsing without trusting timestamps.
 
 export type Located = { name: string; line: number }
-/** `end` is the last line of the declaration, so a read can take exactly the symbol. */
-export type ExportedSymbol = Located & { kind: string; end: number }
-
-export type FileFacts = FileSnapshot & {
+export type FileFacts = FileSnapshot & SourceAnalysis & {
   file: string
   lines: readonly string[]
-  /** Exported declarations and re-exported names. */
-  exports: readonly ExportedSymbol[]
   /** `data-ui` and `data-ui-surface` ids this file renders. */
   controls: readonly Located[]
   /** Class names this stylesheet defines a rule for. */
@@ -28,19 +25,13 @@ export type FileFacts = FileSnapshot & {
 
 const CODE = /\.(?:ts|tsx|mjs|js)$/
 const STYLE = /\.css$/
-const EXPORT_DECL = /^export\s+(?:default\s+)?(?:async\s+)?(function|const|let|var|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/
-const EXPORT_LIST = /^export\s*\{([^}]*)\}/
-// A top-level statement or doc comment starts at column zero; the previous declaration ends
-// on the last non-blank, non-comment line before it (a closing `}` at column zero is part of
-// the declaration, not a new statement).
-const TOP_LEVEL_START = /^(?:export\s|import\s|(?:async\s+)?function\s|const\s|let\s|var\s|class\s|type\s|interface\s|enum\s|\/\*\*|\/\/)/
 const CONTROL_ATTR = /data-ui(?:-surface)?=["']([^"']+)["']/g
 const CLASS_ATTR = /class(?:Name)?=(?:"([^"]*)"|'([^']*)'|\{`([^`]*)`\})/g
 const cache = new Map<string, FileFacts>()
 
 /** Every indexed file, parsed once per revision. Unreadable files are skipped, not fatal. */
-export async function scanWorkspace(root: string): Promise<FileFacts[]> {
-  const scanned = await Promise.all(indexedFiles.map((file) => factsFor(root, file)))
+export async function scanWorkspace(root: string, files: readonly string[] = indexedFiles): Promise<FileFacts[]> {
+  const scanned = await Promise.all(files.map((file) => factsFor(root, file)))
   return scanned.filter((facts): facts is FileFacts => facts !== null)
 }
 
@@ -50,7 +41,7 @@ export async function factsFor(root: string, file: string): Promise<FileFacts | 
     const snapshot = await readFileSnapshot(absolute)
     const cached = cache.get(absolute)
     if (cached && cached.hash === snapshot.hash && cached.path === snapshot.path) return cached
-    const facts = parse(file, snapshot)
+    const facts = await parse(file, snapshot)
     if (cache.size >= 2_000) cache.clear()
     cache.set(absolute, facts)
     return facts
@@ -59,48 +50,22 @@ export async function factsFor(root: string, file: string): Promise<FileFacts | 
   }
 }
 
-function parse(file: string, snapshot: FileSnapshot): FileFacts {
+async function parse(file: string, snapshot: FileSnapshot): Promise<FileFacts> {
   const { source, lines } = snapshot
   const code = CODE.test(file)
+  // Keep the compiler parser out of app startup; load it only on the first source inspection.
+  const analysis: SourceAnalysis = code
+    ? (await import('./source-analysis.js')).analyzeSource(file, source)
+    : { exports: [], imports: [], types: [], typeRefs: [], tests: [] }
   return {
     ...snapshot,
+    ...analysis,
     file,
     lines,
-    exports: code ? exportedSymbols(lines) : [],
     controls: code ? attributeMatches(lines, CONTROL_ATTR) : [],
     styleDefs: STYLE.test(file) ? styleRules(source) : [],
     styleRefs: code ? classReferences(source) : []
   }
-}
-
-function exportedSymbols(lines: readonly string[]): ExportedSymbol[] {
-  const found: ExportedSymbol[] = []
-  lines.forEach((line, index) => {
-    const declared = EXPORT_DECL.exec(line)
-    if (declared) {
-      found.push({ name: declared[2]!, kind: declared[1]!, line: index + 1, end: declarationEnd(lines, index) })
-      return
-    }
-    const listed = EXPORT_LIST.exec(line)
-    if (!listed) return
-    for (const entry of listed[1]!.split(',')) {
-      // `export { internalName as publicName }` is findable by the name importers write.
-      const name = entry.trim().split(/\s+as\s+/).at(-1)?.replace(/^type\s+/, '').trim()
-      if (name && /^[A-Za-z_$][\w$]*$/.test(name)) found.push({ name, kind: 'reexport', line: index + 1, end: index + 1 })
-    }
-  })
-  return found
-}
-
-/** One-based last line of the declaration starting at `start` (zero-based). */
-function declarationEnd(lines: readonly string[], start: number): number {
-  let end = start
-  for (let index = start + 1; index < lines.length; index++) {
-    const text = lines[index]!
-    if (TOP_LEVEL_START.test(text)) break
-    if (text.trim() !== '' && !/^\s*(?:\*|\/\/)/.test(text)) end = index
-  }
-  return end + 1
 }
 
 function attributeMatches(lines: readonly string[], pattern: RegExp): Located[] {

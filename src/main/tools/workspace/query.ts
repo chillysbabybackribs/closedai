@@ -62,7 +62,7 @@ function importCandidates(base: string): string[] {
   ]
 }
 
-function resolveImport(from: string, specifier: string): string | null {
+export function resolveImport(from: string, specifier: string): string | null {
   let base: string
   if (specifier.startsWith('@/')) base = `src/${specifier.slice(2)}`
   else if (specifier.startsWith('.')) base = path.posix.normalize(path.posix.join(path.posix.dirname(from), specifier))
