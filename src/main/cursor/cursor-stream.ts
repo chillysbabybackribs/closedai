@@ -67,6 +67,9 @@ export class CursorTurnTranslator {
         return { ops: this.handlePlan(update) }
       case 'session_info_update': {
         const title = stringOf(update.title)
+        if (title && (title.includes('<closedai_context') || title.includes('closedai.instructions'))) {
+          return { ops: [] }
+        }
         return title ? { ops: [], title } : { ops: [] }
       }
       case 'current_mode_update': {

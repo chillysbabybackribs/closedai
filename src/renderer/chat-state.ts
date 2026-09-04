@@ -52,24 +52,43 @@ export function reduceChatWorkspaceEvent(
   event: ChatWorkspaceAction
 ): ChatWorkspaceSnapshot {
   if (event.type === 'historyPage') {
-    if (event.paneId !== state.selectedPaneId || event.threadId !== state.selected.threadId ||
-      event.beforeItemId !== state.selected.items[0]?.id) return state
-    const existing = new Set(state.selected.items.map((item) => item.id))
-    const retained = new Map(state.selected.history?.backgroundTasks?.map((item) => [item.id, item]))
+    const pane = state.panes?.[event.paneId] ?? (event.paneId === state.selectedPaneId ? state.selected : undefined)
+    if (!pane || event.threadId !== pane.threadId || event.beforeItemId !== pane.items[0]?.id) return state
+    const existing = new Set(pane.items.map((item) => item.id))
+    const retained = new Map(pane.history?.backgroundTasks?.map((item) => [item.id, item]))
     const earlier = event.page.items.filter((item) => !existing.has(item.id)).map((item) => retained.get(item.id) ?? item)
     const loaded = new Set(earlier.map((item) => item.id))
-    return { ...state, selected: { ...state.selected,
-      items: [...earlier, ...state.selected.items],
-      history: { ...state.selected.history, hasEarlier: event.page.hasEarlier,
+    return updatePane(state, event.paneId, { ...pane,
+      items: [...earlier, ...pane.items],
+      history: { ...pane.history, hasEarlier: event.page.hasEarlier,
         backgroundTasks: [...retained.values()].filter((item) => !loaded.has(item.id)) }
-    } }
+    })
   }
-  if (event.type === 'workspace') return event.snapshot
+  if (event.type === 'workspace') {
+    const panes = Object.fromEntries(Object.entries(event.snapshot.panes ?? {}).map(([id, next]) => {
+      const previous = state.panes?.[id]
+      const boundary = previous?.threadId === next.threadId && next.items.length
+        ? previous.items.findIndex((item) => item.id === next.items[0]!.id) : -1
+      return [id, boundary > 0 && previous ? { ...next,
+        items: [...previous.items.slice(0, boundary), ...next.items],
+        history: { ...next.history, hasEarlier: previous.history?.hasEarlier ?? false }
+      } : next]
+    }))
+    return { ...event.snapshot, panes, selected: panes[event.snapshot.selectedPaneId] ?? event.snapshot.selected }
+  }
   if (event.type === 'chats') {
     return { ...state, selectedPaneId: event.selectedPaneId, chats: event.chats }
   }
-  if (event.paneId !== state.selectedPaneId) return state
-  return { ...state, selected: reduceChatEvent(state.selected, event.event) }
+  const pane = state.panes?.[event.paneId] ?? (event.paneId === state.selectedPaneId ? state.selected : undefined)
+  if (!pane) return state
+  return updatePane(state, event.paneId, reduceChatEvent(pane, event.event))
+}
+
+function updatePane(state: ChatWorkspaceSnapshot, id: string, pane: ChatSnapshot): ChatWorkspaceSnapshot {
+  return { ...state,
+    panes: { ...state.panes, [id]: pane },
+    selected: id === state.selectedPaneId ? pane : state.selected
+  }
 }
 
 /** How the pane names each provider. */

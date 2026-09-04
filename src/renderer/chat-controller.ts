@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useReducer } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, type Dispatch } from 'react'
 import type { ChatAttachment, ChatSnapshot } from '../shared/chat.js'
 import type { ChatContinuationSource, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../shared/chat-peers.js'
-import { coalesceChatWorkspaceEvents, initialChatRendererState, reduceChatRendererEvent } from './chat-state.js'
+import { coalesceChatWorkspaceEvents, initialChatRendererState, reduceChatRendererEvent, type ChatWorkspaceAction } from './chat-state.js'
 
 export type ChatController = {
   state: ChatSnapshot
@@ -33,7 +33,7 @@ export type ChatController = {
   loadEarlier: () => Promise<number>
 }
 
-export function useChatController(enabled = true): ChatController & { sidebar: ChatController } {
+export function useChatController(enabled = true) {
   const [{ workspace, sidebar: sidebarState }, dispatch] = useReducer(reduceChatRendererEvent, undefined, initialChatRendererState)
 
   useEffect(() => {
@@ -63,7 +63,18 @@ export function useChatController(enabled = true): ChatController & { sidebar: C
     }
   }, [enabled])
 
-  const paneId = workspace.selectedPaneId
+  const selected = usePaneChatController(workspace, workspace.selectedPaneId, workspace.selected, dispatch)
+  const sidebar = useMemo(() => ({ ...selected, state: sidebarState }), [selected, sidebarState])
+  return { ...selected, sidebar, snapshot: workspace, dispatch }
+}
+
+/** Bind every action to the tile's identity, independently of current keyboard focus. */
+export function usePaneChatController(
+  workspace: ChatWorkspaceSnapshot,
+  paneId: string,
+  state: ChatSnapshot,
+  dispatch: Dispatch<ChatWorkspaceAction>
+): ChatController {
   const send = useCallback((text: string, attachments: ChatAttachment[]) =>
     window.closedai.chat.send(paneId, text, attachments), [paneId])
   const interrupt = useCallback(() => window.closedai.chat.interrupt(paneId), [paneId])
@@ -78,17 +89,17 @@ export function useChatController(enabled = true): ChatController & { sidebar: C
   const continueFromChat = useCallback((source: ChatContinuationSource, modelId: string | null) =>
     window.closedai.chat.continueInNewPeer(source, modelId).then(() => undefined), [])
   const continueInNewThread = useCallback(() => continueFromChat(
-    { paneId, threadId: workspace.selected.threadId },
-    workspace.selected.selectedModel
-  ), [continueFromChat, paneId, workspace.selected.threadId, workspace.selected.selectedModel])
+    { paneId, threadId: state.threadId },
+    state.selectedModel
+  ), [continueFromChat, paneId, state.threadId, state.selectedModel])
   const openChat = useCallback((chatId: string) => window.closedai.chat.openChat(chatId).then(() => undefined), [])
   const archiveChat = useCallback((chatId: string) => window.closedai.chat.archiveChat(chatId), [])
   const setChatPinned = useCallback((chatId: string, pinned: boolean) => window.closedai.chat.setChatPinned(chatId, pinned), [])
   const compactConversation = useCallback(() => window.closedai.chat.compactConversation(paneId), [paneId])
   const selectPane = useCallback((nextPaneId: string) => window.closedai.chat.selectPane(nextPaneId), [])
   const closePeer = useCallback((targetPaneId: string) => window.closedai.chat.closePeer(targetPaneId), [])
-  const beforeItemId = workspace.selected.items[0]?.id
-  const threadId = workspace.selected.threadId
+  const beforeItemId = state.items[0]?.id
+  const threadId = state.threadId
   const loadEarlier = useCallback(async (): Promise<number> => {
     if (!beforeItemId) return 0
     const page = await window.closedai.chat.historyPage(paneId, threadId, beforeItemId)
@@ -98,7 +109,11 @@ export function useChatController(enabled = true): ChatController & { sidebar: C
 
   // Actions stay stable across text updates, so the sidebar can use its own snapshot without
   // receiving a new controller for each streamed chunk.
-  const actions = useMemo(() => ({
+  return useMemo(() => ({
+    state,
+    workspace: workspace.workspace,
+    chats: workspace.chats,
+    selectedPaneId: paneId,
     send,
     interrupt,
     interruptPane,
@@ -118,17 +133,9 @@ export function useChatController(enabled = true): ChatController & { sidebar: C
     closePeer,
     loadEarlier
   }), [
+    state, workspace.workspace, workspace.chats, paneId,
     send, interrupt, interruptPane, selectModel, selectReasoningEffort, refreshPlanUsage, loginWithChatGPT,
     listChats, newThread, continueInNewThread, continueFromChat, openChat,
     archiveChat, setChatPinned, compactConversation, selectPane, closePeer, loadEarlier
   ])
-  const sidebar = useMemo<ChatController>(() => ({
-    ...actions,
-    state: sidebarState,
-    workspace: workspace.workspace,
-    chats: workspace.chats,
-    selectedPaneId: workspace.selectedPaneId
-  }), [actions, sidebarState, workspace.workspace, workspace.chats, workspace.selectedPaneId])
-
-  return useMemo(() => ({ ...sidebar, state: workspace.selected, sidebar }), [sidebar, workspace.selected])
 }
