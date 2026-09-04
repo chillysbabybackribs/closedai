@@ -157,9 +157,9 @@ test('with the workspace catalogs cached, only the active provider starts and th
   await hub.selectModel('claude:opus[1m]')
   assert.deepEqual(claude.calls, ['newThread'])
   assert.deepEqual(codex.calls, ['start:true', 'stop'])
-  // The first message is what starts it.
+  // The first message is what starts it; the pick is handed over once it is up.
   await hub.send('hi', [])
-  assert.deepEqual(claude.calls, ['newThread', 'start:true', 'send:hi'])
+  assert.deepEqual(claude.calls, ['newThread', 'start:true', 'selectModel:claude:opus[1m]', 'send:hi'])
 })
 
 test('a provider a pane reads cold shares its catalog with the workspace and stops again', async () => {
@@ -214,7 +214,7 @@ test('a provider switch is a settings write: the pane is ready on the picked mod
   assert.deepEqual(cursor.calls, ['newThread', 'start:true'], 'the first send starts the provider and waits for it')
   release()
   await sending
-  assert.deepEqual(cursor.calls, ['newThread', 'start:true', 'send:hello'])
+  assert.deepEqual(cursor.calls, ['newThread', 'start:true', 'selectModel:cursor:claude-opus-5[effort=high]', 'send:hello'])
   // Once up, the provider's own state is what the pane shows.
   assert.equal(hub.snapshot().connection.message, 'cursor ready')
 })
