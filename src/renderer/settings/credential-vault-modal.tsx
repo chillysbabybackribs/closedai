@@ -205,7 +205,7 @@ export function CredentialVaultModal({ open, onOpenChange }: CredentialVaultModa
               </div>
             </div>
 
-            <form onSubmit={handleSave} className="credential-add-form pt-4">
+            <form onSubmit={handleSave} className="credential-add-form pt-4 flex flex-col">
               <div className="space-y-4">
                 <div className="grid gap-2">
                   <label className="text-sm font-medium">Credential Type</label>
@@ -255,7 +255,7 @@ export function CredentialVaultModal({ open, onOpenChange }: CredentialVaultModa
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 mt-6 border-t">
+              <div className="flex justify-end gap-2 pt-4 mt-auto border-t">
                 <Button type="button" variant="ghost" onClick={() => setView('list')}>Cancel</Button>
                 <Button type="submit" disabled={!newSecret.trim()}>Save Credential</Button>
               </div>
