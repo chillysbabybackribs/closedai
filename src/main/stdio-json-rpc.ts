@@ -20,11 +20,12 @@ type PendingRequest = {
   resolve: (value: unknown) => void
   reject: (error: Error) => void
   timer: NodeJS.Timeout
+  traceScope?: TraceScope
 }
 
 /** How a client records the wire in the turn trace; omitted when the peer is not traced. */
 export type RpcTrace = {
-  scope: () => TraceScope
+  scope: (direction: 'in' | 'out', message: unknown) => TraceScope
   /** Trace label per direction, e.g. `codex.in` / `codex.out`. */
   label: (direction: 'in' | 'out') => string
   summarize: (message: unknown) => string
@@ -122,7 +123,12 @@ export class StdioJsonRpcClient extends EventEmitter {
     })
   }
 
-  request<T>(method: string, params?: unknown, timeoutMs = this.options.defaultTimeoutMs ?? 30_000): Promise<T> {
+  request<T>(
+    method: string,
+    params?: unknown,
+    timeoutMs = this.options.defaultTimeoutMs ?? 30_000,
+    traceScope?: TraceScope
+  ): Promise<T> {
     const child = this.child
     if (!child || child.stdin.destroyed) return Promise.reject(new Error(`${this.options.peer} is not connected`))
     const id = this.nextId++
@@ -135,10 +141,11 @@ export class StdioJsonRpcClient extends EventEmitter {
         method,
         resolve: (value) => resolve(value as T),
         reject,
-        timer
+        timer,
+        traceScope
       })
       try {
-        this.write({ method, id, params })
+        this.write({ method, id, params }, traceScope)
       } catch (error) {
         clearTimeout(timer)
         this.pending.delete(id)
@@ -151,12 +158,12 @@ export class StdioJsonRpcClient extends EventEmitter {
     this.write({ method, params })
   }
 
-  respond(id: RpcId, result: unknown): void {
-    this.write({ id, result })
+  respond(id: RpcId, result: unknown, traceScope?: TraceScope): void {
+    this.write({ id, result }, traceScope)
   }
 
-  respondWithError(id: RpcId, code: number, message: string): void {
-    this.write({ id, error: { code, message } })
+  respondWithError(id: RpcId, code: number, message: string, traceScope?: TraceScope): void {
+    this.write({ id, error: { code, message } }, traceScope)
   }
 
   stop(): void {
@@ -174,7 +181,7 @@ export class StdioJsonRpcClient extends EventEmitter {
     return new JsonRpcPeerError(message, code, data)
   }
 
-  private write(message: unknown): void {
+  private write(message: unknown, traceScope?: TraceScope): void {
     const child = this.child
     if (!child || child.stdin.destroyed || !child.stdin.writable) {
       throw new Error(`${this.options.peer} is not connected`)
@@ -183,13 +190,13 @@ export class StdioJsonRpcClient extends EventEmitter {
       ? { jsonrpc: this.options.version, ...(message as Record<string, unknown>) }
       : message
     child.stdin.write(`${JSON.stringify(framed)}\n`)
-    this.trace('out', framed)
+    this.trace('out', framed, traceScope)
   }
 
-  private trace(direction: 'in' | 'out', message: unknown): void {
+  private trace(direction: 'in' | 'out', message: unknown, scope?: TraceScope): void {
     const trace = this.options.trace
     if (!trace) return
-    traceLog.record(trace.scope(), {
+    traceLog.record(scope ?? trace.scope(direction, message), {
       kind: 'raw',
       label: trace.label(direction),
       summary: trace.summarize(message),
@@ -210,9 +217,10 @@ export class StdioJsonRpcClient extends EventEmitter {
     }
     const record = asRecord(message)
     if (!record) return
-    this.trace('in', message)
     const id = typeof record.id === 'number' || typeof record.id === 'string' ? record.id : null
     const method = typeof record.method === 'string' ? record.method : null
+    const pending = id !== null ? this.pending.get(id) : undefined
+    this.trace('in', message, pending?.traceScope)
 
     if (id !== null && ('result' in record || 'error' in record) && this.pending.has(id)) {
       const pending = this.pending.get(id)!
