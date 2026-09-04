@@ -4,7 +4,7 @@ This repository is intentionally modular. These rules apply to every human and m
 
 ## Application context and documentation
 
-ClosedAI has project-scoped chat panes with Codex, Claude Code, and Antigravity providers. Each
+ClosedAI has project-scoped chat panes with Codex, Claude Code, Antigravity, and Cursor providers. Each
 pane owns its conversations; the app browser is shared. Provider background tasks are distinct
 from peer panes. Read `docs/application.md` for current behavior, ownership, and known gaps;
 `docs/model-context.md` for model instructions and trust boundaries; and `docs/tools.md` for tools.
