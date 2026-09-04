@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import { useEffect, useMemo, useState, type JSX } from 'react'
 import { KeyRound, UserRound } from 'lucide-react'
 import type { CredentialServiceId } from '../../shared/credentials.js'
 
@@ -151,6 +151,66 @@ const RedisLogo = (): JSX.Element => (
 
 const CustomLogo = (): JSX.Element => <KeyRound className={LOGO_CLASS} aria-hidden="true" />
 const LoginLogo = (): JSX.Element => <UserRound className={LOGO_CLASS} aria-hidden="true" />
+
+/**
+ * Icon endpoints tried in order for a service the catalog has no mark for. Each is an
+ * <img> probe, so the domain the user typed is the only thing that leaves the app, and a
+ * miss falls through to the next source and finally to a monogram. Clearbit's logo API
+ * is deliberately absent: it was retired and no longer resolves.
+ */
+const REMOTE_LOGO_SOURCES = [
+  'https://icons.duckduckgo.com/ip3/{domain}.ico',
+  'https://www.google.com/s2/favicons?domain={domain}&sz=128',
+  'https://{domain}/favicon.ico'
+]
+
+export type RemoteServiceLogoProps = {
+  /** Host to look an icon up for; empty renders the monogram immediately. */
+  domain: string
+  /** Fallback name, used for the monogram letter and its colour. */
+  name: string
+}
+
+/** The brand mark of a service the catalog does not ship a logo for. */
+export function RemoteServiceLogo({ domain, name }: RemoteServiceLogoProps): JSX.Element {
+  const sources = useMemo(
+    () => (domain ? REMOTE_LOGO_SOURCES.map((source) => source.replace('{domain}', encodeURIComponent(domain))) : []),
+    [domain]
+  )
+  const [attempt, setAttempt] = useState(0)
+
+  useEffect(() => setAttempt(0), [domain])
+
+  const source = sources[attempt]
+  if (!source) return <MonogramLogo name={name || domain} />
+
+  return (
+    <img
+      className={`${LOGO_CLASS} rounded-[5px] object-contain`}
+      src={source}
+      alt=""
+      loading="lazy"
+      onError={() => setAttempt((current) => current + 1)}
+    />
+  )
+}
+
+/** Last resort when no icon loads: the first letter on a colour derived from the name. */
+export function MonogramLogo({ name }: { name: string }): JSX.Element {
+  const text = name.trim() || '?'
+  let hue = 0
+  for (const character of text) hue = (hue * 31 + character.codePointAt(0)!) % 360
+
+  return (
+    <span
+      className={`${LOGO_CLASS} grid place-content-center rounded-[5px] text-[13px] font-semibold text-white`}
+      style={{ background: `oklch(0.58 0.13 ${hue})` }}
+      aria-hidden="true"
+    >
+      {text.charAt(0).toUpperCase()}
+    </span>
+  )
+}
 
 export const CREDENTIAL_SERVICE_LOGOS: Record<CredentialServiceId, () => JSX.Element> = {
   'api-key': CustomLogo,
