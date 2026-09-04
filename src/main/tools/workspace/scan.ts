@@ -1,18 +1,19 @@
-import { readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
+import { readFileSnapshot, type FileSnapshot } from '../file-snapshot.js'
+import { styleRules, type StyleRule } from './style-rules.js'
 
 import { indexedFiles } from './query.js'
 
 // Facts the navigation actions need are derived from the working tree at call time rather
 // than baked into the generated index: the index would go stale between `npm run map` runs,
 // and symbol/selector tables would dwarf its byte budget. The whole indexed tree is ~1.8 MB,
-// so a full scan is cheap, and an mtime-keyed cache makes repeat calls near-free.
+// so a full scan is cheap. Content hashes reuse parsing without trusting timestamps.
 
 export type Located = { name: string; line: number }
 /** `end` is the last line of the declaration, so a read can take exactly the symbol. */
 export type ExportedSymbol = Located & { kind: string; end: number }
 
-export type FileFacts = {
+export type FileFacts = FileSnapshot & {
   file: string
   lines: readonly string[]
   /** Exported declarations and re-exported names. */
@@ -20,7 +21,7 @@ export type FileFacts = {
   /** `data-ui` and `data-ui-surface` ids this file renders. */
   controls: readonly Located[]
   /** Class names this stylesheet defines a rule for. */
-  styleDefs: readonly Located[]
+  styleDefs: readonly StyleRule[]
   /** Class names referenced from a `className`/`class` attribute. */
   styleRefs: readonly string[]
 }
@@ -35,9 +36,7 @@ const EXPORT_LIST = /^export\s*\{([^}]*)\}/
 const TOP_LEVEL_START = /^(?:export\s|import\s|(?:async\s+)?function\s|const\s|let\s|var\s|class\s|type\s|interface\s|enum\s|\/\*\*|\/\/)/
 const CONTROL_ATTR = /data-ui(?:-surface)?=["']([^"']+)["']/g
 const CLASS_ATTR = /class(?:Name)?=(?:"([^"]*)"|'([^']*)'|\{`([^`]*)`\})/g
-const CLASS_TOKEN = /\.(-?[A-Za-z_][-\w]*)/g
-
-const cache = new Map<string, { mtimeMs: number; facts: FileFacts }>()
+const cache = new Map<string, FileFacts>()
 
 /** Every indexed file, parsed once per revision. Unreadable files are skipped, not fatal. */
 export async function scanWorkspace(root: string): Promise<FileFacts[]> {
@@ -48,26 +47,28 @@ export async function scanWorkspace(root: string): Promise<FileFacts[]> {
 export async function factsFor(root: string, file: string): Promise<FileFacts | null> {
   const absolute = path.join(root, file)
   try {
-    const { mtimeMs } = await stat(absolute)
-    const cached = cache.get(file)
-    if (cached && cached.mtimeMs === mtimeMs) return cached.facts
-    const facts = parse(file, await readFile(absolute, 'utf8'))
-    cache.set(file, { mtimeMs, facts })
+    const snapshot = await readFileSnapshot(absolute)
+    const cached = cache.get(absolute)
+    if (cached && cached.hash === snapshot.hash && cached.path === snapshot.path) return cached
+    const facts = parse(file, snapshot)
+    if (cache.size >= 2_000) cache.clear()
+    cache.set(absolute, facts)
     return facts
   } catch {
     return null
   }
 }
 
-function parse(file: string, source: string): FileFacts {
-  const lines = source.split('\n')
+function parse(file: string, snapshot: FileSnapshot): FileFacts {
+  const { source, lines } = snapshot
   const code = CODE.test(file)
   return {
+    ...snapshot,
     file,
     lines,
     exports: code ? exportedSymbols(lines) : [],
     controls: code ? attributeMatches(lines, CONTROL_ATTR) : [],
-    styleDefs: STYLE.test(file) ? styleDefinitions(blankComments(source).split('\n')) : [],
+    styleDefs: STYLE.test(file) ? styleRules(source) : [],
     styleRefs: code ? classReferences(source) : []
   }
 }
