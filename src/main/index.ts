@@ -92,6 +92,32 @@ let cdpAccess: BrowserCdpAccess | null = null
 let appAutomationAccess: AppAutomationAccess | null = null
 let appCommandAccess: AppCommandAccess | null = null
 let quitting = false
+let pendingLiveVerify: { mode: string; quitAfter: boolean } | null = null
+
+function liveVerifyFromArgv(): string | undefined {
+  return process.argv.find((arg) => arg.startsWith('--live-verify='))?.slice('--live-verify='.length).trim()
+}
+
+function requestLiveVerify(mode: string, quitAfter: boolean): void {
+  pendingLiveVerify = { mode, quitAfter }
+  void runPendingLiveVerify()
+}
+
+async function runPendingLiveVerify(): Promise<void> {
+  const pending = pendingLiveVerify
+  if (!pending || !toolRegistry || !researchService) return
+  pendingLiveVerify = null
+  try {
+    const { runLiveVerify } = await import('./live-verify/search-pipeline.js')
+    const result = await runLiveVerify(pending.mode, toolRegistry, researchService)
+    console.log(`[live-verify:${pending.mode}]`, JSON.stringify(result))
+  } catch (error) {
+    console.error(`[live-verify:${pending.mode}]`, error)
+    if (pending.quitAfter) process.exitCode = 1
+  } finally {
+    if (pending.quitAfter) app.quit()
+  }
+}
 
 // The BrowserWindow reference can outlive its WebContents during Electron shutdown. Keep all
 // renderer notifications behind one liveness check so late browser/service events are harmless.
@@ -106,6 +132,10 @@ const userData = (): string => app.getPath('userData')
 if (!claimProfileInstance(app, { profile: userData(), checkout: app.getAppPath(), pid: process.pid }, () => mainWindow)) {
   // A second launch against the same profile focused the owner and is exiting.
 } else {
+  app.on('second-instance', (_event, argv) => {
+    const mode = argv.map(String).find((arg) => arg.startsWith('--live-verify='))?.slice('--live-verify='.length).trim()
+    if (mode) requestLiveVerify(mode, false)
+  })
   void app.whenReady().then(main)
 }
 
@@ -278,20 +308,8 @@ async function main(): Promise<void> {
   createWindow()
   void chatService.start()
   void pruneOversizedBrowserCacheOnce(userData()).catch(() => {})
-  const liveVerify = process.env.CLOSEDAI_LIVE_VERIFY?.trim()
-  if (liveVerify && toolRegistry && researchService) {
-    void import('./live-verify/search-pipeline.js')
-      .then(({ runLiveVerify }) => runLiveVerify(liveVerify, toolRegistry!, researchService!))
-      .then((result) => {
-        console.log(`[live-verify:${liveVerify}]`, JSON.stringify(result))
-        app.quit()
-      })
-      .catch((error: unknown) => {
-        console.error(`[live-verify:${liveVerify}]`, error)
-        process.exitCode = 1
-        app.quit()
-      })
-  }
+  const liveVerify = process.env.CLOSEDAI_LIVE_VERIFY?.trim() || liveVerifyFromArgv()
+  if (liveVerify) requestLiveVerify(liveVerify, true)
 }
 
 /** Null for Electron's default userData; a short stable hash for any other profile. */

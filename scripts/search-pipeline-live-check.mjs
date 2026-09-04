@@ -1,8 +1,15 @@
 #!/usr/bin/env node
-// Runs search pipeline verification in the visible ClosedAI app, then exits.
+// Ask the already-running ClosedAI app to run search pipeline verification in its live browser.
 import { spawn } from 'node:child_process'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import electron from 'electron'
 import { sanitizeGpuEnv } from './launch-electron-vite.mjs'
 
-const env = { ...sanitizeGpuEnv().env, CLOSEDAI_LIVE_VERIFY: 'search-pipeline' }
-const child = spawn('npm', ['run', 'dev'], { env, stdio: 'inherit', shell: true })
-child.on('exit', (code) => process.exit(code ?? 1))
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const child = spawn(electron, ['.', '--live-verify=search-pipeline'], {
+  cwd: root,
+  env: sanitizeGpuEnv().env,
+  stdio: 'inherit'
+})
+child.on('exit', (code) => process.exit(code ?? 0))
