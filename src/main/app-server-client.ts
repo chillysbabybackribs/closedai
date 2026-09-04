@@ -33,7 +33,7 @@ export class AppServerClient extends StdioJsonRpcClient {
     /** Extra `codex app-server` arguments, read at each spawn so a restart picks up changes. */
     launchArgs: () => string[] = () => [],
     /** When set, every line in either direction is recorded in the turn trace under this scope. */
-    traceScope: (() => TraceScope) | null = null
+    traceScope: ((direction: 'in' | 'out', message: unknown) => TraceScope) | null = null
   ) {
     super({
       peer: 'Codex app-server',

@@ -7,7 +7,7 @@ import { ownThreadRows } from './chat-thread-origin.js'
 // and nothing of the service's thread or turn state.
 
 /** Threads this app recorded for this workspace, newest first. */
-export async function listWorkspaceThreads(client: AppServerClient, cwd: string): Promise<ChatThreadSummary[]> {
+export async function listWorkspaceThreads(client: Pick<AppServerClient, 'request'>, cwd: string): Promise<ChatThreadSummary[]> {
   const response = await client.request<{ data?: unknown }>('thread/list', {
     cwd,
     sortKey: 'updated_at',
@@ -23,7 +23,7 @@ export async function listWorkspaceThreads(client: AppServerClient, cwd: string)
 }
 
 /** Begin a ChatGPT sign-in and return the URL the user must open. */
-export async function startChatGptLogin(client: AppServerClient): Promise<string> {
+export async function startChatGptLogin(client: Pick<AppServerClient, 'request'>): Promise<string> {
   const response = await client.request<{ type?: unknown; authUrl?: unknown }>('account/login/start', {
     type: 'chatgpt',
     useHostedLoginSuccessPage: true,

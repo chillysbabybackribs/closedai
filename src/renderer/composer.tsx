@@ -122,15 +122,19 @@ export function Composer({
   async function submit(event?: FormEvent): Promise<void> {
     event?.preventDefault()
     if (!canSend) return
+    const submittedInput = input.trim()
+    const submittedAttachments = attachments
     setSending(true)
+    // The main process paints an optimistic transcript item immediately. Clear the matching draft
+    // at acceptance time instead of holding it through provider startup and thread creation.
+    setInput('')
+    setAttachments([])
+    setAttachmentError('')
     try {
-      await onSend(input.trim(), attachments)
-      setInput('')
-      setAttachments([])
-      setAttachmentError('')
+      await onSend(submittedInput, submittedAttachments)
       focusAfterSendRef.current = true
     } catch {
-      // The main process adds an actionable transcript notice. Preserve the draft.
+      // The optimistic transcript item and the actionable main-process notice preserve the attempt.
     } finally {
       setSending(false)
     }

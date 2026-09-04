@@ -8,7 +8,10 @@ const SESSION_APPROVED = { decision: 'approved_for_session' } as const
  * when they do anyway, answer immediately so the turn never sits on a timer. User-input
  * requests can arrive from any model and are answered with an explicit "nobody answered".
  */
-export function answerServerRequest(client: AppServerClient, request: AppServerRequest): void {
+export function answerServerRequest(
+  client: Pick<AppServerClient, 'respond' | 'respondWithError'>,
+  request: AppServerRequest
+): void {
   const params = recordOf(request.params)
 
   switch (request.method) {

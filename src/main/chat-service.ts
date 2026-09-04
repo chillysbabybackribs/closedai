@@ -14,7 +14,6 @@ import type {
 } from '../shared/chat.js'
 import type { AppSettingsAccess } from './app-settings-store.js'
 import {
-  AppServerClient,
   type AppServerNotification
 } from './app-server-client.js'
 import { answerServerRequest } from './chat-approvals.js'
@@ -29,21 +28,21 @@ import {
 import { resumeThreadParams, startThreadParams, type ThreadResponse } from './chat-context/thread-params.js'
 import { ContextCompactor, describeUsage, type ContextUsage } from './chat-context/context-compaction.js'
 import { codexPlanUsage } from './chat-context/plan-usage.js'
-import { appServerConfigArgs } from './chat-context/app-server-config.js'
 import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource } from './chat-context/thread-handoff.js'
 import { buildTurnContextReport } from './chat-context/turn-inspector.js'
 import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
-import { loadChatModels } from './chat-model-catalog.js'
+import { reasoningEffortForModel } from './chat-model-catalog.js'
 import { ChatModelState } from './chat-model-state.js'
 import { buildChatInput } from './chat-input.js'
 import { shrinkPastedImages } from './chat-attachment-images.js'
 import type { ScreenshotStore } from './tools/capture/screenshot-store.js'
 import { traceLog } from './trace/trace-log.js'
+import { CodexWorkspaceRuntime, type CodexRuntimeSession } from './codex-workspace-runtime.js'
 
 /** The Codex provider: one long-lived app-server process serving every Codex turn. */
 export class ChatService extends EventEmitter {
-  private readonly client: AppServerClient
+  private readonly client: CodexRuntimeSession
   private connection: ChatConnection = { state: 'starting', message: 'Starting Codex…' }
   private account: ChatAccount | null = null
   private readonly modelState = new ChatModelState()
@@ -68,7 +67,7 @@ export class ChatService extends EventEmitter {
     private readonly tools: ToolRegistry = new ToolRegistry([]),
     private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
     screenshots: Pick<ScreenshotStore, 'get'> | null = null,
-    executable = process.env.CLOSEDAI_CODEX_PATH?.trim() || 'codex',
+    runtime: CodexWorkspaceRuntime,
     private readonly paneId: string | null = null
   ) {
     super()
@@ -78,8 +77,11 @@ export class ChatService extends EventEmitter {
       (event) => this.emitEvent(event),
       (callId) => screenshots?.get(callId) ?? null
     )
-    this.client = new AppServerClient(executable, cwd, () => appServerConfigArgs(this.settings.get()),
-      () => ({ paneId: this.paneId, provider: 'codex', turnId: this.activeTurnId }))
+    this.client = runtime.session(
+      this.paneId,
+      () => this.threadId ?? this.settings.get().chatThreadId,
+      () => this.activeTurnId
+    )
     this.toolCalls = new AppServerToolCalls(this.tools, this.client, this.paneId)
     this.compactor = new ContextCompactor({
       thresholdPercent: () => this.settings.get().chatCompactAtPercent,
@@ -154,18 +156,20 @@ export class ChatService extends EventEmitter {
     try {
       const { prompt, input, summaries } = buildChatInput(text, shrinkPastedImages(attachments))
       if (input.length === 0) return
+      if (this.activeTurnId) throw new Error('A Codex turn is already running')
+      const clientUserMessageId = crypto.randomUUID()
+      // Paint the accepted message before a cold workspace runtime or fresh thread is ready.
+      this.transcript.addOptimisticUser(clientUserMessageId, prompt, summaries)
       const endCompactionWait = this.compactor.inFlight
         ? traceLog.responses.waitForCompaction(this.paneId) : () => {}
       await Promise.all([this.ensureReady(), this.compactor.prepareForSend().finally(endCompactionWait)])
       if (this.activeTurnId) throw new Error('A Codex turn is already running')
       const threadId = await this.ensureThread()
-      const clientUserMessageId = crypto.randomUUID()
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const additionalContext = {
         ...this.turnAdditionalContext(prompt),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
       }
-      this.transcript.addOptimisticUser(clientUserMessageId, prompt, summaries)
       const response = await this.client.request<{ turn?: unknown }>('turn/start', {
         threadId,
         clientUserMessageId,
@@ -306,7 +310,7 @@ export class ChatService extends EventEmitter {
   private async connect(): Promise<void> {
     try {
       await this.client.start()
-      await this.refreshAccountAndModels()
+      await this.refreshAccountAndModels(false)
       if (this.connection.state === 'ready') await this.resumePersistedThread()
       void this.refreshPlanUsage()
       this.restartAttempt = 0
@@ -316,21 +320,23 @@ export class ChatService extends EventEmitter {
     }
   }
 
-  private async refreshAccountAndModels(): Promise<void> {
-    const accountResponse = await this.client.request<{ account?: unknown; requiresOpenaiAuth?: unknown }>(
-      'account/read',
-      { refreshToken: false }
-    )
-    this.account = normalizeAccount(accountResponse.account)
-    try {
-      const saved = this.settings.get()
-      const catalog = await loadChatModels(this.client, saved.chatModelId, saved.chatReasoningEffort)
-      this.modelState.load(catalog)
-    } catch (error) {
-      console.warn('[app-server] could not list models:', messageOf(error))
-      this.modelState.clear()
-    }
-    const requiresOpenaiAuth = accountResponse.requiresOpenaiAuth === true
+  private async refreshAccountAndModels(refresh: boolean): Promise<void> {
+    const session = await this.client.readSession(refresh)
+    this.account = normalizeAccount(session.account)
+    const saved = this.settings.get()
+    const selectedModel = session.models.some((model) => model.id === saved.chatModelId)
+      ? saved.chatModelId
+      : session.models.find((model) => model.isDefault)?.id ?? session.models[0]?.id ?? null
+    this.modelState.load({
+      models: session.models,
+      selectedModel,
+      selectedReasoningEffort: reasoningEffortForModel(
+        session.models,
+        selectedModel,
+        saved.chatReasoningEffort
+      )
+    })
+    const requiresOpenaiAuth = session.requiresOpenaiAuth
     if (!this.account && requiresOpenaiAuth) {
       this.setConnection({ state: 'signed-out', message: 'Sign in to use Codex' })
     } else {
@@ -452,7 +458,7 @@ export class ChatService extends EventEmitter {
   }
 
   private refreshSession(): void {
-    void this.refreshAccountAndModels()
+    void this.refreshAccountAndModels(true)
       .then(() => this.connection.state === 'ready' ? this.resumePersistedThread() : undefined)
       .catch((error) => this.setConnection({ state: 'error', message: messageOf(error) }))
   }

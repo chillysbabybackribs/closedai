@@ -16,6 +16,7 @@ import { pruneOversizedBrowserCacheOnce } from './browser-cache-maintenance.js'
 import { discoverSources, importCookies } from './import-cookies.js'
 import { PARTITION } from './browser-url.js'
 import { ChatService } from './chat-service.js'
+import { CodexWorkspaceRuntime } from './codex-workspace-runtime.js'
 import { ChatHub } from './chat-hub.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { ChatStore } from './chat-store/chat-store.js'
@@ -73,6 +74,7 @@ let settings: AppSettingsStore | null = null
 let chatStore: ChatStore | null = null
 let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
+let codexRuntime: CodexWorkspaceRuntime | null = null
 let toolRegistry: ToolRegistry | null = null
 let toolTelemetry: ToolTelemetry | null = null
 let antigravityBridge: AntigravityToolBridge | null = null
@@ -221,9 +223,13 @@ async function main(): Promise<void> {
   providerCatalogs = catalogCache
   chatService = new ChatPeerManager(settings, chatStore, (peerSettings, record) => {
     const catalogs = catalogCache.forWorkspace(chatWorkspace)
+    if (!codexRuntime || codexRuntime.cwd !== chatWorkspace) {
+      codexRuntime?.stop()
+      codexRuntime = new CodexWorkspaceRuntime(chatWorkspace, settings!)
+    }
     return new ChatHub({
     codex: new ChatService(
-      chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, undefined, peerSettings.paneId
+      chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, codexRuntime, peerSettings.paneId
     ),
     claude: new ClaudeChatService(
       chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, peerSettings.paneId
@@ -379,6 +385,7 @@ app.on('before-quit', (event) => {
   event.preventDefault()
   quitting = true
   chatService?.stop()
+  codexRuntime?.stop()
   const flushSession = browserSessionFlush ?? browserService?.flushSessionData()
   void Promise.allSettled([
     browserHistory?.flush(),
