@@ -58,6 +58,7 @@ export const UI_CONTROLS = {
   'composer.effort-item': 'Choose a reasoning effort; item is the effort',
   'composer.context': 'Open the context inspector',
   'composer.usage-card': 'Context window and plan usage, shown while the context meter is hovered',
+  'composer.compact': 'Compact provider-side context from a transcript summary',
   'composer.upload': 'Attach files',
   'composer.attachment-remove': 'Remove a pending attachment; item is the attachment id',
   'composer.stop': 'Stop the running turn (present only while running)',

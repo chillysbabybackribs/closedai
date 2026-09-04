@@ -26,6 +26,7 @@ export type ChatController = {
   /** Open a history thread without disturbing the selected pane: a fresh pane takes it. */
   openThreadInNewPane: (threadId: string) => Promise<void>
   archiveThread: (threadId: string) => Promise<void>
+  compactConversation: () => Promise<void>
   selectPane: (paneId: string) => Promise<void>
   closePeer: (paneId: string) => Promise<void>
   loadEarlier: () => Promise<number>
@@ -87,6 +88,7 @@ export function useChatController(enabled = true): ChatController {
     openInPlace ? window.closedai.chat.openThread(paneId, threadId) : openThreadInNewPane(threadId),
   [paneId, openInPlace, openThreadInNewPane])
   const archiveThread = useCallback((threadId: string) => window.closedai.chat.archiveThread(threadId), [])
+  const compactConversation = useCallback(() => window.closedai.chat.compactConversation(paneId), [paneId])
   const selectPane = useCallback((nextPaneId: string) => window.closedai.chat.selectPane(nextPaneId), [])
   const closePeer = useCallback((targetPaneId: string) => window.closedai.chat.closePeer(targetPaneId), [])
   const beforeItemId = workspace.selected.items[0]?.id
@@ -120,6 +122,7 @@ export function useChatController(enabled = true): ChatController {
     openThread,
     openThreadInNewPane,
     archiveThread,
+    compactConversation,
     selectPane,
     closePeer,
     loadEarlier
@@ -127,6 +130,6 @@ export function useChatController(enabled = true): ChatController {
     workspace.selected, workspace.workspace, workspace.peers, workspace.selectedPaneId,
     send, interrupt, interruptPane, selectModel, selectReasoningEffort, refreshPlanUsage, loginWithChatGPT,
     listThreads, newThread, continueInNewThread, continueFromChat, openThread, openThreadInNewPane,
-    archiveThread, selectPane, closePeer, loadEarlier
+    archiveThread, compactConversation, selectPane, closePeer, loadEarlier
   ])
 }

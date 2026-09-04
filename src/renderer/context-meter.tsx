@@ -24,6 +24,9 @@ export type ContextMeterProps = {
   onInspect: () => void
   /** Asked for a fresh reading each time the card opens, including mid-turn. */
   onRefreshPlanUsage: () => Promise<void>
+  /** Re-seed provider-side context when the active provider supports it. */
+  onCompact?: () => Promise<void>
+  compactEnabled?: boolean
 }
 
 /** How full the model's window is, drawn as a ring beside the model that owns that window.
@@ -33,7 +36,7 @@ export type ContextMeterProps = {
  *
  *  The card is one monochrome list: the meter itself already colours the one number that
  *  warrants it, so repeating that colour per row made a quiet reading look like an alarm. */
-export function ContextMeter({ usage, provider, planUsage, onInspect, onRefreshPlanUsage }: ContextMeterProps): JSX.Element {
+export function ContextMeter({ usage, provider, planUsage, onInspect, onRefreshPlanUsage, onCompact, compactEnabled = false }: ContextMeterProps): JSX.Element {
   const percent = Math.min(100, Math.max(0, usage?.percent ?? 0))
   const level = percent >= HOT_PERCENT ? 'hot' : percent >= WARM_PERCENT ? 'warm' : 'cool'
   const detail = usage
@@ -64,16 +67,24 @@ export function ContextMeter({ usage, provider, planUsage, onInspect, onRefreshP
         </button>
       </HoverCardTrigger>
       <HoverCardContent className="usage-card" align="end" side="top" data-ui="composer.usage-card">
-        <UsageCardBody provider={provider} usage={usage} planUsage={planUsage} />
+        <UsageCardBody
+          provider={provider}
+          usage={usage}
+          planUsage={planUsage}
+          onCompact={onCompact}
+          compactEnabled={compactEnabled}
+        />
       </HoverCardContent>
     </HoverCard>
   )
 }
 
-function UsageCardBody({ provider, usage, planUsage }: {
+function UsageCardBody({ provider, usage, planUsage, onCompact, compactEnabled }: {
   provider: ChatProvider
   usage: ChatContextUsage | null
   planUsage: ChatPlanUsage | null
+  onCompact?: () => Promise<void>
+  compactEnabled?: boolean
 }): JSX.Element {
   const now = useNow(planUsage !== null)
   const stale = planUsage && planUsage.updatedAt > 0 && now - planUsage.updatedAt > STALE_MS
@@ -95,6 +106,17 @@ function UsageCardBody({ provider, usage, planUsage }: {
           aside={`${window.percent}%${window.resetsAt ? ` · ${resetNote(window.resetsAt, now)}` : ''}`}
         />
       ))}
+      {onCompact && (
+        <button
+          type="button"
+          className="usage-card-action"
+          data-ui="composer.compact"
+          disabled={!compactEnabled}
+          onClick={() => { void onCompact() }}
+        >
+          Compact conversation
+        </button>
+      )}
       {planUsage?.unavailable && <p className="usage-card-note">{planUsage.unavailable}</p>}
       {planUsage?.note && <p className="usage-card-note">{planUsage.note}</p>}
       {stale && <p className="usage-card-note">Read {ageNote(now - planUsage.updatedAt)}</p>}

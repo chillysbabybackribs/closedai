@@ -360,6 +360,27 @@
   font-size: 11px;
 }
 
+.usage-card-action {
+  margin-top: 2px;
+  padding: 5px 8px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: 6px;
+  background: transparent;
+  color: var(--foreground, #ececec);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.usage-card-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.usage-card-action:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
 .usage-row {
   display: flex;
   flex-direction: column;

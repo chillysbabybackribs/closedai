@@ -156,6 +156,8 @@ export function ChatPane({
           onOpenTools={() => setToolsOpen(true)}
           onOpenTrace={() => setTraceOpen(true)}
           activeTurnId={state.activeTurnId}
+          onCompactConversation={state.provider === 'antigravity' ? chat.compactConversation : undefined}
+          compactConversationEnabled={ready && !running && state.items.some((item) => item.type === 'user')}
         />
       </div>
     </aside>

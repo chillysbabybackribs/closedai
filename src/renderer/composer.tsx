@@ -46,6 +46,8 @@ export type ComposerProps = {
   onOpenTrace: () => void
   /** Turn in flight, if any; shown as the working timer on the project rail. */
   activeTurnId: string | null
+  onCompactConversation?: () => Promise<void>
+  compactConversationEnabled?: boolean
 }
 
 export function Composer({
@@ -73,7 +75,9 @@ export function Composer({
   onClearProject,
   onOpenTools,
   onOpenTrace,
-  activeTurnId
+  activeTurnId,
+  onCompactConversation,
+  compactConversationEnabled = false
 }: ComposerProps): JSX.Element {
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<ChatAttachment[]>([])
@@ -213,6 +217,8 @@ export function Composer({
                   planUsage={planUsage}
                   onInspect={onInspectContext}
                   onRefreshPlanUsage={onRefreshPlanUsage}
+                  onCompact={onCompactConversation}
+                  compactEnabled={compactConversationEnabled}
                 />
               </div>
             </div>

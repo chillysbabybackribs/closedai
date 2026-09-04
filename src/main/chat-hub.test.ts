@@ -74,6 +74,11 @@ class FakeProvider extends EventEmitter {
   }
   async openThread(id: string): Promise<void> { this.calls.push(`openThread:${id}`) }
   async archiveThread(id: string): Promise<void> { this.calls.push(`archive:${id}`) }
+  async compactConversation(): Promise<void> {
+    if (this.provider !== 'antigravity') throw new Error('unsupported')
+    this.calls.push('compactConversation')
+    this.threadId = null
+  }
   async beginChatGptLogin(): Promise<string> { this.calls.push('login'); return 'https://auth' }
 }
 
