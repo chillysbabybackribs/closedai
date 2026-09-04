@@ -48,8 +48,9 @@ export const ChatTranscript = memo(function ChatTranscript({
   const rows = useMemo(() => transcriptRows(items), [items])
   const [windowStart, setWindowStart] = useState(() => initialWindowStart(rows.length))
   // How many rows off the end may be mounted right now. Opening a chat pays for every row it
-  // mounts — markdown parsing, syntax highlighting, one collapsible per tool group — so the
-  // first paint takes a screenful and the rest arrives on idle frames after it.
+  // mounts — markdown parsing, syntax highlighting, one collapsible per tool group — and a mount
+  // is one indivisible commit, so the first paint takes the few rows under the reader's eye, the
+  // screenful behind them arrives on the next frames, and the rest on idle ones after that.
   const [budget, setBudget] = useState(FIRST_PAINT_ROWS)
   const [loadingEarlier, setLoadingEarlier] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
@@ -65,6 +66,13 @@ export const ChatTranscript = memo(function ChatTranscript({
       // own resize handling pins the view, and prepending there would drop it out of follow.
       if (scrollable.end) prepareForPrepend()
       setBudget((current) => Math.min(INITIAL_VISIBLE_ROWS, current + REVEAL_STEP_ROWS))
+    }
+    // Up to a screenful the steps run on animation frames, so a tall window fills within a few
+    // of them instead of waiting on the idle queue; past it the reader is already reading and
+    // the rest can wait for spare time.
+    if (budget < SCREENFUL_ROWS) {
+      const frame = requestAnimationFrame(grow)
+      return () => cancelAnimationFrame(frame)
     }
     const idle = window.requestIdleCallback?.(grow, { timeout: 200 })
     const timer = idle === undefined ? window.setTimeout(grow, 50) : null
@@ -178,8 +186,10 @@ const REVEAL_ROW_COUNT = 80
  * more frames to reach the same window and keep every one of them inside a frame budget.
  */
 const REVEAL_STEP_ROWS = 8
-/** Rows mounted before the first paint of a chat: about a screenful, whatever the history holds. */
-const FIRST_PAINT_ROWS = 24
+/** Rows that cover a tall window; reached on animation frames so the fill is not visible. */
+const SCREENFUL_ROWS = 32
+/** Rows mounted before the first paint of a chat, whatever the history holds. */
+const FIRST_PAINT_ROWS = 8
 
 function initialWindowStart(rowCount: number): number {
   return Math.max(0, rowCount - INITIAL_VISIBLE_ROWS)
