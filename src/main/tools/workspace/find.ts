@@ -2,7 +2,7 @@ import type { ToolAction } from '../action-tool.js'
 import { booleanArg, numberArg, stringArg, textResult } from '../tool.js'
 import { inputSchema, ipcFlows, maxResultsField, testPattern } from './query.js'
 import { scanWorkspace, type FileFacts } from './scan.js'
-import { includeRelatedField, maxCharsField, sourceBundle } from './read.js'
+import { includeRelatedField, maxCharsField, sourceBundle, sourceBundleBudget } from './read.js'
 import { truncateText } from '../truncate-json.js'
 import { readRelated } from './read-related.js'
 import type { SourceReadObservation } from '../source-read-history.js'
@@ -59,7 +59,7 @@ export function findAction(root: string): ToolAction {
       const extra = related ? await readRelated(root, facts, symbol.line, symbol.end, scanned) : null
       const sourceReads: SourceReadObservation[] = []
       const source = sourceBundle(facts, symbol.line, symbol.end, extra, {
-        related, maxChars: numberArg(input, 'max_chars', 12_000),
+        related, maxChars: sourceBundleBudget(input),
         observe: (snapshot) => sourceReads.push({ cwd: root, path: snapshot.path, hash: snapshot.hash })
       })
       return { ...textResult(`${truncateText(navigation, 6_000, 'Narrow the query for more locations.').text}\n\n${source}`), sourceReads }

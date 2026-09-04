@@ -8,9 +8,14 @@ import type { SourceReadObservation } from '../source-read-history.js'
 export const includeRelatedField = {
   type: 'boolean', description: 'Include bounded local type definitions, relevant test excerpts, stylesheet rules and sibling test paths; default true.'
 }
+const MAX_SOURCE_BUNDLE_CHARS = 16_000
 export const maxCharsField = {
-  type: 'integer', minimum: 1_000, maximum: 16_000,
-  description: 'Total source-bundle character budget, including hashes and metadata; default 12000.'
+  type: 'integer', minimum: 1_000,
+  description: 'Requested source-bundle character budget, including hashes and metadata; default 12000, capped at 16000.'
+}
+
+export function sourceBundleBudget(input: Record<string, unknown>): number {
+  return Math.min(numberArg(input, 'max_chars', 12_000), MAX_SOURCE_BUNDLE_CHARS)
 }
 
 export function readAction(root: string): ToolAction {
@@ -46,7 +51,7 @@ export function readAction(root: string): ToolAction {
       const extra = related ? await readRelated(root, facts, start, end) : null
       const sourceReads: SourceReadObservation[] = []
       const text = sourceBundle(facts, start, end, extra, {
-        maxChars: numberArg(input, 'max_chars', 12_000), related, unchanged,
+        maxChars: sourceBundleBudget(input), related, unchanged,
         observe: (snapshot) => sourceReads.push({ cwd: root, path: snapshot.path, hash: snapshot.hash })
       })
       return { ...textResult(text), sourceReads }

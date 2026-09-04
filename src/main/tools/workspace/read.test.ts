@@ -93,6 +93,15 @@ test('budgeted reads label exactly the complete returned lines and explicitly om
   assert.match(hugeLine.text, /omitted/)
 })
 
+test('oversized source budgets are capped instead of rejecting the read', async (t) => {
+  const f = await fixture(t)
+  await f.write(component, Array.from({ length: 300 }, (_, index) => `const row${index} = "${'x'.repeat(100)}"`).join('\n'))
+  const result = await f.call({ action: 'read', path: component, end_line: 300, max_chars: 18_000, include_related: false })
+  assert.equal(result.error, undefined)
+  assert.ok(result.text.length <= 16_000)
+  assert.match(result.text, /omitted by budget/)
+})
+
 test('hashes follow source bytes despite preserved timestamps, and caches are scoped by root', async (t) => {
   const a = await fixture(t)
   const b = await fixture(t)

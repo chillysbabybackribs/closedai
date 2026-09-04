@@ -98,8 +98,8 @@ keeps its tabs, but semantic page input still requires a visible page.
 Workspace `find` enriches a unique exact exported declaration by default (`include_source: false`
 opts out). Ambiguous matches and re-exports remain locations only. `read` selects an exact exported
 `symbol` or `start_line`/`end_line`; without a selector it starts with 200 lines. Both accept
-`include_related` (default true) and `max_chars` (default 12,000, range 1,000–16,000) for the source
-bundle. Related results include matching CSS rule bodies across stylesheet owners, enclosing
+`include_related` (default true) and `max_chars` (default 12,000, minimum 1,000) for the source
+bundle; larger requests are capped at 16,000 instead of failing. Related results include matching CSS rule bodies across stylesheet owners, enclosing
 at-rule conditions, sibling test paths, referenced local type definitions, and relevant test
 excerpts. These are relationship candidates, not test coverage or a computed CSS cascade.
 
