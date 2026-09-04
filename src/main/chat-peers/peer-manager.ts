@@ -220,6 +220,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.lifecycle.attach(record)
     this.selectedPaneId = record.id
     this.parking.schedule(previousPaneId)
+    this.lifecycle.parkExcessIdle(record.id)
     this.emitWorkspace()
     await this.persistOpenChats()
     await this.trimAttached()
@@ -320,6 +321,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.selectedPaneId = chatId
     if (this.lifecycle.peers.size > 1) this.lifecycle.discardIfBlank(previousPaneId)
     this.parking.schedule(previousPaneId)
+    this.lifecycle.parkExcessIdle(chatId)
     this.emitWorkspace()
     await this.persistOpenChats()
     await this.trimAttached()

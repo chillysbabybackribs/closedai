@@ -31,6 +31,15 @@ export type PeerEntry = ParkablePeer & {
  */
 export const MAX_ATTACHED_CHATS = 8
 
+/**
+ * How many unselected idle chats keep their runtime awake. Every chat the user leaves idles for
+ * a grace period before parking, so starting new chats one after another stacked a provider
+ * process per chat for five minutes each; past this many, the least recently active parks at
+ * once when a chat is created or opened. Parking keeps the pane and the record; only the
+ * process goes, and selecting the chat wakes it again.
+ */
+export const MAX_AWAKE_IDLE_CHATS = 2
+
 export class PeerLifecycle {
   readonly peers = new Map<ChatPaneId, PeerEntry>()
 
@@ -139,6 +148,20 @@ export class PeerLifecycle {
       .map((entry) => entry.chatId)
     for (const chatId of detaching) this.detach(chatId)
     return detaching
+  }
+
+  /**
+   * Park the runtimes of idle, unselected chats beyond the awake budget, oldest activity first.
+   * A running turn, an operation in flight, or an already parked chat is left alone. Returns the
+   * ids that were parked.
+   */
+  parkExcessIdle(selected: ChatPaneId, max = MAX_AWAKE_IDLE_CHATS): ChatPaneId[] {
+    const idle = [...this.peers.values()].filter((entry) =>
+      entry.chatId !== selected && !entry.parked && entry.busy === 0 && !this.isRunning(entry.chatId))
+    if (idle.length <= max) return []
+    const parking = idle.sort((a, b) => this.lastActivity(a) - this.lastActivity(b)).slice(0, idle.length - max)
+    for (const entry of parking) this.parking.stop(entry)
+    return parking.map((entry) => entry.chatId)
   }
 
   private lastActivity(entry: PeerEntry): number {

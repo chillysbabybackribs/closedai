@@ -396,6 +396,34 @@ test('a new chat detaches the oldest pane instead of growing the workspace', asy
   assert.ok(surfaces[0]!.calls.includes('stop'), 'the detached chat has no runtime left')
 })
 
+test('consecutive new chats park the runtimes of older idle chats instead of stacking them', async () => {
+  const { manager, surfaces } = harness()
+  await manager.send('pane-a', 'first', [])
+  surfaces[0]!.emit('event', { type: 'turn', turnId: null })
+  surfaces[0]!.state.activeTurnId = null
+
+  const second = await manager.newPeer()
+  const third = await manager.newPeer()
+  assert.equal(surfaces[0]!.calls.includes('stop'), false, 'two idle chats stay awake for a quick return')
+
+  await manager.newPeer()
+  assert.ok(surfaces[0]!.calls.includes('stop'), 'the oldest idle chat parks when a third is left behind')
+  assert.equal(surfaces[1]!.calls.includes('stop'), false)
+  assert.equal(surfaces[2]!.calls.includes('stop'), false)
+  assert.deepEqual(attached(manager).slice(0, 3).length, 3, 'parking keeps the panes attached')
+  assert.ok(attached(manager).includes('pane-a') && attached(manager).includes(second) && attached(manager).includes(third))
+})
+
+test('a running chat is never parked for the awake budget', async () => {
+  const { manager, surfaces } = harness()
+  await manager.send('pane-a', 'first', [])
+  await manager.newPeer()
+  await manager.newPeer()
+  await manager.newPeer()
+  assert.equal(surfaces[0]!.calls.includes('stop'), false)
+  assert.equal(surfaces[0]!.state.activeTurnId, 'turn:first')
+})
+
 test('stop delivers a pending chats update instead of dropping it', async () => {
   const { manager, surfaces } = harness()
   const updates: ChatWorkspaceEvent[] = []
