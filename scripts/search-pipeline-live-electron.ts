@@ -13,8 +13,9 @@ import { isResearchSourceUrl } from '../src/main/tools/search/presentation.js'
 import type { SearchProvider } from '../src/main/tools/search/types.js'
 import type { ToolResult } from '../src/main/tools/tool.js'
 
-const userData = profile
-if (!userData) throw new Error('Run through scripts/search-pipeline-live-check.mjs')
+const profile = process.env.CLOSEDAI_SEARCH_PIPELINE_PROFILE
+if (!profile) throw new Error('Run through scripts/search-pipeline-live-check.mjs')
+const userData: string = profile
 
 const watchdogMs = Number(process.env.CLOSEDAI_SEARCH_PIPELINE_TIMEOUT_MS ?? 90_000)
 const PROVIDERS: SearchProvider[] = ['brave', 'serper', 'tavily', 'you']

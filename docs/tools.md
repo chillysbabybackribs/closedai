@@ -263,11 +263,9 @@ background, and an isolated Chromium check: `node scripts/search-live-check.mjs`
 a real browser page through the production runtime while a local source response remains pending,
 using a temporary bundle and profile without rebuilding or restarting the user's app.
 
-Browser tool regression includes unit tests with fakes under `src/main/tools/browser/browser.test.ts`
-and an isolated Chromium check: `npm run browser:live` (`scripts/browser-live-check.mjs`). That
-check drives the production `embedded_browser.page`, `network`, and `session` tools against
-`HOME_URL` from `src/main/browser-url.ts` — real Chromium, real network, the same landing URL
-the app uses. Research-source URL rules are covered by `src/main/tools/search/presentation.test.ts`.
+The production search pipeline (real API credentials, `SourceStore`, live source tab, `search.read`
+excerpts) is verified with `npm run search:pipeline` (`scripts/search-pipeline-live-check.mjs`).
+Requires at least one search API key documented below.
 
 ### Search credentials
 
