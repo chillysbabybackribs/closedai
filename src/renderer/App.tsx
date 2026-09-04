@@ -31,6 +31,7 @@ function App(): JSX.Element {
   const drawer = useDrawerController(chat.sidebar)
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [browserToggleHost, setBrowserToggleHost] = useState<HTMLDivElement | null>(null)
   // Owned here because the title bar menu and Ctrl+H reach the panel that lives in the chat pane.
   const [historyOpen, setHistoryOpen] = useState(false)
   const toggleHistory = useCallback(() => setHistoryOpen((open) => !open), [])
@@ -93,6 +94,7 @@ function App(): JSX.Element {
           onOpenSettings={() => setSettingsOpen(true)}
           onToggleHistory={toggleHistory}
         />
+        <div className="titlebar-browser-control" ref={setBrowserToggleHost} />
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
@@ -101,6 +103,7 @@ function App(): JSX.Element {
         {chat.selectedPaneId && <DesktopWorkspace
           key={chat.workspace?.cwd ?? chat.state.cwd}
           chat={chat}
+          browserToggleHost={browserToggleHost}
           appearance={appearance}
           historyOpen={historyOpen}
           onHistoryOpenChange={setHistoryOpen}

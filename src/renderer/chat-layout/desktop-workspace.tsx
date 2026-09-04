@@ -1,5 +1,6 @@
 import { Monitor, PanelRightClose } from 'lucide-react'
 import { useState, type Dispatch } from 'react'
+import { createPortal } from 'react-dom'
 import { BrowserPane } from '../browser-pane.js'
 import { useBrowserController } from '../browser-controller.js'
 import { ChatPane } from '../chat-pane.js'
@@ -10,36 +11,29 @@ import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import { WorkspaceSplit } from '../workspace-split.js'
 import { ChatCanvas } from './chat-canvas.js'
 import { useChatLayout } from './layout-controller.js'
-import { minimumSize, paneIds } from './layout-tree.js'
+import { minimumSize } from './layout-tree.js'
 
-export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenChange }: {
+export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenChange, browserToggleHost }: {
   chat: ReturnType<typeof useChatController>
   appearance: AppearanceSettings
   historyOpen: boolean
   onHistoryOpenChange: (open: boolean) => void
+  browserToggleHost: HTMLDivElement | null
 }) {
   const layout = useChatLayout(chat.snapshot)
   const browser = useBrowserController(`browser:${layout.browserVisible}`, layout.browserVisible)
-  const ids = paneIds(layout.tree)
   const [actionError, setActionError] = useState('')
   const select = (id: string): void => {
     void chat.selectPane(id).catch((reason: unknown) => setActionError(String(reason)))
   }
   return <div className="chat-desktop-workspace">
-    <div className="chat-layout-toolbar">
-      <span>{ids.length} {ids.length === 1 ? 'chat' : 'chats'}</span>
-      <select data-ui="layout.add-chat" aria-label="Add an existing chat beside the focused pane" value="" disabled={layout.busy}
-        onChange={(event) => { if (event.target.value) void layout.dock(event.target.value, chat.selectedPaneId, 'right') }}>
-        <option value="">Add existing chat…</option>
-        {chat.chats.filter((row) => !ids.includes(row.paneId)).map((row) =>
-          <option key={row.paneId} value={row.paneId}>{row.title}</option>)}
-      </select>
-      <button data-ui="layout.browser-toggle" aria-pressed={layout.browserVisible} onClick={layout.toggleBrowser}
+    {browserToggleHost && createPortal(
+      <button className="titlebar-icon-button" data-ui="layout.browser-toggle" aria-pressed={layout.browserVisible} onClick={layout.toggleBrowser}
+        aria-label={layout.browserVisible ? 'Hide browser' : 'Show browser'}
         title={layout.browserVisible ? 'Hide browser' : 'Show browser'}>
         {layout.browserVisible ? <PanelRightClose size={14} /> : <Monitor size={14} />}
-        {layout.browserVisible ? 'Hide browser' : 'Show browser'}
-      </button>
-    </div>
+      </button>, browserToggleHost
+    )}
     {(layout.error || actionError) && <div className="chat-layout-error" role="alert">{layout.error || actionError}</div>}
     <WorkspaceSplit browserVisible={layout.browserVisible} chatMinimumWidth={minimumSize(layout.tree).width}
       onBrowserHide={layout.toggleBrowser}

@@ -86,7 +86,8 @@ The renderer can show several chats at once. `closedai_app.state` UI facts inclu
 `layout.visiblePaneIds` and `layout.browserVisible`; composer facts describe the focused tile.
 `closedai_app.ui` chat/composer control ids resolve within that tile. Focus a different tile with
 `layout.pane-drag` and its chat id before interacting, or use deterministic pane-id commands.
-The `layout` control family exposes split, hide, add-chat, browser-toggle, and resize controls.
+The `layout` control family exposes split, hide, browser-toggle, and resize controls. Split actions
+live in each chat's title header; the browser toggle lives in the main title bar.
 Hiding a tile keeps its turn running; `close_chat` still detaches and stops it. A hidden browser
 keeps its tabs, but semantic page input still requires a visible page.
 

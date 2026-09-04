@@ -11,9 +11,8 @@ export const UI_CONTROLS = {
   'window.maximize': 'Maximize or restore the window',
   'window.close': 'Close the window',
 
-  'layout.browser-toggle': 'Show or hide the shared browser independently of the chat arrangement',
+  'layout.browser-toggle': 'Title-bar control to show or hide the shared browser independently of the chat arrangement',
   'layout.browser-divider': 'Resize the chat area and shared browser',
-  'layout.add-chat': 'Add an existing chat to the right of the focused pane',
   'layout.pane-drag': 'Focus a chat or drag its header to dock beside another; item is the chat id',
   'layout.split-right': 'Create a chat to the right of this pane; item is the chat id',
   'layout.split-below': 'Create a chat below this pane; item is the chat id',

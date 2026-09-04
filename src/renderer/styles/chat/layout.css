@@ -6,7 +6,6 @@
   min-height: 0;
 }
 
-.chat-layout-toolbar,
 .chat-layout-header {
   display: flex;
   align-items: center;
@@ -18,16 +17,6 @@
   font-size: 11px;
 }
 
-.chat-layout-toolbar {
-  flex: 0 0 32px;
-  padding: 0 10px;
-  gap: 12px;
-}
-
-.chat-layout-toolbar > button { margin-left: auto; }
-
-.chat-layout-toolbar button,
-.chat-layout-toolbar select,
 .chat-layout-header button {
   display: inline-flex;
   align-items: center;
@@ -43,14 +32,9 @@
   cursor: pointer;
 }
 
-.chat-layout-toolbar select { max-width: 240px; }
-.chat-layout-toolbar option { background: var(--surface-chrome); }
-.chat-layout-header button:hover,
-.chat-layout-toolbar button:hover { color: var(--chrome-fg-strong); background: var(--surface-control-hover); }
+.chat-layout-header button:hover { color: var(--chrome-fg-strong); background: var(--surface-control-hover); }
 .chat-layout-header button:disabled { opacity: 0.3; cursor: default; }
-.chat-layout-header button:focus-visible,
-.chat-layout-toolbar button:focus-visible,
-.chat-layout-toolbar select:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -1px; }
+.chat-layout-header button:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -1px; }
 
 .chat-layout-viewport { min-height: 0; min-width: 0; overflow: auto; }
 .chat-layout-canvas { position: relative; width: 100%; height: 100%; }

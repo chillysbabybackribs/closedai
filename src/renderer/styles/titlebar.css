@@ -38,6 +38,19 @@
   pointer-events: none;
 }
 
+.titlebar-browser-control {
+  position: absolute;
+  top: 0;
+  right: 112px;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-browser-control button:focus-visible {
+  outline: 1px solid var(--focus-ink);
+  outline-offset: -3px;
+}
+
 .app-brand {
   position: absolute;
   top: 0;
