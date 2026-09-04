@@ -13,8 +13,9 @@ import { ChatModelState } from '../chat-model-state.js'
 import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
 import type { ScreenshotStore } from '../tools/capture/screenshot-store.js'
-import type { AcpMcpServer, AcpSessionSetup } from './cursor-acp.js'
+import type { AcpSessionSetup } from './cursor-acp.js'
 import { CursorArchive } from './cursor-archive.js'
+import type { CursorToolBridge } from './cursor-mcp.js'
 import { isCursorAuthFailure, parseCursorAccountEmail, parseCursorPlan, runCursorCommand } from './cursor-cli.js'
 import { cursorSessionIdOf, cursorThreadId } from './cursor-ids.js'
 import { buildCursorPrompt } from './cursor-input.js'
@@ -43,12 +44,17 @@ export class CursorChatService extends EventEmitter {
   private readonly transcript: ChatTranscript
   private startPromise: Promise<void> | null = null
   private supportsImages = true
+  /**
+   * This pane's key in the tool bridge URLs. One per pane rather than per session: the key names
+   * the caller, and a pane has one thread at a time, so it survives every new chat and reload.
+   */
+  private readonly bridgeKey = randomUUID()
 
   constructor(
     readonly cwd: string,
     private readonly settings: AppSettingsAccess,
+    private readonly bridge: CursorToolBridge,
     stateDir: string,
-    private readonly mcpServers: () => AcpMcpServer[] = () => [],
     private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
     screenshots: Pick<ScreenshotStore, 'get'> | null = null,
     private readonly paneId: string | null = null
@@ -107,6 +113,7 @@ export class CursorChatService extends EventEmitter {
         { images: this.supportsImages }
       )
       if (!turn) return
+      await this.bridge.start()
       this.transcript.addOptimisticUser(randomUUID(), turn.prompt, turn.summaries)
       await session.send(turn.blocks)
       this.setTurnContext(buildTurnContextReport({
@@ -251,6 +258,7 @@ export class CursorChatService extends EventEmitter {
   }
 
   stop(): void {
+    this.bridge.unbind(this.bridgeKey)
     void this.session?.retire()
   }
 
@@ -284,7 +292,7 @@ export class CursorChatService extends EventEmitter {
   private createSession(): CursorSession {
     return new CursorSession({
       cwd: this.cwd,
-      mcpServers: this.mcpServers,
+      mcpServers: () => this.bridge.servers(this.bridgeKey),
       modelId: () => cursorAcpModelId(this.modelState.selectedModel),
       apply: (op) => this.applyOp(op),
       onTurn: (turnId) => this.setTurn(turnId),
@@ -384,6 +392,7 @@ export class CursorChatService extends EventEmitter {
 
   private adoptSessionId(sessionId: string): void {
     void this.settings.set({ chatCursorSessionId: sessionId })
+    this.bindBridge()
     this.emitEvent({ type: 'thread', threadId: cursorThreadId(sessionId), threadName: this.threadName })
   }
 
@@ -425,7 +434,18 @@ export class CursorChatService extends EventEmitter {
   private setTurn(turnId: string | null): void {
     if (this.activeTurnId === turnId) return
     this.activeTurnId = turnId
+    this.bindBridge()
     this.emitEvent({ type: 'turn', turnId })
+  }
+
+  /** Tool calls arrive on this pane's own bridge URL; the binding says which turn they belong to. */
+  private bindBridge(): void {
+    const sessionId = this.session?.sessionId ?? null
+    this.bridge.bind(this.bridgeKey, {
+      paneId: this.paneId,
+      threadId: sessionId ? cursorThreadId(sessionId) : null,
+      turnId: this.activeTurnId
+    })
   }
 
   private setTurnContext(report: ChatTurnContextReport): void {

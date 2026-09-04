@@ -21,6 +21,7 @@ import { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { ClaudeChatService } from './claude/claude-service.js'
 import { AntigravityChatService } from './antigravity/antigravity-service.js'
 import { CursorChatService } from './cursor/cursor-service.js'
+import { CursorToolBridge } from './cursor/cursor-mcp.js'
 import { AntigravityToolBridge } from './antigravity/antigravity-mcp.js'
 import { BrowserPageAccess } from './browser-page-access.js'
 import { BrowserCdpAccess } from './cdp/browser-cdp-access.js'
@@ -69,6 +70,7 @@ let chatService: ChatPeerManager | null = null
 let toolRegistry: ToolRegistry | null = null
 let toolTelemetry: ToolTelemetry | null = null
 let antigravityBridge: AntigravityToolBridge | null = null
+let cursorBridge: CursorToolBridge | null = null
 let browserSessionFlush: Promise<void> | null = null
 let cdpAccess: BrowserCdpAccess | null = null
 let appAutomationAccess: AppAutomationAccess | null = null
@@ -197,6 +199,8 @@ async function main(): Promise<void> {
   antigravityBridge = new AntigravityToolBridge(toolRegistry, { profileKey: profileKeyFor(userData()) })
   const antigravityStateDir = join(userData(), 'antigravity')
   const cursorStateDir = join(userData(), 'cursor')
+  // ACP takes its MCP servers per session, so this bridge registers nothing outside the app.
+  cursorBridge = new CursorToolBridge(toolRegistry)
   chatService = new ChatPeerManager(settings, (peerSettings, modelId) => new ChatHub({
     codex: new ChatService(
       chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, undefined, peerSettings.paneId
@@ -208,7 +212,7 @@ async function main(): Promise<void> {
       chatWorkspace, peerSettings, antigravityBridge!, antigravityStateDir, activeBrowserContext, screenshots, peerSettings.paneId
     ),
     cursor: new CursorChatService(
-      chatWorkspace, peerSettings, cursorStateDir, () => [], activeBrowserContext, screenshots, peerSettings.paneId
+      chatWorkspace, peerSettings, cursorBridge!, cursorStateDir, activeBrowserContext, screenshots, peerSettings.paneId
     )
   }, modelId, peerSettings), undefined, workspaceSelector)
   registerIpc()
@@ -361,6 +365,8 @@ app.on('before-quit', (event) => {
     settings?.set({}),
     flushSession,
     // Leaves the user's agy MCP config without dead localhost endpoints.
-    antigravityBridge?.stop()
+    antigravityBridge?.stop(),
+    // Nothing outside the app to clean up here; this only closes the listener.
+    cursorBridge?.stop()
   ]).finally(() => app.quit())
 })
