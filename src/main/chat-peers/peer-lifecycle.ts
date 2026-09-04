@@ -107,7 +107,7 @@ export class PeerLifecycle {
   }
 
   /**
-   * A chat with nothing in it: no thread, no messages, no turn, no undelivered continuation, and
+   * A chat with nothing in it: no user submission, no user messages, no turn, no undelivered continuation, and
    * no open or wake in flight that could still bring any of those. The record is checked as well
    * as the snapshot because a parked pane's snapshot is empty whatever its chat holds.
    */
@@ -118,7 +118,7 @@ export class PeerLifecycle {
     if (!entry) return true
     if (entry.busy > 0) return false
     const snapshot = entry.surface.snapshot({ limit: 1 })
-    return snapshot.items.length === 0 && snapshot.threadId === null && !snapshot.activeTurnId
+    return !snapshot.items.some((item) => item.type === 'user') && !snapshot.activeTurnId
   }
 
   /** Drop a blank chat entirely: its pane and its record. Returns whether anything was removed. */

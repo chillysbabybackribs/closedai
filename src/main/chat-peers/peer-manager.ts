@@ -166,6 +166,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       : null
     try {
       await this.withAwake(paneId, (surface) => surface.send(text, attachments))
+      if (text.trim() || attachments.length) this.store.update(paneId, { messageSentAt: Date.now() })
     } catch (error) {
       cancelTiming?.()
       throw error

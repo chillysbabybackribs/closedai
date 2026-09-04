@@ -38,6 +38,11 @@ export function normalizeChatRecord(candidate: unknown): ChatRecord | null {
     createdAt,
     updatedAt: positiveTime(record.updatedAt) ?? createdAt,
     lastTurnEndedAt: positiveTime(record.lastTurnEndedAt),
+    // Before this marker existed, a completed turn or non-empty preview is the durable evidence
+    // that a provider thread contains a user conversation. A thread id alone may be startup noise.
+    messageSentAt: positiveTime(record.messageSentAt)
+      ?? positiveTime(record.lastTurnEndedAt)
+      ?? (typeof record.preview === 'string' && record.preview.length > 0 ? positiveTime(record.updatedAt) ?? createdAt : null),
     archived: record.archived === true,
     pinnedAt: positiveTime(record.pinnedAt),
     continuation: normalizeContinuation(record.continuation),
@@ -69,6 +74,7 @@ export function chatRecordFromPeer(peer: ChatPeerRecord, cwd: string, projectPat
     createdAt: updatedAt,
     updatedAt,
     lastTurnEndedAt: peer.threadId ? updatedAt : null,
+    messageSentAt: peer.threadId ? updatedAt : null,
     archived: false,
     pinnedAt: null,
     continuation: peer.continuation ?? null,

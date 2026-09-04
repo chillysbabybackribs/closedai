@@ -20,6 +20,9 @@ test('create, update, archive: the thread id follows the provider and ids never 
   assert.equal(record.threadId, null)
   assert.ok(chatRecordIsBlank(record))
 
+  store.update(record.id, { codexThreadId: 'startup-thread', title: 'New chat' })
+  assert.ok(chatRecordIsBlank(store.require(record.id)), 'provider startup metadata is not a user message')
+
   const claude = store.update(record.id, { modelId: 'claude:opus', claudeSessionId: 's1' })
   assert.equal(claude.provider, 'claude')
   assert.equal(claude.threadId, 'claude:s1')
@@ -32,7 +35,7 @@ test('create, update, archive: the thread id follows the provider and ids never 
   store.archive(record.id)
   assert.deepEqual(store.list('/w'), [])
   assert.equal(store.get(record.id)?.archived, true)
-  assert.equal(changes.length, 4)
+  assert.equal(changes.length, 5)
   assert.throws(() => store.update('missing', {}), /Unknown chat/)
 })
 
@@ -105,6 +108,7 @@ test('records read back from disk are shape-checked and legacy pane records keep
   assert.equal(record.title, 'Kept')
   assert.equal(record.updatedAt, 42)
   assert.equal(record.lastTurnEndedAt, 42)
+  assert.equal(record.messageSentAt, 42)
 })
 
 test('migration imports the active and saved workspaces once, preserving pane ids', async () => {

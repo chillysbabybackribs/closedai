@@ -43,6 +43,7 @@ function record(overrides: Partial<ChatRecord> = {}): ChatRecord {
     createdAt: 0,
     updatedAt: 0,
     lastTurnEndedAt: null,
+    messageSentAt: null,
     archived: false,
     pinnedAt: null,
     continuation: null,

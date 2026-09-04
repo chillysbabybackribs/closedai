@@ -186,6 +186,8 @@ test('closePeer detaches the pane, keeps a chat with a thread, and selects the r
   const paneB = await manager.newPeer()
   assert.equal(attached(manager).length, 2)
   assert.equal(manager.snapshot().selectedPaneId, paneB)
+  await manager.send(paneB, 'keep this chat', [])
+  surfaces[1]!.state.activeTurnId = null
   surfaces[1]!.state.threadId = 'thread-b'
   surfaces[1]!.emit('event', { type: 'thread', threadId: 'thread-b', threadName: 'Kept' } satisfies ChatEvent)
   store.update(paneB, { codexThreadId: 'thread-b' })
@@ -198,6 +200,20 @@ test('closePeer detaches the pane, keeps a chat with a thread, and selects the r
   const row = manager.snapshot().chats.find((chat) => chat.paneId === paneB)
   assert.equal(row?.attached, false)
   assert.equal(row?.threadId, 'thread-b')
+})
+
+test('closePeer discards a new chat even when provider startup created a thread', async (t) => {
+  const { manager, surfaces, store } = harness()
+  t.after(() => manager.stop())
+  const paneB = await manager.newPeer()
+  surfaces[1]!.state.threadId = 'startup-thread'
+  surfaces[1]!.emit('event', { type: 'thread', threadId: 'startup-thread', threadName: 'New chat' } satisfies ChatEvent)
+  store.update(paneB, { codexThreadId: 'startup-thread' })
+
+  await manager.closePeer(paneB)
+
+  assert.equal(store.get(paneB), undefined)
+  assert.equal(manager.snapshot().chats.some((chat) => chat.paneId === paneB), false)
 })
 
 test('switching away from an empty new chat discards it so it does not linger', async () => {

@@ -35,6 +35,7 @@ export function chatRecord(id: string, modelId: string | null, extra: Partial<Ch
     createdAt: 1,
     updatedAt: 1,
     lastTurnEndedAt: null,
+    messageSentAt: null,
     archived: false,
     continuation: null,
     checkpoint: null,

@@ -9,8 +9,8 @@ import { normalizeChatRecord } from './chat-record.js'
 // Every chat the app has shown, in one file. Reads are synchronous from memory because the
 // drawer, the peer manager, and provider settings ask on every event; writes coalesce into one
 // atomic rewrite shortly after the last change, and `flush` drains that before quit. Records
-// are never deleted by lifecycle: archiving hides one, and only a chat that never held a
-// message, thread, or continuation is removed outright.
+// are never deleted by lifecycle: archiving hides one, and only a chat that never accepted a
+// user message or continuation is removed outright.
 
 const WRITE_DELAY_MS = 150
 
@@ -105,6 +105,7 @@ export class ChatStore extends EventEmitter {
       createdAt: seed.createdAt ?? now,
       updatedAt: seed.updatedAt ?? now,
       lastTurnEndedAt: seed.lastTurnEndedAt ?? null,
+      messageSentAt: seed.messageSentAt ?? null,
       archived: seed.archived ?? false,
       pinnedAt: seed.pinnedAt ?? null,
       continuation: seed.continuation ?? null,
@@ -170,7 +171,8 @@ export class ChatStore extends EventEmitter {
       preview: thread.preview,
       createdAt: thread.createdAt || thread.updatedAt,
       updatedAt: thread.updatedAt,
-      lastTurnEndedAt: thread.updatedAt
+      lastTurnEndedAt: thread.updatedAt,
+      messageSentAt: thread.updatedAt
     })
   }
 

@@ -31,6 +31,8 @@ export type ChatRecord = {
   updatedAt: number
   /** When the most recent turn finished; null until a turn has completed. */
   lastTurnEndedAt: number | null
+  /** When this app last accepted a user submission; provider-created threads do not set it. */
+  messageSentAt: number | null
   archived: boolean
   /** Sidebar pin time, independent of conversation activity; null when unpinned. */
   pinnedAt: number | null
@@ -66,7 +68,7 @@ export function chatRecordThreadId(provider: ChatProvider, ids: ChatProviderThre
   return ids.codexThreadId
 }
 
-/** Whether a chat has anything worth keeping: a thread, a title, or a pending continuation. */
-export function chatRecordIsBlank(record: Pick<ChatRecord, 'threadId' | 'title' | 'continuation'>): boolean {
-  return record.threadId === null && record.title === null && record.continuation === null
+/** Whether a chat has user-authored content or a pending continuation worth keeping. */
+export function chatRecordIsBlank(record: Pick<ChatRecord, 'messageSentAt' | 'continuation'>): boolean {
+  return record.messageSentAt === null && record.continuation === null
 }
