@@ -50,7 +50,7 @@ test('defineActionTool advertises a flat schema with an action enum and field no
   assert.deepEqual(properties.action.enum, ['search', 'fetch'])
   assert.equal(properties.query.description, 'Search terms. Required for: search.')
   assert.equal(properties.id.description, 'Required for: fetch.')
-  assert.equal(properties.limit.description, 'Used by: search, fetch.')
+  assert.equal(properties.limit.description, undefined)
 })
 
 test('action tool validates against the chosen action only', async () => {
