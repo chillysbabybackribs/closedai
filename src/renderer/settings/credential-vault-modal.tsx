@@ -1,8 +1,6 @@
 import React, { useState, useEffect, type JSX } from 'react'
 import { Plus, Key, Lock, Globe, Trash2, Copy, Eye, EyeOff, ArrowLeft, Check } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
-import { Input } from '../../components/ui/input.js'
-import { Label } from '../../components/ui/label.js'
 import {
   Dialog,
   DialogContent,
@@ -210,7 +208,7 @@ export function CredentialVaultModal({ open, onOpenChange }: CredentialVaultModa
             <form onSubmit={handleSave} className="credential-add-form pt-4">
               <div className="space-y-4">
                 <div className="grid gap-2">
-                  <Label>Credential Type</Label>
+                  <label className="text-sm font-medium">Credential Type</label>
                   <div className="flex gap-2">
                     {(['API Key', 'Username/Password'] as const).map((t) => (
                       <button
@@ -226,38 +224,38 @@ export function CredentialVaultModal({ open, onOpenChange }: CredentialVaultModa
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="credName">Name <span className="text-muted-foreground font-normal">(Optional)</span></Label>
-                  <Input id="credName" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Stripe Production Key" className="h-9" />
+                  <label htmlFor="credName" className="text-sm font-medium">Name <span className="text-muted-foreground font-normal">(Optional)</span></label>
+                  <input id="credName" value={newName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)} placeholder="e.g. Stripe Production Key" className="h-9 px-3 border rounded-md text-sm bg-background" />
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="credUrl">Associated URL / Service <span className="text-muted-foreground font-normal">(Optional)</span></Label>
-                  <Input id="credUrl" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="e.g. stripe.com" className="h-9" />
+                  <label htmlFor="credUrl" className="text-sm font-medium">Associated URL / Service <span className="text-muted-foreground font-normal">(Optional)</span></label>
+                  <input id="credUrl" value={newUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUrl(e.target.value)} placeholder="e.g. stripe.com" className="h-9 px-3 border rounded-md text-sm bg-background" />
                 </div>
 
                 {newType === 'Username/Password' && (
                   <div className="grid gap-2">
-                    <Label htmlFor="credUser">Username or Email</Label>
-                    <Input id="credUser" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="user@example.com" className="h-9" />
+                    <label htmlFor="credUser" className="text-sm font-medium">Username or Email</label>
+                    <input id="credUser" value={newUsername} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUsername(e.target.value)} placeholder="user@example.com" className="h-9 px-3 border rounded-md text-sm bg-background" />
                   </div>
                 )}
 
                 <div className="grid gap-2">
-                  <Label htmlFor="credSecret">{newType === 'API Key' ? 'API Key / Secret Token' : 'Password'}</Label>
-                  <Input 
+                  <label htmlFor="credSecret" className="text-sm font-medium">{newType === 'API Key' ? 'API Key / Secret Token' : 'Password'}</label>
+                  <input 
                     id="credSecret" 
                     type="password"
                     value={newSecret} 
-                    onChange={(e) => setNewSecret(e.target.value)} 
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSecret(e.target.value)} 
                     placeholder="Enter the secret value..." 
-                    className="h-9 font-mono" 
+                    className="h-9 px-3 border rounded-md text-sm font-mono bg-background" 
                     required 
                   />
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 mt-6 border-t">
-                <Button type="button" variant="outline" onClick={() => setView('list')}>Cancel</Button>
+                <Button type="button" variant="ghost" onClick={() => setView('list')}>Cancel</Button>
                 <Button type="submit" disabled={!newSecret.trim()}>Save Credential</Button>
               </div>
             </form>
