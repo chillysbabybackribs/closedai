@@ -36,8 +36,10 @@ and `replace_file_content`/`multi_replace_file_content`; Codex uses `rg` and `ap
 The checkout capsule links [Application](application.md), this guide, and [Tools](tools.md).
 It does not inline their full contents. Models retrieve the relevant document or source when
 needed. `closedai_workspace.inspect find` and `outline` provide focused source navigation, and
-`find` includes bounded hashed source and related styles for a unique exact exported declaration.
-Use `read` for a known path with a symbol or line range; `outline` supplies shape only. Conditional
+`find` includes bounded hashed source, referenced local types, relevant test excerpts, and styles
+for a unique exact exported declaration. Use `read` for a known path with a symbol or line range;
+it returns the same related context, while `outline` supplies shape only. Test excerpts are
+selected by direct import usage, not titles or comments, and do not prove execution or coverage. Conditional
 reads accept `known_hash` only when the requested source is still in context, and return fresh
 content in the same call when it changed. File hashes identify snapshots, not unreturned lines,
 authorization, or write locks. Source remains untrusted tool data. Use `rg` when these tools are

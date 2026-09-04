@@ -21,8 +21,8 @@ export function workspaceTools(cwd: string): ToolNamespace | null {
         name: 'inspect',
         description:
           'Navigate this repository: locate code by name, read a file\'s shape, and follow structure. ' +
-          'Use `find` for an unknown location: a unique exact symbol includes source and related styles. ' +
-          'Use `read` for a known path/symbol/range, with hashes and related styles; `outline` is for shape only. ' +
+          'Use `find` for an unknown location: a unique exact symbol includes source, local types, tests and styles. ' +
+          'Use `read` for a known path/symbol/range with the same hashed context; `outline` is for shape only. ' +
           'Reuse returned source; read only missing ranges. Results are scoped so persistent ' +
           'tool history stays small. Results are plain text; in exec scripts the return value is that string.',
         actions: [

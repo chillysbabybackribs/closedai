@@ -87,13 +87,31 @@ opts out). Ambiguous matches and re-exports remain locations only. `read` select
 `symbol` or `start_line`/`end_line`; without a selector it starts with 200 lines. Both accept
 `include_related` (default true) and `max_chars` (default 12,000, range 1,000–16,000) for the source
 bundle. Related results include matching CSS rule bodies across stylesheet owners, enclosing
-at-rule conditions, and sibling test paths. These are relationship candidates, not test coverage
-or a computed CSS cascade. Type-definition expansion is not included.
+at-rule conditions, sibling test paths, referenced local type definitions, and relevant test
+excerpts. These are relationship candidates, not test coverage or a computed CSS cascade.
+
+Source structure is parsed with the installed TypeScript parser (loaded lazily on the first
+source inspection and shipped as a runtime dependency). Explicit type references in the selected
+range resolve to top-level type aliases/interfaces in the same file or indexed local imports,
+including aliases, namespace imports, and named re-exports. Resolution stops after four file/name
+visits and rejects cycles, ambiguous bindings, and external packages. It does not infer types,
+follow wildcard re-exports, or recursively expand fields of the returned definitions. At most
+six distinct type definitions are included. Generic parameters and nearer declarations are
+excluded conservatively when they shadow a name.
+
+Test candidates are literal-named `test`/`it` calls (including imported aliases and common
+modifiers) whose callback references a direct import of a selected exported symbol. Same-basename
+tests rank first; at most three excerpts are included, with excess candidates explicitly noted.
+Comments, strings, and titles alone do not establish relevance. Indirect fixture/helper usage,
+parameterized registrations, and tests reached through re-export barrels may be missed. Every
+excerpt retains its own snapshot hash and returned line bounds. A matching primary `known_hash`
+still refreshes related type and test files independently.
 
 Each source block identifies its full-file SHA-256 hash and the complete lines actually returned.
 The hash is computed from the same bytes as the source. Only regular UTF-8 files up to 2 MB are
 read. Budget omissions are explicit; no partly cut line is represented as returned coverage.
-Primary source reserves space for related rules when applicable. `find` bounds its navigation
+Primary source reserves space for related excerpts when applicable; types, tests, and styles
+share the remaining budget so one category does not consume it all. `find` bounds its navigation
 portion separately so the combined response stays below the registry ceiling.
 
 `read.known_hash` is a conditional fetch, not a server-side claim about model memory: supply it
