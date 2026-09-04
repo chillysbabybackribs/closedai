@@ -144,7 +144,7 @@ function AttachmentCard({
   const preview = imagePreview(attachment)
   const image = attachment.kind === 'image'
   return (
-    <Attachment size="sm">
+    <Attachment size="sm" className={preview ? 'border-0 bg-transparent' : undefined}>
       <AttachmentMedia variant={preview ? 'image' : 'icon'}>
         {preview ? <img src={preview} alt="" /> : image ? <FileImage aria-hidden="true" /> : <FileText aria-hidden="true" />}
       </AttachmentMedia>
