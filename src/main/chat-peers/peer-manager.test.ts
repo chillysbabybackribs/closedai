@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatEvent } from '../../shared/chat.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
+import { PEER_READ_DEFAULT_CHARS } from '../../shared/chat-peers.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import { chatRecord, harness, harnessWith } from './peer-manager-harness.js'
 import { traceLog } from '../trace/trace-log.js'
@@ -177,7 +178,7 @@ test('peer awareness exposes child subagent activity without duplicating the cal
   assert.equal(visible[0]!.kind, 'subagent')
   assert.equal(visible[0]!.parentPaneId, 'pane-a')
   assert.equal(visible[0]!.running, true)
-  const read = manager.readReadable(visible[0]!.paneId, 'pane-a')
+  const read = manager.readReadable(visible[0]!.paneId, 'pane-a', { cursor: 0, limit: 30, order: 'newest', maxChars: PEER_READ_DEFAULT_CHARS })
   assert.equal(read?.items[0]?.id, 'sub-1')
 })
 

@@ -229,7 +229,11 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 Provider background tasks and app panes are separate concepts. Claude tracks task notifications
 across turn boundaries with `ClaudeBackgroundTasks`; Codex collaboration items are marked as
 background agent activity. The read-only `peer_chats.list`/`read` directory exposes other panes and visible
-subagent summary items, not an independent process-control API for every SDK task.
+subagent summary items, not an independent process-control API for every SDK task. `read` answers
+"what is that pane doing" first: it pages from the newest item backwards, keeps a page inside a
+serialized character budget by clipping long tool detail, output, diffs and screenshot data URLs,
+and reports `totalItems` so a caller can place the page. `order: "oldest"`, `types` and `max_chars`
+cover the rest; reasoning items still never cross into another pane.
 
 ## Browser surface
 
