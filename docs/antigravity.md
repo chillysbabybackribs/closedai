@@ -65,8 +65,8 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
   2026-09-03, gemini-3.8-flash obeyed it by opening files whose paths it already had, just to mint
   line numbers, and re-verified the repository map (5 to 13 calls where every other model made 0).
   The agent therefore says to satisfy the link rule from known paths without an anchor, to add an
-  anchor only for a line actually read this turn, and, when the map is present, that the map is the
-  settled answer and is not to be re-verified with search tools or repository scripts.
+  anchor only for a line actually read this turn. Repository maps are no longer injected;
+  file discovery uses the native file tools.
   The profile is refreshed on provider connection and loaded by a new CLI process; changing
   documentation alone does not update an already running agent. See [Model context](model-context.md).
 - **No context gauge.** `agy` reports token usage per step but no context window, and the transcript
