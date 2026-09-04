@@ -27,7 +27,6 @@ function SideDrawerView({
   )
 
   const liveCount = useMemo(() => countLiveRows(current), [current])
-  const activeChatId = chat.state.threadId
   const fold: FoldState = { collapsedParents, onToggleParent, expandedSettled, onToggleSettled }
 
   if (controller.isCollapsed) return null
@@ -48,7 +47,6 @@ function SideDrawerView({
             <DrawerRow
               key={row.id}
               row={row}
-              activeChatId={activeChatId}
               fold={fold}
               controller={controller}
               chat={chat}
@@ -69,7 +67,7 @@ function SideDrawerView({
       aria-label="Side drawer"
       data-ui-surface="side-drawer"
     >
-      <DrawerHeader chat={chat} rows={controller.rows} />
+      <DrawerHeader controller={controller} />
 
       <div className="agents-list">
         {current.length > 0 ? (
@@ -122,7 +120,13 @@ function SideDrawerView({
       </div>
 
       <div className="agents-instance-footer">
-        <span className="agents-instance-label">ClosedAI <span className="agents-instance-num">1</span></span>
+        {controller.error ? (
+          <span className="agents-footer-error" role="alert" title={controller.error}>
+            {controller.error}
+          </span>
+        ) : (
+          <span className="agents-instance-label">ClosedAI <span className="agents-instance-num">1</span></span>
+        )}
       </div>
 
       {rowMenu ? (
@@ -133,10 +137,10 @@ function SideDrawerView({
           onClose={() => setRowMenu(null)}
           onFork={(modelId) => {
             setRowMenu(null)
-            void chat.continueFromChat(
+            chat.continueFromChat(
               { paneId: rowMenu.paneId, threadId: rowMenu.threadId },
               modelId
-            )
+            ).catch(controller.reportError)
           }}
         />
       ) : null}
