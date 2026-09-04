@@ -51,7 +51,7 @@ Sends any CDP `Domain.method` with its raw parameters. `tab_id` defaults to the 
 ClosedAI tab. `session_id` routes to a flat child-target session.
 
 `Input.*` requires a non-empty `fallback_reason`; `Page.captureScreenshot` remains an ordinary
-command, and `protocol` is not deferred. Raw
+command, and every `browser_cdp` tool is deferred where supported. Raw
 commands do not invoke the semantic wrapper's foregrounding, readiness, or hit-testing. Input
 needs a rendered target; do not infer that a hidden page received it merely because CDP returned.
 Real input must be grouped with inspection and post-action verification in one batch.

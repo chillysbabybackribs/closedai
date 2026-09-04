@@ -105,7 +105,6 @@ function assembleSchema(name: string, actions: ToolAction[]): JsonObject {
     }
   }
   for (const [key, schema] of sources) {
-    const verbs = usedBy.get(key) ?? []
     const requiredBy = actions
       .filter((action) => Array.isArray(action.inputSchema.required) && action.inputSchema.required.includes(key))
       .map((action) => action.action)

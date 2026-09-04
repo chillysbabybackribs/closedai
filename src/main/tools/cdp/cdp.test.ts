@@ -76,8 +76,8 @@ test('CDP tool advertises its foundational protocol and target lifecycle actions
     'capabilities', 'targets', 'command', 'target', 'events', 'requests', 'body'
   ])
   for (const tool of registry.namespaces[0].tools) {
-    assert.equal(Boolean(tool.deferLoading), tool.name !== 'page')
-    if (tool.name !== 'page' && tool.actions?.length) {
+    assert.equal(tool.deferLoading, true)
+    if (tool.actions?.length) {
       assert.equal(tool.restrictActions?.([tool.actions[0].name])?.deferLoading, true)
     }
   }

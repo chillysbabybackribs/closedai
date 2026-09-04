@@ -167,13 +167,12 @@ test('with the workspace catalogs cached, only the active provider starts and th
     ['gpt-5.6-sol', 'claude:opus[1m]', 'agy:gemini-3.8-flash', 'cursor:claude-opus-5[effort=high]']
   )
 
-  // Picking a cached provider starts nothing: the pane records the pick and the one being left stops.
+  // Picking a cached provider prefetches its warm start; the first send awaits that work if needed.
   await hub.selectModel('claude:opus[1m]')
-  assert.deepEqual(claude.calls, ['newThread'])
+  assert.deepEqual(claude.calls, ['newThread', 'start:true', 'selectModel:claude:opus[1m]'])
   assert.deepEqual(codex.calls, ['start:true', 'stop'])
-  // The first message is what starts it; the pick is handed over once it is up.
   await hub.send('hi', [])
-  assert.deepEqual(claude.calls, ['newThread', 'accept:hi', 'start:true', 'selectModel:claude:opus[1m]', 'send:hi'])
+  assert.deepEqual(claude.calls, ['newThread', 'start:true', 'selectModel:claude:opus[1m]', 'accept:hi', 'send:hi'])
 })
 
 test('a provider a pane reads cold shares its catalog with the workspace and stops again', async () => {
@@ -211,7 +210,7 @@ test('a provider switch is a settings write: the pane is ready on the picked mod
 
   await hub.selectModel('cursor:claude-opus-5[effort=high]')
   assert.equal(hub.activeProvider, 'cursor')
-  assert.deepEqual(cursor.calls, ['newThread'], 'nothing started for a pick')
+  assert.deepEqual(cursor.calls, ['newThread', 'start:true'], 'prefetch starts the picked provider')
   assert.deepEqual(codex.calls.at(-1), 'stop')
   assert.equal(settings.saved.chatModelId, 'cursor:claude-opus-5[effort=high]')
   const painted = events.at(-1)
@@ -225,11 +224,11 @@ test('a provider switch is a settings write: the pane is ready on the picked mod
 
   const sending = hub.send('hello', [])
   await new Promise((resolve) => setImmediate(resolve))
-  assert.deepEqual(cursor.calls, ['newThread', 'accept:hello', 'start:true'],
-    'the message is on screen before the start it waits for')
+  assert.deepEqual(cursor.calls, ['newThread', 'start:true', 'accept:hello'],
+    'the message is on screen while the prefetch warm start it awaits finishes')
   release()
   await sending
-  assert.deepEqual(cursor.calls, ['newThread', 'accept:hello', 'start:true', 'selectModel:cursor:claude-opus-5[effort=high]', 'send:hello'])
+  assert.deepEqual(cursor.calls, ['newThread', 'start:true', 'accept:hello', 'selectModel:cursor:claude-opus-5[effort=high]', 'send:hello'])
   // Once up, the provider's own state is what the pane shows.
   assert.equal(hub.snapshot().connection.message, 'cursor ready')
 })
@@ -262,11 +261,12 @@ test('the snapshot is the active provider with every catalog merged', () => {
 test('selecting the other provider switches the pane after that provider accepts the model', async () => {
   const { hub, codex, claude, events } = build()
   await hub.selectModel('claude:opus[1m]')
-  assert.deepEqual(claude.calls, ['newThread'])
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(claude.calls, ['newThread', 'start:true', 'selectModel:claude:opus[1m]'])
   assert.equal(hub.activeProvider, 'claude')
   assert.equal(events.at(-1)?.type, 'replace')
   await hub.send('hi', [])
-  assert.deepEqual(claude.calls, ['newThread', 'accept:hi', 'start:true', 'send:hi'])
+  assert.deepEqual(claude.calls, ['newThread', 'start:true', 'selectModel:claude:opus[1m]', 'accept:hi', 'send:hi'])
   assert.deepEqual(codex.calls, ['stop'])
   await hub.selectModel('claude:opus[1m]')
   assert.equal(hub.activeProvider, 'claude')
@@ -280,8 +280,9 @@ test('a model switch carries the chat instead of reopening the destination\u2019
   ]
   claude.items = [{ type: 'user', id: 'old-1', turnId: 'x', text: 'An unrelated chat Claude had open' }]
   await hub.selectModel('claude:opus[1m]')
+  await new Promise((resolve) => setImmediate(resolve))
   assert.equal(hub.activeProvider, 'claude')
-  assert.deepEqual(claude.calls, ['continue:codex'])
+  assert.deepEqual(claude.calls, ['continue:codex', 'start:true', 'selectModel:claude:opus[1m]'])
   assert.equal(claude.continued?.threadId, 'codex-thread')
   assert.match(claude.continued?.text ?? '', /Hello from the original chat/)
   const replaced = events.at(-1)
@@ -362,7 +363,8 @@ test('switching with nothing to carry starts the destination blank, keeping an u
   settings.saved.chatContinuation = pending
   claude.items = [{ type: 'user', id: 'old-1', turnId: 'x', text: 'An unrelated chat Claude had open' }]
   await hub.selectModel('claude:opus[1m]')
-  assert.deepEqual(claude.calls, ['newThread'])
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(claude.calls, ['newThread', 'start:true', 'selectModel:claude:opus[1m]'])
   assert.deepEqual(settings.saved.chatContinuation, pending)
   assert.deepEqual(hub.snapshot().items, [])
 })

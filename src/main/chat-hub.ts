@@ -96,6 +96,8 @@ export class ChatHub extends EventEmitter implements ChatSurface {
    * the cached catalog, and the provider's process starts with the first message that needs it.
    */
   private readonly dormant = new Set<ChatProvider>()
+  /** In-flight background warm started by a model pick; Send awaits it before dispatch. */
+  private warmPromise: Promise<void> | null = null
 
   private readonly catalogs: WorkspaceCatalogs | null
   private readonly checkpoint: (() => ChatMemoryCheckpoint | null) | null
@@ -292,14 +294,22 @@ export class ChatHub extends EventEmitter implements ChatSurface {
    */
   /** Warm a picked-but-dormant provider in the background so the first Send skips cold startup. */
   private prefetchDormant(): void {
-    if (!this.dormant.has(this.active)) return
-    void this.startIfDormant().catch(() => undefined)
+    if (!this.dormant.has(this.active) || this.warmPromise) return
+    this.warmPromise = this.doStartIfDormant().finally(() => { this.warmPromise = null })
+    void this.warmPromise.catch(() => undefined)
   }
 
   private async startIfDormant(): Promise<void> {
+    if (this.warmPromise) {
+      await this.warmPromise.catch(() => undefined)
+      return
+    }
+    await this.doStartIfDormant()
+  }
+
+  private async doStartIfDormant(): Promise<void> {
     if (!this.dormant.has(this.active)) return
     const provider = this.providers[this.active]
-    this.dormant.delete(this.active)
     if (!this.isReady(this.active)) await provider.start({ warm: true })
     const saved = this.settings.get()
     const loaded = provider.snapshot({ limit: 0 })
@@ -308,6 +318,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     } else if (saved.chatReasoningEffort && loaded.selectedReasoningEffort !== saved.chatReasoningEffort) {
       await provider.selectReasoningEffort(saved.chatReasoningEffort)
     }
+    this.dormant.delete(this.active)
   }
 
   private isReady(name: ChatProvider): boolean {
