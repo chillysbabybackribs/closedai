@@ -57,7 +57,16 @@ including selection; conversation ids live on the records. A directory without s
 receives a fresh chat. This is directory selection; it does not create a Git branch or worktree.
 
 On launch only the selected pane is warmed. Selecting another pane immediately displays its
-available snapshot, then wakes its runtime asynchronously. Unselected panes without an active
+available snapshot, then wakes its runtime asynchronously. A pane with no snapshot of its own —
+parked, detached, or freshly restored — paints from the chat's saved view instead: the last 60
+transcript items (capped at 256 KB), its thread name, and the context reading it was last
+measured with, written to `chat-transcripts/<chat id>.json` at each turn boundary and read back
+before the pane is announced. The view is display-only and never reaches a model; the provider's
+replay replaces it as soon as it lands, and it is used only while the chat still holds the thread
+it was taken from, so a new chat or a provider switch shows nothing stale. "Show earlier" from
+such a pane wakes the provider first, since earlier messages come from the thread itself. The
+composer names the chat's saved model and effort while its provider is still starting, rather
+than "Choose model". Unselected panes without an active
 turn are parked after five minutes, the selected pane after twenty, and at most two unselected
 idle panes stay awake: creating or opening a chat parks the least recently active beyond that at
 once, so consecutive new chats do not stack pane-owned provider processes. Parking stops those
@@ -249,6 +258,7 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 | Store | Contents |
 |---|---|
 | `provider-catalogs.json` | The last model catalog read per workspace and provider, so a relaunch starts only the active provider and the picker still offers every model; a provider refreshes its own entry when selected |
+| `chat-transcripts/<chat id>.json` | The bounded tail of each chat as the app last showed it, so opening one paints before its provider replays; display-only, pruned against the store's live chat ids on launch |
 | `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, pin timestamp, parent chat, continuation digest, checkpoint. Debounced atomic writes; flushed on quit |
 | `app-settings.json` | Cookie-import latch; active workspace/project; the open chat ids (`chatOpenIds`) and `chatSelectedPaneId`; saved per-project open ids and selection in `chatWorkspaces`; tool switches and context/batch settings. Legacy `chatPeers` and `chatWorkspaces[].peers` are imported into `chats.json` once, keeping each pane id as the chat id, and removed |
 | `browser-tabs.json`, `browser-history.json` | Restored tabs and omnibox history |
