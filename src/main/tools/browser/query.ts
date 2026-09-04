@@ -1,8 +1,8 @@
 import type { ToolAction } from '../action-tool.js'
 import { jsonResult } from '../json-result.js'
-import { booleanArg, failureResult, numberArg, stringArg } from '../tool.js'
+import { booleanArg, numberArg, stringArg } from '../tool.js'
 import { selectorField, tabIdField } from './fields.js'
-import { requireBrowser, type BrowserHostProvider } from './host.js'
+import { missingTabResult, requireBrowser, type BrowserHostProvider } from './host.js'
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 200
@@ -33,7 +33,8 @@ export function queryAction(browser: BrowserHostProvider): ToolAction {
     async run(input) {
       const tabId = stringArg(input, 'tab_id')
       const attributes = Array.isArray(input.attributes) ? input.attributes.map((name) => String(name)) : undefined
-      const result = await requireBrowser(browser).query(tabId, {
+      const host = requireBrowser(browser)
+      const result = await host.query(tabId, {
         selector: stringArg(input, 'selector')!,
         text: stringArg(input, 'text_contains'),
         attributes,
@@ -41,7 +42,7 @@ export function queryAction(browser: BrowserHostProvider): ToolAction {
         limit: numberArg(input, 'max_matches', DEFAULT_LIMIT),
         maxText: numberArg(input, 'max_text', DEFAULT_MAX_TEXT)
       })
-      if (!result) return failureResult(tabId ? `No tab with id ${tabId}` : 'No active tab')
+      if (!result) return missingTabResult(host, tabId)
       return jsonResult(result)
     }
   }

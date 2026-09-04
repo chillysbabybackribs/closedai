@@ -1,5 +1,6 @@
 import type { WebContents } from 'electron'
 import type { BrowserTabInfo } from '../../shared/types.js'
+import { describeMissingTab } from '../../shared/browser-tabs.js'
 import type { CdpToolHost } from '../tools/cdp/host.js'
 import { CdpPageController } from './page-control/page-controller.js'
 import { CdpPageInput } from './page-control/page-input.js'
@@ -214,7 +215,7 @@ export class BrowserCdpAccess implements CdpToolHost {
       ? (browser.cdpTargetList?.() ?? tabs.map((candidate) => ({ ...candidate, kind: 'tab' as const })))
         .find((candidate) => candidate.id === tabId)
       : tabs.find((candidate) => candidate.active) && { ...tabs.find((candidate) => candidate.active)!, kind: 'tab' as const }
-    if (!tab) throw new Error(tabId ? `Browser tab ${tabId} does not exist` : 'There is no active browser tab')
+    if (!tab) throw new Error(describeMissingTab(tabId, tabs))
     const contents = browser.contentsOf(tab.id)
     if (!contents) throw new Error(`Browser tab ${tab.id} is closed`)
 

@@ -6,6 +6,7 @@ import type { BrowserBounds, BrowserShot, BrowserState, BrowserTabInfo } from '.
 import { BrowserTab, HOME_URL, PARTITION } from './browser-tab.js'
 import { PersistentSessionCookies } from './persistent-session-cookies.js'
 import { BrowserObservers } from './browser-network/observers.js'
+import { describeMissingTab } from '../shared/browser-tabs.js'
 import { installPermissionPolicy } from './browser-permissions.js'
 import { TabRenderingPolicy } from './browser-tab-rendering.js'
 import { allSettledBounded } from './bounded-concurrency.js'
@@ -99,14 +100,15 @@ export class BrowserService extends EventEmitter {
     return tab
   }
 
-  private createTab(activate: boolean, index?: number): BrowserTab {
+  private createTab(activate: boolean, index?: number, id?: string): BrowserTab {
     let tab!: BrowserTab
     tab = new BrowserTab(
       this.history,
       (request) => { this.openTab(request.url, request.activate, request.options) },
       PARTITION,
       (contents) => this.registerNativePopup(tab.id, contents),
-      this.pageBackgrounds
+      this.pageBackgrounds,
+      id
     )
     this.observers.watchTab(tab.id, tab.view.webContents)
     this.registerTab(tab, index)
@@ -123,8 +125,13 @@ export class BrowserService extends EventEmitter {
   private restoreTabs(restored: RestoredTabSession): boolean {
     if (restored.tabs.length === 0) return false
     const plan = restorePlan(restored.tabs.length, restored.activeIndex)
+    // Ids are reused when the file carries them; a duplicate (hand-edited file) falls back to a
+    // fresh id rather than two tabs answering to one name.
+    const seen = new Set<string>()
     const tabs = restored.tabs.map((record) => {
-      const tab = this.createTab(false)
+      const id = record.id && !seen.has(record.id) ? record.id : undefined
+      if (id) seen.add(id)
+      const tab = this.createTab(false, undefined, id)
       tab.seedRestoredState(record.url, record.title, record.customTitle)
       return { tab, url: record.url }
     })
@@ -418,7 +425,7 @@ export class BrowserService extends EventEmitter {
       tab = this.createTab(true)
     } else if (tabId) {
       const targeted = this.tabs.find((candidate) => candidate.id === tabId)
-      if (!targeted) throw new Error(`No tab with id ${tabId}`)
+      if (!targeted) throw new Error(describeMissingTab(tabId, this.tabList()))
       tab = targeted
     } else {
       tab = this.requireActive()

@@ -2,7 +2,7 @@ import { describeReadiness } from '../../browser-page-ready.js'
 import type { ToolAction } from '../action-tool.js'
 import { failureResult, stringArg, textResult } from '../tool.js'
 import { MAX_WAIT_MS, readinessFrom, readinessProperties, tabIdField } from './fields.js'
-import { requireBrowser, type BrowserHostProvider } from './host.js'
+import { missingTabResult, requireBrowser, type BrowserHostProvider } from './host.js'
 
 export function waitForAction(browser: BrowserHostProvider): ToolAction {
   return {

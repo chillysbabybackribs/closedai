@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { writeAtomic } from './atomic-write.js'
 import type { BrowserTabInfo } from '../shared/types.js'
+import { TAB_ID_PATTERN } from '../shared/browser-tabs.js'
 
 // Durable tab strip: which pages were open, in what order, and which one the user was
 // looking at. The persist:browser partition already carries cookies/localStorage across
@@ -15,6 +16,11 @@ export type PersistedTab = {
   url: string
   title: string
   customTitle?: string | null
+  /**
+   * The app-assigned id, restored so a model's `tab_id` from before a restart still names
+   * the same page. Absent in files written before ids were persisted.
+   */
+  id?: string
 }
 
 export type RestoredTabSession = {
@@ -129,7 +135,8 @@ export function selectPersistableTabs(tabs: BrowserTabInfo[]): RestoredTabSessio
     kept.push({
       url: tab.url,
       title: (tab.title ?? '').slice(0, MAX_TITLE_LENGTH),
-      ...(normalizeCustomTitle(tab.customTitle) ? { customTitle: normalizeCustomTitle(tab.customTitle) } : {})
+      ...(normalizeCustomTitle(tab.customTitle) ? { customTitle: normalizeCustomTitle(tab.customTitle) } : {}),
+      ...(TAB_ID_PATTERN.test(tab.id) ? { id: tab.id } : {})
     })
   }
   if (kept.length <= MAX_RESTORED_TABS) return { tabs: kept, activeIndex, droppedToCap: 0 }
@@ -171,7 +178,8 @@ function sameSession(current: PersistedTabSession, next: RestoredTabSession): bo
     current.tabs.every((tab, index) => (
       tab.url === next.tabs[index].url &&
       tab.title === next.tabs[index].title &&
-      (tab.customTitle ?? null) === (next.tabs[index].customTitle ?? null)
+      (tab.customTitle ?? null) === (next.tabs[index].customTitle ?? null) &&
+      (tab.id ?? null) === (next.tabs[index].id ?? null)
     ))
   )
 }
@@ -208,7 +216,8 @@ function normalizeTab(value: unknown): PersistedTab | null {
   if (typeof tab.url !== 'string' || !isRestorableUrl(tab.url)) return null
   const title = typeof tab.title === 'string' ? tab.title.slice(0, MAX_TITLE_LENGTH) : ''
   const customTitle = normalizeCustomTitle(tab.customTitle)
-  return { url: tab.url, title, ...(customTitle ? { customTitle } : {}) }
+  const id = typeof tab.id === 'string' && TAB_ID_PATTERN.test(tab.id) ? tab.id : null
+  return { url: tab.url, title, ...(customTitle ? { customTitle } : {}), ...(id ? { id } : {}) }
 }
 
 function normalizeCustomTitle(title: unknown): string | null {

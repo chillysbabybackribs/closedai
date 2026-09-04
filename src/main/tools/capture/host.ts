@@ -1,4 +1,5 @@
 import type { PageReadiness, PageReadyResult } from '../../browser-page-ready.js'
+import type { BrowserTabInfo } from '../../../shared/types.js'
 
 export type ModelImage = {
   /** A data URL (image/jpeg or image/png) small enough to sit in thread history. */
@@ -36,6 +37,8 @@ export type ImageCrop = {
 
 /** Provider-neutral surface used by the capture actions; the Electron adapter lives outside tools. */
 export type UiCaptureHost = {
+  /** The open tabs, for naming them when a requested tab is not there. */
+  listTabs(): BrowserTabInfo[]
   captureAppWindow(): Promise<CapturedImage | null>
   captureBrowserPage(tabId: string | undefined, ready: PageReadiness): Promise<BrowserPageCapture | null>
   cropImage(dataUrl: string, crop: ImageCrop, zoom: number): Promise<CapturedImage | null>

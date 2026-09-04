@@ -1,8 +1,8 @@
 import type { ToolAction } from '../action-tool.js'
 import { jsonResult } from '../json-result.js'
-import { failureResult, numberArg, stringArg } from '../tool.js'
+import { numberArg, stringArg } from '../tool.js'
 import { DEFAULT_MAX_CHARS, maxCharsField, tabIdField } from './fields.js'
-import { requireBrowser, type BrowserHostProvider } from './host.js'
+import { missingTabResult, requireBrowser, type BrowserHostProvider } from './host.js'
 
 /** Page scripts can legitimately await network work; still bounded. */
 const EVALUATE_TIMEOUT_MS = 30_000
@@ -28,11 +28,12 @@ export function evaluateAction(browser: BrowserHostProvider): ToolAction {
     timeoutMs: EVALUATE_TIMEOUT_MS,
     async run(input) {
       const tabId = stringArg(input, 'tab_id')
-      const result = await requireBrowser(browser).evaluate(tabId, {
+      const host = requireBrowser(browser)
+      const result = await host.evaluate(tabId, {
         expression: stringArg(input, 'expression')!,
         maxChars: numberArg(input, 'max_chars', DEFAULT_MAX_CHARS)
       })
-      if (!result) return failureResult(tabId ? `No tab with id ${tabId}` : 'No active tab')
+      if (!result) return missingTabResult(host, tabId)
       return jsonResult(result)
     }
   }

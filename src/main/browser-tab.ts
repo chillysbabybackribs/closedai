@@ -41,12 +41,21 @@ const MAX_CUSTOM_TITLE_LENGTH = 300
 
 let nextTabId = 1
 
+/**
+ * A restored tab keeps the id it was persisted under, so a model's `tab_id` from before the
+ * restart still names the same page. New tabs then count on from above every restored id.
+ */
+export function reserveTabId(id: string): void {
+  const number = Number(id.replace(/^tab-/, ''))
+  if (Number.isInteger(number) && number >= nextTabId) nextTabId = number + 1
+}
+
 type TabLiveness =
   | { alive: true }
   | { alive: false; category: 'target-closed' | 'target-crashed'; detail: string }
 
 export class BrowserTab extends EventEmitter {
-  readonly id = `tab-${nextTabId++}`
+  readonly id: string
   readonly view: WebContentsView
   private bounds: BrowserBounds = hiddenBounds
   private visible = false
@@ -76,9 +85,13 @@ export class BrowserTab extends EventEmitter {
     private readonly registerNativePopup: (contents: WebContents) => void = () => {},
     // Shared across the window's tabs: a page's canvas colour belongs to the site, not to
     // whichever view happened to load it first.
-    private readonly pageBackgrounds: PageBackgroundMemory = new PageBackgroundMemory()
+    private readonly pageBackgrounds: PageBackgroundMemory = new PageBackgroundMemory(),
+    // A persisted id to restore under; a fresh tab takes the next counter value.
+    id?: string
   ) {
     super()
+    if (id) reserveTabId(id)
+    this.id = id ?? `tab-${nextTabId++}`
     // Node throws on unhandled 'error'; the service subscribes, but keep a no-op fallback.
     this.on('error', () => {})
     this.view = new WebContentsView({

@@ -3,6 +3,8 @@ import type { PageReadiness, PageReadyResult, PageText } from '../../browser-pag
 import type { PageEvaluateRequest, PageEvaluateResult, PageQueryRequest, PageQueryResult } from '../../browser-page-evaluate.js'
 import type { ConsoleFilter, ConsoleListing } from '../../browser-network/console-log.js'
 import type { BrowserTabInfo } from '../../../shared/types.js'
+import { describeMissingTab } from '../../../shared/browser-tabs.js'
+import { failureResult, type ToolResult } from '../tool.js'
 
 export type NavigateOutcome =
   | { ok: true; tabId: string; ready: PageReadyResult }
@@ -40,4 +42,9 @@ export function requireBrowser(provider: BrowserHostProvider): BrowserToolHost {
   const host = provider()
   if (!host) throw new Error('The browser is not available yet')
   return host
+}
+
+/** The failure for a tab that is not there, naming the tabs that are so the next call can succeed. */
+export function missingTabResult(host: BrowserToolHost, tabId: string | undefined): ToolResult {
+  return failureResult(describeMissingTab(tabId, host.listTabs()))
 }
