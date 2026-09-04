@@ -92,15 +92,11 @@ async function verify(profile: string): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 25))
     assert.deepEqual(opened, [])
     releaseSearch!()
-    for (let i = 0; i < 100 && browser.activeContents().getTitle() !== 'Live search verification'; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 25))
-    }
-    // The previous tab already has this title, so also wait for the newly opened article URL.
-    for (let i = 0; i < 100 && (!opened.length || browser.activeContents().getURL() !== `${base}/article` || browser.activeContents().isLoading()); i++) {
+    for (let i = 0; i < 100 && (!opened.length || browser.contentsOf()?.getURL() !== `${base}/article` || browser.contentsOf()?.isLoading()); i++) {
       await new Promise((resolve) => setTimeout(resolve, 25))
     }
     assert.deepEqual(opened, [`${base}/article`])
-    assert.equal(await browser.activeContents().executeJavaScript('document.querySelector("main").innerText'), 'Browser evidence')
+    assert.equal(await browser.contentsOf()!.executeJavaScript('document.querySelector("main").innerText'), 'Browser evidence')
     assert.equal(queryFinished, false)
     assert.equal(runtime.service.read(run.runId, context).state, 'running')
     releaseSlowProvider!()
