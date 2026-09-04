@@ -31,7 +31,7 @@ import './styles.css'
 
 function App(): JSX.Element {
   const chat = useChatController()
-  const drawer = useDrawerController(chat)
+  const drawer = useDrawerController(chat.sidebar)
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const [settingsOpen, setSettingsOpen] = useState(false)
   // Owned here because the title bar menu and Ctrl+H reach the panel that lives in the chat pane.
@@ -100,7 +100,7 @@ function App(): JSX.Element {
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
       <div className="workspace" data-mode="chat" data-agents={drawer.isCollapsed ? 'closed' : 'open'}>
-        <SideDrawer controller={drawer} chat={chat} />
+        <SideDrawer controller={drawer} chat={chat.sidebar} />
         <DesktopWorkspace
           chat={chat}
           appearance={appearance}

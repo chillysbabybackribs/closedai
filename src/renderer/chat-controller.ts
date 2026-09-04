@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react'
 import type { ChatAttachment, ChatSnapshot } from '../shared/chat.js'
 import type { ChatContinuationSource, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../shared/chat-peers.js'
-import { coalesceChatWorkspaceEvents, initialChatWorkspaceState, reduceChatWorkspaceEvent } from './chat-state.js'
+import { coalesceChatWorkspaceEvents, initialChatRendererState, reduceChatRendererEvent } from './chat-state.js'
 
 export type ChatController = {
   state: ChatSnapshot
@@ -33,8 +33,8 @@ export type ChatController = {
   loadEarlier: () => Promise<number>
 }
 
-export function useChatController(enabled = true): ChatController {
-  const [workspace, dispatch] = useReducer(reduceChatWorkspaceEvent, undefined, initialChatWorkspaceState)
+export function useChatController(enabled = true): ChatController & { sidebar: ChatController } {
+  const [{ workspace, sidebar: sidebarState }, dispatch] = useReducer(reduceChatRendererEvent, undefined, initialChatRendererState)
 
   useEffect(() => {
     if (!enabled) return
@@ -96,14 +96,9 @@ export function useChatController(enabled = true): ChatController {
     return page.items.length
   }, [paneId, threadId, beforeItemId])
 
-  // Memoized because consumers put the controller itself in dependency arrays. A fresh object
-  // per render turns any `[chat]`-keyed effect into a render loop: the effect sets state, the
-  // re-render mints a new controller, the effect fires again. The drawer hit exactly that.
-  return useMemo(() => ({
-    state: workspace.selected,
-    workspace: workspace.workspace,
-    chats: workspace.chats,
-    selectedPaneId: workspace.selectedPaneId,
+  // Actions stay stable across text updates, so the sidebar can use its own snapshot without
+  // receiving a new controller for each streamed chunk.
+  const actions = useMemo(() => ({
     send,
     interrupt,
     interruptPane,
@@ -123,9 +118,17 @@ export function useChatController(enabled = true): ChatController {
     closePeer,
     loadEarlier
   }), [
-    workspace.selected, workspace.workspace, workspace.chats, workspace.selectedPaneId,
     send, interrupt, interruptPane, selectModel, selectReasoningEffort, refreshPlanUsage, loginWithChatGPT,
     listChats, newThread, continueInNewThread, continueFromChat, openChat,
     archiveChat, setChatPinned, compactConversation, selectPane, closePeer, loadEarlier
   ])
+  const sidebar = useMemo<ChatController>(() => ({
+    ...actions,
+    state: sidebarState,
+    workspace: workspace.workspace,
+    chats: workspace.chats,
+    selectedPaneId: workspace.selectedPaneId
+  }), [actions, sidebarState, workspace.workspace, workspace.chats, workspace.selectedPaneId])
+
+  return useMemo(() => ({ ...sidebar, state: workspace.selected, sidebar }), [sidebar, workspace.selected])
 }

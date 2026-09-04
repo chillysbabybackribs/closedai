@@ -31,6 +31,22 @@ export type ChatWorkspaceAction = ChatWorkspaceEvent | {
   type: 'historyPage'; paneId: string; threadId: string | null; beforeItemId: string; page: ChatHistoryPage
 }
 
+export type ChatRendererState = { workspace: ChatWorkspaceSnapshot; sidebar: ChatSnapshot }
+
+export function initialChatRendererState(): ChatRendererState {
+  const workspace = initialChatWorkspaceState()
+  return { workspace, sidebar: workspace.selected }
+}
+
+/** The sidebar needs metadata and settled items, never the contents of a token chunk. */
+export function reduceChatRendererEvent(state: ChatRendererState, event: ChatWorkspaceAction): ChatRendererState {
+  const workspace = reduceChatWorkspaceEvent(state.workspace, event)
+  if (workspace === state.workspace) return state
+  const keepSidebar = workspace.selected === state.workspace.selected ||
+    (event.type === 'pane' && event.event.type === 'itemDelta')
+  return { workspace, sidebar: keepSidebar ? state.sidebar : workspace.selected }
+}
+
 export function reduceChatWorkspaceEvent(
   state: ChatWorkspaceSnapshot,
   event: ChatWorkspaceAction

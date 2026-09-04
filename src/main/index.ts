@@ -19,6 +19,7 @@ import { ChatService } from './chat-service.js'
 import { CodexWorkspaceRuntime } from './codex-workspace-runtime.js'
 import { ChatHub } from './chat-hub.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
+import { rendererChatForwarder } from './chat-peers/peer-events.js'
 import { ChatStore } from './chat-store/chat-store.js'
 import { migrateChatPeersIntoStore } from './chat-store/chat-store-migration.js'
 import { ProviderCatalogCache } from './chat-context/provider-catalog-cache.js'
@@ -282,9 +283,11 @@ function createWindow(): void {
   browserDownloads.on('changed', (downloads: BrowserDownload[]) =>
     sendToMainWindow('browserDownloads:changed', downloads)
   )
+  const forwardChat = rendererChatForwarder(chatService?.snapshot({ limit: 0 }).selectedPaneId ?? '',
+    (event) => sendToMainWindow('chat:event', event))
   chatService?.on('event', (event: ChatWorkspaceEvent) => {
     traceChatEvent(event)
-    sendToMainWindow('chat:event', event)
+    forwardChat(event)
   })
   traceLog.on('event', (event: TraceEvent) => sendToMainWindow('trace:event', event))
   const sendToolsEvent = (event: ToolsEvent): void => { sendToMainWindow('tools:event', event) }

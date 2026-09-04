@@ -1,6 +1,6 @@
 import type { ChatSnapshot } from '../../shared/chat.js'
 import { activityPhase, CHAT_HISTORY_PAGE_SIZE } from '../../shared/chat.js'
-import type { ChatPeerSummary, ChatRowSummary } from '../../shared/chat-peers.js'
+import type { ChatPeerSummary, ChatRowSummary, ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import { summaryForRecord } from './peer-summary.js'
 
@@ -12,6 +12,19 @@ import { summaryForRecord } from './peer-summary.js'
 
 /** Floor between two `chats` updates while a turn streams. */
 export const CHATS_EMIT_INTERVAL_MS = 200
+
+/** Filter only the IPC delivery. Main-process observers and provider transcripts stay complete. */
+export function rendererChatForwarder(
+  selectedPaneId: string,
+  send: (event: ChatWorkspaceEvent) => void
+): (event: ChatWorkspaceEvent) => void {
+  return (event) => {
+    if (event.type === 'workspace') selectedPaneId = event.snapshot.selectedPaneId
+    else if (event.type === 'chats') selectedPaneId = event.selectedPaneId
+    else if (event.paneId !== selectedPaneId) return
+    send(event)
+  }
+}
 
 export class PeerEmitThrottle {
   private timer: NodeJS.Timeout | null = null

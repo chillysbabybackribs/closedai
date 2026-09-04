@@ -183,7 +183,7 @@ export function useDrawerController(chat: ChatController) {
     })
   }, [chat.state, chat.selectedPaneId, chat.chats, linesDiff])
 
-  return {
+  return useMemo(() => ({
     isCollapsed,
     toggleCollapsed,
     isHistoryOpen,
@@ -199,7 +199,8 @@ export function useDrawerController(chat: ChatController) {
     refreshChats,
     error,
     reportError
-  }
+  }), [isCollapsed, toggleCollapsed, isHistoryOpen, toggleHistory, reviewQueue, pendingDeleteId,
+    deleteRow, openRow, newChat, rows, refreshChats, error, reportError])
 }
 
 export type DrawerController = ReturnType<typeof useDrawerController>
