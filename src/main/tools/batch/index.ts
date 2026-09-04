@@ -69,10 +69,11 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
           'independent work; explicit browser targets run in parallel while same-target work serializes. ' +
           'Batches cannot nest, and only ClosedAI tools are routable: the tools your own harness gives you ' +
           '(file read/search/edit, shell, web fetch) must be called directly, outside a batch. ' +
-          'Use this for every multi-call workflow; real-input fallbacks must include their ' +
+          'Use this when a known sequence or independent group benefits from batching; direct calls are fine. Real-input fallbacks must include their ' +
           'inspection and post-action verification in the same sequential batch. ' +
           'For successful intermediate actions, set `include_result` false so only status—not a payload the model does not need—is returned; failures are always included. ' +
-          'In exec scripts do not use this tool: await the tools directly (Promise.all for independent reads).',
+          'Any failed or skipped call makes the batch an error; successful results remain available. Retry only failed work after inspecting its error. ' +
+          'In exec scripts do not use this tool: await the tools directly (Promise.allSettled for independent reads).',
         inputSchema: {
           type: 'object',
           properties: {
@@ -413,7 +414,7 @@ function assembleResult(calls: BatchCall[], outcomes: BatchOutcome[], unwound: U
       ...sections.map((section): ToolContent => ({ type: 'text', text: section })),
       ...images
     ],
-    // Partial success is success: the model needs the surviving results, not a retry loop.
-    ...(succeeded === 0 ? { isError: true } : {})
+    // Preserve successful evidence without claiming a partially executed plan completed.
+    ...(succeeded !== calls.length || unwound.some((record) => !record.ok) ? { isError: true } : {})
   }
 }

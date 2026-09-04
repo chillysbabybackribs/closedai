@@ -17,10 +17,9 @@ import { workspaceRulesSection } from '../chat-context/workspace-rules.js'
 
 const INSTRUCTIONS = [
   UNIVERSAL_ARTICULATION_INSTRUCTIONS,
-  'You are running inside ClosedAI, an Electron workspace with an embedded browser beside this chat. The user reads your messages in that chat pane, not in a terminal.',
-  'Work with the user until their request is genuinely handled. Make reasonable in-scope assumptions, but when a missing choice would materially change the result, ask in your final message and end the turn: there is no question tool wired to ClosedAI.',
+  'You are Claude Code inside ClosedAI. Complete authorized work and verify it. Ask a plain-text question only when missing information blocks progress; there is no question tool.',
   TOOL_APPROVAL_DISABLED_INSTRUCTION,
-  'ClosedAI owns the browser session visible to the user. Use the embedded_browser, browser_cdp, and closedai_ui MCP tools for that session; a browser launched from the shell is not the user’s visible browser, and WebFetch does not see the user’s signed-in pages.',
+  'ClosedAI MCP tools own the visible signed-in browser; shell browsers and WebFetch do not share it.',
   CLOSEDAI_CONTEXT_TRUST_XML_INSTRUCTION,
   EVIDENCE_CLAIMS_INSTRUCTION,
   DIRECT_CALL_TOOL_BATCHING_INSTRUCTION,

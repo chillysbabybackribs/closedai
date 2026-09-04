@@ -24,26 +24,19 @@ export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
     tools: [
       defineActionTool({
         name: 'protocol',
+        deferLoading: true,
         description:
-          'Primary browser interface: raw CDP commands to a ClosedAI browser tab and its instrumentation ' +
-          'events. Use this single browser surface first for capabilities, inspection, ' +
-          'screenshots, network, storage, debugging, and any other supported CDP domain. Use capabilities ' +
-          'to inspect the bundled Chromium ' +
-          'protocol, targets for a live inventory of children and sessions, command for any domain method, and events ' +
-          'after enabling the relevant domain. To find the API behind a page, start with requests — it reports ' +
-          'what the tab already fetched without a reload — then body for a captured response. DOM nodes, runtime objects, frames, execution contexts, ' +
-          'target sessions, and request ids are transient and may become invalid after navigation. ' +
-          'Child auto-attach uses flatten=true; pass an inventory sessionId as session_id on later commands. ' +
-          'Raw Input.* commands are real-input escape hatches and require fallback_reason; use page when input also needs tab activation. ' +
-          'Use closedai_ui capture for image results. ' +
-          'Results are JSON text: JSON.parse the returned string in exec scripts; oversized results ' +
-          'shrink structurally and carry a `_closedai_truncated` note.',
+          'Advanced CDP access when embedded_browser page, network, or session tools lack a needed capability. ' +
+          'Use capabilities for supported domains, targets for child sessions, command for Domain.method, ' +
+          'and events after enabling a domain. IDs may expire after navigation; pass child sessionId as session_id. ' +
+          'Raw Input.* requires fallback_reason and batched inspection/verification. Use closedai_ui.capture for images. ' +
+          'Returns JSON text; JSON.parse in exec. Oversized results carry _closedai_truncated.',
         actions: actions(cdp)
       }),
       cdpPageTool(cdp),
-      cdpProfileTool(cdp),
-      cdpInstrumentTool(cdp),
-      cdpEmulateTool(cdp)
+      { ...cdpProfileTool(cdp), deferLoading: true },
+      { ...cdpInstrumentTool(cdp), deferLoading: true },
+      { ...cdpEmulateTool(cdp), deferLoading: true }
     ]
   }
 }

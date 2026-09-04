@@ -36,7 +36,7 @@ export function browserTools(
       defineActionTool({
         name: 'page',
         description:
-          'Read-only access to the embedded browser the user is looking at. Use navigate to open a page, ' +
+          'Primary page tools for the embedded browser. Navigate changes the page; evaluate and fetch can mutate it or send requests. Use navigate to open a page, ' +
           'read_page to get its text, wait_for when content loads late, query for structured facts about ' +
           'elements matching a selector, evaluate to run JavaScript and get a bounded JSON result, and ' +
           'console for the tab\'s logged messages and errors. For data rather than rendered text, use ' +
