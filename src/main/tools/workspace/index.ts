@@ -8,6 +8,7 @@ import { mapAction } from './map.js'
 import { outlineAction } from './outline.js'
 import { relatedAction } from './related.js'
 import { testsAction } from './tests.js'
+import { readAction } from './read.js'
 
 /** The generated index describes only this checkout, so do not advertise it elsewhere. */
 export function workspaceTools(cwd: string): ToolNamespace | null {
@@ -20,8 +21,9 @@ export function workspaceTools(cwd: string): ToolNamespace | null {
         name: 'inspect',
         description:
           'Navigate this repository: locate code by name, read a file\'s shape, and follow structure. ' +
-          'Start with `find` for "where is X" and `outline` before opening an unfamiliar file — both cost ' +
-          'one call and keep whole-file reads out of the transcript. Results are scoped so persistent ' +
+          'Use `find` for an unknown location: a unique exact symbol includes source and related styles. ' +
+          'Use `read` for a known path/symbol/range, with hashes and related styles; `outline` is for shape only. ' +
+          'Reuse returned source; read only missing ranges. Results are scoped so persistent ' +
           'tool history stays small. Results are plain text; in exec scripts the return value is that string.',
         actions: [
           findAction(WORKSPACE_INDEX_ROOT),
@@ -30,6 +32,7 @@ export function workspaceTools(cwd: string): ToolNamespace | null {
           relatedAction(WORKSPACE_INDEX_ROOT),
           testsAction(WORKSPACE_INDEX_ROOT),
           ipcFlowAction
+          ,readAction(WORKSPACE_INDEX_ROOT)
         ]
       })
     ]
