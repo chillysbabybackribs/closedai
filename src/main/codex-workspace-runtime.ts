@@ -25,7 +25,7 @@ type RuntimeTarget = {
   turnId: () => string | null
 }
 
-type RuntimeTransport = EventEmitter & Pick<
+export type CodexRuntimeTransport = EventEmitter & Pick<
   AppServerClient,
   'start' | 'stop' | 'request' | 'respond' | 'respondWithError'
 >
@@ -96,7 +96,7 @@ export class CodexRuntimeSession extends EventEmitter {
  * only events whose thread or turn they own; account-level events are shared by every active pane.
  */
 export class CodexWorkspaceRuntime {
-  private readonly transport: RuntimeTransport
+  private readonly transport: CodexRuntimeTransport
   private readonly targets = new Map<CodexRuntimeSession, RuntimeTarget>()
   private startPromise: Promise<void> | null = null
   private sessionPromise: Promise<RuntimeSessionState> | null = null
@@ -106,7 +106,7 @@ export class CodexWorkspaceRuntime {
     readonly cwd: string,
     settings: AppSettingsAccess,
     executable = process.env.CLOSEDAI_CODEX_PATH?.trim() || 'codex',
-    transport?: RuntimeTransport
+    transport?: CodexRuntimeTransport
   ) {
     this.transport = transport ?? new AppServerClient(
       executable,
