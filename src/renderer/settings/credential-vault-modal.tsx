@@ -107,13 +107,13 @@ export function CredentialVaultModal({ open, onOpenChange }: CredentialVaultModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="credential-dialog" aria-describedby="credential-description">
+      <DialogContent className="appearance-dialog credential-dialog" aria-describedby="credential-description">
         {view === 'list' ? (
           <>
-            <div className="credential-dialog-heading">
-              <div className="credential-dialog-icon"><Key size={18} /></div>
+            <div className="appearance-dialog-heading">
+              <div className="appearance-dialog-icon"><Key size={18} /></div>
               <div>
-                <DialogTitle className="credential-dialog-title">Credential Vault</DialogTitle>
+                <DialogTitle className="appearance-dialog-title">Credential Vault</DialogTitle>
                 <DialogDescription id="credential-description">
                   Manage API keys and sensitive credentials used by the AI model.
                 </DialogDescription>
@@ -195,12 +195,12 @@ export function CredentialVaultModal({ open, onOpenChange }: CredentialVaultModa
           </>
         ) : (
           <>
-            <div className="credential-dialog-heading">
-              <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2 rounded-full" onClick={() => setView('list')}>
+            <div className="appearance-dialog-heading">
+              <Button variant="ghost" size="icon" className="appearance-dialog-icon h-8 w-8 !rounded-full p-0 border-0" onClick={() => setView('list')}>
                 <ArrowLeft size={16} />
               </Button>
               <div>
-                <DialogTitle className="credential-dialog-title">Add Credential</DialogTitle>
+                <DialogTitle className="appearance-dialog-title">Add Credential</DialogTitle>
                 <DialogDescription>Store a new API key or account login.</DialogDescription>
               </div>
             </div>
@@ -211,32 +211,33 @@ export function CredentialVaultModal({ open, onOpenChange }: CredentialVaultModa
                   <label className="text-sm font-medium">Credential Type</label>
                   <div className="flex gap-2">
                     {(['API Key', 'Username/Password'] as const).map((t) => (
-                      <button
+                      <Button
                         key={t}
                         type="button"
-                        className={`flex-1 border rounded-md py-2 text-sm font-medium transition-colors ${newType === t ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-secondary'}`}
+                        variant={newType === t ? 'secondary' : 'outline'}
+                        className="flex-1"
                         onClick={() => setNewType(t)}
                       >
                         {t}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
 
                 <div className="grid gap-2">
                   <label htmlFor="credName" className="text-sm font-medium">Name <span className="text-muted-foreground font-normal">(Optional)</span></label>
-                  <input id="credName" value={newName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)} placeholder="e.g. Stripe Production Key" className="h-9 px-3 border rounded-md text-sm bg-background" />
+                  <input id="credName" value={newName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)} placeholder="e.g. Stripe Production Key" className="border-input placeholder:text-muted-foreground flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" />
                 </div>
 
                 <div className="grid gap-2">
                   <label htmlFor="credUrl" className="text-sm font-medium">Associated URL / Service <span className="text-muted-foreground font-normal">(Optional)</span></label>
-                  <input id="credUrl" value={newUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUrl(e.target.value)} placeholder="e.g. stripe.com" className="h-9 px-3 border rounded-md text-sm bg-background" />
+                  <input id="credUrl" value={newUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUrl(e.target.value)} placeholder="e.g. stripe.com" className="border-input placeholder:text-muted-foreground flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" />
                 </div>
 
                 {newType === 'Username/Password' && (
                   <div className="grid gap-2">
                     <label htmlFor="credUser" className="text-sm font-medium">Username or Email</label>
-                    <input id="credUser" value={newUsername} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUsername(e.target.value)} placeholder="user@example.com" className="h-9 px-3 border rounded-md text-sm bg-background" />
+                    <input id="credUser" value={newUsername} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUsername(e.target.value)} placeholder="user@example.com" className="border-input placeholder:text-muted-foreground flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" />
                   </div>
                 )}
 
@@ -248,7 +249,7 @@ export function CredentialVaultModal({ open, onOpenChange }: CredentialVaultModa
                     value={newSecret} 
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSecret(e.target.value)} 
                     placeholder="Enter the secret value..." 
-                    className="h-9 px-3 border rounded-md text-sm font-mono bg-background" 
+                    className="border-input placeholder:text-muted-foreground flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm font-mono shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" 
                     required 
                   />
                 </div>
