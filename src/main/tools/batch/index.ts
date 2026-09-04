@@ -106,7 +106,10 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
         async run(input, context) {
           const parsed = parseCalls(input, maxCalls)
           if (typeof parsed === 'string') return failureResult(`tool_batch.run: ${parsed}`)
-          const outcomes = booleanArg(input, 'parallel', false)
+          const parallel = booleanArg(input, 'parallel', false)
+          const policyProblem = validateRealInputBatch(parsed, parallel)
+          if (policyProblem) return failureResult(`tool_batch.run: ${policyProblem}`)
+          const outcomes = parallel
             ? await runParallel(registry(), parsed, context)
             : await runSequential(registry(), parsed, context)
           return assembleResult(parsed, outcomes)
@@ -114,6 +117,46 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
       })
     ]
   }
+}
+
+/** Real input cannot hide in a one-call or parallel batch; a later read must assert the outcome. */
+function validateRealInputBatch(calls: BatchCall[], parallel: boolean): string | null {
+  const fallbackIndexes = calls.flatMap((call, index) => isRealInputCall(call) ? [index] : [])
+  if (fallbackIndexes.length === 0) return null
+  if (parallel) return 'real-input fallbacks must run in a sequential batch'
+  for (const index of fallbackIndexes) {
+    if (!calls.slice(index + 1).some(isVerificationCall)) {
+      return `real-input fallback call [${calls[index]!.index}] needs a later read or wait action that verifies its result`
+    }
+  }
+  return null
+}
+
+function isRealInputCall(call: BatchCall): boolean {
+  const action = typeof call.arguments.action === 'string' ? call.arguments.action : ''
+  if (call.namespace === 'closedai_app' && call.tool === 'ui') {
+    return ['click', 'type', 'press_key'].includes(action)
+  }
+  if (call.namespace === 'browser_cdp' && call.tool === 'page') {
+    return ['click', 'click_at', 'type', 'press_key', 'dismiss_overlay'].includes(action)
+  }
+  return call.namespace === 'browser_cdp' && call.tool === 'protocol' && action === 'command' &&
+    typeof call.arguments.method === 'string' && call.arguments.method.startsWith('Input.')
+}
+
+function isVerificationCall(call: BatchCall): boolean {
+  const action = typeof call.arguments.action === 'string' ? call.arguments.action : ''
+  if (call.namespace === 'closedai_app' && call.tool === 'state') return true
+  if (call.namespace === 'closedai_app' && call.tool === 'ui') return ['controls', 'wait_for'].includes(action)
+  if (call.namespace === 'browser_cdp' && call.tool === 'page') return action === 'inspect_page'
+  if (call.namespace === 'browser_cdp' && call.tool === 'protocol') {
+    return ['targets', 'events', 'requests', 'body'].includes(action)
+  }
+  if (call.namespace === 'embedded_browser' && call.tool === 'page') {
+    return ['read_page', 'wait_for', 'extract'].includes(action)
+  }
+  return call.namespace === 'closedai_ui' && call.tool === 'capture' &&
+    ['app_window', 'browser_page'].includes(action)
 }
 
 /** The schema has already vetted shapes; this owns limits and target resolution. */

@@ -147,7 +147,8 @@ CDP `Input.*` command requires a non-empty `fallback_reason`, which is preserved
 Group the fallback with the inspection that identified its target and a post-action assertion in
 the same sequential batch. A Codex exec script is the batching boundary; direct-call providers use
 `tool_batch.run`, and the runtime refuses their unbatched input calls. Coordinate clicks remain the
-last fallback after semantic refs.
+last fallback after semantic refs. The batch validator also refuses real input in parallel batches
+or without a later recognized read/wait/capture action that can verify the result.
 
 `resource-locks.ts` shares those keys with registry locking. Lock conflicts fail with a busy
 target message rather than wait indefinitely. Current keys cover app input, navigation, semantic

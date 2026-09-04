@@ -96,6 +96,35 @@ function browserHarness(): { registry: ToolRegistry; starts: string[]; release: 
   }
 }
 
+function inputPolicyHarness(): { registry: ToolRegistry; log: string[] } {
+  const log: string[] = []
+  const namespaces: ToolNamespace[] = [
+    {
+      name: 'browser_cdp',
+      description: 'Browser interaction',
+      tools: [{
+        name: 'page',
+        description: 'Page actions',
+        inputSchema: { type: 'object', properties: { action: { type: 'string' } }, required: ['action'] },
+        run: async (input) => { log.push(String(input.action)); return textResult(String(input.action)) }
+      }]
+    },
+    {
+      name: 'embedded_browser',
+      description: 'Browser reads',
+      tools: [{
+        name: 'page',
+        description: 'Read actions',
+        inputSchema: { type: 'object', properties: { action: { type: 'string' } }, required: ['action'] },
+        run: async (input) => { log.push(String(input.action)); return textResult(String(input.action)) }
+      }]
+    }
+  ]
+  let registry: ToolRegistry
+  registry = new ToolRegistry([...namespaces, batchTools(() => registry)])
+  return { registry, log }
+}
+
 async function waitForStart(starts: readonly string[], expected: string): Promise<void> {
   for (let attempt = 0; attempt < 20; attempt += 1) {
     if (starts.includes(expected)) return
@@ -156,6 +185,28 @@ test('a parallel batch runs everything despite failures and keeps input order', 
   assert.ok(log.includes('echo:still runs'))
   const text = batchText(result)
   assert.match(text, /\[1\] lab\.boom — failed[\s\S]*\[2\] lab\.echo — ok/)
+})
+
+test('real-input fallbacks require a sequential batch with a later verification read', async () => {
+  const { registry, log } = inputPolicyHarness()
+  const click = {
+    tool: 'browser_cdp.page',
+    arguments: { action: 'click', ref: 'p1:e1', fallback_reason: 'No API exists.' }
+  }
+  const verify = { tool: 'embedded_browser.page', arguments: { action: 'read_page' } }
+
+  const parallel = await call(registry, { parallel: true, calls: [click, verify] })
+  assert.equal(parallel.isError, true)
+  assert.match(batchText(parallel), /sequential batch/)
+
+  const unverified = await call(registry, { calls: [verify, click] })
+  assert.equal(unverified.isError, true)
+  assert.match(batchText(unverified), /later read or wait action/)
+  assert.deepEqual(log, [])
+
+  const verified = await call(registry, { calls: [click, verify] })
+  assert.equal(verified.isError, undefined)
+  assert.deepEqual(log, ['click', 'read_page'])
 })
 
 test('parallel batches serialize work on one explicit browser tab while other tabs run immediately', async () => {
