@@ -17,6 +17,14 @@ function harness(overrides: Partial<CdpToolHost> = {}) {
       calls.push(['events', tabId, after, limit, prefix])
       return { tab: {}, connectionId: 'c1', oldestCursor: 1, nextCursor: 2, missedEvents: false, events: [] }
     },
+    networkRequests: async (tabId, filter) => {
+      calls.push(['networkRequests', tabId, filter])
+      return { capturing: true, requests: [{ url: 'https://a.test/api/items', method: 'POST', requestId: '1' }] }
+    },
+    responseBody: async (tabId, requestId) => {
+      calls.push(['responseBody', tabId, requestId])
+      return { requestId, text: '{"ok":true}', base64Encoded: false }
+    },
     inspectPage: async (tabId, maxElements) => {
       calls.push(['inspectPage', tabId, maxElements])
       return { snapshotId: 'p1', elements: [] }
@@ -59,8 +67,22 @@ test('CDP tool advertises its foundational protocol and target lifecycle actions
   const { registry } = harness()
   assert.deepEqual(registry.names(), ['browser_cdp.protocol', 'browser_cdp.page'])
   assert.deepEqual(registry.namespaces[0].tools[0].actions?.map((action) => action.name), [
-    'capabilities', 'targets', 'command', 'target', 'events'
+    'capabilities', 'targets', 'command', 'target', 'events', 'requests', 'body'
   ])
+})
+
+test('requests lists network traffic and body reads one captured response', async () => {
+  const { calls, call } = harness()
+  const listed = await call({ action: 'requests', url_contains: '/api/', max_requests: 5 })
+  assert.match(textOf(listed), /"method": "POST"/)
+  assert.deepEqual(calls.at(-1), ['networkRequests', undefined, { url: '/api/', type: undefined, limit: 5 }])
+
+  const body = await call({ action: 'body', request_id: '1', tab_id: 'tab-2' })
+  assert.match(textOf(body), /\\"ok\\":true/)
+  assert.deepEqual(calls.at(-1), ['responseBody', 'tab-2', '1'])
+
+  const missing = await call({ action: 'body' })
+  assert.equal(missing.isError, true)
 })
 
 test('agent page wrapper inspects and clicks refs or explicit coordinates', async () => {

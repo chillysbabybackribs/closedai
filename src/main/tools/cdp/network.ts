@@ -19,12 +19,12 @@ export function requestsAction(cdp: CdpHostProvider): ToolAction {
       tab_id: tabIdField,
       url_contains: { type: 'string', minLength: 1, description: 'Case-insensitive substring filter on the URL, for example /api/.' },
       resource_type: { type: 'string', minLength: 1, description: 'Case-insensitive filter on the resource type, for example xhr, fetch, or script.' },
-      limit: { type: 'integer', minimum: 1, maximum: 200, description: `Maximum requests returned; defaults to ${DEFAULT_REQUEST_LIMIT}.` }
+      max_requests: { type: 'integer', minimum: 1, maximum: 200, description: `Maximum requests returned; defaults to ${DEFAULT_REQUEST_LIMIT}.` }
     }),
     run: async (input) => jsonResult(await requireCdp(cdp).networkRequests(stringArg(input, 'tab_id'), {
       url: stringArg(input, 'url_contains'),
       type: stringArg(input, 'resource_type'),
-      limit: numberArg(input, 'limit', DEFAULT_REQUEST_LIMIT)
+      limit: numberArg(input, 'max_requests', DEFAULT_REQUEST_LIMIT)
     }))
   }
 }

@@ -196,6 +196,49 @@
   white-space: nowrap;
 }
 
+/* ---- Provider rows --------------------------------------------------------
+   The root menu is one row per provider; its models live in the panel that opens beside it.
+   The row carries the mark, the provider's name, and — where that provider owns the current
+   selection — the model in use, so the resting menu answers "which backend, on what" without
+   opening anything. */
+.model-menu-providers {
+  min-width: 15.5rem;
+}
+
+.model-menu-provider {
+  grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  /* No checkmark gutter here: the detail column names the active model instead. */
+  padding: 8px 8px 8px 10px;
+}
+
+.model-menu-provider .model-menu-item-detail {
+  justify-self: end;
+  text-align: right;
+}
+
+.model-menu-provider[data-active='true'] .model-menu-item-name {
+  font-weight: 650;
+}
+
+.model-menu-provider[data-active='true'] .model-menu-item-detail {
+  color: color-mix(in srgb, var(--foreground) 62%, transparent);
+}
+
+/* Radix keeps the trigger highlighted while its panel is open, so the row stays visibly the
+   parent of what is on screen rather than losing its hover the moment the pointer leaves it. */
+.model-menu-provider[data-state='open'] {
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+}
+
+.model-menu-provider-caret {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: color-mix(in srgb, var(--foreground) 42%, transparent);
+}
+
 /* The row that unfolds the rest of the catalogue. Quiet as a label so it reads as the end of
    the short list rather than another model to pick. */
 .model-menu-more {
