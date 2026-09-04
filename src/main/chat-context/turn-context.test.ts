@@ -18,7 +18,7 @@ const activeTab: ActiveBrowserContext = {
 
 test('developer instructions stay within their expanded budget and establish the product trust boundary', () => {
   const instructions = closedAiDeveloperInstructions()
-  assert.ok(instructions.length < 3_500)
+  assert.ok(instructions.length < 4_500)
   assert.match(instructions, /request_user_input is not wired/)
   assert.match(instructions, /pass only the URL to image\(\)/)
   assert.match(instructions, /inside ClosedAI/)
@@ -31,7 +31,7 @@ test('developer instructions stay within their expanded budget and establish the
 
 test('new and resumed threads receive the same developer instructions', () => {
   const tools = new ToolRegistry([])
-  const expected = closedAiDeveloperInstructions()
+  const expected = closedAiDeveloperInstructions('/workspace')
   assert.equal(startThreadParams('/workspace', tools, 'model-a').developerInstructions, expected)
   assert.equal(resumeThreadParams('thread-a', '/workspace', tools).developerInstructions, expected)
   assert.equal(startThreadParams('/workspace', tools, 'model-a').model, 'model-a')

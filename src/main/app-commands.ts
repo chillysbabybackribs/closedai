@@ -147,11 +147,16 @@ export class AppCommandAccess implements AppCommandHost {
     }
     switch (request.op) {
       case 'new': request.url ? browser.openNewTab(request.url, true) : browser.newTab(); break
+      case 'new_right': browser.newTabToRight(requireTab()); break
       case 'select': browser.selectTab(requireTab()); break
       case 'close': browser.closeTab(requireTab()); break
+      case 'close_others': browser.closeOtherTabs(requireTab()); break
+      case 'close_right': browser.closeTabsToRight(requireTab()); break
+      case 'duplicate': browser.duplicateTab(requireTab()); break
       case 'back': browser.back(); break
       case 'forward': browser.forward(); break
-      case 'reload': browser.reload(); break
+      case 'reload': request.tabId ? browser.reloadTab(requireTab()) : browser.reload(); break
+      case 'rename': browser.renameTab(requireTab(), request.title ?? null); break
     }
     return projectBrowser(browser)
   }

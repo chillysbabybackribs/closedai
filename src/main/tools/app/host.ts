@@ -102,9 +102,21 @@ export type AppSendResult = {
 export type AppOpenChatRequest = { paneId?: string; threadId?: string; title?: string }
 
 export type AppBrowserTabRequest = {
-  op: 'new' | 'select' | 'close' | 'back' | 'forward' | 'reload'
+  op:
+    | 'new'
+    | 'new_right'
+    | 'select'
+    | 'close'
+    | 'close_others'
+    | 'close_right'
+    | 'duplicate'
+    | 'back'
+    | 'forward'
+    | 'reload'
+    | 'rename'
   tabId?: string
   url?: string
+  title?: string | null
 }
 
 export type AppCommandHost = {
@@ -140,9 +152,15 @@ export type AppBrowserTabs = {
   tabList(): BrowserTabInfo[]
   snapshot(): BrowserState
   newTab(): void
+  newTabToRight(id: string): void
   openNewTab(input: string, activate?: boolean): void
   selectTab(id: string): void
   closeTab(id: string): void
+  closeOtherTabs(id: string): void
+  closeTabsToRight(id: string): void
+  duplicateTab(id: string): void
+  reloadTab(id: string): void
+  renameTab(id: string, title: string | null): void
   back(): void
   forward(): void
   reload(): void

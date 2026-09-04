@@ -100,7 +100,7 @@ test('all three provider lanes receive the navigation playbook in the indexed ch
 test('mapped threads carry instructions plus navigation on start and resume', () => {
   const tools = new ToolRegistry([])
   const navigation = workspaceNavigationSection(WORKSPACE_INDEX_ROOT) ?? ''
-  const expected = `${closedAiDeveloperInstructions()}\n\n${navigation}`
+  const expected = `${closedAiDeveloperInstructions(WORKSPACE_INDEX_ROOT)}\n\n${navigation}`
   assert.equal(startThreadParams(WORKSPACE_INDEX_ROOT, tools, 'model-a').developerInstructions, expected)
   assert.equal(resumeThreadParams('thread-a', WORKSPACE_INDEX_ROOT, tools).developerInstructions, expected)
 })

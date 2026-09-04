@@ -14,6 +14,7 @@ import type { BrowserTabInfo } from '../shared/types.js'
 export type PersistedTab = {
   url: string
   title: string
+  customTitle?: string | null
 }
 
 export type RestoredTabSession = {
@@ -125,7 +126,11 @@ export function selectPersistableTabs(tabs: BrowserTabInfo[]): RestoredTabSessio
   for (const tab of tabs) {
     if (!isRestorableUrl(tab.url)) continue
     if (tab.active) activeIndex = kept.length
-    kept.push({ url: tab.url, title: (tab.title ?? '').slice(0, MAX_TITLE_LENGTH) })
+    kept.push({
+      url: tab.url,
+      title: (tab.title ?? '').slice(0, MAX_TITLE_LENGTH),
+      ...(normalizeCustomTitle(tab.customTitle) ? { customTitle: normalizeCustomTitle(tab.customTitle) } : {})
+    })
   }
   if (kept.length <= MAX_RESTORED_TABS) return { tabs: kept, activeIndex, droppedToCap: 0 }
   // Over the cap: keep a window centered on the tab the user was actually looking at
@@ -163,7 +168,11 @@ function sameSession(current: PersistedTabSession, next: RestoredTabSession): bo
   return (
     current.activeIndex === next.activeIndex &&
     current.tabs.length === next.tabs.length &&
-    current.tabs.every((tab, index) => tab.url === next.tabs[index].url && tab.title === next.tabs[index].title)
+    current.tabs.every((tab, index) => (
+      tab.url === next.tabs[index].url &&
+      tab.title === next.tabs[index].title &&
+      (tab.customTitle ?? null) === (next.tabs[index].customTitle ?? null)
+    ))
   )
 }
 
@@ -198,5 +207,12 @@ function normalizeTab(value: unknown): PersistedTab | null {
   const tab = value as Partial<PersistedTab>
   if (typeof tab.url !== 'string' || !isRestorableUrl(tab.url)) return null
   const title = typeof tab.title === 'string' ? tab.title.slice(0, MAX_TITLE_LENGTH) : ''
-  return { url: tab.url, title }
+  const customTitle = normalizeCustomTitle(tab.customTitle)
+  return { url: tab.url, title, ...(customTitle ? { customTitle } : {}) }
+}
+
+function normalizeCustomTitle(title: unknown): string | null {
+  if (typeof title !== 'string') return null
+  const normalized = title.trim()
+  return normalized ? normalized.slice(0, MAX_TITLE_LENGTH) : null
 }

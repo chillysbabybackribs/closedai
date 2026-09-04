@@ -110,19 +110,32 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
     {
       action: 'browser_tab',
       description:
-        'Manage the visible browser strip: new (optionally with url), select, close, back, forward, reload. ' +
+        'Manage the visible browser strip: new (optionally with url), new_right, select, close, close_others, ' +
+        'close_right, duplicate, rename, back, forward, reload. ' +
         'Use embedded_browser.page to navigate and read pages. Returns the browser state.',
       inputSchema: objectSchema({
-        op: { type: 'string', enum: ['new', 'select', 'close', 'back', 'forward', 'reload'] },
-        tab_id: { type: 'string', minLength: 1, description: 'Required for select and close.' },
-        url: { type: 'string', minLength: 1, maxLength: 2_000, description: 'Optional URL or query for new.' }
+        op: {
+          type: 'string',
+          enum: [
+            'new', 'new_right', 'select', 'close', 'close_others', 'close_right',
+            'duplicate', 'back', 'forward', 'reload', 'rename'
+          ]
+        },
+        tab_id: {
+          type: 'string',
+          minLength: 1,
+          description: 'Required for select, close, close_others, close_right, duplicate, rename, and new_right.'
+        },
+        url: { type: 'string', minLength: 1, maxLength: 2_000, description: 'Optional URL or query for new.' },
+        title: { type: 'string', maxLength: 300, description: 'Custom title for rename; empty clears the custom title.' }
       }, ['op']),
       run: async (input) => {
         const host = requireHost(app, 'app commands')
         return jsonResult(await host.browserTab({
           op: stringArg(input, 'op') as AppBrowserTabRequest['op'],
           tabId: stringArg(input, 'tab_id'),
-          url: stringArg(input, 'url')
+          url: stringArg(input, 'url'),
+          title: stringArg(input, 'title')
         }))
       }
     }
