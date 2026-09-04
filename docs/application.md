@@ -334,17 +334,13 @@ recorded request on the session.
 
 `src/shared/` remains dependency-free. Renderer backend calls go through preload; model calls go
 through the main-process registry. Interactive controls use manifest ids, not model-invented
-DOM selectors. The generated workspace index supplies file and IPC navigation; `find` and
-`outline` scan source on demand. See [Tools](tools.md) and [Model context](model-context.md).
+DOM selectors. The generated workspace index is a maintenance artifact; it is not injected into model context. See [Tools](tools.md) and [Model context](model-context.md).
 
 ## State and retention
 
-Before a follow-up Send, the app can report changed source versions previously observed by that
-chat's source tools. This adds a small untrusted context fragment only when changes are found,
-with no model call or repository-wide scan. It covers the shared workspace source reader in all
-four providers; native file tools are not intercepted or tracked. The bounded comparison waits up to 250 ms;
-version histories are memory-only, scoped by pane/thread/workspace, and do not represent what
-remains in model context. See [Model context](model-context.md) for limits and trust boundaries.
+File operations use native provider tools. No custom workspace inspection tool, generated map
+injection, native-read interception, or automatic source-version check runs around a turn.
+Browser tools, credentials, and chat controls remain available through the shared registry.
 
 App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux by default).
 

@@ -10,10 +10,8 @@ test('file links are satisfied from known paths, anchored only by lines actually
   assert.ok(!text.includes('repository map above'), 'no map trust clause without a map')
 })
 
-test('the checkout gets the map and a clause that settles it against re-verification', () => {
+test('the checkout uses native file tools without an injected map', () => {
   const text = antigravityAgentInstructions(WORKSPACE_INDEX_ROOT)
-  const map = text.indexOf('Repository map (generated from this checkout')
-  const trust = text.indexOf('The repository map above was read from the checkout')
-  assert.ok(map > 0 && trust > map, 'trust clause follows the map')
-  assert.ok(text.includes('do not re-verify it with grep_search, find_by_name, list_dir, view_file'))
+  assert.doesNotMatch(text, /Repository map \(generated|closedai_workspace|do not re-verify/)
+  assert.match(text, /native file search and editing tools are available/)
 })

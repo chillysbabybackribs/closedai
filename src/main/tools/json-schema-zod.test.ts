@@ -9,8 +9,6 @@ import { cdpTools } from '../tools/cdp/index.js'
 import { createToolRegistry } from '../tools/index.js'
 import { credentialVaultTools } from './credential-vault/index.js'
 import { searchTools } from '../tools/search/index.js'
-import { WORKSPACE_INDEX_ROOT } from '../tools/workspace/workspace-index.generated.js'
-import { workspaceTools } from '../tools/workspace/index.js'
 import { zodShapeFromJsonSchema } from './json-schema-zod.js'
 
 test('a typical action-tool schema imports exactly with descriptions, enums, and bounds', () => {
@@ -59,7 +57,6 @@ test('every registered ClosedAI tool schema imports exactly', () => {
     captureTools(stub as never),
     credentialVaultTools(stub as never),
     searchTools(),
-    workspaceTools(WORKSPACE_INDEX_ROOT)!,
     batchTools(() => registry, { maxCalls: 16 })
   ]
   const inexact: string[] = []

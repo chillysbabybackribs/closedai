@@ -27,11 +27,13 @@ it is believed without checking.
 - `src/components/ui/`: reusable presentation primitives. These must remain backend-agnostic.
 - `src/renderer/styles/<feature>/`: focused style modules. A parent stylesheet may be an import-only index.
 
-Prefer a feature directory once a concern needs three or more files. Keep tests beside the module they verify. Do not create a second implementation when an existing module can be extended or extracted. A component and the stylesheet rules for its classes are one change; `outline` names both.
+Prefer a feature directory once a concern needs three or more files. Keep tests beside the module they verify. Do not create a second implementation when an existing module can be extended or extracted. A component and the stylesheet rules for its classes are one change.
 
 ## Navigating this repository
 
-Paths here are derivable, so derive one rather than searching for it: a directory's dominant prefix is the rule (`src/main/claude/` is `claude-*`, every side-drawer file is `drawer-*`), a test sits beside its module, a feature stylesheet is `src/renderer/styles/<feature>/<concern>.css`, and a `data-ui` id's family names the component that renders it. Inside ClosedAI a generated map states all of this per directory; outside it, the rules still hold.
+Use native file search and read tools to navigate this repository. Tests sit beside their modules;
+feature stylesheets live under `src/renderer/styles/<feature>/`. The generated index is a maintenance
+artifact, not injected model context or a replacement for native file tools.
 
 ## Model tools
 

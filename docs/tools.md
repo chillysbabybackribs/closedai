@@ -71,7 +71,6 @@ before the app-server starts.
 | `search` | `query` | plain tool | Routed public-web search across Brave, Serper, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. Defaults to `presentation: live` (reuse one tab per pane/thread/turn); `live: true` bypasses the ten-minute cache and refreshes it with current provider results. |
 | `search` | `run` | `start`, `extend`, `cancel` | Incremental public-web research: independent queries and static source readers overlap inside one app-owned run. Live presentation is the default; a retained browser tab opens on an actual source as URLs arrive. `extend` accepts only an active run and directs completed-run follow-ups to a new run. |
 | `search` | `read` | `results`, `wait`, `source` | Cursor-based source updates, bounded event waits, and retained document excerpts. Observes the calling pane/thread's runs without starting more requests. Oversized wait and excerpt budgets are capped at 20 seconds and 12,000 characters rather than rejected. |
-| `closedai_workspace` | `inspect` | `find`, `outline`, `map`, `related`, `tests`, `ipc_flow`, `read` | Read-only source/navigation registered for this indexed checkout. `find` locates code and enriches unique exact declarations with hashed source, local types, test excerpts, and styles. `read` returns the same context for a known symbol/range; a stale `known_hash` returns fresh source in the same call. `outline` provides shape, hash, and all matching style locations without claiming source coverage. Parsing is cached by absolute path and content hash, with fresh byte reads independent of timestamps. Other verbs query the generated index, direct imports, candidate tests, and IPC ownership. |
 | `peer_chats` | `list`, `read` | plain tools | Read-only status and paginated transcript access to other panes and visible subagent summaries. `read` takes an id from `list` and pages the newest 30 items backwards by default (at most 100), inside a serialized budget (`max_chars`, 6k default, 16k ceiling) that clips long tool detail, output, diffs and screenshot data URLs and reports `totalItems`; `order: "oldest"` follows a chat forward and `types` narrows to the item kinds wanted. It does not start or control agents. Reasoning items are excluded from both previews and pages, matching `recall` and thread handoff, so one model's thinking never enters another model's context. |
 | `peer_chats` | `recall` | plain tool, read-only | Bounded phrase search or exact-message excerpts from the caller's current chat or frozen direct continuation source, plus saved checkpoint state. |
 | `peer_chats` | `checkpoint` | plain tool, writes notes | Revision-checked replacement of the caller's structured working notes; cannot control sessions or write other panes. |
@@ -84,9 +83,9 @@ ClosedAI uses `embedded_browser`, not `browser`.
 The default is 16; configured values are rounded and clamped to 1–64. Restart the app after
 editing the setting so the model-facing description and runtime enforcement use the new limit.
 
-The workspace navigation namespace is chosen once from the initial cwd when the registry is
-created. Switching projects does not rebuild it; it continues to describe the indexed checkout.
-The model's orientation capsule is independently scoped to its session cwd.
+File search, reading, and editing use native provider tools. ClosedAI's workspace inspection
+namespace has been removed, along with source hashing, related-source bundles, automatic source
+observations, and the injected repository map. Browser and web-search namespaces remain available.
 
 The renderer can show several chats at once. `closedai_app.state` UI facts include
 `layout.visiblePaneIds` and `layout.browserVisible`; composer facts describe the focused tile.
@@ -102,59 +101,6 @@ The sidebar context menu's `drawer.row-split-right` and `drawer.row-split-below`
 row's existing chat alongside the focused pane; their item is the chat id.
 Hiding a tile keeps its turn running; `close_chat` still detaches and stops it. A hidden browser
 keeps its tabs, but semantic page input still requires a visible page.
-
-### Versioned source and predictable follow-up lookups (2026-09-04)
-
-Workspace `find` enriches a unique exact exported declaration by default (`include_source: false`
-opts out). Ambiguous matches and re-exports remain locations only. `read` selects an exact exported
-`symbol` or `start_line`/`end_line`; without a selector it starts with 200 lines. Both accept
-`include_related` (default true) and `max_chars` (default 12,000, minimum 1,000) for the source
-bundle; larger requests are capped at 16,000 instead of failing. Related results include matching CSS rule bodies across stylesheet owners, enclosing
-at-rule conditions, sibling test paths, referenced local type definitions, and relevant test
-excerpts. These are relationship candidates, not test coverage or a computed CSS cascade.
-
-Source structure is parsed with the installed TypeScript parser (loaded lazily on the first
-source inspection and shipped as a runtime dependency). Explicit type references in the selected
-range resolve to top-level type aliases/interfaces in the same file or indexed local imports,
-including aliases, namespace imports, and named re-exports. Resolution stops after four file/name
-visits and rejects cycles, ambiguous bindings, and external packages. It does not infer types,
-follow wildcard re-exports, or recursively expand fields of the returned definitions. At most
-six distinct type definitions are included. Generic parameters and nearer declarations are
-excluded conservatively when they shadow a name.
-
-Test candidates are literal-named `test`/`it` calls (including imported aliases and common
-modifiers) whose callback references a direct import of a selected exported symbol. Same-basename
-tests rank first; at most three excerpts are included, with excess candidates explicitly noted.
-Comments, strings, and titles alone do not establish relevance. Indirect fixture/helper usage,
-parameterized registrations, and tests reached through re-export barrels may be missed. Every
-excerpt retains its own snapshot hash and returned line bounds. A matching primary `known_hash`
-still refreshes related type and test files independently.
-
-Each source block identifies its full-file SHA-256 hash and the complete lines actually returned.
-The hash is computed from the same bytes as the source. Only regular UTF-8 files up to 2 MB are
-read. Budget omissions are explicit; no partly cut line is represented as returned coverage.
-Primary source reserves space for related excerpts when applicable; types, tests, and styles
-share the remaining budget so one category does not consume it all. `find` bounds its navigation
-portion separately so the combined response stays below the registry ceiling.
-
-`read.known_hash` is a conditional fetch, not a server-side claim about model memory: supply it
-only when the requested range is still available in context. A matching hash omits primary source;
-related files are still read independently. A changed hash returns fresh requested source in the
-same call. An outline hash alone does not establish any source coverage. No hash prevents a later
-edit, and multiple files do not form an atomic workspace snapshot. Native provider tools do not
-automatically pass through this source reader. Native reads are not intercepted or rewritten.
-Codex exec scripts may suppress results, so the registry does not
-equate tool execution with model-visible coverage. These mechanisms target fewer model passes;
-live task comparisons are needed to measure an improvement.
-
-Source reads also attach internal version observations for the registry, stripped before provider
-delivery. These contain workspace, canonical file path, and hash for source blocks actually
-included in a bundle (or its explicit unchanged primary read), never the entire scanned index.
-They do not assert that an exec script displayed the output. Successful calls record observations;
-failed or timed-out calls do not.
-The next Send compares recent observations and may include a compact untrusted source-change
-fragment across all providers. See [Model context](model-context.md) for scope, time, and output
-limits. Native provider reads are not automatically tracked.
 
 ### Application facts, browser targets, and batching
 

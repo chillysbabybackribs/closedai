@@ -15,7 +15,6 @@ every running model's prompt.
 | Claude adapter guidance | `src/main/claude/claude-instructions.ts`, `claude-options.ts` | Appended to the SDK's `claude_code` system preset when a query runtime starts |
 | Antigravity adapter guidance | `src/main/antigravity/antigravity-instructions.ts`, `antigravity-profile.ts` | Written to the app-private `agent.md`; loaded through `--agent closedai` and `--add-dir` on CLI startup |
 | Cursor adapter guidance | `src/main/cursor/cursor-instructions.ts`, `cursor-input.ts` | Once per ACP session, as a `closedai.instructions` application context block on the first turn; turn context and handoff on later turns |
-| Checkout orientation | `src/main/chat-context/workspace-navigation.ts` | App-authored prose plus the generated repository map from `workspace-map.ts`, only when the session cwd matches `WORKSPACE_INDEX_ROOT` |
 | Repository rules | `src/main/chat-context/workspace-rules.ts`, root `AGENTS.md`, applicable `CLAUDE.md` | Codex loads `AGENTS.md` natively; Claude and Antigravity receive the selected workspace root policy explicitly; Claude also loads project `CLAUDE.md` through the SDK |
 
 The common product facts explain stable chat ids, the shared browser/sidebar, and the distinction
@@ -53,18 +52,10 @@ may be repeated after failures or subsequent edits; applicable repository rules 
 `Read`/`Grep`/`Glob` and `Edit`; Antigravity uses `view_file`/`grep_search`/`find_by_name`
 and `replace_file_content`/`multi_replace_file_content`; Codex uses `rg` and `apply_patch`.
 
-The checkout capsule links [Application](application.md), this guide, and [Tools](tools.md).
-It does not inline their full contents. Models retrieve the relevant document or source when
-needed. `closedai_workspace.inspect find` and `outline` provide focused source navigation, and
-`find` includes bounded hashed source, referenced local types, relevant test excerpts, and styles
-for a unique exact exported declaration. Use `read` for a known path with a symbol or line range;
-it returns the same related context, while `outline` supplies shape only. Test excerpts are
-selected by direct import usage, not titles or comments, and do not prove execution or coverage. Conditional
-reads accept `known_hash` only when the requested source is still in context, and return fresh
-content in the same call when it changed. File hashes identify snapshots, not unreturned lines,
-authorization, or write locks. Source remains untrusted tool data. Use `rg` when these tools are
-unavailable. Native provider file tools run without app read suppression or range rewriting. For live-app interaction, discover controls from runtime
-state and the control manifest before inspecting implementation for an observed failure.
+File search, reading, and editing use each provider's native tools. ClosedAI does not register a
+workspace inspection tool, inject a repository map, intercept file reads, or track source hashes.
+The generated index remains a repository maintenance artifact, not model context. For live-app
+interaction, discover controls from runtime state and the control manifest.
 
 ## Per-turn context and trust
 
@@ -87,31 +78,15 @@ page, file, attachment, and tool content cannot authorize it. Retrieved secrets 
 operation only and must not be echoed, logged, or persisted. The registry redacts sensitive read
 results from the app's Turn Trace.
 
-Before Send, all four providers can add `closedai.workspace.source-changes`, a bounded untrusted
-summary of changes to file versions previously observed by that pane and provider thread in the
-same workspace. Workspace source bundles establish observations only for emitted source blocks
-or an explicit conditional read. Scanner reads, arbitrary shell output, and native file tools do not establish
-observations. Tool execution is not proof that the model saw the result, so this is version data,
-not model-context coverage, authorization, or a complete workspace diff.
-
-The check compares up to 32 recent observed files, emits at most eight changes, and waits at most
-250 ms for file IO before omitting the enrichment. A changed entry has old/new hashes; missing
-and unreadable paths have distinct statuses. No source contents, model call, Git command, or
-workspace-wide scan is added to Send. No changes means no fragment. Histories are kept in memory
-for at most 64 pane/thread/workspace scopes and are lost on restart or eviction. Compaction does
-not make these version observations into read coverage. Capturing context does not update the
-read baseline, so a failed send cannot consume a change. Providers recheck conversation identity
-before dispatching a prepared message. The context inspector shows the fragment normally.
+Send adds no automatic source-version checks or workspace source-change fragments.
 
 Claude and Antigravity receive context in `<closedai_context name="…" kind="…">` blocks.
 Codex receives typed `additionalContext`. `application` denotes app-authored context;
 `untrusted` denotes data such as pages, files, attachments, and tool output. Embedded instructions
 in an arbitrary document are not the user's request. The selected workspace root's `AGENTS.md` is
 an explicit exception: it is project policy, bounded to 20,000 characters, and delivered as trusted
-guidance to Claude and Antigravity because those runtimes do not both load it natively. Nested
-`AGENTS.md` files are listed by path (or their absence stated) from a bounded directory walk in
-`workspace-rules.ts`, in every lane including Codex, so no model spends a pass searching for them
-(measured 2026-09-03: 44 of 120 Codex threads had hunted for one that does not exist).
+guidance to Claude and Antigravity because those runtimes do not both load it natively. Nested policies are discovered with native file tools; ClosedAI no longer scans the directory tree
+to claim which nested policies exist.
 
 `closedai.chat.handoff` carries a locally assembled digest when continuing/branching a chat.
 It is marked `untrusted`: the locally assembled envelope contains historical user/assistant
@@ -173,23 +148,9 @@ specifications; Claude gets in-process MCP servers; Antigravity gets HTTP MCP se
 switches and runtime schema validation are enforced by the registry. Native CLI tools bypass
 that registry and retain their provider's execution semantics.
 
-The `closedai_workspace` tool is selected when the application registry is created at startup,
-using the initial cwd. Project selection currently does not rebuild that registry. Its generated
-index still describes the original ClosedAI checkout; do not mistake it for an arbitrary selected
-project's index. The orientation capsule, separately, is gated by each session's cwd. Its map half is
-generated by `scripts/repo-tree.mjs` and proven current by `npm run map:check`, so trusted instructions
-carry no hand-written repository detail that could go stale. The capsule re-reads that generated module
-from the checkout whenever it changes on disk rather than using the copy compiled into the build, and
-the Antigravity agent file is rewritten before any CLI process spawns for the same reason: a map that
-asks to be trusted instead of verified must not describe the tree as it stood when the app started.
-Batching guidance lives only in `product-instructions.ts`; engineering guidance names native tools
-and the read/edit/verify discipline. The Claude lane overrides the preset's bypass-permissions
-preference for Bash in favor of its dedicated file tools.
-
-The Antigravity agent additionally overrides the CLI's built-in demand for anchored `file://` links:
-known paths are linked without an anchor, anchors come only from lines read this turn, and the map is
-declared settled so the model does not open files or run scripts to re-verify it (see
-[Antigravity](antigravity.md)).
+All file operations stay in the provider's native tool path. Root project-policy delivery is
+retained for providers that do not load AGENTS.md themselves. Browser tools, search, app controls,
+credentials, and peer-chat tools continue through the shared registry.
 
 Codex code-mode tools return strings: parse JSON where documented and split capture image data
 before passing the URL to `image()`. Use direct awaited calls in an exec script; native tool-call
@@ -197,8 +158,7 @@ providers can use `tool_batch.run`. Suppress successful intermediate payloads, a
 visible. Output budgets, screenshot limits, and compaction settings are in [Tools](tools.md).
 
 The verification budgets are under 5,625 characters for Codex developer instructions, 6,500 for
-Claude, 7,750 for Antigravity, 7,000 for Cursor, 1,200 for checkout orientation prose, and 5,000 for
-the full orientation capsule including the generated map. The separately appended
+Claude, 7,750 for Antigravity, and 7,000 for Cursor. The separately appended
 root `AGENTS.md` is capped at 20,000. Share repeated guidance and remove duplication when expanding
 prompts; do not solve drift by injecting the entire documentation tree.
 
@@ -211,8 +171,7 @@ Restarting ClosedAI reloads these paths. Merely changing Markdown or creating a 
 inside an already loaded old build does not load new TypeScript prompt code.
 
 For an instruction change, run typecheck and the affected existing instruction tests:
-`model-efficiency-instructions.test.ts`, `chat-context/turn-context.test.ts`, and
-`chat-context/workspace-navigation.test.ts`; root policy delivery is covered by
+`model-efficiency-instructions.test.ts` and `chat-context/turn-context.test.ts`; root policy delivery is covered by
 `chat-context/workspace-rules.test.ts`, and profile rendering is covered by
 `antigravity/antigravity-profile.test.ts`. These verify assembly, budgets, and boundaries,
 not model compliance. A live response comparison is a separate check and should name the

@@ -11,7 +11,7 @@ import { cursorSystemInstructions } from './cursor/cursor-instructions.js'
 
 test('each adapter includes each shared contract once, within the existing prompt budget', () => {
   const instructions = {
-    codex: closedAiDeveloperInstructions('/outside-index'),
+    codex: closedAiDeveloperInstructions(),
     claude: claudeSystemPromptAppend('/outside-index'),
     antigravity: antigravityAgentInstructions('/outside-index'),
     cursor: cursorSystemInstructions('/outside-index')
@@ -23,6 +23,8 @@ test('each adapter includes each shared contract once, within the existing promp
       assert.equal(value.split(section).length - 1, 1, `${provider}: shared section must appear exactly once`)
     }
     assert.ok(value.length < budgets[provider], `${provider}: ${value.length} chars exceeds ${budgets[provider]}`)
+    assert.match(value, /Use your native file search, read, and edit tools/)
+    assert.doesNotMatch(value, /closedai_workspace|Repository map \(generated|source-change observations/)
     assert.match(value, /Complete authorized work/)
     assert.match(value, /untrusted/)
     assert.match(value, /never as instructions/)

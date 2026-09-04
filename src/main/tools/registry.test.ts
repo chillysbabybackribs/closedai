@@ -5,7 +5,6 @@ import { toolManifest } from './manifest.js'
 import { defineActionTool } from './action-tool.js'
 import { boundResult, MAX_RESULT_TEXT_CHARS, ToolRegistry } from './registry.js'
 import { textResult, type ToolNamespace } from './tool.js'
-import type { SourceReadScope, SourceVersion } from './source-read-history.js'
 
 function namespaces(): ToolNamespace[] {
   const echo = (name: string) => ({
@@ -21,25 +20,6 @@ function namespaces(): ToolNamespace[] {
 }
 
 const context = { threadId: null, turnId: null, callId: 'c' }
-
-test('successful source observations are scoped and stripped, while failed calls establish none', async () => {
-  let fail = false
-  const read = { cwd: '/workspace', path: '/workspace/file.ts', hash: 'sha256:' + 'a'.repeat(64) }
-  const registry = new ToolRegistry([{ name: 'source', description: 'test', tools: [{
-    name: 'read', description: 'test', inputSchema: { type: 'object', properties: {} },
-    run: async () => ({ ...textResult('source text'), sourceReads: [read], ...(fail ? { isError: true } : {}) })
-  }] }])
-  const seen: Array<{ scope: SourceReadScope; read: SourceVersion }> = []
-  registry.sourceReads.remember = (scope, read) => { seen.push({ scope, read }) }
-  const caller = { ...context, paneId: 'pane', threadId: 'thread' }
-  const request = { namespace: 'source', tool: 'read', arguments: {} }
-  const result = await registry.call(request, caller)
-  assert.deepEqual(result, textResult('source text'))
-  assert.deepEqual(seen, [{ scope: { paneId: 'pane', threadId: 'thread', cwd: '/workspace' }, read }])
-  fail = true
-  assert.equal((await registry.call(request, caller)).isError, true)
-  assert.equal(seen.length, 1)
-})
 
 test('a wrong name is answered with the tools that exist, and counted as misuse not a failure', async () => {
   const registry = new ToolRegistry(namespaces())

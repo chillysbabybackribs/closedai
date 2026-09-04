@@ -51,8 +51,7 @@ and transcript notes were reviewed against current source on 2026-09-03, without
   There is no MultiEdit tool in this CLI, so instructions name only Edit.
 - **Native reads** (revised 2026-09-04): ClosedAI no longer installs read-ledger hooks. The SDK
   handles `Read` directly, including repeated reads, without app denial, range rewriting, or
-  `closedai_read` output injection. Source-version observations now come only from the shared
-  workspace tools, consistently across providers. This removes app-side duplicate file reads and
+  `closedai_read` output injection. The custom workspace tools and automatic source-version observations have also been removed. This removes app-side duplicate file reads and
   coverage bookkeeping; it does not establish a measured change in model latency or token use.
 
 ## Process lifecycle (`claude-session.ts`, `claude-runtime.ts`)
