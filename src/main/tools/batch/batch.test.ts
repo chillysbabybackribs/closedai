@@ -82,8 +82,26 @@ function browserHarness(): { registry: ToolRegistry; starts: string[]; release: 
       })
     }]
   }
+  const page: ToolNamespace = {
+    name: 'embedded_browser',
+    description: 'Browser reads',
+    tools: [{
+      name: 'page',
+      description: 'Test page work',
+      inputSchema: {
+        type: 'object',
+        properties: { action: { type: 'string', enum: ['read_page'] }, tab_id: { type: 'string' }, id: { type: 'string' } },
+        required: ['action', 'id']
+      },
+      run: async (input) => await new Promise<ToolResult>((resolve) => {
+        const id = String(input.id)
+        starts.push(id)
+        pending.set(id, () => resolve(textResult(id)))
+      })
+    }]
+  }
   let registry: ToolRegistry
-  registry = new ToolRegistry([browser, batchTools(() => registry)])
+  registry = new ToolRegistry([browser, page, batchTools(() => registry)])
   return {
     registry,
     starts,
@@ -274,6 +292,26 @@ test('parallel batches serialize work on one explicit browser tab while other ta
   await waitForStart(starts, 'a2')
   release('a2')
   release('b1')
+  await run
+})
+
+test('a page read stays ordered behind a mutation on the same explicit tab', async () => {
+  const { registry, starts, release } = browserHarness()
+  const run = call(registry, {
+    parallel: true,
+    calls: [
+      { tool: 'browser_cdp.protocol', arguments: { action: 'command', tab_id: 'tab-a', id: 'mutate' } },
+      { tool: 'embedded_browser.page', arguments: { action: 'read_page', tab_id: 'tab-a', id: 'read' } },
+      { tool: 'embedded_browser.page', arguments: { action: 'read_page', tab_id: 'tab-b', id: 'other' } }
+    ]
+  })
+  await waitForStart(starts, 'mutate')
+  await waitForStart(starts, 'other')
+  assert.equal(starts.includes('read'), false)
+  release('mutate')
+  await waitForStart(starts, 'read')
+  release('read')
+  release('other')
   await run
 })
 

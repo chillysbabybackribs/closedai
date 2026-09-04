@@ -283,9 +283,7 @@ async function runParallel(registry: ToolRegistry, calls: BatchCall[], context: 
  * Unrelated calls each receive their own lane and therefore retain maximum concurrency.
  */
 function parallelGroups(calls: BatchCall[]): BatchCall[][] {
-  const scopes = calls.map((call) => resourceKey({
-    namespace: call.namespace, tool: call.tool, arguments: call.arguments
-  }, call.arguments))
+  const scopes = calls.map(batchResourceKey)
   const hasBrowserBarrier = scopes.includes('browser:global')
   const grouped = new Map<string, BatchCall[]>()
   calls.forEach((call, index) => {
@@ -296,6 +294,27 @@ function parallelGroups(calls: BatchCall[]): BatchCall[][] {
     else grouped.set(key, [call])
   })
   return [...grouped.values()]
+}
+
+/**
+ * Batch lanes are broader than cross-pane exclusive locks: reads do not lock a tab against
+ * another chat, but they must still remain ordered with mutations to that tab inside one plan.
+ */
+function batchResourceKey(call: BatchCall): string | null {
+  const exclusive = resourceKey({
+    namespace: call.namespace, tool: call.tool, arguments: call.arguments
+  }, call.arguments)
+  if (exclusive) return exclusive
+  const tab = typeof call.arguments.tab_id === 'string' && call.arguments.tab_id.length > 0
+    ? call.arguments.tab_id
+    : null
+  if (call.namespace === 'embedded_browser' && call.tool === 'page') {
+    return tab ? `browser:tab:${tab}` : 'browser:global'
+  }
+  if (call.namespace === 'browser_cdp' && ['page', 'protocol'].includes(call.tool)) {
+    return tab ? `browser:tab:${tab}` : 'browser:global'
+  }
+  return null
 }
 
 /**
