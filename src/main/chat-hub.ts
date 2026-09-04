@@ -11,6 +11,7 @@ import type {
 import { CHAT_PROVIDERS, chatProviderOfId } from '../shared/chat-providers.js'
 import type { ChatHistoryWindow } from '../shared/chat.js'
 import type { AppSettingsAccess } from './app-settings-store.js'
+import type { WorkspaceCatalogs } from './chat-context/provider-catalog-cache.js'
 import { buildThreadHandoff, type ThreadHandoffSource } from './chat-context/thread-handoff.js'
 
 // One chat pane, several providers. Each provider owns its own thread, transcript, and
@@ -62,6 +63,13 @@ export type ChatHubProviders = {
 /** The chat a model switch brought with it, shown above the destination provider's own messages. */
 type CarriedHistory = { provider: ChatProvider; threadName: string | null; items: ChatTranscriptItem[] }
 
+export type ChatHubOptions = {
+  /** The provider the pane opens on when its model id does not name one (a thread adopted from history). */
+  provider?: ChatProvider
+  /** Catalogs shared across the workspace's panes, so non-active providers need not start to fill the picker. */
+  catalogs?: WorkspaceCatalogs
+}
+
 export class ChatHub extends EventEmitter implements ChatSurface {
   private active: ChatProvider
   /** Set by `stop`, so a background provider start that lands afterwards does not leave a process. */
@@ -69,13 +77,17 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   /** Cleared whenever the pane leaves that conversation; in memory only, like the pane itself. */
   private carriedHistory: CarriedHistory | null = null
 
+  private readonly catalogs: WorkspaceCatalogs | null
+
   constructor(
     private readonly providers: ChatHubProviders,
     initialModelId: string | null,
-    private readonly settings: AppSettingsAccess
+    private readonly settings: AppSettingsAccess,
+    options: ChatHubOptions = {}
   ) {
     super()
-    this.active = chatProviderOfId(initialModelId)
+    this.active = initialModelId ? chatProviderOfId(initialModelId) : options.provider ?? 'codex'
+    this.catalogs = options.catalogs ?? null
     for (const name of CHAT_PROVIDERS) {
       providers[name].on('event', (event: ChatEvent) => this.onProviderEvent(name, event))
     }
@@ -90,16 +102,18 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   /**
-   * Every provider starts; only the active one stays warm (the CLI-backed ones close again).
-   * Only the active one is waited for, though: the others exist to fill in the model picker,
-   * and awaiting all three made opening a chat cost three CLI start-ups instead of one.
+   * Only the active provider starts. The others exist to fill in the model picker, and starting
+   * all of them gave every new chat a Codex app-server, a Claude process, and two `agy` runs at
+   * once; their models come from the workspace catalog cache instead, and each starts the first
+   * time this pane selects it. Without a cache to draw on the other providers still start cold,
+   * so a first-ever pane can offer every model.
    */
   async start(): Promise<void> {
     this.stopped = false
     await this.providers[this.active].start({ warm: true })
       .catch((error: unknown) => console.warn(`[chat] ${this.active} start failed:`, error))
     for (const name of CHAT_PROVIDERS) {
-      if (name === this.active) continue
+      if (name === this.active || this.catalogs?.read(name)) continue
       void this.providers[name].start({ warm: false })
         .then(() => { if (this.stopped) this.providers[name].stop() })
         .catch((error: unknown) => console.warn(`[chat] ${name} start failed:`, error))
@@ -172,10 +186,10 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     return this.providers[chatProviderOfId(threadId)].archiveThread(threadId)
   }
 
-  compactConversation(): Promise<void> {
+  async compactConversation(): Promise<void> {
     const compact = this.current().compactConversation
     if (!compact) throw new Error('The active provider does not support compaction')
-    return compact.call(this.current())
+    await compact.call(this.current())
   }
 
   async beginLogin(): Promise<string | null> {
@@ -190,11 +204,20 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     return this.providers[this.active]
   }
 
-  /** Switch the pane to another provider after its own action succeeds. */
+  /**
+   * Switch the pane to another provider after its own action succeeds. A provider that has never
+   * started in this pane starts now — its catalog came from the cache — and the one being left
+   * stops, so a pane holds one provider process at a time however often it switches.
+   */
   private async switchTo(source: ChatSnapshot, target: ChatProvider, action: () => Promise<void>): Promise<void> {
     if (source.activeTurnId) throw new Error('Stop the current turn before switching models')
+    const previous = this.active
+    if (this.providers[target].snapshot({ limit: 0 }).connection.state === 'starting') {
+      await this.providers[target].start({ warm: true })
+    }
     await action()
     this.active = target
+    this.providers[previous].stop()
     await this.persistActiveModel()
     this.emitEvent({ type: 'replace', snapshot: this.merge(this.preserveSourceHistory(source, this.current().snapshot())) })
   }
@@ -263,12 +286,17 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     return { ...this.withCarriedHistory(snapshot), models: this.models() }
   }
 
+  /** Each provider's own catalog when it has loaded one, else the workspace's last reading of it. */
   private models(): ChatSnapshot['models'] {
-    return CHAT_PROVIDERS.flatMap((name) => this.providers[name].snapshot({ limit: 0 }).models)
+    return CHAT_PROVIDERS.flatMap((name) => {
+      const own = this.providers[name].snapshot({ limit: 0 }).models
+      return own.length > 0 ? own : this.catalogs?.read(name)?.models ?? []
+    })
   }
 
   private onProviderEvent(source: ChatProvider, event: ChatEvent): void {
     if (event.type === 'connection') {
+      if (event.models.length > 0 && event.connection.state === 'ready') this.catalogs?.remember(source, event.models)
       // Any provider's catalog or connection changing re-describes the pane in terms of the
       // active provider, with every model merged in so the picker can offer the others.
       const active = this.current().snapshot({ limit: 0 })
