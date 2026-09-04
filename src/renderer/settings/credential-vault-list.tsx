@@ -60,7 +60,7 @@ export function CredentialVaultList({
         <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</p>
       ) : null}
 
-      {loading ? (
+      {loading && credentials.length === 0 ? (
         <div className="credential-empty-state" aria-live="polite">
           <p>Loading credentials…</p>
         </div>

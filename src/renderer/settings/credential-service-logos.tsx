@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { KeyRound } from 'lucide-react'
+import { KeyRound, UserRound } from 'lucide-react'
 import type { CredentialServiceId } from '../../shared/credentials.js'
 
 /**
@@ -150,8 +150,11 @@ const RedisLogo = (): JSX.Element => (
 )
 
 const CustomLogo = (): JSX.Element => <KeyRound className={LOGO_CLASS} aria-hidden="true" />
+const LoginLogo = (): JSX.Element => <UserRound className={LOGO_CLASS} aria-hidden="true" />
 
 export const CREDENTIAL_SERVICE_LOGOS: Record<CredentialServiceId, () => JSX.Element> = {
+  'api-key': CustomLogo,
+  login: LoginLogo,
   stripe: StripeLogo,
   supabase: SupabaseLogo,
   openai: OpenAiLogo,

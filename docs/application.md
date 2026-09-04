@@ -400,7 +400,8 @@ form validates its required fields and saves directly; there is no service picke
 
 The service catalog in `src/shared/credentials.ts` is the single definition of which fields a
 service takes and which are required, so the store validates every saved draft. The create form
-saves these two common shapes as custom credentials. `CredentialVault` encrypts secret fields with Electron `safeStorage` before writing;
+saves the two common shapes as distinct API Key and Login entries. `CredentialVault` encrypts
+secret fields with Electron `safeStorage` before writing;
 `safeStorage` is injected rather than imported, which is what lets `credential-vault.test.ts`
 exercise the round trip outside Electron. When no OS keychain is available the vault still works
 but says so — the create form warns before saving and the saved row carries an `Unencrypted`

@@ -61,6 +61,27 @@ test('missing required fields are rejected before anything is written', async ()
   })
 })
 
+test('generic API key and login entries retain the right field names', async () => {
+  await withVault(fakeEncryption(), async (vault) => {
+    const apiKey = await vault.save({
+      serviceId: 'api-key',
+      label: 'Build service',
+      values: { url: 'https://api.example.com', apiKey: 'token-value' }
+    })
+    const login = await vault.save({
+      serviceId: 'login',
+      label: 'Admin account',
+      values: { url: 'https://example.com', username: 'admin@example.com', password: 'password-value' }
+    })
+
+    assert.equal(apiKey.serviceName, 'API Key')
+    assert.equal(apiKey.fields.find((field) => field.id === 'apiKey')?.label, 'API key')
+    assert.equal(login.serviceName, 'Login')
+    assert.equal(login.fields.find((field) => field.id === 'password')?.label, 'Password')
+    assert.equal(await vault.reveal(login.id, 'password'), 'password-value')
+  })
+})
+
 test('an unavailable keychain stores the secret unencrypted and reports it', async () => {
   await withVault(fakeEncryption(false), async (vault) => {
     const saved = await vault.save({ serviceId: 'resend', label: '', values: { apiKey: 're_plain' } })

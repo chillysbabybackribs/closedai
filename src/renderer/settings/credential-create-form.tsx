@@ -44,13 +44,12 @@ export function CredentialCreateForm({
     setSaving(true)
     try {
       const saved = await save({
-        serviceId: 'custom',
+        serviceId: type,
         label: label.trim(),
-        values: {
-          url: url.trim(),
-          username: type === 'login' ? username.trim() : '',
-          secret
-        }
+        values:
+          type === 'login'
+            ? { url: url.trim(), username: username.trim(), password: secret }
+            : { url: url.trim(), apiKey: secret }
       })
       onSaved(saved)
     } catch (cause) {
@@ -115,7 +114,7 @@ export function CredentialCreateForm({
               <Input
                 id="credential-url"
                 data-ui="credentials.field"
-                data-ui-key="custom.url"
+                data-ui-key={`${type}.url`}
                 type="url"
                 value={url}
                 placeholder="https://example.com"
@@ -135,7 +134,7 @@ export function CredentialCreateForm({
                 <Input
                   id="credential-username"
                   data-ui="credentials.field"
-                  data-ui-key="custom.username"
+                  data-ui-key="login.username"
                   value={username}
                   placeholder="name@example.com"
                   aria-invalid={showErrors && missingUsername}
@@ -160,7 +159,7 @@ export function CredentialCreateForm({
                 <Input
                   id="credential-secret"
                   data-ui="credentials.field"
-                  data-ui-key="custom.secret"
+                  data-ui-key={type === 'login' ? 'login.password' : 'api-key.apiKey'}
                   type={secretVisible ? 'text' : 'password'}
                   value={secret}
                   placeholder={type === 'login' ? 'Enter password' : 'Paste API key'}
@@ -173,7 +172,7 @@ export function CredentialCreateForm({
                 <button
                   type="button"
                   data-ui="credentials.peek"
-                  data-ui-key="custom.secret"
+                  data-ui-key={type === 'login' ? 'login.password' : 'api-key.apiKey'}
                   className="absolute top-1/2 right-1 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
                   aria-label={
                     secretVisible
