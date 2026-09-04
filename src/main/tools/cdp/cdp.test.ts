@@ -216,6 +216,9 @@ test('semantic real-input actions reject calls without a fallback reason before 
     assert.equal(result.isError, true)
     assert.match(textOf(result), /fallback_reason/)
   }
+  const blank = await callPage({ action: 'click', ref: 'p1:main:e1', fallback_reason: '   ' })
+  assert.equal(blank.isError, true)
+  assert.match(textOf(blank), /fallback_reason/)
   assert.deepEqual(calls, [])
 })
 

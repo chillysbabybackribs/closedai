@@ -1,6 +1,13 @@
 import type { ToolAction } from '../action-tool.js'
 import { jsonResult, objectSchema } from '../json-result.js'
-import { booleanArg, numberArg, REAL_INPUT_FALLBACK_FIELD, stringArg, type JsonObject } from '../tool.js'
+import {
+  booleanArg,
+  numberArg,
+  REAL_INPUT_FALLBACK_FIELD,
+  requireRealInputFallback,
+  stringArg,
+  type JsonObject
+} from '../tool.js'
 import { UI_SURFACES } from '../../../shared/ui-controls.js'
 import { requireHost, type AppUiHost, type AppUiTarget, type AppWaitCondition } from './host.js'
 
@@ -47,6 +54,7 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['fallback_reason']),
       run: async (input) => {
+        requireRealInputFallback(input)
         const target = targetFrom(input)
         const x = optionalNumber(input, 'x')
         const y = optionalNumber(input, 'y')
@@ -64,6 +72,7 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['text', 'fallback_reason']),
       run: async (input) => {
+        requireRealInputFallback(input)
         const target = targetFrom(input)
         if (!hasTarget(target)) throw new Error('Pass control or selector to type into')
         return jsonResult(await requireHost(ui, 'app automation').typeText({
@@ -79,9 +88,12 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
         modifiers: modifiersField,
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['key', 'fallback_reason']),
-      run: async (input) => jsonResult(await requireHost(ui, 'app automation').pressKey(
-        stringArg(input, 'key')!, modifiersFrom(input)
-      ))
+      run: async (input) => {
+        requireRealInputFallback(input)
+        return jsonResult(await requireHost(ui, 'app automation').pressKey(
+          stringArg(input, 'key')!, modifiersFrom(input)
+        ))
+      }
     },
     {
       action: 'scroll',

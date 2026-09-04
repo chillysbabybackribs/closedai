@@ -180,5 +180,8 @@ test('renderer real-input actions require a fallback reason before dispatch', as
     assert.equal(result.isError, true)
     assert.match(textOf(result), /fallback_reason/)
   }
+  const blank = await call('ui', { action: 'click', control: 'drawer.row', fallback_reason: '   ' })
+  assert.equal(blank.isError, true)
+  assert.match(textOf(blank), /fallback_reason/)
   assert.deepEqual(calls, [])
 })

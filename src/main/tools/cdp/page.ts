@@ -3,6 +3,7 @@ import {
   booleanArg,
   numberArg,
   REAL_INPUT_FALLBACK_FIELD,
+  requireRealInputFallback,
   stringArg,
   type JsonObject,
   type ToolDefinition
@@ -63,12 +64,18 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
       action: 'click',
       description:
         'Re-resolve a ref from the latest inspection, scroll it into view, verify its center is unobscured, ' +
-         'then send a real CDP mouse click as an escape hatch. Brings the tab to the front first, because an off-screen view ' +
+        'then send a real CDP mouse click as an escape hatch. Brings the tab to the front first, because an off-screen ' +
+        'view ' +
         'drops real input. Stale, detached, disabled, or covered refs fail without clicking.',
-      inputSchema: objectSchema({ tab_id: tabIdField, ref: refField, fallback_reason: REAL_INPUT_FALLBACK_FIELD }, ['ref', 'fallback_reason']),
-      run: async (input) => jsonResult(await requireCdp(cdp).clickElement(
-        tabIdFrom(input), stringArg(input, 'ref')!
-      ))
+      inputSchema: objectSchema({
+        tab_id: tabIdField,
+        ref: refField,
+        fallback_reason: REAL_INPUT_FALLBACK_FIELD
+      }, ['ref', 'fallback_reason']),
+      run: async (input) => {
+        requireRealInputFallback(input)
+        return jsonResult(await requireCdp(cdp).clickElement(tabIdFrom(input), stringArg(input, 'ref')!))
+      }
     },
     {
       action: 'click_at',
@@ -82,6 +89,7 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['x', 'y', 'fallback_reason']),
       run: async (input) => {
+        requireRealInputFallback(input)
         const coordinateSpace = stringArg(input, 'coordinate_space', 'main_viewport_css')
         if (coordinateSpace !== 'main_viewport_css') throw new Error('Unsupported coordinate space')
         return jsonResult(await requireCdp(cdp).clickAt(
@@ -92,8 +100,8 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
     {
       action: 'type',
       description:
-         'Escape-hatch semantic input after deterministic and non-input protocol options fail. Click a ref to focus it, ' +
-         'then insert text in one call. ' +
+        'Escape-hatch semantic input after deterministic and non-input protocol options fail. Click a ref to focus ' +
+        'it, then insert text in one call. ' +
         'Replaces the existing value by default; the result echoes the field value so no re-inspection is needed. ' +
         'Works on inputs, textareas, and contenteditable elements.',
       inputSchema: objectSchema({
@@ -106,9 +114,12 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
         clear: { type: 'boolean', description: 'Replace the existing value (default true). Pass false to insert at the caret instead.' },
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['ref', 'text', 'fallback_reason']),
-      run: async (input) => jsonResult(await requireCdp(cdp).typeText(
-        tabIdFrom(input), stringArg(input, 'ref')!, stringArg(input, 'text')!, booleanArg(input, 'clear', true)
-      ))
+      run: async (input) => {
+        requireRealInputFallback(input)
+        return jsonResult(await requireCdp(cdp).typeText(
+          tabIdFrom(input), stringArg(input, 'ref')!, stringArg(input, 'text')!, booleanArg(input, 'clear', true)
+        ))
+      }
     },
     {
       action: 'press_key',
@@ -124,9 +135,12 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
         modifiers: modifiersField,
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['key', 'fallback_reason']),
-      run: async (input) => jsonResult(await requireCdp(cdp).pressKey(
-        tabIdFrom(input), stringArg(input, 'key')!, modifiersFrom(input)
-      ))
+      run: async (input) => {
+        requireRealInputFallback(input)
+        return jsonResult(await requireCdp(cdp).pressKey(
+          tabIdFrom(input), stringArg(input, 'key')!, modifiersFrom(input)
+        ))
+      }
     },
     {
       action: 'scroll',
@@ -166,11 +180,14 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
         },
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['fallback_reason']),
-      run: async (input) => jsonResult(await requireCdp(cdp).dismissOverlay(
-        tabIdFrom(input),
-        stringArg(input, 'kind', 'auto') ?? 'auto',
-        numberArg(input, 'verify_timeout_ms', 600)
-      ))
+      run: async (input) => {
+        requireRealInputFallback(input)
+        return jsonResult(await requireCdp(cdp).dismissOverlay(
+          tabIdFrom(input),
+          stringArg(input, 'kind', 'auto') ?? 'auto',
+          numberArg(input, 'verify_timeout_ms', 600)
+        ))
+      }
     }
   ]
 }
