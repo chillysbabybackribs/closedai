@@ -71,7 +71,8 @@ export class AntigravityChatService extends EventEmitter {
     private readonly stateDir: string,
     private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
     private readonly screenshots: Pick<ScreenshotStore, 'get'> | null = null,
-    private readonly paneId: string | null = null
+    private readonly paneId: string | null = null,
+    private readonly catalogs: WorkspaceCatalogs | null = null
   ) {
     super()
     this.history = new AntigravityHistory(stateDir)
@@ -142,10 +143,15 @@ export class AntigravityChatService extends EventEmitter {
 
   /**
    * Read the account's plan windows via `agy -p /quota --output-format json`. Safe while a
-   * turn runs, so the hover card can ask for a fresh reading every time it opens.
+   * turn runs, so the hover card can ask for a fresh reading every time it opens. With
+   * `reuseWithinMs`, a reading any pane took that recently is shown instead of spawning again.
    */
-  async refreshPlanUsage(): Promise<void> {
+  async refreshPlanUsage(reuseWithinMs = 0): Promise<void> {
     if (this.connection.state !== 'ready') return
+    if (lastQuotaReading && Date.now() - lastQuotaReading.at < reuseWithinMs) {
+      this.setPlanUsage(lastQuotaReading.usage)
+      return
+    }
     try {
       const result = await runAntigravityCommand(['-p', '/quota', '--output-format', 'json'])
       if (!result.ok) {
@@ -155,6 +161,7 @@ export class AntigravityChatService extends EventEmitter {
       const parsed = JSON.parse(result.stdout) as unknown
       const usage = antigravityPlanUsage(parsed)
       if (usage) {
+        lastQuotaReading = { at: Date.now(), usage }
         this.setPlanUsage(usage)
       } else if (!this.planUsage) {
         this.setPlanUsage(ANTIGRAVITY_PLAN_USAGE_UNAVAILABLE)

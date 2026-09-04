@@ -102,7 +102,7 @@ test('an agy model routes to the Antigravity provider and its threads merge into
   assert.equal(hub.activeProvider, 'antigravity')
   await hub.start()
   assert.deepEqual(antigravity.calls, ['start:true'])
-  assert.deepEqual(codex.calls, ['start:false'])
+  assert.deepEqual(codex.calls, ['start:false', 'stop'])
   antigravity.threads = [{ id: 'agy:c1', title: 'A', preview: '', createdAt: 1, updatedAt: 5 }]
   codex.threads = [{ id: 't1', title: 'C', preview: '', createdAt: 1, updatedAt: 3 }]
   assert.deepEqual((await hub.listThreads()).map((thread) => thread.id), ['agy:c1', 't1'])
@@ -118,11 +118,12 @@ test('the saved model decides the initial provider and which one starts warm', a
   const codexFirst = build('gpt-5.6-sol')
   assert.equal(codexFirst.hub.activeProvider, 'codex')
   await codexFirst.hub.start()
-  assert.deepEqual(codexFirst.claude.calls, ['start:false'])
+  assert.deepEqual(codexFirst.claude.calls, ['start:false', 'stop'])
   const claudeFirst = build('claude:opus[1m]')
   assert.equal(claudeFirst.hub.activeProvider, 'claude')
   await claudeFirst.hub.start()
   assert.deepEqual(claudeFirst.claude.calls, ['start:true'])
+  assert.deepEqual(claudeFirst.codex.calls, ['start:false', 'stop'])
 })
 
 test('the snapshot is the active provider with every catalog merged', () => {
@@ -142,7 +143,7 @@ test('selecting the other provider switches the pane after that provider accepts
   assert.equal(events.at(-1)?.type, 'replace')
   await hub.send('hi', [])
   assert.deepEqual(claude.calls.at(-1), 'send:hi')
-  assert.deepEqual(codex.calls, [])
+  assert.deepEqual(codex.calls, ['stop'])
   await hub.selectModel('claude:opus[1m]')
   assert.equal(hub.activeProvider, 'claude')
 })
@@ -252,7 +253,7 @@ test('threads merge newest first and route by id; one failing provider hides onl
   assert.equal(hub.activeProvider, 'claude')
   assert.deepEqual(claude.calls, ['openThread:claude:s1'])
   await hub.archiveThread('c1')
-  assert.deepEqual(codex.calls, ['archive:c1'])
+  assert.deepEqual(codex.calls, ['stop', 'archive:c1'])
 })
 
 test('connection events from either provider re-describe the active one with merged models', () => {

@@ -17,13 +17,17 @@ test('runOverlayDismissal reports not_found when nothing is open', async () => {
 })
 
 test('runOverlayDismissal stops after the first successful strategy', async () => {
+  let waits = 0
   const adapter: BrowserDismissAdapter = {
     inspect: async () => ({ token: 't1', kind: 'modal', name: 'Sign in' }),
     consentAccept: async () => false,
     sendEscape: async () => {},
     semanticClose: async () => true,
     pointerClose: async () => false,
-    waitForDismissal: async () => true,
+    waitForDismissal: async () => {
+      waits += 1
+      return waits > 1
+    },
     cleanup: async () => {}
   }
   const result = await runOverlayDismissal(adapter)
