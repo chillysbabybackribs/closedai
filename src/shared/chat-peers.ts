@@ -18,6 +18,19 @@ export type ChatPeerSummary = {
   updatedAt: number
 }
 
+/**
+ * One drawer row: a chat record plus what its runtime, if attached, currently reports. The id is
+ * the chat's stable store id, which is also its pane id while it is attached, so the same row
+ * survives detaching, relaunching, and moving between drawer sections.
+ */
+export type ChatRowSummary = ChatPeerSummary & {
+  /** Whether a pane (a live or parked runtime) exists for this chat right now. */
+  attached: boolean
+  cwd: string
+  createdAt: number
+  lastTurnEndedAt: number | null
+}
+
 export type ChatContinuationSource = {
   /** Include conversation only through this completed assistant message. */
   throughItemId?: string
@@ -27,7 +40,8 @@ export type ChatContinuationSource = {
 
 export type ChatWorkspaceSnapshot = {
   selectedPaneId: ChatPaneId
-  peers: ChatPeerSummary[]
+  /** Every chat of the active workspace, attached or not; see `ChatRowSummary`. */
+  chats: ChatRowSummary[]
   selected: ChatSnapshot
   /** The directory used by newly created provider sessions and its optional project identity. */
   workspace?: {
@@ -41,7 +55,7 @@ export type ChatWorkspaceSnapshot = {
 export type ChatWorkspaceEvent =
   | { type: 'workspace'; snapshot: ChatWorkspaceSnapshot }
   | { type: 'pane'; paneId: ChatPaneId; event: import('./chat.js').ChatEvent }
-  | { type: 'peers'; selectedPaneId: ChatPaneId; peers: ChatPeerSummary[] }
+  | { type: 'chats'; selectedPaneId: ChatPaneId; chats: ChatRowSummary[] }
 
 export type PeerChatReadResult = ChatPeerSummary & {
   items: ChatTranscriptItem[]
