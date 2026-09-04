@@ -34,6 +34,32 @@ export function cursorAcpArgs(): string[] {
 
 export type CursorCommandResult = { ok: boolean; stdout: string; stderr: string; code: number | null }
 
+/** How long one `about` reading serves every pane: the account and plan do not change per chat. */
+export const CURSOR_ABOUT_REUSE_MS = 10 * 60 * 1000
+
+let lastAbout: { at: number; result: Promise<CursorCommandResult> } | null = null
+
+/**
+ * `cursor-agent about`, shared across panes. Each run is a fresh `cursor-agent` process — a second
+ * or more of CPU — and every pane's start-up asked for it twice (account, then plan), so opening
+ * or switching to Cursor paid for three spawns where one was work. A failed run is not kept.
+ */
+export function readCursorAbout(reuseWithinMs = CURSOR_ABOUT_REUSE_MS): Promise<CursorCommandResult> {
+  const now = Date.now()
+  if (lastAbout && now - lastAbout.at < reuseWithinMs) return lastAbout.result
+  const result = runCursorCommand(['about']).then((about) => {
+    if (!about.ok) lastAbout = null
+    return about
+  })
+  lastAbout = { at: now, result }
+  return result
+}
+
+/** Test seam: forget the shared `about` reading. */
+export function forgetCursorAbout(): void {
+  lastAbout = null
+}
+
 /** Run a one-shot CLI command (`about`) with stdin closed, bounded in time. */
 export function runCursorCommand(
   args: string[],

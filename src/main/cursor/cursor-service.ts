@@ -16,7 +16,7 @@ import type { ScreenshotStore } from '../tools/capture/screenshot-store.js'
 import type { AcpSessionSetup } from './cursor-acp.js'
 import { CursorArchive } from './cursor-archive.js'
 import type { CursorToolBridge } from './cursor-mcp.js'
-import { isCursorAuthFailure, parseCursorAccountEmail, parseCursorPlan, runCursorCommand } from './cursor-cli.js'
+import { isCursorAuthFailure, parseCursorAccountEmail, parseCursorPlan, readCursorAbout } from './cursor-cli.js'
 import { cursorSessionIdOf, cursorThreadId } from './cursor-ids.js'
 import { buildCursorPrompt } from './cursor-input.js'
 import { cursorAcpModelId, cursorModelCatalog } from './cursor-models.js'
@@ -138,7 +138,7 @@ export class CursorChatService extends EventEmitter {
    */
   async refreshPlanUsage(): Promise<void> {
     if (this.connection.state !== 'ready' || this.planUsage) return
-    const about = await runCursorCommand(['about'])
+    const about = await readCursorAbout()
     this.setPlanUsage({
       plan: about.ok ? parseCursorPlan(about.stdout) : null,
       windows: [],
@@ -286,7 +286,7 @@ export class CursorChatService extends EventEmitter {
 
   /** `about` is the only place the signed-in email appears; a failure leaves the account unnamed. */
   private async readAccount(): Promise<void> {
-    const about = await runCursorCommand(['about'])
+    const about = await readCursorAbout()
     const email = about.ok ? parseCursorAccountEmail(about.stdout) : null
     this.account = { type: 'other', email, planType: about.ok ? parseCursorPlan(about.stdout) : null }
   }

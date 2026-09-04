@@ -10,7 +10,7 @@ import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-c
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { buildCompactionSeed, compactedAdditionalContext } from '../chat-context/provider-compaction.js'
 import { antigravityPlanUsage, planUsageUnavailable } from '../chat-context/plan-usage.js'
-import type { WorkspaceCatalogs } from '../chat-context/provider-catalog-cache.js'
+import { PROVIDER_CATALOG_TTL_MS, type WorkspaceCatalogs } from '../chat-context/provider-catalog-cache.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
@@ -300,7 +300,7 @@ export class AntigravityChatService extends EventEmitter {
     try {
       // `agy models` is a process spawn that also proves sign-in. The workspace's last listing,
       // when it is recent, lets this pane be ready without one; a listing read here is shared.
-      let cliModels = this.catalogs?.read<AntigravityCliModel[]>('antigravity')?.raw ?? null
+      let cliModels = this.catalogs?.read<AntigravityCliModel[]>('antigravity', PROVIDER_CATALOG_TTL_MS)?.raw ?? null
       if (!cliModels) {
         const listing = await runAntigravityCommand(['models'])
         if (!listing.ok) throw new Error(listing.stderr.trim() || listing.stdout.trim() || `agy models exited with ${listing.code ?? 'a signal'}`)

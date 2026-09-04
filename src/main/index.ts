@@ -70,6 +70,7 @@ let browserHistory: BrowserHistoryStore | null = null
 let browserTabSession: BrowserTabSessionStore | null = null
 let settings: AppSettingsStore | null = null
 let chatStore: ChatStore | null = null
+let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
 let toolRegistry: ToolRegistry | null = null
 let toolTelemetry: ToolTelemetry | null = null
@@ -215,9 +216,10 @@ async function main(): Promise<void> {
   cursorBridge = new CursorToolBridge(toolRegistry)
   // Model catalogs are shared per workspace and across launches, so a pane's non-active
   // providers fill the picker from the last catalog seen instead of each starting a process.
-  providerCatalogs = await ProviderCatalogCache.open(join(userData(), 'provider-catalogs.json'))
+  const catalogCache = await ProviderCatalogCache.open(join(userData(), 'provider-catalogs.json'))
+  providerCatalogs = catalogCache
   chatService = new ChatPeerManager(settings, chatStore, (peerSettings, record) => {
-    const catalogs = providerCatalogs.forWorkspace(chatWorkspace)
+    const catalogs = catalogCache.forWorkspace(chatWorkspace)
     return new ChatHub({
     codex: new ChatService(
       chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, undefined, peerSettings.paneId

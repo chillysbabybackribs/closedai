@@ -106,9 +106,9 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   /**
    * Only the active provider starts. The others exist to fill in the model picker, and starting
    * all of them gave every new chat a Codex app-server, a Claude process, and two `agy` runs at
-   * once; their models come from the workspace catalog cache instead, and each starts the first
-   * time this pane selects it. Without a cache to draw on the other providers still start cold,
-   * so a first-ever pane can offer every model.
+   * once; their models come from the workspace catalog cache instead — any age, since the cache
+   * is on disk and a provider refreshes its own entry the first time this pane selects it. Only
+   * a provider the workspace has never read starts cold, so a first-ever pane can offer every model.
    */
   async start(): Promise<void> {
     this.stopped = false
