@@ -2,13 +2,14 @@ import { EventEmitter } from 'node:events'
 import type {
   ChatAttachment,
   ChatEvent,
+  ChatModel,
   ChatProvider,
   ChatSnapshot,
   ChatThreadContent,
   ChatThreadSummary,
   ChatTranscriptItem
 } from '../shared/chat.js'
-import { CHAT_PROVIDERS, chatProviderOfId } from '../shared/chat-providers.js'
+import { CHAT_PROVIDERS, CHAT_PROVIDER_LABELS, chatProviderOfId } from '../shared/chat-providers.js'
 import type { ChatHistoryWindow } from '../shared/chat.js'
 import type { AppSettingsAccess } from './app-settings-store.js'
 import type { WorkspaceCatalogs } from './chat-context/provider-catalog-cache.js'
@@ -78,6 +79,12 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   private carriedHistory: CarriedHistory | null = null
   /** A provider switch whose start and hand-over are still landing; conversation calls wait for it. */
   private switching: Promise<void> | null = null
+  /**
+   * Providers this pane has picked but not started. Picking a model in the composer is a UI act
+   * and must cost nothing: the choice is written to the pane's settings, the picker shows it from
+   * the cached catalog, and the provider's process starts with the first message that needs it.
+   */
+  private readonly dormant = new Set<ChatProvider>()
 
   private readonly catalogs: WorkspaceCatalogs | null
 
@@ -112,8 +119,10 @@ export class ChatHub extends EventEmitter implements ChatSurface {
    */
   async start(): Promise<void> {
     this.stopped = false
-    await this.providers[this.active].start({ warm: true })
-      .catch((error: unknown) => console.warn(`[chat] ${this.active} start failed:`, error))
+    if (!this.dormant.has(this.active)) {
+      await this.providers[this.active].start({ warm: true })
+        .catch((error: unknown) => console.warn(`[chat] ${this.active} start failed:`, error))
+    }
     for (const name of CHAT_PROVIDERS) {
       if (name === this.active || this.catalogs?.read(name)) continue
       void this.providers[name].start({ warm: false })
@@ -130,6 +139,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   async send(text: string, attachments: ChatAttachment[]): Promise<void> {
     await this.settled()
+    await this.startIfDormant()
     return this.current().send(text, attachments)
   }
 
@@ -140,9 +150,15 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   async selectModel(modelId: string): Promise<void> {
     await this.settled()
     const target = chatProviderOfId(modelId)
-    if (target === this.active) return this.current().selectModel(modelId)
+    const cached = this.cachedModel(modelId)
+    if (target === this.active) {
+      if (this.dormant.has(target) && cached) return this.rememberChoice(cached)
+      return this.current().selectModel(modelId)
+    }
     // The visible conversation, not just this provider's part of it, is what moves.
     const source = this.snapshot()
+    if (cached) return this.switchDormant(source, target, cached)
+    // Nothing cached to validate the pick against: the provider has to be asked, so it starts.
     await this.switchTo(source, target, async () => {
       await this.providers[target].selectModel(modelId)
       await this.carryConversation(source, target)
@@ -151,11 +167,21 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   async selectReasoningEffort(effort: string): Promise<void> {
     await this.settled()
+    if (this.dormant.has(this.active)) {
+      const model = this.cachedModel(this.settings.get().chatModelId ?? '')
+      if (!model?.supportedReasoningEfforts.some((option) => option.reasoningEffort === effort)) {
+        throw new Error('That reasoning effort is not available for this model')
+      }
+      await this.settings.set({ chatReasoningEffort: effort })
+      this.emitEvent({ type: 'reasoningEffort', selectedReasoningEffort: effort })
+      return
+    }
     return this.current().selectReasoningEffort(effort)
   }
 
-  /** Every provider's threads, newest first; one provider being down hides only its threads. */
-  refreshPlanUsage(): Promise<void> {
+  /** A dormant provider has no usage to read yet; asking would start it for a number the hover card can wait for. */
+  async refreshPlanUsage(): Promise<void> {
+    if (this.dormant.has(this.active)) return
     return this.current().refreshPlanUsage()
   }
 
@@ -187,7 +213,11 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     const target = chatProviderOfId(threadId)
     const source = this.snapshot()
     this.carriedHistory = null
-    if (target === this.active) return this.current().openThread(threadId)
+    if (target === this.active) {
+      await this.startIfDormant()
+      return this.current().openThread(threadId)
+    }
+    this.dormant.delete(target)
     await this.switchTo(source, target, () => this.providers[target].openThread(threadId), { threadId })
   }
 
@@ -197,12 +227,14 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   async compactConversation(): Promise<void> {
     await this.settled()
+    await this.startIfDormant()
     const compact = this.current().compactConversation
     if (!compact) throw new Error('The active provider does not support compaction')
     await compact.call(this.current())
   }
 
   async beginLogin(): Promise<string | null> {
+    this.dormant.delete(this.active)
     if (this.active === 'codex') return this.providers.codex.beginChatGptLogin()
     // Claude Code and Antigravity sign in from their own CLIs; re-checking picks up a login
     // completed elsewhere.
@@ -217,6 +249,76 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   /** Wait for a switch in progress; a switch that failed has already put the pane back. */
   private async settled(): Promise<void> {
     if (this.switching) await this.switching.catch(() => {})
+  }
+
+  /** The first call that needs the picked provider's process starts it; the pick itself never did. */
+  private async startIfDormant(): Promise<void> {
+    if (!this.dormant.has(this.active)) return
+    this.dormant.delete(this.active)
+    await this.providers[this.active].start({ warm: true })
+  }
+
+  /** A model as the workspace last saw it, from the provider's own catalog or the shared cache. */
+  private cachedModel(modelId: string): ChatModel | null {
+    return this.models().find((model) => model.id === modelId) ?? null
+  }
+
+  private static effortFor(model: ChatModel, preferred: string | null): string | null {
+    if (model.supportedReasoningEfforts.length === 0) return null
+    if (preferred && model.supportedReasoningEfforts.some((option) => option.reasoningEffort === preferred)) return preferred
+    return model.defaultReasoningEffort || null
+  }
+
+  /** Record the pick on the pane; the provider reads it when it starts. */
+  private async rememberChoice(model: ChatModel): Promise<void> {
+    const effort = ChatHub.effortFor(model, this.settings.get().chatReasoningEffort)
+    await this.settings.set({ chatModelId: model.id, chatReasoningEffort: effort })
+    this.emitEvent({ type: 'model', selectedModel: model.id, selectedReasoningEffort: effort })
+  }
+
+  /**
+   * Switch providers without starting anything: the pick goes to the pane's settings, the
+   * conversation's digest goes where the provider's first message will find it, the provider
+   * being left stops, and the pane repaints as the new provider — ready, with the transcript it
+   * had. `switching` is held for the few settings writes so the target's own `replace` (from
+   * its thread being detached) cannot blank the transcript on the way through.
+   */
+  private async switchDormant(source: ChatSnapshot, target: ChatProvider, model: ChatModel): Promise<void> {
+    if (source.activeTurnId) throw new Error('Stop the current turn before switching models')
+    const previous = this.active
+    this.active = target
+    this.dormant.add(target)
+    this.switching = (async () => {
+      try {
+        await this.settings.set({ chatModelId: model.id, chatReasoningEffort: ChatHub.effortFor(model, null) })
+        await this.carryConversation(source, target)
+        this.providers[previous].stop()
+        this.emitEvent({ type: 'replace', snapshot: this.merge(this.preserveSourceHistory(source, this.current().snapshot())) })
+      } catch (error) {
+        this.active = previous
+        this.dormant.delete(target)
+        this.emitEvent({ type: 'replace', snapshot: this.merge(this.current().snapshot()) })
+        throw error
+      } finally {
+        this.switching = null
+      }
+    })()
+    await this.switching
+  }
+
+  /**
+   * How a dormant provider presents: ready, on the model the pane picked. Its own snapshot says
+   * "starting" with no model, because nothing has run; the composer would be disabled by that.
+   */
+  private dormantView(snapshot: ChatSnapshot): ChatSnapshot {
+    if (!this.dormant.has(this.active) || snapshot.provider !== this.active) return snapshot
+    const saved = this.settings.get()
+    return {
+      ...snapshot,
+      connection: { state: 'ready', message: `${CHAT_PROVIDER_LABELS[this.active]} starts with your first message` },
+      selectedModel: saved.chatModelId,
+      selectedReasoningEffort: saved.chatReasoningEffort
+    }
   }
 
   /**
@@ -237,6 +339,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     if (source.activeTurnId) throw new Error('Stop the current turn before switching models')
     const previous = this.active
     this.active = target
+    this.dormant.delete(target)
     this.emitEvent({ type: 'replace', snapshot: { ...this.merge(this.preserveSourceHistory(source, this.current().snapshot())), ...optimistic } })
     this.switching = (async () => {
       try {
@@ -318,7 +421,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   private merge(snapshot: ChatSnapshot): ChatSnapshot {
-    return { ...this.withCarriedHistory(snapshot), models: this.models() }
+    return { ...this.dormantView(this.withCarriedHistory(snapshot)), models: this.models() }
   }
 
   /** Each provider's own catalog when it has loaded one, else the workspace's last reading of it. */
@@ -334,7 +437,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
       if (event.models.length > 0 && event.connection.state === 'ready') this.catalogs?.remember(source, event.models)
       // Any provider's catalog or connection changing re-describes the pane in terms of the
       // active provider, with every model merged in so the picker can offer the others.
-      const active = this.current().snapshot({ limit: 0 })
+      const active = this.dormantView(this.current().snapshot({ limit: 0 }))
       this.emitEvent({
         type: 'connection',
         provider: this.active,
