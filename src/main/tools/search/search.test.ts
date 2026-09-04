@@ -25,7 +25,12 @@ test('one tool can call all four providers, normalize results, deduplicate, and 
   const fetchMock: typeof fetch = async (input) => {
     const url = String(input)
     calls.push(url)
-    if (url.includes('brave.com')) return json({ web: { results: [{ title: 'Shared', url: 'https://example.com/item?utm_source=brave', description: 'Brave result' }] } })
+    if (url.includes('brave.com')) return json({
+      grounding: { generic: [{
+        title: 'Shared', url: 'https://example.com/item?utm_source=brave', snippets: ['Brave result']
+      }] },
+      sources: { 'https://example.com/item?utm_source=brave': { age: ['January 1, 2026', '2026-01-01', '2 days ago'] } }
+    })
     if (url.includes('serper.dev')) return json({ organic: [{ title: 'Shared', link: 'https://example.com/item', snippet: 'Serper result', position: 1 }] })
     if (url.includes('tavily.com')) return json({ answer: 'Tavily synthesis', results: [{ title: 'Research', url: 'https://research.example/a', content: 'Research result', score: 0.9 }] })
     return json({ results: { web: [{ title: 'You', url: 'https://you.example/a', description: 'You result' }] } })
@@ -45,9 +50,16 @@ test('one tool can call all four providers, normalize results, deduplicate, and 
   assert.deepEqual(keyReads.sort(), ['brave', 'serper', 'tavily', 'you'])
   assert.equal(calls.length, 4)
   assert.equal(output.results.length, 3)
+  assert.equal(output.results[0].snippet, 'Brave result')
+  assert.equal(output.results[0].age, '2 days ago')
   assert.deepEqual(output.results[0].corroboratedBy, ['serper'])
   assert.deepEqual(output.answers, [{ provider: 'tavily', text: 'Tavily synthesis' }])
   assert.doesNotMatch(JSON.stringify(output), /secret-/)
+  const deepBrave = new URL(calls.find((url) => url.includes('brave.com'))!)
+  assert.equal(deepBrave.searchParams.get('count'), '50')
+  assert.equal(deepBrave.searchParams.get('maximum_number_of_urls'), '3')
+  assert.equal(deepBrave.searchParams.get('maximum_number_of_tokens'), '16384')
+  assert.equal(deepBrave.searchParams.get('context_threshold_mode'), 'lenient')
 
   const second = await registry.call({ namespace: 'search', tool: 'query', arguments: args }, context)
   const cached = JSON.parse(second.content[0]!.type === 'text' ? second.content[0].text : '')
@@ -61,12 +73,12 @@ test('one tool can call all four providers, normalize results, deduplicate, and 
 })
 
 test('provider requests use current search endpoints, filters, depth modes, and response fields', async () => {
-  const calls: Array<{ url: string; body: Record<string, unknown> }> = []
+  const calls: Array<{ url: string; body: Record<string, unknown>; headers: Headers }> = []
   const fetchMock: typeof fetch = async (input, init) => {
     const url = String(input)
     const body = typeof init?.body === 'string' ? JSON.parse(init.body) as Record<string, unknown> : {}
-    calls.push({ url, body })
-    if (url.includes('brave.com')) return json({ web: { results: [] } })
+    calls.push({ url, body, headers: new Headers(init?.headers) })
+    if (url.includes('brave.com')) return json({ grounding: { generic: [] }, sources: {} })
     if (url.includes('serper.dev')) return json({ news: [] })
     if (url.includes('tavily.com')) return json({ results: [] })
     return json({ results: {
@@ -80,17 +92,26 @@ test('provider requests use current search endpoints, filters, depth modes, and 
   }, context)
 
   await call({
-    query: 'release notes', intent: 'news', depth: 'quick', providers: ['brave', 'serper', 'tavily', 'you'],
+    query: 'release notes', intent: 'news', depth: 'quick', live: true,
+    providers: ['brave', 'serper', 'tavily', 'you'],
     freshness: 'day', country: 'us', language: 'en-GB',
     include_domains: ['https://Example.com/path'], exclude_domains: ['bad.example']
   })
   const brave = calls.find((item) => item.url.includes('brave.com'))!
   const braveUrl = new URL(brave.url)
+  assert.equal(braveUrl.pathname, '/res/v1/llm/context')
   assert.equal(braveUrl.searchParams.get('q'), 'release notes site:example.com -site:bad.example')
-  assert.equal(braveUrl.searchParams.get('extra_snippets'), 'true')
+  assert.equal(braveUrl.searchParams.get('count'), '10')
+  assert.equal(braveUrl.searchParams.get('maximum_number_of_urls'), '4')
+  assert.equal(braveUrl.searchParams.get('maximum_number_of_tokens'), '2048')
+  assert.equal(braveUrl.searchParams.get('maximum_number_of_tokens_per_url'), '1024')
+  assert.equal(braveUrl.searchParams.get('context_threshold_mode'), 'strict')
+  assert.equal(braveUrl.searchParams.get('enable_source_metadata'), 'true')
+  assert.equal(braveUrl.searchParams.get('safesearch'), 'moderate')
   assert.equal(braveUrl.searchParams.get('freshness'), 'pd')
   assert.equal(braveUrl.searchParams.get('country'), 'US')
   assert.equal(braveUrl.searchParams.get('search_lang'), 'en')
+  assert.equal(brave.headers.get('cache-control'), 'no-cache')
 
   const serper = calls.find((item) => item.url.includes('serper.dev'))!
   assert.equal(serper.url, 'https://google.serper.dev/news')
