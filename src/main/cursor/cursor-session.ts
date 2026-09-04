@@ -42,9 +42,13 @@ export class CursorSession {
   sessionId: string | null = null
   activeTurnId: string | null = null
   private client: CursorAcpClient | null = null
+  /** The session `this.client` currently holds, so one process never loads the same one twice. */
+  private loadedSessionId: string | null = null
   private translator: CursorTurnTranslator | null = null
   private idleTimer: NodeJS.Timeout | null = null
   private opening: Promise<CursorAcpClient> | null = null
+  /** The last setup the agent reported, reused while its session stays open on this process. */
+  private setup: AcpSessionSetup | null = null
   /** Set only while `replay` is collecting another session's history off the same process. */
   private replaying: { sessionId: string; translator: CursorTurnTranslator; items: Map<string, ChatTranscriptItem> } | null = null
   private stopping = false
@@ -58,6 +62,16 @@ export class CursorSession {
   /** What the agent said it can do, or null before a handshake has completed. */
   get capabilities(): AcpCapabilities | null {
     return this.client?.capabilities ?? null
+  }
+
+  /**
+   * Point the thread at the session the pane saved, without opening it. The first open loads that
+   * session instead of creating one, so a relaunch continues the conversation rather than
+   * abandoning it — and the agent's history is not filled with empty sessions no one can load.
+   */
+  adoptSaved(sessionId: string | null): void {
+    if (!sessionId || this.sessionId || this.activeTurnId) return
+    this.sessionId = sessionId
   }
 
   /** Prove the CLI answers and read the catalog, without committing the pane to a turn. */
@@ -114,6 +128,8 @@ export class CursorSession {
     const client = this.client
     this.client = null
     this.opening = null
+    this.loadedSessionId = null
+    this.setup = null
     if (this.activeTurnId) {
       this.endTurn(this.stopping
         ? { status: 'interrupted' }
@@ -133,6 +149,16 @@ export class CursorSession {
   async adopt(sessionId: string): Promise<void> {
     await this.retire()
     this.sessionId = sessionId
+  }
+
+  /**
+   * Continue a session this process has just loaded — after a replay, where retiring would throw
+   * away the very process that holds it and make the next turn pay another start.
+   */
+  continueWith(sessionId: string): void {
+    if (this.sessionId === sessionId) return
+    this.sessionId = sessionId
+    this.deps.onSessionId(sessionId)
   }
 
   /** Sessions the agent holds for this workspace, newest first. */
@@ -162,6 +188,7 @@ export class CursorSession {
     this.replaying = { sessionId, translator, items }
     try {
       await client.loadSession(sessionId, this.deps.cwd, this.deps.mcpServers())
+      this.loadedSessionId = sessionId
       for (const op of translator.finish()) if (op.type === 'item') items.set(op.item.id, op.item)
     } finally {
       this.replaying = null
@@ -194,11 +221,18 @@ export class CursorSession {
    */
   private async ensureSession(client: CursorAcpClient): Promise<AcpSessionSetup> {
     const mcpServers = this.deps.mcpServers()
+    // Already open on this process — a replay loaded it, or the last turn did. Loading again
+    // costs a round trip and tells the agent nothing it does not know.
+    if (this.sessionId && this.sessionId === this.loadedSessionId && this.setup) return this.setup
     if (this.sessionId && client.capabilities?.loadSession) {
       const loaded = await client.loadSession(this.sessionId, this.deps.cwd, mcpServers).catch(() => null)
-      if (loaded) return this.adoptSetup(loaded)
+      if (loaded) {
+        this.loadedSessionId = loaded.sessionId
+        return this.adoptSetup(loaded)
+      }
     }
     const created = await client.newSession(this.deps.cwd, mcpServers)
+    this.loadedSessionId = created.sessionId
     const model = this.deps.modelId()
     if (model && model !== created.currentModelId) {
       await client.setModel(created.sessionId, model).catch((error: unknown) => {
@@ -209,6 +243,7 @@ export class CursorSession {
   }
 
   private adoptSetup(setup: AcpSessionSetup): AcpSessionSetup {
+    this.setup = setup
     if (setup.sessionId && setup.sessionId !== this.sessionId) {
       this.sessionId = setup.sessionId
       this.deps.onSessionId(setup.sessionId)
@@ -238,6 +273,8 @@ export class CursorSession {
 
   private onExit(): void {
     this.client = null
+    this.loadedSessionId = null
+    this.setup = null
     this.clearIdleTimer()
     if (!this.activeTurnId) return
     this.endTurn(this.stopping
