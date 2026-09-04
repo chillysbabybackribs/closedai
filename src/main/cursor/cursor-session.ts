@@ -145,15 +145,10 @@ export class CursorSession {
     this.sessionId = null
   }
 
-  /** Continue a stored session (chat history): any live session belongs to the old thread. */
-  async adopt(sessionId: string): Promise<void> {
-    await this.retire()
-    this.sessionId = sessionId
-  }
-
   /**
-   * Continue a session this process has just loaded — after a replay, where retiring would throw
-   * away the very process that holds it and make the next turn pay another start.
+   * Continue a session this process has just loaded — a chat opened from history. Switching used
+   * to retire the process first, throwing away the one that had just loaded the session and
+   * making the next turn pay another start; the agent holds several sessions at once.
    */
   continueWith(sessionId: string): void {
     if (this.sessionId === sessionId) return
