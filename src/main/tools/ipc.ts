@@ -1,5 +1,5 @@
 import type { IpcMain } from 'electron'
-import { IPC } from '../shared/ipc-channels.js'
+import { IPC } from '../../shared/ipc-channels.js'
 import { toolManifest } from './manifest.js'
 import type { ToolRegistry } from './registry.js'
 import type { ToolTelemetry } from './telemetry.js'

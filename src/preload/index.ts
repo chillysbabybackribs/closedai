@@ -1,10 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { ClosedaiApi } from '../shared/api.js'
-import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels, type IpcInvokeChannel, type IpcInvokeChannels } from '../shared/ipc-channels.js'
-import type { ToolsEvent } from '../shared/tools.js'
-import type { TraceEvent } from '../shared/trace.js'
-import type { BrowserBounds, BrowserDownload, BrowserState, BrowserTabInfo } from '../shared/types.js'
+import type { BrowserBounds } from '../shared/types.js'
 
 function invoke<C extends IpcInvokeChannel>(
   channel: C,

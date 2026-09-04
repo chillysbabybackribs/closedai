@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
-import { dockPane, paneIds, readLayout, removePane, replacePane, resizeSplit, saveLayout, type DockEdge } from './layout-tree.js'
+import { dockPane, paneIds, readLayout, removePane, replacePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
 
 /** The component owning this hook is keyed by project directory. */
 export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
@@ -46,7 +46,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     const previous = selected.current
     selected.current = next
     setLayout((value) => {
-      let tree = value.tree
+      let tree: ChatLayout | null = value.tree
       const available = new Set(snapshot.chats.map((chat) => chat.paneId))
       for (const id of paneIds(tree)) if (!available.has(id)) tree = removePane(tree, id)
       if (!tree) tree = { kind: 'pane', id: next }
