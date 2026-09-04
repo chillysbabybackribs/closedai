@@ -56,6 +56,11 @@ capacity nor valid cache metadata is available, the model stays available withou
 and Codex keeps its own default. The live context meter can report a slightly smaller effective
 window because Codex reserves headroom according to its model catalog.
 
+GPT-6 Astra (`gpt-6-astra`) is discovered through the same account-provided model catalog,
+with reasoning options supplied by Codex and a native context capacity of 1,050,000 tokens
+from [OpenAI's model documentation](https://developers.openai.com/api/docs/models/gpt-6-astra).
+Restart ClosedAI to refresh an already-loaded model catalog after a new model becomes available.
+
 The project menu below the composer offers a directory picker, recent projects, and “Don’t work
 in a project” (uses the home directory). A project switch is refused while any pane has an active
 turn. `index.ts` saves the departing project's open chat ids and restores the destination's,

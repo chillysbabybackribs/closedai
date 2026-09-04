@@ -9,6 +9,7 @@ export type CodexModelContextWindows = ReadonlyMap<string, number>
 /** Native capacities from OpenAI's public model catalog. Codex's cache can advertise a lower
  * product default in `max_context_window`, so known exact model ids must take precedence. */
 const NATIVE_CONTEXT_WINDOWS: Readonly<Record<string, number>> = Object.freeze({
+  'gpt-6-astra': 1_050_000,
   'gpt-5.6-sol': 1_050_000,
   'gpt-5.6-terra': 1_050_000,
   'gpt-5.6-luna': 1_050_000,

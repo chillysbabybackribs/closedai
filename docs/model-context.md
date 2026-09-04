@@ -127,9 +127,10 @@ model context. The new first-text measurements and safe trial procedure are in [
 do not infer a response-time improvement from fewer displayed items or context tokens alone.
 
 ClosedAI starts and resumes Codex threads with the selected model's maximum active-context size
-from the installed CLI's model cache. That value is also shown in the model picker. This is a
-runtime configuration limit, not extra prompt content; a missing cache value leaves Codex's native
-default untouched.
+using known native capacities (including GPT-6 Astra's 1,050,000 tokens) for model ids in the
+installed CLI's model cache, falling back to cache metadata for unknown models. That value is
+also shown in the model picker. This is a runtime configuration limit, not extra prompt content;
+missing metadata leaves Codex's native default untouched.
 
 ## Tool context and output budgets
 

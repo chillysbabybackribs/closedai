@@ -5,6 +5,7 @@ import { parseCodexModelContextWindows } from './codex-model-context.ts'
 test('Codex model context prefers native capacities over lower cache defaults', () => {
   const windows = parseCodexModelContextWindows({
     models: [
+      { slug: 'gpt-6-astra', context_window: 272_000, max_context_window: 872_000 },
       { slug: 'gpt-5.6-sol', context_window: 272_000, max_context_window: 872_000 },
       { slug: 'gpt-5.5', context_window: 272_000, max_context_window: 272_000 },
       { slug: 'gpt-5.4-mini', context_window: 272_000, max_context_window: 272_000 },
@@ -16,6 +17,7 @@ test('Codex model context prefers native capacities over lower cache defaults', 
     ]
   })
   assert.deepEqual([...windows], [
+    ['gpt-6-astra', 1_050_000],
     ['gpt-5.6-sol', 1_050_000],
     ['gpt-5.5', 1_050_000],
     ['gpt-5.4-mini', 400_000],
