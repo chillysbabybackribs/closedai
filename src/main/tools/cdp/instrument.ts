@@ -27,6 +27,7 @@ function channelsFrom(input: JsonObject): string[] {
 export function cdpInstrumentTool(cdp: CdpHostProvider): ToolDefinition {
   return defineActionTool({
     name: 'instrument',
+    deferLoading: true,
     description:
       'Watch what a page does from its very first instruction. The recorder is installed with ' +
       '`Page.addScriptToEvaluateOnNewDocument`, so it wraps fetch, XHR, WebSocket, document.cookie, ' +

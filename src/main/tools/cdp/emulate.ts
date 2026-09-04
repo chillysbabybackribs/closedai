@@ -33,6 +33,7 @@ const applyProperties: Record<string, JsonObject> = {
 export function cdpEmulateTool(cdp: CdpHostProvider): ToolDefinition {
   return defineActionTool({
     name: 'emulate',
+    deferLoading: true,
     description:
       'Change the device and environment a page believes it is running in, then verify it from inside ' +
       'the page. Viewport resizing goes through the embedder rather than the protocol: Blink applies ' +

@@ -182,7 +182,7 @@ test('page input verbs route typing, key chords, and scrolling to the host', asy
 
 test('raw input commands require an auditable fallback reason while screenshots remain ordinary commands', async () => {
   const { calls, call, registry } = harness()
-  assert.equal(registry.namespaces[0]!.tools[0]!.deferLoading, undefined)
+  assert.equal(registry.namespaces[0]!.tools[0]!.deferLoading, true)
   const refused = await call({ action: 'command', method: 'Input.dispatchKeyEvent', params: { type: 'keyDown' } })
   assert.equal(refused.isError, true)
   assert.match(textOf(refused), /fallback_reason/)

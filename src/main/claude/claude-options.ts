@@ -34,8 +34,6 @@ export type ClaudeQueryConfig = {
   runtimeId: string
   mcpServers: NonNullable<Options['mcpServers']>
   systemPromptAppend: string
-  /** In-process SDK hooks (the read ledger); see claude-read-ledger.ts. */
-  hooks?: Options['hooks']
   env?: NodeJS.ProcessEnv
   stderr?: (data: string) => void
 }
@@ -74,7 +72,6 @@ export function claudeQueryOptions(config: ClaudeQueryConfig): Options {
     disallowedTools: CLAUDE_DISALLOWED_TOOLS,
     systemPrompt: { type: 'preset', preset: 'claude_code', append: config.systemPromptAppend },
     mcpServers: config.mcpServers,
-    ...(config.hooks ? { hooks: config.hooks } : {}),
     ...(config.stderr ? { stderr: config.stderr } : {})
   }
 }

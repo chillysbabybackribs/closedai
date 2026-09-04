@@ -324,12 +324,7 @@ export class ClaudeChatService extends EventEmitter {
       onTurnEnd: (turnId, end) => this.onTurnEnd(turnId, end),
       onContextUsage: (usage) => this.noteContextUsage(usage),
       onPlanUsageSignal: (signal) => this.notePlanUsageSignal(signal),
-      traceScope: () => ({ paneId: this.paneId, provider: 'claude', turnId: this.activeTurnId }),
-      onSourceRead: (receipt) => {
-        if (this.session === session && session.activeTurnId && session.sessionId) this.tools.sourceReads.remember({
-          paneId: this.paneId, threadId: claudeThreadId(session.sessionId), cwd: this.cwd
-        }, receipt)
-      }
+      traceScope: () => ({ paneId: this.paneId, provider: 'claude', turnId: this.activeTurnId })
     })
     return session
   }

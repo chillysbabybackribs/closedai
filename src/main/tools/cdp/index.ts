@@ -34,9 +34,9 @@ export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
         actions: actions(cdp)
       }),
       cdpPageTool(cdp),
-      { ...cdpProfileTool(cdp), deferLoading: true },
-      { ...cdpInstrumentTool(cdp), deferLoading: true },
-      { ...cdpEmulateTool(cdp), deferLoading: true }
+      cdpProfileTool(cdp),
+      cdpInstrumentTool(cdp),
+      cdpEmulateTool(cdp)
     ]
   }
 }

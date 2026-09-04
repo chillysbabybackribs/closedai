@@ -192,8 +192,8 @@ test('after a sequential failure the remaining calls are skipped, not run', asyn
   assert.match(text, /^1 of 3 calls succeeded \(1 skipped\)\./)
   assert.match(text, /\[2\] lab\.boom — failed\nit broke/)
   assert.match(text, /\[3\] lab\.echo — skipped: call \[2\] failed and the batch is sequential/)
-  // One call survived, so the batch is not an error; the model needs its result.
-  assert.equal(result.isError, undefined)
+  assert.equal(result.isError, true)
+  assert.match(text, /echoed ran/, 'partial failure must preserve successful evidence')
 })
 
 test('a parallel batch runs everything despite failures and keeps input order', async () => {
@@ -206,6 +206,7 @@ test('a parallel batch runs everything despite failures and keeps input order', 
     ]
   })
   assert.ok(log.includes('echo:still runs'))
+  assert.equal(result.isError, true)
   const text = batchText(result)
   assert.match(text, /\[1\] lab\.boom — failed[\s\S]*\[2\] lab\.echo — ok/)
 })
@@ -237,7 +238,7 @@ test('a stale-target failure keeps its recovery text local while a parallel sibl
     ]
   })
 
-  assert.equal(result.isError, undefined)
+  assert.equal(result.isError, true)
   assert.match(batchText(result), /\[1\] embedded_browser\.page — failed\nNo tab with id stale[\s\S]*\[2\] embedded_browser\.page — ok\nread tab-1/)
 })
 

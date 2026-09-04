@@ -6,7 +6,6 @@ import type { ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
 import type { ChatPlanUsage } from '../../shared/chat.js'
 import { claudeTurnId } from './claude-ids.js'
 import { claudeQueryOptions } from './claude-options.js'
-import { ClaudeReadLedger, type LedgerSkip, type ReadReceipt } from './claude-read-ledger.js'
 import { ClaudeRuntime } from './claude-runtime.js'
 import type { ClaudeSdk } from './claude-sdk.js'
 import { ClaudeTurnTranslator, type TranscriptOp, type TurnEnd } from './claude-stream.js'
@@ -36,7 +35,6 @@ export type ClaudeSessionDeps = {
   /** When set, every SDK message in either direction is recorded in the turn trace. */
   traceScope?: () => TraceScope
   idleMs?: number
-  onSourceRead?: (receipt: ReadReceipt) => void
 }
 
 export class ClaudeSession {
@@ -49,7 +47,6 @@ export class ClaudeSession {
   private runtime: ClaudeRuntime | null = null
   private runtimeThinking = true
   private readonly backgroundTasks = new ClaudeBackgroundTasks()
-  private readonly readLedger = new ClaudeReadLedger((skip) => this.traceSkip(skip), (receipt) => this.deps.onSourceRead?.(receipt))
   private translator: ClaudeTurnTranslator | null = null
   private readonly idleGuard: IdleProcessGuard
 
@@ -77,7 +74,6 @@ export class ClaudeSession {
       runtimeId: id,
       mcpServers: this.deps.mcpServers(),
       systemPromptAppend: this.deps.systemPromptAppend,
-      hooks: this.readLedger.hooks(),
       stderr: (data) => { const text = data.trim(); if (text) console.warn('[claude]', text) }
     })
     const runtime = new ClaudeRuntime(this.deps.sdk, id, options, {
@@ -200,20 +196,8 @@ export class ClaudeSession {
     }
   }
 
-  private traceSkip(skip: LedgerSkip): void {
-    if (!this.deps.traceScope) return
-    const what = skip.verdict === 'deny' ? 'denied' : 'narrowed'
-    traceLog.record(this.deps.traceScope(), {
-      kind: 'event',
-      label: 'claude.read-ledger',
-      summary: `${skip.tool} ${what}: ${skip.path}${skip.lines ? ` (${skip.lines === Number.POSITIVE_INFINITY ? 'all' : skip.lines} lines already in context)` : ''}`,
-      detail: skip
-    })
-  }
-
   private beginTurn(turnId: string): void {
     this.activeTurnId = turnId
-    this.readLedger.reset()
     this.translator = new ClaudeTurnTranslator({ backgroundTasks: this.backgroundTasks, turnId, cwd: this.deps.cwd, displayScreenshot: this.deps.displayScreenshot })
     this.deps.onTurn(turnId)
   }

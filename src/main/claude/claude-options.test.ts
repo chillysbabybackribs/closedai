@@ -21,6 +21,7 @@ test('the session shape: no prompts, isolated settings, only app MCP servers, su
   assert.equal(options.allowDangerouslySkipPermissions, true)
   assert.deepEqual(options.settingSources, ['project'])
   assert.equal(options.strictMcpConfig, true)
+  assert.equal(options.hooks, undefined, 'native tools must not be intercepted by app read suppression')
   assert.equal(options.includePartialMessages, true)
   assert.deepEqual(options.settings, {
     autoCompactEnabled: true,

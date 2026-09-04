@@ -33,6 +33,7 @@ function channelsFrom(input: JsonObject): string[] {
 export function cdpProfileTool(cdp: CdpHostProvider): ToolDefinition {
   return defineActionTool({
     name: 'profile',
+    deferLoading: true,
     description:
       'Measure what a real page costs: unused JavaScript and CSS bytes, the functions holding the ' +
       'main thread, and the call sites allocating memory. Coverage and sampling must be armed before ' +
