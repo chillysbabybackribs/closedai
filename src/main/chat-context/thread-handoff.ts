@@ -34,6 +34,10 @@ export type ThreadHandoff = {
 export type ThreadHandoffSource = ThreadHandoff & {
   provider: ChatProvider
   threadId: string | null
+  /** Frozen source boundary used by bounded recall after a provider switch. */
+  sourceThroughItemId?: string | null
+  /** Applicable source-thread checkpoint copied into the destination lineage. */
+  checkpoint?: ChatMemoryCheckpoint | null
 }
 
 /** Digest of a transcript for the thread that continues it, or null when there is nothing to carry. */

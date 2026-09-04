@@ -273,6 +273,8 @@ export class ChatService extends EventEmitter {
         sourceThreadId: source.threadId,
         sourceProvider: source.provider,
         sourceTitle: source.title,
+        sourceThroughItemId: source.sourceThroughItemId ?? null,
+        checkpoint: source.checkpoint ?? null,
         handoff: source.text,
         createdAt: Date.now()
       }

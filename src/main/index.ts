@@ -303,7 +303,11 @@ async function main(): Promise<void> {
     cursor: new CursorChatService(
       chatWorkspace, peerSettings, cursorBridge!, cursorStateDir, activeBrowserContext, screenshots, peerSettings.paneId, catalogs
     )
-  }, record.modelId, peerSettings, { provider: record.provider, catalogs })
+  }, record.modelId, peerSettings, {
+    provider: record.provider,
+    catalogs,
+    checkpoint: () => chatStore!.get(peerSettings.paneId)?.checkpoint ?? null
+  })
   }, undefined, workspaceSelector, chatTranscripts, (paneId) => {
     const snapshot = chatService?.paneSnapshot(paneId)
     researchService?.cancelPane(paneId, snapshot?.threadId, snapshot?.activeTurnId)

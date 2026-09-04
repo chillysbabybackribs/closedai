@@ -14,6 +14,7 @@ import type { ChatHistoryWindow } from '../shared/chat.js'
 import type { AppSettingsAccess } from './app-settings-store.js'
 import type { WorkspaceCatalogs } from './chat-context/provider-catalog-cache.js'
 import { buildThreadHandoff, type ThreadHandoffSource } from './chat-context/thread-handoff.js'
+import type { ChatMemoryCheckpoint } from '../shared/chat-memory.js'
 
 // One chat pane, several providers. Each provider owns its own thread, transcript, and
 // connection; the hub owns which one the pane shows, merges the model catalogs so the picker
@@ -77,6 +78,8 @@ export type ChatHubOptions = {
   provider?: ChatProvider
   /** Catalogs shared across the workspace's panes, so non-active providers need not start to fill the picker. */
   catalogs?: WorkspaceCatalogs
+  /** Current pane checkpoint, read only while freezing a provider-switch handoff. */
+  checkpoint?: () => ChatMemoryCheckpoint | null
 }
 
 export class ChatHub extends EventEmitter implements ChatSurface {
@@ -95,6 +98,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   private readonly dormant = new Set<ChatProvider>()
 
   private readonly catalogs: WorkspaceCatalogs | null
+  private readonly checkpoint: (() => ChatMemoryCheckpoint | null) | null
 
   constructor(
     private readonly providers: ChatHubProviders,
@@ -105,6 +109,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     super()
     this.active = initialModelId ? chatProviderOfId(initialModelId) : options.provider ?? 'codex'
     this.catalogs = options.catalogs ?? null
+    this.checkpoint = options.checkpoint ?? null
     for (const name of CHAT_PROVIDERS) {
       providers[name].on('event', (event: ChatEvent) => this.onProviderEvent(name, event))
     }
@@ -425,10 +430,19 @@ export class ChatHub extends EventEmitter implements ChatSurface {
    * this pane has not delivered yet outlives a second switch made before the first message.
    */
   private async carryConversation(source: ChatSnapshot, target: ChatProvider): Promise<void> {
-    const handoff = buildThreadHandoff(source.items, source.threadName)
+    const savedCheckpoint = this.checkpoint?.() ?? null
+    const checkpoint = savedCheckpoint?.threadId === source.threadId
+      && source.items.some((item) => item.id === savedCheckpoint.throughItemId) ? savedCheckpoint : null
+    const handoff = buildThreadHandoff(source.items, source.threadName, checkpoint)
     this.carriedHistory = null
     if (handoff) {
-      await this.providers[target].continueInNewThread({ ...handoff, provider: source.provider, threadId: source.threadId })
+      await this.providers[target].continueInNewThread({
+        ...handoff,
+        provider: source.provider,
+        threadId: source.threadId,
+        sourceThroughItemId: source.items.at(-1)?.id ?? null,
+        checkpoint
+      })
       this.carriedHistory = { provider: target, threadName: source.threadName, items: source.items }
       return
     }
