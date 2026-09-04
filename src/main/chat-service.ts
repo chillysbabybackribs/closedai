@@ -50,6 +50,7 @@ export class ChatService extends EventEmitter {
   private threadId: string | null = null
   private threadName: string | null = null
   private activeTurnId: string | null = null
+  private pausedTurnId: string | null = null
   private turnContext: ChatTurnContextReport | null = null
   private planUsage: ChatPlanUsage | null = null
   private readonly transcript: ChatTranscript
@@ -109,6 +110,7 @@ export class ChatService extends EventEmitter {
       threadId: this.threadId,
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
+      pausedTurnId: this.pausedTurnId,
       contextUsage: describeUsage(this.compactor.current),
       planUsage: this.planUsage,
       turnContext: this.turnContext,
@@ -437,6 +439,7 @@ export class ChatService extends EventEmitter {
       activeTurnId: () => this.activeTurnId,
       setThreadName: (name) => { this.threadName = name },
       setTurn: (turnId) => this.setTurn(turnId),
+      setPaused: (turnId) => this.setPaused(turnId),
       consumeItem: (item, turnId, completed) => this.transcript.consume(item, turnId, completed),
       appendDelta: (itemId, field, delta) => this.transcript.appendDelta(itemId, field, delta),
       addNotice: (text, tone, turnId) => this.addNotice(text, tone, turnId),
@@ -474,12 +477,25 @@ export class ChatService extends EventEmitter {
   private setTurn(turnId: string | null): void {
     if (this.activeTurnId === turnId) return
     this.activeTurnId = turnId
-    if (turnId) this.compactor.turnStarted()
+    if (turnId) {
+      this.setPaused(null)
+      this.compactor.turnStarted()
+    }
     this.emitEvent({ type: 'turn', turnId })
     if (turnId === null) {
       this.compactor.turnFinished()
       void this.refreshPlanUsage()
     }
+  }
+
+  /**
+   * Remember the turn the pause button ended, so the composer can offer Resume until the next
+   * turn starts. Cleared by any new turn, including the resuming one.
+   */
+  private setPaused(turnId: string | null): void {
+    if (this.pausedTurnId === turnId) return
+    this.pausedTurnId = turnId
+    this.emitEvent({ type: 'paused', turnId })
   }
 
   private noteContextUsage(usage: ContextUsage): void {

@@ -217,6 +217,14 @@ export type ChatTurnContextReport = {
 
 export const CHAT_HISTORY_PAGE_SIZE = 200
 
+/**
+ * What Resume sends after a paused turn. No provider can restart a generation that has already
+ * stopped, so resuming is an ordinary next turn: every lane keeps the paused turn's partial
+ * answer in its own history, and this message asks the model to carry on from it.
+ */
+export const CHAT_RESUME_PROMPT =
+  'Continue from where you paused. Pick up exactly where your last answer stopped and do not repeat what you already wrote.'
+
 export type ChatHistoryWindow = { beforeItemId?: string; limit: number }
 export type ChatHistoryPage = { items: ChatTranscriptItem[]; hasEarlier: boolean; backgroundTasks?: ChatTranscriptItem[] }
 
@@ -233,6 +241,8 @@ export type ChatSnapshot = {
   /** User-facing thread title from the app-server, when one has been set. */
   threadName: string | null
   activeTurnId: string | null
+  /** The turn the composer's pause button ended, until the next turn starts; drives Resume. */
+  pausedTurnId: string | null
   contextUsage: ChatContextUsage | null
   /** The account's plan usage; null until the provider answers, and cached between readings. */
   planUsage: ChatPlanUsage | null
@@ -259,6 +269,7 @@ export type ChatEvent =
   | { type: 'reasoningEffort'; selectedReasoningEffort: string }
   | { type: 'thread'; threadId: string | null; threadName: string | null }
   | { type: 'turn'; turnId: string | null }
+  | { type: 'paused'; turnId: string | null }
   | { type: 'context'; usage: ChatContextUsage | null }
   | { type: 'planUsage'; usage: ChatPlanUsage | null }
   | { type: 'turnContext'; report: ChatTurnContextReport }

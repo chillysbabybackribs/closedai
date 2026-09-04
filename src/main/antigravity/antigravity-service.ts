@@ -59,6 +59,7 @@ export class AntigravityChatService extends EventEmitter {
   private readonly history: AntigravityHistory
   private threadName: string | null = null
   private activeTurnId: string | null = null
+  private pausedTurnId: string | null = null
   private turnContext: ChatTurnContextReport | null = null
   private planUsage: ChatPlanUsage | null = null
   private readonly transcript: ChatTranscript
@@ -92,6 +93,7 @@ export class AntigravityChatService extends EventEmitter {
       threadId: this.session?.conversationId ? antigravityThreadId(this.session.conversationId) : null,
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
+      pausedTurnId: this.pausedTurnId,
       contextUsage: null,
       planUsage: this.planUsage,
       turnContext: this.turnContext,

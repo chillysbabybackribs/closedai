@@ -8,6 +8,8 @@ export type ChatNotificationTarget = {
   activeTurnId: () => string | null
   setThreadName: (name: string | null) => void
   setTurn: (turnId: string | null) => void
+  /** Remember a turn the user paused, so the composer can offer Resume. */
+  setPaused: (turnId: string | null) => void
   consumeItem: (item: unknown, turnId: string | null, completed: boolean) => void
   appendDelta: (itemId: string, field: 'text' | 'output', delta: string) => void
   addNotice: (text: string, tone: 'info' | 'error', turnId?: string | null) => void
@@ -49,7 +51,10 @@ export function routeChatNotification(
       }
       target.setTurn(null)
       const status = typeof turn?.status === 'string' ? turn.status : null
-      if (status === 'interrupted') target.addNotice('Turn stopped', 'info', turnId)
+      if (status === 'interrupted') {
+        target.addNotice('Turn paused', 'info', turnId)
+        target.setPaused(turnId)
+      }
       if (status === 'failed') {
         const error = recordOf(turn?.error)
         target.addNotice(typeof error?.message === 'string' ? error.message : 'The turn failed', 'error', turnId)

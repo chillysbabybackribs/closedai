@@ -71,9 +71,23 @@ export class AntigravitySession {
     return turnId
   }
 
-  /** Stop the running turn: the protocol has no interrupt, so the process is killed and the conversation resumes later. */
+  /**
+   * Pause the running turn. The protocol has no interrupt, so a turn the CLI is already answering
+   * ends by killing the process; the conversation id survives and the next turn resumes it.
+   *
+   * A turn still waiting behind the MCP primer is a different case: its prompt has never been
+   * written to the CLI, so killing the process would only cost a respawn, and the queued prompt
+   * would vanish while the pane still showed the message as sent. Dropping the queue ends that
+   * turn against a warm process and says plainly that the message never left.
+   */
   async interrupt(): Promise<void> {
-    if (!this.activeTurnId || !this.process) return
+    if (!this.activeTurnId) return
+    if (this.queuedTurn) {
+      this.queuedTurn = null
+      this.endTurn({ status: 'interrupted', undelivered: true })
+      return
+    }
+    if (!this.process) return
     this.stopping = true
     await this.retire()
   }

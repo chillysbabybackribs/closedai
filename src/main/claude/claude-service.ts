@@ -53,6 +53,7 @@ export class ClaudeChatService extends EventEmitter {
   private modelInfos: ModelInfo[] = []
   private threadName: string | null = null
   private activeTurnId: string | null = null
+  private pausedTurnId: string | null = null
   private contextUsage: ContextUsage | null = null
   private planUsage: ChatPlanUsage | null = null
   private turnContext: ChatTurnContextReport | null = null
@@ -84,6 +85,7 @@ export class ClaudeChatService extends EventEmitter {
       threadId: this.session?.sessionId ? claudeThreadId(this.session.sessionId) : null,
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
+      pausedTurnId: this.pausedTurnId,
       contextUsage: describeUsage(this.contextUsage),
       planUsage: this.planUsage,
       turnContext: this.turnContext,

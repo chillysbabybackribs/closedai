@@ -23,7 +23,12 @@ export type TranscriptOp =
   | { type: 'delta'; itemId: string; field: 'text'; delta: string }
   | { type: 'notice'; text: string; tone: 'info' | 'error' }
 
-export type TurnEnd = { status: 'completed' | 'interrupted' | 'failed'; error?: string }
+export type TurnEnd = {
+  status: 'completed' | 'interrupted' | 'failed'
+  error?: string
+  /** Paused while the prompt was still queued behind the primer, so the CLI never saw it. */
+  undelivered?: boolean
+}
 
 export type AntigravityTranslation = {
   ops: TranscriptOp[]

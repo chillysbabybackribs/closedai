@@ -39,6 +39,7 @@ export class CursorChatService extends EventEmitter {
   private readonly archive: CursorArchive
   private threadName: string | null = null
   private activeTurnId: string | null = null
+  private pausedTurnId: string | null = null
   private turnContext: ChatTurnContextReport | null = null
   private planUsage: ChatPlanUsage | null = null
   private readonly transcript: ChatTranscript
@@ -83,6 +84,7 @@ export class CursorChatService extends EventEmitter {
       threadId: this.session?.sessionId ? cursorThreadId(this.session.sessionId) : null,
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
+      pausedTurnId: this.pausedTurnId,
       contextUsage: null,
       planUsage: this.planUsage,
       turnContext: this.turnContext,
