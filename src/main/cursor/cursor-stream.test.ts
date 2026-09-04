@@ -108,3 +108,72 @@ test('stop reasons map to the transcript vocabulary', () => {
   assert.deepEqual(cursorTurnEnd('cancelled'), { status: 'interrupted' })
   assert.equal(cursorTurnEnd('refusal').status, 'failed')
 })
+
+test('a ClosedAI tool served over MCP is labelled namespace · tool, with no bare-success output', () => {
+  // Shapes verified live: the announcement is useless, the first update names the call, and the
+  // completion carries only `{success: true}` because ACP does not echo an MCP result.
+  const ops = apply(translator(), [
+    { sessionUpdate: 'tool_call', toolCallId: 'm1', title: 'MCP: tool', kind: 'other', status: 'pending', rawInput: {} },
+    {
+      sessionUpdate: 'tool_call_update',
+      toolCallId: 'm1',
+      title: 'embedded_browser: page',
+      rawInput: { providerIdentifier: 'embedded_browser', toolName: 'page', args: { action: 'read_page' } }
+    },
+    { sessionUpdate: 'tool_call_update', toolCallId: 'm1', status: 'completed', rawOutput: { success: true } }
+  ])
+  const items = ops.flatMap((op) => (op.type === 'item' ? [op.item] : []))
+  const settled = items.at(-1)
+  assert.equal(settled?.type, 'tool')
+  if (settled?.type !== 'tool') return
+  assert.equal(settled.label, 'embedded_browser · page')
+  assert.match(settled.detail, /read_page/)
+  assert.equal(settled.status, 'completed')
+  assert.equal(settled.output, undefined)
+  // Every row carries the one tool call id, so the transcript renames a row rather than adding one.
+  assert.deepEqual([...new Set(items.map((item) => item.id))], ['m1'])
+})
+
+test('a served capture becomes a screenshot row when the app still holds the image', () => {
+  const taken: string[] = []
+  const instance = new CursorTurnTranslator({
+    turnId: 'cursor-turn-1',
+    seed: 'cursor-turn-1',
+    cwd: '/repo',
+    takeCallId: (namespace, tool) => { taken.push(`${namespace}.${tool}`); return 'call-7' },
+    displayScreenshot: (callId) => (callId === 'call-7' ? { dataUrl: 'data:image/png;base64,AAA' } : null)
+  })
+  const ops = apply(instance, [
+    {
+      sessionUpdate: 'tool_call',
+      toolCallId: 'cap',
+      title: 'MCP: tool',
+      kind: 'other',
+      status: 'pending',
+      rawInput: { providerIdentifier: 'closedai_ui', toolName: 'capture', args: { action: 'app_window' } }
+    },
+    { sessionUpdate: 'tool_call_update', toolCallId: 'cap', status: 'completed', rawOutput: { success: true } }
+  ])
+  const settled = ops.flatMap((op) => (op.type === 'item' ? [op.item] : [])).at(-1)
+  assert.equal(settled?.type, 'screenshot')
+  if (settled?.type !== 'screenshot') return
+  assert.equal(settled.surface, 'app_window')
+  assert.equal(settled.imageUrl, 'data:image/png;base64,AAA')
+  assert.deepEqual(taken, ['closedai_ui.capture'])
+})
+
+test('a capture the app no longer holds stays an ordinary tool row', () => {
+  const instance = new CursorTurnTranslator({
+    turnId: 'cursor-turn-1', seed: 'cursor-turn-1', cwd: '/repo',
+    takeCallId: () => null,
+    displayScreenshot: () => null
+  })
+  const ops = apply(instance, [
+    {
+      sessionUpdate: 'tool_call', toolCallId: 'cap2', title: 'MCP: tool', kind: 'other', status: 'pending',
+      rawInput: { providerIdentifier: 'closedai_ui', toolName: 'capture', args: { action: 'app_window' } }
+    },
+    { sessionUpdate: 'tool_call_update', toolCallId: 'cap2', status: 'completed', rawOutput: { success: true } }
+  ])
+  assert.equal(ops.flatMap((op) => (op.type === 'item' ? [op.item] : [])).at(-1)?.type, 'tool')
+})
