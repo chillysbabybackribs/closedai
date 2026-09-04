@@ -181,7 +181,7 @@ export class CursorTurnTranslator {
     return promoteCaptureToScreenshot({
       itemId: item.id,
       turnId: item.turnId,
-      failed: status === 'failed',
+      failed: false,
       namespace: served.namespace,
       tool: served.tool,
       action: served.args.action,
