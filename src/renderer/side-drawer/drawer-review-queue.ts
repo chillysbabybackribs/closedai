@@ -8,7 +8,11 @@ export type DrawerReviewEntry = {
   viewedAt: number | null
 }
 
-/** Keyed by pane id. Persisted so a relaunch keeps unreviewed work in the queue. */
+/**
+ * Keyed by chat id — the store's stable id, which is also the pane id while the chat is attached.
+ * Persisted so a relaunch keeps unreviewed work in the queue: an unviewed entry never expires, a
+ * viewed one ages out after the grace period.
+ */
 export type DrawerReviewQueue = Record<string, DrawerReviewEntry>
 
 type StorageReader = Pick<Storage, 'getItem'>
@@ -104,9 +108,12 @@ export function nextDrawerReviewExpiry(queue: DrawerReviewQueue): number | null 
   return next
 }
 
-/** Drop entries whose pane is gone — closed while the app was down, or from a stale store. */
-export function pruneDrawerReviewQueue(current: DrawerReviewQueue, livePaneIds: ReadonlySet<string>): DrawerReviewQueue {
-  const stale = Object.keys(current).filter((id) => !livePaneIds.has(id))
+/**
+ * Drop entries whose chat the store no longer lists — archived, or from a stale store. Detaching
+ * a pane is not that: the record stays, and so does its place in the queue.
+ */
+export function pruneDrawerReviewQueue(current: DrawerReviewQueue, knownChatIds: ReadonlySet<string>): DrawerReviewQueue {
+  const stale = Object.keys(current).filter((id) => !knownChatIds.has(id))
   if (stale.length === 0) return current
   const next = { ...current }
   for (const id of stale) delete next[id]

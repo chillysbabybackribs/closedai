@@ -6,18 +6,9 @@ export function rowIsLive(row: DrawerRowModel): boolean {
   return row.running || row.status === 'running' || row.status === 'queued'
 }
 
-/**
- * The row the user is looking at. Open panes are identified by pane, history records by thread:
- * matching thread ids on a pane row marks every threadless "New chat" as current the moment the
- * selected chat has no thread of its own yet, which is most of a fresh chat's life.
- */
-export function rowIsCurrent(
-  row: DrawerRowModel,
-  selectedPaneId: string | null,
-  activeThreadId: string | null
-): boolean {
-  if (row.paneId !== undefined) return row.paneId === selectedPaneId
-  return row.threadId !== null && row.threadId === activeThreadId
+/** The row the user is looking at: the one whose chat id is the selected pane's id. */
+export function rowIsCurrent(row: DrawerRowModel, selectedPaneId: string | null): boolean {
+  return selectedPaneId !== null && row.id === selectedPaneId
 }
 
 export function subtreeIsLive(row: DrawerRowModel, seen = new Set<string>()): boolean {
@@ -71,8 +62,10 @@ export function groupByDirectory(rows: DrawerRowModel[]): DirectoryGroup[] {
 }
 
 /**
- * Current is strictly active work. Completed panes stay in the review section until their reviewed
- * grace period expires; every other idle pane joins History alongside provider thread records.
+ * Current is strictly active work, newest chat first — ordered by when the chat was created, not
+ * by its streaming activity time, so rows do not reshuffle on every token. Completed chats stay
+ * in the review section until their reviewed grace period expires, whether or not they still have
+ * a pane; every other chat is History. Selection plays no part in placement.
  */
 export function buildDrawerSections(rows: DrawerRowModel[], reviewQueue: DrawerReviewQueue): DrawerSections {
   const current: DrawerRowModel[] = []
@@ -80,11 +73,11 @@ export function buildDrawerSections(rows: DrawerRowModel[], reviewQueue: DrawerR
   const history: DrawerRowModel[] = []
 
   for (const row of rows) {
-    if (row.paneId === undefined) history.push(row)
-    else if (subtreeIsLive(row)) current.push(row)
+    if (subtreeIsLive(row)) current.push(row)
     else if (reviewQueue[row.id] !== undefined) review.push(row)
     else history.push(row)
   }
+  current.sort((a, b) => b.createdAt - a.createdAt || b.updatedAt - a.updatedAt)
   review.sort((a, b) => (reviewQueue[b.id]?.queuedAt ?? 0) - (reviewQueue[a.id]?.queuedAt ?? 0))
   history.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
 
