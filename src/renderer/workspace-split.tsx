@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
-import { type ReactNode, useCallback, useRef, useState } from 'react'
-import type { Layout, LayoutChangedMeta, PanelSize } from 'react-resizable-panels'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import type { Layout, LayoutChangedMeta, PanelSize, PanelImperativeHandle } from 'react-resizable-panels'
 import {
   ResizableHandle,
   ResizablePanel,
@@ -16,25 +16,42 @@ import {
 
 export function WorkspaceSplit({
   chat,
-  workspace
+  workspace,
+  browserVisible = true,
+  chatCount = 1
 }: {
   chat: ReactNode
   workspace: ReactNode
+  browserVisible?: boolean
+  chatCount?: number
 }): JSX.Element {
   const [defaultChatWidth] = useState(
     () => readChatPaneWidth(window.localStorage) ?? defaultChatPaneWidth(window.innerWidth)
   )
   const latestChatWidth = useRef(defaultChatWidth)
+  const browserPanel = useRef<PanelImperativeHandle>(null)
+  const chatPanel = useRef<PanelImperativeHandle>(null)
+  const previousCount = useRef(chatCount)
+  useEffect(() => {
+    if (browserVisible) browserPanel.current?.expand()
+    else browserPanel.current?.collapse()
+  }, [browserVisible])
+  useEffect(() => {
+    if (chatCount > previousCount.current && browserVisible) {
+      chatPanel.current?.resize(Math.max(latestChatWidth.current, chatCount * 340))
+    }
+    previousCount.current = chatCount
+  }, [chatCount, browserVisible])
 
   const rememberChatWidth = useCallback((size: PanelSize): void => {
     latestChatWidth.current = size.inPixels
   }, [])
 
   const persistSettledLayout = useCallback((_layout: Layout, meta: LayoutChangedMeta): void => {
-    if (meta.isUserInteraction) {
+    if (meta.isUserInteraction && browserVisible) {
       persistChatPaneWidth(window.localStorage, latestChatWidth.current)
     }
-  }, [])
+  }, [browserVisible])
 
   return (
     <ResizablePanelGroup
@@ -46,6 +63,7 @@ export function WorkspaceSplit({
     >
       <ResizablePanel
         id="chat"
+        panelRef={chatPanel}
         className="workspace-chat-panel"
         defaultSize={defaultChatWidth}
         minSize={CHAT_PANE_MIN_PX}
@@ -57,6 +75,9 @@ export function WorkspaceSplit({
       </ResizablePanel>
       <ResizableHandle
         id="chat-workspace-divider"
+        data-ui="layout.browser-divider"
+        disabled={!browserVisible}
+        style={browserVisible ? undefined : { display: 'none' }}
         className="workspace-primary-divider"
         aria-label="Resize chat and workspace"
         title="Drag to resize · Double-click to reset"
@@ -64,6 +85,11 @@ export function WorkspaceSplit({
       />
       <ResizablePanel
         id="workspace"
+        panelRef={browserPanel}
+        collapsible
+        collapsedSize={0}
+        defaultSize={browserVisible ? undefined : 0}
+        disabled={!browserVisible}
         className="workspace-context-panel"
         minSize={WORKSPACE_PANE_MIN_PX}
         style={{ overflow: 'hidden' }}

@@ -11,6 +11,15 @@ export const UI_CONTROLS = {
   'window.maximize': 'Maximize or restore the window',
   'window.close': 'Close the window',
 
+  'layout.browser-toggle': 'Show or hide the shared browser independently of the chat arrangement',
+  'layout.browser-divider': 'Resize the chat area and shared browser',
+  'layout.add-chat': 'Add an existing chat to the right of the focused pane',
+  'layout.pane-drag': 'Focus a chat or drag its header to dock beside another; item is the chat id',
+  'layout.split-right': 'Create a chat to the right of this pane; item is the chat id',
+  'layout.split-below': 'Create a chat below this pane; item is the chat id',
+  'layout.pane-hide': 'Remove a tile from the layout without stopping its chat; item is the chat id',
+  'layout.divider': 'Resize adjacent chat tiles with a drag or arrow keys; item is the split id',
+
   'drawer.new-agent': 'Start a new agent chat pane',
   'drawer.search': 'Search previous chats (combobox)',
   'drawer.search-clear': 'Clear the drawer search',
