@@ -1,12 +1,45 @@
 import { EventEmitter } from 'node:events'
 import type { ChatAttachment, ChatEvent, ChatHistoryWindow, ChatSnapshot, ChatThreadContent } from '../../shared/chat.js'
+import type { ChatRecord } from '../../shared/chat-store.js'
+import { chatProviderOfId } from '../../shared/chat-providers.js'
 import type { AppSettings } from '../../shared/types.js'
 import { DEFAULT_APP_SETTINGS, type AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
+import { ChatStore } from '../chat-store/chat-store.js'
 import { ChatPeerManager } from './peer-manager.js'
 
-// Test doubles shared by the peer-manager test files: an in-memory settings store, a surface that
-// records its calls and emits events on demand, and a one-pane workspace built from both.
+// Test doubles shared by the peer-manager test files: an in-memory settings store, an in-memory
+// chat store, a surface that records its calls and emits events on demand, and a one-chat
+// workspace built from all three.
+
+export const HARNESS_CWD = '/workspace'
+
+/** A stored chat with the harness workspace and sensible defaults. */
+export function chatRecord(id: string, modelId: string | null, extra: Partial<ChatRecord> = {}): ChatRecord {
+  return {
+    id,
+    cwd: HARNESS_CWD,
+    projectPath: HARNESS_CWD,
+    provider: chatProviderOfId(modelId),
+    modelId,
+    reasoningEffort: null,
+    codexThreadId: null,
+    claudeSessionId: null,
+    antigravityConversationId: null,
+    cursorSessionId: null,
+    threadId: null,
+    title: null,
+    preview: '',
+    createdAt: 1,
+    updatedAt: 1,
+    lastTurnEndedAt: null,
+    archived: false,
+    continuation: null,
+    checkpoint: null,
+    parentChatId: null,
+    ...extra
+  }
+}
 
 export class MemorySettings implements AppSettingsAccess {
   constructor(private value: AppSettings) {}
@@ -77,29 +110,31 @@ export class FakeSurface extends EventEmitter implements ChatSurface {
   async continueInNewThread(): Promise<void> { this.calls.push('continue') }
   async openThread(threadId: string): Promise<void> { this.calls.push(`open:${threadId}`) }
   async archiveThread(threadId: string): Promise<void> { this.calls.push(`archive:${threadId}`) }
+  async compactConversation(): Promise<void> { this.calls.push('compact') }
   async beginLogin(): Promise<string | null> { return null }
 }
 
-export function harness(idleParkMs?: number): { manager: ChatPeerManager; surfaces: FakeSurface[]; settings: MemorySettings } {
-  const paneId = 'pane-a'
+export type Harness = { manager: ChatPeerManager; surfaces: FakeSurface[]; settings: MemorySettings; store: ChatStore }
+
+export function harness(idleParkMs?: number): Harness {
+  return harnessWith([chatRecord('pane-a', 'gpt')], 'pane-a', idleParkMs)
+}
+
+/** A workspace with the given chats attached and one of them selected. */
+export function harnessWith(records: ChatRecord[], selected: string, idleParkMs?: number): Harness {
   const settings = new MemorySettings({
     ...DEFAULT_APP_SETTINGS,
-    chatPeers: [{
-      paneId,
-      provider: 'codex',
-      threadId: null,
-      codexThreadId: null,
-      claudeSessionId: null,
-      modelId: 'gpt',
-      reasoningEffort: null
-    }],
-    chatSelectedPaneId: paneId
+    chatWorkspacePath: HARNESS_CWD,
+    chatProjectPath: HARNESS_CWD,
+    chatOpenIds: records.map((record) => record.id),
+    chatSelectedPaneId: selected
   })
+  const store = ChatStore.inMemory(records)
   const surfaces: FakeSurface[] = []
-  const manager = new ChatPeerManager(settings, (_peerSettings, modelId) => {
-    const surface = new FakeSurface(modelId)
+  const manager = new ChatPeerManager(settings, store, (_peerSettings, record) => {
+    const surface = new FakeSurface(record.modelId)
     surfaces.push(surface)
     return surface
   }, idleParkMs)
-  return { manager, surfaces, settings }
+  return { manager, surfaces, settings, store }
 }
