@@ -33,6 +33,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatModelId: null,
   chatReasoningEffort: null,
   chatContinuation: null,
+  chatOpenIds: [],
   chatPeers: [],
   chatSelectedPaneId: null,
   disabledTools: [],
@@ -53,18 +54,26 @@ function normalize(parsed: unknown): AppSettings {
   const record = parsed as Record<string, unknown>
   const chatModelId = optionalString(record.chatModelId)
   const chatReasoningEffort = optionalString(record.chatReasoningEffort)
-  const chatPeers = normalizeChatPeers(record.chatPeers, {
-    chatThreadId: optionalString(record.chatThreadId),
-    chatClaudeSessionId: optionalString(record.chatClaudeSessionId),
-    chatAntigravityConversationId: optionalString(record.chatAntigravityConversationId),
-    chatCursorSessionId: optionalString(record.chatCursorSessionId),
-    chatModelId,
-    chatReasoningEffort
-  })
+  // A file that predates pane records describes its one chat in the flat fields; a file that
+  // predates the chat store holds pane records. Either is imported once (see chat-store-migration)
+  // and neither is synthesized again afterwards, or every save would mint a fresh pane.
+  const migrated = Array.isArray(record.chatOpenIds)
+  const chatPeers = migrated && !Array.isArray(record.chatPeers)
+    ? []
+    : normalizeChatPeers(record.chatPeers, {
+      chatThreadId: optionalString(record.chatThreadId),
+      chatClaudeSessionId: optionalString(record.chatClaudeSessionId),
+      chatAntigravityConversationId: optionalString(record.chatAntigravityConversationId),
+      chatCursorSessionId: optionalString(record.chatCursorSessionId),
+      chatModelId,
+      chatReasoningEffort
+    }, { synthesize: !migrated })
+  const chatOpenIds = normalizeIds(record.chatOpenIds)
   const requestedPaneId = optionalString(record.chatSelectedPaneId)
-  const chatSelectedPaneId = chatPeers.some((peer) => peer.paneId === requestedPaneId)
+  const knownPaneIds = migrated ? chatOpenIds : chatPeers.map((peer) => peer.paneId)
+  const chatSelectedPaneId = requestedPaneId && knownPaneIds.includes(requestedPaneId)
     ? requestedPaneId
-    : chatPeers[0]?.paneId ?? null
+    : knownPaneIds[0] ?? null
   return {
     browserCookiesImported:
       typeof record.browserCookiesImported === 'boolean'
@@ -80,6 +89,7 @@ function normalize(parsed: unknown): AppSettings {
     chatModelId,
     chatReasoningEffort,
     chatContinuation: normalizeContinuation(record.chatContinuation),
+    chatOpenIds,
     chatPeers,
     chatSelectedPaneId,
     disabledTools: Array.isArray(record.disabledTools)
@@ -107,9 +117,15 @@ function optionalString(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null
 }
 
+function normalizeIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return [...new Set(value.filter((id): id is string => typeof id === 'string' && id.length > 0))]
+}
+
 function normalizeChatPeers(
   value: unknown,
-  legacy: Pick<AppSettings, 'chatThreadId' | 'chatClaudeSessionId' | 'chatAntigravityConversationId' | 'chatCursorSessionId' | 'chatModelId' | 'chatReasoningEffort'>
+  legacy: Pick<AppSettings, 'chatThreadId' | 'chatClaudeSessionId' | 'chatAntigravityConversationId' | 'chatCursorSessionId' | 'chatModelId' | 'chatReasoningEffort'>,
+  options: { synthesize: boolean } = { synthesize: true }
 ): ChatPeerRecord[] {
   if (Array.isArray(value)) {
     const seen = new Set<string>()
@@ -144,8 +160,9 @@ function normalizeChatPeers(
         ...peerDisplayFields(record)
       }]
     })
-    if (peers.length > 0) return peers
+    if (peers.length > 0 || !options.synthesize) return peers
   }
+  if (!options.synthesize) return []
   const provider = chatProviderOfId(legacy.chatModelId)
   const ids = {
     codexThreadId: legacy.chatThreadId,
@@ -175,23 +192,27 @@ function normalizeChatWorkspaces(value: unknown): ChatWorkspaceRecord[] {
     const projectPath = optionalString(record.projectPath)
     const key = workspaceKey(cwd, projectPath)
     if (seen.has(key)) return []
-    if (!Array.isArray(record.peers) || record.peers.length === 0) return []
-    const peers = normalizeChatPeers(record.peers, {
-      chatThreadId: null,
-      chatClaudeSessionId: null,
-      chatAntigravityConversationId: null,
-      chatCursorSessionId: null,
-      chatModelId: null,
-      chatReasoningEffort: null
-    })
-    if (peers.length === 0) return []
+    const openIds = normalizeIds(record.openIds)
+    const peers = Array.isArray(record.peers) && record.peers.length > 0
+      ? normalizeChatPeers(record.peers, {
+        chatThreadId: null,
+        chatClaudeSessionId: null,
+        chatAntigravityConversationId: null,
+        chatCursorSessionId: null,
+        chatModelId: null,
+        chatReasoningEffort: null
+      }, { synthesize: false })
+      : []
+    if (peers.length === 0 && openIds.length === 0) return []
     seen.add(key)
     const selectedPaneId = optionalString(record.selectedPaneId)
+    const known = openIds.length > 0 ? openIds : peers.map((peer) => peer.paneId)
     return [{
       cwd,
       projectPath,
+      openIds,
       peers,
-      selectedPaneId: peers.some((peer) => peer.paneId === selectedPaneId) ? selectedPaneId : peers[0]!.paneId
+      selectedPaneId: selectedPaneId && known.includes(selectedPaneId) ? selectedPaneId : known[0] ?? null
     }]
   })
 }
