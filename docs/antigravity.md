@@ -1,11 +1,12 @@
 # Antigravity provider
 
-ClosedAI's chat has three providers behind one pane: Codex (the app-server, `src/main/chat-service.ts`),
-Claude Code (the Claude Agent SDK, `src/main/claude/`), and Antigravity (Google's `agy` CLI on the
-user's Antigravity subscription, `src/main/antigravity/`). `src/main/chat-hub.ts` owns which one the
+ClosedAI's chat has four providers behind one pane: Codex (the app-server, `src/main/chat-service.ts`),
+Claude Code (the Claude Agent SDK, `src/main/claude/`), Antigravity (Google's `agy` CLI on the
+user's Antigravity subscription, `src/main/antigravity/`), and Cursor (`cursor-agent` ACP,
+`src/main/cursor/`). `src/main/chat-hub.ts` owns which one the
 pane shows, merges their model catalogs into one picker, and routes every call by the id it carries
 through `src/shared/chat-providers.ts`. Antigravity model ids and thread ids carry an `agy:` prefix
-(`src/main/antigravity/antigravity-ids.ts`).
+(`src/main/antigravity/antigravity-ids.ts`); Cursor ids carry a `cursor:` prefix.
 
 Protocol observations were verified live against `agy` 1.1.24 on 2026-09-02. The CLI self-updates,
 so those measurements retain their date. Application notes were reviewed against current source

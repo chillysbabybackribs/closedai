@@ -1,7 +1,7 @@
 # closedai
 
 ClosedAI is an Electron 44 workspace with an embedded Chromium browser and a chat surface
-supporting Codex, Claude Code, and Antigravity. Multiple chats can run in one project; the
+supporting Codex, Claude Code, Antigravity, and Cursor. Multiple chats can run in one project; the
 sidebar selects which conversation is visible. All chats share the app's browser session.
 Project selection restores that directory's open chats and model preferences.
 
@@ -22,13 +22,14 @@ npm run build && npm run preview
 | Codex | `codex` on `PATH`; ChatGPT sign-in from the app | `CLOSEDAI_CODEX_PATH` |
 | Claude Code | Pinned `@anthropic-ai/claude-agent-sdk` bundles its CLI; sign in with `claude` and `/login` | No external runtime binary required |
 | Antigravity | `~/.local/bin/agy`, then `agy` on `PATH`; sign in with `agy` in a terminal | `CLOSEDAI_ANTIGRAVITY_BIN` |
+| Cursor | `~/.local/bin/cursor-agent`, then `cursor-agent` on `PATH`; sign in with `cursor-agent login` | `CLOSEDAI_CURSOR_BIN` |
 
 `CLOSEDAI_WORKSPACE` selects the initial working directory. Otherwise the app uses its saved
 workspace or the application checkout on first launch. The composer's project menu can change
 the directory after startup. Stop running chats before switching projects.
 
 `scripts/launch-electron-vite.mjs` removes inherited GPU-offload and Electron identity variables
-so development uses the Electron installed here. Approval prompts are disabled in all three
+so development uses the Electron installed here. Approval prompts are disabled in all four
 providers; the accepted browser permission and sandbox policy is recorded in
 [the platform review](docs/electron-browser-platform-review.md).
 
@@ -40,7 +41,7 @@ providers; the accepted browser permission and sandbox policy is recorded in
   boundaries, context budgets, and how documentation reaches models.
 - [Tools](docs/tools.md): registry, all advertised namespaces, batching, captures, telemetry, and trace.
 - [CDP](docs/cdp-tool-foundation.md): protocol access, target sessions, semantic page controls, and input visibility.
-- [Claude Code](docs/claude-code.md) and [Antigravity](docs/antigravity.md): provider lifecycle and protocol contracts.
+- [Claude Code](docs/claude-code.md), [Antigravity](docs/antigravity.md), and [Cursor](docs/cursor.md): provider lifecycle and protocol contracts.
 - [Engineering contract](AGENTS.md): architecture, navigation, hygiene limits, and verification rules.
 - [Auto-git](docs/autogit.md): optional local snapshot service.
 - [Third-party notices](THIRD_PARTY_NOTICES.md): attribution for the Prompt Kit-derived components.

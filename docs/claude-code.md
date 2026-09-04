@@ -1,9 +1,9 @@
 # Claude Code provider
 
-Each ClosedAI chat pane has three providers: Codex (the app-server), Claude Code (the Claude
-Agent SDK), and Antigravity (`agy`). `src/main/chat-hub.ts` routes one pane and merges its model
+Each ClosedAI chat pane has four providers: Codex (the app-server), Claude Code (the Claude
+Agent SDK), Antigravity (`agy`), and Cursor (`cursor-agent` ACP). `src/main/chat-hub.ts` routes one pane and merges its model
 catalogs; `src/main/chat-peers/` manages the project's pane set. Claude model and thread ids use
-`claude:`, Antigravity uses `agy:`, and Codex ids are unprefixed. See [Application](application.md).
+`claude:`, Antigravity uses `agy:`, Cursor uses `cursor:`, and Codex ids are unprefixed. See [Application](application.md).
 
 The SDK protocol observations were verified live against `@anthropic-ai/claude-agent-sdk`
 0.3.258 on 2026-09-02. The package is pinned exactly and ships its CLI. Application lifecycle

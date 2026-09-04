@@ -62,7 +62,7 @@ before the app-server starts.
 | `closedai_app` | `ui` | `controls`, `click`, `type`, `press_key`, `scroll`, `wait_for` | Renderer inspection plus exceptional real interaction by stable control id (`data-ui`, manifest in `src/shared/ui-controls.ts`). Click, type, and key actions require `fallback_reason`; deterministic `state`/`command` operations come first. |
 | `browser_cdp` | `page` | `inspect_page`, `click`, `click_at`, `type`, `press_key`, `scroll`, `dismiss_overlay` | Semantic page inspection plus exceptional real CDP mouse and keyboard input. Input actions require `fallback_reason`; `fetch`/`extract`, site APIs, and non-input protocol operations come first. |
 | `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `target`, `events`, `requests`, `body` | Primary raw Chrome DevTools Protocol interface, eagerly advertised. `requests` lists the network traffic a tab has made and `body` reads captured responses. This is the supported way to find the endpoint behind a page. Raw `Input.*` commands require `fallback_reason`; screenshots remain ordinary commands. Target inventory exposes flattened child sessions; `target` wraps attach/detach/create/activate/close. See [CDP](cdp-tool-foundation.md). |
-| `search` | `query` | plain tool | Routed public-web search across Brave, Serper, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. `live: true` bypasses the ten-minute cache and refreshes it with current provider results. |
+| `search` | `query` | plain tool | Routed public-web search across Brave, Serper, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. Defaults to `presentation: live` (reuse one tab per pane/thread/turn); `live: true` bypasses the ten-minute cache and refreshes it with current provider results. |
 | `search` | `run` | `start`, `extend`, `cancel` | Incremental public-web research: independent queries and static source readers overlap inside one app-owned run. Live presentation is the default; a retained browser tab opens on an actual source as URLs arrive. |
 | `search` | `read` | `results`, `wait`, `source` | Cursor-based source updates, bounded event waits, and retained document excerpts. Observes the calling pane/thread's runs without starting more requests. |
 | `closedai_workspace` | `inspect` | `find`, `outline`, `map`, `related`, `tests`, `ipc_flow`, `read` | Read-only source/navigation registered for this indexed checkout. `find` locates code and enriches unique exact declarations with hashed source, local types, test excerpts, and styles. `read` returns the same context for a known symbol/range; a stale `known_hash` returns fresh source in the same call. `outline` provides shape, hash, and all matching style locations without claiming source coverage. Parsing is cached by absolute path and content hash, with fresh byte reads independent of timestamps. Other verbs query the generated index, direct imports, candidate tests, and IPC ownership. |
@@ -306,7 +306,7 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   because it projects before serialising rather than truncating afterwards. CDP JSON results are capped tighter
   still at 16k characters (`tools/json-result.ts`, shared by the CDP and app tools) because
   protocol dumps are the chattiest text source.
-- Capture actions are capped at `DEFAULT_MAX_CAPTURES_PER_TURN` (8) images per turn across
+- Capture actions are capped at `DEFAULT_MAX_CAPTURES_PER_TURN` (2) images per turn across
   `app_window`, `browser_page`, and `crop`; past that the action fails with advice to read page
   state instead, and each image result reports how many are left. A capture scaled below 60% of
   its source width tells the model to crop for detail rather than capture again
@@ -448,7 +448,7 @@ hidden by default in the panel's filters, but still collected in the in-memory r
 
 The performance summary (`renderer/trace/trace-performance.ts`) derives model passes, cache/token
 usage, context, and tool time from the available entries. Codex and Claude raw messages supply
-token summaries; Antigravity currently has no equivalent token-summary parser. Truncated or
+token summaries; Antigravity and Cursor currently have no equivalent token-summary parser. Truncated or
 evicted entries limit these estimates. This is a local diagnostic view, not a persisted ledger.
 
 `trace/response-latency.ts` adds bounded, monotonic-clock request timing to that ring. For sends

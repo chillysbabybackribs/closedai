@@ -301,7 +301,7 @@ This is a soft trigger, not a hard context cap or a guarantee that native compac
 target. Claude keeps SDK-native automatic/precomputed compaction; Antigravity compaction is manual re-seed only
 (no context gauge or auto trigger). No provider history is deleted or session silently replaced.
 
-The Turn trace shows send-to-first-assistant-text timing for all three providers: preparation,
+The Turn trace shows send-to-first-assistant-text timing for all four providers: preparation,
 Codex's measured compaction wait (a subset of preparation), and time after provider dispatch.
 The clock starts when the pane manager receives Send, before waking the pane. It ends when main
 receives non-empty assistant text, including commentary, not when the renderer paints it. Provider

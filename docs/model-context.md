@@ -8,12 +8,13 @@ every running model's prompt.
 
 | Layer | Owner | Delivery |
 |---|---|---|
-| Common product facts and tool routing | `src/main/chat-context/application-instructions.ts` | Included by all three provider instruction builders |
-| Response style | `src/main/chat-context/articulation-instructions.ts` | Included by all three builders; outcome-first responses, meaningful updates without first-person work narration, and full `https://` markdown links for referenced pages |
+| Common product facts and tool routing | `src/main/chat-context/application-instructions.ts` | Included by Codex, Claude, and Antigravity instruction builders |
+| Response style | `src/main/chat-context/articulation-instructions.ts` | Included by Codex, Claude, and Antigravity builders; outcome-first responses, meaningful updates without first-person work narration, and full `https://` markdown links for referenced pages |
 | Engineering workflow | `src/main/chat-context/engineering-instructions.ts` | Shared narrow-read, structured-edit, verification, Git-state, and delegation policy plus each provider's native tool names |
 | Codex adapter guidance | `src/main/chat-context/developer-instructions.ts`, `thread-params.ts` | `developerInstructions` on thread start and resume, alongside Codex's base instructions |
 | Claude adapter guidance | `src/main/claude/claude-instructions.ts`, `claude-options.ts` | Appended to the SDK's `claude_code` system preset when a query runtime starts |
 | Antigravity adapter guidance | `src/main/antigravity/antigravity-instructions.ts`, `antigravity-profile.ts` | Written to the app-private `agent.md`; loaded through `--agent closedai` and `--add-dir` on CLI startup |
+| Cursor adapter guidance | `src/main/cursor/cursor-input.ts`, `cursor-service.ts` | Turn context, handoff, and source-change enrichment only; Cursor does not receive the shared application, articulation, or engineering instruction blocks |
 | Checkout orientation | `src/main/chat-context/workspace-navigation.ts` | App-authored prose plus the generated repository map from `workspace-map.ts`, only when the session cwd matches `WORKSPACE_INDEX_ROOT` |
 | Repository rules | `src/main/chat-context/workspace-rules.ts`, root `AGENTS.md`, applicable `CLAUDE.md` | Codex loads `AGENTS.md` natively; Claude and Antigravity receive the selected workspace root policy explicitly; Claude also loads project `CLAUDE.md` through the SDK |
 
@@ -187,8 +188,8 @@ providers can use `tool_batch.run`. Suppress successful intermediate payloads, a
 visible. Output budgets, screenshot limits, and compaction settings are in [Tools](tools.md).
 
 The verification budgets are under 5,625 characters for Codex developer instructions, 6,500 for
-Claude, 7,750 for Antigravity, and 1,200 for the checkout capsule. The three provider budgets were
-raised by 25% on 2026-09-04 with owner approval. The separately appended
+Claude, 7,750 for Antigravity, and 1,200 for the checkout capsule. Cursor omits these shared
+instruction blocks. The separately appended
 root `AGENTS.md` is capped at 20,000. Share repeated guidance and remove duplication when expanding
 prompts; do not solve drift by injecting the entire documentation tree.
 
