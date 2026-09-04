@@ -1,3 +1,5 @@
+import type { EmulateRequest } from '../../cdp/cdp-emulate.js'
+
 export type CdpEventResult = {
   tab: unknown
   connectionId: string
@@ -21,6 +23,16 @@ export type CdpToolHost = {
   networkRequests(tabId: string | undefined, filter: { url?: string; type?: string; limit: number }): Promise<unknown>
   /** Response body for a buffered request id. */
   responseBody(tabId: string | undefined, requestId: string): Promise<unknown>
+  /** Arm, fold, or read coverage, CPU, heap and page metrics. Aggregated in the main process. */
+  profile(tabId: string | undefined, action: string, options: { channels: string[]; limit: number }): Promise<unknown>
+  /** Install, read, or remove the pre-document API recorder. */
+  instrument(
+    tabId: string | undefined,
+    action: string,
+    options: { channels: string[]; capacity: number; limit: number }
+  ): Promise<unknown>
+  /** Apply a device/environment override, or reset every override when `request` is null. */
+  emulate(tabId: string | undefined, request: EmulateRequest | null): Promise<unknown>
   inspectPage(tabId: string | undefined, maxElements: number): Promise<unknown>
   clickElement(tabId: string | undefined, ref: string): Promise<unknown>
   clickAt(tabId: string | undefined, x: number, y: number): Promise<unknown>

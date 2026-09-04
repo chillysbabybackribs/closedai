@@ -14,6 +14,21 @@ import {
 } from './cdp-network.js'
 import { settleFrames } from '../browser-frame-settle.js'
 import { dismissOverlayWithCdp } from './overlay/overlay-dismiss-cdp.js'
+import {
+  channelsFrom as profileChannelsFrom,
+  foldMetrics,
+  startProfiling,
+  stopProfiling,
+  styleSheetUrls
+} from './cdp-profile.js'
+import {
+  channelsFrom as instrumentChannelsFrom,
+  foldRecording,
+  installInstrument,
+  RECORDING_EXPRESSION,
+  REMOVE_EXPRESSION
+} from './cdp-instrument.js'
+import { applyEmulation, resetEmulation, type EmulateRequest } from './cdp-emulate.js'
 
 /** How much of the event buffer a request listing folds; the buffer itself holds 1,000. */
 const EVENT_SCAN_LIMIT = 1_000
@@ -46,6 +61,10 @@ type ResolvedTab = { tab: CdpBrowserTarget; session: CdpSession; page: CdpPageCo
 /** Resolves stable ClosedAI tab ids into transient CDP attachments. */
 export class BrowserCdpAccess implements CdpToolHost {
   private readonly connections = new Map<string, { session: CdpSession; page: CdpPageController; input: CdpPageInput }>()
+  /** Channels armed by `profile start`, so `stop` folds exactly what was started. */
+  private readonly profiling = new Map<string, ReturnType<typeof profileChannelsFrom>>()
+  /** `Page.addScriptToEvaluateOnNewDocument` identifiers, so a hook can be removed again. */
+  private readonly instruments = new Map<string, string>()
 
   constructor(private readonly browser: () => CdpBrowserSource | null) {}
 
@@ -169,9 +188,88 @@ export class BrowserCdpAccess implements CdpToolHost {
     ))
   }
 
+  /**
+   * Coverage and sampling are armed with `start`, exercised by whatever the caller does next,
+   * and folded by `stop`. Taking a precise-coverage report raw is ~950k characters on a real
+   * page, so the arithmetic happens here and only the summary crosses the tool boundary.
+   */
+  async profile(
+    tabId: string | undefined,
+    action: string,
+    options: { channels: string[]; limit: number }
+  ): Promise<unknown> {
+    const { tab, session } = this.resolve(tabId)
+    const send = (method: string, params?: Record<string, unknown>) => session.command(method, params ?? {})
+    const head = { tab, connectionId: session.connectionId }
+    if (action === 'metrics') {
+      await send('Performance.enable')
+      return { ...head, metrics: foldMetrics(await send('Performance.getMetrics')) }
+    }
+    const channels = profileChannelsFrom(options.channels)
+    if (action === 'start') {
+      const started = await startProfiling(send, channels)
+      this.profiling.set(tab.id, channels)
+      return { ...head, started, note: 'Exercise the page, then call stop.' }
+    }
+    const active = this.profiling.get(tab.id) ?? channels
+    this.profiling.delete(tab.id)
+    const report = await stopProfiling(send, active, {
+      limit: options.limit,
+      styleSheetUrls: styleSheetUrls(session.eventPage(0, EVENT_SCAN_LIMIT, 'CSS.').events)
+    })
+    return { ...head, ...report }
+  }
+
+  /** Install, read, or remove the pre-document recorder. */
+  async instrument(
+    tabId: string | undefined,
+    action: string,
+    options: { channels: string[]; capacity: number; limit: number }
+  ): Promise<unknown> {
+    const { tab, session } = this.resolve(tabId)
+    const send = (method: string, params?: Record<string, unknown>) => session.command(method, params ?? {})
+    const head = { tab, connectionId: session.connectionId }
+    if (action === 'hook') {
+      const channels = instrumentChannelsFrom(options.channels)
+      const installed = await installInstrument(send, channels, options.capacity)
+      const previous = this.instruments.get(tab.id)
+      if (previous) await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: previous }).catch(() => undefined)
+      if (installed.identifier) this.instruments.set(tab.id, installed.identifier)
+      return { ...head, channels, capacity: options.capacity, ...installed }
+    }
+    if (action === 'recording') {
+      const raw = await send('Runtime.evaluate', { expression: RECORDING_EXPRESSION, returnByValue: true })
+      return { ...head, ...foldRecording(raw, { limit: options.limit }) }
+    }
+    const identifier = this.instruments.get(tab.id)
+    if (identifier) {
+      await send('Page.removeScriptToEvaluateOnNewDocument', { identifier })
+      this.instruments.delete(tab.id)
+    }
+    const removed = await send('Runtime.evaluate', { expression: REMOVE_EXPRESSION, returnByValue: true })
+    const value = (removed as { result?: { value?: unknown } } | null)?.result?.value
+    return { ...head, removedFromFutureDocuments: Boolean(identifier), removedFromCurrentDocument: String(value ?? '') }
+  }
+
+  /**
+   * Viewport emulation goes through Electron because CDP's screen metrics do not move the layout
+   * viewport of a tab hosted in a WebContentsView; everything else is CDP. The result reports what
+   * the page itself measured afterwards.
+   */
+  async emulate(tabId: string | undefined, request: EmulateRequest | null): Promise<unknown> {
+    const { tab, session } = this.resolve(tabId)
+    const send = (method: string, params?: Record<string, unknown>) => session.command(method, params ?? {})
+    const outcome = request
+      ? await applyEmulation(session.contents, send, request)
+      : await resetEmulation(session.contents, send)
+    return { tab, connectionId: session.connectionId, reset: request === null, ...outcome }
+  }
+
   dispose(): void {
     for (const connection of this.connections.values()) connection.session.dispose()
     this.connections.clear()
+    this.profiling.clear()
+    this.instruments.clear()
   }
 
   /**
