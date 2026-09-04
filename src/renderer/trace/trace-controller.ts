@@ -7,7 +7,7 @@ import { summarizeTracePerformance, type TracePerformance } from './trace-perfor
 
 const MAX_KEPT = 4_000
 
-export const TRACE_KINDS: readonly TraceKind[] = ['turn', 'tool', 'event', 'raw']
+export const TRACE_KINDS: readonly TraceKind[] = ['turn', 'tool', 'event', 'raw', 'note']
 
 export type TraceTurnGroup = {
   /** Null groups entries that arrived between turns. */

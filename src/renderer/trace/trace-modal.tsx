@@ -19,7 +19,8 @@ const KIND_LABELS: Record<TraceKind, string> = {
   turn: 'Turns',
   tool: 'Tool calls',
   event: 'Transcript events',
-  raw: 'Raw provider lines'
+  raw: 'Raw provider lines',
+  note: 'Provider notes'
 }
 
 /**
