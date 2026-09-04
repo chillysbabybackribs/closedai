@@ -346,16 +346,29 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   /**
-   * How a dormant provider presents: ready, on the model the pane picked. Its own snapshot says
-   * "starting" with no model, because nothing has run; the composer would be disabled by that.
+   * How the pane presents while its provider is not answering for itself yet. A dormant one is
+   * ready, on the model the pane picked: its own snapshot says "starting" with no model, because
+   * nothing has run, and the composer would be disabled by that. A provider that is genuinely
+   * starting — a parked pane waking, a chat opened from the drawer, the first paint after a
+   * relaunch — keeps its connection state but still names the pane's saved model, so the picker
+   * reads the chat's own model from the first frame instead of "Choose model" for the seconds a
+   * CLI takes to come up.
    */
-  private dormantView(snapshot: ChatSnapshot): ChatSnapshot {
-    if (!this.dormant.has(this.active) || snapshot.provider !== this.active) return snapshot
+  private paneView(snapshot: ChatSnapshot): ChatSnapshot {
+    if (snapshot.provider !== this.active) return snapshot
     const saved = this.settings.get()
-    const connection = snapshot.connection.state === 'ready'
-      ? snapshot.connection
-      : { state: 'ready' as const, message: `${CHAT_PROVIDER_LABELS[this.active]} starts with your first message` }
-    return { ...snapshot, connection, selectedModel: saved.chatModelId, selectedReasoningEffort: saved.chatReasoningEffort }
+    if (this.dormant.has(this.active)) {
+      const connection = snapshot.connection.state === 'ready'
+        ? snapshot.connection
+        : { state: 'ready' as const, message: `${CHAT_PROVIDER_LABELS[this.active]} starts with your first message` }
+      return { ...snapshot, connection, selectedModel: saved.chatModelId, selectedReasoningEffort: saved.chatReasoningEffort }
+    }
+    if (snapshot.selectedModel) return snapshot
+    return {
+      ...snapshot,
+      selectedModel: saved.chatModelId,
+      selectedReasoningEffort: snapshot.selectedReasoningEffort ?? saved.chatReasoningEffort
+    }
   }
 
   /**
@@ -458,7 +471,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   private merge(snapshot: ChatSnapshot): ChatSnapshot {
-    return { ...this.dormantView(this.withCarriedHistory(snapshot)), models: this.models() }
+    return { ...this.paneView(this.withCarriedHistory(snapshot)), models: this.models() }
   }
 
   /** Each provider's own catalog when it has loaded one, else the workspace's last reading of it. */
@@ -474,7 +487,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
       if (event.models.length > 0 && event.connection.state === 'ready') this.catalogs?.remember(source, event.models)
       // Any provider's catalog or connection changing re-describes the pane in terms of the
       // active provider, with every model merged in so the picker can offer the others.
-      const active = this.dormantView(this.current().snapshot({ limit: 0 }))
+      const active = this.paneView(this.current().snapshot({ limit: 0 }))
       this.emitEvent({
         type: 'connection',
         provider: this.active,

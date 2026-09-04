@@ -57,6 +57,11 @@ export class ChatStore extends EventEmitter {
       .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
   }
 
+  /** Ids of every live chat, in any workspace; archived ones are left out so their side files go. */
+  ids(): string[] {
+    return [...this.chats.keys()].filter((id) => !this.chats.get(id)!.archived)
+  }
+
   get(id: string): ChatRecord | undefined {
     return this.chats.get(id)
   }
