@@ -60,7 +60,9 @@ test('closedai.instructions are delivered once until the thread changes', () => 
 })
 
 test('a replayed session reuses its returned setup without another load before the next turn', async () => {
-  const { session: thread } = session()
+  const catalogs: string[] = []
+  const { session: thread } = session({ onSetup: (setup) => catalogs.push(setup.sessionId) })
+  thread.adoptSaved('history')
   const loads: string[] = []
   const setup = { sessionId: 'history', models: [], modes: [], currentModelId: 'model', currentModeId: null }
   Object.assign(thread, { client: {
@@ -69,7 +71,9 @@ test('a replayed session reuses its returned setup without another load before t
     async loadSession(id: string) { loads.push(id); return { ...setup, sessionId: id } }
   } })
   await thread.replay('history')
+  assert.deepEqual(catalogs, [])
   thread.continueWith('history')
+  assert.deepEqual(catalogs, ['history'])
   assert.deepEqual(await thread.warm(), setup)
   assert.deepEqual(loads, ['history'])
   // Reading another history must not make its setup stand in for the current chat.

@@ -112,3 +112,37 @@ test('the registry reports aggregate-only events for successes, failures, and un
   ])
   assert.doesNotMatch(JSON.stringify(seen), /PRIVATE_VALUE|required|unknown/i)
 })
+
+test('bursts share one pending write and clear waits for changes made during an active write', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'closedai-telemetry-burst-'))
+  try {
+    const telemetry = await ToolTelemetry.open(join(dir, 'stats.json'))
+    const snapshots: number[] = []
+    const releases: Array<() => void> = []
+    Object.assign(telemetry, { persistNow: () => {
+      snapshots.push(telemetry.snapshot().totalCalls)
+      return new Promise<void>((resolve) => releases.push(resolve))
+    } })
+    for (let i = 0; i < 100; i++) telemetry.record(record())
+    await new Promise<void>((resolve) => setImmediate(resolve))
+    assert.deepEqual(snapshots, [100])
+
+    for (let i = 0; i < 100; i++) telemetry.record(record())
+    releases.shift()!()
+    await new Promise<void>((resolve) => setImmediate(resolve))
+    assert.deepEqual(snapshots, [100, 200])
+
+    let cleared = false
+    const clearing = telemetry.clear().then(() => { cleared = true })
+    assert.equal(cleared, false)
+    releases.shift()!()
+    await new Promise<void>((resolve) => setImmediate(resolve))
+    assert.deepEqual(snapshots, [100, 200, 0])
+    assert.equal(cleared, false)
+    releases.shift()!()
+    await clearing
+    assert.equal(cleared, true)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
