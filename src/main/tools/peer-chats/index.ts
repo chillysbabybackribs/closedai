@@ -20,7 +20,7 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
     tools: [
       defineTool({
         name: 'list',
-        description: 'List other live peer chats and their visible subagent chats, including running state and current activity.',
+        description: 'List other open peer chats and their visible subagent chats, including running state and current activity. Each entry’s paneId is the chat’s stable id (it survives the chat being parked or reopened) and is the chat_id for peer_chats.read.',
         inputSchema: { type: 'object', additionalProperties: false, properties: {} },
         run: async (_input, context) => {
           const directory = getDirectory()
