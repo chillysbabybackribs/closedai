@@ -41,7 +41,7 @@ export type IpcInvokeChannels = {
   'chat:send': { args: [ChatPaneId, string, ChatAttachment[]]; result: void }
   'chat:interrupt': { args: [ChatPaneId]; result: void }
   'chat:selectPane': { args: [ChatPaneId]; result: void }
-  'chat:setVisiblePanes': { args: [string, ChatPaneId[]]; result: void }
+  'chat:setVisiblePanes': { args: [string, ChatPaneId[], ChatPaneId[]?]; result: void }
   'chat:selectModel': { args: [ChatPaneId, string]; result: void }
   'chat:selectReasoningEffort': { args: [ChatPaneId, string]; result: void }
   'chat:refreshPlanUsage': { args: [ChatPaneId]; result: void }

@@ -204,13 +204,13 @@ export function googleUserAgentMetadata(userAgent: string): UserAgentMetadata | 
 export function installRequestHeaderPipeline(
   browserSession: Session,
   applicationName?: string,
-  injectHeaders?: (url: string, headers: Record<string, string | string[]>) => void
+  injectHeaders?: (url: string, headers: Record<string, string | string[]>, webContentsId?: number) => void
 ): void {
   browserSession.webRequest.onBeforeSendHeaders((details, callback) => {
     stripEmbedderFromUserAgent(details.requestHeaders, applicationName)
     if (injectHeaders) {
       try {
-        injectHeaders(details.url, details.requestHeaders)
+        injectHeaders(details.url, details.requestHeaders, details.webContentsId)
       } catch {
         // A vault fault must degrade to "no injection", never to a stalled request.
       }

@@ -22,7 +22,8 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   )
   ipcMain.handle(IPC.invoke.chat.interrupt, (_event, paneId: string) => requireService().interrupt(paneId))
   ipcMain.handle(IPC.invoke.chat.selectPane, (_event, paneId: string) => requireService().selectPane(paneId))
-  ipcMain.handle(IPC.invoke.chat.setVisiblePanes, (_event, cwd: string, paneIds: string[]) => requireService().setVisiblePanes(cwd, paneIds))
+  ipcMain.handle(IPC.invoke.chat.setVisiblePanes, (_event, cwd: string, paneIds: string[], retainedTabIds?: string[]) =>
+    requireService().setVisiblePanes(cwd, paneIds, retainedTabIds))
   ipcMain.handle(IPC.invoke.chat.selectModel, (_event, paneId: string, modelId: string) => requireService().selectModel(paneId, modelId))
   ipcMain.handle(IPC.invoke.chat.selectReasoningEffort, (_event, paneId: string, effort: string) =>
     requireService().selectReasoningEffort(paneId, effort)

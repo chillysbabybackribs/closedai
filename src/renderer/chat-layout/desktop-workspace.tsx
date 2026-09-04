@@ -1,4 +1,4 @@
-import { useImperativeHandle, useState, type Dispatch, type Ref } from 'react'
+import { useImperativeHandle, useRef, useState, type Dispatch, type Ref } from 'react'
 import { BrowserPane } from '../browser-pane.js'
 import { useBrowserController } from '../browser-controller.js'
 import { ChatPane } from '../chat-pane.js'
@@ -39,6 +39,8 @@ export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenC
         browserVisible={layout.browserVisible} onToggleBrowser={layout.toggleBrowser}
         title={(id) => chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat'}
         onSelect={select} onDock={(id, target, edge) => { void layout.dock(id, target, edge) }}
+        onSelectTab={(id) => { onHistoryOpenChange(false); void layout.activateTab(id) }}
+        onCloseTab={(id) => { void layout.closeTab(id) }}
         onNewChat={(id) => { onHistoryOpenChange(false); void layout.newChat(id) }}
         onHide={(id) => { void layout.hide(id) }} onResize={layout.resize}
         renderPane={(id) => <WorkspaceChat paneId={id} snapshot={chat.snapshot} dispatch={chat.dispatch}
@@ -62,7 +64,9 @@ function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, on
   historyOpen: boolean
   onHistoryOpenChange: (open: boolean) => void
 }) {
-  const state = snapshot.panes?.[paneId] ?? (snapshot.selectedPaneId === paneId ? snapshot.selected : initialChatState())
+  const retained = useRef(initialChatState())
+  const state = snapshot.panes?.[paneId] ?? (snapshot.selectedPaneId === paneId ? snapshot.selected : retained.current)
+  retained.current = state
   const controller = usePaneChatController(snapshot, paneId, state, dispatch)
   return <ChatPane controller={controller} zoom={appearance.chatZoom} fontSize={appearance.chatFontSize}
     composerFontSize={appearance.composerFontSize} historyOpen={historyOpen} onHistoryOpenChange={onHistoryOpenChange} />

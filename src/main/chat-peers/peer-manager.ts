@@ -49,7 +49,7 @@ export interface ChatWorkspaceSurface {
   send(paneId: ChatPaneId, text: string, attachments: ChatAttachment[]): Promise<void>
   interrupt(paneId: ChatPaneId): Promise<void>
   selectPane(paneId: ChatPaneId): Promise<void>
-  setVisiblePanes(cwd: string, paneIds: ChatPaneId[]): Promise<void>
+  setVisiblePanes(cwd: string, paneIds: ChatPaneId[], retainedTabIds?: ChatPaneId[]): Promise<void>
   selectModel(paneId: ChatPaneId, modelId: string): Promise<void>
   selectReasoningEffort(paneId: ChatPaneId, effort: string): Promise<void>
   refreshPlanUsage(paneId: ChatPaneId): Promise<void>
@@ -77,6 +77,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   readonly memory: ChatMemory
   private selectedPaneId: ChatPaneId
   private visiblePaneIds = new Set<ChatPaneId>()
+  private retainedTabIds = new Set<ChatPaneId>()
   private visibilityRevision = 0
   private readonly lifecycle: PeerLifecycle
   private readonly parking: PeerIdleParking
@@ -186,7 +187,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.selectedPaneId = paneId
     // A blank chat the user clicked away from never became one; keep it and the drawer fills
     // with "New chat" rows. One mid-open (busy) is not blank, it is about to hold a thread.
-    if (this.lifecycle.peers.size > 1 && !this.visiblePaneIds.has(previousPaneId)) this.lifecycle.discardIfBlank(previousPaneId)
+    if (this.lifecycle.peers.size > 1 && !this.visiblePaneIds.has(previousPaneId) && !this.retainedTabIds.has(previousPaneId)) this.lifecycle.discardIfBlank(previousPaneId)
     this.parking.schedule(previousPaneId)
     // Paint the destination from the view it already holds — the live snapshot when its runtime
     // is up, the saved one when it is parked — before waking it. Waking replays the thread from
@@ -200,7 +201,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   /** Register the renderer's tiles without changing focus or stopping hidden turns. */
-  async setVisiblePanes(cwd: string, paneIds: ChatPaneId[]): Promise<void> {
+  async setVisiblePanes(cwd: string, paneIds: ChatPaneId[], retainedTabIds: ChatPaneId[] = []): Promise<void> {
     if (cwd !== this.workspace().cwd) return
     if (!Array.isArray(paneIds) || paneIds.length > 32 || paneIds.some((id) => typeof id !== 'string')) {
       throw new Error('Choose up to 32 visible chats')
@@ -209,8 +210,14 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     if (records.some((record) => !record || record.archived || record.cwd !== cwd)) {
       throw new Error('A visible chat is no longer available in this project')
     }
+    if (!Array.isArray(retainedTabIds) || retainedTabIds.some((id) => {
+      const record = typeof id === 'string' ? this.store.get(id) : null
+      return !record || record.archived || record.cwd !== cwd
+    })) throw new Error('A chat tab is no longer available in this project')
     const revision = ++this.visibilityRevision
     this.visiblePaneIds = new Set(paneIds)
+    // Retain empty tabs without waking them or subscribing to their token stream.
+    this.retainedTabIds = new Set(retainedTabIds)
     for (const record of records) if (record) this.lifecycle.attach(record)
     await Promise.all(paneIds.map((id) => this.transcripts.load(id)))
     if (revision !== this.visibilityRevision || cwd !== this.workspace().cwd) return
@@ -374,7 +381,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // The chat's last known messages, model, and context reading paint now; the provider's
     // replay lands behind them rather than in front of an empty pane.
     await this.transcripts.load(chatId)
-    if (this.lifecycle.peers.size > 1 && !this.visiblePaneIds.has(previousPaneId)) this.lifecycle.discardIfBlank(previousPaneId)
+    if (this.lifecycle.peers.size > 1 && !this.visiblePaneIds.has(previousPaneId) && !this.retainedTabIds.has(previousPaneId)) this.lifecycle.discardIfBlank(previousPaneId)
     this.parking.schedule(previousPaneId)
     this.lifecycle.parkExcessIdle(chatId)
     this.emitWorkspace()
@@ -445,6 +452,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
     this.visibilityRevision += 1
     this.visiblePaneIds.clear()
+    this.retainedTabIds.clear()
     this.lifecycle.detachAll()
     this.catalog.invalidate()
     await this.workspaceSelector.select(projectPath, {
@@ -556,7 +564,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
    */
   private wakeLater(paneId: ChatPaneId, what: string): void {
     void this.wake(paneId).then(async () => {
-      if (paneId !== this.selectedPaneId && !this.visiblePaneIds.has(paneId) && this.lifecycle.peers.size > 1 && this.lifecycle.discardIfBlank(paneId)) {
+      if (paneId !== this.selectedPaneId && !this.visiblePaneIds.has(paneId) && !this.retainedTabIds.has(paneId) && this.lifecycle.peers.size > 1 && this.lifecycle.discardIfBlank(paneId)) {
         await this.persistOpenChats()
       }
     }).catch((error: unknown) => {

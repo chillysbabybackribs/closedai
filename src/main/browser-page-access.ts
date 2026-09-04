@@ -1,6 +1,8 @@
 import type { BrowserService } from './browser-service.js'
 import { fetchInPage, type PageFetchRequest, type PageFetchResult } from './browser-page-fetch.js'
 import { needsReadinessPoll, probePageReady, readPageText, waitForPageReady, type PageReadiness, type PageReadyResult, type PageText } from './browser-page-ready.js'
+import { evaluateInPage, queryInPage, type PageEvaluateRequest, type PageEvaluateResult, type PageQueryRequest, type PageQueryResult } from './browser-page-evaluate.js'
+import type { ConsoleFilter, ConsoleListing } from './browser-network/console-log.js'
 import type { BrowserTabInfo } from '../shared/types.js'
 import type { BrowserToolHost, NavigateOutcome } from './tools/browser/index.js'
 
@@ -51,5 +53,26 @@ export class BrowserPageAccess implements BrowserToolHost {
     const contents = this.browser()?.contentsOf(tabId)
     if (!contents) return null
     return waitForPageReady(contents, ready)
+  }
+
+  async evaluate(tabId: string | undefined, request: PageEvaluateRequest): Promise<PageEvaluateResult | null> {
+    const contents = this.browser()?.contentsOf(tabId)
+    if (!contents) return null
+    return evaluateInPage(contents, request)
+  }
+
+  async query(tabId: string | undefined, request: PageQueryRequest): Promise<PageQueryResult | null> {
+    const contents = this.browser()?.contentsOf(tabId)
+    if (!contents) return null
+    return queryInPage(contents, request)
+  }
+
+  consoleMessages(tabId: string | undefined, filter: Omit<ConsoleFilter, 'tabId'>): ConsoleListing | null {
+    const service = this.browser()
+    const contents = service?.contentsOf(tabId)
+    if (!service || !contents) return null
+    const resolved = service.tabIdForContents(contents.id)
+    if (!resolved) return null
+    return service.observers.console.list({ ...filter, tabId: resolved })
   }
 }

@@ -31,6 +31,7 @@ import { CursorChatService } from './cursor/cursor-service.js'
 import { CursorToolBridge } from './cursor/cursor-mcp.js'
 import { AntigravityToolBridge } from './antigravity/antigravity-mcp.js'
 import { BrowserPageAccess } from './browser-page-access.js'
+import { BrowserNetworkAccess } from './browser-network-access.js'
 import { BrowserCdpAccess } from './cdp/browser-cdp-access.js'
 import { AppAutomationAccess } from './app-automation-access.js'
 import { AppCommandAccess } from './app-commands.js'
@@ -180,6 +181,7 @@ async function main(): Promise<void> {
   // Tools resolve the browser lazily: it is created with the window, after the chat service.
   const pageAccess = new BrowserPageAccess(() => browserService)
   cdpAccess = new BrowserCdpAccess(() => browserService)
+  const networkAccess = new BrowserNetworkAccess(() => browserService, () => cdpAccess)
   appAutomationAccess = new AppAutomationAccess(() => mainWindow)
   appCommandAccess = new AppCommandAccess({
     chat: () => chatService, browser: () => browserService, downloads: () => browserDownloads, window: () => mainWindow
@@ -195,7 +197,7 @@ async function main(): Promise<void> {
   researchService = research.service
   toolRegistry = createToolRegistry([
     appTools(() => appCommandAccess, () => appAutomationAccess),
-    browserTools(() => pageAccess),
+    browserTools(() => pageAccess, () => networkAccess, () => networkAccess),
     cdpTools(() => cdpAccess),
     captureTools(() => captureAccess, screenshots),
     research.namespace,

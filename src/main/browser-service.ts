@@ -5,7 +5,7 @@ import type { BrowserHistory } from './browser-history-store.js'
 import type { BrowserBounds, BrowserShot, BrowserState, BrowserTabInfo } from '../shared/types.js'
 import { BrowserTab, HOME_URL, PARTITION } from './browser-tab.js'
 import { PersistentSessionCookies } from './persistent-session-cookies.js'
-import { installRequestHeaderPipeline } from './browser-auth-client-hints.js'
+import { BrowserObservers } from './browser-network/observers.js'
 import { installPermissionPolicy } from './browser-permissions.js'
 import { TabRenderingPolicy } from './browser-tab-rendering.js'
 import { allSettledBounded } from './bounded-concurrency.js'
@@ -51,6 +51,9 @@ export class BrowserService extends EventEmitter {
   private readonly pageBackgrounds = new PageBackgroundMemory()
   private readonly partitionSession: Electron.Session
   private readonly persistentSessionCookies: PersistentSessionCookies
+  // What the app records about every tab without a debugger: network traffic and rules on
+  // the session, console output per tab. Exposed to the model tools through the access classes.
+  readonly observers = new BrowserObservers((webContentsId) => this.tabIdForContents(webContentsId))
   // User tabs remain resident to preserve their compositor; other surfaces lease frames.
   private readonly rendering = new TabRenderingPolicy({
     attach: (tabId) => this.attachTabView(tabId),
@@ -105,6 +108,7 @@ export class BrowserService extends EventEmitter {
       (contents) => this.registerNativePopup(tab.id, contents),
       this.pageBackgrounds
     )
+    this.observers.watchTab(tab.id, tab.view.webContents)
     this.registerTab(tab, index)
     if (activate) this.setActive(tab.id)
     else {
@@ -343,6 +347,22 @@ export class BrowserService extends EventEmitter {
     return [...tabs, ...popups]
   }
 
+  /** The session every tab shares; what the model's session-level tools operate on. */
+  get session(): Electron.Session {
+    return this.partitionSession
+  }
+
+  /** The app-owned id (tab or popup) behind a WebContents id; null for session-only traffic. */
+  tabIdForContents(webContentsId: number | undefined): string | null {
+    if (webContentsId === undefined) return null
+    const tab = this.tabs.find((candidate) => candidate.view.webContents.id === webContentsId)
+    if (tab) return tab.id
+    for (const [id, popup] of this.nativePopups) {
+      if (popup.contents.id === webContentsId) return id
+    }
+    return null
+  }
+
   /** Live WebContents of a tab (the active one when omitted); null if unknown or destroyed. */
   contentsOf(tabId?: string): WebContents | null {
     const popup = tabId ? this.nativePopups.get(tabId)?.contents : null
@@ -386,6 +406,7 @@ export class BrowserService extends EventEmitter {
   private registerNativePopup(openerTabId: string, contents: WebContents): void {
     const id = `popup-${contents.id}`
     this.nativePopups.set(id, { contents, openerTabId })
+    this.observers.watchTab(id, contents)
     contents.once('destroyed', () => { this.nativePopups.delete(id) })
   }
 
@@ -486,8 +507,9 @@ export class BrowserService extends EventEmitter {
   }
 
   private configureSession(partitionSession: Electron.Session): void {
-    // Normalize wire identity (strip the embedder tokens from the UA, Google auth client hints).
-    installRequestHeaderPipeline(partitionSession, app.getName())
+    // Normalize wire identity (strip the embedder tokens from the UA, Google auth client hints)
+    // and install the session-level network observer and rules on the same header pipeline.
+    this.observers.install(partitionSession, app.getName())
     installPermissionPolicy(partitionSession)
     // Persistent V8 code cache, as Chrome keeps for every profile.
     partitionSession.setCodeCachePath(join(app.getPath('userData'), 'code-cache'))

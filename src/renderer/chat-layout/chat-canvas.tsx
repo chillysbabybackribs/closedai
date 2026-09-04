@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Columns2, GripVertical, Monitor, PanelRightClose, Plus, Rows2, X } from 'lucide-react'
 import { CHAT_DRAG_TYPE, layoutGeometry, minimumSize, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
+import { ChatTabs } from './chat-tabs.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBrowser, title, renderPane, onSelect, onNewChat, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBrowser, title, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
@@ -13,6 +14,8 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
   title: (id: string) => string
   renderPane: (id: string) => ReactNode
   onSelect: (id: string) => void
+  onSelectTab: (id: string) => void
+  onCloseTab: (id: string) => void
   onNewChat: (id: string) => void
   onDock: (id: string | null, target: string, edge: DockEdge) => void
   onHide: (id: string) => void
@@ -59,11 +62,12 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
 
   return <div className="chat-layout-viewport" ref={viewport}>
     <div className="chat-layout-canvas" style={{ minWidth: minimum.width, minHeight: minimum.height }}>
-      {geometry.panes.map(({ id, rect }) => <section key={id}
+      {geometry.panes.flatMap(({ id: activeId, tabs, rect }) => tabs.map((id) => <section key={id}
         className="chat-layout-tile" style={position(rect)} data-pane-id={id}
+        hidden={id !== activeId}
         data-selected={id === selectedId} aria-label={title(id)}
-        onFocusCapture={() => { if (id !== selectedId) onSelect(id) }}
-        onPointerDownCapture={() => { if (id !== selectedId) onSelect(id) }}
+        onFocusCapture={(event) => { if (id !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(id) }}
+        onPointerDownCapture={(event) => { if (id !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(id) }}
         onDragOver={(event) => {
           if (!event.dataTransfer.types.includes(CHAT_DRAG_TYPE)) return
           event.preventDefault()
@@ -93,7 +97,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
           setDragging(null)
           setDrop(null)
         }}>
-        <header className="chat-layout-header">
+        {id === activeId && <header className="chat-layout-header">
           <button className="chat-layout-title" draggable={!busy} data-ui="layout.pane-drag" data-ui-key={id}
             title="Drag to move this chat to the left, right, above, or below another chat"
             onClick={() => onSelect(id)}
@@ -102,13 +106,15 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
               event.dataTransfer.effectAllowed = 'move'
               setDragging(id)
             }}>
-            <GripVertical size={13} aria-hidden="true" /><span>{title(id)}</span>
+            <GripVertical size={13} aria-hidden="true" />
           </button>
-          {geometry.panes.length > 1 && <button type="button" className="chat-layout-new-chat"
+          <ChatTabs ids={tabs} activeId={id} busy={busy} canClose={tabs.length > 1 || geometry.panes.length > 1}
+            title={title} onSelect={onSelectTab} onClose={onCloseTab} />
+          <button type="button" className="chat-layout-new-chat"
             data-ui="layout.new-chat" data-ui-key={id} disabled={busy}
-            title="New chat in this pane" aria-label="New chat in this pane" onClick={() => onNewChat(id)}>
+            title="New chat tab" aria-label="New chat tab" onClick={() => onNewChat(id)}>
             <Plus size={14} aria-hidden="true" />
-          </button>}
+          </button>
           <button data-ui="layout.split-right" data-ui-key={id} disabled={busy}
             title="New chat to the right" aria-label="New chat to the right" onClick={() => onDock(null, id, 'right')}>
             <Columns2 size={14} aria-hidden="true" />
@@ -127,12 +133,13 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
             title="Hide this pane; its chat keeps running" aria-label="Hide chat pane" onClick={() => onHide(id)}>
             <X size={14} aria-hidden="true" />
           </button>
-        </header>
-        <div className="chat-layout-content">{renderPane(id)}</div>
+        </header>}
+        <div className="chat-layout-content" role="tabpanel" id={`chat-panel-${id}`}
+          aria-label={title(id)}>{renderPane(id)}</div>
         {drop?.target === id && dragging !== id && <div className="chat-layout-drop" data-edge={drop.edge}>
           <span>{drop.edge === 'top' ? 'Place above' : drop.edge === 'bottom' ? 'Place below' : `Place ${drop.edge}`}</span>
         </div>}
-      </section>)}
+      </section>))}
       {geometry.dividers.map((divider) => <div key={divider.id} className="chat-layout-divider"
         style={position(divider.rect)} data-axis={divider.axis} role="separator" tabIndex={0}
         data-ui="layout.divider" data-ui-key={divider.id}
