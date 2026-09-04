@@ -1,6 +1,7 @@
 import type { WebContents } from 'electron'
 import type { BrowserTabInfo } from '../../shared/types.js'
 import { describeMissingTab } from '../../shared/browser-tabs.js'
+import { recordOf } from '../json-coerce.js'
 import type { CdpToolHost } from '../tools/cdp/host.js'
 import { CdpPageController } from './page-control/page-controller.js'
 import { CdpPageInput } from './page-control/page-input.js'
@@ -292,8 +293,29 @@ export class BrowserCdpAccess implements CdpToolHost {
   dispose(): void {
     for (const connection of this.connections.values()) connection.session.dispose()
     this.connections.clear()
+    for (const armed of this.profiling.values()) armed.stopWatch?.()
     this.profiling.clear()
     this.instruments.clear()
+  }
+
+  /**
+   * Re-arm heap sampling for each new main-frame document. V8 restores the profiler and coverage
+   * agents into the new isolate itself but not the sampling heap profiler, so without this a
+   * navigation between start and stop leaves `HeapProfiler.stopSampling` addressed at an isolate
+   * that no longer exists — a command that never answers at all.
+   */
+  private watchForHeapRearm(session: CdpSession): () => void {
+    return session.observe((method, params) => {
+      if (method !== 'Page.frameNavigated') return
+      const frame = recordOf(recordOf(params)?.frame)
+      if (!frame || frame.parentId) return
+      void armHeapSampling((command, sent) => session.command(command, sent ?? {})).catch(() => undefined)
+    })
+  }
+
+  private endProfileWatch(tabId: string): void {
+    this.profiling.get(tabId)?.stopWatch?.()
+    this.profiling.delete(tabId)
   }
 
   /**

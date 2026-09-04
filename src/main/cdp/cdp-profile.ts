@@ -383,8 +383,9 @@ export type ProfileReport = {
 export async function stopProfiling(
   send: ProfileSend,
   channels: ProfileChannels,
-  options: { limit: number; styleSheets: StyleSheetRecord[] }
+  options: { limit: number; styleSheets: StyleSheetRecord[]; heapStopTimeoutMs?: number }
 ): Promise<ProfileReport> {
+  const heapTimeoutMs = options.heapStopTimeoutMs ?? HEAP_STOP_TIMEOUT_MS
   const report: ProfileReport = { metrics: {} }
   if (channels.script) {
     report.scriptCoverage = foldScriptCoverage(await send('Profiler.takePreciseCoverage'), options.limit)
@@ -399,11 +400,11 @@ export async function stopProfiling(
   }
   if (channels.cpu) report.cpu = foldCpuProfile(await send('Profiler.stop'), options.limit)
   if (channels.heap) {
-    const raw = await withDeadline(send('HeapProfiler.stopSampling').catch(() => null), HEAP_STOP_TIMEOUT_MS)
+    const raw = await withDeadline(send('HeapProfiler.stopSampling').catch(() => null), heapTimeoutMs)
     if (raw) report.heap = foldHeapProfile(raw, options.limit)
     else {
       report.heapUnavailable = 'HeapProfiler.stopSampling did not answer within '
-        + `${HEAP_STOP_TIMEOUT_MS / 1_000}s: the sampler was armed in an isolate this tab has since replaced. `
+        + `${heapTimeoutMs / 1_000}s: the sampler was armed in an isolate this tab has since replaced. `
         + 'Arm heap sampling again and stop it without an intervening cross-process navigation.'
     }
   }

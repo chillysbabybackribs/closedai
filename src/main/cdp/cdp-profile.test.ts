@@ -9,9 +9,10 @@ import {
   foldMetrics,
   foldRuleCoverage,
   foldScriptCoverage,
+  liveStyleSheets,
   startProfiling,
   stopProfiling,
-  styleSheetUrls
+  styleSheetIndex
 } from './cdp-profile.js'
 
 test('nested coverage ranges count once, with the innermost range deciding', () => {
@@ -52,25 +53,59 @@ test('script coverage folds per URL, dedupes script ids and ranks by wasted byte
   assert.equal(summary.usedPercent, 27.3)
 })
 
-test('style coverage resolves stylesheet ids to URLs and falls back for inline sheets', () => {
-  const urls = styleSheetUrls([
-    { method: 'CSS.styleSheetAdded', params: { header: { styleSheetId: 'a', sourceURL: 'https://site/main.css' } } },
-    { method: 'CSS.styleSheetAdded', params: { header: { styleSheetId: 'b', sourceURL: '' } } },
+test('stylesheet index tracks added sheets, drops removed ones and labels inline sheets', () => {
+  const sheets = styleSheetIndex([
+    { method: 'CSS.styleSheetAdded', params: { header: { styleSheetId: 'a', sourceURL: 'https://site/main.css', length: 400 } } },
+    { method: 'CSS.styleSheetAdded', params: { header: { styleSheetId: 'b', sourceURL: '', length: 50 } } },
+    { method: 'CSS.styleSheetAdded', params: { header: { styleSheetId: 'gone', sourceURL: 'https://site/old.css', length: 900 } } },
+    { method: 'CSS.styleSheetRemoved', params: { styleSheetId: 'gone' } },
     { method: 'Network.requestWillBeSent', params: {} }
   ])
-  assert.deepEqual(urls, { a: 'https://site/main.css', b: '(inline stylesheet)' })
+  assert.deepEqual(sheets, [
+    { id: 'a', url: 'https://site/main.css', length: 400 },
+    { id: 'b', url: '(inline stylesheet)', length: 50 }
+  ])
+})
 
+test('style coverage measures used rules against stylesheet size, not against the delta', () => {
+  // stopRuleUsageTracking answers with used rules only; unused bytes exist solely in the sheet.
   const summary = foldRuleCoverage({
     ruleUsage: [
       { styleSheetId: 'a', startOffset: 0, endOffset: 100, used: true },
-      { styleSheetId: 'a', startOffset: 100, endOffset: 400, used: false },
-      { styleSheetId: 'missing', startOffset: 0, endOffset: 50, used: true }
+      { styleSheetId: 'a', startOffset: 50, endOffset: 80, used: true },
+      { styleSheetId: 'a', startOffset: 900, endOffset: 999, used: false },
+      { styleSheetId: 'untracked', startOffset: 0, endOffset: 50, used: true }
     ]
-  }, urls, 10)
-  assert.equal(summary.files, 2)
-  assert.equal(summary.entries[0].url, 'https://site/main.css')
+  }, [
+    { id: 'a', url: 'https://site/main.css', length: 400 },
+    { id: 'b', url: 'https://site/unused.css', length: 200 }
+  ], 10)
+
+  assert.equal(summary.files, 3)
+  assert.deepEqual(summary.entries.map((entry) => entry.url), [
+    'https://site/main.css', 'https://site/unused.css', '(untracked stylesheet)'
+  ])
+  // Overlapping used ranges count once, and the rest of the sheet is unused.
+  assert.equal(summary.entries[0].usedBytes, 100)
   assert.equal(summary.entries[0].unusedBytes, 300)
-  assert.equal(summary.entries[0].usedPercent, 25)
+  assert.equal(summary.entries[1].usedPercent, 0)
+  assert.equal(summary.entries[2].unusedBytes, 0)
+})
+
+test('live stylesheets keep the sheets the page can still produce text for', async () => {
+  const asked: string[] = []
+  const live = await liveStyleSheets(async (method, params) => {
+    assert.equal(method, 'CSS.getStyleSheetText')
+    const id = String((params ?? {}).styleSheetId)
+    asked.push(id)
+    if (id === 'stale') throw new Error('No style sheet with given id found')
+    return { text: 'a'.repeat(120) }
+  }, [
+    { id: 'live', url: 'https://site/main.css', length: 400 },
+    { id: 'stale', url: 'https://site/old.css', length: 900 }
+  ])
+  assert.deepEqual(asked, ['live', 'stale'])
+  assert.deepEqual(live, [{ id: 'live', url: 'https://site/main.css', length: 120 }])
 })
 
 test('cpu profile folds sample deltas into per-function self time', () => {
@@ -127,7 +162,25 @@ test('channels default to everything and start arms exactly what was asked for',
   const sent: string[] = []
   const started = await startProfiling(async (method) => { sent.push(method); return {} }, channelsFrom(['script', 'heap']))
   assert.deepEqual(started, ['script', 'heap'])
-  assert.deepEqual(sent, ['Profiler.enable', 'Profiler.startPreciseCoverage', 'HeapProfiler.enable', 'HeapProfiler.startSampling'])
+  assert.deepEqual(sent, [
+    'Profiler.enable',
+    'Profiler.startPreciseCoverage',
+    // Page events are what let the heap sampler be re-armed after a navigation.
+    'Page.enable',
+    'HeapProfiler.enable',
+    'HeapProfiler.startSampling'
+  ])
+})
+
+test('a heap stop addressed at a replaced isolate reports why instead of hanging', async () => {
+  const report = await stopProfiling(async (method) => {
+    // The command a dead sampler answers with nothing at all.
+    if (method === 'HeapProfiler.stopSampling') return new Promise(() => {})
+    return {}
+  }, channelsFrom(['heap']), { limit: 5, styleSheets: [], heapStopTimeoutMs: 20 })
+
+  assert.equal(report.heap, undefined)
+  assert.match(String(report.heapUnavailable), /isolate this tab has since replaced/)
 })
 
 test('stop folds only the armed channels and always reports metrics', async () => {
@@ -139,7 +192,7 @@ test('stop folds only the armed channels and always reports metrics', async () =
     }
     if (method === 'Performance.getMetrics') return { metrics: [{ name: 'Nodes', value: 4 }] }
     return {}
-  }, channelsFrom(['script']), { limit: 5, styleSheetUrls: {} })
+  }, channelsFrom(['script']), { limit: 5, styleSheets: [] })
 
   assert.equal(report.scriptCoverage?.usedBytes, 10)
   assert.equal(report.styleCoverage, undefined)
