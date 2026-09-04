@@ -18,30 +18,33 @@ export function WorkspaceSplit({
   chat,
   workspace,
   browserVisible = true,
-  chatCount = 1
+  chatMinimumWidth = CHAT_PANE_MIN_PX
 }: {
   chat: ReactNode
   workspace: ReactNode
   browserVisible?: boolean
-  chatCount?: number
+  chatMinimumWidth?: number
 }): JSX.Element {
   const [defaultChatWidth] = useState(
-    () => readChatPaneWidth(window.localStorage) ?? defaultChatPaneWidth(window.innerWidth)
+    () => Math.max(readChatPaneWidth(window.localStorage) ?? defaultChatPaneWidth(window.innerWidth), chatMinimumWidth)
   )
   const latestChatWidth = useRef(defaultChatWidth)
   const browserPanel = useRef<PanelImperativeHandle>(null)
   const chatPanel = useRef<PanelImperativeHandle>(null)
-  const previousCount = useRef(chatCount)
+  const previousMinimum = useRef(chatMinimumWidth)
+  const previousVisible = useRef(browserVisible)
+  const browserWidth = useRef<number | null>(null)
   useEffect(() => {
-    if (browserVisible) browserPanel.current?.expand()
-    else browserPanel.current?.collapse()
+    if (!browserVisible) browserPanel.current?.collapse()
+    else if (!previousVisible.current) browserPanel.current?.resize(browserWidth.current ?? '40%')
+    previousVisible.current = browserVisible
   }, [browserVisible])
   useEffect(() => {
-    if (chatCount > previousCount.current && browserVisible) {
-      chatPanel.current?.resize(Math.max(latestChatWidth.current, chatCount * 340))
+    if (chatMinimumWidth > previousMinimum.current && browserVisible) {
+      chatPanel.current?.resize(Math.max(latestChatWidth.current, chatMinimumWidth))
     }
-    previousCount.current = chatCount
-  }, [chatCount, browserVisible])
+    previousMinimum.current = chatMinimumWidth
+  }, [chatMinimumWidth, browserVisible])
 
   const rememberChatWidth = useCallback((size: PanelSize): void => {
     latestChatWidth.current = size.inPixels
@@ -86,10 +89,11 @@ export function WorkspaceSplit({
       <ResizablePanel
         id="workspace"
         panelRef={browserPanel}
-        collapsible
+        collapsible={!browserVisible}
         collapsedSize={0}
         defaultSize={browserVisible ? undefined : 0}
         disabled={!browserVisible}
+        onResize={(size) => { if (browserVisible && size.inPixels > 0) browserWidth.current = size.inPixels }}
         className="workspace-context-panel"
         minSize={WORKSPACE_PANE_MIN_PX}
         style={{ overflow: 'hidden' }}
