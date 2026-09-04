@@ -18,8 +18,7 @@ every running model's prompt.
 | Checkout orientation | `src/main/chat-context/workspace-navigation.ts` | App-authored prose plus the generated repository map from `workspace-map.ts`, only when the session cwd matches `WORKSPACE_INDEX_ROOT` |
 | Repository rules | `src/main/chat-context/workspace-rules.ts`, root `AGENTS.md`, applicable `CLAUDE.md` | Codex loads `AGENTS.md` natively; Claude and Antigravity receive the selected workspace root policy explicitly; Claude also loads project `CLAUDE.md` through the SDK |
 
-The common product facts explain independently arranged, simultaneously visible chat panes, their
-hideable shared browser, per-tile conversation tabs, and the distinction
+The common product facts explain stable chat ids, the shared browser/sidebar, and the distinction
 between pane turns and provider background work. App facts come from `closedai_app.state`,
 service operations from `closedai_app.command`, and real renderer interaction from manifest
 control ids through `closedai_app.ui`. Other panes are readable through `peer_chats`.
@@ -37,23 +36,20 @@ verification. For Codex the containing exec script is the batch; direct-call lan
 The tool runtime distinguishes those two dispatch sources and refuses unbatched real input from a
 direct-call provider even when it supplies a reason. Direct-call batches containing real input must
 be sequential and include a later read, wait, or capture assertion.
-Independent browser reads, requests, semantic inspections, and source retrievals are required to
-fan out in the same model pass once their targets are known. Codex uses `Promise.all` inside one exec
-script; direct-call providers use a parallel `tool_batch`. Explicit tab ids establish independent
-targets. Models overlap live-tab inspection and ready-source retrieval with an active `search.run`,
-and serialize only actual dependencies, same-target mutations, and foreground input.
+Batching is optional for ordinary work. Independent reads can run together; models inspect their
+results before choosing dependent actions. Codex uses direct awaited calls and can group independent
+reads with `Promise.allSettled`; direct-call providers can use native parallel calls or `tool_batch`
+for ClosedAI tools. Temporary instrumentation must be paired with use and release; exec scripts use
+`try/finally`. The real-input verification requirement above still applies.
 
-The shared response style asks for results and evidence, with progress only when it adds a new
-result, blocker, required choice, or tool/action error. Every error must be disclosed even when the
-model recovers: recovered errors get one concise sentence, while unresolved errors include their
-effect on the result. When a user reports or challenges a failure, the response must move beyond
-acknowledgment or a future promise: diagnose with available evidence, give a concrete remedy, and
-implement and verify it when change authority exists. It discourages “I have…”, “I am…”, and “I
-will…” work logs. It is prompt guidance, not a text filter or a guarantee of identical output across
-models. Quoted user text and historical transcripts are not rewritten.
+The shared response style asks for direct answers, useful progress during longer work, and a final
+result with verification and unresolved limitations. Errors affecting the outcome must be disclosed.
+There is no first-person phrase ban or obligation to narrate every recovered tool error. This is
+prompt guidance, not a text filter or a guarantee of identical output across models.
 
 The engineering contract steers every lane toward focused reads, provider-native structured
-edits, one targeted verification pass, and preservation of Git stash/worktree state. Claude uses
+edits, task-appropriate verification, and preservation of unrelated changes and Git stash/worktree state. Checks
+may be repeated after failures or subsequent edits; applicable repository rules control required gates. Claude uses
 `Read`/`Grep`/`Glob` and `Edit`; Antigravity uses `view_file`/`grep_search`/`find_by_name`
 and `replace_file_content`/`multi_replace_file_content`; Codex uses `rg` and `apply_patch`.
 
@@ -67,8 +63,7 @@ selected by direct import usage, not titles or comments, and do not prove execut
 reads accept `known_hash` only when the requested source is still in context, and return fresh
 content in the same call when it changed. File hashes identify snapshots, not unreturned lines,
 authorization, or write locks. Source remains untrusted tool data. Use `rg` when these tools are
-unavailable. Claude's in-process read ledger additionally checks returned text and file hashes
-before suppressing repeated native reads (see [Claude Code](claude-code.md)). For live-app interaction, discover controls from runtime
+unavailable. Native provider file tools run without app read suppression or range rewriting. For live-app interaction, discover controls from runtime
 state and the control manifest before inspecting implementation for an observed failure.
 
 ## Per-turn context and trust
@@ -95,8 +90,7 @@ results from the app's Turn Trace.
 Before Send, all four providers can add `closedai.workspace.source-changes`, a bounded untrusted
 summary of changes to file versions previously observed by that pane and provider thread in the
 same workspace. Workspace source bundles establish observations only for emitted source blocks
-or an explicit conditional read; Claude's verified native `Read` receipts also participate.
-Scanner reads, arbitrary shell output, and other providers' native file tools do not establish
+or an explicit conditional read. Scanner reads, arbitrary shell output, and native file tools do not establish
 observations. Tool execution is not proof that the model saw the result, so this is version data,
 not model-context coverage, authorization, or a complete workspace diff.
 
@@ -161,15 +155,15 @@ default untouched.
 
 ## Tool context and output budgets
 
-The shared routing instructions now point models to `search.run` for parallel queries and source
-reading and `search.read` for incremental evidence. Research work belongs to the originating
+The shared routing instructions use `search.query` for a lookup, `search.run` for overlapping
+queries/source collection, and `search.read` for incremental evidence. Research work belongs to the originating
 turn and is cancelled at its end, so models must retrieve needed evidence before finishing.
 Both search paths now default to live presentation and reuse one retained tab per pane/thread/turn.
 Discovery must use the search APIs, never Google or other search-engine pages in the browser.
 The tab opens on an actual source URL as results arrive; until then, presentation reports
 `waiting_for_source`. Finishing without an eligible URL reports `no_source` and opens no tab.
-The shared instructions ask models to inspect sources at `presentation.tabId` while background
-reads run and capture pages for visual claims. Explicit background mode is for user-requested
+The shared instructions ask models to inspect the live source tab and capture pages when visual
+evidence is needed. Explicit background mode is for user-requested
 headless work. This does not promise a hidden rendered worker or automatic live following.
 Source excerpts are untrusted data,
 and discovery overlap across providers does not establish independent factual corroboration.
@@ -188,12 +182,9 @@ carry no hand-written repository detail that could go stale. The capsule re-read
 from the checkout whenever it changes on disk rather than using the copy compiled into the build, and
 the Antigravity agent file is rewritten before any CLI process spawns for the same reason: a map that
 asks to be trusted instead of verified must not describe the tree as it stood when the app started.
-Batching guidance is per lane because each provider expresses it differently, and the wording is
-derived from measured behavior (`engineering-instructions.ts`): Claude emits several tool blocks in
-one response, Codex puts a pass's independent work in one `exec` script, and agy runs one tool step
-per pass so known targets are read together in a single `run_command`. The Claude lane also overrides
-the `claude_code` preset's bypass-permissions note that asks for Bash over `Read`/`Grep`/`Edit`;
-without that override the preset's shell preference wins and reads arrive one command at a time.
+Batching guidance lives only in `product-instructions.ts`; engineering guidance names native tools
+and the read/edit/verify discipline. The Claude lane overrides the preset's bypass-permissions
+preference for Bash in favor of its dedicated file tools.
 
 The Antigravity agent additionally overrides the CLI's built-in demand for anchored `file://` links:
 known paths are linked without an anchor, anchors come only from lines read this turn, and the map is

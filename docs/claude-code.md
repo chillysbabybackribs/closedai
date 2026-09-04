@@ -49,23 +49,11 @@ and transcript notes were reviewed against current source on 2026-09-03, without
   2026-09-03: without the option the `init` tool list had no Grep/Glob, which is why the app's
   panes had made 0 such calls in 2,018 tool calls; with it both appear and the model uses them.
   There is no MultiEdit tool in this CLI, so instructions name only Edit.
-- **Read ledger** (`claude-read-ledger.ts`, revised 2026-09-04): in-process SDK hooks on every
-  session. A native `Read` establishes coverage only when its returned text and explicit line
-  counts match a current UTF-8 file snapshot. `PostToolUse.updatedToolOutput` preserves that
-  response and adds `closedai_read` with canonical path, SHA-256 hash, and verified line range.
-  A fresh hash check before a repeat `Read` catches changes from other panes and external tools.
-  Matching covered ranges are denied; one contiguous missing range is read via `updatedInput`.
-  A version change invalidates old ranges; if it lands between narrowing and the response,
-  the receipt flags `previousRangesInvalidated`. Hashes are observations, not write locks.
-  Shell commands and searches remain repeatable because their delivered coverage is uncertain.
-  Missing/oversized/non-text files and unrecognized response shapes do not establish coverage.
-  A new turn (`UserPromptSubmit` and `beginTurn`), `PreCompact`, and `SubagentStop` clear the
-  relevant scope, including pending receipt writes. Subagents have separate coverage. Each
-  skip is a `claude.read-ledger` trace event; a skip count is not a measured model-pass saving.
-  Verified receipts also feed the shared source-version history for that active pane/thread.
-  A later Send may include changed file versions as bounded untrusted context. This history
-  survives a ledger reset in memory, but establishes no cross-turn source coverage; late
-  receipts from replaced sessions or cleared hook scopes are ignored.
+- **Native reads** (revised 2026-09-04): ClosedAI no longer installs read-ledger hooks. The SDK
+  handles `Read` directly, including repeated reads, without app denial, range rewriting, or
+  `closedai_read` output injection. Source-version observations now come only from the shared
+  workspace tools, consistently across providers. This removes app-side duplicate file reads and
+  coverage bookkeeping; it does not establish a measured change in model latency or token use.
 
 ## Process lifecycle (`claude-session.ts`, `claude-runtime.ts`)
 

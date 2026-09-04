@@ -142,8 +142,8 @@ only when the requested range is still available in context. A matching hash omi
 related files are still read independently. A changed hash returns fresh requested source in the
 same call. An outline hash alone does not establish any source coverage. No hash prevents a later
 edit, and multiple files do not form an atomic workspace snapshot. Native provider tools do not
-automatically pass through this source reader. Claude's native read receipts are documented in
-[Claude Code](claude-code.md); Codex exec scripts may suppress results, so the registry does not
+automatically pass through this source reader. Native reads are not intercepted or rewritten.
+Codex exec scripts may suppress results, so the registry does not
 equate tool execution with model-visible coverage. These mechanisms target fewer model passes;
 live task comparisons are needed to measure an improvement.
 
@@ -151,10 +151,10 @@ Source reads also attach internal version observations for the registry, strippe
 delivery. These contain workspace, canonical file path, and hash for source blocks actually
 included in a bundle (or its explicit unchanged primary read), never the entire scanned index.
 They do not assert that an exec script displayed the output. Successful calls record observations;
-failed or timed-out calls do not. Claude's verified native reads can record the same observations.
+failed or timed-out calls do not.
 The next Send compares recent observations and may include a compact untrusted source-change
 fragment across all providers. See [Model context](model-context.md) for scope, time, and output
-limits. Other providers' native reads are not automatically tracked.
+limits. Native provider reads are not automatically tracked.
 
 ### Application facts, browser targets, and batching
 
@@ -173,13 +173,12 @@ Every call name is resolved against the registry before the first one runs: a ba
 the app does not own — typically one of the model's own harness tools, which are not routable here —
 fails as a unit, names the tools a batch can run, and executes nothing.
 Each nested call retains validation, switches, timing, and telemetry. Set `include_result: false`
-for successful intermediate payloads; failures are always included. In Codex exec scripts use
-direct `await`/`Promise.all` instead of wrapping another batch tool.
-This is a model-facing requirement, not merely an available optimization: once browser targets are
-known, every independent page read, request, semantic inspection, and source retrieval belongs in
-the same model pass and runs in parallel. An active `search.run`, inspection of its live source tab,
-and reads of already-ready evidence should overlap. Serialize only genuine data dependencies,
-mutations sharing a target, and foreground input.
+for successful intermediate payloads; failures are always included. Any failed or skipped call
+makes the batch result an error, while successful results stay available. Inspect the per-call
+status and retry only the work that needs recovery; never replay successful mutations just because
+the batch failed. In Codex exec scripts use direct `await`/`Promise.allSettled` instead of wrapping
+another batch tool. Batching ordinary work is optional: group independent reads when useful,
+inspect results before dependent decisions, and serialize same-target mutations and foreground input.
 
 Real pointer and keyboard input is an escape hatch, not a normal navigation strategy. Every
 `closedai_app.ui` click/type/key action, semantic browser click/type/key/dismiss action, and raw
