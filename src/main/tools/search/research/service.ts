@@ -28,6 +28,7 @@ type Run = {
 /** The scheduler owns async work after the start tool returns; calls only observe/control it. */
 export class ResearchService {
   private readonly runs = new Map<string, Run>()
+  private readonly stoppedTurns = new Map<string, string>()
   private disposed = false
 
   constructor(private readonly router: SearchRouter, private readonly deps: ResearchDependencies) {}
@@ -36,6 +37,9 @@ export class ResearchService {
     if (this.disposed) throw new Error('Research service is stopped')
     const owner = this.deps.owner(context)
     if (!owner.turnId) throw new Error('Start research during an active turn')
+    if (this.stoppedTurns.get(owner.paneId) === `${owner.threadId}:${owner.turnId}`) {
+      throw new Error('This turn was stopped; it cannot start more research')
+    }
     this.validate(input.queries, input.urls)
     if ([...this.runs.values()].filter((run) => run.state === 'running').length >= 8) {
       throw new Error('Eight research runs are already active; extend an existing run or wait for it')
@@ -119,11 +123,13 @@ export class ResearchService {
     return this.read(id, context, after)
   }
 
-  cancelPane(paneId: string): void {
+  cancelPane(paneId: string, threadId?: string | null, turnId?: string | null): void {
+    if (threadId && turnId) this.stoppedTurns.set(paneId, `${threadId}:${turnId}`)
     for (const run of this.runs.values()) if (run.owner.paneId === paneId) this.finish(run, 'cancelled')
   }
 
   reconcile(paneId: string, threadId: string | null, turnId: string | null): void {
+    if (this.stoppedTurns.get(paneId) !== `${threadId}:${turnId}`) this.stoppedTurns.delete(paneId)
     for (const run of this.runs.values()) {
       if (run.owner.paneId === paneId && (run.owner.threadId !== threadId || run.owner.turnId !== turnId)) this.finish(run, 'cancelled')
     }
@@ -251,7 +257,8 @@ export class ResearchService {
     const snapshot: ResearchSnapshot = {
       runId: run.id, state: run.state, cursor: run.revision, pending: run.pending,
       completedQueries: run.completedQueries, totalQueries: run.totalQueries, sourceCount: run.sources.size,
-      omittedSources: 0, sources: [], errors: run.errors.slice(-12), presentation: run.presentation
+      omittedSources: 0, omittedErrors: Math.max(0, run.errors.length - 12),
+      sources: [], errors: run.errors.slice(-12), presentation: run.presentation
     }
     for (const source of candidates) {
       if (JSON.stringify(snapshot).length + JSON.stringify(source).length > 16_000) break

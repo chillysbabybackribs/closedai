@@ -192,6 +192,7 @@ in the same pane/thread until eviction or app restart. Run files are an app-owne
 under `<userData>/research-runs`, cleared on the next launch; eviction also removes their files.
 
 `search.read.results` returns source states and errors under a 16k-character target budget.
+At most twelve recent errors are returned; `omittedErrors` reports earlier errors beyond that bound.
 Keep records by source id; later deltas replace earlier states. Continue from the returned cursor,
 including when `omittedSources` is nonzero. `wait` returns on a revision change or a bounded wait
 (default ten seconds, maximum twenty); aborting that wait does not cancel the run. `source`

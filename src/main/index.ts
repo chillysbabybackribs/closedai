@@ -253,7 +253,10 @@ async function main(): Promise<void> {
       chatWorkspace, peerSettings, cursorBridge!, cursorStateDir, activeBrowserContext, screenshots, peerSettings.paneId
     )
   }, record.modelId, peerSettings, { provider: record.provider, catalogs })
-  }, undefined, workspaceSelector, chatTranscripts, (paneId) => researchService?.cancelPane(paneId))
+  }, undefined, workspaceSelector, chatTranscripts, (paneId) => {
+    const snapshot = chatService?.paneSnapshot(paneId)
+    researchService?.cancelPane(paneId, snapshot?.threadId, snapshot?.activeTurnId)
+  })
   chatService.on('event', (event: ChatWorkspaceEvent) => {
     if (event.type !== 'pane' || !['turn', 'replace'].includes(event.event.type)) return
     const snapshot = chatService?.paneSnapshot(event.paneId)

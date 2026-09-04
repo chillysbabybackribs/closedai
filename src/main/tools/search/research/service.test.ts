@@ -134,6 +134,16 @@ test('turn replacement stops a run and errors remain visible on otherwise comple
   assert.match(failures.read(failed.runId, context).sources[0].error!, /429/)
 })
 
+test('Stop rejects late research starts from that turn even before its provider acknowledges interruption', () => {
+  const service = new ResearchService(new SearchRouter([]), dependencies())
+  service.cancelPane('pane', 'thread', 'turn')
+  assert.throws(() => service.start({ ...input, queries: [], urls: [document.url] }, context), /turn was stopped/)
+  service.reconcile('pane', 'thread', 'next')
+  const run = service.start({ ...input, queries: [], urls: [document.url] }, { ...context, turnId: 'next' })
+  assert.equal(run.state, 'running')
+  service.dispose()
+})
+
 test('registry exposes provider-neutral run/read actions, rejects oversize arrays, and preserves source pagination', async (t) => {
   let service!: ResearchService
   const registry = new ToolRegistry([searchTools({

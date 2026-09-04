@@ -25,6 +25,7 @@ export type ResearchSnapshot = {
   totalQueries: number
   sourceCount: number
   omittedSources: number
+  omittedErrors: number
   sources: ResearchSource[]
   errors: Array<{ query: string; provider?: string; message: string }>
   presentation: { state: 'none' | 'opened' | 'failed'; tabId?: string; error?: string }
