@@ -89,11 +89,13 @@ export function WorkspaceSplit({
       <ResizablePanel
         id="workspace"
         panelRef={browserPanel}
-        collapsible={!browserVisible}
+        collapsible
         collapsedSize={0}
         defaultSize={browserVisible ? undefined : 0}
         disabled={!browserVisible}
-        onResize={(size) => { if (browserVisible && size.inPixels > 0) browserWidth.current = size.inPixels }}
+        onResize={(size) => {
+          if (browserVisible && previousVisible.current && size.inPixels > 0) browserWidth.current = size.inPixels
+        }}
         className="workspace-context-panel"
         minSize={WORKSPACE_PANE_MIN_PX}
         style={{ overflow: 'hidden' }}

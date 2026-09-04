@@ -97,11 +97,11 @@ export function ProjectMenu({
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
 
-      <Button type="button" variant="ghost" className="composer-strip-action" data-ui="composer.tools" onClick={onOpenTools}>
+      <Button type="button" variant="ghost" className="composer-strip-action" data-ui="composer.tools" aria-label="Tools" title="Tools" onClick={onOpenTools}>
         <Wrench size={16} aria-hidden="true" />
         <span>Tools</span>
       </Button>
-      <Button type="button" variant="ghost" className="composer-strip-action" data-ui="composer.trace" onClick={onOpenTrace}>
+      <Button type="button" variant="ghost" className="composer-strip-action" data-ui="composer.trace" aria-label="Turn trace" title="Turn trace" onClick={onOpenTrace}>
         <Activity size={16} aria-hidden="true" />
         <span>Turn trace</span>
       </Button>

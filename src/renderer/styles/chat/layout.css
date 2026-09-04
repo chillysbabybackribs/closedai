@@ -54,7 +54,7 @@
 
 .chat-layout-viewport { min-height: 0; min-width: 0; overflow: auto; }
 .chat-layout-canvas { position: relative; width: 100%; height: 100%; }
-.chat-layout-tile { position: absolute; display: flex; flex-direction: column; overflow: hidden; }
+.chat-layout-tile { position: absolute; display: flex; flex-direction: column; overflow: hidden; container-type: inline-size; }
 .chat-layout-header { flex: 0 0 30px; padding: 0 4px; }
 .chat-layout-tile[data-selected='true'] > .chat-layout-header { color: var(--chrome-fg-strong); background: var(--surface-raised); }
 .chat-layout-header .chat-layout-title { flex: 1; min-width: 0; justify-content: flex-start; cursor: grab; }
@@ -85,3 +85,26 @@
 .chat-layout-drop[data-edge='bottom'] { top: 50%; }
 .chat-layout-drop span { padding: 6px 10px; border-radius: 6px; background: var(--surface-chrome); font-size: 12px; }
 .chat-layout-error { padding: 5px 10px; color: #ffb4ab; font-size: 12px; }
+
+@container (max-width: 480px) {
+  .chat-layout-content .chat-zoom-surface { --chat-column-gutter: 12px; }
+  .chat-layout-content .composer-project-strip { width: calc(100% - 16px); padding-inline: 4px; }
+  .chat-layout-content .composer-project-trigger { min-width: 0; padding-inline: 5px; }
+  .chat-layout-content .composer-project-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chat-layout-content .composer-strip-action { flex-shrink: 0; padding-inline: 6px; }
+  .chat-layout-content .composer-strip-action > span,
+  .chat-layout-content .task-generation-copy { display: none; }
+  .chat-layout-content .prompt-composer-actions { gap: 4px; }
+  .chat-layout-content .prompt-composer-actions > div:first-child { flex: 1; min-width: 0; }
+  .chat-layout-content .prompt-composer-actions > div:last-child { flex-shrink: 0; gap: 4px; }
+  .chat-layout-content .prompt-model-controls { flex: 1; gap: 3px; }
+  .chat-layout-content .model-menu-trigger { min-width: 0; padding-inline: 3px; gap: 3px; }
+  .chat-layout-content .model-menu-trigger-context,
+  .chat-layout-content .model-menu-trigger-effort,
+  .chat-layout-content .context-meter-value { display: none; }
+  .chat-layout-content .context-meter { flex-shrink: 0; padding-inline: 3px; }
+  .chat-layout-content .prompt-composer-tool { width: 28px; min-width: 28px; padding-inline: 4px; }
+  .chat-layout-content .prompt-composer-send,
+  .chat-layout-content .prompt-composer-resume,
+  .chat-layout-content .prompt-composer-stop { width: 30px; height: 30px; }
+}
