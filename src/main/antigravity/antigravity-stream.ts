@@ -1,6 +1,7 @@
 import type { ChatTranscriptItem } from '../../shared/chat.js'
 import type { TranscriptOp, TurnEnd } from '../chat-transcript-ops.js'
-import { recordOf, stringOf } from '../claude/claude-tool-items.js'
+import { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
+import { promoteCaptureToScreenshot } from '../tool-transcript-shared.js'
 import { classifyAntigravityCache } from './antigravity-cache-diagnostics.js'
 import { antigravityToolItem, antigravityToolResult, resolveAntigravityTool, type AntigravityServerName } from './antigravity-tool-items.js'
 
@@ -145,12 +146,17 @@ export class AntigravityTurnTranslator {
     const resolved = resolveAntigravityTool(name, parameters, this.options.servers)
     if (!resolved.namespace) return null
     const callId = this.options.takeCallId(resolved.namespace, resolved.tool)
-    if (resolved.namespace !== 'closedai_ui' || resolved.tool !== 'capture' || !callId) return null
-    const action = resolved.parameters.action
-    const surface = action === 'app_window' || action === 'browser_page' || action === 'crop' ? action : null
-    const imageUrl = this.options.displayScreenshot(callId)?.dataUrl
-    if (!surface || !imageUrl) return null
-    return { type: 'screenshot', id: item.id, turnId: item.turnId, imageUrl, surface, caption: output.split('\n')[0]?.trim() ?? '' }
+    if (!callId) return null
+    return promoteCaptureToScreenshot({
+      itemId: item.id,
+      turnId: item.turnId,
+      failed,
+      namespace: resolved.namespace,
+      tool: resolved.tool,
+      action: resolved.parameters.action,
+      caption: output,
+      imageUrl: this.options.displayScreenshot(callId)?.dataUrl
+    })
   }
 
   private handleResult(result: Record<string, unknown>): AntigravityTranslation {

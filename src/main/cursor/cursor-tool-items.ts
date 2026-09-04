@@ -1,5 +1,6 @@
 import type { ChatFileChange, ChatTranscriptItem } from '../../shared/chat.js'
-import { jsonPreview, recordOf, stringOf } from '../claude/claude-tool-items.js'
+import { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
+import { closedAiToolItem, jsonPreview } from '../tool-transcript-shared.js'
 
 // Pure translations from ACP tool calls to the transcript vocabulary Codex items use, so the
 // renderer's activity rows and diffs need no provider branches. ACP already normalises what the
@@ -61,15 +62,7 @@ export function cursorToolItem(call: CursorToolCall, turnId: string | null, cwd:
   const { id, rawInput } = call
   const served = resolveCursorTool(rawInput)
   if (served) {
-    // The same `namespace · tool` label the other adapters give a ClosedAI tool call.
-    return {
-      type: 'tool',
-      id,
-      turnId,
-      label: `${served.namespace} · ${served.tool}`,
-      detail: Object.keys(served.args).length ? jsonPreview(served.args) : '',
-      status: 'inProgress'
-    }
+    return closedAiToolItem(id, turnId, served.namespace, served.tool, served.args)
   }
   if (call.kind === 'execute') {
     return {

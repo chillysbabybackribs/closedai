@@ -1,4 +1,5 @@
 import type { AppServerClient, AppServerRequest } from './app-server-client.js'
+import { recordOf } from './json-coerce.js'
 
 const SESSION_ACCEPT = { decision: 'acceptForSession' } as const
 const SESSION_APPROVED = { decision: 'approved_for_session' } as const
@@ -59,10 +60,4 @@ function autoUserInputAnswers(params: Record<string, unknown> | null): Record<st
     if (id) answers[id] = { answers: [USER_INPUT_UNAVAILABLE] }
   }
   return answers
-}
-
-function recordOf(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null
 }

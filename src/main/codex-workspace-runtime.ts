@@ -12,6 +12,7 @@ import { appServerConfigArgs } from './chat-context/app-server-config.js'
 import { loadChatModels } from './chat-model-catalog.js'
 import { loadCodexModelContextWindows } from './codex-model-context.js'
 import type { TraceScope } from './trace/trace-log.js'
+import { nonEmptyString, recordOf } from './json-coerce.js'
 
 export type RuntimeSessionState = {
   account: unknown
@@ -239,17 +240,7 @@ function messageScope(message: unknown): { threadId: string | null; turnId: stri
   const params = recordOf(record?.params)
   const turn = recordOf(params?.turn)
   return {
-    threadId: stringOf(params?.threadId),
-    turnId: stringOf(params?.turnId) ?? stringOf(turn?.id)
+    threadId: nonEmptyString(params?.threadId),
+    turnId: nonEmptyString(params?.turnId) ?? nonEmptyString(turn?.id)
   }
-}
-
-function recordOf(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null
-}
-
-function stringOf(value: unknown): string | null {
-  return typeof value === 'string' && value ? value : null
 }

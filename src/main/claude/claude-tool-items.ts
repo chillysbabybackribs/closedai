@@ -1,4 +1,6 @@
 import type { ChatFileChange, ChatTranscriptItem } from '../../shared/chat.js'
+import { recordOfOrEmpty, stringOf } from '../json-coerce.js'
+import { closedAiToolItem, jsonPreview, promoteCaptureToScreenshot } from '../tool-transcript-shared.js'
 
 // Pure translations from Claude Code tool calls to the transcript vocabulary Codex items use,
 // so the renderer's activity rows, diffs, and screenshots need no provider branches. Built-in
@@ -12,6 +14,9 @@ export type DisplayScreenshot = (callId: string) => { dataUrl: string } | null
 const PLAN_TOOLS = new Set(['TodoWrite', 'TaskCreate', 'TaskUpdate'])
 const MAX_OUTPUT_CHARS = 24_000
 const MAX_DETAIL_CHARS = 4_000
+
+export { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
+export { jsonPreview } from '../tool-transcript-shared.js'
 
 export function parseMcpToolName(name: string): { namespace: string; tool: string } | null {
   const match = /^mcp__(.+?)__(.+)$/.exec(name)
@@ -28,9 +33,7 @@ export function toolUseItem(use: ToolUse, turnId: string | null, cwd: string): C
   if (change) return { type: 'fileChange', id, turnId, status: 'inProgress', changes: [change] }
   if (PLAN_TOOLS.has(name)) return { type: 'plan', id, turnId, text: planText(name, input), streaming: false }
   const mcp = parseMcpToolName(name)
-  if (mcp) {
-    return { type: 'tool', id, turnId, label: `${mcp.namespace} · ${mcp.tool}`, detail: jsonPreview(input), status: 'inProgress' }
-  }
+  if (mcp) return closedAiToolItem(id, turnId, mcp.namespace, mcp.tool, input)
   const { label, detail } = builtinLabel(name, input)
   return { type: 'tool', id, turnId, label, detail, status: 'inProgress' }
 }
@@ -60,12 +63,18 @@ function captureScreenshot(
   displayScreenshot: DisplayScreenshot
 ): ChatTranscriptItem | null {
   if (result.isError || item.label !== 'closedai_ui · capture') return null
-  const action = recordOf(parseJson(item.detail)).action
-  const surface = action === 'app_window' || action === 'browser_page' || action === 'crop' ? action : null
+  const args = recordOfOrEmpty(parseJson(item.detail))
   const imageUrl = displayScreenshot(item.id)?.dataUrl ?? resultImageUrl(result.content)
-  if (!surface || !imageUrl) return null
-  const caption = resultText(result.content).split('\n')[0]?.trim() ?? ''
-  return { type: 'screenshot', id: item.id, turnId: item.turnId, imageUrl, surface, caption }
+  return promoteCaptureToScreenshot({
+    itemId: item.id,
+    turnId: item.turnId,
+    failed: result.isError,
+    namespace: 'closedai_ui',
+    tool: 'capture',
+    action: args.action,
+    caption: resultText(result.content),
+    imageUrl
+  })
 }
 
 function fileChange(name: string, input: Record<string, unknown>): ChatFileChange | null {
@@ -76,7 +85,7 @@ function fileChange(name: string, input: Record<string, unknown>): ChatFileChang
   if (name === 'Edit' || name === 'MultiEdit') {
     const path = stringOf(input.file_path)
     if (!path) return null
-    const edits = Array.isArray(input.edits) ? input.edits.map(recordOf) : [input]
+    const edits = Array.isArray(input.edits) ? input.edits.map(recordOfOrEmpty) : [input]
     const diff = edits.map(editDiff).filter(Boolean).join('\n@@\n')
     return { path, kind: 'update', diff }
   }
@@ -100,7 +109,7 @@ function prefixLines(prefix: string, text: string): string {
 function planText(name: string, input: Record<string, unknown>): string {
   if (name === 'TodoWrite' && Array.isArray(input.todos)) {
     return input.todos.map((raw) => {
-      const todo = recordOf(raw)
+      const todo = recordOfOrEmpty(raw)
       const mark = todo.status === 'completed' ? 'x' : todo.status === 'in_progress' ? '~' : ' '
       return `- [${mark}] ${stringOf(todo.content)}`
     }).join('\n')
@@ -129,7 +138,7 @@ export function resultText(content: unknown): string {
   if (typeof content === 'string') return content
   if (!Array.isArray(content)) return ''
   return content.flatMap((entry) => {
-    const block = recordOf(entry)
+    const block = recordOfOrEmpty(entry)
     return block.type === 'text' && typeof block.text === 'string' ? [block.text] : []
   }).join('\n')
 }
@@ -138,8 +147,8 @@ export function resultText(content: unknown): string {
 export function resultImageUrl(content: unknown): string | null {
   if (!Array.isArray(content)) return null
   for (const entry of content) {
-    const block = recordOf(entry)
-    const source = recordOf(block.source)
+    const block = recordOfOrEmpty(entry)
+    const source = recordOfOrEmpty(block.source)
     if (block.type === 'image' && source.type === 'base64' && typeof source.data === 'string') {
       return `data:${stringOf(source.media_type) || 'image/png'};base64,${source.data}`
     }
@@ -152,16 +161,6 @@ function exitCodeIn(text: string): number | null {
   return match ? Number(match[1]) : null
 }
 
-export function jsonPreview(value: unknown): string {
-  if (value === undefined || value === null) return ''
-  if (typeof value === 'object' && Object.keys(value as object).length === 0) return ''
-  try {
-    return clip(JSON.stringify(value, null, 2), MAX_DETAIL_CHARS)
-  } catch {
-    return String(value)
-  }
-}
-
 function parseJson(text: string): unknown {
   try {
     return JSON.parse(text)
@@ -172,14 +171,4 @@ function parseJson(text: string): unknown {
 
 function clip(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max)}…` : text
-}
-
-export function recordOf(value: unknown): Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {}
-}
-
-export function stringOf(value: unknown): string {
-  return typeof value === 'string' ? value : ''
 }

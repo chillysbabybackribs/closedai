@@ -1,6 +1,7 @@
 import type { ChatTranscriptItem } from '../../shared/chat.js'
 import type { TranscriptOp, TurnEnd } from '../chat-transcript-ops.js'
-import { recordOf, stringOf } from '../claude/claude-tool-items.js'
+import { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
+import { promoteCaptureToScreenshot } from '../tool-transcript-shared.js'
 import {
   cursorStatus, cursorToolContent, cursorToolItem, cursorToolResult, resolveCursorTool,
   type ResolvedCursorTool
@@ -174,21 +175,19 @@ export class CursorTurnTranslator {
   ): ChatTranscriptItem | null {
     if (status === 'failed' || item.type !== 'tool') return null
     const served = this.served.get(item.id)
-    if (!served || served.namespace !== 'closedai_ui' || served.tool !== 'capture') return null
+    if (!served) return null
     const callId = this.options.takeCallId?.(served.namespace, served.tool)
     if (!callId) return null
-    const action = served.args.action
-    const surface = action === 'app_window' || action === 'browser_page' || action === 'crop' ? action : null
-    const imageUrl = this.options.displayScreenshot?.(callId)?.dataUrl
-    if (!surface || !imageUrl) return null
-    return {
-      type: 'screenshot',
-      id: item.id,
+    return promoteCaptureToScreenshot({
+      itemId: item.id,
       turnId: item.turnId,
-      imageUrl,
-      surface,
-      caption: output.split('\n')[0]?.trim() ?? ''
-    }
+      failed: status === 'failed',
+      namespace: served.namespace,
+      tool: served.tool,
+      action: served.args.action,
+      caption: output,
+      imageUrl: this.options.displayScreenshot?.(callId)?.dataUrl
+    })
   }
 
   private relabel(

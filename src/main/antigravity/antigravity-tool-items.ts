@@ -1,5 +1,6 @@
 import type { ChatFileChange, ChatTranscriptItem } from '../../shared/chat.js'
-import { jsonPreview, recordOf, stringOf } from '../claude/claude-tool-items.js'
+import { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
+import { closedAiToolItem, jsonPreview } from '../tool-transcript-shared.js'
 
 // Pure translations from `agy` tool steps to the transcript vocabulary Codex items use, so the
 // renderer's activity rows and diffs need no provider branches. Native tools map by name and
@@ -37,7 +38,7 @@ export function antigravityToolItem(call: AntigravityToolCall, turnId: string | 
   const resolved = resolveAntigravityTool(call.name, call.parameters, servers)
   const input = resolved.parameters
   if (resolved.namespace) {
-    return { type: 'tool', id, turnId, label: `${resolved.namespace} · ${resolved.tool}`, detail: jsonPreview(input), status: 'inProgress' }
+    return closedAiToolItem(id, turnId, resolved.namespace, resolved.tool, input)
   }
   const name = resolved.tool
   if (name === 'run_command') {

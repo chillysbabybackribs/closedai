@@ -1,5 +1,7 @@
 import type { WebContents } from 'electron'
 
+import { nullableString, recordOf } from '../json-coerce.js'
+
 export type CdpEventRecord = {
   cursor: number
   at: number
@@ -192,13 +194,13 @@ export class CdpSession {
       return
     }
     if (method === 'Target.attachToTarget') {
-      const targetId = stringOf(params.targetId)
-      const sessionId = stringOf(record?.sessionId)
+      const targetId = nullableString(params.targetId)
+      const sessionId = nullableString(record?.sessionId)
       if (targetId && sessionId) this.setTargetSession(targetId, sessionId, false)
       return
     }
     if (method === 'Target.detachFromTarget') {
-      const sessionId = stringOf(params.sessionId)
+      const sessionId = nullableString(params.sessionId)
       if (sessionId) this.detachTargetSession(sessionId)
     }
   }
@@ -211,18 +213,18 @@ export class CdpSession {
       return
     }
     if (method === 'Target.targetDestroyed') {
-      const targetId = stringOf(record.targetId)
+      const targetId = nullableString(record.targetId)
       if (targetId) this.removeTarget(targetId)
       return
     }
     if (method === 'Target.attachedToTarget') {
-      const sessionId = stringOf(record.sessionId)
+      const sessionId = nullableString(record.sessionId)
       this.upsertTarget(record.targetInfo, sessionId, Boolean(record.waitingForDebugger))
       return
     }
     if (method === 'Target.detachedFromTarget') {
-      const sessionId = stringOf(record.sessionId)
-      const targetId = stringOf(record.targetId)
+      const sessionId = nullableString(record.sessionId)
+      const targetId = nullableString(record.targetId)
       if (sessionId) this.detachTargetSession(sessionId)
       else if (targetId) this.setTargetSession(targetId, null, false)
     }
@@ -230,20 +232,20 @@ export class CdpSession {
 
   private upsertTarget(value: unknown, sessionId?: string | null, waitingForDebugger?: boolean): void {
     const info = recordOf(value)
-    const targetId = stringOf(info?.targetId)
+    const targetId = nullableString(info?.targetId)
     if (!targetId) return
     const previous = this.targets.get(targetId)
     const nextSession = sessionId === undefined ? previous?.sessionId ?? null : sessionId
     if (previous?.sessionId && previous.sessionId !== nextSession) this.targetIdBySession.delete(previous.sessionId)
     const target: CdpTargetRecord = {
       targetId,
-      type: stringOf(info?.type) ?? previous?.type ?? 'other',
-      title: stringOf(info?.title) ?? previous?.title ?? '',
-      url: stringOf(info?.url) ?? previous?.url ?? '',
+      type: nullableString(info?.type) ?? previous?.type ?? 'other',
+      title: nullableString(info?.title) ?? previous?.title ?? '',
+      url: nullableString(info?.url) ?? previous?.url ?? '',
       attached: typeof info?.attached === 'boolean' ? info.attached : nextSession !== null,
       sessionId: nextSession,
-      openerId: stringOf(info?.openerId) ?? previous?.openerId ?? null,
-      subtype: stringOf(info?.subtype) ?? previous?.subtype ?? null,
+      openerId: nullableString(info?.openerId) ?? previous?.openerId ?? null,
+      subtype: nullableString(info?.subtype) ?? previous?.subtype ?? null,
       waitingForDebugger: waitingForDebugger ?? previous?.waitingForDebugger ?? false
     }
     this.targets.set(targetId, target)
@@ -277,14 +279,6 @@ export class CdpSession {
       this.targets.set(targetId, { ...target, attached: false, sessionId: null, waitingForDebugger: false })
     }
   }
-}
-
-function recordOf(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
-}
-
-function stringOf(value: unknown): string | null {
-  return typeof value === 'string' ? value : null
 }
 
 function boundedParams(params: unknown): unknown {

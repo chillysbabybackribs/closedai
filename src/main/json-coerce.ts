@@ -16,3 +16,8 @@ export function stringOf(value: unknown): string {
 export function nullableString(value: unknown): string | null {
   return typeof value === 'string' ? value : null
 }
+
+export function nonEmptyString(value: unknown): string | null {
+  const text = nullableString(value)
+  return text?.length ? text : null
+}

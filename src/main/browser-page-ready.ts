@@ -5,6 +5,8 @@
 //
 // Pure over a minimal script-runner interface so tests can drive it with a fake.
 
+import { recordOf, stringOf } from './json-coerce.js'
+
 export type ScriptRunner = {
   executeJavaScript(code: string, userGesture?: boolean): Promise<unknown>
   isDestroyed(): boolean
@@ -214,14 +216,6 @@ function hasCondition(readiness: PageReadiness): boolean {
 /** Collapse runs of blank lines and trailing spaces; innerText of real pages is mostly whitespace. */
 function tidyText(text: string): string {
   return text.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
-}
-
-function recordOf(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
-}
-
-function stringOf(value: unknown): string {
-  return typeof value === 'string' ? value : ''
 }
 
 function defaultSleep(ms: number): Promise<void> {
