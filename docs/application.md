@@ -38,6 +38,15 @@ fails to come up puts the pane back. The composer is usable while a provider is 
 picker lists the cached catalog and a send waits for the provider itself. Waking a pane never
 reconnects a provider that is already ready.
 
+Codex model entries are supplemented with `max_context_window` from the installed CLI's
+`models_cache.json`, because app-server `model/list` does not expose context sizes. New and resumed
+threads receive that model-specific maximum through `model_context_window`; changing models on an
+existing idle thread reapplies the matching override before saving the selection. The model picker
+shows the same maximum beside each Codex model. If the CLI cache is absent or malformed, the model
+stays available without a context label and Codex keeps its own default. The live context meter can
+report a slightly smaller effective window because Codex reserves headroom according to its model
+catalog.
+
 The project menu below the composer offers a directory picker, recent projects, and “Don’t work
 in a project” (uses the home directory). A project switch is refused while any pane has an active
 turn. `index.ts` saves the departing project's open chat ids and restores the destination's,

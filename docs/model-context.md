@@ -126,6 +126,11 @@ delete archived history, or rotate provider sessions. Display paging is also ind
 model context. The new first-text measurements and safe trial procedure are in [Tools](tools.md);
 do not infer a response-time improvement from fewer displayed items or context tokens alone.
 
+ClosedAI starts and resumes Codex threads with the selected model's maximum active-context size
+from the installed CLI's model cache. That value is also shown in the model picker. This is a
+runtime configuration limit, not extra prompt content; a missing cache value leaves Codex's native
+default untouched.
+
 ## Tool context and output budgets
 
 The registry supplies provider-neutral descriptions and schemas. Codex gets dynamic tool
