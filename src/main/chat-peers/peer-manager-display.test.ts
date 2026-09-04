@@ -67,7 +67,7 @@ test('streaming pane events update the drawer without cloning the transcript', (
   assert.equal(surface.snapshotCalls, before + 1)
 })
 
-test('renderer replacement and page requests are bounded while peer reads keep history', () => {
+test('renderer replacement and page requests are bounded while peer reads keep history', async () => {
   const { manager, surfaces } = harness()
   const surface = surfaces[0]!
   surface.state.items = Array.from({ length: 500 }, (_, i) => ({ type: 'user', id: `u${i}`, turnId: null, text: `message ${i}` }))
@@ -80,8 +80,8 @@ test('renderer replacement and page requests are bounded while peer reads keep h
   assert.equal(replacement.event.snapshot.items[0]?.id, 'u300')
   assert.equal(manager.snapshot({ limit: 200 }).selected.items.length, 200)
   assert.equal(manager.paneSnapshot('pane-a')!.items.length, 500)
-  assert.equal(manager.readHistoryPage('pane-a', null, 'u300').items[0]?.id, 'u100')
-  assert.throws(() => manager.readHistoryPage('pane-a', 'another-thread', 'u300'), /chat changed/)
+  assert.equal((await manager.readHistoryPage('pane-a', null, 'u300')).items[0]?.id, 'u100')
+  await assert.rejects(() => manager.readHistoryPage('pane-a', 'another-thread', 'u300'), /chat changed/)
   manager.stop()
 })
 

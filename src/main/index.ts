@@ -21,6 +21,7 @@ import { ChatHub } from './chat-hub.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { rendererChatForwarder } from './chat-peers/peer-events.js'
 import { ChatStore } from './chat-store/chat-store.js'
+import { ChatTranscriptCache } from './chat-store/chat-transcript-cache.js'
 import { migrateChatPeersIntoStore } from './chat-store/chat-store-migration.js'
 import { ProviderCatalogCache } from './chat-context/provider-catalog-cache.js'
 import { stopAllProcessGroups } from './process-tree.js'
@@ -73,6 +74,7 @@ let browserHistory: BrowserHistoryStore | null = null
 let browserTabSession: BrowserTabSessionStore | null = null
 let settings: AppSettingsStore | null = null
 let chatStore: ChatStore | null = null
+let chatTranscripts: ChatTranscriptCache | null = null
 let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
 let codexRuntime: CodexWorkspaceRuntime | null = null
@@ -222,6 +224,8 @@ async function main(): Promise<void> {
   // providers fill the picker from the last catalog seen instead of each starting a process.
   const catalogCache = await ProviderCatalogCache.open(join(userData(), 'provider-catalogs.json'))
   providerCatalogs = catalogCache
+  // What each chat last looked like, so opening one paints before its provider has replayed it.
+  chatTranscripts = new ChatTranscriptCache(join(userData(), 'chat-transcripts'))
   chatService = new ChatPeerManager(settings, chatStore, (peerSettings, record) => {
     const catalogs = catalogCache.forWorkspace(chatWorkspace)
     if (!codexRuntime || codexRuntime.cwd !== chatWorkspace) {
@@ -242,7 +246,7 @@ async function main(): Promise<void> {
       chatWorkspace, peerSettings, cursorBridge!, cursorStateDir, activeBrowserContext, screenshots, peerSettings.paneId
     )
   }, record.modelId, peerSettings, { provider: record.provider, catalogs })
-  }, undefined, workspaceSelector)
+  }, undefined, workspaceSelector, chatTranscripts)
   registerIpc()
   // The one-shot cookie import runs before the first tab loads, so a restored or home page
   // arrives already signed in rather than racing the import.
@@ -395,6 +399,7 @@ app.on('before-quit', (event) => {
     browserTabSession?.close(),
     settings?.set({}),
     chatStore?.flush(),
+    chatTranscripts?.flush(),
     providerCatalogs?.flush(),
     flushSession,
     // Leaves the user's agy MCP config without dead localhost endpoints.
