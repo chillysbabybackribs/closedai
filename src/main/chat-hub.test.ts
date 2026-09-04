@@ -421,3 +421,25 @@ test('compactConversation routes to the active provider when supported', async (
   await hub.selectModel('gpt-5.6-sol')
   await assert.rejects(hub.compactConversation(), /does not support compaction/)
 })
+
+test('a pane names its saved model while the provider is still starting', () => {
+  const catalogs = new WorkspaceCatalogs()
+  catalogs.remember('claude', [model('claude', 'claude:opus[1m]')])
+  const { hub, claude, settings } = build('claude:opus[1m]', catalogs)
+  // How a chat opened from the drawer looks before its CLI is up: nothing read, nothing selected.
+  claude.models = []
+  claude.effort = null
+  settings.saved.chatReasoningEffort = 'high'
+
+  const starting = hub.snapshot()
+  assert.equal(starting.connection.state, 'starting')
+  assert.equal(starting.selectedModel, 'claude:opus[1m]')
+  assert.equal(starting.selectedReasoningEffort, 'high')
+  assert.ok(starting.models.some((entry) => entry.id === 'claude:opus[1m]'))
+
+  // Once the provider answers for itself, its own selection is the one the pane shows.
+  claude.models = [model('claude', 'claude:sonnet')]
+  claude.effort = 'medium'
+  assert.equal(hub.snapshot().selectedModel, 'claude:sonnet')
+  assert.equal(hub.snapshot().selectedReasoningEffort, 'medium')
+})

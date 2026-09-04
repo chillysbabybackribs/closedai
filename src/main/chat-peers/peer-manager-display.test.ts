@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatEvent } from '../../shared/chat.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
+import { ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
 import { chatRecord, harness, harnessWith } from './peer-manager-harness.js'
 import { rendererChatForwarder } from './peer-events.js'
 
@@ -131,4 +132,55 @@ test('a persisted pane that has not been woken still shows its saved title and t
   assert.equal(peer!.threadId, 'claude:s1')
   assert.equal(peer!.updatedAt, 1234)
   assert.equal(peer!.attached, true)
+})
+
+test('a chat opens on its saved view and hands over to the provider replay', async () => {
+  const transcripts = ChatTranscriptCache.inMemory([['pane-b', {
+    version: 1,
+    threadId: 'thread-b',
+    threadName: 'Saved chat',
+    items: [{ type: 'user', id: 'saved', turnId: null, text: 'Earlier question' }],
+    hasEarlier: true,
+    contextUsage: { usedTokens: 2_000, contextWindow: 10_000, percent: 20 },
+    updatedAt: 1
+  }]])
+  const { manager, surfaces } = harnessWith([
+    chatRecord('pane-a', 'gpt'),
+    chatRecord('pane-b', 'gpt', { codexThreadId: 'thread-b', threadId: 'thread-b', title: 'Saved chat' })
+  ], 'pane-a', undefined, ['pane-a'], transcripts)
+
+  await manager.openChat('pane-b')
+  const opened = manager.snapshot({ limit: 200 }).selected
+  assert.equal(opened.items[0]?.id, 'saved')
+  assert.equal(opened.threadId, 'thread-b')
+  assert.equal(opened.threadName, 'Saved chat')
+  assert.equal(opened.contextUsage?.percent, 20)
+  assert.equal(opened.history?.hasEarlier, true)
+
+  // The provider's own transcript wins the moment it lands, and is saved for the next open.
+  const surface = surfaces.at(-1)!
+  surface.state.threadId = 'thread-b'
+  surface.state.items = [{ type: 'user', id: 'live', turnId: 't1', text: 'Earlier question' }]
+  surface.emit('event', { type: 'replace', snapshot: surface.snapshot() } satisfies ChatEvent)
+  assert.equal(manager.snapshot({ limit: 200 }).selected.items[0]?.id, 'live')
+  assert.equal(transcripts.peek('pane-b')?.items[0]?.id, 'live')
+})
+
+test('a saved view is left alone once the chat no longer holds that thread', async () => {
+  const transcripts = ChatTranscriptCache.inMemory([['pane-b', {
+    version: 1,
+    threadId: 'thread-old',
+    threadName: 'Old chat',
+    items: [{ type: 'user', id: 'saved', turnId: null, text: 'Earlier question' }],
+    hasEarlier: false,
+    contextUsage: null,
+    updatedAt: 1
+  }]])
+  const { manager } = harnessWith([
+    chatRecord('pane-a', 'gpt'),
+    chatRecord('pane-b', 'gpt', { codexThreadId: 'thread-b', threadId: 'thread-b' })
+  ], 'pane-a', undefined, ['pane-a'], transcripts)
+
+  await manager.openChat('pane-b')
+  assert.deepEqual(manager.snapshot({ limit: 200 }).selected.items, [])
 })

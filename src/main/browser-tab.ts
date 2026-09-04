@@ -21,6 +21,7 @@ import {
   PageBackgroundMemory,
   pageBackgroundColor
 } from './browser-page-background.js'
+import { browserOccludedBounds } from './browser-surface-visibility.js'
 export { HOME_URL, normalizeUrl, PARTITION } from './browser-url.js'
 
 // One tab = one WebContentsView plus its navigation state. BrowserService owns the collection
@@ -141,6 +142,14 @@ export class BrowserTab extends EventEmitter {
   applyBounds(bounds: BrowserBounds, show: boolean): void {
     this.bounds = sanitizeBounds(bounds)
     this.visible = show && this.bounds.width > 1 && this.bounds.height > 1
+    if (!show && bounds.occluded === true && this.bounds.width > 1 && this.bounds.height > 1) {
+      // Keep the loaded native surface visible and full-sized so Chromium continues producing
+      // frames. The renderer's freeze still covers the browser box while this view sits beyond
+      // it; restoring the real bounds therefore avoids the setVisible(false/true) blanking bug.
+      this.view.setBounds(browserOccludedBounds(this.bounds))
+      this.view.setVisible(true)
+      return
+    }
     this.view.setBounds(this.keepRealSurface() ? this.bounds : hiddenBounds)
     this.view.setVisible(this.visible)
   }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { browserSurfaceVisibility } from './browser-surface-visibility.js'
+import { browserOccludedBounds, browserSurfaceVisibility } from './browser-surface-visibility.js'
 
 const rect = { x: 20, y: 40, width: 800, height: 600 }
 
@@ -20,4 +20,10 @@ test('a hidden workspace pane remains fully hidden regardless of modal state', (
     browserSurfaceVisibility({ ...rect, visible: false, occluded: true }),
     { paneVisible: false, pageVisible: false }
   )
+})
+
+test('overlay occlusion keeps the compositor viewport intact outside the browser box', () => {
+  const occluded = browserOccludedBounds(rect)
+  assert.deepEqual(occluded, { x: 884, y: 40, width: 800, height: 600 })
+  assert.ok(occluded.x > rect.x + rect.width)
 })
