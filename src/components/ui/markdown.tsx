@@ -152,10 +152,16 @@ function MarkdownComponent({ children, id, className, components }: MarkdownProp
   const [blocks, setBlocks] = useState<string[]>(() => parseMarkdownIntoBlocks(children))
   const lastUpdateRef = useRef<number>(Date.now())
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Which text `blocks` was lexed from. Mounting already lexed it, so a settled message must not
+  // lex a second time: opening a chat mounts a hundred of them at once, and the debounce made
+  // every one fire in the same later frame — one lex per message plus a commit, for no new text.
+  const lexedRef = useRef<string>(children)
 
   useEffect(() => {
+    if (lexedRef.current === children) return
     const run = () => {
       lastUpdateRef.current = Date.now()
+      lexedRef.current = children
       setBlocks(parseMarkdownIntoBlocks(children))
     }
     const elapsed = Date.now() - lastUpdateRef.current

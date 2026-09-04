@@ -73,6 +73,18 @@ function App(): JSX.Element {
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
   }, [changeChatZoom, toggleHistory])
 
+  // Syntax grammars cost the same whenever they are compiled; paid here they are off every
+  // chat switch, because the first transcript that holds a code block already finds them ready.
+  useEffect(() => {
+    const warm = (): void => { void import('../components/ui/code-highlighter.js').then((module) => module.warmCodeHighlighter()) }
+    const idle = window.requestIdleCallback?.(warm, { timeout: 4000 })
+    const timer = idle === undefined ? window.setTimeout(warm, 1500) : null
+    return () => {
+      if (idle !== undefined) window.cancelIdleCallback?.(idle)
+      if (timer !== null) window.clearTimeout(timer)
+    }
+  }, [])
+
   return (
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">

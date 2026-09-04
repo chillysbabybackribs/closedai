@@ -60,6 +60,15 @@ const LANGUAGE_ALIASES: Record<string, string> = {
 const MAX_HIGHLIGHT_CACHE = 200
 const highlightCache = new Map<string, string>()
 
+/**
+ * Compile the grammars before a transcript needs them. Twelve TextMate grammars on the
+ * JavaScript regex engine cost several hundred milliseconds of main-thread work; paid lazily,
+ * that lands on the first code block of the first chat opened — squarely in a chat switch.
+ */
+export function warmCodeHighlighter(): Promise<unknown> {
+  return highlighterPromise
+}
+
 export async function highlightCode(code: string, language: string, theme: string): Promise<string> {
   const resolvedTheme = theme === 'github-dark-default' ? theme : 'github-dark-default'
   const resolvedLang = LANGUAGE_ALIASES[language.toLowerCase()] ?? 'plaintext'

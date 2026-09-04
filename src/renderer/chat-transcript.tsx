@@ -64,9 +64,9 @@ export const ChatTranscript = memo(function ChatTranscript({
       // A reader parked above the latest message keeps their place; at the end the scroller's
       // own resize handling pins the view, and prepending there would drop it out of follow.
       if (scrollable.end) prepareForPrepend()
-      setBudget((current) => Math.min(INITIAL_VISIBLE_ROWS, current + REVEAL_ROW_COUNT))
+      setBudget((current) => Math.min(INITIAL_VISIBLE_ROWS, current + REVEAL_STEP_ROWS))
     }
-    const idle = window.requestIdleCallback?.(grow, { timeout: 500 })
+    const idle = window.requestIdleCallback?.(grow, { timeout: 200 })
     const timer = idle === undefined ? window.setTimeout(grow, 50) : null
     return () => {
       if (idle !== undefined) window.cancelIdleCallback?.(idle)
@@ -171,6 +171,13 @@ export const ChatTranscript = memo(function ChatTranscript({
 const INITIAL_VISIBLE_ROWS = 120
 const MAX_MOUNTED_ROWS = 160
 const REVEAL_ROW_COUNT = 80
+/**
+ * Rows added per idle frame while a chat fills in behind its first paint. Mounting is the
+ * expensive part — markdown, code blocks, one collapsible per tool group — and a mount is one
+ * indivisible commit, so the step size is the length of the frame it blocks. Small steps take
+ * more frames to reach the same window and keep every one of them inside a frame budget.
+ */
+const REVEAL_STEP_ROWS = 8
 /** Rows mounted before the first paint of a chat: about a screenful, whatever the history holds. */
 const FIRST_PAINT_ROWS = 24
 

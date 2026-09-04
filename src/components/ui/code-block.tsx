@@ -17,6 +17,9 @@ function CodeBlock({ children, className, ...props }: CodeBlockProps) {
   )
 }
 
+/** Longest code block still worth highlighting; beyond it the plain fallback renders. */
+const MAX_HIGHLIGHT_CHARS = 20_000
+
 export type CodeBlockCodeProps = HTMLProps<HTMLDivElement> & {
   code: string
   language?: string
@@ -29,6 +32,12 @@ function CodeBlockCode({ code, language = 'plaintext', theme = 'github-dark-defa
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    // Grammar matching is linear in the source, on the UI thread. A pasted file or a long tool
+    // output would hold a frame for as long as it takes; past this it stays plain text.
+    if (code.length > MAX_HIGHLIGHT_CHARS) {
+      setHighlightedHtml(null)
+      return
+    }
     let active = true
     const run = () => {
       lastUpdateRef.current = Date.now()
