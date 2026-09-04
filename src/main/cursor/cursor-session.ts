@@ -204,8 +204,9 @@ export class CursorSession {
     const translator = new CursorTurnTranslator({ turnId: null, seed: sessionId, cwd: this.deps.cwd })
     this.replaying = { sessionId, translator, items }
     try {
-      await client.loadSession(sessionId, this.deps.cwd, this.deps.mcpServers())
+      const setup = await client.loadSession(sessionId, this.deps.cwd, this.deps.mcpServers())
       this.loadedSessionId = sessionId
+      this.setup = setup
       for (const op of translator.finish()) if (op.type === 'item') items.set(op.item.id, op.item)
     } finally {
       this.replaying = null

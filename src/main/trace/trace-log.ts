@@ -134,14 +134,21 @@ export function formatDuration(ms: number): string {
 
 export function serialize(value: unknown): { text: string; truncated: boolean } {
   let text: string
+  let truncated = false
   if (typeof value === 'string') text = value
   else {
     try {
-      text = JSON.stringify(value, null, 2) ?? String(value)
+      // Clip large strings before encoding them. Serializing multi-megabyte image/command
+      // payloads only to discard them afterwards blocks the same event loop as model IO.
+      text = JSON.stringify(value, (_key, item: unknown) => {
+        if (typeof item !== 'string' || item.length <= MAX_DETAIL_CHARS) return item
+        truncated = true
+        return item.slice(0, MAX_DETAIL_CHARS)
+      }, 2) ?? String(value)
     } catch {
       text = String(value)
     }
   }
-  if (text.length <= MAX_DETAIL_CHARS) return { text, truncated: false }
+  if (text.length <= MAX_DETAIL_CHARS && !truncated) return { text, truncated: false }
   return { text: text.slice(0, MAX_DETAIL_CHARS) + TRUNCATION_MARK, truncated: true }
 }

@@ -27,7 +27,7 @@ export type ContextCompactorDeps = {
 const COMPACT_METHOD = 'thread/compact/start'
 /** Compaction is one model call; well past this it is safer to unblock sends than wait. */
 const COMPACTION_TIMEOUT_MS = 90_000
-const TOKEN_COMPACTION_IDLE_MS = 15_000
+const COMPACTION_IDLE_MS = 15_000
 const TOKEN_COMPACTION_COOLDOWN_MS = 5 * 60_000
 
 /** Shape of the app-server's `thread/tokenUsage/updated` payload. */
@@ -127,14 +127,12 @@ export class ContextCompactor {
     this.cancelScheduled()
     const reason = this.trigger()
     if (!reason) return
-    if (reason === 'percent') {
-      void this.maybeStart()
-      return
-    }
+    // Even window pressure yields to an immediate follow-up. Starting another model turn
+    // synchronously here could block the user's next send for the full compaction duration.
     this.scheduled = setTimeout(() => {
       this.scheduled = null
       void this.maybeStart()
-    }, this.deps.idleDelayMs ?? TOKEN_COMPACTION_IDLE_MS)
+    }, this.deps.idleDelayMs ?? COMPACTION_IDLE_MS)
     this.scheduled.unref?.()
   }
 

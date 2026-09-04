@@ -38,6 +38,7 @@ export class ResponseLatency {
     const dispatched = (input.label === 'codex.out' && /^turn\/start(?:\s|$)/.test(input.summary))
       || (input.label === 'claude.out' && input.summary === 'user message')
       || (input.label === 'agy.out' && input.summary === 'user turn')
+      || (input.label === 'cursor.out' && /^session\/prompt(?:\s|$)/.test(input.summary))
     const request = scope.paneId ? this.requests.get(scope.paneId) : null
     if (!dispatched || !request || request.dispatchedAt !== null || request.scope.provider !== scope.provider) return
     request.dispatchedAt = this.now()
