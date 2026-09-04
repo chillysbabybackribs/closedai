@@ -1,7 +1,7 @@
 import type { ChatPaneId } from '../../shared/chat-peers.js'
 
 /** Delay before warming a pane the user has settled on — avoids paying for scroll-through. */
-export const PANE_WARM_DWELL_MS = 1_500
+export const PANE_WARM_DWELL_MS = 400
 
 let pendingWarm: ReturnType<typeof setTimeout> | null = null
 

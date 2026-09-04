@@ -19,5 +19,5 @@ test('cancelPaneWarm clears a pending warm', async () => {
 })
 
 test('the default dwell matches the appv1 gate', () => {
-  assert.equal(PANE_WARM_DWELL_MS, 1_500)
+  assert.equal(PANE_WARM_DWELL_MS, 400)
 })

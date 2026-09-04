@@ -27,6 +27,7 @@ export function appTools(app: () => AppCommandHost | null, ui: () => AppUiHost |
       }),
       defineActionTool({
         name: 'ui',
+        deferLoading: true,
         description:
           'Drive the real ClosedAI renderer by stable control id. Start with controls (scoped by surface or ' +
           `query) to see ids, items, and state; families: ${uiControlFamilies().join(', ')}. Rows, tabs, and ` +

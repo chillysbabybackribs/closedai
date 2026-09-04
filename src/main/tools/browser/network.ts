@@ -30,6 +30,7 @@ const ruleIdField: JsonObject = { type: 'string', minLength: 1, description: 'A 
 export function networkTool(network: NetworkHostProvider): ToolDefinition {
   return defineActionTool({
     name: 'network',
+    deferLoading: true,
     description:
       'The browser session\'s own network record: every request from every tab, with headers, status, ' +
       'timing, redirects, and post data, captured passively by the app so nothing needs enabling and ' +

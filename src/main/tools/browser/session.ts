@@ -21,6 +21,7 @@ const nameField: JsonObject = { type: 'string', minLength: 1, description: 'Cook
 export function sessionTool(sessions: SessionHostProvider): ToolDefinition {
   return defineActionTool({
     name: 'session',
+    deferLoading: true,
     description:
       'The browser\'s signed-in session, used directly from the app. fetch sends a request with the ' +
       'session\'s cookies from the main process, so cross-origin APIs that reject a page\'s fetch answer ' +
