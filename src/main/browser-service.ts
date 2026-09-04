@@ -10,7 +10,7 @@ import { installPermissionPolicy } from './browser-permissions.js'
 import { TabRenderingPolicy } from './browser-tab-rendering.js'
 import { allSettledBounded } from './bounded-concurrency.js'
 import { restorePlan, type RestoredTabSession } from './browser-tab-session-store.js'
-import { browserSurfaceVisibility } from './browser-surface-visibility.js'
+import { browserPaneBounds, browserSurfaceVisibility } from './browser-surface-visibility.js'
 import { settleFrames } from './browser-frame-settle.js'
 import { PageBackgroundMemory } from './browser-page-background.js'
 import { activateTabSurface, prepareTabSurfaceForTool } from './browser-tab-activation.js'
@@ -43,9 +43,6 @@ export class BrowserService extends EventEmitter {
   private activeId: string | null = null
   private disposed = false
   private bounds: BrowserBounds = { x: 0, y: 0, width: 1, height: 1 }
-  // True when the browser pane is hidden: the active view is detached from the window's content
-  // tree. setVisible(false) alone leaves a sliver on Linux/X11, so we remove it outright.
-  private browserDetached = false
   // Whether the active page's pixels were on screen at the last bounds report, so a return
   // from behind app chrome can be distinguished from an ordinary resize.
   private pageVisible = true
@@ -54,14 +51,13 @@ export class BrowserService extends EventEmitter {
   private readonly pageBackgrounds = new PageBackgroundMemory()
   private readonly partitionSession: Electron.Session
   private readonly persistentSessionCookies: PersistentSessionCookies
-  // Frames are leased, not free: only the on-screen tab stays in the window's content tree.
-  // See browser-tab-rendering.ts for why hiding a view is not enough to stop it rendering.
+  // User tabs remain resident to preserve their compositor; other surfaces lease frames.
   private readonly rendering = new TabRenderingPolicy({
     attach: (tabId) => this.attachTabView(tabId),
     detach: (tabId) => this.detachTabView(tabId),
     raiseActive: () => {
       const active = this.active
-      if (active && !this.browserDetached) this.attachTabView(active.id)
+      if (active && this.bounds.visible !== false) this.attachTabView(active.id)
     }
   })
 
@@ -157,8 +153,8 @@ export class BrowserService extends EventEmitter {
     const insertAt = typeof index === 'number' ? Math.min(Math.max(index, 0), this.tabs.length) : this.tabs.length
     this.tabs.splice(insertAt, 0, tab)
     // Electron can permanently blank a previously loaded WebContentsView after it is removed
-    // and re-added repeatedly. User tabs therefore stay attached while this pane exists; tab
-    // switching uses visibility + z-order only. The entire set still detaches with the pane.
+    // and re-added repeatedly. User tabs therefore stay attached until closed; hiding the
+    // browser moves the active surface off screen while preserving its loaded viewport.
     this.rendering.register(tab.id, { resident: true })
   }
 
@@ -296,23 +292,17 @@ export class BrowserService extends EventEmitter {
   // ---- Delegated per-tab operations (act on the active tab) -----------------
 
   async setBounds(bounds: BrowserBounds): Promise<void> {
-    this.bounds = bounds
-    const { paneVisible, pageVisible } = browserSurfaceVisibility(bounds)
+    this.bounds = browserPaneBounds(this.bounds, bounds)
+    const { paneVisible, pageVisible } = browserSurfaceVisibility(this.bounds)
     const revealing = pageVisible && !this.pageVisible
     this.pageVisible = pageVisible
     const active = this.active
-    if (!paneVisible && !this.browserDetached) {
-      this.browserDetached = true
-      this.rendering.setPaneVisible(false)
-      return
-    }
-    if (paneVisible && this.browserDetached) {
-      this.browserDetached = false
-      this.rendering.setPaneVisible(true)
-    }
-    // A modal only hides the pixels. Keeping the view attached avoids the detach/re-attach
-    // lifecycle, so closing the modal cannot return an empty native surface.
-    active?.applyBounds(bounds, pageVisible)
+    this.rendering.setPaneVisible(paneVisible)
+    // Keep the loaded surface attached and full-sized, using the same parking path as an
+    // overlay. Place it beyond the current window even if the window grew while hidden.
+    active?.applyBounds(paneVisible ? this.bounds : {
+      ...this.bounds, x: this.window.getContentBounds().width, occluded: true
+    }, pageVisible)
     // The renderer holds its freeze still until this call resolves. Returning the moment the
     // view is made visible drops the still onto a surface that has not painted yet, which is
     // the blank the still existed to cover; wait for the frame instead.

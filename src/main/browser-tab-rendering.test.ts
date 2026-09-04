@@ -59,19 +59,20 @@ test('resident user tabs switch visibility without leaving the native view tree'
   assert.deepEqual(log, [])
 })
 
-test('resident tabs detach when the whole browser pane hides and return with it', () => {
-  const { policy } = harness()
+test('resident tabs survive repeated pane hide/show without compositor reattachment', () => {
+  const { policy, log } = harness()
   policy.register('tab-1', { resident: true })
   policy.register('tab-2', { resident: true })
   policy.setActive('tab-1')
 
-  policy.setPaneVisible(false)
-  assert.equal(policy.isAttached('tab-1'), false)
-  assert.equal(policy.isAttached('tab-2'), false)
-
-  policy.setPaneVisible(true)
-  assert.equal(policy.isAttached('tab-1'), true)
-  assert.equal(policy.isAttached('tab-2'), true)
+  log.length = 0
+  for (let cycle = 0; cycle < 5; cycle += 1) {
+    policy.setPaneVisible(false)
+    assert.equal(policy.isAttached('tab-1'), true)
+    assert.equal(policy.isAttached('tab-2'), true)
+    policy.setPaneVisible(true)
+  }
+  assert.deepEqual(log, [], 'hide/show must not detach or reattach a loaded user tab')
 })
 
 test('a pin attaches a background tab and restores the active tab z-order', () => {

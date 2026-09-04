@@ -271,6 +271,10 @@ default of white. The renderer's overlay freeze waits for its still, then moves 
 native page outside the browser box instead of toggling its visibility; `browser:setBounds` waits
 for a painted frame before resolving the return. This avoids both a blank capture gap and Electron's
 loaded-view blanking failure when a `WebContentsView` is hidden and shown around an overlay.
+Hiding the whole browser also keeps user tabs attached and parks the active surface beyond the
+window at its last usable size. Reopening restores that same loaded page without a reload;
+zero-size reports during panel collapse or expansion never replace the saved viewport. Keeping
+these surfaces resident trades background rendering work for reliable restoration.
 After a navigation becomes usable, and again when loading stops, the tab reasserts its unchanged
 bounds and visibility. This revives Electron's frame sink when a redirect leaves DOM/CDP alive
 but the attached native surface blank.
