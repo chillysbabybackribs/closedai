@@ -215,6 +215,7 @@ export function projectChat(paneId: string, snapshot: ChatSnapshot): Record<stri
     threadName: snapshot.threadName,
     running: snapshot.activeTurnId !== null,
     activeTurnId: snapshot.activeTurnId,
+    ...(snapshot.pausedTurnId ? { pausedTurnId: snapshot.pausedTurnId } : {}),
     contextUsage: snapshot.contextUsage ? {
       usedTokens: snapshot.contextUsage.usedTokens,
       contextWindow: snapshot.contextUsage.contextWindow,

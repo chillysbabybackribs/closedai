@@ -53,7 +53,7 @@ class FakeProvider extends EventEmitter {
     return {
       provider: this.provider, connection: { state: this.connectionState, message: `${this.provider} ready` }, account: null,
       models: this.models, selectedModel: this.models[0]?.id ?? null, selectedReasoningEffort: this.effort, cwd: '/w',
-      threadId: this.threadId, threadName: null, activeTurnId: this.activeTurnId,
+      threadId: this.threadId, threadName: null, activeTurnId: this.activeTurnId, pausedTurnId: null,
       contextUsage: null, planUsage: null, turnContext: null, items: this.items,
       ...(window ? { history: { hasEarlier: this.hasEarlier } } : {})
     }

@@ -1,6 +1,6 @@
 import type { ClipboardEvent, DragEvent, FormEvent, JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, Plus, Square } from 'lucide-react'
+import { ArrowUp, Pause, Play, Plus } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import {
@@ -10,6 +10,7 @@ import {
   PromptInputTextarea
 } from '../components/ui/prompt-input.js'
 import type { ChatAttachment, ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
+import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
 import { ContextMeter } from './context-meter.js'
 import { ModelMenu } from './model-menu.js'
@@ -34,6 +35,9 @@ export type ComposerProps = {
   onReasoningEffortChange: (effort: string) => Promise<void>
   onSend: (text: string, attachments: ChatAttachment[]) => Promise<void>
   onStop: () => Promise<void>
+  /** A turn the pause button ended and nothing has followed, so Resume is worth offering. */
+  paused: boolean
+  onResume: () => Promise<void>
   onInspectContext: () => void
   onNewChat?: () => void
   cwd: string
@@ -65,6 +69,8 @@ export function Composer({
   onReasoningEffortChange,
   onSend,
   onStop,
+  paused,
+  onResume,
   onInspectContext,
   onNewChat,
   cwd,
@@ -100,6 +106,17 @@ export function Composer({
     setAttachments([])
     setAttachmentError('')
     onNewChat?.()
+  }
+
+  /** Resume is an ordinary turn, so it shares the send guard rather than racing one. */
+  async function resume(): Promise<void> {
+    if (sending || !enabled || running) return
+    setSending(true)
+    try {
+      await onResume()
+    } finally {
+      setSending(false)
+    }
   }
 
   async function submit(event?: FormEvent): Promise<void> {
@@ -233,17 +250,33 @@ export function Composer({
                 }}
               />
 
+              {!running && paused ? (
+                <PromptInputAction tooltip={`Resume where ${CHAT_PROVIDER_LABELS[provider]} paused`}>
+                  <Button
+                    type="button"
+                    size="icon"
+                    className="prompt-composer-resume rounded-full"
+                    aria-label={`Resume where ${CHAT_PROVIDER_LABELS[provider]} paused`}
+                    data-ui="composer.resume"
+                    disabled={!enabled || sending}
+                    onClick={() => void resume()}
+                  >
+                    <Play size={15} fill="currentColor" aria-hidden="true" />
+                  </Button>
+                </PromptInputAction>
+              ) : null}
+
               {running ? (
-                <PromptInputAction tooltip="Stop Codex">
+                <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}>
                   <Button
                     type="button"
                     size="icon"
                     className="prompt-composer-stop rounded-full"
-                    aria-label="Stop Codex"
+                    aria-label={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}
                     data-ui="composer.stop"
                     onClick={() => void onStop()}
                   >
-                    <Square size={14} fill="currentColor" aria-hidden="true" />
+                    <Pause size={15} fill="currentColor" aria-hidden="true" />
                   </Button>
                 </PromptInputAction>
               ) : (

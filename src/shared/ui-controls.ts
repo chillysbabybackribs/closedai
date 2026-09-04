@@ -61,7 +61,8 @@ export const UI_CONTROLS = {
   'composer.compact': 'Compact provider-side context from a transcript summary',
   'composer.upload': 'Attach files',
   'composer.attachment-remove': 'Remove a pending attachment; item is the attachment id',
-  'composer.stop': 'Stop the running turn (present only while running)',
+  'composer.stop': 'Pause the running turn (present only while running)',
+  'composer.resume': 'Resume the turn the pause button ended (present only while a turn is paused)',
   'composer.send': 'Send the message (present only while idle)',
 
   'browser.tab': 'Select a browser tab; item is the tab id',

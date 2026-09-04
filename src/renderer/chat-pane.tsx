@@ -11,6 +11,7 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport
 } from '../components/ui/message-scroller.js'
+import { CHAT_RESUME_PROMPT } from '../shared/chat.js'
 import type { ChatAttachment, ChatConnectionState, ChatProvider } from '../shared/chat.js'
 import { useChatController } from './chat-controller.js'
 import { ChatHistory } from './chat-history.js'
@@ -145,6 +146,8 @@ export function ChatPane({
           onReasoningEffortChange={chat.selectReasoningEffort}
           onSend={sendMessage}
           onStop={chat.interrupt}
+          paused={state.pausedTurnId !== null}
+          onResume={() => sendMessage(CHAT_RESUME_PROMPT, [])}
           onInspectContext={() => setContextOpen(true)}
           onNewChat={() => void startNewChat()}
           cwd={chat.workspace?.cwd ?? state.cwd}

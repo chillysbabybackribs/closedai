@@ -9,6 +9,7 @@ function target() {
     activeTurnId: () => null,
     setThreadName: (name) => log.push(['name', name]),
     setTurn: (turnId) => log.push(['turn', turnId]),
+    setPaused: (turnId) => log.push(['paused', turnId]),
     consumeItem: (item, turnId, completed) => log.push(['item', item, turnId, completed]),
     appendDelta: () => {},
     addNotice: (text, tone) => log.push(['notice', text, tone]),

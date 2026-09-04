@@ -16,6 +16,7 @@ function snapshot(overrides: Partial<ChatSnapshot> = {}): ChatSnapshot {
     threadId: null,
     threadName: null,
     activeTurnId: null,
+    pausedTurnId: null,
     contextUsage: null,
     planUsage: null,
     turnContext: null,

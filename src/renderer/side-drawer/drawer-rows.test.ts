@@ -37,6 +37,7 @@ function selected(threadId: string, threadName: string): ChatSnapshot {
     threadId,
     threadName,
     activeTurnId: 'turn-1',
+    pausedTurnId: null,
     contextUsage: null,
     planUsage: null,
     turnContext: null,

@@ -360,6 +360,7 @@
 }
 
 .prompt-composer-send,
+.prompt-composer-resume,
 .prompt-composer-stop {
   width: 36px;
   height: 36px;
@@ -403,6 +404,21 @@
   background: #e8e8e8;
   color: #000;
   transform: scale(1.04);
+}
+
+.prompt-composer-resume {
+  background: rgb(255 255 255 / 10%);
+  border: 1px solid rgb(255 255 255 / 18%);
+  color: #fff;
+}
+
+.prompt-composer-resume:not(:disabled):hover {
+  background: rgb(255 255 255 / 18%);
+  transform: scale(1.04);
+}
+
+.prompt-composer-resume:disabled {
+  color: rgb(255 255 255 / 22%);
 }
 
 @keyframes prompt-kit-spin { to { transform: rotate(360deg); } }

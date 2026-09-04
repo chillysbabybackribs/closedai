@@ -211,3 +211,12 @@ test('coalesceChatWorkspaceEvents collapses pane stream chunks and resets on wor
     { type: 'pane', paneId: 'p2', event: { type: 'itemDelta', itemId: 'b', field: 'text', delta: 'world' } }
   ])
 })
+
+test('a paused turn offers Resume until the next turn starts', () => {
+  const idle = reduceChatEvent(initialChatState(), { type: 'turn', turnId: 't1' })
+  assert.equal(idle.pausedTurnId, null)
+  const ended = reduceChatEvent(reduceChatEvent(idle, { type: 'turn', turnId: null }),
+    { type: 'paused', turnId: 't1' })
+  assert.equal(ended.pausedTurnId, 't1')
+  assert.equal(reduceChatEvent(ended, { type: 'turn', turnId: 't2' }).pausedTurnId, null)
+})
