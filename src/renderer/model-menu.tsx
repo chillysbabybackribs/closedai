@@ -124,7 +124,16 @@ function ModelMenuPanel({
   if (section) {
     const listed = expanded ? section.all : section.featured
     return (
-      <div ref={rootRef} className="model-menu-panel">
+      <div
+        ref={rootRef}
+        className="model-menu-panel"
+        // The flyout it replaced closed on ArrowLeft; the drill-down keeps that key meaning "back".
+        onKeyDown={(event) => {
+          if (event.key !== 'ArrowLeft') return
+          event.preventDefault()
+          setView(null)
+        }}
+      >
         <DropdownMenu.Item
           className="model-menu-item model-menu-item-compact model-menu-back"
           textValue={`Back to providers from ${section.label}`}
