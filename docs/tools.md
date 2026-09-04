@@ -124,6 +124,15 @@ automatically pass through this source reader. Claude's native read receipts are
 equate tool execution with model-visible coverage. These mechanisms target fewer model passes;
 live task comparisons are needed to measure an improvement.
 
+Source reads also attach internal version observations for the registry, stripped before provider
+delivery. These contain workspace, canonical file path, and hash for source blocks actually
+included in a bundle (or its explicit unchanged primary read), never the entire scanned index.
+They do not assert that an exec script displayed the output. Successful calls record observations;
+failed or timed-out calls do not. Claude's verified native reads can record the same observations.
+The next Send compares recent observations and may include a compact untrusted source-change
+fragment across all providers. See [Model context](model-context.md) for scope, time, and output
+limits. Other providers' native reads are not automatically tracked.
+
 ### Application facts, browser targets, and batching
 
 Use `closedai_app.state` for app facts, `closedai_app.command` for service operations, and

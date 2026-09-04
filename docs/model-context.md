@@ -64,6 +64,23 @@ match browser/page cues and only when an active tab exists. That fragment is exp
 `kind: untrusted`: a page title or URL cannot issue instructions. Ordinary coding turns do not
 automatically receive browser state or a full application snapshot.
 
+Before Send, all four providers can add `closedai.workspace.source-changes`, a bounded untrusted
+summary of changes to file versions previously observed by that pane and provider thread in the
+same workspace. Workspace source bundles establish observations only for emitted source blocks
+or an explicit conditional read; Claude's verified native `Read` receipts also participate.
+Scanner reads, arbitrary shell output, and other providers' native file tools do not establish
+observations. Tool execution is not proof that the model saw the result, so this is version data,
+not model-context coverage, authorization, or a complete workspace diff.
+
+The check compares up to 32 recent observed files, emits at most eight changes, and waits at most
+250 ms for file IO before omitting the enrichment. A changed entry has old/new hashes; missing
+and unreadable paths have distinct statuses. No source contents, model call, Git command, or
+workspace-wide scan is added to Send. No changes means no fragment. Histories are kept in memory
+for at most 64 pane/thread/workspace scopes and are lost on restart or eviction. Compaction does
+not make these version observations into read coverage. Capturing context does not update the
+read baseline, so a failed send cannot consume a change. Providers recheck conversation identity
+before dispatching a prepared message. The context inspector shows the fragment normally.
+
 Claude and Antigravity receive context in `<closedai_context name="…" kind="…">` blocks.
 Codex receives typed `additionalContext`. `application` denotes app-authored context;
 `untrusted` denotes data such as pages, files, attachments, and tool output. Embedded instructions

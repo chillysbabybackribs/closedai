@@ -224,6 +224,13 @@ DOM selectors. The generated workspace index supplies file and IPC navigation; `
 
 ## State and retention
 
+Before a follow-up Send, the app can report changed source versions previously observed by that
+chat's source tools. This adds a small untrusted context fragment only when changes are found,
+with no model call or repository-wide scan. It covers the shared workspace source reader in all
+four providers and verified native Claude reads. The bounded comparison waits up to 250 ms;
+version histories are memory-only, scoped by pane/thread/workspace, and do not represent what
+remains in model context. See [Model context](model-context.md) for limits and trust boundaries.
+
 App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux by default).
 
 | Store | Contents |

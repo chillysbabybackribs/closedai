@@ -62,6 +62,10 @@ and transcript notes were reviewed against current source on 2026-09-03, without
   A new turn (`UserPromptSubmit` and `beginTurn`), `PreCompact`, and `SubagentStop` clear the
   relevant scope, including pending receipt writes. Subagents have separate coverage. Each
   skip is a `claude.read-ledger` trace event; a skip count is not a measured model-pass saving.
+  Verified receipts also feed the shared source-version history for that active pane/thread.
+  A later Send may include changed file versions as bounded untrusted context. This history
+  survives a ledger reset in memory, but establishes no cross-turn source coverage; late
+  receipts from replaced sessions or cleared hook scopes are ignored.
 
 ## Process lifecycle (`claude-session.ts`, `claude-runtime.ts`)
 
