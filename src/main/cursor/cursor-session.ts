@@ -24,6 +24,9 @@ export type CursorSessionDeps = {
   onSetup: (setup: AcpSessionSetup) => void
   onTitle: (title: string) => void
   onTurnEnd: (turnId: string, end: TurnEnd) => void
+  displayScreenshot?: (callId: string) => { dataUrl: string } | null
+  /** The registry call id behind the ClosedAI tool the agent just reported, when the bridge served one. */
+  takeCallId?: (namespace: string, tool: string) => string | null
   /** When set, every JSON-RPC line in either direction is recorded in the turn trace. */
   traceScope?: () => TraceScope
   idleMs?: number
@@ -63,7 +66,13 @@ export class CursorSession {
     this.clearIdleTimer()
     const turnId = cursorTurnId()
     this.activeTurnId = turnId
-    this.translator = new CursorTurnTranslator({ turnId, seed: turnId, cwd: this.deps.cwd })
+    this.translator = new CursorTurnTranslator({
+      turnId,
+      seed: turnId,
+      cwd: this.deps.cwd,
+      ...(this.deps.displayScreenshot ? { displayScreenshot: this.deps.displayScreenshot } : {}),
+      ...(this.deps.takeCallId ? { takeCallId: this.deps.takeCallId } : {})
+    })
     this.deps.onTurn(turnId)
     client.prompt(setup.sessionId, blocks)
       .then((stopReason) => {

@@ -1,6 +1,9 @@
 import type { ChatTranscriptItem } from '../../shared/chat.js'
 import { recordOf, stringOf } from '../claude/claude-tool-items.js'
-import { cursorStatus, cursorToolContent, cursorToolItem, cursorToolResult } from './cursor-tool-items.js'
+import {
+  cursorStatus, cursorToolContent, cursorToolItem, cursorToolResult, resolveCursorTool,
+  type ResolvedCursorTool
+} from './cursor-tool-items.js'
 
 // Pure translation from one turn's ACP `session/update` notifications to transcript operations,
 // so the session only applies ops. Verified live (cursor-agent 2026.09.02-c22c1a3, 2026-09-03).
@@ -31,12 +34,17 @@ export type CursorTranslatorOptions = {
   /** What item ids are built from: the turn id live, the session id on a replay. */
   seed: string
   cwd: string
+  displayScreenshot?: (callId: string) => { dataUrl: string } | null
+  /** The registry call id behind the ClosedAI tool the agent just reported, when the bridge served one. */
+  takeCallId?: (namespace: string, tool: string) => string | null
 }
 
 type OpenText = { id: string; text: string; kind: 'assistant' | 'reasoning' | 'user' }
 
 export class CursorTurnTranslator {
   private readonly tools = new Map<string, ChatTranscriptItem>()
+  /** Which of ours a tool call turned out to be, kept so a settled capture can become an image. */
+  private readonly served = new Map<string, ResolvedCursorTool>()
   private open: OpenText | null = null
   private seq = 0
   private settled = false
@@ -123,6 +131,7 @@ export class CursorTurnTranslator {
       this.options.cwd
     )
     this.tools.set(id, item)
+    this.noteServed(id, recordOf(update.rawInput))
     ops.push({ type: 'item', item })
     return [...ops, ...this.settle(id, update)]
   }
@@ -138,6 +147,7 @@ export class CursorTurnTranslator {
       : item
     const ops: TranscriptOp[] = refreshed === item ? [] : [{ type: 'item', item: refreshed }]
     this.tools.set(id, refreshed)
+    this.noteServed(id, rawInput)
     return [...ops, ...this.settle(id, update)]
   }
 
@@ -148,9 +158,41 @@ export class CursorTurnTranslator {
     const item = this.tools.get(id)
     if (!item || !inProgress(item)) return []
     const { text, diffs } = cursorToolContent(update.content, update.rawOutput)
-    const settled = cursorToolResult(item, { status, output: text, diffs })
+    const settled = this.screenshotItem(item, status, text)
+      ?? cursorToolResult(item, { status, output: text, diffs })
     this.tools.set(id, settled)
     return [{ type: 'item', item: settled }]
+  }
+
+  private noteServed(id: string, rawInput: Record<string, unknown>): void {
+    if (this.served.has(id)) return
+    const served = resolveCursorTool(rawInput)
+    if (served) this.served.set(id, served)
+  }
+
+  /** A ClosedAI capture the app still holds at full resolution becomes a screenshot row. */
+  private screenshotItem(
+    item: ChatTranscriptItem,
+    status: 'completed' | 'failed',
+    output: string
+  ): ChatTranscriptItem | null {
+    if (status === 'failed' || item.type !== 'tool') return null
+    const served = this.served.get(item.id)
+    if (!served || served.namespace !== 'closedai_ui' || served.tool !== 'capture') return null
+    const callId = this.options.takeCallId?.(served.namespace, served.tool)
+    if (!callId) return null
+    const action = served.args.action
+    const surface = action === 'app_window' || action === 'browser_page' || action === 'crop' ? action : null
+    const imageUrl = this.options.displayScreenshot?.(callId)?.dataUrl
+    if (!surface || !imageUrl) return null
+    return {
+      type: 'screenshot',
+      id: item.id,
+      turnId: item.turnId,
+      imageUrl,
+      surface,
+      caption: output.split('\n')[0]?.trim() ?? ''
+    }
   }
 
   private relabel(

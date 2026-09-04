@@ -56,7 +56,7 @@ export class CursorChatService extends EventEmitter {
     private readonly bridge: CursorToolBridge,
     stateDir: string,
     private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
-    screenshots: Pick<ScreenshotStore, 'get'> | null = null,
+    private readonly screenshots: Pick<ScreenshotStore, 'get'> | null = null,
     private readonly paneId: string | null = null
   ) {
     super()
@@ -300,6 +300,8 @@ export class CursorChatService extends EventEmitter {
       onSetup: (setup) => this.adoptSetup(setup),
       onTitle: (title) => this.adoptTitle(title),
       onTurnEnd: (turnId, end) => this.onTurnEnd(turnId, end),
+      displayScreenshot: (callId) => this.screenshots?.get(callId) ?? null,
+      takeCallId: (namespace, tool) => this.bridge.takeCallId(this.bridgeKey, namespace, tool),
       traceScope: () => ({ paneId: this.paneId, provider: 'cursor', turnId: this.activeTurnId })
     })
   }
