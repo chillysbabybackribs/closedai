@@ -57,7 +57,8 @@ export function sourceBundle(facts: FileFacts, start: number, end: number, scann
   if (options.unchanged) {
     out.add(`Unchanged at read time: ${facts.file}\n${facts.hash}\nRequested lines ${start}-${Math.min(end, facts.lines.length)}; no source re-emitted.\n`)
   } else {
-    out.source(facts, start, end)
+    const primaryBudget = options.related && facts.styleRefs.length ? Math.floor(options.maxChars * 0.65) : options.maxChars
+    out.source(facts, start, end, '', primaryBudget)
   }
   if (options.related) {
     const tests = siblingTests(facts.file)
@@ -87,11 +88,11 @@ class SourceBudget {
     return true
   }
 
-  source(facts: FileFacts, start: number, end: number, condition = ''): void {
+  source(facts: FileFacts, start: number, end: number, condition = '', budget = this.max): void {
     end = Math.min(end, facts.lines.length)
     const prefix = `\nSource: ${facts.file}\n${facts.hash}\n${condition ? `Conditions: ${condition}\n` : ''}`
     // Reserve the range header before selecting complete lines.
-    let room = this.max - 180 - this.text.length - prefix.length - 90
+    let room = budget - 180 - this.text.length - prefix.length - 90
     const lines: string[] = []
     for (let line = start; line <= end; line++) {
       const value = `${line}: ${facts.lines[line - 1]}\n`
@@ -99,7 +100,11 @@ class SourceBudget {
       lines.push(value)
       room -= value.length
     }
-    if (!lines.length) { this.omitted = true; return }
+    if (!lines.length) {
+      this.add(`${prefix}No complete lines fit for requested range ${start}-${end}.\n`)
+      this.omitted = true
+      return
+    }
     const last = start + lines.length - 1
     this.add(`${prefix}Returned lines ${start}-${last} of ${facts.lines.length}${last < end ? `; requested through ${end}` : ''}\n${lines.join('')}`)
     if (last < end) this.omitted = true

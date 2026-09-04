@@ -34,6 +34,7 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   )
   ipcMain.handle('chat:openChat', (_event, chatId: string) => requireService().openChat(chatId))
   ipcMain.handle('chat:archiveChat', (_event, chatId: string) => requireService().archiveChat(chatId))
+  ipcMain.handle('chat:setChatPinned', (_event, chatId: string, pinned: boolean) => requireService().setChatPinned(chatId, pinned))
   ipcMain.handle('chat:compactConversation', (_event, paneId: string) => requireService().compactConversation(paneId))
   ipcMain.handle('chat:chooseProject', async () => {
     const result = await dialog.showOpenDialog({

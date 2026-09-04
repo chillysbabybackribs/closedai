@@ -32,6 +32,8 @@ export type ChatRecord = {
   /** When the most recent turn finished; null until a turn has completed. */
   lastTurnEndedAt: number | null
   archived: boolean
+  /** Sidebar pin time, independent of conversation activity; null when unpinned. */
+  pinnedAt: number | null
   /** The chat this one continued from, including a restart-safe one-shot digest. */
   continuation: ChatContinuation | null
   /** One bounded checkpoint; usable only for its recorded provider thread. */

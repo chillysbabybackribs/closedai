@@ -63,7 +63,7 @@ before the app-server starts.
 | `browser_cdp` | `page` | `inspect_page`, `click`, `click_at`, `type`, `press_key`, `scroll` | Agent-oriented page interaction: semantic element refs with real CDP mouse, keyboard, and wheel input. `type` inserts whole strings in one call; `press_key` sends chords. |
 | `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `target`, `events`, `requests`, `body` | Primary raw Chrome DevTools Protocol interface, eagerly advertised. `requests` lists the network traffic a tab has made — resource timing answers retroactively, so a page that loaded before anyone was watching still reports its XHR and fetch URLs with no reload, and the call enables Network capture so the next one also carries methods, statuses, and the request ids `body` reads. That is the supported way to find the endpoint behind a page; reading bundle source for it is the fallback. Input and screenshot commands are allowed. Target inventory exposes flattened child sessions; `target` wraps attach/detach/create/activate/close. Raw screenshots remain bounded JSON text, not capture image results. See [CDP](cdp-tool-foundation.md). |
 | `search` | `query` | plain tool | Routed public-web search across Brave, Serper, Jina, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. |
-| `closedai_workspace` | `inspect` | `find`, `outline`, `map`, `related`, `tests`, `ipc_flow` | Read-only navigation registered only when the app-server workspace is this checkout. `find` locates a symbol, `data-ui` control id, CSS class, path, or visible label in one call; `outline` summarises one file (exported symbols with line spans, control ids, classes) and pairs its classes with the defining stylesheet. Both scan the working tree at call time behind an mtime cache, so they never go stale between `npm run map` runs. The remaining verbs query the generated file index, direct relative import relationships, candidate tests, and preload-to-main IPC ownership. |
+| `closedai_workspace` | `inspect` | `find`, `outline`, `map`, `related`, `tests`, `ipc_flow`, `read` | Read-only source/navigation registered for this indexed checkout. `find` locates code and includes hashed source plus related styles for a unique exact exported declaration. `read` returns a known symbol/range with a file hash, related CSS rules, and sibling test paths; a stale `known_hash` returns fresh source in the same call. `outline` provides shape, hash, and all matching style locations without claiming source coverage. Parsing is cached by absolute path and content hash, with fresh byte reads independent of timestamps. Other verbs query the generated index, direct imports, candidate tests, and IPC ownership. |
 | `peer_chats` | `list`, `read` | plain tools | Read-only status and paginated transcript access to other panes and visible subagent summaries. `read` defaults to 50 items, at most 100, using an id from `list`; it does not start or control agents. Reasoning items are excluded from both previews and pages, matching `recall` and thread handoff, so one model's thinking never enters another model's context. |
 | `peer_chats` | `recall` | plain tool, read-only | Bounded phrase search or exact-message excerpts from the caller's current chat or frozen direct continuation source, plus saved checkpoint state. |
 | `peer_chats` | `checkpoint` | plain tool, writes notes | Revision-checked replacement of the caller's structured working notes; cannot control sessions or write other panes. |
@@ -79,6 +79,32 @@ editing the setting so the model-facing description and runtime enforcement use 
 The workspace navigation namespace is chosen once from the initial cwd when the registry is
 created. Switching projects does not rebuild it; it continues to describe the indexed checkout.
 The model's orientation capsule is independently scoped to its session cwd.
+
+### Versioned source and predictable follow-up lookups (2026-09-04)
+
+Workspace `find` enriches a unique exact exported declaration by default (`include_source: false`
+opts out). Ambiguous matches and re-exports remain locations only. `read` selects an exact exported
+`symbol` or `start_line`/`end_line`; without a selector it starts with 200 lines. Both accept
+`include_related` (default true) and `max_chars` (default 12,000, range 1,000–16,000) for the source
+bundle. Related results include matching CSS rule bodies across stylesheet owners, enclosing
+at-rule conditions, and sibling test paths. These are relationship candidates, not test coverage
+or a computed CSS cascade. Type-definition expansion is not included.
+
+Each source block identifies its full-file SHA-256 hash and the complete lines actually returned.
+The hash is computed from the same bytes as the source. Only regular UTF-8 files up to 2 MB are
+read. Budget omissions are explicit; no partly cut line is represented as returned coverage.
+Primary source reserves space for related rules when applicable. `find` bounds its navigation
+portion separately so the combined response stays below the registry ceiling.
+
+`read.known_hash` is a conditional fetch, not a server-side claim about model memory: supply it
+only when the requested range is still available in context. A matching hash omits primary source;
+related files are still read independently. A changed hash returns fresh requested source in the
+same call. An outline hash alone does not establish any source coverage. No hash prevents a later
+edit, and multiple files do not form an atomic workspace snapshot. Native provider tools do not
+automatically pass through this source reader. Claude's native read receipts are documented in
+[Claude Code](claude-code.md); Codex exec scripts may suppress results, so the registry does not
+equate tool execution with model-visible coverage. These mechanisms target fewer model passes;
+live task comparisons are needed to measure an improvement.
 
 ### Application facts, browser targets, and batching
 

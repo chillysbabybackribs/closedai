@@ -13,7 +13,7 @@ export type LedgerVerdict =
 export type LedgerSkip = { tool: string; path: string; lines: number; verdict: 'deny' | 'narrow' }
 type ReadVersion = { hash: string; ranges: LineRange[] }
 type Scope = Map<string, ReadVersion>
-type ReadReceipt = { path: string; hash: string; startLine: number; endLine: number }
+type ReadReceipt = { path: string; hash: string; startLine: number; endLine: number; previousRangesInvalidated?: true }
 
 const VOLATILE_PATH = /(?:^|\/)(?:node_modules|out|dist|build|coverage|\.git)\/|\.(?:log|out|output|jsonl|pid|lock|tmp)$/
 
@@ -79,7 +79,10 @@ export class ClaudeReadLedger {
     const prior = state.get(snapshot.path)
     const ranges = prior?.hash === snapshot.hash ? prior.ranges : []
     state.set(snapshot.path, { hash: snapshot.hash, ranges: merge([...ranges, { start, end }]) })
-    return { path: snapshot.path, hash: snapshot.hash, startLine: start, endLine: end }
+    return {
+      path: snapshot.path, hash: snapshot.hash, startLine: start, endLine: end,
+      ...(prior && prior.hash !== snapshot.hash ? { previousRangesInvalidated: true as const } : {})
+    }
   }
 
   hooks(): NonNullable<Options['hooks']> {

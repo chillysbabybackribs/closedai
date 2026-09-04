@@ -62,7 +62,7 @@ export function buildDrawerRows({
 
   for (const chat of chats) {
     const row = byId.get(chat.paneId)!
-    if (chat.parentPaneId && byId.has(chat.parentPaneId)) byId.get(chat.parentPaneId)!.children.push(row)
+    if (chat.pinnedAt == null && chat.parentPaneId && byId.has(chat.parentPaneId)) byId.get(chat.parentPaneId)!.children.push(row)
     else rows.push(row)
   }
 

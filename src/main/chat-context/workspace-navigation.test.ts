@@ -43,8 +43,9 @@ test('the whole capsule stays inside its context budget', () => {
 test('the capsule points at the map first and demotes search to a fallback', () => {
   const section = workspaceNavigationSection(WORKSPACE_INDEX_ROOT) ?? ''
   assert.match(section, /read a path off it rather than searching for one/)
-  assert.match(section, /closedai_workspace\.inspect find and outline are the fallback/)
-  assert.match(section, /read only the range you will change/)
+  assert.match(section, /closedai_workspace\.inspect find for unknown locations/)
+  assert.match(section, /For a known path use read with a symbol or range/)
+  assert.match(section, /pass known_hash only for source still in context/)
 })
 
 test('the map states where things are, derived rather than asserted', () => {

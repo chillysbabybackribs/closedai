@@ -26,6 +26,7 @@ export type ChatPeerSummary = {
 export type ChatRowSummary = ChatPeerSummary & {
   /** Whether a pane (a live or parked runtime) exists for this chat right now. */
   attached: boolean
+  pinnedAt: number | null
   cwd: string
   createdAt: number
   lastTurnEndedAt: number | null

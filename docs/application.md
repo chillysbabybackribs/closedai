@@ -93,14 +93,19 @@ is introduced. See [Model context](model-context.md) for trust and [Tools](tools
 
 - The sidebar is driven by the workspace's chat records: the `chats` event carries one
   `ChatRowSummary` per record (attached or not) plus `running`, and every row is keyed by chat id.
-  Placement does not depend on selection. Current holds only running chats, newest created first
+  Right-click a row and choose Pin or Unpin. Pinned chats occupy a section above Current, newest
+  pin first, and stay there through running, completion, pane closure, project switches, and relaunch.
+  They appear once; a pinned child chat is lifted out of its parent's group. Unpinning restores
+  normal activity placement. Pinning preserves activity timestamps and completion review marks,
+  and an explicitly pinned blank chat is retained. The Pinned section is hidden when empty.
+  Placement does not depend on selection. Current holds only unpinned running chats, newest created first
   (not by streaming activity, so rows do not reshuffle per token). Every finished turn moves
   immediately to Recently completed, whether or not the pane was selected; opening it marks it
   reviewed without moving it. A new turn returns it to Current, while a reviewed chat with no new
   activity moves to History after ten minutes. Unreviewed completions never expire, and the queue
   is pruned against the store's chat ids, not attached panes, so a completion survives detaching
   and relaunch. History is ordered by last activity. Clicking any row calls `openChat`; main decides
-  in-place versus beside. Closing an attached row keeps the chat in History; deleting a detached
+  in-place versus beside. Closing an attached row keeps the chat in History (or Pinned); deleting a detached
   row archives it. Failures from opening, new chat, stop, archive, search, or the background
   catalog refresh show in the drawer footer for eight seconds instead of being swallowed.
   `listChats` answers from the store at once, then reconciles the providers' thread catalogs in
@@ -214,7 +219,7 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 | Store | Contents |
 |---|---|
 | `provider-catalogs.json` | The last model catalog read per workspace and provider, so a relaunch starts only the active provider and the picker still offers every model; a provider refreshes its own entry when selected |
-| `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, parent chat, continuation digest, checkpoint. Debounced atomic writes; flushed on quit |
+| `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, pin timestamp, parent chat, continuation digest, checkpoint. Debounced atomic writes; flushed on quit |
 | `app-settings.json` | Cookie-import latch; active workspace/project; the open chat ids (`chatOpenIds`) and `chatSelectedPaneId`; saved per-project open ids and selection in `chatWorkspaces`; tool switches and context/batch settings. Legacy `chatPeers` and `chatWorkspaces[].peers` are imported into `chats.json` once, keeping each pane id as the chat id, and removed |
 | `browser-tabs.json`, `browser-history.json` | Restored tabs and omnibox history |
 | `Partitions/browser`, `code-cache/` | Chromium session data and app-configured code cache |

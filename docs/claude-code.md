@@ -49,17 +49,19 @@ and transcript notes were reviewed against current source on 2026-09-03, without
   2026-09-03: without the option the `init` tool list had no Grep/Glob, which is why the app's
   panes had made 0 such calls in 2,018 tool calls; with it both appear and the model uses them.
   There is no MultiEdit tool in this CLI, so instructions name only Edit.
-- **Read ledger** (`claude-read-ledger.ts`): in-process SDK hooks on every session. Measured
-  2026-09-03 over the app's Claude panes, 21% of reads returned lines already in the turn's
-  context and identical searches recurred, and prompt text did not move either number. So a
-  `PreToolUse` hook denies a `Read` (or a pure-read shell command such as `sed -n`/`cat`) whose
-  lines were returned earlier this turn, narrows a partly overlapping `Read` to the missing lines
-  via `updatedInput` with an `additionalContext` note, and denies an identical `Grep`/`Glob`.
-  `Edit`/`Write`, a shell command naming the file, or a tree-changing command (git checkout,
-  sed -i, mv, …) forgets the affected entries; a new turn (`UserPromptSubmit` and the session's
-  own `beginTurn`), `PreCompact`, and `SubagentStop` clear the scope, and subagents are keyed by
-  `agent_id` so a parent's reads never deny a worker's. Each skip is a `claude.read-ledger` trace
-  event.
+- **Read ledger** (`claude-read-ledger.ts`, revised 2026-09-04): in-process SDK hooks on every
+  session. A native `Read` establishes coverage only when its returned text and explicit line
+  counts match a current UTF-8 file snapshot. `PostToolUse.updatedToolOutput` preserves that
+  response and adds `closedai_read` with canonical path, SHA-256 hash, and verified line range.
+  A fresh hash check before a repeat `Read` catches changes from other panes and external tools.
+  Matching covered ranges are denied; one contiguous missing range is read via `updatedInput`.
+  A version change invalidates old ranges; if it lands between narrowing and the response,
+  the receipt flags `previousRangesInvalidated`. Hashes are observations, not write locks.
+  Shell commands and searches remain repeatable because their delivered coverage is uncertain.
+  Missing/oversized/non-text files and unrecognized response shapes do not establish coverage.
+  A new turn (`UserPromptSubmit` and `beginTurn`), `PreCompact`, and `SubagentStop` clear the
+  relevant scope, including pending receipt writes. Subagents have separate coverage. Each
+  skip is a `claude.read-ledger` trace event; a skip count is not a measured model-pass saving.
 
 ## Process lifecycle (`claude-session.ts`, `claude-runtime.ts`)
 

@@ -62,6 +62,7 @@ export interface ChatWorkspaceSurface {
   openThread(paneId: ChatPaneId, threadId: string): Promise<void>
   /** Hide a chat: archive its provider thread if it has one, keep the record as archived, detach its pane. */
   archiveChat(chatId: string): Promise<void>
+  setChatPinned(chatId: string, pinned: boolean): Promise<void>
   archiveThread(threadId: string): Promise<void>
   compactConversation(paneId: ChatPaneId): Promise<void>
   selectProject(projectPath: string | null): Promise<void>
@@ -343,6 +344,15 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       id: threadId, title: 'New chat', preview: '', createdAt: Date.now(), updatedAt: Date.now()
     }, null)
     await this.openChat(record.id)
+  }
+
+  async setChatPinned(chatId: string, pinned: boolean): Promise<void> {
+    if (typeof pinned !== 'boolean') throw new Error('Pinned must be a boolean')
+    const record = this.store.get(chatId)
+    if (!record || record.archived) throw new Error('That chat is no longer available')
+    if (record.cwd !== this.workspace().cwd) throw new Error('That chat belongs to another project')
+    this.store.update(chatId, { pinnedAt: pinned ? record.pinnedAt ?? Date.now() : null })
+    this.emitChats()
   }
 
   async archiveChat(chatId: string): Promise<void> {

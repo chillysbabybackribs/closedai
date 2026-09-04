@@ -1,13 +1,14 @@
 import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { GitBranch } from 'lucide-react'
+import { GitBranch, Pin, PinOff } from 'lucide-react'
 import type { ChatModel } from '../../shared/chat.js'
 import { modelGroups } from '../model-menu-state.js'
 import { placeRowMenu, type MenuPlacement } from './drawer-row-position.js'
 
 export type RowMenuTarget = {
   id: string
+  pinned: boolean
   title: string
   paneId: string | null
   threadId: string | null
@@ -24,12 +25,14 @@ export function DrawerRowMenu({
   inheritedModel,
   models,
   onFork,
+  onTogglePin,
   onClose
 }: {
   target: RowMenuTarget
   inheritedModel: string | null
   models: ChatModel[]
   onFork: (modelId: string | null) => void
+  onTogglePin: () => void
   onClose: () => void
 }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
@@ -82,6 +85,18 @@ export function DrawerRowMenu({
           : { left: target.x, top: target.y, visibility: 'hidden' }
       }
     >
+      <button
+        type="button"
+        role="menuitem"
+        className="agents-row-menu-item agents-row-menu-pin"
+        data-ui="drawer.row-pin"
+        data-ui-key={target.id}
+        onClick={onTogglePin}
+      >
+        {target.pinned ? <PinOff size={13} aria-hidden="true" /> : <Pin size={13} aria-hidden="true" />}
+        <span>{target.pinned ? 'Unpin' : 'Pin'}</span>
+      </button>
+      <div className="agents-row-menu-separator" role="separator" />
       <div className="agents-row-menu-heading">
         <GitBranch size={11} aria-hidden="true" />
         <span>Continue in a new chat</span>

@@ -55,6 +55,7 @@ export function rowSummary(record: ChatRecord, live: ChatPeerSummary | null): Ch
     // a chat never appears to travel back in time when it is attached.
     updatedAt: Math.max(base.updatedAt, record.updatedAt),
     attached: live !== null,
+    pinnedAt: record.pinnedAt,
     cwd: record.cwd,
     createdAt: record.createdAt,
     lastTurnEndedAt: record.lastTurnEndedAt

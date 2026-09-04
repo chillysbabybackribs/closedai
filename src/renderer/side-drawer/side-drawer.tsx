@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { memo, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, FolderOpen } from 'lucide-react'
+import { ChevronDown, ChevronRight, FolderOpen, Pin } from 'lucide-react'
 import type { ChatController } from '../chat-controller.js'
 import type { DrawerController } from './drawer-controller.js'
 import { useCollapsedParents, useExpandedSettled } from './drawer-fold-state.js'
@@ -21,7 +21,7 @@ function SideDrawerView({
   const [expandedSettled, onToggleSettled] = useExpandedSettled()
   const [rowMenu, setRowMenu] = useState<RowMenuTarget | null>(null)
 
-  const { current, reviewQueue, history } = useMemo(
+  const { pinned, current, reviewQueue, history } = useMemo(
     () => buildDrawerSections(controller.rows, controller.reviewQueue),
     [controller.rows, controller.reviewQueue]
   )
@@ -59,7 +59,7 @@ function SideDrawerView({
     </div>
   )
 
-  const isEmpty = current.length === 0 && reviewQueue.length === 0 && history.length === 0
+  const isEmpty = pinned.length === 0 && current.length === 0 && reviewQueue.length === 0 && history.length === 0
 
   return (
     <aside
@@ -70,6 +70,15 @@ function SideDrawerView({
       <DrawerHeader controller={controller} />
 
       <div className="agents-list">
+        {pinned.length > 0 ? (
+          <>
+            <div className="agents-section-label">
+              <Pin size={11} aria-hidden="true" />
+              <span>Pinned</span>
+            </div>
+            {renderRows(pinned, 'Pinned chats', { review: true })}
+          </>
+        ) : null}
         {current.length > 0 ? (
           <>
             <div className="agents-section-label">
@@ -135,6 +144,10 @@ function SideDrawerView({
           inheritedModel={rowMenu.modelId ?? chat.state.selectedModel}
           models={chat.state.models}
           onClose={() => setRowMenu(null)}
+          onTogglePin={() => {
+            setRowMenu(null)
+            chat.setChatPinned(rowMenu.id, !rowMenu.pinned).catch(controller.reportError)
+          }}
           onFork={(modelId) => {
             setRowMenu(null)
             chat.continueFromChat(

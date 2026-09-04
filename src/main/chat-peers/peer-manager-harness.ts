@@ -29,6 +29,7 @@ export function chatRecord(id: string, modelId: string | null, extra: Partial<Ch
     cursorSessionId: null,
     threadId: null,
     title: null,
+    pinnedAt: null,
     preview: '',
     createdAt: 1,
     updatedAt: 1,

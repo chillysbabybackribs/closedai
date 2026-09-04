@@ -29,10 +29,12 @@ export type DrawerRowModel = {
 }
 
 /**
- * Three sections, each with a stable order. Rows move on turn boundaries and reviewed-completion
+ * Four sections, each with a stable order. Unpinned rows move on turn boundaries and reviewed-completion
  * expiry, never merely because selection changed.
  */
 export type DrawerSections = {
+  /** Pinned chats stay above all activity sections, newest pin first. */
+  pinned: DrawerRowModel[]
   /** Running chats, newest created first, plus parents needed to expose running descendants. */
   current: DrawerRowModel[]
   /** Chats whose turn has finished, newest completion first. They return to Current only when a

@@ -39,6 +39,7 @@ export function normalizeChatRecord(candidate: unknown): ChatRecord | null {
     updatedAt: positiveTime(record.updatedAt) ?? createdAt,
     lastTurnEndedAt: positiveTime(record.lastTurnEndedAt),
     archived: record.archived === true,
+    pinnedAt: positiveTime(record.pinnedAt),
     continuation: normalizeContinuation(record.continuation),
     checkpoint: record.checkpoint === undefined ? null : normalizeMemoryCheckpoint(record.checkpoint),
     parentChatId: optionalString(record.parentChatId)
@@ -69,6 +70,7 @@ export function chatRecordFromPeer(peer: ChatPeerRecord, cwd: string, projectPat
     updatedAt,
     lastTurnEndedAt: peer.threadId ? updatedAt : null,
     archived: false,
+    pinnedAt: null,
     continuation: peer.continuation ?? null,
     checkpoint: peer.checkpoint ?? null,
     parentChatId: null

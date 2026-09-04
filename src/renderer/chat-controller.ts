@@ -26,6 +26,7 @@ export type ChatController = {
   /** Show a chat by id. Main decides whether it replaces a blank selected chat or opens beside it. */
   openChat: (chatId: string) => Promise<void>
   archiveChat: (chatId: string) => Promise<void>
+  setChatPinned: (chatId: string, pinned: boolean) => Promise<void>
   compactConversation: () => Promise<void>
   selectPane: (paneId: string) => Promise<void>
   closePeer: (paneId: string) => Promise<void>
@@ -82,6 +83,7 @@ export function useChatController(enabled = true): ChatController {
   ), [continueFromChat, paneId, workspace.selected.threadId, workspace.selected.selectedModel])
   const openChat = useCallback((chatId: string) => window.closedai.chat.openChat(chatId).then(() => undefined), [])
   const archiveChat = useCallback((chatId: string) => window.closedai.chat.archiveChat(chatId), [])
+  const setChatPinned = useCallback((chatId: string, pinned: boolean) => window.closedai.chat.setChatPinned(chatId, pinned), [])
   const compactConversation = useCallback(() => window.closedai.chat.compactConversation(paneId), [paneId])
   const selectPane = useCallback((nextPaneId: string) => window.closedai.chat.selectPane(nextPaneId), [])
   const closePeer = useCallback((targetPaneId: string) => window.closedai.chat.closePeer(targetPaneId), [])
@@ -115,6 +117,7 @@ export function useChatController(enabled = true): ChatController {
     continueFromChat,
     openChat,
     archiveChat,
+    setChatPinned,
     compactConversation,
     selectPane,
     closePeer,
@@ -123,6 +126,6 @@ export function useChatController(enabled = true): ChatController {
     workspace.selected, workspace.workspace, workspace.chats, workspace.selectedPaneId,
     send, interrupt, interruptPane, selectModel, selectReasoningEffort, refreshPlanUsage, loginWithChatGPT,
     listChats, newThread, continueInNewThread, continueFromChat, openChat,
-    archiveChat, compactConversation, selectPane, closePeer, loadEarlier
+    archiveChat, setChatPinned, compactConversation, selectPane, closePeer, loadEarlier
   ])
 }

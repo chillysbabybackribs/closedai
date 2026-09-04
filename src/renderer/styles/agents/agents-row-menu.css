@@ -62,6 +62,17 @@
   transition: background-color 120ms ease;
 }
 
+.agents-row-menu-pin {
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.agents-row-menu-separator {
+  height: 1px;
+  margin: 5px 0;
+  background: var(--hairline-strong, rgb(255 255 255 / 14%));
+}
+
 .agents-row-menu-model {
   flex-shrink: 0;
   color: var(--muted-foreground, #7e7e82);

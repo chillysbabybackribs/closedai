@@ -67,6 +67,7 @@ const api: ClosedaiApi = {
     continueInNewPeer: (source, modelId) => ipcRenderer.invoke('chat:continueInNewPeer', source, modelId),
     openChat: (chatId) => ipcRenderer.invoke('chat:openChat', chatId),
     archiveChat: (chatId) => ipcRenderer.invoke('chat:archiveChat', chatId),
+    setChatPinned: (chatId, pinned) => ipcRenderer.invoke('chat:setChatPinned', chatId, pinned),
     compactConversation: (paneId) => ipcRenderer.invoke('chat:compactConversation', paneId),
     chooseProject: () => ipcRenderer.invoke('chat:chooseProject'),
     selectProject: (projectPath) => ipcRenderer.invoke('chat:selectProject', projectPath),

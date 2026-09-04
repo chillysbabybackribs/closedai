@@ -118,6 +118,7 @@ export class PeerLifecycle {
 
   /** Drop a blank chat entirely: its pane and its record. Returns whether anything was removed. */
   discardIfBlank(chatId: ChatPaneId): boolean {
+    if (this.store.get(chatId)?.pinnedAt != null) return false
     if (!this.isBlank(chatId)) return false
     this.detach(chatId)
     this.store.remove(chatId)

@@ -68,18 +68,21 @@ export function groupByDirectory(rows: DrawerRowModel[]): DirectoryGroup[] {
  * a pane; every other chat is History. Selection plays no part in placement.
  */
 export function buildDrawerSections(rows: DrawerRowModel[], reviewQueue: DrawerReviewQueue): DrawerSections {
+  const pinned: DrawerRowModel[] = []
   const current: DrawerRowModel[] = []
   const review: DrawerRowModel[] = []
   const history: DrawerRowModel[] = []
 
   for (const row of rows) {
-    if (subtreeIsLive(row)) current.push(row)
+    if (row.chat.pinnedAt != null) pinned.push(row)
+    else if (subtreeIsLive(row)) current.push(row)
     else if (reviewQueue[row.id] !== undefined) review.push(row)
     else history.push(row)
   }
   current.sort((a, b) => b.createdAt - a.createdAt || b.updatedAt - a.updatedAt)
+  pinned.sort((a, b) => (b.chat.pinnedAt ?? 0) - (a.chat.pinnedAt ?? 0) || a.id.localeCompare(b.id))
   review.sort((a, b) => (reviewQueue[b.id]?.queuedAt ?? 0) - (reviewQueue[a.id]?.queuedAt ?? 0))
   history.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
 
-  return { current, reviewQueue: review, history }
+  return { pinned, current, reviewQueue: review, history }
 }

@@ -15,7 +15,7 @@ export const UI_CONTROLS = {
   'drawer.search': 'Search previous chats (combobox)',
   'drawer.search-clear': 'Clear the drawer search',
   'drawer.search-result': 'Drawer search hit; item is the row id',
-  'drawer.row': 'Open a running, review-queue, or history chat; item is the row id',
+  'drawer.row': 'Open a pinned, running, review-queue, or history chat; item is the row id',
   'drawer.row-twisty': 'Show or hide the sub-agents of a row; item is the row id',
   'drawer.row-settled': 'Show or hide settled sub-agents; item is the row id',
   'drawer.row-stop': 'Stop a running agent row; item is the row id',
@@ -23,7 +23,8 @@ export const UI_CONTROLS = {
   'drawer.row-delete': 'Ask to delete a history row; item is the row id',
   'drawer.row-delete-confirm': 'Confirm deleting a row; item is the row id',
   'drawer.row-delete-cancel': 'Cancel deleting a row; item is the row id',
-  'drawer.row-menu': 'Context menu of a drawer row (continue in a new chat)',
+  'drawer.row-menu': 'Context menu of a drawer row (pin/unpin or continue in a new chat)',
+  'drawer.row-pin': 'Pin or unpin the chat in the row context menu; item is the chat id',
   'drawer.row-menu-item': 'Fork the row into a new chat; item is current or a model id',
 
   'chat.message-copy': 'Copy an assistant response; item is the message id',

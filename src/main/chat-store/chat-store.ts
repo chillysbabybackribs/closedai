@@ -101,6 +101,7 @@ export class ChatStore extends EventEmitter {
       updatedAt: seed.updatedAt ?? now,
       lastTurnEndedAt: seed.lastTurnEndedAt ?? null,
       archived: seed.archived ?? false,
+      pinnedAt: seed.pinnedAt ?? null,
       continuation: seed.continuation ?? null,
       checkpoint: seed.checkpoint ?? null,
       parentChatId: seed.parentChatId ?? null

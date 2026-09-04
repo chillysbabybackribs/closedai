@@ -56,6 +56,7 @@ export function DrawerRow({
     const anchor = rowMenuAnchor(event.currentTarget.getBoundingClientRect())
     onRowMenu({
       id: row.id,
+      pinned: row.chat.pinnedAt != null,
       title: row.title,
       paneId: row.paneId ?? null,
       threadId: row.threadId,
