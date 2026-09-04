@@ -80,10 +80,12 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
   handle and inject a bounded transcript summary on the next turn (`compactConversation` on the pane,
   button in the usage card). The visible transcript is unchanged; only provider-side context shrinks.
   Same strategy as the Cursor lane's re-seed compaction in AppV1.
-- **MCP primer turn.** A freshly spawned `agy` process runs one internal READY turn before the user's
-  prompt to initialize eager MCP declarations (`antigravity-session.ts`). A user prompt submitted
-  while this runs is queued: on a cold send, the primer is on the critical path and costs an
-  additional model turn. Every process respawn repeats it.
+- **Direct startup.** A freshly spawned `agy` process receives the user's prompt immediately;
+  there is no internal READY turn or primer queue (`antigravity-session.ts`). On 2026-09-04,
+  live cold-start and resumed-process checks with `gemini-3.8-flash-low` called the shared
+  `embedded_browser.page` tool through an isolated MCP registration on the first user turn.
+  The browser host returned controlled fixture data; this verifies tool initialization, not
+  navigation/rendering or every model/version combination.
 - **Empty-success recovery.** When the CLI reports SUCCESS without final assistant text, the session
   sends one internal recovery prompt on the same process before surfacing a notice.
 - **Cache telemetry.** Per-turn usage with zero `cache_read_tokens` on large prompts is recorded in the

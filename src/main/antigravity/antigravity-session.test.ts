@@ -19,11 +19,17 @@ lines.on('line', (line) => {
 });
 `
 
+function pending<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => { resolve = done })
+  return { promise, resolve }
+}
+
 function harness() {
   const ops: TranscriptOp[] = []
   const ends: TurnEnd[] = []
-  let completed = Promise.withResolvers<TurnEnd>()
-  const initialized = Promise.withResolvers<string>()
+  let completed = pending<TurnEnd>()
+  const initialized = pending<string>()
   const session = new AntigravitySession({
     cwd: process.cwd(), binary: () => process.execPath,
     spawnArgs: (resume) => ['-e', fixture, resume ?? 'new-conversation'],
@@ -34,7 +40,7 @@ function harness() {
   })
   return { session, ops, ends, initialized: initialized.promise,
     send(content: string) {
-      completed = Promise.withResolvers<TurnEnd>()
+      completed = pending<TurnEnd>()
       session.send(content)
       return completed.promise
     }

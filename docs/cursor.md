@@ -34,7 +34,7 @@ open protocol, so the wire format is not the fragile part — the subcommand's a
 | Model ids | `<base>[<k>=<v>,…]`, e.g. `claude-opus-5[thinking=true,context=300k,effort=high,fast=false]`. |
 | Reasoning effort | **None offered.** `session/set_model` accepts only a verbatim listed id; every bracket override was rejected with "Invalid model value", including efforts that `cursor-agent models` advertises. Effort is part of the model, so the picker shows one entry per model. |
 | Model switching | `session/set_model` on the live session, so an open chat keeps its history — no respawn. |
-| Chat history | `session/list` (agent-generated titles, `cwd`-scoped) and `session/load`, which replays the whole conversation as `session/update` notifications before resolving. Replay retains the returned session setup so continuing that session reuses the load. The app records **no** transcript of its own, unlike the Antigravity lane. |
+| Chat history | `session/list` (agent-generated titles, `cwd`-scoped) and `session/load`, which replays the whole conversation as `session/update` notifications before resolving. Replay retains the returned session setup so continuing that session reuses the load. Startup restores saved history before checking for an uncached catalog, obtaining both from one load. The app records **no** transcript of its own, unlike the Antigravity lane. |
 | Thread title | `session_info_update` carries a title the agent writes a turn or two in. |
 | Interrupt | `session/cancel`; the session stays usable afterwards. |
 | Approvals | `session/request_permission` is answered automatically with the broadest allow offered. This is narrower than the CLI's blanket `--force` and keeps ClosedAI's no-approval-dialog rule. |
@@ -104,6 +104,3 @@ Verified live on 2026-09-03, and each point cost a real bug or would have:
   has no surface for them, so the update is ignored.
 - **`readThread` cost.** Reading another thread loads it on the same process. That is how ACP
   exposes history, but it means a cross-provider read starts a session on the agent's side.
-- **A second load on a cold start.** When the catalog has to be read from the agent, the pane loads
-  its session once for the catalog and again to collect the transcript, because the first load's
-  history notifications have nowhere to go. Worth ~0.45s on a cold start only.

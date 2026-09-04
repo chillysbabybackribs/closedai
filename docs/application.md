@@ -228,9 +228,8 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   from the turn's `paused` event until the next turn starts. Codex sends `turn/interrupt`, Claude
   the SDK's `interrupt`, Cursor the `session/cancel` **notification** (as a request cursor-agent
   ignores it and streams on), and Antigravity, which has no interrupt, kills its process and
-  resumes the conversation id on the next turn. A pause while an Antigravity prompt is still
-  queued behind the MCP primer drops that queued prompt against a warm process and says so, since
-  the CLI never received the message. Appearance settings separate message and composer font sizes
+  resumes the conversation id on the next turn. Antigravity sends the user's prompt directly
+  on process startup; it has no hidden initialization turn. Appearance settings separate message and composer font sizes
   (defaults 14 and 15 px, range 13–22) from chat zoom.
 - Ctrl/Cmd+, opens settings. Ctrl/Cmd+H opens chat history. Browser and chat zoom have separate
   controls; these shell shortcuts are handled in `renderer/app-shortcuts.ts`.
