@@ -64,13 +64,9 @@ function ServiceCard({ service, selected, detectedDomain, detectedName, onSelect
       <span className="credential-service-mark">
         {wearsDetectedSite ? <RemoteServiceLogo domain={detectedDomain} name={detectedName} /> : <Logo />}
       </span>
-      <span className="credential-service-name">
+      <span className="credential-service-name" title={wearsDetectedSite ? detectedDomain : service.description}>
         {wearsDetectedSite ? detectedName || service.name : service.name}
       </span>
-      <span className="credential-service-description">
-        {wearsDetectedSite ? detectedDomain : service.description}
-      </span>
-      {service.difficulty === 'two-step' ? <span className="credential-service-note">2 steps</span> : null}
       <span className="credential-service-check" aria-hidden="true">
         {selected ? <Check className="size-3" /> : null}
       </span>
