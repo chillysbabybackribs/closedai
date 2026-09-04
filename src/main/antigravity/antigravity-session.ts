@@ -1,10 +1,7 @@
 import { antigravityTurnLine } from './antigravity-cli.js'
 import { antigravityTurnId } from './antigravity-ids.js'
 import { AntigravityProcess } from './antigravity-process.js'
-import {
-  ANTIGRAVITY_EMPTY_SUCCESS_RECOVERY_PROMPT,
-  ANTIGRAVITY_MCP_PRIMER_PROMPT
-} from './antigravity-runtime-prompts.js'
+import { ANTIGRAVITY_EMPTY_SUCCESS_RECOVERY_PROMPT } from './antigravity-runtime-prompts.js'
 import { AntigravityTurnTranslator, type TranscriptOp, type TurnEnd } from './antigravity-stream.js'
 import type { AntigravityServerName } from './antigravity-tool-items.js'
 import { IdleProcessGuard } from '../idle-process-guard.js'
@@ -45,8 +42,6 @@ export class AntigravitySession {
   private translator: AntigravityTurnTranslator | null = null
   private readonly idleGuard: IdleProcessGuard
   private stopping = false
-  private priming = false
-  private queuedTurn: { turnId: string; content: string } | null = null
 
   constructor(private readonly deps: AntigravitySessionDeps) {
     this.idleGuard = new IdleProcessGuard(
@@ -67,10 +62,6 @@ export class AntigravitySession {
     this.activeTurnId = turnId
     this.deps.onTurn(turnId)
     const process = this.ensureProcess()
-    if (this.priming) {
-      this.queuedTurn = { turnId, content }
-      return turnId
-    }
     this.beginUserTurn(process, turnId, content)
     return turnId
   }
@@ -78,19 +69,9 @@ export class AntigravitySession {
   /**
    * Pause the running turn. The protocol has no interrupt, so a turn the CLI is already answering
    * ends by killing the process; the conversation id survives and the next turn resumes it.
-   *
-   * A turn still waiting behind the MCP primer is a different case: its prompt has never been
-   * written to the CLI, so killing the process would only cost a respawn, and the queued prompt
-   * would vanish while the pane still showed the message as sent. Dropping the queue ends that
-   * turn against a warm process and says plainly that the message never left.
    */
   async interrupt(): Promise<void> {
     if (!this.activeTurnId) return
-    if (this.queuedTurn) {
-      this.queuedTurn = null
-      this.endTurn({ status: 'interrupted', undelivered: true })
-      return
-    }
     if (!this.process) return
     this.stopping = true
     await this.retire()
@@ -99,8 +80,6 @@ export class AntigravitySession {
   /** Close the live process but keep the conversation id, so the next turn resumes it. */
   async retire(): Promise<void> {
     this.clearIdleTimer()
-    this.priming = false
-    this.queuedTurn = null
     const process = this.process
     this.process = null
     if (this.activeTurnId) {
@@ -148,9 +127,6 @@ export class AntigravitySession {
       onSpawnError: (message) => { if (this.process === process) this.onExit(message, null) }
     })
     this.process = process
-    this.priming = true
-    process.write(antigravityTurnLine(ANTIGRAVITY_MCP_PRIMER_PROMPT))
-    this.trace('out', 'mcp primer', ANTIGRAVITY_MCP_PRIMER_PROMPT)
     return process
   }
 
@@ -204,17 +180,6 @@ export class AntigravitySession {
 
   private onEvent(raw: unknown): void {
     this.trace('in', summarizeAntigravityEvent(raw), raw)
-    if (this.priming) {
-      this.captureConversationId(raw)
-      if (isResultEvent(raw)) {
-        this.priming = false
-        const queued = this.queuedTurn
-        this.queuedTurn = null
-        const process = this.process
-        if (queued && process?.alive) this.beginUserTurn(process, queued.turnId, queued.content)
-      }
-      return
-    }
     const translator = this.translator
     if (!translator) return
     const translation = translator.handle(raw)
@@ -230,29 +195,8 @@ export class AntigravitySession {
     }
   }
 
-  private captureConversationId(raw: unknown): void {
-    if (typeof raw !== 'object' || raw === null) return
-    const record = raw as Record<string, unknown>
-    if (record.event === 'result') {
-      const result = record.result as Record<string, unknown> | undefined
-      const id = typeof result?.conversation_id === 'string' ? result.conversation_id : null
-      if (id) this.noteConversationId(id)
-      return
-    }
-    const id = typeof record.conversation_id === 'string' ? record.conversation_id : null
-    if (id) this.noteConversationId(id)
-  }
-
-  private noteConversationId(conversationId: string): void {
-    if (conversationId === this.conversationId) return
-    this.conversationId = conversationId
-    this.deps.onConversationId(conversationId)
-  }
-
   private onExit(detail: string, signal: NodeJS.Signals | null): void {
     this.process = null
-    this.priming = false
-    this.queuedTurn = null
     this.clearIdleTimer()
     if (!this.activeTurnId) return
     const error = detail ? `Antigravity stopped: ${detail}` : `Antigravity stopped before the turn completed${signal ? ` (${signal})` : ''}`
@@ -277,8 +221,4 @@ export class AntigravitySession {
   private clearIdleTimer(): void {
     this.idleGuard.clear()
   }
-}
-
-function isResultEvent(raw: unknown): boolean {
-  return typeof raw === 'object' && raw !== null && (raw as Record<string, unknown>).event === 'result'
 }
