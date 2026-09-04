@@ -400,7 +400,8 @@ One checkpoint per pane is persisted in the existing settings store, not a separ
 database. It is model-authored data, not an approval or independently verified work record.
 
 `peer_chats.recall` is read-only and accepts `scope: current|source`, optional literal
-case-insensitive `query`, `limit` (default 5, max 8), or `item_id` with a character `offset`.
+case-insensitive `query`, `types` (item kinds to search, so tool traffic cannot crowd out the
+messages), `limit` (default 5, max 8), or `item_id` with a character `offset`.
 Search results contain at most 800 characters per excerpt and fit within 16,000 serialized
 characters including checkpoint state. Use `nextOffset` to read more of a matched item, or
 `nextBeforeItemId` as `before_item_id` to search older items. `hasMore` means older candidate
