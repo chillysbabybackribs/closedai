@@ -217,12 +217,52 @@
 }
 
 /* ---- Provider rows --------------------------------------------------------
-   The root menu is one row per provider; its models live in the panel that opens beside it.
-   The row carries the mark, the provider's name, and — where that provider owns the current
-   selection — the model in use, so the resting menu answers "which backend, on what" without
-   opening anything. */
-.model-menu-providers {
-  min-width: 15.5rem;
+   The root view is one row per provider; choosing one swaps the same panel for that provider's
+   models. The row carries the mark, the provider's name, and — where that provider owns the
+   current selection — the model in use, so the resting menu answers "which backend, on what"
+   without opening anything. */
+.model-menu-panel {
+  min-width: 0;
+}
+
+/* ---- Provider view --------------------------------------------------------
+   Choosing a provider replaces the panel instead of opening one beside it, so the way back has
+   to travel with the list: a header row that stays put while a long catalogue scrolls under it.
+   It keeps the popover's own paper under the highlight tint, or scrolled rows would read
+   through it. */
+.model-menu-back {
+  position: sticky;
+  /* Cancels the menu's 5px padding so the row parks flush with the top edge. */
+  top: -5px;
+  z-index: 1;
+  grid-template-columns: auto auto minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  padding: 7px 9px;
+  background: var(--popover);
+}
+
+.model-menu-back[data-highlighted] {
+  background:
+    linear-gradient(color-mix(in srgb, var(--foreground) 8%, transparent) 0 100%),
+    var(--popover);
+}
+
+.model-menu-back .model-menu-item-name {
+  font-weight: 650;
+}
+
+.model-menu-back .model-menu-item-detail {
+  justify-self: end;
+  text-align: right;
+}
+
+.model-menu-back-mark {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: color-mix(in srgb, var(--foreground) 55%, transparent);
 }
 
 .model-menu-provider {
@@ -244,12 +284,6 @@
 
 .model-menu-provider[data-active='true'] .model-menu-item-detail {
   color: color-mix(in srgb, var(--foreground) 62%, transparent);
-}
-
-/* Radix keeps the trigger highlighted while its panel is open, so the row stays visibly the
-   parent of what is on screen rather than losing its hover the moment the pointer leaves it. */
-.model-menu-provider[data-state='open'] {
-  background: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 .model-menu-provider-caret {
