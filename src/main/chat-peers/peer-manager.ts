@@ -176,10 +176,11 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // with "New chat" rows. One mid-open (busy) is not blank, it is about to hold a thread.
     if (this.lifecycle.peers.size > 1) this.lifecycle.discardIfBlank(previousPaneId)
     this.parking.schedule(previousPaneId)
-    // Paint the destination from the snapshot it already holds before its runtime is back.
-    // Waking replays the thread from the provider's store and starts a CLI process; awaiting
-    // that here kept the pane on the previous chat for the whole start-up. The wake emits its
-    // own `replace` when it lands.
+    // Paint the destination from the view it already holds — the live snapshot when its runtime
+    // is up, the saved one when it is parked — before waking it. Waking replays the thread from
+    // the provider's store and starts a CLI process; awaiting that here kept the pane on the
+    // previous chat for the whole start-up. The wake emits its own `replace` when it lands.
+    await this.transcripts.load(paneId)
     this.emitWorkspace()
     await this.persistOpenChats()
     this.scheduleWarm(paneId)
@@ -337,6 +338,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     const previousPaneId = this.selectedPaneId
     this.lifecycle.attach(record)
     this.selectedPaneId = chatId
+    // The chat's last known messages, model, and context reading paint now; the provider's
+    // replay lands behind them rather than in front of an empty pane.
+    await this.transcripts.load(chatId)
     if (this.lifecycle.peers.size > 1) this.lifecycle.discardIfBlank(previousPaneId)
     this.parking.schedule(previousPaneId)
     this.lifecycle.parkExcessIdle(chatId)
@@ -376,6 +380,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       await this.withAwake(attached ? chatId : this.selectedPaneId, (surface) => surface.archiveThread(threadId))
     }
     this.store.archive(chatId)
+    this.transcripts.forget(chatId)
     if (attached) await this.closePeer(chatId)
     // The drawer refreshes right after this; it must not be handed the list with the row still in it.
     this.catalog.invalidate()
@@ -514,6 +519,19 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     })
   }
 
+  /** One pane as the renderer sees it: its live snapshot, filled in from the saved view. */
+  private rendererView(entry: PeerEntry, snapshot: ChatSnapshot): ChatSnapshot {
+    const filled = cachedPaneView(snapshot, this.store.get(entry.chatId), this.transcripts.peek(entry.chatId))
+    return rendererSnapshot(filled, entry.display.current.title)
+  }
+
+  /** Keep the chat's saved view current; a chat with no thread of its own has nothing to save. */
+  private rememberTranscript(entry: PeerEntry): void {
+    const threadId = this.store.get(entry.chatId)?.threadId
+    if (!threadId) return
+    this.transcripts.remember(entry.chatId, threadId, entry.surface.snapshot({ limit: CACHED_TRANSCRIPT_ITEMS }))
+  }
+
   private onPaneEvent(entry: PeerEntry, event: ChatEvent): void {
     const paneId = entry.chatId
     traceLog.responses.event(paneId, event)
@@ -523,7 +541,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     const wasRunning = entry.display.current.running
     entry.display.update(event, entry.updatedAt)
     const rendererEvent = event.type === 'replace'
-      ? { ...event, snapshot: rendererSnapshot(event.snapshot, entry.display.current.title) }
+      ? { ...event, snapshot: this.rendererView(entry, event.snapshot) }
       : event
     this.emit('event', { type: 'pane', paneId, event: rendererEvent } satisfies ChatWorkspaceEvent)
     this.chatsEmit.schedule()
@@ -533,6 +551,11 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       this.lifecycle.rememberDisplay(paneId, entry.display.current, entry.updatedAt, turnBoundary ? wasRunning && !running : null)
     }
     if (turnBoundary && !running) this.catalog.invalidate()
+    // Save what the pane shows at each turn boundary, and the first time a replay fills a chat
+    // this cache has never seen. Streaming deltas are not worth a write; the tail they build is.
+    if ((turnBoundary && !running) || (event.type === 'replace' && event.snapshot.items.length > 0)) {
+      this.rememberTranscript(entry)
+    }
     if (running) this.parking.cancel(entry)
     else this.parking.schedule(paneId)
   }
