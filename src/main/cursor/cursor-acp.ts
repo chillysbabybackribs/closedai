@@ -125,8 +125,14 @@ export class CursorAcpClient extends StdioJsonRpcClient {
     return typeof result?.stopReason === 'string' ? result.stopReason : 'end_turn'
   }
 
-  async cancel(sessionId: string): Promise<void> {
-    await this.request('session/cancel', { sessionId }, 10_000).catch(() => undefined)
+  /**
+   * ACP defines `session/cancel` as a notification, and cursor-agent enforces that: sent as a
+   * request it is ignored outright — verified 2026-09-04, generation streamed on for another
+   * 861 updates and no response ever came — while the same call as a notification stops the
+   * model within milliseconds and resolves the pending `session/prompt` with `cancelled`.
+   */
+  cancel(sessionId: string): void {
+    this.notify('session/cancel', { sessionId })
   }
 
   async setModel(sessionId: string, modelId: string): Promise<void> {

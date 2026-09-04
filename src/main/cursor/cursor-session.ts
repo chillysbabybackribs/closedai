@@ -95,11 +95,11 @@ export class CursorSession {
     return turnId
   }
 
-  /** Stop the running turn in protocol, leaving the session open for the next one. */
+  /** Pause the running turn in protocol, leaving the session open for the next one. */
   async interrupt(): Promise<void> {
     if (!this.activeTurnId || !this.client || !this.sessionId) return
     this.stopping = true
-    await this.client.cancel(this.sessionId)
+    this.client.cancel(this.sessionId)
   }
 
   /** Select a model on the live session; a session opened later picks it up at `session/new`. */
