@@ -5,7 +5,12 @@ import type {
 } from '../../shared/chat.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
-import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource } from '../chat-context/thread-handoff.js'
+import {
+  buildThreadHandoff,
+  continuationFromThreadHandoff,
+  handoffAdditionalContext,
+  type ThreadHandoffSource
+} from '../chat-context/thread-handoff.js'
 import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { buildCompactionSeed, compactedAdditionalContext } from '../chat-context/provider-compaction.js'
@@ -255,16 +260,7 @@ export class AntigravityChatService extends EventEmitter {
     if (!source) throw new Error('There is no conversation to continue yet')
     await this.detachThread()
     await this.settings.set({
-      chatContinuation: {
-        sourcePaneId: this.paneId,
-        sourceThreadId: source.threadId,
-        sourceProvider: source.provider,
-        sourceTitle: source.title,
-        sourceThroughItemId: source.sourceThroughItemId ?? null,
-        checkpoint: source.checkpoint ?? null,
-        handoff: source.text,
-        createdAt: Date.now()
-      }
+      chatContinuation: continuationFromThreadHandoff(this.paneId, source)
     })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
     this.addNotice(`Continuing from “${source.title}”. A short summary of that chat goes with your next message.`, 'info', null)

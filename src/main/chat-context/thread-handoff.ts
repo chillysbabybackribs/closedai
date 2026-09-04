@@ -1,6 +1,7 @@
 import type { ChatProvider, ChatTranscriptItem } from '../../shared/chat.js'
 import type { AdditionalContext } from './turn-context.js'
 import type { ChatMemoryCheckpoint } from '../../shared/chat-memory.js'
+import type { ChatContinuation } from '../../shared/types.js'
 import { normalizeMemoryCheckpoint } from './memory-checkpoint.js'
 
 // "Continue in new chat": a fresh thread starts with a short digest of the one it replaces
@@ -80,6 +81,24 @@ export function buildThreadHandoff(
 /** The turn-context fragment that carries the digest into the new thread's first turn. */
 export function handoffAdditionalContext(handoff: string): AdditionalContext {
   return { [THREAD_HANDOFF_CONTEXT]: { kind: 'untrusted', value: handoff } }
+}
+
+/** Persist a handoff and its bounded source metadata on the destination chat. */
+export function continuationFromThreadHandoff(
+  paneId: string,
+  source: ThreadHandoffSource,
+  createdAt = Date.now()
+): ChatContinuation {
+  return {
+    sourcePaneId: paneId,
+    sourceThreadId: source.threadId,
+    sourceProvider: source.provider,
+    sourceTitle: source.title,
+    sourceThroughItemId: source.sourceThroughItemId ?? null,
+    checkpoint: source.checkpoint ?? null,
+    handoff: source.text,
+    createdAt
+  }
 }
 
 /** User messages plus one assistant answer per turn: the final answer, else the last message. */

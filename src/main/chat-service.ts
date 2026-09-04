@@ -28,7 +28,12 @@ import {
 import { resumeThreadParams, startThreadParams, type ThreadResponse } from './chat-context/thread-params.js'
 import { ContextCompactor, describeUsage, type ContextUsage } from './chat-context/context-compaction.js'
 import { codexPlanUsage } from './chat-context/plan-usage.js'
-import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource } from './chat-context/thread-handoff.js'
+import {
+  buildThreadHandoff,
+  continuationFromThreadHandoff,
+  handoffAdditionalContext,
+  type ThreadHandoffSource
+} from './chat-context/thread-handoff.js'
 import { buildTurnContextReport } from './chat-context/turn-inspector.js'
 import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
@@ -268,16 +273,7 @@ export class ChatService extends EventEmitter {
     this.detachThread()
     await this.settings.set({
       chatThreadId: null,
-      chatContinuation: {
-        sourcePaneId: this.paneId,
-        sourceThreadId: source.threadId,
-        sourceProvider: source.provider,
-        sourceTitle: source.title,
-        sourceThroughItemId: source.sourceThroughItemId ?? null,
-        checkpoint: source.checkpoint ?? null,
-        handoff: source.text,
-        createdAt: Date.now()
-      }
+      chatContinuation: continuationFromThreadHandoff(this.paneId, source)
     })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
     this.addNotice(`Continuing from “${source.title}”. A short summary of that chat goes with your next message.`, 'info', null)
