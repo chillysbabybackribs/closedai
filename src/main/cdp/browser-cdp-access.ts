@@ -12,6 +12,7 @@ import {
   RESOURCE_TIMING_EXPRESSION
 } from './cdp-network.js'
 import { settleFrames } from '../browser-frame-settle.js'
+import { dismissOverlayWithCdp } from './overlay/overlay-dismiss-cdp.js'
 
 /** How much of the event buffer a request listing folds; the buffer itself holds 1,000. */
 const EVENT_SCAN_LIMIT = 1_000
@@ -158,6 +159,13 @@ export class BrowserCdpAccess implements CdpToolHost {
 
   async scrollPage(tabId: string | undefined, ref: string | undefined, deltaX: number, deltaY: number): Promise<unknown> {
     return this.realInput(tabId, ({ input }) => input.scroll(ref, deltaX, deltaY))
+  }
+
+  async dismissOverlay(tabId: string | undefined, kind?: string, verifyTimeoutMs?: number): Promise<unknown> {
+    return this.realInput(tabId, ({ session }) => dismissOverlayWithCdp(
+      (command, params) => session.command(command, params ?? {}),
+      { kind: kind as 'auto' | 'modal' | 'dialog' | 'popover' | undefined, verifyTimeoutMs }
+    ))
   }
 
   dispose(): void {

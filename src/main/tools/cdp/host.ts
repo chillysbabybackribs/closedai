@@ -27,6 +27,7 @@ export type CdpToolHost = {
   typeText(tabId: string | undefined, ref: string, text: string, clear: boolean): Promise<unknown>
   pressKey(tabId: string | undefined, key: string, modifiers: string[]): Promise<unknown>
   scrollPage(tabId: string | undefined, ref: string | undefined, deltaX: number, deltaY: number): Promise<unknown>
+  dismissOverlay(tabId: string | undefined, kind?: string, verifyTimeoutMs?: number): Promise<unknown>
 }
 
 export type CdpHostProvider = () => CdpToolHost | null

@@ -216,7 +216,9 @@ async function main(): Promise<void> {
   // Model catalogs are shared per workspace so a pane's non-active providers fill the picker
   // from the last catalog seen instead of each starting a process to fetch their own.
   const providerCatalogs = new ProviderCatalogCache()
-  chatService = new ChatPeerManager(settings, chatStore, (peerSettings, record) => new ChatHub({
+  chatService = new ChatPeerManager(settings, chatStore, (peerSettings, record) => {
+    const catalogs = providerCatalogs.forWorkspace(chatWorkspace)
+    return new ChatHub({
     codex: new ChatService(
       chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, undefined, peerSettings.paneId
     ),
@@ -224,12 +226,13 @@ async function main(): Promise<void> {
       chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, peerSettings.paneId
     ),
     antigravity: new AntigravityChatService(
-      chatWorkspace, peerSettings, antigravityBridge!, antigravityStateDir, activeBrowserContext, screenshots, peerSettings.paneId
+      chatWorkspace, peerSettings, antigravityBridge!, antigravityStateDir, activeBrowserContext, screenshots, peerSettings.paneId, catalogs
     ),
     cursor: new CursorChatService(
       chatWorkspace, peerSettings, cursorBridge!, cursorStateDir, activeBrowserContext, screenshots, peerSettings.paneId
     )
-  }, record.modelId, peerSettings, { provider: record.provider, catalogs: providerCatalogs.forWorkspace(chatWorkspace) }), undefined, workspaceSelector)
+  }, record.modelId, peerSettings, { provider: record.provider, catalogs })
+  }, undefined, workspaceSelector)
   registerIpc()
   // The one-shot cookie import runs before the first tab loads, so a restored or home page
   // arrives already signed in rather than racing the import.

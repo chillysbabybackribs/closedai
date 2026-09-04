@@ -136,6 +136,29 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
         numberArg(input, 'delta_x', 0),
         numberArg(input, 'delta_y', 0)
       ))
+    },
+    {
+      action: 'dismiss_overlay',
+      description:
+        'Detect and dismiss a blocking modal, dialog, or cookie banner on the active tab. Tries consent accept, ' +
+        'Escape, semantic close controls, then a pointer click on the close control, verifying dismissal after each step.',
+      inputSchema: objectSchema({
+        tab_id: tabIdField,
+        kind: {
+          type: 'string',
+          enum: ['auto', 'modal', 'dialog', 'popover'],
+          description: 'Overlay kind to target; auto considers every kind.'
+        },
+        verify_timeout_ms: {
+          type: 'integer', minimum: 100, maximum: 2_000,
+          description: 'Milliseconds to wait for dismissal verification after each strategy.'
+        }
+      }),
+      run: async (input) => jsonResult(await requireCdp(cdp).dismissOverlay(
+        tabIdFrom(input),
+        stringArg(input, 'kind', 'auto') ?? 'auto',
+        numberArg(input, 'verify_timeout_ms', 600)
+      ))
     }
   ]
 }
