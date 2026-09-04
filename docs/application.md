@@ -370,10 +370,12 @@ archiving a provider thread are distinct operations.
 Codex-specific settings are `chatCompactAtPercent` (default 80), `chatCompactAtTokens` (default
 zero, opt-in between-turn token threshold), and `chatMidTurnCompactTokens` (default zero, leaves
 the CLI's limit). The percentage and between-turn token triggers are independent; setting both
-to zero disables app-triggered compaction. The token trigger waits for 15 seconds of idle time;
+to zero disables app-triggered compaction. Both triggers wait for 15 seconds of idle time;
 a new send cancels it if it has not started. Repeated token-triggered compactions require five
 minutes and at least max(4,000, 25% of the configured budget) token growth since the lowest usage
-observed from the last attempt onward. Window-percentage pressure bypasses that grace/cooldown.
+observed from the last attempt onward. Window-percentage pressure bypasses the token retry
+cooldown and growth requirement, but still observes the idle grace. A compaction already in
+flight can block the next send until it completes or the 90-second app wait expires.
 This is a soft trigger, not a hard context cap or a guarantee that native compaction reaches the
 target. Claude keeps SDK-native automatic/precomputed compaction; Antigravity compaction is manual re-seed only
 (no context gauge or auto trigger). No provider history is deleted or session silently replaced.

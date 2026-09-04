@@ -309,10 +309,11 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
 - `ChatService` watches `thread/tokenUsage/updated` and asks for `thread/compact/start` after a
   turn ends with the context above `chatCompactAtPercent` (default 80; 0 disables this trigger).
   The independent `chatCompactAtTokens` trigger defaults to 0 (off), with nonzero values rounded
-  and clamped to 20,000–2,000,000. It schedules native compaction after 15 idle seconds. A new send
+  and clamped to 20,000–2,000,000. Both triggers schedule native compaction after 15 idle seconds. A new send
   or provider turn cancels a queued attempt; a compaction already in flight still blocks sends.
   Token retries require five minutes plus growth of max(4,000, 25% of the budget) from the lowest
-  usage observed since the previous attempt. Window-percentage pressure bypasses that protection.
+  usage observed since the previous attempt. Window-percentage pressure bypasses those retry
+  requirements, but still waits for the idle grace.
   One compaction per completed turn at most. This is a soft trigger: native compaction may retain
   more than the target, and turns can grow past it. See `src/main/chat-context/context-compaction.ts`.
 - Opt-in: `chatMidTurnCompactTokens` (default 0) launches the app-server with
@@ -439,7 +440,9 @@ The trace is held in memory only (`src/main/trace/trace-log.ts`): at most 4,000 
 24,000,000 detail characters, each detail clipped at 48,000 characters before its truncation
 marker. It clears at restart or with the panel's "Clear" button. Trace data is not written to
 disk; providers separately retain their own conversation histories. Raw provider lines are
-hidden by default in the panel's filters, but still collected in the in-memory ring.
+hidden by default in the panel's filters, but still collected in the in-memory ring. Oversized
+nested strings are clipped before JSON encoding so recording an image does not encode its full
+base64 payload just to discard it. Serialization still runs synchronously and traverses objects.
 
 The performance summary (`renderer/trace/trace-performance.ts`) derives model passes, cache/token
 usage, context, and tool time from the available entries. Codex and Claude raw messages supply
