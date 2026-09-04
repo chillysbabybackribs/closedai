@@ -39,6 +39,7 @@ open protocol, so the wire format is not the fragile part — the subcommand's a
 | Interrupt | `session/cancel`; the session stays usable afterwards. |
 | Approvals | `session/request_permission` is answered automatically with the broadest allow offered. This is narrower than the CLI's blanket `--force` and keeps ClosedAI's no-approval-dialog rule. |
 | Tools | The ClosedAI registry is served over MCP by the shared HTTP bridge (`src/main/tools/mcp-http-bridge.ts`), passed to `session/new` as `mcpServers`. Each pane's endpoints carry its own key (`/mcp/<key>/<namespace>`), so a served call is attributed to that pane and turn exactly. |
+| Product instructions | ACP has no system-prompt hook, so the first turn of each thread carries shared ClosedAI guidance as `<closedai_context name="closedai.instructions" kind="application">` — the same application, articulation, and engineering rules the other providers receive. Later turns rely on the agent's retained session history. |
 | Archiving | ACP has no delete verb, so `cursor-archive.ts` keeps a local set of session ids the drawer stops listing. Cursor's own store is untouched. |
 | Plan usage | Not reported. `cursor-agent about` names the tier only, so the hover card shows the plan with an explicit "unavailable" rather than an invented number. |
 | Context capacity | A model id's `context` parameter is parsed into tokens and shown in the model selector (for example, `context=1m` becomes `1M`). |
