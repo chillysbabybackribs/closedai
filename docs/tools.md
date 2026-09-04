@@ -151,6 +151,11 @@ browser-wide barrier for the resource-scoped calls in that batch. Unscoped calls
 Each nested call retains validation, switches, timing, and telemetry. Set `include_result: false`
 for successful intermediate payloads; failures are always included. In Codex exec scripts use
 direct `await`/`Promise.all` instead of wrapping another batch tool.
+This is a model-facing requirement, not merely an available optimization: once browser targets are
+known, every independent page read, request, semantic inspection, and source retrieval belongs in
+the same model pass and runs in parallel. An active `search.run`, inspection of its live source tab,
+and reads of already-ready evidence should overlap. Serialize only genuine data dependencies,
+mutations sharing a target, and foreground input.
 
 Real pointer and keyboard input is an escape hatch, not a normal navigation strategy. Every
 `closedai_app.ui` click/type/key action, semantic browser click/type/key/dismiss action, and raw

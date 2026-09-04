@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { APPLICATION_INSTRUCTIONS } from './application-instructions.js'
 import { engineeringInstructions } from './engineering-instructions.js'
 
 test('every lane is told that a model pass, not a call, is the unit of cost', () => {
@@ -19,4 +20,12 @@ test('the Claude lane overrides the bypass-permissions preference for Bash', () 
   const claude = engineeringInstructions('claude')
   assert.match(claude, /Bypass-permissions mode adds a note preferring Bash[^]*does not apply in ClosedAI/)
   assert.match(claude, /keep Bash for work that is genuinely a command/)
+})
+
+test('browser routing requires parallel batches for every independent known target', () => {
+  assert.match(APPLICATION_INSTRUCTIONS, /batch every independent read, request, semantic inspection, and source retrieval/)
+  assert.match(APPLICATION_INSTRUCTIONS, /Promise\.all in one exec script/)
+  assert.match(APPLICATION_INSTRUCTIONS, /tool_batch with parallel=true/)
+  assert.match(APPLICATION_INSTRUCTIONS, /Use explicit tab_id values/)
+  assert.match(APPLICATION_INSTRUCTIONS, /Serialize only genuine dependencies, same-target mutations, and foreground input/)
 })

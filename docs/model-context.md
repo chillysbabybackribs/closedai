@@ -29,6 +29,11 @@ verification. For Codex the containing exec script is the batch; direct-call lan
 The tool runtime distinguishes those two dispatch sources and refuses unbatched real input from a
 direct-call provider even when it supplies a reason. Direct-call batches containing real input must
 be sequential and include a later read, wait, or capture assertion.
+Independent browser reads, requests, semantic inspections, and source retrievals are required to
+fan out in the same model pass once their targets are known. Codex uses `Promise.all` inside one exec
+script; direct-call providers use a parallel `tool_batch`. Explicit tab ids establish independent
+targets. Models overlap live-tab inspection and ready-source retrieval with an active `search.run`,
+and serialize only actual dependencies, same-target mutations, and foreground input.
 
 The shared response style asks for results and evidence, with progress only when it adds a new
 result, blocker, required choice, or tool/action error. Every error must be disclosed even when the
