@@ -175,8 +175,8 @@ a new send cancels it if it has not started. Repeated token-triggered compaction
 minutes and at least max(4,000, 25% of the configured budget) token growth since the lowest usage
 observed from the last attempt onward. Window-percentage pressure bypasses that grace/cooldown.
 This is a soft trigger, not a hard context cap or a guarantee that native compaction reaches the
-target. Claude keeps SDK-native automatic/precomputed compaction; Antigravity has no equivalent
-app-configured token threshold. No provider history is deleted or session silently replaced.
+target. Claude keeps SDK-native automatic/precomputed compaction; Antigravity compaction is manual re-seed only
+(no context gauge or auto trigger). No provider history is deleted or session silently replaced.
 
 The Turn trace shows send-to-first-assistant-text timing for all three providers: preparation,
 Codex's measured compaction wait (a subset of preparation), and time after provider dispatch.

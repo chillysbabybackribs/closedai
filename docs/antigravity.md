@@ -69,6 +69,10 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
 - **Subscription plan usage.** `agy -p "/quota" --output-format json` reports 5-hour and weekly rolling
   buckets for Gemini and third-party models with exact reset timestamps, surfaced on the composer's usage
   card (`antigravity-service.ts`, `plan-usage.ts`).
+- **Re-seed compaction.** `agy` has no native compact verb, so the app can drop the CLI conversation
+  handle and inject a bounded transcript summary on the next turn (`compactConversation` on the pane,
+  button in the usage card). The visible transcript is unchanged; only provider-side context shrinks.
+  Same strategy as the Cursor lane's re-seed compaction in AppV1.
 
 ## Process lifecycle (`antigravity-session.ts`, `antigravity-process.ts`)
 

@@ -74,11 +74,6 @@ class FakeProvider extends EventEmitter {
   }
   async openThread(id: string): Promise<void> { this.calls.push(`openThread:${id}`) }
   async archiveThread(id: string): Promise<void> { this.calls.push(`archive:${id}`) }
-  async compactConversation(): Promise<void> {
-    if (this.provider !== 'antigravity') throw new Error('unsupported')
-    this.calls.push('compactConversation')
-    this.threadId = null
-  }
   async beginChatGptLogin(): Promise<string> { this.calls.push('login'); return 'https://auth' }
 }
 
@@ -299,4 +294,13 @@ test('a switch the picker already saved is not written again', async () => {
   await hub.selectModel('claude:opus[1m]')
   assert.equal(writes, 0)
   assert.equal(hub.activeProvider, 'claude')
+})
+
+test('compactConversation routes to the active provider when supported', async () => {
+  const { hub, antigravity, codex } = build('agy:gemini-3.8-flash')
+  await hub.compactConversation()
+  assert.deepEqual(antigravity.calls, ['compactConversation'])
+  assert.deepEqual(codex.calls, [])
+  await hub.selectModel('gpt-5.6-sol')
+  await assert.rejects(hub.compactConversation(), /does not support compaction/)
 })
