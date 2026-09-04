@@ -1,5 +1,5 @@
 import { Monitor, PanelRightClose } from 'lucide-react'
-import { useState, type Dispatch } from 'react'
+import { useImperativeHandle, useState, type Dispatch, type Ref } from 'react'
 import { createPortal } from 'react-dom'
 import { BrowserPane } from '../browser-pane.js'
 import { useBrowserController } from '../browser-controller.js'
@@ -13,14 +13,22 @@ import { ChatCanvas } from './chat-canvas.js'
 import { useChatLayout } from './layout-controller.js'
 import { minimumSize } from './layout-tree.js'
 
-export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenChange, browserToggleHost }: {
+export type ChatLayoutHandle = {
+  splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
+}
+
+export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenChange, browserToggleHost, ref }: {
   chat: ReturnType<typeof useChatController>
   appearance: AppearanceSettings
   historyOpen: boolean
   onHistoryOpenChange: (open: boolean) => void
   browserToggleHost: HTMLDivElement | null
+  ref?: Ref<ChatLayoutHandle>
 }) {
   const layout = useChatLayout(chat.snapshot)
+  useImperativeHandle(ref, () => ({
+    splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge)
+  }), [layout.dock, chat.selectedPaneId])
   const browser = useBrowserController(`browser:${layout.browserVisible}`, layout.browserVisible)
   const [actionError, setActionError] = useState('')
   const select = (id: string): void => {

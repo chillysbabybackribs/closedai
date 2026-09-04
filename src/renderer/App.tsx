@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/inter/wght-italic.css'
 import '@fontsource-variable/geist-mono/wght.css'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { SideDrawer } from './side-drawer/side-drawer.js'
 import { DrawerToggle } from './side-drawer/drawer-toggle.js'
@@ -16,7 +16,7 @@ import {
 } from './chat-zoom.js'
 import { appShortcutForKey } from './app-shortcuts.js'
 import { TitlebarMenu } from './titlebar-menu.js'
-import { DesktopWorkspace } from './chat-layout/desktop-workspace.js'
+import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
 import { AppearanceSettingsDialog } from './settings/appearance-settings-dialog.js'
 import {
   normalizeAppearanceSettings,
@@ -32,6 +32,11 @@ function App(): JSX.Element {
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [browserToggleHost, setBrowserToggleHost] = useState<HTMLDivElement | null>(null)
+  const workspaceRef = useRef<ChatLayoutHandle>(null)
+  const splitSidebarChat = useCallback((chatId: string, edge: 'right' | 'bottom'): Promise<void> => {
+    if (!workspaceRef.current) return Promise.reject(new Error('The workspace is still loading'))
+    return workspaceRef.current.splitChat(chatId, edge)
+  }, [])
   // Owned here because the title bar menu and Ctrl+H reach the panel that lives in the chat pane.
   const [historyOpen, setHistoryOpen] = useState(false)
   const toggleHistory = useCallback(() => setHistoryOpen((open) => !open), [])
@@ -99,9 +104,10 @@ function App(): JSX.Element {
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
       <div className="workspace" data-mode="chat" data-agents={drawer.isCollapsed ? 'closed' : 'open'}>
-        <SideDrawer controller={drawer} chat={chat.sidebar} />
+        <SideDrawer controller={drawer} chat={chat.sidebar} onSplitChat={splitSidebarChat} />
         {chat.selectedPaneId && <DesktopWorkspace
           key={chat.workspace?.cwd ?? chat.state.cwd}
+          ref={workspaceRef}
           chat={chat}
           browserToggleHost={browserToggleHost}
           appearance={appearance}

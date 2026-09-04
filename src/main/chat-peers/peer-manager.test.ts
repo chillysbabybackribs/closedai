@@ -315,6 +315,12 @@ test('listChats answers from the store and adopts provider threads in the backgr
   assert.deepEqual(later.map((row) => [row.paneId, row.attached]), [['claude:old', false], ['pane-a', true]])
 })
 
+test('history omits a detached legacy chat with only provider startup metadata', async () => {
+  const empty = chatRecord('empty', 'gpt', { codexThreadId: 'startup', threadId: 'startup', title: 'New chat' })
+  const { manager } = harnessWith([chatRecord('pane-a', 'gpt'), empty], 'pane-a', undefined, ['pane-a'])
+  assert.deepEqual((await manager.listChats()).map((row) => row.paneId), ['pane-a'])
+})
+
 test('opening a detached chat attaches it under its own id and replaces a blank selected chat', async () => {
   const { manager, surfaces, store } = harnessWith([
     chatRecord('pane-a', 'gpt'),
@@ -507,6 +513,7 @@ function manyChats(count: number): ChatRecord[] {
   return Array.from({ length: count }, (_, index) => chatRecord(`pane-${index}`, 'gpt', {
     codexThreadId: `thread-${index}`,
     threadId: `thread-${index}`,
+    messageSentAt: index + 1,
     updatedAt: index + 1
   }))
 }

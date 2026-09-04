@@ -1,7 +1,7 @@
 import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { GitBranch, Pin, PinOff } from 'lucide-react'
+import { Columns2, GitBranch, Pin, PinOff, Rows2 } from 'lucide-react'
 import type { ChatModel } from '../../shared/chat.js'
 import { modelGroups } from '../model-menu-state.js'
 import { placeRowMenu, type MenuPlacement } from './drawer-row-position.js'
@@ -26,6 +26,8 @@ export function DrawerRowMenu({
   models,
   onFork,
   onTogglePin,
+  canSplit,
+  onSplit,
   onClose
 }: {
   target: RowMenuTarget
@@ -33,6 +35,8 @@ export function DrawerRowMenu({
   models: ChatModel[]
   onFork: (modelId: string | null) => void
   onTogglePin: () => void
+  canSplit: boolean
+  onSplit: (edge: 'right' | 'bottom') => void
   onClose: () => void
 }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
@@ -95,6 +99,32 @@ export function DrawerRowMenu({
       >
         {target.pinned ? <PinOff size={13} aria-hidden="true" /> : <Pin size={13} aria-hidden="true" />}
         <span>{target.pinned ? 'Unpin' : 'Pin'}</span>
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        className="agents-row-menu-item agents-row-menu-split"
+        data-ui="drawer.row-split-right"
+        data-ui-key={target.id}
+        disabled={!canSplit}
+        title={canSplit ? 'Open this chat to the right of the focused pane (vertical split)' : 'This chat is already the focused pane'}
+        onClick={() => onSplit('right')}
+      >
+        <Columns2 size={13} aria-hidden="true" />
+        <span>Split right</span>
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        className="agents-row-menu-item agents-row-menu-split"
+        data-ui="drawer.row-split-below"
+        data-ui-key={target.id}
+        disabled={!canSplit}
+        title={canSplit ? 'Open this chat below the focused pane (horizontal split)' : 'This chat is already the focused pane'}
+        onClick={() => onSplit('bottom')}
+      >
+        <Rows2 size={13} aria-hidden="true" />
+        <span>Split below</span>
       </button>
       <div className="agents-row-menu-separator" role="separator" />
       <div className="agents-row-menu-heading">

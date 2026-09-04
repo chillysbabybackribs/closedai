@@ -1,4 +1,4 @@
-/* Right-click fork menu on a sidebar chat row. */
+/* Right-click actions on a sidebar chat row. */
 
 .agents-row-menu {
   position: fixed;
@@ -62,7 +62,8 @@
   transition: background-color 120ms ease;
 }
 
-.agents-row-menu-pin {
+.agents-row-menu-pin,
+.agents-row-menu-split {
   align-items: center;
   justify-content: flex-start;
 }
@@ -84,7 +85,12 @@
   color: var(--muted-foreground, #7e7e82);
 }
 
-.agents-row-menu-item:hover,
+.agents-row-menu-item:hover:not(:disabled),
 .agents-row-menu-item:focus-visible {
   background: var(--hairline-strong, rgb(255 255 255 / 14%));
+}
+
+.agents-row-menu-item:disabled {
+  opacity: 0.4;
+  cursor: default;
 }

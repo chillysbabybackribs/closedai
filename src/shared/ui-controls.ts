@@ -31,7 +31,9 @@ export const UI_CONTROLS = {
   'drawer.row-delete': 'Ask to delete a history row; item is the row id',
   'drawer.row-delete-confirm': 'Confirm deleting a row; item is the row id',
   'drawer.row-delete-cancel': 'Cancel deleting a row; item is the row id',
-  'drawer.row-menu': 'Context menu of a drawer row (pin/unpin or continue in a new chat)',
+  'drawer.row-menu': 'Context menu of a drawer row (pin/unpin, split right/below, or continue in a new chat)',
+  'drawer.row-split-right': 'Open or move this sidebar chat to the right of the focused pane; item is the chat id',
+  'drawer.row-split-below': 'Open or move this sidebar chat below the focused pane; item is the chat id',
   'drawer.row-pin': 'Pin or unpin the chat in the row context menu; item is the chat id',
   'drawer.row-menu-item': 'Fork the row into a new chat; item is current or a model id',
 

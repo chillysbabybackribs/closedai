@@ -12,10 +12,12 @@ import type { DrawerRowModel } from './drawer-types.js'
 
 function SideDrawerView({
   controller,
-  chat
+  chat,
+  onSplitChat
 }: {
   controller: DrawerController
   chat: ChatController
+  onSplitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
 }): JSX.Element | null {
   const [collapsedParents, onToggleParent] = useCollapsedParents()
   const [expandedSettled, onToggleSettled] = useExpandedSettled()
@@ -144,6 +146,11 @@ function SideDrawerView({
           inheritedModel={rowMenu.modelId ?? chat.state.selectedModel}
           models={chat.state.models}
           onClose={() => setRowMenu(null)}
+          canSplit={rowMenu.id !== chat.selectedPaneId}
+          onSplit={(edge) => {
+            setRowMenu(null)
+            onSplitChat(rowMenu.id, edge).catch(controller.reportError)
+          }}
           onTogglePin={() => {
             setRowMenu(null)
             chat.setChatPinned(rowMenu.id, !rowMenu.pinned).catch(controller.reportError)

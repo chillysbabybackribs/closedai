@@ -88,6 +88,8 @@ The renderer can show several chats at once. `closedai_app.state` UI facts inclu
 `layout.pane-drag` and its chat id before interacting, or use deterministic pane-id commands.
 The `layout` control family exposes split, hide, browser-toggle, and resize controls. Split actions
 live in each chat's title header; the browser toggle lives in the main title bar.
+The sidebar context menu's `drawer.row-split-right` and `drawer.row-split-below` open or move the
+row's existing chat alongside the focused pane; their item is the chat id.
 Hiding a tile keeps its turn running; `close_chat` still detaches and stops it. A hidden browser
 keeps its tabs, but semantic page input still requires a visible page.
 

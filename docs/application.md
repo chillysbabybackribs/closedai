@@ -129,7 +129,10 @@ still detaches and stops it.
 Drag a chat header or sidebar chat row onto another tile's left, right, top, or bottom edge. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its
 mounted composer, draft, attachments, and transcript scroller survive the move. Existing chats
-are added by dragging their sidebar rows onto a tile edge; new chats are added using the split
+are added by dragging their sidebar rows onto a tile edge or right-clicking a row and choosing
+**Split right** (vertical divider) or **Split below** (horizontal divider). These actions open that
+chat alongside the focused pane, moving its tile if already visible; they are disabled for the
+focused chat itself to avoid displaying the same conversation twice. New chats are added using the split
 controls in each chat's title header. There is no separate layout toolbar or add-chat dropdown.
 A normal sidebar click focuses an existing tile
 or replaces the focused tile, leaving the other tiles in place. New Agent and continuation select

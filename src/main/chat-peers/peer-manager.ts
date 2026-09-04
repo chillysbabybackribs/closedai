@@ -11,7 +11,7 @@ import type {
   PeerChatReadResult
 } from '../../shared/chat-peers.js'
 import { chatProviderOfId } from '../../shared/chat-providers.js'
-import type { ChatRecord } from '../../shared/chat-store.js'
+import { chatRecordIsBlank, type ChatRecord } from '../../shared/chat-store.js'
 import type { ChatContinuation } from '../../shared/types.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
@@ -629,7 +629,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   /** Every chat of the workspace: attached ones as their live summary, the rest from the store. */
   private chatRows(): ChatRowSummary[] {
-    return this.store.list(this.workspace().cwd).map((record) =>
+    return this.store.list(this.workspace().cwd)
+      .filter((record) => this.lifecycle.get(record.id) || record.pinnedAt !== null || !chatRecordIsBlank(record))
+      .map((record) =>
       rowSummary(record, this.lifecycle.get(record.id)?.display.current ?? null))
   }
 
