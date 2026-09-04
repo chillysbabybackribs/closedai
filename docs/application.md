@@ -120,6 +120,16 @@ popups are registered as `popup-<webContents id>` CDP roots with an opener id an
 in the tab strip. Raw CDP can address a known popup root; semantic page input currently requires
 a visible regular tab.
 
+The page view fills every compositor gap — between a navigation committing and the new
+document's first paint, and whenever a hidden view is shown again — with one flat base colour.
+That colour is not fixed. `browser-page-background.ts` measures each document's real canvas
+colour at dom-ready and remembers it per origin, and the next gap on that origin is filled with
+the colour the page is about to paint, so a gap is not a flash. A tab holding no document shows
+the app's bezel colour, and a page that paints no background of its own still gets the browser
+default of white. The renderer's overlay freeze primes its still on browser-chrome right-clicks,
+and `browser:setBounds` waits for a painted frame before resolving a reveal, so the still is
+never handed back to an unpainted surface.
+
 Browser inspection can read a background tab without selecting it. Semantic page input brings
 the tab forward, waits for rendering after a switch, and reports `activatedTab: true`. It fails
 if the browser page cannot be shown. Captures use a rendering lease and readiness checks;

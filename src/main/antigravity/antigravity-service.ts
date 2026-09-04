@@ -36,10 +36,10 @@ const ANTIGRAVITY_PLAN_USAGE_UNAVAILABLE = planUsageUnavailable('The agy CLI doe
 const SIGN_IN_MESSAGE = 'Sign in to Antigravity: run `agy` in a terminal, complete the Google login, then choose an Antigravity model again.'
 
 /**
- * How long a quota reading serves every pane before a start-up asks the CLI again. `/quota` is a
- * two-second `agy` process; with one per new chat and one per turn end, quota reads were most of
- * what Antigravity spent on a chat that had not said anything yet. Hover and turn end still read
- * fresh, since those are the moments the user is looking at the number.
+ * How long a quota reading serves every pane before any of them asks the CLI again. `/quota` is
+ * a two-second `agy` process; with one per new chat, one per hover and one per turn end, quota
+ * reads were most of what Antigravity spent on a chat that had not said anything yet. Hover and
+ * turn end still request a reading; they only spawn when the shared one is older than this.
  */
 export const ANTIGRAVITY_QUOTA_REUSE_MS = 60_000
 
@@ -143,10 +143,11 @@ export class AntigravityChatService extends EventEmitter {
 
   /**
    * Read the account's plan windows via `agy -p /quota --output-format json`. Safe while a
-   * turn runs, so the hover card can ask for a fresh reading every time it opens. With
-   * `reuseWithinMs`, a reading any pane took that recently is shown instead of spawning again.
+   * turn runs, so the hover card and a turn ending both ask for it — but a reading any pane took
+   * within `reuseWithinMs` (a minute by default) is shown instead of spawning again, since the
+   * quota moves per turn and every pane of the account reads the same number.
    */
-  async refreshPlanUsage(reuseWithinMs = 0): Promise<void> {
+  async refreshPlanUsage(reuseWithinMs = ANTIGRAVITY_QUOTA_REUSE_MS): Promise<void> {
     if (this.connection.state !== 'ready') return
     if (lastQuotaReading && Date.now() - lastQuotaReading.at < reuseWithinMs) {
       this.setPlanUsage(lastQuotaReading.usage)
@@ -315,7 +316,7 @@ export class AntigravityChatService extends EventEmitter {
       this.account = { type: 'google', email: null, planType: null }
       this.setConnection({ state: 'ready', message: 'Antigravity is ready' })
       if (warm) await this.bridge.start()
-      void this.refreshPlanUsage(ANTIGRAVITY_QUOTA_REUSE_MS)
+      void this.refreshPlanUsage()
     } catch (error) {
       const message = messageOf(error)
       this.setConnection(isAntigravityAuthFailure(message)
