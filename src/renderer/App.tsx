@@ -8,10 +8,7 @@ import { SideDrawer } from './side-drawer/side-drawer.js'
 import { DrawerToggle } from './side-drawer/drawer-toggle.js'
 import { useDrawerController } from './side-drawer/drawer-controller.js'
 import { AppWindowControls } from './app-window-controls.js'
-import { BrowserPane } from './browser-pane.js'
-import { useBrowserController } from './browser-controller.js'
-import { useChatController, type ChatController } from './chat-controller.js'
-import { ChatPane } from './chat-pane.js'
+import { useChatController } from './chat-controller.js'
 import {
   applyChatZoomCommand,
   chatZoomCommandForKey,
@@ -19,7 +16,7 @@ import {
 } from './chat-zoom.js'
 import { appShortcutForKey } from './app-shortcuts.js'
 import { TitlebarMenu } from './titlebar-menu.js'
-import { WorkspaceSplit } from './workspace-split.js'
+import { DesktopWorkspace } from './chat-layout/desktop-workspace.js'
 import { AppearanceSettingsDialog } from './settings/appearance-settings-dialog.js'
 import {
   normalizeAppearanceSettings,
@@ -101,12 +98,13 @@ function App(): JSX.Element {
       <div className="shell-titlebar-divider" aria-hidden="true" />
       <div className="workspace" data-mode="chat" data-agents={drawer.isCollapsed ? 'closed' : 'open'}>
         <SideDrawer controller={drawer} chat={chat.sidebar} />
-        <DesktopWorkspace
+        {chat.selectedPaneId && <DesktopWorkspace
+          key={chat.workspace?.cwd ?? chat.state.cwd}
           chat={chat}
           appearance={appearance}
           historyOpen={historyOpen}
           onHistoryOpenChange={setHistoryOpen}
-        />
+        />}
       </div>
       <AppearanceSettingsDialog
         open={settingsOpen}
@@ -117,41 +115,6 @@ function App(): JSX.Element {
     </div>
   )
 }
-
-const DesktopWorkspace = React.memo(function DesktopWorkspace({
-  chat,
-  appearance,
-  historyOpen,
-  onHistoryOpenChange
-}: {
-  chat: ChatController
-  appearance: AppearanceSettings
-  historyOpen: boolean
-  onHistoryOpenChange: (open: boolean) => void
-}): JSX.Element {
-  const browser = useBrowserController('browser')
-  return (
-    <WorkspaceSplit
-      chat={
-        <ChatPane
-          controller={chat}
-          zoom={appearance.chatZoom}
-          fontSize={appearance.chatFontSize}
-          composerFontSize={appearance.composerFontSize}
-          historyOpen={historyOpen}
-          onHistoryOpenChange={onHistoryOpenChange}
-        />
-      }
-      workspace={
-        <div className="workspace-right" data-mode="browser" data-with-browser="yes" data-refs="no">
-          <div className="workspace-surface workspace-surface-browser">
-            <BrowserPane controller={browser} />
-          </div>
-        </div>
-      }
-    />
-  )
-})
 
 // A file dropped anywhere outside the composer would otherwise navigate this window to it —
 // Chromium's default — which replaces the entire app UI and cannot be undone short of a reload.

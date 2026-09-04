@@ -64,7 +64,7 @@ export function useChatController(enabled = true) {
   }, [enabled])
 
   const selected = usePaneChatController(workspace, workspace.selectedPaneId, workspace.selected, dispatch)
-  const sidebar = useMemo(() => ({ ...selected, state: sidebarState }), [selected, sidebarState])
+  const sidebar = usePaneChatController(workspace, workspace.selectedPaneId, sidebarState, dispatch)
   return { ...selected, sidebar, snapshot: workspace, dispatch }
 }
 
