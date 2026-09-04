@@ -2,15 +2,12 @@ import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import test from 'node:test'
 
-import type { ChatEvent } from '../shared/chat.js'
 import { DEFAULT_APP_SETTINGS } from './app-settings-store.js'
 import type { AppServerRequest, RpcId } from './app-server-client.js'
-import { ChatService } from './chat-service.js'
 import {
   CodexWorkspaceRuntime,
   type CodexRuntimeTransport
 } from './codex-workspace-runtime.js'
-import { ToolRegistry } from './tools/registry.js'
 import { MemorySettings } from './chat-peers/peer-manager-harness.js'
 import type { TraceScope } from './trace/trace-log.js'
 
@@ -60,32 +57,31 @@ const settings = (): MemorySettings => new MemorySettings({
   chatProjectPath: '/workspace'
 })
 
-test('two Codex panes share one cold start and paint their messages before it finishes', async () => {
+test('two Codex pane sessions share one cold start and one account/model read', async () => {
   const transport = new FakeTransport()
   const runtime = new CodexWorkspaceRuntime('/workspace', settings(), 'codex', transport)
-  const eventsA: ChatEvent[] = []
-  const eventsB: ChatEvent[] = []
-  const serviceA = new ChatService('/workspace', settings(), new ToolRegistry([]), () => null, null, runtime, 'pane-a')
-  const serviceB = new ChatService('/workspace', settings(), new ToolRegistry([]), () => null, null, runtime, 'pane-b')
-  serviceA.on('event', (event: ChatEvent) => eventsA.push(event))
-  serviceB.on('event', (event: ChatEvent) => eventsB.push(event))
+  const sessionA = runtime.session('pane-a', () => 'thread-a', () => 'turn-a')
+  const sessionB = runtime.session('pane-b', () => 'thread-b', () => 'turn-b')
 
-  const sendingA = serviceA.send('alpha')
-  const sendingB = serviceB.send('beta')
+  const starting = Promise.all([sessionA.start(), sessionB.start()])
   await new Promise((resolve) => setImmediate(resolve))
-
   assert.equal(transport.startCalls, 1)
-  assert.equal(eventsA.some((event) => event.type === 'item' && event.item.type === 'user' && event.item.text === 'alpha'), true)
-  assert.equal(eventsB.some((event) => event.type === 'item' && event.item.type === 'user' && event.item.text === 'beta'), true)
 
   transport.release()
-  await Promise.all([sendingA, sendingB])
+  await starting
+  await Promise.all([sessionA.readSession(), sessionB.readSession()])
   assert.equal(transport.calls.filter((call) => call.method === 'account/read').length, 1)
   assert.equal(transport.calls.filter((call) => call.method === 'model/list').length, 1)
-  assert.equal(transport.calls.filter((call) => call.method === 'thread/start').length, 2)
-  assert.equal(transport.calls.filter((call) => call.method === 'turn/start').length, 2)
-  serviceA.dispose()
-  serviceB.dispose()
+  await Promise.all([
+    sessionA.request('thread/start', {}),
+    sessionB.request('thread/start', {})
+  ])
+  assert.deepEqual(
+    transport.calls.filter((call) => call.method === 'thread/start').map((call) => call.scope?.paneId),
+    ['pane-a', 'pane-b']
+  )
+  sessionA.stop()
+  sessionB.stop()
   runtime.stop()
 })
 
