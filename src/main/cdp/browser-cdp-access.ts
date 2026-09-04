@@ -4,7 +4,26 @@ import type { CdpToolHost } from '../tools/cdp/host.js'
 import { CdpPageController } from './page-control/page-controller.js'
 import { CdpPageInput } from './page-control/page-input.js'
 import { CdpSession, type CdpEventPage } from './cdp-session.js'
+import {
+  decodeResponseBody,
+  foldNetworkEvents,
+  mergeRequests,
+  parseResourceTiming,
+  RESOURCE_TIMING_EXPRESSION
+} from './cdp-network.js'
 import { settleFrames } from '../browser-frame-settle.js'
+
+/** How much of the event buffer a request listing folds; the buffer itself holds 1,000. */
+const EVENT_SCAN_LIMIT = 1_000
+
+/** Unwrap `Runtime.evaluate`'s `{ result: { value } }` envelope. */
+function evaluationValue(raw: unknown): unknown {
+  const outer = raw !== null && typeof raw === 'object' ? raw as Record<string, unknown> : null
+  const inner = outer?.result !== null && typeof outer?.result === 'object'
+    ? outer.result as Record<string, unknown>
+    : null
+  return inner?.value
+}
 
 export type CdpBrowserSource = {
   tabList(): BrowserTabInfo[]
@@ -65,6 +84,53 @@ export class BrowserCdpAccess implements CdpToolHost {
   } {
     const { tab, session } = this.resolve(tabId)
     return { tab, ...session.eventPage(afterCursor, limit, methodPrefix) }
+  }
+
+  /**
+   * Enabling Network here is deliberate: the first call answers from resource timing, which is
+   * retroactive, and switches on capture so the next call also has methods, statuses, and the
+   * request ids that `responseBody` needs. Discovery costs one call instead of a reload.
+   */
+  async networkRequests(
+    tabId: string | undefined,
+    filter: { url?: string; type?: string; limit: number }
+  ): Promise<unknown> {
+    const { tab, session } = this.resolve(tabId)
+    let capturing = true
+    try {
+      await session.command('Network.enable')
+    } catch {
+      capturing = false
+    }
+    const evaluated = await session.command('Runtime.evaluate', {
+      expression: RESOURCE_TIMING_EXPRESSION,
+      returnByValue: true
+    })
+    const timing = parseResourceTiming(evaluationValue(evaluated))
+    const buffered = session.eventPage(0, EVENT_SCAN_LIMIT, 'Network.')
+    const requests = mergeRequests(foldNetworkEvents(buffered.events), timing, filter)
+    return {
+      tab,
+      connectionId: session.connectionId,
+      capturing,
+      bufferedEvents: buffered.events.length,
+      missedEvents: buffered.missedEvents,
+      timingEntries: timing.length,
+      requests
+    }
+  }
+
+  async responseBody(tabId: string | undefined, requestId: string): Promise<unknown> {
+    const { tab, session } = this.resolve(tabId)
+    const raw = await session.command('Network.getResponseBody', { requestId })
+    const record = raw !== null && typeof raw === 'object' ? raw as Record<string, unknown> : {}
+    const body = typeof record.body === 'string' ? record.body : ''
+    return {
+      tab,
+      connectionId: session.connectionId,
+      requestId,
+      ...decodeResponseBody(body, record.base64Encoded === true)
+    }
   }
 
   async inspectPage(tabId: string | undefined, maxElements: number): Promise<unknown> {

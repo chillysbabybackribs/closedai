@@ -47,10 +47,12 @@ function textOf(result: { content: Array<{ type: string; text?: string }> }): st
   return result.content[0]?.type === 'text' ? result.content[0].text ?? '' : ''
 }
 
-test('browser tool advertises one tool with three actions', () => {
+test('browser tool advertises one tool with browser page actions', () => {
   const { registry } = harness()
   assert.deepEqual(registry.names(), ['embedded_browser.page'])
-  assert.deepEqual(registry.namespaces[0].tools[0].actions?.map((action) => action.name), ['navigate', 'read_page', 'wait_for'])
+  assert.deepEqual(registry.namespaces[0].tools[0].actions?.map((action) => action.name), [
+    'navigate', 'read_page', 'wait_for', 'fetch', 'extract'
+  ])
 })
 
 test('navigate defaults to dom-ready readiness and reports the reached state', async () => {

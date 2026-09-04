@@ -17,6 +17,10 @@ export type CdpToolHost = {
     sessionId?: string
   ): Promise<unknown>
   events(tabId: string | undefined, afterCursor: number, limit: number, methodPrefix?: string): CdpEventResult
+  /** Requests the tab has made, from resource timing and the buffered Network events. */
+  networkRequests(tabId: string | undefined, filter: { url?: string; type?: string; limit: number }): Promise<unknown>
+  /** Response body for a buffered request id. */
+  responseBody(tabId: string | undefined, requestId: string): Promise<unknown>
   inspectPage(tabId: string | undefined, maxElements: number): Promise<unknown>
   clickElement(tabId: string | undefined, ref: string): Promise<unknown>
   clickAt(tabId: string | undefined, x: number, y: number): Promise<unknown>

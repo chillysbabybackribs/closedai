@@ -10,6 +10,7 @@ import {
   tabIdFrom
 } from './fields.js'
 import { requireCdp, type CdpHostProvider } from './host.js'
+import { bodyAction, requestsAction } from './network.js'
 import { cdpPageTool } from './page.js'
 import { jsonResult, objectSchema } from '../json-result.js'
 
@@ -26,7 +27,8 @@ export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
           'screenshots, network, storage, debugging, and any other supported CDP domain. Use capabilities ' +
           'to inspect the bundled Chromium ' +
           'protocol, targets for a live inventory of children and sessions, command for any domain method, and events ' +
-          'after enabling the relevant domain. DOM nodes, runtime objects, frames, execution contexts, ' +
+          'after enabling the relevant domain. To find the API behind a page, start with requests — it reports ' +
+          'what the tab already fetched without a reload — then body for a captured response. DOM nodes, runtime objects, frames, execution contexts, ' +
           'target sessions, and request ids are transient and may become invalid after navigation. ' +
           'Child auto-attach uses flatten=true; pass an inventory sessionId as session_id on later commands. ' +
           'Raw commands do not foreground tabs; use page for input that needs tab activation and closedai_ui capture for image results. ' +
@@ -117,7 +119,9 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
         eventLimitFrom(input),
         stringArg(input, 'method_prefix')
       ))
-    }
+    },
+    requestsAction(cdp),
+    bodyAction(cdp)
   ]
 }
 
