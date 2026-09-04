@@ -6,6 +6,9 @@ import type {
   ChatThreadSummary,
   ChatTranscriptItem
 } from '../shared/chat.js'
+import { nullableString, recordOf, stringOf } from './json-coerce.js'
+
+export { nullableString, recordOf, stringOf } from './json-coerce.js'
 
 export function normalizeAccount(value: unknown): ChatAccount | null {
   const account = recordOf(value)
@@ -150,20 +153,6 @@ export function cloneItem(item: ChatTranscriptItem): ChatTranscriptItem {
     return { ...item, attachments: item.attachments.map((attachment) => ({ ...attachment })) }
   }
   return { ...item }
-}
-
-export function recordOf(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null
-}
-
-export function stringOf(value: unknown): string {
-  return typeof value === 'string' ? value : ''
-}
-
-export function nullableString(value: unknown): string | null {
-  return typeof value === 'string' ? value : null
 }
 
 export function messageOf(error: unknown): string {
