@@ -14,6 +14,12 @@ export const tabIdField: JsonObject = {
   description: 'A tab id as reported by navigate. Defaults to the active tab.'
 }
 
+export const urlField: JsonObject = {
+  type: 'string',
+  minLength: 1,
+  description: 'An absolute URL, or a path relative to the tab. navigate also accepts a search query.'
+}
+
 export const waitUntilField: JsonObject = {
   type: 'string',
   enum: ['dom_ready', 'load', 'idle'],

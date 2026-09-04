@@ -1,5 +1,7 @@
 import { defineActionTool } from '../action-tool.js'
 import type { ToolNamespace } from '../tool.js'
+import { extractAction } from './extract.js'
+import { fetchAction } from './fetch.js'
 import type { BrowserHostProvider } from './host.js'
 import { navigateAction } from './navigate.js'
 import { readPageAction } from './read-page.js'
@@ -22,10 +24,19 @@ export function browserTools(browser: BrowserHostProvider): ToolNamespace {
         name: 'page',
         description:
           'Read-only access to the embedded browser the user is looking at. Use navigate to open a page, ' +
-          'read_page to get its text, and wait_for when content loads late. Every load reports the ready ' +
-          'state it reached; trust "complete", re-check anything else. Results are plain text (a ' +
-          'Title / URL / Load state header, then the content); in exec scripts the return value is that string.',
-        actions: [navigateAction(browser), readPageAction(browser), waitForAction(browser)]
+          'read_page to get its text, and wait_for when content loads late. For data rather than rendered ' +
+          'text, use fetch to call an endpoint from inside the tab (inheriting its origin and session) and ' +
+          'extract to return only the fields you name from a JSON response — a projection costs a fraction ' +
+          'of the whole document. Every load reports the ready state it reached; trust "complete", re-check ' +
+          'anything else. navigate, read_page, and wait_for return plain text (a Title / URL / Load state ' +
+          'header, then the content); fetch and extract return JSON.',
+        actions: [
+          navigateAction(browser),
+          readPageAction(browser),
+          waitForAction(browser),
+          fetchAction(browser),
+          extractAction(browser)
+        ]
       })
     ]
   }

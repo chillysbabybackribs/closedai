@@ -64,6 +64,9 @@ export const UI_CONTROLS = {
 
   'browser.tab': 'Select a browser tab; item is the tab id',
   'browser.tab-close': 'Close a browser tab; item is the tab id',
+  'browser.tab-menu': 'Right-click context menu for a browser tab',
+  'browser.tab-menu-item': 'Browser tab context menu item; item is new-right, reload, duplicate, rename, close, close-others, or close-right',
+  'browser.tab-rename': 'Inline browser tab rename field; item is the tab id',
   'browser.tab-new': 'Open a new browser tab',
   'browser.back': 'Browser back',
   'browser.forward': 'Browser forward',

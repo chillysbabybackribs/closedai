@@ -1,7 +1,7 @@
 import { describeReadiness } from '../../browser-page-ready.js'
 import type { ToolAction } from '../action-tool.js'
 import { booleanArg, failureResult, stringArg, textResult } from '../tool.js'
-import { MAX_WAIT_MS, readinessFrom, readinessProperties } from './fields.js'
+import { MAX_WAIT_MS, readinessFrom, readinessProperties, urlField } from './fields.js'
 import { requireBrowser, type BrowserHostProvider } from './host.js'
 
 export function navigateAction(browser: BrowserHostProvider): ToolAction {
@@ -14,7 +14,7 @@ export function navigateAction(browser: BrowserHostProvider): ToolAction {
     inputSchema: {
       type: 'object',
       properties: {
-        url: { type: 'string', minLength: 1, description: 'An absolute URL, or a search query.' },
+        url: urlField,
         new_tab: { type: 'boolean', description: 'Open in a new tab instead of the active one.' },
         ...readinessProperties
       },

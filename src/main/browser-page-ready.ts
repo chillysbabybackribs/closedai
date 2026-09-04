@@ -117,9 +117,15 @@ export function needsReadinessPoll(readiness: PageReadiness): boolean {
   return readiness.until !== 'dom_ready'
 }
 
+/**
+ * Ceiling for a `raw` read. The caller bounds the text for context itself; this only keeps a
+ * pathological page from being marshalled through IPC whole.
+ */
+const RAW_CEILING = 1_000_000
+
 export async function readPageText(
   contents: ScriptRunner,
-  options: { selector?: string; maxChars: number }
+  options: { selector?: string; maxChars: number; raw?: boolean }
 ): Promise<PageText | null> {
   if (contents.isDestroyed()) return null
   const script = `(() => {
@@ -132,12 +138,13 @@ export async function readPageText(
   const record = recordOf(raw)
   if (!record) return null
   const text = tidyText(stringOf(record.text))
-  const truncated = text.length > options.maxChars
+  const limit = options.raw ? RAW_CEILING : options.maxChars
+  const truncated = text.length > limit
   return {
     url: stringOf(record.url),
     title: stringOf(record.title),
     readyState: stringOf(record.readyState),
-    text: truncated ? text.slice(0, options.maxChars) : text,
+    text: truncated ? text.slice(0, limit) : text,
     truncated
   }
 }

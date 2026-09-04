@@ -127,7 +127,7 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
           description: 'Required for select, close, close_others, close_right, duplicate, rename, and new_right.'
         },
         url: { type: 'string', minLength: 1, maxLength: 2_000, description: 'Optional URL or query for new.' },
-        title: { type: 'string', maxLength: 300, description: 'Custom title for rename; empty clears the custom title.' }
+        tab_title: { type: 'string', maxLength: 300, description: 'Custom title for rename; empty clears the custom title.' }
       }, ['op']),
       run: async (input) => {
         const host = requireHost(app, 'app commands')
@@ -135,7 +135,7 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
           op: stringArg(input, 'op') as AppBrowserTabRequest['op'],
           tabId: stringArg(input, 'tab_id'),
           url: stringArg(input, 'url'),
-          title: stringArg(input, 'title')
+          title: stringArg(input, 'tab_title')
         }))
       }
     }

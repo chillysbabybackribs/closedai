@@ -107,6 +107,11 @@ list. History matches can be removed through `browser.removeHistory`; this delet
 history entry, not cookies or site data. `browser-omnibox.ts` owns the renderer interaction and
 `browser-history-store.ts` owns matching and persistence.
 
+Right-clicking a browser tab opens tab actions for opening a new tab to its right, reloading,
+duplicating, renaming, closing, closing other tabs, and closing tabs to the right. Custom tab
+names are tab-strip labels stored separately from the page title and are persisted with the tab
+session.
+
 Ordinary popups become tabs; OAuth/utility windows can retain a native opener bridge. Native
 popups are registered as `popup-<webContents id>` CDP roots with an opener id and do not appear
 in the tab strip. Raw CDP can address a known popup root; semantic page input currently requires

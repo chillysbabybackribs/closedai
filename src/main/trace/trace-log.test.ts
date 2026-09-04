@@ -10,6 +10,8 @@ test('records entries in order with serialized detail and emits each one', () =>
   const log = new TraceLog()
   const seen: TraceEvent[] = []
   log.on('event', (event: TraceEvent) => seen.push(event))
+  // Entries are always recorded; they are only broadcast while a viewer is attached.
+  log.setActive(true)
   const first = log.record(scope, { kind: 'raw', label: 'codex.out', summary: 'turn/start', detail: { method: 'turn/start' }, direction: 'out' })
   const second = log.record(scope, { kind: 'tool', label: 'tool.result', summary: 'browser.read_page', detail: 'text', durationMs: 12.6, ok: true })
   assert.equal(first.seq, 1)
@@ -20,6 +22,15 @@ test('records entries in order with serialized detail and emits each one', () =>
   assert.equal(second.ok, true)
   assert.equal(seen.length, 2)
   assert.deepEqual(log.snapshot().entries.map((entry) => entry.seq), [1, 2])
+})
+
+test('an inactive log still records, but broadcasts nothing', () => {
+  const log = new TraceLog()
+  const seen: TraceEvent[] = []
+  log.on('event', (event: TraceEvent) => seen.push(event))
+  log.record(scope, { kind: 'tool', label: 'tool.result', summary: 'browser.read_page', detail: 'text' })
+  assert.equal(seen.length, 0)
+  assert.deepEqual(log.snapshot().entries.map((entry) => entry.seq), [1])
 })
 
 test('caps detail per entry and marks it truncated', () => {

@@ -78,8 +78,31 @@ function sourceFiles(dir) {
     return /\.(ts|tsx|css)$/.test(entry.name) ? [path] : []
   })
 }
+function testFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) return testFiles(path)
+    return /\.test\.tsx?$/.test(entry.name) ? [path] : []
+  })
+}
+// A module only the tests import — a shared harness of doubles — is reached by the test runner
+// just as the tests themselves are, so it is not dead weight. Its reachability is computed from
+// the test files separately, and ONLY for this check: the forbidden-path and package rules above
+// stay bound to the entry-point closure, so a test still cannot smuggle anything into the app.
+const reachedByTests = new Set()
+const testStack = testFiles(join(root, 'src'))
+while (testStack.length) {
+  const file = testStack.pop()
+  if (reachedByTests.has(file)) continue
+  reachedByTests.add(file)
+  if (file.endsWith('.css')) continue
+  for (const match of readFileSync(file, 'utf8').matchAll(importRe)) {
+    const local = resolveLocal(file, match[1] ?? match[2])
+    if (local) testStack.push(local)
+  }
+}
 for (const file of sourceFiles(join(root, 'src'))) {
-  if (!seen.has(file)) problems.push(`unreachable source file: ${relative(root, file)}`)
+  if (!seen.has(file) && !reachedByTests.has(file)) problems.push(`unreachable source file: ${relative(root, file)}`)
 }
 
 let lines = 0

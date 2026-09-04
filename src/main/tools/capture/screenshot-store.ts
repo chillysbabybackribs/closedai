@@ -19,7 +19,13 @@ export type ScreenshotSurface = 'app_window' | 'browser_page' | 'crop'
 const DEFAULT_MAX_ENTRIES = 60
 const DEFAULT_MAX_BYTES = 96 * 1024 * 1024
 
-type InternalEntry = Omit<StoredScreenshot, 'dataUrl'> & { buffer: Buffer }
+// The bytes are held decoded: a base64 string of a full-resolution capture is large enough that
+// keeping it on the V8 heap costs noticeably more than the Buffer it decodes to. The media type
+// travels with them, because the display copy is a PNG while the model copy is a JPEG — rebuilding
+// every data URL as one fixed type would hand the renderer a PNG payload labelled as a JPEG.
+type InternalEntry = Omit<StoredScreenshot, 'dataUrl'> & { buffer: Buffer; mediaType: string }
+
+const DEFAULT_MEDIA_TYPE = 'image/png'
 
 export class ScreenshotStore {
   private readonly entries = new Map<string, InternalEntry>()
@@ -37,12 +43,10 @@ export class ScreenshotStore {
   retain(callId: string, screenshot: StoredScreenshot): void {
     if (!callId) return
     this.drop(callId)
-    // Extract base64 data to store as Buffer, avoiding V8 heap bloat for large strings
-    const b64 = screenshot.dataUrl.replace(/^data:image\/\w+;base64,/, '')
-    const buffer = Buffer.from(b64, 'base64')
+    const parsed = /^data:([^;,]+);base64,(.*)$/s.exec(screenshot.dataUrl)
+    const buffer = Buffer.from(parsed?.[2] ?? screenshot.dataUrl, 'base64')
     const { dataUrl, ...rest } = screenshot
-    
-    this.entries.set(callId, { ...rest, buffer })
+    this.entries.set(callId, { ...rest, buffer, mediaType: parsed?.[1] ?? DEFAULT_MEDIA_TYPE })
     this.bytes += buffer.length
     for (const oldest of this.entries.keys()) {
       if (this.entries.size <= this.maxEntries && this.bytes <= this.maxBytes) break
@@ -54,8 +58,8 @@ export class ScreenshotStore {
   get(callId: string): StoredScreenshot | null {
     const entry = this.entries.get(callId)
     if (!entry) return null
-    const { buffer, ...rest } = entry
-    return { ...rest, dataUrl: `data:image/jpeg;base64,${buffer.toString('base64')}` }
+    const { buffer, mediaType, ...rest } = entry
+    return { ...rest, dataUrl: `data:${mediaType};base64,${buffer.toString('base64')}` }
   }
 
   private drop(callId: string): void {

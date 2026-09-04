@@ -15,6 +15,18 @@ function harness(overrides: Partial<BrowserToolHost> = {}) {
       calls.push(['readPage', tabId, options])
       return tabId === 'missing' ? null : { url: 'https://a.test/', title: 'A', readyState: 'complete', text: 'Hello world', truncated: false }
     },
+    fetchPage: async (tabId, request) => {
+      calls.push(['fetchPage', tabId, request])
+      return tabId === 'missing' ? null : {
+        url: 'https://a.test/data',
+        status: 200,
+        ok: true,
+        contentType: 'text/plain',
+        text: 'Hello world',
+        bodyLength: 11,
+        truncated: false
+      }
+    },
     navigate: async (url, options) => {
       calls.push(['navigate', url, options])
       return { ok: true, tabId: 'tab-1', ready }

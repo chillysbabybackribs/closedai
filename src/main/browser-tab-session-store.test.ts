@@ -24,11 +24,12 @@ async function sessionFile(): Promise<string> {
   return join(dir, 'browser-tabs.json')
 }
 
-function tab(url: string, options: { title?: string; active?: boolean } = {}): BrowserTabInfo {
+function tab(url: string, options: { title?: string; customTitle?: string | null; active?: boolean } = {}): BrowserTabInfo {
   return {
     id: `tab-${url}`,
     pos: 1,
     title: options.title ?? '',
+    customTitle: options.customTitle,
     url,
     favicon: null,
     isLoading: false,
@@ -47,6 +48,16 @@ describe('selectPersistableTabs', () => {
       { url: 'https://b.example/', title: 'B' }
     ])
     assert.equal(session.activeIndex, 1)
+  })
+
+  it('persists a custom tab title separately from the page title', () => {
+    const session = selectPersistableTabs([
+      tab('https://a.example/', { title: 'Page A', customTitle: 'Pinned A', active: true })
+    ])
+    assert.deepEqual(session.tabs, [
+      { url: 'https://a.example/', title: 'Page A', customTitle: 'Pinned A' }
+    ])
+    assert.equal(session.activeIndex, 0)
   })
 
   it('drops unrestorable urls and renumbers the active index against what is kept', () => {
@@ -114,6 +125,21 @@ describe('normalizeSession', () => {
       activeIndex: 0
     })
     assert.deepEqual(session, { version: 1, tabs: [{ url: 'https://ok.example/', title: 'Ok' }], activeIndex: 0 })
+  })
+
+  it('normalizes custom titles on restore', () => {
+    const session = normalizeSession({
+      version: 1,
+      tabs: [
+        { url: 'https://named.example/', title: 'Real', customTitle: '  Workbench  ' },
+        { url: 'https://blank.example/', title: 'Blank', customTitle: '   ' }
+      ],
+      activeIndex: 0
+    })
+    assert.deepEqual(session?.tabs, [
+      { url: 'https://named.example/', title: 'Real', customTitle: 'Workbench' },
+      { url: 'https://blank.example/', title: 'Blank' }
+    ])
   })
 
   it('clamps an out-of-range active index', () => {

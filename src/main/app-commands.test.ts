@@ -76,9 +76,15 @@ function browser(): AppBrowserTabs & { calls: unknown[] } {
     tabList: () => [{ id: '1', pos: 1, title: 'Google', url: 'https://google.com', favicon: null, isLoading: false, active: true }],
     snapshot: () => ({ url: 'https://google.com', title: 'Google', isLoading: false, canGoBack: false, canGoForward: false }),
     newTab: () => { calls.push(['newTab']) },
+    newTabToRight: (id) => { calls.push(['newTabToRight', id]) },
     openNewTab: (input, activate) => { calls.push(['openNewTab', input, activate]) },
     selectTab: (id) => { calls.push(['selectTab', id]) },
     closeTab: (id) => { calls.push(['closeTab', id]) },
+    closeOtherTabs: (id) => { calls.push(['closeOtherTabs', id]) },
+    closeTabsToRight: (id) => { calls.push(['closeTabsToRight', id]) },
+    duplicateTab: (id) => { calls.push(['duplicateTab', id]) },
+    reloadTab: (id) => { calls.push(['reloadTab', id]) },
+    renameTab: (id, title) => { calls.push(['renameTab', id, title]) },
     back: () => { calls.push(['back']) },
     forward: () => { calls.push(['forward']) },
     reload: () => { calls.push(['reload']) }
@@ -171,8 +177,23 @@ test('model, close, and browser commands call the underlying services', async ()
   await host.closeChat('pane-2')
   await host.browserTab({ op: 'new', url: 'https://example.com' })
   await host.browserTab({ op: 'select', tabId: '1' })
+  await host.browserTab({ op: 'new_right', tabId: '1' })
+  await host.browserTab({ op: 'duplicate', tabId: '1' })
+  await host.browserTab({ op: 'rename', tabId: '1', title: 'Docs' })
+  await host.browserTab({ op: 'reload', tabId: '1' })
+  await host.browserTab({ op: 'close_right', tabId: '1' })
+  await host.browserTab({ op: 'close_others', tabId: '1' })
   await assert.rejects(host.browserTab({ op: 'close', tabId: '9' }), /Unknown tab 9/)
   await assert.rejects(host.browserTab({ op: 'close' }), /needs tab_id/)
   assert.deepEqual(workspace.calls, [['selectModel', 'pane-1', 'claude-opus-5'], ['effort', 'pane-1', 'max'], ['closePeer', 'pane-2']])
-  assert.deepEqual(tabs.calls, [['openNewTab', 'https://example.com', true], ['selectTab', '1']])
+  assert.deepEqual(tabs.calls, [
+    ['openNewTab', 'https://example.com', true],
+    ['selectTab', '1'],
+    ['newTabToRight', '1'],
+    ['duplicateTab', '1'],
+    ['renameTab', '1', 'Docs'],
+    ['reloadTab', '1'],
+    ['closeTabsToRight', '1'],
+    ['closeOtherTabs', '1']
+  ])
 })

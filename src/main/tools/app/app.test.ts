@@ -106,7 +106,7 @@ test('commands route to the host with the selected pane as the default target', 
   await call('command', { action: 'open_chat', title: 'benchmark' })
   await call('command', { action: 'close_chat', pane_id: 'pane-old' })
   await call('command', { action: 'select_model', model_id: 'gpt-5', reasoning_effort: 'high' })
-  await call('command', { action: 'browser_tab', op: 'select', tab_id: '3' })
+  await call('command', { action: 'browser_tab', op: 'rename', tab_id: '3', tab_title: 'Docs' })
   const verbs = calls.filter((entry) => Array.isArray(entry) && entry[0] !== 'state')
   assert.deepEqual(verbs, [
     ['newChat'],
@@ -114,7 +114,7 @@ test('commands route to the host with the selected pane as the default target', 
     ['openChat', { paneId: undefined, threadId: undefined, title: 'benchmark' }],
     ['closeChat', 'pane-old'],
     ['selectModel', 'pane-selected', 'gpt-5', 'high'],
-    ['browserTab', { op: 'select', tabId: '3', url: undefined }]
+    ['browserTab', { op: 'rename', tabId: '3', url: undefined, title: 'Docs' }]
   ])
 })
 
