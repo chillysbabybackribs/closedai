@@ -87,7 +87,13 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.parking = new PeerIdleParking((paneId) => this.lifecycle.get(paneId), () => this.selectedPaneId, idleParkMs)
     this.lifecycle = new PeerLifecycle(store, settings, createSurface, this.parking, (entry, event) => this.onPaneEvent(entry, event))
     this.catalog = new PeerChatCatalog(store, () => this.workspace(), (fn) => this.withAwake(this.selectedPaneId, fn))
-    this.selectedPaneId = this.restoreOpenChats(settings.get().chatOpenIds, settings.get().chatSelectedPaneId, null, null)
+    const saved = settings.get()
+    this.selectedPaneId = this.restoreOpenChats(saved.chatOpenIds, saved.chatSelectedPaneId, null, null)
+    if (saved.chatSelectedPaneId !== this.selectedPaneId || saved.chatOpenIds.join() !== this.lifecycle.ids().join()) {
+      void this.persistOpenChats().catch((error: unknown) => {
+        console.warn('[chat-peers] could not persist open chats:', error instanceof Error ? error.message : String(error))
+      })
+    }
     store.on('change', () => this.chatsEmit.schedule())
   }
 
@@ -159,9 +165,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // own `replace` when it lands.
     this.emitWorkspace()
     await this.persistOpenChats()
-    void this.wake(paneId).catch((error: unknown) => {
-      console.warn('[chat-peers] could not wake pane:', error instanceof Error ? error.message : String(error))
-    })
+    this.wakeLater(paneId, 'wake pane')
   }
 
   /** Read the pane's provider plan usage now; the hover card asks each time it opens. */
@@ -214,9 +218,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.emitWorkspace()
     await this.trimAttached()
     await this.persistOpenChats()
-    void this.wake(record.id).catch((error: unknown) => {
-      console.warn('[chat-peers] could not start the new chat:', error instanceof Error ? error.message : String(error))
-    })
+    this.wakeLater(record.id, 'start the new chat')
     return record.id
   }
 
@@ -317,9 +319,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     await this.trimAttached()
     await this.persistOpenChats()
     this.catalog.invalidate()
-    void this.wake(chatId).catch((error: unknown) => {
-      console.warn('[chat-peers] could not open chat:', error instanceof Error ? error.message : String(error))
-    })
+    this.wakeLater(chatId, 'open chat')
     return chatId
   }
 
@@ -368,7 +368,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.selectedPaneId = this.restoreOpenChats(restored.chatOpenIds, restored.chatSelectedPaneId, current.selectedModel, current.selectedReasoningEffort)
     await this.persistOpenChats()
     this.emitWorkspace()
-    void this.wake(this.selectedPaneId)
+    this.wakeLater(this.selectedPaneId, 'start the project chat')
   }
 
   beginLogin(): Promise<string | null> {
@@ -438,6 +438,21 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   private wake(paneId: ChatPaneId): Promise<PeerEntry> {
     return this.lifecycle.withBusy(paneId, () => this.parking.wake(paneId) as Promise<PeerEntry>)
+  }
+
+  /**
+   * Start a chat's runtime without holding the caller. A blank chat the user left while it was
+   * still starting could not be discarded then (the start might have been bringing a thread);
+   * once it has landed empty and unselected, it goes.
+   */
+  private wakeLater(paneId: ChatPaneId, what: string): void {
+    void this.wake(paneId).then(async () => {
+      if (paneId !== this.selectedPaneId && this.lifecycle.peers.size > 1 && this.lifecycle.discardIfBlank(paneId)) {
+        await this.persistOpenChats()
+      }
+    }).catch((error: unknown) => {
+      console.warn(`[chat-peers] could not ${what}:`, error instanceof Error ? error.message : String(error))
+    })
   }
 
   private onPaneEvent(entry: PeerEntry, event: ChatEvent): void {
