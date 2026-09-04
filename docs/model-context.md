@@ -74,8 +74,12 @@ Codex turn input, Claude content blocks, or Antigravity tagged text and attachme
 
 `buildTurnAdditionalContext` includes a timestamped active-tab fragment only for prompts that
 match browser/page cues and only when an active tab exists. That fragment is explicitly
-`kind: untrusted`: a page title or URL cannot issue instructions. Ordinary coding turns do not
-automatically receive browser state or a full application snapshot.
+`kind: untrusted` and labels its role as ambient with undetermined relevance: a page title or URL
+cannot issue instructions, and the fragment's presence is not evidence of user intent. Shared
+model instructions require each provider to judge relevance from the request and conversation,
+using the tab when relevant even without an explicit page reference and ignoring it when unrelated;
+adjacency or injection alone never establishes relevance. Ordinary coding turns do not automatically
+receive browser state or a full application snapshot.
 
 Before Send, all four providers can add `closedai.workspace.source-changes`, a bounded untrusted
 summary of changes to file versions previously observed by that pane and provider thread in the

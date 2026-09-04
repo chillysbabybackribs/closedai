@@ -69,6 +69,8 @@ test('active tab metadata is a timestamped untrusted fragment', () => {
       kind: 'untrusted',
       value: JSON.stringify({
         surface: 'browser',
+        contextRole: 'ambient',
+        relevance: 'undetermined',
         capturedAt: '2026-09-02T12:00:00.000Z',
         ...activeTab
       })

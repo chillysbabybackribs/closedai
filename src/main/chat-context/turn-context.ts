@@ -59,6 +59,8 @@ export function buildTurnAdditionalContext(
       kind: 'untrusted',
       value: JSON.stringify({
         surface: 'browser',
+        contextRole: 'ambient',
+        relevance: 'undetermined',
         capturedAt,
         ...activeBrowser
       })
