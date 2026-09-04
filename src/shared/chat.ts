@@ -7,9 +7,10 @@ export type ChatConnection = {
 
 /**
  * Which chat backend owns a model or thread. Codex is the app-server; Claude is the Claude Agent
- * SDK; Antigravity is Google's `agy` CLI on the user's Antigravity subscription.
+ * SDK; Antigravity is Google's `agy` CLI on the user's Antigravity subscription; Cursor is the
+ * `cursor-agent` CLI's ACP server on the user's Cursor subscription.
  */
-export type ChatProvider = 'codex' | 'claude' | 'antigravity'
+export type ChatProvider = 'codex' | 'claude' | 'antigravity' | 'cursor'
 
 export type ChatAccount = {
   type: 'chatgpt' | 'apiKey' | 'amazonBedrock' | 'claude' | 'google' | 'other'

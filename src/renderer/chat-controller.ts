@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react'
 import type { ChatAttachment, ChatSnapshot, ChatThreadSummary } from '../shared/chat.js'
 import type { ChatContinuationSource, ChatPeerSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../shared/chat-peers.js'
+import { threadOpensInPlace } from './chat-open-target.js'
 import { coalesceChatWorkspaceEvents, initialChatWorkspaceState, reduceChatWorkspaceEvent } from './chat-state.js'
 
 export type ChatController = {
@@ -78,9 +79,13 @@ export function useChatController(enabled = true): ChatController {
     { paneId, threadId: workspace.selected.threadId },
     workspace.selected.selectedModel
   ), [continueFromChat, paneId, workspace.selected.threadId, workspace.selected.selectedModel])
-  const openThread = useCallback((threadId: string) => window.closedai.chat.openThread(paneId, threadId), [paneId])
   const openThreadInNewPane = useCallback((threadId: string) =>
     window.closedai.chat.newPeer().then((freshPaneId) => window.closedai.chat.openThread(freshPaneId, threadId)), [])
+  // A history thread never displaces a conversation: only a blank pane takes it in place.
+  const openInPlace = threadOpensInPlace(workspace.selected)
+  const openThread = useCallback((threadId: string) =>
+    openInPlace ? window.closedai.chat.openThread(paneId, threadId) : openThreadInNewPane(threadId),
+  [paneId, openInPlace, openThreadInNewPane])
   const archiveThread = useCallback((threadId: string) => window.closedai.chat.archiveThread(threadId), [])
   const selectPane = useCallback((nextPaneId: string) => window.closedai.chat.selectPane(nextPaneId), [])
   const closePeer = useCallback((targetPaneId: string) => window.closedai.chat.closePeer(targetPaneId), [])

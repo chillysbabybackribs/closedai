@@ -41,8 +41,28 @@ test('the provider name wins, then the first message, then the saved title', () 
   const userItem = { type: 'user' as const, id: 'u1', turnId: 't1', text: '  Fix the sidebar\nmore detail' }
   assert.equal(paneTitle(snapshot({ threadName: 'Sidebar fixes', items: [userItem] }), record()), 'Sidebar fixes')
   assert.equal(paneTitle(snapshot({ items: [userItem] }), record({ title: 'Saved' })), 'Fix the sidebar')
-  assert.equal(paneTitle(snapshot(), record({ title: 'Saved' })), 'Saved')
+  assert.equal(paneTitle(snapshot(), record({ title: 'Saved', threadId: 'claude:s1' })), 'Saved')
   assert.equal(paneTitle(snapshot(), record()), 'New chat')
+})
+
+test('a saved title belongs to the saved thread; a pane that left its chat is blank again', () => {
+  assert.equal(paneTitle(snapshot(), record({ title: 'Old chat', threadId: null })), 'New chat')
+  const lineage = { sourcePaneId: 'p', sourceThreadId: 't', sourceTitle: 'Old chat', digest: '', createdAt: 0 }
+  assert.equal(
+    paneTitle(snapshot(), record({ title: 'Continuing: Old chat', continuation: lineage as never })),
+    'Continuing: Old chat'
+  )
+})
+
+test('the cache reads the record on demand, so a new chat drops the previous name and thread', () => {
+  let saved = record({ title: 'Old chat', threadId: 'claude:s1', claudeSessionId: 's1' })
+  const cache = new PeerSummaryCache('pane-a', () => saved)
+  assert.equal(cache.current.title, 'Old chat')
+  assert.equal(cache.current.threadId, 'claude:s1')
+  saved = record({ title: 'Old chat', threadId: null })
+  cache.update({ type: 'replace', snapshot: snapshot() }, 1)
+  assert.equal(cache.current.title, 'New chat')
+  assert.equal(cache.current.threadId, null)
 })
 
 test('a parked pane still reports its persisted thread and title', () => {
@@ -59,7 +79,7 @@ test('long titles are clipped like before', () => {
 })
 
 test('late upserts preserve the latest preview and streaming previews stay bounded', () => {
-  const cache = new PeerSummaryCache('pane-a', record())
+  const cache = new PeerSummaryCache('pane-a', () => record())
   const old = { type: 'tool' as const, id: 'tool', turnId: 'turn', label: 'Read', detail: 'file', status: 'inProgress' }
   const answer = { type: 'assistant' as const, id: 'answer', turnId: 'turn', text: 'latest', phase: null, streaming: true }
   cache.update({ type: 'replace', snapshot: snapshot({ items: [old, answer] }) }, 1)
@@ -74,7 +94,7 @@ test('late upserts preserve the latest preview and streaming previews stay bound
 })
 
 test('cache titles follow the first user message and bounded provider name', () => {
-  const cache = new PeerSummaryCache('pane-a', record({ title: 'Saved title' }))
+  const cache = new PeerSummaryCache('pane-a', () => record({ title: 'Saved title' }))
   cache.update({ type: 'item', item: { type: 'user', id: 'first', turnId: null, text: 'First request' } }, 1)
   cache.update({ type: 'item', item: { type: 'user', id: 'next', turnId: null, text: 'Later request' } }, 2)
   assert.equal(cache.current.title, 'First request')

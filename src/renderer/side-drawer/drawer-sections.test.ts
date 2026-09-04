@@ -70,10 +70,10 @@ test('groupByDirectory groups by cwd and puts No folder last', () => {
 })
 
 test('Current contains only running work; idle and brand-new panes belong in History', () => {
-  const fresh = pane('pane-new', { threadId: null, status: 'chat' })
-  const running = pane('pane-run', { running: true, status: 'running' })
-  const idle = pane('pane-idle')
-  const record = makeRow('thread-old')
+  const fresh = pane('pane-new', { threadId: null, status: 'chat', updatedAt: 2000 })
+  const running = pane('pane-run', { running: true, status: 'running', updatedAt: 3000 })
+  const idle = pane('pane-idle', { updatedAt: 1500 })
+  const record = makeRow('thread-old', { updatedAt: 1000 })
 
   const sections = buildDrawerSections([fresh, running, idle, record], {})
   assert.deepEqual(sections.current.map((row) => row.id), ['pane-run'])
@@ -134,4 +134,13 @@ test('a history record is current when its thread is the open one', () => {
   assert.equal(rowIsCurrent(record, 'pane-1', 'thread-7'), true)
   assert.equal(rowIsCurrent(record, 'pane-1', 'thread-8'), false)
   assert.equal(rowIsCurrent(makeRow('t', { threadId: null }), 'pane-1', null), false)
+})
+
+test('history section is sorted by updatedAt descending', () => {
+  const older = makeRow('thread-older', { updatedAt: 1000 })
+  const newer = makeRow('thread-newer', { updatedAt: 3000 })
+  const middle = pane('pane-middle', { updatedAt: 2000 })
+
+  const sections = buildDrawerSections([older, newer, middle], {})
+  assert.deepEqual(sections.history.map((row) => row.id), ['thread-newer', 'pane-middle', 'thread-older'])
 })

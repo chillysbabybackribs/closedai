@@ -1,6 +1,6 @@
 import { Check, Copy } from 'lucide-react'
 import { marked } from 'marked'
-import { createElement, memo, useCallback, useId, useMemo, useState, type ReactNode } from 'react'
+import { createElement, memo, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
@@ -148,7 +148,28 @@ const MarkdownBlock = memo(function MarkdownBlock({ content, components }: { con
 function MarkdownComponent({ children, id, className, components }: MarkdownProps) {
   const generatedId = useId()
   const blockId = id ?? generatedId
-  const blocks = useMemo(() => parseMarkdownIntoBlocks(children), [children])
+  
+  const [blocks, setBlocks] = useState<string[]>(() => parseMarkdownIntoBlocks(children))
+  const lastUpdateRef = useRef<number>(Date.now())
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const run = () => {
+      lastUpdateRef.current = Date.now()
+      setBlocks(parseMarkdownIntoBlocks(children))
+    }
+    const elapsed = Date.now() - lastUpdateRef.current
+    if (elapsed > 100) {
+      run()
+    } else {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(run, 100 - elapsed)
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [children])
+
   const mergedComponents = useMemo(() => ({ ...DEFAULT_COMPONENTS, ...components }), [components])
   return (
     <div data-slot="markdown" className={cn('aui-md prompt-markdown', className)}>

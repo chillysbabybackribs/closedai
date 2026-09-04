@@ -20,6 +20,7 @@ import { ChatHub } from './chat-hub.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { ClaudeChatService } from './claude/claude-service.js'
 import { AntigravityChatService } from './antigravity/antigravity-service.js'
+import { CursorChatService } from './cursor/cursor-service.js'
 import { AntigravityToolBridge } from './antigravity/antigravity-mcp.js'
 import { BrowserPageAccess } from './browser-page-access.js'
 import { BrowserCdpAccess } from './cdp/browser-cdp-access.js'
@@ -44,6 +45,7 @@ import type { TraceEvent } from '../shared/trace.js'
 import type { ToolsEvent } from '../shared/tools.js'
 import { registerChatIpc } from './chat-ipc.js'
 import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
+import { CHAT_PROVIDERS } from '../shared/chat-providers.js'
 import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../shared/types.js'
 
 // Chromium switches must land before `ready`. Owner decision: the Linux sandbox flags stay
@@ -143,6 +145,7 @@ async function main(): Promise<void> {
         chatThreadId: destinationPeer?.codexThreadId ?? null,
         chatClaudeSessionId: destinationPeer?.claudeSessionId ?? null,
         chatAntigravityConversationId: destinationPeer?.antigravityConversationId ?? null,
+        chatCursorSessionId: destinationPeer?.cursorSessionId ?? null,
         chatModelId: destinationPeer?.modelId ?? preference.modelId,
         chatReasoningEffort: destinationPeer?.reasoningEffort ?? preference.reasoningEffort,
         chatContinuation: destinationPeer?.continuation ?? null
@@ -193,6 +196,7 @@ async function main(): Promise<void> {
   // The CLI config is shared by every instance, so only the default profile registers bare names.
   antigravityBridge = new AntigravityToolBridge(toolRegistry, { profileKey: profileKeyFor(userData()) })
   const antigravityStateDir = join(userData(), 'antigravity')
+  const cursorStateDir = join(userData(), 'cursor')
   chatService = new ChatPeerManager(settings, (peerSettings, modelId) => new ChatHub({
     codex: new ChatService(
       chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, undefined, peerSettings.paneId
@@ -202,6 +206,9 @@ async function main(): Promise<void> {
     ),
     antigravity: new AntigravityChatService(
       chatWorkspace, peerSettings, antigravityBridge!, antigravityStateDir, activeBrowserContext, screenshots, peerSettings.paneId
+    ),
+    cursor: new CursorChatService(
+      chatWorkspace, peerSettings, cursorStateDir, () => [], activeBrowserContext, screenshots, peerSettings.paneId
     )
   }, modelId, peerSettings), undefined, workspaceSelector)
   registerIpc()
@@ -289,7 +296,7 @@ function registerIpc(): void {
   registerToolsIpc(ipcMain, {
     registry: () => toolRegistry,
     telemetry: () => toolTelemetry,
-    providers: () => ['codex', 'claude', 'antigravity'],
+    providers: () => [...CHAT_PROVIDERS],
     onEnabledChanged: async (toolId, enabled, disabledIds) => {
       await settings?.set({ disabledTools: disabledIds })
       sendToMainWindow('tools:event', { type: 'enabled', toolId, enabled } satisfies ToolsEvent)

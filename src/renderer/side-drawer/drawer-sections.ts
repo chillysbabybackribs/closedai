@@ -86,6 +86,7 @@ export function buildDrawerSections(rows: DrawerRowModel[], reviewQueue: DrawerR
     else history.push(row)
   }
   review.sort((a, b) => (reviewQueue[b.id]?.queuedAt ?? 0) - (reviewQueue[a.id]?.queuedAt ?? 0))
+  history.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
 
   return { current, reviewQueue: review, history }
 }

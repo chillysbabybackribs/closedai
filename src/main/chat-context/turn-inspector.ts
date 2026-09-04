@@ -9,7 +9,8 @@ import type { AdditionalContext } from './turn-context.js'
 const HISTORY_DESCRIPTIONS: Record<ChatProvider, string> = {
   codex: 'Codex replays its native thread: retained messages, tool calls and results, and image inputs. Older history may be compacted.',
   claude: 'Claude resumes its native SDK session, including retained messages and tool interactions. The SDK may compact older history.',
-  antigravity: 'Antigravity resumes its native CLI conversation, including the history retained by that provider.'
+  antigravity: 'Antigravity resumes its native CLI conversation, including the history retained by that provider.',
+  cursor: 'Cursor reloads its own ACP session, including the history the agent retained for it.'
 }
 
 export type TurnContextReportInput = {

@@ -1,3 +1,5 @@
+import type { ChatProvider } from './chat.js'
+
 export type BrowserBounds = {
   x: number
   y: number
@@ -78,7 +80,7 @@ export type ChatContinuation = {
   /** Stable lineage retained after the one-shot handoff has been delivered. */
   sourcePaneId: string | null
   sourceThreadId: string | null
-  sourceProvider: 'codex' | 'claude' | 'antigravity'
+  sourceProvider: ChatProvider
   sourceTitle: string
   /** Cleared after the destination's first turn is accepted; lineage remains. */
   handoff: string | null
@@ -91,12 +93,14 @@ export type ChatContinuation = {
 
 export type ChatPeerRecord = {
   paneId: string
-  provider: 'codex' | 'claude' | 'antigravity'
+  provider: ChatProvider
   threadId: string | null
   codexThreadId: string | null
   claudeSessionId: string | null
   /** The `agy` conversation this pane continues; absent on records saved before Antigravity existed. */
   antigravityConversationId?: string | null
+  /** The ACP session this pane continues; absent on records saved before Cursor existed. */
+  cursorSessionId?: string | null
   modelId: string | null
   reasoningEffort: string | null
   /** The chat this pane continued from, including a restart-safe one-shot digest. */
@@ -134,7 +138,9 @@ export type AppSettings = {
   chatClaudeSessionId: string | null
   /** Last Antigravity (`agy`) conversation the chat surface showed; resumed on the next Antigravity turn. */
   chatAntigravityConversationId: string | null
-  /** User's preferred model for new chats; a `claude:` or `agy:` prefix selects that provider. */
+  /** Last Cursor ACP session the chat surface showed; reloaded on the next Cursor turn. */
+  chatCursorSessionId: string | null
+  /** User's preferred model for new chats; a `claude:`, `agy:`, or `cursor:` prefix selects that provider. */
   chatModelId: string | null
   /** User's preferred reasoning effort when the selected model supports it. */
   chatReasoningEffort: string | null

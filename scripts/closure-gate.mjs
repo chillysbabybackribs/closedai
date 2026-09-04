@@ -1,7 +1,8 @@
 // Import-closure gate: walks every static/dynamic import from the three entry points and
-// fails when anything outside the allowlist is reachable. This is what keeps closedai to
-// "only what is needed" — a stray import of agent/provider/tool code fails the build.
-import { readFileSync, existsSync, statSync } from 'node:fs'
+// fails when anything outside the allowlist is reachable, or when a source file under src/
+// is reachable from nothing. This is what keeps closedai to "only what is needed" — a stray
+// import of agent/provider/tool code fails the build, and so does code nothing imports.
+import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs'
 import { resolve, dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -24,9 +25,11 @@ const allowedPackages = new Set([
 const forbiddenPaths = /(claude|codex|cursor|antigravity|agent|mcp|tool-|plugin|recall|artifact|seo-|blender|ytdlp|vpn|(?:^|[/-])tor-|workflow|credential)/i
 // The sanctioned homes for model-facing tools (docs/tools.md): the registry in main and
 // its inspector UI in the renderer, plus the Claude Code provider adapter (docs/claude-code.md)
-// and the Antigravity provider adapter (docs/antigravity.md). Everything else that smells like
+// and the Antigravity provider adapter (docs/antigravity.md), plus the transcript memory the
+// `peer_chats` recall and checkpoint tools read. Everything else that smells like
 // agent/provider/tool code is still rejected.
-const sanctionedPaths = /^src\/(main|renderer)\/tools\/|^src\/main\/(claude|antigravity)\//
+const sanctionedPaths =
+  /^src\/(main|renderer)\/tools\/|^src\/main\/(claude|antigravity)\/|^src\/main\/chat-context\/memory-/
 
 const importRe = /(?:import|export)\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g
 function resolveLocal(from, spec) {
@@ -44,13 +47,19 @@ while (stack.length) {
   if (seen.has(file)) continue
   seen.add(file)
   const rel = relative(root, file)
-  if (forbiddenPaths.test(rel) && !sanctionedPaths.test(rel)) problems.push(`forbidden module reachable: ${rel}`)
-  if (!/\.(ts|tsx)$/.test(file)) continue
+  // Stylesheets carry no imports of their own beyond other stylesheets, so a feature name in
+  // a sheet's path (agents.css, tool-activity.css) is not the module smell this rejects.
+  const isStyle = file.endsWith('.css')
+  if (!isStyle && forbiddenPaths.test(rel) && !sanctionedPaths.test(rel)) problems.push(`forbidden module reachable: ${rel}`)
+  if (!/\.(ts|tsx|css)$/.test(file)) continue
   const source = readFileSync(file, 'utf8')
   for (const match of source.matchAll(importRe)) {
     const spec = match[1] ?? match[2]
     const local = resolveLocal(file, spec)
     if (local) { stack.push(local); continue }
+    // A stylesheet's `@import` of a package (tailwindcss, a font face) is a bundler concern,
+    // not part of the module closure this gate polices.
+    if (isStyle) continue
     if (spec.startsWith('.') || spec.startsWith('node:')) continue
     if (/\.css$/.test(spec)) continue
     const pkg = spec.split('/').slice(0, spec.startsWith('@') ? 2 : 1).join('/')
@@ -58,6 +67,21 @@ while (stack.length) {
     if (!allowedPackages.has(pkg)) problems.push(`package not allowlisted: ${pkg} (from ${rel})`)
   }
 }
+// The other half of "only what is needed": a file no entry point can reach is dead weight,
+// and dead renderer files keep advertising `data-ui` ids the manifest guard still counts as
+// rendered. Tests and ambient declarations are reached by the test runner and tsc instead.
+function sourceFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) return sourceFiles(path)
+    if (/\.test\.tsx?$/.test(entry.name) || entry.name.endsWith('.d.ts')) return []
+    return /\.(ts|tsx|css)$/.test(entry.name) ? [path] : []
+  })
+}
+for (const file of sourceFiles(join(root, 'src'))) {
+  if (!seen.has(file)) problems.push(`unreachable source file: ${relative(root, file)}`)
+}
+
 let lines = 0
 for (const f of seen) lines += readFileSync(f, 'utf8').split('\n').length
 console.log(`closure: ${seen.size} files, ${lines} lines; packages: ${[...packages].sort().join(', ')}`)

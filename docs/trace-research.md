@@ -201,7 +201,9 @@ line is the larger design if the trace ever needs to persist or export.
    pattern (`src/main/tools/ipc.ts`, preload block, `src/shared/api.ts`). Viewer builds on
    the activity step list in `src/renderer/activity-step-list.tsx` (the generic `ToolPart` card it
    once pointed at was retired on 2026-09-03 in favour of that per-step model),
-   `src/components/ai-elements/chain-of-thought.tsx` for the waterfall, and the tools modal as host.
+   a waterfall component, and the tools modal as host. (The vendored
+   `src/components/ai-elements/chain-of-thought.tsx` this once named as the waterfall was deleted on
+   2026-09-03 as unreachable from every entry point; the waterfall would be built fresh.)
 7. **Optional export.** Later: an OTLP/HTTP serializer to a local collector, plus pass-through of the
    Claude and Codex native env/config so a backend like Langfuse or Phoenix sees provider-internal spans.
 

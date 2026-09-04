@@ -1,18 +1,4 @@
-/* Chat header actions and the in-pane history list (chat-history.tsx).
-   The header row itself (.chat-header, .chat-header-title) lives in shell-chat.css. */
-
-.chat-header-spacer { flex: 1 1 auto; min-width: 8px; }
-
-.chat-header-action {
-  flex: none;
-  color: var(--muted-foreground);
-}
-
-.chat-header-action:not(:disabled):hover,
-.chat-header-action[aria-pressed='true'] {
-  background: var(--accent);
-  color: var(--accent-foreground);
-}
+/* The in-pane history list (chat-history.tsx). */
 
 .chat-history {
   grid-row: 2;

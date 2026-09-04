@@ -15,8 +15,8 @@ export type DrawerRowModel = {
   linesRemoved: number
   running: boolean
   status: DrawerRowStatus
-  /** Set for rows backed by a live pane — the selected chat and every peer. Absent on history
-   *  rows, which are thread records with no runtime behind them. Drives the provider mark. */
+  /** Drives the provider mark. A pane row reports its live provider; a history record derives one
+   *  from its thread id, so every row names its provider whether or not a pane is behind it. */
   provider?: ChatProvider
   peer?: ChatPeerSummary
   thread?: ChatThreadSummary

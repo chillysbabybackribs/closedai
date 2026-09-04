@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  antigravityPlanUsage,
   applyPlanUsageSignal,
   claudePlanUsage,
   claudeRateLimitSignal,
@@ -100,3 +101,51 @@ test('a provider with nothing to report says so', () => {
   const usage = planUsageUnavailable('no usage here', NOW)
   assert.deepEqual(usage, { plan: null, windows: [], note: null, unavailable: 'no usage here', updatedAt: NOW })
 })
+
+test('antigravity quota response parses groups and remaining fractions into windows', () => {
+  const usage = antigravityPlanUsage({
+    status: 'SUCCESS',
+    command: {
+      name: 'usage',
+      data: {
+        groups: [
+          {
+            name: 'Gemini Models',
+            buckets: [
+              { window: 'weekly', remaining_fraction: 0.96, reset_time: '2026-09-10T18:35:39Z' },
+              { window: '5h', remaining_fraction: 0.92, reset_time: '2026-09-04T04:35:39Z' }
+            ]
+          },
+          {
+            name: 'Claude and GPT models',
+            buckets: [
+              { window: 'weekly', remaining_fraction: 0.98, reset_time: '2026-09-06T19:24:23Z' },
+              { window: '5h', remaining_fraction: 0.98, reset_time: '2026-09-04T03:58:39Z' }
+            ]
+          }
+        ]
+      }
+    }
+  }, NOW)
+  assert.ok(usage)
+  assert.equal(usage.plan, null)
+  assert.deepEqual(usage.windows, [
+    { label: '5-hour (Gemini)', percent: 8, resetsAt: Date.parse('2026-09-04T04:35:39Z') },
+    { label: 'Weekly (Gemini)', percent: 4, resetsAt: Date.parse('2026-09-10T18:35:39Z') },
+    { label: '5-hour (Claude & GPT)', percent: 2, resetsAt: Date.parse('2026-09-04T03:58:39Z') },
+    { label: 'Weekly (Claude & GPT)', percent: 2, resetsAt: Date.parse('2026-09-06T19:24:23Z') }
+  ])
+  assert.equal(usage.updatedAt, NOW)
+})
+
+test('antigravity quota parses fallback tab-separated response lines', () => {
+  const usage = antigravityPlanUsage({
+    response: 'Gemini Models\tFive Hour Limit Remaining\t90%\t2026-09-04T04:35:39Z\nGemini Models\tWeekly Limit Remaining\t95%\t2026-09-10T18:35:39Z\n'
+  }, NOW)
+  assert.ok(usage)
+  assert.deepEqual(usage.windows, [
+    { label: '5-hour (Gemini)', percent: 10, resetsAt: Date.parse('2026-09-04T04:35:39Z') },
+    { label: 'Weekly (Gemini)', percent: 5, resetsAt: Date.parse('2026-09-10T18:35:39Z') }
+  ])
+})
+

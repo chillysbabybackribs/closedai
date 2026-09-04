@@ -83,6 +83,7 @@ export type ClosedaiApi = {
   }
   /** The live turn trace: in-memory, every pane, cleared at restart or on request. */
   trace: {
+    setActive: (active: boolean) => Promise<void>
     snapshot: () => Promise<TraceSnapshot>
     clear: () => Promise<void>
     onEvent: (listener: (event: TraceEvent) => void) => Unsubscribe

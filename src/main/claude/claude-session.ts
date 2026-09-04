@@ -4,6 +4,7 @@ import type { Options, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-a
 import type { ContextUsage } from '../chat-context/context-compaction.js'
 import type { ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
 import type { ChatPlanUsage } from '../../shared/chat.js'
+import { claudeTurnId } from './claude-ids.js'
 import { claudeQueryOptions } from './claude-options.js'
 import { ClaudeRuntime } from './claude-runtime.js'
 import type { ClaudeSdk } from './claude-sdk.js'
@@ -85,7 +86,7 @@ export class ClaudeSession {
     if (this.activeTurnId) throw new Error('A Claude turn is already running')
     const runtime = this.ensureRuntime()
     this.clearIdleTimer()
-    const turnId = `claude-turn-${randomUUID()}`
+    const turnId = claudeTurnId()
     this.beginTurn(turnId)
     const outgoing = { ...message, session_id: this.sessionId ?? message.session_id }
     runtime.push(outgoing)
@@ -165,7 +166,7 @@ export class ClaudeSession {
     // The CLI can start a turn by itself when a backgrounded task settles; mint one so its
     // output lands in the transcript instead of being dropped.
     if (!this.translator && (message.type === 'stream_event' || message.type === 'assistant')) {
-      this.beginTurn(`claude-turn-${randomUUID()}`)
+      this.beginTurn(claudeTurnId())
     }
     const translator = this.translator ?? new ClaudeTurnTranslator({ backgroundTasks: this.backgroundTasks, turnId: null, cwd: this.deps.cwd, displayScreenshot: this.deps.displayScreenshot })
     const translation = translator.handle(message)

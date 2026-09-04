@@ -127,3 +127,22 @@ test('an idle pane is done regardless of which item came last; a blank pane is a
   assert.equal(rows.find((row) => row.id === 'pane-idle')?.status, 'done')
   assert.equal(rows.find((row) => row.id === 'pane-blank')?.status, 'chat')
 })
+
+test('a history record carries the provider its thread id names, including unprefixed Codex ids', () => {
+  const rows = buildDrawerRows({
+    selected: selected('thread-a', 'Selected A'),
+    selectedPaneId: 'pane-a',
+    peers: [peer('pane-a', 'thread-a', 100)],
+    threads: [
+      { id: '01a06a2b-c42c-7722-9c4f-96416f3878a4', title: 'Codex chat', preview: '', createdAt: 1, updatedAt: 2 },
+      { id: 'claude:s1', title: 'Claude chat', preview: '', createdAt: 1, updatedAt: 3 },
+      { id: 'agy:c1', title: 'Antigravity chat', preview: '', createdAt: 1, updatedAt: 4 }
+    ],
+    selectedDiff: { added: 0, removed: 0 }
+  })
+
+  assert.deepEqual(
+    rows.filter((row) => row.paneId === undefined).map((row) => row.provider),
+    ['codex', 'claude', 'antigravity']
+  )
+})

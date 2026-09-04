@@ -74,6 +74,7 @@ const api: ClosedaiApi = {
     onEvent: (listener) => subscribe<ToolsEvent>('tools:event', listener)
   },
   trace: {
+    setActive: (active: boolean) => ipcRenderer.invoke('trace:setActive', active),
     snapshot: () => ipcRenderer.invoke('trace:snapshot'),
     clear: () => ipcRenderer.invoke('trace:clear'),
     onEvent: (listener) => subscribe<TraceEvent>('trace:event', listener)

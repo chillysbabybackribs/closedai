@@ -1,5 +1,5 @@
-import { randomUUID } from 'node:crypto'
 import { antigravityTurnLine } from './antigravity-cli.js'
+import { antigravityTurnId } from './antigravity-ids.js'
 import { AntigravityProcess } from './antigravity-process.js'
 import { AntigravityTurnTranslator, type TranscriptOp, type TurnEnd } from './antigravity-stream.js'
 import type { AntigravityServerName } from './antigravity-tool-items.js'
@@ -52,7 +52,7 @@ export class AntigravitySession {
     if (this.activeTurnId) throw new Error('An Antigravity turn is already running')
     const process = this.ensureProcess()
     this.clearIdleTimer()
-    const turnId = `agy-turn-${randomUUID()}`
+    const turnId = antigravityTurnId()
     this.activeTurnId = turnId
     this.translator = new AntigravityTurnTranslator({
       turnId,

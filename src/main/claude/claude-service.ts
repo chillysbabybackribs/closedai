@@ -167,8 +167,8 @@ export class ClaudeChatService extends EventEmitter {
   }
 
   async listThreads(): Promise<ChatThreadSummary[]> {
-    await this.ensureConnected()
-    return listClaudeThreads(this.sdk!, this.cwd)
+    if (!this.sdk) this.sdk = await loadClaudeSdk()
+    return listClaudeThreads(this.sdk, this.cwd)
   }
 
   async readThread(threadId: string): Promise<ChatThreadContent> {

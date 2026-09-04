@@ -19,8 +19,10 @@ export type ScreenshotSurface = 'app_window' | 'browser_page' | 'crop'
 const DEFAULT_MAX_ENTRIES = 60
 const DEFAULT_MAX_BYTES = 96 * 1024 * 1024
 
+type InternalEntry = Omit<StoredScreenshot, 'dataUrl'> & { buffer: Buffer }
+
 export class ScreenshotStore {
-  private readonly entries = new Map<string, StoredScreenshot>()
+  private readonly entries = new Map<string, InternalEntry>()
   private bytes = 0
 
   constructor(
@@ -35,8 +37,13 @@ export class ScreenshotStore {
   retain(callId: string, screenshot: StoredScreenshot): void {
     if (!callId) return
     this.drop(callId)
-    this.entries.set(callId, screenshot)
-    this.bytes += screenshot.dataUrl.length
+    // Extract base64 data to store as Buffer, avoiding V8 heap bloat for large strings
+    const b64 = screenshot.dataUrl.replace(/^data:image\/\w+;base64,/, '')
+    const buffer = Buffer.from(b64, 'base64')
+    const { dataUrl, ...rest } = screenshot
+    
+    this.entries.set(callId, { ...rest, buffer })
+    this.bytes += buffer.length
     for (const oldest of this.entries.keys()) {
       if (this.entries.size <= this.maxEntries && this.bytes <= this.maxBytes) break
       if (oldest === callId) break
@@ -45,13 +52,16 @@ export class ScreenshotStore {
   }
 
   get(callId: string): StoredScreenshot | null {
-    return this.entries.get(callId) ?? null
+    const entry = this.entries.get(callId)
+    if (!entry) return null
+    const { buffer, ...rest } = entry
+    return { ...rest, dataUrl: `data:image/jpeg;base64,${buffer.toString('base64')}` }
   }
 
   private drop(callId: string): void {
     const existing = this.entries.get(callId)
     if (!existing) return
     this.entries.delete(callId)
-    this.bytes -= existing.dataUrl.length
+    this.bytes -= existing.buffer.length
   }
 }

@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events'
 import type { ChatProvider } from '../../shared/chat.js'
+import { chatProviderOfTurnId } from '../../shared/chat-providers.js'
 import type { TraceEntry, TraceEvent, TraceKind, TraceSnapshot } from '../../shared/trace.js'
 import { ResponseLatency } from './response-latency.js'
 
@@ -32,10 +33,16 @@ export type TraceInput = {
 export class TraceLog extends EventEmitter {
   readonly responses = new ResponseLatency((scope, input) => this.record(scope, input))
   private entries: TraceEntry[] = []
+  private head = 0
   private totalChars = 0
   private dropped = 0
   private nextSeq = 1
+  private isActive = false
   private readonly turnStarts = new Map<string, number>()
+
+  setActive(active: boolean): void {
+    this.isActive = active
+  }
 
   record(scope: TraceScope, input: TraceInput): TraceEntry {
     this.responses.outgoing(scope, input)
@@ -58,7 +65,9 @@ export class TraceLog extends EventEmitter {
     this.entries.push(entry)
     this.totalChars += text.length
     this.evict()
-    this.emit('event', { type: 'entry', entry } satisfies TraceEvent)
+    if (this.isActive) {
+      this.emit('event', { type: 'entry', entry } satisfies TraceEvent)
+    }
     return entry
   }
 
@@ -83,22 +92,27 @@ export class TraceLog extends EventEmitter {
   }
 
   snapshot(): TraceSnapshot {
-    return { entries: [...this.entries], dropped: this.dropped, capacity: MAX_ENTRIES }
+    return { entries: this.entries.slice(this.head), dropped: this.dropped, capacity: MAX_ENTRIES }
   }
 
   clear(): void {
     this.responses.clear()
     this.entries = []
+    this.head = 0
     this.totalChars = 0
     this.dropped = 0
     this.emit('event', { type: 'cleared' } satisfies TraceEvent)
   }
 
   private evict(): void {
-    while (this.entries.length > MAX_ENTRIES || (this.totalChars > MAX_TOTAL_CHARS && this.entries.length > 1)) {
-      const oldest = this.entries.shift()!
+    while (this.entries.length - this.head > MAX_ENTRIES || (this.totalChars > MAX_TOTAL_CHARS && this.entries.length - this.head > 1)) {
+      const oldest = this.entries[this.head++]
       this.totalChars -= oldest.detail.length
       this.dropped += 1
+    }
+    if (this.head > 1000) {
+      this.entries = this.entries.slice(this.head)
+      this.head = 0
     }
   }
 }
@@ -109,9 +123,7 @@ export const traceLog = new TraceLog()
 /** Which provider a turn id belongs to, from the prefixes the sessions mint. */
 export function providerOfTurn(turnId: string | null): ChatProvider | null {
   if (!turnId) return null
-  if (turnId.startsWith('claude-turn-')) return 'claude'
-  if (turnId.startsWith('agy-turn-')) return 'antigravity'
-  return 'codex'
+  return chatProviderOfTurnId(turnId)
 }
 
 export function formatDuration(ms: number): string {

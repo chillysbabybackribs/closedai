@@ -53,6 +53,7 @@ export function useTraceController(active: boolean, paneId: string): TraceContro
     if (!active) return
     let live = true
     void refresh()
+    window.closedai.trace.setActive(true).catch(console.error)
     const unsubscribe = window.closedai.trace.onEvent((event) => {
       if (!live) return
       if (event.type === 'cleared') {
@@ -69,6 +70,7 @@ export function useTraceController(active: boolean, paneId: string): TraceContro
     return () => {
       live = false
       unsubscribe()
+      window.closedai.trace.setActive(false).catch(console.error)
     }
   }, [active, refresh])
 

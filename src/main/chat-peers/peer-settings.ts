@@ -1,5 +1,5 @@
 import type { AppSettings, ChatPeerRecord } from '../../shared/types.js'
-import { chatProviderOfId } from '../../shared/chat-providers.js'
+import { chatProviderOfId, prefixChatId } from '../../shared/chat-providers.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 
 // One pane's view of the flat settings: the pane's record projected onto the legacy
@@ -19,6 +19,7 @@ export class PeerSettings implements AppSettingsAccess {
       chatThreadId: peer.codexThreadId,
       chatClaudeSessionId: peer.claudeSessionId,
       chatAntigravityConversationId: peer.antigravityConversationId ?? null,
+      chatCursorSessionId: peer.cursorSessionId ?? null,
       chatModelId: peer.modelId,
       chatReasoningEffort: peer.reasoningEffort,
       chatContinuation: peer.continuation ?? null
@@ -36,6 +37,9 @@ export class PeerSettings implements AppSettingsAccess {
     const antigravityConversationId = patch.chatAntigravityConversationId === undefined
       ? peer.antigravityConversationId ?? null
       : patch.chatAntigravityConversationId
+    const cursorSessionId = patch.chatCursorSessionId === undefined
+      ? peer.cursorSessionId ?? null
+      : patch.chatCursorSessionId
     const updated: ChatPeerRecord = {
       ...peer,
       provider,
@@ -44,7 +48,8 @@ export class PeerSettings implements AppSettingsAccess {
       codexThreadId,
       claudeSessionId,
       antigravityConversationId,
-      threadId: peerThreadId(provider, { codexThreadId, claudeSessionId, antigravityConversationId }),
+      cursorSessionId,
+      threadId: peerThreadId(provider, { codexThreadId, claudeSessionId, antigravityConversationId, cursorSessionId }),
       continuation: patch.chatContinuation === undefined ? peer.continuation ?? null : patch.chatContinuation
     }
     await this.root.set({
@@ -53,6 +58,7 @@ export class PeerSettings implements AppSettingsAccess {
         chatThreadId: updated.codexThreadId,
         chatClaudeSessionId: updated.claudeSessionId,
         chatAntigravityConversationId: updated.antigravityConversationId ?? null,
+        chatCursorSessionId: updated.cursorSessionId ?? null,
         chatModelId: updated.modelId,
         chatReasoningEffort: updated.reasoningEffort,
         chatContinuation: updated.continuation ?? null
@@ -71,9 +77,17 @@ export class PeerSettings implements AppSettingsAccess {
 /** The pane's displayed thread id: the active provider's thread, in that provider's id form. */
 export function peerThreadId(
   provider: ChatPeerRecord['provider'],
-  ids: { codexThreadId: string | null; claudeSessionId: string | null; antigravityConversationId: string | null }
+  ids: {
+    codexThreadId: string | null
+    claudeSessionId: string | null
+    antigravityConversationId: string | null
+    cursorSessionId: string | null
+  }
 ): string | null {
-  if (provider === 'claude') return ids.claudeSessionId ? `claude:${ids.claudeSessionId}` : null
-  if (provider === 'antigravity') return ids.antigravityConversationId ? `agy:${ids.antigravityConversationId}` : null
+  if (provider === 'claude') return ids.claudeSessionId ? prefixChatId(provider, ids.claudeSessionId) : null
+  if (provider === 'antigravity') {
+    return ids.antigravityConversationId ? prefixChatId(provider, ids.antigravityConversationId) : null
+  }
+  if (provider === 'cursor') return ids.cursorSessionId ? prefixChatId(provider, ids.cursorSessionId) : null
   return ids.codexThreadId
 }

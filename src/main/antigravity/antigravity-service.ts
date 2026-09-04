@@ -1,14 +1,14 @@
 import { EventEmitter } from 'node:events'
 import type {
-  ChatAccount, ChatAttachment, ChatConnection, ChatEvent, ChatHistoryWindow, ChatSnapshot,
-  ChatThreadContent, ChatThreadSummary, ChatTurnContextReport
+  ChatAccount, ChatAttachment, ChatConnection, ChatEvent, ChatHistoryWindow, ChatPlanUsage,
+  ChatSnapshot, ChatThreadContent, ChatThreadSummary, ChatTurnContextReport
 } from '../../shared/chat.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource } from '../chat-context/thread-handoff.js'
 import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
-import { planUsageUnavailable } from '../chat-context/plan-usage.js'
+import { antigravityPlanUsage, planUsageUnavailable } from '../chat-context/plan-usage.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
@@ -28,13 +28,8 @@ import type { TranscriptOp, TurnEnd } from './antigravity-stream.js'
 // per thread, the catalog (`agy models`), and the conversation store that backs the history.
 // Tools reach the CLI through the shared HTTP MCP bridge (antigravity-mcp.ts).
 
-/**
- * `agy` reports no subscription usage: it has no usage subcommand, its stream carries only
- * init/step_update/result, and nothing in its state dir records a quota. The quota RPCs live
- * inside the binary but are never surfaced, so the card says so instead of showing a blank.
- * Re-check when `agy` grows a usage command (measured on agy 1.1.24, 2026-09-03).
- */
-const ANTIGRAVITY_PLAN_USAGE = planUsageUnavailable('The agy CLI does not report subscription usage.', 0)
+/** Fallback reading when the CLI does not report subscription usage or fails. */
+const ANTIGRAVITY_PLAN_USAGE_UNAVAILABLE = planUsageUnavailable('The agy CLI does not report subscription usage.', 0)
 
 const SIGN_IN_MESSAGE = 'Sign in to Antigravity: run `agy` in a terminal, complete the Google login, then choose an Antigravity model again.'
 
@@ -48,6 +43,7 @@ export class AntigravityChatService extends EventEmitter {
   private threadName: string | null = null
   private activeTurnId: string | null = null
   private turnContext: ChatTurnContextReport | null = null
+  private planUsage: ChatPlanUsage | null = null
   private readonly transcript: ChatTranscript
   private startPromise: Promise<void> | null = null
 
@@ -79,7 +75,7 @@ export class AntigravityChatService extends EventEmitter {
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
       contextUsage: null,
-      planUsage: ANTIGRAVITY_PLAN_USAGE,
+      planUsage: this.planUsage,
       turnContext: this.turnContext,
       items: page?.items ?? this.transcript.snapshot(),
       ...(page ? { history: { hasEarlier: page.hasEarlier, backgroundTasks: page.backgroundTasks } } : {})
@@ -125,8 +121,36 @@ export class AntigravityChatService extends EventEmitter {
     }
   }
 
-  /** Nothing to read; the constant reading is already in every snapshot. */
-  async refreshPlanUsage(): Promise<void> {}
+  /**
+   * Read the account's plan windows via `agy -p /quota --output-format json`. Safe while a
+   * turn runs, so the hover card can ask for a fresh reading every time it opens.
+   */
+  async refreshPlanUsage(): Promise<void> {
+    if (this.connection.state !== 'ready') return
+    try {
+      const result = await runAntigravityCommand(['-p', '/quota', '--output-format', 'json'])
+      if (!result.ok) {
+        if (!this.planUsage) this.setPlanUsage(ANTIGRAVITY_PLAN_USAGE_UNAVAILABLE)
+        return
+      }
+      const parsed = JSON.parse(result.stdout) as unknown
+      const usage = antigravityPlanUsage(parsed)
+      if (usage) {
+        this.setPlanUsage(usage)
+      } else if (!this.planUsage) {
+        this.setPlanUsage(ANTIGRAVITY_PLAN_USAGE_UNAVAILABLE)
+      }
+    } catch (error) {
+      console.warn('[antigravity] could not read plan usage:', messageOf(error))
+      if (!this.planUsage) this.setPlanUsage(ANTIGRAVITY_PLAN_USAGE_UNAVAILABLE)
+    }
+  }
+
+  private setPlanUsage(usage: ChatPlanUsage | null): void {
+    if (!usage) return
+    this.planUsage = usage
+    this.emitEvent({ type: 'planUsage', usage })
+  }
 
   async interrupt(): Promise<void> {
     try {
@@ -246,6 +270,7 @@ export class AntigravityChatService extends EventEmitter {
       this.account = { type: 'google', email: null, planType: null }
       this.setConnection({ state: 'ready', message: 'Antigravity is ready' })
       if (warm) await this.bridge.start()
+      void this.refreshPlanUsage()
     } catch (error) {
       const message = messageOf(error)
       this.setConnection(isAntigravityAuthFailure(message)
@@ -394,6 +419,7 @@ export class AntigravityChatService extends EventEmitter {
     this.activeTurnId = turnId
     this.bindBridge()
     this.emitEvent({ type: 'turn', turnId })
+    if (turnId === null) void this.refreshPlanUsage()
   }
 
   private emitEvent(event: ChatEvent): void {

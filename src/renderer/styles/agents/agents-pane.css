@@ -7,8 +7,8 @@
 .agents-pane {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
-  width: 268px;
-  flex: 0 0 268px;
+  width: 288px;
+  flex: 0 0 288px;
   min-height: 0;
   overflow: hidden;
   border-right: 1px solid var(--hairline, rgb(255 255 255 / 8%));
@@ -80,13 +80,13 @@
   justify-content: center;
   gap: 5px;
   width: 100%;
-  height: 30px;
+  height: 34px;
   padding: 0 9px;
   border: 1px solid var(--hairline-strong, rgb(255 255 255 / 12%));
   border-radius: 7px;
   background: var(--surface-raised, #202022);
   color: var(--chrome-fg-strong, #eceef0);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1;
   transition: background-color 120ms ease, border-color 120ms ease;
@@ -117,10 +117,10 @@
   align-items: center;
   gap: 6px;
   margin: 8px 4px 4px;
-  color: #77777a;
-  font-size: 10.5px;
+  color: #8a8a8e;
+  font-size: 11.5px;
   font-weight: 650;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   user-select: none;
 }
@@ -139,10 +139,10 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: #77777a;
-  font-size: 10.5px;
+  color: #8a8a8e;
+  font-size: 11.5px;
   font-weight: 650;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   text-align: left;
   user-select: none;
@@ -229,7 +229,7 @@
 
 @media (max-width: 70rem) {
   .agents-pane {
-    width: 224px;
-    flex-basis: 224px;
+    width: 240px;
+    flex-basis: 240px;
   }
 }

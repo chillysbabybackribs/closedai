@@ -61,4 +61,27 @@ function GeminiLogo(props: LogoProps) {
   );
 }
 
-export { ClaudeLogo, OpenAILogo, GeminiLogo };
+function CursorLogo(props: LogoProps) {
+  const id = useId();
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      {...props}
+    >
+      <defs>
+        <linearGradient id={id} x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#E4E4E7" />
+          <stop offset="1" stopColor="#52525B" />
+        </linearGradient>
+      </defs>
+      {/* The three visible faces of the Cursor cube, shaded so the mark reads at icon size. */}
+      <path fill={`url(#${id})`} opacity="0.45" d="M3 7 12 2l9 5-9 5Z" />
+      <path fill={`url(#${id})`} opacity="0.75" d="M3 7l9 5v10l-9-5Z" />
+      <path fill={`url(#${id})`} d="M21 7l-9 5v10l9-5Z" />
+    </svg>
+  );
+}
+
+export { ClaudeLogo, OpenAILogo, GeminiLogo, CursorLogo };

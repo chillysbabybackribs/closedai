@@ -52,29 +52,34 @@ test('effort labels are title-cased', () => {
   assert.equal(effortLabel('x-high'), 'X High')
 })
 
-test('the menu opens on a short list that spans providers and folds the rest away', () => {
-  const sections = modelSections(catalogue, {}, null)
-  // Picked round-robin across providers with each one's default first, listed in menu order.
-  assert.deepEqual(featuredIds(sections), ['sol', 'terra', 'luna', 'claude:opus', 'claude:sonnet'])
+const wide = catalogue.concat(model('codex', 'nova', 'Nova'), model('codex', 'pulse', 'Pulse'))
+
+test("the menu opens on each provider's top models and folds the rest away", () => {
+  const sections = modelSections(wide, {}, null)
+  // Four slots per provider: Codex fills its own with the default first, then catalogue order,
+  // while Claude Code keeps all three of its models. Listed in menu order, not rank order.
+  assert.deepEqual(featuredIds(sections), ['sol', 'terra', 'luna', 'gpt-5.5', 'claude:opus', 'claude:sonnet', 'claude:haiku'])
   assert.equal(sections.hiddenCount, 3)
-  assert.equal(sections.all.flatMap((group) => group.models).length, catalogue.length)
+  assert.equal(sections.all.flatMap((group) => group.models).length, wide.length)
+})
+
+test('a provider keeps its slots however much another provider is used', () => {
+  const usage = { 'claude:haiku': 9, 'claude:sonnet': 7, 'claude:opus': 5 }
+  assert.deepEqual(modelSections(wide, usage, null).featured.map((group) => group.models.length), [4, 3])
 })
 
 test('the most used models are featured, and the selected one always is', () => {
-  const usage = { spark: 9, 'claude:haiku': 7, 'gpt-5.5': 5 }
-  // Grouped by provider for display, so the three used models, the selected one, and one
-  // baseline filler come back in menu order rather than in rank order.
-  assert.deepEqual(
-    featuredIds(modelSections(catalogue, usage, 'claude:sonnet')),
-    ['terra', 'gpt-5.5', 'spark', 'claude:sonnet', 'claude:haiku']
-  )
-  assert.deepEqual(featuredIds(modelSections(catalogue, usage, 'luna')), ['terra', 'luna', 'gpt-5.5', 'spark', 'claude:haiku'])
+  const usage = { spark: 9, 'gpt-5.5': 5 }
+  // Within Codex: the two used models, then the default and catalogue order fill the rest.
+  assert.deepEqual(featuredIds(modelSections(wide, usage, null)).slice(0, 4), ['sol', 'terra', 'gpt-5.5', 'spark'])
+  // The selected model takes a slot instead of adding a fifth row to its provider.
+  assert.deepEqual(featuredIds(modelSections(wide, usage, 'nova')).slice(0, 4), ['terra', 'gpt-5.5', 'spark', 'nova'])
 })
 
 test('a remainder of one model is shown rather than hidden behind a row', () => {
-  const sections = modelSections(catalogue.slice(0, 6), {}, null)
+  const sections = modelSections(catalogue, {}, null)
   assert.equal(sections.hiddenCount, 0)
-  assert.equal(featuredIds(sections).length, 6)
+  assert.equal(featuredIds(sections).length, catalogue.length)
 })
 
 test('usage counts survive a round trip and ignore junk', () => {

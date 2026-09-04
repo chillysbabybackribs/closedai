@@ -1,5 +1,5 @@
 import type { HTMLProps, ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { cn } from '../../lib/utils.js'
 
@@ -25,18 +25,35 @@ export type CodeBlockCodeProps = HTMLProps<HTMLDivElement> & {
 
 function CodeBlockCode({ code, language = 'plaintext', theme = 'github-dark-default', className, ...props }: CodeBlockCodeProps) {
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null)
+  const lastUpdateRef = useRef<number>(0)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     let active = true
-    void import('./code-highlighter.js')
-      .then(({ highlightCode }) => highlightCode(code, language, theme))
-      .then((html) => {
-        if (active) setHighlightedHtml(html)
-      })
-      .catch(() => {
-        if (active) setHighlightedHtml(null)
-      })
-    return () => { active = false }
+    const run = () => {
+      lastUpdateRef.current = Date.now()
+      void import('./code-highlighter.js')
+        .then(({ highlightCode }) => highlightCode(code, language, theme))
+        .then((html) => {
+          if (active) setHighlightedHtml(html)
+        })
+        .catch(() => {
+          if (active) setHighlightedHtml(null)
+        })
+    }
+
+    const elapsed = Date.now() - lastUpdateRef.current
+    if (elapsed > 250) {
+      run()
+    } else {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(run, 250 - elapsed)
+    }
+
+    return () => {
+      active = false
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
   }, [code, language, theme])
 
   const classes = cn('w-full overflow-x-auto text-[12px] [&>pre]:m-0 [&>pre]:px-4 [&>pre]:py-3', className)

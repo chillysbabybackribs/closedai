@@ -1,109 +1,12 @@
 import assert from 'node:assert/strict'
-import { EventEmitter } from 'node:events'
 import test from 'node:test'
-import type { ChatAttachment, ChatEvent, ChatHistoryWindow, ChatSnapshot, ChatThreadContent } from '../../shared/chat.js'
+import type { ChatEvent } from '../../shared/chat.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import type { AppSettings } from '../../shared/types.js'
-import { DEFAULT_APP_SETTINGS, type AppSettingsAccess } from '../app-settings-store.js'
-import type { ChatSurface } from '../chat-hub.js'
+import { DEFAULT_APP_SETTINGS } from '../app-settings-store.js'
 import { ChatPeerManager } from './peer-manager.js'
+import { FakeSurface, MemorySettings, harness } from './peer-manager-harness.js'
 import { traceLog } from '../trace/trace-log.js'
-
-class MemorySettings implements AppSettingsAccess {
-  constructor(private value: AppSettings) {}
-  get(): AppSettings { return structuredClone(this.value) }
-  async set(patch: Partial<AppSettings>): Promise<AppSettings> {
-    this.value = { ...this.value, ...structuredClone(patch) }
-    return this.get()
-  }
-}
-
-class FakeSurface extends EventEmitter implements ChatSurface {
-  calls: string[] = []
-  snapshotCalls = 0
-  state: ChatSnapshot
-
-  constructor(modelId: string | null) {
-    super()
-    this.state = {
-      provider: modelId?.startsWith('claude:') ? 'claude' : 'codex',
-      connection: { state: 'ready', message: 'ready' },
-      account: null,
-      models: [],
-      selectedModel: modelId,
-      selectedReasoningEffort: null,
-      cwd: '/workspace',
-      threadId: null,
-      threadName: null,
-      activeTurnId: null,
-      contextUsage: null,
-      planUsage: null,
-      turnContext: null,
-      items: []
-    }
-  }
-
-  snapshot(window?: ChatHistoryWindow): ChatSnapshot {
-    this.snapshotCalls += 1
-    if (!window) return structuredClone(this.state)
-    const end = window.beforeItemId ? this.state.items.findIndex((item) => item.id === window.beforeItemId) : this.state.items.length
-    if (end < 0) throw new Error('History changed')
-    const start = Math.max(0, end - window.limit)
-    return structuredClone({ ...this.state, items: this.state.items.slice(start, end), history: { hasEarlier: start > 0 } })
-  }
-  async start(): Promise<void> { this.calls.push('start') }
-  stop(): void { this.calls.push('stop') }
-  async send(text: string, _attachments: ChatAttachment[]): Promise<void> {
-    this.calls.push(`send:${text}`)
-    this.state.activeTurnId = `turn:${text}`
-    this.emit('event', { type: 'turn', turnId: this.state.activeTurnId } satisfies ChatEvent)
-  }
-  async interrupt(): Promise<void> { this.calls.push('interrupt'); this.state.activeTurnId = null }
-  async selectModel(modelId: string): Promise<void> { this.calls.push(`model:${modelId}`); this.state.selectedModel = modelId }
-  async selectReasoningEffort(effort: string): Promise<void> { this.calls.push(`effort:${effort}`) }
-  async refreshPlanUsage(): Promise<void> { this.calls.push('refreshPlanUsage') }
-  async listThreads(): Promise<[]> { this.calls.push('listThreads'); return [] }
-  async readThread(threadId: string): Promise<ChatThreadContent> {
-    this.calls.push(`read:${threadId}`)
-    return {
-      threadId,
-      threadName: 'Saved chat',
-      items: [
-        { type: 'user', id: 'saved-user', turnId: 'saved-turn', text: 'Original request' },
-        { type: 'assistant', id: 'saved-answer', turnId: 'saved-turn', text: 'Original answer', phase: 'final_answer', streaming: false }
-      ]
-    }
-  }
-  async newThread(): Promise<void> { this.calls.push('newThread') }
-  async continueInNewThread(): Promise<void> { this.calls.push('continue') }
-  async openThread(threadId: string): Promise<void> { this.calls.push(`open:${threadId}`) }
-  async archiveThread(threadId: string): Promise<void> { this.calls.push(`archive:${threadId}`) }
-  async beginLogin(): Promise<string | null> { return null }
-}
-
-function harness(idleParkMs?: number): { manager: ChatPeerManager; surfaces: FakeSurface[]; settings: MemorySettings } {
-  const paneId = 'pane-a'
-  const settings = new MemorySettings({
-    ...DEFAULT_APP_SETTINGS,
-    chatPeers: [{
-      paneId,
-      provider: 'codex',
-      threadId: null,
-      codexThreadId: null,
-      claudeSessionId: null,
-      modelId: 'gpt',
-      reasoningEffort: null
-    }],
-    chatSelectedPaneId: paneId
-  })
-  const surfaces: FakeSurface[] = []
-  const manager = new ChatPeerManager(settings, (_peerSettings, modelId) => {
-    const surface = new FakeSurface(modelId)
-    surfaces.push(surface)
-    return surface
-  }, idleParkMs)
-  return { manager, surfaces, settings }
-}
 
 test('send captures provider dispatch and first text through the pane event path', async (t) => {
   traceLog.clear()
@@ -369,88 +272,6 @@ test('branching at a response excludes later messages and rejects unknown endpoi
   assert.equal(surfaces[0]!.state.items.length, 3)
 })
 
-test('a pane persists its title and activity time so a parked pane keeps its name after relaunch', async () => {
-  const { manager, surfaces, settings } = harness()
-  const surface = surfaces[0]!
-  surface.state.items = [{ type: 'user', id: 'u1', turnId: 't1', text: 'Fix the sidebar' }]
-  surface.emit('event', { type: 'item', item: surface.state.items[0]! } satisfies ChatEvent)
-  await new Promise((resolve) => setImmediate(resolve))
-
-  const record = settings.get().chatPeers.find((peer) => peer.paneId === 'pane-a')!
-  assert.equal(record.title, 'Fix the sidebar')
-  assert.ok((record.updatedAt ?? 0) > 0)
-  assert.equal(manager.snapshot().peers[0]!.title, 'Fix the sidebar')
-})
-
-test('streaming pane events update the drawer without cloning the transcript', () => {
-  const { manager, surfaces } = harness()
-  const surface = surfaces[0]!
-  surface.state.items = [
-    { type: 'user', id: 'u1', turnId: 't1', text: 'A long request' },
-    { type: 'assistant', id: 'a1', turnId: 't1', text: 'Answer so far', phase: null, streaming: true }
-  ]
-  const before = surface.snapshotCalls
-  surface.emit('event', { type: 'item', item: surface.state.items[1]! } satisfies ChatEvent)
-  surface.emit('event', { type: 'itemDelta', itemId: 'a1', field: 'text', delta: ' and more' } satisfies ChatEvent)
-  assert.equal(surface.snapshotCalls, before)
-  assert.equal(manager.snapshot().peers[0]!.preview, 'Answer so far and more')
-  assert.equal(surface.snapshotCalls, before + 1)
-})
-
-test('renderer replacement and page requests are bounded while peer reads keep history', () => {
-  const { manager, surfaces } = harness()
-  const surface = surfaces[0]!
-  surface.state.items = Array.from({ length: 500 }, (_, i) => ({ type: 'user', id: `u${i}`, turnId: null, text: `message ${i}` }))
-  const events: ChatWorkspaceEvent[] = []
-  manager.on('event', (event: ChatWorkspaceEvent) => events.push(event))
-  surface.emit('event', { type: 'replace', snapshot: surface.snapshot() } satisfies ChatEvent)
-  const replacement = events.find((event) => event.type === 'pane' && event.event.type === 'replace')
-  assert.ok(replacement?.type === 'pane' && replacement.event.type === 'replace')
-  assert.equal(replacement.event.snapshot.items.length, 200)
-  assert.equal(replacement.event.snapshot.items[0]?.id, 'u300')
-  assert.equal(manager.snapshot({ limit: 200 }).selected.items.length, 200)
-  assert.equal(manager.paneSnapshot('pane-a')!.items.length, 500)
-  assert.equal(manager.readHistoryPage('pane-a', null, 'u300').items[0]?.id, 'u100')
-  assert.throws(() => manager.readHistoryPage('pane-a', 'another-thread', 'u300'), /chat changed/)
-  manager.stop()
-})
-
-test('a persisted pane that has not been woken still shows its saved title and thread', () => {
-  const settings = new MemorySettings({
-    ...DEFAULT_APP_SETTINGS,
-    chatPeers: [{
-      paneId: 'pane-cold',
-      provider: 'claude',
-      threadId: 'claude:s1',
-      codexThreadId: null,
-      claudeSessionId: 's1',
-      modelId: 'claude:opus',
-      reasoningEffort: null,
-      title: 'Agent sidebar bugs',
-      updatedAt: 1234
-    }],
-    chatSelectedPaneId: 'pane-cold'
-  })
-  const manager = new ChatPeerManager(settings, (_peerSettings, modelId) => new FakeSurface(modelId))
-  const [peer] = manager.snapshot().peers
-  assert.equal(peer!.title, 'Agent sidebar bugs')
-  assert.equal(peer!.threadId, 'claude:s1')
-  assert.equal(peer!.updatedAt, 1234)
-})
-
-function manyPanes(count: number): AppSettings['chatPeers'] {
-  return Array.from({ length: count }, (_, index) => ({
-    paneId: `pane-${index}`,
-    provider: 'codex' as const,
-    threadId: `thread-${index}`,
-    codexThreadId: `thread-${index}`,
-    claudeSessionId: null,
-    modelId: 'gpt',
-    reasoningEffort: null,
-    updatedAt: index + 1
-  }))
-}
-
 test('startup retires the least recently active panes down to the open-pane cap', async () => {
   const records = manyPanes(12)
   const settings = new MemorySettings({
@@ -520,3 +341,16 @@ test('a new chat retires the oldest pane instead of growing the workspace', asyn
   assert.ok(kept.includes(fresh))
   assert.equal(kept.includes('pane-0'), false)
 })
+
+function manyPanes(count: number): AppSettings['chatPeers'] {
+  return Array.from({ length: count }, (_, index) => ({
+    paneId: `pane-${index}`,
+    provider: 'codex' as const,
+    threadId: `thread-${index}`,
+    codexThreadId: `thread-${index}`,
+    claudeSessionId: null,
+    modelId: 'gpt',
+    reasoningEffort: null,
+    updatedAt: index + 1
+  }))
+}

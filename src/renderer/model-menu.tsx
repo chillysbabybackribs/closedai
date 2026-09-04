@@ -1,6 +1,6 @@
 import { useCallback, useState, type JSX } from 'react'
 import { DropdownMenu } from 'radix-ui'
-import { Check, ChevronDown, MoreHorizontal } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react'
 
 import type { ChatModel } from '../shared/chat.js'
 import { ProviderMark } from '../components/ui/provider-mark.js'
@@ -20,10 +20,10 @@ export type ModelMenuProps = {
 }
 
 /**
- * One pill for model and effort. The menu opens on the handful of models this install picks
- * most often, grouped under each provider's heading, with the rest of the catalogue one row
- * away and the selected model's effort levels below. Rendered in a portal and styled from the
- * chat theme tokens, so it matches the pane instead of the OS select popup.
+ * One pill for model and effort. The menu opens on each provider's top few models, grouped
+ * under that provider's heading, with the rest of the catalogue one row away — the same row
+ * folds it back — and the selected model's effort levels below. Rendered in a portal and styled
+ * from the chat theme tokens, so it matches the pane instead of the OS select popup.
  */
 export function ModelMenu({
   enabled, models, selectedModel, selectedReasoningEffort, onModelChange, onReasoningEffortChange
@@ -72,15 +72,19 @@ export function ModelMenu({
               </DropdownMenu.Group>
             ))}
           </DropdownMenu.RadioGroup>
-          {!showAll && sections.hiddenCount > 0 && (
+          {sections.hiddenCount > 0 && (
             <DropdownMenu.Item
               className="model-menu-item model-menu-item-compact model-menu-more"
-              textValue="Show all models"
+              textValue={showAll ? 'Show fewer models' : 'Show all models'}
               data-ui="composer.model-more"
-              onSelect={(event) => { event.preventDefault(); setShowAll(true) }}
+              onSelect={(event) => { event.preventDefault(); setShowAll(!showAll) }}
             >
-              <MoreHorizontal className="model-menu-more-mark" aria-hidden="true" />
-              <span className="model-menu-item-name">{`Show ${sections.hiddenCount} more models`}</span>
+              {showAll
+                ? <ChevronUp className="model-menu-more-mark" aria-hidden="true" />
+                : <MoreHorizontal className="model-menu-more-mark" aria-hidden="true" />}
+              <span className="model-menu-item-name">
+                {showAll ? 'Show fewer models' : `Show ${sections.hiddenCount} more models`}
+              </span>
             </DropdownMenu.Item>
           )}
           {efforts.length > 0 && (

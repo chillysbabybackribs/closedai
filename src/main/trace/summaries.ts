@@ -33,6 +33,30 @@ export function summarizeCodexRpc(message: unknown): string {
   return `response ${id ?? ''}`.trim()
 }
 
+/** A Cursor ACP JSON-RPC line. `session/update` carries the interesting discriminator inside. */
+export function summarizeCursorRpc(message: unknown): string {
+  const record = rec(message)
+  if (!record) return 'non-object line'
+  const id = record.id !== undefined ? `#${String(record.id)}` : null
+  const method = str(record.method)
+  if (method) {
+    const params = rec(record.params)
+    const update = rec(params?.update)
+    const kind = str(update?.sessionUpdate)
+    const detail = kind
+      ? `${kind}${str(update?.status) ? ` ${str(update?.status)}` : ''}${str(update?.title) ? ` · ${str(update?.title)}` : ''}`
+      : str(params?.modelId) ?? str(params?.modeId) ?? null
+    return `${method}${id ? ` ${id}` : ''}${detail ? ` · ${detail}` : ''}`
+  }
+  if ('error' in record) {
+    const error = rec(record.error)
+    return `error ${id ?? ''} ${str(error?.message) ?? ''}`.trim()
+  }
+  const result = rec(record.result)
+  const stop = str(result?.stopReason)
+  return `response ${id ?? ''}${stop ? ` · stop ${stop}` : ''}`.trim()
+}
+
 /** One Claude Agent SDK message from the CLI process. */
 export function summarizeClaudeMessage(message: SDKMessage): string {
   const record = message as unknown as Rec

@@ -53,6 +53,7 @@ export type ChatHubProviders = {
   codex: ChatProviderService & { beginChatGptLogin(): Promise<string> }
   claude: ChatProviderService
   antigravity: ChatProviderService
+  cursor: ChatProviderService
 }
 
 /** The chat a model switch brought with it, shown above the destination provider's own messages. */

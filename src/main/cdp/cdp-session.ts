@@ -92,7 +92,9 @@ export class CdpSession {
     for (const event of this.events) {
       if (event.cursor <= effectiveAfter) continue
       scannedCursor = event.cursor
-      if (!methodPrefix || event.method.startsWith(methodPrefix)) events.push(event)
+      if (!methodPrefix || event.method.startsWith(methodPrefix)) {
+        events.push({ ...event, params: boundedParams(event.params) })
+      }
       if (events.length === limit) break
     }
     return {
@@ -124,7 +126,7 @@ export class CdpSession {
     sessionId?: string
   ): void => {
     this.recordTargetEvent(method, params)
-    this.push(method, boundedParams(params), sessionId ?? null)
+    this.push(method, params, sessionId ?? null)
   }
 
   private readonly onDetach = (_event: Electron.Event, reason: string): void => {

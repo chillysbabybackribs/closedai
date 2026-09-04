@@ -69,14 +69,14 @@ export function DrawerRow({
 
   // Opening can legitimately fail — most often a thread another Codex client already holds the
   // writer lock on. Unhandled, the rejection only reached the console and the click looked dead.
-  // A history thread normally replaces the selected pane's thread; while that pane is mid-turn
-  // it cannot switch, so the thread opens in a fresh pane instead of failing.
+  // A history thread never replaces the selected chat: the controller opens it in place only when
+  // the selected pane is blank, and beside it otherwise.
   const handleOpen = (): void => {
     setOpenError(null)
     const attempt = row.paneId !== undefined
       ? (row.paneId !== chat.selectedPaneId ? chat.selectPane(row.paneId) : null)
       : row.threadId
-        ? (chat.state.activeTurnId ? chat.openThreadInNewPane(row.threadId) : chat.openThread(row.threadId))
+        ? chat.openThread(row.threadId)
         : null
     if (attempt) void attempt.catch((error: unknown) => setOpenError(openFailureMessage(error)))
   }
@@ -109,8 +109,7 @@ export function DrawerRow({
           )}
           <span className="agents-row-body">
             <span className="agents-row-task">
-              {/* Only live panes carry a provider; history rows are thread records, so they get
-                  no mark and the absence itself reads as "not a running chat". */}
+              {/* A live pane reports its provider; a history record derives one from its thread id. */}
               {row.provider && <ProviderMark provider={row.provider} className="agents-row-provider" />}
               {row.title}
               {unread ? <span className="agents-row-unread" aria-label="Unreviewed" /> : null}

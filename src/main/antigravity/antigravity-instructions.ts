@@ -22,9 +22,36 @@ const INSTRUCTIONS = [
   engineeringInstructions('antigravity')
 ].join('\n\n')
 
+// agy's built-in Communication section says every file and symbol MUST be a clickable
+// `file://` link, with `#L10-L20` anchors in its example. Measured 2026-09-03: gemini-3.8-flash
+// obeys that by opening files it already knows the path of, just to mint a line number, and
+// ends up re-verifying the repository map (5 to 13 calls where the other models made 0). The
+// link demand is satisfied here from what the model already has, and the map is declared
+// settled so there is nothing left to audit.
+function fileLinkInstructions(cwd: string): string {
+  return (
+    'Antigravity\'s own communication rules ask for clickable file:// links on every file and symbol. ' +
+    `Satisfy them from what you already know: link a path as file://${cwd}/<relative path> without a ` +
+    'line anchor whenever the repository map, the user, or a tool result already establishes it. ' +
+    'Add a #L anchor only for a line you read this turn. Never open a file, search, or list a ' +
+    'directory solely to produce a line number or to confirm a path you already have.'
+  )
+}
+
+const MAP_TRUST_INSTRUCTIONS =
+  'The repository map above was read from the checkout when this process started and is the settled ' +
+  'answer for where files live. Where it says a listing is exhaustive, answer from it and link the ' +
+  'paths; do not re-verify it with grep_search, find_by_name, list_dir, view_file, or repository ' +
+  'scripts, and do not audit the generator. Search only for what the map does not state.'
+
 /** Stable product guidance for every Antigravity session, plus orientation when the workspace is this checkout. */
 export function antigravityAgentInstructions(cwd: string): string {
   const navigation = workspaceNavigationSection(cwd)
   const rules = workspaceRulesSection(cwd)
-  return [INSTRUCTIONS, navigation, rules].filter(Boolean).join('\n\n')
+  return [
+    INSTRUCTIONS,
+    fileLinkInstructions(cwd),
+    navigation && `${navigation}\n\n${MAP_TRUST_INSTRUCTIONS}`,
+    rules
+  ].filter(Boolean).join('\n\n')
 }

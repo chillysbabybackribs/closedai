@@ -108,6 +108,17 @@ carry no hand-written repository detail that could go stale. The capsule re-read
 from the checkout whenever it changes on disk rather than using the copy compiled into the build, and
 the Antigravity agent file is rewritten before any CLI process spawns for the same reason: a map that
 asks to be trusted instead of verified must not describe the tree as it stood when the app started.
+Batching guidance is per lane because each provider expresses it differently, and the wording is
+derived from measured behavior (`engineering-instructions.ts`): Claude emits several tool blocks in
+one response, Codex puts a pass's independent work in one `exec` script, and agy runs one tool step
+per pass so known targets are read together in a single `run_command`. The Claude lane also overrides
+the `claude_code` preset's bypass-permissions note that asks for Bash over `Read`/`Grep`/`Edit`;
+without that override the preset's shell preference wins and reads arrive one command at a time.
+
+The Antigravity agent additionally overrides the CLI's built-in demand for anchored `file://` links:
+known paths are linked without an anchor, anchors come only from lines read this turn, and the map is
+declared settled so the model does not open files or run scripts to re-verify it (see
+[Antigravity](antigravity.md)).
 
 Codex code-mode tools return strings: parse JSON where documented and split capture image data
 before passing the URL to `image()`. Use direct awaited calls in an exec script; native tool-call

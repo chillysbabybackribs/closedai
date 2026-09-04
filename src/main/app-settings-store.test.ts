@@ -89,6 +89,7 @@ test('legacy single-chat settings migrate into one selected peer', async () => {
     codexThreadId: 'codex-thread',
     claudeSessionId: 'claude-session',
     antigravityConversationId: null,
+    cursorSessionId: null,
     modelId: 'claude:opus',
     reasoningEffort: 'high',
     continuation: null

@@ -64,7 +64,10 @@ is introduced. See [Model context](model-context.md) for trust and [Tools](tools
 - The sidebar keeps only running chats in Current. Every finished turn moves immediately to
   Recently completed, whether or not the pane was selected; opening it marks it reviewed without
   moving it. A new turn returns it to Current, while a reviewed chat with no new activity moves to
-  History after ten minutes. Unreviewed completions remain in Recently completed.
+  History after ten minutes. Unreviewed completions remain in Recently completed. History is
+  ordered by last activity. Opening a History thread never replaces the selected chat: it opens in
+  place only when the selected pane is blank, otherwise in a new pane. Leaving a chat (new chat,
+  continue) clears the pane's saved title, so a parked pane cannot duplicate its old thread's row.
   Thread history is cached for five seconds, and peer-summary updates are throttled to 200 ms
   during streaming. Summaries update from events, retain transcript order during late tool updates,
   and cap previews at 240 characters. Message deltas still go to the selected conversation.

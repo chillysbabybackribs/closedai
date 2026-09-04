@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { writeAtomic } from './atomic-write.js'
+import type { ChatProvider } from '../shared/chat.js'
 import type { AppSettings, ChatContinuation, ChatPeerRecord, ChatWorkspaceRecord } from '../shared/types.ts'
-import { chatProviderOfId } from '../shared/chat-providers.js'
+import { bareChatId, chatProviderOfId, isChatProvider } from '../shared/chat-providers.js'
 import { peerThreadId } from './chat-peers/peer-settings.js'
 import { DEFAULT_BATCH_MAX_CALLS, normalizeBatchMaxCalls } from './batch-config.js'
 import { normalizeMemoryCheckpoint } from './chat-context/memory-checkpoint.js'
@@ -28,6 +29,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatThreadId: null,
   chatClaudeSessionId: null,
   chatAntigravityConversationId: null,
+  chatCursorSessionId: null,
   chatModelId: null,
   chatReasoningEffort: null,
   chatContinuation: null,
@@ -55,6 +57,7 @@ function normalize(parsed: unknown): AppSettings {
     chatThreadId: optionalString(record.chatThreadId),
     chatClaudeSessionId: optionalString(record.chatClaudeSessionId),
     chatAntigravityConversationId: optionalString(record.chatAntigravityConversationId),
+    chatCursorSessionId: optionalString(record.chatCursorSessionId),
     chatModelId,
     chatReasoningEffort
   })
@@ -73,6 +76,7 @@ function normalize(parsed: unknown): AppSettings {
     chatThreadId: optionalString(record.chatThreadId),
     chatClaudeSessionId: optionalString(record.chatClaudeSessionId),
     chatAntigravityConversationId: optionalString(record.chatAntigravityConversationId),
+    chatCursorSessionId: optionalString(record.chatCursorSessionId),
     chatModelId,
     chatReasoningEffort,
     chatContinuation: normalizeContinuation(record.chatContinuation),
@@ -105,7 +109,7 @@ function optionalString(value: unknown): string | null {
 
 function normalizeChatPeers(
   value: unknown,
-  legacy: Pick<AppSettings, 'chatThreadId' | 'chatClaudeSessionId' | 'chatAntigravityConversationId' | 'chatModelId' | 'chatReasoningEffort'>
+  legacy: Pick<AppSettings, 'chatThreadId' | 'chatClaudeSessionId' | 'chatAntigravityConversationId' | 'chatCursorSessionId' | 'chatModelId' | 'chatReasoningEffort'>
 ): ChatPeerRecord[] {
   if (Array.isArray(value)) {
     const seen = new Set<string>()
@@ -116,15 +120,17 @@ function normalizeChatPeers(
       if (!paneId || seen.has(paneId)) return []
       seen.add(paneId)
       const modelId = optionalString(record.modelId)
-      const provider = isProvider(record.provider) ? record.provider : chatProviderOfId(modelId)
+      const provider = isChatProvider(record.provider) ? record.provider : chatProviderOfId(modelId)
       const threadId = optionalString(record.threadId)
-      // Records written before a provider had its own field carry that thread only in `threadId`.
+      // Records written before a provider had its own field carry that thread only in `threadId`,
+      // which is the prefixed form; an id saved bare by an even older build is kept as it stands.
+      const legacy = (owner: ChatProvider): string | null =>
+        provider === owner ? bareChatId(owner, threadId) ?? threadId : null
       const ids = {
-        codexThreadId: optionalString(record.codexThreadId) ?? (provider === 'codex' ? threadId : null),
-        claudeSessionId: optionalString(record.claudeSessionId) ??
-          (provider === 'claude' ? threadId?.replace(/^claude:/, '') ?? null : null),
-        antigravityConversationId: optionalString(record.antigravityConversationId) ??
-          (provider === 'antigravity' ? threadId?.replace(/^agy:/, '') ?? null : null)
+        codexThreadId: optionalString(record.codexThreadId) ?? legacy('codex'),
+        claudeSessionId: optionalString(record.claudeSessionId) ?? legacy('claude'),
+        antigravityConversationId: optionalString(record.antigravityConversationId) ?? legacy('antigravity'),
+        cursorSessionId: optionalString(record.cursorSessionId) ?? legacy('cursor')
       }
       return [{
         paneId,
@@ -144,7 +150,8 @@ function normalizeChatPeers(
   const ids = {
     codexThreadId: legacy.chatThreadId,
     claudeSessionId: legacy.chatClaudeSessionId,
-    antigravityConversationId: legacy.chatAntigravityConversationId
+    antigravityConversationId: legacy.chatAntigravityConversationId,
+    cursorSessionId: legacy.chatCursorSessionId
   }
   return [{
     paneId: randomUUID(),
@@ -173,6 +180,7 @@ function normalizeChatWorkspaces(value: unknown): ChatWorkspaceRecord[] {
       chatThreadId: null,
       chatClaudeSessionId: null,
       chatAntigravityConversationId: null,
+      chatCursorSessionId: null,
       chatModelId: null,
       chatReasoningEffort: null
     })
@@ -195,7 +203,7 @@ function workspaceKey(cwd: string, projectPath: string | null): string {
 function normalizeContinuation(value: unknown): ChatContinuation | null {
   if (!value || typeof value !== 'object') return null
   const record = value as Record<string, unknown>
-  if (!isProvider(record.sourceProvider) || typeof record.createdAt !== 'number' || !Number.isFinite(record.createdAt)) return null
+  if (!isChatProvider(record.sourceProvider) || typeof record.createdAt !== 'number' || !Number.isFinite(record.createdAt)) return null
   const sourcePaneId = optionalString(record.sourcePaneId)
   const sourceThreadId = optionalString(record.sourceThreadId)
   if (!sourcePaneId && !sourceThreadId) return null
@@ -209,10 +217,6 @@ function normalizeContinuation(value: unknown): ChatContinuation | null {
     ...(record.sourceThroughItemId !== undefined ? { sourceThroughItemId: optionalString(record.sourceThroughItemId) } : {}),
     ...(record.checkpoint !== undefined ? { checkpoint: normalizeMemoryCheckpoint(record.checkpoint) } : {})
   }
-}
-
-function isProvider(value: unknown): value is ChatPeerRecord['provider'] {
-  return value === 'codex' || value === 'claude' || value === 'antigravity'
 }
 
 /** 0 disables; anything else lands between the bounds so a typo cannot compact every call. */

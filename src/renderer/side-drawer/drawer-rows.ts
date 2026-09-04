@@ -1,4 +1,5 @@
 import type { ChatSnapshot, ChatThreadSummary } from '../../shared/chat.js'
+import { chatProviderOfId } from '../../shared/chat-providers.js'
 import type { ChatPeerSummary } from '../../shared/chat-peers.js'
 import type { DrawerRowModel, DrawerRowStatus } from './drawer-types.js'
 
@@ -85,6 +86,9 @@ export function buildDrawerRows({
       linesRemoved: 0,
       running: false,
       status: 'chat',
+      // A history record has no runtime to ask, but its id names its provider: Codex thread ids
+      // carry no prefix, so a Codex chat used to be the one row in History with no mark at all.
+      provider: chatProviderOfId(thread.id),
       thread,
       children: []
     })

@@ -204,6 +204,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       chatThreadId: destination.codexThreadId,
       chatClaudeSessionId: destination.claudeSessionId,
       chatAntigravityConversationId: destination.antigravityConversationId ?? null,
+      chatCursorSessionId: destination.cursorSessionId ?? null,
       chatModelId: destination.modelId,
       chatReasoningEffort: destination.reasoningEffort,
       chatContinuation: destination.continuation ?? null,
@@ -428,6 +429,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       traceLog.responses.forget(paneId)
     }
     this.peers.clear()
+    this.threads = null
+    this.threadsInFlight = null
     await this.workspaceSelector.select(projectPath, {
       modelId: current.selectedModel,
       reasoningEffort: current.selectedReasoningEffort
@@ -480,7 +483,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       updatedAt: record.updatedAt ?? 0,
       idleTimer: null,
       parked: true,
-      display: new PeerSummaryCache(record.paneId, record)
+      display: new PeerSummaryCache(record.paneId, () => this.recordOf(record.paneId) ?? record)
     }
     surface.on('event', (event: ChatEvent) => {
       // A stopped provider can finish unwinding after a project switch. Its last event belongs
@@ -505,19 +508,24 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     return entry
   }
 
+  private recordOf(paneId: ChatPaneId): ChatPeerRecord | undefined {
+    return this.settings.get().chatPeers.find((peer) => peer.paneId === paneId)
+  }
+
   /**
    * Keep the record's title and activity time current so the drawer names a parked pane after a
    * relaunch. Titles change rarely (first message, provider naming) and turn boundaries twice per
-   * turn, so this never writes settings on a streaming delta.
+   * turn, so this never writes settings on a streaming delta. A pane back at the placeholder has
+   * left its conversation, so the saved name goes with it.
    */
   private async rememberDisplay(paneId: ChatPaneId, summary: ChatPeerSummary, updatedAt: number, turnBoundary: boolean): Promise<void> {
     const settings = this.settings.get()
     const record = settings.chatPeers.find((peer) => peer.paneId === paneId)
     if (!record) return
-    const title = summary.title
-    const titleChanged = title !== PLACEHOLDER_TITLE && title !== (record.title ?? null)
+    const title = summary.title === PLACEHOLDER_TITLE ? null : summary.title
+    const titleChanged = title !== (record.title ?? null)
     if (!titleChanged && !turnBoundary) return
-    const updated: ChatPeerRecord = { ...record, title: titleChanged ? title : record.title ?? null, updatedAt }
+    const updated: ChatPeerRecord = { ...record, title, updatedAt }
     try {
       await this.settings.set({
         chatPeers: settings.chatPeers.map((peer) => (peer.paneId === paneId ? updated : peer))
@@ -614,6 +622,7 @@ function freshRecord(
     threadId: null,
     codexThreadId: null,
     claudeSessionId: null,
+    cursorSessionId: null,
     modelId,
     reasoningEffort,
     continuation,

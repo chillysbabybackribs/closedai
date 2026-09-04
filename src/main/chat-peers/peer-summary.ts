@@ -20,8 +20,17 @@ export class PeerSummaryCache {
   private threadName: string | null = null
   current: ChatPeerSummary
 
-  constructor(private readonly paneId: string, private readonly record: ChatPeerRecord) {
-    this.current = summaryForRecord(paneId, record)
+  /**
+   * The record is read on demand, not captured at attach: a "new chat" clears the pane's thread in
+   * settings before the surface replays, and a frozen copy would keep naming the pane after the
+   * conversation it just left.
+   */
+  constructor(private readonly paneId: string, private readonly readRecord: () => ChatPeerRecord) {
+    this.current = summaryForRecord(paneId, readRecord())
+  }
+
+  private get record(): ChatPeerRecord {
+    return this.readRecord()
   }
 
   update(event: ChatEvent, updatedAt: number): void {
@@ -86,7 +95,7 @@ export function summaryForRecord(paneId: string, record: ChatPeerRecord): ChatPe
 }
 
 /** The provider's name for the thread, else the first message, else the saved or lineage name. */
-export function paneTitle(snapshot: ChatSnapshot, record: Pick<ChatPeerRecord, 'title' | 'continuation'>): string {
+export function paneTitle(snapshot: ChatSnapshot, record: TitleRecord): string {
   const firstUser = snapshot.items.find((item) => item.type === 'user')
   const fromMessage = firstUser?.type === 'user' ? firstLine(firstUser.text) : null
   return titleFromParts(snapshot.threadName, fromMessage, record)
@@ -97,12 +106,16 @@ export function titleFromUserText(text: string): string {
   return formatTitle(firstLine(text))
 }
 
-function titleFromParts(
-  threadName: string | null,
-  firstUserText: string | null,
-  record: Pick<ChatPeerRecord, 'title' | 'continuation'>
-): string {
-  const title = threadName?.trim() || firstUserText?.trim() || record.title?.trim() ||
+type TitleRecord = Pick<ChatPeerRecord, 'title' | 'threadId' | 'continuation'>
+
+/**
+ * A saved title names the saved thread. Once the record holds neither a thread nor a pending
+ * continuation the pane is a blank chat, and the old name would only duplicate the History row
+ * that thread now has of its own.
+ */
+function titleFromParts(threadName: string | null, firstUserText: string | null, record: TitleRecord): string {
+  const saved = record.threadId || record.continuation ? record.title?.trim() : null
+  const title = threadName?.trim() || firstUserText?.trim() || saved ||
     (record.continuation ? `Continuing: ${record.continuation.sourceTitle}` : PLACEHOLDER_TITLE)
   return formatTitle(title)
 }

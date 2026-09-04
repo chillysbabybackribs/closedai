@@ -1,7 +1,6 @@
-import { readFile } from 'node:fs/promises'
-import { extname } from 'node:path'
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import type { ChatAttachment, ChatAttachmentSummary } from '../../shared/chat.js'
+import { imageBytesFromDataUrl, imageBytesFromPath, type ImageMimeType } from '../chat-image-bytes.js'
 import { buildChatInput } from '../chat-input.js'
 import type { AdditionalContext } from '../chat-context/turn-context.js'
 
@@ -9,19 +8,9 @@ import type { AdditionalContext } from '../chat-context/turn-context.js'
 // the same buildChatInput the Codex lane uses; only the wire shape differs: Anthropic content
 // blocks, with app context ahead of the user's own words so the model reads state first.
 
-type ImageMediaType = 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'
-
 type ContentBlock =
   | { type: 'text'; text: string }
-  | { type: 'image'; source: { type: 'base64'; media_type: ImageMediaType; data: string } }
-
-const IMAGE_MEDIA_TYPES: Record<string, ImageMediaType> = {
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.webp': 'image/webp'
-}
+  | { type: 'image'; source: { type: 'base64'; media_type: ImageMimeType; data: string } }
 
 export type ClaudeUserTurn = {
   prompt: string
@@ -78,17 +67,13 @@ export function contextBlocks(context: AdditionalContext | undefined): ContentBl
 }
 
 async function imageFromPath(path: string): Promise<ContentBlock | null> {
-  const mediaType = IMAGE_MEDIA_TYPES[extname(path).toLowerCase()]
-  if (!mediaType) return null
-  try {
-    const bytes = await readFile(path)
-    return { type: 'image', source: { type: 'base64', media_type: mediaType, data: bytes.toString('base64') } }
-  } catch {
-    return null
-  }
+  return imageBlock(await imageBytesFromPath(path))
 }
 
 export function imageFromDataUrl(url: string): ContentBlock | null {
-  const match = /^data:(image\/(?:png|jpeg|gif|webp));base64,(.+)$/s.exec(url)
-  return match ? { type: 'image', source: { type: 'base64', media_type: match[1]! as ImageMediaType, data: match[2]! } } : null
+  return imageBlock(imageBytesFromDataUrl(url))
+}
+
+function imageBlock(bytes: { mimeType: ImageMimeType; base64: string } | null): ContentBlock | null {
+  return bytes ? { type: 'image', source: { type: 'base64', media_type: bytes.mimeType, data: bytes.base64 } } : null
 }

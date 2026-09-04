@@ -216,7 +216,6 @@ export class ChatService extends EventEmitter {
   }
 
   async listThreads(): Promise<ChatThreadSummary[]> {
-    await this.ensureConnected()
     return listWorkspaceThreads(this.client, this.cwd)
   }
 

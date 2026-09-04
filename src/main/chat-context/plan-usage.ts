@@ -151,6 +151,81 @@ export function planUsageUnavailable(reason: string, now = Date.now()): ChatPlan
   return { plan: null, windows: [], note: null, unavailable: reason, updatedAt: now }
 }
 
+/** Short group qualifier for Antigravity's multi-group windows. */
+function antigravityGroupLabel(groupName: string): string {
+  if (/gemini/i.test(groupName)) return 'Gemini'
+  if (/claude|gpt|3p/i.test(groupName)) return 'Claude & GPT'
+  return groupName.replace(/\s*models\s*/i, '').trim() || groupName
+}
+
+function antigravityWindowLabel(window: string, groupLabel: string, multipleGroups: boolean): string {
+  const base = window === '5h' ? '5-hour' : window === 'weekly' ? 'Weekly' : window
+  return multipleGroups ? `${base} (${groupLabel})` : base
+}
+
+/**
+ * The agy CLI's `/quota` response: model group buckets with remaining fractions and reset times.
+ */
+export function antigravityPlanUsage(value: unknown, now = Date.now()): ChatPlanUsage | null {
+  const root = recordOf(value)
+  if (!root) return null
+  const command = recordOf(root.command)
+  const data = recordOf(command?.data)
+  const rawGroups = Array.isArray(data?.groups) ? data.groups : null
+  const windows: ChatPlanUsageWindow[] = []
+
+  if (rawGroups && rawGroups.length > 0) {
+    const multipleGroups = rawGroups.length > 1
+    for (const rawGroup of rawGroups) {
+      const group = recordOf(rawGroup)
+      if (!group) continue
+      const groupName = typeof group.name === 'string' ? group.name : ''
+      const groupLabel = antigravityGroupLabel(groupName)
+      const rawBuckets = Array.isArray(group.buckets) ? [...group.buckets] : []
+      rawBuckets.sort((a, b) => {
+        const wa = recordOf(a)?.window === '5h' ? 0 : 1
+        const wb = recordOf(b)?.window === '5h' ? 0 : 1
+        return wa - wb
+      })
+      for (const rawBucket of rawBuckets) {
+        const bucket = recordOf(rawBucket)
+        if (!bucket) continue
+        const windowKey = typeof bucket.window === 'string' ? bucket.window : ''
+        const fraction = typeof bucket.remaining_fraction === 'number' ? bucket.remaining_fraction : null
+        if (fraction === null) continue
+        const percent = clampPercent((1 - fraction) * 100)
+        const resetParsed = typeof bucket.reset_time === 'string' ? Date.parse(bucket.reset_time) : NaN
+        const resetsAt = Number.isFinite(resetParsed) ? resetParsed : null
+        const label = antigravityWindowLabel(windowKey, groupLabel, multipleGroups)
+        windows.push({ label, percent, resetsAt })
+      }
+    }
+  } else if (typeof root.response === 'string') {
+    const lines = root.response.trim().split('\n').map((s) => s.trim()).filter(Boolean)
+    for (const line of lines) {
+      const parts = line.split('\t').map((s) => s.trim())
+      if (parts.length >= 3) {
+        const [group, name, pct, resetStr] = parts
+        const remPct = parseInt(pct.replace('%', ''), 10)
+        if (!isNaN(remPct)) {
+          const percent = clampPercent(100 - remPct)
+          const resetParsed = resetStr ? Date.parse(resetStr) : NaN
+          const resetsAt = Number.isFinite(resetParsed) ? resetParsed : null
+          const is5h = /five.*hour|5.?h/i.test(name)
+          const isWeekly = /week/i.test(name)
+          const base = is5h ? '5-hour' : isWeekly ? 'Weekly' : name
+          const groupLabel = antigravityGroupLabel(group)
+          windows.push({ label: `${base} (${groupLabel})`, percent, resetsAt })
+        }
+      }
+    }
+  }
+
+  if (windows.length === 0) return null
+  return { plan: null, windows, note: null, unavailable: null, updatedAt: now }
+}
+
 function clampPercent(value: number): number {
   return Math.min(100, Math.max(0, Math.round(value)))
 }
+
