@@ -8,6 +8,10 @@ import type {
   SearchResponse,
   SearchResult
 } from './types.js'
+import { abortable, RequestBudget } from './request-budget.js'
+
+export type SearchUpdate = { output: ProviderSearchResult } | { error: { provider: SearchProvider; message: string } }
+export type SearchObserver = (update: SearchUpdate) => void
 
 const ROUTES: Record<SearchIntent, Record<SearchDepth, SearchProvider[]>> = {
   general: {
@@ -40,24 +44,45 @@ export function selectProviders(request: SearchRequest): SearchProvider[] {
 export class SearchRouter {
   private readonly clients: Map<SearchProvider, SearchProviderClient>
   private readonly cache = new Map<string, { at: number; response: SearchResponse }>()
+  private readonly budget = new RequestBudget(4, 2)
 
   constructor(clients: SearchProviderClient[], private readonly now: () => number = Date.now) {
     this.clients = new Map(clients.map((client) => [client.provider, client]))
   }
 
-  async search(request: SearchRequest, signal: AbortSignal): Promise<SearchResponse> {
+  async search(request: SearchRequest, signal: AbortSignal, observe?: SearchObserver, owner = 'query'): Promise<SearchResponse> {
+    signal.throwIfAborted()
     const providers = selectProviders(request)
     const { live: _live, ...cacheableRequest } = request
     const cacheKey = JSON.stringify({ ...cacheableRequest, providers })
     if (!request.live) {
       const cached = this.cache.get(cacheKey)
-      if (cached && this.now() - cached.at < CACHE_TTL_MS) return { ...cached.response, cached: true }
+      if (cached && this.now() - cached.at < CACHE_TTL_MS) {
+        for (const provider of providers) observe?.({ output: {
+          provider,
+          results: cached.response.results.filter((item) => item.provider === provider || item.corroboratedBy?.includes(provider))
+            .map((item) => ({ ...item, provider })),
+          answer: cached.response.answers.find((item) => item.provider === provider)?.text
+        } })
+        return { ...cached.response, cached: true }
+      }
     }
 
     const settled = await Promise.allSettled(providers.map(async (provider) => {
-      const client = this.clients.get(provider)
-      if (!client) throw new Error(`${provider} client is not configured`)
-      return client.search(request, signal)
+      try {
+        const output = await this.budget.run(provider, owner, signal, async () => {
+          const client = this.clients.get(provider)
+          if (!client) throw new Error(`${provider} client is not configured`)
+          const deadline = AbortSignal.any([signal, AbortSignal.timeout(20_000)])
+          return abortable(client.search(request, deadline), deadline)
+        })
+        signal.throwIfAborted()
+        observe?.({ output })
+        return output
+      } catch (error) {
+        if (!signal.aborted) observe?.({ error: { provider, message: messageOf(error) } })
+        throw error
+      }
     }))
     const outputs: ProviderSearchResult[] = []
     const errors: SearchResponse['errors'] = []
@@ -80,7 +105,7 @@ export class SearchRouter {
       errors
     }
     this.pruneCache()
-    this.cache.set(cacheKey, { at: this.now(), response })
+    if (!signal.aborted && errors.length === 0) this.cache.set(cacheKey, { at: this.now(), response })
     return response
   }
 
@@ -119,7 +144,7 @@ function mergeResults(outputs: ProviderSearchResult[], perProviderCount: number)
   return merged
 }
 
-function canonicalUrl(value: string): string {
+export function canonicalUrl(value: string): string {
   try {
     const url = new URL(value)
     for (const key of [...url.searchParams.keys()]) {
