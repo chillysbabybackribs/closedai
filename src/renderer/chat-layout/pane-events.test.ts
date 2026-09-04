@@ -3,6 +3,14 @@ import test from 'node:test'
 import { initialChatState, reduceChatWorkspaceEvent } from '../chat-state.ts'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.ts'
 
+test('an early row summary cannot relabel the current transcript as another chat', () => {
+  const a = { ...initialChatState(), threadId: 'thread-a' }
+  const state: ChatWorkspaceSnapshot = { selectedPaneId: 'a', selected: a, panes: { a }, chats: [] }
+  const early = reduceChatWorkspaceEvent(state, { type: 'chats', selectedPaneId: 'b', chats: [] })
+  assert.equal(early.selectedPaneId, 'a')
+  assert.equal(early.selected.threadId, 'thread-a')
+})
+
 test('interleaved streams and history pages update their own visible pane', () => {
   const a = { ...initialChatState(), threadId: 'a', items: [{ type: 'assistant' as const, id: 'a1', text: 'A', turnId: 'at', phase: null, streaming: true }] }
   const b = { ...initialChatState(), threadId: 'b', items: [{ type: 'assistant' as const, id: 'b1', text: 'B', turnId: 'bt', phase: null, streaming: true }] }

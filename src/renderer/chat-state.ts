@@ -77,7 +77,12 @@ export function reduceChatWorkspaceEvent(
     return { ...event.snapshot, panes, selected: panes[event.snapshot.selectedPaneId] ?? event.snapshot.selected }
   }
   if (event.type === 'chats') {
-    return { ...state, selectedPaneId: event.selectedPaneId, chats: event.chats }
+    // A summary can arrive before a newly opened pane's snapshot. Never pair the old
+    // transcript with a new destination id while that view is still loading.
+    const selected = state.panes?.[event.selectedPaneId]
+    return { ...state, chats: event.chats,
+      selectedPaneId: selected ? event.selectedPaneId : state.selectedPaneId,
+      selected: selected ?? state.selected }
   }
   const pane = state.panes?.[event.paneId] ?? (event.paneId === state.selectedPaneId ? state.selected : undefined)
   if (!pane) return state

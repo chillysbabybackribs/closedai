@@ -20,7 +20,25 @@ export function ChatCanvas({ tree, selectedId, busy, title, renderPane, onSelect
   const [dragging, setDragging] = useState<string | null>(null)
   const [drop, setDrop] = useState<{ target: string; edge: DockEdge } | null>(null)
   const dropTarget = useRef<typeof drop>(null)
-  const resize = useRef<{ id: string; start: number; ratio: number; length: number; axis: string; min: number; max: number } | null>(null)
+  const resize = useRef<{ id: string; pointerId: number; start: number; ratio: number; length: number; axis: string; min: number; max: number } | null>(null)
+  useEffect(() => {
+    // Follow the gesture even when Chromium delivers its next move over a sibling tile.
+    const move = (event: PointerEvent): void => {
+      const active = resize.current
+      if (!active || event.pointerId !== active.pointerId) return
+      const delta = (active.axis === 'horizontal' ? event.clientX : event.clientY) - active.start
+      onResize(active.id, Math.max(active.min, Math.min(active.max, active.ratio + delta / active.length)))
+    }
+    const end = (): void => { resize.current = null }
+    window.addEventListener('pointermove', move, true)
+    window.addEventListener('pointerup', end, true)
+    window.addEventListener('pointercancel', end, true)
+    return () => {
+      window.removeEventListener('pointermove', move, true)
+      window.removeEventListener('pointerup', end, true)
+      window.removeEventListener('pointercancel', end, true)
+    }
+  }, [onResize])
   useEffect(() => {
     const host = viewport.current!
     const observer = new ResizeObserver(() => setSize({ width: host.clientWidth, height: host.clientHeight }))
@@ -118,15 +136,9 @@ export function ChatCanvas({ tree, selectedId, busy, title, renderPane, onSelect
           if (event.button !== 0) return
           event.preventDefault()
           event.currentTarget.setPointerCapture(event.pointerId)
-          resize.current = { id: divider.id, start: divider.axis === 'horizontal' ? event.clientX : event.clientY,
+          resize.current = { id: divider.id, pointerId: event.pointerId, start: divider.axis === 'horizontal' ? event.clientX : event.clientY,
             ratio: divider.ratio, length: (divider.axis === 'horizontal' ? divider.parent.width : divider.parent.height) - 5,
             axis: divider.axis, min: divider.min, max: divider.max }
-        }}
-        onPointerMove={(event) => {
-          const active = resize.current
-          if (!active || active.id !== divider.id) return
-          const delta = (active.axis === 'horizontal' ? event.clientX : event.clientY) - active.start
-          onResize(active.id, Math.max(active.min, Math.min(active.max, active.ratio + delta / active.length)))
         }}
         onPointerUp={() => { resize.current = null }}
         onLostPointerCapture={() => { resize.current = null }}
