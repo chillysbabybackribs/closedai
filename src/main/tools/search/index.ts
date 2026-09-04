@@ -10,7 +10,7 @@ import { SEARCH_DEPTHS, SEARCH_INTENTS, SEARCH_PROVIDERS, type SearchDepth, type
 import { youClient } from './you.js'
 import { ResearchService, type ResearchDependencies } from './research/service.js'
 import { researchTools } from './research/tools.js'
-import { presentSearch, SEARCH_PRESENTATION_FIELD } from './presentation.js'
+import { SourcePresentation, SEARCH_PRESENTATION_FIELD } from './presentation.js'
 
 export type SearchToolDeps = {
   fetch?: typeof fetch; readKey?: SearchKeyReader; now?: () => number
@@ -32,7 +32,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
         'technical for documentation and implementation details. depth=quick uses one optimal provider, balanced uses two ' +
         'complementary indexes, and deep uses three. Omit providers to use this routing; set providers only to override it. ' +
         'Set live=true when current results matter; it bypasses the ten-minute cache and refreshes it. ' +
-        'A live browser tab opens by default alongside the API search; presentation=background opts out. ' +
+        'Live mode opens an actual source URL as API results arrive; it never opens Google or other search results. presentation=background opts out. ' +
         'Inspect relevant source pages using returned presentation.tabId. For ongoing parallel research prefer search.run. ' +
         'Results are normalized, interleaved, deduplicated, and marked when multiple indexes list the same URL (not factual corroboration). ' +
         'The result is JSON text; JSON.parse the returned string in exec scripts.',
@@ -70,10 +70,12 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
           ...(stringArray(input, 'include_domains') ? { includeDomains: stringArray(input, 'include_domains') } : {}),
           ...(stringArray(input, 'exclude_domains') ? { excludeDomains: stringArray(input, 'exclude_domains') } : {})
         }
-        const presentation = presentSearch(deps.research?.openLive,
-          `https://www.google.com/search?q=${encodeURIComponent(request.query)}`, context, input.presentation)
-        const response = await router.search(request, context.signal)
-        return textResult(JSON.stringify({ ...response, presentation }, null, 2))
+        const presentation = new SourcePresentation(deps.research?.openLive, context, input.presentation)
+        const response = await router.search(request, context.signal, (update) => {
+          if ('output' in update) for (const source of update.output.results) presentation.consider(source.url)
+        })
+        presentation.finish()
+        return textResult(JSON.stringify({ ...response, presentation: presentation.snapshot() }, null, 2))
       }
     })
   const research = deps.research ? new ResearchService(router, deps.research) : null

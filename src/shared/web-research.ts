@@ -28,5 +28,5 @@ export type ResearchSnapshot = {
   omittedErrors: number
   sources: ResearchSource[]
   errors: Array<{ query: string; provider?: string; message: string }>
-  presentation: { state: 'none' | 'opened' | 'failed'; tabId?: string; error?: string }
+  presentation: { state: 'none' | 'waiting_for_source' | 'no_source' | 'opened' | 'failed'; tabId?: string; error?: string }
 }

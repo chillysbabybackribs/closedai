@@ -4,7 +4,7 @@ import type { ToolContext } from '../../tool.js'
 import { canonicalUrl, SearchRouter } from '../router.js'
 import type { SearchRequest, SearchResult } from '../types.js'
 import { publicUrl, type SourceDocument, type SourceReader } from './source-reader.js'
-import { presentSearch, type OpenSearchTab } from '../presentation.js'
+import { isResearchSourceUrl, SourcePresentation, type OpenSearchTab } from '../presentation.js'
 
 export type ResearchOwner = { paneId: string; threadId: string; turnId: string | null; workspace: string }
 export type ResearchDependencies = {
@@ -23,7 +23,7 @@ type Run = {
   completedQueries: number; totalQueries: number; maxSources: number
   sources: Map<string, ResearchSource>; errors: ResearchSnapshot['errors']; controller: AbortController
   listeners: Set<() => void>; timer: ReturnType<typeof setTimeout>
-  presentation: ResearchSnapshot['presentation']
+  presentation: SourcePresentation
 }
 
 /** The scheduler owns async work after the start tool returns; calls only observe/control it. */
@@ -50,17 +50,12 @@ export class ResearchService {
     const run: Run = {
       id, owner, state: 'running', revision: 0, pending: 0, completedQueries: 0, totalQueries: 0,
       maxSources: input.maxSources, sources: new Map(), errors: [], controller: new AbortController(),
-      listeners: new Set(), presentation: { state: 'none' },
+      listeners: new Set(), presentation: new SourcePresentation(this.deps.openLive, context, input.presentation),
       timer: setTimeout(() => this.finish(run, 'timed_out'), input.deadlineMs)
     }
     run.timer.unref?.()
     this.runs.set(id, run)
     this.add(run, input.queries, input.urls)
-    if (input.presentation === 'live') {
-      const url = input.urls[0] ?? `https://www.google.com/search?q=${encodeURIComponent(input.queries[0].query)}`
-      run.presentation = presentSearch(this.deps.openLive, url, context)
-      this.changed(run)
-    }
     return this.snapshot(run)
   }
 
@@ -140,7 +135,10 @@ export class ResearchService {
     if (!queries.length && !urls.length) throw new Error('Supply queries or source URLs')
     if (queries.length > 6 || urls.length > 20) throw new Error('At most six queries and twenty URLs per call')
     for (const request of queries) if (!request.query.trim()) throw new Error('Search queries cannot be blank')
-    for (const url of urls) publicUrl(url)
+    for (const url of urls) {
+      publicUrl(url)
+      if (!isResearchSourceUrl(url)) throw new Error('Supply actual source URLs; search-engine results pages cannot be gathered as sources')
+    }
   }
 
   private add(run: Run, queries: SearchRequest[], urls: string[]): void {
@@ -168,6 +166,7 @@ export class ResearchService {
 
   private discover(run: Run, result: Omit<SearchResult, 'provider'> & { provider?: string }): void {
     if (run.state !== 'running') return
+    if (!isResearchSourceUrl(result.url)) return
     try { publicUrl(result.url) } catch { return }
     if (result.url.length > 2048) return
     const key = canonicalUrl(result.url)
@@ -185,6 +184,7 @@ export class ResearchService {
       discoveredBy: result.provider ? [result.provider] : [], state: 'queued', revision: this.changed(run)
     }
     run.sources.set(key, source)
+    if (run.presentation.consider(source.url)) this.changed(run)
     this.track(run, async () => {
       source.state = 'reading'
       source.revision = this.changed(run)
@@ -223,6 +223,7 @@ export class ResearchService {
   private finish(run: Run, state: ResearchState): void {
     if (run.state !== 'running') return
     run.state = state
+    run.presentation.finish()
     clearTimeout(run.timer)
     if (state !== 'completed') {
       run.controller.abort(new Error(`Research ${state}`))
@@ -254,7 +255,7 @@ export class ResearchService {
       runId: run.id, state: run.state, cursor: run.revision, pending: run.pending,
       completedQueries: run.completedQueries, totalQueries: run.totalQueries, sourceCount: run.sources.size,
       omittedSources: 0, omittedErrors: Math.max(0, run.errors.length - 12),
-      sources: [], errors: run.errors.slice(-12), presentation: run.presentation
+      sources: [], errors: run.errors.slice(-12), presentation: run.presentation.snapshot()
     }
     for (const source of candidates) {
       if (JSON.stringify(snapshot).length + JSON.stringify(source).length > 16_000) break
