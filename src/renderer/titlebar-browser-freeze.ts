@@ -41,7 +41,9 @@ export function overlayBlocksBrowser(root: ParentNode = document): boolean {
 // Electron paints WebContentsView above the renderer, so a DOM overlay cannot literally stack
 // over the live page. When an overlay intersects the browser host, prime a one-frame capture,
 // show that still in the unchanged browser box, and hide the native pixels while leaving the
-// view attached. Closing the overlay restores the live surface on the same bounds.
+// view attached. The native pixels stay visible until the still is ready; hiding them first
+// leaves a blank compositor gap while the capture round-trip is in flight. Closing the overlay
+// restores the live surface on the same bounds.
 export function useTitlebarBrowserFreeze(): {
   open: boolean
   shot: BrowserShot | null
@@ -61,21 +63,27 @@ export function useTitlebarBrowserFreeze(): {
         .then((shot) => {
           pending.current = null
           primed.current = shot
-          if (shot && overlayOpen.current) setFreeze(shot)
+          if (shot && overlayOpen.current) {
+            setFreeze(shot)
+            // Do not occlude the native page until its replacement is available. This matters
+            // for large menus, whose final position is only known after their child list mounts.
+            setOpen(true)
+          }
           return shot
         })
     }
     const apply = (next: boolean): void => {
       if (next === overlayOpen.current) return
       overlayOpen.current = next
-      // Hide the native pixels immediately; waiting for the still lets Chromium composite
-      // above the first frames of the overlay.
-      setOpen(next)
       if (!next) {
+        setOpen(false)
         primed.current = null
         return
       }
-      if (primed.current) setFreeze(primed.current)
+      if (primed.current) {
+        setFreeze(primed.current)
+        setOpen(true)
+      }
       else capture()
     }
     const sync = (): void => apply(overlayBlocksBrowser())

@@ -188,9 +188,9 @@ That colour is not fixed. `browser-page-background.ts` measures each document's 
 colour at dom-ready and remembers it per origin, and the next gap on that origin is filled with
 the colour the page is about to paint, so a gap is not a flash. A tab holding no document shows
 the app's bezel colour, and a page that paints no background of its own still gets the browser
-default of white. The renderer's overlay freeze primes its still on browser-chrome right-clicks,
-and `browser:setBounds` waits for a painted frame before resolving a reveal, so the still is
-never handed back to an unpainted surface.
+default of white. The renderer's overlay freeze waits for its still before hiding the native page,
+and `browser:setBounds` waits for a painted frame before resolving a reveal, so an overlay never
+exposes a blank capture gap and the still is never handed back to an unpainted surface.
 
 Browser inspection can read a background tab without selecting it. Semantic page input brings
 the tab forward, waits for rendering after a switch, and reports `activatedTab: true`. It fails
