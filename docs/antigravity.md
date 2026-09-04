@@ -29,7 +29,10 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
   provider. Switching is refused while a turn runs.
 - **Sign-in is per provider.** `agy models` at startup both fills the catalog and proves the sign-in;
   an authentication failure shows the pane's sign-in message (run `agy` in a terminal and complete the
-  Google login), and choosing an Antigravity model re-checks.
+  Google login), and choosing an Antigravity model re-checks. The listing is shared per workspace
+  through the provider catalog cache (`chat-context/provider-catalog-cache.ts`, ten-minute TTL): a
+  pane whose workspace read it recently becomes ready without spawning `agy models`, and a pane that
+  is not on Antigravity fills the picker from the cache without starting the provider at all.
 - **No approval prompts**, matching the other lanes: `--dangerously-skip-permissions` (without it the
   init event reports `permission_mode: request-review` and a headless turn stalls on a prompt nobody
   answers).
@@ -68,7 +71,9 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
   shows a gauge only with a denominator.
 - **Subscription plan usage.** `agy -p "/quota" --output-format json` reports 5-hour and weekly rolling
   buckets for Gemini and third-party models with exact reset timestamps, surfaced on the composer's usage
-  card (`antigravity-service.ts`, `plan-usage.ts`).
+  card (`antigravity-service.ts`, `plan-usage.ts`). The reading is shared across panes and reused for
+  60 seconds (`ANTIGRAVITY_QUOTA_REUSE_MS`): start-up, hover, and turn end all ask for it, but only
+  spawn the two-second `agy` process when the shared reading is older than that.
 - **Re-seed compaction.** `agy` has no native compact verb, so the app can drop the CLI conversation
   handle and inject a bounded transcript summary on the next turn (`compactConversation` on the pane,
   button in the usage card). The visible transcript is unchanged; only provider-side context shrinks.
