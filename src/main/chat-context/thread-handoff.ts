@@ -85,7 +85,7 @@ export function handoffAdditionalContext(handoff: string): AdditionalContext {
 
 /** Persist a handoff and its bounded source metadata on the destination chat. */
 export function continuationFromThreadHandoff(
-  paneId: string,
+  paneId: string | null,
   source: ThreadHandoffSource,
   createdAt = Date.now()
 ): ChatContinuation {
