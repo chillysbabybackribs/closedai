@@ -45,8 +45,8 @@ export class ToolTelemetry extends EventEmitter {
 
   record(record: ToolCallEvent): void {
     this.totalCalls += 1
-    this.bump(record.toolId, null, record.ok, record.timedOut)
-    if (record.action) this.bump(record.toolId, record.action, record.ok, record.timedOut)
+    this.bump(record.toolId, null, record)
+    if (record.action) this.bump(record.toolId, record.action, record)
     this.emit('record', record)
     this.enqueuePersist()
   }
@@ -66,15 +66,8 @@ export class ToolTelemetry extends EventEmitter {
     await this.writes
   }
 
-  private bump(toolId: string, action: string | null, ok: boolean, timedOut: boolean): void {
-    const key = keyOf(toolId, action)
-    const current = this.stats.get(key) ?? { toolId, action, calls: 0, failures: 0, timeouts: 0 }
-    this.stats.set(key, {
-      ...current,
-      calls: current.calls + 1,
-      failures: current.failures + (!ok && !timedOut ? 1 : 0),
-      timeouts: current.timeouts + (timedOut ? 1 : 0)
-    })
+  private bump(toolId: string, action: string | null, record: ToolCallEvent): void {
+    bumpMap(this.stats, toolId, action, record)
   }
 
   private enqueuePersist(): void {
@@ -116,8 +109,8 @@ async function readLegacy(filePath: string): Promise<ToolTelemetrySnapshot | nul
         const record = legacyRecord(JSON.parse(line))
         if (!record) continue
         totalCalls += 1
-        bumpMap(stats, record.toolId, null, record.ok, false)
-        if (record.action) bumpMap(stats, record.toolId, record.action, record.ok, false)
+        bumpMap(stats, record.toolId, null, record)
+        if (record.action) bumpMap(stats, record.toolId, record.action, record)
       } catch {
         // A corrupt line should not hide valid counters around it.
       }
@@ -139,12 +132,16 @@ function normalizeSnapshot(value: unknown): ToolTelemetrySnapshot {
     if (typeof stat.toolId !== 'string' || (stat.action !== null && typeof stat.action !== 'string')) return []
     if (!Number.isInteger(stat.calls) || stat.calls! < 0 || !Number.isInteger(stat.failures) || stat.failures! < 0) return []
     const timeouts = Number.isInteger(stat.timeouts) && stat.timeouts! >= 0 ? stat.timeouts! : 0
+    // Counters written before misuse was tracked simply start at zero rather than forcing a migration.
+    const misuses = Number.isInteger(stat.misuses) && stat.misuses! >= 0 ? stat.misuses! : 0
+    const failures = Math.min(stat.failures!, stat.calls!)
     return [{
       toolId: stat.toolId,
       action: stat.action,
       calls: stat.calls!,
-      failures: Math.min(stat.failures!, stat.calls!),
-      timeouts: Math.min(timeouts, stat.calls!)
+      failures,
+      timeouts: Math.min(timeouts, stat.calls!),
+      misuses: Math.min(misuses, failures)
     }]
   })
   const totalCalls = Number.isInteger(persisted.totalCalls) && persisted.totalCalls! >= 0
@@ -161,7 +158,8 @@ function legacyRecord(value: unknown): ToolCallEvent | null {
     toolId: record.toolId,
     action: typeof record.action === 'string' ? record.action : null,
     ok: record.ok,
-    timedOut: false
+    timedOut: false,
+    misuse: false
   }
 }
 
@@ -169,16 +167,17 @@ function bumpMap(
   stats: Map<string, ToolStats>,
   toolId: string,
   action: string | null,
-  ok: boolean,
-  timedOut: boolean
+  record: Pick<ToolCallEvent, 'ok' | 'timedOut' | 'misuse'>
 ): void {
   const key = keyOf(toolId, action)
-  const current = stats.get(key) ?? { toolId, action, calls: 0, failures: 0, timeouts: 0 }
+  const current = stats.get(key) ?? { toolId, action, calls: 0, failures: 0, timeouts: 0, misuses: 0 }
+  const failed = !record.ok && !record.timedOut
   stats.set(key, {
     ...current,
     calls: current.calls + 1,
-    failures: current.failures + (!ok && !timedOut ? 1 : 0),
-    timeouts: current.timeouts + (timedOut ? 1 : 0)
+    failures: current.failures + (failed ? 1 : 0),
+    timeouts: current.timeouts + (record.timedOut ? 1 : 0),
+    misuses: current.misuses + (failed && record.misuse ? 1 : 0)
   })
 }
 

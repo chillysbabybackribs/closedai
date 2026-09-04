@@ -16,8 +16,12 @@ export type ToolResult = {
   content: ToolContent[]
   /** True when the call failed; the model sees the content as the failure reason. */
   isError?: boolean
-  /** Internal aggregate classification; provider adapters intentionally do not expose it. */
-  errorKind?: 'timeout'
+  /**
+   * Internal aggregate classification; provider adapters intentionally do not expose it.
+   * `usage` marks a call the app refused before the tool ran — a wrong name, wrong arguments,
+   * or a broken rule — which is the app failing to explain itself, not a runtime fault.
+   */
+  errorKind?: 'timeout' | 'usage'
   /** Internal source-version observations; stripped by the registry before provider delivery. */
   sourceReads?: SourceReadObservation[]
 }
@@ -81,6 +85,15 @@ export function textResult(text: string): ToolResult {
 
 export function failureResult(text: string): ToolResult {
   return { content: [{ type: 'text', text }], isError: true }
+}
+
+/**
+ * A call the model got wrong: unknown name, invalid arguments, or a documented rule it broke.
+ * Counted apart from runtime failures so the Tools panel shows which directions models keep
+ * misreading — a misuse count that will not fall is a description to rewrite.
+ */
+export function usageResult(text: string): ToolResult {
+  return { content: [{ type: 'text', text }], isError: true, errorKind: 'usage' }
 }
 
 export function timeoutResult(text: string): ToolResult {

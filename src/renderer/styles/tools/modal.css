@@ -110,6 +110,8 @@
 
 .tool-card-usage-count,
 .tool-card-error-count,
+.tool-card-misuse-count,
 .tool-card-timeout-count { color: var(--muted-foreground); font-size: 11px; }
 .tool-card-error-count[data-tone='bad'] { color: var(--destructive); }
+.tool-card-misuse-count[data-tone='warn'],
 .tool-card-timeout-count[data-tone='warn'] { color: var(--warning, #c58b45); }

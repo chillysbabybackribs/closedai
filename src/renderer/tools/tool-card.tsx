@@ -15,11 +15,12 @@ export type ToolCardProps = {
   onToggle: (enabled: boolean) => void
 }
 
-/** One aggregate-only row: switch, name, run count, error count, and timeout count. */
+/** One aggregate-only row: switch, name, run count, error count, misuse count, and timeout count. */
 export function ToolCard({ item, onToggle }: ToolCardProps): JSX.Element {
   const calls = item.stat?.calls ?? 0
   const failures = item.stat?.failures ?? 0
   const timeouts = item.stat?.timeouts ?? 0
+  const misuses = item.stat?.misuses ?? 0
 
   return (
     <li className="tool-card" data-enabled={item.enabled}>
@@ -42,6 +43,15 @@ export function ToolCard({ item, onToggle }: ToolCardProps): JSX.Element {
           <span className="tool-card-error-count" data-tone={failures > 0 ? 'bad' : undefined}>
             {failures} error{failures === 1 ? '' : 's'}
           </span>
+          {misuses > 0 ? (
+            <span
+              className="tool-card-misuse-count"
+              data-tone="warn"
+              title="Calls this app refused before the tool ran: wrong name, wrong arguments, or a rule the description failed to make clear"
+            >
+              {misuses} misuse{misuses === 1 ? '' : 's'}
+            </span>
+          ) : null}
           <span className="tool-card-timeout-count" data-tone={timeouts > 0 ? 'warn' : undefined}>
             {timeouts} timeout{timeouts === 1 ? '' : 's'}
           </span>

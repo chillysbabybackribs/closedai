@@ -58,6 +58,8 @@ export type ToolCallEvent = {
   action: string | null
   ok: boolean
   timedOut: boolean
+  /** The app refused the call before the tool ran: wrong name, wrong arguments, broken rule. */
+  misuse: boolean
 }
 
 export type ToolStats = {
@@ -68,6 +70,8 @@ export type ToolStats = {
   failures: number
   /** Condition or execution timeouts; excluded from `failures`. */
   timeouts: number
+  /** Calls refused as misuse, a subset of `failures`: what the tool's directions failed to prevent. */
+  misuses: number
 }
 
 export type ToolTelemetrySnapshot = {

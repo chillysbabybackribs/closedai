@@ -93,19 +93,22 @@ export function applyRecord(snapshot: ToolTelemetrySnapshot, record: ToolCallEve
   let stats = snapshot.stats
   for (const action of keys) {
     const existing = stats.find((stat) => stat.toolId === record.toolId && stat.action === action)
+    const failed = !record.ok && !record.timedOut
     const updated = existing
       ? {
           ...existing,
           calls: existing.calls + 1,
-          failures: existing.failures + (!record.ok && !record.timedOut ? 1 : 0),
-          timeouts: existing.timeouts + (record.timedOut ? 1 : 0)
+          failures: existing.failures + (failed ? 1 : 0),
+          timeouts: existing.timeouts + (record.timedOut ? 1 : 0),
+          misuses: existing.misuses + (failed && record.misuse ? 1 : 0)
         }
       : {
           toolId: record.toolId,
           action,
           calls: 1,
-          failures: !record.ok && !record.timedOut ? 1 : 0,
-          timeouts: record.timedOut ? 1 : 0
+          failures: failed ? 1 : 0,
+          timeouts: record.timedOut ? 1 : 0,
+          misuses: failed && record.misuse ? 1 : 0
         }
     stats = [updated, ...stats.filter((stat) => !(stat.toolId === record.toolId && stat.action === action))]
   }

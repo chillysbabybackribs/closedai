@@ -6,6 +6,7 @@ import {
   booleanArg,
   defineTool,
   failureResult,
+  usageResult,
   type JsonObject,
   type ToolContent,
   type ToolContext,
@@ -107,12 +108,12 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
         timeoutMs: BATCH_TIMEOUT_MS,
         async run(input, context) {
           const parsed = parseCalls(input, maxCalls)
-          if (typeof parsed === 'string') return failureResult(`tool_batch.run: ${parsed}`)
+          if (typeof parsed === 'string') return usageResult(`tool_batch.run: ${parsed}`)
           const unresolved = unresolvedCalls(registry(), parsed)
-          if (unresolved) return failureResult(`tool_batch.run: ${unresolved}`)
+          if (unresolved) return usageResult(`tool_batch.run: ${unresolved}`)
           const parallel = booleanArg(input, 'parallel', false)
           const policyProblem = validateRealInputBatch(parsed, parallel)
-          if (policyProblem) return failureResult(`tool_batch.run: ${policyProblem}`)
+          if (policyProblem) return usageResult(`tool_batch.run: ${policyProblem}`)
           const outcomes = parallel
             ? await runParallel(registry(), parsed, context)
             : await runSequential(registry(), parsed, context)

@@ -1,6 +1,6 @@
 import { validateInput } from './schema.js'
 import {
-  failureResult,
+  usageResult,
   type JsonObject,
   type ToolContext,
   type ToolDefinition,
@@ -61,11 +61,11 @@ export function defineActionTool(options: ActionToolOptions): ToolDefinition {
       const action = typeof verb === 'string' ? byVerb.get(verb) : undefined
       if (!action) {
         const shown = typeof verb === 'string' ? `"${verb}"` : 'missing'
-        return failureResult(`${name}: action ${shown} is not one of ${verbs.join(', ')}`)
+        return usageResult(`${name}: action ${shown} is not one of ${verbs.join(', ')}`)
       }
       const { action: _omit, ...fields } = input
       const problems = validateInput(action.inputSchema, fields)
-      if (problems.length) return failureResult(`${name}.${verb}: invalid arguments — ${problems.join('; ')}`)
+      if (problems.length) return usageResult(`${name}.${verb}: invalid arguments — ${problems.join('; ')}`)
       return action.run(fields, context)
     }
   }

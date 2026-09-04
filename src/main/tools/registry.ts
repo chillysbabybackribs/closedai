@@ -5,6 +5,7 @@ import {
   DEFAULT_TOOL_TIMEOUT_MS,
   failureResult,
   timeoutResult,
+  usageResult,
   type JsonObject,
   type ToolContext,
   type ToolDefinition,
@@ -152,7 +153,7 @@ export class ToolRegistry {
   private async run(request: ToolCallRequest, context: ToolCallContext): Promise<ToolResult> {
     const label = request.namespace ? `${request.namespace}.${request.tool}` : request.tool
     const definition = this.find(request.namespace, request.tool)
-    if (!definition) return failureResult(this.unknownToolMessage(label, request))
+    if (!definition) return usageResult(this.unknownToolMessage(label, request))
     const owner = this.namespaces.find((entry) => entry.tools.includes(definition))
     const toolId = owner ? `${owner.name}.${definition.name}` : label
     const input = request.arguments ?? {}
@@ -161,14 +162,14 @@ export class ToolRegistry {
       : null
     const switchId = verb ? `${toolId}.${verb}` : toolId
     if ((verb || !definition.actions?.length) && !this.isEnabled(switchId)) {
-      return failureResult(`${verb ? `${label}.${verb}` : label} is switched off in ClosedAI's Tools panel; ask the user to enable it`)
+      return usageResult(`${verb ? `${label}.${verb}` : label} is switched off in ClosedAI's Tools panel; ask the user to enable it`)
     }
 
     if (input === null || typeof input !== 'object' || Array.isArray(input)) {
-      return failureResult(`${label}: arguments must be an object`)
+      return usageResult(`${label}: arguments must be an object`)
     }
     const problems = validateInput(definition.inputSchema, input)
-    if (problems.length) return failureResult(`${label}: invalid arguments — ${problems.join('; ')}`)
+    if (problems.length) return usageResult(`${label}: invalid arguments — ${problems.join('; ')}`)
 
     const controller = new AbortController()
     const timeoutMs = definition.timeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS
@@ -222,7 +223,8 @@ export class ToolRegistry {
       toolId: namespace ? `${namespace}.${request.tool}` : request.tool,
       action,
       ok: !result.isError,
-      timedOut: result.errorKind === 'timeout'
+      timedOut: result.errorKind === 'timeout',
+      misuse: result.errorKind === 'usage'
     }
     for (const listener of this.listeners) {
       try { listener(record) } catch { /* telemetry must never break a call */ }
