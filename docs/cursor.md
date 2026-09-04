@@ -36,6 +36,7 @@ open protocol, so the wire format is not the fragile part — the subcommand's a
 | Thread title | `session_info_update` carries a title the agent writes a turn or two in. |
 | Interrupt | `session/cancel`; the session stays usable afterwards. |
 | Approvals | `session/request_permission` is answered automatically with the broadest allow offered. This is narrower than the CLI's blanket `--force` and keeps ClosedAI's no-approval-dialog rule. |
+| Tools | The ClosedAI registry is served over MCP by the shared HTTP bridge (`src/main/tools/mcp-http-bridge.ts`), passed to `session/new` as `mcpServers`. Each pane's endpoints carry its own key (`/mcp/<key>/<namespace>`), so a served call is attributed to that pane and turn exactly. |
 | Archiving | ACP has no delete verb, so `cursor-archive.ts` keeps a local set of session ids the drawer stops listing. Cursor's own store is untouched. |
 | Plan usage | Not reported. `cursor-agent about` names the tier only, so the hover card shows the plan with an explicit "unavailable" rather than an invented number. |
 | Context usage | Not reported by ACP, so the pane shows no context gauge. |
@@ -63,16 +64,35 @@ opportunistic — do not design as though all file IO routes through the app.
 | `cursor-tool-items.ts` | ACP tool calls → the command / fileChange / tool vocabulary Codex items use. |
 | `cursor-models.ts` | `availableModels` → the composer catalog. |
 | `cursor-input.ts` | One user turn as ACP prompt blocks, including images (`promptCapabilities.image` is true). |
+| `cursor-mcp.ts` | The `session/new` server list, on the shared `McpHttpBridge`. |
 | `cursor-archive.ts` | The locally archived session ids. |
 | `cursor-ids.ts` | `cursor:` prefix arithmetic, delegating to `src/shared/chat-providers.ts`. |
 
+## Tools over MCP (`cursor-mcp.ts`)
+
+`session/new` takes an `mcpServers` list and the agent advertises `mcpCapabilities.http`, so the
+registry is served per session — no global config file to mutate and clean up, and no profile-key
+hashing, unlike the `agy` arrangement in `docs/antigravity.md`. The listener, the per-namespace MCP
+servers, the registry dispatch, and the call ledger are the shared `McpHttpBridge`; this lane adds
+only the `session/new` server list.
+
+Verified live on 2026-09-03, and each point cost a real bug or would have:
+
+- An `mcpServers` entry **must** carry `headers` (an array). Omitting it fails `session/new` schema
+  validation with "expected array" rather than being treated as absent.
+- A served call arrives as `kind: "other"`, announced as `title: "MCP: tool"` with an empty
+  `rawInput`, and is only named on the first update: `title: "embedded_browser: page"` with
+  `rawInput: {providerIdentifier, toolName, args}`. Both updates carry the same `toolCallId`, so
+  the transcript renames one row rather than showing two.
+- **The result is not echoed back.** A completed MCP call carries `rawOutput: {success: true}` and
+  nothing else, so an MCP row shows the call and its arguments but no output text — unlike the
+  Antigravity lane, where the CLI repeats it. A `closedai_ui.capture` is the exception: the bridge
+  ledger maps it back to the registry call id, so the app's own full-resolution image becomes a
+  screenshot row.
+- `session/request_permission` fires for MCP calls too, and is auto-allowed like any other.
+
 ## Not done yet
 
-- **Tools.** `session/new` takes `mcpServers` and the agent advertises `mcpCapabilities.http`, so
-  the ClosedAI tool registry can be served per session over HTTP — with no global config file and
-  no profile-key hashing, unlike the `agy` arrangement in `docs/antigravity.md`. The service
-  already threads an `mcpServers` callback through to `session/new`; it currently returns `[]`.
-  Serving it means extracting the HTTP/MCP core out of `antigravity-mcp.ts` rather than copying it.
 - **Modes.** ACP reports `agent`, `plan`, and `ask` and accepts `session/set_mode`. The pane has no
   mode control, so the session stays on the agent default.
 - **Slash commands.** `available_commands_update` lists the account's commands and skills; the pane

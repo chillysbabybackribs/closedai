@@ -99,6 +99,14 @@ Screenshot items prefer the larger retained display capture when the store still
 
 ## MCP bridge (`antigravity-mcp.ts`)
 
+The HTTP listener, the per-namespace MCP servers, the registry dispatch, and the call ledger are
+the shared `src/main/tools/mcp-http-bridge.ts`, which the Cursor lane also uses (`docs/cursor.md`).
+What stays here is Antigravity's own: the `agy mcp add/enable` registration, the config-file
+rewriting, and reading a call's conversation id off its `_meta`. Because that registration is
+global there is no per-session URL to carry a caller key, which is why this lane keys calls by
+`_meta` where Cursor keys them by path.
+
+
 The main process hosts one streamable-HTTP MCP endpoint per enabled namespace on
 `127.0.0.1:<random port>/mcp/<namespace>` (MCP SDK 1.30). The CLI POSTs `initialize` and then opens a
 standalone GET SSE stream, so the transport is stateful (one per `mcp-session-id`). Registration is
