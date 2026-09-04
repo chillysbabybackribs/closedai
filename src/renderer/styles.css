@@ -37,6 +37,7 @@
 @import "./styles/tools/modal.css";
 @import "./styles/trace/modal.css";
 @import "./styles/settings/appearance.css";
+@import "./styles/settings/credentials.css";
 @source "../components";
 
 /* Antigravity accent: the card design's signature blue, used for the focused composer
