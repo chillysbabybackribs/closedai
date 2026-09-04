@@ -88,7 +88,7 @@ test('every file the map names is really in the checkout', () => {
 test('all three provider lanes receive the navigation playbook in the indexed checkout', () => {
   const navigation = workspaceNavigationSection(WORKSPACE_INDEX_ROOT) ?? ''
   const lanes = [
-    String(startThreadParams(WORKSPACE_INDEX_ROOT, new ToolRegistry([]), null).developerInstructions),
+    String(startThreadParams(WORKSPACE_INDEX_ROOT, new ToolRegistry([])).developerInstructions),
     claudeSystemPromptAppend(WORKSPACE_INDEX_ROOT),
     antigravityAgentInstructions(WORKSPACE_INDEX_ROOT)
   ]
@@ -102,6 +102,6 @@ test('mapped threads carry instructions plus navigation on start and resume', ()
   const tools = new ToolRegistry([])
   const navigation = workspaceNavigationSection(WORKSPACE_INDEX_ROOT) ?? ''
   const expected = `${closedAiDeveloperInstructions(WORKSPACE_INDEX_ROOT)}\n\n${navigation}`
-  assert.equal(startThreadParams(WORKSPACE_INDEX_ROOT, tools, 'model-a').developerInstructions, expected)
+  assert.equal(startThreadParams(WORKSPACE_INDEX_ROOT, tools, { model: 'model-a', effort: null }).developerInstructions, expected)
   assert.equal(resumeThreadParams('thread-a', WORKSPACE_INDEX_ROOT, tools).developerInstructions, expected)
 })

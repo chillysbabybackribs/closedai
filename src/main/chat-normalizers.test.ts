@@ -12,7 +12,8 @@ test('models retain their advertised reasoning effort choices', () => {
       { reasoningEffort: 'high', description: 'Deep' },
       { description: 'Invalid option' }
     ]
-  }])
+  }], new Map([['sol', 872_000]]))
+  assert.equal(models[0]?.contextWindow, 872_000)
   assert.deepEqual(models[0]?.supportedReasoningEfforts, [
     { reasoningEffort: 'low', description: 'Quick' },
     { reasoningEffort: 'high', description: 'Deep' }

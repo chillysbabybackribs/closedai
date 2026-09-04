@@ -33,12 +33,18 @@ test('developer instructions stay within their expanded budget and establish the
 test('new and resumed threads receive the same developer instructions', () => {
   const tools = new ToolRegistry([])
   const expected = closedAiDeveloperInstructions('/workspace')
-  assert.equal(startThreadParams('/workspace', tools, 'model-a').developerInstructions, expected)
+  assert.equal(startThreadParams('/workspace', tools, { model: 'model-a', effort: null }).developerInstructions, expected)
   assert.equal(resumeThreadParams('thread-a', '/workspace', tools).developerInstructions, expected)
-  assert.equal(startThreadParams('/workspace', tools, 'model-a').model, 'model-a')
+  assert.equal(startThreadParams('/workspace', tools, { model: 'model-a', effort: null }).model, 'model-a')
   assert.equal(resumeThreadParams('thread-a', '/workspace', tools).threadId, 'thread-a')
-  assert.deepEqual(startThreadParams('/workspace', tools, 'model-a', 'low').config, { model_reasoning_effort: 'low' })
-  assert.deepEqual(resumeThreadParams('thread-a', '/workspace', tools, 'medium').config, { model_reasoning_effort: 'medium' })
+  assert.deepEqual(
+    startThreadParams('/workspace', tools, { model: 'model-a', effort: 'low', contextWindow: 1_000_000 }).config,
+    { model_reasoning_effort: 'low', model_context_window: 1_000_000 }
+  )
+  assert.deepEqual(
+    resumeThreadParams('thread-a', '/workspace', tools, { model: 'model-a', effort: 'medium', contextWindow: 400_000 }).config,
+    { model_reasoning_effort: 'medium', model_context_window: 400_000 }
+  )
 })
 
 test('browser context is gated to browser and visible-page requests', () => {

@@ -14,9 +14,10 @@ test('loads every visible model page, deduplicates models, and keeps an availabl
     }
   }
 
-  const catalog = await loadChatModels(client, 'terra')
+  const catalog = await loadChatModels(client, 'terra', null, new Map([['sol', 872_000], ['terra', 872_000], ['luna', 872_000]]))
 
   assert.deepEqual(catalog.models.map((entry) => entry.id), ['sol', 'terra', 'luna'])
+  assert.deepEqual(catalog.models.map((entry) => entry.contextWindow), [872_000, 872_000, 872_000])
   assert.equal(catalog.selectedModel, 'terra')
   assert.equal(catalog.selectedReasoningEffort, 'medium')
   assert.deepEqual(requests, [
