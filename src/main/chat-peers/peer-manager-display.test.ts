@@ -2,23 +2,21 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatEvent } from '../../shared/chat.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
-import { DEFAULT_APP_SETTINGS } from '../app-settings-store.js'
-import { ChatPeerManager } from './peer-manager.js'
-import { FakeSurface, MemorySettings, harness } from './peer-manager-harness.js'
+import { chatRecord, harness, harnessWith } from './peer-manager-harness.js'
 
 // How a pane describes itself to the drawer: titles, persisted display fields, bounded summaries.
 
 test('a pane persists its title and activity time so a parked pane keeps its name after relaunch', async () => {
-  const { manager, surfaces, settings } = harness()
+  const { manager, surfaces, store } = harness()
   const surface = surfaces[0]!
   surface.state.items = [{ type: 'user', id: 'u1', turnId: 't1', text: 'Fix the sidebar' }]
   surface.emit('event', { type: 'item', item: surface.state.items[0]! } satisfies ChatEvent)
   await new Promise((resolve) => setImmediate(resolve))
 
-  const record = settings.get().chatPeers.find((peer) => peer.paneId === 'pane-a')!
+  const record = store.require('pane-a')
   assert.equal(record.title, 'Fix the sidebar')
-  assert.ok((record.updatedAt ?? 0) > 0)
-  assert.equal(manager.snapshot().peers[0]!.title, 'Fix the sidebar')
+  assert.ok(record.updatedAt > 1)
+  assert.equal(manager.snapshot().chats[0]!.title, 'Fix the sidebar')
 })
 
 test('streaming pane events update the drawer without cloning the transcript', () => {
@@ -32,7 +30,7 @@ test('streaming pane events update the drawer without cloning the transcript', (
   surface.emit('event', { type: 'item', item: surface.state.items[1]! } satisfies ChatEvent)
   surface.emit('event', { type: 'itemDelta', itemId: 'a1', field: 'text', delta: ' and more' } satisfies ChatEvent)
   assert.equal(surface.snapshotCalls, before)
-  assert.equal(manager.snapshot().peers[0]!.preview, 'Answer so far and more')
+  assert.equal(manager.snapshot().chats[0]!.preview, 'Answer so far and more')
   assert.equal(surface.snapshotCalls, before + 1)
 })
 
@@ -55,47 +53,49 @@ test('renderer replacement and page requests are bounded while peer reads keep h
 })
 
 test('leaving a chat clears the saved title so a parked pane does not wear the old name', async () => {
-  const { manager, surfaces, settings } = harness()
+  const { manager, surfaces, store } = harness()
   const surface = surfaces[0]!
   surface.state.threadId = 'thread-1'
   surface.state.items = [{ type: 'user', id: 'u1', turnId: 't1', text: 'Fix the sidebar' }]
   surface.emit('event', { type: 'replace', snapshot: surface.snapshot() } satisfies ChatEvent)
   surface.emit('event', { type: 'turn', turnId: null } satisfies ChatEvent)
   await new Promise((resolve) => setImmediate(resolve))
-  assert.equal(settings.get().chatPeers[0]!.title, 'Fix the sidebar')
+  store.update('pane-a', { codexThreadId: 'thread-1' })
+  assert.equal(store.require('pane-a').title, 'Fix the sidebar')
 
   // A new chat: the provider clears its thread in settings, then replays an empty pane.
-  const peer = settings.get().chatPeers[0]!
-  await settings.set({ chatPeers: [{ ...peer, threadId: null, codexThreadId: null }] })
+  store.update('pane-a', { codexThreadId: null })
   surface.state.threadId = null
   surface.state.items = []
   surface.emit('event', { type: 'replace', snapshot: surface.snapshot() } satisfies ChatEvent)
   await new Promise((resolve) => setImmediate(resolve))
 
-  assert.equal(manager.snapshot().peers[0]!.title, 'New chat')
-  assert.equal(manager.snapshot().peers[0]!.threadId, null)
-  assert.equal(settings.get().chatPeers[0]!.title, null)
+  assert.equal(manager.snapshot().chats[0]!.title, 'New chat')
+  assert.equal(manager.snapshot().chats[0]!.threadId, null)
+})
+
+test('a wake that replays through an empty snapshot does not rename a chat that has a thread', async () => {
+  const { manager, surfaces, store } = harnessWith([
+    chatRecord('pane-a', 'gpt', { codexThreadId: 'thread-1', threadId: 'thread-1', title: 'Fix the sidebar' })
+  ], 'pane-a')
+  const surface = surfaces[0]!
+  // The provider's first replace, before its store has been read, holds nothing yet.
+  surface.emit('event', { type: 'replace', snapshot: surface.snapshot() } satisfies ChatEvent)
+  await new Promise((resolve) => setImmediate(resolve))
+
+  assert.equal(store.require('pane-a').title, 'Fix the sidebar')
+  assert.equal(manager.snapshot().chats[0]!.title, 'Fix the sidebar')
 })
 
 test('a persisted pane that has not been woken still shows its saved title and thread', () => {
-  const settings = new MemorySettings({
-    ...DEFAULT_APP_SETTINGS,
-    chatPeers: [{
-      paneId: 'pane-cold',
-      provider: 'claude',
-      threadId: 'claude:s1',
-      codexThreadId: null,
-      claudeSessionId: 's1',
-      modelId: 'claude:opus',
-      reasoningEffort: null,
-      title: 'Agent sidebar bugs',
-      updatedAt: 1234
-    }],
-    chatSelectedPaneId: 'pane-cold'
-  })
-  const manager = new ChatPeerManager(settings, (_peerSettings, modelId) => new FakeSurface(modelId))
-  const [peer] = manager.snapshot().peers
+  const { manager } = harnessWith([
+    chatRecord('pane-cold', 'claude:opus', {
+      provider: 'claude', claudeSessionId: 's1', threadId: 'claude:s1', title: 'Agent sidebar bugs', updatedAt: 1234
+    })
+  ], 'pane-cold')
+  const [peer] = manager.snapshot().chats
   assert.equal(peer!.title, 'Agent sidebar bugs')
   assert.equal(peer!.threadId, 'claude:s1')
   assert.equal(peer!.updatedAt, 1234)
+  assert.equal(peer!.attached, true)
 })

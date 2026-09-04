@@ -3,19 +3,11 @@ import { EventEmitter } from 'node:events'
 import test from 'node:test'
 
 import type { ChatAttachment, ChatSnapshot, ChatThreadContent } from '../../shared/chat.js'
-import type { AppSettings } from '../../shared/types.js'
-import { DEFAULT_APP_SETTINGS, type AppSettingsAccess } from '../app-settings-store.js'
+import { DEFAULT_APP_SETTINGS } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
+import { ChatStore } from '../chat-store/chat-store.js'
 import { ChatPeerManager } from './peer-manager.js'
-
-class MemorySettings implements AppSettingsAccess {
-  constructor(private value: AppSettings) {}
-  get(): AppSettings { return structuredClone(this.value) }
-  async set(patch: Partial<AppSettings>): Promise<AppSettings> {
-    this.value = { ...this.value, ...structuredClone(patch) }
-    return this.get()
-  }
-}
+import { chatRecord, MemorySettings } from './peer-manager-harness.js'
 
 class Surface extends EventEmitter implements ChatSurface {
   stopped = false
@@ -41,25 +33,25 @@ class Surface extends EventEmitter implements ChatSurface {
   async continueInNewThread(): Promise<void> {}
   async openThread(_threadId: string): Promise<void> {}
   async archiveThread(_threadId: string): Promise<void> {}
+  async compactConversation(): Promise<void> {}
   async beginLogin(): Promise<string | null> { return null }
 }
 
 test('choosing a project replaces workspace panes and publishes its selected directory', async () => {
   const settings = new MemorySettings({
     ...DEFAULT_APP_SETTINGS,
-    chatPeers: [{
-      paneId: 'pane-a', provider: 'codex', threadId: null, codexThreadId: null, claudeSessionId: null,
-      modelId: 'gpt', reasoningEffort: null
-    }],
+    chatOpenIds: ['pane-a'],
     chatSelectedPaneId: 'pane-a'
   })
+  const store = ChatStore.inMemory([chatRecord('pane-a', 'gpt')])
   let selection = { cwd: '/workspace', projectPath: '/workspace' as string | null }
-  const saved = new Map<string, { peers: AppSettings['chatPeers']; selectedPaneId: string | null }>()
+  const saved = new Map<string, { openIds: string[]; selectedPaneId: string | null }>()
   const surfaces: Surface[] = []
   const manager = new ChatPeerManager(
     settings,
-    (_settings, modelId) => {
-      const surface = new Surface(modelId)
+    store,
+    (_settings, record) => {
+      const surface = new Surface(record.modelId)
       surfaces.push(surface)
       return surface
     },
@@ -69,13 +61,13 @@ test('choosing a project replaces workspace panes and publishes its selected dir
       select: async (projectPath, preference) => {
         const current = settings.get()
         saved.set(selection.projectPath ?? 'no-project', {
-          peers: current.chatPeers,
+          openIds: current.chatOpenIds,
           selectedPaneId: current.chatSelectedPaneId
         })
         selection = { cwd: projectPath ?? '/home/tester', projectPath }
         const destination = saved.get(projectPath ?? 'no-project')
         await settings.set({
-          chatPeers: destination?.peers ?? [],
+          chatOpenIds: destination?.openIds ?? [],
           chatSelectedPaneId: destination?.selectedPaneId ?? null,
           chatThreadId: null,
           chatClaudeSessionId: null,
@@ -91,11 +83,12 @@ test('choosing a project replaces workspace panes and publishes its selected dir
 
   assert.equal(surfaces[0]!.stopped, true)
   assert.deepEqual(manager.snapshot().workspace, { cwd: '/projects/new', projectPath: '/projects/new' })
-  assert.equal(manager.snapshot().peers.length, 1)
+  assert.equal(manager.snapshot().chats.length, 1)
   assert.notEqual(manager.snapshot().selectedPaneId, 'pane-a')
-  assert.equal(settings.get().chatPeers.length, 1)
+  assert.equal(settings.get().chatOpenIds.length, 1)
+  assert.equal(store.require(manager.snapshot().selectedPaneId).cwd, '/projects/new')
 
   await manager.selectProject('/workspace')
   assert.equal(manager.snapshot().selectedPaneId, 'pane-a')
-  assert.equal(manager.snapshot().peers[0]?.paneId, 'pane-a')
+  assert.deepEqual(manager.snapshot().chats.map((chat) => chat.paneId), ['pane-a'])
 })

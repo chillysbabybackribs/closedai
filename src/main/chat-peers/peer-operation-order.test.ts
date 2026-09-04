@@ -3,19 +3,11 @@ import { EventEmitter } from 'node:events'
 import test from 'node:test'
 
 import type { ChatAttachment, ChatSnapshot, ChatThreadContent } from '../../shared/chat.js'
-import type { AppSettings } from '../../shared/types.js'
-import { DEFAULT_APP_SETTINGS, type AppSettingsAccess } from '../app-settings-store.js'
+import { DEFAULT_APP_SETTINGS } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
+import { ChatStore } from '../chat-store/chat-store.js'
 import { ChatPeerManager } from './peer-manager.js'
-
-class MemorySettings implements AppSettingsAccess {
-  constructor(private value: AppSettings) {}
-  get(): AppSettings { return structuredClone(this.value) }
-  async set(patch: Partial<AppSettings>): Promise<AppSettings> {
-    this.value = { ...this.value, ...structuredClone(patch) }
-    return this.get()
-  }
-}
+import { chatRecord, MemorySettings } from './peer-manager-harness.js'
 
 class Surface extends EventEmitter implements ChatSurface {
   calls: string[] = []
@@ -45,21 +37,20 @@ class Surface extends EventEmitter implements ChatSurface {
   async continueInNewThread(): Promise<void> {}
   async openThread(_threadId: string): Promise<void> {}
   async archiveThread(_threadId: string): Promise<void> {}
+  async compactConversation(): Promise<void> {}
   async beginLogin(): Promise<string | null> { return null }
 }
 
 test('operations on one pane run in order instead of interleaving', async (t) => {
   const settings = new MemorySettings({
     ...DEFAULT_APP_SETTINGS,
-    chatPeers: [{
-      paneId: 'pane-a', provider: 'codex', threadId: null, codexThreadId: null, claudeSessionId: null,
-      modelId: 'gpt', reasoningEffort: null
-    }],
+    chatWorkspacePath: '/workspace',
+    chatOpenIds: ['pane-a'],
     chatSelectedPaneId: 'pane-a'
   })
   const surfaces: Surface[] = []
-  const manager = new ChatPeerManager(settings, (_settings, modelId) => {
-    const surface = new Surface(modelId)
+  const manager = new ChatPeerManager(settings, ChatStore.inMemory([chatRecord('pane-a', 'gpt')]), (_settings, record) => {
+    const surface = new Surface(record.modelId)
     surfaces.push(surface)
     return surface
   })
