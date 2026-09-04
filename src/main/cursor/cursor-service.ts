@@ -9,13 +9,14 @@ import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource } from '../chat-context/thread-handoff.js'
 import { buildTurnAdditionalContext, withSourceChanges, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
+import { reasoningEffortForModel } from '../chat-model-catalog.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { buildChatInput } from '../chat-input.js'
 import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
 import type { ScreenshotStore } from '../tools/capture/screenshot-store.js'
 import { PROVIDER_CATALOG_TTL_MS, type WorkspaceCatalogs } from '../chat-context/provider-catalog-cache.js'
-import type { AcpModel, AcpSessionSetup } from './cursor-acp.js'
+import type { AcpSessionSetup } from './cursor-acp.js'
 import { CursorArchive } from './cursor-archive.js'
 import type { CursorToolBridge } from './cursor-mcp.js'
 import { isCursorAuthFailure, parseCursorAccountEmail, parseCursorPlan, readCursorAbout } from './cursor-cli.js'
@@ -334,10 +335,19 @@ export class CursorChatService extends EventEmitter {
    */
   private loadCachedCatalog(): boolean {
     if (this.modelState.models.length > 0) return true
-    const cached = this.catalogs?.read<AcpModel[]>('cursor', PROVIDER_CATALOG_TTL_MS)?.raw
-    if (!cached?.length) return false
+    const models = this.catalogs?.read('cursor', PROVIDER_CATALOG_TTL_MS)?.models ?? []
+    if (models.length === 0) return false
     const saved = this.settings.get()
-    this.modelState.load(cursorModelCatalog(cached, null, saved.chatModelId, saved.chatReasoningEffort))
+    // `isDefault` records the model the agent itself was on when the catalog was read, so a pane
+    // whose saved pick is gone still opens on the model Cursor would have chosen.
+    const selectedModel = models.some((model) => model.id === saved.chatModelId)
+      ? saved.chatModelId
+      : models.find((model) => model.isDefault)?.id ?? models[0]!.id
+    this.modelState.load({
+      models,
+      selectedModel,
+      selectedReasoningEffort: reasoningEffortForModel(models, selectedModel, saved.chatReasoningEffort)
+    })
     return true
   }
 
