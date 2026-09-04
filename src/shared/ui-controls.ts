@@ -11,7 +11,7 @@ export const UI_CONTROLS = {
   'window.maximize': 'Maximize or restore the window',
   'window.close': 'Close the window',
 
-  'layout.browser-toggle': 'Title-bar control to show or hide the shared browser independently of the chat arrangement',
+  'layout.browser-toggle': 'Chat-header control to show or hide the shared browser independently of the chat arrangement; item is the chat id',
   'layout.browser-divider': 'Resize the chat area and shared browser',
   'layout.pane-drag': 'Focus a chat or drag its header to dock beside another; item is the chat id',
   'layout.new-chat': 'Start a fresh chat in this tile, preserving other tiles and split sizes; shown with multiple tiles; item is the chat id',

@@ -19,6 +19,7 @@
 
 .chat-layout-header button {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -35,7 +36,6 @@
 .chat-layout-header button:hover { color: var(--chrome-fg-strong); background: var(--surface-control-hover); }
 .chat-layout-header button:disabled { opacity: 0.3; cursor: default; }
 .chat-layout-header button:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -1px; }
-.chat-layout-header .chat-layout-new-chat { flex-shrink: 0; }
 
 .chat-layout-viewport { min-height: 0; min-width: 0; overflow: auto; }
 .chat-layout-canvas { position: relative; width: 100%; height: 100%; }

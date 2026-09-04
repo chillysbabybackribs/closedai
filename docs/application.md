@@ -121,7 +121,7 @@ is introduced. See [Model context](model-context.md) for trust and [Tools](tools
 
 The sidebar, chat layout, and shared browser are independent regions. Two full-height chats can
 sit side by side while both the sidebar and browser remain open. The browser stays docked on the
-right; its main title-bar toggle hides/restores its native view without closing tabs. The sidebar keeps
+right; a toggle beside the split icons in each chat header hides/restores its native view without closing tabs. The sidebar keeps
 its existing toggle. Chat headers offer **New chat to the right**, **New chat below**, and **Hide
 chat pane**. Hiding a tile neither detaches its runtime nor stops its turn; closing a drawer row
 still detaches and stops it.

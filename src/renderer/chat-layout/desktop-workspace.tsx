@@ -1,6 +1,4 @@
-import { Monitor, PanelRightClose } from 'lucide-react'
 import { useImperativeHandle, useState, type Dispatch, type Ref } from 'react'
-import { createPortal } from 'react-dom'
 import { BrowserPane } from '../browser-pane.js'
 import { useBrowserController } from '../browser-controller.js'
 import { ChatPane } from '../chat-pane.js'
@@ -17,12 +15,11 @@ export type ChatLayoutHandle = {
   splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
 }
 
-export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenChange, browserToggleHost, ref }: {
+export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenChange, ref }: {
   chat: ReturnType<typeof useChatController>
   appearance: AppearanceSettings
   historyOpen: boolean
   onHistoryOpenChange: (open: boolean) => void
-  browserToggleHost: HTMLDivElement | null
   ref?: Ref<ChatLayoutHandle>
 }) {
   const layout = useChatLayout(chat.snapshot)
@@ -35,17 +32,11 @@ export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenC
     void chat.selectPane(id).catch((reason: unknown) => setActionError(String(reason)))
   }
   return <div className="chat-desktop-workspace">
-    {browserToggleHost && createPortal(
-      <button className="titlebar-icon-button" data-ui="layout.browser-toggle" aria-pressed={layout.browserVisible} onClick={layout.toggleBrowser}
-        aria-label={layout.browserVisible ? 'Hide browser' : 'Show browser'}
-        title={layout.browserVisible ? 'Hide browser' : 'Show browser'}>
-        {layout.browserVisible ? <PanelRightClose size={14} /> : <Monitor size={14} />}
-      </button>, browserToggleHost
-    )}
     {(layout.error || actionError) && <div className="chat-layout-error" role="alert">{layout.error || actionError}</div>}
     <WorkspaceSplit browserVisible={layout.browserVisible} chatMinimumWidth={minimumSize(layout.tree).width}
       onBrowserHide={layout.toggleBrowser}
       chat={<ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
+        browserVisible={layout.browserVisible} onToggleBrowser={layout.toggleBrowser}
         title={(id) => chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat'}
         onSelect={select} onDock={(id, target, edge) => { void layout.dock(id, target, edge) }}
         onNewChat={(id) => { onHistoryOpenChange(false); void layout.newChat(id) }}

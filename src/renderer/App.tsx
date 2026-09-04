@@ -31,7 +31,6 @@ function App(): JSX.Element {
   const drawer = useDrawerController(chat.sidebar)
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [browserToggleHost, setBrowserToggleHost] = useState<HTMLDivElement | null>(null)
   const workspaceRef = useRef<ChatLayoutHandle>(null)
   const splitSidebarChat = useCallback((chatId: string, edge: 'right' | 'bottom'): Promise<void> => {
     if (!workspaceRef.current) return Promise.reject(new Error('The workspace is still loading'))
@@ -99,7 +98,6 @@ function App(): JSX.Element {
           onOpenSettings={() => setSettingsOpen(true)}
           onToggleHistory={toggleHistory}
         />
-        <div className="titlebar-browser-control" ref={setBrowserToggleHost} />
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
@@ -109,7 +107,6 @@ function App(): JSX.Element {
           key={chat.workspace?.cwd ?? chat.state.cwd}
           ref={workspaceRef}
           chat={chat}
-          browserToggleHost={browserToggleHost}
           appearance={appearance}
           historyOpen={historyOpen}
           onHistoryOpenChange={setHistoryOpen}

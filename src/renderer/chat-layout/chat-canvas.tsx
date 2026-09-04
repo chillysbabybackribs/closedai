@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Columns2, GripVertical, Plus, Rows2, X } from 'lucide-react'
+import { Columns2, GripVertical, Monitor, PanelRightClose, Plus, Rows2, X } from 'lucide-react'
 import { CHAT_DRAG_TYPE, layoutGeometry, minimumSize, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export function ChatCanvas({ tree, selectedId, busy, title, renderPane, onSelect, onNewChat, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBrowser, title, renderPane, onSelect, onNewChat, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
+  browserVisible: boolean
+  onToggleBrowser: () => void
   title: (id: string) => string
   renderPane: (id: string) => ReactNode
   onSelect: (id: string) => void
@@ -114,6 +116,12 @@ export function ChatCanvas({ tree, selectedId, busy, title, renderPane, onSelect
           <button data-ui="layout.split-below" data-ui-key={id} disabled={busy}
             title="New chat below" aria-label="New chat below" onClick={() => onDock(null, id, 'bottom')}>
             <Rows2 size={14} aria-hidden="true" />
+          </button>
+          <button type="button" data-ui="layout.browser-toggle" data-ui-key={id}
+            aria-pressed={browserVisible} onClick={onToggleBrowser}
+            aria-label={browserVisible ? 'Hide browser' : 'Show browser'}
+            title={browserVisible ? 'Hide browser' : 'Show browser'}>
+            {browserVisible ? <PanelRightClose size={14} aria-hidden="true" /> : <Monitor size={14} aria-hidden="true" />}
           </button>
           <button data-ui="layout.pane-hide" data-ui-key={id} disabled={busy || geometry.panes.length < 2}
             title="Hide this pane; its chat keeps running" aria-label="Hide chat pane" onClick={() => onHide(id)}>
