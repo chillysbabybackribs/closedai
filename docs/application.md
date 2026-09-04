@@ -76,9 +76,12 @@ is introduced. See [Model context](model-context.md) for trust and [Tools](tools
   remains available outside the loaded page. Provider sessions and the main-process transcript
   remain complete for continuation, branching, and peer reads; this is display paging, not model
   compaction. Codex history replay emits one replacement instead of streaming old items again.
-- The model menu groups all three providers. Its initial list usually shows five models,
-  ranked by locally recorded picker use and always including the selected model. With no usage
-  history it alternates providers; a single remaining model is shown rather than hidden.
+- The model menu opens on the providers, one row each, naming the model in use where that
+  provider owns the selection. Hovering a row opens that provider's models beside it; the
+  selected model's reasoning efforts stay on the root, since they belong to the selection rather
+  than to a provider. Each submenu opens on that provider's top few models, ranked by locally
+  recorded picker use and always including the selected one, with the rest one row away; a
+  single remaining model is shown rather than hidden.
 - Tool activity is grouped into expandable step lists with arguments, output, status, and timing
   when available. Provider-native background tasks have a separate transcript group and a
   status popover. A turn ending does not prove that all background tasks finished.

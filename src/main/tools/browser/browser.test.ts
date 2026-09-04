@@ -87,6 +87,67 @@ test('wait_for reports an unmet wait as a failure the model can act on', async (
   assert.match(textOf(result), /Not ready: still "dom-ready" when the 1s wait ended/)
 })
 
+const apiBody = JSON.stringify({ data: { items: [{ name: 'One', mrr: 1 }, { name: 'Two', mrr: 2 }] } })
+
+function jsonHarness(seen: unknown[] = [], overrides: Record<string, unknown> = {}) {
+  return harness({
+    fetchPage: async (tabId, request) => (seen.push([tabId, request]), {
+      url: 'https://a.test/api',
+      status: 200,
+      ok: true,
+      contentType: 'application/json',
+      text: apiBody,
+      bodyLength: apiBody.length,
+      truncated: false,
+      ...overrides
+    } as Awaited<ReturnType<BrowserToolHost['fetchPage']>>)
+  })
+}
+
+test('fetch calls from inside the tab and parses a JSON response', async () => {
+  const seen: unknown[] = []
+  const { call } = jsonHarness(seen)
+  const result = await call({
+    action: 'fetch', url: '/api', method: 'POST', body: '{"page":1}', headers: { 'content-type': 'application/json' }
+  })
+  assert.equal(result.isError, undefined)
+  assert.deepEqual(seen[0], [undefined, {
+    url: '/api', method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"page":1}'
+  }])
+  const payload = JSON.parse(textOf(result)) as { status: number; json: { data: { items: unknown[] } } }
+  assert.equal(payload.status, 200)
+  assert.equal(payload.json.data.items.length, 2)
+})
+
+test('fetch reports a missing tab rather than pretending the request ran', async () => {
+  const { call } = harness()
+  const result = await call({ action: 'fetch', url: '/api', tab_id: 'missing' })
+  assert.equal(result.isError, true)
+  assert.match(textOf(result), /No tab with id missing/)
+})
+
+test('extract returns only the projected fields and reports what it dropped', async () => {
+  const { call } = jsonHarness()
+  const result = await call({ action: 'extract', url: '/api', path: 'data.items', fields: ['name'], limit: 1 })
+  const payload = JSON.parse(textOf(result)) as { matched: number; returned: number; limited: boolean; value: unknown }
+  assert.deepEqual(payload.value, [{ name: 'One' }])
+  assert.equal(payload.matched, 2)
+  assert.equal(payload.returned, 1)
+  assert.equal(payload.limited, true)
+})
+
+test('extract fails with advice when the path or the content is wrong', async () => {
+  const { call } = jsonHarness()
+  const noPath = await call({ action: 'extract', url: '/api', path: 'data.missing' })
+  assert.equal(noPath.isError, true)
+  assert.match(textOf(noPath), /No value at path "data.missing"/)
+
+  // The default harness page is prose, not JSON: extract should say so instead of half-parsing it.
+  const notJson = await call({ action: 'extract' })
+  assert.equal(notJson.isError, true)
+  assert.match(textOf(notJson), /is not a JSON document/)
+})
+
 test('invalid arguments are rejected per action', async () => {
   const { call } = harness()
   // The registry checks the advertised union schema first (enum), then the action's own schema.
