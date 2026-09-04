@@ -3,40 +3,32 @@ import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import { Checkbox } from 'radix-ui'
 import { Button } from '../../components/ui/button.js'
 import { cn } from '../../lib/utils.js'
-import { CREDENTIAL_SERVICE_LOGOS, type CredentialServiceId } from './credential-service-logos.js'
+import {
+  CREDENTIAL_SERVICES,
+  type CredentialImportDifficulty,
+  type CredentialServiceId,
+  type CredentialServiceSpec
+} from '../../shared/credentials.js'
+import { CREDENTIAL_SERVICE_LOGOS } from './credential-service-logos.js'
 
 /**
- * "Import from other services" step, reproduced from the ReUI `settings-1`
- * block (https://reui.io/blocks/application/settings). The block's source is
- * behind a Pro license, so this is rebuilt from its rendered markup and
- * computed styles: a Card with a 3-column grid of selectable Frame cards, a
- * corner checkbox, a brand tile, a title row with an import-difficulty badge,
- * a description, and a footer with Go back / Next step. Selection is capped
- * and a click past the cap is silently ignored, exactly as the block behaves.
+ * "Import from other services" step, reproduced from the ReUI `settings-1` block
+ * (https://reui.io/blocks/application/settings). The block's source is behind a Pro
+ * license, so this is rebuilt from its rendered markup and computed styles: a Card
+ * with a grid of selectable Frame cards, a corner checkbox, a brand tile, a title row
+ * with an import-difficulty badge, a description, and a footer. Selection is capped and
+ * a click past the cap is silently ignored, exactly as the block behaves.
+ *
+ * `ServiceSelectGrid` is the grid on its own, which the credential wizard embeds as its
+ * first step; `ImportServicesStep` is the full standalone card.
  */
 
-export type ImportDifficulty = 'easy' | 'two-step'
+/** The nine branded services of the block; the vault also offers a Custom entry. */
+export const IMPORT_SERVICES: readonly CredentialServiceSpec[] = CREDENTIAL_SERVICES.filter(
+  (service) => service.id !== 'custom'
+)
 
-export type ImportService = {
-  id: CredentialServiceId
-  name: string
-  description: string
-  difficulty: ImportDifficulty
-}
-
-export const DEFAULT_IMPORT_SERVICES: ImportService[] = [
-  { id: 'stripe', name: 'Stripe', description: 'Payment processing platform for online transactions.', difficulty: 'easy' },
-  { id: 'supabase', name: 'Supabase', description: 'Open-source Firebase alternative with database and authentication.', difficulty: 'easy' },
-  { id: 'openai', name: 'OpenAI', description: 'AI models and APIs for building intelligent applications.', difficulty: 'easy' },
-  { id: 'discord', name: 'Discord', description: 'Communication platform for communities with chat and voice.', difficulty: 'easy' },
-  { id: 'anthropic', name: 'Anthropic', description: 'AI safety company building reliable and interpretable AI systems.', difficulty: 'two-step' },
-  { id: 'resend', name: 'Resend', description: 'Modern email API built for developers with great deliverability.', difficulty: 'easy' },
-  { id: 'neon', name: 'Neon', description: 'Serverless Postgres database with branching and auto-scaling.', difficulty: 'two-step' },
-  { id: 'planetscale', name: 'PlanetScale', description: 'MySQL-compatible serverless database with branching workflows.', difficulty: 'two-step' },
-  { id: 'redis', name: 'Redis', description: 'In-memory data store for caching, messaging, and real-time apps.', difficulty: 'easy' }
-]
-
-const DIFFICULTY_BADGE: Record<ImportDifficulty, { label: string; className: string }> = {
+const DIFFICULTY_BADGE: Record<CredentialImportDifficulty, { label: string; className: string }> = {
   easy: {
     label: 'Easy Import',
     className: 'border-blue-500/15 bg-blue-500/10 text-blue-600 dark:border-blue-400/25 dark:bg-blue-400/15 dark:text-blue-400'
@@ -47,9 +39,50 @@ const DIFFICULTY_BADGE: Record<ImportDifficulty, { label: string; className: str
   }
 }
 
+export type ServiceSelectGridProps = {
+  services?: readonly CredentialServiceSpec[]
+  selected: CredentialServiceId[]
+  onSelectedChange: (selected: CredentialServiceId[]) => void
+  /** Clicks past this many selections are ignored, as in the source block. */
+  maxSelections?: number
+  className?: string
+}
+
+export function ServiceSelectGrid({
+  services = IMPORT_SERVICES,
+  selected,
+  onSelectedChange,
+  maxSelections = 2,
+  className
+}: ServiceSelectGridProps): JSX.Element {
+  const idPrefix = useId()
+
+  const toggle = (id: CredentialServiceId, checked: boolean): void => {
+    if (checked) {
+      if (selected.includes(id) || selected.length >= maxSelections) return
+      onSelectedChange([...selected, id])
+      return
+    }
+    onSelectedChange(selected.filter((entry) => entry !== id))
+  }
+
+  return (
+    <div className={cn('grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3', className)}>
+      {services.map((service) => (
+        <ServiceCard
+          key={service.id}
+          service={service}
+          inputId={`${idPrefix}-service-${service.id}`}
+          checked={selected.includes(service.id)}
+          onCheckedChange={(checked) => toggle(service.id, checked)}
+        />
+      ))}
+    </div>
+  )
+}
+
 export type ImportServicesStepProps = {
-  services?: ImportService[]
-  /** Maximum number of services that can be selected at once. Block default is 2. */
+  services?: readonly CredentialServiceSpec[]
   maxSelections?: number
   selected?: CredentialServiceId[]
   onSelectedChange?: (selected: CredentialServiceId[]) => void
@@ -63,7 +96,7 @@ export type ImportServicesStepProps = {
 }
 
 export function ImportServicesStep({
-  services = DEFAULT_IMPORT_SERVICES,
+  services = IMPORT_SERVICES,
   maxSelections = 2,
   selected,
   onSelectedChange,
@@ -77,20 +110,10 @@ export function ImportServicesStep({
 }: ImportServicesStepProps): JSX.Element {
   const [internal, setInternal] = useState<CredentialServiceId[]>([])
   const value = selected ?? internal
-  const idPrefix = useId()
 
   const setSelected = (next: CredentialServiceId[]): void => {
     if (selected === undefined) setInternal(next)
     onSelectedChange?.(next)
-  }
-
-  const toggle = (id: CredentialServiceId, checked: boolean): void => {
-    if (checked) {
-      if (value.includes(id) || value.length >= maxSelections) return
-      setSelected([...value, id])
-      return
-    }
-    setSelected(value.filter((entry) => entry !== id))
   }
 
   return (
@@ -110,17 +133,13 @@ export function ImportServicesStep({
         </div>
       </div>
 
-      <div data-slot="card-content" className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 md:grid-cols-3">
-        {services.map((service) => (
-          <ServiceCard
-            key={service.id}
-            service={service}
-            inputId={`${idPrefix}-import-service-${service.id}`}
-            checked={value.includes(service.id)}
-            onCheckedChange={(checked) => toggle(service.id, checked)}
-          />
-        ))}
-      </div>
+      <ServiceSelectGrid
+        className="px-4"
+        services={services}
+        selected={value}
+        onSelectedChange={setSelected}
+        maxSelections={maxSelections}
+      />
 
       <div data-slot="card-footer" className="flex items-center justify-between border-t p-4">
         <Button type="button" variant="outline" size="sm" className="rounded-[10px]" onClick={onBack}>
@@ -137,7 +156,7 @@ export function ImportServicesStep({
 }
 
 type ServiceCardProps = {
-  service: ImportService
+  service: CredentialServiceSpec
   inputId: string
   checked: boolean
   onCheckedChange: (checked: boolean) => void
@@ -174,6 +193,8 @@ function ServiceCard({ service, inputId, checked, onCheckedChange }: ServiceCard
             <Checkbox.Root
               id={inputId}
               data-slot="checkbox"
+              data-ui="credentials.service"
+              data-ui-key={service.id}
               checked={checked}
               onCheckedChange={(next) => onCheckedChange(next === true)}
               aria-label={`Select ${service.name}`}
@@ -182,8 +203,7 @@ function ServiceCard({ service, inputId, checked, onCheckedChange }: ServiceCard
                 'border-foreground/15 bg-foreground/[0.045] shadow-xs transition-colors',
                 'after:absolute after:-inset-x-3 after:-inset-y-2',
                 'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                'data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground',
-                'disabled:cursor-not-allowed disabled:opacity-50'
+                'data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
               )}
             >
               <Checkbox.Indicator
@@ -208,7 +228,7 @@ function ServiceCard({ service, inputId, checked, onCheckedChange }: ServiceCard
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold">{service.name}</h2>
                 <span
                   data-slot="badge"
