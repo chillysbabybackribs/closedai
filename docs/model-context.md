@@ -29,8 +29,9 @@ browser visibility. Browser pages use the CDP tools described in [Tools](tools.m
 Use `layout.new-chat` to add a conversation tab, `layout.tab` to select one, and `layout.tab-close`
 to remove it from the tile; each control's item is the chat id. Switching or removing a tab does
 not stop its running turn or delete its history.
-The common routing policy prefers deterministic commands, page APIs, fetch/extract, and non-input
-CDP. Real clicks, manual typing, key presses, and raw `Input.*` commands are recorded escape hatches:
+The common routing policy prefers deterministic commands, page APIs, the session-owned
+`embedded_browser.network` and `session` tools, page `query`/`evaluate`/`console`, fetch/extract,
+and non-input CDP. Real clicks, manual typing, key presses, and raw `Input.*` commands are recorded escape hatches:
 the call requires `fallback_reason` and belongs in one batch with inspection and post-action
 verification. For Codex the containing exec script is the batch; direct-call lanes use `tool_batch`.
 The tool runtime distinguishes those two dispatch sources and refuses unbatched real input from a

@@ -174,8 +174,12 @@ function isVerificationCall(call: BatchCall): boolean {
     return ['targets', 'events', 'requests', 'body'].includes(action)
   }
   if (call.namespace === 'embedded_browser' && call.tool === 'page') {
-    return ['read_page', 'wait_for', 'extract'].includes(action)
+    return ['read_page', 'wait_for', 'extract', 'query', 'console'].includes(action)
   }
+  if (call.namespace === 'embedded_browser' && call.tool === 'network') {
+    return ['requests', 'wait', 'body', 'rules'].includes(action)
+  }
+  if (call.namespace === 'embedded_browser' && call.tool === 'session') return action === 'cookies'
   return call.namespace === 'closedai_ui' && call.tool === 'capture' &&
     ['app_window', 'browser_page'].includes(action)
 }

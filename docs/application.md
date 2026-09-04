@@ -291,6 +291,19 @@ the tab forward, waits for rendering after a switch, and reports `activatedTab: 
 if the browser page cannot be shown. Captures use a rendering lease and readiness checks;
 shared frame settling lives in `browser-frame-settle.ts`. See [CDP](cdp-tool-foundation.md).
 
+Because the app owns the session, it records the browser without a debugger.
+`src/main/browser-network/` holds that: `BrowserObservers` installs a session-level network
+observer on Electron's `webRequest` stages (every request from every tab with headers, status,
+timing, redirects, post data, and a rule engine that blocks, redirects, or rewrites headers at
+the blocking stages) and attaches a per-tab console capture on `console-message` with navigation
+markers. The request-header stage is shared with identity normalisation in
+`browser-auth-client-hints.ts`, which composes the rules through its injector because Electron
+keeps one listener per stage. `browser-network-access.ts` exposes the log, rules, session fetch,
+and cookies to the `embedded_browser.network` and `session` tools; `browser-page-evaluate.ts`
+runs `query` and `evaluate` through `executeJavaScript` on the tab's WebContents. Response
+bodies come from the tab's CDP Network buffer when one exists and otherwise from replaying the
+recorded request on the session.
+
 ## Ownership map
 
 | Concern | Source of truth |
@@ -306,6 +319,7 @@ shared frame settling lives in `browser-frame-settle.ts`. See [CDP](cdp-tool-fou
 | Provider-neutral tool definitions and execution | `src/main/tools/` |
 | Deterministic app commands and renderer control access | `src/main/app-commands.ts`, `src/main/app-automation-*.ts`, `src/shared/ui-controls.ts` |
 | Browser, history, popups, CDP sessions and input | `src/main/browser-*.ts`, `src/main/cdp/` |
+| Session network record, interception rules, console capture, session fetch and cookies | `src/main/browser-network/`, `src/main/browser-network-access.ts` |
 | Typed IPC contract and narrow preload | `src/shared/api.ts`, `src/preload/index.ts` |
 | Chat/project/sidebar orchestration | `src/renderer/chat-pane.tsx`, `src/renderer/project-menu.tsx`, `src/renderer/side-drawer/` |
 | Transcript steps, background work, response actions | `src/renderer/transcript-rows.ts`, `src/renderer/activity-steps.ts`, `src/renderer/background-tasks.tsx`, `src/renderer/message-actions.tsx` |
