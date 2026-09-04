@@ -82,6 +82,14 @@ The workspace navigation namespace is chosen once from the initial cwd when the 
 created. Switching projects does not rebuild it; it continues to describe the indexed checkout.
 The model's orientation capsule is independently scoped to its session cwd.
 
+The renderer can show several chats at once. `closedai_app.state` UI facts include
+`layout.visiblePaneIds` and `layout.browserVisible`; composer facts describe the focused tile.
+`closedai_app.ui` chat/composer control ids resolve within that tile. Focus a different tile with
+`layout.pane-drag` and its chat id before interacting, or use deterministic pane-id commands.
+The `layout` control family exposes split, hide, add-chat, browser-toggle, and resize controls.
+Hiding a tile keeps its turn running; `close_chat` still detaches and stops it. A hidden browser
+keeps its tabs, but semantic page input still requires a visible page.
+
 ### Versioned source and predictable follow-up lookups (2026-09-04)
 
 Workspace `find` enriches a unique exact exported declaration by default (`include_source: false`

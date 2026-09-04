@@ -1,6 +1,6 @@
 # Application guide
 
-Source review: 2026-09-03, including the current uncommitted changes. This describes implemented
+Source review: 2026-09-04, including the current uncommitted changes. This describes implemented
 behavior, not a new live UI or provider verification. Protocol measurements retain their dates
 in the provider guides.
 
@@ -12,8 +12,9 @@ archived flag, and any continuation digest or checkpoint. Records outlive panes,
 processes, and relaunches. `ChatPeerManager` owns the active project's *attached* chats: an
 attached chat has a pane, and **the pane id is the chat id**. Each attached chat has its own
 `ChatHub`, provider settings (`PeerSettings`, a projection of the record), and conversation state;
-only the selected pane is displayed. A background pane can continue its turn while another pane is
-selected. Detaching a pane stops its runtime and keeps the record, so the drawer row and its review
+multiple panes can be displayed together in a resizable chat layout. Selection identifies the focused
+chat independently of visibility. A background pane can continue its turn while another pane is
+selected. Hiding a tile only removes it from the layout. Detaching a pane stops its runtime and keeps the record, so the drawer row and its review
 state never change identity. The embedded browser belongs to the application and is shared across
 panes and project switches.
 
@@ -84,17 +85,17 @@ killed at quit (`src/main/process-tree.ts`). Titles and last turn-boundary times
 the record so dormant chats can still be named after a restart.
 
 Startup, new chat, and opening a chat trim attached panes toward eight, least recently active
-first. The selected pane, active turns, operations in flight, and undelivered continuation
+first. The selected and visible panes, active turns, operations in flight, and undelivered continuation
 digests are protected, so this is not a hard concurrency limit. Detaching keeps the record and
 its provider thread; the chat reopens from the drawer under the same id. A blank new chat (no
-thread, no messages, no continuation, no open or wake in flight) is discarded when the user leaves
-it; anything else is kept.
+thread, no messages, no continuation, no open or wake in flight) may be discarded when the user leaves
+it, but a chat still visible in the layout is retained.
 
 `newChat` creates the record, attaches and selects it, announces the workspace before any
 settings write, then wakes it; “Continue in new chat” takes the same path. `openChat(chatId)`
 selects an attached chat, or attaches a detached one and resumes from its thread ids without
-minting a new id. Main decides where it opens: in place only when the selected chat is blank,
-otherwise beside it.
+minting a new id. Main retains existing attached chats unless a departed chat is blank and no
+longer visible. The renderer decides which tile displays a selected chat, as described below.
 
 Continuation creates a new pane with a local transcript digest, delivered once on its next
 message. Branching from a completed response limits that digest to the chosen response; it
@@ -116,6 +117,35 @@ is not carried. Missing boundaries (including legacy continuations) fail closed.
 existing provider stores; no second transcript archive or automatic provider-session rotation
 is introduced. See [Model context](model-context.md) for trust and [Tools](tools.md) for limits.
 
+## Workspace layout
+
+The sidebar, chat layout, and shared browser are independent regions. Two full-height chats can
+sit side by side while both the sidebar and browser remain open. The browser stays docked on the
+right; its toolbar toggle hides/restores its native view without closing tabs. The sidebar keeps
+its existing toggle. Chat headers offer **New chat to the right**, **New chat below**, and **Hide
+chat pane**. Hiding a tile neither detaches its runtime nor stops its turn; closing a drawer row
+still detaches and stops it.
+
+Drag a chat header or sidebar chat row onto another tile's left, right, top, or bottom edge. A
+highlight previews the destination. Moving a tile collapses its former empty split, and its
+mounted composer, draft, attachments, and transcript scroller survive the move. **Add existing
+chat** adds a stored chat beside the focused tile. A normal sidebar click focuses an existing tile
+or replaces the focused tile, leaving the other tiles in place. New Agent and continuation select
+a chat in the focused tile; the split buttons explicitly add another tile.
+
+Dividers resize horizontal and vertical splits independently; arrow keys resize a focused chat
+divider and double-click resets it to equal proportions. Nested splits support columns, rows,
+and quadrants, up to 32 visible chats. A tile has a 300 × 280 px minimum; the chat area scrolls
+when a small window cannot fit the chosen arrangement. Narrow tiles use compact composer
+controls. Browser visibility and the chat tree, including divider ratios, are saved per project
+in renderer localStorage. Missing/archived chats are removed from a restored layout.
+
+`src/renderer/chat-layout/` owns the tree, geometry, persistence, and tile controls.
+`chat.setVisiblePanes(cwd, paneIds)` registers display subscriptions and protects visible chats
+from attachment trimming and blank-chat cleanup. It ignores stale project updates. The shared
+snapshot's `panes` map contains the bounded visible views; `selected` remains the focus view for
+existing consumers. Hidden panes retain their main-process state but do not stream text over IPC.
+
 ## Chat surface
 
 - The sidebar is driven by the workspace's chat records: the `chats` event carries one
@@ -131,8 +161,8 @@ is introduced. See [Model context](model-context.md) for trust and [Tools](tools
   reviewed without moving it. A new turn returns it to Current, while a reviewed chat with no new
   activity moves to History after ten minutes. Unreviewed completions never expire, and the queue
   is pruned against the store's chat ids, not attached panes, so a completion survives detaching
-  and relaunch. History is ordered by last activity. Clicking any row calls `openChat`; main decides
-  in-place versus beside. Closing an attached row keeps the chat in History (or Pinned); deleting a detached
+  and relaunch. History is ordered by last activity. Clicking any row calls `openChat`; the layout focuses its tile if already visible,
+  otherwise it replaces the focused tile. Closing an attached row keeps the chat in History (or Pinned); deleting a detached
   row archives it. Failures from opening, new chat, stop, archive, search, or the background
   catalog refresh show in the drawer footer for eight seconds instead of being swallowed.
   `listChats` answers from the store at once, then reconciles the providers' thread catalogs in
@@ -141,9 +171,10 @@ is introduced. See [Model context](model-context.md) for trust and [Tools](tools
   Peer-summary updates are throttled to 200 ms during streaming and a pending update is flushed on
   stop. Summaries update from events, carry `running` from one source (the hub's active turn),
   never reset a title to a placeholder on a wake, retain transcript order during late tool updates,
-  and cap previews at 240 characters. Only the selected pane's events cross chat IPC; main-process
-  transcripts and trace observers still receive every pane's events. Selecting a background pane
-  delivers its current snapshot before subsequent deltas. The sidebar uses a separate snapshot
+  and cap previews at 240 characters. The selected and visible panes' events cross chat IPC; main-process
+  transcripts and trace observers still receive every pane's events. Registering visible panes
+  delivers bounded snapshots before subsequent deltas, with actions and history pages routed by
+  pane id. Focus changes preserve earlier pages already loaded in other visible panes. The sidebar uses a separate snapshot
   that stays stable during text/output deltas, keeping its row calculations out of the token stream.
 - Chat events are batched by animation frame. Markdown renders that frame's current text without
   another timer, including the final chunk when a task completes. Code highlighting remains

@@ -18,11 +18,14 @@ every running model's prompt.
 | Checkout orientation | `src/main/chat-context/workspace-navigation.ts` | App-authored prose plus the generated repository map from `workspace-map.ts`, only when the session cwd matches `WORKSPACE_INDEX_ROOT` |
 | Repository rules | `src/main/chat-context/workspace-rules.ts`, root `AGENTS.md`, applicable `CLAUDE.md` | Codex loads `AGENTS.md` natively; Claude and Antigravity receive the selected workspace root policy explicitly; Claude also loads project `CLAUDE.md` through the SDK |
 
-The common product facts explain separate chat panes, their shared browser, and the distinction
+The common product facts explain independently arranged, simultaneously visible chat panes, their
+hideable shared browser, and the distinction
 between pane turns and provider background work. App facts come from `closedai_app.state`,
 service operations from `closedai_app.command`, and real renderer interaction from manifest
 control ids through `closedai_app.ui`. Other panes are readable through `peer_chats`.
-Browser pages use the CDP tools described in [Tools](tools.md) and [CDP](cdp-tool-foundation.md).
+Renderer chat/composer control ids target the focused tile; use `layout.pane-drag` with a chat id
+to focus another tile before exercising its controls. The UI state includes visible pane ids and
+browser visibility. Browser pages use the CDP tools described in [Tools](tools.md) and [CDP](cdp-tool-foundation.md).
 The common routing policy prefers deterministic commands, page APIs, fetch/extract, and non-input
 CDP. Real clicks, manual typing, key presses, and raw `Input.*` commands are recorded escape hatches:
 the call requires `fallback_reason` and belongs in one batch with inspection and post-action
