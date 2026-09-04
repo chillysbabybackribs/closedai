@@ -1,5 +1,7 @@
 import type { PageFetchRequest, PageFetchResult } from '../../browser-page-fetch.js'
 import type { PageReadiness, PageReadyResult, PageText } from '../../browser-page-ready.js'
+import type { PageEvaluateRequest, PageEvaluateResult, PageQueryRequest, PageQueryResult } from '../../browser-page-evaluate.js'
+import type { ConsoleFilter, ConsoleListing } from '../../browser-network/console-log.js'
 import type { BrowserTabInfo } from '../../../shared/types.js'
 
 export type NavigateOutcome =
@@ -23,6 +25,12 @@ export type BrowserToolHost = {
   navigate(url: string, options: { tabId?: string; newTab: boolean; ready: PageReadiness }): Promise<NavigateOutcome>
   /** Null when the tab does not exist. */
   waitFor(tabId: string | undefined, ready: PageReadiness): Promise<PageReadyResult | null>
+  /** Run JavaScript in the tab's main frame; null when the tab is gone. */
+  evaluate(tabId: string | undefined, request: PageEvaluateRequest): Promise<PageEvaluateResult | null>
+  /** Structured facts for every element matching a selector; null when the tab is gone. */
+  query(tabId: string | undefined, request: PageQueryRequest): Promise<PageQueryResult | null>
+  /** The tab's captured console; null when the tab does not exist. */
+  consoleMessages(tabId: string | undefined, filter: Omit<ConsoleFilter, 'tabId'>): ConsoleListing | null
 }
 
 /** Resolved lazily: the browser is created after the chat service. */

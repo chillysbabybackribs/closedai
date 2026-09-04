@@ -1,5 +1,5 @@
 export type DockEdge = 'left' | 'right' | 'top' | 'bottom'
-export type ChatLayout = { kind: 'pane'; id: string } | {
+export type ChatLayout = { kind: 'pane'; id: string; tabs?: string[] } | {
   kind: 'split'; id: string; axis: 'horizontal' | 'vertical'; ratio: number
   first: ChatLayout; second: ChatLayout
 }
@@ -18,7 +18,8 @@ export function removePane(tree: ChatLayout | null, id: string): ChatLayout | nu
 }
 
 export function replacePane(tree: ChatLayout, target: string, id: string): ChatLayout {
-  if (tree.kind === 'pane') return tree.id === target ? { kind: 'pane', id } : tree
+  if (tree.kind === 'pane') return tree.id === target ? { ...tree, id,
+    ...(tree.tabs ? { tabs: tree.tabs.map((tab) => tab === target ? id : tab) } : {}) } : tree
   return { ...tree, first: replacePane(tree.first, target, id), second: replacePane(tree.second, target, id) }
 }
 
@@ -26,11 +27,14 @@ export function replacePane(tree: ChatLayout, target: string, id: string): ChatL
 export function dockPane(tree: ChatLayout | null, id: string, target: string, edge: DockEdge, splitId: string): ChatLayout {
   if (!tree) return { kind: 'pane', id }
   if (id === target || !paneIds(tree).includes(target)) return tree
+  const source = (node: ChatLayout): ChatLayout | null => node.kind === 'pane'
+    ? node.id === id ? node : null : source(node.first) ?? source(node.second)
+  const moved = source(tree)
   const pruned = removePane(tree, id)!
   const insert = (node: ChatLayout): ChatLayout => {
     if (node.kind === 'split') return { ...node, first: insert(node.first), second: insert(node.second) }
     if (node.id !== target) return node
-    const added: ChatLayout = { kind: 'pane', id }
+    const added: ChatLayout = moved ?? { kind: 'pane', id }
     const before = edge === 'left' || edge === 'top'
     return { kind: 'split', id: splitId, ratio: 0.5,
       axis: edge === 'left' || edge === 'right' ? 'horizontal' : 'vertical',
@@ -56,10 +60,10 @@ export function minimumSize(tree: ChatLayout): { width: number; height: number }
 
 /** Flat geometry keeps React pane keys and composer state stable across tree rearrangements. */
 export function layoutGeometry(tree: ChatLayout, width: number, height: number) {
-  const panes: Array<{ id: string; rect: Rect }> = []
+  const panes: Array<{ id: string; tabs: string[]; rect: Rect }> = []
   const dividers: Array<{ id: string; axis: 'horizontal' | 'vertical'; rect: Rect; parent: Rect; ratio: number; min: number; max: number }> = []
   const visit = (node: ChatLayout, rect: Rect): void => {
-    if (node.kind === 'pane') { panes.push({ id: node.id, rect }); return }
+    if (node.kind === 'pane') { panes.push({ id: node.id, tabs: node.tabs ?? [node.id], rect }); return }
     const horizontal = node.axis === 'horizontal'
     const dimension = horizontal ? 'width' : 'height'
     const available = rect[dimension] - 5
@@ -89,11 +93,21 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, cwd: string): Save
   try {
     const raw = JSON.parse(storage.getItem(storageKey(cwd)) ?? 'null') as SavedChatLayout | null
     const seen = new Set<string>()
+    const chats = new Set<string>()
     const validate = (node: ChatLayout | null, depth = 0): boolean => {
       if (!node || depth > 31 || typeof node.id !== 'string' || !node.id || seen.has(node.id)) return false
       seen.add(node.id)
       if (seen.size > 63) return false
-      return node.kind === 'pane' || (node.kind === 'split' && ['horizontal', 'vertical'].includes(node.axis)
+      if (node.kind === 'pane') {
+        const tabs = node.tabs ?? [node.id]
+        if (!Array.isArray(tabs) || !tabs.includes(node.id) || !tabs.length) return false
+        for (const id of tabs) {
+          if (typeof id !== 'string' || !id || chats.has(id)) return false
+          chats.add(id)
+        }
+        return true
+      }
+      return (node.kind === 'split' && ['horizontal', 'vertical'].includes(node.axis)
         && Number.isFinite(node.ratio) && node.ratio >= 0.05 && node.ratio <= 0.95
         && validate(node.first, depth + 1) && validate(node.second, depth + 1))
     }
