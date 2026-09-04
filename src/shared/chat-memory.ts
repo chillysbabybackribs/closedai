@@ -19,6 +19,8 @@ export type ChatMemoryCheckpoint = {
 
 export type ChatRecallRequest = {
   scope: 'current' | 'source'
+  /** Item kinds to search; every recallable kind when omitted or empty. */
+  types?: readonly string[]
   query?: string
   itemId?: string
   offset?: number
