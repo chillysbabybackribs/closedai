@@ -317,10 +317,7 @@ function batchResourceKey(call: BatchCall): string | null {
   return null
 }
 
-/**
- * One text item for the whole batch so the registry's per-item size cap bounds the batch
- * as a unit; images keep their fidelity as separate items appended in call order.
- */
+/** Separate call blocks let the registry's aggregate budget preserve short failures and ids. */
 function assembleResult(calls: BatchCall[], outcomes: BatchOutcome[]): ToolResult {
   const sections: string[] = []
   const images: ToolContent[] = []
@@ -349,7 +346,11 @@ function assembleResult(calls: BatchCall[], outcomes: BatchOutcome[]): ToolResul
   })
   const summary = `${succeeded} of ${calls.length} calls succeeded${skipped ? ` (${skipped} skipped)` : ''}.`
   return {
-    content: [{ type: 'text', text: `${summary}\n\n${sections.join('\n\n')}` }, ...images],
+    content: [
+      { type: 'text', text: summary },
+      ...sections.map((section): ToolContent => ({ type: 'text', text: section })),
+      ...images
+    ],
     // Partial success is success: the model needs the surviving results, not a retry loop.
     ...(succeeded === 0 ? { isError: true } : {})
   }
