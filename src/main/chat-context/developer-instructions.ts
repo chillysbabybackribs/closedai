@@ -6,7 +6,6 @@ import {
   CODEX_EXEC_TOOL_BATCHING_INSTRUCTION,
   EVIDENCE_CLAIMS_INSTRUCTION
 } from './product-instructions.js'
-import { nestedWorkspaceRulesNote } from './workspace-rules.js'
 
 const INSTRUCTIONS = [
   UNIVERSAL_ARTICULATION_INSTRUCTIONS,
@@ -21,13 +20,7 @@ const INSTRUCTIONS = [
   'Poll commands with write_stdin, never rerun. Browser navigate defaults to dom-ready; wait_for handles load, idle, and selectors.'
 ].join('\n')
 
-/**
- * Stable product guidance added to Codex's own base instructions for each thread. Codex loads
- * the root AGENTS.md itself, so the only rules fact worth adding is whether nested ones exist.
- */
-export function closedAiDeveloperInstructions(cwd?: string): string {
-  const rules = cwd
-    ? `The root AGENTS.md is already in this context. ${nestedWorkspaceRulesNote(cwd)}`
-    : 'The root AGENTS.md is already in this context; do not search for AGENTS.md files.'
-  return `${INSTRUCTIONS}\n${rules}`
+/** Stable product guidance; Codex handles repository instructions natively. */
+export function closedAiDeveloperInstructions(): string {
+  return INSTRUCTIONS
 }

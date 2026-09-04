@@ -1,4 +1,3 @@
-import { workspaceNavigationSection } from '../chat-context/workspace-navigation.js'
 import { UNIVERSAL_ARTICULATION_INSTRUCTIONS } from '../chat-context/articulation-instructions.js'
 import { APPLICATION_INSTRUCTIONS } from '../chat-context/application-instructions.js'
 import { engineeringInstructions } from '../chat-context/engineering-instructions.js'
@@ -26,9 +25,8 @@ const INSTRUCTIONS = [
   engineeringInstructions('cursor')
 ].join('\n')
 
-/** Stable product guidance for every Cursor session, plus orientation when the workspace is this checkout. */
+/** Product guidance and the selected workspace's root policy. */
 export function cursorSystemInstructions(cwd: string): string {
-  const navigation = workspaceNavigationSection(cwd)
   const rules = workspaceRulesSection(cwd)
-  return [INSTRUCTIONS, navigation, rules].filter(Boolean).join('\n\n')
+  return [INSTRUCTIONS, rules].filter(Boolean).join('\n\n')
 }
