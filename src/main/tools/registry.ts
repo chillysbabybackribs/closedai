@@ -152,7 +152,7 @@ export class ToolRegistry {
   private async run(request: ToolCallRequest, context: ToolCallContext): Promise<ToolResult> {
     const label = request.namespace ? `${request.namespace}.${request.tool}` : request.tool
     const definition = this.find(request.namespace, request.tool)
-    if (!definition) return failureResult(`Unknown tool: ${label}`)
+    if (!definition) return failureResult(this.unknownToolMessage(label, request))
     const owner = this.namespaces.find((entry) => entry.tools.includes(definition))
     const toolId = owner ? `${owner.name}.${definition.name}` : label
     const input = request.arguments ?? {}
@@ -192,6 +192,24 @@ export class ToolRegistry {
     } finally {
       if (timer) clearTimeout(timer)
     }
+  }
+
+  /**
+   * A wrong name is a dead end unless the failure says what the right ones are. Naming the
+   * sibling tools of a namespace the model already found — or the whole surface when it named
+   * something this app does not own at all, usually a tool from its own harness — turns the
+   * error into the correction, for a direct call and for a batch entry alike.
+   */
+  private unknownToolMessage(label: string, request: ToolCallRequest): string {
+    const owner = request.namespace
+      ? this.namespaces.find((entry) => entry.name === request.namespace)
+      : null
+    if (owner) {
+      return `Unknown tool: ${label}. ${owner.name} has: ${owner.tools.map((tool) => tool.name).join(', ')}.`
+    }
+    return `Unknown tool: ${label}. This app's tools are: ${this.names().join(', ')}. ` +
+      'Tools your own harness provides (file read/search/edit, shell, web fetch) are not ' +
+      'ClosedAI tools; call those directly rather than through this app.'
   }
 
   private report(request: ToolCallRequest, result: ToolResult): void {
