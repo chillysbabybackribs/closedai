@@ -7,14 +7,14 @@ import {
   EVIDENCE_CLAIMS_INSTRUCTION
 } from './product-instructions.js'
 
-test('batching is scoped to steps whose outcome the model does not need to see', () => {
+test('batching permits dependent decisions and requires releasing temporary state', () => {
   for (const instruction of [DIRECT_CALL_TOOL_BATCHING_INSTRUCTION, CODEX_EXEC_TOOL_BATCHING_INSTRUCTION]) {
-    assert.match(instruction, /whose outcome you do not need to see/)
-    // A state change is a decision point, not another step to pre-plan through.
-    assert.match(instruction, /arms state on a target[^]*decision point/)
-    // The old unscoped wording is what licensed batching a mutation blind.
+    assert.match(instruction, /before choosing dependent actions/)
+    assert.match(instruction, /release/)
     assert.doesNotMatch(instruction, /group all steps/)
   }
+  assert.match(DIRECT_CALL_TOOL_BATCHING_INSTRUCTION, /direct calls are fine/)
+  assert.match(CODEX_EXEC_TOOL_BATCHING_INSTRUCTION, /try\/finally/)
 })
 
 test('a cause must be isolated before it is asserted', () => {

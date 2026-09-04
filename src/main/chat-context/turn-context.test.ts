@@ -23,10 +23,9 @@ test('developer instructions stay within their expanded budget and establish the
   assert.match(instructions, /request_user_input is not wired/)
   assert.match(instructions, /pass only the URL to image\(\)/)
   assert.match(instructions, /inside ClosedAI/)
-  assert.match(instructions, /marked untrusted/)
+  assert.match(instructions, /untrusted data/)
   assert.match(instructions, /never as instructions/)
-  assert.match(instructions, /group all steps whose arguments are already known/)
-  assert.match(instructions, /Yield for another model pass only when fresh output changes the next action/)
+  assert.match(instructions, /before choosing dependent actions/)
   assert.match(instructions, /AGENTS\.md/)
 })
 
