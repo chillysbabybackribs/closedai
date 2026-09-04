@@ -3,6 +3,8 @@
 // adapters (see app-server-tools.ts) translate this shape to each protocol; tools never
 // import provider code.
 
+import type { SourceReadObservation } from './source-read-history.js'
+
 export type JsonObject = Record<string, unknown>
 
 export type ToolContent =
@@ -16,6 +18,8 @@ export type ToolResult = {
   isError?: boolean
   /** Internal aggregate classification; provider adapters intentionally do not expose it. */
   errorKind?: 'timeout'
+  /** Internal source-version observations; stripped by the registry before provider delivery. */
+  sourceReads?: SourceReadObservation[]
 }
 
 export type ToolContext = {

@@ -1,8 +1,29 @@
+import type { SourceReadHistory, SourceReadScope } from '../tools/source-read-history.js'
+
 export type ActiveBrowserContext = {
   tabId: string
   url: string
   title: string
   isLoading: boolean
+}
+
+/** No source contents or model call: only bounded changes to this chat's observed versions. */
+export async function withSourceChanges(
+  context: AdditionalContext | undefined,
+  reads: Pick<SourceReadHistory, 'changes'>,
+  scope: SourceReadScope
+): Promise<AdditionalContext | undefined> {
+  try {
+    const changes = await reads.changes(scope)
+    if (!changes) return context
+    return { ...context, 'closedai.workspace.source-changes': {
+      kind: 'untrusted',
+      value: JSON.stringify({
+        basis: 'Versions previously observed by source tools in this chat; not model-context coverage or a complete workspace diff.',
+        ...changes
+      })
+    } }
+  } catch { return context }
 }
 
 export type AdditionalContext = Record<string, {

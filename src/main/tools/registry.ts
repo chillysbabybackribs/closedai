@@ -12,6 +12,7 @@ import {
   type ToolResult
 } from './tool.js'
 import { ToolResourceLocks } from './resource-locks.js'
+import { SourceReadHistory } from './source-read-history.js'
 
 export type ToolCallRequest = {
   namespace: string | null
@@ -44,6 +45,7 @@ const NAME = /^[a-z][a-z0-9_]*$/
  */
 export class ToolRegistry {
   readonly namespaces: readonly ToolNamespace[]
+  readonly sourceReads = new SourceReadHistory()
   private readonly listeners = new Set<ToolCallListener>()
   private readonly observers = new Set<ToolCallObserver>()
   private readonly disabled = new Set<string>()
@@ -131,7 +133,11 @@ export class ToolRegistry {
   async call(request: ToolCallRequest, context: ToolCallContext): Promise<ToolResult> {
     const startedAt = performance.now()
     this.notifyObservers({ phase: 'start', request, context })
-    const result = boundResult(await this.run(request, context))
+    const { sourceReads, ...publicResult } = await this.run(request, context)
+    const result = boundResult(publicResult)
+    if (!result.isError) for (const read of sourceReads ?? []) {
+      this.sourceReads.remember({ paneId: context.paneId, threadId: context.threadId, cwd: read.cwd }, read)
+    }
     this.notifyObservers({ phase: 'end', request, context, result, durationMs: performance.now() - startedAt })
     this.report(request, result)
     return result
