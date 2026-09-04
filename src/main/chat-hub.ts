@@ -152,7 +152,11 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     const target = chatProviderOfId(modelId)
     const cached = this.cachedModel(modelId)
     if (target === this.active) {
-      if (this.dormant.has(target) && cached) return this.rememberChoice(cached)
+      if (this.dormant.has(target) && cached) {
+        const effort = await this.rememberChoice(cached)
+        this.emitEvent({ type: 'model', selectedModel: cached.id, selectedReasoningEffort: effort })
+        return
+      }
       return this.current().selectModel(modelId)
     }
     // The visible conversation, not just this provider's part of it, is what moves.
@@ -264,16 +268,18 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   private static effortFor(model: ChatModel, preferred: string | null): string | null {
-    if (model.supportedReasoningEfforts.length === 0) return null
     if (preferred && model.supportedReasoningEfforts.some((option) => option.reasoningEffort === preferred)) return preferred
     return model.defaultReasoningEffort || null
   }
 
-  /** Record the pick on the pane; the provider reads it when it starts. */
-  private async rememberChoice(model: ChatModel): Promise<void> {
-    const effort = ChatHub.effortFor(model, this.settings.get().chatReasoningEffort)
-    await this.settings.set({ chatModelId: model.id, chatReasoningEffort: effort })
-    this.emitEvent({ type: 'model', selectedModel: model.id, selectedReasoningEffort: effort })
+  /** Record the pick on the pane; the provider reads it when it starts. A pick already saved is not rewritten. */
+  private async rememberChoice(model: ChatModel): Promise<string | null> {
+    const saved = this.settings.get()
+    const effort = ChatHub.effortFor(model, saved.chatReasoningEffort)
+    if (saved.chatModelId !== model.id || saved.chatReasoningEffort !== effort) {
+      await this.settings.set({ chatModelId: model.id, chatReasoningEffort: effort })
+    }
+    return effort
   }
 
   /**
@@ -290,7 +296,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     this.dormant.add(target)
     this.switching = (async () => {
       try {
-        await this.settings.set({ chatModelId: model.id, chatReasoningEffort: ChatHub.effortFor(model, null) })
+        await this.rememberChoice(model)
         await this.carryConversation(source, target)
         this.providers[previous].stop()
         this.emitEvent({ type: 'replace', snapshot: this.merge(this.preserveSourceHistory(source, this.current().snapshot())) })
