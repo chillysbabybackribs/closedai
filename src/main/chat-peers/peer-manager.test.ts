@@ -224,6 +224,23 @@ test('unfocused idle panes park after the grace period and wake when selected', 
   assert.equal(attached(manager).includes(paneB), true)
 })
 
+test('the selected chat parks after the longer idle window and its next message wakes it', async () => {
+  const { manager, surfaces } = harness(5)
+  await manager.start()
+  await manager.send('pane-a', 'first', [])
+  surfaces[0]!.state.activeTurnId = null
+  surfaces[0]!.emit('event', { type: 'turn', turnId: null } satisfies ChatEvent)
+
+  await new Promise((resolve) => setTimeout(resolve, 12))
+  assert.equal(surfaces[0]!.calls.includes('stop'), false, 'the selected chat outlasts the unselected grace period')
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  assert.deepEqual(surfaces[0]!.calls.filter((call) => call === 'stop'), ['stop'], 'then its runtime parks too')
+  assert.equal(attached(manager).includes('pane-a'), true)
+
+  await manager.send('pane-a', 'second', [])
+  assert.deepEqual(surfaces[0]!.calls.slice(-2), ['start', 'send:second'])
+})
+
 test('a burst of drawer refreshes scans the thread catalog once, and archiving reopens it', async () => {
   const { manager, surfaces } = harness()
   const scans = (): number => surfaces[0]!.calls.filter((call) => call === 'listThreads').length
