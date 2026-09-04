@@ -24,7 +24,9 @@ export class CursorToolBridge extends McpHttpBridge {
     return this.endpoints(key).map((endpoint) => ({
       type: 'http',
       name: endpoint.namespace,
-      url: endpoint.url
+      url: endpoint.url,
+      // Required by the `session/new` schema even when empty; omitting it is a validation error.
+      headers: []
     }))
   }
 }

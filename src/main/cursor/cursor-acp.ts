@@ -42,8 +42,11 @@ export type AcpPromptBlock = { type: 'text'; text: string } | { type: 'image'; m
 
 export type AcpStopReason = 'end_turn' | 'cancelled' | 'max_tokens' | 'refusal' | string
 
-/** An MCP server the agent should connect to for the life of a session. */
-export type AcpMcpServer = { type: 'http'; name: string; url: string }
+/**
+ * An MCP server the agent should connect to for the life of a session. `headers` is required, not
+ * optional: omitting it fails `session/new` schema validation with "expected array" (verified).
+ */
+export type AcpMcpServer = { type: 'http'; name: string; url: string; headers: Array<{ name: string; value: string }> }
 
 const PROTOCOL_VERSION = 1
 const PROMPT_TIMEOUT_MS = 60 * 60_000
