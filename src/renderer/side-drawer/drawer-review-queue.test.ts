@@ -17,6 +17,7 @@ import {
 function peer(paneId: string, running: boolean): ChatRowSummary {
   return {
     paneId,
+    pinnedAt: null,
     parentPaneId: null,
     kind: 'peer',
     provider: 'claude',

@@ -7,6 +7,7 @@ import { buildDrawerRows } from './drawer-rows.js'
 function chat(paneId: string, threadId: string | null, updatedAt: number, overrides: Partial<ChatRowSummary> = {}): ChatRowSummary {
   return {
     paneId,
+    pinnedAt: null,
     parentPaneId: null,
     kind: 'peer',
     provider: 'codex',
@@ -24,6 +25,22 @@ function chat(paneId: string, threadId: string | null, updatedAt: number, overri
     ...overrides
   }
 }
+
+test('pinning a child lifts it out of its parent without duplicating it', () => {
+  const parent = chat('parent', 'thread-parent', 100)
+  const child = chat('child', 'thread-child', 200, { parentPaneId: 'parent', pinnedAt: 300 })
+  const input = {
+    selected: selected('thread-parent', 'Parent'), selectedPaneId: 'parent',
+    chats: [parent, child], selectedDiff: { added: 0, removed: 0 }
+  }
+  const pinned = buildDrawerRows(input)
+  assert.deepEqual(pinned.map((row) => row.id), ['parent', 'child'])
+  assert.deepEqual(pinned[0]!.children, [])
+  child.pinnedAt = null
+  const unpinned = buildDrawerRows(input)
+  assert.equal(unpinned.length, 1)
+  assert.deepEqual(unpinned[0]!.children.map((row) => row.id), ['child'])
+})
 
 function selected(threadId: string, threadName: string): ChatSnapshot {
   return {

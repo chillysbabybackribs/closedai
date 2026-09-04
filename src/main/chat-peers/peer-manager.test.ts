@@ -9,6 +9,34 @@ import { traceLog } from '../trace/trace-log.js'
 const attached = (manager: ReturnType<typeof harness>['manager']): string[] =>
   manager.snapshot().chats.filter((chat) => chat.attached).map((chat) => chat.paneId)
 
+test('pins publish immediately, survive closing a blank pane, and reject unavailable chats', async (t) => {
+  const { manager, store, surfaces } = harness()
+  t.after(() => manager.stop())
+  const before = store.require('pane-a').updatedAt
+  const updates: ChatWorkspaceEvent[] = []
+  manager.on('event', (event: ChatWorkspaceEvent) => updates.push(event))
+  await manager.setChatPinned('pane-a', true)
+  const pinnedAt = store.require('pane-a').pinnedAt
+  assert.ok(pinnedAt)
+  assert.equal(store.require('pane-a').updatedAt, before)
+  assert.equal(updates.at(-1)?.type, 'chats')
+  assert.equal(manager.snapshot().chats[0]?.pinnedAt, pinnedAt)
+  assert.deepEqual(surfaces[0]!.calls, [], 'pinning never wakes the provider')
+  await manager.setChatPinned('pane-a', true)
+  assert.equal(store.require('pane-a').pinnedAt, pinnedAt)
+  await manager.newPeer()
+  await manager.closePeer('pane-a')
+  assert.equal(store.require('pane-a').pinnedAt, pinnedAt)
+  assert.equal(manager.snapshot().chats.find((chat) => chat.paneId === 'pane-a')?.attached, false)
+  await manager.setChatPinned('pane-a', false)
+  assert.equal(manager.snapshot().chats.find((chat) => chat.paneId === 'pane-a')?.pinnedAt, null)
+  const foreign = store.create({ ...store.require('pane-a'), id: 'foreign', cwd: '/elsewhere' })
+  await assert.rejects(manager.setChatPinned(foreign.id, true), /another project/)
+  await assert.rejects(manager.setChatPinned('missing', true), /no longer available/)
+  store.archive('pane-a')
+  await assert.rejects(manager.setChatPinned('pane-a', true), /no longer available/)
+})
+
 test('send captures provider dispatch and first text through the pane event path', async (t) => {
   traceLog.clear()
   const { manager, surfaces } = harness()

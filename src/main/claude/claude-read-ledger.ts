@@ -19,11 +19,12 @@ const VOLATILE_PATH = /(?:^|\/)(?:node_modules|out|dist|build|coverage|\.git)\/|
 
 export class ClaudeReadLedger {
   private readonly scopes = new Map<string, Scope>()
+  private readonly pending = new Map<string, { scope: string; state: Scope }>()
 
   constructor(private readonly onSkip?: (skip: LedgerSkip) => void) {}
 
   /** Context availability is uncertain after a new turn, compaction, or session replacement. */
-  reset(): void { this.scopes.clear() }
+  reset(): void { this.scopes.clear(); this.pending.clear() }
 
   async before(scope: string, tool: string, input: unknown, cwd: string): Promise<LedgerVerdict> {
     if (tool !== 'Read') return { kind: 'allow' }
@@ -91,10 +92,15 @@ export class ClaudeReadLedger {
     return {
       PreToolUse: matcher(async (input) => {
         if (input.hook_event_name !== 'PreToolUse') return {}
-        const verdict = await this.before(scopeOf(input), input.tool_name, input.tool_input, input.cwd)
-        if (verdict.kind === 'deny') return { hookSpecificOutput: {
-          hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: verdict.reason
-        } }
+        const scope = scopeOf(input)
+        if (input.tool_name === 'Read') this.pending.set(input.tool_use_id, { scope, state: this.scope(scope) })
+        const verdict = await this.before(scope, input.tool_name, input.tool_input, input.cwd)
+        if (verdict.kind === 'deny') {
+          this.pending.delete(input.tool_use_id)
+          return { hookSpecificOutput: {
+            hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: verdict.reason
+          } }
+        }
         if (verdict.kind === 'narrow') return { hookSpecificOutput: {
           hookEventName: 'PreToolUse', updatedInput: verdict.input, additionalContext: verdict.note
         } }
@@ -102,17 +108,29 @@ export class ClaudeReadLedger {
       }),
       PostToolUse: matcher(async (input) => {
         if (input.hook_event_name !== 'PostToolUse') return {}
-        const receipt = await this.after(scopeOf(input), input.tool_name, input.tool_input, input.tool_response, input.cwd)
+        const pending = this.pending.get(input.tool_use_id)
+        this.pending.delete(input.tool_use_id)
+        if (!pending || this.scopes.get(pending.scope) !== pending.state) return {}
+        const receipt = await this.after(pending.scope, input.tool_name, input.tool_input, input.tool_response, input.cwd)
         if (!receipt) return {}
         return { hookSpecificOutput: {
           hookEventName: 'PostToolUse',
           updatedToolOutput: { ...record(input.tool_response), closedai_read: receipt }
         } }
       }),
+      PostToolUseFailure: matcher((input) => {
+        if (input.hook_event_name === 'PostToolUseFailure') this.pending.delete(input.tool_use_id)
+        return {}
+      }),
       UserPromptSubmit: matcher(() => { this.reset(); return {} }),
-      PreCompact: matcher((input) => { this.scopes.delete(scopeOf(input)); return {} }),
-      SubagentStop: matcher((input) => { this.scopes.delete(scopeOf(input)); return {} })
+      PreCompact: matcher((input) => { this.clearScope(scopeOf(input)); return {} }),
+      SubagentStop: matcher((input) => { this.clearScope(scopeOf(input)); return {} })
     }
+  }
+
+  private clearScope(scope: string): void {
+    this.scopes.delete(scope)
+    for (const [id, pending] of this.pending) if (pending.scope === scope) this.pending.delete(id)
   }
 
   private scope(id: string): Scope {

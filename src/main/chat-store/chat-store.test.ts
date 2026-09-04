@@ -66,7 +66,7 @@ test('writes coalesce and survive a reload; remove forgets a chat outright', asy
   const file = join(dir, 'chats.json')
   const store = await ChatStore.open(file)
   const a = store.create(seed)
-  store.update(a.id, { title: 'First' })
+  store.update(a.id, { title: 'First', pinnedAt: 123 })
   const b = store.create(seed)
   store.remove(b.id)
   await store.flush()
@@ -76,6 +76,10 @@ test('writes coalesce and survive a reload; remove forgets a chat outright', asy
 
   const reopened = await ChatStore.open(file)
   assert.equal(reopened.require(a.id).title, 'First')
+  assert.equal(reopened.require(a.id).pinnedAt, 123)
+  reopened.update(a.id, { pinnedAt: null })
+  await reopened.flush()
+  assert.equal((await ChatStore.open(file)).require(a.id).pinnedAt, null)
   assert.equal(reopened.get(b.id), undefined)
 })
 
@@ -87,6 +91,10 @@ test('records read back from disk are shape-checked and legacy pane records keep
   assert.equal(loose.threadId, 'agy:c1')
   assert.equal(loose.createdAt, 7)
   assert.equal(loose.archived, false)
+  assert.equal(loose.pinnedAt, null, 'existing records start unpinned')
+  for (const pinnedAt of ['yes', -1, Infinity]) {
+    assert.equal(normalizeChatRecord({ ...loose, pinnedAt })?.pinnedAt, null)
+  }
 
   const record = chatRecordFromPeer({
     paneId: 'pane-9', provider: 'claude', threadId: 'claude:s9', codexThreadId: null, claudeSessionId: 's9',

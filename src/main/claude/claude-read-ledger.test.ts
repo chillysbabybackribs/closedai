@@ -106,6 +106,9 @@ test('native hooks preserve output, add the receipt, and forget coverage on comp
   const base = { session_id: 's', transcript_path: '/t', cwd: f.cwd }
   const options = { signal: new AbortController().signal }
   const response = await f.response()
+  await hooks.PreToolUse![0]!.hooks[0]!({
+    ...base, hook_event_name: 'PreToolUse', tool_name: 'Read', tool_input: f.args, tool_use_id: 'r'
+  }, 'r', options)
   const result = await hooks.PostToolUse![0]!.hooks[0]!({
     ...base, hook_event_name: 'PostToolUse', tool_name: 'Read', tool_input: f.args,
     tool_response: response, tool_use_id: 'r'
@@ -115,6 +118,16 @@ test('native hooks preserve output, add the receipt, and forget coverage on comp
   assert.match(updated.closedai_read.hash, /^sha256:/)
   assert.equal((await f.ledger.before('main', 'Read', f.args, f.cwd)).kind, 'deny')
   await hooks.PreCompact![0]!.hooks[0]!({ ...base, hook_event_name: 'PreCompact', trigger: 'auto', custom_instructions: null }, undefined, options)
+  assert.equal((await f.ledger.before('main', 'Read', f.args, f.cwd)).kind, 'allow')
+  await hooks.PreToolUse![0]!.hooks[0]!({
+    ...base, hook_event_name: 'PreToolUse', tool_name: 'Read', tool_input: f.args, tool_use_id: 'late'
+  }, 'late', options)
+  f.ledger.reset()
+  const late = await hooks.PostToolUse![0]!.hooks[0]!({
+    ...base, hook_event_name: 'PostToolUse', tool_name: 'Read', tool_input: f.args,
+    tool_response: response, tool_use_id: 'late'
+  }, 'late', options)
+  assert.deepEqual(late, {})
   assert.equal((await f.ledger.before('main', 'Read', f.args, f.cwd)).kind, 'allow')
 })
 

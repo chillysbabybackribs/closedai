@@ -44,6 +44,7 @@ class FakeWorkspace extends EventEmitter implements AppChatWorkspace {
       selected: this.panes.get(this.selected)!,
       chats: [...this.panes].map(([paneId, snapshot]) => ({
         paneId, parentPaneId: null, kind: 'peer', provider: 'codex', modelId: snapshot.selectedModel,
+        pinnedAt: null,
         threadId: snapshot.threadId, title: `Pane ${paneId}`, preview: '', running: snapshot.activeTurnId !== null,
         activity: null, updatedAt: 5, attached: true, cwd: '/workspace', createdAt: 5, lastTurnEndedAt: null
       }))

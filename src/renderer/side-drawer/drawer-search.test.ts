@@ -7,6 +7,7 @@ import type { DrawerRowModel } from './drawer-types.js'
 function makeRow(id: string, title: string, cwd: string | null = null, updatedAt = 1000): DrawerRowModel {
   const chat: ChatRowSummary = {
     paneId: id,
+    pinnedAt: null,
     parentPaneId: null,
     kind: 'peer',
     provider: 'codex',

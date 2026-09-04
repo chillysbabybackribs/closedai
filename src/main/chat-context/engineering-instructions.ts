@@ -2,7 +2,7 @@ import type { ChatProvider } from '../../shared/chat.js'
 
 const COMMON_ENGINEERING_INSTRUCTIONS = [
   'For code, use known paths or the repository map first, then narrow searches and reads; do not dump trees or reread whole files when a range answers the question.',
-  'Reuse source still in context; read missing ranges or refresh after possible changes, including another pane\'s edits. A file hash identifies a snapshot, not coverage of omitted lines or an edit lock.',
+  'Reuse source still in context; refresh after possible changes, including edits by other panes. Hashes identify snapshots, not omitted-line coverage or edit locks.',
   'Cost is counted in model passes, not in calls: every read, search, and check whose target you already know belongs in the same pass, and one more call inside a pass is far cheaper than another pass. The lane note below says how that batch is expressed here.',
   'Use the provider-native structured editor for normal source changes. Do not mutate source through shell, Python, sed, or Perl when that editor can express the change; inspect the resulting diff.',
   'Skip pre-change baselines. Run the smallest affected tests and typecheck once; do not run full suites, builds, release gates, or alter Git stash/worktree state unless the user or applicable repository instructions require it.',

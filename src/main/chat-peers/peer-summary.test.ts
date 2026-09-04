@@ -44,6 +44,7 @@ function record(overrides: Partial<ChatRecord> = {}): ChatRecord {
     updatedAt: 0,
     lastTurnEndedAt: null,
     archived: false,
+    pinnedAt: null,
     continuation: null,
     checkpoint: null,
     parentChatId: null,

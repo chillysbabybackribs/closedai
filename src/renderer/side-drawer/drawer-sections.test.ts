@@ -19,6 +19,7 @@ function makeRow(
 ): DrawerRowModel {
   const chat: ChatRowSummary = {
     paneId: id,
+    pinnedAt: null,
     parentPaneId: null,
     kind: 'peer',
     provider: 'codex',
@@ -168,4 +169,33 @@ test('history section is sorted by updatedAt descending', () => {
 
   const sections = buildDrawerSections([older, newer, middle], {})
   assert.deepEqual(sections.history.map((row) => row.id), ['thread-newer', 'pane-middle', 'thread-older'])
+})
+
+test('pins stay above activity sections in pin order; unpinning restores activity placement', () => {
+  const running = pane('running', { running: true, status: 'running', updatedAt: 9000 })
+  const completed = pane('completed')
+  const idle = makeRow('idle')
+  running.chat.pinnedAt = 100
+  completed.chat.pinnedAt = 300
+  idle.chat.pinnedAt = 200
+  const rows = [running, completed, idle]
+  const queue = { completed: { queuedAt: 500, viewedAt: null } }
+  const pinned = buildDrawerSections(rows, queue)
+  assert.deepEqual(pinned.pinned.map((row) => row.id), ['completed', 'idle', 'running'])
+  assert.deepEqual([pinned.current, pinned.reviewQueue, pinned.history], [[], [], []])
+
+  running.running = false
+  running.status = 'done'
+  running.updatedAt = 10000
+  assert.deepEqual(buildDrawerSections(rows, queue).pinned.map((row) => row.id), ['completed', 'idle', 'running'])
+
+  running.running = true
+  running.status = 'running'
+  for (const row of rows) row.chat.pinnedAt = null
+  const unpinned = buildDrawerSections(rows, queue)
+  assert.deepEqual(unpinned.pinned, [])
+  assert.deepEqual(unpinned.current.map((row) => row.id), ['running'])
+  assert.deepEqual(unpinned.reviewQueue.map((row) => row.id), ['completed'])
+  assert.deepEqual(unpinned.history.map((row) => row.id), ['idle'])
+  assert.equal(queue.completed.viewedAt, null)
 })
