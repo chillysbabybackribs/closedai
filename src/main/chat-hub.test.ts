@@ -64,7 +64,12 @@ class FakeProvider extends EventEmitter {
     this.connectionState = 'ready'
   }
   stop(): void { this.calls.push('stop'); this.connectionState = 'starting' }
-  async send(text: string): Promise<void> { this.calls.push(`send:${text}`) }
+  /** Like a real provider: the message is accepted (painted) first, then the hub's start runs. */
+  async send(text: string, _attachments?: unknown, prepare?: () => Promise<void>): Promise<void> {
+    this.calls.push(`accept:${text}`)
+    await prepare?.()
+    this.calls.push(`send:${text}`)
+  }
   async interrupt(): Promise<void> { this.calls.push('interrupt') }
   async selectModel(id: string): Promise<void> { this.calls.push(`selectModel:${id}`) }
   async selectReasoningEffort(effort: string): Promise<void> { this.calls.push(`effort:${effort}`) }
@@ -162,7 +167,7 @@ test('with the workspace catalogs cached, only the active provider starts and th
   assert.deepEqual(codex.calls, ['start:true', 'stop'])
   // The first message is what starts it; the pick is handed over once it is up.
   await hub.send('hi', [])
-  assert.deepEqual(claude.calls, ['newThread', 'start:true', 'selectModel:claude:opus[1m]', 'send:hi'])
+  assert.deepEqual(claude.calls, ['newThread', 'accept:hi', 'start:true', 'selectModel:claude:opus[1m]', 'send:hi'])
 })
 
 test('a provider a pane reads cold shares its catalog with the workspace and stops again', async () => {
@@ -214,10 +219,11 @@ test('a provider switch is a settings write: the pane is ready on the picked mod
 
   const sending = hub.send('hello', [])
   await new Promise((resolve) => setImmediate(resolve))
-  assert.deepEqual(cursor.calls, ['newThread', 'start:true'], 'the first send starts the provider and waits for it')
+  assert.deepEqual(cursor.calls, ['newThread', 'accept:hello', 'start:true'],
+    'the message is on screen before the start it waits for')
   release()
   await sending
-  assert.deepEqual(cursor.calls, ['newThread', 'start:true', 'selectModel:cursor:claude-opus-5[effort=high]', 'send:hello'])
+  assert.deepEqual(cursor.calls, ['newThread', 'accept:hello', 'start:true', 'selectModel:cursor:claude-opus-5[effort=high]', 'send:hello'])
   // Once up, the provider's own state is what the pane shows.
   assert.equal(hub.snapshot().connection.message, 'cursor ready')
 })
@@ -254,7 +260,7 @@ test('selecting the other provider switches the pane after that provider accepts
   assert.equal(hub.activeProvider, 'claude')
   assert.equal(events.at(-1)?.type, 'replace')
   await hub.send('hi', [])
-  assert.deepEqual(claude.calls, ['newThread', 'start:true', 'send:hi'])
+  assert.deepEqual(claude.calls, ['newThread', 'accept:hi', 'start:true', 'send:hi'])
   assert.deepEqual(codex.calls, ['stop'])
   await hub.selectModel('claude:opus[1m]')
   assert.equal(hub.activeProvider, 'claude')

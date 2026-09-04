@@ -35,7 +35,10 @@ made while the provider is still coming up (at launch, say) is kept the same way
 the workspace has never listed (nothing cached to validate the pick against) starts on the switch;
 sends and further switches made meanwhile wait for that hand-over, and a switch whose provider
 fails to come up puts the pane back. The composer is usable while a provider is “Starting…”: the
-picker lists the cached catalog and a send waits for the provider itself. Waking a pane never
+picker lists the cached catalog and a send waits for the provider itself. That wait happens behind
+the message, not in front of it — every provider paints the user's message into the transcript
+first and only then runs the hub's dormant start, so the composer empties and the chat leaves its
+empty state as soon as a message is accepted, whatever the provider is doing. Waking a pane never
 reconnects a provider that is already ready.
 
 Codex model entries are supplemented with their native context capacity because app-server
