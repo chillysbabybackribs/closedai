@@ -25,8 +25,14 @@ export type ClosedaiApi = {
     removeHistory: (url: string) => Promise<void>
     snapshot: () => Promise<{ state: BrowserState; tabs: BrowserTabInfo[] } | null>
     newTab: () => Promise<void>
+    newTabToRight: (id: string) => Promise<void>
     openTab: (input: string) => Promise<void>
     closeTab: (id: string) => Promise<void>
+    closeOtherTabs: (id: string) => Promise<void>
+    closeTabsToRight: (id: string) => Promise<void>
+    duplicateTab: (id: string) => Promise<void>
+    reloadTab: (id: string) => Promise<void>
+    renameTab: (id: string, title: string | null) => Promise<void>
     selectTab: (id: string) => Promise<void>
     /** Still of the active tab, used to freeze the page under a DOM overlay. */
     capture: () => Promise<BrowserShot | null>

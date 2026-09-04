@@ -253,7 +253,8 @@ function describe(path: string, ranges: LineRange | readonly LineRange[], total:
   const whole = list.length === 1 && list[0]!.start <= 1 && list[0]!.end >= total
   if (whole) return `All of ${path} was`
   const parts = list.map((range) => range.end === WHOLE ? `${range.start} to the end` : range.start === range.end ? `${range.start}` : `${range.start}-${range.end}`)
-  return `${path} line${list.length === 1 && list[0]!.start === list[0]!.end ? '' : 's'} ${parts.join(', ')} ${list.length === 1 ? 'was' : 'were'}`
+  const single = list.length === 1 && list[0]!.start === list[0]!.end
+  return `${path} line${single ? '' : 's'} ${parts.join(', ')} ${single ? 'was' : 'were'}`
 }
 
 function mentions(command: string, path: string, cwd: string): boolean {

@@ -33,7 +33,7 @@ test('a read inside lines already returned this turn is denied with the earlier 
   assert.equal(read(1, 120).kind, 'allow')
   const again = read(20, 30)
   assert.equal(again.kind, 'deny')
-  assert.match((again as { reason: string }).reason, /chat-hub\.ts lines 20-49 was already returned earlier in this turn/)
+  assert.match((again as { reason: string }).reason, /chat-hub\.ts lines 20-49 were already returned earlier in this turn/)
   assert.deepEqual(skips, [{ tool: 'Read', path: file, lines: 30, verdict: 'deny' }])
 })
 

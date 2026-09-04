@@ -48,6 +48,7 @@ export type BrowserTabInfo = {
   // that is never reused; `pos` shifts whenever tabs open or close.
   pos: number
   title: string
+  customTitle?: string | null
   url: string
   favicon: string | null
   isLoading: boolean

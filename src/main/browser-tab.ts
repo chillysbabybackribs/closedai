@@ -29,6 +29,7 @@ export const PAGE_CORNER_RADIUS = 7
 // Bound on the first-paint probe that lets a navigation settle early; a throttled hidden tab
 // never answers and falls back to the fixed settle inside waitForUsableLoad.
 const PAINT_PROBE_MS = 1_000
+const MAX_CUSTOM_TITLE_LENGTH = 300
 
 let nextTabId = 1
 
@@ -42,6 +43,7 @@ export class BrowserTab extends EventEmitter {
   private bounds: BrowserBounds = hiddenBounds
   private visible = false
   private favicon: string | null = null
+  private customTitle: string | null = null
   private liveness: TabLiveness = { alive: true }
   private readonly navigationFailures = new BrowserNavigationFailureState()
   private state: BrowserState = {
@@ -97,12 +99,24 @@ export class BrowserTab extends EventEmitter {
 
   // Adopt a persisted tab's identity before anything loads, so a restored strip shows the
   // real page labels on the first frame instead of a row of "New Tab".
-  seedRestoredState(url: string, title: string): void {
+  seedRestoredState(url: string, title: string, customTitle?: string | null): void {
     this.state = { ...this.state, url, title: title || this.state.title }
+    this.customTitle = normalizeCustomTitle(customTitle)
   }
 
   getFavicon(): string | null {
     return this.favicon
+  }
+
+  getCustomTitle(): string | null {
+    return this.customTitle
+  }
+
+  rename(title: string | null): void {
+    const next = normalizeCustomTitle(title)
+    if (next === this.customTitle) return
+    this.customTitle = next
+    this.emit('state')
   }
 
   // Show/position this tab's view, or hide it (used when another tab is active).
@@ -394,4 +408,10 @@ function sanitizeBounds(bounds: BrowserBounds): BrowserBounds {
     width: Math.max(1, Math.round(bounds.width)),
     height: Math.max(1, Math.round(bounds.height))
   }
+}
+
+function normalizeCustomTitle(title: string | null | undefined): string | null {
+  if (typeof title !== 'string') return null
+  const normalized = title.trim()
+  return normalized ? normalized.slice(0, MAX_CUSTOM_TITLE_LENGTH) : null
 }

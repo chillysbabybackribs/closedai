@@ -76,8 +76,8 @@ export class BrowserService extends EventEmitter {
   }
 
   // Create a tab, add its view to the window, wire its events, and (optionally) make it active.
-  private openTab(url: string, activate: boolean, options?: LoadURLOptions): BrowserTab {
-    const tab = this.createTab(activate)
+  private openTab(url: string, activate: boolean, options?: LoadURLOptions, index?: number): BrowserTab {
+    const tab = this.createTab(activate, index)
     // Fire-and-forget the initial load; an aborted load is swallowed inside navigate(), and
     // anything else routes to the error channel. Activate first so Chromium creates the
     // renderer widget against the current view state.
@@ -85,7 +85,7 @@ export class BrowserService extends EventEmitter {
     return tab
   }
 
-  private createTab(activate: boolean): BrowserTab {
+  private createTab(activate: boolean, index?: number): BrowserTab {
     let tab!: BrowserTab
     tab = new BrowserTab(
       this.history,
@@ -93,7 +93,7 @@ export class BrowserService extends EventEmitter {
       PARTITION,
       (contents) => this.registerNativePopup(tab.id, contents)
     )
-    this.registerTab(tab)
+    this.registerTab(tab, index)
     if (activate) this.setActive(tab.id)
     else {
       tab.park(this.bounds)
@@ -109,7 +109,7 @@ export class BrowserService extends EventEmitter {
     const plan = restorePlan(restored.tabs.length, restored.activeIndex)
     const tabs = restored.tabs.map((record) => {
       const tab = this.createTab(false)
-      tab.seedRestoredState(record.url, record.title)
+      tab.seedRestoredState(record.url, record.title, record.customTitle)
       return { tab, url: record.url }
     })
     this.setActive(tabs[plan.activeIndex].tab.id)
@@ -124,7 +124,7 @@ export class BrowserService extends EventEmitter {
     return true
   }
 
-  private registerTab(tab: BrowserTab): void {
+  private registerTab(tab: BrowserTab, index?: number): void {
     tab.on('state', () => {
       // Only the active tab drives the address bar / nav buttons; every tab's state change can
       // still alter its label/spinner in the strip.
@@ -138,7 +138,8 @@ export class BrowserService extends EventEmitter {
       if (this.disposed || this.window.isDestroyed()) return
       this.closeTab(tab.id)
     })
-    this.tabs.push(tab)
+    const insertAt = typeof index === 'number' ? Math.min(Math.max(index, 0), this.tabs.length) : this.tabs.length
+    this.tabs.splice(insertAt, 0, tab)
     // Electron can permanently blank a previously loaded WebContentsView after it is removed
     // and re-added repeatedly. User tabs therefore stay attached while this pane exists; tab
     // switching uses visibility + z-order only. The entire set still detaches with the pane.
@@ -162,6 +163,12 @@ export class BrowserService extends EventEmitter {
 
   newTab(): void {
     this.openTab(HOME_URL, true)
+  }
+
+  newTabToRight(id: string): void {
+    const index = this.tabs.findIndex((tab) => tab.id === id)
+    if (index === -1) return
+    this.openTab(HOME_URL, true, undefined, index + 1)
   }
 
   openNewTab(input: string, activate = true): void {
@@ -195,6 +202,39 @@ export class BrowserService extends EventEmitter {
     }
   }
 
+  closeOtherTabs(id: string): void {
+    if (!this.tabs.some((tab) => tab.id === id)) return
+    const closing = this.tabs.filter((tab) => tab.id !== id).map((tab) => tab.id)
+    for (const tabId of closing) this.closeTab(tabId)
+    this.selectTab(id)
+  }
+
+  closeTabsToRight(id: string): void {
+    const index = this.tabs.findIndex((tab) => tab.id === id)
+    if (index === -1) return
+    const closing = this.tabs.slice(index + 1).map((tab) => tab.id)
+    for (const tabId of closing) this.closeTab(tabId)
+  }
+
+  duplicateTab(id: string): void {
+    const index = this.tabs.findIndex((tab) => tab.id === id)
+    const tab = index === -1 ? null : this.tabs[index]
+    if (!tab) return
+    const state = tab.getState()
+    const duplicate = this.openTab(state.url, true, undefined, index + 1)
+    duplicate.rename(tab.getCustomTitle())
+  }
+
+  reloadTab(id: string): void {
+    const tab = this.tabs.find((candidate) => candidate.id === id)
+    tab?.reload()
+  }
+
+  renameTab(id: string, title: string | null): void {
+    const tab = this.tabs.find((candidate) => candidate.id === id)
+    tab?.rename(title)
+  }
+
   private setActive(id: string): void {
     const next = this.tabs.find((tab) => tab.id === id)
     if (!next) return
@@ -223,7 +263,8 @@ export class BrowserService extends EventEmitter {
       return {
         id: tab.id,
         pos: index + 1,
-        title: state.title,
+        title: tab.getCustomTitle() ?? state.title,
+        customTitle: tab.getCustomTitle(),
         url: state.url,
         favicon: tab.getFavicon(),
         isLoading: state.isLoading,
