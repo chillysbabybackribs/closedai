@@ -30,7 +30,7 @@ function harness(threshold = 60, budget = 0, idleDelayMs = 0) {
   }
 }
 
-const tick = () => new Promise((resolve) => setImmediate(resolve))
+const tick = () => new Promise((resolve) => setTimeout(resolve, 5))
 
 test('token usage is read from the last model request without reasoning output', () => {
   const usage = parseTokenUsage({
@@ -104,7 +104,7 @@ test('token retries require cooldown and growth, using the post-compaction low w
   h.compactor.reset()
 })
 
-test('window pressure bypasses the optional token cooldown and idle grace', (t) => {
+test('window pressure bypasses token cooldown but still waits for idle grace', (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const h = harness(80, 32_000, 15_000)
   h.compactor.noteUsage({ usedTokens: 40_000, contextWindow: 200_000 })
@@ -113,9 +113,25 @@ test('window pressure bypasses the optional token cooldown and idle grace', (t) 
   h.compactor.turnFinished()
   h.compactor.noteUsage({ usedTokens: 160_000, contextWindow: 200_000 })
   h.compactor.turnFinished()
+  assert.equal(h.requests.length, 1)
+  assert.equal(h.compactor.scheduledForIdle, true)
+  t.mock.timers.tick(15_000)
   assert.equal(h.requests.length, 2)
   assert.equal(h.compactor.scheduledForIdle, false)
   h.compactor.reset()
+})
+
+test('an immediate follow-up cancels percentage compaction before another model call starts', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const h = harness(60, 0, 15_000)
+  h.compactor.noteUsage({ usedTokens: 160_000, contextWindow: 200_000 })
+  h.compactor.turnFinished()
+  assert.equal(h.compactor.inFlight, false)
+  t.mock.timers.tick(1_000)
+  await h.compactor.prepareForSend()
+  t.mock.timers.tick(90_000)
+  assert.equal(h.requests.length, 0)
+  assert.equal(h.compactor.scheduledForIdle, false)
 })
 
 test('active turns prevent idle compaction, including a turn starting during the grace period', (t) => {
@@ -134,6 +150,7 @@ test('a rejection from a retired compaction cannot release a new thread wait', a
   const rejectors: Array<(error: Error) => void> = []
   const compactor = new ContextCompactor({
     thresholdPercent: () => 50, threadId: () => 'thread', turnActive: () => false,
+    idleDelayMs: 0,
     notice: () => {}, request: () => new Promise((_, reject) => rejectors.push(reject))
   })
   const start = () => {
@@ -141,8 +158,10 @@ test('a rejection from a retired compaction cannot release a new thread wait', a
     compactor.turnFinished()
   }
   start()
+  await tick()
   compactor.reset()
   start()
+  await tick()
   rejectors[0]!(new Error('old request'))
   await tick()
   assert.equal(compactor.inFlight, true)

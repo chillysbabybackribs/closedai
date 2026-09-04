@@ -11,8 +11,8 @@ function harness(provider: ChatProvider = 'codex') {
   const timing = new ResponseLatency((scope, input) => entries.push({ ...scope, ...input }), () => now)
   const cancel = timing.begin(scope)
   const dispatch = (paneId = 'p') => timing.outgoing({ ...scope, paneId }, {
-    kind: 'raw', label: provider === 'codex' ? 'codex.out' : provider === 'claude' ? 'claude.out' : 'agy.out',
-    summary: provider === 'codex' ? 'turn/start #42' : provider === 'claude' ? 'user message' : 'user turn',
+    kind: 'raw', label: provider === 'antigravity' ? 'agy.out' : `${provider}.out`,
+    summary: provider === 'codex' ? 'turn/start #42' : provider === 'claude' ? 'user message' : provider === 'cursor' ? 'session/prompt #42' : 'user turn',
     direction: 'out', detail: {}
   })
   return { timing, entries, cancel, dispatch, scope, at: (value: number) => { now = value } }
@@ -22,7 +22,7 @@ const assistant = (text: string, id = 'answer', turnId = 't'): ChatEvent => ({
   type: 'item', item: { type: 'assistant', id, turnId, text, phase: null, streaming: true }
 })
 
-for (const provider of ['codex', 'claude', 'antigravity'] as const) {
+for (const provider of ['codex', 'claude', 'antigravity', 'cursor'] as const) {
   test(`${provider}: measures send to first text, splitting preparation and compaction wait`, () => {
     const h = harness(provider)
     h.at(100)

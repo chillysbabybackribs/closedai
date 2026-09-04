@@ -42,6 +42,18 @@ test('caps detail per entry and marks it truncated', () => {
   assert.equal(serialize({ a: 1 }).truncated, false)
 })
 
+test('oversized nested strings are clipped before JSON encoding and retain a truncation notice', () => {
+  const big = 'x'.repeat(8 * 1024 * 1024)
+  const original = { payload: big }
+  const result = serialize(original)
+  assert.equal(result.truncated, true)
+  assert.ok(result.text.length < MAX_DETAIL_CHARS + 100)
+  assert.match(result.text, /truncated by the trace/)
+  assert.equal(original.payload, big, 'trace clipping must not alter the provider payload')
+  // Escaping can change encoded length; the final bound must still hold.
+  assert.ok(serialize({ payload: '\n'.repeat(MAX_DETAIL_CHARS * 2) }).text.length < MAX_DETAIL_CHARS + 100)
+})
+
 test('evicts the oldest entries past the capacity and counts them as dropped', () => {
   const log = new TraceLog()
   for (let index = 0; index < MAX_ENTRIES + 5; index += 1) {
