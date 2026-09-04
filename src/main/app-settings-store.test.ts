@@ -6,6 +6,8 @@ import { join } from 'node:path'
 import type { ChatContinuation } from '../shared/types.ts'
 import { AppSettingsStore, DEFAULT_APP_SETTINGS } from './app-settings-store.ts'
 import { PeerSettings } from './chat-peers/peer-settings.ts'
+import { ChatStore } from './chat-store/chat-store.ts'
+import { migrateChatPeersIntoStore } from './chat-store/chat-store-migration.ts'
 
 async function storeWith(contents: string | null): Promise<{ store: AppSettingsStore; file: string }> {
   const dir = await mkdtemp(join(tmpdir(), 'closedai-settings-'))
@@ -96,7 +98,7 @@ test('legacy single-chat settings migrate into one selected peer', async () => {
   })
 })
 
-test('a pending continuation digest and its source lineage survive settings reload', async () => {
+test('a pending continuation digest and its source lineage survive migration into the chat store', async () => {
   const continuation: ChatContinuation = {
     sourcePaneId: 'source-pane',
     sourceThreadId: 'source-thread',
@@ -117,10 +119,19 @@ test('a pending continuation digest and its source lineage survive settings relo
   }))
 
   assert.deepEqual(store.get().chatPeers[0]!.continuation, continuation)
-  await new PeerSettings(store, 'target-pane').set({ chatContinuation: { ...continuation, handoff: null } })
-  const reopened = await AppSettingsStore.open(file)
-  assert.equal(reopened.get().chatPeers[0]!.continuation?.handoff, null)
-  assert.equal(reopened.get().chatPeers[0]!.continuation?.sourceThreadId, 'source-thread')
+  const chatFile = join(dirname(file), 'chats.json')
+  const chats = await ChatStore.open(chatFile)
+  await migrateChatPeersIntoStore(store, chats, { cwd: '/workspace', projectPath: '/workspace' })
+  await new PeerSettings(store, chats, 'target-pane').set({ chatContinuation: { ...continuation, handoff: null } })
+  await chats.flush()
+  const reopened = await ChatStore.open(chatFile)
+  assert.equal(reopened.require('target-pane').continuation?.handoff, null)
+  assert.equal(reopened.require('target-pane').continuation?.sourceThreadId, 'source-thread')
+  // Settings now only name the open chat; the record moved to the store, id intact.
+  const settings = (await AppSettingsStore.open(file)).get()
+  assert.deepEqual(settings.chatPeers, [])
+  assert.deepEqual(settings.chatOpenIds, ['target-pane'])
+  assert.equal(settings.chatSelectedPaneId, 'target-pane')
 })
 
 test('an antigravity model routes the legacy settings to its own conversation field', async () => {
