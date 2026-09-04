@@ -176,6 +176,58 @@ test('a provider a pane reads cold shares its catalog with the workspace and sto
   assert.deepEqual(catalogs.read('claude')?.models.map((entry) => entry.id), ['claude:opus[1m]'])
 })
 
+test('a provider switch paints the picked model at once and holds sends until the provider is up', async () => {
+  const catalogs = new WorkspaceCatalogs()
+  catalogs.remember('cursor', [model('cursor', 'cursor:claude-opus-5[effort=high]')])
+  const { hub, codex, cursor, events } = build('gpt-5.6-sol', catalogs)
+  cursor.connectionState = 'starting'
+  let release!: () => void
+  const started = new Promise<void>((resolve) => { release = resolve })
+  cursor.start = async (options) => {
+    cursor.calls.push(`start:${options?.warm ?? 'none'}`)
+    await started
+    cursor.connectionState = 'ready'
+  }
+  await hub.start()
+  events.length = 0
+
+  const switching = hub.selectModel('cursor:claude-opus-5[effort=high]')
+  await new Promise((resolve) => setImmediate(resolve))
+  // The picker already shows Cursor while cursor-agent is still coming up.
+  assert.equal(hub.activeProvider, 'cursor')
+  const first = events[0]
+  assert.equal(first?.type, 'replace')
+  if (first?.type === 'replace') {
+    assert.equal(first.snapshot.selectedModel, 'cursor:claude-opus-5[effort=high]')
+    assert.equal(first.snapshot.connection.state, 'starting')
+  }
+  assert.deepEqual(cursor.calls, ['start:true'])
+
+  const sending = hub.send('hello', [])
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(cursor.calls.includes('send:hello'), false, 'a send made mid-switch waits for the hand-over')
+
+  release()
+  await switching
+  await sending
+  assert.deepEqual(cursor.calls, ['start:true', 'selectModel:cursor:claude-opus-5[effort=high]', 'newThread', 'send:hello'])
+  assert.deepEqual(codex.calls.at(-1), 'stop')
+})
+
+test('a switch whose provider fails to come up puts the pane back on the source provider', async () => {
+  const { hub, antigravity, events } = build('gpt-5.6-sol')
+  antigravity.connectionState = 'starting'
+  antigravity.selectModel = async () => { throw new Error('agy is not signed in') }
+  await hub.start()
+  events.length = 0
+
+  await assert.rejects(hub.selectModel('agy:gemini-3.8-flash'), /not signed in/)
+  assert.equal(hub.activeProvider, 'codex')
+  const last = events.at(-1)
+  assert.equal(last?.type, 'replace')
+  if (last?.type === 'replace') assert.equal(last.snapshot.provider, 'codex')
+})
+
 test('the snapshot is the active provider with every catalog merged', () => {
   const { hub } = build()
   const snapshot = hub.snapshot()

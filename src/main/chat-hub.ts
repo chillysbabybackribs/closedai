@@ -76,6 +76,8 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   private stopped = false
   /** Cleared whenever the pane leaves that conversation; in memory only, like the pane itself. */
   private carriedHistory: CarriedHistory | null = null
+  /** A provider switch whose start and hand-over are still landing; conversation calls wait for it. */
+  private switching: Promise<void> | null = null
 
   private readonly catalogs: WorkspaceCatalogs | null
 
@@ -126,7 +128,8 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     for (const name of CHAT_PROVIDERS) this.providers[name].stop()
   }
 
-  send(text: string, attachments: ChatAttachment[]): Promise<void> {
+  async send(text: string, attachments: ChatAttachment[]): Promise<void> {
+    await this.settled()
     return this.current().send(text, attachments)
   }
 
@@ -135,6 +138,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   async selectModel(modelId: string): Promise<void> {
+    await this.settled()
     const target = chatProviderOfId(modelId)
     if (target === this.active) return this.current().selectModel(modelId)
     // The visible conversation, not just this provider's part of it, is what moves.
@@ -142,10 +146,11 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     await this.switchTo(source, target, async () => {
       await this.providers[target].selectModel(modelId)
       await this.carryConversation(source, target)
-    })
+    }, { selectedModel: modelId, selectedReasoningEffort: null })
   }
 
-  selectReasoningEffort(effort: string): Promise<void> {
+  async selectReasoningEffort(effort: string): Promise<void> {
+    await this.settled()
     return this.current().selectReasoningEffort(effort)
   }
 
@@ -165,22 +170,25 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     return this.providers[chatProviderOfId(threadId)].readThread(threadId)
   }
 
-  newThread(): Promise<void> {
+  async newThread(): Promise<void> {
+    await this.settled()
     this.carriedHistory = null
     return this.current().newThread()
   }
 
-  continueInNewThread(): Promise<void> {
+  async continueInNewThread(): Promise<void> {
+    await this.settled()
     this.carriedHistory = null
     return this.current().continueInNewThread()
   }
 
   async openThread(threadId: string): Promise<void> {
+    await this.settled()
     const target = chatProviderOfId(threadId)
     const source = this.snapshot()
     this.carriedHistory = null
     if (target === this.active) return this.current().openThread(threadId)
-    await this.switchTo(source, target, () => this.providers[target].openThread(threadId))
+    await this.switchTo(source, target, () => this.providers[target].openThread(threadId), { threadId })
   }
 
   archiveThread(threadId: string): Promise<void> {
@@ -188,6 +196,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   async compactConversation(): Promise<void> {
+    await this.settled()
     const compact = this.current().compactConversation
     if (!compact) throw new Error('The active provider does not support compaction')
     await compact.call(this.current())
@@ -205,21 +214,47 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     return this.providers[this.active]
   }
 
+  /** Wait for a switch in progress; a switch that failed has already put the pane back. */
+  private async settled(): Promise<void> {
+    if (this.switching) await this.switching.catch(() => {})
+  }
+
   /**
-   * Switch the pane to another provider after its own action succeeds. A provider that has never
-   * started in this pane starts now — its catalog came from the cache — and the one being left
-   * stops, so a pane holds one provider process at a time however often it switches.
+   * Switch the pane to another provider. The pane repaints on the target at once — its model and
+   * thread as `optimistic` names them, over the source transcript, with the target's connection
+   * state showing while it comes up — because a provider that has never started in this pane
+   * starts now, and starting a CLI is seconds the picker must not sit frozen for. The provider's
+   * own action and the hand-over of the conversation land behind that; conversation calls made in
+   * between wait for them. The provider being left stops, so a pane holds one provider process at
+   * a time however often it switches. A failed switch puts the pane back on the source provider.
    */
-  private async switchTo(source: ChatSnapshot, target: ChatProvider, action: () => Promise<void>): Promise<void> {
+  private async switchTo(
+    source: ChatSnapshot,
+    target: ChatProvider,
+    action: () => Promise<void>,
+    optimistic: Partial<ChatSnapshot>
+  ): Promise<void> {
     if (source.activeTurnId) throw new Error('Stop the current turn before switching models')
     const previous = this.active
-    const targetState = this.providers[target].snapshot({ limit: 0 }).connection.state
-    if (targetState !== 'ready' && targetState !== 'signed-out') await this.providers[target].start({ warm: true })
-    await action()
     this.active = target
-    this.providers[previous].stop()
-    await this.persistActiveModel()
-    this.emitEvent({ type: 'replace', snapshot: this.merge(this.preserveSourceHistory(source, this.current().snapshot())) })
+    this.emitEvent({ type: 'replace', snapshot: { ...this.merge(this.preserveSourceHistory(source, this.current().snapshot())), ...optimistic } })
+    this.switching = (async () => {
+      try {
+        const targetState = this.providers[target].snapshot({ limit: 0 }).connection.state
+        if (targetState !== 'ready' && targetState !== 'signed-out') await this.providers[target].start({ warm: true })
+        await action()
+        this.providers[previous].stop()
+        await this.persistActiveModel()
+        this.emitEvent({ type: 'replace', snapshot: this.merge(this.preserveSourceHistory(source, this.current().snapshot())) })
+      } catch (error) {
+        this.active = previous
+        this.emitEvent({ type: 'replace', snapshot: this.merge(this.current().snapshot()) })
+        throw error
+      } finally {
+        this.switching = null
+      }
+    })()
+    await this.switching
   }
 
   /**
