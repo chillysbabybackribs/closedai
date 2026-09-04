@@ -30,7 +30,7 @@ Quoted user text and historical transcripts are not rewritten.
 
 The engineering contract steers every lane toward focused reads, provider-native structured
 edits, one targeted verification pass, and preservation of Git stash/worktree state. Claude uses
-`Read`/`Grep`/`Glob` and `Edit`/`MultiEdit`; Antigravity uses `view_file`/`grep_search`/`find_by_name`
+`Read`/`Grep`/`Glob` and `Edit`; Antigravity uses `view_file`/`grep_search`/`find_by_name`
 and `replace_file_content`/`multi_replace_file_content`; Codex uses `rg` and `apply_patch`.
 
 The checkout capsule links [Application](application.md), this guide, and [Tools](tools.md).

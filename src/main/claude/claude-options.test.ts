@@ -27,6 +27,7 @@ test('the session shape: no prompts, isolated settings, only app MCP servers, su
     precomputeCompactionEnabled: true
   })
   assert.deepEqual(options.disallowedTools, ['AskUserQuestion'])
+  assert.deepEqual(options.allowedTools, ['Grep', 'Glob'])
   assert.deepEqual(options.thinking, { type: 'adaptive', display: 'summarized' })
   assert.deepEqual(options.systemPrompt, { type: 'preset', preset: 'claude_code', append: 'Be brief.' })
   assert.equal(options.model, 'opus[1m]')

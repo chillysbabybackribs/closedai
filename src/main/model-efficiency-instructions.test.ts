@@ -32,7 +32,7 @@ test('every model lane receives the deterministic batching and engineering contr
     assert.match(value, /subagents only when the user or applicable repository instructions explicitly ask/)
   }
   assert.match(instructions.codex, /rg for text search and apply_patch for file edits/)
-  assert.match(instructions.claude, /Read, Grep, and Glob.*Edit or MultiEdit.*Write only for new files/)
+  assert.match(instructions.claude, /Read, Grep, and Glob.*Edit for existing files.*Write only for new files/)
   assert.match(instructions.antigravity, /view_file, grep_search, and find_by_name.*replace_file_content or multi_replace_file_content.*write_to_file only for new files/)
   assert.match(instructions.claude, /tool_batch/)
   assert.match(instructions.antigravity, /tool_batch/)

@@ -21,7 +21,7 @@ const PROVIDER_EDITING_INSTRUCTIONS: Record<ChatProvider, string> = {
     'One exec script is one model pass, so put every independent read, search, and check for that pass in the same script: await them together (Promise.all) or chain the shell commands, rather than running one script per file.'
   ].join(' '),
   claude: [
-    'With Claude Code, prefer Read, Grep, and Glob to Bash for inspection; use Edit or MultiEdit for existing files and Write only for new files.',
+    'With Claude Code, prefer Read, Grep, and Glob to Bash for inspection; use Edit for existing files and Write only for new files.',
     'Bypass-permissions mode adds a note preferring Bash for reads, searches, and edits. It does not apply in ClosedAI: use the dedicated tools, which return less to carry forward and fail loudly on a bad edit, and keep Bash for work that is genuinely a command (builds, tests, git, processes).',
     'Independent calls belong in one response as several tool blocks: three files to read is one response carrying three Read calls, not three responses.'
   ].join(' '),

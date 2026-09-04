@@ -16,6 +16,11 @@ export const CLAUDE_EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as
 export type ClaudeEffortLevel = (typeof CLAUDE_EFFORT_LEVELS)[number]
 
 export const CLAUDE_DISALLOWED_TOOLS = ['AskUserQuestion']
+// Native Claude Code builds drop the dedicated search tools and route search through Bash
+// unless these are listed (SDK `tools` docs). Verified 2026-09-03 against SDK 0.3.258: without
+// this the session's tool list has no Grep or Glob, which is why the app's panes had made 0 such
+// calls in 2,018; with it both appear. There is no MultiEdit tool in this CLI.
+export const CLAUDE_ALLOWED_TOOLS = ['Grep', 'Glob']
 
 export type ClaudeQueryConfig = {
   cwd: string
@@ -65,6 +70,7 @@ export function claudeQueryOptions(config: ClaudeQueryConfig): Options {
     allowDangerouslySkipPermissions: true,
     settingSources: ['project'],
     strictMcpConfig: true,
+    allowedTools: CLAUDE_ALLOWED_TOOLS,
     disallowedTools: CLAUDE_DISALLOWED_TOOLS,
     systemPrompt: { type: 'preset', preset: 'claude_code', append: config.systemPromptAppend },
     mcpServers: config.mcpServers,

@@ -1,5 +1,5 @@
 import type { ChatMemoryCheckpoint, ChatRecallRequest, ChatRecallResult } from '../../shared/chat-memory.js'
-import type { AppSettingsAccess } from '../app-settings-store.js'
+import type { ChatRecord } from '../../shared/chat-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import { validateMemoryState } from './memory-checkpoint.js'
 import { recallTranscript } from './memory-recall.js'
@@ -7,9 +7,15 @@ import { recallTranscript } from './memory-recall.js'
 export type MemoryCaller = { paneId?: string | null; threadId: string | null; turnId: string | null; signal?: AbortSignal }
 type MemorySurface = Pick<ChatSurface, 'snapshot' | 'readThread'>
 
-/** One app-owned checkpoint per pane; transcripts stay in their existing provider stores. */
+/** The chat records memory reads and writes; the store, or a stand-in in tests. */
+export type MemoryRecords = {
+  get(id: string): ChatRecord | undefined
+  update(id: string, patch: { checkpoint: ChatMemoryCheckpoint }): ChatRecord
+}
+
+/** One app-owned checkpoint per chat; transcripts stay in their existing provider stores. */
 export class ChatMemory {
-  constructor(private readonly settings: AppSettingsAccess, private readonly surface: (paneId: string) => MemorySurface | null) {}
+  constructor(private readonly records: MemoryRecords, private readonly surface: (paneId: string) => MemorySurface | null) {}
 
   async save(caller: MemoryCaller, expectedRevision: number, state: unknown): Promise<ChatMemoryCheckpoint> {
     const { pane, surface } = this.resolve(caller)
@@ -24,9 +30,8 @@ export class ChatMemory {
       version: 1, revision: (current?.revision ?? 0) + 1, threadId: caller.threadId!,
       throughItemId, createdAt: Date.now(), state: validateMemoryState(state)
     }
-    // No await between scope/revision validation and the synchronous settings update.
-    await this.settings.set({ chatPeers: this.settings.get().chatPeers.map((entry) => entry.paneId === pane.paneId
-      ? { ...entry, checkpoint } : entry) })
+    // No await between scope/revision validation and the synchronous record update.
+    this.records.update(pane.id, { checkpoint })
     if (this.resolve(caller).surface !== surface) throw new Error('Chat changed while saving memory')
     return checkpoint
   }
@@ -59,8 +64,8 @@ export class ChatMemory {
 
   private resolve(caller: MemoryCaller) {
     if (caller.signal?.aborted) throw new Error('Memory request was cancelled')
-    const pane = this.settings.get().chatPeers.find((entry) => entry.paneId === caller.paneId)
-    const surface = pane ? this.surface(pane.paneId) : null
+    const pane = caller.paneId ? this.records.get(caller.paneId) : undefined
+    const surface = pane ? this.surface(pane.id) : null
     if (!pane || !surface || !caller.threadId || surface.snapshot({ limit: 0 }).threadId !== caller.threadId) {
       throw new Error('Memory is available only to the calling pane’s current thread')
     }

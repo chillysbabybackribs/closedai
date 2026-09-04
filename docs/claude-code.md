@@ -44,6 +44,11 @@ and transcript notes were reviewed against current source on 2026-09-03, without
   collapse (`default` and `opus[1m]` both resolve to `claude-opus-5[1m]`), the CLI's default is the
   picker default, and each entry's `supportedEffortLevels` feeds the effort picker.
 
+- **Grep and Glob are requested explicitly** (`allowedTools: ['Grep', 'Glob']`): native Claude
+  Code builds otherwise omit them and route every search through Bash (SDK `tools` docs). Verified
+  2026-09-03: without the option the `init` tool list had no Grep/Glob, which is why the app's
+  panes had made 0 such calls in 2,018 tool calls; with it both appear and the model uses them.
+  There is no MultiEdit tool in this CLI, so instructions name only Edit.
 - **Read ledger** (`claude-read-ledger.ts`): in-process SDK hooks on every session. Measured
   2026-09-03 over the app's Claude panes, 21% of reads returned lines already in the turn's
   context and identical searches recurred, and prompt text did not move either number. So a
