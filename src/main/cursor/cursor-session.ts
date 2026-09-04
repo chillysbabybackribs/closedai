@@ -178,11 +178,17 @@ export class CursorSession {
     if (!client.capabilities?.listSessions) return []
     const sessions = await client.listSessions(this.deps.cwd)
     return sessions
-      .map((entry) => ({
-        sessionId: entry.sessionId,
-        title: entry.title?.trim() || 'New chat',
-        updatedAt: entry.updatedAt ? Date.parse(entry.updatedAt) || 0 : 0
-      }))
+      .map((entry) => {
+        let title = entry.title?.trim() || 'New chat'
+        if (title.includes('<closedai_context') || title.includes('closedai.instructions')) {
+          title = 'Cursor chat'
+        }
+        return {
+          sessionId: entry.sessionId,
+          title,
+          updatedAt: entry.updatedAt ? Date.parse(entry.updatedAt) || 0 : 0
+        }
+      })
       .sort((a, b) => b.updatedAt - a.updatedAt)
   }
 
