@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import test from 'node:test'
 import type {
+  ChatConnectionState,
   ChatEvent,
   ChatHistoryWindow,
   ChatModel,
@@ -46,9 +47,11 @@ class FakeProvider extends EventEmitter {
   }
   hasEarlier = false
   threadId: string | null = null
+  /** Fakes report ready by default; a test that needs a cold provider sets 'starting'. */
+  connectionState: ChatConnectionState = 'ready'
   snapshot(window?: ChatHistoryWindow): ChatSnapshot {
     return {
-      provider: this.provider, connection: { state: 'ready', message: `${this.provider} ready` }, account: null,
+      provider: this.provider, connection: { state: this.connectionState, message: `${this.provider} ready` }, account: null,
       models: this.models, selectedModel: this.models[0]?.id ?? null, selectedReasoningEffort: this.effort, cwd: '/w',
       threadId: this.threadId, threadName: null, activeTurnId: this.activeTurnId,
       contextUsage: null, planUsage: null, turnContext: null, items: this.items,
@@ -135,7 +138,10 @@ test('with the workspace catalogs cached, only the active provider starts and th
   catalogs.remember('cursor', [model('cursor', 'cursor:claude-opus-5[effort=high]')])
   const { hub, codex, claude, antigravity, cursor } = build('gpt-5.6-sol', catalogs)
   // The fakes report their own catalogs; empty them so the merged picker has to come from the cache.
-  for (const fake of [claude, antigravity, cursor]) fake.models = []
+  for (const fake of [claude, antigravity, cursor]) {
+    fake.models = []
+    fake.connectionState = 'starting'
+  }
 
   await hub.start()
   assert.deepEqual(codex.calls, ['start:true'])
