@@ -10,7 +10,7 @@
 // Removing the view from the content tree takes it to zero frames while leaving the page
 // completely alive: script runs, timers keep their normal cadence, navigation and CDP still
 // work. Electron does not reliably recreate its compositor surface after repeated reattachment,
-// though, so ordinary user tabs opt into `resident` mode while the browser pane is present.
+// though, so ordinary user tabs opt into `resident` mode for their entire lifetime.
 // Leased/background surfaces still detach when no operation needs their frames.
 //
 // Both claims are measured, not inferred — scripts/probe-hidden-view-throttling.mjs and
@@ -39,7 +39,7 @@ export class TabRenderingPolicy {
   // never-mapped window, where this policy has nothing to win and their capture path already
   // depends on a permanently pinned viewport.
   private readonly exempt = new Set<string>()
-  // User-visible tabs stay attached (but setVisible(false)) while their pane exists. This costs
+  // User-visible tabs stay attached even when the pane hides. This costs
   // background frames, but avoids Electron's reproducible blank surface after tab reattachment.
   private readonly resident = new Set<string>()
   private readonly attached = new Set<string>()
@@ -80,8 +80,8 @@ export class TabRenderingPolicy {
     if (tabId !== null) this.sync(tabId)
   }
 
-  // The browser pane itself went away (the workspace switched to the editor, say). Nothing is on
-  // screen, so even the active tab stops paying for frames.
+  // Nonresident surfaces can stop rendering when the pane hides. The owner moves resident
+  // surfaces off screen without destroying their compositor attachment.
   setPaneVisible(visible: boolean): void {
     if (this.paneVisible === visible) return
     this.paneVisible = visible
@@ -141,7 +141,7 @@ export class TabRenderingPolicy {
     if (this.exempt.has(tabId)) return true
     if ((this.pins.get(tabId) ?? 0) > 0) return true
     if (this.grace.has(tabId)) return true
-    if (this.resident.has(tabId) && this.paneVisible) return true
+    if (this.resident.has(tabId)) return true
     return this.paneVisible && tabId === this.activeId
   }
 

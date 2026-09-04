@@ -12,6 +12,12 @@ export type RefreshableBrowserSurface = {
 
 const OCCLUDED_SURFACE_GUTTER = 64
 
+/** Collapsed layout reports must not replace a loaded page's viewport with a zero-size box. */
+export function browserPaneBounds(previous: BrowserBounds, next: BrowserBounds): BrowserBounds {
+  if (next.visible !== false && next.width > 1 && next.height > 1) return next
+  return { ...previous, visible: false, occluded: next.occluded }
+}
+
 /** Distinguish a removed workspace pane from a live page temporarily covered by app chrome. */
 export function browserSurfaceVisibility(bounds: BrowserBounds): BrowserSurfaceVisibility {
   const paneVisible = bounds.visible !== false
