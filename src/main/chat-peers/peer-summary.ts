@@ -187,7 +187,8 @@ export function subagentSummaries(parent: ChatPeerSummary, snapshot: ChatSnapsho
 export function pageResult(
   summary: ChatPeerSummary,
   items: ChatSnapshot['items'],
-  options: PeerChatReadOptions
+  options: PeerChatReadOptions,
+  itemSource: PeerChatReadResult['itemSource'] = 'live'
 ): PeerChatReadResult {
   const types = options.types?.length ? new Set<string>(options.types) : null
   const readable = items.filter((item) => peerReadable(item) && (!types || types.has(item.type)))
@@ -202,6 +203,7 @@ export function pageResult(
     ...summary,
     items: page,
     totalItems: readable.length,
+    itemSource,
     nextCursor: skip + page.length < readable.length ? skip + page.length : null
   }
 }

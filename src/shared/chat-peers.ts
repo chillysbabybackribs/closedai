@@ -80,5 +80,8 @@ export type PeerChatReadResult = ChatPeerSummary & {
   items: ChatTranscriptItem[]
   /** Readable items matching `types` in the whole transcript, so a page can be placed in it. */
   totalItems: number
+  /** `saved` when the chat is parked and these items are the app's saved tail of it, not a live
+   *  provider replay: the newest items are current, but the conversation reaches further back. */
+  itemSource: 'live' | 'saved'
   nextCursor: number | null
 }
