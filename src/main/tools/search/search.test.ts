@@ -14,12 +14,12 @@ const baseRequest: SearchRequest = {
 
 test('intent and depth select complementary provider sets', () => {
   assert.deepEqual(selectProviders(baseRequest), ['brave', 'serper'])
-  assert.deepEqual(selectProviders({ ...baseRequest, intent: 'research', depth: 'deep' }), ['tavily', 'jina', 'you'])
+  assert.deepEqual(selectProviders({ ...baseRequest, intent: 'research', depth: 'deep' }), ['tavily', 'you', 'brave'])
   assert.deepEqual(selectProviders({ ...baseRequest, intent: 'finance', depth: 'quick' }), ['you'])
-  assert.deepEqual(selectProviders({ ...baseRequest, providers: ['jina', 'jina', 'brave'] }), ['jina', 'brave'])
+  assert.deepEqual(selectProviders({ ...baseRequest, providers: ['tavily', 'tavily', 'brave'] }), ['tavily', 'brave'])
 })
 
-test('one tool can call all five providers, normalize results, deduplicate, and cache', async () => {
+test('one tool can call all four providers, normalize results, deduplicate, and cache', async () => {
   const keyReads: SearchProvider[] = []
   const calls: string[] = []
   const fetchMock: typeof fetch = async (input) => {
@@ -27,7 +27,6 @@ test('one tool can call all five providers, normalize results, deduplicate, and 
     calls.push(url)
     if (url.includes('brave.com')) return json({ web: { results: [{ title: 'Shared', url: 'https://example.com/item?utm_source=brave', description: 'Brave result' }] } })
     if (url.includes('serper.dev')) return json({ organic: [{ title: 'Shared', link: 'https://example.com/item', snippet: 'Serper result', position: 1 }] })
-    if (url.includes('jina.ai')) return json({ data: [{ title: 'Docs', url: 'https://docs.example/a', content: 'Dense docs' }] })
     if (url.includes('tavily.com')) return json({ answer: 'Tavily synthesis', results: [{ title: 'Research', url: 'https://research.example/a', content: 'Research result', score: 0.9 }] })
     return json({ results: { web: [{ title: 'You', url: 'https://you.example/a', description: 'You result' }] } })
   }
@@ -38,14 +37,14 @@ test('one tool can call all five providers, normalize results, deduplicate, and 
   })])
   const args = {
     query: 'closedai search', intent: 'general', depth: 'deep', count: 3,
-    providers: ['brave', 'serper', 'jina', 'tavily', 'you']
+    providers: ['brave', 'serper', 'tavily', 'you']
   }
   const first = await registry.call({ namespace: 'search', tool: 'query', arguments: args }, context)
   assert.equal(first.isError, undefined)
   const output = JSON.parse(first.content[0]!.type === 'text' ? first.content[0].text : '')
-  assert.deepEqual(keyReads.sort(), ['brave', 'jina', 'serper', 'tavily', 'you'])
-  assert.equal(calls.length, 5)
-  assert.equal(output.results.length, 4)
+  assert.deepEqual(keyReads.sort(), ['brave', 'serper', 'tavily', 'you'])
+  assert.equal(calls.length, 4)
+  assert.equal(output.results.length, 3)
   assert.deepEqual(output.results[0].corroboratedBy, ['serper'])
   assert.deepEqual(output.answers, [{ provider: 'tavily', text: 'Tavily synthesis' }])
   assert.doesNotMatch(JSON.stringify(output), /secret-/)
@@ -53,12 +52,12 @@ test('one tool can call all five providers, normalize results, deduplicate, and 
   const second = await registry.call({ namespace: 'search', tool: 'query', arguments: args }, context)
   const cached = JSON.parse(second.content[0]!.type === 'text' ? second.content[0].text : '')
   assert.equal(cached.cached, true)
-  assert.equal(calls.length, 5)
+  assert.equal(calls.length, 4)
 
   const live = await registry.call({ namespace: 'search', tool: 'query', arguments: { ...args, live: true } }, context)
   const refreshed = JSON.parse(live.content[0]!.type === 'text' ? live.content[0].text : '')
   assert.equal(refreshed.cached, undefined)
-  assert.equal(calls.length, 10)
+  assert.equal(calls.length, 8)
 })
 
 test('partial provider failures are returned while useful evidence survives', async () => {

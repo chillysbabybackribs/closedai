@@ -1,4 +1,4 @@
-export const SEARCH_PROVIDERS = ['brave', 'serper', 'jina', 'tavily', 'you'] as const
+export const SEARCH_PROVIDERS = ['brave', 'serper', 'tavily', 'you'] as const
 export type SearchProvider = typeof SEARCH_PROVIDERS[number]
 
 export const SEARCH_INTENTS = ['general', 'news', 'research', 'answer', 'finance', 'technical'] as const

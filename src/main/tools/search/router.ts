@@ -17,7 +17,7 @@ const ROUTES: Record<SearchIntent, Record<SearchDepth, SearchProvider[]>> = {
     quick: ['serper'], balanced: ['serper', 'you'], deep: ['serper', 'you', 'brave']
   },
   research: {
-    quick: ['tavily'], balanced: ['tavily', 'jina'], deep: ['tavily', 'jina', 'you']
+    quick: ['tavily'], balanced: ['tavily', 'you'], deep: ['tavily', 'you', 'brave']
   },
   answer: {
     quick: ['you'], balanced: ['you', 'tavily'], deep: ['you', 'tavily', 'brave']
@@ -26,7 +26,7 @@ const ROUTES: Record<SearchIntent, Record<SearchDepth, SearchProvider[]>> = {
     quick: ['you'], balanced: ['you', 'serper'], deep: ['you', 'serper', 'tavily']
   },
   technical: {
-    quick: ['jina'], balanced: ['jina', 'brave'], deep: ['jina', 'brave', 'serper']
+    quick: ['brave'], balanced: ['brave', 'serper'], deep: ['brave', 'serper', 'tavily']
   }
 }
 

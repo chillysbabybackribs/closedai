@@ -2,7 +2,6 @@ import { defineTool } from '../tool.js'
 import { numberArg, stringArg, textResult } from '../tool.js'
 import type { JsonObject, ToolNamespace } from '../tool.js'
 import { braveClient } from './brave.js'
-import { jinaClient } from './jina.js'
 import { readSearchKey, type SearchKeyReader } from './keyring.js'
 import { SearchRouter } from './router.js'
 import { serperClient } from './serper.js'
@@ -15,8 +14,7 @@ export type SearchToolDeps = { fetch?: typeof fetch; readKey?: SearchKeyReader; 
 export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
   const providerDeps = { fetch: deps.fetch ?? fetch, readKey: deps.readKey ?? readSearchKey }
   const router = new SearchRouter([
-    braveClient(providerDeps), serperClient(providerDeps), jinaClient(providerDeps),
-    tavilyClient(providerDeps), youClient(providerDeps)
+    braveClient(providerDeps), serperClient(providerDeps), tavilyClient(providerDeps), youClient(providerDeps)
   ], deps.now)
   return {
     name: 'search',
@@ -24,7 +22,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
     tools: [defineTool({
       name: 'query',
       description:
-        'One normalized search surface backed by Brave, Serper, Jina, Tavily, and You.com. ' +
+        'One normalized search surface backed by Brave, Serper, Tavily, and You.com. ' +
         'Choose intent by the evidence needed: general for broad discovery; news for current reporting; ' +
         'research for content-rich investigation; answer for a cited synthesis; finance for market/business research; ' +
         'technical for documentation and implementation details. depth=quick uses one optimal provider, balanced uses two ' +
