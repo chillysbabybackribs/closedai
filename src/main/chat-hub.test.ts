@@ -47,8 +47,8 @@ class FakeProvider extends EventEmitter {
   }
   hasEarlier = false
   threadId: string | null = null
-  /** Fakes report ready by default; a test that needs a cold provider sets 'starting'. */
-  connectionState: ChatConnectionState = 'ready'
+  /** Fakes come up on start() like providers do; a test that needs one ready at once sets 'ready'. */
+  connectionState: ChatConnectionState = 'starting'
   snapshot(window?: ChatHistoryWindow): ChatSnapshot {
     return {
       provider: this.provider, connection: { state: this.connectionState, message: `${this.provider} ready` }, account: null,
@@ -59,8 +59,11 @@ class FakeProvider extends EventEmitter {
     }
   }
   replace(): void { this.emit('event', { type: 'replace', snapshot: this.snapshot() }) }
-  async start(options?: { warm?: boolean }): Promise<void> { this.calls.push(`start:${options?.warm ?? 'none'}`) }
-  stop(): void { this.calls.push('stop') }
+  async start(options?: { warm?: boolean }): Promise<void> {
+    this.calls.push(`start:${options?.warm ?? 'none'}`)
+    this.connectionState = 'ready'
+  }
+  stop(): void { this.calls.push('stop'); this.connectionState = 'starting' }
   async send(text: string): Promise<void> { this.calls.push(`send:${text}`) }
   async interrupt(): Promise<void> { this.calls.push('interrupt') }
   async selectModel(id: string): Promise<void> { this.calls.push(`selectModel:${id}`) }
@@ -335,7 +338,7 @@ test('opening another provider\u2019s thread from history shows that thread', as
   codex.items = [{ type: 'user', id: 'user-1', turnId: 't1', text: 'Hello from the original chat' }]
   claude.items = [{ type: 'user', id: 'old-1', turnId: 'x', text: 'The chat being opened' }]
   await hub.openThread('claude:s1')
-  assert.deepEqual(claude.calls, ['openThread:claude:s1'])
+  assert.deepEqual(claude.calls, ['start:true', 'openThread:claude:s1'])
   assert.deepEqual(hub.snapshot().items, claude.items)
 })
 
@@ -360,7 +363,7 @@ test('threads merge newest first and route by id; one failing provider hides onl
   claude.failThreads = false
   await hub.openThread('claude:s1')
   assert.equal(hub.activeProvider, 'claude')
-  assert.deepEqual(claude.calls, ['openThread:claude:s1'])
+  assert.deepEqual(claude.calls, ['start:true', 'openThread:claude:s1'])
   await hub.archiveThread('c1')
   assert.deepEqual(codex.calls, ['stop', 'archive:c1'])
 })

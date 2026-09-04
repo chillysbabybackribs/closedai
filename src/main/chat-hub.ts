@@ -119,7 +119,9 @@ export class ChatHub extends EventEmitter implements ChatSurface {
    */
   async start(): Promise<void> {
     this.stopped = false
-    if (!this.dormant.has(this.active)) {
+    // A dormant provider waits for the first message; a ready one is not connected again (every
+    // connect re-reads the catalog and replays the thread, which a warm-up must not repeat).
+    if (!this.dormant.has(this.active) && !this.isReady(this.active)) {
       await this.providers[this.active].start({ warm: true })
         .catch((error: unknown) => console.warn(`[chat] ${this.active} start failed:`, error))
     }
@@ -154,8 +156,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     if (target === this.active) {
       // Dormant, or still coming up: the provider cannot take the pick yet, so the pane keeps it
       // and hands it over when the process is ready (see startIfDormant).
-      const ready = this.current().snapshot({ limit: 0 }).connection.state === 'ready'
-      if ((this.dormant.has(target) || !ready) && cached) {
+      if ((this.dormant.has(target) || !this.isReady(target)) && cached) {
         this.dormant.add(target)
         const effort = await this.rememberChoice(cached)
         this.emitEvent({ type: 'model', selectedModel: cached.id, selectedReasoningEffort: effort })
@@ -268,7 +269,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     if (!this.dormant.has(this.active)) return
     const provider = this.providers[this.active]
     this.dormant.delete(this.active)
-    await provider.start({ warm: true })
+    if (!this.isReady(this.active)) await provider.start({ warm: true })
     const saved = this.settings.get()
     const loaded = provider.snapshot({ limit: 0 })
     if (saved.chatModelId && loaded.selectedModel !== saved.chatModelId) {
@@ -276,6 +277,10 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     } else if (saved.chatReasoningEffort && loaded.selectedReasoningEffort !== saved.chatReasoningEffort) {
       await provider.selectReasoningEffort(saved.chatReasoningEffort)
     }
+  }
+
+  private isReady(name: ChatProvider): boolean {
+    return this.providers[name].snapshot({ limit: 0 }).connection.state === 'ready'
   }
 
   /** A model as the workspace last saw it, from the provider's own catalog or the shared cache. */
