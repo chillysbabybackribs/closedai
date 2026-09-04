@@ -411,7 +411,10 @@ export class CursorChatService extends EventEmitter {
   }
 
   private onTurnEnd(turnId: string, end: TurnEnd): void {
-    if (end.status === 'interrupted') this.addNotice('Turn stopped', 'info', turnId)
+    if (end.status === 'interrupted') {
+      this.addNotice('Turn paused', 'info', turnId)
+      this.setPaused(turnId)
+    }
     if (end.status === 'failed') this.addNotice(end.error ?? 'The turn failed', 'error', turnId)
   }
 
@@ -440,6 +443,7 @@ export class CursorChatService extends EventEmitter {
   private setTurn(turnId: string | null): void {
     if (this.activeTurnId === turnId) return
     this.activeTurnId = turnId
+    if (turnId) this.setPaused(null)
     this.bindBridge()
     this.emitEvent({ type: 'turn', turnId })
   }
@@ -452,6 +456,16 @@ export class CursorChatService extends EventEmitter {
       threadId: sessionId ? cursorThreadId(sessionId) : null,
       turnId: this.activeTurnId
     })
+  }
+
+  /**
+   * Remember the turn the pause button ended, so the composer can offer Resume until the next
+   * turn starts. Cleared by any new turn, including the resuming one.
+   */
+  private setPaused(turnId: string | null): void {
+    if (this.pausedTurnId === turnId) return
+    this.pausedTurnId = turnId
+    this.emitEvent({ type: 'paused', turnId })
   }
 
   private setTurnContext(report: ChatTurnContextReport): void {

@@ -426,7 +426,12 @@ export class AntigravityChatService extends EventEmitter {
   }
 
   private onTurnEnd(turnId: string, end: TurnEnd): void {
-    if (end.status === 'interrupted') this.addNotice('Turn stopped', 'info', turnId)
+    if (end.status === 'interrupted') {
+      this.addNotice(end.undelivered
+        ? 'Turn paused before the message was sent; Antigravity never received it'
+        : 'Turn paused', 'info', turnId)
+      this.setPaused(end.undelivered ? null : turnId)
+    }
     if (end.status === 'failed') this.addNotice(end.error ?? 'The turn failed', 'error', turnId)
     const conversationId = this.session?.conversationId
     if (!conversationId) return
@@ -465,6 +470,7 @@ export class AntigravityChatService extends EventEmitter {
   private setTurn(turnId: string | null): void {
     if (this.activeTurnId === turnId) return
     this.activeTurnId = turnId
+    if (turnId) this.setPaused(null)
     this.bindBridge()
     this.emitEvent({ type: 'turn', turnId })
     if (turnId === null) void this.refreshPlanUsage()
@@ -472,6 +478,16 @@ export class AntigravityChatService extends EventEmitter {
 
   private emitEvent(event: ChatEvent): void {
     this.emit('event', event)
+  }
+
+  /**
+   * Remember the turn the pause button ended, so the composer can offer Resume until the next
+   * turn starts. Cleared by any new turn, including the resuming one.
+   */
+  private setPaused(turnId: string | null): void {
+    if (this.pausedTurnId === turnId) return
+    this.pausedTurnId = turnId
+    this.emitEvent({ type: 'paused', turnId })
   }
 
   private setTurnContext(report: ChatTurnContextReport): void {
