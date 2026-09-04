@@ -394,9 +394,13 @@ See [Tools](tools.md) for configuration and measurement limits.
 the vault list and create form at the same dimensions. The list shows one row per entry with its
 brand mark, the fields it holds, and masked secrets; reveal and copy each ask the main process for
 that single field, so the renderer never holds more plaintext than the user asked to see.
-`Create credential` replaces the list in place with one editor: choose API key or login, enter a
-name and optional service URL, then provide either the API key or a username and password. The
-form validates its required fields and saves directly; there is no service picker or review step.
+`Create credential` replaces the list in place with one editor. Pasting a service URL selects the
+service that claims that host, names the entry after it, and fills any URL field it has; a host no
+catalog service claims becomes a Custom entry named after the domain, wearing that site's own icon
+fetched as an `<img>` probe (DuckDuckGo, then Google, then the site's `favicon.ico`, then a
+monogram — so only the typed domain leaves the app, and a miss degrades instead of failing). The
+service can also be picked from the chip grid, which swaps the field set to whatever that service
+takes. The form validates the catalog's required fields and saves directly; there is no review step.
 
 Every provider receives the same `credential_vault` model tools. `list` discovers saved entries
 and masked field ids without decryption; `read` requires the chosen credential id, exact field ids,
@@ -405,8 +409,8 @@ inside `tool_batch`, and their Turn Trace result is redacted. Shared model instr
 access to the current user-requested operation and prohibit echoing, logging, or persisting secrets.
 
 The service catalog in `src/shared/credentials.ts` is the single definition of which fields a
-service takes and which are required, so the store validates every saved draft. The create form
-saves the two common shapes as distinct API Key and Login entries. `CredentialVault` encrypts
+service takes, which are required, and which hosts select it, so the store validates every saved
+draft and the form renders and detects from the same source. `CredentialVault` encrypts
 secret fields with Electron `safeStorage` before writing;
 `safeStorage` is injected rather than imported, which is what lets `credential-vault.test.ts`
 exercise the round trip outside Electron. When no OS keychain is available the vault still works
