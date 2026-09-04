@@ -4,6 +4,7 @@ import type { ToolContext } from '../../tool.js'
 import { canonicalUrl, SearchRouter } from '../router.js'
 import type { SearchRequest, SearchResult } from '../types.js'
 import { publicUrl, type SourceDocument, type SourceReader } from './source-reader.js'
+import { presentSearch, type OpenSearchTab } from '../presentation.js'
 
 export type ResearchOwner = { paneId: string; threadId: string; turnId: string | null; workspace: string }
 export type ResearchDependencies = {
@@ -12,7 +13,7 @@ export type ResearchDependencies = {
   read(runId: string, sourceId: string): Promise<string>
   remove(runId: string): Promise<void>
   /** Opens a retained, user-owned tab once. Never follows subsequent results automatically. */
-  openLive?(url: string): string
+  openLive?: OpenSearchTab
 }
 export type ResearchInput = {
   queries: SearchRequest[]; urls: string[]; maxSources: number; deadlineMs: number; presentation: 'live' | 'background'
@@ -56,13 +57,8 @@ export class ResearchService {
     this.runs.set(id, run)
     this.add(run, input.queries, input.urls)
     if (input.presentation === 'live') {
-      try {
-        if (!this.deps.openLive) throw new Error('Live browser is unavailable')
-        const url = input.urls[0] ?? `https://www.google.com/search?q=${encodeURIComponent(input.queries[0].query)}`
-        run.presentation = { state: 'opened', tabId: this.deps.openLive(url) }
-      } catch (error) {
-        run.presentation = { state: 'failed', error: message(error) }
-      }
+      const url = input.urls[0] ?? `https://www.google.com/search?q=${encodeURIComponent(input.queries[0].query)}`
+      run.presentation = presentSearch(this.deps.openLive, url, context)
       this.changed(run)
     }
     return this.snapshot(run)

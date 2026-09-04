@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm'
 import { cn } from '../../lib/utils.js'
 import { Source, SourceContent, SourceTrigger } from '../prompt-kit/source.js'
 import { CodeBlock, CodeBlockCode } from './code-block.js'
+import { remarkBareUrls } from './markdown-links.js'
 
 export type MarkdownProps = {
   children: string
@@ -142,7 +143,7 @@ function hostname(href: string): string {
 }
 
 const MarkdownBlock = memo(function MarkdownBlock({ content, components }: { content: string; components: Partial<Components> }) {
-  return <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={components}>{content}</ReactMarkdown>
+  return <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks, remarkBareUrls]} components={components}>{content}</ReactMarkdown>
 }, (previous, next) => previous.content === next.content && previous.components === next.components)
 
 function MarkdownComponent({ children, id, className, components }: MarkdownProps) {

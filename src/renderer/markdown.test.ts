@@ -42,3 +42,49 @@ test('does not turn unsafe markdown links into source cards', () => {
   assert.doesNotMatch(html, /prompt-source-trigger/)
   assert.doesNotMatch(html, /javascript:/)
 })
+
+test('links bare hosts that remark-gfm leaves as plain text', () => {
+  const source = 'Compare untitledui.com and tailwindcss.com/plus before buying.'
+  const html = renderToStaticMarkup(createElement(Markdown, null, source))
+
+  assert.match(html, /href="https:\/\/untitledui\.com\/"/)
+  assert.match(html, /href="https:\/\/tailwindcss\.com\/plus"/)
+  assert.match(html, /prompt-source-trigger/)
+})
+
+test('links bare hosts inside table cells and list items', () => {
+  const source = [
+    '| Site | Note |',
+    '| --- | --- |',
+    '| **alignui.com** | dashboards |',
+    '',
+    '- tremor.so for charts'
+  ].join('\n')
+  const html = renderToStaticMarkup(createElement(Markdown, null, source))
+
+  assert.match(html, /href="https:\/\/alignui\.com\/"/)
+  assert.match(html, /href="https:\/\/tremor\.so\/"/)
+})
+
+test('leaves sentence punctuation and wrapping parentheses outside the link', () => {
+  const html = renderToStaticMarkup(createElement(Markdown, null, 'See (vercel.com/geist).'))
+
+  assert.match(html, /href="https:\/\/vercel\.com\/geist"/)
+  assert.doesNotMatch(html, /geist\)/)
+})
+
+test('does not link file paths, code spans, or existing links', () => {
+  const source = [
+    'Edit src/renderer/chat-transcript.tsx and package.json now.',
+    '',
+    '`untitledui.com`',
+    '',
+    '[Untitled UI](https://www.untitledui.com/pricing)'
+  ].join('\n')
+  const html = renderToStaticMarkup(createElement(Markdown, null, source))
+
+  assert.doesNotMatch(html, /href="https:\/\/[^"]*chat-transcript/)
+  assert.doesNotMatch(html, /href="https:\/\/package\.json"/)
+  assert.doesNotMatch(html, /href="https:\/\/untitledui\.com\/"/)
+  assert.match(html, /href="https:\/\/www\.untitledui\.com\/pricing"/)
+})

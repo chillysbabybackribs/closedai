@@ -6,6 +6,7 @@ import type { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { searchTools } from './tools/search/index.js'
 import type { ResearchService } from './tools/search/research/service.js'
 import { SourceStore } from './tools/search/research/source-reader.js'
+import { SearchBrowserTabs } from './tools/search/presentation.js'
 
 /** Electron/session ownership stays outside the provider-neutral search implementation. */
 export async function createResearchRuntime(options: {
@@ -25,6 +26,14 @@ export async function createResearchRuntime(options: {
   const publicSession = session.fromPartition('research-public')
   const store = new SourceStore(options.root, (input, init) => publicSession.fetch(input as string, init))
   let service!: ResearchService
+  const liveTabs = new SearchBrowserTabs({
+    exists: (tabId) => options.browser()?.tabList().some((tab) => tab.id === tabId) ?? false,
+    open: (url) => {
+      const browser = options.browser()
+      if (!browser) throw new Error('The live browser is unavailable')
+      return browser.openNewTab(url, true)
+    }
+  })
   const namespace = searchTools({
     onResearchCreated: (created) => { service = created },
     research: {
@@ -40,10 +49,12 @@ export async function createResearchRuntime(options: {
       collect: (url, runId, sourceId, signal) => store.collect(url, runId, sourceId, signal),
       read: (runId, sourceId) => store.read(runId, sourceId),
       remove: (runId) => store.remove(runId),
-      openLive: (url) => {
-        const browser = options.browser()
-        if (!browser) throw new Error('The live browser is unavailable')
-        return browser.openNewTab(url, true)
+      openLive: (url, context) => {
+        const snapshot = context.paneId ? options.peers()?.paneSnapshot(context.paneId) : null
+        if (!snapshot || snapshot.threadId !== context.threadId || snapshot.activeTurnId !== context.turnId) {
+          throw new Error('The live search caller is no longer in this turn')
+        }
+        return liveTabs.open(url, context)
       }
     }
   })

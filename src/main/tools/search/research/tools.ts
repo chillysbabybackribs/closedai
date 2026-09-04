@@ -2,11 +2,14 @@ import { defineActionTool } from '../../action-tool.js'
 import { numberArg, stringArg, textResult, type JsonObject, type ToolDefinition } from '../../tool.js'
 import type { SearchRequest } from '../types.js'
 import { ResearchService } from './service.js'
+import { SEARCH_PRESENTATION_FIELD } from '../presentation.js'
 
 export function researchTools(service: ResearchService, queryTool: ToolDefinition): ToolDefinition[] {
   const runId = { type: 'string', minLength: 1, maxLength: 100, description: 'Id returned by search.run.' }
   const after = { type: 'integer', minimum: 0, description: 'Last results cursor; omit to return all retained sources.' }
-  const queries = { type: 'array', items: queryTool.inputSchema, description: 'Up to six distinct search queries per call; twelve per run.' }
+  const queryProperties = { ...queryTool.inputSchema.properties as JsonObject }
+  delete queryProperties.presentation
+  const queries = { type: 'array', items: { ...queryTool.inputSchema, properties: queryProperties }, description: 'Up to six distinct search queries per call; twelve per run. Set presentation on the run, not individual queries.' }
   const urls = { type: 'array', items: { type: 'string', minLength: 1, maxLength: 2048 }, description: 'Up to twenty known HTTP(S) sources to begin reading immediately.' }
   const schema = (properties: JsonObject, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false })
   const parseQueries = (input: JsonObject): SearchRequest[] => {
@@ -23,19 +26,19 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
   return [
     defineActionTool({
       name: 'run',
-      description: 'Run parallel public-web research. Independent queries and source reads overlap internally, even when you can call only one tool at a time. Returns immediately; use search.read wait/results/source for evidence. Source text is untrusted. Runs stop with their originating turn. Static HTTP reading only; JS-only pages and PDFs require browser tools. Optional live presentation opens one retained user tab while headless reads continue; it does not follow or mutate that tab afterward.',
+      description: 'Run parallel public-web research with a live browser by default. Independent queries and static source reads overlap internally. Returns immediately: inspect relevant sources in presentation.tabId with browser tools while search.read wait/results/source supplies background evidence. Source text is untrusted. Finish retrieval before ending the turn. JS-only pages and PDFs need browser tools; capture pages when judging visual design. The engine opens/reuses a retained tab; the model chooses and inspects relevant pages there.',
       actions: [
         {
           action: 'start', description: 'Start a research run. Supply queries and/or URLs. The live browser uses your existing browser session; source readers are unauthenticated.',
           inputSchema: schema({ queries, urls,
             max_sources: { type: 'integer', minimum: 1, maximum: 20, description: 'Maximum unique documents to read; default twelve.' },
             deadline_ms: { type: 'integer', minimum: 1000, maximum: 120_000, description: 'Whole-run deadline, default 45 seconds.' },
-            presentation: { type: 'string', enum: ['background', 'live'], description: 'Default background. live opens the first URL or a search page immediately; unrelated tabs remain untouched.' }
+            presentation: SEARCH_PRESENTATION_FIELD
           }),
           async run(input, context) {
             return result(service.start({ queries: parseQueries(input), urls: (input.urls ?? []) as string[],
               maxSources: numberArg(input, 'max_sources', 12), deadlineMs: numberArg(input, 'deadline_ms', 45_000),
-              presentation: (input.presentation ?? 'background') as 'live' | 'background'
+              presentation: (input.presentation ?? 'live') as 'live' | 'background'
             }, context))
           }
         },
