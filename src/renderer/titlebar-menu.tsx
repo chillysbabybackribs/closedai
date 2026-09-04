@@ -90,6 +90,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
   historyOpen,
   onChatZoomChange,
   onOpenSettings,
+  onOpenCredentials,
   onToggleHistory
 }: TitlebarMenuProps): JSX.Element {
   return (
