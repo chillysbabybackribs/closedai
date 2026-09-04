@@ -1,4 +1,5 @@
 import type { ChangeEvent, JSX, RefObject } from 'react'
+import { useState } from 'react'
 import { FileImage, FileText, FileUp, X } from 'lucide-react'
 import {
   Attachment,
@@ -8,8 +9,10 @@ import {
   AttachmentDescription,
   AttachmentGroup,
   AttachmentMedia,
-  AttachmentTitle
+  AttachmentTitle,
+  AttachmentTrigger
 } from '../components/ui/attachment.js'
+import { ImagePreviewDialog, type ImagePreviewTarget } from './attachment-preview.js'
 import { Button } from '../components/ui/button.js'
 import { PromptInputAction } from '../components/ui/prompt-input.js'
 import type { ChatAttachment, ChatAttachmentSummary } from '../shared/chat.js'
@@ -94,17 +97,22 @@ export function AttachmentChips({
   attachments: ChatAttachment[]
   onRemove: (id: string) => void
 }): JSX.Element | null {
+  const [target, setTarget] = useState<ImagePreviewTarget | null>(null)
   if (!attachments.length) return null
   return (
-    <AttachmentGroup className="prompt-attachments" aria-label="Attachments">
-      {attachments.map((attachment) => (
-        <AttachmentCard
-          key={attachment.id}
-          attachment={attachment}
-          onRemove={() => onRemove(attachment.id)}
-        />
-      ))}
-    </AttachmentGroup>
+    <>
+      <AttachmentGroup className="prompt-attachments" aria-label="Attachments">
+        {attachments.map((attachment) => (
+          <AttachmentCard
+            key={attachment.id}
+            attachment={attachment}
+            onRemove={() => onRemove(attachment.id)}
+            onPreview={setTarget}
+          />
+        ))}
+      </AttachmentGroup>
+      <ImagePreviewDialog target={target} onClose={() => setTarget(null)} />
+    </>
   )
 }
 
@@ -113,38 +121,55 @@ export function TranscriptAttachments({
 }: {
   attachments: ChatAttachmentSummary[]
 }): JSX.Element | null {
+  const [target, setTarget] = useState<ImagePreviewTarget | null>(null)
   if (!attachments.length) return null
   return (
     <div className="prompt-message-user-attachments" aria-label="Attachments">
       {attachments.map((attachment) => {
         const preview = imagePreview(attachment)
         return preview ? (
-          <img
+          <button
             key={attachment.id}
-            className="prompt-message-image"
-            src={preview}
-            alt={attachment.name}
-            title={attachment.name}
-          />
+            type="button"
+            className="prompt-message-image-btn"
+            aria-label={`Open ${attachment.name}`}
+            data-ui="composer.attachment-preview"
+            data-ui-key={attachment.id}
+            onClick={() => setTarget({ src: preview, name: attachment.name })}
+          >
+            <img className="prompt-message-image" src={preview} alt={attachment.name} title={attachment.name} />
+          </button>
         ) : (
           <AttachmentCard key={attachment.id} attachment={attachment} />
         )
       })}
+      <ImagePreviewDialog target={target} onClose={() => setTarget(null)} />
     </div>
   )
 }
 
 function AttachmentCard({
   attachment,
-  onRemove
+  onRemove,
+  onPreview
 }: {
   attachment: ChatAttachmentSummary | ChatAttachment
   onRemove?: () => void
+  onPreview?: (target: ImagePreviewTarget) => void
 }): JSX.Element {
   const preview = imagePreview(attachment)
   const image = attachment.kind === 'image'
   return (
     <Attachment size="sm" className={preview ? 'border-0 bg-transparent' : undefined}>
+      {preview && onPreview ? (
+        <AttachmentTrigger
+          className="cursor-zoom-in"
+          aria-label={`Open ${attachment.name}`}
+          data-ui="composer.attachment-preview"
+          data-ui-key={attachment.id}
+          onClick={() => onPreview({ src: preview, name: attachment.name })}
+        />
+      ) : null}
       <AttachmentMedia variant={preview ? 'image' : 'icon'}>
         {preview ? <img src={preview} alt="" /> : image ? <FileImage aria-hidden="true" /> : <FileText aria-hidden="true" />}
       </AttachmentMedia>
