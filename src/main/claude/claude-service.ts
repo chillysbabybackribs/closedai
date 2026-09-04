@@ -17,7 +17,7 @@ import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { describeUsage, type ContextUsage } from '../chat-context/context-compaction.js'
 import { applyPlanUsageSignal, planUsageUnavailable, type ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
 import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource } from '../chat-context/thread-handoff.js'
-import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
+import { buildTurnAdditionalContext, withSourceChanges, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { messageOf } from '../chat-normalizers.js'
@@ -105,13 +105,17 @@ export class ClaudeChatService extends EventEmitter {
       await this.ensureReady()
       const session = this.session!
       if (this.activeTurnId) throw new Error('A Claude turn is already running')
+      const sessionId = session.sessionId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const context = {
-        ...this.turnAdditionalContext(text),
+        ...await withSourceChanges(this.turnAdditionalContext(text), this.tools.sourceReads, {
+          paneId: this.paneId, threadId: sessionId ? claudeThreadId(sessionId) : null, cwd: this.cwd
+        }),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
       }
       const turn = await buildClaudeUserMessage(text, shrinkPastedImages(attachments), Object.keys(context).length ? context : undefined, session.sessionId)
       if (!turn) return
+      if (this.session !== session || session.sessionId !== sessionId || this.activeTurnId) throw new Error('Claude conversation changed while preparing the turn')
       this.transcript.addOptimisticUser(crypto.randomUUID(), turn.prompt, turn.summaries)
       session.send(turn.message)
       this.setTurnContext(buildTurnContextReport({
@@ -295,7 +299,7 @@ export class ClaudeChatService extends EventEmitter {
   }
 
   private createSession(sdk: ClaudeSdk): ClaudeSession {
-    return new ClaudeSession({
+    const session = new ClaudeSession({
       sdk,
       cwd: this.cwd,
       mcpServers: () => claudeMcpServers(sdk, this.tools, () => ({
@@ -311,8 +315,14 @@ export class ClaudeChatService extends EventEmitter {
       onTurnEnd: (turnId, end) => this.onTurnEnd(turnId, end),
       onContextUsage: (usage) => this.noteContextUsage(usage),
       onPlanUsageSignal: (signal) => this.notePlanUsageSignal(signal),
-      traceScope: () => ({ paneId: this.paneId, provider: 'claude', turnId: this.activeTurnId })
+      traceScope: () => ({ paneId: this.paneId, provider: 'claude', turnId: this.activeTurnId }),
+      onSourceRead: (receipt) => {
+        if (this.session === session && session.activeTurnId && session.sessionId) this.tools.sourceReads.remember({
+          paneId: this.paneId, threadId: claudeThreadId(session.sessionId), cwd: this.cwd
+        }, receipt)
+      }
     })
+    return session
   }
 
   /** Bring the saved session's transcript back before any process is spawned to resume it. */

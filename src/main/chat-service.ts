@@ -23,6 +23,7 @@ import { routeChatNotification } from './chat-notification-router.js'
 import { ChatTranscript } from './chat-transcript.js'
 import {
   buildTurnAdditionalContext,
+  withSourceChanges,
   type ActiveBrowserContext
 } from './chat-context/turn-context.js'
 import { resumeThreadParams, startThreadParams, type ThreadResponse } from './chat-context/thread-params.js'
@@ -167,9 +168,10 @@ export class ChatService extends EventEmitter {
       const threadId = await this.ensureThread()
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const additionalContext = {
-        ...this.turnAdditionalContext(prompt),
+        ...await withSourceChanges(this.turnAdditionalContext(prompt), this.tools.sourceReads, { paneId: this.paneId, threadId, cwd: this.cwd }),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
       }
+      if (this.threadId !== threadId || this.activeTurnId || this.stopping) throw new Error('Codex conversation changed while preparing the turn')
       const response = await this.client.request<{ turn?: unknown }>('turn/start', {
         threadId,
         clientUserMessageId,

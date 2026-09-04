@@ -3,6 +3,7 @@ import { booleanArg, numberArg, stringArg, textResult } from '../tool.js'
 import { cleanPath, fileSet, inputSchema, pathField, siblingTests } from './query.js'
 import { factsFor, type FileFacts } from './scan.js'
 import { readRelated, type ReadRelated } from './read-related.js'
+import type { SourceReadObservation } from '../source-read-history.js'
 
 export const includeRelatedField = {
   type: 'boolean', description: 'Include bounded local type definitions, relevant test excerpts, stylesheet rules and sibling test paths; default true.'
@@ -43,22 +44,26 @@ export function readAction(root: string): ToolAction {
       const unchanged = stringArg(input, 'known_hash') === facts.hash
       const related = booleanArg(input, 'include_related', true)
       const extra = related ? await readRelated(root, facts, start, end) : null
-      return textResult(sourceBundle(facts, start, end, extra, {
-        maxChars: numberArg(input, 'max_chars', 12_000), related, unchanged
-      }))
+      const sourceReads: SourceReadObservation[] = []
+      const text = sourceBundle(facts, start, end, extra, {
+        maxChars: numberArg(input, 'max_chars', 12_000), related, unchanged,
+        observe: (snapshot) => sourceReads.push({ cwd: root, path: snapshot.path, hash: snapshot.hash })
+      })
+      return { ...textResult(text), sourceReads }
     }
   }
 }
 
-type BundleOptions = { maxChars: number; related: boolean; unchanged?: boolean }
+type BundleOptions = { maxChars: number; related: boolean; unchanged?: boolean; observe?: (facts: FileFacts) => void }
 
 /** Budget before serialization; never claim a line that was cut by a character limit. */
 export function sourceBundle(facts: FileFacts, start: number, end: number, extra: ReadRelated | null, options: BundleOptions): string {
-  const out = new SourceBudget(options.maxChars)
+  const out = new SourceBudget(options.maxChars, options.observe)
   let primaryEnd: number | undefined
   if (options.unchanged) {
     out.add(`Unchanged at read time: ${facts.file}\n${facts.hash}\nRequested lines ${start}-${Math.min(end, facts.lines.length)}; no source re-emitted.\n`)
     primaryEnd = Math.min(end, facts.lines.length)
+    options.observe?.(facts)
   } else {
     const hasRelated = extra && (extra.types.length || extra.tests.length || extra.styles.length)
     const primaryBudget = hasRelated ? Math.floor(options.maxChars * 0.6) : options.maxChars
@@ -84,7 +89,7 @@ export function sourceBundle(facts: FileFacts, start: number, end: number, extra
 class SourceBudget {
   private text = ''
   private omitted = false
-  constructor(private readonly max: number) {}
+  constructor(private readonly max: number, private readonly observe?: (facts: FileFacts) => void) {}
   get length(): number { return this.text.length }
   get remaining(): number { return Math.max(0, this.max - 180 - this.text.length) }
 
@@ -115,6 +120,7 @@ class SourceBudget {
     const last = start + lines.length - 1
     const added = this.add(`${prefix}Returned lines ${start}-${last} of ${facts.lines.length}${last < end ? `; requested through ${end}` : ''}\n${lines.join('')}`)
     if (last < end) this.omitted = true
+    if (added) this.observe?.(facts)
     return added ? last : undefined
   }
 

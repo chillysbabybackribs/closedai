@@ -5,6 +5,7 @@ import { scanWorkspace, type FileFacts } from './scan.js'
 import { includeRelatedField, maxCharsField, sourceBundle } from './read.js'
 import { truncateText } from '../truncate-json.js'
 import { readRelated } from './read-related.js'
+import type { SourceReadObservation } from '../source-read-history.js'
 
 // One call answers "where does this live?" whatever the model has in hand: an exported
 // symbol, a `data-ui` control id read off a screenshot, a CSS class, a path fragment, an IPC
@@ -56,10 +57,12 @@ export function findAction(root: string): ToolAction {
       const { facts, symbol } = exact[0]!
       const related = booleanArg(input, 'include_related', true)
       const extra = related ? await readRelated(root, facts, symbol.line, symbol.end, scanned) : null
+      const sourceReads: SourceReadObservation[] = []
       const source = sourceBundle(facts, symbol.line, symbol.end, extra, {
-        related, maxChars: numberArg(input, 'max_chars', 12_000)
+        related, maxChars: numberArg(input, 'max_chars', 12_000),
+        observe: (snapshot) => sourceReads.push({ cwd: root, path: snapshot.path, hash: snapshot.hash })
       })
-      return textResult(`${truncateText(navigation, 6_000, 'Narrow the query for more locations.').text}\n\n${source}`)
+      return { ...textResult(`${truncateText(navigation, 6_000, 'Narrow the query for more locations.').text}\n\n${source}`), sourceReads }
     }
   }
 }

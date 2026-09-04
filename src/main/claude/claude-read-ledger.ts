@@ -13,7 +13,7 @@ export type LedgerVerdict =
 export type LedgerSkip = { tool: string; path: string; lines: number; verdict: 'deny' | 'narrow' }
 type ReadVersion = { hash: string; ranges: LineRange[] }
 type Scope = Map<string, ReadVersion>
-type ReadReceipt = { path: string; hash: string; startLine: number; endLine: number; previousRangesInvalidated?: true }
+export type ReadReceipt = { path: string; hash: string; startLine: number; endLine: number; previousRangesInvalidated?: true }
 
 const VOLATILE_PATH = /(?:^|\/)(?:node_modules|out|dist|build|coverage|\.git)\/|\.(?:log|out|output|jsonl|pid|lock|tmp)$/
 
@@ -21,7 +21,7 @@ export class ClaudeReadLedger {
   private readonly scopes = new Map<string, Scope>()
   private readonly pending = new Map<string, { scope: string; state: Scope }>()
 
-  constructor(private readonly onSkip?: (skip: LedgerSkip) => void) {}
+  constructor(private readonly onSkip?: (skip: LedgerSkip) => void, private readonly onRead?: (receipt: ReadReceipt) => void) {}
 
   /** Context availability is uncertain after a new turn, compaction, or session replacement. */
   reset(): void { this.scopes.clear(); this.pending.clear() }
@@ -113,6 +113,7 @@ export class ClaudeReadLedger {
         if (!pending || this.scopes.get(pending.scope) !== pending.state) return {}
         const receipt = await this.after(pending.scope, input.tool_name, input.tool_input, input.tool_response, input.cwd)
         if (!receipt) return {}
+        try { this.onRead?.(receipt) } catch { /* Optional observations must not break native reads. */ }
         return { hookSpecificOutput: {
           hookEventName: 'PostToolUse',
           updatedToolOutput: { ...record(input.tool_response), closedai_read: receipt }

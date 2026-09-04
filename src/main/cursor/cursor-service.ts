@@ -7,7 +7,7 @@ import type {
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource } from '../chat-context/thread-handoff.js'
-import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
+import { buildTurnAdditionalContext, withSourceChanges, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { messageOf } from '../chat-normalizers.js'
@@ -104,9 +104,12 @@ export class CursorChatService extends EventEmitter {
       await this.ensureReady()
       const session = this.session!
       if (this.activeTurnId) throw new Error('A Cursor turn is already running')
+      const sessionId = session.sessionId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const context = {
-        ...this.turnAdditionalContext(text),
+        ...await withSourceChanges(this.turnAdditionalContext(text), this.bridge.sourceReads, {
+          paneId: this.paneId, threadId: sessionId ? cursorThreadId(sessionId) : null, cwd: this.cwd
+        }),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
       }
       const turn = await buildCursorPrompt(
@@ -117,6 +120,7 @@ export class CursorChatService extends EventEmitter {
       )
       if (!turn) return
       await this.bridge.start()
+      if (this.session !== session || session.sessionId !== sessionId || this.activeTurnId) throw new Error('Cursor conversation changed while preparing the turn')
       this.transcript.addOptimisticUser(randomUUID(), turn.prompt, turn.summaries)
       await session.send(turn.blocks)
       this.setTurnContext(buildTurnContextReport({

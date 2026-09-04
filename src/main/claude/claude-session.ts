@@ -6,7 +6,7 @@ import type { ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
 import type { ChatPlanUsage } from '../../shared/chat.js'
 import { claudeTurnId } from './claude-ids.js'
 import { claudeQueryOptions } from './claude-options.js'
-import { ClaudeReadLedger, type LedgerSkip } from './claude-read-ledger.js'
+import { ClaudeReadLedger, type LedgerSkip, type ReadReceipt } from './claude-read-ledger.js'
 import { ClaudeRuntime } from './claude-runtime.js'
 import type { ClaudeSdk } from './claude-sdk.js'
 import { ClaudeTurnTranslator, type TranscriptOp, type TurnEnd } from './claude-stream.js'
@@ -35,6 +35,7 @@ export type ClaudeSessionDeps = {
   /** When set, every SDK message in either direction is recorded in the turn trace. */
   traceScope?: () => TraceScope
   idleMs?: number
+  onSourceRead?: (receipt: ReadReceipt) => void
 }
 
 const DEFAULT_IDLE_MS = 15 * 60 * 1000
@@ -49,7 +50,7 @@ export class ClaudeSession {
   private runtime: ClaudeRuntime | null = null
   private runtimeThinking = true
   private readonly backgroundTasks = new ClaudeBackgroundTasks()
-  private readonly readLedger = new ClaudeReadLedger((skip) => this.traceSkip(skip))
+  private readonly readLedger = new ClaudeReadLedger((skip) => this.traceSkip(skip), (receipt) => this.deps.onSourceRead?.(receipt))
   private translator: ClaudeTurnTranslator | null = null
   private idleTimer: NodeJS.Timeout | null = null
 

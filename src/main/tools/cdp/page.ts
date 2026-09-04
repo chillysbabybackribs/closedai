@@ -64,9 +64,8 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
       action: 'click',
       description:
         'Re-resolve a ref from the latest inspection, scroll it into view, verify its center is unobscured, ' +
-        'then send a real CDP mouse click as an escape hatch. Brings the tab to the front first, because an off-screen ' +
-        'view ' +
-        'drops real input. Stale, detached, disabled, or covered refs fail without clicking.',
+        'then send a real CDP mouse click as an escape hatch. Brings the tab to the front first, because an ' +
+        'off-screen view drops real input. Stale, detached, disabled, or covered refs fail without clicking.',
       inputSchema: objectSchema({
         tab_id: tabIdField,
         ref: refField,

@@ -6,7 +6,7 @@ import type {
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource } from '../chat-context/thread-handoff.js'
-import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
+import { buildTurnAdditionalContext, withSourceChanges, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { buildCompactionSeed, compactedAdditionalContext } from '../chat-context/provider-compaction.js'
 import { antigravityPlanUsage, planUsageUnavailable } from '../chat-context/plan-usage.js'
@@ -113,10 +113,13 @@ export class AntigravityChatService extends EventEmitter {
       await this.ensureReady()
       const session = this.session!
       if (this.activeTurnId) throw new Error('An Antigravity turn is already running')
+      const conversationId = session.conversationId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const pendingCompaction = this.session!.takePendingSeed()
       const context = {
-        ...this.turnAdditionalContext(text),
+        ...await withSourceChanges(this.turnAdditionalContext(text), this.bridge.sourceReads, {
+          paneId: this.paneId, threadId: conversationId ? antigravityThreadId(conversationId) : null, cwd: this.cwd
+        }),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {}),
         ...(pendingCompaction ? compactedAdditionalContext(pendingCompaction) : {})
       }
@@ -126,6 +129,7 @@ export class AntigravityChatService extends EventEmitter {
       // The CLI reads the agent file once, at process start. A spawn is therefore the only
       // moment its instructions — including the repository map — can be brought up to date.
       if (!session.live) this.profile = await ensureAntigravityProfile(this.stateDir, { cwd: this.cwd })
+      if (this.session !== session || session.conversationId !== conversationId || this.activeTurnId) throw new Error('Antigravity conversation changed while preparing the turn')
       this.transcript.addOptimisticUser(crypto.randomUUID(), turn.prompt, turn.summaries)
       session.send(turn.content)
       this.setTurnContext(buildTurnContextReport({
