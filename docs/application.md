@@ -40,10 +40,15 @@ receives a fresh chat. This is directory selection; it does not create a Git bra
 
 On launch only the selected pane is warmed. Selecting another pane immediately displays its
 available snapshot, then wakes its runtime asynchronously. Unselected panes without an active
-turn are parked after five minutes, and at most two unselected idle panes stay awake: creating or
-opening a chat parks the least recently active beyond that at once, so consecutive new chats do
-not stack provider processes. Parking keeps the pane and the record. Titles and last turn-boundary
-times are persisted on the record so dormant chats can still be named after a restart.
+turn are parked after five minutes, the selected pane after twenty, and at most two unselected
+idle panes stay awake: creating or opening a chat parks the least recently active beyond that at
+once, so consecutive new chats do not stack provider processes. Parking stops the pane's provider
+processes but keeps the pane, its in-memory transcript, and the record; the next message wakes
+it. Each pane keeps its own Codex app-server while awake. Provider processes are spawned in their
+own process group and stopped as a group (SIGTERM, then SIGKILL after three seconds), so the
+worker a CLI launcher forks dies with it, and every tracked group is killed at quit
+(`src/main/process-tree.ts`). Titles and last turn-boundary times are persisted on the record so
+dormant chats can still be named after a restart.
 
 Startup, new chat, and opening a chat trim attached panes toward eight, least recently active
 first. The selected pane, active turns, operations in flight, and undelivered continuation
