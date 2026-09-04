@@ -63,7 +63,7 @@ before the app-server starts.
 | `browser_cdp` | `page` | `inspect_page`, `click`, `click_at`, `type`, `press_key`, `scroll`, `dismiss_overlay` | Semantic page inspection plus exceptional real CDP mouse and keyboard input. Input actions require `fallback_reason`; `fetch`/`extract`, site APIs, and non-input protocol operations come first. |
 | `browser_cdp` | `protocol` | `capabilities`, `targets`, `command`, `target`, `events`, `requests`, `body` | Primary raw Chrome DevTools Protocol interface, eagerly advertised. `requests` lists the network traffic a tab has made and `body` reads captured responses. This is the supported way to find the endpoint behind a page. Raw `Input.*` commands require `fallback_reason`; screenshots remain ordinary commands. Target inventory exposes flattened child sessions; `target` wraps attach/detach/create/activate/close. See [CDP](cdp-tool-foundation.md). |
 | `search` | `query` | plain tool | Routed public-web search across Brave, Serper, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. `live: true` bypasses the ten-minute cache and refreshes it with current provider results. |
-| `search` | `run` | `start`, `extend`, `cancel` | Incremental public-web research: independent queries and static source readers overlap inside one app-owned run. Optional `presentation: live` opens a retained browser tab immediately. |
+| `search` | `run` | `start`, `extend`, `cancel` | Incremental public-web research: independent queries and static source readers overlap inside one app-owned run. Live presentation is the default; a retained browser tab opens immediately. |
 | `search` | `read` | `results`, `wait`, `source` | Cursor-based source updates, bounded event waits, and retained document excerpts. Observes the calling pane/thread's runs without starting more requests. |
 | `closedai_workspace` | `inspect` | `find`, `outline`, `map`, `related`, `tests`, `ipc_flow`, `read` | Read-only source/navigation registered for this indexed checkout. `find` locates code and enriches unique exact declarations with hashed source, local types, test excerpts, and styles. `read` returns the same context for a known symbol/range; a stale `known_hash` returns fresh source in the same call. `outline` provides shape, hash, and all matching style locations without claiming source coverage. Parsing is cached by absolute path and content hash, with fresh byte reads independent of timestamps. Other verbs query the generated index, direct imports, candidate tests, and IPC ownership. |
 | `peer_chats` | `list`, `read` | plain tools | Read-only status and paginated transcript access to other panes and visible subagent summaries. `read` defaults to 50 items, at most 100, using an id from `list`; it does not start or control agents. Reasoning items are excluded from both previews and pages, matching `recall` and thread handoff, so one model's thinking never enters another model's context. |
@@ -206,13 +206,25 @@ is retained up to 120k characters. Truncation is explicit. JSON and text are als
 PDFs, empty JS shells, and unsupported MIME are reported for browser follow-up. Parsing does not
 execute JavaScript or resolve CSS visibility and is not a rendered-page verification.
 
-`presentation: live` opens the first supplied URL, or a Google search for the first query, in a
-new normal browser tab alongside background work. This visible tab uses the normal browser
-session. The result reports its id and that it opened, not that navigation completed. It is
-retained for the user; the run does not drive it after opening, follow results, or close it on
-cancellation. Models can use existing browser tools on its explicit id. Hidden rendered workers,
+Both `search.query` and `search.run.start` default to `presentation: live`. The first live search
+in a pane/thread/turn opens the first supplied URL, or a Google search for its query, in a new
+normal browser tab alongside API/background work. Further searches in that turn reuse the tab
+without navigating away from a source the model or user is reading; a closed tab is recreated.
+The visible tab uses the normal browser session. The result reports `presentation.tabId` and
+that it opened, not that navigation completed. Models should inspect relevant sources in that
+tab while background research continues and capture pages when making visual claims. The engine
+does not automatically follow results or close the tab on cancellation. Explicit
+`presentation: background` suppresses opening/reusing a tab when the user requests headless work.
+For multi-query runs, presentation is a run-level field, not an individual query field.
+Browser failures are reported as `presentation.state: failed` while API research continues.
+Hidden rendered workers,
 live target transfer, dedicated progress UI, and Follow/Take over controls remain later slices.
 `live: true` on each query still controls cache freshness only.
+
+Regression coverage includes omitted presentation on both tools, turn-scoped tab reuse, explicit
+background, and an isolated Chromium check: `node scripts/search-live-check.mjs`. The latter loads
+a real browser page through the production runtime while a local source response remains pending,
+using a temporary bundle and profile without rebuilding or restarting the user's app.
 
 ### Search credentials
 

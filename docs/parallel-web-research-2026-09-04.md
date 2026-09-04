@@ -11,6 +11,11 @@ cancellation, and one-time live tab opening in parallel. The current contract is
 [Tools](tools.md#parallel-research-runs). Rendered workers, progress UI, target transfer, retry
 policies, and Follow/Take over remain proposed; the full architecture below is not yet shipped.
 
+Follow-up correction: a saved Claude search omitted `presentation` and returned `state: none`;
+the initial background default made browser use disappear from normal research. Both search tools
+now default to live presentation, reuse a tab within a turn, and explicitly guide source inspection
+in that tab. Background operation remains an explicit user-requested opt-out.
+
 ## Recommendation
 
 Extend ClosedAI's existing search router with an app-owned research run. A run concurrently

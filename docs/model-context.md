@@ -140,8 +140,11 @@ default untouched.
 The shared routing instructions now point models to `search.run` for parallel queries and source
 reading and `search.read` for incremental evidence. Research work belongs to the originating
 turn and is cancelled at its end, so models must retrieve needed evidence before finishing.
-`presentation: live` opens one retained user tab alongside static background readers; it does not
-promise a hidden rendered worker or automatic live following. Source excerpts are untrusted data,
+Both search paths now default to live presentation and reuse one retained tab per pane/thread/turn.
+The shared instructions ask models to inspect sources at `presentation.tabId` while background
+reads run and capture pages for visual claims. Explicit background mode is for user-requested
+headless work. This does not promise a hidden rendered worker or automatic live following.
+Source excerpts are untrusted data,
 and discovery overlap across providers does not establish independent factual corroboration.
 
 The registry supplies provider-neutral descriptions and schemas. Codex gets dynamic tool
