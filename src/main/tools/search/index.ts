@@ -8,18 +8,21 @@ import { serperClient } from './serper.js'
 import { tavilyClient } from './tavily.js'
 import { SEARCH_DEPTHS, SEARCH_INTENTS, SEARCH_PROVIDERS, type SearchDepth, type SearchIntent, type SearchProvider } from './types.js'
 import { youClient } from './you.js'
+import { ResearchService, type ResearchDependencies } from './research/service.js'
+import { researchTools } from './research/tools.js'
 
-export type SearchToolDeps = { fetch?: typeof fetch; readKey?: SearchKeyReader; now?: () => number }
+export type SearchToolDeps = {
+  fetch?: typeof fetch; readKey?: SearchKeyReader; now?: () => number
+  research?: ResearchDependencies
+  onResearchCreated?: (service: ResearchService) => void
+}
 
 export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
   const providerDeps = { fetch: deps.fetch ?? fetch, readKey: deps.readKey ?? readSearchKey }
   const router = new SearchRouter([
     braveClient(providerDeps), serperClient(providerDeps), tavilyClient(providerDeps), youClient(providerDeps)
   ], deps.now)
-  return {
-    name: 'search',
-    description: 'Search and research the public web through the best available search APIs.',
-    tools: [defineTool({
+  const query = defineTool({
       name: 'query',
       description:
         'One normalized search surface backed by Brave, Serper, Tavily, and You.com. ' +
@@ -28,7 +31,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
         'technical for documentation and implementation details. depth=quick uses one optimal provider, balanced uses two ' +
         'complementary indexes, and deep uses three. Omit providers to use this routing; set providers only to override it. ' +
         'Set live=true when current results matter; it bypasses the ten-minute cache and refreshes it. ' +
-        'Results are normalized, interleaved, deduplicated, and marked when another provider corroborates the same URL. ' +
+        'Results are normalized, interleaved, deduplicated, and marked when multiple indexes list the same URL (not factual corroboration). ' +
         'The result is JSON text; JSON.parse the returned string in exec scripts.',
       timeoutMs: 45_000,
       inputSchema: {
@@ -65,7 +68,13 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
         }
         return textResult(JSON.stringify(await router.search(request, context.signal), null, 2))
       }
-    })]
+    })
+  const research = deps.research ? new ResearchService(router, deps.research) : null
+  if (research) deps.onResearchCreated?.(research)
+  return {
+    name: 'search',
+    description: 'Public web lookup and incremental parallel research with retained source evidence.',
+    tools: [query, ...(research ? researchTools(research, query) : [])]
   }
 }
 
