@@ -34,6 +34,7 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   )
   ipcMain.handle('chat:openThread', (_event, paneId: string, threadId: string) => requireService().openThread(paneId, threadId))
   ipcMain.handle('chat:archiveThread', (_event, threadId: string) => requireService().archiveThread(threadId))
+  ipcMain.handle('chat:compactConversation', (_event, paneId: string) => requireService().compactConversation(paneId))
   ipcMain.handle('chat:chooseProject', async () => {
     const result = await dialog.showOpenDialog({
       title: 'Choose a project folder',

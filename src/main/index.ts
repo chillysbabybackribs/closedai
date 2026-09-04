@@ -18,6 +18,9 @@ import { PARTITION } from './browser-url.js'
 import { ChatService } from './chat-service.js'
 import { ChatHub } from './chat-hub.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
+import { ChatStore } from './chat-store/chat-store.js'
+import { migrateChatPeersIntoStore } from './chat-store/chat-store-migration.js'
+import { ProviderCatalogCache } from './chat-context/provider-catalog-cache.js'
 import { ClaudeChatService } from './claude/claude-service.js'
 import { AntigravityChatService } from './antigravity/antigravity-service.js'
 import { CursorChatService } from './cursor/cursor-service.js'
@@ -66,6 +69,7 @@ let browserDownloads: BrowserDownloadService | null = null
 let browserHistory: BrowserHistoryStore | null = null
 let browserTabSession: BrowserTabSessionStore | null = null
 let settings: AppSettingsStore | null = null
+let chatStore: ChatStore | null = null
 let chatService: ChatPeerManager | null = null
 let toolRegistry: ToolRegistry | null = null
 let toolTelemetry: ToolTelemetry | null = null
@@ -95,10 +99,11 @@ if (!claimProfileInstance(app, { profile: userData(), checkout: app.getAppPath()
 
 async function main(): Promise<void> {
   await mkdir(userData(), { recursive: true })
-  ;[browserHistory, browserTabSession, settings] = await Promise.all([
+  ;[browserHistory, browserTabSession, settings, chatStore] = await Promise.all([
     BrowserHistoryStore.open(join(userData(), 'browser-history.json')),
     BrowserTabSessionStore.open(join(userData(), 'browser-tabs.json')),
-    AppSettingsStore.open(join(userData(), 'app-settings.json'))
+    AppSettingsStore.open(join(userData(), 'app-settings.json')),
+    ChatStore.open(join(userData(), 'chats.json'))
   ])
   const configuredWorkspace = process.env.CLOSEDAI_WORKSPACE?.trim()
   // An environment-supplied workspace wins for the initial launch, but project changes are
@@ -110,6 +115,8 @@ async function main(): Promise<void> {
   let projectPath: string | null = configuredWorkspace
     ? chatWorkspace
     : settings.get().chatProjectPath ?? chatWorkspace
+  // Pane records that settings used to hold become chat records once; ids are preserved.
+  await migrateChatPeersIntoStore(settings, chatStore, { cwd: chatWorkspace, projectPath })
   const workspaceSelector = {
     current: () => ({
       cwd: chatWorkspace,
@@ -127,7 +134,8 @@ async function main(): Promise<void> {
       const previous = {
         cwd: chatWorkspace,
         projectPath,
-        peers: current.chatPeers,
+        openIds: current.chatOpenIds,
+        peers: [],
         selectedPaneId: current.chatSelectedPaneId
       }
       const nextCwd = nextProjectPath ?? app.getPath('home')
@@ -135,22 +143,26 @@ async function main(): Promise<void> {
       const destination = saved.find((workspace) =>
         workspace.cwd === nextCwd && workspace.projectPath === nextProjectPath
       )
-      const destinationPeer = destination?.peers.find((peer) => peer.paneId === destination.selectedPaneId) ?? destination?.peers[0]
+      const destinationOpenIds = (destination?.openIds ?? []).filter((id) => chatStore!.has(id))
+      const destinationSelected = destination?.selectedPaneId && destinationOpenIds.includes(destination.selectedPaneId)
+        ? destination.selectedPaneId
+        : destinationOpenIds[0] ?? null
+      const destinationChat = destinationSelected ? chatStore!.get(destinationSelected) ?? null : null
       projectPath = nextProjectPath
       chatWorkspace = nextCwd
       await settings!.set({
         chatWorkspaces: [...saved, previous],
         chatWorkspacePath: chatWorkspace,
         chatProjectPath: projectPath,
-        chatPeers: destination?.peers ?? [],
-        chatSelectedPaneId: destination?.selectedPaneId ?? null,
-        chatThreadId: destinationPeer?.codexThreadId ?? null,
-        chatClaudeSessionId: destinationPeer?.claudeSessionId ?? null,
-        chatAntigravityConversationId: destinationPeer?.antigravityConversationId ?? null,
-        chatCursorSessionId: destinationPeer?.cursorSessionId ?? null,
-        chatModelId: destinationPeer?.modelId ?? preference.modelId,
-        chatReasoningEffort: destinationPeer?.reasoningEffort ?? preference.reasoningEffort,
-        chatContinuation: destinationPeer?.continuation ?? null
+        chatOpenIds: destinationOpenIds,
+        chatSelectedPaneId: destinationSelected,
+        chatThreadId: destinationChat?.codexThreadId ?? null,
+        chatClaudeSessionId: destinationChat?.claudeSessionId ?? null,
+        chatAntigravityConversationId: destinationChat?.antigravityConversationId ?? null,
+        chatCursorSessionId: destinationChat?.cursorSessionId ?? null,
+        chatModelId: destinationChat?.modelId ?? preference.modelId,
+        chatReasoningEffort: destinationChat?.reasoningEffort ?? preference.reasoningEffort,
+        chatContinuation: destinationChat?.continuation ?? null
       })
     }
   }
@@ -201,7 +213,10 @@ async function main(): Promise<void> {
   const cursorStateDir = join(userData(), 'cursor')
   // ACP takes its MCP servers per session, so this bridge registers nothing outside the app.
   cursorBridge = new CursorToolBridge(toolRegistry)
-  chatService = new ChatPeerManager(settings, (peerSettings, modelId) => new ChatHub({
+  // Model catalogs are shared per workspace so a pane's non-active providers fill the picker
+  // from the last catalog seen instead of each starting a process to fetch their own.
+  const providerCatalogs = new ProviderCatalogCache()
+  chatService = new ChatPeerManager(settings, chatStore, (peerSettings, record) => new ChatHub({
     codex: new ChatService(
       chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, undefined, peerSettings.paneId
     ),
@@ -214,7 +229,7 @@ async function main(): Promise<void> {
     cursor: new CursorChatService(
       chatWorkspace, peerSettings, cursorBridge!, cursorStateDir, activeBrowserContext, screenshots, peerSettings.paneId
     )
-  }, modelId, peerSettings), undefined, workspaceSelector)
+  }, record.modelId, peerSettings, { provider: record.provider, catalogs: providerCatalogs.forWorkspace(chatWorkspace) }), undefined, workspaceSelector)
   registerIpc()
   // The one-shot cookie import runs before the first tab loads, so a restored or home page
   // arrives already signed in rather than racing the import.
@@ -363,6 +378,7 @@ app.on('before-quit', (event) => {
     browserHistory?.flush(),
     browserTabSession?.close(),
     settings?.set({}),
+    chatStore?.flush(),
     flushSession,
     // Leaves the user's agy MCP config without dead localhost endpoints.
     antigravityBridge?.stop(),

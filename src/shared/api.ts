@@ -71,6 +71,8 @@ export type ClosedaiApi = {
     continueInNewPeer: (source: ChatContinuationSource, modelId: string | null) => Promise<ChatPaneId>
     openThread: (paneId: ChatPaneId, threadId: string) => Promise<void>
     archiveThread: (threadId: string) => Promise<void>
+    /** Re-seed provider-side context from a bounded summary when the active provider supports it. */
+    compactConversation: (paneId: ChatPaneId) => Promise<void>
     /** Choose a project directory and restore its saved panes, or create its first chat. */
     chooseProject: () => Promise<void>
     /** Switch directly to a project already stored in the recent-project list. */

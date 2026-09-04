@@ -60,6 +60,7 @@ export interface ChatWorkspaceSurface {
   openChat(chatId: string): Promise<ChatPaneId>
   openThread(paneId: ChatPaneId, threadId: string): Promise<void>
   archiveThread(threadId: string): Promise<void>
+  compactConversation(paneId: ChatPaneId): Promise<void>
   selectProject(projectPath: string | null): Promise<void>
   beginLogin(): Promise<string | null>
   on(event: 'event', listener: (event: ChatWorkspaceEvent) => void): unknown
@@ -344,6 +345,10 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // The drawer refreshes right after this; it must not be handed the list with the row still in it.
     this.catalog.invalidate()
     this.emitChats()
+  }
+
+  compactConversation(paneId: ChatPaneId): Promise<void> {
+    return this.withAwake(paneId, (surface) => surface.compactConversation())
   }
 
   /** A provider process cannot safely change directories mid-turn. Swap the active pane set

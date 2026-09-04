@@ -38,15 +38,18 @@ export type ChatSurface = {
   continueInNewThread(): Promise<void>
   openThread(threadId: string): Promise<void>
   archiveThread(threadId: string): Promise<void>
+  /** Re-seed provider-side context from a bounded transcript summary when supported. */
+  compactConversation(): Promise<void>
   /** Begin a sign-in; resolves to a URL to open, or null when the provider signs in elsewhere. */
   beginLogin(): Promise<string | null>
   on(event: 'event', listener: (event: ChatEvent) => void): unknown
 }
 
-export type ChatProviderService = Omit<ChatSurface, 'beginLogin' | 'start' | 'continueInNewThread'> & {
+export type ChatProviderService = Omit<ChatSurface, 'beginLogin' | 'start' | 'continueInNewThread' | 'compactConversation'> & {
   start(options?: { warm?: boolean }): Promise<void>
   /** With `from`, the new thread continues a chat this provider never held — a model switch. */
   continueInNewThread(from?: ThreadHandoffSource): Promise<void>
+  compactConversation?(): Promise<void>
 }
 
 export type ChatHubProviders = {
@@ -167,6 +170,12 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   archiveThread(threadId: string): Promise<void> {
     return this.providers[chatProviderOfId(threadId)].archiveThread(threadId)
+  }
+
+  compactConversation(): Promise<void> {
+    const compact = this.current().compactConversation
+    if (!compact) throw new Error('The active provider does not support compaction')
+    return compact.call(this.current())
   }
 
   async beginLogin(): Promise<string | null> {

@@ -36,6 +36,8 @@ export class AntigravitySession {
   /** The CLI conversation this thread continues; set from the first init and used to resume. */
   conversationId: string | null = null
   activeTurnId: string | null = null
+  /** Transcript summary injected on the next turn after compaction dropped the CLI handle. */
+  pendingSeed: string | null = null
   private process: AntigravityProcess | null = null
   private translator: AntigravityTurnTranslator | null = null
   private idleTimer: NodeJS.Timeout | null = null
@@ -95,6 +97,21 @@ export class AntigravitySession {
   async reset(): Promise<void> {
     await this.retire()
     this.conversationId = null
+    this.pendingSeed = null
+  }
+
+  /** Drop the CLI conversation handle and seed the next turn from a summary instead. */
+  async compact(seed: string): Promise<void> {
+    await this.retire()
+    this.conversationId = null
+    this.pendingSeed = seed
+  }
+
+  /** Consume the compaction seed exactly once, when the next turn is sent. */
+  takePendingSeed(): string | null {
+    const seed = this.pendingSeed
+    this.pendingSeed = null
+    return seed
   }
 
   /** Continue a stored conversation (chat history): any live process belongs to the old one. */

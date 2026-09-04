@@ -8,6 +8,7 @@ import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource } from '../chat-context/thread-handoff.js'
 import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
+import { buildCompactionSeed, compactedAdditionalContext } from '../chat-context/provider-compaction.js'
 import { antigravityPlanUsage, planUsageUnavailable } from '../chat-context/plan-usage.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { messageOf } from '../chat-normalizers.js'
@@ -94,9 +95,11 @@ export class AntigravityChatService extends EventEmitter {
       const session = this.session!
       if (this.activeTurnId) throw new Error('An Antigravity turn is already running')
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
+      const pendingCompaction = this.session!.takePendingSeed()
       const context = {
         ...this.turnAdditionalContext(text),
-        ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
+        ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {}),
+        ...(pendingCompaction ? compactedAdditionalContext(pendingCompaction) : {})
       }
       const turn = await buildAntigravityPrompt(text, shrinkPastedImages(attachments), Object.keys(context).length ? context : undefined, this.stateDir)
       if (!turn) return
@@ -249,6 +252,19 @@ export class AntigravityChatService extends EventEmitter {
     if (conversationId === this.session?.conversationId && this.activeTurnId) throw new Error('Stop the current turn before archiving this chat')
     await this.history.archive(conversationId)
     if (conversationId === this.session?.conversationId) await this.newThread()
+  }
+
+  /** Re-seed the CLI thread from a bounded transcript summary; the visible transcript is unchanged. */
+  async compactConversation(): Promise<void> {
+    if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
+    const seed = buildCompactionSeed(this.transcript.snapshot(), this.threadName)
+    if (!seed) throw new Error('There is no conversation to compact yet')
+    const previous = this.session?.conversationId ?? null
+    if (!this.session) this.session = this.createSession()
+    await this.session.compact(seed)
+    if (previous) this.bridge.unbind(previous)
+    await this.settings.set({ chatAntigravityConversationId: null })
+    this.addNotice('Conversation context compacted; the next message continues from a summary.', 'info', null)
   }
 
   stop(): void {
