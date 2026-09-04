@@ -121,8 +121,16 @@ is introduced. See [Model context](model-context.md) for trust and [Tools](tools
 - Completed assistant responses offer copy, locally saved thumbs-up/down feedback, and branching.
   Timestamps appear when recorded; older history does not acquire invented timestamps. Feedback
   is stored in renderer localStorage and is not sent to providers.
-- The project rail contains the working timer, project menu, Tools, and Turn trace. Send/stop
-  controls live in the composer. Appearance settings separate message and composer font sizes
+- The project rail contains the working timer, project menu, Tools, and Turn trace. Send, pause,
+  and resume controls live in the composer. Pause ends the provider turn — no protocol can suspend
+  a generation and restart the same one — but every lane keeps the partial answer and the
+  conversation, so Resume is an ordinary next turn carrying `CHAT_RESUME_PROMPT`. It is offered
+  from the turn's `paused` event until the next turn starts. Codex sends `turn/interrupt`, Claude
+  the SDK's `interrupt`, Cursor the `session/cancel` **notification** (as a request cursor-agent
+  ignores it and streams on), and Antigravity, which has no interrupt, kills its process and
+  resumes the conversation id on the next turn. A pause while an Antigravity prompt is still
+  queued behind the MCP primer drops that queued prompt against a warm process and says so, since
+  the CLI never received the message. Appearance settings separate message and composer font sizes
   (defaults 14 and 15 px, range 13–22) from chat zoom.
 - Ctrl/Cmd+, opens settings. Ctrl/Cmd+H opens chat history. Browser and chat zoom have separate
   controls; these shell shortcuts are handled in `renderer/app-shortcuts.ts`.
