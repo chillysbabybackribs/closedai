@@ -1,6 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { createInterface, type Interface as ReadLineInterface } from 'node:readline'
+import { ownProcessGroup, stopProcessGroup, trackProcessGroup } from './process-tree.js'
 import { traceLog, type TraceScope } from './trace/trace-log.js'
 
 // Newline-delimited JSON-RPC 2.0 over a spawned process's stdio. Two providers speak it: the
@@ -78,11 +79,14 @@ export class StdioJsonRpcClient extends EventEmitter {
     if (this.child) return
     this.stopping = false
     const { peer, executable, cwd, args, env } = this.options
+    // Its own process group, so stopping it also stops the worker the CLI's launcher forks.
     const child = spawn(executable, args(), {
       cwd,
       env: env ? env() : process.env,
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      ...ownProcessGroup()
     })
+    trackProcessGroup(child)
     this.child = child
     this.lines = createInterface({ input: child.stdout, crlfDelay: Infinity })
     this.lines.on('line', (line) => this.receiveLine(line))
@@ -162,7 +166,7 @@ export class StdioJsonRpcClient extends EventEmitter {
     this.lines?.close()
     this.lines = null
     this.rejectPending(new Error(`${this.options.peer} stopped`))
-    if (child && child.exitCode === null && !child.killed) child.kill('SIGTERM')
+    if (child) stopProcessGroup(child)
   }
 
   /** The error a failed call rejects with; overridden where a provider's name is asserted on. */
