@@ -346,7 +346,9 @@ export class ChatHub extends EventEmitter implements ChatSurface {
       })
       return
     }
-    if (source !== this.active) return
+    // Mid-switch, the target's own events would paint the session it last held before the
+    // hand-over replaces it; the switch emits the settled snapshot itself when it lands.
+    if (source !== this.active || this.switching) return
     if (event.type === 'replace') {
       // The provider clearing itself — archiving this chat, resetting after a failure — ends the
       // conversation the carried messages belong to.
