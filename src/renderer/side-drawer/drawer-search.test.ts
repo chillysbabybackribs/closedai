@@ -16,6 +16,7 @@ function makeRow(id: string, title: string, cwd: string | null = null, updatedAt
     preview: '',
     cwd: cwd ?? '',
     createdAt: updatedAt,
+    lastTurnEndedAt: null,
     updatedAt,
     attached: false,
     running: false,

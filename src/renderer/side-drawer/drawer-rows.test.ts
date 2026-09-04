@@ -16,6 +16,7 @@ function chat(paneId: string, threadId: string | null, updatedAt: number, overri
     preview: '',
     cwd: '/workspace',
     createdAt: updatedAt,
+    lastTurnEndedAt: null,
     updatedAt,
     attached: true,
     running: true,

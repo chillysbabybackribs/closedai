@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { ChatPeerSummary } from '../../shared/chat-peers.js'
+import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { reviewTransitions } from './drawer-controller.js'
 import {
   DRAWER_REVIEW_QUEUE_STORAGE_KEY,
@@ -14,7 +14,7 @@ import {
   readDrawerReviewQueue
 } from './drawer-review-queue.js'
 
-function peer(paneId: string, running: boolean): ChatPeerSummary {
+function peer(paneId: string, running: boolean): ChatRowSummary {
   return {
     paneId,
     parentPaneId: null,
@@ -24,9 +24,13 @@ function peer(paneId: string, running: boolean): ChatPeerSummary {
     threadId: `thread-${paneId}`,
     title: `Chat ${paneId}`,
     preview: '',
+    cwd: '/w',
+    createdAt: 1,
+    lastTurnEndedAt: null,
+    updatedAt: 1,
+    attached: true,
     running,
-    activity: null,
-    updatedAt: 1
+    activity: null
   }
 }
 
@@ -63,7 +67,7 @@ test('enqueue keeps the first completion time; viewed and dequeue are idempotent
   assert.equal(dequeueDrawerReview(viewed, 'missing'), viewed)
 })
 
-test('pruning removes entries for panes that no longer exist', () => {
+test('pruning removes entries for chats the store no longer lists', () => {
   const queue = {
     'pane-a': { queuedAt: 1, viewedAt: null },
     'pane-gone': { queuedAt: 2, viewedAt: null }

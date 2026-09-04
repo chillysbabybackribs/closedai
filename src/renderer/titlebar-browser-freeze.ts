@@ -5,6 +5,11 @@ import type { BrowserShot } from '../shared/types.js'
 const OVERLAY_SELECTOR = '.browser-suggestions, .browser-downloads, [role="dialog"], [role="menu"]'
 const BROWSER_HOST_SELECTOR = '#browser-page'
 const EAGER_CAPTURE_TRIGGER = '[data-ui="browser.address"], [aria-label="Downloads"], [aria-label="Tools"]'
+// Right-clicking browser chrome opens a menu over the page, and unlike the triggers above it
+// was reaching apply() with nothing primed — so the still arrived a capture round-trip after
+// the native pixels were already hidden. A secondary button never switches tabs, so the shot
+// this primes is always of the page the freeze is about to stand in for.
+const BROWSER_SURFACE = '[data-ui-surface="browser"]'
 
 export function rectsOverlap(a: DOMRectReadOnly, b: DOMRectReadOnly): boolean {
   return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
@@ -76,7 +81,9 @@ export function useTitlebarBrowserFreeze(): {
     const sync = (): void => apply(overlayBlocksBrowser())
     const onPointerDown = (event: PointerEvent): void => {
       const target = event.target
-      if (target instanceof Element && target.closest(EAGER_CAPTURE_TRIGGER)) capture()
+      if (!(target instanceof Element)) return
+      if (target.closest(EAGER_CAPTURE_TRIGGER)) capture()
+      else if (event.button === 2 && target.closest(BROWSER_SURFACE)) capture()
     }
     // Overlays mount inside the browser shell or directly under <body>; a subtree watch on
     // body is cheap here because nothing in this shell streams DOM at token frequency.

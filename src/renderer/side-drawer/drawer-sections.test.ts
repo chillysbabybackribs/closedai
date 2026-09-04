@@ -28,6 +28,7 @@ function makeRow(
     preview: '',
     cwd: '/home/dp/Desktop/closedai',
     createdAt: 1000,
+    lastTurnEndedAt: null,
     updatedAt: 1000,
     attached: overrides.paneId !== undefined,
     running: overrides.running ?? false,

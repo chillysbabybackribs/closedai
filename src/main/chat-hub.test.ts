@@ -38,6 +38,7 @@ class FakeProvider extends EventEmitter {
   effort: string | null = 'high'
   items: ChatTranscriptItem[] = []
   continued: ThreadHandoffSource | null = null
+  compactConversation?: () => Promise<void>
   constructor(readonly provider: ChatProvider, private readonly models: ChatModel[]) {
     super()
     this.threadId = `${provider}-thread`
