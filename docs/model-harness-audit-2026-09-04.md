@@ -59,14 +59,16 @@ The checkout capsule fits its unchanged 5,000-character budget after removing du
 
 ## Verification and limits
 
-Required local checks: typecheck, hygiene, regenerated workspace index and `map:check`, and the
-affected prompt, context, provider-options, tool-adapter, CDP, browser, and batch regression tests.
+Passed: typecheck, hygiene, regenerated workspace index and `map:check`, and the affected prompt,
+context, provider-options, tool-adapter, CDP, browser, and batch regression tests. The Electron app
+was compiled with `electron-vite` in one-shot build mode, and its main bundle contains the revised
+instructions and batch completion logic. No full test suite or release gate was run.
 Runtime tests cover sequential failure/skipping, partial-result preservation, independent parallel
 work, same-target serialization, cancellation, real-input validation, and compensation. Prompt
 tests establish assembly and budgets; they cannot establish model compliance.
 
-No provider session was restarted and no live model quality or latency comparison was performed.
-Existing sessions need refreshed runtime instructions to use this rebuild. A smaller prompt alone
+No provider session was restarted by this audit and no live model quality or latency comparison was
+performed. The compiled app is ready; restart ClosedAI to refresh runtime instructions. A smaller prompt alone
 does not prove a faster or better response.
 
 The next live comparison should use the same model and effort on the same three tasks: a small
