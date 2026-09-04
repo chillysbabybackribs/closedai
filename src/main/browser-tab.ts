@@ -52,6 +52,12 @@ export class BrowserTab extends EventEmitter {
   private favicon: string | null = null
   private customTitle: string | null = null
   private liveness: TabLiveness = { alive: true }
+  // What the view paints where the page does not. Always kept equal to what is on screen now
+  // or what is about to be — see applyBaseColor.
+  private baseColor = CHROME_BASE_COLOR
+  // Whether a document has ever committed here. A tab that has never held one has no page to
+  // assume a colour for, so it keeps the app's bezel rather than the browser's white.
+  private hasDocument = false
   private readonly navigationFailures = new BrowserNavigationFailureState()
   private state: BrowserState = {
     url: 'about:blank',
@@ -166,6 +172,7 @@ export class BrowserTab extends EventEmitter {
     this.assertAlive()
     const url = normalizeUrl(input, this.state.url)
     this.navigationFailures.begin(url, this.state, this.liveContents?.getURL())
+    this.prepareBaseColorFor(url)
     try {
       const load = this.view.webContents.loadURL(url, options)
       // Guard late rejections; waitForUsableLoad still observes them while active.
@@ -256,6 +263,57 @@ export class BrowserTab extends EventEmitter {
     this.removeAllListeners()
   }
 
+  /**
+   * Move the base colour, which is what every compositor gap in this view is filled with.
+   *
+   * Only ever called at a moment where the change is invisible: while no document is on
+   * screen, or under a document that paints its own opaque background over it. Changing it
+   * under a page that paints nothing would recolour the page itself.
+   */
+  private applyBaseColor(color: string): void {
+    if (color === this.baseColor) return
+    this.baseColor = color
+    if (!this.view.webContents.isDestroyed()) this.view.setBackgroundColor(color)
+  }
+
+  /**
+   * Fill the coming navigation's gap with the colour the destination is about to paint.
+   *
+   * A site we have seen answers directly. For one we have not, the best available answer is
+   * the colour already on screen: holding the outgoing page's colour through the gap reads as
+   * the old page persisting a moment longer, which is what Chromium's own paint holding does
+   * and is never a flash. Only a tab with nothing on screen falls back to the bezel.
+   */
+  private prepareBaseColorFor(url: string): void {
+    const remembered = this.pageBackgrounds.recall(url)
+    if (remembered) this.applyBaseColor(remembered)
+    else if (!this.hasDocument) this.applyBaseColor(CHROME_BASE_COLOR)
+  }
+
+  /**
+   * Read what the new document actually paints and adopt it.
+   *
+   * Runs at dom-ready — the document's own stylesheets have applied but it has not painted
+   * yet — so the correction lands before the first frame rather than as a visible snap after
+   * it. A page that paints nothing gets the browser default it was written against; only an
+   * opaque measurement is worth remembering for the site.
+   */
+  private async adoptPageBackground(): Promise<void> {
+    this.hasDocument = true
+    const contents = this.liveContents
+    if (!contents) return
+    const probe = await contents.executeJavaScript(PAGE_BACKGROUND_PROBE, true).catch(() => null)
+    // A navigation can win the race with this probe; its own dom-ready owns the colour then.
+    if (contents.isDestroyed()) return
+    const measured = pageBackgroundColor(probe)
+    if (!measured) {
+      this.applyBaseColor(DEFAULT_PAGE_BASE_COLOR)
+      return
+    }
+    this.pageBackgrounds.remember(contents.getURL(), measured)
+    this.applyBaseColor(measured)
+  }
+
   // Native scrollbar styling belongs to the WebContents rather than the React browser chrome.
   // Reapplied after every document navigation: insertCSS is scoped to the current page.
   private applyPageAppearance(): void {
@@ -269,6 +327,7 @@ export class BrowserTab extends EventEmitter {
   // A new document drops the favicon; an in-place navigation (hash change, pushState) keeps it.
   private onDidStartNavigation(url: string, isInPlace: boolean, isMainFrame: boolean): void {
     if (isInPlace || !isMainFrame) return
+    this.prepareBaseColorFor(url)
     const hadVisibleFailure = this.navigationFailures.start(url, this.state, this.liveContents?.getURL())
     this.state = { ...this.state, navigationError: null }
     if (this.favicon === null && !hadVisibleFailure) return
@@ -313,8 +372,15 @@ export class BrowserTab extends EventEmitter {
       this.refreshState()
       this.emitState()
     })
+    // Before the new document's first paint: the one moment where correcting the base colour
+    // is free. did-finish-load repeats it because a late stylesheet or a theme script can
+    // change the canvas after dom-ready.
+    contents.on('dom-ready', () => {
+      void this.adoptPageBackground()
+    })
     contents.on('did-finish-load', () => {
       this.applyPageAppearance()
+      void this.adoptPageBackground()
     })
     // Alt+wheel page zoom; owns its own input-event and did-finish-load listeners.
     installTabZoom(contents)

@@ -11,6 +11,8 @@ import { TabRenderingPolicy } from './browser-tab-rendering.js'
 import { allSettledBounded } from './bounded-concurrency.js'
 import { restorePlan, type RestoredTabSession } from './browser-tab-session-store.js'
 import { browserSurfaceVisibility } from './browser-surface-visibility.js'
+import { settleFrames } from './browser-frame-settle.js'
+import { PageBackgroundMemory } from './browser-page-background.js'
 import { activateTabSurface, prepareTabSurfaceForTool } from './browser-tab-activation.js'
 import type { CdpBrowserTarget } from './cdp/browser-cdp-access.js'
 
@@ -23,6 +25,13 @@ type BrowserServiceOptions = {
 // How many restored pages load at once. The strip is rebuilt instantly either way; this only
 // paces network/renderer startup so a 20-tab restore doesn't spawn 20 renderers in one tick.
 const RESTORE_LOAD_CONCURRENCY = 4
+
+// How long a reveal waits for the page's first frame before showing it anyway. Long enough
+// for a live page to answer in one or two frames, short enough that a page which will never
+// paint (a throttled or crashed renderer) cannot hold the renderer's still on screen.
+const REVEAL_SETTLE_MS = 400
+// The same bound for a still: a capture is worth a couple of frames' wait, never a stall.
+const CAPTURE_SETTLE_MS = 250
 
 // Owns the ordered list of tabs and the single human-visible one. All tabs share one session
 // (persist:browser), so a login in one tab applies to all.
@@ -37,6 +46,12 @@ export class BrowserService extends EventEmitter {
   // True when the browser pane is hidden: the active view is detached from the window's content
   // tree. setVisible(false) alone leaves a sliver on Linux/X11, so we remove it outright.
   private browserDetached = false
+  // Whether the active page's pixels were on screen at the last bounds report, so a return
+  // from behind app chrome can be distinguished from an ordinary resize.
+  private pageVisible = true
+  // One colour memory for the whole window: what a site paints is a property of the site.
+  // See browser-page-background.ts for what it buys.
+  private readonly pageBackgrounds = new PageBackgroundMemory()
   private readonly partitionSession: Electron.Session
   private readonly persistentSessionCookies: PersistentSessionCookies
   // Frames are leased, not free: only the on-screen tab stays in the window's content tree.
@@ -91,7 +106,8 @@ export class BrowserService extends EventEmitter {
       this.history,
       (request) => { this.openTab(request.url, request.activate, request.options) },
       PARTITION,
-      (contents) => this.registerNativePopup(tab.id, contents)
+      (contents) => this.registerNativePopup(tab.id, contents),
+      this.pageBackgrounds
     )
     this.registerTab(tab, index)
     if (activate) this.setActive(tab.id)
@@ -279,9 +295,11 @@ export class BrowserService extends EventEmitter {
 
   // ---- Delegated per-tab operations (act on the active tab) -----------------
 
-  setBounds(bounds: BrowserBounds): void {
+  async setBounds(bounds: BrowserBounds): Promise<void> {
     this.bounds = bounds
     const { paneVisible, pageVisible } = browserSurfaceVisibility(bounds)
+    const revealing = pageVisible && !this.pageVisible
+    this.pageVisible = pageVisible
     const active = this.active
     if (!paneVisible && !this.browserDetached) {
       this.browserDetached = true
@@ -295,6 +313,10 @@ export class BrowserService extends EventEmitter {
     // A modal only hides the pixels. Keeping the view attached avoids the detach/re-attach
     // lifecycle, so closing the modal cannot return an empty native surface.
     active?.applyBounds(bounds, pageVisible)
+    // The renderer holds its freeze still until this call resolves. Returning the moment the
+    // view is made visible drops the still onto a surface that has not painted yet, which is
+    // the blank the still existed to cover; wait for the frame instead.
+    if (revealing && active) await settleFrames(active.view.webContents, REVEAL_SETTLE_MS)
   }
 
   async navigate(input: string): Promise<void> {
@@ -412,7 +434,13 @@ export class BrowserService extends EventEmitter {
   async capture(): Promise<BrowserShot | null> {
     const tab = this.active
     if (!tab) return null
-    const imageUrl = await tab.screenshot().catch(() => null)
+    // A detached or just-revealed tab has no frame to capture, and capturePage against one
+    // returns the empty surface rather than the page. Hold its compositor and let it paint.
+    const release = this.rendering.pin(tab.id)
+    const imageUrl = await settleFrames(tab.view.webContents, CAPTURE_SETTLE_MS)
+      .then(() => tab.screenshot())
+      .catch(() => null)
+      .finally(release)
     if (!imageUrl) return null
     const state = tab.getState()
     return { imageUrl, tabId: tab.id, url: state.url, title: state.title }

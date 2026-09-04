@@ -1,20 +1,40 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { searchChats, segmentTitle, stepHighlight } from './drawer-search.js'
 import type { DrawerRowModel } from './drawer-types.js'
 
 function makeRow(id: string, title: string, cwd: string | null = null, updatedAt = 1000): DrawerRowModel {
+  const chat: ChatRowSummary = {
+    paneId: id,
+    parentPaneId: null,
+    kind: 'peer',
+    provider: 'codex',
+    modelId: null,
+    threadId: id,
+    title,
+    preview: '',
+    cwd: cwd ?? '',
+    createdAt: updatedAt,
+    updatedAt,
+    attached: false,
+    running: false,
+    activity: null
+  }
   return {
     id,
     threadId: id,
     title,
     cwd,
+    createdAt: updatedAt,
     updatedAt,
     messageCount: 1,
     linesAdded: 0,
     linesRemoved: 0,
     running: false,
     status: 'chat',
+    provider: 'codex',
+    chat,
     children: []
   }
 }

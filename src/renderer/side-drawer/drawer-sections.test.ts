@@ -9,28 +9,50 @@ import {
   splitChildren,
   subtreeIsLive
 } from './drawer-sections.js'
+import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { DrawerRowModel } from './drawer-types.js'
 
+/** A detached chat record: it has no pane, but it is a full row like any other. */
 function makeRow(
   id: string,
   overrides: Partial<DrawerRowModel> = {}
 ): DrawerRowModel {
+  const chat: ChatRowSummary = {
+    paneId: id,
+    parentPaneId: null,
+    kind: 'peer',
+    provider: 'codex',
+    modelId: null,
+    threadId: id,
+    title: `Chat ${id}`,
+    preview: '',
+    cwd: '/home/dp/Desktop/closedai',
+    createdAt: 1000,
+    updatedAt: 1000,
+    attached: overrides.paneId !== undefined,
+    running: overrides.running ?? false,
+    activity: null
+  }
   return {
     id,
     threadId: id,
     title: `Chat ${id}`,
     cwd: '/home/dp/Desktop/closedai',
+    createdAt: 1000,
     updatedAt: 1000,
     messageCount: 1,
     linesAdded: 0,
     linesRemoved: 0,
     running: false,
     status: 'chat',
+    provider: 'codex',
+    chat,
     children: [],
     ...overrides
   }
 }
 
+/** An attached chat: the same record with a live pane under its own id. */
 function pane(id: string, overrides: Partial<DrawerRowModel> = {}): DrawerRowModel {
   return makeRow(id, { paneId: id, threadId: `thread-${id}`, status: 'done', ...overrides })
 }
@@ -113,27 +135,29 @@ test('a queued pane that is running again is shown as current, not awaiting revi
   assert.deepEqual(sections.reviewQueue, [])
 })
 
-test('history rows never enter the review queue even if an entry matches their id', () => {
-  const sections = buildDrawerSections([makeRow('thread-1')], { 'thread-1': { queuedAt: 1, viewedAt: null } })
-  assert.deepEqual(sections.history.map((row) => row.id), ['thread-1'])
-  assert.deepEqual(sections.reviewQueue, [])
+test('a detached chat stays in the review queue: detaching its pane does not change its identity', () => {
+  const sections = buildDrawerSections([makeRow('chat-1')], { 'chat-1': { queuedAt: 1, viewedAt: null } })
+  assert.deepEqual(sections.reviewQueue.map((row) => row.id), ['chat-1'])
+  assert.deepEqual(sections.history, [])
 })
 
-test('only the selected pane is current, even while no chat has a thread yet', () => {
+test('only the selected chat is current, even while no chat has a thread yet', () => {
   const selected = makeRow('pane-1', { paneId: 'pane-1', threadId: null })
   const otherFreshPane = makeRow('pane-2', { paneId: 'pane-2', threadId: null })
 
-  assert.equal(rowIsCurrent(selected, 'pane-1', null), true)
-  assert.equal(rowIsCurrent(otherFreshPane, 'pane-1', null), false)
+  assert.equal(rowIsCurrent(selected, 'pane-1'), true)
+  assert.equal(rowIsCurrent(otherFreshPane, 'pane-1'), false)
   // The old thread comparison matched null against null and lit up every idle pane at once.
-  assert.equal(rowIsCurrent(makeRow('pane-3', { paneId: 'pane-3', threadId: 'thread-9' }), 'pane-1', 'thread-9'), false)
+  assert.equal(rowIsCurrent(makeRow('pane-3', { paneId: 'pane-3', threadId: 'thread-9' }), 'pane-1'), false)
+  assert.equal(rowIsCurrent(makeRow('detached'), null), false)
 })
 
-test('a history record is current when its thread is the open one', () => {
-  const record = makeRow('thread-7', { threadId: 'thread-7' })
-  assert.equal(rowIsCurrent(record, 'pane-1', 'thread-7'), true)
-  assert.equal(rowIsCurrent(record, 'pane-1', 'thread-8'), false)
-  assert.equal(rowIsCurrent(makeRow('t', { threadId: null }), 'pane-1', null), false)
+test('Current is ordered by when each chat was created, not by streaming activity', () => {
+  const older = pane('pane-old', { running: true, status: 'running', createdAt: 100, updatedAt: 9000 })
+  const newer = pane('pane-new', { running: true, status: 'running', createdAt: 200, updatedAt: 500 })
+
+  const sections = buildDrawerSections([older, newer], {})
+  assert.deepEqual(sections.current.map((row) => row.id), ['pane-new', 'pane-old'])
 })
 
 test('history section is sorted by updatedAt descending', () => {
