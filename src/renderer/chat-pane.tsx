@@ -100,11 +100,11 @@ export function ChatPane({
         />
         {historyOpen ? (
           <ChatHistory
-            activeThreadId={state.threadId}
+            activeChatId={chat.selectedPaneId}
             busy={running}
-            listThreads={chat.listThreads}
-            openThread={chat.openThread}
-            archiveThread={chat.archiveThread}
+            listChats={chat.listChats}
+            openChat={chat.openChat}
+            archiveChat={chat.archiveChat}
             onClose={() => setHistoryOpen(false)}
           />
         ) : (

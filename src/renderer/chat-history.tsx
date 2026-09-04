@@ -4,25 +4,26 @@ import { Archive, Search } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import { Loader } from '../components/ui/loader.js'
-import type { ChatThreadSummary } from '../shared/chat.js'
+import type { ChatRowSummary } from '../shared/chat-peers.js'
 
 export type ChatHistoryProps = {
-  activeThreadId: string | null
+  /** The selected chat's id; the same id names it in the store and as a pane. */
+  activeChatId: string | null
   /** True while a turn is running: switching or archiving is blocked by the main process. */
   busy: boolean
-  listThreads: () => Promise<ChatThreadSummary[]>
-  openThread: (threadId: string) => Promise<void>
-  archiveThread: (threadId: string) => Promise<void>
+  listChats: () => Promise<ChatRowSummary[]>
+  openChat: (chatId: string) => Promise<void>
+  archiveChat: (chatId: string) => Promise<void>
   onClose: () => void
 }
 
 type LoadState =
   | { status: 'loading' }
-  | { status: 'ready'; threads: ChatThreadSummary[] }
+  | { status: 'ready'; threads: ChatRowSummary[] }
   | { status: 'error'; message: string }
 
 /** In-pane list of past chats for this workspace. Replaces the transcript while open. */
-export function ChatHistory({ activeThreadId, busy, listThreads, openThread, archiveThread, onClose }: ChatHistoryProps): JSX.Element {
+export function ChatHistory({ activeChatId, busy, listChats, openChat, archiveChat, onClose }: ChatHistoryProps): JSX.Element {
   const [load, setLoad] = useState<LoadState>({ status: 'loading' })
   const [query, setQuery] = useState('')
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -32,11 +33,11 @@ export function ChatHistory({ activeThreadId, busy, listThreads, openThread, arc
   useEffect(() => {
     let active = true
     setLoad({ status: 'loading' })
-    listThreads()
+    listChats()
       .then((threads) => { if (active) setLoad({ status: 'ready', threads }) })
       .catch((error: unknown) => { if (active) setLoad({ status: 'error', message: messageOf(error) }) })
     return () => { active = false }
-  }, [listThreads, reloadKey])
+  }, [listChats, reloadKey])
 
   const visible = useMemo(() => {
     if (load.status !== 'ready') return []
@@ -47,12 +48,12 @@ export function ChatHistory({ activeThreadId, busy, listThreads, openThread, arc
     )
   }, [load, query])
 
-  async function open(threadId: string): Promise<void> {
+  async function open(chatId: string): Promise<void> {
     if (busy || pendingId) return
-    setPendingId(threadId)
+    setPendingId(chatId)
     setActionError(null)
     try {
-      await openThread(threadId)
+      await openChat(chatId)
       onClose()
     } catch (error) {
       // The transcript is hidden behind this panel, so the reason has to show here.
@@ -62,14 +63,14 @@ export function ChatHistory({ activeThreadId, busy, listThreads, openThread, arc
     }
   }
 
-  async function archive(threadId: string): Promise<void> {
+  async function archive(chatId: string): Promise<void> {
     if (pendingId) return
-    setPendingId(threadId)
+    setPendingId(chatId)
     setActionError(null)
     try {
-      await archiveThread(threadId)
+      await archiveChat(chatId)
       setLoad((current) => current.status === 'ready'
-        ? { status: 'ready', threads: current.threads.filter((thread) => thread.id !== threadId) }
+        ? { status: 'ready', threads: current.threads.filter((thread) => thread.paneId !== chatId) }
         : current)
     } catch (error) {
       setActionError(`Could not archive that chat: ${messageOf(error)}`)
@@ -116,20 +117,20 @@ export function ChatHistory({ activeThreadId, busy, listThreads, openThread, arc
       {load.status === 'ready' && visible.length > 0 && (
         <ul className="chat-history-list">
           {visible.map((thread) => {
-            const current = thread.id === activeThreadId
+            const current = thread.paneId === activeChatId
             return (
               <li
-                key={thread.id}
+                key={thread.paneId}
                 className="chat-history-row"
                 data-current={current || undefined}
-                data-pending={pendingId === thread.id || undefined}
+                data-pending={pendingId === thread.paneId || undefined}
               >
                 <button
                   type="button"
                   className="chat-history-open"
                   data-ui="chat.history-open"
-                  data-ui-key={thread.id}
-                  onClick={() => void open(thread.id)}
+                  data-ui-key={thread.paneId}
+                  onClick={() => void open(thread.paneId)}
                   disabled={busy || pendingId !== null}
                   aria-current={current ? 'true' : undefined}
                 >
@@ -144,11 +145,11 @@ export function ChatHistory({ activeThreadId, busy, listThreads, openThread, arc
                   size="icon-xs"
                   className="chat-history-archive"
                   data-ui="chat.history-archive"
-                  data-ui-key={thread.id}
+                  data-ui-key={thread.paneId}
                   aria-label={`Archive “${thread.title}”`}
                   title="Archive"
                   disabled={pendingId !== null || (current && busy)}
-                  onClick={() => void archive(thread.id)}
+                  onClick={() => void archive(thread.paneId)}
                 >
                   <Archive aria-hidden="true" />
                 </Button>
