@@ -1,6 +1,6 @@
 import { Check, Copy } from 'lucide-react'
 import { marked } from 'marked'
-import { createElement, memo, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createElement, memo, useCallback, useId, useMemo, useState, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
@@ -148,33 +148,10 @@ const MarkdownBlock = memo(function MarkdownBlock({ content, components }: { con
 function MarkdownComponent({ children, id, className, components }: MarkdownProps) {
   const generatedId = useId()
   const blockId = id ?? generatedId
-  
-  const [blocks, setBlocks] = useState<string[]>(() => parseMarkdownIntoBlocks(children))
-  const lastUpdateRef = useRef<number>(Date.now())
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Which text `blocks` was lexed from. Mounting already lexed it, so a settled message must not
-  // lex a second time: opening a chat mounts a hundred of them at once, and the debounce made
-  // every one fire in the same later frame — one lex per message plus a commit, for no new text.
-  const lexedRef = useRef<string>(children)
 
-  useEffect(() => {
-    if (lexedRef.current === children) return
-    const run = () => {
-      lastUpdateRef.current = Date.now()
-      lexedRef.current = children
-      setBlocks(parseMarkdownIntoBlocks(children))
-    }
-    const elapsed = Date.now() - lastUpdateRef.current
-    if (elapsed > 100) {
-      run()
-    } else {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(run, 100 - elapsed)
-    }
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
-  }, [children])
+  // Chat events already arrive in animation-frame batches. Lex their latest text in the same
+  // render, keeping completed blocks memoized without a second timer or stale final frame.
+  const blocks = useMemo(() => parseMarkdownIntoBlocks(children), [children])
 
   const mergedComponents = useMemo(() => ({ ...DEFAULT_COMPONENTS, ...components }), [components])
   return (

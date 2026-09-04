@@ -4,6 +4,7 @@ import { inputSchema, ipcFlows, maxResultsField, testPattern } from './query.js'
 import { scanWorkspace, type FileFacts } from './scan.js'
 import { includeRelatedField, maxCharsField, sourceBundle } from './read.js'
 import { truncateText } from '../truncate-json.js'
+import { readRelated } from './read-related.js'
 
 // One call answers "where does this live?" whatever the model has in hand: an exported
 // symbol, a `data-ui` control id read off a screenshot, a CSS class, a path fragment, an IPC
@@ -26,7 +27,7 @@ export function findAction(root: string): ToolAction {
       'against exported symbols, `data-ui` control ids, CSS class definitions, file paths, IPC ' +
       'namespaces, and finally the text of every indexed line. Results are `file:line` grouped ' +
       'by match kind, definitions before mentions. This is the first move for "where is X"; ' +
-      'a unique exact exported declaration also returns hashed source, related CSS rules and sibling test paths. ' +
+      'a unique exact exported declaration also returns hashed source, local types, relevant test excerpts and CSS rules. ' +
       'Reuse that source instead of following with outline/read. Ambiguous matches return locations only.',
     inputSchema: inputSchema({
       query: { type: 'string', minLength: 2, description: 'Symbol, control id, class name, path fragment, or visible label.' },
@@ -53,8 +54,10 @@ export function findAction(root: string): ToolAction {
         .map((symbol) => ({ facts, symbol }))) : []
       if (!booleanArg(input, 'include_source', true) || exact.length !== 1 || exact[0]!.symbol.kind === 'reexport') return textResult(navigation)
       const { facts, symbol } = exact[0]!
-      const source = sourceBundle(facts, symbol.line, symbol.end, scanned, {
-        related: booleanArg(input, 'include_related', true), maxChars: numberArg(input, 'max_chars', 12_000)
+      const related = booleanArg(input, 'include_related', true)
+      const extra = related ? await readRelated(root, facts, symbol.line, symbol.end, scanned) : null
+      const source = sourceBundle(facts, symbol.line, symbol.end, extra, {
+        related, maxChars: numberArg(input, 'max_chars', 12_000)
       })
       return textResult(`${truncateText(navigation, 6_000, 'Narrow the query for more locations.').text}\n\n${source}`)
     }

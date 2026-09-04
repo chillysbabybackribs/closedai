@@ -27,7 +27,9 @@ export type CodeBlockCodeProps = HTMLProps<HTMLDivElement> & {
 }
 
 function CodeBlockCode({ code, language = 'plaintext', theme = 'github-dark-default', className, ...props }: CodeBlockCodeProps) {
-  const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null)
+  const [highlighted, setHighlighted] = useState<{
+    code: string; language: string; theme: string; html: string
+  } | null>(null)
   const lastUpdateRef = useRef<number>(0)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -35,7 +37,7 @@ function CodeBlockCode({ code, language = 'plaintext', theme = 'github-dark-defa
     // Grammar matching is linear in the source, on the UI thread. A pasted file or a long tool
     // output would hold a frame for as long as it takes; past this it stays plain text.
     if (code.length > MAX_HIGHLIGHT_CHARS) {
-      setHighlightedHtml(null)
+      setHighlighted(null)
       return
     }
     let active = true
@@ -44,10 +46,10 @@ function CodeBlockCode({ code, language = 'plaintext', theme = 'github-dark-defa
       void import('./code-highlighter.js')
         .then(({ highlightCode }) => highlightCode(code, language, theme))
         .then((html) => {
-          if (active) setHighlightedHtml(html)
+          if (active) setHighlighted({ code, language, theme, html })
         })
         .catch(() => {
-          if (active) setHighlightedHtml(null)
+          if (active) setHighlighted(null)
         })
     }
 
@@ -66,6 +68,10 @@ function CodeBlockCode({ code, language = 'plaintext', theme = 'github-dark-defa
   }, [code, language, theme])
 
   const classes = cn('w-full overflow-x-auto text-[12px] [&>pre]:m-0 [&>pre]:px-4 [&>pre]:py-3', className)
+  // Highlighting may lag the stream, but text must not. Only display HTML for these exact
+  // inputs; while a newer highlight is pending, the plain fallback shows the current source.
+  const highlightedHtml = highlighted?.code === code && highlighted.language === language && highlighted.theme === theme
+    ? highlighted.html : null
   return highlightedHtml
     ? <div className={classes} dangerouslySetInnerHTML={{ __html: highlightedHtml }} {...props} />
     : <div className={classes} {...props}><pre><code>{code}</code></pre></div>

@@ -1,10 +1,11 @@
 import type { ToolAction } from '../action-tool.js'
 import { booleanArg, numberArg, stringArg, textResult } from '../tool.js'
 import { cleanPath, fileSet, inputSchema, pathField, siblingTests } from './query.js'
-import { factsFor, scanWorkspace, type FileFacts } from './scan.js'
+import { factsFor, type FileFacts } from './scan.js'
+import { readRelated, type ReadRelated } from './read-related.js'
 
 export const includeRelatedField = {
-  type: 'boolean', description: 'Include bounded related stylesheet rules and sibling test paths; default true.'
+  type: 'boolean', description: 'Include bounded local type definitions, relevant test excerpts, stylesheet rules and sibling test paths; default true.'
 }
 export const maxCharsField = {
   type: 'integer', minimum: 1_000, maximum: 16_000,
@@ -14,7 +15,7 @@ export const maxCharsField = {
 export function readAction(root: string): ToolAction {
   return {
     action: 'read',
-    description: 'Read source with its SHA-256 file version, line numbers, related CSS rules and test paths in one call. ' +
+    description: 'Read source with its SHA-256 file version, line numbers, referenced local types, relevant test excerpts and CSS rules in one call. ' +
       'Select an exported symbol or a line range (default first 200 lines). Pass known_hash only when that range is ' +
       'already in your context: an equal current hash returns unchanged; a changed hash returns fresh source immediately. ' +
       'Hashes describe snapshots, not edit locks or proof that omitted lines were read.',
@@ -41,8 +42,8 @@ export function readAction(root: string): ToolAction {
       if (end < start || start > facts.lines.length) throw new Error('Line range is outside the file')
       const unchanged = stringArg(input, 'known_hash') === facts.hash
       const related = booleanArg(input, 'include_related', true)
-      const scanned = related && facts.styleRefs.length ? await scanWorkspace(root) : []
-      return textResult(sourceBundle(facts, start, end, scanned, {
+      const extra = related ? await readRelated(root, facts, start, end) : null
+      return textResult(sourceBundle(facts, start, end, extra, {
         maxChars: numberArg(input, 'max_chars', 12_000), related, unchanged
       }))
     }
@@ -52,25 +53,28 @@ export function readAction(root: string): ToolAction {
 type BundleOptions = { maxChars: number; related: boolean; unchanged?: boolean }
 
 /** Budget before serialization; never claim a line that was cut by a character limit. */
-export function sourceBundle(facts: FileFacts, start: number, end: number, scanned: readonly FileFacts[], options: BundleOptions): string {
+export function sourceBundle(facts: FileFacts, start: number, end: number, extra: ReadRelated | null, options: BundleOptions): string {
   const out = new SourceBudget(options.maxChars)
+  let primaryEnd: number | undefined
   if (options.unchanged) {
     out.add(`Unchanged at read time: ${facts.file}\n${facts.hash}\nRequested lines ${start}-${Math.min(end, facts.lines.length)}; no source re-emitted.\n`)
+    primaryEnd = Math.min(end, facts.lines.length)
   } else {
-    const primaryBudget = options.related && facts.styleRefs.length ? Math.floor(options.maxChars * 0.65) : options.maxChars
-    out.source(facts, start, end, '', primaryBudget)
+    const hasRelated = extra && (extra.types.length || extra.tests.length || extra.styles.length)
+    const primaryBudget = hasRelated ? Math.floor(options.maxChars * 0.6) : options.maxChars
+    primaryEnd = out.source(facts, start, end, '', primaryBudget)
   }
   if (options.related) {
     const tests = siblingTests(facts.file)
     out.add(`\nSibling test candidates (not coverage): ${tests.length ? tests.join(', ') : '(none)'}\n`)
-    const names = new Set(facts.styleRefs)
-    for (const candidate of scanned) {
-      const seen = new Set<string>()
-      for (const rule of candidate.styleDefs) {
-        const key = `${rule.start}:${rule.end}`
-        if (!names.has(rule.name) || seen.has(key)) continue
-        seen.add(key)
-        out.source(candidate, rule.start, rule.end, rule.conditions.join(' > '))
+    const types = extra?.types.filter((entry) => !(entry.facts.file === facts.file && primaryEnd !== undefined && entry.start >= start && entry.end <= primaryEnd)) ?? []
+    const groups = [types, extra?.tests ?? [], extra?.styles ?? []].filter((entries) => entries.length)
+    for (const note of extra?.notes ?? []) out.add(`\n[${note}]\n`)
+    for (const [index, entries] of groups.entries()) {
+      const groupEnd = out.length + Math.floor(out.remaining / (groups.length - index))
+      for (const [entryIndex, entry] of entries.entries()) {
+        const budget = out.length + Math.floor((groupEnd - out.length) / (entries.length - entryIndex))
+        out.source(entry.facts, entry.start, entry.end, entry.label, budget)
       }
     }
   }
@@ -81,6 +85,8 @@ class SourceBudget {
   private text = ''
   private omitted = false
   constructor(private readonly max: number) {}
+  get length(): number { return this.text.length }
+  get remaining(): number { return Math.max(0, this.max - 180 - this.text.length) }
 
   add(value: string): boolean {
     if (this.text.length + value.length > this.max - 180) { this.omitted = true; return false }
@@ -88,9 +94,9 @@ class SourceBudget {
     return true
   }
 
-  source(facts: FileFacts, start: number, end: number, condition = '', budget = this.max): void {
+  source(facts: FileFacts, start: number, end: number, label = '', budget = this.max): number | undefined {
     end = Math.min(end, facts.lines.length)
-    const prefix = `\nSource: ${facts.file}\n${facts.hash}\n${condition ? `Conditions: ${condition}\n` : ''}`
+    const prefix = `\nSource: ${facts.file}\n${facts.hash}\n${label ? `${label}\n` : ''}`
     // Reserve the range header before selecting complete lines.
     let room = budget - 180 - this.text.length - prefix.length - 90
     const lines: string[] = []
@@ -106,8 +112,9 @@ class SourceBudget {
       return
     }
     const last = start + lines.length - 1
-    this.add(`${prefix}Returned lines ${start}-${last} of ${facts.lines.length}${last < end ? `; requested through ${end}` : ''}\n${lines.join('')}`)
+    const added = this.add(`${prefix}Returned lines ${start}-${last} of ${facts.lines.length}${last < end ? `; requested through ${end}` : ''}\n${lines.join('')}`)
     if (last < end) this.omitted = true
+    return added ? last : undefined
   }
 
   result(): string {

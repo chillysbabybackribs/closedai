@@ -22,7 +22,7 @@ export async function readRelated(root: string, primary: FileFacts, start: numbe
   const seen = new Set<string>()
   for (const name of refs) {
     const resolved = await resolveType(primary, name, get, new Set())
-    if (!resolved || (resolved.facts.file === primary.file && resolved.start >= start && resolved.end <= end)) continue
+    if (!resolved) continue
     const key = `${resolved.facts.file}:${resolved.start}:${resolved.end}`
     if (seen.has(key)) continue
     seen.add(key)
@@ -43,7 +43,7 @@ export async function readRelated(root: string, primary: FileFacts, start: numbe
       if (!testPattern.test(facts.file) || !matched.length) continue
       testCount++
       if (result.tests.length < MAX_TESTS) result.tests.push({ facts, start: candidate.line, end: candidate.end,
-        label: `Test candidate: ${candidate.name} (uses ${matched.join(', ')}; not execution or coverage evidence)` })
+        label: `Test candidate: ${candidate.name.slice(0, 160)} (uses ${matched.join(', ')}; not execution or coverage evidence)` })
     }
     const names = new Set(primary.styleRefs)
     const styleRanges = new Set<string>()
