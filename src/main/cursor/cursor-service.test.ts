@@ -17,7 +17,7 @@ const { CursorChatService } = await import('./cursor-service.js')
 hooks.deregister()
 
 test('cold catalog startup loads saved history once and obtains its models from that replay', async () => {
-  let saved = { ...DEFAULT_APP_SETTINGS, chatCursorSessionId: 'saved' }
+  let saved: typeof DEFAULT_APP_SETTINGS = { ...DEFAULT_APP_SETTINGS, chatCursorSessionId: 'saved' }
   const service = new CursorChatService('/workspace', {
     get: () => saved,
     set: async (patch) => { saved = { ...saved, ...patch }; return saved }
@@ -26,7 +26,7 @@ test('cold catalog startup loads saved history once and obtains its models from 
   const loads: string[] = []
   Object.assign(session, { client: {
     connected: true,
-    capabilities: { loadSession: true, image: true },
+    capabilities: { loadSession: true, image: false },
     async loadSession(sessionId: string) {
       loads.push(sessionId)
       const update = (session as unknown as { onUpdate(params: unknown): void }).onUpdate.bind(session)
@@ -49,6 +49,7 @@ test('cold catalog startup loads saved history once and obtains its models from 
   assert.equal(snapshot.connection.state, 'ready')
   assert.deepEqual(loads, ['saved'])
   assert.equal(snapshot.models.length, 1)
+  assert.equal((service as unknown as { supportsImages: boolean }).supportsImages, false)
   assert.equal(snapshot.threadId, 'cursor:saved')
   assert.match(JSON.stringify(snapshot.items), /Earlier question/)
   assert.match(JSON.stringify(snapshot.items), /Earlier answer/)

@@ -300,8 +300,8 @@ export class CursorChatService extends EventEmitter {
       if (!this.loadCachedCatalog()) {
         const setup = await this.session.warm()
         if (setup.models.length === 0) throw new Error('Cursor reported no available models')
-        this.supportsImages = this.session.capabilities?.image !== false
       }
+      this.supportsImages = this.session.capabilities?.image !== false
       this.setConnection({ state: 'ready', message: 'Cursor is ready' })
       void this.readAccount()
       if (!warm) await this.session.retire()
@@ -389,7 +389,7 @@ export class CursorChatService extends EventEmitter {
 
   /**
    * Bring the saved conversation back. The condition is the pane's own transcript, not the
-   * session id: warming adopts that id before the catalog read, and keying on it meant a
+   * session id: startup adopts that id before replay, and keying on it meant a
    * restarted pane silently skipped its history and answered from an empty session.
    */
   private async resumePersistedSession(): Promise<void> {
