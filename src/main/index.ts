@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeTheme, session, type WebContents } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, nativeTheme, session } from 'electron'
 import { mkdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { configureChromiumStartup } from './chromium-startup-policy.js'
@@ -53,7 +53,9 @@ import { traceChatEvent, traceToolCalls } from './trace/taps.js'
 import type { TraceEvent } from '../shared/trace.js'
 import type { ToolsEvent } from '../shared/tools.js'
 import { registerChatIpc } from './chat-ipc.js'
+import { registerWindowIpc } from './window-ipc.js'
 import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
+import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
 import { CHAT_PROVIDERS } from '../shared/chat-providers.js'
 import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../shared/types.js'
 
@@ -92,10 +94,10 @@ let quitting = false
 
 // The BrowserWindow reference can outlive its WebContents during Electron shutdown. Keep all
 // renderer notifications behind one liveness check so late browser/service events are harmless.
-function sendToMainWindow(...[channel, ...args]: Parameters<WebContents['send']>): void {
+function sendToMainWindow<C extends IpcEventChannel>(channel: C, payload: IpcEventChannels[C]): void {
   const window = mainWindow
   if (!window || window.isDestroyed() || window.webContents.isDestroyed()) return
-  window.webContents.send(channel, ...args)
+  window.webContents.send(channel, payload)
 }
 
 const userData = (): string => app.getPath('userData')
@@ -300,16 +302,16 @@ function createWindow(): void {
   browserDownloads = new BrowserDownloadService({ workspaceRoot: () => app.getPath('downloads') })
   browserDownloads.install(session.fromPartition(PARTITION))
   browserDownloads.on('changed', (downloads: BrowserDownload[]) =>
-    sendToMainWindow('browserDownloads:changed', downloads)
+    sendToMainWindow(IPC.event.browserDownloadsChanged, downloads)
   )
   const forwardChat = rendererChatForwarder(chatService?.snapshot({ limit: 0 }).selectedPaneId ?? '',
-    (event) => sendToMainWindow('chat:event', event))
+    (event) => sendToMainWindow(IPC.event.chatEvent, event))
   chatService?.on('event', (event: ChatWorkspaceEvent) => {
     traceChatEvent(event)
     forwardChat(event)
   })
-  traceLog.on('event', (event: TraceEvent) => sendToMainWindow('trace:event', event))
-  const sendToolsEvent = (event: ToolsEvent): void => { sendToMainWindow('tools:event', event) }
+  traceLog.on('event', (event: TraceEvent) => sendToMainWindow(IPC.event.traceEvent, event))
+  const sendToolsEvent = (event: ToolsEvent): void => { sendToMainWindow(IPC.event.toolsEvent, event) }
   toolTelemetry?.on('record', (record) => sendToolsEvent({ type: 'call', record }))
   toolTelemetry?.on('cleared', () => sendToolsEvent({ type: 'cleared' }))
 
@@ -322,9 +324,9 @@ function createWindow(): void {
 }
 
 function wireBrowserEvents(service: BrowserService): void {
-  service.on('state', (state: BrowserState) => sendToMainWindow('browser:state', state))
+  service.on('state', (state: BrowserState) => sendToMainWindow(IPC.event.browserState, state))
   service.on('tabs', (tabs: BrowserTabInfo[]) => {
-    sendToMainWindow('browser:tabs', tabs)
+    sendToMainWindow(IPC.event.browserTabs, tabs)
     // Persist the strip on every change rather than only at quit: a crash never reaches a
     // quit hook, and the point is that the tabs come back regardless of how the app died.
     browserTabSession?.save(tabs)
@@ -335,13 +337,7 @@ function wireBrowserEvents(service: BrowserService): void {
 }
 
 function registerIpc(): void {
-  ipcMain.handle('window:minimize', () => mainWindow?.minimize())
-  ipcMain.handle('window:maximize', () => {
-    if (!mainWindow) return
-    if (mainWindow.isMaximized()) mainWindow.unmaximize()
-    else mainWindow.maximize()
-  })
-  ipcMain.handle('window:close', () => mainWindow?.close())
+  registerWindowIpc(ipcMain, () => mainWindow)
   registerBrowserCoreIpc(ipcMain, () => browserService)
   registerBrowserDownloadsIpc(ipcMain, () => browserDownloads)
   registerChatIpc(ipcMain, () => chatService)
@@ -352,7 +348,7 @@ function registerIpc(): void {
     providers: () => [...CHAT_PROVIDERS],
     onEnabledChanged: async (toolId, enabled, disabledIds) => {
       await settings?.set({ disabledTools: disabledIds })
-      sendToMainWindow('tools:event', { type: 'enabled', toolId, enabled } satisfies ToolsEvent)
+      sendToMainWindow(IPC.event.toolsEvent, { type: 'enabled', toolId, enabled } satisfies ToolsEvent)
     }
   })
 }

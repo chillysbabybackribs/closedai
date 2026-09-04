@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import type { ChatAttachment } from '../shared/chat.js'
 import { CHAT_HISTORY_PAGE_SIZE } from '../shared/chat.js'
 import type { ChatContinuationSource } from '../shared/chat-peers.js'
+import { IPC } from '../shared/ipc-channels.js'
 import type { ChatWorkspaceSurface } from './chat-peers/peer-manager.js'
 
 export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspaceSurface | null): void {
@@ -12,44 +13,44 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
     return service
   }
 
-  ipcMain.handle('chat:snapshot', () => requireService().snapshot({ limit: CHAT_HISTORY_PAGE_SIZE }))
-  ipcMain.handle('chat:historyPage', (_event, paneId: string, threadId: string | null, beforeItemId: string) =>
+  ipcMain.handle(IPC.invoke.chat.snapshot, () => requireService().snapshot({ limit: CHAT_HISTORY_PAGE_SIZE }))
+  ipcMain.handle(IPC.invoke.chat.historyPage, (_event, paneId: string, threadId: string | null, beforeItemId: string) =>
     requireService().readHistoryPage(paneId, threadId, beforeItemId)
   )
-  ipcMain.handle('chat:send', (_event, paneId: string, text: string, attachments: ChatAttachment[]) =>
+  ipcMain.handle(IPC.invoke.chat.send, (_event, paneId: string, text: string, attachments: ChatAttachment[]) =>
     requireService().send(paneId, text, attachments)
   )
-  ipcMain.handle('chat:interrupt', (_event, paneId: string) => requireService().interrupt(paneId))
-  ipcMain.handle('chat:selectPane', (_event, paneId: string) => requireService().selectPane(paneId))
-  ipcMain.handle('chat:setVisiblePanes', (_event, cwd: string, paneIds: string[]) => requireService().setVisiblePanes(cwd, paneIds))
-  ipcMain.handle('chat:selectModel', (_event, paneId: string, modelId: string) => requireService().selectModel(paneId, modelId))
-  ipcMain.handle('chat:selectReasoningEffort', (_event, paneId: string, effort: string) =>
+  ipcMain.handle(IPC.invoke.chat.interrupt, (_event, paneId: string) => requireService().interrupt(paneId))
+  ipcMain.handle(IPC.invoke.chat.selectPane, (_event, paneId: string) => requireService().selectPane(paneId))
+  ipcMain.handle(IPC.invoke.chat.setVisiblePanes, (_event, cwd: string, paneIds: string[]) => requireService().setVisiblePanes(cwd, paneIds))
+  ipcMain.handle(IPC.invoke.chat.selectModel, (_event, paneId: string, modelId: string) => requireService().selectModel(paneId, modelId))
+  ipcMain.handle(IPC.invoke.chat.selectReasoningEffort, (_event, paneId: string, effort: string) =>
     requireService().selectReasoningEffort(paneId, effort)
   )
-  ipcMain.handle('chat:refreshPlanUsage', (_event, paneId: string) => requireService().refreshPlanUsage(paneId))
-  ipcMain.handle('chat:listChats', () => requireService().listChats())
-  ipcMain.handle('chat:newPeer', () => requireService().newPeer())
-  ipcMain.handle('chat:closePeer', (_event, paneId: string) => requireService().closePeer(paneId))
-  ipcMain.handle('chat:continueInNewPeer', (_event, source: ChatContinuationSource, modelId: string | null) =>
+  ipcMain.handle(IPC.invoke.chat.refreshPlanUsage, (_event, paneId: string) => requireService().refreshPlanUsage(paneId))
+  ipcMain.handle(IPC.invoke.chat.listChats, () => requireService().listChats())
+  ipcMain.handle(IPC.invoke.chat.newPeer, () => requireService().newPeer())
+  ipcMain.handle(IPC.invoke.chat.closePeer, (_event, paneId: string) => requireService().closePeer(paneId))
+  ipcMain.handle(IPC.invoke.chat.continueInNewPeer, (_event, source: ChatContinuationSource, modelId: string | null) =>
     requireService().continueInNewPeer(source, modelId)
   )
-  ipcMain.handle('chat:openChat', (_event, chatId: string) => requireService().openChat(chatId))
-  ipcMain.handle('chat:archiveChat', (_event, chatId: string) => requireService().archiveChat(chatId))
-  ipcMain.handle('chat:setChatPinned', (_event, chatId: string, pinned: boolean) => requireService().setChatPinned(chatId, pinned))
-  ipcMain.handle('chat:compactConversation', (_event, paneId: string) => requireService().compactConversation(paneId))
-  ipcMain.handle('chat:chooseProject', async () => {
+  ipcMain.handle(IPC.invoke.chat.openChat, (_event, chatId: string) => requireService().openChat(chatId))
+  ipcMain.handle(IPC.invoke.chat.archiveChat, (_event, chatId: string) => requireService().archiveChat(chatId))
+  ipcMain.handle(IPC.invoke.chat.setChatPinned, (_event, chatId: string, pinned: boolean) => requireService().setChatPinned(chatId, pinned))
+  ipcMain.handle(IPC.invoke.chat.compactConversation, (_event, paneId: string) => requireService().compactConversation(paneId))
+  ipcMain.handle(IPC.invoke.chat.chooseProject, async () => {
     const result = await dialog.showOpenDialog({
       title: 'Choose a project folder',
       properties: ['openDirectory', 'createDirectory']
     })
     if (!result.canceled && result.filePaths[0]) await requireService().selectProject(resolve(result.filePaths[0]))
   })
-  ipcMain.handle('chat:selectProject', (_event, projectPath: string) => {
+  ipcMain.handle(IPC.invoke.chat.selectProject, (_event, projectPath: string) => {
     if (!projectPath.trim()) throw new Error('Choose a project folder')
     return requireService().selectProject(resolve(projectPath))
   })
-  ipcMain.handle('chat:clearProject', () => requireService().selectProject(null))
-  ipcMain.handle('chat:login', async () => {
+  ipcMain.handle(IPC.invoke.chat.clearProject, () => requireService().selectProject(null))
+  ipcMain.handle(IPC.invoke.chat.login, async () => {
     const authUrl = await requireService().beginLogin()
     if (authUrl) await shell.openExternal(authUrl)
   })

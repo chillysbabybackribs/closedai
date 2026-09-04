@@ -35,11 +35,22 @@ async function collectFiles(directory = root) {
 // Match registration call sites only. A bare "a:b" literal is not evidence that a file
 // owns an IPC namespace.
 const handlerPattern = /ipcMain\s*\.\s*(?:handle|handleOnce|on|once)\(\s*['"]([a-zA-Z][a-zA-Z0-9]*):[a-zA-Z][a-zA-Z0-9]*['"]/g
-const callerPattern = /ipcRenderer\s*\.\s*(?:invoke|send|on|once)\(\s*['"]([a-zA-Z][a-zA-Z0-9]*):[a-zA-Z][a-zA-Z0-9]*['"]/g
+const handlerRegistryPattern = /IPC\.invoke\.([a-zA-Z][a-zA-Z0-9]*)\./g
 
-async function namespacesIn(relativePath, pattern) {
+async function handlerNamespacesIn(relativePath) {
   const source = await readFile(path.join(root, relativePath), 'utf8')
-  return new Set([...source.matchAll(pattern)].map(([, namespace]) => namespace))
+  const namespaces = [
+    ...source.matchAll(handlerPattern),
+    ...source.matchAll(handlerRegistryPattern)
+  ].map(([, namespace]) => namespace)
+  return new Set(namespaces)
+}
+
+/** Invoke namespaces declared in the typed IPC registry. */
+async function preloadIpcNamespaces() {
+  const source = await readFile(path.join(root, 'src/shared/ipc-channels.ts'), 'utf8')
+  const invokeSection = source.match(/invoke:\s*\{([\s\S]*?)\n\s*\},\s*\n\s*event:/)?.[1] ?? ''
+  return new Set([...invokeSection.matchAll(/^\s{4}([a-zA-Z][a-zA-Z0-9]*):\s*\{/gm)].map(([, namespace]) => namespace))
 }
 
 async function mainIpcFiles() {
@@ -50,7 +61,7 @@ async function mainIpcFiles() {
       if (entry.isDirectory()) await walk(target)
       else if (entry.isFile() && entry.name.endsWith('.ts') && !isTest(entry.name)) {
         const relativePath = path.relative(root, target).replaceAll(path.sep, '/')
-        const namespaces = await namespacesIn(relativePath, handlerPattern)
+        const namespaces = await handlerNamespacesIn(relativePath)
         if (namespaces.size > 0) found.push({ file: relativePath, namespaces })
       }
     }
@@ -61,7 +72,7 @@ async function mainIpcFiles() {
 
 /** Maps each namespace exposed by preload to the main-process modules that handle it. */
 async function ipcFlows() {
-  const exposed = await namespacesIn('src/preload/index.ts', callerPattern)
+  const exposed = await preloadIpcNamespaces()
   const handlers = await mainIpcFiles()
   return Object.fromEntries([...exposed].sort().flatMap((namespace) => {
     const owners = handlers

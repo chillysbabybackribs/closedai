@@ -1,6 +1,5 @@
 import type { ChangeEvent, JSX, RefObject } from 'react'
 import { FileImage, FileText, FileUp, X } from 'lucide-react'
-import { cn } from '../lib/utils.js'
 import {
   Attachment,
   AttachmentAction,
@@ -116,67 +115,42 @@ export function TranscriptAttachments({
 }): JSX.Element | null {
   if (!attachments.length) return null
   return (
-    <AttachmentGroup className="prompt-message-user-attachments" aria-label="Attachments">
-      {attachments.map((attachment) => (
-        <AttachmentCard
-          key={attachment.id}
-          attachment={attachment}
-          className={attachment.kind === 'image' ? 'prompt-image-attachment' : undefined}
-        />
-      ))}
-    </AttachmentGroup>
+    <div className="prompt-message-user-attachments" aria-label="Attachments">
+      {attachments.map((attachment) => {
+        const preview = imagePreview(attachment)
+        return preview ? (
+          <img
+            key={attachment.id}
+            className="prompt-message-image"
+            src={preview}
+            alt={attachment.name}
+            title={attachment.name}
+          />
+        ) : (
+          <AttachmentCard key={attachment.id} attachment={attachment} />
+        )
+      })}
+    </div>
   )
 }
 
 function AttachmentCard({
   attachment,
-  onRemove,
-  className
+  onRemove
 }: {
   attachment: ChatAttachmentSummary | ChatAttachment
   onRemove?: () => void
-  className?: string
 }): JSX.Element {
   const preview = imagePreview(attachment)
-  if (attachment.kind === 'image' || preview) {
-    return (
-      <div className={cn('prompt-image-attachment-card', className)} data-slot="attachment" data-kind="image">
-        <div className="prompt-image-attachment-media">
-          {preview ? (
-            <img src={preview} alt={attachment.name} />
-          ) : (
-            <div className="prompt-image-placeholder">
-              <FileImage aria-hidden="true" />
-            </div>
-          )}
-          {onRemove ? (
-            <button
-              type="button"
-              className="prompt-image-remove-btn"
-              aria-label={`Remove ${attachment.name}`}
-              data-ui="composer.attachment-remove"
-              data-ui-key={attachment.id}
-              onClick={onRemove}
-            >
-              <X aria-hidden="true" />
-            </button>
-          ) : null}
-        </div>
-        <span className="prompt-image-attachment-name" title={attachment.name}>
-          {attachment.name}
-        </span>
-      </div>
-    )
-  }
-
+  const image = attachment.kind === 'image'
   return (
-    <Attachment size="sm" className={className}>
-      <AttachmentMedia variant="icon">
-        <FileText aria-hidden="true" />
+    <Attachment size="sm">
+      <AttachmentMedia variant={preview ? 'image' : 'icon'}>
+        {preview ? <img src={preview} alt="" /> : image ? <FileImage aria-hidden="true" /> : <FileText aria-hidden="true" />}
       </AttachmentMedia>
       <AttachmentContent>
         <AttachmentTitle>{attachment.name}</AttachmentTitle>
-        <AttachmentDescription>File</AttachmentDescription>
+        <AttachmentDescription>{image ? 'Image' : 'File'}</AttachmentDescription>
       </AttachmentContent>
       {onRemove ? (
         <AttachmentActions>

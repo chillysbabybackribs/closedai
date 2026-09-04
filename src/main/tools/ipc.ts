@@ -1,4 +1,5 @@
 import type { IpcMain } from 'electron'
+import { IPC } from '../shared/ipc-channels.js'
 import { toolManifest } from './manifest.js'
 import type { ToolRegistry } from './registry.js'
 import type { ToolTelemetry } from './telemetry.js'
@@ -13,20 +14,20 @@ export type ToolsIpcDeps = {
 }
 
 export function registerToolsIpc(ipcMain: IpcMain, deps: ToolsIpcDeps): void {
-  ipcMain.handle('tools:manifest', () => {
+  ipcMain.handle(IPC.invoke.tools.manifest, () => {
     const registry = deps.registry()
     if (!registry) throw new Error('Tools are not available')
     return toolManifest(registry, deps.providers())
   })
-  ipcMain.handle('tools:telemetry', () => {
+  ipcMain.handle(IPC.invoke.tools.telemetry, () => {
     const telemetry = deps.telemetry()
     if (!telemetry) throw new Error('Tool telemetry is not available')
     return telemetry.snapshot()
   })
-  ipcMain.handle('tools:clearTelemetry', async () => {
+  ipcMain.handle(IPC.invoke.tools.clearTelemetry, async () => {
     await deps.telemetry()?.clear()
   })
-  ipcMain.handle('tools:setEnabled', async (_event, toolId: string, enabled: boolean) => {
+  ipcMain.handle(IPC.invoke.tools.setEnabled, async (_event, toolId: string, enabled: boolean) => {
     const registry = deps.registry()
     if (!registry) throw new Error('Tools are not available')
     if (typeof toolId !== 'string' || typeof enabled !== 'boolean') throw new Error('Invalid tool toggle')
