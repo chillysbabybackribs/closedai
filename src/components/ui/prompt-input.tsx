@@ -105,10 +105,10 @@ function PromptInputTextarea({ className, onKeyDown, disableAutosize = false, ..
 
   return (
     <Textarea
-      ref={(element) => {
-        textareaRef.current = element
-        adjustHeight(element)
-      }}
+      // An inline ref callback is a new function every render, so React detached and reattached
+      // it — and re-measured the textarea — on renders that had nothing to do with its text.
+      // The layout effect below already sizes it on mount and whenever the value changes.
+      ref={textareaRef}
       value={value}
       onChange={(event) => {
         adjustHeight(event.target)

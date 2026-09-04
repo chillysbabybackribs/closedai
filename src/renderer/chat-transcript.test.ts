@@ -93,13 +93,14 @@ test('opening a long transcript paints one screenful, with the rest behind the f
   const items: ChatTranscriptItem[] = Array.from({ length: 250 }, (_, index) => ({
     type: 'user', id: `u${index}`, turnId: `t${index}`, text: `Message ${index}`
   }))
-  // The window grows to its full bound on idle frames after this first paint.
+  // The first commit holds only the rows under the reader's eye; the screenful behind them
+  // arrives on the next animation frames and the window grows to its full bound on idle ones.
   const html = renderTranscript({ items })
-  assert.match(html, /226 earlier entries/)
-  assert.doesNotMatch(html, /Message 225</)
-  assert.match(html, /Message 226</)
+  assert.match(html, /242 earlier entries/)
+  assert.doesNotMatch(html, /Message 241</)
+  assert.match(html, /Message 242</)
   assert.match(html, /Message 249</)
-  assert.equal((html.match(/data-slot="message-scroller-item"/g) ?? []).length, 24)
+  assert.equal((html.match(/data-slot="message-scroller-item"/g) ?? []).length, 8)
 })
 
 
