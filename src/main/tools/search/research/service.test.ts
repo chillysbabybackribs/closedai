@@ -41,13 +41,14 @@ test('provider fan-out, live tab opening, and source reading overlap; evidence p
   t.after(() => service.dispose())
   const run = service.start(input, context)
   assert.equal(run.state, 'running')
-  assert.equal(run.presentation.tabId, 'live-tab')
+  assert.deepEqual(run.presentation, { state: 'waiting_for_source' })
   await tick()
   assert.deepEqual(new Set(started), new Set(['brave', 'serper', 'body', 'live']))
   body.resolve(document)
   await tick()
   const partial = service.read(run.runId, context)
   assert.equal(partial.state, 'running')
+  assert.equal(partial.presentation.tabId, 'live-tab')
   assert.equal(partial.sources[0].state, 'ready')
   const source = await service.source(run.runId, partial.sources[0].id, context, 0, 200) as { text: string }
   assert.equal(source.text, 'Actual evidence')
@@ -75,6 +76,34 @@ test('multiple queries start before either resolves and follow-ups join the same
   gate.resolve({ provider: 'brave', results: [] })
   await tick()
   assert.equal(service.read(run.runId, context).totalQueries, 2)
+})
+
+test('search-only and cancelled discovery never open a browser; explicit search URLs are rejected', async (t) => {
+  const gate = deferred<ProviderSearchResult>()
+  const opened: string[] = []
+  const service = new ResearchService(new SearchRouter([{ provider: 'brave', search: async () => gate.promise }]), dependencies({
+    openLive: (url) => { opened.push(url); return 'tab' }
+  }))
+  t.after(() => service.dispose())
+  assert.throws(() => service.start({ ...input, queries: [], urls: ['https://google.com/search?q=topic'] }, context), /actual source URLs/)
+  const run = service.start({ ...input, queries: [{ ...query, providers: ['brave'] }] }, context)
+  await tick()
+  service.cancelPane('pane')
+  gate.resolve({ provider: 'brave', results: [{ title: 'Late source', url: document.url, snippet: '', provider: 'brave' }] })
+  await tick()
+  assert.deepEqual(opened, [])
+  assert.equal(service.read(run.runId, context).presentation.state, 'no_source')
+
+  const empty = new ResearchService(new SearchRouter([{ provider: 'brave', search: async () => ({ provider: 'brave', results: [
+    { title: 'Results', url: 'https://google.com/search?q=topic', snippet: '', provider: 'brave' }
+  ] }) }]), dependencies({ openLive: () => { throw new Error('must not open') } }))
+  t.after(() => empty.dispose())
+  const noSources = empty.start({ ...input, queries: [{ ...query, providers: ['brave'] }] }, context)
+  await tick()
+  const result = empty.read(noSources.runId, context)
+  assert.equal(result.presentation.state, 'no_source')
+  assert.equal(result.sourceCount, 0)
+  assert.equal(result.state, 'completed')
 })
 
 test('cancellation aborts active collection and drops late results; other panes cannot inspect a run', async () => {
