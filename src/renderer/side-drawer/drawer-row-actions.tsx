@@ -22,7 +22,10 @@ export function DrawerRowActions({
       <div className="agents-row-actions">
         <button
           type="button"
-          onClick={() => void (row.paneId ? chat.interruptPane(row.paneId) : chat.interrupt())}
+          onClick={() => {
+            const stop = row.paneId ? chat.interruptPane(row.paneId) : chat.interrupt()
+            stop.catch(controller.reportError)
+          }}
           title="Stop agent"
           aria-label={`Stop agent: ${row.title}`}
           data-ui="drawer.row-stop"
@@ -34,14 +37,14 @@ export function DrawerRowActions({
     )
   }
 
-  // An open pane closes without ceremony: its thread stays in History and reopens from there.
-  // Only history rows delete (archive) the thread itself, which is what the confirmation guards.
+  // An attached chat closes without ceremony: its record stays in History and reopens from there.
+  // Only detached rows delete (archive) the chat itself, which is what the confirmation guards.
   if (row.paneId !== undefined) {
     return (
       <div className="agents-row-actions">
         <button
           type="button"
-          onClick={() => void controller.deleteRow(row.id, row.threadId, row.paneId)}
+          onClick={() => void controller.deleteRow(row.id, true)}
           title="Close chat (keeps it in History)"
           aria-label={`Close ${row.title}`}
           data-ui="drawer.row-close"
@@ -59,7 +62,7 @@ export function DrawerRowActions({
         <>
           <button
             type="button"
-            onClick={() => void controller.deleteRow(row.id, row.threadId, row.paneId)}
+            onClick={() => void controller.deleteRow(row.id, false)}
             title="Confirm delete"
             aria-label={`Confirm delete ${row.title}`}
             data-ui="drawer.row-delete-confirm"

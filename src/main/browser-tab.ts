@@ -14,6 +14,13 @@ import { installContentsPermissionPolicy } from './browser-permissions.js'
 import { showBrowserContextMenu } from './browser-context-menu.js'
 import { cookieImportTargetFor, refreshCookiesForUrl } from './cookie-refresh.js'
 import { BrowserNavigationFailureState } from './browser-navigation-failure-state.js'
+import {
+  CHROME_BASE_COLOR,
+  DEFAULT_PAGE_BASE_COLOR,
+  PAGE_BACKGROUND_PROBE,
+  PageBackgroundMemory,
+  pageBackgroundColor
+} from './browser-page-background.js'
 export { HOME_URL, normalizeUrl, PARTITION } from './browser-url.js'
 
 // One tab = one WebContentsView plus its navigation state. BrowserService owns the collection
@@ -59,7 +66,10 @@ export class BrowserTab extends EventEmitter {
     private readonly history: BrowserHistory,
     private readonly openLinkInNewTab: (request: PopupTabRequest) => void,
     readonly partition: string = PARTITION,
-    private readonly registerNativePopup: (contents: WebContents) => void = () => {}
+    private readonly registerNativePopup: (contents: WebContents) => void = () => {},
+    // Shared across the window's tabs: a page's canvas colour belongs to the site, not to
+    // whichever view happened to load it first.
+    private readonly pageBackgrounds: PageBackgroundMemory = new PageBackgroundMemory()
   ) {
     super()
     // Node throws on unhandled 'error'; the service subscribes, but keep a no-op fallback.
@@ -78,9 +88,11 @@ export class BrowserTab extends EventEmitter {
         safeDialogs: true
       }
     })
-    // White, not the app's dark chrome colour: this is the CANVAS behind the page, and sites
-    // that paint no background on html/body assume the browser default of white.
-    this.view.setBackgroundColor('#ffffff')
+    // A tab holding no document yet shows the app's own bezel colour rather than the browser
+    // default of white — there is no page to assume anything about, and white here is the
+    // flash. The base colour then tracks the page for the rest of the tab's life; see
+    // browser-page-background.ts for the invariant and applyBaseColor below for the rules.
+    this.view.setBackgroundColor(this.baseColor)
     this.view.setBorderRadius(PAGE_CORNER_RADIUS)
     this.view.setVisible(false)
     this.view.setBounds(hiddenBounds)
