@@ -66,10 +66,10 @@ export function sourceBundle(facts: FileFacts, start: number, end: number, scann
     for (const candidate of scanned) {
       const seen = new Set<string>()
       for (const rule of candidate.styleDefs) {
-        const key = `${rule.line}:${rule.end}`
+        const key = `${rule.start}:${rule.end}`
         if (!names.has(rule.name) || seen.has(key)) continue
         seen.add(key)
-        out.source(candidate, rule.line, rule.end, rule.conditions.join(' > '))
+        out.source(candidate, rule.start, rule.end, rule.conditions.join(' > '))
       }
     }
   }

@@ -26,7 +26,7 @@ test('workspace tools are advertised only for the indexed checkout', () => {
   assert.equal(registry.namespaces[0].tools[0].deferLoading, undefined)
   assert.deepEqual(
     registry.namespaces[0].tools[0].actions?.map((action) => action.name),
-    ['find', 'outline', 'map', 'related', 'tests', 'ipc_flow']
+    ['find', 'outline', 'map', 'related', 'tests', 'ipc_flow', 'read']
   )
 })
 

@@ -1,6 +1,7 @@
 export type StyleRule = {
   name: string
   line: number
+  start: number
   end: number
   conditions: readonly string[]
 }
@@ -42,7 +43,7 @@ export function styleRules(source: string): StyleRule[] {
       const selector = pending.trim()
       const conditions = stack.map((entry) => entry.selector).filter((entry) => entry.startsWith('@'))
       const found: StyleRule[] = selector.startsWith('@') ? [] : [...selector.matchAll(/\.(-?[A-Za-z_][-\w]*)/g)]
-        .map((match) => ({ name: match[1]!, line: start, end: line, conditions }))
+        .map((match) => ({ name: match[1]!, line: start + selector.slice(0, match.index).split('\n').length - 1, start, end: line, conditions }))
       stack.push({ selector, rules: found })
       rules.push(...found)
       pending = ''
