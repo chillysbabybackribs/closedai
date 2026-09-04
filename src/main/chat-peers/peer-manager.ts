@@ -551,9 +551,12 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       this.lifecycle.rememberDisplay(paneId, entry.display.current, entry.updatedAt, turnBoundary ? wasRunning && !running : null)
     }
     if (turnBoundary && !running) this.catalog.invalidate()
-    // Save what the pane shows at each turn boundary, and the first time a replay fills a chat
-    // this cache has never seen. Streaming deltas are not worth a write; the tail they build is.
-    if ((turnBoundary && !running) || (event.type === 'replace' && event.snapshot.items.length > 0)) {
+    // Save what the pane shows at each turn boundary, when a replay fills it, and when a context
+    // reading lands at rest — providers report that one after the turn has already ended, and it
+    // is what the composer's meter shows on the next open. Streaming deltas are not worth a
+    // write; the tail they build is.
+    if ((turnBoundary && !running) || (event.type === 'context' && !running) ||
+      (event.type === 'replace' && event.snapshot.items.length > 0)) {
       this.rememberTranscript(entry)
     }
     if (running) this.parking.cancel(entry)
