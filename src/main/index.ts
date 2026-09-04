@@ -213,9 +213,9 @@ async function main(): Promise<void> {
   const cursorStateDir = join(userData(), 'cursor')
   // ACP takes its MCP servers per session, so this bridge registers nothing outside the app.
   cursorBridge = new CursorToolBridge(toolRegistry)
-  // Model catalogs are shared per workspace so a pane's non-active providers fill the picker
-  // from the last catalog seen instead of each starting a process to fetch their own.
-  const providerCatalogs = new ProviderCatalogCache()
+  // Model catalogs are shared per workspace and across launches, so a pane's non-active
+  // providers fill the picker from the last catalog seen instead of each starting a process.
+  providerCatalogs = await ProviderCatalogCache.open(join(userData(), 'provider-catalogs.json'))
   chatService = new ChatPeerManager(settings, chatStore, (peerSettings, record) => {
     const catalogs = providerCatalogs.forWorkspace(chatWorkspace)
     return new ChatHub({
@@ -382,6 +382,7 @@ app.on('before-quit', (event) => {
     browserTabSession?.close(),
     settings?.set({}),
     chatStore?.flush(),
+    providerCatalogs?.flush(),
     flushSession,
     // Leaves the user's agy MCP config without dead localhost endpoints.
     antigravityBridge?.stop(),
