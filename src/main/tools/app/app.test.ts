@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { uiControlFamilies } from '../../../shared/ui-controls.js'
 import { ToolRegistry } from '../registry.js'
 import { appTools } from './index.js'
 import type { AppCommandHost, AppUiHost } from './host.js'
@@ -70,7 +71,7 @@ test('namespace advertises state, deterministic commands, and control-level ui a
   assert.deepEqual(ui!.actions?.map((action) => action.name), [
     'controls', 'click', 'type', 'press_key', 'scroll', 'wait_for'
   ])
-  assert.match(ui!.description, /families: titlebar, window, drawer, chat, composer, browser, downloads, dialog, tools, trace, settings/)
+  assert.match(ui!.description, new RegExp(`families: ${uiControlFamilies().join(', ').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
 })
 
 test('state returns every section by default and only the requested ones otherwise', async () => {
