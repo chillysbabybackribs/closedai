@@ -32,6 +32,16 @@ export function openFailureMessage(error: unknown): string {
   return 'Could not open'
 }
 
+/** A failure as the drawer footer shows it: the message itself, without Electron's IPC prefix. */
+export function drawerErrorMessage(error: unknown): string {
+  const text = (error instanceof Error ? error.message : String(error))
+    .replace(/^Error invoking remote method '[^']*': /, '')
+    .replace(/^\w*Error: /, '')
+    .trim()
+  const message = text || 'Something went wrong'
+  return message.length > 140 ? `${message.slice(0, 139).trimEnd()}…` : message
+}
+
 export function basename(path: string): string {
   const trimmed = path.replace(/[/\\]+$/, '')
   const index = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'))

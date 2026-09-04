@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChatTranscriptItem } from '../../shared/chat.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { ChatController } from '../chat-controller.js'
-import { openFailureMessage } from './drawer-format.js'
+import { drawerErrorMessage } from './drawer-format.js'
 import {
   countDrawerReviewQueue,
   dequeueDrawerReview,
@@ -55,7 +55,7 @@ export function useDrawerController(chat: ChatController) {
 
   // Failures used to be swallowed (`.catch(() => {})`) or reach only the console, so a click that
   // did nothing looked like a dead control. Every drawer action reports here instead.
-  const reportError = useCallback((failure: unknown) => setError(openFailureMessage(failure)), [])
+  const reportError = useCallback((failure: unknown) => setError(drawerErrorMessage(failure)), [])
   useEffect(() => {
     if (!error) return
     const timer = window.setTimeout(() => setError(null), ERROR_VISIBLE_MS)

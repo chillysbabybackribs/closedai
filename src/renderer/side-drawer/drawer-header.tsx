@@ -1,24 +1,17 @@
 import type { JSX } from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Plus, Search, X } from 'lucide-react'
-import type { ChatController } from '../chat-controller.js'
+import type { DrawerController } from './drawer-controller.js'
 import { formatChatTime } from './drawer-format.js'
 import { searchChats, segmentTitle, stepHighlight, type ChatSearchHit } from './drawer-search.js'
-import type { DrawerRowModel } from './drawer-types.js'
 
-export function DrawerHeader({
-  chat,
-  rows
-}: {
-  chat: ChatController
-  rows: DrawerRowModel[]
-}): JSX.Element {
+export function DrawerHeader({ controller }: { controller: DrawerController }): JSX.Element {
   return (
     <header className="agents-header">
       <button
         type="button"
         className="agents-new"
-        onClick={() => void chat.newThread()}
+        onClick={controller.newChat}
         title="New agent chat"
         aria-label="New Agent"
         data-ui="drawer.new-agent"
@@ -26,18 +19,13 @@ export function DrawerHeader({
         <Plus size={15} aria-hidden="true" />
         <span>New Agent</span>
       </button>
-      <DrawerSearchInput chat={chat} rows={rows} />
+      <DrawerSearchInput controller={controller} />
     </header>
   )
 }
 
-function DrawerSearchInput({
-  chat,
-  rows
-}: {
-  chat: ChatController
-  rows: DrawerRowModel[]
-}): JSX.Element {
+function DrawerSearchInput({ controller }: { controller: DrawerController }): JSX.Element {
+  const { rows, openRow, reportError } = controller
   const [query, setQuery] = useState('')
   const [highlight, setHighlight] = useState(0)
   const [isFocused, setIsFocused] = useState(false)
@@ -53,13 +41,9 @@ function DrawerSearchInput({
       setQuery('')
       setHighlight(0)
       inputRef.current?.blur()
-      if (hit.row.paneId && hit.row.paneId !== chat.selectedPaneId) {
-        void chat.selectPane(hit.row.paneId)
-      } else if (hit.row.threadId) {
-        void chat.openThread(hit.row.threadId)
-      }
+      openRow(hit.row.id).catch(reportError)
     },
-    [chat]
+    [openRow, reportError]
   )
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>): void => {
