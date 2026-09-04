@@ -14,8 +14,8 @@ test('every model lane receives the deterministic batching and engineering contr
   for (const value of Object.values(instructions)) {
     assert.match(value, /outcome-first, user-facing articulation/)
     assert.match(value, /Never begin a progress update with “I have”, “I’ve”, “I am”, or “I will”/)
-    assert.match(value, /Always report tool or action errors, even when recovered/)
-    assert.match(value, /state an unresolved error’s impact/)
+    assert.match(value, /Report every tool or action error, even if recovered/)
+    assert.match(value, /state unresolved impact/)
     assert.match(value, /Let the app activity state carry routine in-progress status/)
     assert.match(value, /group all steps whose arguments are (?:already )?known/)
     assert.match(value, /Yield for another model pass only when fresh output changes the next action/)
