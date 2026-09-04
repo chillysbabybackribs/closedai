@@ -399,9 +399,19 @@ export class BrowserService extends EventEmitter {
     contents.once('destroyed', () => { this.nativePopups.delete(id) })
   }
 
-  /** Navigate the active tab, or a new active tab, and resolve with the tab id once usable. */
-  async navigateTab(input: string, newTab: boolean): Promise<string> {
-    const tab = newTab ? this.createTab(true) : this.requireActive()
+  /** Navigate a targeted tab, the active tab by default, or a new active tab. */
+  async navigateTab(input: string, newTab: boolean, tabId?: string): Promise<string> {
+    if (newTab && tabId) throw new Error('tab_id cannot be used with new_tab')
+    let tab: BrowserTab
+    if (newTab) {
+      tab = this.createTab(true)
+    } else if (tabId) {
+      const targeted = this.tabs.find((candidate) => candidate.id === tabId)
+      if (!targeted) throw new Error(`No tab with id ${tabId}`)
+      tab = targeted
+    } else {
+      tab = this.requireActive()
+    }
     await tab.navigate(input)
     return tab.id
   }

@@ -1,6 +1,6 @@
 # Model context and instructions
 
-Source review: 2026-09-03. Common product facts, provider-specific rules, runtime context, and
+Source review: 2026-09-04. Common product facts, provider-specific rules, runtime context, and
 repository documentation have separate owners. Editing a Markdown guide alone does not change
 every running model's prompt.
 
@@ -33,9 +33,11 @@ be sequential and include a later read, wait, or capture assertion.
 The shared response style asks for results and evidence, with progress only when it adds a new
 result, blocker, required choice, or tool/action error. Every error must be disclosed even when the
 model recovers: recovered errors get one concise sentence, while unresolved errors include their
-effect on the result. It discourages “I have…”, “I am…”, and “I will…” work logs. It is prompt
-guidance, not a text filter or a guarantee of identical output across models. Quoted user text and
-historical transcripts are not rewritten.
+effect on the result. When a user reports or challenges a failure, the response must move beyond
+acknowledgment or a future promise: diagnose with available evidence, give a concrete remedy, and
+implement and verify it when change authority exists. It discourages “I have…”, “I am…”, and “I
+will…” work logs. It is prompt guidance, not a text filter or a guarantee of identical output across
+models. Quoted user text and historical transcripts are not rewritten.
 
 The engineering contract steers every lane toward focused reads, provider-native structured
 edits, one targeted verification pass, and preservation of Git stash/worktree state. Claude uses

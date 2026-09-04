@@ -27,12 +27,15 @@ export class BrowserPageAccess implements BrowserToolHost {
     return fetchInPage(contents, request)
   }
 
-  async navigate(url: string, options: { newTab: boolean; ready: PageReadiness }): Promise<NavigateOutcome> {
+  async navigate(
+    url: string,
+    options: { tabId?: string; newTab: boolean; ready: PageReadiness }
+  ): Promise<NavigateOutcome> {
     const service = this.browser()
     if (!service) return { ok: false, error: 'The browser is not available yet' }
     let tabId: string
     try {
-      tabId = await service.navigateTab(url, options.newTab)
+      tabId = await service.navigateTab(url, options.newTab, options.tabId)
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }

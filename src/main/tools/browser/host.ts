@@ -20,7 +20,7 @@ export type BrowserToolHost = {
   readPage(tabId: string | undefined, options: { selector?: string; maxChars: number; raw?: boolean }): Promise<PageText | null>
   /** Fetch from inside the tab, inheriting its origin and session. Null when the tab is gone. */
   fetchPage(tabId: string | undefined, request: PageFetchRequest): Promise<PageFetchResult | null>
-  navigate(url: string, options: { newTab: boolean; ready: PageReadiness }): Promise<NavigateOutcome>
+  navigate(url: string, options: { tabId?: string; newTab: boolean; ready: PageReadiness }): Promise<NavigateOutcome>
   /** Null when the tab does not exist. */
   waitFor(tabId: string | undefined, ready: PageReadiness): Promise<PageReadyResult | null>
 }

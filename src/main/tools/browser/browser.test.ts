@@ -59,7 +59,7 @@ test('navigate defaults to dom-ready readiness and reports the reached state', a
   const { calls, call } = harness()
   const result = await call({ action: 'navigate', url: 'a.test' })
   assert.equal(result.isError, undefined)
-  assert.deepEqual(calls[0], ['navigate', 'a.test', { newTab: false, ready: { until: 'dom_ready', selector: undefined, text: undefined, timeoutMs: 3_000 } }])
+  assert.deepEqual(calls[0], ['navigate', 'a.test', { tabId: undefined, newTab: false, ready: { until: 'dom_ready', selector: undefined, text: undefined, timeoutMs: 3_000 } }])
   assert.match(textOf(result), /Loaded: A\nURL: https:\/\/a.test\/\nTab: tab-1\nReady: complete after 0.8s/)
 })
 
@@ -69,7 +69,34 @@ test('navigate passes selector, text, timeout, and new_tab through and surfaces 
   const result = await call({ action: 'navigate', url: 'x', new_tab: true, wait_until: 'load', wait_for_selector: '#r', timeout_ms: 2_000 })
   assert.equal(result.isError, true)
   assert.match(textOf(result), /Navigation to x failed: ERR_NAME_NOT_RESOLVED/)
-  assert.deepEqual(seen[0], ['x', { newTab: true, ready: { until: 'load', selector: '#r', text: undefined, timeoutMs: 2_000 } }])
+  assert.deepEqual(seen[0], ['x', { tabId: undefined, newTab: true, ready: { until: 'load', selector: '#r', text: undefined, timeoutMs: 2_000 } }])
+})
+
+test('navigate targets an explicit tab and rejects ambiguous new-tab requests', async () => {
+  const { calls, call } = harness()
+  const targeted = await call({ action: 'navigate', url: 'b.test', tab_id: 'tab-2' })
+  assert.equal(targeted.isError, undefined)
+  assert.deepEqual(calls[0], ['navigate', 'b.test', {
+    tabId: 'tab-2',
+    newTab: false,
+    ready: { until: 'dom_ready', selector: undefined, text: undefined, timeoutMs: 3_000 }
+  }])
+
+  const ambiguous = await call({ action: 'navigate', url: 'c.test', tab_id: 'tab-2', new_tab: true })
+  assert.equal(ambiguous.isError, true)
+  assert.match(textOf(ambiguous), /cannot combine tab_id with new_tab/)
+  assert.equal(calls.length, 1)
+})
+
+test('navigate reports a missing explicit tab', async () => {
+  const { call } = harness({
+    navigate: async (_url, options) => options.tabId === 'missing'
+      ? { ok: false, error: 'No tab with id missing' }
+      : { ok: true, tabId: 'tab-1', ready }
+  })
+  const result = await call({ action: 'navigate', url: 'x', tab_id: 'missing' })
+  assert.equal(result.isError, true)
+  assert.match(textOf(result), /No tab with id missing/)
 })
 
 test('read_page returns header, load state, and text; missing tabs fail', async () => {

@@ -6,7 +6,7 @@ protocol: `app-server-tools.ts` for Codex (`dynamicTools` + `item/tool/call`),
 `src/main/claude/claude-tools.ts` for Claude Code (in-process MCP), and
 `src/main/antigravity/antigravity-mcp.ts` for Antigravity (HTTP MCP). The same page tool appears as
 `embedded_browser.page`, `mcp__embedded_browser__page`, and `mcp_embedded_browser_page`, respectively.
-Source review: 2026-09-03. See [Model context](model-context.md) for instruction assembly.
+Source review: 2026-09-04. See [Model context](model-context.md) for instruction assembly.
 
 ## Three levels, three rules
 
@@ -55,7 +55,7 @@ before the app-server starts.
 
 | Namespace | Tool | Actions | Purpose |
 |---|---|---|---|
-| `embedded_browser` | `page` | `navigate`, `read_page`, `wait_for`, `fetch`, `extract` | Browser-page inspection for the pane the user can see. It can open a URL or search query, wait for page readiness, and read visible text from the whole page or one selector. `fetch` issues a request from inside the tab, so it inherits that tab's origin, cookies, and signed-in session — the way to reach an API the page itself calls, including POST endpoints. `extract` projects a JSON document (`path` to a subtree, `fields` per item, `limit` rows) so a large response costs only the part that was asked for. |
+| `embedded_browser` | `page` | `navigate`, `read_page`, `wait_for`, `fetch`, `extract` | Browser-page inspection for the pane the user can see. It can open a URL or search query in an explicit `tab_id` (or the active tab by default), wait for page readiness, and read visible text from the whole page or one selector. `tab_id` and `new_tab` are mutually exclusive. `fetch` issues a request from inside the tab, so it inherits that tab's origin, cookies, and signed-in session — the way to reach an API the page itself calls, including POST endpoints. `extract` projects a JSON document (`path` to a subtree, `fields` per item, `limit` rows) so a large response costs only the part that was asked for. |
 | `closedai_ui` | `capture` | `app_window`, `browser_page`, `crop` | Visual evidence. The first two actions capture the composed app or one readiness-gated page; `crop` enlarges a retained region. The model receives a scaled JPEG (max 960×720); the retained display image (up to 1920×1440) goes to `ScreenshotStore`. |
 | `closedai_app` | `state` | plain tool | Compact app facts from the main process (workspace panes, a chat pane, browser tabs, downloads, window) plus renderer-only ui facts (open dialogs and menus, drawer, history panel, composer state, focused control). No DOM walk; sections are selectable. |
 | `closedai_app` | `command` | `new_chat`, `send_message`, `stop_agent`, `open_chat`, `close_chat`, `select_model`, `browser_tab` | Deterministic commands over the same services the renderer's IPC calls. `browser_tab` covers tab-strip actions including targeted reload, duplicate, rename, and bulk close. `send_message` can await the target pane's turn; commands aimed at the calling pane are refused. |
