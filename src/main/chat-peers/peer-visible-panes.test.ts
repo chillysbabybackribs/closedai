@@ -2,10 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.ts'
 import { rendererChatForwarder } from './peer-events.ts'
-import { chatRecord, harness, HARNESS_CWD } from './peer-manager-harness.ts'
+import { chatRecord, harness, harnessWith, HARNESS_CWD } from './peer-manager-harness.ts'
 
 test('visible panes receive independent live events; hiding retains the running chat', async () => {
-  const { manager, surfaces } = harness({ records: [chatRecord('pane-a', null), chatRecord('pane-b', null)] })
+  const { manager, surfaces } = harnessWith([chatRecord('pane-a', null), chatRecord('pane-b', null)], 'pane-a')
   const delivered: ChatWorkspaceEvent[] = []
   manager.on('event', rendererChatForwarder('pane-a', (event) => delivered.push(event)))
   await manager.setVisiblePanes(HARNESS_CWD, ['pane-a', 'pane-b'])

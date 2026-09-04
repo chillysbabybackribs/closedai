@@ -1,6 +1,6 @@
 import { BackgroundTaskIndicator, currentBackgroundTasks } from './background-tasks.js'
 import type { JSX } from 'react'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { LogIn } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
@@ -23,7 +23,7 @@ import { TaskActivity } from './task-activity.js'
 import { ToolsModal } from './tools/tools-modal.js'
 import { TraceModal } from './trace/trace-modal.js'
 
-export function ChatPane({
+export const ChatPane = memo(function ChatPane({
   controller,
   zoom = 100,
   fontSize = 14,
@@ -169,7 +169,7 @@ export function ChatPane({
       </div>
     </aside>
   )
-}
+})
 
 
 function TranscriptScroller({
