@@ -1,11 +1,18 @@
-import { useState, type FormEvent, type JSX } from 'react'
-import { Eye, EyeOff, KeyRound, Loader2, Lock, ShieldAlert, UserRound } from 'lucide-react'
+import { useMemo, useState, type FormEvent, type JSX } from 'react'
+import { ExternalLink, Loader2, Lock, ShieldAlert } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
 import { Input } from '../../components/ui/input.js'
 import { cn } from '../../lib/utils.js'
-import type { CredentialDraft, CredentialSummary } from '../../shared/credentials.js'
-
-type CredentialType = 'api-key' | 'login'
+import {
+  credentialService,
+  matchCredentialService,
+  missingCredentialFields,
+  type CredentialDraft,
+  type CredentialServiceId,
+  type CredentialSummary
+} from '../../shared/credentials.js'
+import { CredentialFieldRow } from './credential-field-row.js'
+import { CredentialServicePicker } from './credential-service-picker.js'
 
 export type CredentialCreateFormProps = {
   onCancel: () => void
@@ -14,44 +21,72 @@ export type CredentialCreateFormProps = {
   encryptionAvailable: boolean
 }
 
-/** A single-page editor for the two credential shapes people use most often. */
+/**
+ * The create form: paste a service URL to pick the service, or choose it from the grid,
+ * then fill the fields that service actually takes. The catalog in `shared/credentials`
+ * decides both the field set and what is required, so this form and the main-process
+ * store agree without either restating the rules.
+ */
 export function CredentialCreateForm({
   onCancel,
   onSaved,
   save,
   encryptionAvailable
 }: CredentialCreateFormProps): JSX.Element {
-  const [type, setType] = useState<CredentialType>('api-key')
+  const [lookup, setLookup] = useState('')
+  const [serviceId, setServiceId] = useState<CredentialServiceId>('api-key')
   const [label, setLabel] = useState('')
-  const [url, setUrl] = useState('')
-  const [username, setUsername] = useState('')
-  const [secret, setSecret] = useState('')
-  const [secretVisible, setSecretVisible] = useState(false)
+  const [labelTouched, setLabelTouched] = useState(false)
+  const [values, setValues] = useState<Record<string, string>>({})
   const [showErrors, setShowErrors] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const service = credentialService(serviceId)!
+  const match = useMemo(() => matchCredentialService(lookup), [lookup])
+  const detectedDomain = match?.domain ?? ''
+  const detectedName = match && !match.recognised ? match.label : ''
+
+  const missing = useMemo(
+    () => missingCredentialFields({ serviceId, label, values }),
+    [serviceId, label, values]
+  )
   const missingLabel = !label.trim()
-  const missingUsername = type === 'login' && !username.trim()
-  const missingSecret = !secret.trim()
+
+  /** Typing a URL picks the service, names the entry, and fills any URL field it has. */
+  const handleLookup = (text: string): void => {
+    setLookup(text)
+    const found = matchCredentialService(text)
+    if (!found) return
+
+    setServiceId(found.serviceId)
+    if (!labelTouched) setLabel(found.label)
+
+    const target = credentialService(found.serviceId)
+    if (found.domain && target?.fields.some((field) => field.id === 'url')) {
+      setValues((current) => ({ ...current, url: text.trim() }))
+    }
+  }
+
+  const handleSelect = (id: CredentialServiceId): void => {
+    setServiceId(id)
+    if (labelTouched) return
+    const picked = credentialService(id)
+    setLabel(id === 'custom' && detectedName ? detectedName : (picked?.name ?? ''))
+  }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault()
     setShowErrors(true)
     setError(null)
-    if (missingLabel || missingUsername || missingSecret) return
+    if (missingLabel || missing.length > 0) return
 
     setSaving(true)
     try {
-      const saved = await save({
-        serviceId: type,
-        label: label.trim(),
-        values:
-          type === 'login'
-            ? { url: url.trim(), username: username.trim(), password: secret }
-            : { url: url.trim(), apiKey: secret }
-      })
-      onSaved(saved)
+      const kept = Object.fromEntries(
+        service.fields.map((field) => [field.id, values[field.id]?.trim() ?? ''])
+      )
+      onSaved(await save({ serviceId, label: label.trim(), values: kept }))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
@@ -66,126 +101,90 @@ export function CredentialCreateForm({
           <div>
             <h2 className="text-base font-semibold">Create credential</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Save an API key or an account login for the app and its agents.
+              Paste the service URL to pick it automatically, or choose one below.
+            </p>
+          </div>
+
+          <div role="group" data-slot="field" className="flex w-full flex-col gap-2">
+            <label htmlFor="credential-lookup" className="flex w-fit items-center gap-1 text-sm font-medium">
+              Service URL or name
+            </label>
+            <Input
+              id="credential-lookup"
+              data-ui="credentials.detect"
+              value={lookup}
+              placeholder="https://dashboard.stripe.com/apikeys"
+              autoComplete="url"
+              autoFocus
+              spellCheck={false}
+              onChange={(event) => handleLookup(event.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              <LookupHint domain={detectedDomain} recognised={match?.recognised ?? false} name={match?.label ?? ''} />
             </p>
           </div>
 
           <fieldset className="flex flex-col gap-2">
-            <legend className="text-sm font-medium">Credential type</legend>
-            <div className="credential-type-picker" role="radiogroup" aria-label="Credential type">
-              <TypeButton
-                type="api-key"
-                selected={type === 'api-key'}
-                icon={<KeyRound />}
-                title="API key"
-                description="Token, secret, or access key"
-                onSelect={setType}
-              />
-              <TypeButton
-                type="login"
-                selected={type === 'login'}
-                icon={<UserRound />}
-                title="Login"
-                description="Username and password"
-                onSelect={setType}
-              />
-            </div>
+            <legend className="text-sm font-medium">Service</legend>
+            <CredentialServicePicker
+              selectedId={serviceId}
+              detectedDomain={detectedDomain}
+              detectedName={detectedName}
+              onSelect={handleSelect}
+            />
           </fieldset>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Name"
-              htmlFor="credential-label"
-              required
-              error={showErrors && missingLabel ? 'Name is required.' : undefined}
-            >
+            <div role="group" data-slot="field" className="flex w-full flex-col gap-2">
+              <label htmlFor="credential-label" className="flex w-fit items-center gap-1 text-sm font-medium">
+                Name
+                <span className="text-destructive">*</span>
+              </label>
               <Input
                 id="credential-label"
                 data-ui="credentials.label"
                 value={label}
-                placeholder={type === 'login' ? 'GitHub account' : 'Production API key'}
+                placeholder={`${service.name} key`}
                 aria-invalid={showErrors && missingLabel}
-                autoFocus
-                onChange={(event) => setLabel(event.target.value)}
+                onChange={(event) => {
+                  setLabelTouched(true)
+                  setLabel(event.target.value)
+                }}
               />
-            </Field>
+              {showErrors && missingLabel ? (
+                <p className="text-xs text-destructive">Name is required.</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">How this entry appears in the vault.</p>
+              )}
+            </div>
 
-            <Field label="Website or service URL" htmlFor="credential-url" help="Optional">
-              <Input
-                id="credential-url"
-                data-ui="credentials.field"
-                data-ui-key={`${type}.url`}
-                type="url"
-                value={url}
-                placeholder="https://example.com"
-                autoComplete="url"
-                spellCheck={false}
-                onChange={(event) => setUrl(event.target.value)}
+            {service.fields.map((field) => (
+              <CredentialFieldRow
+                key={`${serviceId}.${field.id}`}
+                serviceId={serviceId}
+                field={field}
+                value={values[field.id] ?? ''}
+                error={
+                  showErrors && missing.some((candidate) => candidate.id === field.id)
+                    ? `${field.label} is required.`
+                    : undefined
+                }
+                onChange={(next) => setValues((current) => ({ ...current, [field.id]: next }))}
               />
-            </Field>
-
-            {type === 'login' ? (
-              <Field
-                label="Username or email"
-                htmlFor="credential-username"
-                required
-                error={showErrors && missingUsername ? 'Username or email is required.' : undefined}
-              >
-                <Input
-                  id="credential-username"
-                  data-ui="credentials.field"
-                  data-ui-key="login.username"
-                  value={username}
-                  placeholder="name@example.com"
-                  aria-invalid={showErrors && missingUsername}
-                  autoComplete="username"
-                  spellCheck={false}
-                  onChange={(event) => setUsername(event.target.value)}
-                />
-              </Field>
-            ) : null}
-
-            <Field
-              label={type === 'login' ? 'Password' : 'API key'}
-              htmlFor="credential-secret"
-              required
-              error={
-                showErrors && missingSecret
-                  ? `${type === 'login' ? 'Password' : 'API key'} is required.`
-                  : undefined
-              }
-            >
-              <div className="relative">
-                <Input
-                  id="credential-secret"
-                  data-ui="credentials.field"
-                  data-ui-key={type === 'login' ? 'login.password' : 'api-key.apiKey'}
-                  type={secretVisible ? 'text' : 'password'}
-                  value={secret}
-                  placeholder={type === 'login' ? 'Enter password' : 'Paste API key'}
-                  aria-invalid={showErrors && missingSecret}
-                  autoComplete={type === 'login' ? 'current-password' : 'off'}
-                  spellCheck={false}
-                  className="pr-9 font-mono"
-                  onChange={(event) => setSecret(event.target.value)}
-                />
-                <button
-                  type="button"
-                  data-ui="credentials.peek"
-                  data-ui-key={type === 'login' ? 'login.password' : 'api-key.apiKey'}
-                  className="absolute top-1/2 right-1 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label={
-                    secretVisible
-                      ? `Hide ${type === 'login' ? 'password' : 'API key'}`
-                      : `Show ${type === 'login' ? 'password' : 'API key'}`
-                  }
-                  onClick={() => setSecretVisible((current) => !current)}
-                >
-                  {secretVisible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                </button>
-              </div>
-            </Field>
+            ))}
           </div>
+
+          {service.docsUrl ? (
+            <button
+              type="button"
+              data-ui="credentials.docs"
+              className="flex w-fit items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+              onClick={() => void window.closedai.browser.navigate(service.docsUrl!).catch(() => {})}
+            >
+              <ExternalLink className="size-3.5" />
+              Open where {service.name} issues this key
+            </button>
+          ) : null}
 
           <div
             className={cn(
@@ -202,8 +201,8 @@ export function CredentialCreateForm({
             )}
             <p>
               {encryptionAvailable
-                ? 'The secret is encrypted with your OS keychain before it is written to disk.'
-                : 'No OS keychain is available, so this secret will be stored unencrypted.'}
+                ? 'Secret fields are encrypted with your OS keychain before they are written to disk.'
+                : 'No OS keychain is available, so secret fields will be stored unencrypted.'}
             </p>
           </div>
         </div>
@@ -225,57 +224,10 @@ export function CredentialCreateForm({
   )
 }
 
-type TypeButtonProps = {
-  type: CredentialType
-  selected: boolean
-  icon: JSX.Element
-  title: string
-  description: string
-  onSelect: (type: CredentialType) => void
-}
+type LookupHintProps = { domain: string; recognised: boolean; name: string }
 
-function TypeButton({ type, selected, icon, title, description, onSelect }: TypeButtonProps): JSX.Element {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      data-ui="credentials.type"
-      data-ui-key={type}
-      className={cn('credential-type-option', selected && 'credential-type-option-selected')}
-      onClick={() => onSelect(type)}
-    >
-      <span className="credential-type-icon">{icon}</span>
-      <span className="min-w-0 text-left">
-        <span className="block text-sm font-medium">{title}</span>
-        <span className="block truncate text-xs text-muted-foreground">{description}</span>
-      </span>
-    </button>
-  )
-}
-
-type FieldProps = {
-  label: string
-  htmlFor: string
-  required?: boolean
-  help?: string
-  error?: string
-  children: JSX.Element
-}
-
-function Field({ label, htmlFor, required, help, error, children }: FieldProps): JSX.Element {
-  return (
-    <div role="group" data-slot="field" className="flex w-full flex-col gap-2">
-      <label htmlFor={htmlFor} className="flex w-fit items-center gap-1 text-sm font-medium">
-        {label}
-        {required ? <span className="text-destructive">*</span> : null}
-      </label>
-      {children}
-      {error ? (
-        <p className="text-xs text-destructive">{error}</p>
-      ) : help ? (
-        <p className="text-xs text-muted-foreground">{help}</p>
-      ) : null}
-    </div>
-  )
+function LookupHint({ domain, recognised, name }: LookupHintProps): JSX.Element {
+  if (recognised && name) return <>Recognised {name}.</>
+  if (domain) return <>{domain} is not in the catalog — saving it as a Custom entry with its own icon.</>
+  return <>A URL picks the service and its logo. A plain name works too.</>
 }
