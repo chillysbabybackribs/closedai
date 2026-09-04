@@ -3,6 +3,7 @@ import type { BrowserService } from './browser-service.js'
 import { waitForPageReady, type PageReadiness, type PageReadyResult } from './browser-page-ready.js'
 import { settleFrames } from './browser-frame-settle.js'
 import type { BrowserPageCapture, CapturedImage, ImageCrop, UiCaptureHost } from './tools/capture/index.js'
+import type { BrowserTabInfo } from '../shared/types.js'
 
 const MAX_IMAGE_WIDTH = 1_920
 const MAX_IMAGE_HEIGHT = 1_440
@@ -19,6 +20,10 @@ export class UiCaptureAccess implements UiCaptureHost {
     private readonly browser: () => BrowserService | null,
     private readonly now: () => Date = () => new Date()
   ) {}
+
+  listTabs(): BrowserTabInfo[] {
+    return this.browser()?.tabList() ?? []
+  }
 
   async captureAppWindow(): Promise<CapturedImage | null> {
     const window = this.window()

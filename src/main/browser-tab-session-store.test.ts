@@ -38,6 +38,17 @@ function tab(url: string, options: { title?: string; customTitle?: string | null
 }
 
 describe('selectPersistableTabs', () => {
+  it('persists app-assigned tab ids and ignores anything else', () => {
+    const session = selectPersistableTabs([
+      { ...tab('https://a.example/', { title: 'A', active: true }), id: 'tab-7' },
+      { ...tab('https://b.example/', { title: 'B' }), id: 'popup-3' }
+    ])
+    assert.deepEqual(session.tabs, [
+      { url: 'https://a.example/', title: 'A', id: 'tab-7' },
+      { url: 'https://b.example/', title: 'B' }
+    ])
+  })
+
   it('keeps order and marks the active tab', () => {
     const session = selectPersistableTabs([
       tab('https://a.example/', { title: 'A' }),
@@ -111,6 +122,15 @@ describe('selectPersistableTabs', () => {
 })
 
 describe('normalizeSession', () => {
+  it('restores a valid persisted id and drops a malformed one', () => {
+    const session = normalizeSession({
+      version: 1,
+      tabs: [{ url: 'https://a.example/', title: 'A', id: 'tab-12' }, { url: 'https://b.example/', title: 'B', id: 'evil' }],
+      activeIndex: 0
+    })
+    assert.deepEqual(session?.tabs, [{ url: 'https://a.example/', title: 'A', id: 'tab-12' }, { url: 'https://b.example/', title: 'B' }])
+  })
+
   it('rejects a foreign or unversioned payload', () => {
     assert.equal(normalizeSession(null), null)
     assert.equal(normalizeSession({ tabs: [] }), null)

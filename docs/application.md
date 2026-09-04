@@ -291,6 +291,12 @@ the tab forward, waits for rendering after a switch, and reports `activatedTab: 
 if the browser page cannot be shown. Captures use a rendering lease and readiness checks;
 shared frame settling lives in `browser-frame-settle.ts`. See [CDP](cdp-tool-foundation.md).
 
+Tab ids are persisted with the tab session and restored under the same id
+(`reserveTabId` moves the counter past every restored id), so a model's `tab_id` from before a
+restart still names the same page. A stale or unknown id fails with the open tabs listed
+(`describeMissingTab` in `src/shared/browser-tabs.ts`), the same message from the page, capture,
+CDP, and navigation paths, so the next call can pick a live tab without another lookup.
+
 Because the app owns the session, it records the browser without a debugger.
 `src/main/browser-network/` holds that: `BrowserObservers` installs a session-level network
 observer on Electron's `webRequest` stages (every request from every tab with headers, status,

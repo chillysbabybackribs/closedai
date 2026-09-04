@@ -1,8 +1,8 @@
 import type { ToolAction } from '../action-tool.js'
 import { jsonResult } from '../json-result.js'
-import { failureResult, stringArg, type JsonObject } from '../tool.js'
+import { stringArg, type JsonObject } from '../tool.js'
 import { tabIdField, urlField } from './fields.js'
-import { requireBrowser, type BrowserHostProvider } from './host.js'
+import { missingTabResult, requireBrowser, type BrowserHostProvider } from './host.js'
 import type { PageFetchRequest } from '../../browser-page-fetch.js'
 
 /** A data fetch is legitimately slower than reading rendered text, but still bounded. */
@@ -71,8 +71,9 @@ export function fetchAction(browser: BrowserHostProvider): ToolAction {
     async run(input) {
       const url = stringArg(input, 'url')!
       const tabId = stringArg(input, 'tab_id')
-      const response = await requireBrowser(browser).fetchPage(tabId, requestFrom(input, url))
-      if (!response) return failureResult(tabId ? `No tab with id ${tabId}` : 'No active tab')
+      const host = requireBrowser(browser)
+      const response = await host.fetchPage(tabId, requestFrom(input, url))
+      if (!response) return missingTabResult(host, tabId)
       const { json, isJson } = parseBody(response.text, response.contentType)
       return jsonResult({
         url: response.url,

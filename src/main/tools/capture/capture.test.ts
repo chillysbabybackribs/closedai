@@ -18,6 +18,7 @@ const ready: PageReadyResult = {
 function harness(overrides: Partial<UiCaptureHost> = {}, budget = new CaptureBudget(10)) {
   const calls: unknown[] = []
   const host: UiCaptureHost = {
+    listTabs: () => [],
     captureAppWindow: async () => { calls.push(['app']); return image },
     captureBrowserPage: async (tabId, readiness) => {
       calls.push(['page', tabId, readiness])

@@ -10,7 +10,7 @@ const ready: PageReadyResult = { readyState: 'complete', reached: true, conditio
 function harness(overrides: Partial<BrowserToolHost> = {}) {
   const calls: unknown[] = []
   const host: BrowserToolHost = {
-    listTabs: () => [],
+    listTabs: () => [{ id: 'tab-1', pos: 1, title: 'A', url: 'https://a.test/', favicon: null, isLoading: false, active: true }],
     readPage: async (tabId, options) => {
       calls.push(['readPage', tabId, options])
       return tabId === 'missing' ? null : { url: 'https://a.test/', title: 'A', readyState: 'complete', text: 'Hello world', truncated: false }
@@ -117,6 +117,8 @@ test('read_page returns header, load state, and text; missing tabs fail', async 
   assert.equal(textOf(ok), 'Title: A\nURL: https://a.test/\nLoad state: complete\n\nHello world')
   const missing = await call({ action: 'read_page', tab_id: 'missing' })
   assert.equal(missing.isError, true)
+  // The failure names the live tabs so the next call can succeed without another lookup.
+  assert.equal(textOf(missing), 'No tab with id missing. Open tabs: tab-1 (active) "A". Pass one of these, or omit tab_id for the active tab.')
 })
 
 test('wait_for reports an unmet wait as a failure the model can act on', async () => {

@@ -20,8 +20,9 @@ export function waitForAction(browser: BrowserHostProvider): ToolAction {
     async run(input) {
       const tabId = stringArg(input, 'tab_id')
       const ready = readinessFrom(input)
-      const result = await requireBrowser(browser).waitFor(tabId, ready)
-      if (!result) return failureResult(tabId ? `No tab with id ${tabId}` : 'No active tab')
+      const host = requireBrowser(browser)
+      const result = await host.waitFor(tabId, ready)
+      if (!result) return missingTabResult(host, tabId)
       const outcome = describeReadiness(ready, result)
       const text = `${result.title ? `Page: ${result.title}\n` : ''}URL: ${result.url}\n${outcome}`
       return result.reached && result.conditionMet !== false ? textResult(text) : failureResult(text)

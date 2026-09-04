@@ -11,7 +11,7 @@ export const MAX_CHARS = 100_000
 
 export const tabIdField: JsonObject = {
   type: 'string',
-  description: 'A tab id as reported by navigate. Defaults to the active tab.'
+  description: 'A tab id as reported by navigate. Defaults to the active tab. Ids survive an app restart for tabs that were restored; a stale id fails with the list of open tabs.'
 }
 
 export const selectorField: JsonObject = {

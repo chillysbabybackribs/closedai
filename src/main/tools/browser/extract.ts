@@ -3,7 +3,7 @@ import { jsonResult } from '../json-result.js'
 import { failureResult, numberArg, stringArg, type JsonObject } from '../tool.js'
 import { bodyField, FETCH_TIMEOUT_MS, headersField, methodField, parseBody, requestFrom } from './fetch.js'
 import { MAX_CHARS, tabIdField, urlField } from './fields.js'
-import { requireBrowser, type BrowserHostProvider } from './host.js'
+import { missingTabResult, requireBrowser, type BrowserHostProvider } from './host.js'
 import { projectJson } from './project.js'
 
 export function extractAction(browser: BrowserHostProvider): ToolAction {
@@ -50,7 +50,7 @@ export function extractAction(browser: BrowserHostProvider): ToolAction {
       const source = url
         ? await readFetched(host, tabId, input, url)
         : await readCurrentPage(host, tabId)
-      if (!source) return failureResult(tabId ? `No tab with id ${tabId}` : 'No active tab')
+      if (!source) return missingTabResult(host, tabId)
       if (typeof source === 'string') return failureResult(source)
 
       const path = stringArg(input, 'path')

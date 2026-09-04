@@ -4,6 +4,7 @@ import { failureResult, stringArg } from '../tool.js'
 import { MAX_WAIT_MS, readinessFrom, readinessProperties, tabIdField } from '../browser/fields.js'
 import type { UiCaptureHostProvider } from './host.js'
 import { requireCaptureHost } from './host.js'
+import { describeMissingTab } from '../../../shared/browser-tabs.js'
 import { imageResult } from './result.js'
 import type { ScreenshotStore } from './screenshot-store.js'
 
@@ -24,8 +25,9 @@ export function browserPageAction(capture: UiCaptureHostProvider, store: Screens
     async run(input, context) {
       const tabId = stringArg(input, 'tab_id')
       const readiness = readinessFrom(input)
-      const result = await requireCaptureHost(capture).captureBrowserPage(tabId, readiness)
-      if (!result) return failureResult(tabId ? `No tab with id ${tabId}` : 'No active tab')
+      const host = requireCaptureHost(capture)
+      const result = await host.captureBrowserPage(tabId, readiness)
+      if (!result) return failureResult(describeMissingTab(tabId, host.listTabs()))
       const ready = describeReadiness(readiness, result.ready)
       const summary = `${result.title ? `Page: ${result.title}\n` : ''}URL: ${result.url}\nTab: ${result.tabId}\n${ready}`
       if (!result.image) return failureResult(`${summary}${result.error ? `\nCapture failed: ${result.error}` : ''}`)
