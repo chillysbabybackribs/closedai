@@ -56,6 +56,16 @@ test('fetch returns prose as text and binary as base64', async () => {
   assert.equal(binary.base64, 'AQID')
 })
 
+test('a large JSON response is projected rather than truncated into a bare note', async () => {
+  const document = JSON.stringify({ data: { items: [{ name: 'One', owner: { login: 'a' }, extra: 'x'.repeat(500) }, { name: 'Two', owner: { login: 'b' }, extra: 'y'.repeat(500) }] } })
+  const { call } = harness(document)
+  const projected = payload(await call({ action: 'fetch', url: 'https://api.test/x', json_path: 'data.items', fields: ['name', 'owner.login'], limit: 1, max_chars: 400 }))
+  assert.deepEqual(projected.json, [{ name: 'One', 'owner.login': 'a' }])
+  assert.deepEqual([projected.matched, projected.returned, projected.limited], [2, 1, true])
+  const missing = await call({ action: 'fetch', url: 'https://api.test/x', json_path: 'data.absent' })
+  assert.equal(missing.isError, true)
+})
+
 test('cookie actions map their arguments', async () => {
   const { calls, call } = harness()
   await call({ action: 'cookies', domain: 'a.test', max_cookies: 5 })

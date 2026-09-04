@@ -169,6 +169,9 @@ export class NetworkLog {
     const record = this.byId.get(id)
     if (!record) return
     record.error = error
+    // Chromium reports a request the rules cancelled as ERR_BLOCKED_BY_CLIENT, so this arrives
+    // for every block. Keep the state that names the cause; the error string is kept either way.
+    if (record.state === 'blocked') return
     this.finish(record, 'failed')
   }
 

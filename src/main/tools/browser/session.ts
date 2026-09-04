@@ -1,9 +1,10 @@
 import { defineActionTool, type ToolAction } from '../action-tool.js'
 import { jsonResult, objectSchema } from '../json-result.js'
-import { booleanArg, numberArg, stringArg, type JsonObject, type ToolDefinition } from '../tool.js'
+import { booleanArg, failureResult, numberArg, stringArg, type JsonObject, type ToolDefinition } from '../tool.js'
 import { truncateText } from '../truncate-json.js'
 import { bodyField, FETCH_TIMEOUT_MS, headersField, methodField, parseBody } from './fetch.js'
 import { requireSession, type SessionHostProvider } from './network-host.js'
+import { projectJson } from './project.js'
 
 // The user's signed-in browser session as a data source: requests the main process makes on
 // that session carry its cookies but answer to no page's CORS policy, and cookies are readable
@@ -35,14 +36,18 @@ function fetchAction(sessions: SessionHostProvider): ToolAction {
     action: 'fetch',
     description:
       'Request a URL on the session: cookies included, no CORS, redirects followed unless redirect is ' +
-      'manual. Returns status, response headers, and the body (JSON is shrunk structurally when it ' +
-      'exceeds max_chars; binary comes back as base64 with its byte length).',
+      'manual. Returns status, response headers, and the body. For a large JSON response name ' +
+      'json_path, fields, and limit to project it — the projection happens before the result is ' +
+      'serialised, so only what you asked for costs anything. Binary comes back as base64 with its byte length.',
     inputSchema: objectSchema({
       url: urlField,
       method: methodField,
       headers: headersField,
       body: bodyField,
       redirect: { type: 'string', enum: ['follow', 'manual'], description: 'Follow redirects (default) or stop at the first.' },
+      json_path: { type: 'string', minLength: 1, description: 'Dot/bracket path into a JSON response, for example `data.items` or `results[0].rows`. Defaults to the whole document.' },
+      fields: { type: 'array', maxItems: 40, items: { type: 'string', minLength: 1 }, description: 'Field paths kept from each item, for example ["name","owner.login"]. Every field when omitted.' },
+      limit: { type: 'integer', minimum: 1, description: 'Maximum items returned when the selection is an array.' },
       max_chars: { type: 'integer', minimum: 200, maximum: MAX_BODY_CHARS, description: `Body text limit; default ${DEFAULT_BODY_CHARS}.` }
     }, ['url']),
     timeoutMs: FETCH_TIMEOUT_MS,
@@ -58,7 +63,30 @@ function fetchAction(sessions: SessionHostProvider): ToolAction {
       const { text, ...rest } = response
       if (text === null) return jsonResult({ ...rest, binary: true, base64: rest.base64 && rest.base64.length > maxChars ? rest.base64.slice(0, maxChars) : rest.base64 })
       const { json, isJson } = parseBody(text, response.contentType)
-      const bounded = truncateText(text, maxChars, 'Raise max_chars or use embedded_browser.page extract with a path and fields.')
+      const path = stringArg(input, 'json_path')
+      const fields = fieldsFrom(input)
+      const limit = input.limit === undefined ? undefined : numberArg(input, 'limit', 0)
+      // A projection is the answer to a large JSON body, so apply it before anything is bounded:
+      // truncation of a whole document can leave nothing but a note, which helps no one.
+      if (isJson && (path || fields || limit !== undefined)) {
+        const projected = projectJson(json, { path, fields, limit })
+        if (projected.value === undefined) {
+          return failureResult(`No value at json_path ${JSON.stringify(path)}. Call fetch without it first to see the response shape.`)
+        }
+        return jsonResult({
+          ...rest,
+          base64: null,
+          isJson: true,
+          ...(path ? { jsonPath: path } : {}),
+          ...(projected.matched === null ? {} : { matched: projected.matched, returned: Array.isArray(projected.value) ? projected.value.length : 1 }),
+          ...(projected.limited ? { limited: true } : {}),
+          json: projected.value
+        })
+      }
+      const advice = isJson
+        ? 'Raise max_chars, or name json_path, fields, and limit to project only what you need.'
+        : 'Raise max_chars to see more of this response.'
+      const bounded = truncateText(text, maxChars, advice)
       return jsonResult({
         ...rest,
         base64: null,
@@ -131,6 +159,13 @@ function removeCookieAction(sessions: SessionHostProvider): ToolAction {
       domain: stringArg(input, 'domain')
     }))
   }
+}
+
+function fieldsFrom(input: JsonObject): string[] | undefined {
+  const raw = input.fields
+  if (raw === undefined || raw === null) return undefined
+  if (!Array.isArray(raw)) throw new Error('`fields` must be an array of strings')
+  return raw.map((field) => String(field))
 }
 
 function headersFrom(input: JsonObject): Record<string, string> | undefined {

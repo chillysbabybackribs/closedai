@@ -115,6 +115,19 @@ test('blocked and redirected requests carry the rule that decided them', () => {
   assert.deepEqual(log.get('2')?.redirects, ['https://a.test/new'])
 })
 
+test('a blocked request keeps its state when Chromium also reports it as an error', () => {
+  // Cancelling at onBeforeRequest always produces a following ERR_BLOCKED_BY_CLIENT.
+  const log = new NetworkLog()
+  seed(log, '1', 'https://tracker.test/px')
+  log.blocked('1', 'rule-1')
+  log.fail('1', 'net::ERR_BLOCKED_BY_CLIENT')
+  const record = log.get('1')
+  assert.equal(record?.state, 'blocked')
+  assert.equal(record?.ruleId, 'rule-1')
+  assert.equal(record?.error, 'net::ERR_BLOCKED_BY_CLIENT')
+  assert.equal(log.list({ state: 'blocked', limit: 10 }).matched, 1)
+})
+
 test('flattenHeaders joins repeated response headers', () => {
   assert.deepEqual(flattenHeaders({ 'Set-Cookie': ['a=1', 'b=2'], Server: 'x' }), { 'Set-Cookie': 'a=1, b=2', Server: 'x' })
 })
