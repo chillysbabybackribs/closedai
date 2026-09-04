@@ -126,6 +126,11 @@ its existing toggle. Chat headers offer **New chat to the right**, **New chat be
 chat pane**. Hiding a tile neither detaches its runtime nor stops its turn; closing a drawer row
 still detaches and stops it.
 
+When multiple chat tiles are visible, each title header also shows a **+** button for **New chat
+in this pane**. It uses that pane's model and replaces only its displayed conversation, preserving
+the other tiles and divider sizes. The previous chat stays in the sidebar and any running turn
+continues in the background.
+
 Drag a chat header or sidebar chat row onto another tile's left, right, top, or bottom edge. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its
 mounted composer, draft, attachments, and transcript scroller survive the move. Existing chats

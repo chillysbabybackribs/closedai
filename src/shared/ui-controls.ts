@@ -14,6 +14,7 @@ export const UI_CONTROLS = {
   'layout.browser-toggle': 'Title-bar control to show or hide the shared browser independently of the chat arrangement',
   'layout.browser-divider': 'Resize the chat area and shared browser',
   'layout.pane-drag': 'Focus a chat or drag its header to dock beside another; item is the chat id',
+  'layout.new-chat': 'Start a fresh chat in this tile, preserving other tiles and split sizes; shown with multiple tiles; item is the chat id',
   'layout.split-right': 'Create a chat to the right of this pane; item is the chat id',
   'layout.split-below': 'Create a chat below this pane; item is the chat id',
   'layout.pane-hide': 'Remove a tile from the layout without stopping its chat; item is the chat id',

@@ -57,22 +57,27 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     })
   }, [snapshot.selectedPaneId, snapshot.chats])
 
-  const dock = useCallback(async (id: string | null, target: string, edge: DockEdge): Promise<void> => {
+  // A null edge starts a fresh conversation in the target tile without adding a split.
+  const dock = useCallback(async (id: string | null, target: string, edge: DockEdge | null): Promise<void> => {
     if (pending.current) return
     pending.current = true
     setBusy(true)
     setError('')
     try {
-      if (paneIds(current.current.tree).length >= 32 && (!id || !paneIds(current.current.tree).includes(id))) {
+      if (edge && paneIds(current.current.tree).length >= 32 && (!id || !paneIds(current.current.tree).includes(id))) {
         throw new Error('The workspace already has 32 visible chats')
       }
       if (!id) await window.closedai.chat.selectPane(target)
       const added = id ? await window.closedai.chat.openChat(id) : await window.closedai.chat.newPeer()
       selected.current = added
-      setLayout((value) => ({ ...value, tree: dockPane(value.tree, added, target, edge, crypto.randomUUID()) }))
+      setLayout((value) => ({ ...value, tree: edge
+        ? dockPane(value.tree, added, target, edge, crypto.randomUUID())
+        : replacePane(value.tree, target, added) }))
     } catch (reason) { setError(String(reason)) }
     finally { pending.current = false; setBusy(false) }
   }, [])
+
+  const newChat = useCallback((target: string) => dock(null, target, null), [dock])
 
   const hide = useCallback(async (id: string): Promise<void> => {
     const remaining = removePane(current.current.tree, id)
@@ -92,5 +97,5 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     setLayout((value) => ({ ...value, tree: resizeSplit(value.tree, id, ratio) }))
   }, [])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
-  return { ...layout, error, busy, dock, hide, resize, toggleBrowser }
+  return { ...layout, error, busy, dock, newChat, hide, resize, toggleBrowser }
 }

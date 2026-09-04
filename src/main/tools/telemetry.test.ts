@@ -9,7 +9,7 @@ import { textResult, timeoutResult } from './tool.js'
 import { ToolTelemetry } from './telemetry.js'
 
 const record = (overrides: Partial<ToolCallEvent> = {}): ToolCallEvent => ({
-  toolId: 'ns.tool', action: null, ok: true, timedOut: false, ...overrides
+  toolId: 'ns.tool', action: null, ok: true, timedOut: false, misuse: false, ...overrides
 })
 
 test('telemetry keeps aggregate run, failure, and timeout counts separately', () => {
@@ -22,9 +22,9 @@ test('telemetry keeps aggregate run, failure, and timeout counts separately', ()
   assert.deepEqual(telemetry.snapshot(), {
     totalCalls: 4,
     stats: [
-      { toolId: 'ns.tool', action: null, calls: 4, failures: 1, timeouts: 1 },
-      { toolId: 'ns.tool', action: 'read', calls: 2, failures: 1, timeouts: 1 },
-      { toolId: 'ns.tool', action: 'write', calls: 1, failures: 0, timeouts: 0 }
+      { toolId: 'ns.tool', action: null, calls: 4, failures: 1, timeouts: 1, misuses: 0 },
+      { toolId: 'ns.tool', action: 'read', calls: 2, failures: 1, timeouts: 1, misuses: 0 },
+      { toolId: 'ns.tool', action: 'write', calls: 1, failures: 0, timeouts: 0, misuses: 0 }
     ]
   })
 })
@@ -70,8 +70,8 @@ test('opening aggregate telemetry migrates counters and removes the text-bearing
     assert.deepEqual(telemetry.snapshot(), {
       totalCalls: 2,
       stats: [
-        { toolId: 'ns.tool', action: null, calls: 2, failures: 1, timeouts: 0 },
-        { toolId: 'ns.tool', action: 'type', calls: 2, failures: 1, timeouts: 0 }
+        { toolId: 'ns.tool', action: null, calls: 2, failures: 1, timeouts: 0, misuses: 0 },
+        { toolId: 'ns.tool', action: 'type', calls: 2, failures: 1, timeouts: 0, misuses: 0 }
       ]
     })
     const contents = await readFile(file, 'utf8')

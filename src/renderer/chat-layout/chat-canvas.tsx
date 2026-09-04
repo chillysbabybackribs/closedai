@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Columns2, GripVertical, Rows2, X } from 'lucide-react'
+import { Columns2, GripVertical, Plus, Rows2, X } from 'lucide-react'
 import { CHAT_DRAG_TYPE, layoutGeometry, minimumSize, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export function ChatCanvas({ tree, selectedId, busy, title, renderPane, onSelect, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, title, renderPane, onSelect, onNewChat, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
   title: (id: string) => string
   renderPane: (id: string) => ReactNode
   onSelect: (id: string) => void
+  onNewChat: (id: string) => void
   onDock: (id: string | null, target: string, edge: DockEdge) => void
   onHide: (id: string) => void
   onResize: (id: string, ratio: number) => void
@@ -101,6 +102,11 @@ export function ChatCanvas({ tree, selectedId, busy, title, renderPane, onSelect
             }}>
             <GripVertical size={13} aria-hidden="true" /><span>{title(id)}</span>
           </button>
+          {geometry.panes.length > 1 && <button type="button" className="chat-layout-new-chat"
+            data-ui="layout.new-chat" data-ui-key={id} disabled={busy}
+            title="New chat in this pane" aria-label="New chat in this pane" onClick={() => onNewChat(id)}>
+            <Plus size={14} aria-hidden="true" />
+          </button>}
           <button data-ui="layout.split-right" data-ui-key={id} disabled={busy}
             title="New chat to the right" aria-label="New chat to the right" onClick={() => onDock(null, id, 'right')}>
             <Columns2 size={14} aria-hidden="true" />

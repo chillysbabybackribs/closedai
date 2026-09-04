@@ -48,6 +48,7 @@ export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenC
       chat={<ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
         title={(id) => chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat'}
         onSelect={select} onDock={(id, target, edge) => { void layout.dock(id, target, edge) }}
+        onNewChat={(id) => { onHistoryOpenChange(false); void layout.newChat(id) }}
         onHide={(id) => { void layout.hide(id) }} onResize={layout.resize}
         renderPane={(id) => <WorkspaceChat paneId={id} snapshot={chat.snapshot} dispatch={chat.dispatch}
           appearance={appearance} historyOpen={historyOpen && chat.selectedPaneId === id}
