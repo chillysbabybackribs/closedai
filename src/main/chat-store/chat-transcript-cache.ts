@@ -56,6 +56,8 @@ export class ChatTranscriptCache {
   /** Chats read or written this session; a `null` entry is a chat known to have no view. */
   private readonly views = new Map<string, CachedChatView | null>()
   private readonly reads = new Map<string, Promise<CachedChatView | null>>()
+  /** Chats whose stored entry has been read this session; a second read would learn nothing. */
+  private readonly read = new Set<string>()
   private readonly pending = new Set<string>()
   private writeTimer: NodeJS.Timeout | null = null
   private writing: Promise<void> = Promise.resolve()
@@ -65,7 +67,10 @@ export class ChatTranscriptCache {
   /** A cache that never touches disk, for tests and headless runs. */
   static inMemory(views: Array<[string, CachedChatView]> = []): ChatTranscriptCache {
     const cache = new ChatTranscriptCache(null)
-    for (const [chatId, view] of views) cache.views.set(chatId, view)
+    for (const [chatId, view] of views) {
+      cache.views.set(chatId, view)
+      cache.read.add(chatId)
+    }
     return cache
   }
 
@@ -74,21 +79,25 @@ export class ChatTranscriptCache {
     return this.views.get(chatId) ?? null
   }
 
-  /** Bring a chat's view into memory before its pane paints. Concurrent calls share one read. */
+  /**
+   * Bring a chat's view into memory before its pane paints. Concurrent calls share one read, and
+   * each chat is read once a session — including when a provider replayed first, since the view
+   * that replay saved carries no context reading and the stored one may.
+   */
   load(chatId: string): Promise<CachedChatView | null> {
-    const known = this.views.get(chatId)
-    if (known !== undefined) return Promise.resolve(known)
+    if (this.read.has(chatId)) return Promise.resolve(this.views.get(chatId) ?? null)
     if (!this.dir) {
-      this.views.set(chatId, null)
-      return Promise.resolve(null)
+      this.read.add(chatId)
+      return Promise.resolve(this.views.get(chatId) ?? null)
     }
     let read = this.reads.get(chatId)
     if (!read) {
-      read = this.readView(chatId).then((view) => {
-        // A write that landed while the read was in flight is the newer truth — but it was taken
-        // from a provider that had just replayed, so the reading it lacks is still this one's.
+      read = this.readView(chatId).then((stored) => {
+        // Anything written while the read was in flight is the newer truth; only the reading it
+        // lacks comes from disk.
         const current = this.views.get(chatId)
-        this.views.set(chatId, current ? carryReading(view, current) : current === undefined ? view : null)
+        this.read.add(chatId)
+        this.views.set(chatId, current ? carryReading(stored, current) : current === undefined ? stored : null)
         this.reads.delete(chatId)
         return this.views.get(chatId) ?? null
       })
@@ -123,6 +132,7 @@ export class ChatTranscriptCache {
       const chatId = decodeChatId(file.slice(0, -'.json'.length))
       if (keep.has(chatId)) continue
       this.views.delete(chatId)
+      this.read.delete(chatId)
       await unlink(join(this.dir, file)).catch(() => {})
     }
   }
