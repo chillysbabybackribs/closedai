@@ -12,6 +12,7 @@ import {
   type CredentialSummary
 } from '../../shared/credentials.js'
 import { CredentialFieldRow } from './credential-field-row.js'
+import { CREDENTIAL_SERVICE_LOGOS, RemoteServiceLogo } from './credential-service-logos.js'
 import { CredentialServicePicker } from './credential-service-picker.js'
 
 export type CredentialCreateFormProps = {
@@ -43,6 +44,7 @@ export function CredentialCreateForm({
   const [error, setError] = useState<string | null>(null)
 
   const service = credentialService(serviceId)!
+  const ServiceLogo = CREDENTIAL_SERVICE_LOGOS[serviceId]
   const match = useMemo(() => matchCredentialService(lookup), [lookup])
   const detectedDomain = match?.domain ?? ''
   const detectedName = match && !match.recognised ? match.label : ''
@@ -98,11 +100,20 @@ export function CredentialCreateForm({
     <form className="credential-create-form flex min-h-0 flex-1 flex-col" onSubmit={(event) => void handleSubmit(event)}>
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
         <div className="mx-auto flex max-w-xl flex-col gap-5">
-          <div>
-            <h2 className="text-base font-semibold">Create credential</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Paste the service URL to pick it automatically, or choose one below.
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="credential-icon-tile">
+              {serviceId === 'custom' && detectedDomain ? (
+                <RemoteServiceLogo domain={detectedDomain} name={detectedName} />
+              ) : (
+                <ServiceLogo />
+              )}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold">Create credential</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Paste the service URL to pick it automatically, or choose one below.
+              </p>
+            </div>
           </div>
 
           <div role="group" data-slot="field" className="flex w-full flex-col gap-2">
@@ -174,18 +185,6 @@ export function CredentialCreateForm({
             ))}
           </div>
 
-          {service.docsUrl ? (
-            <button
-              type="button"
-              data-ui="credentials.docs"
-              className="flex w-fit items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-              onClick={() => void window.closedai.browser.navigate(service.docsUrl!).catch(() => {})}
-            >
-              <ExternalLink className="size-3.5" />
-              Open where {service.name} issues this key
-            </button>
-          ) : null}
-
           <div
             className={cn(
               'flex items-start gap-2 rounded-lg border p-3 text-xs',
@@ -209,11 +208,24 @@ export function CredentialCreateForm({
       </div>
 
       <div className="flex shrink-0 items-center justify-between gap-3 border-t px-6 py-3">
-        <Button type="button" variant="outline" size="sm" data-ui="credentials.cancel" onClick={onCancel}>
-          Cancel
-        </Button>
+        {service.docsUrl ? (
+          <button
+            type="button"
+            data-ui="credentials.docs"
+            className="flex min-w-0 items-center gap-1.5 truncate text-xs font-medium text-primary hover:underline"
+            onClick={() => void window.closedai.browser.navigate(service.docsUrl!).catch(() => {})}
+          >
+            <ExternalLink className="size-3.5 shrink-0" />
+            Where {service.name} issues this key
+          </button>
+        ) : (
+          <span />
+        )}
         <div className="flex min-w-0 items-center gap-3">
           {error ? <p className="truncate text-xs text-destructive">{error}</p> : null}
+          <Button type="button" variant="outline" size="sm" data-ui="credentials.cancel" onClick={onCancel}>
+            Cancel
+          </Button>
           <Button type="submit" size="sm" data-ui="credentials.save" disabled={saving}>
             {saving ? <Loader2 className="animate-spin" /> : <Lock />}
             {saving ? 'Saving…' : 'Save credential'}
