@@ -69,7 +69,9 @@ function textOf(result: { content: Array<{ type: string; text?: string }> }): st
 
 test('CDP tool advertises its foundational protocol and target lifecycle actions', () => {
   const { registry } = harness()
-  assert.deepEqual(registry.names(), ['browser_cdp.protocol', 'browser_cdp.page'])
+  assert.deepEqual(registry.names(), [
+    'browser_cdp.protocol', 'browser_cdp.page', 'browser_cdp.profile', 'browser_cdp.instrument', 'browser_cdp.emulate'
+  ])
   assert.deepEqual(registry.namespaces[0].tools[0].actions?.map((action) => action.name), [
     'capabilities', 'targets', 'command', 'target', 'events', 'requests', 'body'
   ])
