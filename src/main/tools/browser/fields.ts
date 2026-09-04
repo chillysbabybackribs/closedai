@@ -14,6 +14,13 @@ export const tabIdField: JsonObject = {
   description: 'A tab id as reported by navigate. Defaults to the active tab.'
 }
 
+export const maxCharsField: JsonObject = {
+  type: 'integer',
+  minimum: 200,
+  maximum: MAX_CHARS,
+  description: `Text limit; default ${DEFAULT_MAX_CHARS}.`
+}
+
 export const urlField: JsonObject = {
   type: 'string',
   minLength: 1,

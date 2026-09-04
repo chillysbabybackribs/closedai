@@ -1,7 +1,7 @@
 import type { ToolAction } from '../action-tool.js'
 import { failureResult, numberArg, stringArg, textResult } from '../tool.js'
 import { truncateText } from '../truncate-json.js'
-import { DEFAULT_MAX_CHARS, MAX_CHARS, tabIdField } from './fields.js'
+import { DEFAULT_MAX_CHARS, maxCharsField, tabIdField } from './fields.js'
 import { requireBrowser, type BrowserHostProvider } from './host.js'
 
 const TRUNCATION_ADVICE =
@@ -22,7 +22,7 @@ export function readPageAction(browser: BrowserHostProvider): ToolAction {
       properties: {
         tab_id: tabIdField,
         selector: { type: 'string', minLength: 1, description: 'CSS selector of the element to read. Defaults to the whole page.' },
-        max_chars: { type: 'integer', minimum: 200, maximum: MAX_CHARS, description: `Text limit; default ${DEFAULT_MAX_CHARS}.` }
+        max_chars: maxCharsField
       },
       additionalProperties: false
     },
