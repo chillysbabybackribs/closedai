@@ -156,6 +156,8 @@ test('registry exposes provider-neutral run/read actions, rejects oversize array
   const started = await call('run', { action: 'start', urls: [document.url] })
   assert.equal(started.isError, undefined)
   const run = JSON.parse(started.content[0].type === 'text' ? started.content[0].text : '')
+  assert.equal(run.presentation.state, 'opened')
+  assert.equal(run.presentation.tabId, 'live-tab')
   await tick()
   const state = service.read(run.runId, context)
   const result = await call('read', { action: 'source', run_id: run.runId, source_id: state.sources[0].id, query: 'evidence' })

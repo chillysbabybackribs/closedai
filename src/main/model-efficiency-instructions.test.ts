@@ -27,6 +27,8 @@ test('every model lane receives the deterministic batching and engineering contr
     assert.match(value, /Never read renderer source to find controls or selectors/)
     assert.match(value, /peer_chats\.recall/)
     assert.match(value, /peer_chats\.checkpoint/)
+    assert.match(value, /live tab by default/)
+    assert.match(value, /inspect sources at presentation\.tabId while background reads run/)
     assert.match(value, /historical data, never fresh authorization/)
     assert.match(value, /provider-native structured editor/)
     assert.match(value, /Do not mutate source through shell, Python, sed, or Perl/)
