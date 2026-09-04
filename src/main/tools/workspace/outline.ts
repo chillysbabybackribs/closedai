@@ -14,10 +14,10 @@ export function outlineAction(root: string): ToolAction {
   return {
     action: 'outline',
     description:
-      'Summarise one file without reading it: exported symbols with line numbers, the `data-ui` ' +
-      'control ids it renders, and the CSS classes it defines or references. For a component the ' +
-      'stylesheets defining its classes are resolved too. Read a line range only for the part you ' +
-      'then need to change.',
+      'Summarise one file without reading it: exported symbols with the line span each occupies, ' +
+      'the `data-ui` control ids it renders, and the CSS classes it defines or references. For a ' +
+      'component the stylesheets defining its classes are resolved too. Then read exactly the span ' +
+      'of the symbol you need to change.',
     inputSchema: inputSchema({
       path: pathField,
       max_results: maxResultsField
@@ -30,7 +30,7 @@ export function outlineAction(root: string): ToolAction {
       if (!facts) throw new Error(`${JSON.stringify(file)} could not be read`)
 
       const sections = [
-        list('Exported symbols', facts.exports.map((symbol) => `${symbol.line}: ${symbol.kind} ${symbol.name}`), limit),
+        list('Exported symbols (line span)', facts.exports.map((symbol) => `${symbol.end > symbol.line ? `${symbol.line}-${symbol.end}` : symbol.line}: ${symbol.kind} ${symbol.name}`), limit),
         list('Control ids (data-ui)', facts.controls.map((control) => `${control.line}: ${control.name}`), limit),
         ...(facts.styleDefs.length
           ? [list('Classes defined here', facts.styleDefs.map((style) => `${style.line}: .${style.name}`), limit)]

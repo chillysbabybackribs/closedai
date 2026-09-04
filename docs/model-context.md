@@ -35,8 +35,10 @@ and `replace_file_content`/`multi_replace_file_content`; Codex uses `rg` and `ap
 
 The checkout capsule links [Application](application.md), this guide, and [Tools](tools.md).
 It does not inline their full contents. Models retrieve the relevant document or source when
-needed. `closedai_workspace.inspect find` and `outline` provide focused source navigation;
-use `rg` when that tool is unavailable. For live-app interaction, discover controls from runtime
+needed. `closedai_workspace.inspect find` and `outline` provide focused source navigation, and
+`outline` reports each exported symbol's line span so the next read can take exactly that span;
+use `rg` when that tool is unavailable. The Claude lane additionally enforces the re-read rule with
+an in-process read ledger (`claude-read-ledger.ts`, see [Claude Code](claude-code.md)). For live-app interaction, discover controls from runtime
 state and the control manifest before inspecting implementation for an observed failure.
 
 ## Per-turn context and trust
@@ -54,8 +56,10 @@ Codex receives typed `additionalContext`. `application` denotes app-authored con
 `untrusted` denotes data such as pages, files, attachments, and tool output. Embedded instructions
 in an arbitrary document are not the user's request. The selected workspace root's `AGENTS.md` is
 an explicit exception: it is project policy, bounded to 20,000 characters, and delivered as trusted
-guidance to Claude and Antigravity because those runtimes do not both load it natively. Models are
-also told to read a nearer nested `AGENTS.md` before changing files beneath it.
+guidance to Claude and Antigravity because those runtimes do not both load it natively. Nested
+`AGENTS.md` files are listed by path (or their absence stated) from a bounded directory walk in
+`workspace-rules.ts`, in every lane including Codex, so no model spends a pass searching for them
+(measured 2026-09-03: 44 of 120 Codex threads had hunted for one that does not exist).
 
 `closedai.chat.handoff` carries a locally assembled digest when continuing/branching a chat.
 It is marked `untrusted`: the locally assembled envelope contains historical user/assistant

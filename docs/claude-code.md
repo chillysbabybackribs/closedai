@@ -44,6 +44,18 @@ and transcript notes were reviewed against current source on 2026-09-03, without
   collapse (`default` and `opus[1m]` both resolve to `claude-opus-5[1m]`), the CLI's default is the
   picker default, and each entry's `supportedEffortLevels` feeds the effort picker.
 
+- **Read ledger** (`claude-read-ledger.ts`): in-process SDK hooks on every session. Measured
+  2026-09-03 over the app's Claude panes, 21% of reads returned lines already in the turn's
+  context and identical searches recurred, and prompt text did not move either number. So a
+  `PreToolUse` hook denies a `Read` (or a pure-read shell command such as `sed -n`/`cat`) whose
+  lines were returned earlier this turn, narrows a partly overlapping `Read` to the missing lines
+  via `updatedInput` with an `additionalContext` note, and denies an identical `Grep`/`Glob`.
+  `Edit`/`Write`, a shell command naming the file, or a tree-changing command (git checkout,
+  sed -i, mv, …) forgets the affected entries; a new turn (`UserPromptSubmit` and the session's
+  own `beginTurn`), `PreCompact`, and `SubagentStop` clear the scope, and subagents are keyed by
+  `agent_id` so a parent's reads never deny a worker's. Each skip is a `claude.read-ledger` trace
+  event.
+
 ## Process lifecycle (`claude-session.ts`, `claude-runtime.ts`)
 
 One `query()` per live thread over a streaming input, so follow-up turns reuse the process and its prompt

@@ -9,7 +9,8 @@ import { indexedFiles } from './query.js'
 // so a full scan is cheap, and an mtime-keyed cache makes repeat calls near-free.
 
 export type Located = { name: string; line: number }
-export type ExportedSymbol = Located & { kind: string }
+/** `end` is the last line of the declaration, so a read can take exactly the symbol. */
+export type ExportedSymbol = Located & { kind: string; end: number }
 
 export type FileFacts = {
   file: string
@@ -28,6 +29,10 @@ const CODE = /\.(?:ts|tsx|mjs|js)$/
 const STYLE = /\.css$/
 const EXPORT_DECL = /^export\s+(?:default\s+)?(?:async\s+)?(function|const|let|var|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/
 const EXPORT_LIST = /^export\s*\{([^}]*)\}/
+// A top-level statement or doc comment starts at column zero; the previous declaration ends
+// on the last non-blank, non-comment line before it (a closing `}` at column zero is part of
+// the declaration, not a new statement).
+const TOP_LEVEL_START = /^(?:export\s|import\s|(?:async\s+)?function\s|const\s|let\s|var\s|class\s|type\s|interface\s|enum\s|\/\*\*|\/\/)/
 const CONTROL_ATTR = /data-ui(?:-surface)?=["']([^"']+)["']/g
 const CLASS_ATTR = /class(?:Name)?=(?:"([^"]*)"|'([^']*)'|\{`([^`]*)`\})/g
 const CLASS_TOKEN = /\.(-?[A-Za-z_][-\w]*)/g
@@ -72,7 +77,7 @@ function exportedSymbols(lines: readonly string[]): ExportedSymbol[] {
   lines.forEach((line, index) => {
     const declared = EXPORT_DECL.exec(line)
     if (declared) {
-      found.push({ name: declared[2]!, kind: declared[1]!, line: index + 1 })
+      found.push({ name: declared[2]!, kind: declared[1]!, line: index + 1, end: declarationEnd(lines, index) })
       return
     }
     const listed = EXPORT_LIST.exec(line)
@@ -80,10 +85,21 @@ function exportedSymbols(lines: readonly string[]): ExportedSymbol[] {
     for (const entry of listed[1]!.split(',')) {
       // `export { internalName as publicName }` is findable by the name importers write.
       const name = entry.trim().split(/\s+as\s+/).at(-1)?.replace(/^type\s+/, '').trim()
-      if (name && /^[A-Za-z_$][\w$]*$/.test(name)) found.push({ name, kind: 'reexport', line: index + 1 })
+      if (name && /^[A-Za-z_$][\w$]*$/.test(name)) found.push({ name, kind: 'reexport', line: index + 1, end: index + 1 })
     }
   })
   return found
+}
+
+/** One-based last line of the declaration starting at `start` (zero-based). */
+function declarationEnd(lines: readonly string[], start: number): number {
+  let end = start
+  for (let index = start + 1; index < lines.length; index++) {
+    const text = lines[index]!
+    if (TOP_LEVEL_START.test(text)) break
+    if (text.trim() !== '' && !/^\s*(?:\*|\/\/)/.test(text)) end = index
+  }
+  return end + 1
 }
 
 function attributeMatches(lines: readonly string[], pattern: RegExp): Located[] {

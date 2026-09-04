@@ -14,7 +14,7 @@ import { workspaceNavigationSection } from './workspace-navigation.js'
  * details stay out of trusted instructions and are available through a deferred tool.
  */
 function threadInstructions(cwd: string): string {
-  const instructions = closedAiDeveloperInstructions()
+  const instructions = closedAiDeveloperInstructions(cwd)
   const navigation = workspaceNavigationSection(cwd)
   return navigation ? `${instructions}\n\n${navigation}` : instructions
 }
