@@ -3,8 +3,6 @@
 // adapters (see app-server-tools.ts) translate this shape to each protocol; tools never
 // import provider code.
 
-import type { SourceReadObservation } from './source-read-history.js'
-
 export type JsonObject = Record<string, unknown>
 
 export type ToolContent =
@@ -22,8 +20,6 @@ export type ToolResult = {
    * or a broken rule — which is the app failing to explain itself, not a runtime fault.
    */
   errorKind?: 'timeout' | 'usage'
-  /** Internal source-version observations; stripped by the registry before provider delivery. */
-  sourceReads?: SourceReadObservation[]
   /** Internal marker: redact content from the app's Turn Trace, then strip before provider delivery. */
   sensitive?: boolean
 }

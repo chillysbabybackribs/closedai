@@ -6,7 +6,7 @@ import type {
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource } from '../chat-context/thread-handoff.js'
-import { buildTurnAdditionalContext, withSourceChanges, type ActiveBrowserContext } from '../chat-context/turn-context.js'
+import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { buildCompactionSeed, compactedAdditionalContext } from '../chat-context/provider-compaction.js'
 import { antigravityPlanUsage, planUsageUnavailable } from '../chat-context/plan-usage.js'
@@ -125,9 +125,7 @@ export class AntigravityChatService extends EventEmitter {
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const pendingCompaction = this.session!.takePendingSeed()
       const context = {
-        ...await withSourceChanges(this.turnAdditionalContext(text), this.bridge.sourceReads, {
-          paneId: this.paneId, threadId: conversationId ? antigravityThreadId(conversationId) : null, cwd: this.cwd
-        }),
+        ...this.turnAdditionalContext(text),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {}),
         ...(pendingCompaction ? compactedAdditionalContext(pendingCompaction) : {})
       }

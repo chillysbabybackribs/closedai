@@ -17,7 +17,7 @@ import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { describeUsage, type ContextUsage } from '../chat-context/context-compaction.js'
 import { applyPlanUsageSignal, planUsageUnavailable, type ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
 import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource } from '../chat-context/thread-handoff.js'
-import { buildTurnAdditionalContext, withSourceChanges, type ActiveBrowserContext } from '../chat-context/turn-context.js'
+import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { buildChatInput } from '../chat-input.js'
@@ -118,9 +118,7 @@ export class ClaudeChatService extends EventEmitter {
       const sessionId = session.sessionId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const context = {
-        ...await withSourceChanges(this.turnAdditionalContext(text), this.tools.sourceReads, {
-          paneId: this.paneId, threadId: sessionId ? claudeThreadId(sessionId) : null, cwd: this.cwd
-        }),
+        ...this.turnAdditionalContext(text),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
       }
       const turn = await buildClaudeUserMessage(text, shrunk, Object.keys(context).length ? context : undefined, session.sessionId)

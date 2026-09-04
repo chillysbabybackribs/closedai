@@ -13,24 +13,13 @@ export type ThreadModelSettings = {
   contextWindow?: number
 }
 import { closedAiDeveloperInstructions } from './developer-instructions.js'
-import { workspaceNavigationSection } from './workspace-navigation.js'
-
-/**
- * Product guidance plus a small app-authored orientation capsule. Repository-derived
- * details stay out of trusted instructions and are available through a deferred tool.
- */
-function threadInstructions(cwd: string): string {
-  const instructions = closedAiDeveloperInstructions(cwd)
-  const navigation = workspaceNavigationSection(cwd)
-  return navigation ? `${instructions}\n\n${navigation}` : instructions
-}
 
 function sharedThreadParams(cwd: string, tools: ToolRegistry): Record<string, unknown> {
   return {
     cwd,
     approvalPolicy: 'never',
     sandbox: 'danger-full-access',
-    developerInstructions: threadInstructions(cwd),
+    developerInstructions: closedAiDeveloperInstructions(),
     ...(tools.isEmpty ? {} : { dynamicTools: dynamicToolSpecs(tools) })
   }
 }

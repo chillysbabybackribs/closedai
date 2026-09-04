@@ -1,7 +1,7 @@
 import type { ChatProvider } from '../../shared/chat.js'
 
 const COMMON_ENGINEERING_INSTRUCTIONS = [
-  'For code, use known paths or the repository map first, then narrow searches and reads; do not dump trees or reread whole files when a range answers the question.',
+  'Use your native file search, read, and edit tools for code. Follow applicable repository instructions.',
   'Reuse relevant source in context, but reread when needed. Use native structured edits and inspect the diff. Preserve unrelated changes and Git stash/worktree state.',
   'Follow repository verification rules; otherwise run focused checks for the change. Repeat checks when a failure or subsequent edit requires it. Full suites and release gates need task justification.',
   'Use subagents only when the user or applicable repository instructions explicitly ask for delegation.'

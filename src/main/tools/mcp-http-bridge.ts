@@ -53,7 +53,6 @@ export class McpHttpBridge {
     private readonly bridgeOptions: McpHttpBridgeOptions
   ) {}
 
-  get sourceReads() { return this.registry.sourceReads }
 
   /** Listen on localhost. Cheap once done; concurrent callers share the one start. */
   start(): Promise<void> {

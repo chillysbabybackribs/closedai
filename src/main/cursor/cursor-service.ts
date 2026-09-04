@@ -7,7 +7,7 @@ import type {
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { buildThreadHandoff, handoffAdditionalContext, type ThreadHandoffSource } from '../chat-context/thread-handoff.js'
-import { buildTurnAdditionalContext, withSourceChanges, type ActiveBrowserContext, type AdditionalContext } from '../chat-context/turn-context.js'
+import { buildTurnAdditionalContext, type ActiveBrowserContext, type AdditionalContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { reasoningEffortForModel } from '../chat-model-catalog.js'
 import { ChatModelState } from '../chat-model-state.js'
@@ -123,9 +123,7 @@ export class CursorChatService extends EventEmitter {
         ...(includeInstructions
           ? { 'closedai.instructions': { kind: 'application', value: cursorSystemInstructions(this.cwd) } }
           : {}),
-        ...await withSourceChanges(this.turnAdditionalContext(text), this.bridge.sourceReads, {
-          paneId: this.paneId, threadId: sessionId ? cursorThreadId(sessionId) : null, cwd: this.cwd
-        }),
+        ...this.turnAdditionalContext(text),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
       }
       const turn = await buildCursorPrompt(
