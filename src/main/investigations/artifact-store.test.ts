@@ -161,3 +161,31 @@ test('future schema versions are refused without changing their version', async 
     try { assert.equal(check.prepare('PRAGMA user_version').get()?.user_version, 99) } finally { check.close() }
   } finally { await store.close().catch(() => undefined); await rm(root, { recursive: true, force: true }) }
 })
+
+test('two workers serialize quota admission and listing pages remain bounded', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'closedai-artifact-concurrent-'))
+  const file = join(root, 'db')
+  const limits = { ...DEFAULT_ARTIFACT_LIMITS, scopeBytes: 10 }
+  const one = new ArtifactStore(file, { workerUrl, limits })
+  // Finish schema setup before opening a second process connection.
+  await one.request('list', scope, {})
+  const two = new ArtifactStore(file, { workerUrl, limits })
+  try {
+    const outcomes = await Promise.allSettled([
+      save(one, Buffer.from('12345678'), 'one'), save(two, Buffer.from('12345678'), 'two')
+    ])
+    assert.equal(outcomes.filter((result) => result.status === 'fulfilled').length, 1)
+    const rejected = outcomes.find((result) => result.status === 'rejected') as PromiseRejectedResult
+    assert.match(String(rejected.reason), /quota/)
+    const ids = new Set<string>()
+    for (let index = 0; index < 22; index++) await save(one, Buffer.alloc(0), `empty-${index}`, '\u0001'.repeat(200))
+    let after: string | null = ''
+    while (after !== null) {
+      const page: { artifacts: ArtifactDescriptor[]; nextAfter: string | null } = await one.request('list', scope, { after })
+      assert.equal(JSON.stringify(page, null, 2).length < 16_000, true)
+      for (const artifact of page.artifacts) ids.add(artifact.id)
+      after = page.nextAfter
+    }
+    assert.equal(ids.size, 23)
+  } finally { await one.close(); await two.close(); await rm(root, { recursive: true, force: true }) }
+})
