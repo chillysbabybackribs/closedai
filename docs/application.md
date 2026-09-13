@@ -342,6 +342,12 @@ runs `query` and `evaluate` through `executeJavaScript` on the tab's WebContents
 bodies come from the tab's CDP Network buffer when one exists and otherwise from replaying the
 recorded request on the session.
 
+For exact captured-response work, `browser_cdp.protocol requests` preserves repeated URLs
+as separate requests and reports child session ids. Its `body` action accepts `session_id`
+and reads that target's buffer without reissuing requests. Resource-timing URLs remain
+discovery hints and are not used to fill guessed fields on individual captured requests.
+The session-level body's URL/method association and replay fallback remain separate behavior.
+
 ## Ownership map
 
 | Concern | Source of truth |

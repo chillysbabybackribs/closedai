@@ -1,5 +1,9 @@
 # Recon integration review and buildout
 
+The [investigation platform plan](investigation-platform.md) supersedes this document's
+proposed scope and sequencing following the user's broader product direction. This review
+retains the Continuum baseline and initial integration findings.
+
 Reviewed 2026-09-13 against local Continuum and ClosedAI source. This is a proposed
 ClosedAI implementation plan, not a claim that recon archives are installed. No live
 application, provider, or browser qualification was performed for this review.

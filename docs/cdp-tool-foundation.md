@@ -71,6 +71,20 @@ results are explicitly truncated. These are resource bounds, not capability rest
 
 ## Agent page wrapper
 
+## Captured network evidence
+
+`protocol requests` preserves repeated URLs as separate captured requests. Event identities
+combine child session id and request id, so a root and worker using the same request id do
+not overwrite each other. Resource timing supplies additional URL discovery only; timing
+type/byte counts are not attributed to an individual captured request by URL matching.
+`matched` counts request records plus unique timing-only URLs, before the output limit.
+
+`protocol body` accepts `session_id` from the request listing and routes `Network.getResponseBody`
+to that target. It never reissues a network request. Enable Network explicitly in a child
+session to collect its events; the listing enables capture in the root only. These handles
+remain transient, and redirects sharing a request id describe the latest hop. Text byte counts
+use UTF-8. No durable body archive or exact mapping to Electron webRequest ids is promised.
+
 ### `inspect_page`
 
 Returns visible interactive elements from the selected tab. Each result includes a semantic

@@ -105,6 +105,13 @@ keeps its tabs, but semantic page input still requires a visible page.
 
 ### Application facts, browser targets, and batching
 
+For exact network evidence, `browser_cdp.protocol requests` retains repeated URLs and child
+`sessionId` identities. Pass that value as `session_id` to `protocol body` for child traffic.
+This body path never reissues requests. Resource timing is discovery only, not request-level
+correlation. `embedded_browser.network body` still uses URL/method lookup and can replay;
+it is not an exact historical-response interface. These capabilities serve debugging,
+integration, extraction and other applicable tasks as well as recon.
+
 Use `closedai_app.state` for app facts, `closedai_app.command` for service operations, and
 `closedai_app.ui` only for exercising real controls when deterministic service operations cannot
 complete the task. Browser-page DOM and CDP targets
