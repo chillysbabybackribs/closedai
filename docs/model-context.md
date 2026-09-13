@@ -148,10 +148,13 @@ Existing continuation digests retain their explicit handoff behavior. Recall and
 deferred where supported, with detailed paging contracts in tool descriptions rather than the prompt.
 
 The opt-in Codex `chatCompactAtTokens` setting requests native compaction during idle time,
-independently of model-window percentage. It does not itself generate checkpoint notes,
-delete archived history, or rotate provider sessions. Display paging is also independent of
-model context. The new first-text measurements and safe trial procedure are in [Tools](tools.md);
-do not infer a response-time improvement from fewer displayed items or context tokens alone.
+independently of model-window percentage. It does not itself generate checkpoint notes or delete
+archived history. When `chatSeamlessRotation` is enabled (default off), the same idle thresholds
+rotate Codex and Claude to a fresh provider thread with a thin seed instead of calling native
+compact; the visible transcript stays put and each rotation appends metadata to the chat record.
+Display paging is independent of model context. The new first-text measurements and safe trial
+procedure are in [Tools](tools.md); do not infer a response-time improvement from fewer displayed
+items or context tokens alone.
 
 ClosedAI starts and resumes Codex threads with the selected model's maximum active-context size
 using known native capacities (including GPT-6 Astra's 1,050,000 tokens) for model ids in the
