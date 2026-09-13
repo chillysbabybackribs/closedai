@@ -13,7 +13,7 @@ import { AppSettingsStore } from './app-settings-store.js'
 import { BrowserDownloadService } from './browser-download-service.js'
 import { registerBrowserCoreIpc } from './browser-core-ipc.js'
 import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
-import { pruneOversizedBrowserCacheOnce } from './browser-cache-maintenance.js'
+import { maintainBrowserCache, scheduleBrowserCacheMaintenance } from './browser-cache-maintenance.js'
 import { discoverSources, importCookies } from './import-cookies.js'
 import { PARTITION } from './browser-url.js'
 import { ChatService } from './chat-service.js'
@@ -95,6 +95,7 @@ let browserSessionFlush: Promise<void> | null = null
 let cdpAccess: BrowserCdpAccess | null = null
 let appAutomationAccess: AppAutomationAccess | null = null
 let appCommandAccess: AppCommandAccess | null = null
+let stopBrowserCacheMaintenance: (() => void) | null = null
 let quitting = false
 let pendingLiveVerify: { mode: string; quitAfter: boolean } | null = null
 
@@ -323,9 +324,13 @@ async function main(): Promise<void> {
   // The one-shot cookie import runs before the first tab loads, so a restored or home page
   // arrives already signed in rather than racing the import.
   await importDefaultBrowserCookies()
+  // Measure and prune before the first tab paints so a bloated cache does not slow restore.
+  void maintainBrowserCache(userData()).catch((error: unknown) => {
+    console.warn('[browser-cache] startup maintenance failed', error)
+  })
   createWindow()
   void chatService.start()
-  void pruneOversizedBrowserCacheOnce(userData()).catch(() => {})
+  stopBrowserCacheMaintenance = scheduleBrowserCacheMaintenance(userData())
   const liveVerify = process.env.CLOSEDAI_LIVE_VERIFY?.trim() || liveVerifyFromArgv()
   if (liveVerify) requestLiveVerify(liveVerify, true)
 }
@@ -465,6 +470,8 @@ app.on('before-quit', (event) => {
   if (quitting) return
   event.preventDefault()
   quitting = true
+  stopBrowserCacheMaintenance?.()
+  stopBrowserCacheMaintenance = null
   chatService?.stop()
   codexRuntime?.stop()
   const flushSession = browserSessionFlush ?? browserService?.flushSessionData()
