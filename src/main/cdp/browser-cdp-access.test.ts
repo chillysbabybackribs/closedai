@@ -8,11 +8,13 @@ import { BrowserCdpAccess, type CdpBrowserSource, type CdpBrowserTarget } from '
 class FakeDebugger extends EventEmitter {
   attached = false
   readonly commands: string[] = []
+  readonly routed: Array<{ method: string; sessionId?: string }> = []
   attach(): void { this.attached = true }
   detach(): void { this.attached = false }
   isAttached(): boolean { return this.attached }
-  async sendCommand(method: string): Promise<unknown> {
+  async sendCommand(method: string, _params?: unknown, sessionId?: string): Promise<unknown> {
     this.commands.push(method)
+    this.routed.push({ method, sessionId })
     return { source: method }
   }
 }
@@ -31,6 +33,24 @@ const tabs: BrowserTabInfo[] = [
 ]
 
 const cdpTabs: CdpBrowserTarget[] = tabs.map((tab) => ({ ...tab, kind: 'tab' as const }))
+
+test('captured body reads route to the exact child session without fetching the URL', async () => {
+  const contents = new FakeContents(1)
+  const access = new BrowserCdpAccess(() => ({
+    tabList: () => tabs,
+    contentsOf: () => contents as unknown as WebContents,
+    focusTabForInput: () => ({ activated: false })
+  }))
+  try {
+    const result = await access.responseBody('tab-1', 'request-1', 'worker-1') as Record<string, unknown>
+    assert.equal(result.sessionId, 'worker-1')
+    assert.equal(result.requestId, 'request-1')
+    assert.deepEqual(contents.debugger.routed.at(-1), { method: 'Network.getResponseBody', sessionId: 'worker-1' })
+    assert.deepEqual(contents.debugger.commands, ['Target.setDiscoverTargets', 'Target.setAutoAttach', 'Network.getResponseBody'])
+  } finally {
+    access.dispose()
+  }
+})
 
 test('CDP access resolves ClosedAI tab ids and reports target metadata', async () => {
   const contents = new Map([

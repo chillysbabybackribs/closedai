@@ -21,8 +21,8 @@ function harness(overrides: Partial<CdpToolHost> = {}) {
       calls.push(['networkRequests', tabId, filter])
       return { capturing: true, requests: [{ url: 'https://a.test/api/items', method: 'POST', requestId: '1' }] }
     },
-    responseBody: async (tabId, requestId) => {
-      calls.push(['responseBody', tabId, requestId])
+    responseBody: async (tabId, requestId, sessionId) => {
+      calls.push(['responseBody', tabId, requestId, sessionId])
       return { requestId, text: '{"ok":true}', base64Encoded: false }
     },
     inspectPage: async (tabId, maxElements) => {
@@ -91,7 +91,10 @@ test('requests lists network traffic and body reads one captured response', asyn
 
   const body = await call({ action: 'body', request_id: '1', tab_id: 'tab-2' })
   assert.match(textOf(body), /\\"ok\\":true/)
-  assert.deepEqual(calls.at(-1), ['responseBody', 'tab-2', '1'])
+  assert.deepEqual(calls.at(-1), ['responseBody', 'tab-2', '1', undefined])
+
+  await call({ action: 'body', request_id: '1', tab_id: 'tab-2', session_id: 'worker-1' })
+  assert.deepEqual(calls.at(-1), ['responseBody', 'tab-2', '1', 'worker-1'])
 
   const missing = await call({ action: 'body' })
   assert.equal(missing.isError, true)

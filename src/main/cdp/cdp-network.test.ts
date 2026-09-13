@@ -13,7 +13,7 @@ test('foldNetworkEvents joins a request and its response on the request id', () 
     event('Network.responseReceived', { requestId: 'r1', response: { status: 200 }, type: 'XHR' }, 2)
   ])
   assert.deepEqual(folded, [{
-    url: 'https://a.test/api', method: 'POST', status: 200, type: 'XHR', requestId: 'r1', sizeBytes: null, source: 'events'
+    url: 'https://a.test/api', method: 'POST', status: 200, type: 'XHR', requestId: 'r1', sessionId: null, sizeBytes: null, source: 'events'
   }])
 })
 
@@ -38,7 +38,7 @@ test('parseResourceTiming keeps well-formed entries and skips the rest', () => {
   ])
 })
 
-test('mergeRequests marks a URL both sources saw and fills gaps from timing', () => {
+test('mergeRequests does not attach URL-level timing facts to an exact captured request', () => {
   const { requests: merged, matched } = mergeRequests(
     [{ url: 'https://a.test/api', method: 'POST', status: 200, type: null, requestId: 'r1', sizeBytes: null, source: 'events' }],
     [
@@ -50,9 +50,9 @@ test('mergeRequests marks a URL both sources saw and fills gaps from timing', ()
   assert.equal(merged.length, 2)
   assert.equal(matched, 2)
   const api = merged.find((record) => record.url.endsWith('/api'))
-  assert.equal(api?.source, 'both')
-  assert.equal(api?.type, 'xmlhttprequest')
-  assert.equal(api?.sizeBytes, 512)
+  assert.equal(api?.source, 'events')
+  assert.equal(api?.type, null)
+  assert.equal(api?.sizeBytes, null)
   assert.equal(merged.find((record) => record.url.endsWith('app.js'))?.source, 'timing')
 })
 
@@ -96,4 +96,36 @@ test('decodeResponseBody refuses to dump a binary body', () => {
   const decoded = decodeResponseBody(png, true)
   assert.equal(decoded.text, null)
   assert.equal(decoded.byteLength, 12)
+})
+
+test('repeated URLs and overlapping child request ids remain independently readable', () => {
+  const url = 'https://a.test/api'
+  const events = [
+    event('Network.requestWillBeSent', { requestId: 'r1', request: { url, method: 'GET' } }),
+    event('Network.requestWillBeSent', { requestId: 'r2', request: { url, method: 'GET' } }),
+    { ...event('Network.requestWillBeSent', { requestId: 'r1', request: { url, method: 'POST' } }), sessionId: 'child' },
+    event('Network.responseReceived', { requestId: 'r1', response: { status: 200 } }),
+    { ...event('Network.responseReceived', { requestId: 'r1', response: { status: 201 } }), sessionId: 'child' }
+  ]
+  const result = mergeRequests(foldNetworkEvents(events), [{ url, type: 'fetch', sizeBytes: 99 }], { limit: 2 })
+  assert.equal(result.matched, 3)
+  assert.equal(result.requests.length, 2)
+  const all = mergeRequests(foldNetworkEvents(events), [], { limit: 10 }).requests
+  assert.deepEqual(all.map(({ requestId, sessionId, status }) => [requestId, sessionId, status]), [
+    ['r1', null, 200], ['r2', null, null], ['r1', 'child', 201]
+  ])
+})
+
+test('a redirect does not carry the prior hop response status into the new request', () => {
+  const folded = foldNetworkEvents([
+    event('Network.requestWillBeSent', { requestId: 'r1', request: { url: 'https://a.test', method: 'GET' } }),
+    event('Network.responseReceived', { requestId: 'r1', response: { status: 302 } }),
+    event('Network.requestWillBeSent', { requestId: 'r1', request: { url: 'https://b.test', method: 'GET' } })
+  ])
+  assert.equal(folded[0].url, 'https://b.test')
+  assert.equal(folded[0].status, null)
+})
+
+test('text body byte counts measure UTF-8 rather than JavaScript string length', () => {
+  assert.equal(decodeResponseBody('é🙂', false).byteLength, 6)
 })
