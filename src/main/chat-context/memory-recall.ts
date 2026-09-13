@@ -31,6 +31,7 @@ export function recallTranscript(
   // Conversation is the useful default; callers can request tool evidence when needed.
   const types = new Set<string>(request.types?.length ? request.types : ['user', 'assistant'])
   const result: ChatRecallResult = {
+    ...(request.scope === 'history' && request.chatId ? { chatId: request.chatId } : {}),
     threadId, checkpoint, matches: [], hasMore: false, nextBeforeItemId: null,
     throughItemId, trust: 'historical-data'
   }

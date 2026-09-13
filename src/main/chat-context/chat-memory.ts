@@ -34,15 +34,20 @@ export class ChatMemory {
       return [record.title, record.preview, record.cwd, notes ? JSON.stringify(notes) : ''].some((text) => text?.toLowerCase().includes(query))
     })
     const limit = Math.max(1, Math.min(8, Math.floor(request.limit ?? 5)))
-    const shown = records.slice(0, limit)
-    return {
-      chats: shown.map((record) => ({
+    const result: ChatHistoryResult = { chats: [], nextBeforeChatId: null, trust: 'historical-data' }
+    for (const record of records.slice(0, limit)) {
+      const entry = {
         chatId: record.id, threadId: record.threadId!, title: (record.title ?? 'Untitled chat').slice(0, 120),
         preview: record.preview.slice(0, 240), cwd: record.cwd, lastActivityAt: historyActivity(record)
-      })),
-      nextBeforeChatId: records.length > shown.length ? shown.at(-1)!.id : null,
-      trust: 'historical-data'
+      }
+      if (JSON.stringify({ ...result, chats: [...result.chats, entry], nextBeforeChatId: record.id }).length > 16_000) {
+        if (!result.chats.length) throw new Error('History entry metadata exceeds the output budget')
+        break
+      }
+      result.chats.push(entry)
     }
+    result.nextBeforeChatId = records.length > result.chats.length ? result.chats.at(-1)!.chatId : null
+    return result
   }
 
   async save(caller: MemoryCaller, expectedRevision: number, state: unknown): Promise<ChatMemoryCheckpoint> {
@@ -82,7 +87,7 @@ export class ChatMemory {
       if (resolved.surface !== surface) throw new Error('Workspace changed while loading memory')
       const latest = this.historyRecords(resolved.pane).find((record) => record.id === target.id)
       if (latest?.threadId !== target.threadId) throw new Error('History chat changed while loading memory')
-      return { ...recallTranscript(content.items, target.threadId, latest.checkpoint, request, null), chatId: target.id }
+      return recallTranscript(content.items, target.threadId, latest.checkpoint, { ...request, chatId: target.id }, null)
     }
     if (request.scope !== 'source') throw new Error('Unknown recall scope')
     const source = pane.continuation

@@ -3,12 +3,12 @@ import test from 'node:test'
 import { APPLICATION_INSTRUCTIONS } from './application-instructions.js'
 import { engineeringInstructions } from './engineering-instructions.js'
 
-test('engineering guidance preserves work and permits verification after subsequent edits', () => {
+test('engineering guidance preserves work and leaves verification choices to the task', () => {
   for (const provider of ['codex', 'claude', 'antigravity', 'cursor'] as const) {
     const text = engineeringInstructions(provider)
     assert.match(text, /Preserve unrelated changes and Git stash\/worktree state/)
-    assert.match(text, /Repeat checks when a failure or subsequent edit requires it/)
-    assert.match(text, /subagents only when the user or applicable repository instructions explicitly ask/)
+    assert.match(text, /choose checks appropriate to the change/)
+    assert.doesNotMatch(text, /subagents only|explicitly ask for delegation/)
     assert.doesNotMatch(text, /typecheck once|Skip pre-change baselines|Cost is counted/)
   }
 })

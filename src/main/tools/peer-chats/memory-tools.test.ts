@@ -13,6 +13,10 @@ function harness() {
   const registry = new ToolRegistry([peerChatTools(() => ({
     listReadable: () => [], readReadable: async () => null,
     memory: {
+      history: (caller, request) => {
+        calls.push({ caller, request })
+        return { chats: [], nextBeforeChatId: null, trust: 'historical-data' }
+      },
       recall: async (caller, request) => {
         calls.push({ caller, request })
         return { threadId: caller.threadId!, checkpoint: null, matches: [], hasMore: false,
@@ -57,4 +61,21 @@ test('checkpoint rejects malformed memory and responds with metadata rather than
     assert.equal((await h.call('checkpoint', args)).isError, true)
   }
   assert.equal(h.calls.length, 1)
+})
+
+test('history discovery and targeted recall route through the existing namespace', async () => {
+  const h = harness()
+  assert.equal((await h.call('list', { scope: 'history', query: 'design', cwd: '/older', before_chat_id: 'previous', limit: 2 })).isError, undefined)
+  assert.deepEqual(h.calls[0], { caller: { ...context, invocationSource: 'direct' }, request: {
+    query: 'design', cwd: '/older', beforeChatId: 'previous', limit: 2
+  } })
+  assert.equal((await h.call('recall', { scope: 'history', chat_id: 'older-chat', query: 'design' })).isError, undefined)
+  const recorded = h.calls[1] as { request: { scope: string; chatId: string } }
+  assert.equal(recorded.request.scope, 'history')
+  assert.equal(recorded.request.chatId, 'older-chat')
+  for (const args of [{ scope: 'open', query: 'ignored' }, { scope: 'history', limit: 9 }]) {
+    assert.equal((await h.call('list', args)).isError, true)
+  }
+  assert.equal((await h.call('recall', { scope: 'current', chat_id: 'older-chat' })).isError, true)
+  assert.equal(h.calls.length, 2)
 })

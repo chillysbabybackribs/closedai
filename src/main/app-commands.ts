@@ -208,6 +208,7 @@ export function projectChat(paneId: string, snapshot: ChatSnapshot): Record<stri
   return {
     paneId,
     provider: snapshot.provider,
+    cwd: snapshot.cwd,
     connection: snapshot.connection.state,
     model: snapshot.selectedModel,
     reasoningEffort: snapshot.selectedReasoningEffort,

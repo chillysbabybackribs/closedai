@@ -64,15 +64,15 @@ test('escaped output fits the serialized budget and no-match results do not inve
   assert.equal(missing.hasMore, false)
 })
 
-test('types narrows recall to the kinds asked for, so tool traffic cannot crowd out the messages', () => {
+test('recall defaults to conversation and retrieves tool evidence when explicitly requested', () => {
   const items: ChatTranscriptItem[] = [
     user('u1', 'the original request'),
     { type: 'tool', id: 'x1', turnId: 't', label: 'Read', detail: 'a file', status: 'completed', output: 'contents' },
     { type: 'tool', id: 'x2', turnId: 't', label: 'Edit', detail: 'a file', status: 'completed', output: 'done' }
   ]
-  const unfiltered = recallTranscript(items, 'thread', null, { scope: 'current', limit: 2 }, null)
-  assert.deepEqual(unfiltered.matches.map((match) => match.itemId), ['x2', 'x1'])
-  const messages = recallTranscript(items, 'thread', null, { scope: 'current', types: ['user', 'assistant'], limit: 2 }, null)
+  const evidence = recallTranscript(items, 'thread', null, { scope: 'current', types: ['tool'], limit: 2 }, null)
+  assert.deepEqual(evidence.matches.map((match) => match.itemId), ['x2', 'x1'])
+  const messages = recallTranscript(items, 'thread', null, { scope: 'current', limit: 2 }, null)
   assert.deepEqual(messages.matches.map((match) => match.itemId), ['u1'])
   assert.equal(messages.matches[0]!.text, 'the original request')
 })
