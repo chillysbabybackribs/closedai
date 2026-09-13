@@ -81,13 +81,13 @@ export class BrowserNetworkAccess implements NetworkToolHost, SessionToolHost {
     if (!cdp || !record.tabId) return null
     try {
       const listing = await cdp.networkRequests(record.tabId, { url: record.url, limit: 50 }) as {
-        requests?: Array<{ url: string; method: string | null; requestId: string | null }>
+        requests?: Array<{ url: string; method: string | null; requestId: string | null; sessionId?: string | null }>
       }
       const match = listing.requests?.find((candidate) =>
         candidate.requestId && candidate.url === record.url && (!candidate.method || candidate.method === record.method)
       )
       if (!match?.requestId) return null
-      const body = await cdp.responseBody(record.tabId, match.requestId) as {
+      const body = await cdp.responseBody(record.tabId, match.requestId, match.sessionId ?? undefined) as {
         text: string | null; base64Encoded: boolean; byteLength: number; note?: string
       }
       return {

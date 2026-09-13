@@ -37,7 +37,12 @@ to remove it from the tile; each control's item is the chat id. Switching or rem
 not stop its running turn or delete its history.
 The common routing policy prefers deterministic commands, page APIs, the session-owned
 `embedded_browser.network` and `session` tools, page `query`/`evaluate`/`console`, fetch/extract,
-and non-input CDP. Real clicks, manual typing, key presses, and raw `Input.*` commands are recorded escape hatches:
+and non-input CDP. Deeper runtime inspection, debugging, profiling, instrumentation, emulation
+and exact CDP response reads are task-driven capabilities, with no required recon workflow.
+CDP request listings retain repeated URLs and child session identities; child body reads pass
+that session id and never reissue the request. Session-network body lookup still uses URL/method
+association and can replay, so it is not an exact historical-response contract.
+Real clicks, manual typing, key presses, and raw `Input.*` commands are recorded escape hatches:
 the call requires `fallback_reason` and belongs in one batch with inspection and post-action
 verification. For Codex the containing exec script is the batch; direct-call lanes use `tool_batch`.
 The tool runtime distinguishes those two dispatch sources and refuses unbatched real input from a
