@@ -8,7 +8,7 @@ import type { CdpEventRecord } from './cdp-session.js'
 // request the page has already made, so it works retroactively on a tab that loaded before anyone
 // was watching — no reload, no prior instrumentation. It knows URL, kind, size and timing but not
 // method or status. The CDP event buffer knows method, status and request id, but only for traffic
-// seen since Network was enabled. Merged on URL, they cover each other's blind spot.
+// seen since Network was enabled. Timing is URL discovery, never an exact request identity.
 
 export type NetworkRequestRecord = {
   url: string
@@ -18,6 +18,8 @@ export type NetworkRequestRecord = {
   type: string | null
   /** Present only for buffered events; required by `Network.getResponseBody`. */
   requestId: string | null
+  /** Request ids are only unique within their CDP target session. Null means the root. */
+  sessionId?: string | null
   sizeBytes: number | null
   source: 'events' | 'timing' | 'both'
 }
@@ -75,10 +77,14 @@ export function foldNetworkEvents(events: CdpEventRecord[]): NetworkRequestRecor
       : null
     const requestId = params && typeof params.requestId === 'string' ? params.requestId : null
     if (!requestId) continue
-    const current = byId.get(requestId) ?? {
-      url: '', method: null, status: null, type: null, requestId, sizeBytes: null, source: 'events' as const
+    const key = JSON.stringify([event.sessionId, requestId])
+    const current = byId.get(key) ?? {
+      url: '', method: null, status: null, type: null, requestId, sessionId: event.sessionId,
+      sizeBytes: null, source: 'events' as const
     }
     if (event.method === 'Network.requestWillBeSent') {
+      // Redirects reuse an id. Only the final hop's body is addressable by that id.
+      current.status = null
       const request = params?.request !== null && typeof params?.request === 'object'
         ? params.request as Record<string, unknown>
         : null
@@ -94,7 +100,7 @@ export function foldNetworkEvents(events: CdpEventRecord[]): NetworkRequestRecor
       if (typeof response?.url === 'string' && !current.url) current.url = response.url
       if (typeof params?.type === 'string') current.type = params.type
     }
-    byId.set(requestId, current)
+    byId.set(key, current)
   }
   return [...byId.values()].filter((record) => record.url.length > 0)
 }
@@ -109,7 +115,7 @@ export type DecodedBody =
  * result only when it reads as text.
  */
 export function decodeResponseBody(body: string, base64Encoded: boolean): DecodedBody {
-  if (!base64Encoded) return { text: body, base64Encoded: false, byteLength: body.length }
+  if (!base64Encoded) return { text: body, base64Encoded: false, byteLength: Buffer.byteLength(body, 'utf8') }
   const bytes = Buffer.from(body, 'base64')
   const text = bytes.toString('utf8')
   const replacementRatio = (text.match(/\uFFFD/g)?.length ?? 0) / Math.max(1, text.length)
@@ -131,26 +137,19 @@ export type MergedRequests = {
   requests: NetworkRequestRecord[]
 }
 
-/** Merge both sources on URL, preferring event data and marking what corroborated it. */
+/** Preserve every captured request; add unique timing-only URLs as discovery hints. */
 export function mergeRequests(
   fromEvents: NetworkRequestRecord[],
   fromTiming: ResourceTimingEntry[],
   filter: RequestFilter
 ): MergedRequests {
-  const merged = new Map<string, NetworkRequestRecord>()
-  for (const record of fromEvents) merged.set(record.url, { ...record })
+  const captured = fromEvents.map((record) => ({ ...record }))
+  const capturedUrls = new Set(captured.map((record) => record.url))
+  const timing = new Map<string, NetworkRequestRecord>()
   for (const entry of fromTiming) {
-    const existing = merged.get(entry.url)
-    if (existing) {
-      // Only an event record corroborates a timing entry. A page that fetches the same URL
-      // twice produces two timing entries, and calling that "both" would claim a captured
-      // request id the record does not have.
-      if (existing.source === 'events') existing.source = 'both'
-      existing.type = existing.type ?? entry.type
-      existing.sizeBytes = existing.sizeBytes ?? entry.sizeBytes
-      continue
-    }
-    merged.set(entry.url, {
+    // A matching URL cannot associate a timing entry's bytes/type with a particular request.
+    if (capturedUrls.has(entry.url) || timing.has(entry.url)) continue
+    timing.set(entry.url, {
       url: entry.url,
       method: null,
       status: null,
@@ -162,7 +161,7 @@ export function mergeRequests(
   }
   const url = filter.url?.toLowerCase()
   const type = filter.type?.toLowerCase()
-  const kept = [...merged.values()].filter((record) => {
+  const kept = [...captured, ...timing.values()].filter((record) => {
     if (url && !record.url.toLowerCase().includes(url)) return false
     if (type && !(record.type ?? '').toLowerCase().includes(type)) return false
     return true

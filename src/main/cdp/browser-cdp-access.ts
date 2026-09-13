@@ -156,15 +156,16 @@ export class BrowserCdpAccess implements CdpToolHost {
     }
   }
 
-  async responseBody(tabId: string | undefined, requestId: string): Promise<unknown> {
+  async responseBody(tabId: string | undefined, requestId: string, sessionId?: string): Promise<unknown> {
     const { tab, session } = this.resolve(tabId)
-    const raw = await session.command('Network.getResponseBody', { requestId })
+    const raw = await session.command('Network.getResponseBody', { requestId }, sessionId)
     const record = raw !== null && typeof raw === 'object' ? raw as Record<string, unknown> : {}
     const body = typeof record.body === 'string' ? record.body : ''
     return {
       tab,
       connectionId: session.connectionId,
       requestId,
+      sessionId: sessionId ?? null,
       ...decodeResponseBody(body, record.base64Encoded === true)
     }
   }

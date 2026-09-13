@@ -22,7 +22,7 @@ export type CdpToolHost = {
   /** Requests the tab has made, from resource timing and the buffered Network events. */
   networkRequests(tabId: string | undefined, filter: { url?: string; type?: string; limit: number }): Promise<unknown>
   /** Response body for a buffered request id. */
-  responseBody(tabId: string | undefined, requestId: string): Promise<unknown>
+  responseBody(tabId: string | undefined, requestId: string, sessionId?: string): Promise<unknown>
   /** Arm, fold, or read coverage, CPU, heap and page metrics. Aggregated in the main process. */
   profile(tabId: string | undefined, action: string, options: { channels: string[]; limit: number }): Promise<unknown>
   /** Install, read, or remove the pre-document API recorder. */
