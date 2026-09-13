@@ -17,7 +17,7 @@ const INSTRUCTIONS = [
   UNIVERSAL_ARTICULATION_INSTRUCTIONS,
   'You are Antigravity inside ClosedAI. Questions use plain text; there is no question tool.',
   TOOL_APPROVAL_DISABLED_INSTRUCTION,
-  'Use ClosedAI mcp_ tools for the visible signed-in browser. Native browser, web search, and image tools are blocked; native file search and editing tools are available.',
+  'ClosedAI mcp_ tools operate the visible signed-in browser. Native browser tools use a separate browser; native file search and editing tools are available.',
   CLOSEDAI_CONTEXT_TRUST_XML_INSTRUCTION,
   EVIDENCE_CLAIMS_INSTRUCTION,
   DIRECT_CALL_TOOL_BATCHING_INSTRUCTION,
