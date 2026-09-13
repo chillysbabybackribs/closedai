@@ -29,7 +29,10 @@ test('summarizes Codex model passes, cache efficiency, context, and tool time', 
     entry('tool', 'tool.call'),
     entry('tool', 'tool.result', { durationMs: 220, ok: false }),
     entry('raw', 'codex.in', { summary: 'thread/tokenUsage/updated', detail: JSON.stringify(usage) }),
-    entry('raw', 'codex.in', { summary: 'thread/tokenUsage/updated', detail: JSON.stringify(usage) })
+    entry('raw', 'codex.in', { summary: 'thread/tokenUsage/updated', detail: JSON.stringify(usage) }),
+    entry('note', 'chat.ipc', { detail: JSON.stringify({
+      receivedEvents: 80, sentEvents: 35, receivedDeltas: 72, sentDeltas: 27, deltaCharacters: 1_240
+    }) })
   ], 72_000)
 
   assert.equal(value.modelPasses, 2)
@@ -44,6 +47,9 @@ test('summarizes Codex model passes, cache efficiency, context, and tool time', 
   assert.equal(value.nonToolDurationMs, 71_780)
   assert.equal(value.transcriptEvents, 1)
   assert.equal(value.rawEvents, 2)
+  assert.deepEqual(value.ipc, {
+    receivedEvents: 80, sentEvents: 35, receivedDeltas: 72, sentDeltas: 27, deltaCharacters: 1_240
+  })
 })
 
 test('ignores malformed raw detail and does not invent provider metrics', () => {
@@ -55,6 +61,7 @@ test('ignores malformed raw detail and does not invent provider metrics', () => 
   assert.equal(value.lastContext, null)
   assert.equal(value.nonToolDurationMs, null)
   assert.equal(value.response, null)
+  assert.equal(value.ipc, null)
 })
 
 test('reads self-contained first-text timing even after the send entry is evicted', () => {

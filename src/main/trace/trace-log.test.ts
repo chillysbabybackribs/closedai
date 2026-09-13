@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { TraceEvent } from '../../shared/trace.js'
-import { MAX_DETAIL_CHARS, MAX_ENTRIES, providerOfTurn, serialize, TraceLog } from './trace-log.js'
+import {
+  MAX_DETAIL_CHARS, MAX_ENTRIES, MAX_SERIALIZE_DEPTH, MAX_SERIALIZE_NODES,
+  providerOfTurn, serialize, TraceLog
+} from './trace-log.js'
 import { summarizeClaudeMessage, summarizeCodexRpc, summarizeAntigravityEvent } from './summaries.js'
 
 const scope = { paneId: 'pane-1', provider: 'codex' as const, turnId: 'turn-1' }
@@ -52,6 +55,26 @@ test('oversized nested strings are clipped before JSON encoding and retain a tru
   assert.equal(original.payload, big, 'trace clipping must not alter the provider payload')
   // Escaping can change encoded length; the final bound must still hold.
   assert.ok(serialize({ payload: '\n'.repeat(MAX_DETAIL_CHARS * 2) }).text.length < MAX_DETAIL_CHARS + 100)
+})
+
+test('structured serialization bounds traversal by node count and depth', () => {
+  const wide = Array.from({ length: MAX_SERIALIZE_NODES + 10 }, (_, index) => index)
+  Object.defineProperty(wide, MAX_SERIALIZE_NODES + 5, {
+    get: () => { throw new Error('trace walked beyond its node budget') }
+  })
+  const wideResult = serialize(wide)
+  assert.equal(wideResult.truncated, true)
+  assert.match(wideResult.text, /truncated by the trace/)
+
+  let deep: Record<string, unknown> = { value: 'end' }
+  for (let index = 0; index < MAX_SERIALIZE_DEPTH + 2; index += 1) deep = { child: deep }
+  const deepResult = serialize(deep)
+  assert.equal(deepResult.truncated, true)
+  assert.match(deepResult.text, /trace depth limit/)
+
+  const circular: { self?: unknown } = {}
+  circular.self = circular
+  assert.match(serialize(circular).text, /circular/)
 })
 
 test('evicts the oldest entries past the capacity and counts them as dropped', () => {
