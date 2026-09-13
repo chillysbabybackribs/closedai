@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { CachedChatView } from '../chat-store/chat-transcript-cache.js'
-import { readableView, rendererChatBatcher } from './peer-events.js'
+import { readableView, rendererChatBatcher, rendererSnapshot } from './peer-events.js'
 import { chatRecord, FakeSurface } from './peer-manager-harness.js'
 
 const cached: CachedChatView = {
@@ -13,6 +13,33 @@ const cached: CachedChatView = {
   contextUsage: null,
   updatedAt: 1
 }
+
+test('renderer snapshots keep only the latest turn for the live pane', () => {
+  const snapshot = rendererSnapshot({
+    provider: 'codex',
+    connection: { state: 'ready', message: 'ready' },
+    account: null,
+    models: [],
+    selectedModel: null,
+    selectedReasoningEffort: null,
+    cwd: '/w',
+    threadId: 'codex:t1',
+    threadName: null,
+    activeTurnId: 't2',
+    pausedTurnId: null,
+    contextUsage: null,
+    planUsage: null,
+    turnContext: null,
+    items: [
+      { type: 'user', id: 'u1', turnId: 't1', text: 'first' },
+      { type: 'assistant', id: 'a1', turnId: 't1', text: 'one', phase: null, streaming: false },
+      { type: 'user', id: 'u2', turnId: 't2', text: 'second' },
+      { type: 'assistant', id: 'a2', turnId: 't2', text: 'two', phase: null, streaming: false }
+    ]
+  }, 'Example')
+  assert.deepEqual(snapshot.items.map((item) => item.id), ['u2', 'a2'])
+  assert.equal(snapshot.history?.hasEarlier, true)
+})
 
 test('a peer reads a parked pane from its saved view rather than as an empty chat', () => {
   const parked = new FakeSurface('gpt').snapshot()

@@ -21,6 +21,8 @@ import { TranscriptAttachments } from './composer-attachments.js'
 import {
   activityHeadline,
   activityState,
+  lastTurnRowStart,
+  previousTurnRowStart,
   transcriptRows,
   turnActionMessageIds,
   type ActivityItem,
@@ -46,49 +48,29 @@ export const ChatTranscript = memo(function ChatTranscript({
     [items, activeTurnId, actions?.running]
   )
   const rows = useMemo(() => transcriptRows(items), [items])
-  const [windowStart, setWindowStart] = useState(() => initialWindowStart(rows.length))
-  // How many rows off the end may be mounted right now. Opening a chat pays for every row it
-  // mounts — markdown parsing, syntax highlighting, one collapsible per tool group — and a mount
-  // is one indivisible commit, so the first paint takes the few rows under the reader's eye, the
-  // screenful behind them arrives on the next frames, and the rest on idle ones after that.
-  const [budget, setBudget] = useState(FIRST_PAINT_ROWS)
+  const tailStart = useMemo(() => lastTurnRowStart(rows), [rows])
+  const [visibleStart, setVisibleStart] = useState(tailStart)
   const [loadingEarlier, setLoadingEarlier] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
   const { prepareForPrepend } = useMessageScroller()
   const scrollable = useMessageScrollerScrollable()
-  const start = Math.max(Math.min(windowStart, initialWindowStart(rows.length)), rows.length - budget, 0)
+  const start = visibleStart
   const visibleRows = rows.slice(start)
 
   useEffect(() => {
-    if (budget >= INITIAL_VISIBLE_ROWS || rows.length <= budget) return
-    const grow = (): void => {
-      // A reader parked above the latest message keeps their place; at the end the scroller's
-      // own resize handling pins the view, and prepending there would drop it out of follow.
-      if (scrollable.end) prepareForPrepend()
-      setBudget((current) => Math.min(INITIAL_VISIBLE_ROWS, current + REVEAL_STEP_ROWS))
-    }
-    // Up to a screenful the steps run on animation frames, so a tall window fills within a few
-    // of them instead of waiting on the idle queue; past it the reader is already reading and
-    // the rest can wait for spare time.
-    if (budget < SCREENFUL_ROWS) {
-      const frame = requestAnimationFrame(grow)
-      return () => cancelAnimationFrame(frame)
-    }
-    const idle = window.requestIdleCallback?.(grow, { timeout: 200 })
-    const timer = idle === undefined ? window.setTimeout(grow, 50) : null
-    return () => {
-      if (idle !== undefined) window.cancelIdleCallback?.(idle)
-      if (timer !== null) window.clearTimeout(timer)
-    }
-  }, [budget, prepareForPrepend, rows.length, scrollable.end])
+    setVisibleStart(tailStart)
+  }, [actions?.threadKey])
+
+  useEffect(() => {
+    if (scrollable.end) setVisibleStart(tailStart)
+  }, [scrollable.end, tailStart])
 
   useEffect(() => {
     const jump = (event: Event): void => {
       const id = (event as CustomEvent<string>).detail
       const index = rows.findIndex((row) => row.kind === 'background' && row.items.some((item) => item.id === id))
       if (index < 0) return
-      setWindowStart((current) => Math.min(current, index))
-      setBudget((current) => Math.max(current, rows.length - index))
+      setVisibleStart(Math.min(index, tailStart))
       requestAnimationFrame(() => {
         const target = document.getElementById('background-task-' + id)
         target?.scrollIntoView({ block: 'center', behavior: 'auto' })
@@ -99,48 +81,39 @@ export const ChatTranscript = memo(function ChatTranscript({
     }
     window.addEventListener('closedai:background-jump', jump)
     return () => window.removeEventListener('closedai:background-jump', jump)
-  }, [rows])
-
-  // A reader away from the latest message keeps a stable window. Once they return to
-  // the end, trim excess rows that accumulated during streaming so the DOM stays bounded.
-  useEffect(() => {
-    if (!scrollable.end && visibleRows.length > MAX_MOUNTED_ROWS) {
-      setWindowStart(Math.max(0, rows.length - INITIAL_VISIBLE_ROWS))
-    }
-  }, [rows.length, scrollable.end, visibleRows.length])
+  }, [rows, tailStart])
 
   const revealEarlier = async (): Promise<void> => {
     if (loadingEarlier) return
     prepareForPrepend()
-    if (start === 0 && hasEarlier && loadEarlier) {
-      setLoadingEarlier(true)
-      setHistoryError(null)
-      try {
-        const count = await loadEarlier()
-        setWindowStart(0)
-        setBudget((current) => current + count)
-      } catch (error) {
-        setHistoryError(error instanceof Error ? error.message : 'Could not load earlier messages. Try again.')
-      } finally {
-        setLoadingEarlier(false)
-      }
+    if (start > 0) {
+      setVisibleStart(previousTurnRowStart(rows, start))
       return
     }
-    const next = Math.max(0, start - REVEAL_ROW_COUNT)
-    setWindowStart(next)
-    setBudget((current) => Math.max(current, rows.length - next))
+    if (!hasEarlier || !loadEarlier) return
+    setLoadingEarlier(true)
+    setHistoryError(null)
+    try {
+      const count = await loadEarlier()
+      if (count > 0) setVisibleStart(0)
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : 'Could not load earlier messages. Try again.')
+    } finally {
+      setLoadingEarlier(false)
+    }
   }
 
   const lastTurnIndex = useMemo(() => lastRowForTurn(rows, activeTurnId), [rows, activeTurnId])
+  const showEarlier = start > 0 || hasEarlier
 
   return (
     <>
-      {start > 0 || hasEarlier ? (
+      {showEarlier ? (
         <div className="transcript-fold-banner" role="status">
           <button type="button" data-ui="chat.show-earlier" className="transcript-fold-toggle"
             disabled={loadingEarlier} onClick={() => { void revealEarlier() }}>
             <ChevronUp className="transcript-fold-chevron" aria-hidden="true" />
-            <span>{start > 0 ? `${start} earlier ${start === 1 ? 'entry' : 'entries'}` : 'Earlier messages'}</span>
+            <span>View previous messages</span>
             <span className="transcript-fold-action">{loadingEarlier ? 'Loading…' : 'Show earlier'}</span>
           </button>
         </div>
@@ -176,35 +149,16 @@ export const ChatTranscript = memo(function ChatTranscript({
   )
 })
 
-const INITIAL_VISIBLE_ROWS = 120
-const MAX_MOUNTED_ROWS = 160
-const REVEAL_ROW_COUNT = 80
-/**
- * Rows added per idle frame while a chat fills in behind its first paint. Mounting is the
- * expensive part — markdown, code blocks, one collapsible per tool group — and a mount is one
- * indivisible commit, so the step size is the length of the frame it blocks. Small steps take
- * more frames to reach the same window and keep every one of them inside a frame budget.
- */
-const REVEAL_STEP_ROWS = 8
-/** Rows that cover a tall window; reached on animation frames so the fill is not visible. */
-const SCREENFUL_ROWS = 32
-/** Rows mounted before the first paint of a chat, whatever the history holds. */
-const FIRST_PAINT_ROWS = 8
-
-function initialWindowStart(rowCount: number): number {
-  return Math.max(0, rowCount - INITIAL_VISIBLE_ROWS)
-}
-
-function rowTurnId(row: TranscriptRow): string | null {
-  return row.kind !== 'item' ? (row.items[0]?.turnId ?? null) : (row.item.turnId ?? null)
-}
-
 function lastRowForTurn(rows: TranscriptRow[], activeTurnId: string | null | undefined): number {
   if (!activeTurnId) return -1
   for (let i = rows.length - 1; i >= 0; i -= 1) {
     if (rowTurnId(rows[i]!) === activeTurnId) return i
   }
   return -1
+}
+
+function rowTurnId(row: TranscriptRow): string | null {
+  return row.kind !== 'item' ? (row.items[0]?.turnId ?? null) : (row.item.turnId ?? null)
 }
 
 function isActivityRowRunning(
@@ -279,10 +233,6 @@ const ToolActivity = memo(function ToolActivity({
   isRunning?: boolean
 }): JSX.Element {
   const [open, setOpen] = useState(false)
-  // Radix measures its content on mount — a computed style for the animation name and a bounding
-  // rect for the height variable — and a transcript is mostly collapsed groups, so mounting the
-  // body of every one of them made opening a chat pay for a forced layout per tool group. The
-  // body arrives with the first open instead; a group never opened never costs anything.
   const [opened, setOpened] = useState(false)
   const state = useMemo(() => activityState(items), [items])
   const running = isRunning ?? (state === 'running')
@@ -302,10 +252,6 @@ const ToolActivity = memo(function ToolActivity({
             {failed && open ? (
               <XCircle className="prompt-process-failed" aria-hidden="true" />
             ) : null}
-            {/* Live-ness is carried by the headline's own shimmer rather than a spinner beside it,
-                so a turn full of activity rows reads as one moving line instead of a column of
-                competing icons. The band is sized from the text length the way the source
-                component does it — CSS cannot measure its own glyph count. */}
             <span style={running ? { '--shimmer-spread': `${headline.length * 2}px` } as CSSProperties : undefined}>
               {headline}
             </span>

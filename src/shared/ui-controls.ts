@@ -50,7 +50,7 @@ export const UI_CONTROLS = {
   'chat.background-jump': 'Open background task details above the chat',
   'chat.background-close': 'Close the background task details popup',
   'chat.history': 'Chat history panel (present only while open)',
-  'chat.show-earlier': 'Reveal or load an earlier page of messages in the current chat',
+  'chat.show-earlier': 'View or load one earlier user/model turn in the current chat',
   'chat.history-search': 'Filter the chat history list',
   'chat.history-open': 'Open a thread from history; item is the thread id',
   'chat.history-archive': 'Archive a thread from history; item is the thread id',

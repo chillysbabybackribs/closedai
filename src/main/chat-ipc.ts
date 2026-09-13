@@ -1,7 +1,7 @@
 import { dialog, shell, type IpcMain } from 'electron'
 import { resolve } from 'node:path'
 import type { ChatAttachment } from '../shared/chat.js'
-import { CHAT_HISTORY_PAGE_SIZE } from '../shared/chat.js'
+import { CHAT_TURN_PAGE_SIZE } from '../shared/chat.js'
 import type { ChatContinuationSource } from '../shared/chat-peers.js'
 import { IPC } from '../shared/ipc-channels.js'
 import type { ChatWorkspaceSurface } from './chat-peers/peer-manager.js'
@@ -13,7 +13,7 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
     return service
   }
 
-  ipcMain.handle(IPC.invoke.chat.snapshot, () => requireService().snapshot({ limit: CHAT_HISTORY_PAGE_SIZE }))
+  ipcMain.handle(IPC.invoke.chat.snapshot, () => requireService().snapshot({ limit: CHAT_TURN_PAGE_SIZE, unit: 'turn' }))
   ipcMain.handle(IPC.invoke.chat.historyPage, (_event, paneId: string, threadId: string | null, beforeItemId: string) =>
     requireService().readHistoryPage(paneId, threadId, beforeItemId)
   )

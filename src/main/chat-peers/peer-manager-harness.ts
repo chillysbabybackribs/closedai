@@ -5,6 +5,7 @@ import { chatProviderOfId } from '../../shared/chat-providers.js'
 import type { AppSettings } from '../../shared/types.js'
 import { DEFAULT_APP_SETTINGS, type AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
+import { tailTurnSlice, turnsBeforeIndex } from '../chat-turn-page.js'
 import { ChatStore } from '../chat-store/chat-store.js'
 import type { ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
 import { ChatPeerManager } from './peer-manager.js'
@@ -84,6 +85,16 @@ export class FakeSurface extends EventEmitter implements ChatSurface {
     if (!window) return structuredClone(this.state)
     const end = window.beforeItemId ? this.state.items.findIndex((item) => item.id === window.beforeItemId) : this.state.items.length
     if (end < 0) throw new Error('History changed')
+    if (window.unit === 'turn') {
+      const slice = window.beforeItemId === undefined
+        ? tailTurnSlice(this.state.items, window.limit || 1)
+        : turnsBeforeIndex(this.state.items, end, window.limit || 1)
+      return structuredClone({
+        ...this.state,
+        items: this.state.items.slice(slice.start, slice.end),
+        history: { hasEarlier: slice.hasEarlier }
+      })
+    }
     const start = Math.max(0, end - window.limit)
     return structuredClone({ ...this.state, items: this.state.items.slice(start, end), history: { hasEarlier: start > 0 } })
   }

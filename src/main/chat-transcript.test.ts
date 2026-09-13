@@ -82,18 +82,18 @@ test('assistant timestamps survive completion without inventing dates for replay
 test('history pages use stable exclusive cursors and return detached items', () => {
   const { transcript: store } = transcript({ now: 1 })
   store.replaceItems(Array.from({ length: 10_000 }, (_, i) => ({ type: 'user', id: `u${i}`, turnId: null, text: `message ${i}` })))
-  const tail = store.page({ limit: 200 })
+  const tail = store.page({ limit: 200, unit: 'item' })
   assert.equal(tail.items.length, 200)
   assert.equal(tail.items[0]!.id, 'u9800')
   assert.equal(tail.hasEarlier, true)
   store.upsert({ type: 'user', id: 'new', turnId: null, text: 'appended during paging' })
-  const earlier = store.page({ beforeItemId: 'u9800', limit: 200 })
+  const earlier = store.page({ beforeItemId: 'u9800', limit: 200, unit: 'item' })
   assert.equal(earlier.items.at(-1)!.id, 'u9799')
   earlier.items[0]!.id = 'changed copy'
-  assert.equal(store.page({ beforeItemId: 'u9800', limit: 200 }).items[0]!.id, 'u9600')
-  assert.equal(store.page({ beforeItemId: 'u100', limit: 200 }).hasEarlier, false)
-  assert.deepEqual(store.page({ limit: 0 }).items, [])
-  assert.throws(() => store.page({ beforeItemId: 'gone', limit: 200 }), /History changed/)
+  assert.equal(store.page({ beforeItemId: 'u9800', limit: 200, unit: 'item' }).items[0]!.id, 'u9600')
+  assert.equal(store.page({ beforeItemId: 'u100', limit: 200, unit: 'item' }).hasEarlier, false)
+  assert.deepEqual(store.page({ limit: 0, unit: 'item' }).items, [])
+  assert.throws(() => store.page({ beforeItemId: 'gone', limit: 200, unit: 'item' }), /History changed/)
 })
 
 test('history replay is silent and live upserts distinguish appends from updates', () => {
@@ -113,10 +113,27 @@ test('paged snapshots retain background status outside the visible window', () =
   const task = { type: 'tool' as const, id: 'task', turnId: 'old', label: 'Agent', detail: 'working',
     status: 'running', background: { taskId: 'task', kind: 'agent' as const } }
   store.replaceItems([task, ...Array.from({ length: 500 }, (_, i) => ({ type: 'user' as const, id: `u${i}`, turnId: null, text: 'message' }))])
-  assert.equal(store.page({ limit: 200 }).backgroundTasks?.[0]?.id, 'task')
+  assert.equal(store.page({ limit: 200, unit: 'item' }).backgroundTasks?.[0]?.id, 'task')
   store.upsert({ ...task, status: 'completed' })
-  assert.equal(store.page({ limit: 200 }).backgroundTasks, undefined)
+  assert.equal(store.page({ limit: 200, unit: 'item' }).backgroundTasks, undefined)
   store.clear()
-  assert.equal(store.page({ limit: 200 }).hasEarlier, false)
-  assert.equal(store.page({ limit: 200 }).backgroundTasks, undefined)
+  assert.equal(store.page({ limit: 200, unit: 'item' }).hasEarlier, false)
+  assert.equal(store.page({ limit: 200, unit: 'item' }).backgroundTasks, undefined)
+})
+
+test('turn pages return one user/model turn and preserve stable cursors', () => {
+  const { transcript: store } = transcript({ now: 1 })
+  store.replaceItems([
+    { type: 'user', id: 'u1', turnId: 't1', text: 'first' },
+    { type: 'assistant', id: 'a1', turnId: 't1', text: 'one', phase: null, streaming: false },
+    { type: 'user', id: 'u2', turnId: 't2', text: 'second' },
+    { type: 'tool', id: 'tool', turnId: 't2', label: 'Run', detail: '', status: 'completed' },
+    { type: 'assistant', id: 'a2', turnId: 't2', text: 'two', phase: null, streaming: false }
+  ])
+  const tail = store.page({ limit: 1, unit: 'turn' })
+  assert.deepEqual(tail.items.map((item) => item.id), ['u2', 'tool', 'a2'])
+  assert.equal(tail.hasEarlier, true)
+  const earlier = store.page({ beforeItemId: 'u2', limit: 1, unit: 'turn' })
+  assert.deepEqual(earlier.items.map((item) => item.id), ['u1', 'a1'])
+  assert.equal(earlier.hasEarlier, false)
 })

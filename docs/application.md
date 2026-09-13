@@ -74,8 +74,10 @@ transcript items (capped at 256 KB), its thread name, and the context reading it
 measured with, written to `chat-transcripts/<chat id>.json` at each turn boundary and read back
 before the pane is announced. The view is display-only and never reaches a model; the provider's
 replay replaces it as soon as it lands, and it is used only while the chat still holds the thread
-it was taken from, so a new chat or a provider switch shows nothing stale. "Show earlier" from
-such a pane wakes the provider first, since earlier messages come from the thread itself. The
+it was taken from, so a new chat or a provider switch shows nothing stale. The live transcript
+shows the current turn by default; **View previous messages** loads one earlier user/model turn at
+a time from the provider when needed. Such a pane wakes the provider first, since earlier messages
+come from the thread itself. The
 composer names the chat's saved model and effort while its provider is still starting, rather
 than "Choose model". Unselected panes without an active
 turn are parked after five minutes, the selected pane after twenty, and at most two unselected

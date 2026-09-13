@@ -25,6 +25,24 @@ export function isReasoning(item: ChatTranscriptItem): item is ReasoningItem {
 }
 
 /** Consecutive activity in the same turn stays one row. Commentary splits batches. */
+/** Row index of the user message that starts the last turn. */
+export function lastTurnRowStart(rows: readonly TranscriptRow[]): number {
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const row = rows[index]!
+    if (row.kind === 'item' && row.item.type === 'user') return index
+  }
+  return 0
+}
+
+/** Row index of the user message that starts the turn before `start`. */
+export function previousTurnRowStart(rows: readonly TranscriptRow[], start: number): number {
+  for (let index = start - 1; index >= 0; index -= 1) {
+    const row = rows[index]!
+    if (row.kind === 'item' && row.item.type === 'user') return index
+  }
+  return 0
+}
+
 export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {
   const rows: TranscriptRow[] = []
   const groups = new Map<string, Extract<TranscriptRow, { kind: 'background' }>>()

@@ -218,6 +218,8 @@ export type ChatTurnContextReport = {
 }
 
 export const CHAT_HISTORY_PAGE_SIZE = 200
+/** Renderer and history paging load one user/model turn at a time. */
+export const CHAT_TURN_PAGE_SIZE = 1
 
 /**
  * What Resume sends after a paused turn. No provider can restart a generation that has already
@@ -227,7 +229,8 @@ export const CHAT_HISTORY_PAGE_SIZE = 200
 export const CHAT_RESUME_PROMPT =
   'Continue from where you paused. Pick up exactly where your last answer stopped and do not repeat what you already wrote.'
 
-export type ChatHistoryWindow = { beforeItemId?: string; limit: number }
+export type ChatHistoryUnit = 'item' | 'turn'
+export type ChatHistoryWindow = { beforeItemId?: string; limit: number; unit?: ChatHistoryUnit }
 export type ChatHistoryPage = { items: ChatTranscriptItem[]; hasEarlier: boolean; backgroundTasks?: ChatTranscriptItem[] }
 
 export type ChatSnapshot = {

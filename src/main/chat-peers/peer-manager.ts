@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events'
 import type { ChatAttachment, ChatEvent, ChatSnapshot, ChatThreadSummary } from '../../shared/chat.js'
-import { CHAT_HISTORY_PAGE_SIZE, type ChatHistoryPage, type ChatHistoryWindow } from '../../shared/chat.js'
+import { CHAT_TURN_PAGE_SIZE, type ChatHistoryPage, type ChatHistoryWindow } from '../../shared/chat.js'
 import type {
   ChatContinuationSource,
   ChatPaneId,
@@ -129,7 +129,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   /** Earlier messages come from the provider, so a pane showing its cached tail wakes first. */
   async readHistoryPage(paneId: ChatPaneId, threadId: string | null, beforeItemId: string): Promise<ChatHistoryPage> {
     if (typeof beforeItemId !== 'string' || !beforeItemId) throw new Error('Choose a history cursor')
-    const snapshot = await this.withAwake(paneId, async (surface) => surface.snapshot({ beforeItemId, limit: CHAT_HISTORY_PAGE_SIZE }))
+    const snapshot = await this.withAwake(paneId, async (surface) => surface.snapshot({ beforeItemId, limit: CHAT_TURN_PAGE_SIZE, unit: 'turn' }))
     if (snapshot.threadId !== threadId) throw new Error('The chat changed while loading history')
     return { items: snapshot.items, hasEarlier: snapshot.history?.hasEarlier ?? false }
   }
@@ -582,7 +582,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   private rememberTranscript(entry: PeerEntry): void {
     const threadId = this.store.get(entry.chatId)?.threadId
     if (!threadId) return
-    this.transcripts.remember(entry.chatId, threadId, entry.surface.snapshot({ limit: CACHED_TRANSCRIPT_ITEMS }))
+    this.transcripts.remember(entry.chatId, threadId, entry.surface.snapshot({ limit: CACHED_TRANSCRIPT_ITEMS, unit: 'item' }))
   }
 
   private onPaneEvent(entry: PeerEntry, event: ChatEvent): void {
@@ -655,7 +655,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   private emitWorkspace(): void {
-    this.emit('event', { type: 'workspace', snapshot: this.snapshot({ limit: CHAT_HISTORY_PAGE_SIZE }) } satisfies ChatWorkspaceEvent)
+    this.emit('event', { type: 'workspace', snapshot: this.snapshot({ limit: CHAT_TURN_PAGE_SIZE, unit: 'turn' }) } satisfies ChatWorkspaceEvent)
   }
 
   private emitChats(): void {

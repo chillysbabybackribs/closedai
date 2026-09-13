@@ -1,6 +1,7 @@
 import { activityPhase, type ActivityTiming, type ChatAttachmentSummary, type ChatEvent, type ChatTranscriptItem } from '../shared/chat.js'
 import { cloneItem, normalizeItem, nullableString, recordOf, stringOf } from './chat-normalizers.js'
 import type { ChatHistoryPage, ChatHistoryWindow } from '../shared/chat.js'
+import { tailTurnSlice, turnsBeforeIndex } from './chat-turn-page.js'
 
 type EmitChatEvent = (event: ChatEvent) => void
 /** Full-resolution capture for a tool call id, when the app still holds one. */
@@ -36,6 +37,7 @@ export class ChatTranscript {
 
   /** Clone only the requested display page. Stable item ids survive appends during paging. */
   page(window: ChatHistoryWindow): ChatHistoryPage {
+    if (window.unit === 'turn') return this.turnPage(window)
     if (!Number.isInteger(window.limit) || window.limit < 0) throw new Error('Invalid history page size')
     const end = window.beforeItemId === undefined ? this.order.length : this.positions.get(window.beforeItemId) ?? -1
     if (end < 0) throw new Error('History changed; reopen this chat to reload earlier messages')
@@ -51,6 +53,39 @@ export class ChatTranscript {
       : []
     return { items: this.order.slice(start, end).map((id) => cloneItem(this.items.get(id)!)), hasEarlier: start > 0,
       ...(backgroundTasks.length ? { backgroundTasks } : {}) }
+  }
+
+  /** One or more user/model turns for the renderer and history paging. */
+  turnPage(window: ChatHistoryWindow): ChatHistoryPage {
+    const turns = window.limit
+    if (!Number.isInteger(turns) || turns < 0) throw new Error('Invalid turn page size')
+    const all = this.snapshot()
+    const end = window.beforeItemId === undefined
+      ? all.length
+      : all.findIndex((item) => item.id === window.beforeItemId)
+    if (window.beforeItemId !== undefined && end < 0) throw new Error('History changed; reopen this chat to reload earlier messages')
+    const slice = window.beforeItemId === undefined
+      ? tailTurnSlice(all, turns || 1)
+      : turnsBeforeIndex(all, end, turns || 1)
+    const backgroundTasks = window.beforeItemId === undefined
+      ? this.backgroundTasksBefore(all, slice.start)
+      : []
+    return {
+      items: all.slice(slice.start, slice.end),
+      hasEarlier: slice.hasEarlier,
+      ...(backgroundTasks.length ? { backgroundTasks } : {})
+    }
+  }
+
+  private backgroundTasksBefore(items: ChatTranscriptItem[], start: number): ChatTranscriptItem[] {
+    if (start <= 0) return []
+    let lastUser = items.length - 1
+    while (lastUser >= 0 && items[lastUser]?.type !== 'user') lastUser -= 1
+    return items.slice(0, start).flatMap((item, index) => {
+      if (item.type !== 'tool' || !item.background) return []
+      const live = ['running', 'pending'].includes(activityPhase(item.status))
+      return live || index > lastUser ? [cloneItem(item)] : []
+    })
   }
 
   addOptimisticUser(clientId: string, text: string, attachments: ChatAttachmentSummary[] = []): void {

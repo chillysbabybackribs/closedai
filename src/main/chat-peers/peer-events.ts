@@ -1,5 +1,6 @@
 import type { ChatSnapshot } from '../../shared/chat.js'
-import { activityPhase, CHAT_HISTORY_PAGE_SIZE } from '../../shared/chat.js'
+import { activityPhase, CHAT_TURN_PAGE_SIZE } from '../../shared/chat.js'
+import { tailTurnSlice } from '../chat-turn-page.js'
 import type { ChatPeerSummary, ChatRowSummary, ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { CachedChatView } from '../chat-store/chat-transcript-cache.js'
@@ -236,16 +237,20 @@ export function readableView(
   return { snapshot: filled, source: filled === live ? 'live' : 'saved' }
 }
 
-/** The renderer receives a bounded tail of the transcript plus what the earlier part held. */
+/** The renderer receives the active tail turn plus any live background work outside it. */
 export function rendererSnapshot(snapshot: ChatSnapshot, title: string): ChatSnapshot {
-  const start = Math.max(0, snapshot.items.length - CHAT_HISTORY_PAGE_SIZE)
+  const slice = tailTurnSlice(snapshot.items, CHAT_TURN_PAGE_SIZE)
   let lastUser = snapshot.items.length - 1
   while (lastUser >= 0 && snapshot.items[lastUser]?.type !== 'user') lastUser -= 1
-  const backgroundTasks = snapshot.history?.backgroundTasks ?? snapshot.items.slice(0, start).filter((item, index) =>
+  const backgroundTasks = snapshot.history?.backgroundTasks ?? snapshot.items.slice(0, slice.start).filter((item, index) =>
     item.type === 'tool' && item.background && (index > lastUser || ['running', 'pending'].includes(activityPhase(item.status))))
   return {
     ...snapshot,
-    items: snapshot.items.slice(-CHAT_HISTORY_PAGE_SIZE),
-    history: { hasEarlier: start > 0 || Boolean(snapshot.history?.hasEarlier), title, backgroundTasks }
+    items: snapshot.items.slice(slice.start),
+    history: {
+      hasEarlier: slice.hasEarlier || Boolean(snapshot.history?.hasEarlier),
+      title,
+      backgroundTasks
+    }
   }
 }

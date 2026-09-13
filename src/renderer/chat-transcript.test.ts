@@ -89,18 +89,27 @@ test('identically named tool calls collapse to a counted label', () => {
   assert.match(html, /aria-label="Searched the web 2 times, completed"/)
 })
 
-test('opening a long transcript paints one screenful, with the rest behind the fold', () => {
+test('opening a long transcript shows only the latest turn until earlier ones are requested', () => {
   const items: ChatTranscriptItem[] = Array.from({ length: 250 }, (_, index) => ({
     type: 'user', id: `u${index}`, turnId: `t${index}`, text: `Message ${index}`
   }))
-  // The first commit holds only the rows under the reader's eye; the screenful behind them
-  // arrives on the next animation frames and the window grows to its full bound on idle ones.
   const html = renderTranscript({ items })
-  assert.match(html, /242 earlier entries/)
-  assert.doesNotMatch(html, /Message 241</)
-  assert.match(html, /Message 242</)
-  assert.match(html, /Message 249</)
-  assert.equal((html.match(/data-slot="message-scroller-item"/g) ?? []).length, 8)
+  assert.match(html, /View previous messages/)
+  assert.doesNotMatch(html, /Message 248/)
+  assert.match(html, /Message 249/)
+  assert.equal((html.match(/data-slot="message-scroller-item"/g) ?? []).length, 1)
+})
+
+test('revealing earlier messages mounts one additional turn at a time', () => {
+  const items: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u1', turnId: 't1', text: 'First' },
+    { type: 'assistant', id: 'a1', turnId: 't1', text: 'First answer', phase: null, streaming: false },
+    { type: 'user', id: 'u2', turnId: 't2', text: 'Second' },
+    { type: 'assistant', id: 'a2', turnId: 't2', text: 'Second answer', phase: null, streaming: false }
+  ]
+  const html = renderTranscript({ items })
+  assert.match(html, /Second/)
+  assert.doesNotMatch(html, /First answer/)
 })
 
 
@@ -114,10 +123,10 @@ test('response actions appear once per completed turn, never between model messa
     { type: 'assistant', id: 'final', turnId: 'turn', text: 'Done', phase: null, streaming: false }
   ]
   const running = renderTranscript({ items, activeTurnId: 'turn', actions })
-  assert.equal((running.match(/data-ui="chat.message-copy"/g) ?? []).length, 1)
+  assert.equal((running.match(/data-ui="chat.message-copy"/g) ?? []).length, 0)
   assert.doesNotMatch(running, /data-ui="chat.message-copy" data-ui-key="(?:progress|final)"/)
   const completed = renderTranscript({ items, activeTurnId: null, actions: { ...actions, running: false } })
-  assert.equal((completed.match(/data-ui="chat.message-copy"/g) ?? []).length, 2)
+  assert.equal((completed.match(/data-ui="chat.message-copy"/g) ?? []).length, 1)
   assert.match(completed, /data-ui="chat.message-copy" data-ui-key="final"/)
   assert.doesNotMatch(completed, /data-ui="chat.message-copy" data-ui-key="progress"/)
 })
@@ -132,10 +141,10 @@ test('missing turn ids still yield one action row per user turn and none on the 
   ]
   const actions = { threadKey: 'thread', running: false, branch: async () => {} }
   const completed = renderTranscript({ items, actions })
-  assert.equal((completed.match(/data-ui="chat.message-copy"/g) ?? []).length, 2)
+  assert.equal((completed.match(/data-ui="chat.message-copy"/g) ?? []).length, 1)
   assert.doesNotMatch(completed, /data-ui="chat.message-copy" data-ui-key="a2"/)
   const running = renderTranscript({ items, actions: { ...actions, running: true } })
-  assert.equal((running.match(/data-ui="chat.message-copy"/g) ?? []).length, 1)
+  assert.equal((running.match(/data-ui="chat.message-copy"/g) ?? []).length, 0)
 })
 
 test('background group shows live task details and collapses once completed', () => {
