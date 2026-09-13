@@ -17,7 +17,8 @@ test('batching permits dependent decisions and requires releasing temporary stat
   assert.match(CODEX_EXEC_TOOL_BATCHING_INSTRUCTION, /try\/finally/)
 })
 
-test('a cause must be isolated before it is asserted', () => {
-  assert.match(EVIDENCE_CLAIMS_INSTRUCTION, /Do not assert a cause you have not isolated/)
-  assert.match(EVIDENCE_CLAIMS_INSTRUCTION, /smallest check that separates the candidates/)
+test('evidence guidance distinguishes hypotheses without prescribing a reasoning sequence', () => {
+  assert.match(EVIDENCE_CLAIMS_INSTRUCTION, /observed evidence/)
+  assert.match(EVIDENCE_CLAIMS_INSTRUCTION, /Distinguish observations from hypotheses/)
+  assert.doesNotMatch(EVIDENCE_CLAIMS_INSTRUCTION, /smallest check|run it/)
 })
