@@ -48,6 +48,10 @@ try {
       await runtime.call('export',{id:artifact.id,path:process.argv[3]});
       assert.deepEqual(await readFile(process.argv[3]),bytes);
       await runtime.call('delete',{id:artifact.id});
+      await runtime.call('reserve',{key:'empty',fingerprint:'b'.repeat(64)});
+      const empty=await runtime.call('complete',{key:'empty',bytes:Buffer.alloc(0),label:'empty',mediaType:'application/octet-stream'});
+      assert.equal((await runtime.call('read',{id:empty.id})).data,'');
+      await runtime.call('delete',{id:empty.id});
       assert.equal((await runtime.call('list',{})).artifacts.length,0);
       await runtime.call('close',{});
       console.log('Packaged artifact worker passed: retain, abrupt restart, projection, retry, exact export, delete.');

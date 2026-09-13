@@ -153,6 +153,8 @@ or call a model provider. Electron 44.1.1 / Node 24.19.0 passed this check.
 
 An initial ad-hoc smoke failed because `--input-type` was inherited by a file-based worker;
 the committed smoke clears its worker execArgv and passed. This was a harness launch error.
+An additional concurrency/output-budget regression exposed zero-byte payload binding as SQL
+NULL; empty artifacts now use SQLite `zeroblob(0)` and the regression passes.
 SQLite and Node transform-types emitted their experimental warnings. Source-driven tool tests
 use the real store and registry but synthetic protocol responses; installed browser/tool
 acquisition and provider qualification remain pending after the native code is loaded.

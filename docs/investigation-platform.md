@@ -1,6 +1,7 @@
 # Investigation and experimentation platform
 
-Status: architecture and phased implementation contract, 2026-09-13. Supersedes the scope
+Status: network identity and durable artifact slices implemented; installed capture qualification
+and the remaining platform phases are incomplete, 2026-09-13. Supersedes the scope
 and sequencing of [the recon integration review](recon-buildout.md); that review retains
 the Continuum baseline. User direction: materially exceed recon tooling and make ClosedAI
 unusually capable across any task that benefits from observation, analysis or experiments.
@@ -191,10 +192,35 @@ node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.
 These are offline tests of identity, routing, output and existing CDP behavior; they do not
 establish native Chromium capture freshness or cross-provider model performance.
 
-This does not implement durable artifacts, coherent capture, laboratories, the application
-graph or persistent execution. Session-level `embedded_browser.network.body` retains its
+The network-identity increment did not implement durable artifacts. The subsequent artifact
+increment below supplies that substrate. Coherent capture, laboratories, the application
+graph and persistent execution remain incomplete. Session-level `embedded_browser.network.body` retains its
 legacy URL/method association and replay fallback; use exact CDP body reads for this slice.
 Replacing that legacy behavior with explicit replay remains an acquisition follow-up.
+
+### Durable artifact increment
+
+2026-09-13: explicit CDP command retention, local file import, list/read/JSON-pointer projection,
+provenance reads, verified no-clobber export and scoped deletion are implemented. The host
+resolves stable chat/project authority; the worker keeps SHA-256 content addresses, quotas,
+operation reservations/receipts, integrity checks and deletion tombstones. Retention remains
+opt-in; no model transcript or vault data is automatically collected.
+
+Storage decision: this slice keeps artifact bytes as SQLite BLOBs in the metadata transaction,
+instead of introducing separate filesystem blob publication. This removes a dual-resource
+commit boundary. Worker packaging is a separate main-build entry, exercised under bundled
+Electron 44.1.1 / Node 24.19.0. The packaged smoke verifies a large artifact, abrupt worker
+restart, projection, same-key retry, exact export and deletion in temporary directories.
+
+See [artifact contracts and exact verification commands](investigation-artifacts.md). No active
+app restart or installed browser/provider verification was performed. This increment does not
+complete Phase 1: coherent capture, source leases, explicit session-network replay separation,
+full backup/restore and schema migration remain open. There is no grouping/sharing UI or
+chat/workspace deletion cascade in this first artifact substrate.
+
+Next: after loading the native changes, verify installed retained CDP acquisition against a
+synthetic page. Continue with capture interval/document/state contracts and the hidden-pixel
+fixture; then choose the smallest coordinator change justified by the native baseline.
 
 ## Primary references consulted
 

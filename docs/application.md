@@ -361,6 +361,7 @@ The session-level body's URL/method association and replay fallback remain separ
 | Claude / Antigravity / Cursor sessions and translation | `src/main/claude/`, `src/main/antigravity/`, `src/main/cursor/` |
 | Model instructions, trust and handoff | `src/main/chat-context/`, provider `*-instructions.ts` files |
 | Provider-neutral tool definitions and execution | `src/main/tools/` |
+| Durable artifacts, worker storage, retention and retrieval | `src/main/investigations/`, `src/main/tools/investigation/`, `src/shared/investigation-artifacts.ts` |
 | Deterministic app commands and renderer control access | `src/main/app-commands.ts`, `src/main/app-automation-*.ts`, `src/shared/ui-controls.ts` |
 | Browser, history, popups, CDP sessions and input | `src/main/browser-*.ts`, `src/main/cdp/` |
 | Session network record, interception rules, console capture, session fetch and cookies | `src/main/browser-network/`, `src/main/browser-network-access.ts` |
