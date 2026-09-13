@@ -119,7 +119,8 @@ export const ChatPane = memo(function ChatPane({
               <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
             ) : hasMessages ? (
               <ChatTranscript items={state.items} activeTurnId={state.activeTurnId}
-                hasEarlier={state.history?.hasEarlier} loadEarlier={chat.loadEarlier} actions={{
+                hasEarlier={state.history?.hasEarlier} loadEarlier={chat.loadEarlier}
+                onTrimMountedHistory={chat.trimMountedHistory} actions={{
                 threadKey: state.threadId ?? chat.selectedPaneId,
                 running,
                 branch: (itemId) => chat.continueFromChat({

@@ -1,7 +1,7 @@
 import { activityPhase, type ActivityTiming, type ChatAttachmentSummary, type ChatEvent, type ChatTranscriptItem } from '../shared/chat.js'
 import { cloneItem, normalizeItem, nullableString, recordOf, stringOf } from './chat-normalizers.js'
 import type { ChatHistoryPage, ChatHistoryWindow } from '../shared/chat.js'
-import { tailTurnSlice, turnsBeforeIndex } from './chat-turn-page.js'
+import { tailTurnSlice, turnsBeforeIndex } from '../shared/chat-turn-page.js'
 
 type EmitChatEvent = (event: ChatEvent) => void
 /** Full-resolution capture for a tool call id, when the app still holds one. */

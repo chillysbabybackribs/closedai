@@ -1,4 +1,4 @@
-import type { ChatTranscriptItem } from '../shared/chat.js'
+import type { ChatTranscriptItem } from './chat.js'
 
 export type TurnSlice = {
   start: number

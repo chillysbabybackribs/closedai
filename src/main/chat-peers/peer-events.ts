@@ -1,6 +1,6 @@
 import type { ChatSnapshot } from '../../shared/chat.js'
 import { activityPhase, CHAT_TURN_PAGE_SIZE } from '../../shared/chat.js'
-import { tailTurnSlice } from '../chat-turn-page.js'
+import { tailTurnSlice } from '../../shared/chat-turn-page.js'
 import type { ChatPeerSummary, ChatRowSummary, ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { CachedChatView } from '../chat-store/chat-transcript-cache.js'

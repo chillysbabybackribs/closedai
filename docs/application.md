@@ -228,11 +228,13 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   another timer, including the final chunk when a task completes. Code highlighting remains
   throttled to 250 ms and limited to 20,000 characters, but pending highlights show the current
   plain code rather than an older highlighted version.
-- The renderer initially receives the newest 200 transcript items. "Show earlier" fetches older
-  pages by stable item id; stale responses after a chat switch are ignored. Background-task status
-  remains available outside the loaded page. Provider sessions and the main-process transcript
-  remain complete for continuation, branching, and peer reads; this is display paging, not model
-  compaction. Codex history replay emits one replacement instead of streaming old items again.
+- The renderer initially receives the latest turn. "View previous messages" reveals one earlier
+  turn at a time and keeps at most three turns mounted; scrolling back to the bottom trims
+  prepended history from renderer state. Older pages fetch by stable item id; stale responses
+  after a chat switch are ignored. Background-task status remains available outside the loaded
+  page. Provider sessions and the main-process transcript remain complete for continuation,
+  branching, and peer reads; this is display paging, not model compaction. Codex history replay
+  emits one replacement instead of streaming old items again.
 - The model menu opens on the providers, one row each, naming the model in use where that
   provider owns the selection. Choosing a row replaces the same panel with that provider's
   models under a sticky header that returns to the list; the selected model's reasoning efforts

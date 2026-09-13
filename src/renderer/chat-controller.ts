@@ -32,6 +32,7 @@ export type ChatController = {
   selectPane: (paneId: string) => Promise<void>
   closePeer: (paneId: string) => Promise<void>
   loadEarlier: () => Promise<number>
+  trimMountedHistory: () => void
 }
 
 export function useChatController(enabled = true) {
@@ -110,6 +111,9 @@ export function usePaneChatController(
     dispatch({ type: 'historyPage', paneId, threadId, beforeItemId, page })
     return page.items.length
   }, [paneId, threadId, beforeItemId])
+  const trimMountedHistory = useCallback(() => {
+    dispatch({ type: 'trimMountedHistory', paneId, threadId })
+  }, [paneId, threadId])
 
   // Actions stay stable across text updates, so the sidebar can use its own snapshot without
   // receiving a new controller for each streamed chunk.
@@ -136,11 +140,12 @@ export function usePaneChatController(
     compactConversation,
     selectPane,
     closePeer,
-    loadEarlier
+    loadEarlier,
+    trimMountedHistory
   }), [
     state, workspace.workspace, workspace.preferences, workspace.chats, paneId,
     send, interrupt, interruptPane, selectModel, selectReasoningEffort, refreshPlanUsage, loginWithChatGPT,
     listChats, newThread, continueInNewThread, continueFromChat, openChat,
-    archiveChat, setChatPinned, compactConversation, selectPane, closePeer, loadEarlier
+    archiveChat, setChatPinned, compactConversation, selectPane, closePeer, loadEarlier, trimMountedHistory
   ])
 }

@@ -1,4 +1,6 @@
 import type { ChatEvent, ChatHistoryPage, ChatProvider, ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
+import { CHAT_TURN_PAGE_SIZE } from '../shared/chat.js'
+import { tailTurnSlice } from '../shared/chat-turn-page.js'
 import { sanitizeThreadTitle, summarizeUserMessage } from '../shared/chat-display.js'
 import type { ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../shared/chat-peers.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
@@ -30,6 +32,8 @@ export function initialChatWorkspaceState(): ChatWorkspaceSnapshot {
 
 export type ChatWorkspaceAction = ChatWorkspaceEvent | {
   type: 'historyPage'; paneId: string; threadId: string | null; beforeItemId: string; page: ChatHistoryPage
+} | {
+  type: 'trimMountedHistory'; paneId: string; threadId: string | null
 }
 
 export type ChatRendererState = { workspace: ChatWorkspaceSnapshot; sidebar: ChatSnapshot }
@@ -52,6 +56,17 @@ export function reduceChatWorkspaceEvent(
   state: ChatWorkspaceSnapshot,
   event: ChatWorkspaceAction
 ): ChatWorkspaceSnapshot {
+  if (event.type === 'trimMountedHistory') {
+    const pane = state.panes?.[event.paneId] ?? (event.paneId === state.selectedPaneId ? state.selected : undefined)
+    if (!pane || pane.threadId !== event.threadId) return state
+    const slice = tailTurnSlice(pane.items, CHAT_TURN_PAGE_SIZE)
+    if (slice.start === 0) return state
+    return updatePane(state, event.paneId, {
+      ...pane,
+      items: pane.items.slice(slice.start),
+      history: { ...pane.history, hasEarlier: true }
+    })
+  }
   if (event.type === 'historyPage') {
     const pane = state.panes?.[event.paneId] ?? (event.paneId === state.selectedPaneId ? state.selected : undefined)
     if (!pane || event.threadId !== pane.threadId || event.beforeItemId !== pane.items[0]?.id) return state

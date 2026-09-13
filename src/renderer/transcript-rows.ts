@@ -43,6 +43,23 @@ export function previousTurnRowStart(rows: readonly TranscriptRow[], start: numb
   return 0
 }
 
+/** Oldest row index that keeps at most `maxTurns` user turns ending at the tail. */
+export function mountedTurnWindowStart(rows: readonly TranscriptRow[], maxTurns: number): number {
+  const tail = lastTurnRowStart(rows)
+  let windowStart = tail
+  for (let turns = 1; turns < maxTurns; turns += 1) {
+    const earlier = previousTurnRowStart(rows, windowStart)
+    if (earlier === windowStart) break
+    windowStart = earlier
+  }
+  return windowStart
+}
+
+/** Never mount more than `maxTurns`; drop the oldest revealed turn when the window overflows. */
+export function clampVisibleStart(start: number, rows: readonly TranscriptRow[], maxTurns: number): number {
+  return Math.max(start, mountedTurnWindowStart(rows, maxTurns))
+}
+
 export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {
   const rows: TranscriptRow[] = []
   const groups = new Map<string, Extract<TranscriptRow, { kind: 'background' }>>()

@@ -1,6 +1,7 @@
 import { BackgroundTasks } from './background-tasks.js'
 import type { CSSProperties, JSX } from 'react'
-import { memo, useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { CHAT_MOUNTED_TURN_WINDOW } from '../shared/chat.js'
 import { ChevronRight, ChevronUp, XCircle } from 'lucide-react'
 
 import { Bubble, BubbleContent } from '../components/ui/bubble.js'
@@ -21,6 +22,7 @@ import { TranscriptAttachments } from './composer-attachments.js'
 import {
   activityHeadline,
   activityState,
+  clampVisibleStart,
   lastTurnRowStart,
   previousTurnRowStart,
   transcriptRows,
@@ -35,13 +37,15 @@ export const ChatTranscript = memo(function ChatTranscript({
   activeTurnId,
   actions,
   hasEarlier = false,
-  loadEarlier
+  loadEarlier,
+  onTrimMountedHistory
 }: {
   items: ChatTranscriptItem[]
   actions?: MessageActionContext
   activeTurnId?: string | null
   hasEarlier?: boolean
   loadEarlier?: () => Promise<number>
+  onTrimMountedHistory?: () => void
 }): JSX.Element {
   const actionMessageIds = useMemo(
     () => turnActionMessageIds(items, activeTurnId, actions?.running || Boolean(activeTurnId)),
@@ -52,18 +56,33 @@ export const ChatTranscript = memo(function ChatTranscript({
   const [visibleStart, setVisibleStart] = useState(tailStart)
   const [loadingEarlier, setLoadingEarlier] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
+  const [loadEpoch, setLoadEpoch] = useState(0)
+  const browsedEarlier = useRef(false)
   const { prepareForPrepend } = useMessageScroller()
   const scrollable = useMessageScrollerScrollable()
   const start = visibleStart
   const visibleRows = rows.slice(start)
 
   useEffect(() => {
+    browsedEarlier.current = false
     setVisibleStart(tailStart)
   }, [actions?.threadKey])
 
   useEffect(() => {
-    if (scrollable.end) setVisibleStart(tailStart)
-  }, [scrollable.end, tailStart])
+    if (loadEpoch === 0) return
+    setVisibleStart(clampVisibleStart(previousTurnRowStart(rows, tailStart), rows, CHAT_MOUNTED_TURN_WINDOW))
+  }, [loadEpoch, rows, tailStart])
+
+  useEffect(() => {
+    if (visibleStart < tailStart) browsedEarlier.current = true
+  }, [visibleStart, tailStart])
+
+  useEffect(() => {
+    if (!scrollable.end || !browsedEarlier.current) return
+    browsedEarlier.current = false
+    setVisibleStart(tailStart)
+    onTrimMountedHistory?.()
+  }, [scrollable.end, tailStart, onTrimMountedHistory])
 
   useEffect(() => {
     const jump = (event: Event): void => {
@@ -87,7 +106,7 @@ export const ChatTranscript = memo(function ChatTranscript({
     if (loadingEarlier) return
     prepareForPrepend()
     if (start > 0) {
-      setVisibleStart(previousTurnRowStart(rows, start))
+      setVisibleStart(clampVisibleStart(previousTurnRowStart(rows, start), rows, CHAT_MOUNTED_TURN_WINDOW))
       return
     }
     if (!hasEarlier || !loadEarlier) return
@@ -95,7 +114,7 @@ export const ChatTranscript = memo(function ChatTranscript({
     setHistoryError(null)
     try {
       const count = await loadEarlier()
-      if (count > 0) setVisibleStart(0)
+      if (count > 0) setLoadEpoch((epoch) => epoch + 1)
     } catch (error) {
       setHistoryError(error instanceof Error ? error.message : 'Could not load earlier messages. Try again.')
     } finally {

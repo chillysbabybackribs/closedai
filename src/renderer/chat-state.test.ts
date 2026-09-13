@@ -101,6 +101,22 @@ test('workspace events update only the selected pane transcript', () => {
   assert.equal(state.selected.activeTurnId, 'selected')
 })
 
+test('trimMountedHistory drops prepended turns but keeps hasEarlier', () => {
+  const items = [
+    { type: 'user' as const, id: 'u1', turnId: 't1', text: 'First' },
+    { type: 'assistant' as const, id: 'a1', turnId: 't1', text: 'A1', phase: null, streaming: false },
+    { type: 'user' as const, id: 'u2', turnId: 't2', text: 'Second' },
+    { type: 'assistant' as const, id: 'a2', turnId: 't2', text: 'A2', phase: null, streaming: false }
+  ]
+  const state = { ...initialChatWorkspaceState(), selectedPaneId: 'pane',
+    selected: { ...initialChatState(), threadId: 'thread', items, history: { hasEarlier: false } }
+  }
+  const next = reduceChatWorkspaceEvent(state, { type: 'trimMountedHistory', paneId: 'pane', threadId: 'thread' })
+  assert.deepEqual(next.selected.items.map((item) => item.id), ['u2', 'a2'])
+  assert.equal(next.selected.history?.hasEarlier, true)
+  assert.equal(reduceChatWorkspaceEvent(next, { type: 'trimMountedHistory', paneId: 'pane', threadId: 'thread' }), next)
+})
+
 test('history prepends preserve live updates and reject stale page responses', () => {
   const current = { type: 'user' as const, id: 'new', turnId: null, text: 'current' }
   const state = { ...initialChatWorkspaceState(), selectedPaneId: 'pane',

@@ -4,7 +4,10 @@ import type { ChatTranscriptItem } from '../shared/chat.ts'
 import {
   activityHeadline,
   activityState,
+  clampVisibleStart,
   commandTitle,
+  lastTurnRowStart,
+  mountedTurnWindowStart,
   transcriptRows
 } from './transcript-rows.ts'
 
@@ -188,4 +191,22 @@ test('a lone command inside a mixed row still describes itself', () => {
   if (activity?.kind !== 'activity') return
   assert.equal(activityHeadline(activity.items), 'Searched for activity-card, Searched the web')
   assert.doesNotMatch(activityHeadline(activity.items), /1 times/)
+})
+
+test('mountedTurnWindowStart keeps only the newest three user turns', () => {
+  const items: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u1', turnId: 't1', text: 'One' },
+    { type: 'assistant', id: 'a1', turnId: 't1', text: 'A1', phase: null, streaming: false },
+    { type: 'user', id: 'u2', turnId: 't2', text: 'Two' },
+    { type: 'assistant', id: 'a2', turnId: 't2', text: 'A2', phase: null, streaming: false },
+    { type: 'user', id: 'u3', turnId: 't3', text: 'Three' },
+    { type: 'assistant', id: 'a3', turnId: 't3', text: 'A3', phase: null, streaming: false },
+    { type: 'user', id: 'u4', turnId: 't4', text: 'Four' },
+    { type: 'assistant', id: 'a4', turnId: 't4', text: 'A4', phase: null, streaming: false }
+  ]
+  const rows = transcriptRows(items)
+  assert.equal(lastTurnRowStart(rows), 6)
+  assert.equal(mountedTurnWindowStart(rows, 3), 2)
+  assert.equal(clampVisibleStart(0, rows, 3), 2)
+  assert.equal(clampVisibleStart(4, rows, 3), 4)
 })
