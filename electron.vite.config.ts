@@ -7,7 +7,10 @@ export default defineConfig({
   // `build.watch` makes `electron-vite dev` rebuild main/preload on change and restart Electron.
   main: {
     plugins: [externalizeDepsPlugin()],
-    build: { watch: {}, rollupOptions: { input: { index: resolve('src/main/index.ts') } } }
+    build: { watch: {}, rollupOptions: { input: {
+      index: resolve('src/main/index.ts'),
+      'artifact-worker': resolve('src/main/investigations/artifact-worker.ts')
+    } } }
   },
   preload: {
     plugins: [externalizeDepsPlugin()],

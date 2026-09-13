@@ -45,6 +45,8 @@ import { captureTools, ScreenshotStore } from './tools/capture/index.js'
 import { credentialVaultTools } from './tools/credential-vault/index.js'
 import { batchTools } from './tools/batch/index.js'
 import { createResearchRuntime } from './research-runtime.js'
+import { createArtifactRuntime } from './investigations/artifact-runtime.js'
+import type { ArtifactStore } from './investigations/artifact-store.js'
 import type { ResearchService } from './tools/search/research/service.js'
 import { peerChatTools } from './tools/peer-chats/index.js'
 import { ToolTelemetry } from './tools/telemetry.js'
@@ -88,6 +90,7 @@ let credentialVault: CredentialVault | null = null
 let codexRuntime: CodexWorkspaceRuntime | null = null
 let toolRegistry: ToolRegistry | null = null
 let researchService: ResearchService | null = null
+let artifactStore: ArtifactStore | null = null
 let toolTelemetry: ToolTelemetry | null = null
 let antigravityBridge: AntigravityToolBridge | null = null
 let cursorBridge: CursorToolBridge | null = null
@@ -245,11 +248,17 @@ async function main(): Promise<void> {
     workspace: () => chatWorkspace
   })
   researchService = research.service
+  const artifacts = createArtifactRuntime({
+    root: join(userData(), 'investigation-artifacts'), workerUrl: new URL('./artifact-worker.js', import.meta.url),
+    chats: chatStore!, peers: () => chatService
+  })
+  artifactStore = artifacts.store
   toolRegistry = createToolRegistry([
     credentialVaultTools(() => credentialVault),
     appTools(() => appCommandAccess, () => appAutomationAccess),
     browserTools(() => pageAccess, () => networkAccess, () => networkAccess),
-    cdpTools(() => cdpAccess),
+    cdpTools(() => cdpAccess, artifacts.service),
+    artifacts.namespace,
     captureTools(() => captureAccess, screenshots),
     research.namespace,
     peerChatTools(() => chatService),
@@ -481,6 +490,7 @@ app.on('before-quit', (event) => {
     settings?.set({}),
     chatStore?.flush(),
     chatTranscripts?.flush(),
+    artifactStore?.close(),
     providerCatalogs?.flush(),
     flushSession,
     // Leaves the user's agy MCP config without dead localhost endpoints.

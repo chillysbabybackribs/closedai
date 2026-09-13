@@ -180,9 +180,12 @@ export class ArtifactDatabase {
   private read(scope: string, input: Record<string, unknown>): ArtifactRead {
     const { artifact, bytes } = this.verified(scope, field(input.id, 'artifact id', 64))
     const offset = integer(input.offset, 0, 0, Number.MAX_SAFE_INTEGER)
-    if (input.pointer !== undefined) {
-      if (artifact.mediaType !== 'application/json') throw new Error('JSON projection requires application/json')
-      const selected = project(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)), String(input.pointer))
+    if (input.pointer !== undefined || input.metadata === true) {
+      if (input.metadata !== true && artifact.mediaType !== 'application/json') throw new Error('JSON projection requires application/json')
+      const value = input.metadata === true
+        ? { artifact, source: JSON.parse(String(this.db.prepare('SELECT source FROM artifacts WHERE scope=? AND id=?').get(scope, artifact.id)?.source)), untrusted: true }
+        : JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
+      const selected = project(value, input.pointer === undefined ? '' : String(input.pointer))
       const json = JSON.stringify(selected)
       if (offset > json.length) throw new Error('Offset exceeds projected text length')
       const data = json.slice(offset, offset + 1500)

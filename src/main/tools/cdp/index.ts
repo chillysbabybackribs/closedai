@@ -1,5 +1,6 @@
 import { defineActionTool, type ToolAction } from '../action-tool.js'
-import { REAL_INPUT_FALLBACK_FIELD, requireRealInputFallback, stringArg, type ToolNamespace } from '../tool.js'
+import { booleanArg, REAL_INPUT_FALLBACK_FIELD, requireRealInputFallback, stringArg, type ToolNamespace } from '../tool.js'
+import type { ArtifactService } from '../../investigations/artifact-service.js'
 import {
   eventCursorFrom,
   eventLimitFrom,
@@ -17,7 +18,7 @@ import { cdpPageTool } from './page.js'
 import { cdpProfileTool } from './profile.js'
 import { jsonResult, objectSchema } from '../json-result.js'
 
-export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
+export function cdpTools(cdp: CdpHostProvider, artifacts?: ArtifactService): ToolNamespace {
   return {
     name: 'browser_cdp',
     description: 'Low-level Chrome DevTools Protocol access to tabs owned by the embedded browser.',
@@ -30,8 +31,10 @@ export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
           'Use capabilities for supported domains, targets for child sessions, command for Domain.method, ' +
           'and events after enabling a domain. IDs may expire after navigation; pass child sessionId as session_id. ' +
           'Raw Input.* requires fallback_reason and batched inspection/verification. Use closedai_ui.capture for images. ' +
-          'Returns JSON text; JSON.parse in exec. Oversized results carry _closedai_truncated.',
-        actions: actions(cdp)
+          'Returns JSON text; JSON.parse in exec. command retain=true archives the full JSON response before output truncation ' +
+          'and returns a durable receipt for investigation.read/manage; requires explicit tab_id, operation_key and label. ' +
+          'Without retention oversized results carry _closedai_truncated.',
+        actions: actions(cdp, artifacts)
       }),
       cdpPageTool(cdp),
       cdpProfileTool(cdp),
@@ -41,7 +44,7 @@ export function cdpTools(cdp: CdpHostProvider): ToolNamespace {
   }
 }
 
-function actions(cdp: CdpHostProvider): ToolAction[] {
+function actions(cdp: CdpHostProvider, artifacts?: ArtifactService): ToolAction[] {
   return [
     {
       action: 'capabilities',
@@ -59,12 +62,18 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
       action: 'command',
       description:
         'Send an arbitrary CDP Domain.method with a JSON params object. Optional session_id routes it to a flat child-target session. ' +
-        'Input.* methods require fallback_reason and must be batched with inspection and verification.',
+        'Input.* methods require fallback_reason and must be batched with inspection and verification. ' +
+        'retain=true explicitly stores the full result (including any private content) in this chat/project. ' +
+        'Reuse operation_key and identical arguments after uncertainty: committed retries return the original receipt ' +
+        'without executing CDP; interrupted reservations refuse reexecution. Retention does not make a mutating command read-only.',
       inputSchema: objectSchema({
         tab_id: tabIdField,
         method: { type: 'string', minLength: 3, description: 'CDP method, for example DOM.getDocument or Network.enable.' },
         params: { type: 'object', description: 'The command parameters; defaults to an empty object.' },
         session_id: sessionIdField,
+        retain: { type: 'boolean', description: 'Retain full raw host response JSON instead of returning it inline; default false.' },
+        operation_key: { type: 'string', minLength: 1, maxLength: 256, description: 'Required with retain. A stable key for this acquisition; reuse on retry.' },
+        label: { type: 'string', minLength: 1, maxLength: 200, description: 'Required with retain. A short artifact label.' },
         fallback_reason: REAL_INPUT_FALLBACK_FIELD
       }, ['method']),
       run: async (input, context) => {
@@ -73,9 +82,17 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
           throw new Error('`method` must use CDP Domain.method syntax')
         }
         if (method.startsWith('Input.')) requireRealInputFallback(input, context)
-        return jsonResult(await requireCdp(cdp).command(
-          tabIdFrom(input), method, paramsFrom(input), sessionIdFrom(input)
-        ))
+        const collect = () => requireCdp(cdp).command(tabIdFrom(input), method, paramsFrom(input), sessionIdFrom(input))
+        if (booleanArg(input, 'retain', false)) {
+          if (!artifacts) throw new Error('Durable artifact storage is unavailable')
+          const tabId = tabIdFrom(input)
+          const key = stringArg(input, 'operation_key')
+          const label = stringArg(input, 'label')
+          if (!tabId || !key || !label) throw new Error('retain requires explicit tab_id, operation_key and label')
+          return jsonResult(await artifacts.retainProtocol(context, { key, label, tabId, method, params: paramsFrom(input), sessionId: sessionIdFrom(input) }, collect))
+        }
+        if (input.operation_key !== undefined || input.label !== undefined) throw new Error('operation_key and label require retain=true')
+        return jsonResult(await collect())
       }
     },
     {
