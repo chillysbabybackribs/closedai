@@ -28,9 +28,8 @@ export function recallTranscript(
   }
   const limit = Math.max(1, Math.min(8, Math.floor(request.limit ?? 5)))
   const query = request.query?.trim().toLowerCase() ?? ''
-  // Tool calls outnumber messages in a working thread, so an unfiltered recall spends its excerpts
-  // echoing the caller's own tool JSON back at it. `types` asks the question that was meant.
-  const types = request.types?.length ? new Set<string>(request.types) : null
+  // Conversation is the useful default; callers can request tool evidence when needed.
+  const types = new Set<string>(request.types?.length ? request.types : ['user', 'assistant'])
   const result: ChatRecallResult = {
     threadId, checkpoint, matches: [], hasMore: false, nextBeforeItemId: null,
     throughItemId, trust: 'historical-data'
@@ -39,7 +38,7 @@ export function recallTranscript(
     const item = items[index]!
     if (item.id.length > 256) continue
     if (request.itemId && item.id !== request.itemId) continue
-    if (types && !types.has(item.type)) continue
+    if (!types.has(item.type)) continue
     const text = recallText(item)
     if (text === null) continue
     const match = query ? text.toLowerCase().indexOf(query) : 0

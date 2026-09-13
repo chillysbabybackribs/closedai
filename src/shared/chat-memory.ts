@@ -18,14 +18,34 @@ export type ChatMemoryCheckpoint = {
 }
 
 export type ChatRecallRequest = {
-  scope: 'current' | 'source'
-  /** Item kinds to search; every recallable kind when omitted or empty. */
+  scope: 'current' | 'source' | 'history'
+  /** Stable chat id from history discovery; history defaults to the most recent chat. */
+  chatId?: string
+  /** Item kinds to search; user/assistant messages when omitted or empty. */
   types?: readonly string[]
   query?: string
   itemId?: string
   offset?: number
   limit?: number
   beforeItemId?: string
+}
+
+export type ChatHistoryRequest = {
+  query?: string
+  beforeChatId?: string
+  limit?: number
+}
+
+export type ChatHistoryResult = {
+  chats: Array<{
+    chatId: string
+    threadId: string
+    title: string
+    preview: string
+    lastActivityAt: number
+  }>
+  nextBeforeChatId: string | null
+  trust: 'historical-data'
 }
 
 export type ChatRecallResult = {
