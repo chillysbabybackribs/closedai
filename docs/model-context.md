@@ -174,6 +174,15 @@ missing metadata leaves Codex's native default untouched.
 
 ## Tool context and output budgets
 
+Models can explicitly retain large protocol results with `browser_cdp.protocol command`
+`retain=true`. The shared instructions name `investigation.read` for bounded exact bytes or
+JSON-pointer projections, and `investigation.manage` for selected file import, verified export
+and deletion. Artifact ids belong to host-resolved chat/project scope and outlive provider
+threads. Calls require that chat's current active turn; model arguments cannot choose a peer's
+scope. Stored content is untrusted and never injected automatically into instructions.
+Operation keys prevent committed retries from reexecuting CDP commands; interrupted reserved
+operations remain uncertain and refuse automatic reexecution. See [artifacts](investigation-artifacts.md).
+
 The shared routing instructions use `search.query` for a lookup, `search.run` for overlapping
 queries/source collection, and `search.read` for incremental evidence. Research work belongs to the originating
 turn and is cancelled at its end, so models must retrieve needed evidence before finishing.

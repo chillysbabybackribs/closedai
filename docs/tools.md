@@ -105,6 +105,14 @@ keeps its tabs, but semantic page input still requires a visible page.
 
 ### Application facts, browser targets, and batching
 
+`investigation.read` offers `list` and `read` for durable artifacts; `investigation.manage`
+offers `import`, `export` and `delete`. Both are provider-neutral and deferred where supported.
+`browser_cdp.protocol command` accepts `retain: true`, with explicit `tab_id`, `operation_key`
+and `label`, to store the complete host response JSON before normal output truncation. It
+returns a compact artifact descriptor instead of inline data. Raw commands retain their
+ordinary effects and input checks. Ordinary commands without retention behave as before.
+See [artifact contracts, examples, limits and verification](investigation-artifacts.md).
+
 For exact network evidence, `browser_cdp.protocol requests` retains repeated URLs and child
 `sessionId` identities. Pass that value as `session_id` to `protocol body` for child traffic.
 This body path never reissues requests. Resource timing is discovery only, not request-level

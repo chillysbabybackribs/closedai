@@ -376,6 +376,15 @@ DOM selectors. The generated workspace index is a maintenance artifact; it is no
 
 ## State and retention
 
+Selected protocol results and files can be retained through the
+[durable artifact tools](investigation-artifacts.md). The private
+`investigation-artifacts/artifacts.sqlite` database stores bytes, metadata and operation
+receipts in a worker. Artifacts belong to the caller's stable chat id and project directory,
+survive navigation/model changes/restart, and are not removed by pane parking or hiding.
+Retention is explicit; normal tool results are not automatically archived. Export and deletion
+are available through the same tools. Archiving a chat disables its artifact access but keeps
+its retained data; there is no archive-chat cascade or cross-chat sharing in this increment.
+
 File operations use native provider tools. No custom workspace inspection tool, generated map
 injection, native-read interception, or automatic source-version check runs around a turn.
 Browser tools, credentials, and chat controls remain available through the shared registry.

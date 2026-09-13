@@ -22,7 +22,7 @@ export function investigationTools(service: ArtifactService): ToolNamespace {
           },
           {
             action: 'read', description: 'Read exact bytes as base64, up to 6000 bytes per page. offset and nextOffset count bytes; concatenate decoded bytes before UTF-8 decoding. Add pointer (RFC 6901; empty string selects all) for JSON projection: pages then contain JSON text and offsets count UTF-16 code units. Join data pages before JSON.parse. metadata=true instead projects the provenance envelope. No source is refetched.',
-            inputSchema: objectSchema({ id, offset: { type: 'integer', minimum: 0 }, pointer: { type: 'string', maxLength: 2000 }, metadata: { type: 'boolean' } }),
+            inputSchema: objectSchema({ id, offset: { type: 'integer', minimum: 0 }, pointer: { type: 'string', maxLength: 2000 }, metadata: { type: 'boolean' } }, ['id']),
             run: async (input, context) => jsonResult(await service.access(context, 'read', input))
           }
         ]
