@@ -10,14 +10,14 @@ export function appStateTool(app: () => AppCommandHost | null, ui: () => AppUiHo
   return defineTool({
     name: 'state',
     description:
-      'Compact app state without DOM: workspace, chat (model, thread, usage, last messages), browser, downloads, window, ui. Pass include for subsets only.',
+      'Compact app state without DOM: workspace (caller and selected pane), chat (your model, project, thread, usage, last messages), browser, downloads, window, ui. Pass include for subsets only.',
     inputSchema: objectSchema({
       include: {
         type: 'array', minItems: 1, uniqueItems: true,
         items: { type: 'string', enum: [...SECTIONS] },
         description: 'Sections to return; defaults to all of them.'
       },
-      pane_id: { type: 'string', minLength: 1, description: 'Chat pane for the chat section; defaults to the selected pane.' }
+      pane_id: { type: 'string', minLength: 1, description: 'Chat pane for the chat section; defaults to the calling pane, or selected pane when no caller is present.' }
     }),
     run: async (input, context) => {
       const include = sectionsFrom(input.include)

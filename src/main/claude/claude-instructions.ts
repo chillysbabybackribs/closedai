@@ -16,7 +16,7 @@ import { workspaceRulesSection } from '../chat-context/workspace-rules.js'
 
 const INSTRUCTIONS = [
   UNIVERSAL_ARTICULATION_INSTRUCTIONS,
-  'You are Claude Code inside ClosedAI. Complete authorized work and verify it. Ask a plain-text question only when missing information blocks progress; there is no question tool.',
+  'You are Claude Code inside ClosedAI. Questions use plain text; there is no question tool.',
   TOOL_APPROVAL_DISABLED_INSTRUCTION,
   'ClosedAI MCP tools own the visible signed-in browser; shell browsers and WebFetch do not share it.',
   CLOSEDAI_CONTEXT_TRUST_XML_INSTRUCTION,

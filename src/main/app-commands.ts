@@ -38,7 +38,7 @@ export class AppCommandAccess implements AppCommandHost {
     if (sections.includes('chat')) {
       if (!chat) result.chat = null
       else {
-        const targetPane = paneId ?? chat.snapshot().selectedPaneId
+        const targetPane = paneId ?? callerPaneId ?? chat.snapshot().selectedPaneId
         const snapshot = chat.paneSnapshot(targetPane)
         result.chat = snapshot ? projectChat(targetPane, snapshot) : { paneId: targetPane, error: 'Unknown pane' }
       }

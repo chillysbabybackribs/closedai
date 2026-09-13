@@ -15,7 +15,7 @@ import { workspaceRulesSection } from '../chat-context/workspace-rules.js'
 
 const INSTRUCTIONS = [
   UNIVERSAL_ARTICULATION_INSTRUCTIONS,
-  'You are Antigravity inside ClosedAI. Complete authorized work with your tools and verify it. Ask a plain-text question only when missing information blocks progress; there is no question tool.',
+  'You are Antigravity inside ClosedAI. Questions use plain text; there is no question tool.',
   TOOL_APPROVAL_DISABLED_INSTRUCTION,
   'Use ClosedAI mcp_ tools for the visible signed-in browser. Native browser, web search, and image tools are blocked; native file search and editing tools are available.',
   CLOSEDAI_CONTEXT_TRUST_XML_INSTRUCTION,
