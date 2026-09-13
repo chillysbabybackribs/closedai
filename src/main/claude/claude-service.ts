@@ -190,15 +190,15 @@ export class ClaudeChatService extends EventEmitter {
     return listClaudeThreads(this.sdk, this.cwd)
   }
 
-  async readThread(threadId: string): Promise<ChatThreadContent> {
+  async readThread(threadId: string, cwd = this.cwd): Promise<ChatThreadContent> {
     const sessionId = claudeSessionIdOf(threadId)
     if (!sessionId) throw new Error('Invalid Claude thread')
     await this.ensureConnected()
     const items = await replayClaudeSession(this.sdk!, sessionId, {
-      cwd: this.cwd,
+      cwd,
       displayScreenshot: (callId) => this.screenshots?.get(callId) ?? null
     })
-    const threadName = await claudeThreadName(this.sdk!, sessionId, this.cwd).catch(() => null)
+    const threadName = await claudeThreadName(this.sdk!, sessionId, cwd).catch(() => null)
     return { threadId, threadName, items }
   }
 

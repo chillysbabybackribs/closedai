@@ -38,7 +38,7 @@ export type ChatSurface = {
   /** Re-read the account's plan usage; providers that cannot report it do nothing. */
   refreshPlanUsage(): Promise<void>
   listThreads(): Promise<ChatThreadSummary[]>
-  readThread(threadId: string): Promise<ChatThreadContent>
+  readThread(threadId: string, cwd?: string): Promise<ChatThreadContent>
   newThread(): Promise<void>
   continueInNewThread(): Promise<void>
   openThread(threadId: string): Promise<void>
@@ -228,8 +228,8 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     return threads.sort((a, b) => b.updatedAt - a.updatedAt)
   }
 
-  readThread(threadId: string): Promise<ChatThreadContent> {
-    return this.providers[chatProviderOfId(threadId)].readThread(threadId)
+  readThread(threadId: string, cwd?: string): Promise<ChatThreadContent> {
+    return this.providers[chatProviderOfId(threadId)].readThread(threadId, cwd)
   }
 
   async newThread(): Promise<void> {

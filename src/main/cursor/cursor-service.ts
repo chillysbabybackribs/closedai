@@ -222,11 +222,11 @@ export class CursorChatService extends EventEmitter {
       }))
   }
 
-  async readThread(threadId: string): Promise<ChatThreadContent> {
+  async readThread(threadId: string, cwd = this.cwd): Promise<ChatThreadContent> {
     const sessionId = cursorSessionIdOf(threadId)
     if (!sessionId) throw new Error('Invalid Cursor thread')
     await this.ensureConnected()
-    const items = await this.session!.replay(sessionId)
+    const items = await this.session!.replay(sessionId, cwd)
     if (!items.length) throw new Error('Cursor did not replay any messages for that chat')
     return { threadId, threadName: null, items }
   }

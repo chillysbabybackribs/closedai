@@ -34,6 +34,8 @@ export type ChatHistoryRequest = {
   query?: string
   beforeChatId?: string
   limit?: number
+  /** Omit to discover across projects. */
+  cwd?: string
 }
 
 export type ChatHistoryResult = {
@@ -42,6 +44,7 @@ export type ChatHistoryResult = {
     threadId: string
     title: string
     preview: string
+    cwd: string
     lastActivityAt: number
   }>
   nextBeforeChatId: string | null
@@ -49,6 +52,8 @@ export type ChatHistoryResult = {
 }
 
 export type ChatRecallResult = {
+  /** Present for history recall, including when the caller used the most-recent default. */
+  chatId?: string
   threadId: string
   checkpoint: ChatMemoryCheckpoint | null
   matches: Array<{ itemId: string; turnId: string | null; role: string; text: string; offset: number; nextOffset: number | null }>

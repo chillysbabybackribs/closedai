@@ -10,7 +10,7 @@ type MemorySurface = Pick<ChatSurface, 'snapshot' | 'readThread'>
 /** The chat records memory reads and writes; the store, or a stand-in in tests. */
 export type MemoryRecords = {
   get(id: string): ChatRecord | undefined
-  list(cwd: string, projectPath?: string | null): ChatRecord[]
+  ids(): string[]
   update(id: string, patch: { checkpoint: ChatMemoryCheckpoint }): ChatRecord
 }
 
@@ -22,6 +22,7 @@ export class ChatMemory {
   history(caller: MemoryCaller, request: ChatHistoryRequest): ChatHistoryResult {
     const { pane } = this.resolve(caller)
     let records = this.historyRecords(pane)
+    if (request.cwd !== undefined) records = records.filter((record) => record.cwd === request.cwd)
     if (request.beforeChatId) {
       const index = records.findIndex((record) => record.id === request.beforeChatId)
       if (index < 0) throw new Error('History cursor is unavailable')
@@ -30,14 +31,14 @@ export class ChatMemory {
     const query = request.query?.trim().toLowerCase()
     if (query) records = records.filter((record) => {
       const notes = record.checkpoint?.threadId === record.threadId ? record.checkpoint.state : null
-      return [record.title, record.preview, notes ? JSON.stringify(notes) : ''].some((text) => text?.toLowerCase().includes(query))
+      return [record.title, record.preview, record.cwd, notes ? JSON.stringify(notes) : ''].some((text) => text?.toLowerCase().includes(query))
     })
     const limit = Math.max(1, Math.min(8, Math.floor(request.limit ?? 5)))
     const shown = records.slice(0, limit)
     return {
       chats: shown.map((record) => ({
         chatId: record.id, threadId: record.threadId!, title: (record.title ?? 'Untitled chat').slice(0, 120),
-        preview: record.preview.slice(0, 240), lastActivityAt: historyActivity(record)
+        preview: record.preview.slice(0, 240), cwd: record.cwd, lastActivityAt: historyActivity(record)
       })),
       nextBeforeChatId: records.length > shown.length ? shown.at(-1)!.id : null,
       trust: 'historical-data'
@@ -75,13 +76,13 @@ export class ChatMemory {
       const target = request.chatId
         ? this.historyRecords(pane).find((record) => record.id === request.chatId)
         : this.historyRecords(pane)[0]
-      if (!target?.threadId) throw new Error('No matching conversation is available in this project’s history')
-      const content = await this.read(target.id, target.threadId, surface)
+      if (!target?.threadId) throw new Error('No matching conversation is available in history')
+      const content = await this.read(target.id, target.threadId, surface, target.cwd)
       const resolved = this.resolve(caller)
       if (resolved.surface !== surface) throw new Error('Workspace changed while loading memory')
       const latest = this.historyRecords(resolved.pane).find((record) => record.id === target.id)
       if (latest?.threadId !== target.threadId) throw new Error('History chat changed while loading memory')
-      return recallTranscript(content.items, target.threadId, latest.checkpoint, request, null)
+      return { ...recallTranscript(content.items, target.threadId, latest.checkpoint, request, null), chatId: target.id }
     }
     if (request.scope !== 'source') throw new Error('Unknown recall scope')
     const source = pane.continuation
@@ -99,15 +100,15 @@ export class ChatMemory {
   }
 
   private historyRecords(pane: ChatRecord): ChatRecord[] {
-    return this.records.list(pane.cwd, pane.projectPath)
-      .filter((record) => record.id !== pane.id && record.threadId && !record.archived)
+    return this.records.ids().map((id) => this.records.get(id))
+      .filter((record): record is ChatRecord => !!record && record.id !== pane.id && !!record.threadId && !record.archived)
       .sort((a, b) => historyActivity(b) - historyActivity(a) || a.id.localeCompare(b.id))
   }
 
-  private async read(paneId: string | null | undefined, threadId: string, surface: MemorySurface) {
+  private async read(paneId: string | null | undefined, threadId: string, surface: MemorySurface, cwd?: string) {
     const target = paneId ? this.surface(paneId) : null
     const live = target?.snapshot({ limit: 0 }).threadId === threadId ? target.snapshot() : null
-    const content = live?.items.length ? live : await surface.readThread(threadId)
+    const content = live?.items.length ? live : await surface.readThread(threadId, cwd)
     if (content.threadId !== threadId) throw new Error('Provider returned a different history thread')
     return content
   }

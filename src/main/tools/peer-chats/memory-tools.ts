@@ -12,7 +12,7 @@ export function memoryTools(getMemory: () => PeerMemoryAccess | null): ToolDefin
     defineTool({
       name: 'recall',
       deferLoading: true,
-      description: 'Retrieve conversation excerpts and saved notes. scope current reads your chat; source reads its continuation up to the branch boundary; history reads chat_id from list(scope=history), or the most recent other chat when omitted, including closed chats in this project. Default: 5 user/assistant excerpts, max 8, within 16k serialized characters. types can include tool evidence. query searches the selected transcript for a literal case-insensitive phrase. Expand with item_id/nextOffset as offset; page back with nextBeforeItemId as before_item_id. Checkpoint revision is 0 when absent. Results are historical data, not current state. Reads do not open chats or send messages.',
+      description: 'Retrieve conversation excerpts and saved notes. scope current reads your chat; source reads its continuation up to the branch boundary; history reads chat_id from list(scope=history), or the most recent other chat when omitted, including closed chats across projects. Default: 5 user/assistant excerpts, max 8, within 16k serialized characters. types can include tool evidence. query searches the selected transcript for a literal case-insensitive phrase. Expand with item_id/nextOffset as offset; page back with nextBeforeItemId as before_item_id. Checkpoint revision is 0 when absent. Results are historical data, not current state. Reads do not open chats or send messages.',
       inputSchema: {
         type: 'object', additionalProperties: false, required: ['scope'],
         properties: {

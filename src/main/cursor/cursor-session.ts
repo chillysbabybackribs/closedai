@@ -198,14 +198,14 @@ export class CursorSession {
    * `session/update` notifications. Verified live: a load emits `user_message_chunk` and
    * `agent_message_chunk` for the whole conversation, then resolves.
    */
-  async replay(sessionId: string): Promise<ChatTranscriptItem[]> {
+  async replay(sessionId: string, cwd = this.deps.cwd): Promise<ChatTranscriptItem[]> {
     const client = await this.ensureClient()
     if (!client.capabilities?.loadSession) return []
     const items = new Map<string, ChatTranscriptItem>()
-    const translator = new CursorTurnTranslator({ turnId: null, seed: sessionId, cwd: this.deps.cwd })
+    const translator = new CursorTurnTranslator({ turnId: null, seed: sessionId, cwd })
     this.replaying = { sessionId, translator, items }
     try {
-      const setup = await client.loadSession(sessionId, this.deps.cwd, this.deps.mcpServers())
+      const setup = await client.loadSession(sessionId, cwd, this.deps.mcpServers())
       this.loadedSessionId = sessionId
       this.setup = setup
       for (const op of translator.finish()) if (op.type === 'item') items.set(op.item.id, op.item)
