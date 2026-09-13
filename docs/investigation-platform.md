@@ -179,8 +179,15 @@ body reads accept the listed child session; URL timing no longer supplies guesse
 fields; UTF-8 text body byte counts are corrected. Shared model guidance exposes advanced
 tools for applicable tasks. Installed runtime verification remains pending.
 
-Verification: `npm run typecheck` and `npm run hygiene` passed. The focused CDP network,
-host and tool tests passed 32/32 using the repository's Node transform-types test runner.
+Verification: `npm run typecheck`, `npm run hygiene` and `npm run map:check` passed. The focused
+CDP network, host and tool tests passed 32/32; the session-network routing regression passed
+1/1 (33 total), using these commands:
+
+```sh
+node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs --test src/main/cdp/cdp-network.test.ts src/main/cdp/browser-cdp-access.test.ts src/main/tools/cdp/cdp.test.ts
+node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs --test src/main/browser-network-access.test.ts
+```
+
 These are offline tests of identity, routing, output and existing CDP behavior; they do not
 establish native Chromium capture freshness or cross-provider model performance.
 
