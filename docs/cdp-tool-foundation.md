@@ -69,8 +69,6 @@ after the corresponding enable command. Each response returns `connectionId`, `o
 The buffer holds the newest 1,000 events. Oversized event parameters and model-facing command
 results are explicitly truncated. These are resource bounds, not capability restrictions.
 
-## Agent page wrapper
-
 ## Captured network evidence
 
 `protocol requests` preserves repeated URLs as separate captured requests. Event identities
@@ -84,6 +82,8 @@ to that target. It never reissues a network request. Enable Network explicitly i
 session to collect its events; the listing enables capture in the root only. These handles
 remain transient, and redirects sharing a request id describe the latest hop. Text byte counts
 use UTF-8. No durable body archive or exact mapping to Electron webRequest ids is promised.
+
+## Agent page wrapper
 
 ### `inspect_page`
 

@@ -179,6 +179,11 @@ body reads accept the listed child session; URL timing no longer supplies guesse
 fields; UTF-8 text body byte counts are corrected. Shared model guidance exposes advanced
 tools for applicable tasks. Installed runtime verification remains pending.
 
+Verification: `npm run typecheck` and `npm run hygiene` passed. The focused CDP network,
+host and tool tests passed 32/32 using the repository's Node transform-types test runner.
+These are offline tests of identity, routing, output and existing CDP behavior; they do not
+establish native Chromium capture freshness or cross-provider model performance.
+
 This does not implement durable artifacts, coherent capture, laboratories, the application
 graph or persistent execution. Session-level `embedded_browser.network.body` retains its
 legacy URL/method association and replay fallback; use exact CDP body reads for this slice.
