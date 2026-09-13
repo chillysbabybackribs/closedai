@@ -2,6 +2,10 @@ import { readFile } from 'node:fs/promises'
 import { writeAtomic } from './atomic-write.js'
 import type { BrowserTabInfo } from '../shared/types.js'
 import { TAB_ID_PATTERN } from '../shared/browser-tabs.js'
+import {
+  normalizeNavigationStack,
+  type PersistedNavigationStack
+} from './browser-navigation-stack.js'
 
 // Durable tab strip: which pages were open, in what order, and which one the user was
 // looking at. The persist:browser partition already carries cookies/localStorage across
@@ -21,6 +25,13 @@ export type PersistedTab = {
    * the same page. Absent in files written before ids were persisted.
    */
   id?: string
+  /** Back/forward stack from `navigationHistory.getAllEntries()`, when more than one entry. */
+  stack?: PersistedNavigationStack
+}
+
+/** Tab strip metadata plus optional navigation stack for session persistence. */
+export type TabPersistRecord = BrowserTabInfo & {
+  stack?: PersistedNavigationStack | null
 }
 
 export type RestoredTabSession = {
@@ -74,7 +85,7 @@ export class BrowserTabSessionStore {
 
   // Fed straight from BrowserService's 'tabs' event, so the persisted record is always the
   // live strip — no separate bookkeeping to drift out of sync.
-  save(tabs: BrowserTabInfo[]): void {
+  save(tabs: TabPersistRecord[]): void {
     if (this.closed) return
     const next = selectPersistableTabs(tabs)
     // The cap is a real loss of state; say so rather than let a short restore look complete.
@@ -126,17 +137,19 @@ export class BrowserTabSessionStore {
 // addressable http(s) pages restore meaningfully — about:blank, file://, devtools and
 // friends would come back as empty shells. Dropping them renumbers the strip, so the
 // active index is computed against the kept list, not the original one.
-export function selectPersistableTabs(tabs: BrowserTabInfo[]): RestoredTabSession & { droppedToCap: number } {
+export function selectPersistableTabs(tabs: TabPersistRecord[]): RestoredTabSession & { droppedToCap: number } {
   const kept: PersistedTab[] = []
   let activeIndex = 0
   for (const tab of tabs) {
     if (!isRestorableUrl(tab.url)) continue
     if (tab.active) activeIndex = kept.length
+    const stack = normalizeNavigationStack(tab.stack ?? null)
     kept.push({
       url: tab.url,
       title: (tab.title ?? '').slice(0, MAX_TITLE_LENGTH),
       ...(normalizeCustomTitle(tab.customTitle) ? { customTitle: normalizeCustomTitle(tab.customTitle) } : {}),
-      ...(TAB_ID_PATTERN.test(tab.id) ? { id: tab.id } : {})
+      ...(TAB_ID_PATTERN.test(tab.id) ? { id: tab.id } : {}),
+      ...(stack ? { stack } : {})
     })
   }
   if (kept.length <= MAX_RESTORED_TABS) return { tabs: kept, activeIndex, droppedToCap: 0 }
@@ -179,9 +192,25 @@ function sameSession(current: PersistedTabSession, next: RestoredTabSession): bo
       tab.url === next.tabs[index].url &&
       tab.title === next.tabs[index].title &&
       (tab.customTitle ?? null) === (next.tabs[index].customTitle ?? null) &&
-      (tab.id ?? null) === (next.tabs[index].id ?? null)
+      (tab.id ?? null) === (next.tabs[index].id ?? null) &&
+      navigationStacksEqual(tab.stack, next.tabs[index].stack)
     ))
   )
+}
+
+function navigationStacksEqual(
+  left: PersistedNavigationStack | undefined,
+  right: PersistedNavigationStack | undefined
+): boolean {
+  if (!left && !right) return true
+  if (!left || !right) return false
+  if (left.index !== right.index || left.entries.length !== right.entries.length) return false
+  return left.entries.every((entry, index) => {
+    const other = right.entries[index]
+    return entry.url === other.url &&
+      entry.title === other.title &&
+      (entry.pageState ?? null) === (other.pageState ?? null)
+  })
 }
 
 type MaybePersisted = { version?: unknown; tabs?: unknown; activeIndex?: unknown }
@@ -217,7 +246,14 @@ function normalizeTab(value: unknown): PersistedTab | null {
   const title = typeof tab.title === 'string' ? tab.title.slice(0, MAX_TITLE_LENGTH) : ''
   const customTitle = normalizeCustomTitle(tab.customTitle)
   const id = typeof tab.id === 'string' && TAB_ID_PATTERN.test(tab.id) ? tab.id : null
-  return { url: tab.url, title, ...(customTitle ? { customTitle } : {}), ...(id ? { id } : {}) }
+  const stack = normalizeNavigationStack((tab as Partial<PersistedTab>).stack)
+  return {
+    url: tab.url,
+    title,
+    ...(customTitle ? { customTitle } : {}),
+    ...(id ? { id } : {}),
+    ...(stack ? { stack } : {})
+  }
 }
 
 function normalizeCustomTitle(title: unknown): string | null {

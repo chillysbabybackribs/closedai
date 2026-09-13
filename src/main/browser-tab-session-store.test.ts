@@ -183,6 +183,28 @@ describe('BrowserTabSessionStore', () => {
     assert.equal(store.restored(), null)
   })
 
+  it('persists a navigation stack when the strip has more than one entry', () => {
+    const session = selectPersistableTabs([
+      {
+        ...tab('https://b.example/', { title: 'B', active: true }),
+        stack: {
+          entries: [
+            { url: 'https://a.example/', title: 'A' },
+            { url: 'https://b.example/', title: 'B', pageState: 'scroll=1' }
+          ],
+          index: 1
+        }
+      }
+    ])
+    assert.deepEqual(session.tabs[0]?.stack, {
+      entries: [
+        { url: 'https://a.example/', title: 'A' },
+        { url: 'https://b.example/', title: 'B', pageState: 'scroll=1' }
+      ],
+      index: 1
+    })
+  })
+
   it('round-trips the strip across a restart', async () => {
     const filePath = await sessionFile()
     const store = await BrowserTabSessionStore.open(filePath)

@@ -22,6 +22,10 @@ import {
   pageBackgroundColor
 } from './browser-page-background.js'
 import { browserOccludedBounds, refreshVisibleBrowserSurface } from './browser-surface-visibility.js'
+import {
+  exportNavigationStack,
+  type PersistedNavigationStack
+} from './browser-navigation-stack.js'
 export { HOME_URL, normalizeUrl, PARTITION } from './browser-url.js'
 
 // One tab = one WebContentsView plus its navigation state. BrowserService owns the collection
@@ -121,9 +125,41 @@ export class BrowserTab extends EventEmitter {
     this.attachEvents()
   }
 
+  exportNavigationStack(): PersistedNavigationStack | null {
+    if (!this.liveness.alive || this.view.webContents.isDestroyed()) return null
+    const history = this.view.webContents.navigationHistory
+    return exportNavigationStack(history.getAllEntries(), history.getActiveIndex())
+  }
+
   // The first real navigation IS the bootstrap; no about:blank preload.
-  start(url: string, options?: LoadURLOptions): Promise<void> {
+  start(url: string, options?: LoadURLOptions, restoredStack?: PersistedNavigationStack | null): Promise<void> {
+    if (restoredStack && restoredStack.entries.length > 1) {
+      return this.restoreNavigationStack(restoredStack, url, options)
+    }
     return this.navigate(url, options)
+  }
+
+  private async restoreNavigationStack(
+    stack: PersistedNavigationStack,
+    fallbackUrl: string,
+    options?: LoadURLOptions
+  ): Promise<void> {
+    this.assertAlive()
+    const active = stack.entries[stack.index] ?? stack.entries.at(-1)!
+    this.navigationFailures.begin(active.url, this.state, this.liveContents?.getURL())
+    this.prepareBaseColorFor(active.url)
+    try {
+      const load = this.view.webContents.navigationHistory.restore({
+        entries: stack.entries,
+        index: stack.index
+      })
+      load.catch(() => {})
+      await waitForUsableLoad(this.view.webContents, load, undefined, undefined, () => this.framePainted())
+      this.refreshVisibleSurface()
+    } catch (error) {
+      if (isAbortedNavigation(error)) return
+      await this.navigate(fallbackUrl, options)
+    }
   }
 
   getState(): BrowserState {

@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, Menu, nativeTheme, safeStorage, session } 
 import { mkdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { configureChromiumStartup } from './chromium-startup-policy.js'
+import { logGpuFeatureStatus } from './gpu-startup-diagnostics.js'
 import { claimProfileInstance } from './app-single-instance.js'
 import { browserUserAgentFallback } from './browser-identity.js'
 import { createMainWindow } from './main-window.js'
@@ -143,6 +144,7 @@ if (!claimProfileInstance(app, { profile: userData(), checkout: app.getAppPath()
 }
 
 async function main(): Promise<void> {
+  logGpuFeatureStatus()
   await mkdir(userData(), { recursive: true })
   ;[browserHistory, browserTabSession, settings, chatStore] = await Promise.all([
     BrowserHistoryStore.open(join(userData(), 'browser-history.json')),
@@ -388,7 +390,7 @@ function wireBrowserEvents(service: BrowserService): void {
     sendToMainWindow(IPC.event.browserTabs, tabs)
     // Persist the strip on every change rather than only at quit: a crash never reaches a
     // quit hook, and the point is that the tabs come back regardless of how the app died.
-    browserTabSession?.save(tabs)
+    browserTabSession?.save(service.persistTabs())
   })
   service.on('error', (error: unknown) => {
     console.warn('[browser]', error instanceof Error ? error.message : error)

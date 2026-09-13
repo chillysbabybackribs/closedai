@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events'
 import { join } from 'node:path'
 import type { BrowserHistory } from './browser-history-store.js'
 import type { BrowserBounds, BrowserShot, BrowserState, BrowserTabInfo } from '../shared/types.js'
+import type { TabPersistRecord } from './browser-tab-session-store.js'
 import { BrowserTab, HOME_URL, PARTITION } from './browser-tab.js'
 import { PersistentSessionCookies } from './persistent-session-cookies.js'
 import { BrowserObservers } from './browser-network/observers.js'
@@ -133,12 +134,12 @@ export class BrowserService extends EventEmitter {
       if (id) seen.add(id)
       const tab = this.createTab(false, undefined, id)
       tab.seedRestoredState(record.url, record.title, record.customTitle)
-      return { tab, url: record.url }
+      return { tab, record }
     })
     this.setActive(tabs[plan.activeIndex].tab.id)
-    void allSettledBounded(plan.loadOrder.map((index) => tabs[index]), RESTORE_LOAD_CONCURRENCY, async ({ tab, url }) => {
+    void allSettledBounded(plan.loadOrder.map((index) => tabs[index]), RESTORE_LOAD_CONCURRENCY, async ({ tab, record }) => {
       if (!this.tabs.includes(tab)) return
-      await tab.start(url)
+      await tab.start(record.url, undefined, record.stack)
     }).then((results) => {
       for (const result of results) {
         if (result.status === 'rejected') this.emit('error', result.reason)
@@ -280,6 +281,11 @@ export class BrowserService extends EventEmitter {
   }
 
   private tabInfos(): BrowserTabInfo[] {
+    return this.persistTabs().map(({ stack: _stack, ...info }) => info)
+  }
+
+  /** Strip metadata plus navigation stacks for session persistence. */
+  persistTabs(): TabPersistRecord[] {
     // `pos` is derived here and nowhere else: this.tabs IS the strip order.
     return this.tabs.map((tab, index) => {
       const state = tab.getState()
@@ -291,7 +297,8 @@ export class BrowserService extends EventEmitter {
         url: state.url,
         favicon: tab.getFavicon(),
         isLoading: state.isLoading,
-        active: tab.id === this.activeId
+        active: tab.id === this.activeId,
+        stack: tab.exportNavigationStack()
       }
     })
   }

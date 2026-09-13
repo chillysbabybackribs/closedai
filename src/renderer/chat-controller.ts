@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, type Dispatch } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useReducer, type Dispatch } from 'react'
 import type { ChatAttachment, ChatSnapshot } from '../shared/chat.js'
 import type { ChatContinuationSource, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../shared/chat-peers.js'
 import { coalesceChatWorkspaceEvents, initialChatRendererState, reduceChatRendererEvent, type ChatWorkspaceAction } from './chat-state.js'
@@ -47,7 +47,10 @@ export function useChatController(enabled = true) {
       frame = null
       const batch = coalesceChatWorkspaceEvents(queue)
       queue = []
-      for (const event of batch) dispatch(event)
+      // Streaming token batches are non-urgent UI work; keep composer input and scrolling smooth.
+      startTransition(() => {
+        for (const event of batch) dispatch(event)
+      })
     }
     const enqueue = (event: ChatWorkspaceEvent): void => {
       if (!active) return

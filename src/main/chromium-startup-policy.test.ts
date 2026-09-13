@@ -15,6 +15,7 @@ function configure(platform: NodeJS.Platform, env: NodeJS.ProcessEnv = {}) {
 test('Linux keeps GPU compositing but forces broken video decode onto software', () => {
   const env: NodeJS.ProcessEnv = {}
   assert.deepEqual(configure('linux', env), [
+    ['enable-features', 'SpareRendererForSitePerProcess'],
     ['xdg-portal-required-version', '999'],
     ['no-sandbox', undefined],
     ['disable-accelerated-video-decode', undefined]
@@ -24,13 +25,16 @@ test('Linux keeps GPU compositing but forces broken video decode onto software',
 
 test('Linux hardware video decode has an explicit verified-machine escape hatch', () => {
   assert.deepEqual(configure('linux', { CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE: '1' }), [
+    ['enable-features', 'SpareRendererForSitePerProcess'],
     ['xdg-portal-required-version', '999'],
     ['no-sandbox', undefined]
   ])
 })
 
-test('non-Linux startup is unchanged', () => {
+test('non-Linux startup enables the spare renderer only', () => {
   const env: NodeJS.ProcessEnv = {}
-  assert.deepEqual(configure('darwin', env), [])
+  assert.deepEqual(configure('darwin', env), [
+    ['enable-features', 'SpareRendererForSitePerProcess']
+  ])
   assert.equal(env.GTK_USE_PORTAL, undefined)
 })

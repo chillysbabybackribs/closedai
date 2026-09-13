@@ -44,6 +44,9 @@ export function createMainWindow(actions: MainWindowActions): BrowserWindow {
     backgroundColor: '#000000',
     title: 'closedai',
     frame: false,
+    show: false,
+    name: 'main',
+    windowStatePersistence: true,
     ...(icon ? { icon } : {}),
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.mjs'),
@@ -53,14 +56,11 @@ export function createMainWindow(actions: MainWindowActions): BrowserWindow {
     }
   })
 
-  // Linux taskbars read `_NET_WM_ICON`. Frameless windows often leave that empty when the
-  // constructor `icon` option is the only call — set it again once the window is mapped.
-  if (icon) {
-    window.setIcon(icon)
-    window.once('ready-to-show', () => {
-      if (!window.isDestroyed()) window.setIcon(icon)
-    })
-  }
+  window.once('ready-to-show', () => {
+    if (window.isDestroyed()) return
+    if (icon) window.setIcon(icon)
+    window.show()
+  })
 
   installAppContextMenu(window.webContents, Menu, actions)
   return window
