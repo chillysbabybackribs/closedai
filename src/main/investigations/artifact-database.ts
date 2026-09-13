@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite'
 import { createHash, randomUUID } from 'node:crypto'
-import { chmodSync, closeSync, constants, fstatSync, fsyncSync, linkSync, lstatSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, closeSync, constants, fstatSync, fsyncSync, linkSync, lstatSync, mkdirSync, openSync, readSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute } from 'node:path'
 import type { ArtifactDescriptor, ArtifactLimits, ArtifactRead, ArtifactScope } from '../../shared/investigation-artifacts.js'
 import { DEFAULT_ARTIFACT_LIMITS } from '../../shared/investigation-artifacts.js'
@@ -145,7 +145,15 @@ export class ArtifactDatabase {
     try {
       const before = fstatSync(fd)
       if (!before.isFile() || before.size > this.limits.artifactBytes) throw new Error('Import requires a regular file within the artifact byte quota')
-      const bytes = readFileSync(fd)
+      const buffer = Buffer.alloc(before.size + 1)
+      let length = 0
+      while (length < buffer.length) {
+        const read = readSync(fd, buffer, length, buffer.length - length, null)
+        if (!read) break
+        length += read
+      }
+      if (length !== before.size) throw new Error('Import file changed during collection')
+      const bytes = buffer.subarray(0, length)
       const after = fstatSync(fd)
       if (before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs) throw new Error('Import file changed during collection')
       return this.complete(scope, { ...input, bytes, source: { kind: 'file', path, modifiedAt: before.mtime.toISOString() } }, flag)
@@ -173,8 +181,13 @@ export class ArtifactDatabase {
     const limit = integer(input.limit, 20, 1, 20)
     const after = typeof input.after === 'string' ? input.after : ''
     const rows = this.db.prepare('SELECT * FROM artifacts WHERE scope=? AND id>? ORDER BY id LIMIT ?').all(scope, after, limit + 1)
-    const artifacts = rows.slice(0, limit).map((row) => descriptor(row as unknown as Row))
-    return { artifacts, nextAfter: rows.length > limit ? artifacts.at(-1)!.id : null, limits: this.limits, integrity: 'not-checked; read/export verifies hashes' }
+    const artifacts: ArtifactDescriptor[] = []
+    for (const row of rows.slice(0, limit)) {
+      const next = descriptor(row as unknown as Row)
+      if (JSON.stringify([...artifacts, next], null, 2).length > 12_000) break
+      artifacts.push(next)
+    }
+    return { artifacts, nextAfter: rows.length > artifacts.length ? artifacts.at(-1)!.id : null, limits: this.limits, integrity: 'not-checked; read/export verifies hashes' }
   }
 
   private read(scope: string, input: Record<string, unknown>): ArtifactRead {
