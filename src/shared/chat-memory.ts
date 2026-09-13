@@ -61,5 +61,7 @@ export type ChatRecallResult = {
   nextBeforeItemId: string | null
   /** The explicit bound used when recalling a continuation's source. */
   throughItemId: string | null
+  /** Latest rotation epoch when source recall runs on a chat with session rotations. */
+  sessionRotationEpoch?: number
   trust: 'historical-data'
 }

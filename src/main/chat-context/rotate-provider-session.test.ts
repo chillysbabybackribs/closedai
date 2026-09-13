@@ -38,7 +38,7 @@ test('planProviderRotation builds continuation metadata and increments epoch', (
   assert.equal(planned.rotation.epoch, 2)
   assert.equal(planned.continuation.sourceThreadId, 'thread-a')
   assert.equal(planned.continuation.sourceThroughItemId, 'a-1')
-  assert.match(planned.continuation.handoff ?? '', /compacted/i)
+  assert.match(planned.continuation.handoff ?? '', /rotated to reduce context/i)
 })
 
 test('applyProviderRotation persists continuation and rotation without clearing transcript items', async () => {

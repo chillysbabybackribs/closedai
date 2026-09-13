@@ -384,7 +384,9 @@ export class ClaudeChatService extends EventEmitter {
         this.rotator.reset()
         await this.settings.set({ chatClaudeSessionId: null })
         this.emitEvent({ type: 'thread', threadId: null, threadName: this.threadName })
-      }, this.contextUsage)
+      }, this.contextUsage, {
+        prefetchSource: (threadId) => { void this.readThread(threadId).catch(() => undefined) }
+      })
     } finally {
       this.rotator.complete()
     }

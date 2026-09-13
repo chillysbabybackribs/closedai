@@ -166,6 +166,27 @@ test('history discovery stays within its serialized output budget', () => {
   assert.equal(first.nextBeforeChatId, first.chats.at(-1)!.chatId)
 })
 
+test('source recall on a self-rotated pane uses the live transcript through the rotation boundary', async () => {
+  const h = harness()
+  h.snapshot.items = [
+    { type: 'user', id: 'u1', turnId: 't', text: 'Ask' },
+    { type: 'tool', id: 'tool1', turnId: 't', label: 'grep', detail: 'search', status: 'completed', output: 'found secret-output' },
+    { type: 'user', id: 'u2', turnId: 't2', text: 'After rotation' }
+  ]
+  h.snapshot.threadId = 'new-thread-after-rotation'
+  h.setRead(async () => ({ threadId: 'old-thread', threadName: null, items: [
+    { type: 'user', id: 'u1', turnId: 't', text: 'Ask' }
+  ] }))
+  h.source({ sourcePaneId: 'p', sourceThreadId: 'old-thread', sourceThroughItemId: 'tool1' })
+  h.store.update('p', { sessionRotations: [{ epoch: 1, sourceThroughItemId: 'tool1', providerThreadId: 'old-thread', at: 1 }] })
+  const rotatedCaller = { ...caller, threadId: h.snapshot.threadId }
+  const result = await h.memory.recall(rotatedCaller, { scope: 'source', types: ['tool'], query: 'secret' })
+  assert.equal(h.reads(), 0, 'self-rotation should not hit provider readThread')
+  assert.match(result.matches[0]!.text, /secret-output/)
+  assert.equal(result.throughItemId, 'tool1')
+  assert.equal(result.sessionRotationEpoch, 1)
+})
+
 test('recalls a closed continuation source without opening or changing the current conversation', async () => {
   const h = harness()
   h.source()

@@ -107,3 +107,11 @@ test('large checkpoint, title, and paths cannot crowd the handoff past its budge
   }, user('u2', 'The latest task')]
   assert.ok(buildThreadHandoff(items, 'title'.repeat(10_000), checkpoint)!.text.length <= 12_000)
 })
+
+test('rotation seeds instruct recall for omitted tool evidence', () => {
+  const items = [user('u1', 'Keep going'), answer('a1', 't1', 'Done.')]
+  const digest = buildThreadHandoff(items, 'Demo', null, { framing: 'rotation' })!
+  assert.match(digest.text, /rotated to reduce context/)
+  assert.match(digest.text, /peer_chats\.recall with scope source/)
+  assert.doesNotMatch(digest.text, /Handoff from the previous chat/)
+})

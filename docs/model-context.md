@@ -132,7 +132,10 @@ not full-text or semantic search. A stable chat-id cursor pages older entries. E
 references take precedence over recency in the model's retrieval guidance.
 
 `peer_chats.recall` returns bounded excerpts and checkpoint state. `current` reads the caller's
-transcript; `source` reads its direct continuation capped at the saved branch boundary. `history`
+transcript; `source` reads its direct continuation capped at the saved branch boundary. After
+session rotation on the same pane, `source` prefers the live in-memory transcript through that
+boundary so omitted tool output stays reachable even though the provider thread id changed.
+`history`
 reads a discovered `chat_id`, or defaults to the most recent other conversation. It uses an available
 live transcript or the existing provider reader with the source project directory; no chat is
 selected and no message is sent. The result identifies the selected history chat. User/assistant

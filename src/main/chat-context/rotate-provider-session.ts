@@ -36,7 +36,7 @@ export function planProviderRotation(input: PlanProviderRotationInput): PlannedP
   const sourceThreadId = input.threadId ?? input.existingContinuation?.sourceThreadId ?? null
   if (!sourceThreadId) return null
   const checkpoint = applicableCheckpoint(input.items, sourceThreadId, input.checkpoint)
-  const handoff = buildThreadHandoff([...input.items], input.threadName, checkpoint, { framing: 'compaction' })
+  const handoff = buildThreadHandoff([...input.items], input.threadName, checkpoint, { framing: 'rotation' })
   if (!handoff) return null
   const sourceThroughItemId = input.items.at(-1)?.id ?? null
   const source: ThreadHandoffSource = {
@@ -96,7 +96,8 @@ export async function applyProviderRotation(
   settings: RotationSettingsAccess,
   input: Omit<PlanProviderRotationInput, 'checkpoint' | 'existingContinuation' | 'existingRotations'>,
   releaseThread: () => Promise<void>,
-  usage: ContextUsage | null
+  usage: ContextUsage | null,
+  options?: { prefetchSource?: (threadId: string) => void }
 ): Promise<boolean> {
   const planned = planProviderRotation({
     ...input,
@@ -111,5 +112,7 @@ export async function applyProviderRotation(
     chatSessionRotations: planned.rotations
   })
   traceSessionRotated(input.paneId, input.provider, planned.rotation, usage)
+  const sourceThreadId = planned.continuation.sourceThreadId
+  if (sourceThreadId) options?.prefetchSource?.(sourceThreadId)
   return true
 }

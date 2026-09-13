@@ -94,14 +94,16 @@ export class ChatMemory {
     if (!source?.sourceThreadId || !source.sourceThroughItemId) {
       throw new Error('This chat has no bounded continuation source; older continuations cannot be safely recalled')
     }
-    const content = await this.read(source.sourcePaneId, source.sourceThreadId, surface)
+    const content = await this.readSource(source, surface, pane)
     const resolved = this.resolve(caller)
     if (resolved.surface !== surface) throw new Error('Workspace changed while loading memory')
     const latest = resolved.pane.continuation
     if (latest?.sourceThreadId !== source.sourceThreadId || latest.sourceThroughItemId !== source.sourceThroughItemId) {
       throw new Error('Continuation changed while loading its source')
     }
-    return recallTranscript(content.items, source.sourceThreadId, source.checkpoint ?? null, request, source.sourceThroughItemId)
+    const result = recallTranscript(content.items, source.sourceThreadId, source.checkpoint ?? null, request, source.sourceThroughItemId)
+    const epoch = resolved.pane.sessionRotations?.at(-1)?.epoch
+    return epoch === undefined ? result : { ...result, sessionRotationEpoch: epoch }
   }
 
   private historyRecords(pane: ChatRecord): ChatRecord[] {
@@ -109,6 +111,15 @@ export class ChatMemory {
       .filter((record): record is ChatRecord => !!record && record.id !== pane.id && !!record.threadId && !record.archived)
       .filter((record) => record.messageSentAt !== null || record.lastTurnEndedAt !== null || record.preview.trim() || record.continuation)
       .sort((a, b) => historyActivity(b) - historyActivity(a) || a.id.localeCompare(b.id))
+  }
+
+  /** Self-rotated chats keep the full transcript in memory while the provider thread id changes. */
+  private async readSource(source: NonNullable<ChatRecord['continuation']>, surface: MemorySurface, pane: ChatRecord) {
+    if (source.sourcePaneId === pane.id) {
+      const live = surface.snapshot()
+      if (live.items.length) return { threadId: source.sourceThreadId!, threadName: live.threadName, items: live.items }
+    }
+    return this.read(source.sourcePaneId, source.sourceThreadId!, surface)
   }
 
   private async read(paneId: string | null | undefined, threadId: string, surface: MemorySurface, cwd?: string) {

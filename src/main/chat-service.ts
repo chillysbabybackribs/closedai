@@ -441,7 +441,9 @@ export class ChatService extends EventEmitter {
         this.rotator.reset()
         await this.settings.set({ chatThreadId: null })
         this.emitEvent({ type: 'thread', threadId: null, threadName: this.threadName })
-      }, this.contextManager().current)
+      }, this.contextManager().current, {
+        prefetchSource: (threadId) => { void this.readThread(threadId).catch(() => undefined) }
+      })
     } finally {
       this.rotator.complete()
     }
