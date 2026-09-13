@@ -24,6 +24,13 @@ export type TracePerformance = {
   nonToolDurationMs: number | null
   transcriptEvents: number
   rawEvents: number
+  ipc: {
+    receivedEvents: number
+    sentEvents: number
+    receivedDeltas: number
+    sentDeltas: number
+    deltaCharacters: number
+  } | null
 }
 
 type RecordValue = Record<string, unknown>
@@ -42,9 +49,11 @@ export function summarizeTracePerformance(
   let transcriptEvents = 0
   let rawEvents = 0
   let response: TracePerformance['response'] = null
+  let ipc: TracePerformance['ipc'] = null
 
   for (const entry of entries) {
     if (entry.label === 'response.first_text') response ??= responseTiming(entry.detail)
+    if (entry.label === 'chat.ipc') ipc = ipcTiming(entry.detail) ?? ipc
     if (entry.kind === 'event') transcriptEvents += 1
     if (entry.kind === 'raw') rawEvents += 1
     if (entry.kind === 'tool' && entry.label === 'tool.call') toolCalls += 1
@@ -83,8 +92,17 @@ export function summarizeTracePerformance(
     toolDurationMs,
     nonToolDurationMs: durationMs === null ? null : Math.max(0, durationMs - toolDurationMs),
     transcriptEvents,
-    rawEvents
+    rawEvents,
+    ipc
   }
+}
+
+function ipcTiming(detail: string): TracePerformance['ipc'] {
+  const value = parseRecord(detail)
+  if (!value) return null
+  const fields = ['receivedEvents', 'sentEvents', 'receivedDeltas', 'sentDeltas', 'deltaCharacters'] as const
+  if (fields.some((field) => !Number.isInteger(value[field]) || (value[field] as number) < 0)) return null
+  return Object.fromEntries(fields.map((field) => [field, value[field]])) as NonNullable<TracePerformance['ipc']>
 }
 
 function responseTiming(detail: string): TracePerformance['response'] {

@@ -12,6 +12,8 @@ import { ResponseLatency } from './response-latency.js'
 export const MAX_ENTRIES = 4_000
 export const MAX_TOTAL_CHARS = 24_000_000
 export const MAX_DETAIL_CHARS = 48_000
+export const MAX_SERIALIZE_NODES = 2_000
+export const MAX_SERIALIZE_DEPTH = 12
 const TRUNCATION_MARK = '\n… [truncated by the trace; the provider received the full payload]'
 
 export type TraceScope = {
@@ -138,17 +140,65 @@ export function serialize(value: unknown): { text: string; truncated: boolean } 
   if (typeof value === 'string') text = value
   else {
     try {
-      // Clip large strings before encoding them. Serializing multi-megabyte image/command
-      // payloads only to discard them afterwards blocks the same event loop as model IO.
-      text = JSON.stringify(value, (_key, item: unknown) => {
-        if (typeof item !== 'string' || item.length <= MAX_DETAIL_CHARS) return item
-        truncated = true
-        return item.slice(0, MAX_DETAIL_CHARS)
-      }, 2) ?? String(value)
+      // Copy only a bounded prefix before encoding it. JSON.stringify's replacer still walks an
+      // entire wide or deep object, even when the final string is clipped, and trace recording
+      // shares the main event loop with provider IO.
+      const clipped = clipStructuredDetail(value)
+      truncated = clipped.truncated
+      text = JSON.stringify(clipped.value, null, 2) ?? String(value)
     } catch {
       text = String(value)
     }
   }
   if (text.length <= MAX_DETAIL_CHARS && !truncated) return { text, truncated: false }
   return { text: text.slice(0, MAX_DETAIL_CHARS) + TRUNCATION_MARK, truncated: true }
+}
+
+function clipStructuredDetail(value: unknown): { value: unknown; truncated: boolean } {
+  const seen = new WeakSet<object>()
+  let nodes = 0
+  let characters = 0
+  let truncated = false
+
+  const visit = (item: unknown, depth: number): unknown => {
+    nodes += 1
+    if (nodes > MAX_SERIALIZE_NODES) {
+      truncated = true
+      return undefined
+    }
+    if (typeof item === 'string') {
+      const remaining = Math.max(0, MAX_DETAIL_CHARS - characters)
+      characters += Math.min(item.length, remaining)
+      if (item.length > remaining) truncated = true
+      return item.slice(0, remaining)
+    }
+    if (item === null || typeof item === 'number' || typeof item === 'boolean') return item
+    if (typeof item === 'bigint') return String(item)
+    if (typeof item !== 'object') return undefined
+    if (depth >= MAX_SERIALIZE_DEPTH || seen.has(item)) {
+      truncated = true
+      return seen.has(item) ? '[circular]' : '[trace depth limit]'
+    }
+    seen.add(item)
+    if (Array.isArray(item)) {
+      const copy: unknown[] = []
+      for (let index = 0; index < item.length && nodes < MAX_SERIALIZE_NODES; index += 1) {
+        copy.push(visit(item[index], depth + 1))
+      }
+      if (copy.length < item.length) truncated = true
+      return copy
+    }
+    const copy: Record<string, unknown> = {}
+    for (const key in item) {
+      if (!Object.prototype.hasOwnProperty.call(item, key)) continue
+      if (nodes >= MAX_SERIALIZE_NODES) {
+        truncated = true
+        break
+      }
+      copy[key] = visit((item as Record<string, unknown>)[key], depth + 1)
+    }
+    return copy
+  }
+
+  return { value: visit(value, 0), truncated }
 }

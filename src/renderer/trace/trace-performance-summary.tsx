@@ -45,6 +45,14 @@ export function TracePerformanceSummary({ value }: { value: TracePerformance }):
       title: `${value.lastContext.used.toLocaleString()} of ${value.lastContext.window.toLocaleString()} tokens`
     })
   }
+  if (value.ipc) {
+    const saved = Math.max(0, value.ipc.receivedEvents - value.ipc.sentEvents)
+    metrics.push({
+      label: 'Chat IPC',
+      value: `${value.ipc.sentEvents} / ${value.ipc.receivedEvents}`,
+      title: `${value.ipc.sentEvents} renderer messages sent from ${value.ipc.receivedEvents} visible chat events; ${saved} stream deltas coalesced; ${value.ipc.deltaCharacters.toLocaleString()} streamed characters`
+    })
+  }
   if (metrics.length === 0) return null
 
   return (

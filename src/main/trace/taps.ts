@@ -1,5 +1,6 @@
 import type { ChatProvider } from '../../shared/chat.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
+import type { RendererChatIpcMetrics } from '../chat-peers/peer-events.js'
 import type { ToolCallTrace, ToolRegistry } from '../tools/registry.js'
 import { summarizeItem } from './summaries.js'
 import { formatDuration, providerOfTurn, traceLog } from './trace-log.js'
@@ -39,6 +40,21 @@ export function traceToolCalls(registry: ToolRegistry): () => void {
 }
 
 const lastProviderByPane = new Map<string, ChatProvider>()
+
+/** One bounded measurement per completed turn, after visible stream deltas cross IPC. */
+export function traceChatIpcMetrics(metrics: RendererChatIpcMetrics): void {
+  const saved = Math.max(0, metrics.receivedEvents - metrics.sentEvents)
+  traceLog.record({
+    paneId: metrics.paneId,
+    provider: providerOfTurn(metrics.turnId) ?? lastProviderByPane.get(metrics.paneId) ?? null,
+    turnId: metrics.turnId
+  }, {
+    kind: 'note',
+    label: 'chat.ipc',
+    summary: `${metrics.sentEvents}/${metrics.receivedEvents} renderer events sent · ${saved} coalesced`,
+    detail: metrics
+  })
+}
 
 /** Record turn boundaries, transcript items, and context updates as the panes receive them. */
 export function traceChatEvent(event: ChatWorkspaceEvent): void {

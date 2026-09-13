@@ -13,6 +13,23 @@ import { summaryForRecord } from './peer-summary.js'
 
 /** Floor between two `chats` updates while a turn streams. */
 export const CHATS_EMIT_INTERVAL_MS = 200
+/** Keep this below one 60 Hz frame; the renderer already applies the resulting events per frame. */
+export const CHAT_IPC_BATCH_DELAY_MS = 8
+
+export type RendererChatIpcMetrics = {
+  paneId: string
+  turnId: string
+  receivedEvents: number
+  sentEvents: number
+  receivedDeltas: number
+  sentDeltas: number
+  deltaCharacters: number
+}
+
+export type RendererChatBatcher = ((event: ChatWorkspaceEvent) => void) & {
+  flush(): void
+  dispose(): void
+}
 
 /** Filter only the IPC delivery. Main-process observers and provider transcripts stay complete. */
 export function rendererChatForwarder(
@@ -29,6 +46,100 @@ export function rendererChatForwarder(
     else if (event.paneId !== selectedPaneId && !visible.has(event.paneId)) return
     send(event)
   }
+}
+
+/**
+ * Coalesce adjacent transcript deltas immediately before IPC. Other events are ordering barriers:
+ * a pending delta is sent before the event that follows it, so item completion, turn completion,
+ * selection snapshots, and drawer state can never overtake streamed text.
+ */
+export function rendererChatBatcher(
+  send: (event: ChatWorkspaceEvent) => void,
+  onTurnMetrics: (metrics: RendererChatIpcMetrics) => void = () => {},
+  delayMs = CHAT_IPC_BATCH_DELAY_MS
+): RendererChatBatcher {
+  let pending: Extract<ChatWorkspaceEvent, { type: 'pane' }> | null = null
+  let timer: NodeJS.Timeout | null = null
+  const turns = new Map<string, RendererChatIpcMetrics>()
+
+  const countSent = (event: ChatWorkspaceEvent): void => {
+    if (event.type !== 'pane') return
+    const metrics = turns.get(event.paneId)
+    if (!metrics) return
+    metrics.sentEvents += 1
+    if (event.event.type === 'itemDelta') metrics.sentDeltas += 1
+  }
+
+  const sendNow = (event: ChatWorkspaceEvent): void => {
+    send(event)
+    countSent(event)
+  }
+
+  const flush = (): void => {
+    if (timer) clearTimeout(timer)
+    timer = null
+    if (!pending) return
+    const event = pending
+    pending = null
+    sendNow(event)
+  }
+
+  const batch = ((event: ChatWorkspaceEvent): void => {
+    if (event.type === 'pane' && event.event.type === 'itemDelta') {
+      const metrics = turns.get(event.paneId)
+      if (metrics) {
+        metrics.receivedEvents += 1
+        metrics.receivedDeltas += 1
+        metrics.deltaCharacters += event.event.delta.length
+      }
+      if (
+        pending?.paneId === event.paneId &&
+        pending.event.type === 'itemDelta' &&
+        pending.event.itemId === event.event.itemId &&
+        pending.event.field === event.event.field
+      ) {
+        pending = { ...pending, event: { ...pending.event, delta: pending.event.delta + event.event.delta } }
+        return
+      }
+      flush()
+      pending = event
+      timer = setTimeout(flush, delayMs)
+      timer.unref?.()
+      return
+    }
+
+    flush()
+    if (event.type !== 'pane') {
+      sendNow(event)
+      return
+    }
+    const inner = event.event
+    if (inner.type === 'turn' && inner.turnId) {
+      turns.set(event.paneId, {
+        paneId: event.paneId,
+        turnId: inner.turnId,
+        receivedEvents: 0,
+        sentEvents: 0,
+        receivedDeltas: 0,
+        sentDeltas: 0,
+        deltaCharacters: 0
+      })
+    }
+    const metrics = turns.get(event.paneId)
+    if (metrics) metrics.receivedEvents += 1
+    sendNow(event)
+    if (inner.type === 'turn' && inner.turnId === null && metrics) {
+      turns.delete(event.paneId)
+      onTurnMetrics({ ...metrics })
+    }
+  }) as RendererChatBatcher
+
+  batch.flush = flush
+  batch.dispose = () => {
+    flush()
+    turns.clear()
+  }
+  return batch
 }
 
 export class PeerEmitThrottle {

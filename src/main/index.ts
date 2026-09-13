@@ -19,7 +19,7 @@ import { ChatService } from './chat-service.js'
 import { CodexWorkspaceRuntime } from './codex-workspace-runtime.js'
 import { ChatHub } from './chat-hub.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
-import { rendererChatForwarder } from './chat-peers/peer-events.js'
+import { rendererChatBatcher, rendererChatForwarder } from './chat-peers/peer-events.js'
 import { ChatStore } from './chat-store/chat-store.js'
 import { ChatTranscriptCache } from './chat-store/chat-transcript-cache.js'
 import { migrateChatPeersIntoStore } from './chat-store/chat-store-migration.js'
@@ -50,7 +50,7 @@ import { ToolTelemetry } from './tools/telemetry.js'
 import { registerToolsIpc } from './tools/ipc.js'
 import { registerTraceIpc } from './trace/ipc.js'
 import { traceLog } from './trace/trace-log.js'
-import { traceChatEvent, traceToolCalls } from './trace/taps.js'
+import { traceChatEvent, traceChatIpcMetrics, traceToolCalls } from './trace/taps.js'
 import type { TraceEvent } from '../shared/trace.js'
 import type { ToolsEvent } from '../shared/tools.js'
 import { registerChatIpc } from './chat-ipc.js'
@@ -359,8 +359,12 @@ function createWindow(): void {
   browserDownloads.on('changed', (downloads: BrowserDownload[]) =>
     sendToMainWindow(IPC.event.browserDownloadsChanged, downloads)
   )
-  const forwardChat = rendererChatForwarder(chatService?.snapshot({ limit: 0 }).selectedPaneId ?? '',
-    (event) => sendToMainWindow(IPC.event.chatEvent, event))
+  const batchChat = rendererChatBatcher(
+    (event) => sendToMainWindow(IPC.event.chatEvent, event),
+    traceChatIpcMetrics
+  )
+  const forwardChat = rendererChatForwarder(
+    chatService?.snapshot({ limit: 0 }).selectedPaneId ?? '', batchChat)
   chatService?.on('event', (event: ChatWorkspaceEvent) => {
     traceChatEvent(event)
     forwardChat(event)
