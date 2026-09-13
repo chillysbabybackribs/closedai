@@ -1,4 +1,5 @@
 import type { ChatSnapshot } from '../../shared/chat.js'
+import { isInjectedContextTitle, sanitizeThreadTitle } from '../../shared/chat-display.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { DrawerRowModel, DrawerRowStatus } from './drawer-types.js'
 
@@ -71,7 +72,8 @@ export function buildDrawerRows({
 
 /** The live thread name wins; otherwise the record's title, with a placeholder for a blank chat. */
 function rowTitle(chat: ChatRowSummary, selectedThreadName: string | null): string {
-  if (selectedThreadName) return selectedThreadName
-  if (!PLACEHOLDER_TITLES.has(chat.title)) return chat.title
+  const live = sanitizeThreadTitle(selectedThreadName)
+  if (live) return live
+  if (!PLACEHOLDER_TITLES.has(chat.title) && !isInjectedContextTitle(chat.title)) return chat.title
   return chat.title || (chat.kind === 'subagent' ? 'Subagent task' : 'New chat')
 }

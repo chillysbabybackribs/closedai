@@ -180,7 +180,7 @@ export type AppSettings = {
   chatMidTurnCompactTokens: number
   /**
    * When true, idle context pressure rotates the provider session with a thin seed instead of
-   * native Codex compaction. Off until QA validates rotation + recall together.
+   * native Codex compaction. Default on; set false to restore compaction paths.
    */
   chatSeamlessRotation: boolean
 }

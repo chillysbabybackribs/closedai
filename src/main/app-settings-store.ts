@@ -43,7 +43,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatCompactAtPercent: 80,
   chatCompactAtTokens: 0,
   chatMidTurnCompactTokens: 0,
-  chatSeamlessRotation: false
+  chatSeamlessRotation: true
 }
 
 const MAX_COMPACT_AT_PERCENT = 95
@@ -102,7 +102,7 @@ function normalize(parsed: unknown): AppSettings {
       : DEFAULT_APP_SETTINGS.chatCompactAtPercent,
     chatCompactAtTokens: normalizeAutoCompactTokens(record.chatCompactAtTokens),
     chatMidTurnCompactTokens: normalizeAutoCompactTokens(record.chatMidTurnCompactTokens),
-    chatSeamlessRotation: record.chatSeamlessRotation === true
+    chatSeamlessRotation: record.chatSeamlessRotation !== false
   }
 }
 

@@ -41,7 +41,8 @@ export const ChatPane = memo(function ChatPane({
 } = {}): JSX.Element {
   const internalChat = useChatController(!controller)
   const chat = controller ?? internalChat
-  const { state } = chat
+  const { state, preferences } = chat
+  const manualCompact = state.provider === 'antigravity' && preferences?.chatSeamlessRotation !== true
   const backgroundItems = state.history?.backgroundTasks?.length
     ? [...state.history.backgroundTasks, ...state.items] : state.items
   const ready = state.connection.state === 'ready'
@@ -163,8 +164,8 @@ export const ChatPane = memo(function ChatPane({
           onOpenTools={() => setToolsOpen(true)}
           onOpenTrace={() => setTraceOpen(true)}
           activeTurnId={state.activeTurnId}
-          onCompactConversation={state.provider === 'antigravity' ? chat.compactConversation : undefined}
-          compactConversationEnabled={ready && !running && state.items.some((item) => item.type === 'user')}
+          onCompactConversation={manualCompact ? chat.compactConversation : undefined}
+          compactConversationEnabled={manualCompact && ready && !running && state.items.some((item) => item.type === 'user')}
         />
       </div>
     </aside>

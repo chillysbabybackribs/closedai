@@ -64,6 +64,20 @@ test('the provider name wins, then the first message, then the saved title', () 
   assert.equal(paneTitle(snapshot(), record()), 'New chat')
 })
 
+test('titles ignore injected context blocks and use the user\'s own words', () => {
+  const wrapped = {
+    type: 'user' as const,
+    id: 'u1',
+    turnId: 't1',
+    text: '<closedai_context name="closedai.instructions" kind="application">\nrules\n</closedai_context>\nFix conversation naming'
+  }
+  assert.equal(paneTitle(snapshot({ items: [wrapped] }), record()), 'Fix conversation naming')
+  assert.equal(
+    paneTitle(snapshot({ threadName: '<closedai_context name="x">' }), record()),
+    'New chat'
+  )
+})
+
 test('a saved title belongs to the saved thread; a pane that left its chat is blank again', () => {
   assert.equal(paneTitle(snapshot(), record({ title: 'Old chat', threadId: null })), 'New chat')
   const lineage = { sourcePaneId: 'p', sourceThreadId: 't', sourceTitle: 'Old chat', digest: '', createdAt: 0 }

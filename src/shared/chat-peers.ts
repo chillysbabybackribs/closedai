@@ -53,6 +53,10 @@ export type ChatWorkspaceSnapshot = {
     /** Previously used project folders, newest first, excluding the active project. */
     recentProjects?: Array<{ cwd: string; projectPath: string }>
   }
+  /** App-wide preferences surfaced for renderer policy (e.g. manual compact availability). */
+  preferences?: {
+    chatSeamlessRotation: boolean
+  }
 }
 
 export type ChatWorkspaceEvent =

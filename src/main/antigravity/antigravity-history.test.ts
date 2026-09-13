@@ -31,7 +31,7 @@ test('recorded conversations list for their workspace newest first, titled by th
     assert.deepEqual(threads.map((thread) => thread.id), ['agy:b', 'agy:a'])
     assert.equal(threads[0]!.title, 'Hello there')
     assert.equal(threads[1]!.title, 'Search plan')
-    assert.ok(threads[1]!.preview.startsWith('<closedai_context'))
+    assert.ok(threads[1]!.preview.startsWith('first prompt'))
     assert.ok(threads[1]!.createdAt <= threads[1]!.updatedAt)
     assert.equal(await history.threadName('a'), 'Search plan')
     assert.equal(await history.threadName('b'), null)

@@ -34,6 +34,7 @@ export type ClaudeSessionDeps = {
   onPlanUsageSignal: (signal: ClaudeRateLimitSignal) => void
   /** When set, every SDK message in either direction is recorded in the turn trace. */
   traceScope?: () => TraceScope
+  seamlessRotation?: () => boolean
   idleMs?: number
 }
 
@@ -72,6 +73,7 @@ export class ClaudeSession {
       adaptiveThinking: this.adaptiveThinking,
       resume: this.sessionId,
       runtimeId: id,
+      seamlessRotation: this.deps.seamlessRotation?.() === true,
       mcpServers: this.deps.mcpServers(),
       systemPromptAppend: this.deps.systemPromptAppend,
       stderr: (data) => { const text = data.trim(); if (text) console.warn('[claude]', text) }

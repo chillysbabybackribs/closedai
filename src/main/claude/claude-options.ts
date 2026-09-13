@@ -32,6 +32,8 @@ export type ClaudeQueryConfig = {
   resume: string | null
   /** Inherited by every process the session spawns; see claude-process-tree.ts. */
   runtimeId: string
+  /** When true, ClosedAI rotates sessions instead of relying on Claude Code auto-compaction. */
+  seamlessRotation?: boolean
   mcpServers: NonNullable<Options['mcpServers']>
   systemPromptAppend: string
   env?: NodeJS.ProcessEnv
@@ -50,12 +52,14 @@ export function claudeQueryOptions(config: ClaudeQueryConfig): Options {
     ...(effort ? { effort } : {}),
     ...(config.adaptiveThinking ? { thinking: { type: 'adaptive', display: 'summarized' } } : {}),
     ...(config.resume ? { resume: config.resume } : {}),
-    // Keep context management inside Claude Code, and prepare its summary before the window is
-    // full so the next user turn does not pay the entire compaction cost on the critical path.
-    settings: {
-      autoCompactEnabled: true,
-      precomputeCompactionEnabled: true
-    },
+    settings: config.seamlessRotation
+      ? { autoCompactEnabled: false, precomputeCompactionEnabled: false }
+      : {
+        // Keep context management inside Claude Code, and prepare its summary before the window is
+        // full so the next user turn does not pay the entire compaction cost on the critical path.
+        autoCompactEnabled: true,
+        precomputeCompactionEnabled: true
+      },
     env: {
       ...(config.env ?? process.env),
       [CLAUDE_RUNTIME_ID_ENV]: config.runtimeId,

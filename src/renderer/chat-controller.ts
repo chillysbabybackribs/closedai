@@ -6,6 +6,7 @@ import { coalesceChatWorkspaceEvents, initialChatRendererState, reduceChatRender
 export type ChatController = {
   state: ChatSnapshot
   workspace: ChatWorkspaceSnapshot['workspace']
+  preferences: ChatWorkspaceSnapshot['preferences']
   /** Every chat of the workspace, attached or not; the drawer's rows. */
   chats: ChatRowSummary[]
   selectedPaneId: string
@@ -115,6 +116,7 @@ export function usePaneChatController(
   return useMemo(() => ({
     state,
     workspace: workspace.workspace,
+    preferences: workspace.preferences,
     chats: workspace.chats,
     selectedPaneId: paneId,
     send,
@@ -136,7 +138,7 @@ export function usePaneChatController(
     closePeer,
     loadEarlier
   }), [
-    state, workspace.workspace, workspace.chats, paneId,
+    state, workspace.workspace, workspace.preferences, workspace.chats, paneId,
     send, interrupt, interruptPane, selectModel, selectReasoningEffort, refreshPlanUsage, loginWithChatGPT,
     listChats, newThread, continueInNewThread, continueFromChat, openChat,
     archiveChat, setChatPinned, compactConversation, selectPane, closePeer, loadEarlier

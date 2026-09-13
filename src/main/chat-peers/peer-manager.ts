@@ -122,7 +122,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
           const peer = this.lifecycle.get(id)
           return peer ? [[id, this.rendererView(peer, peer.surface.snapshot(window))]] : []
         })) : undefined,
-      workspace: this.workspaceSelector?.current()
+      workspace: this.workspaceSelector?.current(),
+      preferences: { chatSeamlessRotation: this.settings.get().chatSeamlessRotation }
     }
   }
 

@@ -106,12 +106,13 @@ export async function applyProviderRotation(
     existingRotations: settings.sessionRotations()
   })
   if (!planned) return false
+  const startedAt = performance.now()
   await releaseThread()
   await settings.set({
     chatContinuation: planned.continuation,
     chatSessionRotations: planned.rotations
   })
-  traceSessionRotated(input.paneId, input.provider, planned.rotation, usage)
+  traceSessionRotated(input.paneId, input.provider, planned.rotation, usage, performance.now() - startedAt)
   const sourceThreadId = planned.continuation.sourceThreadId
   if (sourceThreadId) options?.prefetchSource?.(sourceThreadId)
   return true

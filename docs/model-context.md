@@ -152,9 +152,11 @@ deferred where supported, with detailed paging contracts in tool descriptions ra
 
 The opt-in Codex `chatCompactAtTokens` setting requests native compaction during idle time,
 independently of model-window percentage. It does not itself generate checkpoint notes or delete
-archived history. When `chatSeamlessRotation` is enabled (default off), the same idle thresholds
+archived history. When `chatSeamlessRotation` is enabled (default on), the same idle thresholds
 rotate Codex and Claude to a fresh provider thread with a thin seed instead of calling native
-compact; the visible transcript stays put and each rotation appends metadata to the chat record.
+compact; Claude Code auto-compaction is disabled in that mode. The visible transcript stays put
+and each rotation appends metadata to the chat record; the Turn trace records `session.rotated`
+with elapsed release time for latency review.
 Display paging is independent of model context. The new first-text measurements and safe trial
 procedure are in [Tools](tools.md); do not infer a response-time improvement from fewer displayed
 items or context tokens alone.

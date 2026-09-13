@@ -317,9 +317,11 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   requirements, but still waits for the idle grace.
   One compaction per completed turn at most. This is a soft trigger: native compaction may retain
   more than the target, and turns can grow past it. See `src/main/chat-context/context-compaction.ts`.
-  When `chatSeamlessRotation` is enabled (default off), the same idle thresholds rotate Codex and
-  Claude to a fresh provider thread with a thin seed instead of calling native compact; the Turn
-  trace records `session.rotated` and the UI stays unchanged. See `src/main/chat-context/session-rotation.ts`.
+  When `chatSeamlessRotation` is enabled (default on), the same idle thresholds rotate Codex and
+  Claude to a fresh provider thread with a thin seed instead of calling native compact; mid-turn
+  Codex overrides and Claude auto-compaction are skipped. The Turn trace records `session.rotated`
+  (including release elapsed ms) and the UI stays unchanged; Antigravity manual compact is hidden.
+  See `src/main/chat-context/session-rotation.ts`.
 - Opt-in: `chatMidTurnCompactTokens` (default 0) launches the app-server with
   `-c model_auto_compact_token_limit=<n>` so Codex compacts mid-turn past `n` tokens. At 100k it
   fired every ~10 exec calls in a heavy turn, which is why it is off. See

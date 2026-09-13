@@ -1,4 +1,5 @@
 import type { ChatEvent, ChatSnapshot, ChatTranscriptItem } from '../../shared/chat.js'
+import { sanitizeThreadTitle, stripContextBlocks, summarizeUserMessage } from '../../shared/chat-display.js'
 import type { ChatPeerSummary, PeerChatReadOptions, PeerChatReadResult } from '../../shared/chat-peers.js'
 import { PEER_READ_MAX_CHARS } from '../../shared/chat-peers.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
@@ -76,7 +77,7 @@ export class PeerSummaryCache {
       }
       if (isNew || item.id === this.latestId) {
         this.setLatest(item)
-        summary = { ...summary, preview: itemText(item).slice(0, MAX_PEER_PREVIEW_CHARS), activity: item.type === 'tool' ? item.label : null }
+        summary = { ...summary, preview: previewFromItem(item).slice(0, MAX_PEER_PREVIEW_CHARS), activity: item.type === 'tool' ? item.label : null }
       }
     } else if (event.type === 'itemDelta' && event.itemId === this.latestId && event.field === 'text' && this.textDelta) {
       summary = { ...summary, preview: (summary.preview + event.delta.slice(0, MAX_PEER_PREVIEW_CHARS)).slice(0, MAX_PEER_PREVIEW_CHARS) }
@@ -110,13 +111,13 @@ export function summaryForRecord(paneId: string, record: ChatRecord): ChatPeerSu
 /** The provider's name for the thread, else the first message, else the saved or lineage name. */
 export function paneTitle(snapshot: ChatSnapshot, record: TitleRecord): string {
   const firstUser = snapshot.items.find((item) => item.type === 'user')
-  const fromMessage = firstUser?.type === 'user' ? firstLine(firstUser.text) : null
+  const fromMessage = firstUser?.type === 'user' ? titleFromUserText(firstUser.text) : null
   return titleFromParts(snapshot.threadName, fromMessage, record)
 }
 
 /** First user messages arrive as events, so the manager can name a new pane without a snapshot. */
 export function titleFromUserText(text: string): string {
-  return formatTitle(firstLine(text))
+  return formatTitle(summarizeUserMessage(text, MAX_TITLE))
 }
 
 type TitleRecord = Pick<ChatRecord, 'title' | 'threadId' | 'continuation'>
@@ -127,8 +128,8 @@ type TitleRecord = Pick<ChatRecord, 'title' | 'threadId' | 'continuation'>
  * that thread now has of its own.
  */
 function titleFromParts(threadName: string | null, firstUserText: string | null, record: TitleRecord): string {
-  const saved = record.threadId || record.continuation ? record.title?.trim() : null
-  const title = threadName?.trim() || firstUserText?.trim() || saved ||
+  const saved = record.threadId || record.continuation ? sanitizeThreadTitle(record.title) : null
+  const title = sanitizeThreadTitle(threadName) || firstUserText?.trim() || saved ||
     (record.continuation ? `Continuing: ${record.continuation.sourceTitle}` : PLACEHOLDER_TITLE)
   return formatTitle(title)
 }
@@ -258,6 +259,11 @@ export function itemText(item: ChatSnapshot['items'][number] | undefined): strin
   return item.type === 'screenshot' ? item.caption : item.type === 'fileChange' ? `${item.changes.length} file changes` : ''
 }
 
-function firstLine(text: string): string {
-  return text.trim().split('\n')[0]?.trim() ?? ''
+function previewFromItem(item: ChatTranscriptItem): string {
+  if (item.type === 'user') {
+    const text = stripContextBlocks(item.text)
+    if (text) return text
+    return item.attachments?.[0]?.name ?? ''
+  }
+  return itemText(item)
 }

@@ -1,4 +1,5 @@
 import type { ChatEvent, ChatHistoryPage, ChatProvider, ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
+import { sanitizeThreadTitle, summarizeUserMessage } from '../shared/chat-display.js'
 import type { ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../shared/chat-peers.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import { activityPhase } from '../shared/chat.js'
@@ -101,8 +102,10 @@ export const PROVIDER_LABELS: Record<ChatProvider, string> = CHAT_PROVIDER_LABEL
 
 /** Header title: the provider's thread name, else the first user message, else a placeholder. */
 export function chatTitle(state: ChatSnapshot): string {
-  if (state.threadName) return state.threadName
-  if (state.history?.hasEarlier && state.history.title) return state.history.title
+  const threadName = sanitizeThreadTitle(state.threadName)
+  if (threadName) return threadName
+  const historyTitle = sanitizeThreadTitle(state.history?.title)
+  if (state.history?.hasEarlier && historyTitle) return historyTitle
   const first = state.items.find((item) => item.type === 'user')
   if (first && first.type === 'user') {
     return first.text.trim() ? summarizeMessage(first.text) : first.attachments?.[0]?.name ?? 'New chat'
@@ -111,9 +114,7 @@ export function chatTitle(state: ChatSnapshot): string {
 }
 
 export function summarizeMessage(text: string, max = 60): string {
-  const line = text.trim().split('\n')[0]?.trim() ?? ''
-  if (!line) return 'New chat'
-  return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line
+  return summarizeUserMessage(text, max) || 'New chat'
 }
 
 export function reduceChatEvent(state: ChatSnapshot, event: ChatEvent): ChatSnapshot {

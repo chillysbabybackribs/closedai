@@ -91,7 +91,9 @@ releases the routed session, while a project switch or app quit stops the proces
 processes are spawned in their own process group and stopped as a group (SIGTERM, then SIGKILL
 after three seconds), so the worker a CLI launcher forks dies with it, and every tracked group is
 killed at quit (`src/main/process-tree.ts`). Titles and last turn-boundary times are persisted on
-the record so dormant chats can still be named after a restart.
+the record so dormant chats can still be named after a restart. Drawer and header titles prefer a
+provider-generated thread name when one exists; otherwise they show a one-line summary of the user's
+first message with `<closedai_context>` blocks stripped, not the raw prompt text.
 
 Startup, new chat, and opening a chat trim attached panes toward eight, least recently active
 first. The selected and visible panes, active turns, operations in flight, and undelivered continuation
@@ -124,7 +126,7 @@ A continuation or provider switch copies an applicable checkpoint into its exist
 source pane closes—without opening it in the UI. Source recall stops at the saved boundary. A
 checkpoint newer than a branch point is not carried. Missing boundaries (including legacy
 continuations) fail closed. Retrieval uses existing provider stores; no second transcript
-archive is introduced. When `chatSeamlessRotation` is enabled (default off), idle context pressure
+archive is introduced. When `chatSeamlessRotation` is enabled (default on; set false to opt out), idle context pressure
 on Codex and Claude can rotate the provider session invisibly: the visible transcript stays put,
 a thin seed is queued for the next send, and each rotation appends metadata to the chat record
 for later recall-chain work. Source recall on the same pane after rotation reads the in-memory
@@ -406,7 +408,8 @@ This is a soft trigger, not a hard context cap or a guarantee that native compac
 target. With `chatSeamlessRotation` enabled, the same idle thresholds rotate Codex and Claude to a
 fresh provider thread with a thin seed instead of calling native compact; the Turn trace records
 `session.rotated` and the UI stays unchanged. Claude otherwise keeps SDK-native automatic/precomputed
-compaction; Antigravity compaction is manual re-seed only (no context gauge or auto trigger).
+compaction; Antigravity manual re-seed compaction is hidden while seamless rotation is on.
+Mid-turn Codex native compact overrides are also skipped when rotation is enabled.
 Provider history is not deleted; rotation leaves the old thread in the provider store for recall.
 
 The Turn trace shows send-to-first-assistant-text timing for all four providers: preparation,

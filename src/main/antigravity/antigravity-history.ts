@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
 import type { ChatThreadSummary, ChatTranscriptItem } from '../../shared/chat.js'
+import { firstLineOfUserMessage, stripContextBlocks } from '../../shared/chat-display.js'
 import { writeAtomic } from '../atomic-write.js'
 import { ANTIGRAVITY_STATE_DIR } from './antigravity-cli.js'
 import { antigravityThreadId } from './antigravity-ids.js'
@@ -60,7 +61,7 @@ export class AntigravityHistory {
       conversationId,
       cwd,
       title: existing?.title || firstLine(text) || (first?.type === 'user' ? first.attachments?.[0]?.name ?? '' : ''),
-      preview: existing?.preview || text.slice(0, 200),
+      preview: existing?.preview || stripContextBlocks(text).slice(0, 200),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now
     }
@@ -160,6 +161,5 @@ function workspaceKey(cwd: string): string {
 
 /** The first line of the user's own words, without the app's context blocks. */
 export function firstLine(text: string): string {
-  const line = text.replace(/<closedai_context\b[^>]*>[\s\S]*?<\/closedai_context>\s*/g, '').split('\n')[0]?.trim() ?? ''
-  return line.length > 80 ? `${line.slice(0, 79).trimEnd()}…` : line
+  return firstLineOfUserMessage(text)
 }

@@ -7,7 +7,8 @@ export function traceSessionRotated(
   paneId: string | null,
   provider: ChatProvider,
   rotation: ChatSessionRotation,
-  usage: ContextUsage | null
+  usage: ContextUsage | null,
+  elapsedMs?: number
 ): void {
   traceLog.record({ paneId, provider, turnId: null }, {
     kind: 'event',
@@ -15,6 +16,10 @@ export function traceSessionRotated(
     summary: usage
       ? `Rotated provider session at ${usagePercent(usage)}% context (epoch ${rotation.epoch})`
       : `Rotated provider session (epoch ${rotation.epoch})`,
-    detail: { rotation, usage: usage ? describeUsage(usage) : null }
+    detail: {
+      rotation,
+      usage: usage ? describeUsage(usage) : null,
+      ...(elapsedMs !== undefined && Number.isFinite(elapsedMs) ? { elapsedMs: Math.max(0, Math.round(elapsedMs)) } : {})
+    }
   })
 }

@@ -1,5 +1,6 @@
 import type { SDKSessionInfo } from '@anthropic-ai/claude-agent-sdk'
 import type { ChatThreadSummary, ChatTranscriptItem } from '../../shared/chat.js'
+import { firstLineOfUserMessage, stripContextBlocks } from '../../shared/chat-display.js'
 import { claudeThreadId } from './claude-ids.js'
 import type { ClaudeSdk } from './claude-sdk.js'
 import { ClaudeTurnTranslator, type ClaudeTranslatorOptions } from './claude-stream.js'
@@ -16,12 +17,13 @@ const MAX_THREADS = 100
 export function threadSummaryFromSession(info: SDKSessionInfo): ChatThreadSummary | null {
   if (!info.sessionId || info.tag === CLAUDE_ARCHIVED_TAG) return null
   const firstPrompt = info.firstPrompt?.trim() ?? ''
+  const summary = info.summary?.trim() ?? ''
   // `summary` is the first prompt until the CLI has generated a title, so it is clipped like one.
-  const title = info.customTitle?.trim() || firstLine(firstPrompt || info.summary?.trim() || '') || 'New chat'
+  const title = info.customTitle?.trim() || firstLineOfUserMessage(firstPrompt || summary) || 'New chat'
   return {
     id: claudeThreadId(info.sessionId),
     title,
-    preview: firstPrompt || info.summary?.trim() || '',
+    preview: stripContextBlocks(firstPrompt || summary),
     createdAt: info.createdAt ?? info.lastModified,
     updatedAt: info.lastModified || info.createdAt || 0
   }
@@ -62,7 +64,3 @@ export async function replayClaudeSession(
   return [...items.values()]
 }
 
-function firstLine(text: string): string {
-  const line = text.split('\n')[0]?.trim() ?? ''
-  return line.length > 80 ? `${line.slice(0, 79).trimEnd()}…` : line
-}

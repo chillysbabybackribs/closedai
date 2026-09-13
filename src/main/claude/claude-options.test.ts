@@ -52,3 +52,10 @@ test('effort levels are the five the SDK accepts', () => {
   assert.equal(claudeEffortLevel('ultra'), null)
   assert.equal(claudeEffortLevel(null), null)
 })
+
+test('seamless rotation disables Claude Code auto-compaction', () => {
+  assert.deepEqual(claudeQueryOptions({ ...base, seamlessRotation: true }).settings, {
+    autoCompactEnabled: false,
+    precomputeCompactionEnabled: false
+  })
+})

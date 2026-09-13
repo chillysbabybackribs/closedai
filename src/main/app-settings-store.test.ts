@@ -23,6 +23,12 @@ test('a missing file yields the defaults, including the compaction threshold', a
   assert.equal(store.get().chatCompactAtTokens, 0)
   assert.equal(store.get().chatMidTurnCompactTokens, 0)
   assert.equal(store.get().toolBatchMaxCalls, 16)
+  assert.equal(store.get().chatSeamlessRotation, true)
+})
+
+test('seamless rotation is on by default and can be opted out explicitly', async () => {
+  assert.equal((await storeWith('{}')).store.get().chatSeamlessRotation, true)
+  assert.equal((await storeWith('{"chatSeamlessRotation": false}')).store.get().chatSeamlessRotation, false)
 })
 
 test('the tool batch limit is configurable within safe startup bounds', async () => {
