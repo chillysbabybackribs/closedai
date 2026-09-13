@@ -129,7 +129,9 @@ export class ArtifactDatabase {
       }
       const prior = this.db.prepare('SELECT data FROM blobs WHERE scope=? AND hash=?').get(scope, hash)
       if (prior && digest(prior.data as Uint8Array) !== hash) throw new Error('Corrupt artifact blob; refusing reuse')
-      this.db.prepare('INSERT OR IGNORE INTO blobs VALUES(?,?,?)').run(scope, hash, bytes)
+      // node:sqlite can bind a zero-length Uint8Array as SQL NULL; encode empty blobs explicitly.
+      if (bytes.byteLength === 0) this.db.prepare('INSERT OR IGNORE INTO blobs VALUES(?,?,zeroblob(0))').run(scope, hash)
+      else this.db.prepare('INSERT OR IGNORE INTO blobs VALUES(?,?,?)').run(scope, hash, bytes)
       const artifact: ArtifactDescriptor = { id: randomUUID(), sha256: hash, byteLength: bytes.byteLength, mediaType, label, createdAt: new Date().toISOString() }
       this.db.prepare('INSERT INTO artifacts VALUES(?,?,?,?,?,?,?,?)').run(
         artifact.id, scope, hash, bytes.byteLength, label, mediaType, source, artifact.createdAt
