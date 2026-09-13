@@ -19,15 +19,30 @@ export type PeerChatDirectory = {
 export function peerChatTools(getDirectory: () => PeerChatDirectory | null): ToolNamespace {
   return {
     name: 'peer_chats',
-    description: 'Read peer status and bounded historical evidence. The separate checkpoint tool only writes the caller’s working notes; no tool here starts or controls agents.',
+    description: 'Discover open and previous conversations, retrieve bounded excerpts, and save optional working notes.',
     tools: [
       defineTool({
         name: 'list',
-        description: 'List other open peer chats and their visible subagent chats, including running state and current activity. Each entry’s paneId is the chat’s stable id (it survives the chat being parked or reopened) and is the chat_id for peer_chats.read.',
-        inputSchema: { type: 'object', additionalProperties: false, properties: {} },
-        run: async (_input, context) => {
+        description: 'scope open (default) lists peer activity; paneId is the chat_id for read. scope history discovers previous conversations in this project, including closed chats, newest user activity first. Returns up to 5 compact entries (max 8), without loading transcripts. query filters titles, previews, and saved notes by a literal case-insensitive phrase; it does not search transcript bodies. Page with nextBeforeChatId as before_chat_id. Use recall(scope=history, chat_id=...) to read or search a transcript. Older explicit references take precedence over recency.',
+        inputSchema: { type: 'object', additionalProperties: false, properties: {
+          scope: { type: 'string', enum: ['open', 'history'] },
+          query: { type: 'string', maxLength: 200 },
+          before_chat_id: { type: 'string', minLength: 1, maxLength: 256 },
+          limit: { type: 'integer', minimum: 1, maximum: 8 }
+        } },
+        run: async (input, context) => {
           const directory = getDirectory()
           if (!directory) return failureResult('Peer chats are not available')
+          if (input.scope === 'history') {
+            if (!directory.memory) return failureResult('Chat memory is unavailable')
+            return textResult(JSON.stringify(directory.memory.history(context, {
+              query: stringArg(input, 'query'), beforeChatId: stringArg(input, 'before_chat_id'),
+              limit: numberArg(input, 'limit', 5)
+            })))
+          }
+          if (input.query !== undefined || input.before_chat_id !== undefined || input.limit !== undefined) {
+            return failureResult('query, before_chat_id, and limit require history scope')
+          }
           return textResult(JSON.stringify({ chats: directory.listReadable(context.paneId ?? null) }))
         }
       }),
