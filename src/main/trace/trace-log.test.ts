@@ -75,6 +75,10 @@ test('structured serialization bounds traversal by node count and depth', () => 
   const circular: { self?: unknown } = {}
   circular.self = circular
   assert.match(serialize(circular).text, /circular/)
+
+  const longKeyResult = serialize({ ['k'.repeat(MAX_DETAIL_CHARS + 1)]: 'unreachable' })
+  assert.equal(longKeyResult.truncated, true)
+  assert.ok(longKeyResult.text.length < MAX_DETAIL_CHARS + 100)
 })
 
 test('evicts the oldest entries past the capacity and counts them as dropped', () => {

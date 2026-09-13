@@ -155,7 +155,7 @@ export function serialize(value: unknown): { text: string; truncated: boolean } 
 }
 
 function clipStructuredDetail(value: unknown): { value: unknown; truncated: boolean } {
-  const seen = new WeakSet<object>()
+  const ancestors = new WeakSet<object>()
   let nodes = 0
   let characters = 0
   let truncated = false
@@ -175,28 +175,31 @@ function clipStructuredDetail(value: unknown): { value: unknown; truncated: bool
     if (item === null || typeof item === 'number' || typeof item === 'boolean') return item
     if (typeof item === 'bigint') return String(item)
     if (typeof item !== 'object') return undefined
-    if (depth >= MAX_SERIALIZE_DEPTH || seen.has(item)) {
+    if (depth >= MAX_SERIALIZE_DEPTH || ancestors.has(item)) {
       truncated = true
-      return seen.has(item) ? '[circular]' : '[trace depth limit]'
+      return ancestors.has(item) ? '[circular]' : '[trace depth limit]'
     }
-    seen.add(item)
+    ancestors.add(item)
     if (Array.isArray(item)) {
       const copy: unknown[] = []
       for (let index = 0; index < item.length && nodes < MAX_SERIALIZE_NODES; index += 1) {
         copy.push(visit(item[index], depth + 1))
       }
       if (copy.length < item.length) truncated = true
+      ancestors.delete(item)
       return copy
     }
     const copy: Record<string, unknown> = {}
     for (const key in item) {
       if (!Object.prototype.hasOwnProperty.call(item, key)) continue
-      if (nodes >= MAX_SERIALIZE_NODES) {
+      if (nodes >= MAX_SERIALIZE_NODES || characters + key.length > MAX_DETAIL_CHARS) {
         truncated = true
         break
       }
+      characters += key.length
       copy[key] = visit((item as Record<string, unknown>)[key], depth + 1)
     }
+    ancestors.delete(item)
     return copy
   }
 
