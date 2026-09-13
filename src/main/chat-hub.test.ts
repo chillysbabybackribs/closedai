@@ -76,8 +76,8 @@ class FakeProvider extends EventEmitter {
   async selectReasoningEffort(effort: string): Promise<void> { this.calls.push(`effort:${effort}`) }
   async refreshPlanUsage(): Promise<void> { this.calls.push('refreshPlanUsage') }
   async listThreads(): Promise<ChatThreadSummary[]> { if (this.failThreads) throw new Error('down'); return this.threads }
-  async readThread(threadId: string): Promise<ChatThreadContent> {
-    this.calls.push(`read:${threadId}`)
+  async readThread(threadId: string, cwd?: string): Promise<ChatThreadContent> {
+    this.calls.push(`read:${threadId}${cwd ? `:${cwd}` : ''}`)
     return { threadId, threadName: null, items: [] }
   }
   async newThread(): Promise<void> { this.calls.push('newThread'); this.items = [] }
@@ -131,6 +131,9 @@ test('an agy model routes to the Antigravity provider and its threads merge into
   assert.deepEqual(antigravity.calls.slice(-1), ['archive:agy:c1'])
   await hub.readThread('claude:session-1')
   assert.deepEqual(claude.calls.slice(-1), ['read:claude:session-1'])
+  await hub.readThread('claude:older-project', '/other')
+  assert.deepEqual(claude.calls.slice(-1), ['read:claude:older-project:/other'])
+  assert.equal(hub.activeProvider, 'codex')
 })
 
 test('the saved model decides the initial provider and which one starts warm', async () => {

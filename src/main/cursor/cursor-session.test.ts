@@ -81,3 +81,21 @@ test('a replayed session reuses its returned setup without another load before t
   assert.equal((await thread.warm()).sessionId, 'history')
   assert.deepEqual(loads, ['history', 'other', 'history'])
 })
+
+test('history replay uses the source project without changing the active session', async () => {
+  const { session: thread, adopted } = session()
+  thread.adoptSaved('current')
+  const loads: Array<{ id: string; cwd: string }> = []
+  Object.assign(thread, { client: {
+    connected: true, capabilities: { loadSession: true },
+    async loadSession(id: string, cwd: string) {
+      loads.push({ id, cwd })
+      return { sessionId: id, models: [], modes: [], currentModelId: null, currentModeId: null }
+    }
+  } })
+  await thread.replay('older', '/other-project')
+  assert.equal(thread.sessionId, 'current')
+  assert.deepEqual(adopted, [])
+  await thread.warm()
+  assert.deepEqual(loads, [{ id: 'older', cwd: '/other-project' }, { id: 'current', cwd: '/workspace' }])
+})

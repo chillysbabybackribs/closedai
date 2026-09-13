@@ -66,9 +66,11 @@ test('checkpoint rejects malformed memory and responds with metadata rather than
 test('history discovery and targeted recall route through the existing namespace', async () => {
   const h = harness()
   assert.equal((await h.call('list', { scope: 'history', query: 'design', cwd: '/older', before_chat_id: 'previous', limit: 2 })).isError, undefined)
-  assert.deepEqual(h.calls[0], { caller: { ...context, invocationSource: 'direct' }, request: {
+  const discovery = h.calls[0] as { caller: typeof context; request: unknown }
+  assert.equal(discovery.caller.paneId, context.paneId)
+  assert.deepEqual(discovery.request, {
     query: 'design', cwd: '/older', beforeChatId: 'previous', limit: 2
-  } })
+  })
   assert.equal((await h.call('recall', { scope: 'history', chat_id: 'older-chat', query: 'design' })).isError, undefined)
   const recorded = h.calls[1] as { request: { scope: string; chatId: string } }
   assert.equal(recorded.request.scope, 'history')

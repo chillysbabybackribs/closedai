@@ -119,6 +119,16 @@ test('state projects the workspace and a chat pane compactly', () => {
   assert.equal(JSON.stringify(state).length < 1_500, true)
 })
 
+test('chat state defaults to the caller independently of UI focus, with an explicit target override', () => {
+  const { host } = access()
+  const own = host.state(['chat'], undefined, 'pane-2').chat as Record<string, unknown>
+  assert.equal(own.paneId, 'pane-2')
+  assert.equal(own.threadId, 'thread-2')
+  assert.equal(own.cwd, '/repo')
+  assert.equal((host.state(['chat'], 'pane-1', 'pane-2').chat as Record<string, unknown>).paneId, 'pane-1')
+  assert.equal((host.state(['chat'], undefined, null).chat as Record<string, unknown>).paneId, 'pane-1')
+})
+
 test('workspace ranks the selected, calling, and running panes above idle ones', () => {
   const workspace = new FakeWorkspace()
   for (let index = 0; index < 15; index += 1) workspace.panes.set(`idle-${index}`, chatSnapshot({ threadId: null }))
