@@ -43,9 +43,8 @@ export class BrowserPageAccess implements BrowserToolHost {
     }
     const contents = service.contentsOf(tabId)
     if (!contents) return { ok: false, error: 'The tab closed while loading' }
-    const ready = needsReadinessPoll(options.ready)
-      ? await waitForPageReady(contents, options.ready)
-      : await probePageReady(contents, options.ready)
+    const fast = needsReadinessPoll(options.ready) ? null : await probePageReady(contents, options.ready)
+    const ready = fast?.reached ? fast : await waitForPageReady(contents, options.ready)
     return { ok: true, tabId, ready }
   }
 
