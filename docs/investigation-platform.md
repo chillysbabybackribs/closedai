@@ -213,6 +213,8 @@ Electron 44.1.1 / Node 24.19.0. The packaged smoke verifies a large artifact, ab
 restart, projection, same-key retry, exact export and deletion in temporary directories.
 
 See [artifact contracts and exact verification commands](investigation-artifacts.md). No active
+app profile was used in the tests. All 23 focused tests, typecheck, hygiene, map check and
+the packaged Electron worker smoke passed. No active
 app restart or installed browser/provider verification was performed. This increment does not
 complete Phase 1: coherent capture, source leases, explicit session-network replay separation,
 full backup/restore and schema migration remain open. There is no grouping/sharing UI or

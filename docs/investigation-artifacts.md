@@ -135,6 +135,13 @@ power-loss guarantees and cross-platform qualification remain unestablished.
 
 ## Verification
 
+Final results: **23/23 focused tests passed**, the packaged Electron worker smoke passed,
+and typecheck, hygiene, map check and whitespace/diff checks passed. Tests cover restart,
+scope/active-caller checks, corruption, receipts and tombstones, projections and output bounds,
+zero-byte artifacts, explicit import/export, cancellation before dispatch and concurrent quota
+admission. Crash coverage terminates the real worker after acknowledged commits/reservations;
+it does not establish arbitrary power-loss or every mid-transaction failure boundary.
+
 Focused commands:
 
 ```sh
