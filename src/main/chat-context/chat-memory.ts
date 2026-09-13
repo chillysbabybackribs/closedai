@@ -107,6 +107,7 @@ export class ChatMemory {
   private historyRecords(pane: ChatRecord): ChatRecord[] {
     return this.records.ids().map((id) => this.records.get(id))
       .filter((record): record is ChatRecord => !!record && record.id !== pane.id && !!record.threadId && !record.archived)
+      .filter((record) => record.messageSentAt !== null || record.lastTurnEndedAt !== null || record.preview.trim() || record.continuation)
       .sort((a, b) => historyActivity(b) - historyActivity(a) || a.id.localeCompare(b.id))
   }
 

@@ -74,6 +74,7 @@ test('history discovery prioritizes user activity across projects without readin
   addHistory(h.store, 'middle', 20)
   addHistory(h.store, 'archived', 100, { archived: true })
   addHistory(h.store, 'blank', 100, { codexThreadId: null, threadId: null })
+  addHistory(h.store, 'empty-thread', 100, { messageSentAt: null })
   const first = h.memory.history(caller, { limit: 2 })
   assert.deepEqual(first.chats.map((chat) => chat.chatId), ['recent', 'middle'])
   assert.equal(first.chats[0]!.cwd, '/other-project')
