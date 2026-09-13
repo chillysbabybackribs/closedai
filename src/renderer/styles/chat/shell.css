@@ -127,22 +127,19 @@
 .transcript-fold-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border: 1px solid var(--hairline, rgba(255, 255, 255, 0.08));
-  border-radius: 9999px;
-  background: var(--surface-card-subtle, rgba(255, 255, 255, 0.03));
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
   color: var(--muted-foreground, #949498);
   font-size: 11px;
   line-height: 1.2;
   cursor: pointer;
-  transition: all 120ms ease;
+  transition: color 120ms ease;
 }
 
 .transcript-fold-toggle:hover {
-  background: var(--chrome-control-hover, rgba(255, 255, 255, 0.07));
   color: var(--foreground, #e4e4e7);
-  border-color: var(--hairline-strong, rgba(255, 255, 255, 0.14));
 }
 
 .transcript-fold-chevron {
@@ -159,12 +156,6 @@
   color: var(--muted-foreground);
   font-size: 12px;
   text-align: center;
-}
-
-.transcript-fold-action {
-  font-weight: 600;
-  color: var(--chrome-fg, #d4d4d8);
-  margin-left: 2px;
 }
 
 .chat-scroll::-webkit-scrollbar {
