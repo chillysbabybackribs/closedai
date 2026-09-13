@@ -4,7 +4,7 @@ import type { WebContents } from 'electron'
 // real input and window capture against that compositor, so acting before the first frame lands
 // is how a click goes nowhere and a screenshot comes back blank. Two rAFs mean the page has
 // actually painted once, not merely that script ran.
-const FRAME_TIMEOUT_MS = 1_500
+const FRAME_TIMEOUT_MS = 1_000
 
 /** Wait until a page has painted a frame; give up on the timeout so a stalled page cannot block. */
 export async function settleFrames(contents: WebContents, timeoutMs = FRAME_TIMEOUT_MS): Promise<void> {

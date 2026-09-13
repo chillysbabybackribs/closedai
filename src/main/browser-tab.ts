@@ -36,7 +36,7 @@ const hiddenBounds: BrowserBounds = { x: 0, y: 0, width: 1, height: 1 }
 export const PAGE_CORNER_RADIUS = 7
 // Bound on the first-paint probe that lets a navigation settle early; a throttled hidden tab
 // never answers and falls back to the fixed settle inside waitForUsableLoad.
-const PAINT_PROBE_MS = 1_000
+const PAINT_PROBE_MS = 500
 const MAX_CUSTOM_TITLE_LENGTH = 300
 
 let nextTabId = 1

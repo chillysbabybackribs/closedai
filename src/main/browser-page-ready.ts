@@ -44,8 +44,23 @@ export type PageText = {
 
 export const IDLE_STABLE_MS = 200
 const POLL_MS = 75
+const PROBE_TIMEOUT_MS = 1_000
+const READ_TIMEOUT_MS = 3_000
 
 type Probe = { readyState: string; textLength: number; url: string; title: string; selector: boolean | null; text: boolean | null }
+
+async function runWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timer: NodeJS.Timeout | undefined
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs)
+    timer.unref?.()
+  })
+  try {
+    return await Promise.race([promise, timeout])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
 
 export async function waitForPageReady(
   contents: ScriptRunner,
@@ -136,18 +151,22 @@ export async function readPageText(
     if (!root) return null;
     return { url: location.href, title: document.title, readyState: document.readyState, text: root.innerText || '' };
   })()`
-  const raw = await contents.executeJavaScript(script, true)
-  const record = recordOf(raw)
-  if (!record) return null
-  const text = tidyText(stringOf(record.text))
-  const limit = options.raw ? RAW_CEILING : options.maxChars
-  const truncated = text.length > limit
-  return {
-    url: stringOf(record.url),
-    title: stringOf(record.title),
-    readyState: stringOf(record.readyState),
-    text: truncated ? text.slice(0, limit) : text,
-    truncated
+  try {
+    const raw = await runWithTimeout(contents.executeJavaScript(script, true), READ_TIMEOUT_MS)
+    const record = recordOf(raw)
+    if (!record) return null
+    const text = tidyText(stringOf(record.text))
+    const limit = options.raw ? RAW_CEILING : options.maxChars
+    const truncated = text.length > limit
+    return {
+      url: stringOf(record.url),
+      title: stringOf(record.title),
+      readyState: stringOf(record.readyState),
+      text: truncated ? text.slice(0, limit) : text,
+      truncated
+    }
+  } catch {
+    return null
   }
 }
 
@@ -167,10 +186,12 @@ export function describeReadiness(readiness: PageReadiness, result: PageReadyRes
 
 async function runProbe(contents: ScriptRunner, readiness: PageReadiness): Promise<Probe | null> {
   if (contents.isDestroyed()) return null
+  const needText = Boolean(readiness.until === 'idle' || readiness.text)
   const script = `(() => {
     const selector = ${JSON.stringify(readiness.selector ?? '')};
     const needle = ${JSON.stringify(readiness.text ?? '')};
-    const body = document.body;
+    const needText = ${needText};
+    const body = needText ? document.body : null;
     const text = body ? body.innerText || '' : '';
     return {
       readyState: document.readyState,
@@ -182,7 +203,8 @@ async function runProbe(contents: ScriptRunner, readiness: PageReadiness): Promi
     };
   })()`
   try {
-    const record = recordOf(await contents.executeJavaScript(script, true))
+    const raw = await runWithTimeout(contents.executeJavaScript(script, true), PROBE_TIMEOUT_MS)
+    const record = recordOf(raw)
     if (!record) return null
     return {
       readyState: stringOf(record.readyState) || 'loading',

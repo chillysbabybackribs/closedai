@@ -6,7 +6,7 @@
 // (the caller's state snapshot reports isLoading). Main-frame failures still reject:
 // they arrive well before either timer.
 
-export const NAVIGATION_SETTLE_MS = 500
+export const NAVIGATION_SETTLE_MS = 300
 export const NAVIGATION_WAIT_CAP_MS = 12_000
 
 // The slice of WebContents this wait needs; tests substitute a plain emitter.
