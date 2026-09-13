@@ -27,6 +27,8 @@ class FakeSettings implements AppSettingsAccess {
     this.saved = { ...this.saved, ...patch }
     return this.get()
   }
+  checkpoint() { return null }
+  sessionRotations() { return this.saved.chatSessionRotations ?? [] }
 }
 
 function model(provider: ChatProvider, id: string): ChatModel {

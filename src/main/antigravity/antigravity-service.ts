@@ -3,7 +3,7 @@ import type {
   ChatAccount, ChatAttachment, ChatConnection, ChatEvent, ChatHistoryWindow, ChatPlanUsage,
   ChatSnapshot, ChatThreadContent, ChatThreadSummary, ChatTurnContextReport
 } from '../../shared/chat.js'
-import type { AppSettingsAccess } from '../app-settings-store.js'
+import { applyProviderRotation, type RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import {
   buildThreadHandoff,
@@ -73,7 +73,7 @@ export class AntigravityChatService extends EventEmitter {
 
   constructor(
     readonly cwd: string,
-    private readonly settings: AppSettingsAccess,
+    private readonly settings: RotationSettingsAccess,
     private readonly bridge: AntigravityToolBridge,
     private readonly stateDir: string,
     private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
@@ -298,6 +298,10 @@ export class AntigravityChatService extends EventEmitter {
   /** Re-seed the CLI thread from a bounded transcript summary; the visible transcript is unchanged. */
   async compactConversation(): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
+    if (this.settings.get().chatSeamlessRotation) {
+      await this.rotateProviderSession()
+      return
+    }
     const seed = buildCompactionSeed(this.transcript.snapshot(), this.threadName)
     if (!seed) throw new Error('There is no conversation to compact yet')
     const previous = this.session?.conversationId ?? null
@@ -394,6 +398,23 @@ export class AntigravityChatService extends EventEmitter {
     this.activeTurnId = null
     this.turnContext = null
     await this.settings.set({ chatAntigravityConversationId: null })
+  }
+
+  private async rotateProviderSession(): Promise<void> {
+    await applyProviderRotation(this.settings, {
+      paneId: this.paneId,
+      provider: 'antigravity',
+      threadId: this.session?.conversationId ? antigravityThreadId(this.session.conversationId) : null,
+      threadName: this.threadName,
+      items: this.transcript.snapshot()
+    }, async () => {
+      const previous = this.session?.conversationId ?? null
+      if (!this.session) this.session = this.createSession()
+      else await this.session.reset()
+      if (previous) this.bridge.unbind(previous)
+      await this.settings.set({ chatAntigravityConversationId: null })
+      this.emitEvent({ type: 'thread', threadId: null, threadName: this.threadName })
+    }, null)
   }
 
   private async ensureReady(): Promise<void> {

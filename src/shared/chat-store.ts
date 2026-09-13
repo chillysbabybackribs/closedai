@@ -1,6 +1,7 @@
 import type { ChatProvider } from './chat.js'
 import type { ChatMemoryCheckpoint } from './chat-memory.js'
 import { prefixChatId } from './chat-providers.js'
+import type { ChatSessionRotation } from './session-rotation.js'
 import type { ChatContinuation } from './types.js'
 
 // The app's own record of a chat. A chat used to exist only as a live pane (discarded when empty,
@@ -42,6 +43,8 @@ export type ChatRecord = {
   checkpoint: ChatMemoryCheckpoint | null
   /** The chat that fanned this one out, when a tool created it; null for user-created chats. */
   parentChatId: string | null
+  /** Invisible session rotations newest last; used for recall chains in later phases. */
+  sessionRotations: ChatSessionRotation[]
 }
 
 export type ChatRecordSeed = Pick<ChatRecord, 'cwd' | 'projectPath' | 'provider' | 'modelId' | 'reasoningEffort'> &

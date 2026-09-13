@@ -12,7 +12,7 @@ import type {
   ChatThreadSummary,
   ChatTurnContextReport
 } from '../shared/chat.js'
-import type { AppSettingsAccess } from './app-settings-store.js'
+import { applyProviderRotation, type RotationSettingsAccess } from './chat-context/rotate-provider-session.js'
 import {
   type AppServerNotification
 } from './app-server-client.js'
@@ -27,6 +27,7 @@ import {
 } from './chat-context/turn-context.js'
 import { resumeThreadParams, startThreadParams, type ThreadResponse } from './chat-context/thread-params.js'
 import { ContextCompactor, describeUsage, type ContextUsage } from './chat-context/context-compaction.js'
+import { SessionRotator } from './chat-context/session-rotation.js'
 import { codexPlanUsage } from './chat-context/plan-usage.js'
 import {
   buildThreadHandoff,
@@ -60,6 +61,7 @@ export class ChatService extends EventEmitter {
   private readonly transcript: ChatTranscript
   private readonly toolCalls: AppServerToolCalls
   private readonly compactor: ContextCompactor
+  private readonly rotator: SessionRotator
   private startPromise: Promise<void> | null = null
   private resumePromise: Promise<void> | null = null
   private restartTimer: NodeJS.Timeout | null = null
@@ -68,7 +70,7 @@ export class ChatService extends EventEmitter {
 
   constructor(
     readonly cwd: string,
-    private readonly settings: AppSettingsAccess,
+    private readonly settings: RotationSettingsAccess,
     private readonly tools: ToolRegistry = new ToolRegistry([]),
     private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
     screenshots: Pick<ScreenshotStore, 'get'> | null = null,
@@ -96,6 +98,14 @@ export class ChatService extends EventEmitter {
       request: (method, params) => this.client.request(method, params),
       notice: (text, tone) => this.addNotice(text, tone, null)
     })
+    this.rotator = new SessionRotator({
+      enabled: () => this.seamlessRotation(),
+      thresholdPercent: () => this.settings.get().chatCompactAtPercent,
+      thresholdTokens: () => this.settings.get().chatCompactAtTokens,
+      threadId: () => this.threadId,
+      turnActive: () => this.activeTurnId !== null,
+      rotate: () => this.rotateProviderSession()
+    })
     this.client.on('notification', (notification: AppServerNotification) => this.onNotification(notification))
     this.client.on('request', (request) => {
       if (!this.toolCalls.handle(request)) answerServerRequest(this.client, request)
@@ -118,7 +128,7 @@ export class ChatService extends EventEmitter {
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
       pausedTurnId: this.pausedTurnId,
-      contextUsage: describeUsage(this.compactor.current),
+      contextUsage: describeUsage(this.contextManager().current),
       planUsage: this.planUsage,
       turnContext: this.turnContext,
       items: page?.items ?? this.transcript.snapshot(),
@@ -166,9 +176,10 @@ export class ChatService extends EventEmitter {
       // Paint the accepted message before a cold workspace runtime or fresh thread is ready.
       this.transcript.addOptimisticUser(clientUserMessageId, prompt, summaries)
       await prepare?.()
-      const endCompactionWait = this.compactor.inFlight
+      const manager = this.contextManager()
+      const endCompactionWait = manager.inFlight
         ? traceLog.responses.waitForCompaction(this.paneId) : () => {}
-      await Promise.all([this.ensureReady(), this.compactor.prepareForSend().finally(endCompactionWait)])
+      await Promise.all([this.ensureReady(), manager.prepareForSend().finally(endCompactionWait)])
       if (this.activeTurnId) throw new Error('A Codex turn is already running')
       const threadId = await this.ensureThread()
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
@@ -399,6 +410,7 @@ export class ChatService extends EventEmitter {
     )
     this.transcript.replaceFromThread(thread)
     this.compactor.reset()
+    this.rotator.reset()
     await this.settings.set({ chatThreadId: thread.id, chatContinuation: null })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }
@@ -409,8 +421,38 @@ export class ChatService extends EventEmitter {
     this.threadName = null
     this.transcript.clear()
     this.compactor.reset()
+    this.rotator.reset()
     this.activeTurnId = null
     this.turnContext = null
+  }
+
+  /** Drop the provider thread while keeping the visible transcript; seed the next send. */
+  private async rotateProviderSession(): Promise<void> {
+    try {
+      await applyProviderRotation(this.settings, {
+        paneId: this.paneId,
+        provider: 'codex',
+        threadId: this.threadId,
+        threadName: this.threadName,
+        items: this.transcript.snapshot()
+      }, async () => {
+        this.threadId = null
+        this.compactor.reset()
+        this.rotator.reset()
+        await this.settings.set({ chatThreadId: null })
+        this.emitEvent({ type: 'thread', threadId: null, threadName: this.threadName })
+      }, this.contextManager().current)
+    } finally {
+      this.rotator.complete()
+    }
+  }
+
+  private seamlessRotation(): boolean {
+    return this.settings.get().chatSeamlessRotation === true
+  }
+
+  private contextManager(): ContextCompactor | SessionRotator {
+    return this.seamlessRotation() ? this.rotator : this.compactor
   }
 
   private async ensureReady(): Promise<void> {
@@ -514,11 +556,11 @@ export class ChatService extends EventEmitter {
     this.activeTurnId = turnId
     if (turnId) {
       this.setPaused(null)
-      this.compactor.turnStarted()
+      this.contextManager().turnStarted()
     }
     this.emitEvent({ type: 'turn', turnId })
     if (turnId === null) {
-      this.compactor.turnFinished()
+      this.contextManager().turnFinished()
       void this.refreshPlanUsage()
     }
   }
@@ -534,7 +576,7 @@ export class ChatService extends EventEmitter {
   }
 
   private noteContextUsage(usage: ContextUsage): void {
-    this.compactor.noteUsage(usage)
+    this.contextManager().noteUsage(usage)
     this.emitEvent({ type: 'context', usage: describeUsage(usage) })
   }
 
@@ -550,6 +592,7 @@ export class ChatService extends EventEmitter {
 
   private onExit(): void {
     this.compactor.reset()
+    this.rotator.reset()
     this.setTurn(null)
     this.setConnection({ state: 'error', message: 'Codex stopped unexpectedly; reconnecting…' })
     this.scheduleRestart()

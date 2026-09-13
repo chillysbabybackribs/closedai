@@ -4,7 +4,7 @@ import type {
   ChatAccount, ChatAttachment, ChatConnection, ChatEvent, ChatHistoryWindow, ChatPlanUsage,
   ChatSnapshot, ChatThreadContent, ChatThreadSummary, ChatTurnContextReport
 } from '../../shared/chat.js'
-import type { AppSettingsAccess } from '../app-settings-store.js'
+import { applyProviderRotation, type RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import {
   buildThreadHandoff,
@@ -63,7 +63,7 @@ export class CursorChatService extends EventEmitter {
 
   constructor(
     readonly cwd: string,
-    private readonly settings: AppSettingsAccess,
+    private readonly settings: RotationSettingsAccess,
     private readonly bridge: CursorToolBridge,
     stateDir: string,
     private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
@@ -266,6 +266,12 @@ export class CursorChatService extends EventEmitter {
     }
   }
 
+  async compactConversation(): Promise<void> {
+    if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
+    if (!this.settings.get().chatSeamlessRotation) throw new Error('The active provider does not support compaction')
+    await this.rotateProviderSession()
+  }
+
   async archiveThread(threadId: string): Promise<void> {
     const sessionId = cursorSessionIdOf(threadId)
     if (!sessionId) throw new Error('Invalid thread')
@@ -420,6 +426,20 @@ export class CursorChatService extends EventEmitter {
     this.activeTurnId = null
     this.turnContext = null
     await this.settings.set({ chatCursorSessionId: null })
+  }
+
+  private async rotateProviderSession(): Promise<void> {
+    await applyProviderRotation(this.settings, {
+      paneId: this.paneId,
+      provider: 'cursor',
+      threadId: this.session?.sessionId ? cursorThreadId(this.session.sessionId) : null,
+      threadName: this.threadName,
+      items: this.transcript.snapshot()
+    }, async () => {
+      await this.session?.reset()
+      await this.settings.set({ chatCursorSessionId: null })
+      this.emitEvent({ type: 'thread', threadId: null, threadName: this.threadName })
+    }, null)
   }
 
   private async ensureReady(): Promise<void> {

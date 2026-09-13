@@ -150,6 +150,8 @@ export type AppSettings = {
   chatReasoningEffort: string | null
   /** Selected-pane projection of `ChatPeerRecord.continuation`. */
   chatContinuation: ChatContinuation | null
+  /** Selected-pane projection of `ChatRecord.sessionRotations`. */
+  chatSessionRotations?: import('./session-rotation.js').ChatSessionRotation[]
   /** Chat ids attached as panes in the active workspace; their records live in the chat store. */
   chatOpenIds: string[]
   /**
@@ -176,6 +178,11 @@ export type AppSettings = {
    * the next response; compare first-text timing and cache reuse before lowering this limit.
    */
   chatMidTurnCompactTokens: number
+  /**
+   * When true, idle context pressure rotates the provider session with a thin seed instead of
+   * native Codex compaction. Off until QA validates rotation + recall together.
+   */
+  chatSeamlessRotation: boolean
 }
 
 /** A still of the page the user is looking at; `imageUrl` is a data URL. */

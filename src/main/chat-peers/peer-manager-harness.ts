@@ -41,6 +41,7 @@ export function chatRecord(id: string, modelId: string | null, extra: Partial<Ch
     continuation: null,
     checkpoint: null,
     parentChatId: null,
+    sessionRotations: [],
     ...extra
   }
 }
@@ -52,6 +53,8 @@ export class MemorySettings implements AppSettingsAccess {
     this.value = { ...this.value, ...structuredClone(patch) }
     return this.get()
   }
+  checkpoint() { return null }
+  sessionRotations() { return this.get().chatSessionRotations ?? [] }
 }
 
 export class FakeSurface extends EventEmitter implements ChatSurface {

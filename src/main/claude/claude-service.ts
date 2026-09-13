@@ -12,9 +12,10 @@ import type {
   ChatThreadSummary,
   ChatTurnContextReport
 } from '../../shared/chat.js'
-import type { AppSettingsAccess } from '../app-settings-store.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { describeUsage, type ContextUsage } from '../chat-context/context-compaction.js'
+import { applyProviderRotation, type RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
+import { SessionRotator } from '../chat-context/session-rotation.js'
 import { applyPlanUsageSignal, planUsageUnavailable, type ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
 import {
   buildThreadHandoff,
@@ -64,11 +65,12 @@ export class ClaudeChatService extends EventEmitter {
   private planUsage: ChatPlanUsage | null = null
   private turnContext: ChatTurnContextReport | null = null
   private readonly transcript: ChatTranscript
+  private readonly rotator: SessionRotator
   private startPromise: Promise<void> | null = null
 
   constructor(
     readonly cwd: string,
-    private readonly settings: AppSettingsAccess,
+    private readonly settings: RotationSettingsAccess,
     private readonly tools: ToolRegistry = new ToolRegistry([]),
     private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
     private readonly screenshots: Pick<ScreenshotStore, 'get'> | null = null,
@@ -76,6 +78,14 @@ export class ClaudeChatService extends EventEmitter {
   ) {
     super()
     this.transcript = new ChatTranscript(cwd, () => this.activeTurnId, (event) => this.emitEvent(event), (callId) => screenshots?.get(callId) ?? null)
+    this.rotator = new SessionRotator({
+      enabled: () => this.seamlessRotation(),
+      thresholdPercent: () => this.settings.get().chatCompactAtPercent,
+      thresholdTokens: () => this.settings.get().chatCompactAtTokens,
+      threadId: () => (this.session?.sessionId ? claudeThreadId(this.session.sessionId) : null),
+      turnActive: () => this.activeTurnId !== null,
+      rotate: () => this.rotateProviderSession()
+    })
   }
 
   snapshot(window?: ChatHistoryWindow): ChatSnapshot {
@@ -117,6 +127,7 @@ export class ClaudeChatService extends EventEmitter {
       // catalog read and the turn context, which is most of the wait before a first reply.
       this.transcript.addOptimisticUser(crypto.randomUUID(), prompt, summaries)
       await prepare?.()
+      await this.rotator.prepareForSend()
       await this.ensureReady()
       const session = this.session!
       if (this.activeTurnId) throw new Error('A Claude turn is already running')
@@ -353,9 +364,34 @@ export class ClaudeChatService extends EventEmitter {
     this.transcript.clear()
     this.threadName = null
     this.contextUsage = null
+    this.rotator.reset()
     this.activeTurnId = null
     this.turnContext = null
     await this.settings.set({ chatClaudeSessionId: null })
+  }
+
+  private async rotateProviderSession(): Promise<void> {
+    try {
+      await applyProviderRotation(this.settings, {
+        paneId: this.paneId,
+        provider: 'claude',
+        threadId: this.session?.sessionId ? claudeThreadId(this.session.sessionId) : null,
+        threadName: this.threadName,
+        items: this.transcript.snapshot()
+      }, async () => {
+        await this.session?.reset()
+        this.contextUsage = null
+        this.rotator.reset()
+        await this.settings.set({ chatClaudeSessionId: null })
+        this.emitEvent({ type: 'thread', threadId: null, threadName: this.threadName })
+      }, this.contextUsage)
+    } finally {
+      this.rotator.complete()
+    }
+  }
+
+  private seamlessRotation(): boolean {
+    return this.settings.get().chatSeamlessRotation === true
   }
 
   private async applyModelPreference(): Promise<void> {
@@ -430,6 +466,7 @@ export class ClaudeChatService extends EventEmitter {
 
   private noteContextUsage(usage: ContextUsage): void {
     this.contextUsage = usage
+    this.rotator.noteUsage(usage)
     this.emitEvent({ type: 'context', usage: describeUsage(usage) })
   }
 
@@ -463,8 +500,12 @@ export class ClaudeChatService extends EventEmitter {
   private setTurn(turnId: string | null): void {
     if (this.activeTurnId === turnId) return
     this.activeTurnId = turnId
-    if (turnId) this.setPaused(null)
+    if (turnId) {
+      this.setPaused(null)
+      this.rotator.turnStarted()
+    }
     this.emitEvent({ type: 'turn', turnId })
+    if (turnId === null) this.rotator.turnFinished()
   }
 
   private emitEvent(event: ChatEvent): void {

@@ -20,7 +20,9 @@ test('cold catalog startup loads saved history once and obtains its models from 
   let saved: typeof DEFAULT_APP_SETTINGS = { ...DEFAULT_APP_SETTINGS, chatCursorSessionId: 'saved' }
   const service = new CursorChatService('/workspace', {
     get: () => saved,
-    set: async (patch) => { saved = { ...saved, ...patch }; return saved }
+    set: async (patch) => { saved = { ...saved, ...patch }; return saved },
+    checkpoint: () => null,
+    sessionRotations: () => saved.chatSessionRotations ?? []
   }, { servers: () => [] } as unknown as CursorToolBridge, '/unused')
   const session = (service as unknown as { createSession(): CursorSession }).createSession()
   const loads: string[] = []

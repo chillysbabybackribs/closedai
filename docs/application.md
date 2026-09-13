@@ -123,9 +123,12 @@ A continuation or provider switch copies an applicable checkpoint into its exist
 `peer_chats.recall` can search the current transcript or read that direct source—even after the
 source pane closes—without opening it in the UI. Source recall stops at the saved boundary. A
 checkpoint newer than a branch point is not carried. Missing boundaries (including legacy
-continuations) fail closed. Retrieval uses
-existing provider stores; no second transcript archive or automatic provider-session rotation
-is introduced. See [Model context](model-context.md) for trust and [Tools](tools.md) for limits.
+continuations) fail closed. Retrieval uses existing provider stores; no second transcript
+archive is introduced. When `chatSeamlessRotation` is enabled (default off), idle context pressure
+on Codex and Claude can rotate the provider session invisibly: the visible transcript stays put,
+a thin seed is queued for the next send, and each rotation appends metadata to the chat record
+for later recall-chain work. Native compaction remains the default until rotation is validated.
+See [Model context](model-context.md) for trust and [Tools](tools.md) for limits.
 
 New chats can retrieve earlier conversations through the same memory service without transcript
 injection. `peer_chats.list(scope=history)` discovers nonarchived chats across projects, including
@@ -398,8 +401,11 @@ observed from the last attempt onward. Window-percentage pressure bypasses the t
 cooldown and growth requirement, but still observes the idle grace. A compaction already in
 flight can block the next send until it completes or the 90-second app wait expires.
 This is a soft trigger, not a hard context cap or a guarantee that native compaction reaches the
-target. Claude keeps SDK-native automatic/precomputed compaction; Antigravity compaction is manual re-seed only
-(no context gauge or auto trigger). No provider history is deleted or session silently replaced.
+target. With `chatSeamlessRotation` enabled, the same idle thresholds rotate Codex and Claude to a
+fresh provider thread with a thin seed instead of calling native compact; the Turn trace records
+`session.rotated` and the UI stays unchanged. Claude otherwise keeps SDK-native automatic/precomputed
+compaction; Antigravity compaction is manual re-seed only (no context gauge or auto trigger).
+Provider history is not deleted; rotation leaves the old thread in the provider store for recall.
 
 The Turn trace shows send-to-first-assistant-text timing for all four providers: preparation,
 Codex's measured compaction wait (a subset of preparation), and time after provider dispatch.

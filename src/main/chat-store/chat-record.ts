@@ -3,6 +3,7 @@ import { chatProviderOfId, isChatProvider } from '../../shared/chat-providers.js
 import type { ChatPeerRecord } from '../../shared/types.js'
 import { normalizeContinuation } from '../app-settings-store.js'
 import { normalizeMemoryCheckpoint } from '../chat-context/memory-checkpoint.js'
+import { MAX_SESSION_ROTATIONS, type ChatSessionRotation } from '../../shared/session-rotation.js'
 
 // Shape checks for records read back from disk, and the one-way translation from the pane
 // records that settings used to hold. Both keep the pane id as the chat id: the drawer's
@@ -47,7 +48,8 @@ export function normalizeChatRecord(candidate: unknown): ChatRecord | null {
     pinnedAt: positiveTime(record.pinnedAt),
     continuation: normalizeContinuation(record.continuation),
     checkpoint: record.checkpoint === undefined ? null : normalizeMemoryCheckpoint(record.checkpoint),
-    parentChatId: optionalString(record.parentChatId)
+    parentChatId: optionalString(record.parentChatId),
+    sessionRotations: normalizeSessionRotations(record.sessionRotations)
   }
 }
 
@@ -79,7 +81,8 @@ export function chatRecordFromPeer(peer: ChatPeerRecord, cwd: string, projectPat
     pinnedAt: null,
     continuation: peer.continuation ?? null,
     checkpoint: peer.checkpoint ?? null,
-    parentChatId: null
+    parentChatId: null,
+    sessionRotations: []
   }
 }
 
@@ -89,4 +92,22 @@ function optionalString(value: unknown): string | null {
 
 function positiveTime(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.floor(value) : null
+}
+
+function normalizeSessionRotations(value: unknown): ChatSessionRotation[] {
+  if (!Array.isArray(value)) return []
+  const rotations: ChatSessionRotation[] = []
+  for (const candidate of value) {
+    if (!candidate || typeof candidate !== 'object') continue
+    const record = candidate as Record<string, unknown>
+    if (!Number.isInteger(record.epoch) || Number(record.epoch) < 1) continue
+    if (typeof record.at !== 'number' || !Number.isFinite(record.at) || record.at <= 0) continue
+    rotations.push({
+      epoch: Number(record.epoch),
+      sourceThroughItemId: optionalString(record.sourceThroughItemId),
+      providerThreadId: optionalString(record.providerThreadId),
+      at: Math.floor(record.at)
+    })
+  }
+  return rotations.slice(-MAX_SESSION_ROTATIONS)
 }

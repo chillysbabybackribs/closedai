@@ -1,5 +1,7 @@
 import type { ChatRecord } from '../../shared/chat-store.js'
 import { chatRecordThreadId, type ChatProviderThreadIds } from '../../shared/chat-store.js'
+import type { ChatMemoryCheckpoint } from '../../shared/chat-memory.js'
+import type { ChatSessionRotation } from '../../shared/session-rotation.js'
 import type { AppSettings, ChatPeerRecord } from '../../shared/types.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
@@ -26,8 +28,17 @@ export class PeerSettings implements AppSettingsAccess {
       chatCursorSessionId: chat.cursorSessionId,
       chatModelId: chat.modelId,
       chatReasoningEffort: chat.reasoningEffort,
-      chatContinuation: chat.continuation
+      chatContinuation: chat.continuation,
+      chatSessionRotations: chat.sessionRotations
     }
+  }
+
+  checkpoint(): ChatMemoryCheckpoint | null {
+    return this.store.get(this.paneId)?.checkpoint ?? null
+  }
+
+  sessionRotations(): ChatSessionRotation[] {
+    return this.store.get(this.paneId)?.sessionRotations ?? []
   }
 
   async set(patch: Partial<AppSettings>): Promise<AppSettings> {
@@ -38,11 +49,12 @@ export class PeerSettings implements AppSettingsAccess {
       ...(patch.chatClaudeSessionId !== undefined ? { claudeSessionId: patch.chatClaudeSessionId } : {}),
       ...(patch.chatAntigravityConversationId !== undefined ? { antigravityConversationId: patch.chatAntigravityConversationId } : {}),
       ...(patch.chatCursorSessionId !== undefined ? { cursorSessionId: patch.chatCursorSessionId } : {}),
-      ...(patch.chatContinuation !== undefined ? { continuation: patch.chatContinuation } : {})
+      ...(patch.chatContinuation !== undefined ? { continuation: patch.chatContinuation } : {}),
+      ...(patch.chatSessionRotations !== undefined ? { sessionRotations: patch.chatSessionRotations } : {})
     })
     // Settings other than the pane projection (compaction thresholds, disabled tools) pass through.
     const { chatThreadId: _t, chatClaudeSessionId: _c, chatAntigravityConversationId: _a, chatCursorSessionId: _u,
-      chatModelId: _m, chatReasoningEffort: _e, chatContinuation: _h, ...rest } = patch
+      chatModelId: _m, chatReasoningEffort: _e, chatContinuation: _h, chatSessionRotations: _r, ...rest } = patch
     const current = this.root.get()
     // The flat chat* fields mirror whichever pane is selected, so a relaunch that falls back to
     // them reads the model and threads of the pane the user was in.

@@ -42,7 +42,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   // first-text timing and recall. Cached input size alone does not establish latency.
   chatCompactAtPercent: 80,
   chatCompactAtTokens: 0,
-  chatMidTurnCompactTokens: 0
+  chatMidTurnCompactTokens: 0,
+  chatSeamlessRotation: false
 }
 
 const MAX_COMPACT_AT_PERCENT = 95
@@ -100,7 +101,8 @@ function normalize(parsed: unknown): AppSettings {
       ? Math.min(MAX_COMPACT_AT_PERCENT, Math.max(0, Math.round(record.chatCompactAtPercent)))
       : DEFAULT_APP_SETTINGS.chatCompactAtPercent,
     chatCompactAtTokens: normalizeAutoCompactTokens(record.chatCompactAtTokens),
-    chatMidTurnCompactTokens: normalizeAutoCompactTokens(record.chatMidTurnCompactTokens)
+    chatMidTurnCompactTokens: normalizeAutoCompactTokens(record.chatMidTurnCompactTokens),
+    chatSeamlessRotation: record.chatSeamlessRotation === true
   }
 }
 
