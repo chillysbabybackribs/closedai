@@ -72,7 +72,7 @@ before the app-server starts.
 | `search` | `run` | `start`, `extend`, `cancel` | Incremental public-web research: independent queries and static source readers overlap inside one app-owned run. Live presentation is the default; a retained browser tab opens on an actual source as URLs arrive. `extend` accepts only an active run and directs completed-run follow-ups to a new run. |
 | `search` | `read` | `results`, `wait`, `source` | Cursor-based source updates, bounded event waits, and retained document excerpts. Observes the calling pane/thread's runs without starting more requests. Oversized wait and excerpt budgets are capped at 20 seconds and 12,000 characters rather than rejected. |
 | `peer_chats` | `list`, `read` | plain tools | Read-only status and paginated transcript access to other panes and visible subagent summaries. `read` is deferred where supported; it takes an id from `list` and pages the newest 30 items backwards by default (at most 100), inside a serialized budget (`max_chars`, 6k default, 16k ceiling) that clips long tool detail, output, diffs and screenshot data URLs and reports `totalItems`; `order: "oldest"` follows a chat forward and `types` narrows to the item kinds wanted. It does not start or control agents. Reasoning items are excluded from both previews and pages, matching `recall` and thread handoff, so one model's thinking never enters another model's context. |
-| `peer_chats` | `recall` | plain tool, read-only | Bounded phrase search or exact-message excerpts from the caller's current chat or frozen direct continuation source, plus saved checkpoint state. |
+| `peer_chats` | `recall` | plain tool, read-only | Bounded phrase search or exact-message excerpts from the caller's current chat, frozen direct continuation source, or a previous conversation across projects, plus saved checkpoint state. |
 | `peer_chats` | `checkpoint` | plain tool, writes notes | Revision-checked replacement of the caller's structured working notes; cannot control sessions or write other panes. |
 | `tool_batch` | `run` | plain tool | Runs up to 16 other tools by default, sequentially or in parallel by resource. Same-target work serializes; distinct explicit browser targets can run concurrently. When the outer batch ends or times out, its signal cancels in-flight inner calls, releases their resource locks, and prevents queued calls in that target lane from starting. `toolBatchMaxCalls` configures 1–64 at startup; nested batches are refused. A failed sequential batch compensates itself: browser state armed by earlier steps that nothing on screen reveals — profiling recorders, a pre-document hook, device emulation — is released in reverse order and reported, including after a batch timeout, because the plan that justified arming it no longer holds. State a completed step deliberately released is not released twice, visible or consequential mutations (an opened tab, a cookie, a network rule) are never undone, and parallel calls are declared independent so a failure does not unwind them. See `src/main/tools/batch/compensation.ts`. |
 
@@ -357,6 +357,18 @@ rotation is not implemented.
 
 ## Working memory and recall
 
+`peer_chats.list` retains `scope: open` as the peer-status default. `scope: history` discovers
+previous conversations, including closed chats across projects, using existing records without
+loading transcripts. It excludes the caller, archived chats, and empty chats. Entries contain
+`chatId`, `threadId`, title (120 chars), preview (240 chars), `cwd`, and `lastActivityAt`, ordered by
+most recent user submission; older records fall back to turn completion or creation. Background
+completion and pinning do not outrank a recorded user submission. `limit` defaults to 5, max 8;
+the serialized result fits within 16k characters and may return fewer entries to fit. Page with
+`nextBeforeChatId` as `before_chat_id`. A missing cursor is an error. `query` is a literal
+case-insensitive metadata filter over title, preview, project directory, and applicable checkpoint
+notes, not transcript search. `cwd` optionally narrows discovery to a project directory. History
+arguments require history scope. Explicit older references outweigh recency in shared guidance.
+
 `peer_chats.checkpoint` writes a small structured checkpoint only for the calling pane's active
 thread/turn. It requires `expected_revision` (0 when absent) and `state` with `goal`, `constraints`,
 `decisions`, `progress`, `nextSteps`, and `files`. Goal is at most 1,000 characters; each list has
@@ -366,9 +378,11 @@ The response contains revision and boundary metadata rather than echoing the ent
 One checkpoint per pane is persisted in the existing settings store, not a separate transcript
 database. It is model-authored data, not an approval or independently verified work record.
 
-`peer_chats.recall` is read-only and accepts `scope: current|source`, optional literal
-case-insensitive `query`, `types` (item kinds to search, so tool traffic cannot crowd out the
-messages), `limit` (default 5, max 8), or `item_id` with a character `offset`.
+`peer_chats.recall` is read-only and accepts `scope: current|source|history`, optional literal
+case-insensitive `query`, `types` (defaults to user/assistant messages), `limit` (default 5, max 8),
+or `item_id` with a character `offset`. History accepts `chat_id` from discovery, defaulting to
+the most recent other conversation when omitted, and returns its `chatId`. `chat_id` is rejected
+with other scopes. Tool, plan, command, and file-change evidence can be requested through `types`.
 Search results contain at most 800 characters per excerpt and fit within 16,000 serialized
 characters including checkpoint state. Use `nextOffset` to read more of a matched item, or
 `nextBeforeItemId` as `before_item_id` to search older items. `hasMore` means older candidate
@@ -379,14 +393,18 @@ attachment contents are not fetched. Queries are literal phrases, not semantic/v
 The current scope reads the caller's existing transcript. Source scope uses only the direct
 continuation source and its frozen last-item id; later messages are excluded even when the
 original pane keeps running. A source with no recoverable boundary is unavailable rather than
-read without limits. Closed source panes use existing provider history readers without opening
-that chat in the UI. Those readers can still load a full transcript in main before selection;
+read without limits. History scope separately reads previous chats across projects without that
+continuation bound. Closed or empty parked panes use existing provider history readers with the
+source project directory, without selecting that chat in the UI. Cursor queues concurrent history
+loads so its shared replay collector cannot mix transcripts. Those readers can still load a full transcript in main before selection;
 this does not yet optimize provider-history disk/RPC transfer. Provider compaction, missing
-history, or id changes can make old evidence unavailable. No arbitrary thread id or pane id
-argument is accepted. Workspace/thread changes and cancellation invalidate pending reads.
+history, or id changes can make old evidence unavailable. A history chat id resolves through app
+records, rather than accepting an arbitrary provider thread id. Workspace/thread changes, target
+thread changes or archival, and cancellation invalidate pending reads.
 
-Both memory tools are deferred where supported. Shared instructions suggest a checkpoint at
-meaningful milestones, not every turn. Continuation copies applicable notes into the existing
+Recall and checkpoint are deferred where supported. Checkpoints remain optional. Routine retrieval
+does not require user-facing narration, but relevant uncertainty and requested sources are disclosed.
+Continuation copies applicable notes into the existing
 bounded handoff, marked untrusted; later conversation can supersede those notes. There is no
 new model call on Send and no automatic same-pane session replacement. Disabling the checkpoint
 tool prevents new model writes; existing notes/history are not deleted.

@@ -1,6 +1,6 @@
 # Application guide
 
-Source review: 2026-09-04, including the current uncommitted changes. This describes implemented
+Source review: 2026-09-13, including the current uncommitted changes. This describes implemented
 behavior, not a new live UI or provider verification. Protocol measurements retain their dates
 in the provider guides.
 
@@ -125,6 +125,16 @@ continuations) fail closed. Retrieval uses
 existing provider stores; no second transcript archive or automatic provider-session rotation
 is introduced. See [Model context](model-context.md) for trust and [Tools](tools.md) for limits.
 
+New chats can retrieve earlier conversations through the same memory service without transcript
+injection. `peer_chats.list(scope=history)` discovers nonarchived chats across projects, including
+closed chats, by recent user activity or a metadata query; `recall(scope=history)` reads bounded
+excerpts from the latest other chat or an explicit chat id. Older explicit references can outweigh
+recency. Discovery reads existing records, and recall uses existing provider history with the source
+project directory. There is no additional transcript archive, summarization call, or mandatory
+checkpoint. Shared instructions encourage natural use of prior context without announcing routine
+retrieval, while disclosing missing or conflicting evidence when it matters. This is guidance, not
+a guarantee that every model retrieves or phrases its response identically.
+
 ## Workspace layout
 
 The sidebar, chat layout, and shared browser are independent regions. Two full-height chats can
@@ -247,7 +257,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 
 Provider background tasks and app panes are separate concepts. Claude tracks task notifications
 across turn boundaries with `ClaudeBackgroundTasks`; Codex collaboration items are marked as
-background agent activity. The read-only `peer_chats.list`/`read` directory exposes other panes and visible
+background agent activity. The read-only `peer_chats.list(scope=open)`/`read` directory exposes other panes and visible
 subagent summary items, not an independent process-control API for every SDK task. `read` answers
 "what is that pane doing" first: it pages from the newest item backwards, keeps a page inside a
 serialized character budget by clipping long tool detail, output, diffs and screenshot data URLs,

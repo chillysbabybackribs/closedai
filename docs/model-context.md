@@ -1,6 +1,6 @@
 # Model context and instructions
 
-Source review: 2026-09-04. Common product facts, provider-specific rules, runtime context, and
+Source review: 2026-09-13. Common product facts, provider-specific rules, runtime context, and
 repository documentation have separate owners. Editing a Markdown guide alone does not change
 every running model's prompt.
 
@@ -10,17 +10,25 @@ every running model's prompt.
 |---|---|---|
 | Common product facts and tool routing | `src/main/chat-context/application-instructions.ts` | Included by Codex, Claude, Antigravity, and Cursor instruction builders |
 | Response style | `src/main/chat-context/articulation-instructions.ts` | Included by all four builders; direct responses, useful progress, verification and limitations, and Markdown links for referenced pages |
-| Engineering workflow | `src/main/chat-context/engineering-instructions.ts` | Shared narrow-read, structured-edit, verification, Git-state, and delegation policy plus each provider's native tool names |
+| Engineering workflow | `src/main/chat-context/engineering-instructions.ts` | Structured edits, task-appropriate verification, preservation of Git state, and each provider's native tool names |
 | Codex adapter guidance | `src/main/chat-context/developer-instructions.ts`, `thread-params.ts` | `developerInstructions` on thread start and resume, alongside Codex's base instructions |
 | Claude adapter guidance | `src/main/claude/claude-instructions.ts`, `claude-options.ts` | Appended to the SDK's `claude_code` system preset when a query runtime starts |
 | Antigravity adapter guidance | `src/main/antigravity/antigravity-instructions.ts`, `antigravity-profile.ts` | Written to the app-private `agent.md`; loaded through `--agent closedai` and `--add-dir` on CLI startup |
 | Cursor adapter guidance | `src/main/cursor/cursor-instructions.ts`, `cursor-input.ts` | Once per ACP session, as a `closedai.instructions` application context block on the first turn; turn context and handoff on later turns |
 | Repository rules | `src/main/chat-context/workspace-rules.ts`, root `AGENTS.md`, applicable `CLAUDE.md` | Codex loads `AGENTS.md` natively; Claude and Antigravity receive the selected workspace root policy explicitly; Claude also loads project `CLAUDE.md` through the SDK |
 
-The common product facts explain stable chat ids, the shared browser/sidebar, and the distinction
-between pane turns and provider background work. App facts come from `closedai_app.state`,
+The common product facts define the model as the user's collaborator inside their OS and ClosedAI's
+embedded Chromium browser, free to choose its approach and available tools for authorized work.
+This role has one shared owner; adapters supply transport and provider facts. Evidence guidance
+distinguishes observations from hypotheses without prescribing a debugging sequence. The app no
+longer adds a blanket restriction on delegation; applicable user and repository instructions still apply.
+Stable chat ids, the shared browser/sidebar, and the distinction between pane turns and provider
+background work provide orientation. App facts come from `closedai_app.state`,
 service operations from `closedai_app.command`, and real renderer interaction from manifest
-control ids through `closedai_app.ui`. Other panes are readable through `peer_chats`.
+control ids through `closedai_app.ui`. The chat section defaults to the calling pane (including its
+model, thread, and `cwd`), falling back to selection only when there is no caller. `pane_id` explicitly
+overrides that target. Workspace state separately identifies caller and selection. Other panes and
+previous conversations are readable through `peer_chats`.
 Renderer chat/composer control ids target the focused tile; use `layout.pane-drag` with a chat id
 to focus another tile before exercising its controls. The UI state includes visible pane ids and
 browser visibility. Browser pages use the CDP tools described in [Tools](tools.md) and [CDP](cdp-tool-foundation.md).
@@ -43,7 +51,9 @@ for ClosedAI tools. Temporary instrumentation must be paired with use and releas
 
 The shared response style asks for direct answers, useful progress during longer work, and a final
 result with verification and unresolved limitations. Errors affecting the outcome must be disclosed.
-There is no first-person phrase ban or obligation to narrate every recovered tool error. This is
+Routine history retrieval is used naturally without announcing it. Sources are explained when
+asked, and missing or conflicting context is disclosed when it affects the answer. There is no
+first-person phrase ban, output filter, or obligation to narrate every recovered tool error. This is
 prompt guidance, not a text filter or a guarantee of identical output across models.
 
 The engineering contract steers every lane toward focused reads, provider-native structured
@@ -112,13 +122,30 @@ different provider thread. They retain the frozen source boundary for bounded
 messages take precedence. No summarization call is added to Send, and checkpoints are neither
 automatically generated nor repeatedly injected into the prompt.
 
-`peer_chats.recall` returns bounded historical excerpts and checkpoint state. `current` searches
-the caller's own transcript; `source` accesses only the direct continuation source, capped at
-its saved last-item boundary. Source history uses the live pane when available or the provider's
-existing history reader; it does not select or send to the source. Missing boundaries, including
-older continuations without one, fail closed. Late replies after a workspace/thread switch are
-rejected. Read errors do not silently fall back to unrestricted history. These tools are deferred
-where supported, and their descriptions carry limits so the common prompt stays small.
+`peer_chats.list(scope=history)` discovers nonarchived conversations across projects from existing
+chat records, without loading transcripts. It excludes the caller and empty chats, sorts by most
+recent user submission (falling back to turn completion or creation for older records), and returns
+up to five compact entries, at most eight, within 16k serialized characters. Pinning and incidental
+record updates do not change this ranking. `query` matches titles, previews, project directories,
+and applicable checkpoint notes; `cwd` optionally filters by project. Discovery is metadata search,
+not full-text or semantic search. A stable chat-id cursor pages older entries. Explicit topic
+references take precedence over recency in the model's retrieval guidance.
+
+`peer_chats.recall` returns bounded excerpts and checkpoint state. `current` reads the caller's
+transcript; `source` reads its direct continuation capped at the saved branch boundary. `history`
+reads a discovered `chat_id`, or defaults to the most recent other conversation. It uses an available
+live transcript or the existing provider reader with the source project directory; no chat is
+selected and no message is sent. The result identifies the selected history chat. User/assistant
+messages are the default; `types` requests other textual evidence. Transcript phrase search and
+exact-message expansion share the existing recall implementation and 16k output budget. Cursor
+serializes history loads because ACP shares one replay collector. Missing history, provider errors,
+changed targets, caller changes, and cancellation are surfaced rather than silently reading another
+conversation. `source` still requires its frozen boundary; broader `history` is a separate explicit scope.
+
+Ordinary new chats do not receive old transcripts, new summaries, or mandatory checkpoints. The
+model retrieves context when useful; no automatic search or extra model call is added to Send.
+Existing continuation digests retain their explicit handoff behavior. Recall and checkpoint remain
+deferred where supported, with detailed paging contracts in tool descriptions rather than the prompt.
 
 The opt-in Codex `chatCompactAtTokens` setting requests native compaction during idle time,
 independently of model-window percentage. It does not itself generate checkpoint notes,
