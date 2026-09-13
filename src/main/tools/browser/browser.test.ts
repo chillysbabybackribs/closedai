@@ -52,19 +52,25 @@ function harness(overrides: Partial<BrowserToolHost> = {}) {
   const registry = new ToolRegistry([browserTools(() => host)])
   const call = (args: Record<string, unknown>) =>
     registry.call({ namespace: 'embedded_browser', tool: 'page', arguments: args }, { threadId: null, turnId: null, callId: 'c' })
-  return { calls, call, registry }
+  const scriptCall = (args: Record<string, unknown>) =>
+    registry.call({ namespace: 'embedded_browser', tool: 'script', arguments: args }, { threadId: null, turnId: null, callId: 'c' })
+  return { calls, call, scriptCall, registry }
 }
 
 function textOf(result: { content: Array<{ type: string; text?: string }> }): string {
   return result.content[0]?.type === 'text' ? result.content[0].text ?? '' : ''
 }
 
-test('browser tool advertises one tool with browser page actions', () => {
+test('browser tool advertises page and deferred script tools', () => {
   const { registry } = harness()
-  assert.deepEqual(registry.names(), ['embedded_browser.page'])
+  assert.deepEqual(registry.names(), ['embedded_browser.page', 'embedded_browser.script'])
   assert.deepEqual(registry.namespaces[0].tools[0].actions?.map((action) => action.name), [
-    'navigate', 'read_page', 'wait_for', 'fetch', 'extract', 'query', 'evaluate', 'console'
+    'navigate', 'read_page', 'wait_for'
   ])
+  assert.deepEqual(registry.namespaces[0].tools[1].actions?.map((action) => action.name), [
+    'fetch', 'extract', 'query', 'evaluate', 'console'
+  ])
+  assert.equal(registry.namespaces[0].tools[1].deferLoading, true)
 })
 
 test('navigate defaults to dom-ready readiness and reports the reached state', async () => {
@@ -147,8 +153,8 @@ function jsonHarness(seen: unknown[] = [], overrides: Record<string, unknown> = 
 
 test('fetch calls from inside the tab and parses a JSON response', async () => {
   const seen: unknown[] = []
-  const { call } = jsonHarness(seen)
-  const result = await call({
+  const { scriptCall } = jsonHarness(seen)
+  const result = await scriptCall({
     action: 'fetch', url: '/api', method: 'POST', body: '{"page":1}', headers: { 'content-type': 'application/json' }
   })
   assert.equal(result.isError, undefined)
@@ -161,15 +167,15 @@ test('fetch calls from inside the tab and parses a JSON response', async () => {
 })
 
 test('fetch reports a missing tab rather than pretending the request ran', async () => {
-  const { call } = harness()
-  const result = await call({ action: 'fetch', url: '/api', tab_id: 'missing' })
+  const { scriptCall } = harness()
+  const result = await scriptCall({ action: 'fetch', url: '/api', tab_id: 'missing' })
   assert.equal(result.isError, true)
   assert.match(textOf(result), /No tab with id missing/)
 })
 
 test('extract returns only the projected fields and reports what it dropped', async () => {
-  const { call } = jsonHarness()
-  const result = await call({ action: 'extract', url: '/api', path: 'data.items', fields: ['name'], limit: 1 })
+  const { scriptCall } = jsonHarness()
+  const result = await scriptCall({ action: 'extract', url: '/api', path: 'data.items', fields: ['name'], limit: 1 })
   const payload = JSON.parse(textOf(result)) as { matched: number; returned: number; limited: boolean; value: unknown }
   assert.deepEqual(payload.value, [{ name: 'One' }])
   assert.equal(payload.matched, 2)
@@ -178,13 +184,13 @@ test('extract returns only the projected fields and reports what it dropped', as
 })
 
 test('extract fails with advice when the path or the content is wrong', async () => {
-  const { call } = jsonHarness()
-  const noPath = await call({ action: 'extract', url: '/api', path: 'data.missing' })
+  const { scriptCall } = jsonHarness()
+  const noPath = await scriptCall({ action: 'extract', url: '/api', path: 'data.missing' })
   assert.equal(noPath.isError, true)
   assert.match(textOf(noPath), /No value at path "data.missing"/)
 
   // The default harness page is prose, not JSON: extract should say so instead of half-parsing it.
-  const notJson = await call({ action: 'extract' })
+  const notJson = await scriptCall({ action: 'extract' })
   assert.equal(notJson.isError, true)
   assert.match(textOf(notJson), /is not a JSON document/)
 })
@@ -201,26 +207,26 @@ test('invalid arguments are rejected per action', async () => {
 })
 
 test('query passes selector options through and returns the structured result', async () => {
-  const { calls, call } = harness()
-  const result = await call({ action: 'query', selector: 'a.nav', text_contains: 'Docs', attributes: ['data-id'], visible_only: true, max_matches: 5 })
+  const { calls, scriptCall } = harness()
+  const result = await scriptCall({ action: 'query', selector: 'a.nav', text_contains: 'Docs', attributes: ['data-id'], visible_only: true, max_matches: 5 })
   assert.equal(result.isError, undefined)
   assert.deepEqual(calls[0], ['query', undefined, { selector: 'a.nav', text: 'Docs', attributes: ['data-id'], visibleOnly: true, limit: 5, maxText: 200 }])
   assert.equal((JSON.parse(textOf(result)) as { matched: number }).matched, 1)
-  const missing = await call({ action: 'query', selector: 'a', tab_id: 'missing' })
+  const missing = await scriptCall({ action: 'query', selector: 'a', tab_id: 'missing' })
   assert.equal(missing.isError, true)
 })
 
 test('evaluate returns the page value as JSON and defaults its bound', async () => {
-  const { calls, call } = harness()
-  const result = await call({ action: 'evaluate', expression: 'document.title' })
+  const { calls, scriptCall } = harness()
+  const result = await scriptCall({ action: 'evaluate', expression: 'document.title' })
   assert.deepEqual(calls[0], ['evaluate', undefined, { expression: 'document.title', maxChars: 20_000 }])
   assert.deepEqual(JSON.parse(textOf(result)), { ok: true, type: 'object', value: { title: 'A' }, truncated: false })
 })
 
 test('console forwards its filters and reports a missing tab', async () => {
-  const { calls, call } = harness()
-  await call({ action: 'console', min_level: 'error', since_navigation: true, after_cursor: 3, max_entries: 10 })
+  const { calls, scriptCall } = harness()
+  await scriptCall({ action: 'console', min_level: 'error', since_navigation: true, after_cursor: 3, max_entries: 10 })
   assert.deepEqual(calls[0], ['console', undefined, { minLevel: 'error', contains: undefined, sinceNavigation: true, afterCursor: 3, limit: 10 }])
-  const missing = await call({ action: 'console', tab_id: 'missing' })
+  const missing = await scriptCall({ action: 'console', tab_id: 'missing' })
   assert.equal(missing.isError, true)
 })

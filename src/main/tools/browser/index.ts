@@ -36,12 +36,21 @@ export function browserTools(
       defineActionTool({
         name: 'page',
         description:
-          'Inspect and script the embedded browser page. navigate, read_page, and wait_for return plain text; ' +
-          'the rest return JSON. For cross-origin APIs prefer embedded_browser.session fetch.',
+          'Inspect the embedded browser page the user can see. navigate, read_page, and wait_for return plain text. ' +
+          'For fetch, extract, query, evaluate, and console use embedded_browser.script.',
         actions: [
           navigateAction(browser),
           readPageAction(browser),
-          waitForAction(browser),
+          waitForAction(browser)
+        ]
+      }),
+      defineActionTool({
+        name: 'script',
+        deferLoading: true,
+        description:
+          'Run scripts and extract data from the embedded browser page. All actions return JSON except when noted. ' +
+          'For cross-origin APIs prefer embedded_browser.session fetch.',
+        actions: [
           fetchAction(browser),
           extractAction(browser),
           queryAction(browser),

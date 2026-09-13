@@ -30,8 +30,8 @@ function payload(result: { content: Array<{ type: string; text?: string }> }): R
 
 test('the network tool registers beside page with its seven actions', () => {
   const { registry } = harness()
-  assert.deepEqual(registry.names(), ['embedded_browser.page', 'embedded_browser.network'])
-  assert.deepEqual(registry.namespaces[0].tools[1].actions?.map((action) => action.name), [
+  assert.deepEqual(registry.names(), ['embedded_browser.page', 'embedded_browser.script', 'embedded_browser.network'])
+  assert.deepEqual(registry.namespaces[0].tools[2].actions?.map((action) => action.name), [
     'requests', 'wait', 'body', 'rules', 'add_rule', 'remove_rule', 'clear'
   ])
 })

@@ -195,8 +195,9 @@ database that Chromium uses to store cookies stores the values in plaintext" —
 - Keep `scripts/launch-electron-vite.mjs`: it strips PRIME/Optimus offload env vars before the
   binary starts (Chromium snapshots env before JS runs). Still relevant on 44 even though ANGLE is
   now statically linked (the EGL visual mismatch is in the driver path, not the ANGLE library).
-- `disable-accelerated-video-decode`: keep only while the measured zero-frame H.264 bug reproduces;
-  re-test on 44 (Chromium 152) and drop the switch if fixed.
+- `disable-accelerated-video-decode`: off by default on Chromium 152+ (Electron 44 retest). Set
+  `CLOSEDAI_DISABLE_HARDWARE_VIDEO_DECODE=1` if a driver still returns zero-filled H.264 frames.
+  `CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE=1` remains a legacy force-on escape hatch.
 - Log `app.getGPUFeatureStatus()` once at startup so a CPU-rasterization fallback is visible.
 - `--enable-features=SpareRendererForSitePerProcess`: keeps a warm renderer so a new tab does not
   wait for process launch; only applies to sandboxed views without `additionalArguments` /

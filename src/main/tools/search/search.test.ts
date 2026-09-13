@@ -159,6 +159,29 @@ test('provider requests use current search endpoints, filters, depth modes, and 
   assert.equal(answer.results[0].snippet, 'Useful highlight')
 })
 
+test('balanced search returns before every provider finishes once grace elapses', async () => {
+  let releaseSlow: (() => void) | undefined
+  const slow = new Promise<void>((resolve) => { releaseSlow = resolve })
+  const router = new SearchRouter([
+    fakeClient('brave', [{ title: 'Fast', url: 'https://example.com', snippet: 'ok', provider: 'brave' }]),
+    { provider: 'serper', search: async (_request, signal) => {
+      await Promise.race([
+        slow,
+        new Promise<never>((_, reject) => {
+          signal.addEventListener('abort', () => reject(signal.reason ?? new Error('aborted')), { once: true })
+        })
+      ])
+      return { provider: 'serper', results: [] }
+    }}
+  ], Date.now, { balanced: 50 })
+  const started = Date.now()
+  const response = await router.search(baseRequest, context.signal)
+  releaseSlow!()
+  assert.equal(response.results.length, 1)
+  assert.equal(response.complete, false)
+  assert.ok(Date.now() - started < 500)
+})
+
 test('partial provider failures are returned while useful evidence survives', async () => {
   const router = new SearchRouter([
     fakeClient('brave', [{ title: 'Good', url: 'https://example.com', snippet: 'ok', provider: 'brave' }]),

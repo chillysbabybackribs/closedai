@@ -74,7 +74,7 @@ complete bound on serialization work.
 
 | Path | Assessment |
 | --- | --- |
-| Trace collection | Raw provider events are recorded even when the trace panel is hidden. The ring is bounded at 4,000 entries / 24 million detail characters. The large-string encoding cost is fixed; normal serialization remains synchronous. An open trace panel adds per-entry IPC/rendering. |
+| Trace collection | When the Turn Trace panel is closed, only turn boundaries are retained; raw/tool/event/note capture and detail serialization are skipped. The ring is bounded at 4,000 entries / 24 million detail characters. An open trace panel adds per-entry IPC/rendering. |
 | Aggregate telemetry | Pending updates now coalesce behind one writer in `tools/telemetry.ts`. Writes remain asynchronous and are not awaited by the model tool. Snapshot encoding and disk I/O still have a cost; the redundant per-call write queue is removed. |
 | Streaming transport | `renderer/chat-controller.ts` coalesces IPC updates on animation frames. That reduces normal render churn; background-window frame throttling can delay visible updates while the provider keeps running. Main-process first-text timing does not measure paint. |
 | Markdown | `components/ui/markdown.tsx` lexes the growing response again when its text changes. Completed blocks are memoized, but long active code blocks/tables can still cause repeated parsing and UI work. This is a display-latency candidate; no renderer profile was captured in this audit. |

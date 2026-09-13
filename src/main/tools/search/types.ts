@@ -50,5 +50,7 @@ export type SearchResponse = {
   answers: Array<{ provider: SearchProvider; text: string }>
   results: SearchResult[]
   errors: Array<{ provider: SearchProvider; message: string }>
+  /** False when the router returned before every selected provider finished. */
+  complete?: boolean
   cached?: boolean
 }

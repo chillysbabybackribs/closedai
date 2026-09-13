@@ -23,10 +23,17 @@ export function configureChromiumStartup(
   app.commandLine.appendSwitch('xdg-portal-required-version', '999')
   app.commandLine.appendSwitch('no-sandbox')
 
-  // Keep GPU compositing and WebGL enabled, but avoid Linux drivers that advertise
-  // accelerated H.264 decode while returning zero-filled frames. Chromium owns this
-  // narrow switch: https://source.chromium.org/chromium/chromium/src/+/main:content/public/common/content_switches.cc
-  if (env.CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE !== '1') {
+  // Chromium 152+ (Electron 44) retested clean on the target stack; disable only when broken.
+  // Legacy escape hatch: CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE=1 still forces decode on.
+  if (!linuxHardwareVideoDecodeEnabled(env)) {
     app.commandLine.appendSwitch('disable-accelerated-video-decode')
   }
+}
+
+/** Whether to leave Linux hardware video decode enabled at startup. */
+export function linuxHardwareVideoDecodeEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.CLOSEDAI_DISABLE_HARDWARE_VIDEO_DECODE === '1') return false
+  if (env.CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE === '1') return true
+  const chromeMajor = Number.parseInt(process.versions.chrome?.split('.')[0] ?? '0', 10)
+  return chromeMajor >= 152
 }

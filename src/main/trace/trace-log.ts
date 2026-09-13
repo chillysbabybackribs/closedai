@@ -46,8 +46,9 @@ export class TraceLog extends EventEmitter {
     this.isActive = active
   }
 
-  record(scope: TraceScope, input: TraceInput): TraceEntry {
+  record(scope: TraceScope, input: TraceInput): TraceEntry | null {
     this.responses.outgoing(scope, input)
+    if (!this.isActive && input.kind !== 'turn') return null
     const { text, truncated } = serialize(input.detail)
     const entry: TraceEntry = {
       seq: this.nextSeq++,

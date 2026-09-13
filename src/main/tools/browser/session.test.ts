@@ -31,8 +31,8 @@ function payload(result: { content: Array<{ type: string; text?: string }> }): R
 
 test('the session tool registers with fetch and cookie actions', () => {
   const { registry } = harness()
-  assert.deepEqual(registry.names(), ['embedded_browser.page', 'embedded_browser.session'])
-  assert.deepEqual(registry.namespaces[0].tools[1].actions?.map((action) => action.name), ['fetch', 'cookies', 'set_cookie', 'remove_cookie'])
+  assert.deepEqual(registry.names(), ['embedded_browser.page', 'embedded_browser.script', 'embedded_browser.session'])
+  assert.deepEqual(registry.namespaces[0].tools[2].actions?.map((action) => action.name), ['fetch', 'cookies', 'set_cookie', 'remove_cookie'])
 })
 
 test('fetch forwards the request, parses JSON, and keeps response headers', async () => {

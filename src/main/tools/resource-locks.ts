@@ -32,7 +32,8 @@ export function resourceKey(request: ToolCallRequest, input: JsonObject): string
   if (request.namespace === 'closedai_app' && request.tool === 'ui' && ['click', 'type', 'press_key', 'scroll'].includes(action)) {
     return 'app:input'
   }
-  if (request.namespace === 'embedded_browser' && request.tool === 'page' && ['navigate', 'evaluate'].includes(action)) return browserTarget()
+  if (request.namespace === 'embedded_browser' && request.tool === 'page' && action === 'navigate') return browserTarget()
+  if (request.namespace === 'embedded_browser' && request.tool === 'script' && action === 'evaluate') return browserTarget()
   if (request.namespace === 'closedai_app' && request.tool === 'command' && action === 'browser_tab') return 'browser:global'
   if (request.namespace === 'closedai_ui' && request.tool === 'capture' && action === 'browser_page') return browserTarget()
   if (

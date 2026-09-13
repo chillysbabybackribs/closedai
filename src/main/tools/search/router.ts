@@ -36,6 +36,15 @@ const ROUTES: Record<SearchIntent, Record<SearchDepth, SearchProvider[]>> = {
 
 const CACHE_TTL_MS = 10 * 60 * 1_000
 const MAX_CACHE_ENTRIES = 100
+/** After enough providers succeed, wait this long for stragglers before returning partial results. */
+const PARTIAL_GRACE_MS: Partial<Record<SearchDepth, number>> = {
+  balanced: 10_000,
+  deep: 12_000
+}
+const MIN_SUCCESSFUL: Partial<Record<SearchDepth, number>> = {
+  balanced: 1,
+  deep: 2
+}
 
 export function selectProviders(request: SearchRequest): SearchProvider[] {
   return request.providers?.length ? [...new Set(request.providers)] : ROUTES[request.intent][request.depth]
@@ -46,7 +55,11 @@ export class SearchRouter {
   private readonly cache = new Map<string, { at: number; response: SearchResponse }>()
   private readonly budget = new RequestBudget(4, 2)
 
-  constructor(clients: SearchProviderClient[], private readonly now: () => number = Date.now) {
+  constructor(
+    clients: SearchProviderClient[],
+    private readonly now: () => number = Date.now,
+    private readonly partialGraceMs: Partial<Record<SearchDepth, number>> = PARTIAL_GRACE_MS
+  ) {
     this.clients = new Map(clients.map((client) => [client.provider, client]))
   }
 
@@ -68,29 +81,13 @@ export class SearchRouter {
       }
     }
 
-    const settled = await Promise.allSettled(providers.map(async (provider) => {
-      try {
-        const output = await this.budget.run(provider, owner, signal, async () => {
-          const client = this.clients.get(provider)
-          if (!client) throw new Error(`${provider} client is not configured`)
-          const deadline = AbortSignal.any([signal, AbortSignal.timeout(20_000)])
-          return abortable(client.search(request, deadline), deadline)
-        })
-        signal.throwIfAborted()
-        observe?.({ output })
-        return output
-      } catch (error) {
-        if (!signal.aborted) observe?.({ error: { provider, message: messageOf(error) } })
-        throw error
-      }
-    }))
-    const outputs: ProviderSearchResult[] = []
-    const errors: SearchResponse['errors'] = []
-    settled.forEach((outcome, index) => {
-      const provider = providers[index]!
-      if (outcome.status === 'fulfilled') outputs.push(outcome.value)
-      else errors.push({ provider, message: messageOf(outcome.reason) })
-    })
+    const { outputs, errors, complete } = await this.collectProviderResults(
+      providers,
+      request,
+      signal,
+      owner,
+      observe
+    )
     if (outputs.length === 0) {
       throw new Error(`every selected search provider failed: ${errors.map((error) => `${error.provider}: ${error.message}`).join('; ')}`)
     }
@@ -102,11 +99,111 @@ export class SearchRouter {
       providers,
       answers: outputs.flatMap((output) => output.answer ? [{ provider: output.provider, text: output.answer }] : []),
       results: mergeResults(outputs, request.count),
-      errors
+      errors,
+      ...(complete ? {} : { complete: false })
     }
     this.pruneCache()
-    if (!signal.aborted && errors.length === 0) this.cache.set(cacheKey, { at: this.now(), response })
+    if (!signal.aborted && complete && errors.length === 0) this.cache.set(cacheKey, { at: this.now(), response })
     return response
+  }
+
+  private async collectProviderResults(
+    providers: SearchProvider[],
+    request: SearchRequest,
+    signal: AbortSignal,
+    owner: string,
+    observe?: SearchObserver
+  ): Promise<{ outputs: ProviderSearchResult[]; errors: SearchResponse['errors']; complete: boolean }> {
+    const graceMs = this.partialGraceMs[request.depth] ?? 0
+    const minSuccessful = Math.min(providers.length, MIN_SUCCESSFUL[request.depth] ?? providers.length)
+    if (graceMs <= 0 || providers.length <= 1 || minSuccessful >= providers.length) {
+      return this.awaitAllProviders(providers, request, signal, owner, observe)
+    }
+
+    const abortLate = new AbortController()
+    const linked = AbortSignal.any([signal, abortLate.signal])
+    const outputs: ProviderSearchResult[] = []
+    const errors: SearchResponse['errors'] = []
+    let pending = providers.length
+    let finished = false
+    let graceTimer: ReturnType<typeof setTimeout> | null = null
+
+    return await new Promise((resolve, reject) => {
+      const finish = (complete: boolean) => {
+        if (finished) return
+        finished = true
+        if (graceTimer) clearTimeout(graceTimer)
+        abortLate.abort()
+        if (outputs.length === 0) {
+          reject(new Error(`every selected search provider failed: ${errors.map((error) => `${error.provider}: ${error.message}`).join('; ')}`))
+          return
+        }
+        resolve({ outputs, errors, complete })
+      }
+
+      const schedulePartial = () => {
+        if (finished || graceTimer || outputs.length < minSuccessful || pending === 0) return
+        graceTimer = setTimeout(() => finish(false), graceMs)
+      }
+
+      const settle = () => {
+        pending -= 1
+        if (pending === 0) finish(true)
+        else schedulePartial()
+      }
+
+      for (const provider of providers) {
+        void this.runProvider(provider, request, linked, owner, observe)
+          .then((output) => { outputs.push(output); settle() })
+          .catch((error) => {
+            if (!signal.aborted) errors.push({ provider, message: messageOf(error) })
+            settle()
+          })
+      }
+    })
+  }
+
+  private async awaitAllProviders(
+    providers: SearchProvider[],
+    request: SearchRequest,
+    signal: AbortSignal,
+    owner: string,
+    observe?: SearchObserver
+  ): Promise<{ outputs: ProviderSearchResult[]; errors: SearchResponse['errors']; complete: boolean }> {
+    const settled = await Promise.allSettled(providers.map((provider) =>
+      this.runProvider(provider, request, signal, owner, observe)
+    ))
+    const outputs: ProviderSearchResult[] = []
+    const errors: SearchResponse['errors'] = []
+    settled.forEach((outcome, index) => {
+      const provider = providers[index]!
+      if (outcome.status === 'fulfilled') outputs.push(outcome.value)
+      else errors.push({ provider, message: messageOf(outcome.reason) })
+    })
+    return { outputs, errors, complete: true }
+  }
+
+  private async runProvider(
+    provider: SearchProvider,
+    request: SearchRequest,
+    signal: AbortSignal,
+    owner: string,
+    observe?: SearchObserver
+  ): Promise<ProviderSearchResult> {
+    try {
+      const output = await this.budget.run(provider, owner, signal, async () => {
+        const client = this.clients.get(provider)
+        if (!client) throw new Error(`${provider} client is not configured`)
+        const deadline = AbortSignal.any([signal, AbortSignal.timeout(20_000)])
+        return abortable(client.search(request, deadline), deadline)
+      })
+      signal.throwIfAborted()
+      observe?.({ output })
+      return output
+    } catch (error) {
+      if (!signal.aborted) observe?.({ error: { provider, message: messageOf(error) } })
+      throw error
+    }
   }
 
   private pruneCache(): void {
