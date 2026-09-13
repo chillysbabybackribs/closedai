@@ -211,7 +211,11 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   delivers bounded snapshots before subsequent deltas, with actions and history pages routed by
   pane id. Focus changes preserve earlier pages already loaded in other visible panes. The sidebar uses a separate snapshot
   that stays stable during text/output deltas, keeping its row calculations out of the token stream.
-- Chat events are batched by animation frame. Markdown renders that frame's current text without
+- Adjacent text/output deltas for a visible pane are coalesced for up to 8 ms before chat IPC;
+  every other event flushes the pending delta first, preserving transcript and turn ordering.
+  Turn trace records one `chat.ipc` measurement per fully observed turn and shows renderer
+  messages sent versus visible events received, delta counts, and streamed characters.
+  Chat events are then batched by animation frame. Markdown renders that frame's current text without
   another timer, including the final chunk when a task completes. Code highlighting remains
   throttled to 250 ms and limited to 20,000 characters, but pending highlights show the current
   plain code rather than an older highlighted version.

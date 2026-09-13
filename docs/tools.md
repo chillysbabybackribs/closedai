@@ -463,10 +463,14 @@ marker. It clears at restart or with the panel's "Clear" button. Trace data is n
 disk; providers separately retain their own conversation histories. Raw provider lines are
 hidden by default in the panel's filters, but still collected in the in-memory ring. Oversized
 nested strings are clipped before JSON encoding so recording an image does not encode its full
-base64 payload just to discard it. Serialization still runs synchronously and traverses objects.
+base64 payload just to discard it. Serialization still runs synchronously, but traversal is capped
+at 2,000 values and 12 levels before JSON encoding, in addition to the detail character cap.
 
 The performance summary (`renderer/trace/trace-performance.ts`) derives model passes, cache/token
-usage, context, and tool time from the available entries. Codex and Claude raw messages supply
+usage, context, tool time, and visible chat IPC efficiency from the available entries. The main
+process coalesces adjacent text/output deltas for up to 8 ms immediately before IPC, with all other
+events acting as ordering barriers, and records one compact `chat.ipc` note per fully observed turn.
+Codex and Claude raw messages supply
 token summaries; Antigravity and Cursor currently have no equivalent token-summary parser. Truncated or
 evicted entries limit these estimates. This is a local diagnostic view, not a persisted ledger.
 
