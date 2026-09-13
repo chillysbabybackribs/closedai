@@ -52,6 +52,7 @@ export class CursorSession {
   private instructionsPending = true
   /** Set only while `replay` is collecting another session's history off the same process. */
   private replaying: { sessionId: string; translator: CursorTurnTranslator; items: Map<string, ChatTranscriptItem> } | null = null
+  private replayTail: Promise<void> = Promise.resolve()
   private stopping = false
 
   constructor(private readonly deps: CursorSessionDeps) {
@@ -198,7 +199,14 @@ export class CursorSession {
    * `session/update` notifications. Verified live: a load emits `user_message_chunk` and
    * `agent_message_chunk` for the whole conversation, then resolves.
    */
-  async replay(sessionId: string, cwd = this.deps.cwd): Promise<ChatTranscriptItem[]> {
+  replay(sessionId: string, cwd = this.deps.cwd): Promise<ChatTranscriptItem[]> {
+    // ACP history shares one notification collector; concurrent recalls must not overwrite it.
+    const result = this.replayTail.then(() => this.replayHistory(sessionId, cwd))
+    this.replayTail = result.then(() => undefined, () => undefined)
+    return result
+  }
+
+  private async replayHistory(sessionId: string, cwd: string): Promise<ChatTranscriptItem[]> {
     const client = await this.ensureClient()
     if (!client.capabilities?.loadSession) return []
     const items = new Map<string, ChatTranscriptItem>()

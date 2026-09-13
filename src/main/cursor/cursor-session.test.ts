@@ -99,3 +99,31 @@ test('history replay uses the source project without changing the active session
   await thread.warm()
   assert.deepEqual(loads, [{ id: 'older', cwd: '/other-project' }, { id: 'current', cwd: '/workspace' }])
 })
+
+test('concurrent history reads serialize the shared collector and a failed read releases the next', async () => {
+  const { session: thread } = session()
+  const loads: string[] = []
+  let rejectFirst!: (error: Error) => void
+  let started!: () => void
+  const firstStarted = new Promise<void>((resolve) => { started = resolve })
+  Object.assign(thread, { client: {
+    connected: true, capabilities: { loadSession: true },
+    async loadSession(id: string) {
+      loads.push(id)
+      if (id === 'first') {
+        started()
+        await new Promise((_resolve, reject) => { rejectFirst = reject })
+      }
+      return { sessionId: id, models: [], modes: [], currentModelId: null, currentModeId: null }
+    }
+  } })
+  const first = thread.replay('first')
+  const second = thread.replay('second')
+  await firstStarted
+  assert.deepEqual(loads, ['first'])
+  const failure = assert.rejects(first, /unavailable/)
+  rejectFirst(new Error('unavailable'))
+  await failure
+  assert.deepEqual(await second, [])
+  assert.deepEqual(loads, ['first', 'second'])
+})
