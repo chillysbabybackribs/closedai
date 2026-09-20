@@ -209,7 +209,7 @@ export function cachedPaneView(
   const threadId = snapshot.threadId ?? record?.threadId
   const checkpoint = record?.checkpoint && record.checkpoint.threadId === threadId
     ? record.checkpoint
-    : (snapshot.checkpoint ?? null)
+    : snapshot.checkpoint
   if (!cached || !record?.threadId || cached.threadId !== record.threadId) {
     return checkpoint === snapshot.checkpoint ? snapshot : { ...snapshot, checkpoint }
   }
@@ -223,7 +223,7 @@ export function cachedPaneView(
     threadId: snapshot.threadId ?? record.threadId,
     threadName: snapshot.threadName ?? cached.threadName,
     contextUsage,
-    checkpoint,
+    ...(checkpoint ? { checkpoint } : {}),
     items: cached.items,
     history: { ...snapshot.history, hasEarlier: cached.hasEarlier }
   }
@@ -242,10 +242,10 @@ export function readableView(
 ): { snapshot: ChatSnapshot; source: 'live' | 'saved' } {
   if (live.items.length > 0) {
     const threadId = live.threadId ?? record?.threadId
-    const checkpoint = record?.checkpoint && record.checkpoint.threadId === threadId
-      ? record.checkpoint
-      : (live.checkpoint ?? null)
-    return { snapshot: checkpoint === live.checkpoint ? live : { ...live, checkpoint }, source: 'live' }
+    if (record?.checkpoint && record.checkpoint.threadId === threadId && live.checkpoint !== record.checkpoint) {
+      return { snapshot: { ...live, checkpoint: record.checkpoint }, source: 'live' }
+    }
+    return { snapshot: live, source: 'live' }
   }
   const filled = cachedPaneView(live, record, cached)
   return { snapshot: filled, source: filled === live ? 'live' : 'saved' }

@@ -66,6 +66,21 @@ test('a live transcript is never overridden by the saved one', () => {
   assert.equal(result.snapshot, live)
 })
 
+test('active checkpoint memory is attached when thread ids match', () => {
+  const parked = new FakeSurface('gpt').snapshot()
+  const checkpoint: import('../../shared/chat-memory.js').ChatMemoryCheckpoint = {
+    version: 1, revision: 1, threadId: 'codex:t1', throughItemId: 'u', createdAt: 1,
+    state: { goal: 'Goal', constraints: [], decisions: [], progress: [], nextSteps: [], files: [] }
+  }
+  const record = chatRecord('pane-a', 'gpt', { threadId: 'codex:t1', checkpoint })
+  const saved = readableView(parked, record, cached)
+  assert.equal(saved.snapshot.checkpoint, checkpoint)
+
+  const wrongThreadRecord = chatRecord('pane-a', 'gpt', { threadId: 'codex:t2', checkpoint })
+  const noMatch = readableView(parked, wrongThreadRecord, cached)
+  assert.equal(noMatch.snapshot.checkpoint ?? null, null)
+})
+
 test('IPC batching merges adjacent deltas and flushes them before ordering barriers', () => {
   const sent: import('../../shared/chat-peers.js').ChatWorkspaceEvent[] = []
   const measurements: import('./peer-events.js').RendererChatIpcMetrics[] = []

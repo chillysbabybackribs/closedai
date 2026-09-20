@@ -82,6 +82,29 @@ test('chat reducer tracks reasoning effort independently', () => {
   assert.equal(state.selectedReasoningEffort, 'xhigh')
 })
 
+test('chat reducer tracks active checkpoint memory', () => {
+  const checkpoint: import('../shared/chat-memory.js').ChatMemoryCheckpoint = {
+    version: 1,
+    revision: 1,
+    threadId: 'codex:t1',
+    throughItemId: 'i1',
+    createdAt: 1000,
+    state: {
+      goal: 'Refactor auth',
+      constraints: ['No schema changes'],
+      decisions: ['Use JWT'],
+      progress: ['Created keys'],
+      nextSteps: ['Add middleware'],
+      files: ['src/auth.ts']
+    }
+  }
+  const state = reduceChatEvent(initialChatState(), {
+    type: 'checkpoint',
+    checkpoint
+  })
+  assert.deepEqual(state.checkpoint, checkpoint)
+})
+
 test('workspace events update only the selected pane transcript', () => {
   let state = {
     ...initialChatWorkspaceState(),
