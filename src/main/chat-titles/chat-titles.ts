@@ -34,6 +34,27 @@ export class ChatTitles {
     }
   }
 
+  rename(id: string, title: string | null): void {
+    const record = this.store.get(id)
+    if (!record || record.archived) return
+    const trimmed = title?.trim() || null
+    this.cancel(id)
+    if (trimmed) {
+      this.store.update(id, { title: trimmed, titleSource: 'manual' })
+    } else {
+      this.store.update(id, { title: null, titleSource: null, titleGenerationAttempted: false })
+    }
+    this.changed(id)
+  }
+
+  async retry(id: string, snapshot: ChatSnapshot, generate: TitleGenerator): Promise<void> {
+    const record = this.store.get(id)
+    if (!record || record.archived || !record.threadId) return
+    this.cancel(id)
+    this.store.update(id, { titleGenerationAttempted: false, titleSource: null })
+    return this.generate(id, snapshot, generate)
+  }
+
   cancel(id: string): void {
     this.pending.get(id)?.abort()
     this.pending.delete(id)

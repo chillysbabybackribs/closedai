@@ -97,3 +97,30 @@ test('Codex request is ephemeral, selected-model, isolated from user config and 
   assert.throws(() => codexTitleOutput(item))
   assert.throws(() => codexTitleOutput(item + '\n{"type":"turn.failed"}'))
 })
+
+test('rename sets manual title or resets to null fallback and notifies listeners', () => {
+  const h = harness()
+  h.titles.rename(h.record.id, 'Renamed Chat')
+  assert.equal(h.store.require(h.record.id).title, 'Renamed Chat')
+  assert.equal(h.store.require(h.record.id).titleSource, 'manual')
+  assert.deepEqual(h.changes, [h.record.id])
+
+  h.titles.rename(h.record.id, '  ')
+  assert.equal(h.store.require(h.record.id).title, null)
+  assert.equal(h.store.require(h.record.id).titleSource, null)
+  assert.deepEqual(h.changes, [h.record.id, h.record.id])
+})
+
+test('retry resets attempted flag and generates a fresh title', async () => {
+  const h = harness()
+  h.store.update(h.record.id, { titleGenerationAttempted: true, title: 'Old Title', titleSource: 'generated' })
+  let calls = 0
+  const generate = async () => {
+    calls++
+    return 'Retried Title'
+  }
+  await h.titles.retry(h.record.id, h.snapshot, generate)
+  assert.equal(calls, 1)
+  assert.equal(h.store.require(h.record.id).title, 'Retried Title')
+  assert.equal(h.store.require(h.record.id).titleSource, 'generated')
+})

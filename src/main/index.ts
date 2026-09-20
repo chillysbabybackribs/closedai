@@ -171,12 +171,16 @@ async function main(): Promise<void> {
   // An environment-supplied workspace wins for the initial launch, but project changes are
   // still user-owned afterwards. A missing saved selection keeps the existing checkout as the
   // pleasant first-run project rather than dropping people into their home folder unexpectedly.
+  const savedSettings = settings.get()
+  const isFirstLaunch = savedSettings.chatWorkspacePath === null && !configuredWorkspace
   let chatWorkspace = configuredWorkspace
     ? resolve(configuredWorkspace)
-    : settings.get().chatWorkspacePath ?? app.getAppPath()
+    : savedSettings.chatWorkspacePath ?? app.getAppPath()
   let projectPath: string | null = configuredWorkspace
     ? chatWorkspace
-    : settings.get().chatProjectPath ?? chatWorkspace
+    : isFirstLaunch
+      ? chatWorkspace
+      : savedSettings.chatProjectPath
   // Pane records that settings used to hold become chat records once; ids are preserved.
   await migrateChatPeersIntoStore(settings, chatStore, { cwd: chatWorkspace, projectPath })
   const workspaceSelector = {
