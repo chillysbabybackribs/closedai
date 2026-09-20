@@ -562,6 +562,13 @@ subscriber errors after the model-visible result is produced.
 
 ## Turn trace
 
+Research adds content-free `research.started`, `read_started`, `first_source`, `read_finished`,
+and `finished` notes to the existing trace when recording is enabled. They include monotonic run
+elapsed time, admission wait, source-read duration, state, and run/source ids. Read duration includes
+downstream reader queueing and rendering; it is not a pure network timer. The first-source event
+marks the first readable document, not the model's acceptance of that evidence. These notes add no
+persisted content ledger or background model call; trace failures cannot interrupt retrieval.
+
 Separate from telemetry, Tools → "Turn trace" in the title bar opens a live view of everything the main
 process saw a model do: turn start and end with duration, every registry tool call with its
 full arguments and result (`registry.observe`), each normalized transcript item and context

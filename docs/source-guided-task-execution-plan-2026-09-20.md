@@ -1,10 +1,23 @@
 # Source-guided task execution: implementation plan
 
-Status: proposal, 2026-09-20. No runtime changes are implemented by this document.
+Status: implementation started, 2026-09-20. The sections below retain the design proposal;
+the implementation record distinguishes delivered changes from pending work.
 Priorities: quality first, latency a close second, token usage third. No evaluator,
 additional planning agent, persistent learning loop, or expanded conversational memory.
 Paid search APIs are eligible wherever they improve evidence quality, freshness, coverage, or speed.
 Free access is not a selection requirement. Compare total task cost rather than price per query alone.
+
+## Implementation record
+
+The first delivery implements the shared task/evidence guidance, source-only research requests,
+discovery terminology, Brave source boosting/Goggles/date ranges/independent relevance and context
+controls, cache/date provenance, bounded candidate admission with reserved reads, and content-free
+research timing. Focused tests cover these contracts and an isolated Electron fixture verifies
+source-tab presentation while research continues. Existing prompt limits are unchanged.
+
+Live scholarly discovery/citation traversal, PDF extraction, older-library retrieval, paid-provider
+comparisons, and repeated model task trials remain pending. No performance or task-quality gain is
+claimed from the contract tests. The findings table below describes the pre-implementation review.
 
 ## Intended behavior
 
@@ -347,5 +360,6 @@ source-access and task-judgment gaps and would add maintenance or latency withou
 This is a source-level design, not proof of behavioral improvement. Current code and guides were
 inspected; official API documentation was read. Production scholarly endpoint availability,
 account access, comparative coverage, PDF parser choice, and end-to-end latency remain implementation
-checks. Search routing/admission and unused-synthesis findings are directly visible in the code;
-their prevalence and measured impact are not established. No application behavior changed here.
+checks. Search routing/admission and unused-synthesis findings were visible in the reviewed code;
+their prevalence and measured impact are not established. See the implementation record above
+for changes made since that review.
