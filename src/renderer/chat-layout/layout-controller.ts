@@ -11,7 +11,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     let tree = saved.tree
     const available = new Set(snapshot.chats.filter((chat) => chat.cwd === cwd).map((chat) => chat.paneId))
     tree = pruneTabs(tree, available)
-    if (!paneIds(tree).length) tree = { kind: 'pane' as const, id: snapshot.selectedPaneId }
+    if (!tree || !paneIds(tree).length) tree = { kind: 'pane' as const, id: snapshot.selectedPaneId }
     else if (!paneIds(tree).includes(snapshot.selectedPaneId)) {
       tree = selectTab(tree, paneIds(tree)[0]!, snapshot.selectedPaneId)
     }
@@ -51,7 +51,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       let tree: ChatLayout | null = value.tree
       const available = new Set(snapshot.chats.filter((chat) => chat.cwd === cwd).map((chat) => chat.paneId))
       tree = pruneTabs(tree, available)
-      if (!paneIds(tree).length) tree = withBrowser({ kind: 'pane', id: next })
+      if (!tree || !paneIds(tree).length) tree = withBrowser({ kind: 'pane', id: next })
       else if (!paneIds(tree).includes(next)) {
         tree = selectTab(tree, paneIds(tree).includes(previous) ? previous : paneIds(tree)[0]!, next)
       }

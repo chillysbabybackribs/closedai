@@ -6,10 +6,8 @@ import { usePaneChatController, type useChatController } from '../chat-controlle
 import { initialChatState, type ChatWorkspaceAction } from '../chat-state.js'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
-import { WorkspaceSplit } from '../workspace-split.js'
 import { ChatCanvas } from './chat-canvas.js'
 import { useChatLayout } from './layout-controller.js'
-import { minimumSize } from './layout-tree.js'
 
 export type ChatLayoutHandle = {
   splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
@@ -30,19 +28,19 @@ export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenC
     splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),
     toggleBrowser: layout.toggleBrowser
   }), [layout.dock, layout.toggleBrowser, chat.selectedPaneId])
-  const browser = useBrowserController(`browser:${layout.browserVisible}`, layout.browserVisible)
+  const [dragging, setDragging] = useState(false)
+  const browser = useBrowserController(JSON.stringify([layout.browserVisible, layout.tree]), layout.browserVisible, dragging)
   const [actionError, setActionError] = useState('')
   const select = (id: string): void => {
     void chat.selectPane(id).catch((reason: unknown) => setActionError(String(reason)))
   }
   return <div className="chat-desktop-workspace">
     {(layout.error || actionError) && <div className="chat-layout-error" role="alert">{layout.error || actionError}</div>}
-    <WorkspaceSplit browserVisible={layout.browserVisible} chatMinimumWidth={minimumSize(layout.tree).width}
-      onBrowserHide={layout.toggleBrowser}
-      chat={<ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
+    <ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
+        onDragActive={setDragging}
         browserVisible={layout.browserVisible} onToggleBrowser={layout.toggleBrowser}
         title={(id) => chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat'}
-        onSelect={select} onDock={(id, target, edge) => { void layout.dock(id, target, edge) }}
+        onSelect={select} onDock={(id, target, edge, singleTab) => { void layout.dock(id, target, edge, singleTab) }}
         onSelectTab={(id) => { onHistoryOpenChange(false); void layout.activateTab(id) }}
         onCloseTab={(id) => { void layout.closeTab(id) }}
         onNewChat={(id) => { onHistoryOpenChange(false); void layout.newChat(id) }}
@@ -51,8 +49,7 @@ export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenC
           appearance={appearance} historyOpen={historyOpen && chat.selectedPaneId === id}
           onHistoryOpenChange={onHistoryOpenChange} dialog={chat.selectedPaneId === id ? dialog : null}
           onDialogChange={onDialogChange} />}
-      />}
-      workspace={<div className="workspace-right" data-mode="browser" data-with-browser={layout.browserVisible ? 'yes' : 'no'}>
+      renderBrowser={<div className="workspace-right" data-mode="browser" data-with-browser={layout.browserVisible ? 'yes' : 'no'}>
         <div className={`workspace-surface workspace-surface-browser${layout.browserVisible ? '' : ' is-collapsed'}`}>
           <BrowserPane controller={browser} />
         </div>

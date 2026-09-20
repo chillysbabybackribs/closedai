@@ -13,6 +13,7 @@ export const UI_CONTROLS = {
 
   'layout.browser-toggle': 'Chat-header control to show or hide the shared browser independently of the chat arrangement; item is the chat id',
   'layout.browser-divider': 'Resize the chat area and shared browser',
+  'layout.browser-dock': 'Drop a chat tab or pane on the left or right half to place it beside the browser',
   'layout.pane-drag': 'Focus a chat or drag its header to dock beside another; item is the chat id',
   'layout.new-chat-menu': 'Open the new-chat menu in a chat header (new tab, split right, split below); item is the chat id',
   'layout.new-chat': 'Menu row: add and select a fresh conversation tab in this tile, preserving its existing tabs, other tiles and split sizes; item is the active chat id',
@@ -21,7 +22,7 @@ export const UI_CONTROLS = {
   'layout.split-right': 'Menu row: create a chat to the right of this pane; item is the chat id',
   'layout.split-below': 'Menu row: create a chat below this pane; item is the chat id',
   'layout.pane-hide': 'Remove a tile from the layout without stopping its chat; item is the chat id',
-  'layout.divider': 'Resize adjacent chat tiles with a drag or arrow keys; item is the split id',
+  'layout.divider': 'Resize adjacent chat or browser tiles with a drag or arrow keys; item is the split id',
 
   'drawer.new-agent': 'Start a new agent chat pane',
   'drawer.directory': 'Expand or collapse a directory section without changing projects; item is its full directory path',
