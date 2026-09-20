@@ -27,7 +27,7 @@ import { antigravityConversationIdOf, antigravityThreadId } from './antigravity-
 import { buildAntigravityPrompt } from './antigravity-input.js'
 import type { AntigravityToolBridge } from './antigravity-mcp.js'
 import { antigravityModelCatalog, antigravityWireModel, parseAntigravityModelList, type AntigravityCliModel } from './antigravity-models.js'
-import { ensureAntigravityProfile, type AntigravityProfile } from './antigravity-profile.js'
+import { ensureAntigravityProfile, recordUndeclarableTools, undeclarableToolsFrom, type AntigravityProfile } from './antigravity-profile.js'
 import { AntigravitySession } from './antigravity-session.js'
 import { applyTranscriptOp, handleProviderTurnEnd, type TranscriptOp, type TurnEnd } from '../chat-transcript-ops.js'
 
@@ -68,6 +68,8 @@ export class AntigravityChatService extends EventEmitter {
   private pausedTurnId: string | null = null
   private turnContext: ChatTurnContextReport | null = null
   private planUsage: ChatPlanUsage | null = null
+  /** stdin content of the running turn, so a grant rejection can replay it on a rewritten profile. */
+  private lastTurnContent: string | null = null
   private readonly transcript: ChatTranscript
   private startPromise: Promise<void> | null = null
 
@@ -141,6 +143,7 @@ export class AntigravityChatService extends EventEmitter {
       // moment its instructions — including the repository map — can be brought up to date.
       if (!session.live) this.profile = await ensureAntigravityProfile(this.stateDir, { cwd: this.cwd })
       if (this.session !== session || (conversationId && session.conversationId !== conversationId) || this.activeTurnId) throw new Error('Antigravity conversation changed while preparing the turn')
+      this.lastTurnContent = turn.content
       session.send(turn.content)
       this.setTurnContext(buildTurnContextReport({
         provider: 'antigravity',
@@ -460,6 +463,7 @@ export class AntigravityChatService extends EventEmitter {
   }
 
   private onTurnEnd(turnId: string, end: TurnEnd): void {
+    if (end.status === 'failed' && this.retryWithoutUndeclaredTools(turnId, end.error ?? '')) return
     handleProviderTurnEnd(turnId, end, {
       addNotice: (text, tone, id) => this.addNotice(text, tone, id),
       setPaused: (id) => this.setPaused(id)
@@ -470,6 +474,33 @@ export class AntigravityChatService extends EventEmitter {
     void Promise.all([this.history.saveTranscript(conversationId, items), this.history.recordThread(conversationId, this.cwd, items)])
       .catch((error: unknown) => { console.warn('[antigravity] could not record the conversation:', messageOf(error)) })
     void this.refreshThreadName(conversationId)
+  }
+
+  /**
+   * The CLI self-updates and its executor rejects a custom agent that declares a tool its build
+   * no longer registers, failing the turn before the model runs. Drop the named grants from the
+   * profile and replay the turn once on a fresh process; a name already excluded means the
+   * rewrite did not help, so that failure is shown as-is.
+   */
+  private retryWithoutUndeclaredTools(turnId: string, error: string): boolean {
+    const rejected = undeclarableToolsFrom(error)
+    const content = this.lastTurnContent
+    const session = this.session
+    if (rejected.length === 0 || !content || !session) return false
+    void (async () => {
+      try {
+        const added = await recordUndeclarableTools(this.stateDir, rejected)
+        if (added.length === 0) throw new Error(error)
+        this.addNotice(`Antigravity no longer declares ${added.join(', ')}; retrying without`, 'info', turnId)
+        await session.retire()
+        this.profile = await ensureAntigravityProfile(this.stateDir, { cwd: this.cwd })
+        if (this.session !== session || this.activeTurnId) throw new Error('Antigravity conversation changed while retrying the turn')
+        session.send(content)
+      } catch (retryError) {
+        this.addNotice(messageOf(retryError), 'error', turnId)
+      }
+    })()
+    return true
   }
 
   /** The CLI titles a conversation shortly after its first turn; pick that up for the header. */
