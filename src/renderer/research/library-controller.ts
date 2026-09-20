@@ -49,13 +49,20 @@ export function useResearchLibrary(open: boolean) {
   const valid = settings.topics.length >= 1 && settings.topics.length <= 5 &&
     settings.topics.every((topic) => topic.length >= 3 && topic.length <= 200)
 
-  async function act(operation: () => Promise<LibrarySnapshot>) {
+  async function act(operation: () => Promise<LibrarySnapshot>, syncSettings = false) {
     const current = epoch.current
     setBusy(true)
     setError('')
     try {
       const next = await operation()
-      if (current === epoch.current) setSnapshot(next)
+      if (current === epoch.current) {
+        setSnapshot(next)
+        if (syncSettings) {
+          setTopics(next.settings.topics.join('\n'))
+          setDays(next.settings.lookbackDays)
+          setEnabled(next.settings.enabled)
+        }
+      }
     } catch (failure) {
       if (current === epoch.current) setError(String((failure as Error).message ?? failure))
     } finally {
@@ -64,24 +71,21 @@ export function useResearchLibrary(open: boolean) {
   }
 
   function refresh() {
+    const current = epoch.current
     setSnapshot((current) => current ? { ...current, refreshing: true } : current)
     void act(async () => {
       try { return await window.closedai.researchLibrary.refresh() }
       finally {
         // The final snapshot also recovers from a persistence/network failure.
         const next = await window.closedai.researchLibrary.snapshot()
-        setSnapshot(next)
+        if (current === epoch.current) setSnapshot(next)
       }
     })
   }
 
   return {
     snapshot, topics, setTopics, days, setDays, enabled, setEnabled, dirty, valid, busy, error,
-    save: () => act(async () => {
-      const next = await window.closedai.researchLibrary.configure(settings)
-      setTopics(next.settings.topics.join('\n'))
-      return next
-    }),
+    save: () => act(() => window.closedai.researchLibrary.configure(settings), true),
     refresh,
     cancel: () => { void window.closedai.researchLibrary.cancel().catch((failure) => setError(String(failure.message ?? failure))) },
     dismiss: (id: string) => act(() => window.closedai.researchLibrary.dismiss(id)),

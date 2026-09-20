@@ -214,65 +214,27 @@ export function Composer({
         }}
       >
         {isCompact ? (
-          <div className="prompt-composer-compact-row">
-            {running ? (
-              <div className="prompt-composer-compact-status">
-                <TurnActivityIndicator activeTurnId={activeTurnId} />
-              </div>
-            ) : (
-              <div className="prompt-composer-compact-model">
-                <span>{selectedModel ? selectedModel.replace(/^(agy:|claude:)/, '') : CHAT_PROVIDER_LABELS[provider]}</span>
-              </div>
-            )}
-            <PromptInputTextarea
-              aria-label="Message Codex"
-              data-ui="composer.input"
-              placeholder={placeholder ?? (running ? 'Working on task…' : enabled ? 'Ask anything' : 'Codex is unavailable')}
-              spellCheck={false}
-              disableAutosize
-              className="prompt-composer-textarea prompt-composer-textarea-compact"
-              onPaste={pasteFiles}
-              onFocus={() => {
-                textareaFocusedRef.current = true
-                if (!running) setManualExpanded(true)
-              }}
-              onBlur={() => { textareaFocusedRef.current = false }}
-            />
-            <div className="prompt-composer-compact-actions">
-              {running ? (
-                <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}>
-                  <Button type="button" size="icon" className="prompt-composer-stop rounded-full"
-                    aria-label={`Pause ${CHAT_PROVIDER_LABELS[provider]}`} data-ui="composer.stop"
-                    onClick={(event) => { event.stopPropagation(); void onStop() }}>
-                    <Pause size={15} fill="currentColor" aria-hidden="true" />
-                  </Button>
-                </PromptInputAction>
-              ) : paused ? (
-                <PromptInputAction tooltip={`Resume where ${CHAT_PROVIDER_LABELS[provider]} paused`}>
-                  <Button type="button" size="icon" className="prompt-composer-resume rounded-full"
-                    aria-label={`Resume where ${CHAT_PROVIDER_LABELS[provider]} paused`} data-ui="composer.resume"
-                    disabled={!enabled || sending} onClick={(event) => { event.stopPropagation(); void resume() }}>
-                    <Play size={15} fill="currentColor" aria-hidden="true" />
-                  </Button>
-                </PromptInputAction>
-              ) : (
-                <PromptInputAction tooltip="Send message">
-                  <Button type="submit" size="icon" className="prompt-composer-send rounded-full"
-                    aria-label="Send message" data-ui="composer.send" data-waiting-for-input={waitingForInput || undefined}
-                    disabled={!canSend} onClick={(event) => { if (!canSend) { event.stopPropagation(); setManualExpanded(true) } }}>
-                    <ArrowUp size={19} strokeWidth={2} aria-hidden="true" />
-                  </Button>
-                </PromptInputAction>
-              )}
-              <PromptInputAction tooltip="Expand composer">
-                <Button type="button" variant="ghost" size="icon" className="prompt-composer-toggle-compact rounded-full"
-                  aria-label="Expand composer" data-ui="composer.compact-toggle"
-                  onClick={(event) => { event.stopPropagation(); setManualExpanded(true) }}>
-                  <ChevronUp size={15} aria-hidden="true" />
-                </Button>
-              </PromptInputAction>
-            </div>
-          </div>
+          <ComposerCompactRow
+            running={running}
+            activeTurnId={activeTurnId}
+            selectedModel={selectedModel}
+            provider={provider}
+            placeholder={placeholder}
+            enabled={enabled}
+            sending={sending}
+            paused={paused}
+            canSend={canSend}
+            waitingForInput={waitingForInput}
+            onPaste={pasteFiles}
+            onFocus={() => {
+              textareaFocusedRef.current = true
+              if (!running) setManualExpanded(true)
+            }}
+            onBlur={() => { textareaFocusedRef.current = false }}
+            onStop={onStop}
+            onResume={resume}
+            onExpand={() => setManualExpanded(true)}
+          />
         ) : (
           <div className="flex flex-col">
             <AttachmentChips
