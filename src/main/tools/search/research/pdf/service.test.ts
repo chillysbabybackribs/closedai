@@ -37,7 +37,7 @@ test('PDF tool emits actual images and distinct OCR excerpts; invalid inputs nev
     return request.action === 'page' ? { ...evidence, ocr: undefined } : { ...evidence, image: undefined }
   })
   t.after(() => h.service.dispose())
-  const registry = new ToolRegistry([{ name: 'search', description: '', tools: [pdfTool(h.service)] }])
+  const registry = new ToolRegistry([{ name: 'search', description: 'Research evidence', tools: [pdfTool(h.service)] }])
   const call = (action: string, extra = {}) => registry.call({ namespace: 'search', tool: 'pdf', arguments: { action, run_id: h.id, source_id: h.source, page: 1, ...extra } }, context)
   const page = await call('page')
   assert.equal(page.isError, undefined)
