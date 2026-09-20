@@ -17,8 +17,8 @@ try {
     bundle: true, platform: 'node', format: 'esm', external: ['electron'] })
   await build({ entryPoints: [resolve('src/preload/index.ts')], outfile: join(root, 'preload.cjs'),
     bundle: true, platform: 'node', format: 'cjs', external: ['electron'] })
-  await writeFile(join(root, 'fixture.html'), '<!doctype html><html><head><meta charset="utf-8"></head><body><div id="root"></div><script type="module" src="/scripts/research-library-renderer.tsx"></script></body></html>')
-  await buildWeb({ configFile: false, root: process.cwd(), base: './', plugins: [react(), tailwindcss()],
+  await writeFile(join(root, 'fixture.html'), `<!doctype html><html><head><meta charset="utf-8"></head><body><div id="root"></div><script type="module" src="/@fs/${resolve('scripts/research-library-renderer.tsx')}"></script></body></html>`)
+  await buildWeb({ configFile: false, root, base: './', plugins: [react(), tailwindcss()],
     build: { outDir: join(root, 'web'), emptyOutDir: true, rollupOptions: { input: join(root, 'fixture.html') } } })
   const env = { ...sanitizeGpuEnv().env, CLOSEDAI_LIBRARY_CHECK_ROOT: root }
   for (const key of ['ELECTRON_RUN_AS_NODE', 'ELECTRON_EXEC_PATH', 'ELECTRON_CLI_ARGS', 'NODE_OPTIONS']) delete env[key]
