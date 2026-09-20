@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { X } from 'lucide-react'
+import { CircleAlert, LoaderCircle, Pause, X } from 'lucide-react'
 import { Tooltip } from 'radix-ui'
 import { TabActivityPreview } from './tab-activity-preview.js'
 import type { TabActivity } from './tab-activity.js'
@@ -48,13 +48,19 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, onSel
           event.preventDefault()
           list.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus()
           onSelect(ids[next]!)
-        }}><span>{title(id)}</span>{status?.state === 'unread' && <i className="chat-tab-unread" aria-hidden="true" />}</button>
+        }}>
+        {status && status.state !== 'idle' && <span className="chat-tab-indicator" aria-hidden="true">
+          {status.state === 'working' ? <LoaderCircle className="chat-tab-spinner" size={12} />
+            : status.state === 'paused' ? <Pause size={12} />
+              : status.state === 'failed' ? <CircleAlert size={12} />
+                : <i className="chat-tab-unread" />}
+        </span>}
+        <span>{title(id)}</span></button>
       </Tooltip.Trigger>
       <Tooltip.Portal><Tooltip.Content className="chat-tab-preview" side="bottom" align="start" sideOffset={8}
         collisionBoundary={list.current?.closest('.chat-layout-tile') ?? undefined} collisionPadding={8}>
         <TabActivityPreview title={title(id)} activity={status} />
       </Tooltip.Content></Tooltip.Portal></Tooltip.Root>
-      <span className="chat-tab-ribbon" aria-hidden="true" />
       {canClose && <button type="button" className="chat-layout-tab-close" data-ui="layout.tab-close" data-ui-key={id}
         disabled={busy} aria-label={`Close tab: ${title(id)}`} title="Close tab; keep chat in history"
         onClick={() => onClose(id)}><X size={11} aria-hidden="true" /></button>}
