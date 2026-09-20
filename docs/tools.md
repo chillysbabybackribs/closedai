@@ -71,9 +71,9 @@ before the app-server starts.
 | `browser_cdp` | `profile` | `start`, `stop`, `metrics` | Cost measurement folded in the main process. `start` arms JS byte coverage, CSS rule coverage, and heap allocation sampling by default; `cpu` must be asked for explicitly and is refused alongside `script`, because precise coverage and the sampling profiler are both Profiler-domain recordings over one V8 isolate and arming both was measured here to fail the next navigation to a heavy page with `ERR_FAILED` and to crash the renderer on a retry. Every channel's stop is bounded and reports under `unavailable` rather than stalling. `stop` returns per-URL used/unused bytes, per-function self time, and per-site retained bytes, ranked worst-first. The raw protocol payloads cannot cross the tool boundary — one `Profiler.takePreciseCoverage` on an article page measured 949,330 characters — so the arithmetic happens in `src/main/cdp/cdp-profile.ts` and only the answer is returned. CSS rule usage arrives as a delta of *used* rules, so unused bytes are measured against the stylesheets' own text, and heap sampling is re-armed on each main-frame commit because V8 restores the profiler and coverage agents into a new document but not the sampler. `metrics` is a cheap snapshot with nothing armed. |
 | `browser_cdp` | `instrument` | `hook`, `recording`, `unhook` | Pre-document API recording. The recorder is installed with `Page.addScriptToEvaluateOnNewDocument`, so it wraps selected fetch, XHR, WebSocket, cookie, storage, fingerprinting and error APIs before document scripts run. It survives navigations and is leased into every cross-origin frame target, including frames created later, which start paused until it is installed; workers are not recorded. Eval/Function are never wrapped. Wrappers are observable and may affect behavior. `recording` reports per-feature patch installation/failure, observed counts, frequent retained calls and recent events. Unhook disables current recording, restores owned descriptors and removes listeners without overwriting page replacements, in the root and in every recorded frame (`frames`). |
 | `browser_cdp` | `emulate` | `apply`, `reset` | Device and environment emulation that actually lands. `Emulation.setDeviceMetricsOverride` alone applies screen metrics, `devicePixelRatio` and touch points but leaves the layout viewport following the headful widget, so a responsive site keeps serving its desktop breakpoint; `apply` therefore also shrinks the tab's native surface to the emulated viewport (`BrowserTab.setEmulatedViewport`), the way DevTools device mode resizes the inspected view. Presets plus user agent, colour scheme, reduced motion, timezone, locale, geolocation, network throttling and CPU slowdown. Every result carries the page's own measurement, so an override that did not land is visible rather than assumed. |
-| `search` | `query` | plain tool | Routed public-web search across Brave, Serper, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. Defaults to `depth: quick` (one provider) and `presentation: live` (reuse one tab per pane/thread/turn); `live: true` bypasses the ten-minute cache and refreshes it with current provider results. |
+| `search` | `query` | plain tool | Routed public-web search across Brave, Exa, Serper, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. Defaults to `depth: quick` (one provider) and `presentation: live` (reuse one tab per pane/thread/turn); `live: true` bypasses the ten-minute cache and refreshes it with current provider results. |
 | `search` | `library` | `status`, `search`, `read` | Read-only, durable app-shared public paper index. Local lexical search returns five results by default (maximum ten, 400-character excerpts); read returns one saved abstract up to 6,000 characters. No network/model calls or automatic prompt injection. Manual alphaXiv refresh and retrieval permission live in Tools → Research library; see [contracts and limits](research-library.md). |
-| `search` | `run` | `start`, `extend`, `cancel` | Incremental public-web research: independent queries and static source readers overlap inside one app-owned run. Live presentation is the default; a retained browser tab opens on an actual source as URLs arrive. `extend` accepts only an active run and directs completed-run follow-ups to a new run. |
+| `search` | `run` | `start`, `extend`, `cancel` | Incremental public-web research: independent queries and static source readers overlap inside one app-owned run. Exa results carry provider-extracted page text, retained at discovery as `provider_text` without a fetch or read slot. Live presentation is the default; a retained browser tab opens on an actual source as URLs arrive. `extend` accepts only an active run and directs completed-run follow-ups to a new run. |
 | `search` | `read` | `results`, `wait`, `source` | Cursor-based source updates, bounded event waits, and retained document excerpts. Observes the calling pane/thread's runs without starting more requests. Oversized wait and excerpt budgets are capped at 20 seconds and 12,000 characters rather than rejected. |
 | `peer_chats` | `list`, `read` | plain tools | Read-only status and paginated transcript access to other panes and visible subagent summaries. `read` is deferred where supported; it takes an id from `list` and pages the newest 30 items backwards by default (at most 100), inside a serialized budget (`max_chars`, 6k default, 16k ceiling) that clips long tool detail, output, diffs and screenshot data URLs and reports `totalItems`; `order: "oldest"` follows a chat forward and `types` narrows to the item kinds wanted. It does not start or control agents. Reasoning items are excluded from both previews and pages, matching `recall` and thread handoff, so one model's thinking never enters another model's context. |
 | `peer_chats` | `recall` | plain tool, read-only | Bounded phrase search or exact-message excerpts from the caller's current chat, frozen direct continuation source (live in-memory transcript after same-pane rotation), or a previous conversation across projects, plus saved checkpoint state and optional `sessionRotationEpoch`. |
@@ -188,6 +188,26 @@ as retrieved document evidence; runs explicitly disable discarded Tavily/You ans
 Standalone answer lookups retain it and use separate cache entries. Index overlap in both query
 and run results is reported as `discoveredBy`, not factual corroboration.
 
+Runs also set `sourceText`, which asks providers that extract pages to return the text itself. Exa
+does: each result arrives with query-guided highlights (the snippet) and up to 10,000 characters of
+compact page text. The research service retains that text immediately under the source id as
+representation `provider_text` with `contentProvider: "exa"`, without a fetch and without consuming
+a read slot, so `max_sources` bounds fetched documents only. Text that reached Exa's cap is marked
+`incomplete`. Provider text has no byte-level provenance of our own — its `sha256` covers the text
+as delivered — and a source already queued for fetching keeps its fetch. If local retention fails
+the source returns to `deferred` and the ordinary reader may still fetch it. Standalone
+`search.query` never requests page text; Exa highlights alone become the snippet there.
+
+Exa discovery uses `POST /search` on Exa's own index with `type: fast` for quick and `auto` for
+balanced and deep requests (the `deep*` types synthesize answers over tens of seconds and are not
+used). `freshness` windows become `startPublishedDate`; validated `YYYY-MM-DDtoYYYY-MM-DD` ranges
+become inclusive published-date bounds, so date ranges route to Brave and Exa rather than Brave
+alone. Include/exclude domains, `country` (as `userLocation`), and the news category map directly;
+Exa has no language filter, ranking boosts, or relevance threshold, so those controls still select
+Brave. Exa's `publishedDate` is recorded as an `index_reported` date, not a verified publication date.
+Routing: research quick/balanced/deep is Exa, Exa+Tavily, Exa+Tavily+Brave; general and technical
+deep add Exa as the third index.
+
 Brave discovery uses its `/res/v1/llm/context` endpoint rather than human-oriented Web Search.
 The adapter returns extracted grounding chunks as normalized snippets and uses source metadata for
 page age. Quick, balanced, and deep requests consider 10, 20, and 50 candidates with 2,048,
@@ -197,9 +217,10 @@ and deep; broader discovery does not automatically relax relevance. `relevance` 
 override these controls independently. `preferred_domains` generates inline Brave Goggles boosts
 without excluding other domains; `goggles` accepts custom inline rules or a Goggle URL instead.
 The two ranking inputs are mutually exclusive. `freshness` accepts day/week/month/year or a validated
-inclusive `YYYY-MM-DDtoYYYY-MM-DD` range. These advanced controls select Brave automatically; explicit
-non-Brave/mixed provider requests fail with advice to issue a separate query, never silently drop
-unsupported filters. Domains remain discovery preferences, not proof of authority. Queries including
+inclusive `YYYY-MM-DDtoYYYY-MM-DD` range. These advanced controls narrow routing to the providers
+that implement them (Brave for ranking, relevance, and context budgets; Brave or Exa for date
+ranges); explicit provider requests outside that set fail with advice to issue a separate query,
+never silently drop unsupported filters. Domains remain discovery preferences, not proof of authority. Queries including
 domain filters over Brave's documented 600-character/75-word limit fail rather than silently
 truncating constraints. `live: true` adds Brave's best-effort no-cache header.
 
@@ -301,9 +322,10 @@ Requires at least one search API key documented below.
 
 Search providers read credentials from environment variables first and the Linux Secret
 Service keyring second. The supported environment variables are `BRAVE_SEARCH_API_KEY`,
-`SERPER_API_KEY`, `TAVILY_API_KEY`, and `YOU_API_KEY`. Desktop keyring entries use service
-`codeapp-vault` and accounts `brave_paid_search`, `serper_api_key`, `tavily_api_key`, and
-`you_api_key`. A query succeeds when at least one selected provider succeeds;
+`EXA_API_KEY`, `SERPER_API_KEY`, `TAVILY_API_KEY`, and `YOU_API_KEY`. Desktop keyring entries use
+service `codeapp-vault` and accounts `brave_paid_search`, `exa_api_key`, `serper_api_key`,
+`tavily_api_key`, and `you_api_key` (for example
+`secret-tool store --label='Exa' service codeapp-vault account exa_api_key`). A query succeeds when at least one selected provider succeeds;
 individual provider failures remain visible in the normalized result.
 
 ## Writing an action
