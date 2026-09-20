@@ -376,12 +376,7 @@
   height: 30px;
 }
 
-.prompt-composer-actions-start .context-meter {
-  flex: none;
-}
-
 @container composer (max-width: 420px) {
-  .prompt-composer-actions .model-menu-trigger-context,
   .prompt-composer-actions .model-menu-trigger-effort {
     display: none;
   }
@@ -389,8 +384,6 @@
 
 @container composer (max-width: 330px) {
   .prompt-composer-actions .prompt-model-controls { gap: 4px; }
-  .prompt-composer-actions .context-meter-value { display: none; }
-  .prompt-composer-actions .context-meter { padding-inline: 4px; }
 }
 
 .prompt-composer-tool {

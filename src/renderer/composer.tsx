@@ -267,17 +267,15 @@ export function Composer({
                       models={models}
                       selectedModel={selectedModel}
                       selectedReasoningEffort={selectedReasoningEffort}
-                      onModelChange={onModelChange}
-                      onReasoningEffortChange={onReasoningEffortChange}
-                    />
-                    <ContextMeter
-                      usage={contextUsage}
+                      contextUsage={contextUsage}
                       provider={provider}
                       planUsage={planUsage}
-                      onInspect={onInspectContext}
+                      onInspectContext={onInspectContext}
                       onRefreshPlanUsage={onRefreshPlanUsage}
-                      onCompact={onCompactConversation}
-                      compactEnabled={compactConversationEnabled}
+                      onCompactConversation={onCompactConversation}
+                      compactConversationEnabled={compactConversationEnabled}
+                      onModelChange={onModelChange}
+                      onReasoningEffortChange={onReasoningEffortChange}
                     />
                   </div>
                 </div>

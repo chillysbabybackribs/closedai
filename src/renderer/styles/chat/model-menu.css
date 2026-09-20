@@ -48,6 +48,14 @@
   opacity: 0.5;
 }
 
+.model-menu-trigger-model {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .model-menu-trigger-name {
   min-width: 0;
   overflow: hidden;
@@ -394,13 +402,21 @@
    worth colouring, and a card of amber bars read as an alarm rather than a
    reading. One ink, one weight, one rule per row. */
 .usage-card {
-  width: 208px;
+  width: 220px;
   padding: 9px 11px;
   display: flex;
   flex-direction: column;
   gap: 7px;
   font-size: 11.5px;
   line-height: 1.3;
+}
+
+.usage-card[data-level='warm'] {
+  --context-meter-ink: #d9a45c;
+}
+
+.usage-card[data-level='hot'] {
+  --context-meter-ink: #e0705e;
 }
 
 .usage-card-title {
@@ -414,8 +430,14 @@
   font-size: 11px;
 }
 
-.usage-card-action {
+.usage-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   margin-top: 2px;
+}
+
+.usage-card-action {
   padding: 5px 8px;
   border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
   border-radius: 6px;
@@ -449,7 +471,17 @@
 }
 
 .usage-row-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--foreground);
+}
+
+.usage-row-label .context-meter-ring {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  transform: rotate(-90deg);
 }
 
 .usage-row-aside {
@@ -472,6 +504,14 @@
   border-radius: inherit;
   background: color-mix(in srgb, var(--foreground) 45%, transparent);
   transition: width 260ms var(--ease-chrome);
+}
+
+.usage-row-fill[data-level='warm'] {
+  background: #d9a45c;
+}
+
+.usage-row-fill[data-level='hot'] {
+  background: #e0705e;
 }
 
 @media (prefers-reduced-motion: reduce) {
