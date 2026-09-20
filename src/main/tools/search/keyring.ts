@@ -7,6 +7,7 @@ const KEYRING_SERVICE = 'codeapp-vault'
 
 const KEYS: Record<SearchProvider, { env: string; account: string }> = {
   brave: { env: 'BRAVE_SEARCH_API_KEY', account: 'brave_paid_search' },
+  exa: { env: 'EXA_API_KEY', account: 'exa_api_key' },
   serper: { env: 'SERPER_API_KEY', account: 'serper_api_key' },
   tavily: { env: 'TAVILY_API_KEY', account: 'tavily_api_key' },
   you: { env: 'YOU_API_KEY', account: 'you_api_key' }

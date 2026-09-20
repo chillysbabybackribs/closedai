@@ -1,4 +1,4 @@
-export const SEARCH_PROVIDERS = ['brave', 'serper', 'tavily', 'you'] as const
+export const SEARCH_PROVIDERS = ['brave', 'exa', 'serper', 'tavily', 'you'] as const
 export type SearchProvider = typeof SEARCH_PROVIDERS[number]
 
 export const SEARCH_INTENTS = ['general', 'news', 'research', 'answer', 'finance', 'technical'] as const
@@ -21,10 +21,21 @@ export type SearchRequest = {
   excludeDomains?: string[]
   /** Research runs consume sources only; do not pay for discarded provider synthesis. */
   includeAnswer?: boolean
+  /** Research runs ask providers that extract pages (Exa) for the text itself, not just snippets. */
+  sourceText?: boolean
   preferredDomains?: string[]
   goggles?: string
   relevance?: 'strict' | 'balanced' | 'lenient' | 'disabled'
   contextTokens?: number
+}
+
+/** Page text a provider extracted alongside discovery: third-party extraction this app never fetched. */
+export type ProvidedContent = {
+  text: string
+  highlights: string[]
+  /** The provider's per-page character cap was reached; the page continues beyond this text. */
+  truncated: boolean
+  author?: string
 }
 
 export type SearchResult = {
@@ -33,6 +44,7 @@ export type SearchResult = {
   snippet: string
   provider: SearchProvider
   discoveredBy?: SearchProvider[]
+  content?: ProvidedContent
   age?: string
   score?: number
   /** Provider-reported age is not a verified publication date. */
