@@ -5,6 +5,7 @@ import { truncateText } from '../truncate-json.js'
 import { bodyField, FETCH_TIMEOUT_MS, headersField, methodField, parseBody } from './fetch.js'
 import { requireSession, type SessionHostProvider } from './network-host.js'
 import { projectJson } from './project.js'
+import { documentText } from '../search/research/source-reader.js'
 
 // The user's signed-in browser session as a data source: requests the main process makes on
 // that session carry its cookies but answer to no page's CORS policy, and cookies are readable
@@ -39,13 +40,15 @@ function fetchAction(sessions: SessionHostProvider): ToolAction {
       'Request a URL on the session: cookies included, no CORS, redirects followed unless redirect is ' +
       'manual. Returns status, response headers, and the body. For a large JSON response name ' +
       'json_path, fields, and limit to project it — the projection happens before the result is ' +
-      'serialised, so only what you asked for costs anything. Binary comes back as base64 with its byte length.',
+      'serialised, so only what you asked for costs anything. Binary comes back as base64 with its byte length. ' +
+      'For HTML documents, format: "text" extracts clean article prose and document title, omitting markup, scripts, and chrome.',
     inputSchema: objectSchema({
       url: urlField,
       method: methodField,
       headers: headersField,
       body: bodyField,
       redirect: { type: 'string', enum: ['follow', 'manual'], description: 'Follow redirects (default) or stop at the first.' },
+      format: { type: 'string', enum: ['raw', 'text'], description: 'Response format for HTML web documents. "raw" (default) preserves the original response markup; "text" extracts clean visible prose and title, stripping scripts, styles, and navigation.' },
       json_path: { type: 'string', minLength: 1, description: 'Dot/bracket path into a JSON response, for example `data.items` or `results[0].rows`. Defaults to the whole document.' },
       fields: { type: 'array', maxItems: 40, items: { type: 'string', minLength: 1 }, description: 'Field paths kept from each item, for example ["name","owner.login"]. Every field when omitted.' },
       limit: { type: 'integer', minimum: 1, description: 'Maximum items returned when the selection is an array.' },
@@ -61,6 +64,7 @@ function fetchAction(sessions: SessionHostProvider): ToolAction {
         redirect: stringArg(input, 'redirect') as 'follow' | 'manual' | undefined
       })
       const maxChars = numberArg(input, 'max_chars', DEFAULT_BODY_CHARS)
+      const format = stringArg(input, 'format') === 'text' ? 'text' : 'raw'
       const { text, ...rest } = response
       if (text === null) return jsonResult({ ...rest, binary: true, base64: rest.base64 && rest.base64.length > maxChars ? rest.base64.slice(0, maxChars) : rest.base64 })
       const { json, isJson } = parseBody(text, response.contentType)
@@ -84,14 +88,25 @@ function fetchAction(sessions: SessionHostProvider): ToolAction {
           json: projected.value
         })
       }
+      let bodyText = text
+      let pageTitle: string | undefined
+      if (format === 'text') {
+        const doc = documentText(text, response.contentType ?? '')
+        bodyText = doc.text
+        if (doc.title) pageTitle = doc.title
+      }
       const advice = isJson
         ? 'Raise max_chars, or name json_path, fields, and limit to project only what you need.'
-        : 'Raise max_chars to see more of this response.'
-      const bounded = truncateText(text, maxChars, advice)
+        : format === 'text'
+          ? 'Raise max_chars to see more of this document.'
+          : 'Raise max_chars, or use format: "text" to extract readable prose without markup.'
+      const bounded = truncateText(bodyText, maxChars, advice)
       return jsonResult({
         ...rest,
         base64: null,
         isJson,
+        ...(pageTitle ? { title: pageTitle } : {}),
+        ...(format === 'text' ? { format: 'text' } : {}),
         bodyTruncated: bounded.truncated || response.truncated,
         ...(isJson && !bounded.truncated ? { json } : { text: bounded.text })
       })

@@ -56,6 +56,28 @@ test('fetch returns prose as text and binary as base64', async () => {
   assert.equal(binary.base64, 'AQID')
 })
 
+test('fetch with format: text extracts clean document prose and title from HTML', async () => {
+  const html = '<!DOCTYPE html><html><head><title>Doc Title</title><style>body{color:red}</style><script>bad()</script></head><body><nav>Nav Menu</nav><main><h1>Heading</h1><p>Main body paragraph</p></main><footer>Page Footer</footer></body></html>'
+  const raw = payload(await harness(html, 'text/html').call({ action: 'fetch', url: 'https://a.test/page' }))
+  assert.match(raw.text as string, /<nav>Nav Menu<\/nav>/)
+  assert.equal('title' in raw, false)
+  assert.equal('format' in raw, false)
+
+  const extracted = payload(await harness(html, 'text/html').call({ action: 'fetch', url: 'https://a.test/page', format: 'text' }))
+  assert.equal(extracted.title, 'Doc Title')
+  assert.equal(extracted.format, 'text')
+  assert.match(extracted.text as string, /Heading/)
+  assert.match(extracted.text as string, /Main body paragraph/)
+  assert.doesNotMatch(extracted.text as string, /<nav>|<script>|bad\(\)|Nav Menu|Page Footer/)
+})
+
+test('fetch with format: text handles non-HTML gracefully', async () => {
+  const plain = payload(await harness('plain text content', 'text/plain').call({ action: 'fetch', url: 'https://a.test/doc.txt', format: 'text' }))
+  assert.equal(plain.text, 'plain text content')
+  assert.equal(plain.format, 'text')
+  assert.equal('title' in plain, false)
+})
+
 test('a large JSON response is projected rather than truncated into a bare note', async () => {
   const document = JSON.stringify({ data: { items: [{ name: 'One', owner: { login: 'a' }, extra: 'x'.repeat(500) }, { name: 'Two', owner: { login: 'b' }, extra: 'y'.repeat(500) }] } })
   const { call } = harness(document)
