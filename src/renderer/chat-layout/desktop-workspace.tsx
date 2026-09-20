@@ -36,7 +36,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   const imageTabId = browser.browser.image?.tabId
   const [browserRevealVersion, setBrowserRevealVersion] = useState(0)
   useEffect(() => window.closedai.browser.onState((state) => {
-    if (state.image) {
+    if (state.image || state.url.startsWith('file:')) {
       layout.showBrowser()
       setBrowserRevealVersion((value) => value + 1)
     }

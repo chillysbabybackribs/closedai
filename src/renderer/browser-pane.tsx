@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { memo, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Download, FileImage, Globe2, Loader2, Lock, Plus, RefreshCw, Search, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Download, FileCode, FileImage, Globe2, Loader2, Lock, Plus, RefreshCw, Search, X } from 'lucide-react'
 import { ImageViewer } from './image-viewer/image-viewer.js'
 import { BrowserSiteIcon } from './browser-site-icon.js'
 import type { BrowserController } from './browser-controller.js'
@@ -157,6 +157,7 @@ function TabIcon({ tab }: { tab: BrowserTabInfo }): JSX.Element {
   if (tab.favicon && !failed) {
     return <img className="browser-tab-favicon" src={tab.favicon} alt="" aria-hidden="true" onError={() => setFailed(true)} />
   }
+  if (tab.url.startsWith('file:')) return <FileCode className="browser-tab-icon" size={13} aria-hidden="true" />
   return <Globe2 className="browser-tab-icon browser-tab-fallback" size={13} aria-hidden="true" />
 }
 

@@ -5,6 +5,7 @@ import type { BrowserHistory } from './browser-history-store.js'
 import type { BrowserBounds, BrowserShot, BrowserState, BrowserTabInfo } from '../shared/types.js'
 import type { TabPersistRecord } from './browser-tab-session-store.js'
 import { BrowserTab, HOME_URL, PARTITION, allocateTabId } from './browser-tab.js'
+import { sameDocumentUrl } from './browser-url.js'
 import { ImageTab, imageKey } from './local-files/image-tab.js'
 import type { ImageTabContent } from '../shared/local-files.js'
 import { PersistentSessionCookies } from './persistent-session-cookies.js'
@@ -213,6 +214,17 @@ export class BrowserService extends EventEmitter {
     const index = this.tabs.findIndex((item) => item.id === this.activeId)
     this.registerTab(tab, index + 1)
     this.setActive(tab.id)
+    return tab.id
+  }
+
+  openFileTab(url: string): string {
+    const existing = this.tabs.find((tab) => tab instanceof BrowserTab && sameDocumentUrl(tab.getState().url, url))
+    if (existing) {
+      this.selectTab(existing.id)
+      this.emit('state', existing.getState())
+      return existing.id
+    }
+    const tab = this.openTab(url, true)
     return tab.id
   }
 

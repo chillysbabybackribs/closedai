@@ -3,6 +3,7 @@ import { IPC } from '../../shared/ipc-channels.js'
 import { registerInvoke } from '../ipc-register.js'
 import { openLocalFile } from './open.js'
 import { realpath } from 'node:fs/promises'
+import { pathToFileURL } from 'node:url'
 import { localFilePath } from '../../shared/local-files.js'
 import type { BrowserService } from '../browser-service.js'
 import { validateImageSource } from './image-tab.js'
@@ -15,9 +16,16 @@ export function registerLocalFilesIpc(ipcMain: Pick<IpcMain, 'handle'>, getBrows
   }
   registerInvoke(ipcMain, IPC.invoke.localFiles.open, async (_event, href) => {
     const result = await openLocalFile(href, (path) => shell.showItemInFolder(path))
-    if (result.kind !== 'image') return result
-    const path = await realpath(localFilePath(href)!)
-    return { kind: 'image', tabId: browser().openImage({ ...result, path }) }
+    if (result.kind === 'image') {
+      const path = await realpath(localFilePath(href)!)
+      return { kind: 'image', tabId: browser().openImage({ ...result, path }) }
+    }
+    if (result.kind === 'file') {
+      const path = await realpath(result.path)
+      const url = pathToFileURL(path).href
+      return { kind: 'file', tabId: browser().openFileTab(url) }
+    }
+    return result
   })
   registerInvoke(ipcMain, IPC.invoke.localFiles.openImage, (_event, image) =>
     browser().openImage(validateImageSource(image)))

@@ -18,8 +18,12 @@ export function localFilePath(value: string | undefined): string | null {
 
 export type LocalFilePreview =
   | { kind: 'image'; name: string; src: string }
+  | { kind: 'file'; path: string }
   | { kind: 'revealed' }
 
-export type LocalFileResult = { kind: 'image'; tabId: string } | { kind: 'revealed' }
+export type LocalFileResult =
+  | { kind: 'image'; tabId: string }
+  | { kind: 'file'; tabId: string }
+  | { kind: 'revealed' }
 export type ImageTabContent = { name: string; src: string; path?: string }
 export type ImageTabIdentity = { tabId: string; name: string; path?: string }

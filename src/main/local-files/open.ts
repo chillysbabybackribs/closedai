@@ -8,7 +8,7 @@ const IMAGE_TYPES: Record<string, string> = {
 }
 const MAX_IMAGE_BYTES = 32 * 1024 * 1024
 
-/** User-clicked files are previewed as inert raster images or revealed, never executed. */
+/** User-clicked files are previewed in browser tabs (inert raster images or files); directories are revealed. */
 export async function openLocalFile(href: string, reveal: (path: string) => void): Promise<LocalFilePreview> {
   const path = typeof href === 'string' ? localFilePath(href) : null
   if (!path) throw new Error('This is not an absolute local file link.')
@@ -31,6 +31,7 @@ export async function openLocalFile(href: string, reveal: (path: string) => void
       return { kind: 'image', name: basename(path), src: `data:${mime};base64,${bytes.subarray(0, length).toString('base64')}` }
     } finally { await file.close() }
   }
+  if (info.isFile()) return { kind: 'file', path }
   reveal(path)
   return { kind: 'revealed' }
 }
