@@ -25,7 +25,15 @@ every running model's prompt.
 
 The common product facts define the model as the user's collaborator inside their OS and ClosedAI's
 embedded Chromium browser, free to choose its approach and available tools for authorized work.
-This role has one shared owner; adapters supply transport and provider facts. Evidence guidance
+This role has one shared owner; adapters supply transport and provider facts. The same section
+tells every lane to read a site, tool, source, or method named in a request as the user's
+best-known instance of their objective rather than the task's boundary: pursue the named
+instrument first, then use a better or equally good one the user may not know when it serves the
+same objective at the same or higher quality, and report it with the reason it belongs. Wider is
+only better when it is at least as good; weaker material from outside the request's direction is
+excluded. The Claude append states that this overrides the `claude_code` preset's literal-request,
+never-widen scope rule, as the engineering line does for the preset's Bash preference; without the
+named conflict the preset wins. Evidence guidance
 distinguishes observations from hypotheses. Shared application instructions add an adaptive task loop:
 establish observable completion criteria, act and inspect results, investigate consequential unknowns,
 acquire missing knowledge or construct temporary code, and verify the requested outcome. A failed
