@@ -254,6 +254,11 @@ evidence is needed. Explicit background mode is for user-requested
 headless work. This does not promise a hidden rendered worker or automatic live following.
 Source excerpts are untrusted data,
 and discovery overlap across providers does not establish independent factual corroboration.
+Research tools expose adjustable extraction coverage and `search.run.expand` for selected sources,
+including completed runs. Expansion performs new requests; `search.read` remains observation-only.
+Models can inspect `incomplete`, expand, and page the replacement text without repeating discovery.
+An unset truncation flag does not prove extraction fidelity. Exa PDF-URL text remains `provider_text`;
+it is not proof that this app parsed PDF bytes or verified tables, equations, figures, or OCR.
 
 The registry supplies provider-neutral descriptions and schemas. Codex gets dynamic tool
 specifications; Claude gets in-process MCP servers; Antigravity gets HTTP MCP servers. Tool

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import test, { type TestContext } from 'node:test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -14,7 +14,7 @@ const context: ToolContext = { paneId: 'pane', threadId: 'thread', turnId: 'turn
 const tick = () => new Promise<void>((resolve) => setImmediate(resolve))
 const url = 'https://example.com/paper.pdf'
 
-async function fixture(t: Parameters<Parameters<typeof test>[1]>[0]) {
+async function fixture(t: TestContext) {
   const root = await mkdtemp(join(tmpdir(), 'research-expansion-'))
   const store = new SourceStore(root, async () => new Response('PDF bytes', { headers: { 'content-type': 'application/pdf' } }))
   let service!: ResearchService

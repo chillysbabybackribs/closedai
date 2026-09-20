@@ -73,7 +73,7 @@ before the app-server starts.
 | `browser_cdp` | `emulate` | `apply`, `reset` | Device and environment emulation that actually lands. `Emulation.setDeviceMetricsOverride` alone applies screen metrics, `devicePixelRatio` and touch points but leaves the layout viewport following the headful widget, so a responsive site keeps serving its desktop breakpoint; `apply` therefore also shrinks the tab's native surface to the emulated viewport (`BrowserTab.setEmulatedViewport`), the way DevTools device mode resizes the inspected view. Presets plus user agent, colour scheme, reduced motion, timezone, locale, geolocation, network throttling and CPU slowdown. Every result carries the page's own measurement, so an override that did not land is visible rather than assumed. |
 | `search` | `query` | plain tool | Routed public-web search across Brave, Exa, Serper, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. Defaults to `depth: quick` (one provider) and `presentation: live` (reuse one tab per pane/thread/turn); `live: true` bypasses the ten-minute cache and refreshes it with current provider results. |
 | `search` | `library` | `status`, `search`, `read` | Read-only, durable app-shared public paper index. Local lexical search returns five results by default (maximum ten, 400-character excerpts); read returns one saved abstract up to 6,000 characters. No network/model calls or automatic prompt injection. Manual alphaXiv refresh and retrieval permission live in Tools → Research library; see [contracts and limits](research-library.md). |
-| `search` | `run` | `start`, `extend`, `cancel` | Incremental public-web research: independent queries and static source readers overlap inside one app-owned run. Exa results carry provider-extracted page text, retained at discovery as `provider_text` without a fetch or read slot. Live presentation is the default; a retained browser tab opens on an actual source as URLs arrive. `extend` accepts only an active run and directs completed-run follow-ups to a new run. |
+| `search` | `run` | `start`, `extend`, `expand`, `cancel` | Incremental public-web research with adjustable source coverage. Exa page text is retained as `provider_text` without a fetch/read slot. Live presentation opens an actual source tab. `extend` adds discovery to active runs; `expand` refetches a selected source even after completion. |
 | `search` | `read` | `results`, `wait`, `source` | Cursor-based source updates, bounded event waits, and retained document excerpts. Observes the calling pane/thread's runs without starting more requests. Oversized wait and excerpt budgets are capped at 20 seconds and 12,000 characters rather than rejected. |
 | `peer_chats` | `list`, `read` | plain tools | Read-only status and paginated transcript access to other panes and visible subagent summaries. `read` is deferred where supported; it takes an id from `list` and pages the newest 30 items backwards by default (at most 100), inside a serialized budget (`max_chars`, 6k default, 16k ceiling) that clips long tool detail, output, diffs and screenshot data URLs and reports `totalItems`; `order: "oldest"` follows a chat forward and `types` narrows to the item kinds wanted. It does not start or control agents. Reasoning items are excluded from both previews and pages, matching `recall` and thread handoff, so one model's thinking never enters another model's context. |
 | `peer_chats` | `recall` | plain tool, read-only | Bounded phrase search or exact-message excerpts from the caller's current chat, frozen direct continuation source (live in-memory transcript after same-pane rotation), or a previous conversation across projects, plus saved checkpoint state and optional `sessionRotationEpoch`. |
@@ -189,14 +189,36 @@ Standalone answer lookups retain it and use separate cache entries. Index overla
 and run results is reported as `discoveredBy`, not factual corroboration.
 
 Runs also set `sourceText`, which asks providers that extract pages to return the text itself. Exa
-does: each result arrives with query-guided highlights (the snippet) and up to 10,000 characters of
-compact page text. The research service retains that text immediately under the source id as
+does: each result arrives with query-guided highlights (the snippet) and compact page text.
+`max_text_chars` on the run sets extraction and retention coverage (default 120,000; zero removes
+the application character cap). The research service retains that text immediately under the source id as
 representation `provider_text` with `contentProvider: "exa"`, without a fetch and without consuming
 a read slot, so `max_sources` bounds fetched documents only. Text that reached Exa's cap is marked
-`incomplete`. Provider text has no byte-level provenance of our own — its `sha256` covers the text
+`incomplete`. This indicates a known limit, not a guarantee of complete content or layout fidelity
+when false. Provider text has no byte-level provenance of our own — its `sha256` covers the text
 as delivered — and a source already queued for fetching keeps its fetch. If local retention fails
 the source returns to `deferred` and the ordinary reader may still fetch it. Standalone
 `search.query` never requests page text; Exa highlights alone become the snippet there.
+
+`search.run.expand` accepts `run_id`, `source_id`, optional `method: auto|direct|exa`,
+`max_text_chars` (default zero/uncapped), and `max_source_bytes` (default 8 MiB). It awaits one
+new extraction, without discovery or consuming an initial read slot. `auto` uses Exa Contents for
+Exa-supplied text, otherwise the direct reader with rendered-shell fallback; `exa` explicitly
+requests provider text for another source, including a failed direct PDF read. Exa Contents
+requests fresh full text (`maxAgeHours: 0`, `verbosity: full`) and may incur extraction charges;
+see [Exa Contents](https://exa.ai/docs/contents/quickstart). Two Contents requests can run at once.
+The operation has a 45-second deadline; direct reads retain their 20-second deadline.
+It works on retained completed runs in the same pane/thread/workspace during an active turn.
+Stop, cancellation, turn replacement, and shutdown abort expansion as well as initial reads.
+
+Expansion stages files under a temporary id, then atomically replaces the retained text. A failed
+or shorter extraction preserves the earlier text/hash; `expansionError` explains the failure or
+nonreplacement. Source id, requested URL, and discovery provenance remain; representation,
+content provider, resolved URL, retrieval time, hash, and offsets describe the replacement.
+Read excerpts again after a successful expansion. `expanding` and `pending` expose outstanding
+expansion even when the initial run is completed. Duplicate expansion of the same source is refused;
+active expansions prevent run eviction. Neither uncapped extraction nor Exa text for a PDF URL
+establishes native PDF parsing, OCR, table, equation, image, or page-layout fidelity.
 
 Exa discovery uses `POST /search` on Exa's own index with `type: fast` for quick and `auto` for
 balanced and deep requests (the `deep*` types synthesize answers over tens of seconds and are not
@@ -270,9 +292,12 @@ maximum 12k), with hash, retrieval time, MIME, and incomplete status. Completion
 settled, not that every provider or source succeeded.
 
 Static sources use an isolated nonpersistent Electron session and omit credentials. Bodies are
-streamed to a bounded raw file (512 KiB), HTML is parsed inertly with parse5, and extracted text
-is retained up to 120k characters. Truncation is explicit. JSON and text are also supported;
-PDFs and unsupported MIME are reported for browser follow-up. Redirects are followed by the
+streamed to a raw file (default 512 KiB, adjustable with run `max_source_bytes`; zero removes
+the byte cap), HTML is parsed inertly with parse5, and extracted text uses `max_text_chars`.
+The text limit also applies to rendered/provider text; the direct byte budget does not control
+provider or rendered-page downloads. Truncation is explicit. JSON and text are also supported;
+direct PDF parsing remains unsupported; use explicit expansion via Exa or browser follow-up.
+Redirects are followed by the
 transport; the resolved URL is retained when available, alongside the requested source URL.
 Parsing does not execute JavaScript or resolve
 CSS visibility and is not a rendered-page verification. A page whose static body is empty, or a

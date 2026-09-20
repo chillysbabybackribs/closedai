@@ -660,6 +660,12 @@ normal browser session. A source whose static body is a JavaScript shell is rend
 hidden page worker (`src/main/browser-workers/`, at most three, on the public research session,
 never shown or listed in the tab strip) and reported as `rendered_text`. Runs are tied to the
 calling pane/thread/turn and stop with that turn or pane, which also aborts rendered reads.
+Source coverage is adjustable per run: `max_text_chars` defaults to 120,000 (including Exa,
+previously limited to 10,000), and `max_source_bytes` controls direct downloads. Zero removes
+the corresponding app cap. `search.run.expand` refetches one retained source without rediscovery,
+including after completion, with uncapped text by default. Failed or shorter expansions preserve
+the earlier evidence. Explicit Exa expansion can retrieve provider text for PDF URLs; native PDF
+parsing and visual/OCR fidelity remain unimplemented. Excerpts remain separately bounded and pageable.
 There is no dedicated research activity panel, and workers cannot be handed to the user yet. See
 [Tools](tools.md#parallel-research-runs) for exact limits and the
 [design proposal](parallel-web-research-2026-09-04.md) for the remaining work.
