@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Columns2, GripVertical, Monitor, PanelRightClose, Plus, Rows2, X } from 'lucide-react'
+import { DropdownMenu } from 'radix-ui'
+import { Columns2, GripVertical, MessageSquarePlus, Monitor, PanelRightClose, Plus, Rows2, X } from 'lucide-react'
 import { CHAT_DRAG_TYPE, layoutGeometry, minimumSize, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { ChatTabs } from './chat-tabs.js'
 
@@ -120,19 +121,31 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
           </button>
           <ChatTabs ids={tabs} activeId={id} busy={busy} canClose={tabs.length > 1 || geometry.panes.length > 1}
             title={title} onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab} />
-          <button type="button" className="chat-layout-new-chat"
-            data-ui="layout.new-chat" data-ui-key={id} disabled={busy}
-            title="New chat tab" aria-label="New chat tab" onClick={() => onNewChat(id)}>
-            <Plus size={14} aria-hidden="true" />
-          </button>
-          <button data-ui="layout.split-right" data-ui-key={id} disabled={busy}
-            title="New chat to the right" aria-label="New chat to the right" onClick={() => onDock(null, id, 'right')}>
-            <Columns2 size={14} aria-hidden="true" />
-          </button>
-          <button data-ui="layout.split-below" data-ui-key={id} disabled={busy}
-            title="New chat below" aria-label="New chat below" onClick={() => onDock(null, id, 'bottom')}>
-            <Rows2 size={14} aria-hidden="true" />
-          </button>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button type="button" className="chat-layout-new-chat"
+                data-ui="layout.new-chat-menu" data-ui-key={id} disabled={busy}
+                title="New chat" aria-label="New chat">
+                <Plus size={14} aria-hidden="true" />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content className="titlebar-menu-content chat-layout-new-chat-menu" align="end" sideOffset={4} loop>
+                <DropdownMenu.Item className="titlebar-menu-item" data-ui="layout.new-chat" data-ui-key={id}
+                  onSelect={() => onNewChat(id)}>
+                  <MessageSquarePlus size={14} aria-hidden="true" /><span>New chat</span>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item className="titlebar-menu-item" data-ui="layout.split-right" data-ui-key={id}
+                  onSelect={() => onDock(null, id, 'right')}>
+                  <Columns2 size={14} aria-hidden="true" /><span>New chat right</span>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item className="titlebar-menu-item" data-ui="layout.split-below" data-ui-key={id}
+                  onSelect={() => onDock(null, id, 'bottom')}>
+                  <Rows2 size={14} aria-hidden="true" /><span>New chat bottom</span>
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
           <button type="button" data-ui="layout.browser-toggle" data-ui-key={id}
             aria-pressed={browserVisible} onClick={onToggleBrowser}
             aria-label={browserVisible ? 'Hide browser' : 'Show browser'}
