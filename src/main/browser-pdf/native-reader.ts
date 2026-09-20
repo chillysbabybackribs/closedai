@@ -15,6 +15,7 @@ export async function readNativePdf(
   const viewer = target.mainFrame.framesInSubtree.find(frame => frame.url === PDF_VIEWER_URL)
   if (!viewer) return null
   return withCaptureDocument(target, async () => {
+    if (await target.executeJavaScript('document.contentType') !== 'application/pdf') return null
     if (await target.executeJavaScript('document.visibilityState') !== 'visible') {
       throw new Error('Native PDF reading needs a visible tab. Select this PDF with closedai_app.command browser_tab select, then retry read_page.')
     }
@@ -37,6 +38,7 @@ export async function readNativePdf(
       if (!result || typeof result.text !== 'string' || typeof result.available !== 'boolean') {
         throw new Error('Chromium returned an unsupported PDF accessibility response')
       }
+      if (!result.hasPdfRoot) throw new Error('Chromium did not expose a native PDF tree. Its internal diagnostic interface may be unavailable; inspect the page image instead.')
       return result
     } catch (error) {
       stop.throwIfAborted()

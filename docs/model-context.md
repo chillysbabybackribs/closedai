@@ -257,8 +257,7 @@ PDF text. An empty result may be a scan; page text does not establish image cove
 accuracy. The model uses browser capture for visual evidence. See [Tools](tools.md) for the
 internal Chromium adapter's limits and lifecycle.
 
-Research uses `search.run` for overlapping
-queries/source collection, and `search.read` for incremental evidence. Research work belongs to the originating
+Research work belongs to the originating
 turn and is cancelled at its end, so models must retrieve needed evidence before finishing.
 Both search paths now default to live presentation and reuse one retained tab per pane/thread/turn.
 Discovery must use the search APIs, never Google or other search-engine pages in the browser.
@@ -302,9 +301,9 @@ Browser-page capture rejects main-frame navigation or renderer loss during the o
 Its tool description explicitly excludes an atomic DOM/pixel guarantee: DOM updates,
 animation, and subframe changes remain possible.
 
-The verification budgets in `model-efficiency-instructions.test.ts` are under 9,000 characters for
-Codex developer instructions, 9,500 for Claude, 10,000 for Antigravity, and 9,500 for Cursor
-(raised by 1,000 each on 2026-09-20 to make room for the platform-identity paragraph;
+The verification budgets in `model-efficiency-instructions.test.ts` are under 9,500 characters for
+Codex developer instructions, 10,000 for Claude, 10,500 for Antigravity, and 10,000 for Cursor
+(raised by 1,500 each on 2026-09-20 to make room for the platform-identity and native-PDF guidance;
 `turn-context.test.ts` holds the same Codex bound). The separately appended
 root `AGENTS.md` is capped at 20,000. Share repeated guidance and remove duplication when expanding
 prompts; do not solve drift by injecting the entire documentation tree.

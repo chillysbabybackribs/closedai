@@ -50,6 +50,8 @@ try {
           assert.equal(webContents.getAllWebContents().length, baseline, 'Temporary helper leaked');
           assert.equal(await mode(), before, 'Accessibility mode leaked');
           console.log(JSON.stringify({case:index === 0 ? 'native-page-2' : 'scan', ...result, text:result.text.slice(0,150), modeRestored:true, helperReleased:true}));
+          const missing = await readNativePdf(target, (result.totalPages ?? result.pagesAvailable) + 1, 1000);
+          assert.equal(missing.available, false);
         }
         const controller = new AbortController(); controller.abort();
         const baseline = webContents.getAllWebContents().length;
@@ -57,6 +59,21 @@ try {
         await new Promise(r=>setTimeout(r,100));
         assert.equal(webContents.getAllWebContents().length,baseline);
         console.log('Cancellation cleanup passed');
+        const activeController = new AbortController();
+        const aborted = readNativePdf(target,1,1000,activeController.signal);
+        const cancelTimer = setTimeout(() => activeController.abort(), 30);
+        try { await assert.rejects(aborted, /abort/i); } finally { clearTimeout(cancelTimer); }
+        await new Promise(r=>setTimeout(r,100));
+        assert.equal(webContents.getAllWebContents().length,baseline);
+        assert.equal(await mode(),0);
+        console.log('In-flight cancellation cleanup passed');
+        const read = readNativePdf(target,1,1000);
+        const navigate = new Promise(resolve => setTimeout(() => resolve(target.loadURL('about:blank')),30));
+        await assert.rejects(read, /navigated|renderer|target|tree|context|frame/i);
+        await navigate;
+        await new Promise(r=>setTimeout(r,100));
+        assert.ok(webContents.getAllWebContents().length <= baseline);
+        console.log('Navigation invalidation and cleanup passed');
       } finally { diagnostics.close(); win.destroy(); }
       }).then(() => app.exit(0), error => { console.error(error); app.exit(1); });
     `, resolveDir: root, sourcefile: 'native-pdf-live-check.mjs' },
