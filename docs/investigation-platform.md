@@ -207,6 +207,8 @@ graph and persistent execution remain incomplete. Session-level `embedded_browse
 legacy URL/method association and replay fallback; use exact CDP body reads for this slice.
 Replacing that legacy behavior with explicit replay remains an acquisition follow-up.
 
+Update 2026-09-20: that follow-up is implemented above; the legacy body action is removed.
+
 ### Durable artifact increment
 
 2026-09-13: explicit CDP command retention, local file import, list/read/JSON-pointer projection,

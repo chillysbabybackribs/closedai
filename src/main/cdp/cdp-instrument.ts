@@ -78,15 +78,15 @@ export function instrumentScript(channels: InstrumentChannel[], capacity: number
   };
 
   if (on('fetch')) method('fetch', window, 'fetch', (original) => function (input, init) {
-      const url = input && typeof input === 'object' && 'url' in input ? input.url : input;
-      rec('fetch', ((init && init.method) || (input && input.method) || 'GET') + ' ' + url);
-      return original.apply(this, arguments);
-    });
+    const url = input && typeof input === 'object' && 'url' in input ? input.url : input;
+    rec('fetch', ((init && init.method) || (input && input.method) || 'GET') + ' ' + url);
+    return original.apply(this, arguments);
+  });
 
   if (on('xhr')) method('xhr', window.XMLHttpRequest && XMLHttpRequest.prototype, 'open', (open) => function (verb, url) {
-      rec('xhr', String(verb) + ' ' + String(url));
-      return open.apply(this, arguments);
-    });
+    rec('xhr', String(verb) + ' ' + String(url));
+    return open.apply(this, arguments);
+  });
 
   if (on('websocket')) method('websocket', window, 'WebSocket', (Original) => new Proxy(Original, {
     construct(target, args, newTarget) {
@@ -131,13 +131,13 @@ export function instrumentScript(channels: InstrumentChannel[], capacity: number
       watchGetter(window.Screen && Screen.prototype, property, 'screen.' + property);
     }
     method('fingerprint', window.HTMLCanvasElement && HTMLCanvasElement.prototype, 'toDataURL', (toDataURL) => function () {
-        rec('fingerprint', 'canvas.toDataURL'); return toDataURL.apply(this, arguments);
+      rec('fingerprint', 'canvas.toDataURL'); return toDataURL.apply(this, arguments);
     });
     method('fingerprint', Date.prototype, 'getTimezoneOffset', (getTimezoneOffset) => function () {
-        rec('fingerprint', 'Date.getTimezoneOffset'); return getTimezoneOffset.apply(this, arguments);
+      rec('fingerprint', 'Date.getTimezoneOffset'); return getTimezoneOffset.apply(this, arguments);
     });
     method('fingerprint', window.WebGLRenderingContext && WebGLRenderingContext.prototype, 'getParameter', (getParameter) => function (name) {
-        rec('fingerprint', 'webgl.getParameter ' + String(name)); return getParameter.apply(this, arguments);
+      rec('fingerprint', 'webgl.getParameter ' + String(name)); return getParameter.apply(this, arguments);
     });
   }
 
