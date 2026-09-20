@@ -32,7 +32,9 @@ export async function replaceSource(root: string, runId: string, sourceId: strin
     await rename(`${base}.current.tmp`, `${base}.current`)
     committed = true
   } finally {
-    await rm(`${base}.current.tmp`, { force: true })
-    if (!committed) await rm(directory, { recursive: true, force: true })
+    if (!committed) {
+      await rm(`${base}.current.tmp`, { force: true })
+      await rm(directory, { recursive: true, force: true })
+    }
   }
 }

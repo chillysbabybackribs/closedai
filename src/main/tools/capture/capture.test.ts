@@ -5,6 +5,7 @@ import { ToolRegistry } from '../registry.js'
 import type { UiCaptureHost } from './host.js'
 import { CaptureBudget, captureTools } from './index.js'
 import { ScreenshotStore } from './screenshot-store.js'
+import { EXEC_IMAGE_HINT } from './result.js'
 
 const image = {
   dataUrl: 'data:image/png;base64,cG5n', width: 1920, height: 1080, capturedAt: '2026-09-02T12:00:00.000Z',
@@ -14,6 +15,13 @@ const ready: PageReadyResult = {
   readyState: 'complete', reached: true, conditionMet: true, elapsedMs: 600,
   url: 'https://a.test/', title: 'A'
 }
+
+test('the advertised exec split selects the image payload, not its own example', () => {
+  const raw = `Screenshot metadata\n${EXEC_IMAGE_HINT}\ndata:image/jpeg;base64,anBn`
+  const i = raw.lastIndexOf('\ndata:image/') + 1
+  assert.equal(raw.slice(i).trim(), 'data:image/jpeg;base64,anBn')
+  assert.ok(raw.slice(0, i).includes(EXEC_IMAGE_HINT))
+})
 
 function harness(overrides: Partial<UiCaptureHost> = {}, budget = new CaptureBudget(10)) {
   const calls: unknown[] = []
