@@ -17,6 +17,9 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'researchLibrary:snapshot', 'researchLibrary:configure', 'researchLibrary:refresh',
     'researchLibrary:cancel', 'researchLibrary:dismiss', 'researchLibrary:restore',
     'researchLibrary:progress',
+    'research:activity',
+    'research:cancel',
+    'research:excerpt',
     'window:minimize',
     'window:maximize',
     'window:close',
@@ -101,6 +104,7 @@ test('IPC event constants cover the typed event registry', () => {
     'browser:tabs',
     'browserDownloads:changed',
     'chat:event',
+    'research:event',
     'tools:event',
     'trace:event'
   ]

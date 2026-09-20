@@ -48,6 +48,7 @@ import { batchTools } from './tools/batch/index.js'
 import { createResearchRuntime } from './research-runtime.js'
 import type { ResearchLibrary } from './research-library/service.js'
 import { registerResearchLibraryIpc } from './research-library/ipc.js'
+import { registerResearchIpc } from './research-ipc.js'
 import { createArtifactRuntime } from './investigations/artifact-runtime.js'
 import type { ArtifactStore } from './investigations/artifact-store.js'
 import type { ResearchService } from './tools/search/research/service.js'
@@ -258,6 +259,8 @@ async function main(): Promise<void> {
   })
   researchService = research.service
   researchLibrary = research.library
+  // The pane's research activity view: one coalesced event per run change, no model involvement.
+  researchService.subscribe((event) => sendToMainWindow(IPC.event.researchEvent, event))
   const artifacts = createArtifactRuntime({
     root: join(userData(), 'investigation-artifacts'), workerUrl: new URL('./artifact-worker.js', import.meta.url),
     chats: chatStore!, peers: () => chatService
@@ -424,6 +427,7 @@ function wireBrowserEvents(service: BrowserService): void {
 
 function registerIpc(): void {
   registerResearchLibraryIpc(ipcMain, () => researchLibrary)
+  registerResearchIpc(ipcMain, () => researchService)
   registerWindowIpc(ipcMain, () => mainWindow)
   registerBrowserCoreIpc(ipcMain, () => browserService)
   registerBrowserDownloadsIpc(ipcMain, () => browserDownloads)
