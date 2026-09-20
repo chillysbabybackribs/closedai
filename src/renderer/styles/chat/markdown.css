@@ -166,78 +166,8 @@
 
 .aui-md .aui-md-code-body { font-size: var(--chat-fs-code, 12px); }
 
-/* Tables: a framed, horizontally scrollable region so columns keep their natural widths in
-   narrow panes; horizontal hairlines only, a header set one step quieter than the body, and
-   numeric cells right-aligned in tabular figures. The `anywhere` wrapping the prose uses is
-   turned off inside cells: a squeezed column must scroll, never break "Shofer" into "Shof|er". */
-.aui-md-table-wrap {
-  max-width: 100%;
-  margin-block: 0.9em;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  border: 1px solid var(--hairline-strong);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--surface-chrome) 55%, transparent);
-  scrollbar-width: thin;
-}
-
-.aui-md-table-wrap:focus-visible {
-  outline: 2px solid var(--focus-ink);
-  outline-offset: 2px;
-}
-
-.aui-md table {
-  width: 100%;
-  margin: 0;
-  border-collapse: collapse;
-  border-spacing: 0;
-  font-size: 0.92em;
-  line-height: 1.5;
-}
-
-.aui-md th,
-.aui-md td {
-  min-width: 6ch;
-  padding: 8px 12px;
-  border: 0;
-  border-bottom: 1px solid var(--hairline);
-  text-align: start;
-  vertical-align: top;
-  overflow-wrap: normal;
-  word-break: normal;
-  hyphens: manual;
-}
-
-.aui-md th {
-  padding-block: 7px;
-  border-bottom-color: var(--hairline-strong);
-  background: color-mix(in srgb, var(--muted) 70%, transparent);
-  color: var(--muted-foreground);
-  font-size: 0.92em;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-.aui-md tbody tr:last-child > td { border-bottom: 0; }
-.aui-md tbody tr:hover > td { background: color-mix(in srgb, var(--foreground) 3%, transparent); }
-
-/* The first column usually names the row; it reads as a label without a second weight step. */
-.aui-md tbody td:first-child { color: var(--foreground); font-weight: 500; }
-
-.aui-md td[data-numeric] {
-  text-align: end;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.aui-md th[align='center'], .aui-md td[align='center'] { text-align: center; }
-.aui-md th[align='right'], .aui-md td[align='right'] { text-align: end; }
-
-/* Inline code stays on one line; a source chip's label wraps like the prose around it so a
-   link cell can shrink with its column instead of forcing the table to scroll. */
+/* Tables are the shadcn Table primitive (components/ui/table.tsx); the markdown renderer sets
+   per-cell alignment and wrapping. Only what the primitive cannot express lives here. */
+.aui-md td .prompt-source-trigger,
 .aui-md td code { white-space: nowrap; }
-.aui-md td .prompt-source-trigger { max-width: none; align-items: flex-start; line-height: inherit; }
-.aui-md td .prompt-source-trigger img,
-.aui-md td .prompt-source-trigger svg { margin-top: 0.3em; }
-.aui-md td .prompt-source-trigger span { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
 .aui-md td > p { margin: 0; }

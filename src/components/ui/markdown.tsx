@@ -1,11 +1,12 @@
 import { Check, Copy } from 'lucide-react'
 import { marked } from 'marked'
-import { createElement, memo, useCallback, useId, useMemo, useState, type ReactNode } from 'react'
+import { createElement, memo, useCallback, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import ReactMarkdown, { defaultUrlTransform, type Components, type ExtraProps } from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 
 import { cn } from '../../lib/utils.js'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './table.js'
 import { Source, SourceContent, SourceTrigger } from '../prompt-kit/source.js'
 import { CodeBlock, CodeBlockCode } from './code-block.js'
 import { remarkBareUrls } from './markdown-links.js'
@@ -36,7 +37,7 @@ function extractLanguage(className?: string): string {
    styling itself lives in styles/chat/markdown.css. */
 const TAGGED_ELEMENTS = [
   'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'blockquote',
-  'ul', 'ol', 'li', 'hr', 'th', 'tr', 'strong', 'sup'
+  'ul', 'ol', 'li', 'hr', 'strong', 'sup'
 ] as const
 
 type TaggedProps = { node?: unknown; className?: string; children?: ReactNode }
@@ -117,16 +118,30 @@ export function MarkdownLink({ href, children, node: _node, ...props }: React.Co
    letters beyond a unit suffix stays a label. */
 const NUMERIC_CELL = /^[-+−]?[$€£¥]?\d[\d,]*(\.\d+)?\s?(%|[kKmMbB]|ms|s|min|h|x|×|GB|MB|KB|TB)?$/
 
+type CellProps = TaggedProps & { style?: CSSProperties }
+
+/* remark-gfm carries a column's `---:` alignment as an inline text-align; a numeric cell in an
+   unaligned column right-aligns on its own. */
+const cellAlign = (style: CSSProperties | undefined, numeric = false) =>
+  style?.textAlign === 'right' || (numeric && !style?.textAlign) ? 'text-right' : style?.textAlign === 'center' ? 'text-center' : undefined
+
 const DEFAULT_COMPONENTS: Partial<Components> = {
   ...TAGGED_COMPONENTS,
-  // Tables keep their natural column widths and scroll inside the column instead of crushing
-  // words; the wrapper is focusable so keyboard users can pan it.
+  // Markdown tables are the stock shadcn Table. Body cells wrap at spaces (GitHub's markdown
+  // behaviour) instead of shadcn's nowrap so a prose column does not force a scrollbar, but a
+  // word is never broken: a table that does not fit scrolls inside its frame.
   table: function TableComponent({ node: _node, className, ...props }: TaggedProps) {
-    return <div className="aui-md-table-wrap" tabIndex={0}><table className={cn('aui-md-table', className)} {...props} /></div>
+    return <div className="my-4 overflow-hidden rounded-lg border"><Table className={cn('aui-md-table', className)} {...props} /></div>
   },
-  td: function CellComponent({ node: _node, className, children, ...props }: TaggedProps) {
+  thead: function HeadComponent({ node: _node, ...props }: TaggedProps) { return <TableHeader {...props} /> },
+  tbody: function BodyComponent({ node: _node, ...props }: TaggedProps) { return <TableBody {...props} /> },
+  tr: function RowComponent({ node: _node, ...props }: TaggedProps) { return <TableRow {...props} /> },
+  th: function HeadCellComponent({ node: _node, style, className, ...props }: CellProps) {
+    return <TableHead className={cn('bg-muted/50 text-muted-foreground px-3 text-xs', cellAlign(style), className)} {...props} />
+  },
+  td: function CellComponent({ node: _node, style, className, children, ...props }: CellProps) {
     const numeric = NUMERIC_CELL.test(textContent(children).trim())
-    return <td className={cn('aui-md-td', className)} data-numeric={numeric || undefined} {...props}>{children}</td>
+    return <TableCell className={cn('px-3 py-2 align-top whitespace-normal [overflow-wrap:normal]', numeric && 'tabular-nums whitespace-nowrap', cellAlign(style, numeric), className)} {...props}>{children}</TableCell>
   },
   a: MarkdownLink,
   code: function CodeComponent({ className, children, node: _node, ...props }) {

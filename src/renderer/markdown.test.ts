@@ -76,7 +76,7 @@ test('links bare hosts inside table cells and list items', () => {
   assert.match(html, /href="https:\/\/tremor\.so\/"/)
 })
 
-test('tables scroll inside a focusable frame and right-align numeric cells', () => {
+test('tables render through the shadcn primitive and right-align numeric cells', () => {
   const source = [
     '| Tool | Latency | Share | Note |',
     '| --- | ---: | --- | --- |',
@@ -84,11 +84,11 @@ test('tables scroll inside a focusable frame and right-align numeric cells', () 
   ].join('\n')
   const html = renderToStaticMarkup(createElement(Markdown, null, source))
 
-  assert.match(html, /<div class="aui-md-table-wrap" tabindex="0"><table class="aui-md-table">/)
-  assert.match(html, /<td class="aui-md-td" data-numeric="true"[^>]*>1,240 ms<\/td>/)
-  assert.match(html, /<td class="aui-md-td" data-numeric="true">42%<\/td>/)
-  assert.match(html, /<td class="aui-md-td">Shofer<\/td>/)
-  assert.match(html, /<td class="aui-md-td">v2\.5 beta<\/td>/)
+  assert.match(html, /<div data-slot="table-container" class="relative w-full overflow-x-auto"><table data-slot="table"/)
+  assert.match(html, /<th data-slot="table-head" class="[^"]*whitespace-nowrap[^"]*text-right[^"]*">Latency<\/th>/)
+  assert.match(html, /<td data-slot="table-cell" class="[^"]*tabular-nums whitespace-nowrap text-right[^"]*">42%<\/td>/)
+  assert.match(html, /<td data-slot="table-cell" class="[^"]*whitespace-normal \[overflow-wrap:normal\]">Shofer<\/td>/)
+  assert.match(html, /<td data-slot="table-cell" class="[^"]*whitespace-normal \[overflow-wrap:normal\]">v2\.5 beta<\/td>/)
 })
 
 test('leaves sentence punctuation and wrapping parentheses outside the link', () => {
