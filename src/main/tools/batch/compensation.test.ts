@@ -8,6 +8,26 @@ import { compensationFor, releases } from './compensation.js'
 
 const context = { threadId: 't', turnId: 'u', callId: 'c' }
 
+test('a failed sequential batch releases its deferred project switch', async () => {
+  const calls: string[] = []
+  let registry: ToolRegistry
+  registry = new ToolRegistry([{
+    name: 'closedai_app', description: 'Test', tools: [{
+      name: 'command', description: 'Test', inputSchema: { type: 'object' },
+      run: async (input) => {
+        calls.push(String(input.project_op))
+        return input.project_op === 'fail' ? { ...textResult('failed'), isError: true } : textResult('ok')
+      }
+    }]
+  }, batchTools(() => registry)])
+  const result = await run(registry, { calls: [
+    { tool: 'closedai_app.command', arguments: { action: 'project_switch', project_op: 'request', project_path: '/project' } },
+    { tool: 'closedai_app.command', arguments: { project_op: 'fail' } }
+  ] })
+  assert.equal(result.isError, true)
+  assert.deepEqual(calls, ['request', 'fail', 'cancel'])
+})
+
 /** The three tools that arm invisible tab state, plus something that fails on demand. */
 function harness(): { registry: ToolRegistry; log: string[] } {
   const log: string[] = []

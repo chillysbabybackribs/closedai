@@ -105,7 +105,9 @@ export class DeferredProjectSwitch {
     // Claim synchronously before awaits so new sends cannot race the workspace teardown.
     this.update({ ...request, status: 'switching' })
     try {
-      if (!(await stat(request.projectPath)).isDirectory()) throw new Error('Destination is no longer a directory')
+      if (!(await stat(request.projectPath)).isDirectory() || await realpath(request.projectPath) !== request.projectPath) {
+        throw new Error('Destination directory changed after validation')
+      }
       if (this.stopped) throw new Error('App stopped before switching projects')
       const record = this.host.record(request.paneId)
       const checkpoint = record?.checkpoint?.threadId === source.threadId ? record.checkpoint : null

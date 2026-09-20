@@ -87,6 +87,23 @@ test('state returns every section by default and only the requested ones otherwi
   assert.deepEqual(calls, [['state', ['chat'], 'pane-2', 'pane-caller']])
 })
 
+test('project switch binds to caller identity and cancellation needs no live turn', async () => {
+  const { calls, registry, call } = harness()
+  const result = await registry.call({
+    namespace: 'closedai_app', tool: 'command',
+    arguments: { action: 'project_switch', project_op: 'request', project_path: '/destination' }
+  }, { paneId: 'source', threadId: 'thread', turnId: 'turn', callId: 'switch', source: 'exec' })
+  assert.equal(result.isError, undefined)
+  assert.deepEqual(calls[0], ['queueProjectSwitch', {
+    paneId: 'source', threadId: 'thread', turnId: 'turn', projectPath: '/destination'
+  }])
+  assert.match(textOf(await call('command', {
+    action: 'project_switch', project_op: 'request', project_path: '/destination'
+  })), /current calling thread and turn/)
+  await call('command', { action: 'project_switch', project_op: 'cancel' })
+  assert.deepEqual(calls.at(-1), ['cancelProjectSwitch', 'pane-caller'])
+})
+
 test('send_message defaults to awaiting the turn and refuses the calling pane', async () => {
   const { calls, call } = harness()
   const result = await call('command', { action: 'send_message', pane_id: 'pane-new', text: 'hello' })

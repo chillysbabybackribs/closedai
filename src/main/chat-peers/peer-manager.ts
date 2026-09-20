@@ -110,7 +110,11 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
         .every((entry) => entry.busy === 0 && !this.lifecycle.isRunning(entry.chatId)),
       switchProject: (path) => this.selectProject(path, true),
       create: (model, effort, continuation) => this.newChat(model, effort, continuation),
-      send: (id, text) => this.withAwake(id, (surface) => surface.send(text, []), true),
+      send: (id, text) => this.withAwake(id, async (surface) => {
+        if (surface.snapshot({ limit: 0 }).cwd !== this.workspace().cwd) throw new Error('Provider working directory verification failed')
+        await surface.send(text, [])
+        this.store.update(id, { messageSentAt: Date.now() })
+      }, true),
       changed: (status) => {
         this.emit('event', { type: 'pane', paneId: status.destinationPaneId ?? status.paneId,
           event: { type: 'item', item: { type: 'notice', id: 'project-switch-' + status.turnId,
