@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { exaClient, EXA_TEXT_CHARS } from './exa.js'
+import { exaClient, exaContents, EXA_TEXT_CHARS } from './exa.js'
 import type { SearchRequest } from './types.js'
 
 const signal = new AbortController().signal
@@ -68,4 +68,26 @@ test('filters map to published dates, domains, category, and location', async ()
 test('provider errors surface with status and detail', async () => {
   const exa = exaClient({ readKey: async () => 'k', fetch: async () => new Response('{"error":"quota"}', { status: 402 }) })
   await assert.rejects(exa.search(base, signal), /exa returned HTTP 402: \{"error":"quota"\}/)
+})
+
+test('adjustable discovery coverage and uncapped Contents do not imply full-fidelity extraction', async () => {
+  const calls: Array<{ headers: Headers; body: Record<string, unknown> }> = []
+  const exa = client({ results: [{ url: 'https://example.com', text: 'a'.repeat(200_000) }] }, calls)
+  const capped = await exa.search({ ...base, sourceText: true, maxTextChars: 200_000 }, signal)
+  assert.equal(capped.results[0].content?.truncated, true)
+  const uncapped = await exa.search({ ...base, sourceText: true, maxTextChars: 0 }, signal)
+  assert.deepEqual(calls[1].body.contents, { highlights: { query: base.query, maxCharacters: 1500 }, text: { verbosity: 'compact' } })
+  assert.equal(uncapped.results[0].content?.text.length, 200_000)
+  assert.equal(uncapped.results[0].content?.truncated, false)
+  const page = await exaContents({ readKey: async () => 'fixture', fetch: async (url, init) => {
+    assert.equal(url, 'https://api.exa.ai/contents')
+    assert.deepEqual(JSON.parse(String(init?.body)), {
+      ids: ['https://example.com'], text: { verbosity: 'full' }, maxAgeHours: 0, livecrawlTimeout: 15_000
+    })
+    return Response.json({ statuses: [{ status: 'success' }], results: [{ url: 'https://example.com', text: 'Entire extracted text' }] })
+  } }, 'https://example.com', 0, signal)
+  assert.equal(page.content?.text, 'Entire extracted text')
+  await assert.rejects(exaContents({ readKey: async () => 'fixture', fetch: async () => Response.json({
+    statuses: [{ status: 'error', error: { tag: 'CRAWL_NOT_FOUND' } }], results: []
+  }) }, 'https://example.com', 0, signal), /CRAWL_NOT_FOUND/)
 })
