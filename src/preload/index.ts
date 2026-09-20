@@ -17,6 +17,9 @@ function subscribe<C extends IpcEventChannel>(channel: C, listener: (payload: Ip
 }
 
 const api: ClosedaiApi = {
+  localFiles: {
+    open: (href) => invoke(IPC.invoke.localFiles.open, href)
+  },
   window: {
     minimize: () => invoke(IPC.invoke.window.minimize),
     maximize: () => invoke(IPC.invoke.window.maximize),

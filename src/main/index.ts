@@ -13,6 +13,7 @@ import { AppSettingsStore } from './app-settings-store.js'
 import { BrowserDownloadService } from './browser-download-service.js'
 import { registerBrowserCoreIpc } from './browser-core-ipc.js'
 import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
+import { registerLocalFilesIpc } from './local-files/ipc.js'
 import { maintainBrowserCache, scheduleBrowserCacheMaintenance } from './browser-cache-maintenance.js'
 import { discoverSources, importCookies } from './import-cookies.js'
 import { PARTITION } from './browser-url.js'
@@ -416,6 +417,7 @@ function registerIpc(): void {
   registerWindowIpc(ipcMain, () => mainWindow)
   registerBrowserCoreIpc(ipcMain, () => browserService)
   registerBrowserDownloadsIpc(ipcMain, () => browserDownloads)
+  registerLocalFilesIpc(ipcMain)
   registerChatIpc(ipcMain, () => chatService)
   registerTraceIpc(ipcMain, traceLog)
   registerCredentialVaultIpc(ipcMain, () => credentialVault)

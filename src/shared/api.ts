@@ -10,6 +10,9 @@ export type Unsubscribe = () => void
 
 /** The contextBridge surface the renderer sees as `window.closedai`. */
 export type ClosedaiApi = {
+  localFiles: {
+    open: (href: string) => Promise<import('./local-files.js').LocalFileResult>
+  }
   window: {
     minimize: () => Promise<void>
     maximize: () => Promise<void>
