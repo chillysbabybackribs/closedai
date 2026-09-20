@@ -30,7 +30,10 @@ pool is finite: a result set is discovery, not exhaustive coverage or proof of r
 Closing the dialog leaves an explicit update running; reopening reconnects to its state.
 **Stop update** aborts it. Concurrent update requests share one operation. Successful topics
 are retained on partial failure, and failures are visible per topic. A cancelled/timed-out
-refresh discards its new collection, preserves existing papers, and records its outcome.
+refresh discards its new collection, preserves existing papers, and records its outcome as the
+refresh state alone, not as a failure of each topic that was still in flight. A library file that
+cannot be read is preserved untouched and re-read on the next call, so repairing or removing it
+takes effect without a restart.
 Shutdown cancels collection. Reads never initiate a refresh or model call.
 
 ## Storage and retrieval
