@@ -1,4 +1,19 @@
-import { replacePane, type ChatLayout } from './layout-tree.js'
+import { dockPane, replacePane, type ChatLayout, type DockEdge } from './layout-tree.js'
+
+export const CHAT_TAB_DRAG_TYPE = 'application/x-closedai-chat-tab'
+
+/** Move one conversation, preserving sibling tabs even when the source is active. */
+export function moveTab(tree: ChatLayout, id: string, target: string, edge: DockEdge | null, splitId: string): ChatLayout {
+  const destination = tabOwner(tree, target)
+  if (!destination) return tree
+  const siblings = tabIds(tree).filter((tab) => tab !== id && tabOwner(tree, tab) === destination)
+  const anchor = destination === id ? siblings[0] : destination
+  if (!anchor) return tree
+  const remaining = removeTab(tree, id)
+  if (!remaining) return tree
+  const nextTarget = tabOwner(remaining, anchor)!
+  return edge ? dockPane(remaining, id, nextTarget, edge, splitId) : addTab(remaining, nextTarget, id)
+}
 
 export function tabIds(tree: ChatLayout | null): string[] {
   if (!tree) return []

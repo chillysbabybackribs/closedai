@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
+import { CHAT_DRAG_TYPE } from './layout-tree.js'
+import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 
-export function ChatTabs({ ids, activeId, busy, canClose, title, onSelect, onClose }: {
+export function ChatTabs({ ids, activeId, busy, canClose, title, onSelect, onClose, onDrag }: {
   ids: string[]
   activeId: string
   busy: boolean
@@ -9,6 +11,7 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, onSelect, onClo
   title: (id: string) => string
   onSelect: (id: string) => void
   onClose: (id: string) => void
+  onDrag: (id: string) => void
 }) {
   const list = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -20,7 +23,14 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, onSelect, onClo
     {ids.map((id, index) => <div key={id} className="chat-layout-tab" data-active={id === activeId} role="presentation">
       <button type="button" role="tab" data-ui="layout.tab" data-ui-key={id}
         id={`chat-tab-${id}`} aria-controls={`chat-panel-${id}`} aria-selected={id === activeId}
-        tabIndex={id === activeId ? 0 : -1} disabled={busy} title={title(id)}
+        tabIndex={id === activeId ? 0 : -1} disabled={busy} draggable={!busy}
+        title={`${title(id)} — Drag to a tab strip or pane edge`}
+        onDragStart={(event) => {
+          event.dataTransfer.setData(CHAT_DRAG_TYPE, id)
+          event.dataTransfer.setData(CHAT_TAB_DRAG_TYPE, id)
+          event.dataTransfer.effectAllowed = 'move'
+          onDrag(id)
+        }}
         onClick={() => onSelect(id)} onKeyDown={(event) => {
           const next = event.key === 'ArrowRight' ? (index + 1) % ids.length
             : event.key === 'ArrowLeft' ? (index + ids.length - 1) % ids.length

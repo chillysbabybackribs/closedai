@@ -16,7 +16,7 @@ export const UI_CONTROLS = {
   'layout.pane-drag': 'Focus a chat or drag its header to dock beside another; item is the chat id',
   'layout.new-chat-menu': 'Open the new-chat menu in a chat header (new tab, split right, split below); item is the chat id',
   'layout.new-chat': 'Menu row: add and select a fresh conversation tab in this tile, preserving its existing tabs, other tiles and split sizes; item is the active chat id',
-  'layout.tab': 'Select a conversation tab in this tile; item is the chat id',
+  'layout.tab': 'Select a conversation tab, or drag it to a chat header to join its tabs or a pane edge to split out this conversation; item is the chat id',
   'layout.tab-close': 'Remove a conversation tab from this tile without deleting history or stopping its turn; item is the chat id',
   'layout.split-right': 'Menu row: create a chat to the right of this pane; item is the chat id',
   'layout.split-below': 'Menu row: create a chat below this pane; item is the chat id',

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
-import { addTab, pruneTabs, removeTab, selectTab, tabIds, tabOwner } from './layout-tabs.js'
+import { addTab, moveTab, pruneTabs, removeTab, selectTab, tabIds, tabOwner } from './layout-tabs.js'
 
 /** The component owning this hook is keyed by project directory. */
 export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
@@ -60,7 +60,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   }, [snapshot.selectedPaneId, snapshot.chats, busy, cwd])
 
   // A null edge adds a tab in the target tile without adding a split.
-  const dock = useCallback(async (id: string | null, target: string, edge: DockEdge | null): Promise<void> => {
+  const dock = useCallback(async (id: string | null, target: string, edge: DockEdge | null, singleTab = false): Promise<void> => {
     if (pending.current) return
     pending.current = true
     setBusy(true)
@@ -69,13 +69,18 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       if (id && snapshot.chats.find((chat) => chat.paneId === id)?.cwd !== cwd) {
         throw new Error('Open this chat’s directory before splitting it into the layout')
       }
-      if (edge && paneIds(current.current.tree).length >= 32 && (!id || !paneIds(current.current.tree).includes(id))) {
+      const treeBefore = current.current.tree
+      const sourceOwner = id ? tabOwner(treeBefore, id) : null
+      const sourceHasSiblings = sourceOwner && tabIds(treeBefore).some((tab) => tab !== id && tabOwner(treeBefore, tab) === sourceOwner)
+      if (edge && paneIds(treeBefore).length >= 32 && (!id || !paneIds(treeBefore).includes(id) || (singleTab && sourceHasSiblings))) {
         throw new Error('The workspace already has 32 visible chats')
       }
       if (!id) await window.closedai.chat.selectPane(target)
       const added = id ? await window.closedai.chat.openChat(id) : await window.closedai.chat.newPeer()
       selected.current = added
       setLayout((value) => {
+        if (singleTab || (id && !edge)) return { ...value,
+          tree: moveTab(value.tree, added, target, edge, crypto.randomUUID()) }
         // Dragging a hidden sidebar tab out leaves its sibling tabs in their tile.
         const tree = edge && tabOwner(value.tree, added) && !paneIds(value.tree).includes(added)
           ? removeTab(value.tree, added)! : value.tree

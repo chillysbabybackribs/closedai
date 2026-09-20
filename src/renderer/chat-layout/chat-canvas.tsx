@@ -3,6 +3,7 @@ import { DropdownMenu } from 'radix-ui'
 import { Columns2, GripVertical, MessageSquarePlus, Monitor, PanelRightClose, Plus, Rows2, X } from 'lucide-react'
 import { CHAT_DRAG_TYPE, layoutGeometry, minimumSize, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { ChatTabs } from './chat-tabs.js'
+import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
@@ -18,14 +19,14 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
   onSelectTab: (id: string) => void
   onCloseTab: (id: string) => void
   onNewChat: (id: string) => void
-  onDock: (id: string | null, target: string, edge: DockEdge) => void
+  onDock: (id: string | null, target: string, edge: DockEdge | null, singleTab?: boolean) => void
   onHide: (id: string) => void
   onResize: (id: string, ratio: number) => void
 }) {
   const viewport = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
-  const [dragging, setDragging] = useState<string | null>(null)
-  const [drop, setDrop] = useState<{ target: string; edge: DockEdge } | null>(null)
+  const [dragging, setDragging] = useState<{ id: string; singleTab: boolean } | null>(null)
+  const [drop, setDrop] = useState<{ target: string; edge: DockEdge | null } | null>(null)
   const dropTarget = useRef<typeof drop>(null)
   const tabFocus = useRef<string | null>(null)
   useEffect(() => {
@@ -79,14 +80,15 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
         onFocusCapture={(event) => { if (id !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(id) }}
         onPointerDownCapture={(event) => { if (id !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(id) }}
         onDragOver={(event) => {
-          if (!event.dataTransfer.types.includes(CHAT_DRAG_TYPE)) return
+          if (busy || !event.dataTransfer.types.includes(CHAT_DRAG_TYPE)) return
           event.preventDefault()
           event.dataTransfer.dropEffect = 'move'
           const bounds = event.currentTarget.getBoundingClientRect()
           const x = (event.clientX - bounds.left) / bounds.width
           const y = (event.clientY - bounds.top) / bounds.height
           const edges: Array<[DockEdge, number]> = [['left', x], ['right', 1 - x], ['top', y], ['bottom', 1 - y]]
-          const edge = edges.sort((a, b) => a[1] - b[1])[0]![0]
+          const edge = (event.target as HTMLElement).closest('.chat-layout-header') ? null
+            : edges.sort((a, b) => a[1] - b[1])[0]![0]
           dropTarget.current = { target: id, edge }
           setDrop(dropTarget.current)
         }}
@@ -99,10 +101,10 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
         onDrop={(event) => {
           const source = event.dataTransfer.getData(CHAT_DRAG_TYPE)
           const target = dropTarget.current
-          if (!source || !target || target.target !== id) return
+          if (busy || !source || !target || target.target !== id) return
           event.preventDefault()
           event.stopPropagation()
-          onDock(source, id, target.edge)
+          onDock(source, id, target.edge, event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE))
           dropTarget.current = null
           setDragging(null)
           setDrop(null)
@@ -115,12 +117,13 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
             onDragStart={(event) => {
               event.dataTransfer.setData(CHAT_DRAG_TYPE, id)
               event.dataTransfer.effectAllowed = 'move'
-              setDragging(id)
+              setDragging({ id, singleTab: false })
             }}>
             <GripVertical size={13} aria-hidden="true" />
           </button>
           <ChatTabs ids={tabs} activeId={id} busy={busy} canClose={tabs.length > 1 || geometry.panes.length > 1}
-            title={title} onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab} />
+            title={title} onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab}
+            onDrag={(tab) => setDragging({ id: tab, singleTab: true })} />
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <button type="button" className="chat-layout-new-chat"
@@ -159,8 +162,8 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
         </header>}
         <div className="chat-layout-content" role="tabpanel" id={`chat-panel-${id}`}
           aria-label={title(id)}>{renderPane(id)}</div>
-        {drop?.target === id && dragging !== id && <div className="chat-layout-drop" data-edge={drop.edge}>
-          <span>{drop.edge === 'top' ? 'Place above' : drop.edge === 'bottom' ? 'Place below' : `Place ${drop.edge}`}</span>
+        {drop?.target === id && (dragging?.id !== id || (dragging.singleTab && tabs.length > 1)) && <div className="chat-layout-drop" data-edge={drop.edge ?? 'tab'}>
+          <span>{drop.edge === null ? 'Move to tab strip' : drop.edge === 'top' ? 'Place above' : drop.edge === 'bottom' ? 'Place below' : `Place ${drop.edge}`}</span>
         </div>}
       </section>))}
       {geometry.dividers.map((divider) => <div key={divider.id} className="chat-layout-divider"
