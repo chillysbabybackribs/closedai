@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Download, FolderOpen, Minus, Plus, Scan } from 'lucide-react'
 import type { ImageTabContent } from '../../shared/local-files.js'
 
@@ -10,9 +10,17 @@ export function ImageViewer({ id, active }: { id: string; active: boolean }) {
   const [zoom, setZoom] = useState<number | null>(null)
   const stage = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
+  const scrollTarget = useRef<{ left: number; top: number } | null>(null)
   const fit = size.width && size.height
     ? Math.min(1, Math.max(1, viewport.width - 48) / size.width, Math.max(1, viewport.height - 48) / size.height) : 1
   const scale = zoom ?? fit
+  useLayoutEffect(() => {
+    if (stage.current && scrollTarget.current) {
+      stage.current.scrollLeft = scrollTarget.current.left
+      stage.current.scrollTop = scrollTarget.current.top
+      scrollTarget.current = null
+    }
+  }, [zoom, scale])
 
   useEffect(() => {
     let live = true
@@ -37,12 +45,17 @@ export function ImageViewer({ id, active }: { id: string; active: boolean }) {
     const centerX = node ? (node.scrollLeft + node.clientWidth / 2) / scale : 0
     const centerY = node ? (node.scrollTop + node.clientHeight / 2) / scale : 0
     const value = next === null ? null : Math.max(0.05, Math.min(8, next))
-    setZoom(value)
-    requestAnimationFrame(() => {
-      if (!node) return
-      node.scrollLeft = value === null ? 0 : centerX * value - node.clientWidth / 2
-      node.scrollTop = value === null ? 0 : centerY * value - node.clientHeight / 2
-    })
+    const target = {
+      left: value === null || !node ? 0 : centerX * value - node.clientWidth / 2,
+      top: value === null || !node ? 0 : centerY * value - node.clientHeight / 2
+    }
+    if (value === zoom && node) {
+      node.scrollLeft = target.left
+      node.scrollTop = target.top
+    } else {
+      scrollTarget.current = target
+      setZoom(value)
+    }
   }
 
   return <section className="image-viewer" hidden={!active} role="tabpanel"
