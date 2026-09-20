@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chat chrome directions</title>
+<style>
+  :root {
+    --chrome: #121213;
+    --canvas: #19191b;
+    --card: #232325;
+    --raised: #2c2c2e;
+    --hair: rgb(255 255 255 / 8%);
+    --hair-strong: rgb(255 255 255 / 14%);
+    --fg: #9c9ca0;
+    --fg-strong: #eceef0;
+    --accent: #8ab4f8;
+    --ok: #65b98a;
+    font-family: Inter, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    color: var(--fg-strong);
+  }
+  body { margin: 0; padding: 20px; background: #0c0c0d; display: grid; gap: 28px; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); max-width: 2400px; }
+  h2 { grid-column: 1 / -1; margin: 0; font-size: 13px; font-weight: 600; color: var(--fg); letter-spacing: 0.02em; text-transform: uppercase; }
+  .frame { border: 1px solid var(--hair-strong); border-radius: 8px; overflow: hidden; background: var(--canvas); }
+  .label { padding: 10px 14px; color: var(--fg); font-size: 12px; background: #0c0c0d; border-bottom: 1px solid var(--hair); }
+  .label b { color: var(--fg-strong); }
+
+  /* ---------- header variants ---------- */
+  .hdr { display: flex; align-items: center; height: 34px; padding: 0 6px; background: var(--chrome); border-bottom: 1px solid var(--hair); font-size: 11.5px; color: var(--fg); }
+  .hdr .spacer { flex: 1; }
+  .hdr .ico { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 5px; color: var(--fg); }
+  .hdr .ico:hover { background: var(--raised); color: var(--fg-strong); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+
+  /* current */
+  .cur .tab { flex: 1; display: flex; align-items: center; height: 30px; padding: 0 10px; background: #29292b; box-shadow: inset 0 2px #a5a5a5; color: var(--fg-strong); gap: 8px; }
+  .cur { height: 30px; background: #212122; }
+
+  /* A: title bar, tabs only when needed */
+  .a .title { display: flex; align-items: center; gap: 8px; padding: 0 8px; color: var(--fg-strong); font-weight: 500; min-width: 0; }
+  .a .title span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .a .crumb { color: var(--fg); font-weight: 400; }
+  .a .crumb::after { content: "/"; margin: 0 6px; opacity: 0.5; }
+
+  /* B: content-sized pill tabs */
+  .b .tabs { display: flex; gap: 2px; padding: 3px 0; }
+  .b .tab { display: flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border-radius: 6px; max-width: 220px; color: var(--fg); border: 1px solid transparent; }
+  .b .tab span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .b .tab.on { background: #1f1f21; border-color: var(--hair-strong); color: var(--fg-strong); }
+  .b .tab .x { margin-left: 2px; opacity: 0; width: 14px; height: 14px; display: grid; place-items: center; border-radius: 3px; font-size: 11px; }
+  .b .tab.on .x, .b .tab:hover .x { opacity: 0.7; }
+
+  /* C: underline tabs, IDE style */
+  .c { padding: 0; height: 36px; }
+  .c .tabs { display: flex; align-self: stretch; }
+  .c .tab { display: flex; align-items: center; gap: 7px; padding: 0 14px; max-width: 220px; color: var(--fg); position: relative; border-right: 1px solid var(--hair); }
+  .c .tab span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .c .tab.on { color: var(--fg-strong); background: var(--canvas); }
+  .c .tab.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--accent); }
+  .c .tools { display: flex; align-items: center; padding: 0 6px; }
+
+  /* ---------- transcript ---------- */
+  .body { padding: 18px 22px 14px; display: grid; gap: 14px; }
+  .task { display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px 0 8px; border: 1px solid var(--hair); border-radius: 6px; background: var(--chrome); color: var(--fg); font-size: 12px; width: fit-content; }
+  .task .chev { margin-left: 6px; opacity: 0.6; }
+  .user { position: relative; padding: 10px 14px 10px 16px; border: 1px solid var(--hair); border-left: 3px solid var(--accent); border-radius: 8px; background: var(--card); line-height: 1.5; }
+  .user.plain { border-left: 1px solid var(--hair); }
+  .asst { line-height: 1.55; }
+  .asst p { margin: 0 0 10px; }
+  .asst a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgb(138 180 248 / 35%); }
+  .meta { display: flex; align-items: center; gap: 12px; color: var(--fg); font-size: 11px; opacity: 0.55; }
+  .meta i { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  /* ---------- composer ---------- */
+  .comp { margin: 4px 22px 16px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--card); padding: 10px 12px 8px; }
+  .comp .ph { color: #6f6f74; padding: 2px 0 12px; }
+  .comp .row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 6px; border: 1px solid var(--hair); background: var(--chrome); color: var(--fg-strong); font-size: 12px; }
+  .pill small { color: var(--fg); font-size: 11px; }
+  .pill .sep { width: 1px; height: 12px; background: var(--hair-strong); }
+  .proj { margin: 0 22px 6px; display: flex; justify-content: flex-end; font-size: 12px; color: var(--fg); gap: 6px; }
+</style>
+</head>
+<body>
+
+<h2>Header direction, single tab open</h2>
+
+<div class="frame">
+  <div class="label"><b>Current</b> &middot; full-width tab, fill is 1 stop from the bubble</div>
+  <div class="hdr cur"><div class="tab"><span>Background agent UI test with three-paragraph reply</span><span class="spacer"></span><span style="opacity:.6">&times;</span></div><span class="ico">+</span><span class="ico">&#9707;</span><span class="ico">&times;</span></div>
+  <div class="body">
+    <div class="user plain" style="border-radius:10px;background:#252526">Write your reply as exactly three short paragraphs of two full sentences each.</div>
+    <div class="asst"><p>The background agent has been launched and is running now. I will report its result when the completion notification arrives.</p></div>
+  </div>
+</div>
+
+<div class="frame">
+  <div class="label"><b>A &middot; Title bar</b> &middot; no tab strip until a second chat opens</div>
+  <div class="hdr a"><span class="dot"></span><div class="title"><span class="crumb">closedai</span><span>Background agent UI test with three-paragraph reply</span></div><span class="spacer"></span><span class="ico">+</span><span class="ico">&#9707;</span><span class="ico">&times;</span></div>
+  <div class="body">
+    <div class="task">&#10003; 1 background task finished <span class="chev">&#8250;</span></div>
+    <div class="user">Write your reply as exactly three short paragraphs of two full sentences each.</div>
+    <div class="asst"><p>The background agent has been launched and is running now. I will report its result when the completion notification arrives.</p>
+      <p>While it works, one paper worth mentioning is the TACL article at <a href="#">aclanthology.org/2024.tacl-1.9</a> which surveys recent work on long-context evaluation.</p>
+      <div class="meta"><span>Copy</span><span>Share</span><i>6:59 PM</i></div></div>
+  </div>
+  <div class="proj">&#128193; closedai &#8964;</div>
+  <div class="comp"><div class="ph">Ask anything</div><div class="row"><span class="pill">+</span><span class="pill">&#128196;</span><span class="spacer" style="flex:1"></span><span class="pill">&#10047; Opus 5 <small>1M</small><span class="sep"></span><small>High</small> &#8964;</span></div></div>
+</div>
+
+<div class="frame">
+  <div class="label"><b>B &middot; Content-sized pill tabs</b> &middot; tab is a segment, not a bar</div>
+  <div class="hdr b"><div class="tabs"><div class="tab on"><span class="dot"></span><span>Background agent UI test with three-paragraph reply</span><span class="x">&times;</span></div></div><span class="spacer"></span><span class="ico">+</span><span class="ico">&#9707;</span><span class="ico">&times;</span></div>
+  <div class="body">
+    <div class="task">&#10003; 1 background task finished <span class="chev">&#8250;</span></div>
+    <div class="user">Write your reply as exactly three short paragraphs of two full sentences each.</div>
+    <div class="asst"><p>The background agent has been launched and is running now. I will report its result when the completion notification arrives.</p>
+      <p>While it works, one paper worth mentioning is the TACL article at <a href="#">aclanthology.org/2024.tacl-1.9</a> which surveys recent work on long-context evaluation.</p>
+      <div class="meta"><span>Copy</span><span>Share</span><i>6:59 PM</i></div></div>
+  </div>
+  <div class="proj">&#128193; closedai &#8964;</div>
+  <div class="comp"><div class="ph">Ask anything</div><div class="row"><span class="pill">+</span><span class="pill">&#128196;</span><span class="spacer" style="flex:1"></span><span class="pill">&#10047; Opus 5 <small>1M</small><span class="sep"></span><small>High</small> &#8964;</span></div></div>
+</div>
+
+<div class="frame">
+  <div class="label"><b>C &middot; Underline tabs</b> &middot; IDE convention, accent underline, canvas-coloured active tab</div>
+  <div class="hdr c"><div class="tabs"><div class="tab on"><span class="dot"></span><span>Background agent UI test with three-paragraph reply</span></div></div><span class="spacer"></span><div class="tools"><span class="ico">+</span><span class="ico">&#9707;</span><span class="ico">&times;</span></div></div>
+  <div class="body">
+    <div class="task">&#10003; 1 background task finished <span class="chev">&#8250;</span></div>
+    <div class="user plain">Write your reply as exactly three short paragraphs of two full sentences each.</div>
+    <div class="asst"><p>The background agent has been launched and is running now. I will report its result when the completion notification arrives.</p>
+      <p>While it works, one paper worth mentioning is the TACL article at <a href="#">aclanthology.org/2024.tacl-1.9</a> which surveys recent work on long-context evaluation.</p>
+      <div class="meta"><span>Copy</span><span>Share</span><i>6:59 PM</i></div></div>
+  </div>
+  <div class="proj">&#128193; closedai &#8964;</div>
+  <div class="comp"><div class="ph">Ask anything</div><div class="row"><span class="pill">+</span><span class="pill">&#128196;</span><span class="spacer" style="flex:1"></span><span class="pill">&#10047; Opus 5 <small>1M</small><span class="sep"></span><small>High</small> &#8964;</span></div></div>
+</div>
+
+<h2>Same directions, three tabs open, second pane unselected</h2>
+
+<div class="frame">
+  <div class="label"><b>Current</b></div>
+  <div class="hdr cur" style="background:#131314"><div class="tab" style="flex:1 0 72px;max-width:180px;box-shadow:inset 0 2px var(--hair)"><span>Background agent UI test</span></div><div class="tab" style="flex:1 0 72px;max-width:180px;background:transparent;box-shadow:none;color:var(--fg);border-right:1px solid var(--hair)"><span>Refactor tool batch</span></div><div class="tab" style="flex:1 0 72px;max-width:180px;background:transparent;box-shadow:none;color:var(--fg);border-right:1px solid var(--hair)"><span>PDF benchmark</span></div><span class="spacer"></span><span class="ico">+</span><span class="ico">&#9707;</span><span class="ico">&times;</span></div>
+</div>
+
+<div class="frame">
+  <div class="label"><b>A</b> &middot; the strip appears as a second row under the title only when there are 2+ tabs</div>
+  <div class="hdr a" style="opacity:.75"><span class="dot"></span><div class="title"><span class="crumb">closedai</span><span>Background agent UI test</span></div><span class="spacer"></span><span class="ico">+</span><span class="ico">&#9707;</span><span class="ico">&times;</span></div>
+  <div class="hdr b" style="height:30px;opacity:.75"><div class="tabs"><div class="tab on"><span>Background agent UI test</span></div><div class="tab"><span class="dot" style="background:#60a5fa"></span><span>Refactor tool batch</span></div><div class="tab"><span>PDF benchmark</span></div></div></div>
+</div>
+
+<div class="frame">
+  <div class="label"><b>B</b> &middot; unselected pane: active pill loses its border, keeps the fill</div>
+  <div class="hdr b"><div class="tabs"><div class="tab on" style="border-color:transparent;color:var(--fg)"><span>Background agent UI test</span></div><div class="tab"><span class="dot" style="background:#60a5fa"></span><span>Refactor tool batch</span></div><div class="tab"><span>PDF benchmark</span></div></div><span class="spacer"></span><span class="ico">+</span><span class="ico">&#9707;</span><span class="ico">&times;</span></div>
+</div>
+
+<div class="frame">
+  <div class="label"><b>C</b> &middot; unselected pane: underline drops to hairline grey</div>
+  <div class="hdr c"><div class="tabs"><div class="tab on" style="color:var(--fg)"><span>Background agent UI test</span><style>.frame:last-child .c .tab.on::after{background:var(--hair-strong)}</style></div><div class="tab"><span class="dot" style="background:#60a5fa"></span><span>Refactor tool batch</span></div><div class="tab"><span>PDF benchmark</span></div></div><span class="spacer"></span><div class="tools"><span class="ico">+</span><span class="ico">&#9707;</span><span class="ico">&times;</span></div></div>
+</div>
+
+</body>
+</html>
