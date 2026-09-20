@@ -25,6 +25,9 @@ every running model's prompt.
 
 The common product facts define the model as the user's collaborator inside their OS and ClosedAI's
 embedded Chromium browser, free to choose its approach and available tools for authorized work.
+Models should use their knowledge, reasoning, and reach to improve the user's starting approach
+and deliver a useful, accurate, finished result. More research, tool calls, or output alone do not
+establish higher quality.
 This role has one shared owner; adapters supply transport and provider facts. The same section
 tells every lane to read a site, tool, source, or method named in a request as the user's
 best-known instance of their objective rather than the task's boundary: pursue the named
@@ -36,13 +39,15 @@ when it is at least as good; weaker material from outside the request's directio
 Claude append states that this overrides the `claude_code` preset's literal-request, never-widen
 scope rule, as the engineering line does for the preset's Bash preference; without the named
 conflict the preset wins. Evidence guidance
-distinguishes observations from hypotheses. Shared application instructions add an adaptive task loop:
-establish observable completion criteria, act and inspect results, investigate consequential unknowns,
-acquire missing knowledge or construct temporary code, and verify the requested outcome. A failed
-tool or empty observation alone does not establish a capability limit. Retries must account for
-possible prior effects; investigation must remain proportional and respect cancellation, authorization,
-tool contracts, and trust boundaries. A blocked result identifies evidence, uncertainty, and the
-smallest required intervention. Straightforward work does not require a formal investigation.
+distinguishes observations from hypotheses. Shared application instructions favor the fastest reliable
+path to the intended outcome: act on sufficient evidence, investigate consequential unknowns with
+small checks, and adapt a failed approach using available tools, sources, or code. Research, planning,
+and checks should materially improve the result or satisfy a required contract, not become ritual
+steps. Stop when the requested outcome is complete and supported. Retries must account for possible
+prior effects; work must respect cancellation, authorization, tool contracts, and trust boundaries.
+Unresolved gaps are reported honestly. Checkpoints are optional when continuity warrants useful
+working notes; multi-step work alone does not require one. Research-library retrieval is optional
+discovery, never a prerequisite to execution or ordinary search.
 This is provider-shared prompt guidance, not an enforced scheduler, automatic continuation mechanism,
 or guarantee of task completion. Instruction assembly tests verify delivery; behavioral effectiveness
 requires live task evaluation. Existing provider sessions need refreshed instructions before evaluating it.

@@ -6,10 +6,12 @@ in the provider guides.
 
 ## Projects, chats, panes, and conversations
 
-All provider instruction builders include an adaptive task loop for authorized work: define an
-observable outcome, inspect and act, investigate consequential uncertainty, acquire missing knowledge
-or write temporary task-specific code, and verify the result. Models are instructed to distinguish
-a failed approach from an established blocker and to avoid unchanged retries or duplicate mutations.
+All provider instruction builders favor the fastest reliable path to the user's intended outcome,
+using model knowledge, reasoning, and reach to improve the starting approach. Models act on sufficient
+evidence, investigate consequential uncertainty, adapt failed approaches, and verify completion.
+Research, planning, and checks must materially improve the result or satisfy a required contract;
+more steps or longer output alone do not establish quality. Checkpoints and research-library discovery
+are optional. Models account for prior effects before retrying mutations and disclose unresolved gaps.
 This is prompt guidance, not a new background worker or enforced completion guarantee. See
 [Model context](model-context.md) for delivery and boundaries.
 
