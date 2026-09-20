@@ -211,3 +211,39 @@ test('cache titles follow the first user message and bounded provider name', () 
   cache.update({ type: 'turn', turnId: 'running' }, 4)
   assert.equal(cache.current.running, true)
 })
+
+test('background tasks surface in running state and live activity disclosure', () => {
+  const bgTask = {
+    type: 'tool' as const,
+    id: 'bg-1',
+    turnId: 'turn-1',
+    label: 'Test suite',
+    detail: 'npm test',
+    status: 'inProgress',
+    background: { taskId: 'bg-1', kind: 'command' as const, progress: 'Running unit tests…' }
+  }
+
+  // summaryOf reports running and background activity even when activeTurnId is null
+  const snap = snapshot({
+    activeTurnId: null,
+    history: { hasEarlier: false, backgroundTasks: [bgTask] }
+  })
+  const summary = summaryOf('pane-a', snap, 100, record())
+  assert.equal(summary.running, true)
+  assert.equal(summary.activity, 'Running unit tests…')
+
+  // PeerSummaryCache tracks background task items across turn end and completion
+  const cache = new PeerSummaryCache('pane-a', () => record())
+  cache.update({ type: 'replace', snapshot: snap }, 1)
+  assert.equal(cache.current.running, true)
+  assert.equal(cache.current.activity, 'Running unit tests…')
+
+  // Turn ending does not clear running while background task is active
+  cache.update({ type: 'turn', turnId: null }, 2)
+  assert.equal(cache.current.running, true)
+  assert.equal(cache.current.activity, 'Running unit tests…')
+
+  // Completing the task transitions running to false
+  cache.update({ type: 'item', item: { ...bgTask, status: 'completed' } }, 3)
+  assert.equal(cache.current.running, false)
+})

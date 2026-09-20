@@ -641,9 +641,9 @@ pane. There is no dedicated research activity panel or hidden rendered-worker po
 
 - Provider threads the store has never seen appear in the drawer only after the background
   reconciliation adopts them, so a chat created in a provider's own CLI can lag one refresh.
-- Claude's session idle timer respects background tasks, but outer pane parking and project
-  switching check `activeTurnId`. Background work after a turn is not protected from those
-  lifecycle operations. Explicit session retirement marks tracked unfinished tasks stopped.
+- Background tasks (such as subagents, background terminal commands, and long-running tools)
+  are tracked across providers; outer pane idle parking, project switching, and pane trimming
+  respect active background work, and explicit session retirement marks unfinished tasks stopped.
 - Raw `browser_cdp.protocol` calls bypass the semantic wrapper's input foregrounding and the
   capture namespace's image budget/storage. Target auto-attachment does not make the semantic
   wrapper traverse every out-of-process frame. These are described in the CDP guide.

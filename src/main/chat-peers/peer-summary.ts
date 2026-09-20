@@ -1,4 +1,4 @@
-import type { ChatEvent, ChatSnapshot, ChatTranscriptItem } from '../../shared/chat.js'
+import { activityPhase, type ChatEvent, type ChatSnapshot, type ChatTranscriptItem } from '../../shared/chat.js'
 import { sanitizeThreadTitle, stripContextBlocks, summarizeUserMessage } from '../../shared/chat-display.js'
 import type { ChatPeerSummary, PeerChatReadOptions, PeerChatReadResult } from '../../shared/chat-peers.js'
 import { PEER_READ_MAX_CHARS } from '../../shared/chat-peers.js'
@@ -27,6 +27,8 @@ function latestReadable(items: readonly ChatTranscriptItem[]): ChatTranscriptIte
 /** Keeps only ordering ids and a bounded preview; transcript content stays with the provider. */
 export class PeerSummaryCache {
   private readonly ids = new Set<string>()
+  private readonly activeBackgroundTasks = new Map<string, Extract<ChatTranscriptItem, { type: 'tool' }>>()
+  private turnActive = false
   private latestId: string | null = null
   private textDelta = false
   private firstUserId: string | null = null
@@ -51,7 +53,16 @@ export class PeerSummaryCache {
     let summary = this.current
     if (event.type === 'replace') {
       this.ids.clear()
+      this.activeBackgroundTasks.clear()
       for (const item of event.snapshot.items) this.ids.add(item.id)
+      const bgTasks = event.snapshot.history?.backgroundTasks ?? event.snapshot.items.filter((item): item is Extract<ChatTranscriptItem, { type: 'tool' }> =>
+        item.type === 'tool' && Boolean(item.background))
+      for (const task of bgTasks) {
+        if (['running', 'pending'].includes(activityPhase(task.status))) {
+          this.activeBackgroundTasks.set(task.id, task)
+        }
+      }
+      this.turnActive = event.snapshot.activeTurnId !== null
       const first = event.snapshot.items.find((item) => item.type === 'user')
       this.firstUserId = first?.id ?? null
       this.firstUserText = first?.type === 'user' ? titleFromUserText(first.text) : null
@@ -66,18 +77,36 @@ export class PeerSummaryCache {
       this.threadName = event.threadName
       summary = { ...summary, threadId: event.threadId }
     } else if (event.type === 'turn') {
-      summary = { ...summary, running: event.turnId !== null }
+      this.turnActive = event.turnId !== null
+      const runningBg = this.activeBackgroundTasks.values().next().value
+      const isRunning = this.turnActive || this.activeBackgroundTasks.size > 0
+      const activity = this.turnActive ? summary.activity : (runningBg ? (runningBg.background?.progress || runningBg.label || 'Background task') : summary.activity)
+      summary = { ...summary, running: isRunning, activity }
     } else if (event.type === 'item' && peerReadable(event.item)) {
       const item = event.item
       const isNew = !this.ids.has(item.id)
       this.ids.add(item.id)
+      if (item.type === 'tool' && item.background) {
+        if (['running', 'pending'].includes(activityPhase(item.status))) {
+          this.activeBackgroundTasks.set(item.id, item)
+        } else {
+          this.activeBackgroundTasks.delete(item.id)
+        }
+      }
       if (item.type === 'user' && (this.firstUserId === null || this.firstUserId === item.id)) {
         this.firstUserId = item.id
         this.firstUserText = titleFromUserText(item.text)
       }
+      const runningBg = this.activeBackgroundTasks.values().next().value
+      const isRunning = this.turnActive || this.activeBackgroundTasks.size > 0
       if (isNew || item.id === this.latestId) {
         this.setLatest(item)
-        summary = { ...summary, preview: previewFromItem(item).slice(0, MAX_PEER_PREVIEW_CHARS), activity: activityFromItem(item) }
+        const activity = this.turnActive
+          ? activityFromItem(item)
+          : (runningBg ? (runningBg.background?.progress || runningBg.label || 'Background task') : activityFromItem(item))
+        summary = { ...summary, running: isRunning, preview: previewFromItem(item).slice(0, MAX_PEER_PREVIEW_CHARS), activity }
+      } else {
+        summary = { ...summary, running: isRunning }
       }
     } else if (event.type === 'itemDelta' && event.itemId === this.latestId && event.field === 'text' && this.textDelta) {
       summary = { ...summary, preview: (summary.preview + event.delta.slice(0, MAX_PEER_PREVIEW_CHARS)).slice(0, MAX_PEER_PREVIEW_CHARS) }
@@ -146,6 +175,13 @@ export function summaryOf(
   record: ChatRecord
 ): ChatPeerSummary {
   const latest = latestReadable(snapshot.items)
+  const bgTasks = snapshot.history?.backgroundTasks ?? snapshot.items.filter((item): item is Extract<ChatTranscriptItem, { type: 'tool' }> =>
+    item.type === 'tool' && Boolean(item.background))
+  const activeBg = bgTasks.find((item) => ['running', 'pending'].includes(activityPhase(item.status)))
+  const running = snapshot.activeTurnId !== null || activeBg !== undefined
+  const activity = snapshot.activeTurnId !== null
+    ? activityFromItem(latest)
+    : activeBg ? (activeBg.background?.progress || activeBg.label || 'Background task') : activityFromItem(latest)
   return {
     paneId,
     parentPaneId: null,
@@ -155,8 +191,8 @@ export function summaryOf(
     threadId: snapshot.threadId ?? record.threadId,
     title: paneTitle(snapshot, record),
     preview: itemText(latest).slice(0, MAX_PEER_PREVIEW_CHARS),
-    running: snapshot.activeTurnId !== null,
-    activity: activityFromItem(latest),
+    running,
+    activity,
     updatedAt
   }
 }
