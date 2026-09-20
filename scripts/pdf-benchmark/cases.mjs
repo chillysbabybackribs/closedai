@@ -45,13 +45,19 @@ export const cases = [
     orderedAnchors: ['Recording a Sequence', 'To erase a wrong note', 'Creating a Song', 'Composition Without Compromise', 'Additional Features']
   },
   {
+    id: 'skew-left-column', source: 'skew', page: 1,
+    crop: { x: 0.12, y: 0.375, width: 0.383, height: 0.31 },
+    orderedAnchors: ['Recording a Sequence', 'To erase a wrong note'],
+    manualChecks: ['Left-column sentences are not interleaved with right-column text']
+  },
+  {
     id: 'mixed-page', source: 'mixed', page: 1,
     expectedText: 'NATIVE LABEL SCANNED VALUE 9361',
     probes: ['NATIVE LABEL', 'SCANNED VALUE 9361']
   },
   {
     id: 'columns-page', source: 'columns', page: 2,
-    orderedAnchors: ['We first experiment', 'We find that changing', 'For example', 'Given that large language models', 'To better understand']
+    orderedAnchors: ['We first experiment', 'We find that changing', 'For example', 'Given that language models', 'To better understand']
   },
   {
     id: 'table-crop', source: 'attention', page: 8,

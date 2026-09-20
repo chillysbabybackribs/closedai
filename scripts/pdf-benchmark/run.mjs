@@ -1,5 +1,5 @@
 // A small diagnostic benchmark, not a correctness gate or a representative accuracy estimate.
-// node scripts/pdf-benchmark/run.mjs /absolute/output/directory [repetitions=3] [--rescore]
+// node scripts/pdf-benchmark/run.mjs /absolute/output/directory [repetitions=3] [--rescore | --case=id]
 import { build } from 'esbuild'
 import electron from 'electron'
 import { spawn } from 'node:child_process'
@@ -16,6 +16,9 @@ const project = resolve(dirname(filename), '../..')
 const output = resolve(process.argv[2] ?? '/tmp/closedai-pdf-benchmark-results')
 const repetitions = Number(process.argv[3] ?? 3)
 if (!Number.isInteger(repetitions) || repetitions < 1 || repetitions > 10) throw new Error('Repetitions must be 1–10')
+const selectedId = process.argv.find((arg) => arg.startsWith('--case='))?.slice(7)
+const selectedCases = selectedId ? cases.filter((test) => test.id === selectedId) : cases
+if (!selectedCases.length) throw new Error(`Unknown case: ${selectedId}`)
 
 if (!process.versions.electron) {
   const code = await new Promise((done, reject) => {
@@ -116,6 +119,7 @@ try {
   report.workerHashes = Object.fromEntries(await Promise.all(['native', 'page'].map(async (name) => [name, sha256(await readFile(join(bundle, `${name}.mjs`)))])))
   const { pdfFixture } = await import(pathToFileURL(join(bundle, 'fixtures.mjs')).href)
   for (const [id, source] of Object.entries(sources)) {
+    if (!selectedCases.some((test) => test.source === id)) continue
     const path = join(output, `${id}.pdf`)
     let bytes
     if (source.fixture) bytes = pdfFixture(source.fixture)
@@ -138,7 +142,7 @@ try {
     await writeFile(join(output, `${id}-native.txt`), native.text)
     report.sources[id] = { ...source, documentSha256: sha256(bytes), bytes: bytes.length, nativeTiming: timings(samples), coverage: native.pdf }
   }
-  for (const test of cases) {
+  for (const test of selectedCases) {
     const row = { id: test.id, source: test.source, pageNumber: test.page, crop: test.crop, manualChecks: test.manualChecks }
     for (const action of ['page', 'ocr']) {
       const samples = []
