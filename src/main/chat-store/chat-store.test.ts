@@ -140,3 +140,20 @@ test('migration imports the active and saved workspaces once, preserving pane id
   assert.equal(second.imported, 0)
   assert.deepEqual(second.settings.chatOpenIds, ['a', 'b'])
 })
+
+test('change events name checkpoint ids only when the checkpoint or its thread changes', () => {
+  const store = ChatStore.inMemory()
+  const checkpointIds: string[][] = []
+  store.on('change', (change: { checkpointIds: string[] }) => checkpointIds.push(change.checkpointIds))
+  const record = store.create(seed)
+  store.update(record.id, { title: 'Renamed', preview: 'Hello', updatedAt: 5 })
+  assert.deepEqual(checkpointIds, [[record.id], []], 'title, preview, and timestamp writes carry no checkpoint change')
+  const checkpoint = {
+    version: 1 as const, revision: 1, threadId: 'codex:t1', throughItemId: 'u', createdAt: 1,
+    state: { goal: 'Goal', constraints: [], decisions: [], progress: [], nextSteps: [], files: [] }
+  }
+  store.update(record.id, { checkpoint })
+  store.update(record.id, { codexThreadId: 't1' })
+  store.update(record.id, { messageSentAt: 9 })
+  assert.deepEqual(checkpointIds.slice(2), [[record.id], [record.id], []])
+})
