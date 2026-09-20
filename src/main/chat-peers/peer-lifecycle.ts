@@ -1,5 +1,6 @@
 import type { ChatEvent } from '../../shared/chat.js'
 import type { ChatPaneId, ChatPeerSummary } from '../../shared/chat-peers.js'
+import { chatProviderOfId } from '../../shared/chat-providers.js'
 import { chatRecordIsBlank, type ChatRecord } from '../../shared/chat-store.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
@@ -9,6 +10,7 @@ import type { PeerIdleParking, ParkablePeer } from './peer-idle-parking.js'
 import { PeerSettings } from './peer-settings.js'
 import { PLACEHOLDER_TITLE, PeerSummaryCache } from './peer-summary.js'
 import { ChatTitles } from '../chat-titles/chat-titles.js'
+import { titleRequest } from '../chat-titles/title-policy.js'
 
 // Which chats have a pane. Attaching builds a runtime for a record; detaching stops it and keeps
 // the record, so a chat that leaves the workspace — retired past the cap, closed, or left behind
@@ -56,9 +58,53 @@ export class PeerLifecycle {
   ) {
     this.titles = new ChatTitles(store, (id) => {
       const entry = this.peers.get(id)
-      const title = this.store.get(id)?.title
-      if (entry && title) this.onEvent(entry, { type: 'title', title })
+      if (entry) {
+        const title = this.store.get(id)?.title ?? entry.display.current.title
+        this.onEvent(entry, { type: 'title', title })
+      }
     })
+  }
+
+  rename(chatId: ChatPaneId, title: string | null): void {
+    const record = this.store.get(chatId)
+    if (!record || record.archived) throw new Error('That chat is no longer available')
+    this.titles.rename(chatId, title)
+  }
+
+  async retryTitle(chatId: ChatPaneId, withSurface: (fn: (surface: ChatSurface) => Promise<void>) => Promise<void>): Promise<void> {
+    const record = this.store.get(chatId)
+    if (!record || record.archived) throw new Error('That chat is no longer available')
+    await withSurface(async (surface) => {
+      if (!surface.generateTitle) throw new Error('Title generation is not supported for this provider')
+      const snapshot = surface.snapshot()
+      if (!titleRequest(snapshot)) throw new Error('Complete an exchange first before generating a title')
+      await this.titles.retry(chatId, snapshot, surface.generateTitle.bind(surface))
+    })
+  }
+
+  /**
+   * Attach the workspace's saved open chats, or a fresh one when it has none, and pick the
+   * selection. Ids whose records are gone (archived, removed) are skipped rather than failing.
+   */
+  restoreOpenChats(
+    openIds: string[],
+    selectedId: string | null,
+    modelId: string | null,
+    effort: string | null,
+    workspace: { cwd: string; projectPath: string | null }
+  ): ChatPaneId {
+    const { cwd, projectPath } = workspace
+    const records = openIds.map((id) => this.store.get(id)).filter((record): record is ChatRecord =>
+      record !== undefined && !record.archived && record.cwd === cwd)
+    if (records.length === 0) {
+      const saved = this.settings.get()
+      const model = modelId ?? saved.chatModelId
+      records.push(this.store.create({
+        cwd, projectPath, provider: chatProviderOfId(model), modelId: model, reasoningEffort: effort ?? saved.chatReasoningEffort
+      }))
+    }
+    for (const record of records) this.attach(record)
+    return selectedId && records.some((record) => record.id === selectedId) ? selectedId : records[0]!.id
   }
 
   get(chatId: ChatPaneId): PeerEntry | undefined {
