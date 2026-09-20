@@ -1,4 +1,4 @@
-import { dockPane, replacePane, type ChatLayout, type DockEdge } from './layout-tree.js'
+import { BROWSER_PANE_ID, dockPane, replacePane, type ChatLayout, type DockEdge } from './layout-tree.js'
 
 export const CHAT_TAB_DRAG_TYPE = 'application/x-closedai-chat-tab'
 
@@ -16,7 +16,7 @@ export function moveTab(tree: ChatLayout, id: string, target: string, edge: Dock
 }
 
 export function tabIds(tree: ChatLayout | null): string[] {
-  if (!tree) return []
+  if (!tree || tree.id === BROWSER_PANE_ID) return []
   return tree.kind === 'pane' ? tree.tabs ?? [tree.id] : [...tabIds(tree.first), ...tabIds(tree.second)]
 }
 

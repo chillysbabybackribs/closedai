@@ -5,9 +5,21 @@ export type ChatLayout = { kind: 'pane'; id: string; tabs?: string[] } | {
 }
 export type Rect = { x: number; y: number; width: number; height: number }
 export const CHAT_DRAG_TYPE = 'application/x-closedai-chat'
+// Reserved layout leaf: never sent to chat services or included in conversation tabs.
+export const BROWSER_PANE_ID = 'closedai:shared-browser'
+
+export function withBrowser(tree: ChatLayout): ChatLayout {
+  if (layoutIds(tree).includes(BROWSER_PANE_ID)) return tree
+  return { kind: 'split', id: 'closedai:browser-split', axis: 'horizontal', ratio: 0.6,
+    first: tree, second: { kind: 'pane', id: BROWSER_PANE_ID } }
+}
+
+function layoutIds(tree: ChatLayout | null): string[] {
+  return !tree ? [] : tree.kind === 'pane' ? [tree.id] : [...layoutIds(tree.first), ...layoutIds(tree.second)]
+}
 
 export function paneIds(tree: ChatLayout | null): string[] {
-  return !tree ? [] : tree.kind === 'pane' ? [tree.id] : [...paneIds(tree.first), ...paneIds(tree.second)]
+  return layoutIds(tree).filter((id) => id !== BROWSER_PANE_ID)
 }
 
 export function removePane(tree: ChatLayout | null, id: string): ChatLayout | null {
@@ -26,7 +38,7 @@ export function replacePane(tree: ChatLayout, target: string, id: string): ChatL
 /** Moving an existing pane removes its old slot first, collapsing any empty split. */
 export function dockPane(tree: ChatLayout | null, id: string, target: string, edge: DockEdge, splitId: string): ChatLayout {
   if (!tree) return { kind: 'pane', id }
-  if (id === target || !paneIds(tree).includes(target)) return tree
+  if (id === BROWSER_PANE_ID || id === target || !layoutIds(tree).includes(target)) return tree
   const source = (node: ChatLayout): ChatLayout | null => node.kind === 'pane'
     ? node.id === id ? node : null : source(node.first) ?? source(node.second)
   const moved = source(tree)
@@ -50,7 +62,7 @@ export function resizeSplit(tree: ChatLayout, id: string, ratio: number): ChatLa
 }
 
 export function minimumSize(tree: ChatLayout): { width: number; height: number } {
-  if (tree.kind === 'pane') return { width: 300, height: 280 }
+  if (tree.kind === 'pane') return { width: tree.id === BROWSER_PANE_ID ? 384 : 300, height: 280 }
   const a = minimumSize(tree.first)
   const b = minimumSize(tree.second)
   return tree.axis === 'horizontal'
@@ -95,14 +107,15 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, cwd: string): Save
     const seen = new Set<string>()
     const chats = new Set<string>()
     const validate = (node: ChatLayout | null, depth = 0): boolean => {
-      if (!node || depth > 31 || typeof node.id !== 'string' || !node.id || seen.has(node.id)) return false
+      if (!node || depth > 32 || typeof node.id !== 'string' || !node.id || seen.has(node.id)) return false
       seen.add(node.id)
-      if (seen.size > 63) return false
+      if (seen.size > 65) return false
       if (node.kind === 'pane') {
+        if (node.id === BROWSER_PANE_ID) return node.tabs === undefined
         const tabs = node.tabs ?? [node.id]
         if (!Array.isArray(tabs) || !tabs.includes(node.id) || !tabs.length) return false
         for (const id of tabs) {
-          if (typeof id !== 'string' || !id || chats.has(id)) return false
+          if (typeof id !== 'string' || !id || id === BROWSER_PANE_ID || chats.has(id)) return false
           chats.add(id)
         }
         return true

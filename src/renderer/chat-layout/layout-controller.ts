@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
-import { dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
+import { BROWSER_PANE_ID, withBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
 import { addTab, moveTab, pruneTabs, removeTab, selectTab, tabIds, tabOwner } from './layout-tabs.js'
 
 /** The component owning this hook is keyed by project directory. */
@@ -11,11 +11,11 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     let tree = saved.tree
     const available = new Set(snapshot.chats.filter((chat) => chat.cwd === cwd).map((chat) => chat.paneId))
     tree = pruneTabs(tree, available)
-    if (!tree) tree = { kind: 'pane' as const, id: snapshot.selectedPaneId }
+    if (!paneIds(tree).length) tree = { kind: 'pane' as const, id: snapshot.selectedPaneId }
     else if (!paneIds(tree).includes(snapshot.selectedPaneId)) {
       tree = selectTab(tree, paneIds(tree)[0]!, snapshot.selectedPaneId)
     }
-    return { ...saved, tree }
+    return { ...saved, tree: withBrowser(tree!) }
   })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -51,17 +51,17 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       let tree: ChatLayout | null = value.tree
       const available = new Set(snapshot.chats.filter((chat) => chat.cwd === cwd).map((chat) => chat.paneId))
       tree = pruneTabs(tree, available)
-      if (!tree) tree = { kind: 'pane', id: next }
+      if (!paneIds(tree).length) tree = withBrowser({ kind: 'pane', id: next })
       else if (!paneIds(tree).includes(next)) {
         tree = selectTab(tree, paneIds(tree).includes(previous) ? previous : paneIds(tree)[0]!, next)
       }
-      return tree === value.tree ? value : { ...value, tree }
+      return tree === value.tree ? value : { ...value, tree: tree! }
     })
   }, [snapshot.selectedPaneId, snapshot.chats, busy, cwd])
 
   // A null edge adds a tab in the target tile without adding a split.
   const dock = useCallback(async (id: string | null, target: string, edge: DockEdge | null, singleTab = false): Promise<void> => {
-    if (pending.current) return
+    if (pending.current || id === BROWSER_PANE_ID || (target === BROWSER_PANE_ID && (!id || !edge))) return
     pending.current = true
     setBusy(true)
     setError('')
@@ -110,7 +110,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   const closeTab = useCallback(async (id: string): Promise<void> => {
     const tree = current.current.tree
     const remaining = removeTab(tree, id)
-    if (!remaining || pending.current) return
+    if (!remaining || !paneIds(remaining).length || pending.current) return
     pending.current = true
     setBusy(true)
     setError('')
@@ -130,7 +130,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
 
   const hide = useCallback(async (id: string): Promise<void> => {
     const remaining = removePane(current.current.tree, id)
-    if (!remaining || pending.current) return
+    if (!remaining || !paneIds(remaining).length || pending.current) return
     pending.current = true
     try {
       if (selected.current === id) {
