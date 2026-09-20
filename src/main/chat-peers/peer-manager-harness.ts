@@ -60,7 +60,12 @@ export class MemorySettings implements AppSettingsAccess {
 export class FakeSurface extends EventEmitter implements ChatSurface {
   calls: string[] = []
   snapshotCalls = 0
+  runningBackground = false
   state: ChatSnapshot
+
+  hasRunningBackground(): boolean {
+    return this.runningBackground
+  }
 
   constructor(modelId: string | null) {
     super()

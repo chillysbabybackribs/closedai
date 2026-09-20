@@ -103,6 +103,10 @@ export class CursorChatService extends EventEmitter {
     }
   }
 
+  hasRunningBackground(): boolean {
+    return this.transcript.hasRunningBackground()
+  }
+
   /** Open the ACP server (which also proves sign-in), read the catalog, and reopen the saved session. */
   start(options: { warm?: boolean } = {}): Promise<void> {
     this.startPromise ??= this.connect(options.warm === true).finally(() => { this.startPromise = null })
@@ -285,6 +289,11 @@ export class CursorChatService extends EventEmitter {
   stop(): void {
     this.bridge.unbind(this.bridgeKey)
     void this.session?.retire()
+  }
+
+  dispose(): void {
+    this.transcript.stopBackgroundTasks('The Cursor session ended before this task reported completion.')
+    this.stop()
   }
 
   /**

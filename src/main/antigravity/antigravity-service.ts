@@ -119,6 +119,10 @@ export class AntigravityChatService extends EventEmitter {
     }
   }
 
+  hasRunningBackground(): boolean {
+    return this.transcript.hasRunningBackground()
+  }
+
   /** Read the catalog (which also proves sign-in), write the agent profile, and reopen the saved conversation. */
   start(options: { warm?: boolean } = {}): Promise<void> {
     this.startPromise ??= this.connect(options.warm === true).finally(() => { this.startPromise = null })
@@ -334,6 +338,11 @@ export class AntigravityChatService extends EventEmitter {
 
   stop(): void {
     void this.session?.retire()
+  }
+
+  dispose(): void {
+    this.transcript.stopBackgroundTasks('The Antigravity session ended before this task reported completion.')
+    this.stop()
   }
 
   private async connect(warm: boolean): Promise<void> {

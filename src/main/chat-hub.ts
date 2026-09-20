@@ -51,6 +51,8 @@ export type ChatSurface = {
   /** Begin a sign-in; resolves to a URL to open, or null when the provider signs in elsewhere. */
   beginLogin(): Promise<string | null>
   on(event: 'event', listener: (event: ChatEvent) => void): unknown
+  /** Whether any background task is running or pending across the surface's providers. */
+  hasRunningBackground?(): boolean
 }
 
 export type ChatProviderService = Omit<ChatSurface, 'beginLogin' | 'start' | 'continueInNewThread' | 'compactConversation' | 'send'> & {
@@ -129,6 +131,13 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   snapshot(window?: ChatHistoryWindow): ChatSnapshot {
     return this.merge(this.current().snapshot(window))
+  }
+
+  hasRunningBackground(): boolean {
+    for (const name of CHAT_PROVIDERS) {
+      if (this.providers[name]?.hasRunningBackground?.()) return true
+    }
+    return false
   }
 
   /**

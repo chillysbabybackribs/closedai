@@ -110,6 +110,10 @@ export class ClaudeChatService extends EventEmitter {
     }
   }
 
+  hasRunningBackground(): boolean {
+    return this.transcript.hasRunningBackground()
+  }
+
   /** Load the SDK, read the catalog and account, and resume the saved session's transcript. */
   start(options: { warm?: boolean } = {}): Promise<void> {
     this.startPromise ??= this.connect(options.warm === true).finally(() => { this.startPromise = null })

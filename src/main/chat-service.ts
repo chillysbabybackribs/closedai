@@ -139,6 +139,10 @@ export class ChatService extends EventEmitter {
     }
   }
 
+  hasRunningBackground(): boolean {
+    return this.transcript.hasRunningBackground()
+  }
+
   async listModels(): Promise<ChatModel[]> {
     await this.ensureConnected()
     return this.modelState.models

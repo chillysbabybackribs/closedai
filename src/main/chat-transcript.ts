@@ -42,7 +42,7 @@ export class ChatTranscript {
     const end = window.beforeItemId === undefined ? this.order.length : this.positions.get(window.beforeItemId) ?? -1
     if (end < 0) throw new Error('History changed; reopen this chat to reload earlier messages')
     const start = Math.max(0, end - window.limit)
-    const backgroundTasks = window.limit > 0 && window.beforeItemId === undefined
+    const backgroundTasks = window.limit >= 0 && window.beforeItemId === undefined
       ? [...this.backgroundIds].flatMap((id) => {
         const item = this.items.get(id)!
         const position = this.positions.get(id)!
@@ -199,6 +199,49 @@ export class ChatTranscript {
 
   addNotice(text: string, tone: 'info' | 'error', turnId: string | null = this.activeTurn()): void {
     this.upsert({ type: 'notice', id: `notice:${crypto.randomUUID()}`, turnId, text, tone })
+  }
+
+  /** Whether any background task is currently active (running or pending). */
+  hasRunningBackground(): boolean {
+    for (const id of this.backgroundIds) {
+      const item = this.items.get(id)
+      if (item && item.type === 'tool' && ['running', 'pending'].includes(activityPhase(item.status))) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /** All currently active background tasks. */
+  runningBackgroundTasks(): ChatTranscriptItem[] {
+    const active: ChatTranscriptItem[] = []
+    for (const id of this.backgroundIds) {
+      const item = this.items.get(id)
+      if (item && item.type === 'tool' && ['running', 'pending'].includes(activityPhase(item.status))) {
+        active.push(cloneItem(item))
+      }
+    }
+    return active
+  }
+
+  /** Stop all currently active background tasks (e.g. when session or pane closes). */
+  stopBackgroundTasks(reason = 'The provider session ended before this task reported completion.'): ChatTranscriptItem[] {
+    const stopped: ChatTranscriptItem[] = []
+    for (const id of this.backgroundIds) {
+      const item = this.items.get(id)
+      if (item && item.type === 'tool' && ['running', 'pending'].includes(activityPhase(item.status))) {
+        const updated: ChatTranscriptItem = {
+          ...item,
+          status: 'stopped',
+          finishedAt: this.now(),
+          output: item.output || reason
+        }
+        this.items.set(id, updated)
+        stopped.push(cloneItem(updated))
+        this.emit({ type: 'item', item: cloneItem(updated), appended: false })
+      }
+    }
+    return stopped
   }
 
   clear(): void {

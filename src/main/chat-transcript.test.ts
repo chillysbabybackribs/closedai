@@ -137,3 +137,48 @@ test('turn pages return one user/model turn and preserve stable cursors', () => 
   assert.deepEqual(earlier.items.map((item) => item.id), ['u1', 'a1'])
   assert.equal(earlier.hasEarlier, false)
 })
+
+test('background task lifecycle queries, zero-limit paging, and graceful stop', () => {
+  const clock = { now: 500 }
+  const { transcript: store, events } = transcript(clock)
+  assert.equal(store.hasRunningBackground(), false)
+  assert.deepEqual(store.runningBackgroundTasks(), [])
+
+  const bgTask: ChatTranscriptItem = {
+    type: 'tool',
+    id: 'bg-1',
+    turnId: 'turn-1',
+    label: 'Background build',
+    detail: 'npm run build',
+    status: 'inProgress',
+    background: { taskId: 'bg-1', kind: 'command' }
+  }
+  store.upsert(bgTask)
+  assert.equal(store.hasRunningBackground(), true)
+  assert.equal(store.runningBackgroundTasks().length, 1)
+  assert.equal(store.runningBackgroundTasks()[0]!.id, 'bg-1')
+
+  // Zero-limit metadata queries must still retain live background tasks
+  const metaPage = store.page({ limit: 0, unit: 'item' })
+  assert.deepEqual(metaPage.items, [])
+  assert.equal(metaPage.backgroundTasks?.length, 1)
+  assert.equal(metaPage.backgroundTasks?.[0]?.id, 'bg-1')
+
+  // Gracefully stopping active background tasks
+  clock.now = 1200
+  const stopped = store.stopBackgroundTasks('Session detached')
+  assert.equal(stopped.length, 1)
+  assert.equal(stopped[0]!.status, 'stopped')
+  assert.equal(stopped[0]!.finishedAt, 1200)
+  assert.equal(stopped[0]!.output, 'Session detached')
+  assert.equal(store.hasRunningBackground(), false)
+  assert.deepEqual(store.runningBackgroundTasks(), [])
+
+  // Verify stop event was emitted
+  const lastEvent = events.at(-1)
+  assert.equal(lastEvent?.type, 'item')
+  if (lastEvent?.type === 'item') {
+    assert.equal(lastEvent.item.id, 'bg-1')
+    assert.equal(lastEvent.item.status, 'stopped')
+  }
+})
