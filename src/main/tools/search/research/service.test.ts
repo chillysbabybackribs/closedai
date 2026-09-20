@@ -84,6 +84,50 @@ test('provider fan-out, live tab opening, and source reading overlap; evidence p
   assert.deepEqual(complete.sources[0].discoveredBy, ['brave', 'serper'])
 })
 
+test('provider-supplied text is retained without a fetch or a read slot; later discoveries merge into it', async (t) => {
+  const retained: Array<{ sourceId: string; text: string; truncated: boolean }> = []
+  const brave = deferred<ProviderSearchResult>()
+  const router = new SearchRouter([
+    { provider: 'exa', search: async (request) => {
+      assert.equal(request.sourceText, true)
+      return { provider: 'exa', results: [
+        { title: 'Extracted', url: document.url, snippet: 'highlight', provider: 'exa', content: { text: 'Provider text', highlights: ['highlight'], truncated: true } },
+        { title: 'Snippet only', url: 'https://example.com/other', snippet: 'no text', provider: 'exa' }
+      ] }
+    } },
+    { provider: 'brave', search: async () => brave.promise }
+  ])
+  const service = new ResearchService(router, dependencies({
+    collect: async (url) => ({ ...document, url, text: 'Fetched text' }),
+    retain: async (_runId, sourceId, page) => {
+      retained.push({ sourceId, text: page.text, truncated: page.truncated })
+      return { ...document, url: page.url, text: page.text, incomplete: page.truncated, representation: 'provider_text', contentType: 'text/plain' }
+    },
+    read: async (_runId, sourceId) => retained.find((item) => item.sourceId === sourceId)?.text ?? 'Fetched text'
+  }))
+  t.after(() => service.dispose())
+  const run = service.start({ ...input, maxSources: 1, queries: [{ ...query, providers: ['exa', 'brave'] }] }, context)
+  await tick()
+  const snapshot = service.read(run.runId, context)
+  const provided = snapshot.sources.find((source) => source.url === document.url)!
+  const fetched = snapshot.sources.find((source) => source.url === 'https://example.com/other')!
+  assert.equal(provided.state, 'ready')
+  assert.equal(provided.representation, 'provider_text')
+  assert.equal(provided.contentProvider, 'exa')
+  assert.equal(provided.incomplete, true)
+  assert.equal(fetched.state, 'ready', 'the single read slot went to the source without provider text')
+  assert.equal(snapshot.readCount, 1)
+  assert.deepEqual(retained.map((item) => item.truncated), [true])
+  const excerpt = await service.source(run.runId, provided.id, context, 0, 200) as { text: string; representation: string }
+  assert.equal(excerpt.text, 'Provider text')
+  assert.equal(excerpt.representation, 'provider_text')
+  brave.resolve({ provider: 'brave', results: [{ title: 'Same', url: document.url, snippet: '', provider: 'brave', content: { text: 'Ignored', highlights: [], truncated: false } }] })
+  await tick()
+  const final = service.read(run.runId, context).sources.find((source) => source.url === document.url)!
+  assert.deepEqual(final.discoveredBy, ['exa', 'brave'])
+  assert.equal(retained.length, 1, 'a ready source is never retained twice')
+})
+
 test('multiple queries start before either resolves and follow-ups join the same run', async (t) => {
   const gate = deferred<ProviderSearchResult>()
   const starts: string[] = []

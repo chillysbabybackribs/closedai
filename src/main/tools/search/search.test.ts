@@ -28,9 +28,19 @@ test('search.query defaults to quick depth when omitted', async () => {
 
 test('intent and depth select complementary provider sets', () => {
   assert.deepEqual(selectProviders(baseRequest), ['brave', 'serper'])
-  assert.deepEqual(selectProviders({ ...baseRequest, intent: 'research', depth: 'deep' }), ['tavily', 'you', 'brave'])
+  assert.deepEqual(selectProviders({ ...baseRequest, intent: 'research', depth: 'deep' }), ['exa', 'tavily', 'brave'])
   assert.deepEqual(selectProviders({ ...baseRequest, intent: 'finance', depth: 'quick' }), ['you'])
   assert.deepEqual(selectProviders({ ...baseRequest, providers: ['tavily', 'tavily', 'brave'] }), ['tavily', 'brave'])
+})
+
+test('source controls narrow routing to providers that implement them', () => {
+  const range = { ...baseRequest, freshness: '2026-01-01to2026-02-01' }
+  assert.deepEqual(selectProviders({ ...range, intent: 'research', depth: 'deep' }), ['exa', 'brave'])
+  assert.deepEqual(selectProviders({ ...range, intent: 'finance', depth: 'quick' }), ['brave'])
+  assert.deepEqual(selectProviders({ ...range, providers: ['exa'] }), ['exa'])
+  assert.throws(() => selectProviders({ ...range, providers: ['exa', 'tavily'] }), /require brave or exa only/)
+  assert.deepEqual(selectProviders({ ...baseRequest, intent: 'research', depth: 'quick', goggles: '$boost=1,site=a.example' }), ['brave'])
+  assert.throws(() => selectProviders({ ...baseRequest, goggles: '$boost=1,site=a.example', providers: ['exa'] }), /require brave only/)
 })
 
 test('one tool can call all four providers, normalize results, deduplicate, and cache', async () => {
