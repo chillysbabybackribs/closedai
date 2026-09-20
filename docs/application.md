@@ -124,9 +124,22 @@ project selection does not stop another directory's runtime. Provider
 processes are spawned in their own process group and stopped as a group (SIGTERM, then SIGKILL
 after three seconds), so the worker a CLI launcher forks dies with it, and every tracked group is
 killed at quit (`src/main/process-tree.ts`). Titles and last turn-boundary times are persisted on
-the record so dormant chats can still be named after a restart. Drawer and header titles prefer a
-provider-generated thread name when one exists; otherwise they show a one-line summary of the user's
-first message with `<closedai_context>` blocks stripped, not the raw prompt text.
+the record so dormant chats can still be named after a restart. Codex and Claude chats request a
+short descriptive title in the background after a completed exchange, using the selected model in
+a separate ephemeral request. The input contains only bounded text from the first user/assistant
+exchange, with injected context stripped. Naming uses low reasoning, a 45-second deadline, and an
+isolated temporary working directory; it does not add turns to the conversation. Claude disables
+built-in tools and MCP; Codex disables shell, browsing, apps, image tools, delegation, and hooks,
+ignores user config, and uses a read-only sandbox. These requests consume provider usage.
+
+The saved app-generated title wins in the sidebar, tabs, and history, survives provider refreshes,
+session changes and relaunches, and does not change the chat's activity time. Naming is attempted
+once per chat; failures keep the provider name or first-message fallback. Stale results after a
+thread/model change, archival, or detach are discarded. Existing chats become eligible on a later
+completed turn; startup does not bulk-generate names. Cursor and Antigravity retain provider names
+or the first-message fallback until an isolated naming adapter is available. Manual rename and
+retry controls are not implemented. Fallback labels strip `<closedai_context>` blocks and clip the
+first nonempty user-message line.
 
 Startup, new chat, and opening a chat trim attached panes toward eight, least recently active
 first. The selected and visible panes, active turns, operations in flight, and undelivered continuation

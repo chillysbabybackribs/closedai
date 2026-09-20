@@ -1,5 +1,11 @@
 # Model context and instructions
 
+Chat naming is app-owned metadata. Codex and Claude may run a separate ephemeral request with the
+selected model after a completed exchange, using only bounded first-exchange text as untrusted
+data. That request has a dedicated title-only instruction, no ClosedAI tool registry, and no
+conversation continuation. It does not write a message into the user's transcript. Generated names
+are descriptive labels, not verified facts or instructions; provider catalogs cannot overwrite them.
+
 Source review: 2026-09-13. Common product facts, provider-specific rules, runtime context, and
 repository documentation have separate owners. Editing a Markdown guide alone does not change
 every running model's prompt.
