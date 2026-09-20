@@ -41,7 +41,7 @@ export const cases = [
   },
   {
     id: 'skew-page', source: 'skew', page: 1,
-    probes: ['32 Track MIDI Sequence Recorder', '100,000', '16 MIDI channels', 'TEMPO CHANGES', 'ANY TIME SIGNATURE'],
+    probes: ['32 Track MIDI Sequence Recorder', '110,000', '16 MIDI channels', 'TEMPO CHANGES', 'ANY TIME SIGNATURE'],
     orderedAnchors: ['Recording a Sequence', 'To erase a wrong note', 'Creating a Song', 'Composition Without Compromise', 'Additional Features']
   },
   {
@@ -62,7 +62,7 @@ export const cases = [
   {
     id: 'table-crop', source: 'attention', page: 8,
     crop: { x: 0.17, y: 0.12, width: 0.66, height: 0.19 },
-    probes: ['23.75', '39.92', '25.16', '40.46', '26.03', '40.56', '27.3', '38.1', '28.4', '41.8'],
+    probes: ['23.75', '39.2', '24.6', '39.92', '25.16', '40.46', '26.03', '40.56', '40.4', '26.30', '41.16', '26.36', '41.29', '27.3', '38.1', '28.4', '41.8'],
     manualChecks: ['Blank cells keep their column identity', 'Training-cost exponents remain attached', 'Merged cost cells retain scope']
   },
   {
