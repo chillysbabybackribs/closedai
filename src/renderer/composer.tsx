@@ -53,6 +53,7 @@ export type ComposerProps = {
   activeTurnId: string | null
   onCompactConversation?: () => Promise<void>
   compactConversationEnabled?: boolean
+  paneId?: string | null
 }
 
 export function Composer({
@@ -82,10 +83,10 @@ export function Composer({
   onClearProject,
   activeTurnId,
   onCompactConversation,
-  compactConversationEnabled = false
+  compactConversationEnabled = false,
+  paneId
 }: ComposerProps): JSX.Element {
-  const [input, setInput] = useState('')
-  const [attachments, setAttachments] = useState<ChatAttachment[]>([])
+  const { input, setInput, attachments, setAttachments, clearDraft } = useComposerDraft(paneId)
   const [attachmentError, setAttachmentError] = useState('')
   const [sending, setSending] = useState(false)
   const [manualExpanded, setManualExpanded] = useState(true)
@@ -130,8 +131,7 @@ export function Composer({
     // Every provider paints an optimistic transcript item before its process or thread is ready,
     // so the composer empties on submit. Holding the draft until the send resolved was the visible
     // half of a slow first message: the text sat in the box and the chat stayed empty.
-    setInput('')
-    setAttachments([])
+    clearDraft()
     setAttachmentError('')
     try {
       await onSend(submittedInput, submittedAttachments)
