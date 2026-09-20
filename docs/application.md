@@ -379,6 +379,12 @@ cover the rest; reasoning items still never cross into another pane.
 login state, history, and downloads are app-wide. The initial cookie import runs before the first
 page load. Tab state and history are persisted separately.
 
+On Linux, startup disables accelerated video decode by default because affected driver stacks can
+accept and advance H.264 playback while compositing blank frames. This leaves GPU compositing and
+WebGL available; only media decoding falls back to software. A known-good machine can opt back in
+with `CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE=1`, while
+`CLOSEDAI_DISABLE_HARDWARE_VIDEO_DECODE=1` explicitly keeps the safe default.
+
 The omnibox combines navigation/search input with inline completion and a history suggestion
 list. History matches can be removed through `browser.removeHistory`; this deletes the stored
 history entry, not cookies or site data. `browser-omnibox.ts` owns the renderer interaction and
