@@ -13,15 +13,19 @@
   text-align: left;
   cursor: pointer;
 }
+/* A compact status chip sized to its label: it reports on the turn instead of filling the column. */
 .background-tasks-heading {
-  border: 0;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--hairline);
   border-radius: 6px;
-  background: transparent;
-  padding: 4px 6px;
+  background: var(--surface-chrome);
 }
-.background-tasks-heading {
-  width: 100%;
-}
+.background-tasks-heading[data-state='done'] > svg:first-child { color: var(--ok-ink); }
+.background-tasks-heading[data-state='failed'] > svg:first-child { color: var(--destructive); }
+.background-tasks-heading > svg:last-child { margin-left: 2px; opacity: 0.6; transition: transform 120ms ease; }
 .background-tasks svg {
   width: 14px;
   height: 14px;

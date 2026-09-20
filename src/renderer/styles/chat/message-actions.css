@@ -1,18 +1,27 @@
+/* A quiet utility row: it sits at half strength under the answer and comes forward when the
+   turn is hovered or one of its controls holds focus. */
 .message-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 4px;
+  margin-top: 8px;
   color: var(--muted-foreground);
+  opacity: 0.55;
+  transition: opacity 120ms ease;
+}
+
+.prompt-message-assistant:hover .message-actions,
+.message-actions:focus-within {
+  opacity: 1;
 }
 
 .message-actions button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  padding: 5px;
+  width: 26px;
+  height: 26px;
+  padding: 4px;
   border: 0;
   border-radius: 6px;
   background: transparent;
@@ -36,14 +45,16 @@
 }
 
 .message-actions svg {
-  width: 19px;
-  height: 19px;
-  stroke-width: 1.6;
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.7;
 }
 
 .message-timestamp {
+  margin-left: 4px;
   opacity: 0;
-  font-size: 12px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
   transition: opacity 120ms ease;
 }
 

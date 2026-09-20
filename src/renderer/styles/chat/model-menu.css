@@ -8,31 +8,34 @@
   min-width: 0;
 }
 
-/* Monochrome: plain grey ink with no chrome of its own; hovering or opening only lightens
-   the ink, so the picker never competes with the blue focus ring or the send button. */
+/* A monochrome pill on the chrome ground, the same material as the header tabs and the
+   background-task chip; hovering or opening lightens the ink and firms the hairline, so the
+   picker never competes with the blue focus ring or the send button. */
 .model-menu-trigger {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   max-width: 260px;
-  height: 36px;
-  padding: 0 8px;
-  border: 0;
+  height: 28px;
+  padding: 0 8px 0 7px;
+  border: 1px solid var(--hairline);
   border-radius: 6px;
-  background: transparent;
+  background: var(--surface-chrome);
   color: color-mix(in srgb, var(--foreground) 74%, transparent);
   font: inherit;
-  font-size: 14px;
+  font-size: 12.5px;
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
-  transition: color 110ms ease;
+  transition: color 110ms ease, border-color 110ms ease, background-color 110ms ease;
 }
 
 .model-menu-trigger:not(:disabled):hover,
 .model-menu-trigger[data-state='open'] {
   color: var(--foreground);
+  border-color: var(--hairline-strong);
+  background: var(--surface-control-hover);
 }
 
 .model-menu-trigger:focus-visible {
@@ -68,13 +71,26 @@
 .model-menu-trigger-effort {
   flex: none;
   color: color-mix(in srgb, var(--foreground) 48%, transparent);
-  font-size: 12.5px;
+  font-size: 11.5px;
   font-weight: 450;
 }
 
-.model-menu-trigger-context::before,
-.model-menu-trigger-effort::before {
+.model-menu-trigger-context::before {
   content: '· ';
+}
+
+/* Effort sits in its own segment of the pill, behind a hairline divider. */
+.model-menu-trigger-effort {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-menu-trigger-effort::before {
+  content: '';
+  width: 1px;
+  height: 12px;
+  background: var(--hairline-strong);
 }
 
 .model-menu-trigger-caret {

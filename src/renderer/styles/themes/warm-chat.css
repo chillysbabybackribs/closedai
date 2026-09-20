@@ -48,6 +48,9 @@
   --chrome-icon-stroke: 1.5;
   --surface-highlight: rgb(238 234 228 / 28%);
   --focus-ink: #202223;
+  --tab-accent: #3f5f86;
+  --link-ink: #3f5f86;
+  --ok-ink: #2f7a4f;
   --focus-halo: rgb(32 34 35 / 16%);
   --live-signal: #202223;
   --stop-ink: #8f2929;

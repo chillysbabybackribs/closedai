@@ -1,4 +1,5 @@
-import { createContext, type MouseEvent, type ReactNode, useContext } from 'react'
+import { createContext, type MouseEvent, type ReactNode, useContext, useState } from 'react'
+import { Globe } from 'lucide-react'
 
 import { cn } from '../../lib/utils.js'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '../ui/hover-card.js'
@@ -92,9 +93,13 @@ export function SourceContent({ title, description, className }: SourceContentPr
   )
 }
 
+/* The icon service is a network dependency; when it cannot be reached the chip shows a
+   neutral globe rather than the browser's broken-image glyph. */
 function SourceFavicon({ href, size }: { href: string; size: number }) {
+  const [failed, setFailed] = useState(false)
   const favicon = `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(href)}`
-  return <img src={favicon} alt="" width={size} height={size} aria-hidden="true" />
+  if (failed) return <Globe size={size} aria-hidden="true" />
+  return <img src={favicon} alt="" width={size} height={size} aria-hidden="true" onError={() => setFailed(true)} />
 }
 
 function navigate(event: MouseEvent<HTMLAnchorElement>, source: SourceContextValue): void {

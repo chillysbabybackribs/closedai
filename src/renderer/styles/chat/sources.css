@@ -1,21 +1,28 @@
+/* Inline sources read as links: link ink with a soft rule that firms up on hover. */
 .prompt-markdown .prompt-source-trigger {
   display: inline-flex;
   align-items: center;
-  max-width: 220px;
+  max-width: 240px;
   gap: 5px;
   overflow: hidden;
-  color: var(--muted-foreground);
+  color: var(--link-ink);
   font-size: inherit;
   line-height: 1;
   text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 35%, transparent);
   vertical-align: -3px;
-  transition: color 120ms var(--ease-chrome);
+  transition: color 120ms var(--ease-chrome), border-color 120ms var(--ease-chrome);
 }
 
 .prompt-markdown .prompt-source-trigger:hover {
-  color: var(--foreground);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  border-bottom-color: currentColor;
+}
+
+/* The favicon fallback when the icon service is unreachable: a quiet glyph, never a broken image. */
+.prompt-source-trigger svg,
+.prompt-source-domain svg {
+  flex: 0 0 auto;
+  opacity: 0.7;
 }
 
 /* The assistant bubble is a Tailwind `prose` container, whose `:where(img)` rule adds 2em

@@ -14,7 +14,7 @@
   color: var(--chrome-fg);
   background: var(--surface-chrome);
   border-bottom: 1px solid var(--hairline);
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 .chat-layout-header button {
@@ -55,8 +55,10 @@
 /* Geometry supplies both dimensions, so descendants can adapt to short rows as well as columns. */
 .chat-layout-tile { position: absolute; display: flex; flex-direction: column; overflow: hidden; container: chat-tile / size; }
 .chat-layout-tile[hidden] { display: none; }
-.chat-layout-header { flex: 0 0 30px; padding: 0 4px; }
-.chat-layout-tile[data-selected='true'] > .chat-layout-header { color: var(--chrome-fg-strong); background: var(--surface-raised); }
+.chat-layout-header { flex: 0 0 34px; padding: 0 4px 0 2px; }
+/* Selection is carried by the active tab's underline ink and label weight, never by a header
+   fill: a lighter header bar read as a second user bubble stacked above the transcript. */
+.chat-layout-tile[data-selected='true'] > .chat-layout-header { color: var(--chrome-fg-strong); }
 .chat-layout-header .chat-layout-title { padding-inline: 2px; cursor: grab; }
 
 /* The + menu borrows the shell menu surface; rows are icon + label, not label + shortcut. */
@@ -65,15 +67,36 @@
 .chat-layout-new-chat-menu .titlebar-menu-item svg { color: var(--chrome-control-muted); }
 .chat-layout-title span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .chat-layout-title svg { flex-shrink: 0; opacity: 0.6; }
-.chat-layout-tabs { position: relative; display: flex; flex: 1; min-width: 0; align-self: stretch; overflow-x: auto; scrollbar-width: thin; }
-.chat-layout-tab { position: relative; display: flex; flex: 1 0 72px; max-width: 180px; min-width: 0; align-items: center; border-right: 1px solid var(--hairline); }
-.chat-layout-tab[data-active='true'] { background: var(--surface-control-hover); box-shadow: inset 0 2px var(--focus-ink); }
-.chat-layout-tile:not([data-selected='true']) .chat-layout-tab[data-active='true'] { box-shadow: inset 0 2px var(--hairline); }
-.chat-layout-tab:only-child { max-width: none; }
+/* IDE-style tabs: each tab is sized to its label, the active one takes the transcript's canvas
+   colour so it reads as the top of the page beneath it, and a 2px underline marks it. In an
+   unselected pane the underline drops to hairline grey and the label to the muted ink. */
+.chat-layout-tabs { position: relative; display: flex; flex: 1; min-width: 0; align-self: stretch; overflow-x: auto; scrollbar-width: none; }
+.chat-layout-tab {
+  position: relative;
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 88px;
+  max-width: 220px;
+  align-items: center;
+  padding-right: 4px;
+  border-right: 1px solid var(--hairline);
+  box-shadow: inset 0 -2px transparent;
+  transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+}
+.chat-layout-tab:only-child { max-width: 300px; }
 .chat-layout-tab:not([data-active='true']) { color: var(--chrome-fg); }
-.chat-layout-tab > [role='tab'] { flex: 1; min-width: 0; justify-content: flex-start; cursor: grab; }
+.chat-layout-tab:not([data-active='true']):hover { color: var(--chrome-fg-strong); background: var(--surface-highlight); }
+.chat-layout-tab[data-active='true'] { color: var(--chrome-fg-strong); background: var(--background); box-shadow: inset 0 -2px var(--tab-accent); }
+.chat-layout-tile:not([data-selected='true']) .chat-layout-tab[data-active='true'] { color: var(--chrome-fg); box-shadow: inset 0 -2px var(--hairline-strong); }
+.chat-layout-tab > [role='tab'] { flex: 1; min-width: 0; height: 100%; padding: 0 6px 0 12px; border-radius: 0; justify-content: flex-start; cursor: grab; }
+.chat-layout-tab > [role='tab']:hover { background: transparent; }
+.chat-layout-tab[data-active='true'] > [role='tab'] { font-weight: 500; }
 .chat-layout-tab > [role='tab'] span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.chat-layout-tab .chat-layout-tab-close { width: 18px; padding: 0; margin-right: 2px; opacity: 0.65; }
+/* Close affordances surface on the active tab and on hover, as in editor tab strips. */
+.chat-layout-tab .chat-layout-tab-close { width: 18px; height: 18px; padding: 0; margin-right: 2px; opacity: 0; transition: opacity 120ms ease; }
+.chat-layout-tab[data-active='true'] .chat-layout-tab-close,
+.chat-layout-tab:hover .chat-layout-tab-close,
+.chat-layout-tab .chat-layout-tab-close:focus-visible { opacity: 0.7; }
 .chat-layout-tab .chat-layout-tab-close:hover { opacity: 1; }
 .chat-tab-indicator { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; flex-shrink: 0; color: var(--focus-ink); }
 .chat-tab-spinner { color: #60a5fa; animation: chat-tab-spin 1s linear infinite; }
@@ -126,7 +149,7 @@
 .chat-layout-drop[data-edge='right'] { left: 50%; }
 .chat-layout-drop[data-edge='top'] { bottom: 50%; }
 .chat-layout-drop[data-edge='bottom'] { top: 50%; }
-.chat-layout-drop[data-edge='tab'] { bottom: auto; height: 30px; }
+.chat-layout-drop[data-edge='tab'] { bottom: auto; height: 34px; }
 .chat-layout-drop span { padding: 6px 10px; border-radius: 6px; background: var(--surface-chrome); font-size: 12px; }
 .chat-layout-error { padding: 5px 10px; color: #ffb4ab; font-size: 12px; }
 

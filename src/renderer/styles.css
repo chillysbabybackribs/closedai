@@ -150,6 +150,11 @@
   --surface-highlight: rgb(255 255 255 / 3%);
   --focus-ink: #a5a5a5;
   --focus-halo: rgb(255 255 255 / 18%);
+  /* The two hues the transcript chrome spends: the selected pane's active-tab underline and
+     inline source links. Success ink marks a finished background-task chip. */
+  --tab-accent: var(--antigravity-blue);
+  --link-ink: var(--antigravity-blue);
+  --ok-ink: #65b98a;
   --live-signal: #e6e6e6;
 
   /* The one hue the shell chrome spends: "this is armed and will interrupt".

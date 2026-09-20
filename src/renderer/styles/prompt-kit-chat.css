@@ -198,7 +198,7 @@
   max-width: calc(var(--chat-column-width) + 64px);
   margin-inline: auto;
   padding: 6px;
-  border: 1px solid #333;
+  border: 1px solid var(--hairline-strong);
   border-radius: 10px;
   background: var(--antigravity-card-bg, #252526);
   box-shadow: 0 1px 3px rgb(0 0 0 / 14%);
@@ -228,7 +228,7 @@
   height: 28px;
   padding: 0 6px;
   border-radius: 8px;
-  color: #dedee0;
+  color: color-mix(in srgb, var(--foreground) 72%, transparent);
   font-size: 12px;
   font-weight: 500;
 }
@@ -371,7 +371,7 @@
 .prompt-composer-actions-start .model-menu-trigger {
   flex: 0 1 auto;
   min-width: 0;
-  height: 30px;
+  height: 28px;
 }
 
 @container composer (max-width: 420px) {
@@ -415,7 +415,7 @@
 
 .prompt-composer-actions .model-menu-trigger-name {
   color: #fff;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .prompt-composer-resume,
@@ -520,8 +520,9 @@
   flex: 0 1 auto;
   min-width: 0;
   padding: 2px 8px;
-  border-radius: 10px;
-  background: rgb(255 255 255 / 6%);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--surface-chrome);
   color: #a0a0a2;
   font-size: 11px;
   font-weight: 500;

@@ -19,7 +19,7 @@ export function BackgroundTasks({ items }: { items: Task[] }) {
   const open = expanded ?? (running > 0 || failed > 0)
   return (
     <section className="background-tasks" aria-label="Background work">
-      <button type="button" className="background-tasks-heading" data-ui="chat.background-group"
+      <button type="button" className="background-tasks-heading" data-state={running ? 'running' : failed ? 'failed' : 'done'} data-ui="chat.background-group"
         data-ui-key={items[0]?.id} aria-expanded={open} onClick={() => setExpanded(!open)}>
         {running ? <LoaderCircle className="background-task-spinner" /> : failed ? <XCircle /> : <Check />}
         <span>{running ? 'Background work' : `${items.length} background ${items.length === 1 ? 'task' : 'tasks'} finished`}</span>
