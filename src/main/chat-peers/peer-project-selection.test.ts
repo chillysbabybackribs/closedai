@@ -7,7 +7,7 @@ import { DEFAULT_APP_SETTINGS } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import { ChatStore } from '../chat-store/chat-store.js'
 import { ChatPeerManager } from './peer-manager.js'
-import { chatRecord, MemorySettings } from './peer-manager-harness.js'
+import { chatRecord, harnessWith, MemorySettings } from './peer-manager-harness.js'
 
 class Surface extends EventEmitter implements ChatSurface {
   stopped = false
@@ -108,4 +108,18 @@ test('directory navigation retains running chats and opens them in their origina
   assert.equal(manager.snapshot().selected.cwd, '/projects/new')
   assert.equal(manager.snapshot().selectedPaneId, destination)
   assert.equal(surfaces.every((surface) => !surface.stopped), true)
+})
+
+test('archiving a detached foreign chat uses its own provider surface and preserves focus', async (t) => {
+  const foreign = chatRecord('foreign', 'gpt', {
+    cwd: '/other', projectPath: '/other', threadId: 'old-thread', codexThreadId: 'old-thread', preview: 'Saved'
+  })
+  const { manager, surfaces, store } = harnessWith([chatRecord('local', 'gpt'), foreign], 'local', undefined, ['local'])
+  t.after(() => manager.stop())
+  await manager.archiveChat('foreign')
+  assert.equal(surfaces[0]!.calls.some((call) => call.startsWith('archive:')), false)
+  assert.ok(surfaces[1]!.calls.includes('archive:old-thread'))
+  assert.ok(surfaces[1]!.calls.includes('stop'))
+  assert.equal(manager.snapshot().selectedPaneId, 'local')
+  assert.equal(store.require('foreign').archived, true)
 })

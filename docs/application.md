@@ -16,7 +16,7 @@ This is prompt guidance, not a new background worker or enforced completion guar
 A chat is an app-owned `ChatRecord` in `ChatStore` (`chats.json`): a stable id, its project
 directory, provider, model and effort, per-provider thread ids, title, preview, timestamps, an
 archived flag, and any continuation digest or checkpoint. Records outlive panes, provider
-processes, and relaunches. `ChatPeerManager` owns the active project's *attached* chats: an
+processes, and relaunches. `ChatPeerManager` owns *attached* chats across directories: an
 attached chat has a pane, and **the pane id is the chat id**. Each attached chat has its own
 `ChatHub`, provider settings (`PeerSettings`, a projection of the record), and conversation state;
 multiple panes can be displayed together in a resizable chat layout. Selection identifies the focused
@@ -76,10 +76,12 @@ conversation and source recall. This also applies to tool switches, independentl
 context rotation; unchanged catalogs keep their thread.
 
 The project menu below the composer offers a directory picker, recent projects, and “Don’t work
-in a project” (uses the home directory). A project switch is refused while any pane has an active
-turn. `index.ts` saves the departing project's open chat ids and restores the destination's,
-including selection; conversation ids live on the records. A directory without saved open chats
-receives a fresh chat. This is directory selection; it does not create a Git branch or worktree.
+in a project” (uses the home directory). Manual project selection keeps existing chats and running
+turns alive in their original directories. `index.ts` saves the departing project's open chat ids
+and restores the destination's, including selection; conversation ids live on the records. Opening
+a sidebar chat from another directory selects that directory automatically. A directory without
+saved open chats receives a fresh chat. This is directory selection; it does not create a Git branch
+or worktree. Layouts remain per directory; splitting chats across directories is not supported.
 
 Models can request `closedai_app.command project_switch` with `project_op: request` and an absolute
 existing `project_path`. One in-memory request waits for every pane and pane operation to become
@@ -117,7 +119,8 @@ pane-owned processes but keeps the pane, its in-memory transcript, and the recor
 wakes it. Codex instead has one app-server per active workspace. Every Codex pane keeps independent
 thread, transcript, model, turn, tool, and trace state while its routed session shares that process,
 account read, and model catalog. Parking a Codex pane keeps the workspace process; detaching it
-releases the routed session, while a project switch or app quit stops the process. Provider
+releases the routed session. Codex runtimes are retained per visited directory until app quit;
+project selection does not stop another directory's runtime. Provider
 processes are spawned in their own process group and stopped as a group (SIGTERM, then SIGKILL
 after three seconds), so the worker a CLI launcher forks dies with it, and every tracked group is
 killed at quit (`src/main/process-tree.ts`). Titles and last turn-boundary times are persisted on
@@ -222,9 +225,13 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 
 ## Chat surface
 
-- The sidebar is driven by the workspace's chat records: the `chats` event carries one
+- The sidebar shows chat records across directories in stable, alphabetically ordered directory
+  sections. Headers show the folder name, active-directory marker, and running count; expanding a
+  section shows its full path, Pinned, Current, Recently completed, and independently collapsible
+  History. Directory and history folds persist across navigation and relaunch. Search spans all
+  directory sections. The `chats` event carries one
   `ChatRowSummary` per record (attached or not) plus `running`, and every row is keyed by chat id.
-  Right-click a row and choose Pin or Unpin. Pinned chats occupy a section above Current, newest
+  Right-click a row and choose Pin or Unpin. Pinned chats occupy a section above Current within their directory, newest
   pin first, and stay there through running, completion, pane closure, project switches, and relaunch.
   They appear once; a pinned child chat is lifted out of its parent's group. Unpinning restores
   normal activity placement. Pinning preserves activity timestamps and completion review marks,

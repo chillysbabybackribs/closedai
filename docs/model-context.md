@@ -43,7 +43,9 @@ start a continuation. Failures are exposed without automatic retries; completed 
 switch-and-submit, not task completion. Pending state is in memory only.
 The app no
 longer adds a blanket restriction on delegation; applicable user and repository instructions still apply.
-Stable chat ids, the shared browser/sidebar, and the distinction between pane turns and provider
+The sidebar groups chats across directories. Manual directory navigation keeps running chats in
+their original directories; the model's deferred project-switch command still waits for idle and
+creates a continuation. Stable chat ids, the shared browser/sidebar, and the distinction between pane turns and provider
 background work provide orientation. App facts come from `closedai_app.state`,
 service operations from `closedai_app.command`, and real renderer interaction from manifest
 control ids through `closedai_app.ui`. The chat section defaults to the calling pane (including its

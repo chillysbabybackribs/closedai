@@ -7,7 +7,7 @@ export type ChatController = {
   state: ChatSnapshot
   workspace: ChatWorkspaceSnapshot['workspace']
   preferences: ChatWorkspaceSnapshot['preferences']
-  /** Every chat of the workspace, attached or not; the drawer's rows. */
+  /** Chats across directories, attached or not; the drawer's rows. */
   chats: ChatRowSummary[]
   selectedPaneId: string
   send: (text: string, attachments: ChatAttachment[]) => Promise<void>

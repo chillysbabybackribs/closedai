@@ -194,7 +194,7 @@ settings or a complete per-origin rate policy.
 
 Runs default to twelve documents and a 45-second deadline; callers may select 1–20 documents
 and 1–120 seconds. At most eight runs are active, and 32 completed/active runs are retained.
-Stop, pane detachment/project switching, turn replacement/completion, and shutdown cancel owned
+Stop, pane detachment, turn replacement/completion, and shutdown cancel owned
 background work. Finish retrieval before ending the model turn. Completed runs remain readable
 in the same pane/thread until eviction or app restart. Run files are an app-owned session cache
 under `<userData>/research-runs`, cleared on the next launch; eviction also removes their files.
