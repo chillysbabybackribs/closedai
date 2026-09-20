@@ -8,8 +8,8 @@ export type NetworkBodyResult = {
   url: string
   method: string
   status: number | null
-  /** captured: read from the tab's debugger buffer; replay: the request was issued again on the session. */
-  source: 'captured' | 'replay'
+  /** A new request was explicitly issued on the session, never a historical body. */
+  source: 'replay'
   contentType: string | null
   text: string | null
   base64: string | null
@@ -25,7 +25,7 @@ export type NetworkBodyResult = {
 export type NetworkToolHost = {
   requests(filter: NetworkListFilter): NetworkListing
   waitFor(wait: NetworkWait): Promise<NetworkWaitResult>
-  body(id: string): Promise<NetworkBodyResult>
+  replay(id: string): Promise<NetworkBodyResult>
   rules(): NetworkRule[]
   addRule(input: NetworkRuleInput): NetworkRule
   removeRule(id: string): boolean

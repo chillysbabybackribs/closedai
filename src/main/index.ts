@@ -230,7 +230,7 @@ async function main(): Promise<void> {
   // Tools resolve the browser lazily: it is created with the window, after the chat service.
   const pageAccess = new BrowserPageAccess(() => browserService)
   cdpAccess = new BrowserCdpAccess(() => browserService)
-  const networkAccess = new BrowserNetworkAccess(() => browserService, () => cdpAccess)
+  const networkAccess = new BrowserNetworkAccess(() => browserService)
   appAutomationAccess = new AppAutomationAccess(() => mainWindow)
   appCommandAccess = new AppCommandAccess({
     chat: () => chatService, browser: () => browserService, downloads: () => browserDownloads, window: () => mainWindow

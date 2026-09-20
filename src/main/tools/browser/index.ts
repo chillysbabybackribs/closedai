@@ -6,7 +6,7 @@ import { extractAction } from './extract.js'
 import { fetchAction } from './fetch.js'
 import type { BrowserHostProvider } from './host.js'
 import { navigateAction } from './navigate.js'
-import { networkTool } from './network.js'
+import { networkReplayTool, networkTool } from './network.js'
 import type { NetworkHostProvider, SessionHostProvider } from './network-host.js'
 import { queryAction } from './query.js'
 import { readPageAction } from './read-page.js'
@@ -58,7 +58,7 @@ export function browserTools(
           consoleAction(browser)
         ]
       }),
-      ...(network ? [networkTool(network)] : []),
+      ...(network ? [networkTool(network), networkReplayTool(network)] : []),
       ...(sessions ? [sessionTool(sessions)] : [])
     ]
   }

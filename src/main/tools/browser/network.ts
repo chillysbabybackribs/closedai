@@ -4,7 +4,7 @@ import { booleanArg, failureResult, numberArg, stringArg, type JsonObject, type 
 import type { NetworkRuleAction } from '../../browser-network/network-rules.js'
 import { requireNetwork, type NetworkHostProvider } from './network-host.js'
 
-// The session's always-on request log, its wait primitive, body access, and interception
+// The session's always-on request log, its wait primitive, explicit replay, and interception
 // rules. Everything here is main-process state the app owns; nothing needs a debugger.
 
 const DEFAULT_LIMIT = 40
@@ -34,10 +34,11 @@ export function networkTool(network: NetworkHostProvider): ToolDefinition {
     description:
       'The browser session\'s own network record: every request from every tab, with headers, status, ' +
       'timing, redirects, and post data, captured passively by the app so nothing needs enabling and ' +
-      'nothing is lost on navigation. Use requests to find the endpoint behind a page, wait to catch the ' +
-      'request an action triggers (take a cursor first, act, then wait with after_cursor), body to read a ' +
-      'response, and rules to block, redirect, or rewrite headers. Results are JSON.',
-    actions: [requestsAction(network), waitAction(network), bodyAction(network), rulesAction(network), addRuleAction(network), removeRuleAction(network), clearAction(network)]
+      'records survive navigation within a bounded ring. Use requests to find endpoints and wait to catch ' +
+      'a completed request after a cursor. Historical bodies require browser_cdp.protocol requests/body ' +
+      'with exact CDP ids; this log does not capture bodies or map its ids to CDP ids. ' +
+      'Use network_replay only to deliberately issue a new request. Rules block, redirect, or rewrite headers. Results are JSON.',
+    actions: [requestsAction(network), waitAction(network), rulesAction(network), addRuleAction(network), removeRuleAction(network), clearAction(network)]
   })
 }
 
@@ -98,16 +99,18 @@ function waitAction(network: NetworkHostProvider): ToolAction {
   }
 }
 
-function bodyAction(network: NetworkHostProvider): ToolAction {
+export function networkReplayTool(network: NetworkHostProvider): ToolDefinition {
   return {
-    action: 'body',
+    name: 'network_replay',
+    deferLoading: true,
     description:
-      'Return the response body of a recorded request. A body still held by the tab is read in place ' +
-      '(source captured); otherwise the request is issued again on the same session with its recorded ' +
-      'method, headers, and post data (source replay). Text is decoded; binary comes back as base64 with its length.',
+      'Explicitly resend a request from embedded_browser.network requests/wait using its recorded method, ' +
+      'headers and post data on the current signed-in session. This can repeat server-side effects, ' +
+      'including POST mutations. Returns the NEW response with source replay, never historical evidence. ' +
+      'For captured-only reads use browser_cdp.protocol requests/body. Binary/file uploads cannot be replayed.',
     inputSchema: objectSchema({ request_id: requestIdField }, ['request_id']),
     timeoutMs: BODY_TIMEOUT_MS,
-    run: async (input) => jsonResult(await requireNetwork(network).body(stringArg(input, 'request_id')!))
+    run: async (input) => jsonResult(await requireNetwork(network).replay(stringArg(input, 'request_id')!))
   }
 }
 

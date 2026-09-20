@@ -3,19 +3,16 @@ import type { NetworkListFilter, NetworkListing, NetworkRecord, NetworkWait, Net
 import type { NetworkRule, NetworkRuleInput } from './browser-network/network-rules.js'
 import { listCookies, removeCookie, setCookie, type CookieFilter, type CookieInput, type CookieRecord } from './browser-network/session-cookies.js'
 import { fetchWithSession, replayableHeaders, type SessionFetchRequest, type SessionFetchResult } from './browser-network/session-fetch.js'
-import type { CdpToolHost } from './tools/cdp/host.js'
 import type { NetworkBodyResult, NetworkToolHost, SessionToolHost } from './tools/browser/index.js'
 
 /**
  * NetworkToolHost and SessionToolHost over the live BrowserService: the session's request log
- * and rules, and requests and cookies on the session itself. Bodies come from the tab's
- * debugger buffer when it has one, and otherwise from replaying the recorded request on the
- * same session, so a body is reachable for anything the log saw.
+ * and rules, and requests and cookies on the session itself. Replay is an explicit new
+ * request. Historical bodies belong to CDP's exact request/session identity instead.
  */
 export class BrowserNetworkAccess implements NetworkToolHost, SessionToolHost {
   constructor(
-    private readonly browser: () => BrowserService | null,
-    private readonly cdp: () => CdpToolHost | null
+    private readonly browser: () => BrowserService | null
   ) {}
 
   requests(filter: NetworkListFilter): NetworkListing {
@@ -42,13 +39,11 @@ export class BrowserNetworkAccess implements NetworkToolHost, SessionToolHost {
     return this.service().observers.network.clear(tabId)
   }
 
-  async body(id: string): Promise<NetworkBodyResult> {
+  async replay(id: string): Promise<NetworkBodyResult> {
     const service = this.service()
     const record = service.observers.network.get(id)
     if (!record) throw new Error(`No recorded request with id ${id}; ids come from requests or wait`)
     if (record.state === 'blocked') throw new Error(`Request ${id} was blocked by rule ${record.ruleId ?? '?'}; it has no body`)
-    const captured = await this.capturedBody(record)
-    if (captured) return captured
     return this.replayBody(service, record)
   }
 
@@ -75,40 +70,6 @@ export class BrowserNetworkAccess implements NetworkToolHost, SessionToolHost {
     return service
   }
 
-  /** The body as the tab's debugger buffered it, when Network capture was on for that tab. */
-  private async capturedBody(record: NetworkRecord): Promise<NetworkBodyResult | null> {
-    const cdp = this.cdp()
-    if (!cdp || !record.tabId) return null
-    try {
-      const listing = await cdp.networkRequests(record.tabId, { url: record.url, limit: 50 }) as {
-        requests?: Array<{ url: string; method: string | null; requestId: string | null; sessionId?: string | null }>
-      }
-      const match = listing.requests?.find((candidate) =>
-        candidate.requestId && candidate.url === record.url && (!candidate.method || candidate.method === record.method)
-      )
-      if (!match?.requestId) return null
-      const body = await cdp.responseBody(record.tabId, match.requestId, match.sessionId ?? undefined) as {
-        text: string | null; base64Encoded: boolean; byteLength: number; note?: string
-      }
-      return {
-        id: record.id,
-        url: record.url,
-        method: record.method,
-        status: record.status,
-        source: 'captured',
-        contentType: record.mimeType,
-        text: body.text,
-        base64: null,
-        byteLength: body.byteLength,
-        truncated: false,
-        ...(body.note ? { note: body.note } : {})
-      }
-    } catch {
-      // A body the tab no longer holds, or a tab that cannot attach: replay answers instead.
-      return null
-    }
-  }
-
   private async replayBody(service: BrowserService, record: NetworkRecord): Promise<NetworkBodyResult> {
     if (record.postData && record.postData.text === null) {
       throw new Error(`Request ${record.id} carried a binary or file upload body, which cannot be replayed`)
@@ -131,7 +92,7 @@ export class BrowserNetworkAccess implements NetworkToolHost, SessionToolHost {
       base64: response.base64,
       byteLength: response.byteLength,
       truncated: response.truncated,
-      note: 'The request was issued again on the session with its recorded headers and post data; a non-idempotent endpoint ran twice.'
+      note: 'Explicit new request using the current session and recorded method, headers and post data; this is not the historical response and may repeat server-side effects.'
     }
   }
 }
