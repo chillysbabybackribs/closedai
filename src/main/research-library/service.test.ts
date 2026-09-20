@@ -121,7 +121,7 @@ test('bounded retention and model output; tool exposes no mutations', async (t) 
   assert.ok(JSON.stringify(result).length < 16000)
   assert.deepEqual(libraryTool(library).actions?.map((action) => action.name), ['status', 'search', 'read'])
   const response = await libraryTool(library).run({ action: 'search', query: 'memory', limit: 999 }, {
-    callId: 'test', signal: new AbortController().signal
+    callId: 'test', threadId: 'test-thread', turnId: 'test-turn', signal: new AbortController().signal
   })
   assert.equal(response.isError, true)
 })
