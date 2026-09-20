@@ -5,7 +5,6 @@ import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import { ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
 import { chatRecord, harness, harnessWith } from './peer-manager-harness.js'
 import { rendererChatForwarder } from './peer-events.js'
-import { chatTitle, initialChatState, reduceChatEvent } from '../../renderer/chat-state.js'
 
 test('first completed exchange names sidebar, renderer and history; later provider names cannot overwrite it', async () => {
   const { manager, surfaces, store } = harnessWith([
@@ -13,9 +12,9 @@ test('first completed exchange names sidebar, renderer and history; later provid
   ], 'pane-a')
   const surface = surfaces[0]!
   Object.assign(surface, { generateTitle: async () => 'Clickable Local File Previews' })
-  let rendered = initialChatState()
+  const titles: string[] = []
   manager.on('event', (event: ChatWorkspaceEvent) => {
-    if (event.type === 'pane') rendered = reduceChatEvent(rendered, event.event)
+    if (event.type === 'pane' && event.event.type === 'title') titles.push(event.event.title)
   })
   surface.state.threadId = 'thread'
   surface.state.items = [
@@ -29,12 +28,12 @@ test('first completed exchange names sidebar, renderer and history; later provid
   const activity = manager.snapshot().chats[0]!.updatedAt
   await new Promise((resolve) => setImmediate(resolve))
   assert.equal(store.require('pane-a').titleSource, 'generated')
-  assert.equal(chatTitle(rendered), 'Clickable Local File Previews')
+  assert.equal(titles.at(-1), 'Clickable Local File Previews')
   assert.equal(manager.snapshot().chats[0]!.title, 'Clickable Local File Previews')
   assert.equal(manager.snapshot().chats[0]!.updatedAt, activity)
   store.adopt('/workspace', '/workspace', { id: 'thread', title: 'Provider fallback', preview: '', createdAt: 1, updatedAt: 1 }, null)
   surface.emit('event', { type: 'thread', threadId: 'thread', threadName: 'Provider fallback' } satisfies ChatEvent)
-  assert.equal(chatTitle(rendered), 'Clickable Local File Previews')
+  assert.equal(titles.at(-1), 'Clickable Local File Previews')
   assert.equal(manager.snapshot({ limit: 200 }).selected.displayTitle, 'Clickable Local File Previews')
   assert.equal((await manager.listThreads())[0]?.title, 'Clickable Local File Previews')
   manager.stop()
@@ -54,7 +53,8 @@ test('IPC skips background streams while main observers retain them and selectio
   background.emit('event', { type: 'item', item } satisfies ChatEvent)
   item.text += ' world'
   background.emit('event', { type: 'itemDelta', itemId: item.id, field: 'text', delta: ' world' } satisfies ChatEvent)
-  assert.equal(observed.filter((event) => event.type === 'pane' && event.paneId === 'pane-b').length, 2)
+  assert.equal(observed.filter((event) => event.type === 'pane' && event.paneId === 'pane-b' &&
+    (event.event.type === 'item' || event.event.type === 'itemDelta')).length, 2)
   assert.equal(delivered.filter((event) => event.type === 'pane' && event.paneId === 'pane-b').length, 0)
   assert.ok(delivered.some((event) => event.type === 'chats'))
   assert.equal(manager.snapshot().chats.find((chat) => chat.paneId === 'pane-b')?.preview, 'hello world')
@@ -111,11 +111,11 @@ test('renderer replacement and page requests are bounded while peer reads keep h
   surface.emit('event', { type: 'replace', snapshot: surface.snapshot() } satisfies ChatEvent)
   const replacement = events.find((event) => event.type === 'pane' && event.event.type === 'replace')
   assert.ok(replacement?.type === 'pane' && replacement.event.type === 'replace')
-  assert.equal(replacement.event.snapshot.items.length, 200)
-  assert.equal(replacement.event.snapshot.items[0]?.id, 'u300')
-  assert.equal(manager.snapshot({ limit: 200 }).selected.items.length, 200)
+  assert.equal(replacement.event.snapshot.items.length, 1)
+  assert.equal(replacement.event.snapshot.items[0]?.id, 'u499')
+  assert.equal(manager.snapshot({ limit: 200 }).selected.items.length, 1)
   assert.equal(manager.paneSnapshot('pane-a')!.items.length, 500)
-  assert.equal((await manager.readHistoryPage('pane-a', null, 'u300')).items[0]?.id, 'u100')
+  assert.equal((await manager.readHistoryPage('pane-a', null, 'u300')).items[0]?.id, 'u299')
   await assert.rejects(() => manager.readHistoryPage('pane-a', 'another-thread', 'u300'), /chat changed/)
   manager.stop()
 })

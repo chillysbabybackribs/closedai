@@ -205,6 +205,14 @@ test('summarizeMessage truncates long first lines', () => {
   assert.equal(summarizeMessage('   \n\n'), 'New chat')
 })
 
+test('app title updates override provider names and message snippets', () => {
+  let state = { ...initialChatState(), displayTitle: 'Temporary first words' }
+  state = reduceChatEvent(state, { type: 'title', title: 'Clickable Local File Previews' }) as typeof state
+  state = reduceChatEvent(state, { type: 'thread', threadId: 't', threadName: 'can you add' }) as typeof state
+  assert.equal(chatTitle(state), 'Clickable Local File Previews')
+  assert.equal(chatTitle({ ...state, history: { hasEarlier: true, title: 'Old title' } }), 'Clickable Local File Previews')
+})
+
 test('chat title ignores injected context blocks in the first user message', () => {
   const state = reduceChatEvent(initialChatState(), {
     type: 'item',
