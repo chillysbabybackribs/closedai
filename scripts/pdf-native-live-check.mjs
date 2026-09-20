@@ -20,9 +20,9 @@ try {
       import { app, BrowserWindow, WebContentsView, webContents } from 'electron';
       import { pathToFileURL } from 'node:url';
       import { readNativePdf } from './src/main/browser-pdf/native-reader.ts';
-      app.setPath('userData', process.argv[2]);
+      app.setPath('userData', process.env.CLOSEDAI_PDF_CHECK_PROFILE);
       app.disableHardwareAcceleration();
-      await app.whenReady();
+      app.whenReady().then(async () => {
       const win = new BrowserWindow({ show: false, webPreferences: { offscreen: true, backgroundThrottling: false, sandbox: true } });
       const target = win.webContents;
       const helper = new WebContentsView({ webPreferences: { session: target.session, sandbox: true, backgroundThrottling: false } });
@@ -32,7 +32,7 @@ try {
       );
       try {
         await diagnostics.loadURL('chrome://accessibility/');
-        for (const [index, path] of process.argv.slice(3).entries()) {
+        for (const [index, path] of JSON.parse(process.env.CLOSEDAI_PDF_CHECK_INPUTS).entries()) {
           await target.loadURL(pathToFileURL(path).href);
           for(let i=0;i<50;i++) {
             const v=target.mainFrame.framesInSubtree.find(f=>f.url.startsWith('chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/'));
@@ -56,14 +56,17 @@ try {
         await new Promise(r=>setTimeout(r,100));
         assert.equal(webContents.getAllWebContents().length,baseline);
         console.log('Cancellation cleanup passed');
-      } finally { diagnostics.close(); win.destroy(); app.quit(); }
+      } finally { diagnostics.close(); win.destroy(); }
+      }).then(() => app.exit(0), error => { console.error(error); app.exit(1); });
     `, resolveDir: root, sourcefile: 'native-pdf-live-check.mjs' },
     outfile: join(work, 'check.mjs'), bundle: true, packages: 'external', platform: 'node', format: 'esm'
   })
   const env = { ...sanitizeGpuEnv().env }
   delete env.ELECTRON_RUN_AS_NODE
+  env.CLOSEDAI_PDF_CHECK_PROFILE = join(work, 'profile')
+  env.CLOSEDAI_PDF_CHECK_INPUTS = JSON.stringify(process.argv.slice(2).map(p => resolve(p)))
   const code = await new Promise((done, reject) => {
-    const child = spawn(electron, ['--no-sandbox', join(work, 'check.mjs'), join(work, 'profile'), ...process.argv.slice(2).map(p => resolve(p))], { env, stdio: 'inherit' })
+    const child = spawn(electron, [join(work, 'check.mjs'), '--no-sandbox'], { env, stdio: 'inherit' })
     const timeout = setTimeout(() => child.kill('SIGTERM'), 60_000)
     child.once('error', (error) => { clearTimeout(timeout); reject(error) })
     child.once('exit', code => { clearTimeout(timeout); done(code ?? 1) })

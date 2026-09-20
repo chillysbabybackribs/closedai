@@ -443,8 +443,9 @@ selecting it parks all native web views beyond the window before emitting render
 The app renderer displays fit-to-pane, zoom, actual size, drag-to-pan, download (raster data),
 and show-in-folder (local files) controls. Image bytes are fetched once per viewer, separately
 from tab metadata. Local image links and attachment thumbnails use this image viewer, while
-other local file links open in app-owned text tabs, avoiding Chromium navigation to unsupported
-file types. File tabs support copy path, copy content, show in folder, reload, duplication, and
+other local file links open in app-owned text tabs so that source and text files get line
+highlighting instead of Chromium's plain-text rendering (Chromium's own PDF viewer still handles
+PDF URLs in web tabs). File tabs support copy path, copy content, show in folder, reload, duplication, and
 line highlighting; reopening a link updates its line target. In both cases, opening one
 reveals a hidden browser pane and exits maximized chat layout. Reopening the same canonical
 file or attachment source selects its existing tab. Directories reveal in the system file

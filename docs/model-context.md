@@ -23,8 +23,15 @@ every running model's prompt.
 | Cursor adapter guidance | `src/main/cursor/cursor-instructions.ts`, `cursor-input.ts` | Once per ACP session, as a `closedai.instructions` application context block on the first turn; turn context and handoff on later turns |
 | Repository rules | `src/main/chat-context/workspace-rules.ts`, root `AGENTS.md`, applicable `CLAUDE.md` | Codex loads `AGENTS.md` natively; Claude and Antigravity receive the selected workspace root policy explicitly; Claude also loads project `CLAUDE.md` through the SDK |
 
-The common product facts define the model as the user's collaborator inside their OS and ClosedAI's
-embedded Chromium browser, free to choose its approach and available tools for authorized work.
+The common product facts open with platform identity: ClosedAI is an Electron desktop app whose
+main process owns the browser pane as Chromium tabs on one shared signed-in session, beside chat
+panes routed to the four providers. The paragraph names what the platform already provides (PDF
+viewer, accessibility tree, DevTools protocol, downloads, printing, media) and asks models to check
+the platform and existing tools, with current official documentation, before building extraction,
+rendering, viewing, or capture. It was added on 2026-09-20 after a model built a PDF.js/OCR
+pipeline beside the native PDF viewer it had already screenshotted. The facts then define the
+model as the user's collaborator inside their OS and that browser, free to choose its approach and
+available tools for authorized work.
 Models should use their knowledge, reasoning, and reach to improve the user's starting approach
 and deliver a useful, accurate, finished result. More research, tool calls, or output alone do not
 establish higher quality.
@@ -287,8 +294,10 @@ Browser-page capture rejects main-frame navigation or renderer loss during the o
 Its tool description explicitly excludes an atomic DOM/pixel guarantee: DOM updates,
 animation, and subframe changes remain possible.
 
-The verification budgets in `model-efficiency-instructions.test.ts` are under 8,000 characters for
-Codex developer instructions, 8,500 for Claude, 9,000 for Antigravity, and 8,500 for Cursor. The separately appended
+The verification budgets in `model-efficiency-instructions.test.ts` are under 9,000 characters for
+Codex developer instructions, 9,500 for Claude, 10,000 for Antigravity, and 9,500 for Cursor
+(raised by 1,000 each on 2026-09-20 to make room for the platform-identity paragraph;
+`turn-context.test.ts` holds the same Codex bound). The separately appended
 root `AGENTS.md` is capped at 20,000. Share repeated guidance and remove duplication when expanding
 prompts; do not solve drift by injecting the entire documentation tree.
 
