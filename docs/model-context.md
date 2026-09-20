@@ -41,8 +41,10 @@ The common routing policy prefers deterministic commands, page APIs, the session
 and non-input CDP. Deeper runtime inspection, debugging, profiling, instrumentation, emulation
 and exact CDP response reads are task-driven capabilities, with no required recon workflow.
 CDP request listings retain repeated URLs and child session identities; child body reads pass
-that session id and never reissue the request. Session-network body lookup still uses URL/method
-association and can replay, so it is not an exact historical-response contract.
+that session id and never reissue the request. Session-log ids are not CDP ids. The legacy
+session-network body action is removed; `embedded_browser.network_replay` explicitly sends a
+new request and may repeat server-side effects. Instrumentation never wraps eval/Function;
+its observable wrappers report patch status and best-effort restoration.
 Real clicks, manual typing, key presses, and raw `Input.*` commands are recorded escape hatches:
 the call requires `fallback_reason` and belongs in one batch with inspection and post-action
 verification. For Codex the containing exec script is the batch; direct-call lanes use `tool_batch`.

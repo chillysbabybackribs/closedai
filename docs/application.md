@@ -341,15 +341,22 @@ markers. The request-header stage is shared with identity normalisation in
 `browser-auth-client-hints.ts`, which composes the rules through its injector because Electron
 keeps one listener per stage. `browser-network-access.ts` exposes the log, rules, session fetch,
 and cookies to the `embedded_browser.network` and `session` tools; `browser-page-evaluate.ts`
-runs `query` and `evaluate` through `executeJavaScript` on the tab's WebContents. Response
-bodies come from the tab's CDP Network buffer when one exists and otherwise from replaying the
-recorded request on the session.
+runs `query` and `evaluate` through `executeJavaScript` on the tab's WebContents. Historical
+response bodies are read only through exact CDP request/session ids. The separate
+`embedded_browser.network_replay` tool deliberately resends a recorded request on the current
+session, labels its result as new evidence, and refuses incomplete or binary upload bodies.
 
 For exact captured-response work, `browser_cdp.protocol requests` preserves repeated URLs
 as separate requests and reports child session ids. Its `body` action accepts `session_id`
 and reads that target's buffer without reissuing requests. Resource-timing URLs remain
 discovery hints and are not used to fill guessed fields on individual captured requests.
-The session-level body's URL/method association and replay fallback remain separate behavior.
+The session-level body action and guessed URL/method association have been removed.
+
+Instrumentation does not wrap eval or Function, preserving direct eval's lexical scope.
+The current document's recorder reports installed/unavailable patches. Unhook disables retained
+wrapper references, restores descriptors still owned by the recorder, and removes its listeners;
+page replacements are preserved and restoration failures reported. Wrappers remain observable,
+and other frame documents may need navigation for cleanup. This is not transparent instrumentation.
 
 ## Ownership map
 

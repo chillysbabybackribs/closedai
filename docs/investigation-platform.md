@@ -174,6 +174,15 @@ a maturity score or label the platform state of the art before comparative evide
 
 ## Current implementation record
 
+2026-09-20: observation correctness increment removes the ambiguous session-network body
+reader and its implicit replay. Exact historical body reads use CDP request/session ids;
+`embedded_browser.network_replay` is a separate explicit mutation that rejects incomplete
+upload bodies. Instrumentation no longer wraps eval/Function, reports per-feature patch
+status, and disables/restores current-document wrappers and listeners on unhook while
+preserving page replacements. Other frame cleanup, coherent capture, continuous collection
+and isolated laboratories remain separate work. Earlier dated records below describe their
+then-current boundaries.
+
 2026-09-13: first network-identity slice implemented in the existing CDP services. Repeated
 URLs retain separate captured records; overlapping root/child request ids are separated;
 body reads accept the listed child session; URL timing no longer supplies guessed request
