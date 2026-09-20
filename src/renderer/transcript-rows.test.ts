@@ -25,9 +25,14 @@ test('history trimming keeps the latest prompt and subsequent streamed response 
   let state: ChatWorkspaceSnapshot = { ...initial, selectedPaneId: 'pane', selected: { ...initial.selected, threadId: 'thread', items } }
   state = reduceChatWorkspaceEvent(state, { type: 'trimMountedHistory', paneId: 'pane', threadId: 'thread' })
   assert.equal(state.selected.items.length, 1)
-  for (const text of ['First token', 'First token and more']) {
+  state = reduceChatWorkspaceEvent(state, { type: 'pane', paneId: 'pane', event: {
+    type: 'item', item: { type: 'assistant', id: 'answer', turnId: 't11', text: '', phase: null, streaming: true }
+  } })
+  let text = ''
+  for (const delta of ['First token', ' and more']) {
+    text += delta
     state = reduceChatWorkspaceEvent(state, { type: 'pane', paneId: 'pane', event: {
-      type: 'item', item: { type: 'assistant', id: 'answer', turnId: 't11', text, phase: null, streaming: true }
+      type: 'itemDelta', itemId: 'answer', field: 'text', delta
     } })
     const current = transcriptRows(state.selected.items)
     const visible = current.slice(anchoredVisibleStart(anchor, current, 3))
