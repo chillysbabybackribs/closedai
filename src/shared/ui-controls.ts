@@ -4,6 +4,9 @@
 // guard test beside this file keeps the renderer source and this manifest in step.
 
 export const UI_CONTROLS = {
+  'file.copy-path': 'Copy the local file preview path',
+  'file.copy-content': 'Copy the local file preview text',
+  'file.reveal': 'Reveal the previewed local file in the system file manager',
   'titlebar.drawer-toggle': 'Open or close the side drawer',
   'titlebar.menu': 'Application menu tab; item is file, edit, view, or help',
   'titlebar.menu-item': 'Application menu row; item is the slugged label, for example new-chat',

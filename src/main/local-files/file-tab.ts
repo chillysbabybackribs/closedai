@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events'
 import { pathToFileURL } from 'node:url'
-import { readFile } from 'node:fs/promises'
+import { open } from 'node:fs/promises'
 import type { BrowserState } from '../../shared/types.js'
 import type { FileTabContent, FileTabIdentity } from '../../shared/local-files.js'
 
@@ -9,6 +9,7 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024 // 5 MB preview limit
 export class FileTab extends EventEmitter {
   private customTitle: string | null = null
   private cachedContent: string | null = null
+  private revision = 0
 
   constructor(
     readonly id: string,
@@ -26,6 +27,7 @@ export class FileTab extends EventEmitter {
       tabId: this.id,
       name,
       path,
+      revision: this.revision,
       ...(line ? { line } : {}),
       ...(endLine ? { endLine } : {})
     }
@@ -51,6 +53,7 @@ export class FileTab extends EventEmitter {
 
   reload(): void {
     this.cachedContent = null
+    this.revision += 1
     this.emit('state')
   }
 
@@ -69,15 +72,29 @@ export class FileTab extends EventEmitter {
     if (this.cachedContent !== null) {
       return { path, name, content: this.cachedContent, ...(line ? { line } : {}), ...(endLine ? { endLine } : {}) }
     }
-    const buffer = await readFile(path)
-    if (buffer.length > MAX_FILE_BYTES) {
-      throw new Error(`File is too large to preview (${Math.round(buffer.length / 1024 / 1024)} MB). Max supported is 5 MB.`)
-    }
+    const revision = this.revision
+    const file = await open(path, 'r')
+    let buffer: Buffer
+    try {
+      const info = await file.stat()
+      if (!info.isFile()) throw new Error('This file type cannot be previewed.')
+      if (info.size > MAX_FILE_BYTES) throw new Error('File is too large to preview. Max supported is 5 MB.')
+      const bytes = Buffer.alloc(info.size + 1)
+      let length = 0
+      while (length < bytes.length) {
+        const read = await file.read(bytes, length, bytes.length - length, null)
+        if (!read.bytesRead) break
+        length += read.bytesRead
+      }
+      if (length > info.size) throw new Error('The file changed while opening. Try again.')
+      buffer = bytes.subarray(0, length)
+    } finally { await file.close() }
     const sample = buffer.subarray(0, Math.min(8000, buffer.length))
     if (sample.includes(0)) {
       throw new Error('Binary file cannot be previewed as text.')
     }
-    this.cachedContent = buffer.toString('utf8')
-    return { path, name, content: this.cachedContent, ...(line ? { line } : {}), ...(endLine ? { endLine } : {}) }
+    const content = buffer.toString('utf8')
+    if (revision === this.revision) this.cachedContent = content
+    return { path, name, content, ...(line ? { line } : {}), ...(endLine ? { endLine } : {}) }
   }
 }

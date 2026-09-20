@@ -359,8 +359,9 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   its curated TLD list, which is what keeps `chat-transcript.tsx` and `package.json` as plain text.
   Explicit absolute local file links (including `file://` and optional line suffixes) are
   clickable in chat responses. Raster images open in browser-pane image tabs through a
-  bounded 32 MB read; other files and directories are revealed in the file manager, never
-  executed. Missing files and preview failures show an error. Other non-http schemes stay
+  bounded 32 MB read; other files open in an inert text viewer with a bounded 5 MB read and
+  line highlighting. Binary files show a preview error; directories are revealed in the file manager.
+  Files are never executed. Missing files and preview failures show an error. Other non-http schemes stay
   inert. This holds for every provider lane.
 
 Provider background tasks and app panes are separate concepts. Claude tracks task notifications
@@ -409,13 +410,15 @@ selecting it parks all native web views beyond the window before emitting render
 The app renderer displays fit-to-pane, zoom, actual size, drag-to-pan, download (raster data),
 and show-in-folder (local files) controls. Image bytes are fetched once per viewer, separately
 from tab metadata. Local image links and attachment thumbnails use this image viewer, while
-other local file links open in native browser tabs as `file:` URLs. In both cases, opening one
+other local file links open in app-owned text tabs, avoiding Chromium navigation to unsupported
+file types. File tabs support copy path, copy content, show in folder, reload, duplication, and
+line highlighting; reopening a link updates its line target. In both cases, opening one
 reveals a hidden browser pane and exits maximized chat layout. Reopening the same canonical
 file or attachment source selects its existing tab. Directories reveal in the system file
 manager. Closing an image returns to the previously selected tab when it is still open. Switching
-preserves the image's zoom/pan and the web page. Image tabs are session-only; they do not
+preserves the image's zoom/pan and the web page. Image and file tabs are session-only; they do not
 restore after app restart. Browser page/CDP tools operate on web tabs, not the app-owned
-image viewer; image controls use `closedai_app.ui`.
+image or file viewers; their controls use `closedai_app.ui`.
 Hiding the whole browser also keeps user tabs attached and parks the active surface beyond the
 window at its last usable size. Reopening restores that same loaded page without a reload;
 zero-size reports during panel collapse or expansion never replace the saved viewport. Keeping
