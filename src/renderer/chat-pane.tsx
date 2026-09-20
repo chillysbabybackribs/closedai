@@ -112,6 +112,9 @@ export const ChatPane = memo(function ChatPane({
           report={state.turnContext}
           usage={state.contextUsage}
           checkpoint={state.checkpoint ?? null}
+          onCompact={manualCompact ? () => { void chat.compactConversation(); setContextOpen(false); } : undefined}
+          compactEnabled={manualCompact && ready && !running && state.items.some((item) => item.type === 'user')}
+          onNewChat={() => { startNewChat(); setContextOpen(false); }}
         />
         {historyOpen ? (
           <ChatHistory
