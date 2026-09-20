@@ -330,6 +330,11 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   state instead, and each image result reports how many are left. A capture scaled below 60% of
   its source width tells the model to crop for detail rather than capture again
   (`capture/budget.ts`, `capture/result.ts`).
+- Browser-page capture rejects main-frame navigation (including reload/same-document changes)
+  and renderer loss from before readiness through image return. `browser-capture-guard.ts`
+  removes its listeners in `finally`; the host also releases its rendering lease. This prevents
+  attributing a later document's image to an earlier readiness result. It does not freeze DOM,
+  animations, canvas/video, or subframes, and is not an atomic DOM/pixel snapshot.
 - Capture actions return a bounded image to the model (image tokens scale with pixels) and keep
   the larger display capture in `capture/screenshot-store.ts`, keyed by the tool call id. The
   transcript looks the call id up when it renders the screenshot item and falls back to the

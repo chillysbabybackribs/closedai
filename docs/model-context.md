@@ -212,6 +212,9 @@ Codex code-mode tools return strings: parse JSON where documented and split capt
 before passing the URL to `image()`. Use direct awaited calls in an exec script; native tool-call
 providers can use `tool_batch.run`. Suppress successful intermediate payloads, and keep failures
 visible. Output budgets, screenshot limits, and compaction settings are in [Tools](tools.md).
+Browser-page capture rejects main-frame navigation or renderer loss during the operation.
+Its tool description explicitly excludes an atomic DOM/pixel guarantee: DOM updates,
+animation, and subframe changes remain possible.
 
 The verification budgets are under 5,625 characters for Codex developer instructions, 6,500 for
 Claude, 7,750 for Antigravity, and 7,000 for Cursor. The separately appended

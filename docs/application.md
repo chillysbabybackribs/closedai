@@ -324,6 +324,12 @@ Hiding the whole browser also keeps user tabs attached and parks the active surf
 window at its last usable size. Reopening restores that same loaded page without a reload;
 zero-size reports during panel collapse or expansion never replace the saved viewport. Keeping
 these surfaces resident trades background rendering work for reliable restoration.
+
+Browser-page captures watch main-frame navigation and renderer lifetime from before the
+readiness wait until the image returns. Navigation (including reload and same-document changes)
+or renderer loss discards the image with a retry message; listeners and rendering leases are
+released on success and failure. This guards page attribution, not atomic DOM/pixel coherence:
+DOM updates, animations, canvas/video, and subframes can still change during capture.
 After a navigation becomes usable, and again when loading stops, the tab reasserts its unchanged
 bounds and visibility. This revives Electron's frame sink when a redirect leaves DOM/CDP alive
 but the attached native surface blank.
