@@ -118,6 +118,8 @@ export const PROVIDER_LABELS: Record<ChatProvider, string> = CHAT_PROVIDER_LABEL
 
 /** Header title: the provider's thread name, else the first user message, else a placeholder. */
 export function chatTitle(state: ChatSnapshot): string {
+  const displayTitle = sanitizeThreadTitle(state.displayTitle)
+  if (displayTitle && displayTitle !== 'New chat') return displayTitle
   const threadName = sanitizeThreadTitle(state.threadName)
   if (threadName) return threadName
   const historyTitle = sanitizeThreadTitle(state.history?.title)
@@ -135,6 +137,8 @@ export function summarizeMessage(text: string, max = 60): string {
 
 export function reduceChatEvent(state: ChatSnapshot, event: ChatEvent): ChatSnapshot {
   switch (event.type) {
+    case 'title':
+      return { ...state, displayTitle: event.title }
     case 'replace':
       return event.snapshot
     case 'connection':

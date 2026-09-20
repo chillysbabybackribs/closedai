@@ -8,6 +8,7 @@ import { traceLog } from '../trace/trace-log.js'
 import type { PeerIdleParking, ParkablePeer } from './peer-idle-parking.js'
 import { PeerSettings } from './peer-settings.js'
 import { PLACEHOLDER_TITLE, PeerSummaryCache } from './peer-summary.js'
+import { ChatTitles } from '../chat-titles/chat-titles.js'
 
 // Which chats have a pane. Attaching builds a runtime for a record; detaching stops it and keeps
 // the record, so a chat that leaves the workspace — retired past the cap, closed, or left behind
@@ -43,6 +44,7 @@ export const MAX_AWAKE_IDLE_CHATS = 2
 
 export class PeerLifecycle {
   readonly peers = new Map<ChatPaneId, PeerEntry>()
+  private readonly titles: ChatTitles
 
   constructor(
     private readonly store: ChatStore,
@@ -51,7 +53,13 @@ export class PeerLifecycle {
     private readonly parking: PeerIdleParking,
     private readonly onEvent: (entry: PeerEntry, event: ChatEvent) => void,
     private readonly cancelPaneWork: (paneId: ChatPaneId) => void = () => {}
-  ) {}
+  ) {
+    this.titles = new ChatTitles(store, (id) => {
+      const entry = this.peers.get(id)
+      const title = this.store.get(id)?.title
+      if (entry && title) this.onEvent(entry, { type: 'title', title })
+    })
+  }
 
   get(chatId: ChatPaneId): PeerEntry | undefined {
     return this.peers.get(chatId)
@@ -84,7 +92,11 @@ export class PeerLifecycle {
       // A stopped provider can finish unwinding after a detach or project switch. Its last event
       // belongs to a pane that no longer exists and must not resurrect its summary.
       if (this.peers.get(record.id) !== entry) return
+      const wasRunning = entry.display.current.running
       this.onEvent(entry, event)
+      if (wasRunning && !entry.display.current.running && surface.generateTitle) {
+        void this.titles.generate(record.id, surface.snapshot(), surface.generateTitle.bind(surface))
+      }
     })
     this.peers.set(record.id, entry)
     return entry
@@ -95,6 +107,7 @@ export class PeerLifecycle {
     const entry = this.peers.get(chatId)
     if (!entry) return
     this.cancelPaneWork(chatId)
+    this.titles.cancel(chatId)
     this.parking.cancel(entry)
     if (entry.surface.dispose) entry.surface.dispose()
     else entry.surface.stop()
@@ -195,7 +208,8 @@ export class PeerLifecycle {
   rememberDisplay(chatId: ChatPaneId, summary: ChatPeerSummary, updatedAt: number, turnEnded: boolean | null): void {
     const record = this.store.get(chatId)
     if (!record) return
-    const title = summary.title === PLACEHOLDER_TITLE ? record.title : summary.title
+    const owned = record.titleSource === 'generated' || record.titleSource === 'manual'
+    const title = owned || summary.title === PLACEHOLDER_TITLE ? record.title : summary.title
     const preview = summary.preview || record.preview
     const changed = title !== record.title || preview !== record.preview || turnEnded !== null
     if (!changed) return

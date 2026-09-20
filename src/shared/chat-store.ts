@@ -26,6 +26,9 @@ export type ChatRecord = {
   threadId: string | null
   /** Last known display title; null until the chat has one. */
   title: string | null
+  /** App-owned names survive provider catalog refreshes and session changes. Legacy records omit this. */
+  titleSource?: 'fallback' | 'provider' | 'generated' | 'manual' | null
+  titleGenerationAttempted?: boolean
   /** Last transcript line, bounded, for the drawer row. */
   preview: string
   createdAt: number

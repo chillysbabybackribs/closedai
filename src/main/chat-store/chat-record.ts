@@ -35,6 +35,9 @@ export function normalizeChatRecord(candidate: unknown): ChatRecord | null {
     ...ids,
     threadId: chatRecordThreadId(provider, ids),
     title: optionalString(record.title),
+    titleSource: record.titleSource === 'generated' || record.titleSource === 'manual' ||
+      record.titleSource === 'provider' || record.titleSource === 'fallback' ? record.titleSource : null,
+    titleGenerationAttempted: record.titleGenerationAttempted === true,
     preview: typeof record.preview === 'string' ? record.preview : '',
     createdAt,
     updatedAt: positiveTime(record.updatedAt) ?? createdAt,

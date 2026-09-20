@@ -101,6 +101,8 @@ export class ChatStore extends EventEmitter {
       ...ids,
       threadId: chatRecordThreadId(seed.provider, ids),
       title: seed.title ?? null,
+      titleSource: seed.titleSource ?? null,
+      titleGenerationAttempted: seed.titleGenerationAttempted ?? false,
       preview: seed.preview ?? '',
       createdAt: seed.createdAt ?? now,
       updatedAt: seed.updatedAt ?? now,
@@ -152,8 +154,9 @@ export class ChatStore extends EventEmitter {
   adopt(cwd: string, projectPath: string | null, thread: ChatThreadSummary, modelId: string | null): ChatRecord {
     const existing = this.chats.get(thread.id) ?? this.findByThreadId(thread.id)
     if (existing) {
-      const changed = existing.title !== thread.title || existing.updatedAt < thread.updatedAt
-      return changed ? this.update(existing.id, { title: thread.title, updatedAt: Math.max(existing.updatedAt, thread.updatedAt) }) : existing
+      const title = existing.titleSource === 'generated' || existing.titleSource === 'manual' ? existing.title : thread.title
+      const changed = existing.title !== title || existing.updatedAt < thread.updatedAt
+      return changed ? this.update(existing.id, { title, updatedAt: Math.max(existing.updatedAt, thread.updatedAt) }) : existing
     }
     const provider = chatProviderOfId(thread.id)
     const bare = bareChatId(provider, thread.id) ?? thread.id

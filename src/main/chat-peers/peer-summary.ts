@@ -120,7 +120,7 @@ export function titleFromUserText(text: string): string {
   return formatTitle(summarizeUserMessage(text, MAX_TITLE))
 }
 
-type TitleRecord = Pick<ChatRecord, 'title' | 'threadId' | 'continuation'>
+type TitleRecord = Pick<ChatRecord, 'title' | 'titleSource' | 'threadId' | 'continuation'>
 
 /**
  * A saved title names the saved thread. Once the record holds neither a thread nor a pending
@@ -128,6 +128,7 @@ type TitleRecord = Pick<ChatRecord, 'title' | 'threadId' | 'continuation'>
  * that thread now has of its own.
  */
 function titleFromParts(threadName: string | null, firstUserText: string | null, record: TitleRecord): string {
+  if (record.title && (record.titleSource === 'generated' || record.titleSource === 'manual')) return formatTitle(record.title)
   const saved = record.threadId || record.continuation ? sanitizeThreadTitle(record.title) : null
   const title = sanitizeThreadTitle(threadName) || firstUserText?.trim() || saved ||
     (record.continuation ? `Continuing: ${record.continuation.sourceTitle}` : PLACEHOLDER_TITLE)

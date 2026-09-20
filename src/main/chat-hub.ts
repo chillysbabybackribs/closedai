@@ -15,6 +15,8 @@ import type { AppSettingsAccess } from './app-settings-store.js'
 import type { WorkspaceCatalogs } from './chat-context/provider-catalog-cache.js'
 import { buildThreadHandoff, type ThreadHandoffSource } from './chat-context/thread-handoff.js'
 import type { ChatMemoryCheckpoint } from '../shared/chat-memory.js'
+import { generateChatTitle } from './chat-titles/title-provider.js'
+import type { TitleGenerator } from './chat-titles/title-policy.js'
 
 // One chat pane, several providers. Each provider owns its own thread, transcript, and
 // connection; the hub owns which one the pane shows, merges the model catalogs so the picker
@@ -26,6 +28,7 @@ import type { ChatMemoryCheckpoint } from '../shared/chat-memory.js'
 
 /** What the chat IPC drives: the hub, or a single provider in tests. */
 export type ChatSurface = {
+  generateTitle?: TitleGenerator
   snapshot(window?: ChatHistoryWindow): ChatSnapshot
   start(): Promise<void>
   stop(): void
@@ -83,6 +86,7 @@ export type ChatHubOptions = {
 }
 
 export class ChatHub extends EventEmitter implements ChatSurface {
+  readonly generateTitle: TitleGenerator = generateChatTitle
   private active: ChatProvider
   /** Set by `stop`, so a background provider start that lands afterwards does not leave a process. */
   private stopped = false

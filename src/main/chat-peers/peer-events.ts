@@ -278,6 +278,7 @@ export function rendererSnapshot(snapshot: ChatSnapshot, title: string): ChatSna
   return {
     ...snapshot,
     items: snapshot.items.slice(slice.start),
+    displayTitle: title,
     history: {
       hasEarlier: slice.hasEarlier || Boolean(snapshot.history?.hasEarlier),
       title,

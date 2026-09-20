@@ -248,6 +248,8 @@ export type ChatSnapshot = {
   /** User-facing thread title from the app-server, when one has been set. */
   threadName: string | null
   activeTurnId: string | null
+  /** App-resolved title; independent of provider thread names. */
+  displayTitle?: string
   /** The turn the composer's pause button ended, until the next turn starts; drives Resume. */
   pausedTurnId: string | null
   contextUsage: ChatContextUsage | null
@@ -277,6 +279,7 @@ export type ChatEvent =
   | { type: 'model'; selectedModel: string; selectedReasoningEffort: string | null }
   | { type: 'reasoningEffort'; selectedReasoningEffort: string }
   | { type: 'thread'; threadId: string | null; threadName: string | null }
+  | { type: 'title'; title: string }
   | { type: 'turn'; turnId: string | null }
   | { type: 'paused'; turnId: string | null }
   | { type: 'context'; usage: ChatContextUsage | null }
