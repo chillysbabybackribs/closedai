@@ -465,6 +465,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       this.catalog.invalidate()
       const restored = this.settings.get()
       this.selectedPaneId = this.restoreOpenChats(restored.chatOpenIds, restored.chatSelectedPaneId, current.selectedModel, current.selectedReasoningEffort)
+      this.lifecycle.parkExcessIdle(this.selectedPaneId)
+      await this.trimAttached()
       await this.persistOpenChats()
       this.emitWorkspace()
       this.wakeLater(this.selectedPaneId, 'start the project chat')
