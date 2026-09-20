@@ -8,7 +8,7 @@
 export type InstrumentSend = (method: string, params?: Record<string, unknown>) => Promise<unknown>
 
 export const INSTRUMENT_CHANNELS = [
-  'fetch', 'xhr', 'websocket', 'cookie', 'storage', 'eval', 'fingerprint', 'error'
+  'fetch', 'xhr', 'websocket', 'cookie', 'storage', 'fingerprint', 'error'
 ] as const
 
 export type InstrumentChannel = typeof INSTRUMENT_CHANNELS[number]
@@ -19,129 +19,138 @@ export function channelsFrom(requested: string[]): InstrumentChannel[] {
   if (!requested.length) return [...INSTRUMENT_CHANNELS]
   const wanted = new Set(requested)
   const channels = INSTRUMENT_CHANNELS.filter((channel) => wanted.has(channel))
-  if (!channels.length) throw new Error(`channels must name one or more of ${INSTRUMENT_CHANNELS.join(', ')}`)
+  if (!channels.length || requested.some((name) => !INSTRUMENT_CHANNELS.includes(name as InstrumentChannel))) {
+    throw new Error(`channels must name one or more of ${INSTRUMENT_CHANNELS.join(', ')}`)
+  }
   return channels
 }
 
 /**
- * The recorder. Every patch keeps the original behaviour and only observes, so the page runs
- * normally; the ring buffer bounds memory while the counters stay exact.
+ * Best-effort main-world instrumentation. Wrappers are observable to the page; eval is never
+ * patched because wrapping it changes lexical scope. Cleanup disables even retained wrappers.
  */
 export function instrumentScript(channels: InstrumentChannel[], capacity: number): string {
   return `(() => {
   const CH = ${JSON.stringify(channels)};
   const CAP = ${Math.max(1, capacity)};
   const on = (name) => CH.indexOf(name) !== -1;
-  if (window.__closedaiInstrument) return 'already-installed';
-  const state = { channels: CH, counts: {}, events: [], dropped: 0, startedAt: Date.now(), url: location.href };
+  if (window.__closedaiInstrument) window.__closedaiInstrument.stop();
+  const state = { channels: CH, patches: [], counts: {}, events: [], dropped: 0, startedAt: Date.now(), url: location.href };
+  const cleanup = [];
+  let active = true;
   const rec = (channel, detail) => {
+    if (!active) return;
     state.counts[channel] = (state.counts[channel] || 0) + 1;
     if (state.events.length >= CAP) { state.events.shift(); state.dropped += 1; }
     state.events.push({ c: channel, d: String(detail == null ? '' : detail).slice(0, 200), t: Date.now() - state.startedAt });
   };
-  const safe = (fn) => { try { fn(); } catch (error) { /* a locked-down page may refuse a patch */ } };
+  const failure = (channel, feature, error) => state.patches.push({ channel, feature, installed: false, reason: String(error) });
+  const same = (a, b) => Boolean(a && b && a.value === b.value && a.get === b.get && a.set === b.set &&
+    a.writable === b.writable && a.configurable === b.configurable && a.enumerable === b.enumerable);
+  const patch = (channel, target, key, make) => {
+    try {
+      if (!target) throw new Error('API unavailable');
+      const before = Object.getOwnPropertyDescriptor(target, key);
+      const descriptor = make(before);
+      Object.defineProperty(target, key, descriptor);
+      const installed = Object.getOwnPropertyDescriptor(target, key);
+      const report = { channel, feature: key, installed: true };
+      state.patches.push(report);
+      cleanup.push(() => {
+        if (!same(Object.getOwnPropertyDescriptor(target, key), installed)) return { feature: key, restored: false, reason: 'changed-by-page' };
+        if (before) Object.defineProperty(target, key, before);
+        else delete target[key];
+        return { feature: key, restored: true };
+      });
+    } catch (error) { failure(channel, key, error); }
+  };
+  const method = (channel, target, key, wrap) => patch(channel, target, key, (descriptor) => {
+    if (!descriptor || typeof descriptor.value !== 'function') throw new Error('Method unavailable');
+    return { ...descriptor, value: wrap(descriptor.value) };
+  });
+  state.stop = () => {
+    active = false;
+    const restored = [];
+    for (const undo of cleanup.splice(0).reverse()) {
+      try { restored.push(undo()); } catch (error) { restored.push({ restored: false, reason: String(error) }); }
+    }
+    return restored;
+  };
 
-  if (on('fetch') && typeof window.fetch === 'function') safe(() => {
-    const original = window.fetch;
-    window.fetch = function (input, init) {
+  if (on('fetch')) method('fetch', window, 'fetch', (original) => function (input, init) {
       const url = input && typeof input === 'object' && 'url' in input ? input.url : input;
       rec('fetch', ((init && init.method) || (input && input.method) || 'GET') + ' ' + url);
       return original.apply(this, arguments);
-    };
-  });
-
-  if (on('xhr') && window.XMLHttpRequest) safe(() => {
-    const open = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function (method, url) {
-      rec('xhr', String(method) + ' ' + String(url));
-      return open.apply(this, arguments);
-    };
-  });
-
-  if (on('websocket') && window.WebSocket) safe(() => {
-    const Original = window.WebSocket;
-    const Patched = function (url, protocols) {
-      rec('websocket', String(url));
-      return protocols === undefined ? new Original(url) : new Original(url, protocols);
-    };
-    Patched.prototype = Original.prototype;
-    Patched.CONNECTING = 0; Patched.OPEN = 1; Patched.CLOSING = 2; Patched.CLOSED = 3;
-    window.WebSocket = Patched;
-  });
-
-  if (on('cookie')) safe(() => {
-    const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
-    if (!descriptor || !descriptor.get) return;
-    Object.defineProperty(document, 'cookie', {
-      configurable: true,
-      get() { rec('cookie', 'read'); return descriptor.get.call(document); },
-      set(value) { rec('cookie', 'write ' + String(value).split(';')[0]); descriptor.set.call(document, value); }
     });
+
+  if (on('xhr')) method('xhr', window.XMLHttpRequest && XMLHttpRequest.prototype, 'open', (open) => function (verb, url) {
+      rec('xhr', String(verb) + ' ' + String(url));
+      return open.apply(this, arguments);
+    });
+
+  if (on('websocket')) method('websocket', window, 'WebSocket', (Original) => new Proxy(Original, {
+    construct(target, args, newTarget) {
+      rec('websocket', String(args[0]));
+      return Reflect.construct(target, args, newTarget);
+    }
+  }));
+
+  if (on('cookie')) patch('cookie', document, 'cookie', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
+    if (!descriptor || !descriptor.get) throw new Error('Cookie accessor unavailable');
+    return {
+      configurable: true,
+      enumerable: descriptor.enumerable,
+      get() { rec('cookie', 'read'); return descriptor.get.call(this); },
+      set(value) { rec('cookie', 'write'); return descriptor.set.call(this, value); }
+    };
   });
 
-  if (on('storage') && window.Storage) safe(() => {
-    const setItem = Storage.prototype.setItem;
-    const getItem = Storage.prototype.getItem;
-    Storage.prototype.setItem = function (key, value) {
+  if (on('storage')) {
+    const target = window.Storage && Storage.prototype;
+    method('storage', target, 'setItem', (setItem) => function (key, value) {
       rec('storage', 'write ' + String(key)); return setItem.apply(this, arguments);
-    };
-    Storage.prototype.getItem = function (key) {
+    });
+    method('storage', target, 'getItem', (getItem) => function (key) {
       rec('storage', 'read ' + String(key)); return getItem.apply(this, arguments);
-    };
-  });
+    });
+  }
 
-  if (on('eval')) safe(() => {
-    const originalEval = window.eval;
-    window.eval = function (source) { rec('eval', 'eval ' + String(source)); return originalEval.apply(this, arguments); };
-    const OriginalFunction = window.Function;
-    const PatchedFunction = function () {
-      rec('eval', 'new Function ' + Array.prototype.join.call(arguments, ','));
-      return OriginalFunction.apply(this, arguments);
-    };
-    PatchedFunction.prototype = OriginalFunction.prototype;
-    window.Function = PatchedFunction;
-  });
-
-  if (on('fingerprint')) safe(() => {
-    const watchGetter = (target, property, label) => safe(() => {
-      const descriptor = Object.getOwnPropertyDescriptor(target, property);
-      if (!descriptor || !descriptor.get) return;
-      Object.defineProperty(target, property, {
-        configurable: true,
+  if (on('fingerprint')) {
+    const watchGetter = (target, property, label) => patch('fingerprint', target, property, (descriptor) => {
+      if (!descriptor || !descriptor.get) throw new Error('Getter unavailable');
+      return {
+        ...descriptor,
         get() { rec('fingerprint', label); return descriptor.get.call(this); }
-      });
+      };
     });
     for (const property of ['userAgent', 'platform', 'languages', 'hardwareConcurrency', 'deviceMemory', 'plugins', 'webdriver']) {
-      watchGetter(Navigator.prototype, property, 'navigator.' + property);
+      watchGetter(window.Navigator && Navigator.prototype, property, 'navigator.' + property);
     }
     for (const property of ['width', 'height', 'colorDepth']) {
-      watchGetter(Screen.prototype, property, 'screen.' + property);
+      watchGetter(window.Screen && Screen.prototype, property, 'screen.' + property);
     }
-    safe(() => {
-      const toDataURL = HTMLCanvasElement.prototype.toDataURL;
-      HTMLCanvasElement.prototype.toDataURL = function () {
+    method('fingerprint', window.HTMLCanvasElement && HTMLCanvasElement.prototype, 'toDataURL', (toDataURL) => function () {
         rec('fingerprint', 'canvas.toDataURL'); return toDataURL.apply(this, arguments);
-      };
     });
-    safe(() => {
-      const getTimezoneOffset = Date.prototype.getTimezoneOffset;
-      Date.prototype.getTimezoneOffset = function () {
+    method('fingerprint', Date.prototype, 'getTimezoneOffset', (getTimezoneOffset) => function () {
         rec('fingerprint', 'Date.getTimezoneOffset'); return getTimezoneOffset.apply(this, arguments);
-      };
     });
-    safe(() => {
-      if (!window.WebGLRenderingContext) return;
-      const getParameter = WebGLRenderingContext.prototype.getParameter;
-      WebGLRenderingContext.prototype.getParameter = function (name) {
+    method('fingerprint', window.WebGLRenderingContext && WebGLRenderingContext.prototype, 'getParameter', (getParameter) => function (name) {
         rec('fingerprint', 'webgl.getParameter ' + String(name)); return getParameter.apply(this, arguments);
-      };
     });
-  });
+  }
 
-  if (on('error')) safe(() => {
-    window.addEventListener('error', (event) => rec('error', String(event.message || event.type)), true);
-    window.addEventListener('unhandledrejection', (event) => rec('error', 'unhandled rejection ' + String(event.reason)), true);
-  });
+  if (on('error')) {
+    for (const type of ['error', 'unhandledrejection']) {
+      const listener = (event) => rec('error', String(event.message || event.reason || event.type));
+      try {
+        window.addEventListener(type, listener, true);
+        state.patches.push({ channel: 'error', feature: type, installed: true });
+        cleanup.push(() => { window.removeEventListener(type, listener, true); return { feature: type, restored: true }; });
+      } catch (error) { failure('error', type, error); }
+    }
+  }
 
   window.__closedaiInstrument = state;
   return 'installed';
@@ -153,15 +162,16 @@ export const RECORDING_EXPRESSION = `(() => {
   const state = window.__closedaiInstrument;
   if (!state) return JSON.stringify({ installed: false });
   return JSON.stringify({
-    installed: true, url: state.url, channels: state.channels,
+    installed: true, url: state.url, channels: state.channels, patches: state.patches,
     counts: state.counts, dropped: state.dropped, events: state.events
   });
 })()`
 
 export const REMOVE_EXPRESSION = `(() => {
-  const installed = Boolean(window.__closedaiInstrument);
+  const state = window.__closedaiInstrument;
+  const restored = state ? state.stop() : [];
   delete window.__closedaiInstrument;
-  return JSON.stringify({ removed: installed });
+  return JSON.stringify({ removed: Boolean(state), restored });
 })()`
 
 export type RecordedEvent = { channel: string; detail: string; atMs: number }
@@ -170,6 +180,7 @@ export type Recording = {
   installed: boolean
   url?: string
   channels?: string[]
+  patches?: Array<{ channel: string; feature: string; installed: boolean; reason?: string }>
   counts: Record<string, number>
   dropped: number
   distinct: { channel: string; detail: string; count: number }[]
@@ -205,6 +216,7 @@ export function foldRecording(raw: unknown, options: { limit: number }): Recordi
     installed: true,
     url: typeof parsed.url === 'string' ? parsed.url : undefined,
     channels: Array.isArray(parsed.channels) ? parsed.channels.map(String) : undefined,
+    patches: Array.isArray(parsed.patches) ? parsed.patches as NonNullable<Recording['patches']> : [],
     counts,
     dropped: Number(parsed.dropped) || 0,
     distinct: [...tally.values()].sort((a, b) => b.count - a.count).slice(0, options.limit),
