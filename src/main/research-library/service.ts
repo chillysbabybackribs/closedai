@@ -28,7 +28,10 @@ export class ResearchLibrary {
   private async load(): Promise<LibraryState> {
     if (this.disposed) throw new Error('Research library is shutting down')
     if (this.state) return this.state
-    this.loading ??= this.store.load().then((state) => { this.state = state; return state })
+    // A failed load is not memoised: a locked or repaired file must be readable on the next call.
+    this.loading ??= this.store.load().then(
+      (state) => { this.state = state; return state },
+      (error: unknown) => { this.loading = null; throw error })
     return this.loading
   }
 
@@ -123,7 +126,8 @@ export class ResearchLibrary {
       const results = await Promise.allSettled(topics.map((topic) => abortable(this.discover(topic, since, startedAt, signal), signal)))
       results.forEach((result, offset) => {
         if (result.status === 'fulfilled') { incoming.push(...result.value); completed++ }
-        else errors.push({ topic: topics[offset]!, message: String(result.reason?.message ?? result.reason).slice(0, 300) })
+        // A stop or timeout is reported once through `state`, not as a failure of every open topic.
+        else if (!signal.aborted) errors.push({ topic: topics[offset]!, message: String(result.reason?.message ?? result.reason).slice(0, 300) })
       })
     }
     if (this.disposed) return

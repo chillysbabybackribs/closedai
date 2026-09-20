@@ -84,6 +84,18 @@ test('simultaneous refreshes share work; cancellation discards partial collectio
   assert.equal(snapshot.total, 1)
   assert.equal(snapshot.papers[0]!.id, '2609.12345')
   assert.equal(snapshot.lastRefresh?.state, 'cancelled')
+  assert.deepEqual(snapshot.lastRefresh?.errors, [], 'a user stop is not reported as a per-topic failure')
+})
+
+test('a failed load is retried once the file becomes readable', async (t) => {
+  const { store, path } = await fixture(t)
+  await writeFile(path, '{not json')
+  const library = new ResearchLibrary(store, async (topic) => papers(topic), () => now)
+  await assert.rejects(library.snapshot(), /could not be read/)
+  await assert.rejects(library.search('memory retrieval'), /could not be read/)
+  await rm(path)
+  assert.equal((await library.snapshot()).total, 0)
+  assert.equal((await library.refresh()).total, 1)
 })
 
 test('dismissals survive refresh/reopen and disabled retrieval denies both search and exact reads', async (t) => {
