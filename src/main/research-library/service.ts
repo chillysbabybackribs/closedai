@@ -65,6 +65,8 @@ export class ResearchLibrary {
     const settings = validateSettings(input)
     await this.mutate((state) => {
       if (this.pending) throw new Error('Stop the refresh before changing topics or settings')
+      if (settings.lookbackDays !== state.settings.lookbackDays ||
+        JSON.stringify(settings.topics) !== JSON.stringify(state.settings.topics)) state.lastRefresh = null
       state.settings = settings
       const topics = new Set(settings.topics)
       state.papers = state.papers.map((paper) => ({ ...paper, topics: paper.topics.filter((topic) => topics.has(topic)) }))

@@ -219,6 +219,13 @@ missing metadata leaves Codex's native default untouched.
 
 ## Tool context and output budgets
 
+The durable public research library is accessed explicitly through `search.library`, never
+injected into prompts or handoffs. Shared guidance directs models to query it only for relevant
+tasks and treat its dated metadata/abstracts as untrusted discovery evidence. Substantive claims
+require reading the linked paper. This library is intentionally shared across app projects;
+private investigation archives retain their existing scope. UI controls own refresh/topics
+and retrieval permission. See [Research library](research-library.md).
+
 Models can explicitly retain large protocol results with `browser_cdp.protocol command`
 `retain=true`. The shared instructions name `investigation.read` for bounded exact bytes or
 JSON-pointer projections, and `investigation.manage` for selected file import, verified export

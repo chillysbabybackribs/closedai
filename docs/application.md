@@ -517,6 +517,12 @@ DOM selectors. The generated workspace index is a maintenance artifact; it is no
 
 ## State and retention
 
+Tools → **Research library** provides a manually refreshed, app-shared public paper index.
+Users choose topics and a publication window, update from alphaXiv without model calls, dismiss
+papers, and control agent retrieval. The bounded index persists in `research-library.json`;
+`search.library` retrieves metadata/abstracts only when requested, without automatic context
+injection. See [Research library](research-library.md) for limits, trust, and failure behavior.
+
 Selected protocol results and files can be retained through the
 [durable artifact tools](investigation-artifacts.md). The private
 `investigation-artifacts/artifacts.sqlite` database stores bytes, metadata and operation
