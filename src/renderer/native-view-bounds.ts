@@ -110,12 +110,14 @@ export function useNativeViewBounds(
       ancestor = ancestor.parentElement
     }
     window.addEventListener('resize', sync)
+    window.addEventListener('scroll', sync, true)
     return () => {
       destroyed = true
       if (coalesceRaf) cancelAnimationFrame(coalesceRaf)
       if (settleRaf) cancelAnimationFrame(settleRaf)
       observer.disconnect()
       window.removeEventListener('resize', sync)
+      window.removeEventListener('scroll', sync, true)
     }
   }, [layoutKey, visible, occluded])
   return hostRef

@@ -1,6 +1,39 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { dockPane, layoutGeometry, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout } from './layout-tree.ts'
+import { BROWSER_PANE_ID, withBrowser, dockPane, layoutGeometry, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout } from './layout-tree.ts'
+import { addTab, moveTab, pruneTabs, tabIds } from './layout-tabs.ts'
+
+test('a tab splits to the right of the browser while its sibling remains on the left', () => {
+  const original = withBrowser(addTab({ kind: 'pane', id: 'a' }, 'a', 'b'))
+  const tree = moveTab(original, 'b', BROWSER_PANE_ID, 'right', 'right-of-browser')
+  const geometry = layoutGeometry(tree, 1500, 800)
+  assert.deepEqual(geometry.panes.map((pane) => pane.id), ['a', BROWSER_PANE_ID, 'b'])
+  assert.ok(geometry.panes.every((pane) => pane.rect.height === 800))
+  assert.deepEqual(paneIds(tree), ['a', 'b'])
+  assert.deepEqual(tabIds(tree), ['a', 'b'])
+  assert.deepEqual(paneIds(removePane(tree, BROWSER_PANE_ID)), ['a', 'b'])
+  assert.deepEqual(withBrowser(tree), tree)
+  const restored = readLayout({ getItem: () => JSON.stringify({ tree, browserVisible: false }) }, '/a')
+  assert.deepEqual(restored, { tree, browserVisible: false })
+  assert.deepEqual(pruneTabs(tree, new Set(['a', 'b'])), tree)
+})
+
+test('whole groups move across the browser and can return to the left', () => {
+  const group = addTab({ kind: 'pane', id: 'a' }, 'a', 'b')
+  const right = dockPane(withBrowser(group), 'b', BROWSER_PANE_ID, 'right', 'right')
+  assert.deepEqual(layoutGeometry(right, 1000, 700).panes.map((pane) => pane.id), [BROWSER_PANE_ID, 'b'])
+  assert.deepEqual(tabIds(right), ['a', 'b'])
+  const left = dockPane(right, 'b', BROWSER_PANE_ID, 'left', 'left')
+  assert.deepEqual(layoutGeometry(left, 1000, 700).panes.map((pane) => pane.id), ['b', BROWSER_PANE_ID])
+  assert.deepEqual(tabIds(left), ['a', 'b'])
+})
+
+test('the browser survives chat pruning but cannot occur inside a conversation tab group', () => {
+  const tree = withBrowser({ kind: 'pane', id: 'a' })
+  assert.deepEqual(pruneTabs(tree, new Set()), { kind: 'pane', id: BROWSER_PANE_ID })
+  const invalid = { kind: 'pane', id: 'a', tabs: ['a', BROWSER_PANE_ID] }
+  assert.equal(readLayout({ getItem: () => JSON.stringify({ tree: invalid, browserVisible: true }) }, '/a').tree, null)
+})
 
 test('columns remain full height and can split into four quadrants', () => {
   let tree: ChatLayout = { kind: 'pane', id: 'a' }

@@ -31,7 +31,9 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, onSelect, onClo
           event.dataTransfer.effectAllowed = 'move'
           onDrag(id)
         }}
-        onClick={() => onSelect(id)} onKeyDown={(event) => {
+        onClick={() => onSelect(id)}
+        onContextMenu={() => { if (id !== activeId) onSelect(id) }}
+        onKeyDown={(event) => {
           const next = event.key === 'ArrowRight' ? (index + 1) % ids.length
             : event.key === 'ArrowLeft' ? (index + ids.length - 1) % ids.length
               : event.key === 'Home' ? 0 : event.key === 'End' ? ids.length - 1 : null

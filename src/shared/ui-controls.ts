@@ -22,6 +22,8 @@ export const UI_CONTROLS = {
   'layout.split-right': 'Menu row: create a chat to the right of this pane; item is the chat id',
   'layout.split-below': 'Menu row: create a chat below this pane; item is the chat id',
   'layout.pane-hide': 'Remove a tile from the layout without stopping its chat; item is the chat id',
+  'layout.maximize': 'Context menu or double-click: maximize the chat tile to occupy the full canvas; item is the active chat id',
+  'layout.restore': 'Context menu or Escape key: restore the split grid from maximized tile mode; item is the active chat id',
   'layout.divider': 'Resize adjacent chat or browser tiles with a drag or arrow keys; item is the split id',
 
   'drawer.new-agent': 'Start a new agent chat pane',

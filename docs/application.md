@@ -179,9 +179,11 @@ a guarantee that every model retrieves or phrases its response identically.
 
 ## Workspace layout
 
-The sidebar, chat layout, and shared browser are independent regions. Two full-height chats can
-sit side by side while both the sidebar and browser remain open. The browser stays docked on the
-right; a toggle beside the split icons in each chat header hides/restores its native view without closing tabs. The sidebar keeps
+The sidebar is independent of the shared chat/browser layout. Two full-height chats can
+sit on either side of the browser. The browser starts on the right; drag a conversation tab,
+chat header grip, or sidebar chat onto the browser's left or right half to dock it on that side.
+During a chat drag, the native browser view is temporarily covered so the drop targets can receive
+the gesture. A toggle in each chat header hides/restores the browser in its saved position without closing tabs. The sidebar keeps
 its existing toggle. Chat headers offer **New chat to the right**, **New chat below**, and **Hide
 chat pane**. Hiding a tile neither detaches its runtime nor stops its turn; closing a drawer row
 still detaches and stops it.
@@ -223,7 +225,10 @@ controls (`composer.compact-toggle`) to preserve vertical space for transcripts.
 in renderer localStorage, including tab order and each tile's active tab. Missing/archived chats
 are removed from a restored layout; layouts saved before tabs remain compatible.
 
-`src/renderer/chat-layout/` owns the tree, geometry, persistence, and tile controls.
+`src/renderer/chat-layout/` owns the shared tree, geometry, persistence, and tile controls. The browser
+is a reserved layout leaf, excluded from chat subscriptions, tab lists, and the 32-chat limit.
+Hiding it only removes it from displayed geometry; its position and divider ratios remain saved.
+Older chat-only trees gain a browser leaf on their right when restored.
 `chat.setVisiblePanes(cwd, paneIds, retainedTabIds?)` registers display subscriptions and protects visible chats
 from attachment trimming and blank-chat cleanup. Retained tab ids also protect empty tabs from
 blank-chat cleanup without waking or subscribing to inactive tabs. It ignores stale project updates. The shared
