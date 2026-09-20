@@ -19,8 +19,6 @@ import { PROVIDER_LABELS } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { ContextInspectorModal } from './context-inspector-modal.js'
-import { ResearchActivityIndicator } from './research/activity-indicator.js'
-import { currentResearchRuns, useResearchActivity } from './research/activity-controller.js'
 import { TaskActivity } from './task-activity.js'
 import { ToolsModal } from './tools/tools-modal.js'
 import { TraceModal } from './trace/trace-modal.js'
@@ -60,8 +58,6 @@ export const ChatPane = memo(function ChatPane({
     ? [...state.history.backgroundTasks, ...state.items] : state.items
   const ready = state.connection.state === 'ready'
   const running = state.activeTurnId !== null
-  const lastUserTurnId = state.items.filter((item) => item.type === 'user').at(-1)?.turnId ?? null
-  const researchRuns = currentResearchRuns(useResearchActivity(chat.selectedPaneId), [state.activeTurnId, lastUserTurnId])
   const [ownHistoryOpen, setOwnHistoryOpen] = useState(false)
   const historyOpen = controlledHistoryOpen ?? ownHistoryOpen
   const setHistoryOpen = onHistoryOpenChange ?? setOwnHistoryOpen
@@ -149,7 +145,6 @@ export const ChatPane = memo(function ChatPane({
           </TranscriptScroller>
         )}
         <TaskActivity>
-          {researchRuns.length ? <ResearchActivityIndicator runs={researchRuns} /> : null}
           {currentBackgroundTasks(backgroundItems).length ? (
             <BackgroundTaskIndicator key={state.items.filter((item) => item.type === 'user').at(-1)?.id ?? state.threadId} items={backgroundItems} />
           ) : null}

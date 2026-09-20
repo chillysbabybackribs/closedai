@@ -26,12 +26,6 @@ const api: ClosedaiApi = {
     dismiss: (id) => invoke(IPC.invoke.researchLibrary.dismiss, id),
     restore: () => invoke(IPC.invoke.researchLibrary.restore)
   },
-  research: {
-    activity: (paneId) => invoke(IPC.invoke.research.activity, paneId),
-    cancel: (runId) => invoke(IPC.invoke.research.cancel, runId),
-    excerpt: (runId, sourceId, offset) => invoke(IPC.invoke.research.excerpt, runId, sourceId, offset),
-    onEvent: (listener) => subscribe(IPC.event.researchEvent, listener)
-  },
   localFiles: {
     open: (href) => invoke(IPC.invoke.localFiles.open, href),
     openImage: (image) => invoke(IPC.invoke.localFiles.openImage, image),

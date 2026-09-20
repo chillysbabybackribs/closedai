@@ -6,7 +6,6 @@ import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from '
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot } from './trace.js'
 import type { LibrarySettings, LibrarySnapshot } from './research-library.js'
-import type { ResearchActivity, ResearchActivityEvent, ResearchExcerpt } from './web-research.js'
 
 /** Invoke channels the preload bridge exposes on `window.closedai`. */
 export type IpcInvokeChannels = {
@@ -17,9 +16,6 @@ export type IpcInvokeChannels = {
   'researchLibrary:cancel': { args: []; result: void }
   'researchLibrary:dismiss': { args: [string]; result: LibrarySnapshot }
   'researchLibrary:restore': { args: []; result: LibrarySnapshot }
-  'research:activity': { args: [string]; result: ResearchActivity[] }
-  'research:cancel': { args: [string]; result: void }
-  'research:excerpt': { args: [string, string, number?]; result: ResearchExcerpt }
   'localFiles:open': { args: [string]; result: import('./local-files.js').LocalFileResult }
   'localFiles:openImage': { args: [{ name: string; src: string }]; result: string }
   'localFiles:image': { args: [string]; result: import('./local-files.js').ImageTabContent }
@@ -102,7 +98,6 @@ export type IpcEventChannels = {
   'browser:tabs': BrowserTabInfo[]
   'browserDownloads:changed': BrowserDownload[]
   'chat:event': ChatWorkspaceEvent
-  'research:event': ResearchActivityEvent
   'tools:event': ToolsEvent
   'trace:event': TraceEvent
 }
@@ -117,9 +112,6 @@ export const IPC = {
       progress: 'researchLibrary:progress',
       refresh: 'researchLibrary:refresh', cancel: 'researchLibrary:cancel',
       dismiss: 'researchLibrary:dismiss', restore: 'researchLibrary:restore'
-    },
-    research: {
-      activity: 'research:activity', cancel: 'research:cancel', excerpt: 'research:excerpt'
     },
     localFiles: {
       open: 'localFiles:open', openImage: 'localFiles:openImage',
@@ -212,7 +204,6 @@ export const IPC = {
     browserTabs: 'browser:tabs',
     browserDownloadsChanged: 'browserDownloads:changed',
     chatEvent: 'chat:event',
-    researchEvent: 'research:event',
     toolsEvent: 'tools:event',
     traceEvent: 'trace:event'
   }

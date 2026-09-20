@@ -240,15 +240,8 @@ and no tab opens. Search-engine result URLs returned by providers are skipped fo
 presentation; explicitly supplying them as run source URLs is rejected. Browser failures are
 reported as `presentation.state: failed` while API research continues.
 Hidden rendered workers,
-live target transfer, and Follow/Take over controls remain later slices.
+live target transfer, dedicated progress UI, and Follow/Take over controls remain later slices.
 `live: true` on each query still controls cache freshness only.
-
-The user sees runs without the model's involvement. `ResearchService.subscribe` publishes one
-coalesced `research:event` per run change (an 80 ms window; state transitions and evictions flush
-immediately), and `research:activity`, `research:cancel`, and `research:excerpt` back the pane's
-research activity popover. The excerpt page is 4,000 characters of the same retained static text
-the model's `source` action reads; a user Stop cancels the run exactly like the model's `cancel`.
-These channels are pane-scoped app state, not a model tool, so they carry no `ToolContext`.
 
 Regression coverage includes omitted presentation on both tools, turn-scoped tab reuse, explicit
 background, and an isolated Chromium check: `node scripts/search-live-check.mjs`. The latter loads
