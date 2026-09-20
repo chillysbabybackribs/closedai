@@ -221,7 +221,15 @@ divider and double-click resets it to equal proportions. Nested splits support c
 and quadrants, up to 32 visible chats. A tile has a 300 × 280 px minimum; the chat area scrolls
 when a small window cannot fit the chosen arrangement. Narrow tiles use compact composer
 controls, and running or inactive panes collapse to a compact progress bar with manual toggle
-controls (`composer.compact-toggle`) to preserve vertical space for transcripts. Browser visibility and the chat tree, including divider ratios, are saved per project
+controls (`composer.compact-toggle`) to preserve vertical space for transcripts. Right-clicking
+any tile header or tab opens a context menu with **Maximize tile** (`layout.maximize`), **Split right**
+(`layout.split-right`), **Split below** (`layout.split-below`), **New chat** (`layout.new-chat`), and
+**Close tab** / **Hide pane** (`layout.pane-hide`). Double-clicking a tile header also toggles
+maximize mode. In maximized/solo mode, the tile expands to 100% canvas dimensions while background
+tiles and the browser remain mounted and hidden with active agent tasks running undisturbed.
+The context menu displays **Restore split grid** (`layout.restore`), and pressing `Escape` or
+double-clicking the header immediately restores the full split grid layout without modifying
+persisted divider ratios. Browser visibility and the chat tree, including divider ratios, are saved per project
 in renderer localStorage, including tab order and each tile's active tab. Missing/archived chats
 are removed from a restored layout; layouts saved before tabs remain compatible.
 
