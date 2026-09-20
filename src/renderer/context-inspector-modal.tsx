@@ -4,6 +4,14 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../compon
 import type { ChatContextUsage, ChatTurnContextReport } from '../shared/chat.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import type { ChatMemoryCheckpoint } from '../shared/chat-memory.js'
+import {
+  calculateTokenBudget,
+  formatPercent,
+  formatTokens,
+  getContextPressureAdvisory,
+  type ContextPressureAdvisory,
+  type TokenBudgetBreakdown
+} from './context-budget.js'
 
 export type ContextInspectorModalProps = {
   open: boolean
@@ -11,20 +19,63 @@ export type ContextInspectorModalProps = {
   report: ChatTurnContextReport | null
   usage: ChatContextUsage | null
   checkpoint?: ChatMemoryCheckpoint | null
+  onCompact?: () => void | Promise<void>
+  compactEnabled?: boolean
+  onNewChat?: () => void
 }
 
-export function ContextInspectorModal({ open, onOpenChange, report, usage, checkpoint = null }: ContextInspectorModalProps): JSX.Element {
+export function ContextInspectorModal({
+  open,
+  onOpenChange,
+  report,
+  usage,
+  checkpoint = null,
+  onCompact,
+  compactEnabled = false,
+  onNewChat
+}: ContextInspectorModalProps): JSX.Element {
+  const budget = calculateTokenBudget({ report, usage })
+  const hasContent = Boolean(report || checkpoint || usage)
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="context-inspector" aria-describedby="context-inspector-description" data-ui="dialog.context">
         <header className="context-inspector-header">
-          <DialogTitle>Context inspector</DialogTitle>
+          <div className="context-inspector-header-top">
+            <DialogTitle>Context inspector</DialogTitle>
+            <span
+              className={`context-pressure-badge context-pressure-${budget.pressureLevel}`}
+              title={`Context pressure: ${budget.pressureLevel}`}
+            >
+              <span className="pressure-badge-dot" aria-hidden="true" />
+              {budget.pressureLevel === 'hot'
+                ? 'Hot'
+                : budget.pressureLevel === 'warm'
+                  ? 'Warm'
+                  : budget.pressureLevel === 'cool'
+                    ? 'Cool'
+                    : 'Provider managed'}
+              {budget.contextWindow ? ` · ${budget.usedPercent}%` : ''}
+            </span>
+          </div>
           <DialogDescription id="context-inspector-description">
             What ClosedAI and the active agent maintain for this conversation.
           </DialogDescription>
         </header>
 
-        {!report && !checkpoint ? <EmptyInspector /> : <ContextReport report={report} usage={usage} checkpoint={checkpoint} />}
+        {!hasContent ? (
+          <EmptyInspector />
+        ) : (
+          <ContextReport
+            report={report}
+            usage={usage}
+            checkpoint={checkpoint}
+            budget={budget}
+            onCompact={onCompact}
+            compactEnabled={compactEnabled}
+            onNewChat={onNewChat}
+          />
+        )}
 
         <footer className="context-inspector-footer">
           Text tokens are estimated at four characters per token. Image tokens, provider system instructions,
@@ -38,14 +89,35 @@ export function ContextInspectorModal({ open, onOpenChange, report, usage, check
 function ContextReport({
   report,
   usage,
-  checkpoint
+  checkpoint,
+  budget,
+  onCompact,
+  compactEnabled,
+  onNewChat
 }: {
   report: ChatTurnContextReport | null
   usage: ChatContextUsage | null
   checkpoint: ChatMemoryCheckpoint | null
+  budget: TokenBudgetBreakdown
+  onCompact?: () => void | Promise<void>
+  compactEnabled?: boolean
+  onNewChat?: () => void
 }): JSX.Element {
+  const advisory = getContextPressureAdvisory(budget)
+
   return (
     <div className="context-inspector-body">
+      {advisory && (
+        <ContextAdvisoryBanner
+          advisory={advisory}
+          onCompact={onCompact}
+          compactEnabled={compactEnabled}
+          onNewChat={onNewChat}
+        />
+      )}
+
+      <ContextBudgetSection budget={budget} />
+
       <div className="context-inspector-summary">
         <Metric label="Added text" value={report ? `≈${formatNumber(report.estimatedAddedTextTokens)} tokens` : '—'} />
         <Metric label="Attachments" value={report ? String(report.attachments.length) : '0'} />
