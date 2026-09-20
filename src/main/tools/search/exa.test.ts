@@ -82,7 +82,7 @@ test('adjustable discovery coverage and uncapped Contents do not imply full-fide
   const page = await exaContents({ readKey: async () => 'fixture', fetch: async (url, init) => {
     assert.equal(url, 'https://api.exa.ai/contents')
     assert.deepEqual(JSON.parse(String(init?.body)), {
-      ids: ['https://example.com'], text: { verbosity: 'full' }, maxAgeHours: 0, livecrawlTimeout: 15_000
+      ids: ['https://example.com'], text: { verbosity: 'compact' }, livecrawlTimeout: 15_000
     })
     return Response.json({ statuses: [{ status: 'success' }], results: [{ url: 'https://example.com', text: 'Entire extracted text' }] })
   } }, 'https://example.com', 0, signal)

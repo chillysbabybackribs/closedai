@@ -205,7 +205,8 @@ the source returns to `deferred` and the ordinary reader may still fetch it. Sta
 new extraction, without discovery or consuming an initial read slot. `auto` uses Exa Contents for
 Exa-supplied text, otherwise the direct reader with rendered-shell fallback; `exa` explicitly
 requests provider text for another source, including a failed direct PDF read. Exa Contents
-requests fresh full text (`maxAgeHours: 0`, `verbosity: full`) and may incur extraction charges;
+requests uncapped compact/main-body text by default and may incur extraction charges. It keeps
+Exa's normal cache/fetch policy; expansion establishes neither freshness nor every page section;
 see [Exa Contents](https://exa.ai/docs/contents/quickstart). Two Contents requests can run at once.
 The operation has a 45-second deadline; direct reads retain their 20-second deadline.
 It works on retained completed runs in the same pane/thread/workspace during an active turn.

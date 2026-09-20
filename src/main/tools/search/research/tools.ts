@@ -61,7 +61,7 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
         },
         {
           action: 'expand',
-          description: 'Refetch one retained candidate by id without repeating discovery. Works on completed runs in this pane/thread during an active turn. Defaults to uncapped text and 8 MiB direct body coverage. auto uses Exa Contents for Exa text, otherwise direct reading; choose exa for failed PDF reads. Exa requests fresh full text and may incur extraction cost. Keeps the source id and discovery provenance; failed/shorter reads preserve prior text. Offsets/hash may change on success. Await this action, then read source excerpts. No OCR, figure, equation, or layout fidelity guarantee.',
+          description: 'Refetch one retained candidate by id without repeating discovery. Works on completed runs in this pane/thread during an active turn. Defaults to uncapped text and 8 MiB direct body coverage. auto uses Exa Contents for Exa text, otherwise direct reading; choose exa for failed PDF reads. Exa uses its normal cache/fetch policy and may incur extraction cost; broader coverage does not establish freshness. Keeps the source id and discovery provenance; failed/shorter reads preserve prior text. Offsets/hash may change on success. Await this action, then read source excerpts. No OCR, figure, equation, or layout fidelity guarantee.',
           timeoutMs: 55_000,
           inputSchema: schema({ run_id: runId, source_id: { type: 'string', minLength: 1, maxLength: 100 },
             method: { type: 'string', enum: ['auto', 'direct', 'exa'] }, ...coverageFields

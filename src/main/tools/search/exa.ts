@@ -65,8 +65,8 @@ function exaResult(item: Record<string, unknown>, wantText: boolean, maxChars: n
   }
 }
 
-function extractionText(maxChars: number, verbosity: 'compact' | 'full' = 'compact') {
-  return { ...(maxChars > 0 ? { maxCharacters: maxChars } : {}), verbosity }
+function extractionText(maxChars: number) {
+  return { ...(maxChars > 0 ? { maxCharacters: maxChars } : {}), verbosity: 'compact' }
 }
 
 /** Selected-source expansion uses Contents directly; no repeat discovery or generated summary. */
@@ -75,8 +75,9 @@ export async function exaContents(deps: ProviderDeps, url: string, maxChars: num
   signal.throwIfAborted()
   const response = await deps.fetch('https://api.exa.ai/contents', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key },
-    // A fresh crawl is required for the full verbosity selection to take effect.
-    body: JSON.stringify({ ids: [url], text: extractionText(maxChars, 'full'), maxAgeHours: 0, livecrawlTimeout: 15_000 }),
+    // Coverage and freshness are distinct: retain Exa's normal cache/fetch policy so expansion
+    // does not fail merely because an origin refuses or times out on a forced fresh crawl.
+    body: JSON.stringify({ ids: [url], text: extractionText(maxChars), livecrawlTimeout: 15_000 }),
     signal
   })
   const body = await checkedJson(response, 'exa') as Record<string, unknown>
