@@ -134,16 +134,17 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
 
   return <div className="chat-layout-viewport" ref={viewport}>
     <div className="chat-layout-canvas" style={{ minWidth: minimum.width, minHeight: minimum.height }}>
-      {tiles.flatMap(({ id: activeId, tabs, rect }) => {
+      {tiles.map(({ id: activeId, tabs, rect }) => {
         const isThisTileSolo = soloTile ? (soloTile.id === activeId || soloTile.tabs.includes(activeId)) : false
         const tileRect = isThisTileSolo ? soloRect : rect
-        return tabs.map((id) => <section key={id}
-          className="chat-layout-tile" style={position(tileRect)} data-pane-id={id === BROWSER_PANE_ID ? undefined : id}
+        const tileKey = activeId === BROWSER_PANE_ID ? BROWSER_PANE_ID : (tabs[0] ?? activeId)
+        return <section key={tileKey}
+          className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID ? undefined : activeId}
           data-solo={isThisTileSolo ? 'true' : undefined}
-          hidden={soloTile ? (!isThisTileSolo || id !== activeId) : (id !== activeId || (id === BROWSER_PANE_ID && !browserVisible))}
-          data-selected={id === selectedId} aria-label={id === BROWSER_PANE_ID ? 'Browser' : title(id)}
-          onFocusCapture={(event) => { if (id !== BROWSER_PANE_ID && id !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(id) }}
-          onPointerDownCapture={(event) => { if (id !== BROWSER_PANE_ID && id !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(id) }}
+          hidden={soloTile ? !isThisTileSolo : (activeId === BROWSER_PANE_ID && !browserVisible)}
+          data-selected={activeId === selectedId || tabs.includes(selectedId)} aria-label={activeId === BROWSER_PANE_ID ? 'Browser' : title(activeId)}
+          onFocusCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
+          onPointerDownCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
           onDragOver={(event) => {
             if (busy || !event.dataTransfer.types.includes(CHAT_DRAG_TYPE)) return
             if (soloTile) setSoloPaneId(null)
@@ -153,10 +154,10 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
             const x = (event.clientX - bounds.left) / bounds.width
             const y = (event.clientY - bounds.top) / bounds.height
             const edges: Array<[DockEdge, number]> = [['left', x], ['right', 1 - x], ['top', y], ['bottom', 1 - y]]
-            const edge = id === BROWSER_PANE_ID ? (x < 0.5 ? 'left' : 'right')
+            const edge = activeId === BROWSER_PANE_ID ? (x < 0.5 ? 'left' : 'right')
               : (event.target as HTMLElement).closest('.chat-layout-header') ? null
               : edges.sort((a, b) => a[1] - b[1])[0]![0]
-            dropTarget.current = { target: id, edge }
+            dropTarget.current = { target: activeId, edge }
             setDrop(dropTarget.current)
           }}
           onDragLeave={(event) => {
@@ -168,71 +169,71 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
           onDrop={(event) => {
             const source = event.dataTransfer.getData(CHAT_DRAG_TYPE)
             const target = dropTarget.current
-            if (busy || !source || !target || target.target !== id) return
+            if (busy || !source || !target || target.target !== activeId) return
             event.preventDefault()
             event.stopPropagation()
-            onDock(source, id, target.edge, event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE))
+            onDock(source, activeId, target.edge, event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE))
             dropTarget.current = null
             setDragging(null)
             setDrop(null)
             onDragActive(false)
           }}>
-          {id !== BROWSER_PANE_ID && id === activeId && <ContextMenu.Root>
+          {activeId !== BROWSER_PANE_ID && <ContextMenu.Root>
             <ContextMenu.Trigger asChild>
               <header className="chat-layout-header"
                 onDoubleClick={(event) => {
                   if ((event.target as HTMLElement).closest('button')) return
                   if (canMaximize || isThisTileSolo) {
-                    setSoloPaneId((current) => current ? null : id)
+                    setSoloPaneId((current) => current ? null : activeId)
                   }
                 }}
               >
-                <button className="chat-layout-title" draggable={!busy} data-ui="layout.pane-drag" data-ui-key={id}
-                  aria-label={`Move pane: ${title(id)}`}
-                  title={isThisTileSolo ? `${title(id)} — Tile maximized; right-click or press Esc to restore split grid` : `${title(id)} — Drag to move, right-click for layout options`}
-                  onClick={() => onSelect(id)}
+                <button className="chat-layout-title" draggable={!busy} data-ui="layout.pane-drag" data-ui-key={activeId}
+                  aria-label={`Move pane: ${title(activeId)}`}
+                  title={isThisTileSolo ? `${title(activeId)} — Tile maximized; right-click or press Esc to restore split grid` : `${title(activeId)} — Drag to move, right-click for layout options`}
+                  onClick={() => onSelect(activeId)}
                   onDragStart={(event) => {
-                    event.dataTransfer.setData(CHAT_DRAG_TYPE, id)
+                    event.dataTransfer.setData(CHAT_DRAG_TYPE, activeId)
                     event.dataTransfer.effectAllowed = 'move'
-                    setDragging({ id, singleTab: false })
+                    setDragging({ id: activeId, singleTab: false })
                   }}>
                   <GripVertical size={13} aria-hidden="true" />
                 </button>
-                <ChatTabs ids={tabs} activeId={id} busy={busy} canClose={tabs.length > 1 || chatCount > 1}
+                <ChatTabs ids={tabs} activeId={activeId} busy={busy} canClose={tabs.length > 1 || chatCount > 1}
                   title={title} activity={activity} onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab}
                   onDrag={(tab) => setDragging({ id: tab, singleTab: true })} />
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger asChild>
                     <button type="button" className="chat-layout-new-chat"
-                      data-ui="layout.new-chat-menu" data-ui-key={id} disabled={busy}
+                      data-ui="layout.new-chat-menu" data-ui-key={activeId} disabled={busy}
                       title="New chat" aria-label="New chat">
                       <Plus size={14} aria-hidden="true" />
                     </button>
                   </DropdownMenu.Trigger>
                   <DropdownMenu.Portal>
                     <DropdownMenu.Content className="titlebar-menu-content chat-layout-new-chat-menu" align="end" sideOffset={4} loop>
-                      <DropdownMenu.Item className="titlebar-menu-item" data-ui="layout.new-chat" data-ui-key={id}
-                        onSelect={() => onNewChat(id)}>
+                      <DropdownMenu.Item className="titlebar-menu-item" data-ui="layout.new-chat" data-ui-key={activeId}
+                        onSelect={() => onNewChat(activeId)}>
                         <MessageSquarePlus size={14} aria-hidden="true" /><span>New chat tab</span>
                       </DropdownMenu.Item>
-                      <DropdownMenu.Item className="titlebar-menu-item" data-ui="layout.split-right" data-ui-key={id}
+                      <DropdownMenu.Item className="titlebar-menu-item" data-ui="layout.split-right" data-ui-key={activeId}
                         onSelect={() => {
                           if (soloTile) setSoloPaneId(null)
-                          onDock(null, id, 'right')
+                          onDock(null, activeId, 'right')
                         }}>
                         <Columns2 size={14} aria-hidden="true" /><span>New chat right</span>
                       </DropdownMenu.Item>
-                      <DropdownMenu.Item className="titlebar-menu-item" data-ui="layout.split-below" data-ui-key={id}
+                      <DropdownMenu.Item className="titlebar-menu-item" data-ui="layout.split-below" data-ui-key={activeId}
                         onSelect={() => {
                           if (soloTile) setSoloPaneId(null)
-                          onDock(null, id, 'bottom')
+                          onDock(null, activeId, 'bottom')
                         }}>
                         <Rows2 size={14} aria-hidden="true" /><span>New chat bottom</span>
                       </DropdownMenu.Item>
                     </DropdownMenu.Content>
                   </DropdownMenu.Portal>
                 </DropdownMenu.Root>
-                <button type="button" data-ui="layout.browser-toggle" data-ui-key={id}
+                <button type="button" data-ui="layout.browser-toggle" data-ui-key={activeId}
                   aria-pressed={browserVisible} onClick={() => {
                     if (soloTile) setSoloPaneId(null)
                     onToggleBrowser()
@@ -241,10 +242,10 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
                   title={browserVisible ? 'Hide browser' : 'Show browser'}>
                   {browserVisible ? <PanelRightClose size={14} aria-hidden="true" /> : <Monitor size={14} aria-hidden="true" />}
                 </button>
-                <button data-ui="layout.pane-hide" data-ui-key={id} disabled={busy || chatCount < 2}
+                <button data-ui="layout.pane-hide" data-ui-key={activeId} disabled={busy || chatCount < 2}
                   title="Hide this pane; its chat keeps running" aria-label="Hide chat pane" onClick={() => {
                     if (soloTile) setSoloPaneId(null)
-                    onHide(id)
+                    onHide(activeId)
                   }}>
                   <X size={14} aria-hidden="true" />
                 </button>
@@ -253,7 +254,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
             <ContextMenu.Portal>
               <ContextMenu.Content className="titlebar-menu-content chat-layout-context-menu" loop>
                 {isThisTileSolo ? (
-                  <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.restore" data-ui-key={id}
+                  <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.restore" data-ui-key={activeId}
                     onSelect={() => setSoloPaneId(null)}>
                     <div className="chat-layout-menu-item-left">
                       <Minimize2 size={14} aria-hidden="true" />
@@ -262,9 +263,9 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
                     <span className="titlebar-menu-shortcut">Esc</span>
                   </ContextMenu.Item>
                 ) : (
-                  <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.maximize" data-ui-key={id}
+                  <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.maximize" data-ui-key={activeId}
                     disabled={!canMaximize}
-                    onSelect={() => setSoloPaneId(id)}>
+                    onSelect={() => setSoloPaneId(activeId)}>
                     <div className="chat-layout-menu-item-left">
                       <Maximize2 size={14} aria-hidden="true" />
                       <span>Maximize tile</span>
@@ -272,20 +273,20 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
                   </ContextMenu.Item>
                 )}
                 <ContextMenu.Separator className="titlebar-menu-separator" />
-                <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.split-right" data-ui-key={id}
+                <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.split-right" data-ui-key={activeId}
                   onSelect={() => {
                     if (soloTile) setSoloPaneId(null)
-                    onDock(null, id, 'right')
+                    onDock(null, activeId, 'right')
                   }}>
                   <div className="chat-layout-menu-item-left">
                     <Columns2 size={14} aria-hidden="true" />
                     <span>Split right</span>
                   </div>
                 </ContextMenu.Item>
-                <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.split-below" data-ui-key={id}
+                <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.split-below" data-ui-key={activeId}
                   onSelect={() => {
                     if (soloTile) setSoloPaneId(null)
-                    onDock(null, id, 'bottom')
+                    onDock(null, activeId, 'bottom')
                   }}>
                   <div className="chat-layout-menu-item-left">
                     <Rows2 size={14} aria-hidden="true" />
@@ -293,8 +294,8 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
                   </div>
                 </ContextMenu.Item>
                 {onRenameChat && (
-                  <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.rename" data-ui-key={id}
-                    onSelect={() => onRenameChat(id)}>
+                  <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.rename" data-ui-key={activeId}
+                    onSelect={() => onRenameChat(activeId)}>
                     <div className="chat-layout-menu-item-left">
                       <Pencil size={14} aria-hidden="true" />
                       <span>Rename chat</span>
@@ -302,8 +303,8 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
                   </ContextMenu.Item>
                 )}
                 {onRetryChatTitle && (
-                  <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.retry-title" data-ui-key={id}
-                    onSelect={() => onRetryChatTitle(id)}>
+                  <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.retry-title" data-ui-key={activeId}
+                    onSelect={() => onRetryChatTitle(activeId)}>
                     <div className="chat-layout-menu-item-left">
                       <Sparkles size={14} aria-hidden="true" />
                       <span>Generate title</span>
@@ -311,19 +312,19 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
                   </ContextMenu.Item>
                 )}
                 <ContextMenu.Separator className="titlebar-menu-separator" />
-                <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.new-chat" data-ui-key={id}
-                  onSelect={() => onNewChat(id)}>
+                <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.new-chat" data-ui-key={activeId}
+                  onSelect={() => onNewChat(activeId)}>
                   <div className="chat-layout-menu-item-left">
                     <MessageSquarePlus size={14} aria-hidden="true" />
                     <span>New chat</span>
                   </div>
                 </ContextMenu.Item>
-                <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.pane-hide" data-ui-key={id}
+                <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.pane-hide" data-ui-key={activeId}
                   disabled={busy || (chatCount < 2 && tabs.length < 2)}
                   onSelect={() => {
                     if (soloTile) setSoloPaneId(null)
-                    if (tabs.length > 1) onCloseTab(id)
-                    else onHide(id)
+                    if (tabs.length > 1) onCloseTab(activeId)
+                    else onHide(activeId)
                   }}>
                   <div className="chat-layout-menu-item-left">
                     <X size={14} aria-hidden="true" />
@@ -333,15 +334,15 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
               </ContextMenu.Content>
             </ContextMenu.Portal>
           </ContextMenu.Root>}
-          {id === BROWSER_PANE_ID ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
+          {activeId === BROWSER_PANE_ID ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
             {renderBrowser}
             {dragging && <div className="chat-layout-browser-shield">Drop on either side to place a chat beside the browser</div>}
-          </div> : <div className="chat-layout-content" role="tabpanel" id={`chat-panel-${id}`}
-            aria-label={title(id)}>{renderPane(id)}</div>}
-          {drop?.target === id && (dragging?.id !== id || (dragging.singleTab && tabs.length > 1)) && <div className="chat-layout-drop" data-edge={drop.edge ?? 'tab'}>
+          </div> : tabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
+            aria-label={title(tabId)} hidden={tabId !== activeId}>{renderPane(tabId)}</div>)}
+          {drop?.target === activeId && (dragging?.id !== activeId || (dragging.singleTab && tabs.length > 1)) && <div className="chat-layout-drop" data-edge={drop.edge ?? 'tab'}>
             <span>{drop.edge === null ? 'Move to tab strip' : drop.edge === 'top' ? 'Place above' : drop.edge === 'bottom' ? 'Place below' : `Place ${drop.edge}`}</span>
           </div>}
-        </section>)
+        </section>
       })}
       {!soloTile && geometry.dividers.map((divider) => <div key={divider.id} className="chat-layout-divider"
         style={position(divider.rect)} data-axis={divider.axis} role="separator" tabIndex={0}

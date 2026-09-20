@@ -35,6 +35,7 @@
 
 .chat-layout-header button:hover { color: var(--chrome-fg-strong); background: var(--surface-control-hover); }
 .chat-layout-header button:disabled { opacity: 0.3; cursor: default; }
+.chat-layout-tabs button:disabled { opacity: 1; }
 .chat-layout-header button:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -1px; }
 
 .chat-layout-viewport { flex: 1; min-height: 0; min-width: 0; overflow: auto; }
@@ -108,6 +109,15 @@
   .chat-tab-spinner { animation: none; }
 }
 .chat-layout-content { display: grid; grid-template-rows: minmax(0, 1fr); flex: 1; min-height: 0; min-width: 0; }
+.chat-layout-content[hidden] { display: none !important; }
+.chat-layout-content:not([hidden]) { animation: chat-content-fade-in 100ms ease-out; }
+@keyframes chat-content-fade-in {
+  from { opacity: 0.85; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-layout-content:not([hidden]) { animation: none; }
+}
 .chat-layout-content .chat-pane { width: 100%; min-width: 0; max-width: none; }
 
 .chat-layout-divider { position: absolute; z-index: 3; background: var(--chassis); touch-action: none; }

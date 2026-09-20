@@ -114,18 +114,12 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
 
   const activateTab = useCallback(async (id: string): Promise<void> => {
     if (pending.current) return
-    pending.current = true
-    setBusy(true)
-    setError('')
+    selected.current = id
+    setLayout((value) => ({ ...value, tree: selectTab(value.tree, paneIds(value.tree)[0]!, id) }))
     try {
       await window.closedai.chat.openChat(id)
-      selected.current = id
-      setLayout((value) => ({ ...value, tree: selectTab(value.tree, paneIds(value.tree)[0]!, id) }))
-      setSelectionToConfirm(id)
     } catch (reason) {
       setError(String(reason))
-      pending.current = false
-      setBusy(false)
     }
   }, [])
 

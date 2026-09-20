@@ -76,6 +76,21 @@ test('links bare hosts inside table cells and list items', () => {
   assert.match(html, /href="https:\/\/tremor\.so\/"/)
 })
 
+test('tables scroll inside a focusable frame and right-align numeric cells', () => {
+  const source = [
+    '| Tool | Latency | Share | Note |',
+    '| --- | ---: | --- | --- |',
+    '| Shofer | 1,240 ms | 42% | v2.5 beta |'
+  ].join('\n')
+  const html = renderToStaticMarkup(createElement(Markdown, null, source))
+
+  assert.match(html, /<div class="aui-md-table-wrap" tabindex="0"><table class="aui-md-table">/)
+  assert.match(html, /<td class="aui-md-td" data-numeric="true"[^>]*>1,240 ms<\/td>/)
+  assert.match(html, /<td class="aui-md-td" data-numeric="true">42%<\/td>/)
+  assert.match(html, /<td class="aui-md-td">Shofer<\/td>/)
+  assert.match(html, /<td class="aui-md-td">v2\.5 beta<\/td>/)
+})
+
 test('leaves sentence punctuation and wrapping parentheses outside the link', () => {
   const html = renderToStaticMarkup(createElement(Markdown, null, 'See (vercel.com/geist).'))
 

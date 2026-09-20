@@ -17,8 +17,19 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, onSel
 }) {
   const list = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const active = list.current?.querySelector<HTMLElement>('[aria-selected="true"]')
-    if (active) list.current!.scrollLeft = Math.max(0, active.offsetLeft - list.current!.clientWidth + active.offsetWidth)
+    const container = list.current
+    const active = container?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (!container || !active) return
+    const tabLeft = active.offsetLeft
+    const tabRight = tabLeft + active.offsetWidth
+    const viewLeft = container.scrollLeft
+    const viewRight = viewLeft + container.clientWidth
+
+    if (tabLeft < viewLeft) {
+      container.scrollTo({ left: Math.max(0, tabLeft - 16), behavior: 'smooth' })
+    } else if (tabRight > viewRight) {
+      container.scrollTo({ left: tabRight - container.clientWidth + 16, behavior: 'smooth' })
+    }
   }, [activeId, ids.length])
 
   return <div ref={list} className="chat-layout-tabs" role="tablist" aria-label="Chat conversations">

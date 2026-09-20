@@ -36,7 +36,7 @@ function extractLanguage(className?: string): string {
    styling itself lives in styles/chat/markdown.css. */
 const TAGGED_ELEMENTS = [
   'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'blockquote',
-  'ul', 'ol', 'li', 'hr', 'table', 'th', 'td', 'tr', 'strong', 'sup'
+  'ul', 'ol', 'li', 'hr', 'th', 'tr', 'strong', 'sup'
 ] as const
 
 type TaggedProps = { node?: unknown; className?: string; children?: ReactNode }
@@ -113,8 +113,21 @@ export function MarkdownLink({ href, children, node: _node, ...props }: React.Co
     )
 }
 
+/* Numbers, percentages, money and durations right-align under each other; anything with
+   letters beyond a unit suffix stays a label. */
+const NUMERIC_CELL = /^[-+−]?[$€£¥]?\d[\d,]*(\.\d+)?\s?(%|[kKmMbB]|ms|s|min|h|x|×|GB|MB|KB|TB)?$/
+
 const DEFAULT_COMPONENTS: Partial<Components> = {
   ...TAGGED_COMPONENTS,
+  // Tables keep their natural column widths and scroll inside the column instead of crushing
+  // words; the wrapper is focusable so keyboard users can pan it.
+  table: function TableComponent({ node: _node, className, ...props }: TaggedProps) {
+    return <div className="aui-md-table-wrap" tabIndex={0}><table className={cn('aui-md-table', className)} {...props} /></div>
+  },
+  td: function CellComponent({ node: _node, className, children, ...props }: TaggedProps) {
+    const numeric = NUMERIC_CELL.test(textContent(children).trim())
+    return <td className={cn('aui-md-td', className)} data-numeric={numeric || undefined} {...props}>{children}</td>
+  },
   a: MarkdownLink,
   code: function CodeComponent({ className, children, node: _node, ...props }) {
     const code = String(children).replace(/\n$/, '')

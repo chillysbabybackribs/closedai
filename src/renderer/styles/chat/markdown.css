@@ -166,34 +166,76 @@
 
 .aui-md .aui-md-code-body { font-size: var(--chat-fs-code, 12px); }
 
+/* Tables: a framed, horizontally scrollable region so columns keep their natural widths in
+   narrow panes; horizontal hairlines only, a header set one step quieter than the body, and
+   numeric cells right-aligned in tabular figures. The `anywhere` wrapping the prose uses is
+   turned off inside cells: a squeezed column must scroll, never break "Shofer" into "Shof|er". */
+.aui-md-table-wrap {
+  max-width: 100%;
+  margin-block: 0.9em;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-chrome) 55%, transparent);
+  scrollbar-width: thin;
+}
+
+.aui-md-table-wrap:focus-visible {
+  outline: 2px solid var(--focus-ink);
+  outline-offset: 2px;
+}
+
 .aui-md table {
   width: 100%;
-  margin-block: 0.75em;
-  border-collapse: separate;
+  margin: 0;
+  border-collapse: collapse;
   border-spacing: 0;
-  font-size: 0.9em;
+  font-size: 0.92em;
+  line-height: 1.5;
 }
 
 .aui-md th,
 .aui-md td {
-  padding: 6px 12px;
+  min-width: 6ch;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
   text-align: start;
+  vertical-align: top;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: manual;
 }
 
 .aui-md th {
-  background: var(--muted);
-  color: #f4f4f5;
-  font-weight: 500;
+  padding-block: 7px;
+  border-bottom-color: var(--hairline-strong);
+  background: color-mix(in srgb, var(--muted) 70%, transparent);
+  color: var(--muted-foreground);
+  font-size: 0.92em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
-.aui-md th:first-child { border-start-start-radius: 8px; }
-.aui-md th:last-child { border-start-end-radius: 8px; }
+.aui-md tbody tr:last-child > td { border-bottom: 0; }
+.aui-md tbody tr:hover > td { background: color-mix(in srgb, var(--foreground) 3%, transparent); }
 
-.aui-md td {
-  border-inline-start: 1px solid color-mix(in srgb, var(--muted-foreground) 20%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--muted-foreground) 20%, transparent);
+/* The first column usually names the row; it reads as a label without a second weight step. */
+.aui-md tbody td:first-child { color: var(--foreground); font-weight: 500; }
+
+.aui-md td[data-numeric] {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.aui-md td:last-child { border-inline-end: 1px solid color-mix(in srgb, var(--muted-foreground) 20%, transparent); }
-.aui-md tr:last-child > td:first-child { border-end-start-radius: 8px; }
-.aui-md tr:last-child > td:last-child { border-end-end-radius: 8px; }
+.aui-md th[align='center'], .aui-md td[align='center'] { text-align: center; }
+.aui-md th[align='right'], .aui-md td[align='right'] { text-align: end; }
+
+/* Inline code, links and source chips inside a cell stay on one line; the cell scrolls instead. */
+.aui-md td code,
+.aui-md td .prompt-source-trigger { white-space: nowrap; }
+.aui-md td .prompt-source-trigger { max-width: none; }
+.aui-md td > p { margin: 0; }
