@@ -224,48 +224,55 @@ test('ContextAdvisoryBanner renders warning actions and data-ui controls', () =>
   assert.match(html, /Start fresh chat/)
 })
 
-test('ContextInspectorModal renders empty inspector when no turn or checkpoint exists', () => {
+test('ContextInspectorModal renders nothing when closed', () => {
   const html = renderToStaticMarkup(
     createElement(ContextInspectorModal, {
-      open: true,
+      open: false,
       onOpenChange: () => {},
       report: null,
       usage: null,
       checkpoint: null
     })
   )
-
-  assert.match(html, /data-ui="dialog\.context"/)
-  assert.match(html, /context-inspector-no-report/)
+  assert.equal(html, '')
 })
 
-test('ContextInspectorModal renders budget section and metrics when turn report exists', () => {
+test('EmptyInspector renders empty state explanation', () => {
+  const html = renderToStaticMarkup(createElement(EmptyInspector))
+  assert.match(html, /context-inspector-no-report/)
+  assert.match(html, /Send a message to capture its turn context/)
+})
+
+test('ContextReport renders budget section, advisory banner, and metrics', () => {
   const report = createSampleReport()
   const usage: ChatContextUsage = {
     usedTokens: 78000,
     contextWindow: 100000,
     percent: 78
   }
+  const budget = calculateTokenBudget({ report, usage })
 
   const html = renderToStaticMarkup(
-    createElement(ContextInspectorModal, {
-      open: true,
-      onOpenChange: () => {},
+    createElement(ContextReport, {
       report,
       usage,
       checkpoint: null,
+      budget,
       onCompact: () => {},
       compactEnabled: true,
       onNewChat: () => {}
     })
   )
 
-  assert.match(html, /data-ui="dialog\.context"/)
-  assert.match(html, /Context inspector/)
-  assert.match(html, /context-pressure-hot/)
+  assert.match(html, /context-budget-section/)
   assert.match(html, /Token budget &amp; distribution/)
+  assert.match(html, /context-advisory-hot/)
+  assert.match(html, /High context pressure \(78% used\)/)
   assert.match(html, /data-ui="context\.compact"/)
   assert.match(html, /data-ui="context\.new-chat"/)
+  assert.match(html, /Compact conversation/)
+  assert.match(html, /Start fresh chat/)
   assert.match(html, /Added text/)
   assert.match(html, /Retained window/)
+  assert.match(html, /ClosedAI additions/)
 })
