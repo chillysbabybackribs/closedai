@@ -75,6 +75,24 @@ class FakeWorkspace extends EventEmitter implements AppChatWorkspace {
   async listThreads(): Promise<ChatThreadSummary[]> { return this.threads }
 }
 
+test('project switch commands forward identity and expose the latest status', async () => {
+  const chat = new FakeWorkspace()
+  const host = new AppCommandAccess({ chat: () => chat, browser: () => null, downloads: () => null, window: () => null })
+  const request = { paneId: 'pane-2', threadId: 'thread-2', turnId: 'turn-2', projectPath: '/destination' }
+  const signal = new AbortController().signal
+  chat.projectSwitch.request = async (received, receivedSignal) => {
+    assert.deepEqual(received, request)
+    assert.equal(receivedSignal, signal)
+    return { ...received, status: 'pending' }
+  }
+  assert.equal((await host.queueProjectSwitch(request, signal)).status, 'pending')
+  chat.projectSwitch.state = () => ({ ...request, status: 'failed', error: 'Destination missing' })
+  assert.deepEqual((host.state(['workspace'], undefined, 'pane-2').workspace as Record<string, unknown>).projectSwitch,
+    { ...request, status: 'failed', error: 'Destination missing' })
+  chat.projectSwitch.cancel = (_reason, paneId) => { assert.equal(paneId, 'pane-2'); return null }
+  assert.equal(host.cancelProjectSwitch('pane-2'), null)
+})
+
 function browser(): AppBrowserTabs & { calls: unknown[] } {
   const calls: unknown[] = []
   return {

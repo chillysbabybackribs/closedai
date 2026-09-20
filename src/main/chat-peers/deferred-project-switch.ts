@@ -110,7 +110,9 @@ export class DeferredProjectSwitch {
       }
       if (this.stopped) throw new Error('App stopped before switching projects')
       const record = this.host.record(request.paneId)
-      const checkpoint = record?.checkpoint?.threadId === source.threadId ? record.checkpoint : null
+      const savedCheckpoint = record?.checkpoint
+      const checkpoint = savedCheckpoint?.threadId === source.threadId &&
+        source.items.some((item) => item.id === savedCheckpoint.throughItemId) ? savedCheckpoint : null
       const handoff = buildThreadHandoff(source.items, source.threadName, checkpoint)
       if (!handoff) throw new Error('There is no conversation to continue')
       const continuation: ChatContinuation = {

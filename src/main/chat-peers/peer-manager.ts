@@ -107,7 +107,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       source: (id) => this.paneSnapshot(id),
       record: (id) => this.store.get(id) ?? null,
       idle: () => this.paneOperations.size === 0 && [...this.lifecycle.peers.values()]
-        .every((entry) => entry.busy === 0 && !this.lifecycle.isRunning(entry.chatId)),
+        .every((entry) => entry.busy === 0 && !this.lifecycle.isRunning(entry.chatId) && !entry.surface.snapshot({ limit: 0 }).pausedTurnId),
       switchProject: (path) => this.selectProject(path, true),
       create: (model, effort, continuation) => this.newChat(model, effort, continuation),
       send: (id, text) => this.withAwake(id, async (surface) => {
@@ -403,6 +403,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async archiveChat(chatId: string): Promise<void> {
+    this.projectSwitch.assertAvailable()
+    this.projectSwitch.cancel('The requesting chat was archived', chatId)
     const record = this.store.get(chatId)
     if (!record) return
     const attached = this.lifecycle.get(chatId) !== undefined

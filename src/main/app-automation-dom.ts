@@ -184,7 +184,17 @@ function selectRenderedElement(target: AppUiTarget, visible: Visible, nameOf: Na
   if (candidates.length === 0) {
     const where = target.control ?? selector
     if (all.length === 0) throw new Error(`Control ${where} is not rendered now (open its surface or menu first)`)
-    if (rendered.length === 0) throw new Error(`Control ${where} exists but is not visible`)
+    if (rendered.length === 0) {
+      const inOtherPane = all.find((element) => {
+        const pane = element.closest?.('[data-pane-id]')
+        return pane && pane.getAttribute('data-selected') !== 'true'
+      })
+      if (inOtherPane) {
+        const paneId = inOtherPane.closest?.('[data-pane-id]')?.getAttribute('data-pane-id') ?? 'another pane'
+        throw new Error(`Control ${where} exists but is not visible in the selected chat pane (it belongs to unselected pane ${paneId})`)
+      }
+      throw new Error(`Control ${where} exists but is not visible`)
+    }
     throw new Error(`No visible ${where} matches "${target.match}"`)
   }
   if (candidates.length > 1) {
@@ -198,7 +208,9 @@ function selectRenderedElement(target: AppUiTarget, visible: Visible, nameOf: Na
 async function prepareSelectedClick(element: Element): Promise<AppPreparedClick> {
   if (('disabled' in element && Boolean((element as HTMLButtonElement).disabled)) ||
       element.getAttribute('aria-disabled') === 'true') {
-    throw new Error('Element is disabled')
+    const id = element.getAttribute('data-ui') || element.tagName.toLowerCase()
+    const reason = element.getAttribute('aria-disabled') === 'true' ? 'aria-disabled="true"' : 'disabled attribute'
+    throw new Error(`Element is disabled: ${id} (${reason})`)
   }
   element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })
   await Promise.race([
@@ -221,7 +233,10 @@ async function prepareSelectedClick(element: Element): Promise<AppPreparedClick>
   if (!point) throw new Error('Element is not visible after scrolling')
   const hit = document.elementFromPoint(point.x, point.y)
   if (!hit || (hit !== element && !element.contains(hit))) {
-    throw new Error('Element is covered at its clickable center')
+    const cover = hit
+      ? (hit.getAttribute('data-ui') ? `[data-ui="${hit.getAttribute('data-ui')}"]` : (hit.className ? `.${String(hit.className).trim().split(/\s+/)[0]}` : hit.tagName.toLowerCase()))
+      : 'viewport boundary'
+    throw new Error(`Element is covered at its clickable center by ${cover}`)
   }
   return { point, viewport: { width: window.innerWidth, height: window.innerHeight } }
 }
@@ -229,7 +244,11 @@ async function prepareSelectedClick(element: Element): Promise<AppPreparedClick>
 function prepareSelectedType(element: Element, clear: boolean): boolean {
   const field = element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element : null
   if (field) {
-    if (field.readOnly || field.disabled) throw new Error('Element is read-only or disabled')
+    if (field.readOnly || field.disabled) {
+      const id = field.getAttribute('data-ui') || field.tagName.toLowerCase()
+      const reason = field.readOnly ? 'read-only' : 'disabled'
+      throw new Error(`Element is read-only or disabled: ${id} (${reason})`)
+    }
     field.focus()
     if (clear) field.select()
     return true

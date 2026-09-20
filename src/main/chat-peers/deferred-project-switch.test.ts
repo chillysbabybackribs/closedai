@@ -22,11 +22,12 @@ async function fixture(t: TestContext) {
   let switchCount = 0
   let switchError = false
   let sendError = false
+  let wrongProviderDirectory = false
   let hold: Promise<void> | null = null
   const surfaces = new Map<string, FakeSurface>()
   const manager = new ChatPeerManager(settings, store, (_settings, record) => {
     const surface = new FakeSurface(record.modelId)
-    surface.state.cwd = record.cwd
+    surface.state.cwd = wrongProviderDirectory ? root : record.cwd
     if (record.id === 'source' || record.id === 'other') {
       surface.state.threadId = record.id + '-thread'
       surface.state.activeTurnId = record.id + '-turn'
@@ -62,6 +63,7 @@ async function fixture(t: TestContext) {
     switches: () => switchCount,
     failSwitch: () => { switchError = true },
     failSend: () => { sendError = true },
+    misrouteProvider: () => { wrongProviderDirectory = true },
     holdSwitch: () => { let release!: () => void; hold = new Promise<void>((resolve) => { release = resolve }); return release }
   }
 }
@@ -174,4 +176,39 @@ test('a continuation send failure reports the destination so it can be recovered
   assert.match(h.manager.projectSwitch.state()!.error!, /Provider could not start/)
   assert.ok(h.store.require(h.manager.projectSwitch.state()!.destinationPaneId!).continuation)
   assert.equal(h.switches(), 1)
+})
+
+test('paused chats and in-flight pane operations delay the switch', async (t) => {
+  const h = await fixture(t)
+  await h.queue()
+  h.finish('source')
+  const other = h.surfaces.get('other')!
+  other.state.pausedTurnId = 'other-turn'
+  h.finish('other')
+  await delay(140)
+  assert.equal(h.switches(), 0)
+  let release!: () => void
+  other.refreshPlanUsage = () => new Promise<void>((resolve) => { release = resolve })
+  const operation = h.manager.refreshPlanUsage('other')
+  await until(() => !!release)
+  other.state.pausedTurnId = null
+  await delay(140)
+  assert.equal(h.switches(), 0)
+  release()
+  await operation
+  await until(() => h.manager.projectSwitch.state()?.status === 'completed')
+})
+
+test('destination removal and provider directory mismatch fail before any continuation send', async (t) => {
+  for (const failure of ['removed', 'wrong-provider-directory']) {
+    const h = await fixture(t)
+    await h.queue()
+    if (failure === 'removed') await rm(h.destination, { recursive: true })
+    else h.misrouteProvider()
+    h.finish('source')
+    h.finish('other')
+    await until(() => h.manager.projectSwitch.state()?.status === 'failed')
+    assert.ok([...h.surfaces.values()].every((surface) => !surface.calls.some((call) => call.startsWith('send:'))))
+    assert.match(h.manager.projectSwitch.state()!.error!, failure === 'removed' ? /ENOENT/ : /working directory verification/)
+  }
 })
