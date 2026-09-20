@@ -27,7 +27,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 22px;
+  height: 24px;
   padding: 0 7px;
   border: none;
   border-radius: 4px;
@@ -48,7 +48,8 @@
 }
 
 .titlebar-nav-tab:focus-visible {
-  outline: none;
+  outline: 1px solid var(--focus-ink);
+  outline-offset: -1px;
   background: var(--chrome-control-hover);
   color: var(--chrome-control-strong);
 }
