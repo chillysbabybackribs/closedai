@@ -51,11 +51,16 @@ function evidenceResult(evidence: PdfPageEvidence, action: 'page' | 'ocr', input
     textScope: action === 'ocr' ? 'rendered_crop' : native.scope,
     ...(ocr ? { engine: ocr.engine, language: ocr.language, confidence: ocr.confidence, coordinateSpace: ocr.coordinateSpace } : {}),
     text: data.text.slice(offset, offset + count), offset, nextOffset: offset + count < data.text.length ? offset + count : null,
-    items: itemCount ? items.slice(itemOffset, itemOffset + itemCount) : [], itemOffset,
-    nextItemsOffset: itemCount && itemOffset + itemCount < items.length ? itemOffset + itemCount : null,
+    items: [] as typeof items, itemOffset,
+    nextItemsOffset: null as number | null,
     totalItems: items.length, incomplete: data.incomplete || evidence.renderIncomplete,
     limitations: 'Native geometry is not reconstructed reading order. OCR confidence is not correctness. PDF.js may omit embedded rasters above 16 million pixels or unsupported content. Empty drawing operations mark renderIncomplete, but false does not establish fidelity.'
   }
+  for (const item of items.slice(itemOffset, itemOffset + itemCount)) {
+    summary.items.push(item)
+    if (JSON.stringify(summary).length > 14_000) { summary.items.pop(); break }
+  }
+  if (itemCount && itemOffset + summary.items.length < items.length) summary.nextItemsOffset = itemOffset + summary.items.length
   return { content: [
     { type: 'text', text: JSON.stringify(summary) + (image ? `\n${EXEC_IMAGE_HINT}` : '') },
     ...(image ? [{ type: 'image' as const, dataUrl: image }] : [])
