@@ -15,3 +15,11 @@ test('the checkout uses native file tools without an injected map', () => {
   assert.doesNotMatch(text, /Repository map \(generated|closedai_workspace|do not re-verify/)
   assert.match(text, /native file search and editing tools are available/)
 })
+
+test('discovery requests carry a procedural alternatives search after the shared objective clause', () => {
+  const text = antigravityAgentInstructions('/w')
+  assert.match(text, /best-known instance of what they are after, not as the boundary/)
+  assert.match(text, /run at least one search for alternatives to the named source/)
+  assert.match(text, /"Sources checked" list/)
+  assert.ok(text.indexOf('not as the boundary of the task') < text.indexOf('the named source is step one'))
+})

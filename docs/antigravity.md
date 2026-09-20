@@ -78,6 +78,13 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
   file discovery uses the native file tools.
   The profile is refreshed on provider connection and loaded by a new CLI process; changing
   documentation alone does not update an already running agent. See [Model context](model-context.md).
+- **Discovery searches as a procedure.** The shared objective instruction (named source is an
+  instance, not the boundary) reached gemini-3.8-flash but changed nothing on 2026-09-20: four
+  `search_web` calls, all scoped to the named site, no alternatives checked or reported, while
+  Claude and Codex did both on the same prompt. `antigravity-instructions.ts` therefore states it
+  as steps for this lane: at least one search for alternatives to the named source, open the
+  strongest candidates, keep those at the same or higher quality, and end with a "Sources checked"
+  list. Same lesson as the link rule: this model follows concrete procedures, not dispositions.
 - **No context gauge.** `agy` reports token usage per step but no context window, and the transcript
   shows a gauge only with a denominator.
 - **Subscription plan usage.** `agy -p "/quota" --output-format json` reports 5-hour and weekly rolling
