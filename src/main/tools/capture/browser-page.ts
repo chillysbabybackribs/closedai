@@ -12,7 +12,7 @@ export function browserPageAction(capture: UiCaptureHostProvider, store: Screens
   return {
     action: 'browser_page',
     description:
-      'Capture one browser page without app chrome (active tab unless tab_id). Waits for load state and optional selector/text; fails if unmet. Returns a scaled JPEG.',
+      'Capture one browser page without app chrome (active tab unless tab_id). Waits for load state and optional selector/text; fails if unmet or the main page navigates/loses its renderer during capture. Returns a scaled JPEG. DOM, animation, and subframes are not frozen; this is not an atomic DOM/pixel snapshot.',
     inputSchema: {
       type: 'object',
       properties: { tab_id: tabIdField, ...readinessProperties },

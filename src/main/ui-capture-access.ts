@@ -2,6 +2,7 @@ import { desktopCapturer, nativeImage, type BrowserWindow, type NativeImage } fr
 import type { BrowserService } from './browser-service.js'
 import { waitForPageReady, type PageReadiness, type PageReadyResult } from './browser-page-ready.js'
 import { settleFrames } from './browser-frame-settle.js'
+import { withCaptureDocument } from './browser-capture-guard.js'
 import type { BrowserPageCapture, CapturedImage, ImageCrop, UiCaptureHost } from './tools/capture/index.js'
 import type { BrowserTabInfo } from '../shared/types.js'
 
@@ -51,15 +52,17 @@ export class UiCaptureAccess implements UiCaptureHost {
     try {
       const contents = service.contentsOf(tab.id)
       if (!contents) return null
-      const readiness = await waitForPageReady(contents, ready)
-      observedReady = readiness
-      const base = { tabId: tab.id, url: readiness.url || tab.url, title: readiness.title || tab.title, ready: readiness }
-      if (!readiness.reached || readiness.conditionMet === false) return { ...base, image: null }
-      await settleFrames(contents)
-      if (contents.isDestroyed()) return { ...base, image: null, error: 'The tab closed before capture' }
-      const image = await contents.capturePage(undefined, { stayHidden: true, stayAwake: true })
-      const payload = this.payload(image)
-      return payload ? { ...base, image: payload } : { ...base, image: null, error: 'The page produced an empty frame' }
+      return await withCaptureDocument(contents, async () => {
+        const readiness = await waitForPageReady(contents, ready)
+        observedReady = readiness
+        const base = { tabId: tab.id, url: readiness.url || tab.url, title: readiness.title || tab.title, ready: readiness }
+        if (!readiness.reached || readiness.conditionMet === false) return { ...base, image: null }
+        await settleFrames(contents)
+        if (contents.isDestroyed()) return { ...base, image: null, error: 'The tab closed before capture' }
+        const image = await contents.capturePage(undefined, { stayHidden: true, stayAwake: true })
+        const payload = this.payload(image)
+        return payload ? { ...base, image: payload } : { ...base, image: null, error: 'The page produced an empty frame' }
+      })
     } catch (error) {
       return {
         tabId: tab.id,
