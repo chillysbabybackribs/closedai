@@ -3,6 +3,7 @@ import test from 'node:test'
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { createPdfReader } from './reader.js'
 import { SourceStore } from '../source-reader.js'
 import { ResearchService } from '../service.js'
@@ -86,15 +87,22 @@ test('image-only/empty pages do not masquerade as extracted evidence; malformed 
 test('cancellation terminates a stuck parser and releases its admission slot', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'pdf-abort-'))
   t.after(() => rm(root, { recursive: true, force: true }))
-  const workerUrl = new URL(`file://${join(root, 'stuck.mjs')}`)
-  await writeFile(workerUrl, 'while (true) {}')
+  const workerUrl = pathToFileURL(join(root, 'stuck.mjs'))
+  await writeFile(workerUrl, `import { writeFileSync } from 'node:fs'; import { workerData } from 'node:worker_threads';
+    writeFileSync(workerData.path, 'started'); while (true) {}`)
   const stuck = createPdfReader(workerUrl)
   for (let i = 0; i < 3; i++) {
     const controller = new AbortController()
-    const pending = stuck('unused', 0, controller.signal)
-    const timer = setTimeout(() => controller.abort(new Error('Test cancelled PDF')), 100)
-    try { await assert.rejects(pending, /Test cancelled PDF/) }
-    finally { clearTimeout(timer) }
+    const marker = join(root, `started-${i}`)
+    const pending = stuck(marker, 0, controller.signal)
+    const rejected = assert.rejects(pending, /Test cancelled PDF/)
+    try {
+      const deadline = Date.now() + 5000
+      while (!(await readFile(marker, 'utf8').catch(() => ''))) {
+        assert.ok(Date.now() < deadline, 'each parser started, including after the first two cancellations')
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      }
+    } finally { controller.abort(new Error('Test cancelled PDF')); await rejected }
   }
 })
 
@@ -111,6 +119,7 @@ test('completed research can expand PDF coverage, page retained text, and preser
   const context = { paneId: 'pane', threadId: 'thread', turnId: 'turn', callId: 'test', signal }
   let run = service.start({ queries: [], urls: [url], maxSources: 1, deadlineMs: 10_000, presentation: 'background', coverage: { maxTextChars: 20 } }, context)
   while (run.state === 'running') run = await service.wait(run.runId, context, run.cursor, 1000)
+  run = service.read(run.runId, context)
   const source = run.sources[0]
   assert.equal(source.representation, 'pdf_text')
   assert.equal(source.pdf?.extractedPages, 1)
