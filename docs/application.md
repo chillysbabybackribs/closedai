@@ -238,7 +238,9 @@ chat alongside the focused pane, moving its tile if already visible; they are di
 focused chat itself to avoid displaying the same conversation twice. New chats are added using the split
 controls in each chat's title header. There is no separate layout toolbar or add-chat dropdown.
 A normal sidebar click selects an existing tab wherever it lives, or replaces the focused tab,
-leaving the other tabs and tiles in place. New Agent and continuation select a chat in the focused
+leaving the other tabs and tiles in place. The composer’s + button opens and selects a new chat tab
+in its tile, preserving the original chat, draft, attachments, and any running turn.
+New Agent and continuation select a chat in the focused
 tab; the split buttons explicitly add another tile. Moving a visible tile carries its tab group;
 dragging a hidden tab's sidebar row to a tile edge splits that conversation out of its group.
 

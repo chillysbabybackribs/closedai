@@ -69,7 +69,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         renderPane={(id) => <WorkspaceChat paneId={id} snapshot={chat.snapshot} dispatch={chat.dispatch}
           appearance={appearance} historyOpen={historyOpen && chat.selectedPaneId === id}
           onHistoryOpenChange={onHistoryOpenChange} dialog={chat.selectedPaneId === id ? dialog : null}
-          onDialogChange={onDialogChange} />}
+          onDialogChange={onDialogChange} onNewChat={() => { void layout.newChat(id) }} />}
       renderBrowser={<div className="workspace-right" data-mode="browser" data-with-browser={layout.browserVisible ? 'yes' : 'no'}>
         <div className={`workspace-surface workspace-surface-browser${layout.browserVisible ? '' : ' is-collapsed'}`}>
           <BrowserPane controller={browser} />
@@ -79,7 +79,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   </div>
 }
 
-function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange }: {
+function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onNewChat }: {
   paneId: string
   snapshot: ChatWorkspaceSnapshot
   dispatch: Dispatch<ChatWorkspaceAction>
@@ -88,6 +88,7 @@ function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, on
   onHistoryOpenChange: (open: boolean) => void
   dialog: ChatPaneDialog | null
   onDialogChange: (dialog: ChatPaneDialog | null) => void
+  onNewChat: () => void
 }) {
   const retained = useRef(initialChatState())
   const state = snapshot.panes?.[paneId] ?? (snapshot.selectedPaneId === paneId ? snapshot.selected : retained.current)
@@ -96,5 +97,5 @@ function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, on
   const isSelected = snapshot.selectedPaneId === paneId
   return <ChatPane controller={controller} zoom={appearance.chatZoom} fontSize={appearance.chatFontSize}
     composerFontSize={appearance.composerFontSize} historyOpen={historyOpen} onHistoryOpenChange={onHistoryOpenChange}
-    dialog={dialog} onDialogChange={onDialogChange} selected={isSelected} />
+    dialog={dialog} onDialogChange={onDialogChange} selected={isSelected} onNewChat={onNewChat} />
 }

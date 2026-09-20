@@ -108,6 +108,7 @@ removes it from the tile without stopping its turn or deleting history; items ar
 button. Their item is the chat id.
 With multiple visible tiles, `layout.new-chat` starts a fresh chat in the tile named by its item
 without changing the other tiles or the split geometry.
+`composer.new-chat` opens a new tab in the focused tile, preserving the original chat and draft.
 The sidebar context menu's `drawer.row-split-right` and `drawer.row-split-below` open or move the
 row's existing chat alongside the focused pane; their item is the chat id.
 Hiding a tile keeps its turn running; `close_chat` still detaches and stops it. A hidden browser

@@ -73,7 +73,7 @@ export const UI_CONTROLS = {
   'chat.sign-in': 'Sign in with ChatGPT when the pane is signed out',
 
   'composer.input': 'Message textarea of the selected pane',
-  'composer.new-chat': 'Start a new chat from the composer',
+  'composer.new-chat': 'Open a new chat tab in the composer’s tile, preserving the current chat and draft',
   'composer.project': 'Open the active project menu',
   'composer.project-new': 'Choose a folder as a new project',
   'composer.project-recent': 'Switch to a previously used project; item is its folder path',

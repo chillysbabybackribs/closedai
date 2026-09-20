@@ -108,13 +108,6 @@ export function Composer({
     formRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus()
   }, [sending])
 
-  function handleNewChat(): void {
-    setInput('')
-    setAttachments([])
-    setAttachmentError('')
-    onNewChat?.()
-  }
-
   /** Resume is an ordinary turn, so it shares the send guard rather than racing one. */
   async function resume(): Promise<void> {
     if (sending || !enabled || running) return
@@ -299,16 +292,16 @@ export function Composer({
 
             <PromptInputActions className="prompt-composer-actions">
               <div className="prompt-composer-actions-start">
-                <PromptInputAction tooltip="New chat">
+                <PromptInputAction tooltip="New chat tab">
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     className="prompt-composer-tool prompt-composer-new-chat rounded-full"
-                    aria-label="New chat"
+                    aria-label="New chat tab"
                     data-ui="composer.new-chat"
                     disabled={!enabled}
-                    onClick={handleNewChat}
+                    onClick={onNewChat}
                   >
                     <Plus size={21} strokeWidth={2.6} aria-hidden="true" />
                   </Button>

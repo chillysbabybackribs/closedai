@@ -34,7 +34,8 @@ export const ChatPane = memo(function ChatPane({
   historyOpen: controlledHistoryOpen,
   onHistoryOpenChange,
   dialog: controlledDialog,
-  onDialogChange
+  onDialogChange,
+  onNewChat
 }: {
   controller?: ChatController
   zoom?: number
@@ -47,7 +48,8 @@ export const ChatPane = memo(function ChatPane({
   dialog?: ChatPaneDialog | null
   onDialogChange?: (dialog: ChatPaneDialog | null) => void
   selected?: boolean
-} = {}): JSX.Element {
+  onNewChat: () => void
+}): JSX.Element {
   const internalChat = useChatController(!controller)
   const chat = controller ?? internalChat
   const { state, preferences } = chat
@@ -80,13 +82,9 @@ export const ChatPane = memo(function ChatPane({
     await chat.send(text, attachments)
   }
 
-  async function startNewChat(): Promise<void> {
+  function startNewChat(): void {
     setHistoryOpen(false)
-    try {
-      await chat.newThread()
-    } catch {
-      // The main process posts a transcript notice with the reason.
-    }
+    onNewChat()
   }
 
   return (
@@ -166,7 +164,7 @@ export const ChatPane = memo(function ChatPane({
           paused={state.pausedTurnId !== null}
           onResume={() => sendMessage(CHAT_RESUME_PROMPT, [])}
           onInspectContext={() => setContextOpen(true)}
-          onNewChat={() => void startNewChat()}
+          onNewChat={startNewChat}
           cwd={chat.workspace?.cwd ?? state.cwd}
           projectPath={chat.workspace?.projectPath ?? state.cwd}
           recentProjects={chat.workspace?.recentProjects ?? []}
