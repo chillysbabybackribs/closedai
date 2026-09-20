@@ -129,6 +129,17 @@ test('a recording folds into exact counts, frequent calls and newest-first recen
   ])
 })
 
+test('failed current-document installation removes its newly armed future script', async () => {
+  const sent: string[] = []
+  await assert.rejects(installInstrument(async (method) => {
+    sent.push(method)
+    if (method === 'Page.addScriptToEvaluateOnNewDocument') return { identifier: 'new-hook' }
+    if (method === 'Runtime.evaluate') return { exceptionDetails: { text: 'Failed' } }
+    return {}
+  }, ['fetch'], 50), /Recorder installation failed/)
+  assert.equal(sent.at(-1), 'Page.removeScriptToEvaluateOnNewDocument')
+})
+
 test('a document with no recorder folds to installed false rather than throwing', () => {
   const missing = foldRecording({ result: { value: JSON.stringify({ installed: false }) } }, { limit: 5 })
   assert.deepEqual(missing, { installed: false, counts: {}, dropped: 0, distinct: [], recent: [] })

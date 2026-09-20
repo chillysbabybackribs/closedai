@@ -203,7 +203,7 @@ export function foldRecording(raw: unknown, options: { limit: number }): Recordi
     const event = entry !== null && typeof entry === 'object' ? entry as Record<string, unknown> : {}
     const channel = String(event.c ?? '')
     const detail = String(event.d ?? '')
-    const key = channel + ' ' + detail
+    const key = JSON.stringify([channel, detail])
     const existing = tally.get(key)
     if (existing) existing.count += 1
     else tally.set(key, { channel, detail, count: 1 })
@@ -250,10 +250,18 @@ export async function installInstrument(
   await send('Runtime.enable')
   const added = await send('Page.addScriptToEvaluateOnNewDocument', { source })
   const record = added !== null && typeof added === 'object' ? added as Record<string, unknown> : {}
-  const current = await send('Runtime.evaluate', { expression: source, returnByValue: true })
-  const value = (current as { result?: { value?: unknown } } | null)?.result?.value
-  return {
-    identifier: typeof record.identifier === 'string' ? record.identifier : null,
-    onCurrentDocument: typeof value === 'string' ? value : 'unknown'
+  const identifier = typeof record.identifier === 'string' ? record.identifier : null
+  try {
+    const current = await send('Runtime.evaluate', { expression: source, returnByValue: true })
+    const evaluated = current as { result?: { value?: unknown }; exceptionDetails?: unknown } | null
+    if (evaluated?.exceptionDetails) throw new Error('Recorder installation failed in the document; reload before retrying')
+    const value = evaluated?.result?.value
+    return { identifier, onCurrentDocument: typeof value === 'string' ? value : 'unknown' }
+  } catch (error) {
+    if (identifier) {
+      try { await send('Page.removeScriptToEvaluateOnNewDocument', { identifier }) }
+      catch { throw new Error('Recorder installation and future-script cleanup failed; close the tab before retrying', { cause: error }) }
+    }
+    throw error
   }
 }
