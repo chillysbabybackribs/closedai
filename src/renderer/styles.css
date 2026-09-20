@@ -153,6 +153,7 @@
   /* The two hues the transcript chrome spends: the selected pane's active-tab underline and
      inline source links. Success ink marks a finished background-task chip. */
   --tab-accent: var(--antigravity-blue);
+  --tab-active-surface: #1e1e20;
   --link-ink: var(--antigravity-blue);
   --ok-ink: #65b98a;
   --live-signal: #e6e6e6;
