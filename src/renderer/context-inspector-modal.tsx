@@ -6,12 +6,15 @@ import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import type { ChatMemoryCheckpoint } from '../shared/chat-memory.js'
 import {
   calculateTokenBudget,
-  formatPercent,
   formatTokens,
   getContextPressureAdvisory,
-  type ContextPressureAdvisory,
   type TokenBudgetBreakdown
 } from './context-budget.js'
+import {
+  ContextAdvisoryBanner,
+  ContextBudgetSection,
+  ContextPressureBadge
+} from './context-budget-view.js'
 
 export type ContextInspectorModalProps = {
   open: boolean
@@ -43,20 +46,7 @@ export function ContextInspectorModal({
         <header className="context-inspector-header">
           <div className="context-inspector-header-top">
             <DialogTitle>Context inspector</DialogTitle>
-            <span
-              className={`context-pressure-badge context-pressure-${budget.pressureLevel}`}
-              title={`Context pressure: ${budget.pressureLevel}`}
-            >
-              <span className="pressure-badge-dot" aria-hidden="true" />
-              {budget.pressureLevel === 'hot'
-                ? 'Hot'
-                : budget.pressureLevel === 'warm'
-                  ? 'Warm'
-                  : budget.pressureLevel === 'cool'
-                    ? 'Cool'
-                    : 'Provider managed'}
-              {budget.contextWindow ? ` · ${budget.usedPercent}%` : ''}
-            </span>
+            <ContextPressureBadge budget={budget} />
           </div>
           <DialogDescription id="context-inspector-description">
             What ClosedAI and the active agent maintain for this conversation.
