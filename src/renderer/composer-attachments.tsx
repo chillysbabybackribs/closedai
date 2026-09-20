@@ -1,5 +1,4 @@
 import type { ChangeEvent, JSX, RefObject } from 'react'
-import { useState } from 'react'
 import { FileImage, FileText, FileUp, X } from 'lucide-react'
 import {
   Attachment,
@@ -12,7 +11,7 @@ import {
   AttachmentTitle,
   AttachmentTrigger
 } from '../components/ui/attachment.js'
-import { ImagePreviewDialog, type ImagePreviewTarget } from './attachment-preview.js'
+import { useImagePreview, type ImagePreviewTarget } from './attachment-preview.js'
 import { Button } from '../components/ui/button.js'
 import { PromptInputAction } from '../components/ui/prompt-input.js'
 import type { ChatAttachment, ChatAttachmentSummary } from '../shared/chat.js'
@@ -97,7 +96,7 @@ export function AttachmentChips({
   attachments: ChatAttachment[]
   onRemove: (id: string) => void
 }): JSX.Element | null {
-  const [target, setTarget] = useState<ImagePreviewTarget | null>(null)
+  const preview = useImagePreview()
   if (!attachments.length) return null
   return (
     <>
@@ -107,11 +106,11 @@ export function AttachmentChips({
             key={attachment.id}
             attachment={attachment}
             onRemove={() => onRemove(attachment.id)}
-            onPreview={setTarget}
+            onPreview={preview.open}
           />
         ))}
       </AttachmentGroup>
-      <ImagePreviewDialog target={target} onClose={() => setTarget(null)} />
+      {preview.error && <span role="alert">{preview.error}</span>}
     </>
   )
 }
@@ -121,7 +120,7 @@ export function TranscriptAttachments({
 }: {
   attachments: ChatAttachmentSummary[]
 }): JSX.Element | null {
-  const [target, setTarget] = useState<ImagePreviewTarget | null>(null)
+  const viewer = useImagePreview()
   if (!attachments.length) return null
   return (
     <div className="prompt-message-user-attachments" aria-label="Attachments">
@@ -135,7 +134,7 @@ export function TranscriptAttachments({
             aria-label={`Open ${attachment.name}`}
             data-ui="composer.attachment-preview"
             data-ui-key={attachment.id}
-            onClick={() => setTarget({ src: preview, name: attachment.name })}
+            onClick={() => viewer.open({ src: preview, name: attachment.name })}
           >
             <img className="prompt-message-image" src={preview} alt={attachment.name} title={attachment.name} />
           </button>
@@ -143,7 +142,7 @@ export function TranscriptAttachments({
           <AttachmentCard key={attachment.id} attachment={attachment} />
         )
       })}
-      <ImagePreviewDialog target={target} onClose={() => setTarget(null)} />
+      {viewer.error && <span role="alert">{viewer.error}</span>}
     </div>
   )
 }
