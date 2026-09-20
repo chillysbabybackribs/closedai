@@ -17,7 +17,7 @@ export function readPageAction(browser: BrowserHostProvider): ToolAction {
         tab_id: tabIdField,
         selector: selectorField,
         max_chars: maxCharsField,
-        pdf_page: { type: 'integer', minimum: 1, maximum: 100000, description: 'PDF page number, one-based; defaults to 1 for an open PDF. Cannot combine with selector.' }
+        pdf_page: { type: 'integer', minimum: 1, maximum: 100000, description: 'PDF text page, one-based; default 1. Does not navigate the viewer. Cannot combine with selector.' }
       },
       additionalProperties: false
     },
@@ -38,7 +38,7 @@ export function readPageAction(browser: BrowserHostProvider): ToolAction {
         const pdf = page.pdf
         if (!pdf.available) return failureResult(`${header}\n\nPDF page ${pdf.page} is unavailable. Chromium currently exposes ${pdf.pagesAvailable} pages${pdf.totalPages === null ? '' : ` of ${pdf.totalPages}`}. Wait for the PDF to load and check the page number.`)
         const text = page.text || '(No native text on this page. It may be scanned, blank, or inaccessible; inspect the page image.)'
-        return textResult(`${header}\nPDF page: ${pdf.page}${pdf.totalPages === null ? '' : ` of ${pdf.totalPages}`}\nSource: Chromium native PDF accessibility\n\n${text}\n\n${page.truncated ? '[Text truncated; increase max_chars.]\n' : ''}Native text can lose reading order, tables, equations, and image content. Use browser capture for visual evidence; use pdf_page for another page.`)
+        return textResult(`${header}\nPDF page: ${pdf.page}${pdf.totalPages === null ? '' : ` of ${pdf.totalPages}`}\nSource: Chromium native PDF accessibility\n\n${text}\n\n${page.truncated ? '[Text truncated; increase max_chars.]\n' : ''}Native text can lose reading order, tables, equations, and image content. pdf_page selects text only; it does not navigate the viewer. Browser capture shows the current viewport.`)
       }
       // The page hands back its text unsliced, so the bound applied here can respect the
       // content: `truncateText` shrinks JSON structurally and only falls back to a plain cut

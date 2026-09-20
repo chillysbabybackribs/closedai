@@ -122,7 +122,9 @@ keeps its tabs, but semantic page input still requires a visible page.
 using native PDF accessibility text. `pdf_page` is one-based and defaults to 1; `max_chars`
 bounds that page's text. Select the PDF tab first: hidden PDF views may not construct their
 native accessibility tree. `selector` remains an HTML-only option and cannot accompany
-`pdf_page`. The result identifies its source, requested page, total pages when available,
+`pdf_page`. Selecting text with `pdf_page` does not navigate the viewer; move the viewer to
+the relevant page before capturing visual evidence. The result identifies its source,
+requested page, total pages when available,
 and clipping. An unavailable page is an error; an empty native page is explicitly described
 as possibly scanned, blank, or inaccessible. Use the existing browser capture for the visible
 page's figures, equations, and layout. Capture remains viewport evidence, not a full-document image.
