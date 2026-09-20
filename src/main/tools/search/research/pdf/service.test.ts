@@ -72,6 +72,20 @@ test('inspection respects ownership, serializes against expansion, and releases 
   assert.equal(h.service.read(h.id, context).sources[0].sha256, 'text-hash')
 })
 
+test('long native items fit the result budget with an accurate continuation cursor', async (t) => {
+  const h = await harness(async () => ({ ...evidence, ocr: undefined, native: {
+    ...evidence.native, text: 't'.repeat(12_000), items: Array.from({ length: 30 }, () => ({ text: 'x'.repeat(1000), transform: [1, 0, 0, 1, 0, 0], width: 100, height: 12 }))
+  } }))
+  t.after(() => h.service.dispose())
+  const result = await pdfTool(h.service).run({ action: 'page', run_id: h.id, source_id: h.source, page: 1, max_chars: 6000, max_items: 30 }, context)
+  const text = result.content[0].type === 'text' ? result.content[0].text.split('\n')[0] : ''
+  const body = JSON.parse(text)
+  assert.ok(text.length <= 14_000)
+  assert.ok(body.items.length > 0 && body.items.length < 30)
+  assert.equal(body.nextItemsOffset, body.items.length)
+  assert.equal(body.nextOffset, 6000)
+})
+
 test('cancel, turn replacement and shutdown abort active PDF inspection', async () => {
   for (const action of ['cancel', 'reconcile', 'dispose'] as const) {
     let activeSignal!: AbortSignal

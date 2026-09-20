@@ -51,7 +51,7 @@ function evidenceResult(evidence: PdfPageEvidence, action: 'page' | 'ocr', input
     textScope: action === 'ocr' ? 'rendered_crop' : native.scope,
     ...(ocr ? { engine: ocr.engine, language: ocr.language, confidence: ocr.confidence, coordinateSpace: ocr.coordinateSpace } : {}),
     text: data.text.slice(offset, offset + count), offset, nextOffset: offset + count < data.text.length ? offset + count : null,
-    items: [] as typeof items, itemOffset,
+    items: [] as Array<(typeof items)[number]>, itemOffset,
     nextItemsOffset: null as number | null,
     totalItems: items.length, incomplete: data.incomplete || evidence.renderIncomplete,
     limitations: 'Native geometry is not reconstructed reading order. OCR confidence is not correctness. PDF.js may omit embedded rasters above 16 million pixels or unsupported content. Empty drawing operations mark renderIncomplete, but false does not establish fidelity.'
