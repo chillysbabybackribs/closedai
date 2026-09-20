@@ -72,7 +72,8 @@ async function check(root: string) {
     assert.equal(window.contentView.children.length, 1, 'image tabs allocate no native view')
     const assertParked = () => {
       for (const view of window.contentView.children) {
-        assert.ok(view.getBounds().x >= window.getContentBounds().width, 'native page is outside the window')
+        assert.ok(view.getBounds().x >= window.getContentBounds().width,
+          `native page is outside the window: ${JSON.stringify({ view: view.getBounds(), window: window.getContentBounds(), state: browser.snapshot() })}`)
       }
     }
     assertParked()

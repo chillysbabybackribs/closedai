@@ -255,12 +255,14 @@ export function projectBrowser(browser: AppBrowserTabs): Record<string, unknown>
     active: {
       url: state.url, title: state.title.slice(0, 80), isLoading: state.isLoading,
       canGoBack: state.canGoBack, canGoForward: state.canGoForward,
+      ...(state.image ? { image: state.image } : {}),
       ...(state.navigationError ? { navigationError: state.navigationError } : {})
     },
     tabCount: tabs.length,
     tabs: tabs.slice(0, TAB_LIMIT).map((tab) => ({
       id: tab.id, pos: tab.pos, title: tab.title.slice(0, 60), url: tab.url.slice(0, 160),
-      active: tab.active, isLoading: tab.isLoading
+      active: tab.active, isLoading: tab.isLoading,
+      ...(tab.image ? { image: tab.image } : {})
     }))
   }
 }
