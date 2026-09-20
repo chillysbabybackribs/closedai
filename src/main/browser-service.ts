@@ -415,7 +415,7 @@ export class BrowserService extends EventEmitter {
 
   /** Browser-owned CDP roots, including native popup windows that never appear in the tab strip. */
   cdpTargetList(): CdpBrowserTarget[] {
-    const tabs = this.tabInfos().filter((tab) => !tab.image).map((tab) => ({ ...tab, kind: 'tab' as const }))
+    const tabs = this.tabInfos().filter((tab) => !tab.image && !tab.file).map((tab) => ({ ...tab, kind: 'tab' as const }))
     const popups: CdpBrowserTarget[] = []
     for (const [id, popup] of this.nativePopups) {
       if (popup.contents.isDestroyed()) {
