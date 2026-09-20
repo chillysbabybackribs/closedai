@@ -59,10 +59,11 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
         name: 'run',
         description:
           'Run up to ' + maxCalls + ' tool calls in one request. Each entry is `namespace.tool` with direct-call arguments; ' +
-          'results are numbered [1], [2], …. Default sequential: failure skips the rest and unwinds armed browser state. ' +
-          '`parallel` true for independent work; same-target work still serializes. Only ClosedAI tools routable — call native ' +
-          'file/shell tools directly. Real-input fallbacks need inspection and verification in the same sequential batch. ' +
-          '`include_result` false omits successful intermediate bodies; any failure makes the batch an error. In exec, await tools directly.',
+          'results are numbered [1], [2], …. Default sequential: failure skips the rest and unwinds armed browser state ' +
+          '(pass `continue_on_error: true` to continue). `parallel` true for independent work; same-target work still serializes. ' +
+          'Only ClosedAI tools routable — call native file/shell tools directly. Real-input fallbacks need inspection and ' +
+          'verification in the same sequential batch. `include_result` false omits successful intermediate bodies; any failure ' +
+          'makes the batch an error. In exec, await tools directly.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -95,6 +96,13 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
                 'independent CDP work, including independent mutations on different targets; serialize ' +
                 'dependent or same-target mutations. Default false: calls run in order and a failure skips ' +
                 'everything after it.'
+            },
+            continue_on_error: {
+              type: 'boolean',
+              description:
+                'When true in sequential mode, execution continues even if an individual call fails. ' +
+                'Subsequent calls still run, but armed browser state from any failed step will still be unwound. ' +
+                'Default false: the first failure skips remaining calls.'
             }
           },
           required: ['calls']
@@ -106,10 +114,11 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
           const unresolved = unresolvedCalls(registry(), parsed)
           if (unresolved) return usageResult(`tool_batch.run: ${unresolved}`)
           const parallel = booleanArg(input, 'parallel', false)
+          const continueOnError = booleanArg(input, 'continue_on_error', false)
           const policyProblem = validateRealInputBatch(parsed, parallel)
           if (policyProblem) return usageResult(`tool_batch.run: ${policyProblem}`)
           if (parallel) return assembleResult(parsed, await runParallel(registry(), parsed, context), [])
-          const { outcomes, unwound } = await runSequential(registry(), parsed, context)
+          const { outcomes, unwound } = await runSequential(registry(), parsed, context, continueOnError)
           return assembleResult(parsed, outcomes, unwound)
         }
       })
@@ -235,11 +244,13 @@ function dispatch(registry: ToolRegistry, call: BatchCall, context: ToolContext)
 async function runSequential(
   registry: ToolRegistry,
   calls: BatchCall[],
-  context: ToolContext
+  context: ToolContext,
+  continueOnError = false
 ): Promise<{ outcomes: BatchOutcome[]; unwound: UnwindRecord[] }> {
   const outcomes: BatchOutcome[] = []
   const armed: Compensation[] = []
   let skipReason: string | null = null
+  let hadFailure = false
   for (const call of calls) {
     if (!skipReason && context.signal.aborted) skipReason = 'the batch timed out'
     if (skipReason) {
@@ -249,17 +260,22 @@ async function runSequential(
     const result = await dispatch(registry, call, context)
     outcomes.push({ status: 'ran', result })
     if (result.isError) {
-      skipReason = `call [${call.index}] failed and the batch is sequential`
-      continue
+      hadFailure = true
+      if (!continueOnError) {
+        skipReason = `call [${call.index}] failed and the batch is sequential`
+        continue
+      }
+    } else {
+      // A successful release settles what the plan armed; nothing is left to compensate.
+      for (let index = armed.length - 1; index >= 0; index -= 1) {
+        if (releases(call, armed[index]!)) armed.splice(index, 1)
+      }
+      const compensation = compensationFor(call)
+      if (compensation) armed.push(compensation)
     }
-    // A successful release settles what the plan armed; nothing is left to compensate.
-    for (let index = armed.length - 1; index >= 0; index -= 1) {
-      if (releases(call, armed[index]!)) armed.splice(index, 1)
-    }
-    const compensation = compensationFor(call)
-    if (compensation) armed.push(compensation)
   }
-  return { outcomes, unwound: skipReason ? await unwind(registry, armed, context) : [] }
+  const shouldUnwind = (skipReason !== null || hadFailure) && armed.length > 0
+  return { outcomes, unwound: shouldUnwind ? await unwind(registry, armed, context) : [] }
 }
 
 export type UnwindRecord = { label: string; ok: boolean; detail?: string }

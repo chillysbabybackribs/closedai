@@ -175,5 +175,6 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     setLayout((value) => ({ ...value, tree: resizeSplit(value.tree, id, ratio) }))
   }, [])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
-  return { ...layout, error, busy, dock, newChat, focusPane, activateTab, closeTab, hide, resize, toggleBrowser }
+  const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
+  return { ...layout, error, busy, dock, newChat, focusPane, activateTab, closeTab, hide, resize, toggleBrowser, showBrowser }
 }

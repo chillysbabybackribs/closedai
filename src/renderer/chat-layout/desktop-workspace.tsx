@@ -1,4 +1,4 @@
-import { useImperativeHandle, useRef, useState, type Dispatch, type Ref } from 'react'
+import { useEffect, useImperativeHandle, useRef, useState, type Dispatch, type Ref } from 'react'
 import { BrowserPane } from '../browser-pane.js'
 import { useBrowserController } from '../browser-controller.js'
 import { ChatPane, type ChatPaneDialog } from '../chat-pane.js'
@@ -30,6 +30,10 @@ export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenC
   }), [layout.dock, layout.toggleBrowser, chat.selectedPaneId])
   const [dragging, setDragging] = useState(false)
   const browser = useBrowserController(JSON.stringify([layout.browserVisible, layout.tree]), layout.browserVisible, dragging)
+  const imageTabId = browser.browser.image?.tabId
+  useEffect(() => {
+    if (imageTabId) layout.showBrowser()
+  }, [imageTabId, layout.showBrowser])
   const [actionError, setActionError] = useState('')
   const select = (id: string): void => {
     void layout.focusPane(id).catch((reason: unknown) => setActionError(String(reason)))

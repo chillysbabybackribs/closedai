@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 import { memo, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Download, Globe2, Loader2, Lock, Plus, RefreshCw, Search, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Download, FileImage, Globe2, Loader2, Lock, Plus, RefreshCw, Search, X } from 'lucide-react'
+import { ImageViewer } from './image-viewer/image-viewer.js'
 import { BrowserSiteIcon } from './browser-site-icon.js'
 import type { BrowserController } from './browser-controller.js'
 import type { BrowserTabInfo } from '../shared/types.js'
@@ -22,20 +23,22 @@ export const BrowserPane = memo(function BrowserPane({
     <section className="browser-pane" aria-label="Browser" data-ui-surface="browser">
       <div className={`browser-shell ${downloads.isOpen ? 'has-downloads' : ''}`}>
         <BrowserTabs controller={controller} />
-        <BrowserToolbar controller={controller} downloads={downloads} />
+        {!controller.browser.image && <BrowserToolbar controller={controller} downloads={downloads} />}
         {downloads.isOpen ? <BrowserDownloadsShelf controller={downloads} /> : null}
         <div className={`browser-frame ${controller.browser.navigationError ? 'has-navigation-error' : ''}`}>
           <div
-            className={`browser-view-host ${controller.browser.navigationError ? 'is-navigation-error' : ''}`}
+            className={`browser-view-host ${controller.browser.image ? 'is-image-viewer' : controller.browser.navigationError ? 'is-navigation-error' : ''}`}
             id="browser-page"
             role="tabpanel"
             aria-label="Browser page"
-            aria-hidden={controller.browser.navigationError ? 'true' : undefined}
+            aria-hidden={controller.browser.image || controller.browser.navigationError ? 'true' : undefined}
             ref={controller.browserHostRef}
           />
-          {controller.titlebarFreeze ? (
+          {controller.titlebarFreeze && !controller.browser.image ? (
             <img className="browser-view-freeze" src={controller.titlebarFreeze.imageUrl} alt="" aria-hidden="true" />
           ) : null}
+          {controller.tabs.filter((tab) => tab.image).map((tab) =>
+            <ImageViewer key={tab.id} id={tab.id} active={controller.browser.image?.tabId === tab.id} />)}
           {controller.browser.navigationError ? (
             <BrowserNavigationError
               error={controller.browser.navigationError}
@@ -94,7 +97,7 @@ function BrowserTabs({ controller }: { controller: BrowserController }): JSX.Ele
               id={`browser-tab-${tab.id}`}
               type="button"
               role="tab"
-              aria-controls="browser-page"
+              aria-controls={tab.image ? `image-page-${tab.id}` : 'browser-page'}
               aria-selected={tab.active}
               tabIndex={tab.active ? 0 : -1}
               className="browser-tab-select"
@@ -149,6 +152,7 @@ function BrowserTabs({ controller }: { controller: BrowserController }): JSX.Ele
 function TabIcon({ tab }: { tab: BrowserTabInfo }): JSX.Element {
   const [failed, setFailed] = useState(false)
   useEffect(() => setFailed(false), [tab.favicon])
+  if (tab.image) return <FileImage className="browser-tab-icon" size={13} aria-hidden="true" />
   if (tab.isLoading) return <Loader2 className="spin browser-tab-icon" size={12} aria-hidden="true" />
   if (tab.favicon && !failed) {
     return <img className="browser-tab-favicon" src={tab.favicon} alt="" aria-hidden="true" onError={() => setFailed(true)} />
