@@ -30,6 +30,11 @@ function chatSnapshot(overrides: Partial<ChatSnapshot> = {}): ChatSnapshot {
 }
 
 class FakeWorkspace extends EventEmitter implements AppChatWorkspace {
+  projectSwitch: AppChatWorkspace['projectSwitch'] = {
+    request: async (request) => ({ ...request, status: 'pending' }),
+    cancel: () => null,
+    state: () => null
+  }
   calls: unknown[] = []
   panes = new Map<string, ChatSnapshot>([['pane-1', chatSnapshot()], ['pane-2', chatSnapshot({ threadId: 'thread-2' })]])
   selected = 'pane-1'

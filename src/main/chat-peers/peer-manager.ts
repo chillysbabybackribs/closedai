@@ -441,16 +441,16 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     const selection = this.workspaceSelector.current()
     if (selection.projectPath === projectPath) return
 
-    this.visibilityRevision += 1
-    this.visiblePaneIds.clear()
-    this.retainedTabIds.clear()
-    this.lifecycle.detachAll()
-    this.catalog.invalidate()
     await this.workspaceSelector.select(projectPath, {
       modelId: current.selectedModel,
       reasoningEffort: current.selectedReasoningEffort
     })
 
+    this.visibilityRevision += 1
+    this.visiblePaneIds.clear()
+    this.retainedTabIds.clear()
+    this.lifecycle.detachAll()
+    this.catalog.invalidate()
     const restored = this.settings.get()
     this.selectedPaneId = this.restoreOpenChats(restored.chatOpenIds, restored.chatSelectedPaneId, current.selectedModel, current.selectedReasoningEffort)
     await this.persistOpenChats()

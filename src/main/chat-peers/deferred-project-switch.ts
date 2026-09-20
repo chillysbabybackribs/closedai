@@ -48,7 +48,8 @@ export class DeferredProjectSwitch {
     if (projectPath === await realpath(this.host.cwd())) throw new Error('That project is already active')
     // Recheck after filesystem awaits: another request or cancellation can arrive meanwhile.
     signal.throwIfAborted()
-    if (this.stopped || this.value?.status === 'pending' || this.value?.status === 'switching') {
+    const latest = this.state()
+    if (this.stopped || latest?.status === 'pending' || latest?.status === 'switching') {
       throw new Error('Workspace changed while validating the project switch')
     }
     if (this.host.source(request.paneId)?.activeTurnId !== request.turnId) {

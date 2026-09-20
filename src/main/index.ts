@@ -209,12 +209,10 @@ async function main(): Promise<void> {
         ? destination.selectedPaneId
         : destinationOpenIds[0] ?? null
       const destinationChat = destinationSelected ? chatStore!.get(destinationSelected) ?? null : null
-      projectPath = nextProjectPath
-      chatWorkspace = nextCwd
       await settings!.set({
         chatWorkspaces: [...saved, previous],
-        chatWorkspacePath: chatWorkspace,
-        chatProjectPath: projectPath,
+        chatWorkspacePath: nextCwd,
+        chatProjectPath: nextProjectPath,
         chatOpenIds: destinationOpenIds,
         chatSelectedPaneId: destinationSelected,
         chatThreadId: destinationChat?.codexThreadId ?? null,
@@ -225,6 +223,8 @@ async function main(): Promise<void> {
         chatReasoningEffort: destinationChat?.reasoningEffort ?? preference.reasoningEffort,
         chatContinuation: destinationChat?.continuation ?? null
       })
+      projectPath = nextProjectPath
+      chatWorkspace = nextCwd
     }
   }
   // Tools resolve the browser lazily: it is created with the window, after the chat service.
