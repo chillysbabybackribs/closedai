@@ -26,6 +26,30 @@ function dependencies(overrides: Partial<ResearchDependencies> = {}): ResearchDe
   }
 }
 
+test('research disables discarded synthesis without contaminating standalone answer caches', async (t) => {
+  const bodies: Array<{ url: string; body: Record<string, unknown> }> = []
+  let service!: ResearchService
+  const registry = new ToolRegistry([searchTools({
+    fetch: async (url, init) => {
+      bodies.push({ url: String(url), body: JSON.parse(String(init?.body)) })
+      return new Response(JSON.stringify({ results: [], answer: 'Standalone synthesis' }), { headers: { 'content-type': 'application/json' } })
+    },
+    readKey: async () => 'fixture', research: dependencies(), onResearchCreated: (value) => { service = value }
+  })])
+  t.after(() => service.dispose())
+  const args = { query: 'question', intent: 'answer', providers: ['tavily', 'you'] }
+  const started = await registry.call({ namespace: 'search', tool: 'run', arguments: { action: 'start', queries: [args] } }, context)
+  assert.equal(started.isError, undefined)
+  await tick()
+  assert.equal(bodies.find((call) => call.url.includes('tavily'))?.body.include_answer, false)
+  assert.equal(bodies.find((call) => call.url.includes('ydc-index'))?.body.knowledge, undefined)
+  const standalone = await registry.call({ namespace: 'search', tool: 'query', arguments: args }, context)
+  assert.equal(standalone.isError, undefined)
+  assert.equal(bodies.length, 4, 'source-only cached responses must not replace standalone answer requests')
+  assert.equal(bodies.filter((call) => call.url.includes('tavily')).at(-1)?.body.include_answer, true)
+  assert.equal(bodies.filter((call) => call.url.includes('ydc-index')).at(-1)?.body.knowledge, 'core')
+})
+
 test('provider fan-out, live tab opening, and source reading overlap; evidence precedes the slow provider', async (t) => {
   const slow = deferred<ProviderSearchResult>()
   const body = deferred<SourceDocument>()
