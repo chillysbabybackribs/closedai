@@ -22,8 +22,8 @@ test('each provider names its native editing tools', () => {
 })
 
 test('browser routing has a primary entry path and preserves real-input verification', () => {
-  assert.match(APPLICATION_INSTRUCTIONS, /Use embedded_browser\.page for the visible browser/)
-  assert.match(APPLICATION_INSTRUCTIONS, /Use browser_cdp only for capabilities those tools lack/)
+  assert.match(APPLICATION_INSTRUCTIONS, /Use embedded_browser\.page for navigation\/reading/)
+  assert.match(APPLICATION_INSTRUCTIONS, /Use browser_cdp for debugging, profiling, instrumentation, emulation/)
   assert.match(APPLICATION_INSTRUCTIONS, /fallback_reason plus inspection and verification/)
   assert.doesNotMatch(APPLICATION_INSTRUCTIONS, /batch every independent/)
 })

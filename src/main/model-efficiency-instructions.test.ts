@@ -27,6 +27,9 @@ test('each adapter includes each shared contract once, within the existing promp
     assert.doesNotMatch(value, /closedai_workspace|Repository map \(generated|source-change observations/)
     assert.match(value, /Complete authorized work/)
     assert.equal(value.split('Complete authorized work').length - 1, 1, `${provider}: role has one owner`)
+    // Platform identity precedes tool routing so models check what Chromium/Electron already do.
+    assert.ok(value.indexOf('ClosedAI is an Electron desktop app') < value.indexOf('Use embedded_browser.page'), `${provider}: identity precedes routing`)
+    assert.match(value, /check what the platform and existing ClosedAI tools already provide/)
     assert.match(value, /Choose your approach/)
     assert.match(value, /Treat diagnoses and proposed methods as hypotheses/)
     assert.match(value, /No mandatory search or library lookup/)
