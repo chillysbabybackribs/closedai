@@ -1,12 +1,12 @@
 import type { JSX, ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { Children, useEffect, useState } from 'react'
 
 import { GenerationLoader } from '../components/ui/generation-loader.js'
 
 /** Ambient strip under the transcript. It now carries only the background-task control: the
  *  working timer moved onto the composer's project rail, where the turn is actually driven. */
 export function TaskActivity({ children }: { children?: ReactNode }): JSX.Element | null {
-  if (!children) return null
+  if (Children.toArray(children).length === 0) return null
   return <div className="task-activity-strip">{children}</div>
 }
 
