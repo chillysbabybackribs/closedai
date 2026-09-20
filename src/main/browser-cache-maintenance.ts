@@ -141,9 +141,3 @@ async function writeState(userDataDir: string, state: BrowserCacheState): Promis
 function formatMegabytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
 }
-
-/** @deprecated Use maintainBrowserCache. Kept for callers/tests that still import the old name. */
-export async function pruneOversizedBrowserCacheOnce(userDataDir: string): Promise<{ pruned: boolean }> {
-  const result = await maintainBrowserCache(userDataDir)
-  return { pruned: result.pruned }
-}

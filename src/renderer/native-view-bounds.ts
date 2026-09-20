@@ -10,8 +10,7 @@ import type { BrowserBounds } from '../shared/types.js'
 //    re-measure and closes the race where the view briefly paints at its previous bounds.
 //  - one animation-frame coalesce: chat-split drags and drawer toggles can emit many RO
 //    callbacks in one frame; only the latest rect is worth an IPC round-trip.
-//  - a trailing in-flight drain plus two settle frames catch post-commit reflow from
-//    react-resizable-panels, which can assign pixel sizes a frame after its container changes.
+//  - a trailing in-flight drain plus two settle frames catch post-commit layout reflow.
 //  - observing ancestors (not only the host) catches layout moves where a sibling rail
 //    changes size and the host shifts.
 //

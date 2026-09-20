@@ -15,7 +15,6 @@ export const UI_CONTROLS = {
   'window.close': 'Close the window',
 
   'layout.browser-toggle': 'Chat-header control to show or hide the shared browser independently of the chat arrangement; item is the chat id',
-  'layout.browser-divider': 'Resize the chat area and shared browser',
   'layout.browser-dock': 'Drop a chat tab or pane on the left or right half to place it beside the browser',
   'layout.pane-drag': 'Focus a chat or drag its header to dock beside another; item is the chat id',
   'layout.new-chat-menu': 'Open the new-chat menu in a chat header (new tab, split right, split below); item is the chat id',

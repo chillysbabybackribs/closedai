@@ -1,4 +1,4 @@
-// Generates the repository index queried by the read-only workspace navigation tool.
+// Generates the repository maintenance index; it is not injected into model context.
 // Run with --check in the completion gate and --write to refresh committed data.
 import { readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'

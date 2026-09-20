@@ -1,18 +1,22 @@
-// Import-closure gate: walks every static/dynamic import from the three entry points and
+// Import-closure gate: walks literal static/dynamic imports from the application entry points and
 // fails when anything outside the allowlist is reachable, or when a source file under src/
 // is reachable from nothing. This is what keeps closedai to "only what is needed" — a stray
-// import of agent/provider/tool code fails the build, and so does code nothing imports.
+// import outside the sanctioned feature homes fails, and so does code nothing imports.
 import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs'
 import { resolve, dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const entries = ['src/main/index.ts', 'src/preload/index.ts', 'src/renderer/App.tsx']
+// Keep these aligned with electron.vite.config.ts and src/renderer/index.html.
+// The artifact worker is launched by URL rather than a module import.
+const entries = [
+  'src/main/index.ts', 'src/main/investigations/artifact-worker.ts',
+  'src/preload/index.ts', 'src/renderer/App.tsx'
+]
 const allowedPackages = new Set([
   'electron', 'react', 'react-dom', 'lucide-react', 'clsx', 'tailwind-merge',
-  'class-variance-authority', 'radix-ui', 'react-resizable-panels',
-  'marked', 'react-markdown', 'remark-breaks', 'remark-gfm', 'shiki', 'use-stick-to-bottom',
-  '@shadcn/react',
+  'class-variance-authority', 'radix-ui',
+  'marked', 'parse5', 'react-markdown', 'remark-breaks', 'remark-gfm', 'shiki',
   '@fontsource-variable/inter', '@fontsource-variable/geist-mono', '@fontsource/instrument-serif',
   // The Claude Code provider: the Agent SDK (loaded lazily, externalized from the bundle) and
   // zod, which its in-process MCP tool helper takes tool schemas in.
@@ -29,7 +33,21 @@ const forbiddenPaths = /(claude|codex|cursor|antigravity|agent|mcp|tool-|plugin|
 // (docs/cursor.md), plus the transcript memory the `peer_chats` recall and checkpoint tools read.
 // Everything else that smells like agent/provider/tool code is still rejected.
 const sanctionedPaths =
-  /^src\/(main|renderer)\/tools\/|^src\/main\/(claude|antigravity|cursor)\/|^src\/main\/chat-context\/memory-/
+  /^src\/(main|renderer)\/tools\/|^src\/main\/(claude|antigravity|cursor|investigations)\/|^src\/main\/chat-context\/memory-/
+// Cross-cutting runtime, vault, and artifact contracts used by the current application.
+const sanctionedFiles = new Set([
+  'src/main/codex-workspace-runtime.ts', 'src/main/codex-model-context.ts',
+  'src/main/tool-transcript-shared.ts',
+  'src/main/credential-vault.ts', 'src/main/credential-vault-ipc.ts',
+  'src/shared/credentials.ts', 'src/shared/investigation-artifacts.ts',
+  'src/renderer/settings/credential-vault-modal.tsx',
+  'src/renderer/settings/credential-vault-store.ts',
+  'src/renderer/settings/credential-create-form.tsx',
+  'src/renderer/settings/credential-service-picker.tsx',
+  'src/renderer/settings/credential-service-logos.tsx',
+  'src/renderer/settings/credential-field-row.tsx',
+  'src/renderer/settings/credential-vault-list.tsx'
+])
 
 const importRe = /(?:import|export)\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g
 function resolveLocal(from, spec) {
@@ -50,7 +68,9 @@ while (stack.length) {
   // Stylesheets carry no imports of their own beyond other stylesheets, so a feature name in
   // a sheet's path (agents.css, tool-activity.css) is not the module smell this rejects.
   const isStyle = file.endsWith('.css')
-  if (!isStyle && forbiddenPaths.test(rel) && !sanctionedPaths.test(rel)) problems.push(`forbidden module reachable: ${rel}`)
+  if (!isStyle && forbiddenPaths.test(rel) && !sanctionedPaths.test(rel) && !sanctionedFiles.has(rel)) {
+    problems.push(`forbidden module reachable: ${rel}`)
+  }
   if (!/\.(ts|tsx|css)$/.test(file)) continue
   const source = readFileSync(file, 'utf8')
   for (const match of source.matchAll(importRe)) {
