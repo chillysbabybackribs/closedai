@@ -500,6 +500,11 @@ export class AntigravityChatService extends EventEmitter {
       addNotice: (text, tone, id) => this.addNotice(text, tone, id),
       setPaused: (id) => this.setPaused(id)
     })
+    this.persistTurn()
+  }
+
+  /** Record the transcript as it stands, including a turn that ended in failure. */
+  private persistTurn(): void {
     const conversationId = this.session?.conversationId
     if (!conversationId) return
     const items = this.transcript.snapshot()
@@ -513,6 +518,9 @@ export class AntigravityChatService extends EventEmitter {
    * refresher updates the system keyring, but its active in-memory client fails on the next call
    * with 401 UNAUTHENTICATED. Retiring the dead process and continuing on a fresh process
    * seamlessly recovers the turn when the refreshed token is valid.
+   *
+   * One retry per user turn: `authRetrying` stays set until the next `send`, so a resumed turn
+   * that fails the same way is reported instead of spawning processes in a loop.
    */
   private retryOnAuthFailure(turnId: string, error: string): boolean {
     if (!isAntigravityAuthFailure(error) || this.authRetrying) return false
@@ -526,6 +534,7 @@ export class AntigravityChatService extends EventEmitter {
         if (!check.ok) {
           this.setConnection({ state: 'signed-out', message: SIGN_IN_MESSAGE })
           this.addNotice('Antigravity session expired. Please sign in via terminal `agy` and retry.', 'error', turnId)
+          this.persistTurn()
           return
         }
         this.addNotice('Antigravity credentials refreshed; continuing turn…', 'info', turnId)
@@ -533,8 +542,7 @@ export class AntigravityChatService extends EventEmitter {
         session.send('The stream was interrupted due to a credential refresh. Please continue the task you were working on.')
       } catch (retryError) {
         this.addNotice(messageOf(retryError), 'error', turnId)
-      } finally {
-        this.authRetrying = false
+        this.persistTurn()
       }
     })()
     return true
@@ -562,6 +570,7 @@ export class AntigravityChatService extends EventEmitter {
         session.send(content)
       } catch (retryError) {
         this.addNotice(messageOf(retryError), 'error', turnId)
+        this.persistTurn()
       }
     })()
     return true
