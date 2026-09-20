@@ -1,28 +1,21 @@
 .prompt-markdown .prompt-source-trigger {
   display: inline-flex;
   align-items: center;
-  max-width: 148px;
-  height: 28px;
-  padding: 0 8px;
+  max-width: 220px;
   gap: 5px;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--muted);
   color: var(--muted-foreground);
-  font-size: 15px;
+  font-size: inherit;
   line-height: 1;
   text-decoration: none;
-  vertical-align: -5px;
-  transition: color 120ms var(--ease-chrome), background 120ms var(--ease-chrome);
+  vertical-align: -3px;
+  transition: color 120ms var(--ease-chrome);
 }
 
-.prompt-markdown .prompt-source-trigger-favicon { padding-left: 3px; }
-
 .prompt-markdown .prompt-source-trigger:hover {
-  background: var(--accent);
-  color: var(--accent-foreground);
-  text-decoration: none;
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .prompt-source-trigger img,
