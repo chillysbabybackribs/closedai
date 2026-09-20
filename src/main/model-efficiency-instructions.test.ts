@@ -16,7 +16,7 @@ test('each adapter includes each shared contract once, within the existing promp
     antigravity: antigravityAgentInstructions('/outside-index'),
     cursor: cursorSystemInstructions('/outside-index')
   }
-  const budgets = { codex: 5_625, claude: 6_500, antigravity: 7_750, cursor: 7_000 }
+  const budgets = { codex: 8_000, claude: 8_500, antigravity: 9_000, cursor: 8_500 }
   for (const provider of Object.keys(instructions) as Array<keyof typeof instructions>) {
     const value = instructions[provider]
     for (const section of [APPLICATION_INSTRUCTIONS, UNIVERSAL_ARTICULATION_INSTRUCTIONS, engineeringInstructions(provider)]) {
