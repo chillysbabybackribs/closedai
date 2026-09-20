@@ -45,10 +45,49 @@ function check(schema: JsonObject, value: unknown, path: string, errors: string[
       if (property) {
         check(property, entry, `${path}.${key}`, errors)
       } else if (schema.additionalProperties === false) {
-        errors.push(`${path}.${key} is not a recognised argument`)
+        const suggestion = suggestMatch(key, Object.keys(properties))
+        const hint = suggestion ? ` (did you mean "${suggestion}"?)` : ''
+        errors.push(`${path}.${key} is not a recognised argument${hint}`)
       }
     }
   }
+}
+
+export function suggestMatch(key: string, candidates: string[]): string | null {
+  if (candidates.length === 0) return null
+  const snake = key.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/[-\s]+/g, '_').toLowerCase()
+  if (candidates.includes(snake)) return snake
+  const lower = key.toLowerCase()
+  if (candidates.includes(lower)) return lower
+  let best: string | null = null
+  let min = 3
+  for (const candidate of candidates) {
+    const maxDist = candidate.length <= 4 ? 1 : 2
+    const dist = levenshtein(lower, candidate.toLowerCase())
+    if (dist <= maxDist && dist < min) {
+      min = dist
+      best = candidate
+    }
+  }
+  return best
+}
+
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0
+  if (!a.length) return b.length
+  if (!b.length) return a.length
+  const row: number[] = []
+  for (let i = 0; i <= b.length; i++) row[i] = i
+  for (let i = 1; i <= a.length; i++) {
+    let prev = i
+    for (let j = 1; j <= b.length; j++) {
+      const val = a[i - 1] === b[j - 1] ? row[j - 1]! : Math.min(row[j - 1]!, prev, row[j]!) + 1
+      row[j - 1] = prev
+      prev = val
+    }
+    row[b.length] = prev
+  }
+  return row[b.length]!
 }
 
 function typesOf(type: unknown): string[] {

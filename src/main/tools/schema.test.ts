@@ -38,3 +38,13 @@ test('validateInput reports missing required, wrong types, ranges, enums, and un
 test('validateInput allows unknown keys unless additionalProperties is false', () => {
   assert.deepEqual(validateInput({ type: 'object', properties: {} }, { anything: 1 }), [])
 })
+
+test('validateInput suggests close matches for unrecognized arguments', () => {
+  const errors = validateInput(schema, { maxChars: 500, urll: 'https://test.com' })
+  assert.deepEqual(errors, [
+    '$.url is required',
+    '$.maxChars is not a recognised argument (did you mean "max_chars"?)',
+    '$.urll is not a recognised argument (did you mean "url"?)'
+  ])
+})
+

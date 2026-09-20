@@ -1,5 +1,5 @@
 import type { ToolCallEvent } from '../../shared/tools.js'
-import { validateInput } from './schema.js'
+import { suggestMatch, validateInput } from './schema.js'
 import { truncateText } from './truncate-json.js'
 import {
   DEFAULT_TOOL_TIMEOUT_MS,
@@ -181,7 +181,7 @@ export class ToolRegistry {
     const timeout = new Promise<ToolResult>((resolve) => {
       timer = setTimeout(() => {
         controller.abort()
-        resolve(timeoutResult(`${label}: timed out after ${Math.round(timeoutMs / 1000)}s`))
+        resolve(timeoutResult(`${label}: timed out after ${Math.round(timeoutMs / 1000)}s (aborted; consider a narrower scope or smaller limit)`))
       }, timeoutMs)
     })
     let cancel: (result: ToolResult) => void = () => {}
@@ -221,9 +221,15 @@ export class ToolRegistry {
       ? this.namespaces.find((entry) => entry.name === request.namespace)
       : null
     if (owner) {
-      return `Unknown tool: ${label}. ${owner.name} has: ${owner.tools.map((tool) => tool.name).join(', ')}.`
+      const names = owner.tools.map((tool) => tool.name)
+      const suggestion = suggestMatch(request.tool, names)
+      const hint = suggestion ? ` Did you mean "${suggestion}"?` : ''
+      return `Unknown tool: ${label}.${hint} ${owner.name} has: ${names.join(', ')}.`
     }
-    return `Unknown tool: ${label}. This app's tools are: ${this.names().join(', ')}. ` +
+    const allNames = this.names()
+    const suggestion = suggestMatch(label, allNames)
+    const hint = suggestion ? ` Did you mean "${suggestion}"?` : ''
+    return `Unknown tool: ${label}.${hint} This app's tools are: ${allNames.join(', ')}. ` +
       'Tools your own harness provides (file read/search/edit, shell, web fetch) are not ' +
       'ClosedAI tools; call those directly rather than through this app.'
   }

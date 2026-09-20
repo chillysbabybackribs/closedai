@@ -36,11 +36,16 @@ test('a wrong name is answered with the tools that exist, and counted as misuse 
   const siblingText = sibling.content[0].type === 'text' ? sibling.content[0].text : ''
   assert.match(siblingText, /Unknown tool: alpha\.nope\. alpha has: one, two\./)
 
+  const typo = await registry.call({ namespace: 'alpha', tool: 'on', arguments: {} }, context)
+  const typoText = typo.content[0].type === 'text' ? typo.content[0].text : ''
+  assert.match(typoText, /Unknown tool: alpha\.on\. Did you mean "one"\? alpha has: one, two\./)
+
   const ran = await registry.call({ namespace: 'alpha', tool: 'one', arguments: {} }, context)
   assert.equal(ran.isError, undefined)
   assert.deepEqual(records, [
     { toolId: 'Grep', ok: false, misuse: true },
     { toolId: 'alpha.nope', ok: false, misuse: true },
+    { toolId: 'alpha.on', ok: false, misuse: true },
     { toolId: 'alpha.one', ok: true, misuse: false }
   ])
 })

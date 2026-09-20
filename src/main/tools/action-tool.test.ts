@@ -68,6 +68,10 @@ test('action tool validates against the chosen action only', async () => {
   const unknown = await tool.run({ action: 'delete' }, context)
   assert.equal(unknown.isError, true)
   assert.match(unknown.content[0].type === 'text' ? unknown.content[0].text : '', /"delete" is not one of search, fetch/)
+
+  const typo = await tool.run({ action: 'fetc' }, context)
+  assert.equal(typo.isError, true)
+  assert.match(typo.content[0].type === 'text' ? typo.content[0].text : '', /"fetc" is not one of search, fetch \(did you mean "fetch"\?\)/)
 })
 
 test('action tool runs end to end through the registry', async () => {

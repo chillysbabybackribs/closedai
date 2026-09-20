@@ -1,4 +1,4 @@
-import { validateInput } from './schema.js'
+import { suggestMatch, validateInput } from './schema.js'
 import {
   usageResult,
   type JsonObject,
@@ -61,7 +61,9 @@ export function defineActionTool(options: ActionToolOptions): ToolDefinition {
       const action = typeof verb === 'string' ? byVerb.get(verb) : undefined
       if (!action) {
         const shown = typeof verb === 'string' ? `"${verb}"` : 'missing'
-        return usageResult(`${name}: action ${shown} is not one of ${verbs.join(', ')}`)
+        const suggestion = typeof verb === 'string' ? suggestMatch(verb, verbs) : null
+        const hint = suggestion ? ` (did you mean "${suggestion}"?)` : ''
+        return usageResult(`${name}: action ${shown} is not one of ${verbs.join(', ')}${hint}`)
       }
       const { action: _omit, ...fields } = input
       const problems = validateInput(action.inputSchema, fields)
