@@ -478,3 +478,93 @@
   .prompt-chat { --chat-column-gutter: 12px; }
   .prompt-chat-content { padding-inline: 10px; }
 }
+
+/* Compact / Collapsible Composer */
+.prompt-composer.is-compact {
+  padding: 6px var(--chat-column-gutter) 8px;
+}
+
+.prompt-composer-input.is-compact {
+  min-height: 38px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 18%);
+}
+
+.prompt-composer-compact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.prompt-composer-compact-status {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  max-width: 180px;
+}
+
+.prompt-composer-compact-status .composer-strip-activity {
+  margin: 0;
+  padding: 2px 6px;
+  font-size: 11px;
+}
+
+.prompt-composer-compact-model {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 6%);
+  color: #a0a0a2;
+  font-size: 11px;
+  font-weight: 500;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prompt-composer-textarea-compact {
+  flex: 1;
+  height: 24px !important;
+  min-height: 24px !important;
+  max-height: 24px !important;
+  padding: 2px 6px !important;
+  font-size: 13px !important;
+  line-height: 20px !important;
+  background: transparent !important;
+  border: none !important;
+  resize: none !important;
+  overflow: hidden !important;
+}
+
+.prompt-composer-compact-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.prompt-composer-compact-actions .prompt-composer-send,
+.prompt-composer-compact-actions .prompt-composer-stop,
+.prompt-composer-compact-actions .prompt-composer-resume {
+  width: 28px;
+  height: 28px;
+}
+
+.prompt-composer-toggle-compact {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: #8c8c8e;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.prompt-composer-toggle-compact:hover {
+  color: #f0f0f2;
+  background: rgb(255 255 255 / 8%);
+}

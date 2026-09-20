@@ -197,22 +197,21 @@ export function Composer({
           onClearProject={onClearProject}
           activeTurnId={activeTurnId}
           trailing={
-            <PromptInputAction tooltip="Collapse composer">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="prompt-composer-toggle-compact rounded-full"
-                aria-label="Collapse composer"
-                data-ui="composer.compact-toggle"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  setManualExpanded(false)
-                }}
-              >
-                <ChevronDown size={15} aria-hidden="true" />
-              </Button>
-            </PromptInputAction>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="prompt-composer-toggle-compact rounded-full"
+              aria-label="Collapse composer"
+              title="Collapse composer"
+              data-ui="composer.compact-toggle"
+              onClick={(event) => {
+                event.stopPropagation()
+                setManualExpanded(false)
+              }}
+            >
+              <ChevronDown size={15} aria-hidden="true" />
+            </Button>
           }
         />
       )}
@@ -254,71 +253,33 @@ export function Composer({
             <div className="prompt-composer-compact-actions">
               {running ? (
                 <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}>
-                  <Button
-                    type="button"
-                    size="icon"
-                    className="prompt-composer-stop rounded-full"
-                    aria-label={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}
-                    data-ui="composer.stop"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void onStop()
-                    }}
-                  >
+                  <Button type="button" size="icon" className="prompt-composer-stop rounded-full"
+                    aria-label={`Pause ${CHAT_PROVIDER_LABELS[provider]}`} data-ui="composer.stop"
+                    onClick={(event) => { event.stopPropagation(); void onStop() }}>
                     <Pause size={15} fill="currentColor" aria-hidden="true" />
                   </Button>
                 </PromptInputAction>
               ) : paused ? (
                 <PromptInputAction tooltip={`Resume where ${CHAT_PROVIDER_LABELS[provider]} paused`}>
-                  <Button
-                    type="button"
-                    size="icon"
-                    className="prompt-composer-resume rounded-full"
-                    aria-label={`Resume where ${CHAT_PROVIDER_LABELS[provider]} paused`}
-                    data-ui="composer.resume"
-                    disabled={!enabled || sending}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void resume()
-                    }}
-                  >
+                  <Button type="button" size="icon" className="prompt-composer-resume rounded-full"
+                    aria-label={`Resume where ${CHAT_PROVIDER_LABELS[provider]} paused`} data-ui="composer.resume"
+                    disabled={!enabled || sending} onClick={(event) => { event.stopPropagation(); void resume() }}>
                     <Play size={15} fill="currentColor" aria-hidden="true" />
                   </Button>
                 </PromptInputAction>
               ) : (
                 <PromptInputAction tooltip="Send message">
-                  <Button
-                    type="submit"
-                    size="icon"
-                    className="prompt-composer-send rounded-full"
-                    aria-label="Send message"
-                    data-ui="composer.send"
-                    data-waiting-for-input={waitingForInput || undefined}
-                    disabled={!canSend}
-                    onClick={(event) => {
-                      if (!canSend) {
-                        event.stopPropagation()
-                        setManualExpanded(true)
-                      }
-                    }}
-                  >
+                  <Button type="submit" size="icon" className="prompt-composer-send rounded-full"
+                    aria-label="Send message" data-ui="composer.send" data-waiting-for-input={waitingForInput || undefined}
+                    disabled={!canSend} onClick={(event) => { if (!canSend) { event.stopPropagation(); setManualExpanded(true) } }}>
                     <ArrowUp size={19} strokeWidth={2} aria-hidden="true" />
                   </Button>
                 </PromptInputAction>
               )}
               <PromptInputAction tooltip="Expand composer">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="prompt-composer-toggle-compact rounded-full"
-                  aria-label="Expand composer"
-                  data-ui="composer.compact-toggle"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    setManualExpanded(true)
-                  }}
-                >
+                <Button type="button" variant="ghost" size="icon" className="prompt-composer-toggle-compact rounded-full"
+                  aria-label="Expand composer" data-ui="composer.compact-toggle"
+                  onClick={(event) => { event.stopPropagation(); setManualExpanded(true) }}>
                   <ChevronUp size={15} aria-hidden="true" />
                 </Button>
               </PromptInputAction>
