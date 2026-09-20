@@ -12,7 +12,7 @@ test('running takes precedence over an unread completion and does not infer wait
   snapshot.items = [{ type: 'assistant', id: 'a', turnId: 'current', text: 'Waiting for your answer', phase: 'commentary', streaming: true }]
   const result = tabActivity(row(true), snapshot, { queuedAt: 1, viewedAt: null })
   assert.equal(result.state, 'working')
-  assert.equal(result.detail, 'Reading files')
+  assert.equal(result.label, 'Working')
 })
 
 test('paused and connection failures are distinguished from completion', () => {
@@ -30,20 +30,12 @@ test('review state is shared with the drawer and clears when viewed', () => {
   assert.equal(tabActivity(row(false)).state, 'idle')
 })
 
-test('preview excludes older turns and reasoning, and bounds recent steps', () => {
+test('an error notice from an older turn does not mark the current turn failed', () => {
   const snapshot = initialChatState()
   snapshot.items = [
     { type: 'notice', id: 'old-error', turnId: 'old', text: 'Old failure', tone: 'error' },
     { type: 'user', id: 'u', turnId: 'new', text: 'New request' },
-    { type: 'reasoning', id: 'r', turnId: 'new', text: 'Private reasoning', streaming: false },
-    ...Array.from({ length: 5 }, (_, i) => ({ type: 'tool' as const, id: `tool-${i}`, turnId: 'new', label: 'Read', detail: 'file.ts', status: 'completed' })),
     { type: 'assistant', id: 'a', turnId: 'new', text: 'Done', phase: 'final_answer', streaming: false }
   ]
-  const result = tabActivity(row(false), snapshot)
-  assert.equal(result.state, 'idle')
-  assert.equal(result.detail, 'Done')
-  assert.deepEqual(result.steps.map((step) => step.id), ['tool-2', 'tool-3', 'tool-4'])
-  assert.ok(!JSON.stringify(result).includes('Private reasoning'))
-  snapshot.activeTurnId = 'next'
-  assert.deepEqual(tabActivity(row(true), snapshot).steps, [])
+  assert.equal(tabActivity(row(false), snapshot).state, 'idle')
 })

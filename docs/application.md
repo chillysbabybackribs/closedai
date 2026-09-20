@@ -225,9 +225,7 @@ Hidden tabs can be parked or detached by normal runtime trimming and are reattac
 Chat tabs show a compact continuously rotating blue spinner while working, an amber pause icon when paused,
 and a red alert icon for reported errors. A background completion replaces the spinner with a solid
 green unread dot in the same position, using the sidebar's existing review queue; opening the chat clears that dot.
-Hovering or keyboard-focusing a tab shows a preview within the chat tile: current activity,
-up to three recent tool/command/edit steps, and time since the request when available. It uses
-existing snapshots without waking hidden chats; unavailable history is not fetched. Reduced-motion
+The tab's accessible name carries the same status as text; there is no hover preview. Reduced-motion
 settings replace animation with a static spinner. Paused state is explicit; the UI does not
 infer a request for user input from message text.
 
