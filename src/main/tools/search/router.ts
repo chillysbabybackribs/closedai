@@ -49,8 +49,8 @@ const MIN_SUCCESSFUL: Partial<Record<SearchDepth, number>> = {
 
 export function selectProviders(request: SearchRequest): SearchProvider[] {
   if (requiresBrave(request)) {
-    if (request.providers?.length && !request.providers.includes('brave')) throw new Error('Requested source controls require Brave; include brave in providers or omit providers')
-    return request.providers?.length ? [...new Set(request.providers)] : ['brave']
+    if (request.providers?.some((provider) => provider !== 'brave')) throw new Error('Requested source controls require Brave only; use a separate query for other providers')
+    return ['brave']
   }
   return request.providers?.length ? [...new Set(request.providers)] : ROUTES[request.intent][request.depth]
 }
@@ -204,11 +204,7 @@ export class SearchRouter {
         const client = this.clients.get(provider)
         if (!client) throw new Error(`${provider} client is not configured`)
         const deadline = AbortSignal.any([signal, AbortSignal.timeout(20_000)])
-        const compatible = provider === 'brave' || !requiresBrave(request) ? request : {
-          ...request, preferredDomains: undefined, goggles: undefined, relevance: undefined, contextTokens: undefined,
-          freshness: request.freshness?.includes('to') ? undefined : request.freshness
-        }
-        const found = await abortable(client.search(compatible, deadline), deadline)
+        const found = await abortable(client.search(request, deadline), deadline)
         const observedAt = new Date(this.now()).toISOString()
         return { ...found, results: found.results.map((item) => ({ ...item, discovery: { provider, observedAt, cached: false } })) }
       })

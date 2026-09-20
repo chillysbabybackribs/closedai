@@ -2,8 +2,9 @@ import { createHash } from 'node:crypto'
 import { mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parse, type DefaultTreeAdapterMap } from 'parse5'
-import type { SourceRepresentation } from '../../../../shared/web-research.js'
+import type { SourceDate, SourceRepresentation } from '../../../../shared/web-research.js'
 import { abortable, RequestBudget } from '../request-budget.js'
+import { mergeDates, metaDate } from './source-metadata.js'
 
 const MAX_BYTES = 512 * 1024
 export const MAX_TEXT = 120_000
@@ -17,6 +18,7 @@ export type SourceDocument = {
   representation: SourceRepresentation
   /** HTML with a script tag and almost no static text: probably a client-rendered shell. */
   sparse?: boolean
+  dates?: SourceDate[]
 }
 export type SourceReader = (url: string, runId: string, sourceId: string, signal: AbortSignal) => Promise<SourceDocument>
 
@@ -34,15 +36,20 @@ export function publicUrl(value: string): string {
 }
 
 /** Inert WHATWG parsing: no page script executes. https://github.com/inikulin/parse5 */
-export function documentText(raw: string, contentType: string): { text: string; title: string } {
+export function documentText(raw: string, contentType: string): { text: string; title: string; dates?: SourceDate[] } {
   if (!contentType.includes('html')) return { text: raw, title: '' }
   const document = parse(raw)
   let title = ''
+  const dates: SourceDate[] = []
   let main: DefaultTreeAdapterMap['node'] | undefined
   const nodes = [document as DefaultTreeAdapterMap['node']]
   for (let index = 0; index < nodes.length; index++) {
     const node = nodes[index]
     if ('tagName' in node) {
+      if (node.tagName === 'meta' && dates.length < 12) {
+        const date = metaDate(node.attrs)
+        if (date) dates.push(date)
+      }
       if (node.tagName === 'title') title = node.childNodes.filter((child) => 'value' in child).map((child) => 'value' in child ? child.value : '').join('')
       if (!main && ['main', 'article'].includes(node.tagName)) main = node
     }
@@ -59,7 +66,7 @@ export function documentText(raw: string, contentType: string): { text: string; 
     if ('value' in node) pieces.push(node.value)
     if ('childNodes' in node) stack.push(...[...node.childNodes].reverse())
   }
-  return { title, text: pieces.join('').replace(/[\t \u00a0]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim() }
+  return { title, text: pieces.join('').replace(/[\t \u00a0]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim(), dates: mergeDates(dates) }
 }
 
 /** Source files are confined to app-generated ids; callers never supply filesystem paths. */
@@ -138,6 +145,9 @@ export class SourceStore {
       const document: SourceDocument = {
         text, title: extracted.title, url, contentType, representation: 'static_text',
         sha256: createHash('sha256').update(text).digest('hex'),
+        dates: mergeDates(extracted.dates, response.headers.has('last-modified') ? [{
+          kind: 'http_last_modified', value: response.headers.get('last-modified')!, source: 'http:Last-Modified'
+        }] : []),
         incomplete: incomplete || extracted.text.length > MAX_TEXT
       }
       if (contentType.includes('html') && text.length < SHELL_TEXT_LIMIT && /<script[\s>]/i.test(raw)) document.sparse = true

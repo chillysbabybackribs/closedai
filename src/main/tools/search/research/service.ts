@@ -5,6 +5,7 @@ import { canonicalUrl, SearchRouter } from '../router.js'
 import type { SearchRequest, SearchResult } from '../types.js'
 import { publicUrl, SourceNeedsRendering, type SourceDocument, type SourceReader } from './source-reader.js'
 import { isResearchSourceUrl, SourcePresentation, type OpenSearchTab } from '../presentation.js'
+import { mergeDates } from './source-metadata.js'
 
 export type ResearchOwner = { paneId: string; threadId: string; turnId: string | null; workspace: string }
 export type ResearchDependencies = {
@@ -174,6 +175,11 @@ export class ResearchService {
     const key = canonicalUrl(result.url)
     const existing = run.sources.get(key)
     if (existing) {
+      existing.dates = mergeDates(existing.dates, result.dates)
+      if (result.discovery && !existing.discovery?.some((entry) => JSON.stringify(entry) === JSON.stringify(result.discovery))) {
+        existing.discovery = [...(existing.discovery ?? []), result.discovery].slice(-8)
+        existing.revision = this.changed(run)
+      }
       if (result.provider && !existing.discoveredBy.includes(result.provider)) {
         existing.discoveredBy.push(result.provider)
         existing.revision = this.changed(run)
@@ -183,6 +189,7 @@ export class ResearchService {
     if (run.sources.size >= run.maxSources) return
     const source: ResearchSource = {
       id: randomUUID(), url: result.url, title: result.title.slice(0, 180), snippet: result.snippet.slice(0, 240),
+      requestedUrl: result.url, dates: result.dates, discovery: result.discovery ? [result.discovery] : [],
       discoveredBy: result.provider ? [result.provider] : [], state: 'queued', revision: this.changed(run)
     }
     run.sources.set(key, source)
@@ -232,6 +239,7 @@ export class ResearchService {
       state: 'ready', title: document.title.slice(0, 180) || source.title, url: document.url,
       contentType: document.contentType, sha256: document.sha256, chars: document.text.length,
       incomplete: document.incomplete, representation: document.representation,
+      dates: mergeDates(document.dates, source.dates),
       retrievedAt: new Date().toISOString(), revision: this.changed(run)
     })
   }

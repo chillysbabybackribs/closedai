@@ -58,6 +58,7 @@ export function result(
     title: text(first(fields.title)) || url,
     snippet: compactText(...fields.snippet.map((name) => item[name])).slice(0, 2_000),
     ...(fields.age && first(fields.age) ? { age: text(first(fields.age)) } : {}),
+    ...(fields.age && first(fields.age) ? { dates: [{ kind: 'index_reported' as const, value: text(first(fields.age)).slice(0, 120), source: provider }] } : {}),
     ...(typeof rawScore === 'number' ? { score: rawScore } : {})
   }
 }

@@ -61,6 +61,5 @@ export function braveClient(deps: ProviderDeps): SearchProviderClient {
 function braveQuery(request: SearchRequest): string {
   const scoped = queryWithDomains(request.query, request.includeDomains, request.excludeDomains)
   if (scoped.length <= 600 && scoped.trim().split(/\s+/).length <= 75) return scoped
-  const filters = queryWithDomains('', request.includeDomains, request.excludeDomains).trim()
   throw new Error('Brave query including domain filters exceeds 600 characters or 75 words; narrow the query or filters')
 }
