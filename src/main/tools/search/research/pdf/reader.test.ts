@@ -8,6 +8,7 @@ import { createPdfReader } from './reader.js'
 import { SourceStore } from '../source-reader.js'
 import { ResearchService } from '../service.js'
 import { SearchRouter } from '../../router.js'
+import { createHash } from 'node:crypto'
 
 // A real, self-contained PDF with cross-reference offsets, standard font and one stream per page.
 function pdf(pages: string[]): Uint8Array<ArrayBuffer> {
@@ -45,7 +46,8 @@ test('direct PDF read preserves bytes, page markers, metadata and hash; supports
     const document = await store.collect(url, 'run', String(index), signal, { maxSourceBytes: body.length })
     assert.equal(document.representation, 'pdf_text')
     assert.equal(document.title, 'Research fixture')
-    assert.deepEqual(document.pdf, { totalPages: 2, extractedPages: 2, pagesWithoutText: 0 })
+    assert.deepEqual(document.pdf, { totalPages: 2, extractedPages: 2, pagesWithoutText: 0,
+      textStatus: 'available', bytes: body.length, documentSha256: createHash('sha256').update(body).digest('hex') })
     assert.equal(document.incomplete, false)
     assert.match(document.text, /\[Page 1\]\nFirst page evidence\n\n\[Page 2\]\nSecond page evidence/)
     assert.equal(document.sha256.length, 64)
@@ -70,14 +72,18 @@ test('text and download limits remain distinct; failed/truncated PDF downloads p
   assert.equal(full.pdf?.extractedPages, 2)
 })
 
-test('image-only/empty pages do not masquerade as extracted evidence; malformed PDFs fail cleanly', async (t) => {
+test('empty PDFs retain bytes with explicit native-text absence; malformed PDFs fail cleanly', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'pdf-errors-'))
   t.after(() => rm(root, { recursive: true, force: true }))
-  for (const [index, body] of [pdf(['']), new TextEncoder().encode('%PDF-1.4\nbroken')].entries()) {
-    const store = new SourceStore(root, async () => new Response(body, { headers: { 'content-type': 'application/pdf' } }), reader)
-    await assert.rejects(store.collect(url, 'run', String(index), signal), index === 0 ? /require OCR/ : /PDF text extraction failed/)
-  }
+  const broken = new SourceStore(root, async () => new Response('%PDF-1.4\nbroken', { headers: { 'content-type': 'application/pdf' } }), reader)
+  await assert.rejects(broken.collect(url, 'run', 'broken', signal), /PDF text extraction failed/)
   assert.deepEqual(await readdir(join(root, 'run')), [])
+  const blankBody = pdf([''])
+  const blank = new SourceStore(root, async () => new Response(blankBody, { headers: { 'content-type': 'application/pdf' } }), reader)
+  const empty = await blank.collect(url, 'run', 'empty', signal)
+  assert.equal(empty.pdf?.textStatus, 'none')
+  assert.equal(empty.incomplete, true)
+  assert.deepEqual(new Uint8Array(await readFile(await blank.pdfPath('run', 'empty'))), blankBody)
   const store = new SourceStore(root, async () => new Response(pdf(['Evidence', '']), { headers: { 'content-type': 'application/pdf' } }), reader)
   const mixed = await store.collect(url, 'run', 'mixed', signal)
   assert.equal(mixed.incomplete, true)
