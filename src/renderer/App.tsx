@@ -17,6 +17,7 @@ import {
 import { appShortcutForKey } from './app-shortcuts.js'
 import { TitlebarMenu } from './titlebar-menu.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
+import type { ChatPaneDialog } from './chat-pane.js'
 import { AppearanceSettingsDialog } from './settings/appearance-settings-dialog.js'
 import { CredentialVaultModal } from './settings/credential-vault-modal.js'
 import {
@@ -41,6 +42,7 @@ function App(): JSX.Element {
   // Owned here because the title bar menu and Ctrl+H reach the panel that lives in the chat pane.
   const [historyOpen, setHistoryOpen] = useState(false)
   const toggleHistory = useCallback(() => setHistoryOpen((open) => !open), [])
+  const [paneDialog, setPaneDialog] = useState<ChatPaneDialog | null>(null)
   const updateAppearance = useCallback((patch: Partial<AppearanceSettings>): void => {
     setAppearance((current) => {
       const next = normalizeAppearanceSettings({ ...current, ...patch })
@@ -100,6 +102,7 @@ function App(): JSX.Element {
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenCredentials={() => setCredentialsOpen(true)}
           onToggleHistory={toggleHistory}
+          onOpenPaneDialog={setPaneDialog}
         />
         <AppWindowControls />
       </header>
@@ -113,6 +116,8 @@ function App(): JSX.Element {
           appearance={appearance}
           historyOpen={historyOpen}
           onHistoryOpenChange={setHistoryOpen}
+          dialog={paneDialog}
+          onDialogChange={setPaneDialog}
         />}
       </div>
       <AppearanceSettingsDialog

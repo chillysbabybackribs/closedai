@@ -46,8 +46,6 @@ export type ComposerProps = {
   onChooseProject: () => Promise<void>
   onSelectProject: (projectPath: string) => Promise<void>
   onClearProject: () => Promise<void>
-  onOpenTools: () => void
-  onOpenTrace: () => void
   /** Turn in flight, if any; shown as the working timer on the project rail. */
   activeTurnId: string | null
   onCompactConversation?: () => Promise<void>
@@ -79,8 +77,6 @@ export function Composer({
   onChooseProject,
   onSelectProject,
   onClearProject,
-  onOpenTools,
-  onOpenTrace,
   activeTurnId,
   onCompactConversation,
   compactConversationEnabled = false
@@ -178,8 +174,6 @@ export function Composer({
         onChooseProject={onChooseProject}
         onSelectProject={onSelectProject}
         onClearProject={onClearProject}
-        onOpenTools={onOpenTools}
-        onOpenTrace={onOpenTrace}
         activeTurnId={activeTurnId}
       />
       <PromptInput

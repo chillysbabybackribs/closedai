@@ -220,8 +220,7 @@
   background: #1e1e1f;
 }
 
-.composer-project-trigger,
-.composer-strip-action {
+.composer-project-trigger {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -233,18 +232,15 @@
   font-weight: 500;
 }
 
-.composer-project-trigger:hover:not(:disabled),
-.composer-strip-action:hover:not(:disabled) {
+.composer-project-trigger:hover:not(:disabled) {
   background: rgb(255 255 255 / 7%);
   color: #fff;
 }
 
-.composer-project-trigger svg,
-.composer-strip-action svg { color: #c8c8ca; }
+.composer-project-trigger svg { color: #c8c8ca; }
 .composer-project-strip-spacer { flex: 1 1 auto; }
-.composer-strip-action { color: #a9a9ad; }
 
-/* The working timer sits on the left of the rail, opposite the folder and its two actions. */
+/* The working timer sits on the left of the rail, opposite the folder. */
 .composer-strip-activity {
   flex: 0 1 auto;
   gap: 8px;

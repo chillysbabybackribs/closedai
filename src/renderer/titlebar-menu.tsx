@@ -12,7 +12,7 @@ type MenuRow = {
   label: string
   shortcut?: string
   command?: ChatZoomCommand
-  action?: 'settings' | 'history' | 'credentials'
+  action?: 'settings' | 'history' | 'credentials' | 'tools' | 'trace'
 } | null
 
 type Menu = { label: string; rows: MenuRow[] }
@@ -31,6 +31,9 @@ const MENUS: Menu[] = [
     rows: [
       { label: 'New chat', shortcut: 'Ctrl+N' },
       { label: 'Open chat history', shortcut: 'Ctrl+H', action: 'history' },
+      null,
+      { label: 'Tools', action: 'tools' },
+      { label: 'Turn trace', action: 'trace' },
       null,
       { label: 'Credential Vault', action: 'credentials' },
       { label: 'Settings', shortcut: 'Ctrl+,', action: 'settings' },
@@ -82,6 +85,8 @@ export type TitlebarMenuProps = {
   onOpenSettings: () => void
   onOpenCredentials: () => void
   onToggleHistory: () => void
+  /** Tools and turn trace dialogs belong to the selected chat pane. */
+  onOpenPaneDialog: (dialog: 'tools' | 'trace') => void
 }
 
 /** The shell's File / Edit / View / Help bar, sitting in the title bar's drag region. */
@@ -91,7 +96,8 @@ export const TitlebarMenu = memo(function TitlebarMenu({
   onChatZoomChange,
   onOpenSettings,
   onOpenCredentials,
-  onToggleHistory
+  onToggleHistory,
+  onOpenPaneDialog
 }: TitlebarMenuProps): JSX.Element {
   return (
     <Menubar.Root className="titlebar-nav-menu" aria-label="Application menu">
@@ -121,6 +127,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                         if (row.action === 'settings') onOpenSettings()
                         if (row.action === 'credentials') onOpenCredentials()
                         if (row.action === 'history') onToggleHistory()
+                        if (row.action === 'tools' || row.action === 'trace') onOpenPaneDialog(row.action)
                       }}
                     >
                       {/* The row keeps its manifest key; only the wording follows the panel. */}

@@ -63,8 +63,6 @@ export const UI_CONTROLS = {
   'composer.project-new': 'Choose a folder as a new project',
   'composer.project-recent': 'Switch to a previously used project; item is its folder path',
   'composer.project-clear': 'Leave project mode and use the home workspace',
-  'composer.tools': 'Open the available tools dialog',
-  'composer.trace': 'Open the live turn trace dialog',
   'composer.model': 'Open the model and reasoning-effort menu',
   'composer.model-provider': "Show a provider's models in the model menu; item is the provider",
   'composer.model-back': 'Return the model menu to the provider list; item is the provider being left',

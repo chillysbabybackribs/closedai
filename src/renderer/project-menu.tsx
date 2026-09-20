@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { DropdownMenu } from 'radix-ui'
-import { Activity, Check, Folder, Plus, Wrench, X } from 'lucide-react'
+import { Check, Folder, Plus, X } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import { TurnActivityIndicator } from './task-activity.js'
@@ -13,8 +13,6 @@ type ProjectMenuProps = {
   onChooseProject: () => Promise<void>
   onSelectProject: (projectPath: string) => Promise<void>
   onClearProject: () => Promise<void>
-  onOpenTools: () => void
-  onOpenTrace: () => void
   /** Turn in flight, if any; drives the working timer on the left of the rail. */
   activeTurnId: string | null
 }
@@ -26,7 +24,7 @@ function folderName(path: string): string {
 
 /** Project context lives with the composer because it determines where the next turn runs. */
 export function ProjectMenu({
-  cwd, projectPath, recentProjects, disabled, onChooseProject, onSelectProject, onClearProject, onOpenTools, onOpenTrace, activeTurnId
+  cwd, projectPath, recentProjects, disabled, onChooseProject, onSelectProject, onClearProject, activeTurnId
 }: ProjectMenuProps): JSX.Element {
   const label = projectPath ? folderName(projectPath) : 'No project'
 
@@ -96,15 +94,6 @@ export function ProjectMenu({
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
-
-      <Button type="button" variant="ghost" className="composer-strip-action" data-ui="composer.tools" aria-label="Tools" title="Tools" onClick={onOpenTools}>
-        <Wrench size={16} aria-hidden="true" />
-        <span>Tools</span>
-      </Button>
-      <Button type="button" variant="ghost" className="composer-strip-action" data-ui="composer.trace" aria-label="Turn trace" title="Turn trace" onClick={onOpenTrace}>
-        <Activity size={16} aria-hidden="true" />
-        <span>Turn trace</span>
-      </Button>
     </div>
   )
 }

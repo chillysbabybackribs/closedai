@@ -23,13 +23,18 @@ import { TaskActivity } from './task-activity.js'
 import { ToolsModal } from './tools/tools-modal.js'
 import { TraceModal } from './trace/trace-modal.js'
 
+/** Pane-scoped dialogs the shell's File menu can open on the selected pane. */
+export type ChatPaneDialog = 'tools' | 'trace'
+
 export const ChatPane = memo(function ChatPane({
   controller,
   zoom = 100,
   fontSize = 14,
   composerFontSize = 15,
   historyOpen: controlledHistoryOpen,
-  onHistoryOpenChange
+  onHistoryOpenChange,
+  dialog: controlledDialog,
+  onDialogChange
 }: {
   controller?: ChatController
   zoom?: number
@@ -38,6 +43,9 @@ export const ChatPane = memo(function ChatPane({
   /** Supplied by the shell so the title bar menu and Ctrl+H reach this panel. */
   historyOpen?: boolean
   onHistoryOpenChange?: (open: boolean) => void
+  /** Same ownership as history: the File menu opens these on the selected pane. */
+  dialog?: ChatPaneDialog | null
+  onDialogChange?: (dialog: ChatPaneDialog | null) => void
 } = {}): JSX.Element {
   const internalChat = useChatController(!controller)
   const chat = controller ?? internalChat
@@ -50,8 +58,9 @@ export const ChatPane = memo(function ChatPane({
   const [ownHistoryOpen, setOwnHistoryOpen] = useState(false)
   const historyOpen = controlledHistoryOpen ?? ownHistoryOpen
   const setHistoryOpen = onHistoryOpenChange ?? setOwnHistoryOpen
-  const [toolsOpen, setToolsOpen] = useState(false)
-  const [traceOpen, setTraceOpen] = useState(false)
+  const [ownDialog, setOwnDialog] = useState<ChatPaneDialog | null>(null)
+  const dialog = controlledDialog === undefined ? ownDialog : controlledDialog
+  const setDialog = onDialogChange ?? setOwnDialog
   const [contextOpen, setContextOpen] = useState(false)
   const hasMessages = state.items.length > 0
   // 'starting' is the step on the way to ready, not a failure. Treating it as one made every new
@@ -96,8 +105,8 @@ export const ChatPane = memo(function ChatPane({
           '--composer-font-size': `${composerFontSize}px`
         } as React.CSSProperties}
       >
-        <ToolsModal open={toolsOpen} onOpenChange={setToolsOpen} />
-        <TraceModal open={traceOpen} onOpenChange={setTraceOpen} paneId={chat.selectedPaneId} />
+        <ToolsModal open={dialog === 'tools'} onOpenChange={(open) => setDialog(open ? 'tools' : null)} />
+        <TraceModal open={dialog === 'trace'} onOpenChange={(open) => setDialog(open ? 'trace' : null)} paneId={chat.selectedPaneId} />
         <ContextInspectorModal
           open={contextOpen}
           onOpenChange={setContextOpen}
@@ -162,8 +171,6 @@ export const ChatPane = memo(function ChatPane({
           onChooseProject={() => window.closedai.chat.chooseProject()}
           onSelectProject={(projectPath) => window.closedai.chat.selectProject(projectPath)}
           onClearProject={() => window.closedai.chat.clearProject()}
-          onOpenTools={() => setToolsOpen(true)}
-          onOpenTrace={() => setTraceOpen(true)}
           activeTurnId={state.activeTurnId}
           onCompactConversation={manualCompact ? chat.compactConversation : undefined}
           compactConversationEnabled={manualCompact && ready && !running && state.items.some((item) => item.type === 'user')}

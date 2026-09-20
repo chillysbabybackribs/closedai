@@ -85,8 +85,6 @@
   .chat-layout-content .composer-project-strip { width: calc(100% - 16px); padding-inline: 4px; }
   .chat-layout-content .composer-project-trigger { min-width: 0; padding-inline: 5px; }
   .chat-layout-content .composer-project-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .chat-layout-content .composer-strip-action { flex-shrink: 0; padding-inline: 6px; }
-  .chat-layout-content .composer-strip-action > span,
   .chat-layout-content .task-generation-copy { display: none; }
   .chat-layout-content .prompt-composer-actions { gap: 4px; }
   .chat-layout-content .prompt-composer-actions > div:first-child { flex: 1; min-width: 0; }

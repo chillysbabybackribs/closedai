@@ -251,7 +251,8 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 - Completed assistant responses offer copy, locally saved thumbs-up/down feedback, and branching.
   Timestamps appear when recorded; older history does not acquire invented timestamps. Feedback
   is stored in renderer localStorage and is not sent to providers.
-- The project rail contains the working timer, project menu, Tools, and Turn trace. Send, pause,
+- The project rail contains the working timer and project menu; Tools and Turn trace open from
+  the title bar's File menu on the selected pane. Send, pause,
   and resume controls live in the composer. Pause ends the provider turn — no protocol can suspend
   a generation and restart the same one — but every lane keeps the partial answer and the
   conversation, so Resume is an ordinary next turn carrying `CHAT_RESUME_PROMPT`. It is offered

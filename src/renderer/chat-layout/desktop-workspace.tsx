@@ -1,7 +1,7 @@
 import { useImperativeHandle, useRef, useState, type Dispatch, type Ref } from 'react'
 import { BrowserPane } from '../browser-pane.js'
 import { useBrowserController } from '../browser-controller.js'
-import { ChatPane } from '../chat-pane.js'
+import { ChatPane, type ChatPaneDialog } from '../chat-pane.js'
 import { usePaneChatController, type useChatController } from '../chat-controller.js'
 import { initialChatState, type ChatWorkspaceAction } from '../chat-state.js'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
@@ -15,11 +15,13 @@ export type ChatLayoutHandle = {
   splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
 }
 
-export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenChange, ref }: {
+export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, ref }: {
   chat: ReturnType<typeof useChatController>
   appearance: AppearanceSettings
   historyOpen: boolean
   onHistoryOpenChange: (open: boolean) => void
+  dialog: ChatPaneDialog | null
+  onDialogChange: (dialog: ChatPaneDialog | null) => void
   ref?: Ref<ChatLayoutHandle>
 }) {
   const layout = useChatLayout(chat.snapshot)
@@ -45,7 +47,8 @@ export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenC
         onHide={(id) => { void layout.hide(id) }} onResize={layout.resize}
         renderPane={(id) => <WorkspaceChat paneId={id} snapshot={chat.snapshot} dispatch={chat.dispatch}
           appearance={appearance} historyOpen={historyOpen && chat.selectedPaneId === id}
-          onHistoryOpenChange={onHistoryOpenChange} />}
+          onHistoryOpenChange={onHistoryOpenChange} dialog={chat.selectedPaneId === id ? dialog : null}
+          onDialogChange={onDialogChange} />}
       />}
       workspace={<div className="workspace-right" data-mode="browser" data-with-browser={layout.browserVisible ? 'yes' : 'no'}>
         <div className={`workspace-surface workspace-surface-browser${layout.browserVisible ? '' : ' is-collapsed'}`}>
@@ -56,18 +59,21 @@ export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenC
   </div>
 }
 
-function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, onHistoryOpenChange }: {
+function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange }: {
   paneId: string
   snapshot: ChatWorkspaceSnapshot
   dispatch: Dispatch<ChatWorkspaceAction>
   appearance: AppearanceSettings
   historyOpen: boolean
   onHistoryOpenChange: (open: boolean) => void
+  dialog: ChatPaneDialog | null
+  onDialogChange: (dialog: ChatPaneDialog | null) => void
 }) {
   const retained = useRef(initialChatState())
   const state = snapshot.panes?.[paneId] ?? (snapshot.selectedPaneId === paneId ? snapshot.selected : retained.current)
   retained.current = state
   const controller = usePaneChatController(snapshot, paneId, state, dispatch)
   return <ChatPane controller={controller} zoom={appearance.chatZoom} fontSize={appearance.chatFontSize}
-    composerFontSize={appearance.composerFontSize} historyOpen={historyOpen} onHistoryOpenChange={onHistoryOpenChange} />
+    composerFontSize={appearance.composerFontSize} historyOpen={historyOpen} onHistoryOpenChange={onHistoryOpenChange}
+    dialog={dialog} onDialogChange={onDialogChange} />
 }
