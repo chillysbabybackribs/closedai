@@ -12,6 +12,7 @@ import { IPC } from '../src/shared/ipc-channels.js'
 const root = process.env.CLOSEDAI_IMAGE_CHECK_ROOT
 if (!root) throw new Error('Run scripts/image-tabs-live-check.mjs')
 app.setPath('userData', join(root, 'profile'))
+app.on('window-all-closed', () => {})
 const watchdog = setTimeout(() => { console.error('Image-tab check exceeded 45 seconds'); app.exit(1) }, 45_000)
 
 async function check(root: string) {
@@ -25,13 +26,19 @@ async function check(root: string) {
   assert.ok(address && typeof address !== 'string')
   const window = new BrowserWindow({ show: false, width: 1280, height: 850,
     webPreferences: { preload: join(root, 'preload.cjs'), backgroundThrottling: false } })
+  window.webContents.on('console-message', (_event, level, message) => {
+    if (level >= 2) console.error('Fixture renderer:', message)
+  })
   const browser = new BrowserService(window, EPHEMERAL_BROWSER_HISTORY, { initialUrl: 'about:blank' })
   registerBrowserCoreIpc(ipcMain, () => browser)
   registerLocalFilesIpc(ipcMain, () => browser)
   ipcMain.handle(IPC.invoke.browserDownloads.list, () => [])
   browser.on('state', (state) => window.webContents.send(IPC.event.browserState, state))
   browser.on('tabs', (tabs) => window.webContents.send(IPC.event.browserTabs, tabs))
-  const evaluate = <T>(code: string): Promise<T> => window.webContents.executeJavaScript(code)
+  const evaluate = async <T>(code: string): Promise<T> => {
+    try { return await window.webContents.executeJavaScript(code) }
+    catch (cause) { throw new Error(`Renderer evaluation failed: ${code}`, { cause }) }
+  }
   async function until(code: string) {
     const end = Date.now() + 5000
     while (Date.now() < end) {
