@@ -10,7 +10,8 @@ export default defineConfig({
     build: { watch: {}, rollupOptions: { input: {
       index: resolve('src/main/index.ts'),
       'artifact-worker': resolve('src/main/investigations/artifact-worker.ts'),
-      'pdf-worker': resolve('src/main/tools/search/research/pdf/pdf-worker.ts')
+      'pdf-worker': resolve('src/main/tools/search/research/pdf/pdf-worker.ts'),
+      'pdf-page-worker': resolve('src/main/tools/search/research/pdf/page-worker.ts')
     } } }
   },
   preload: {
