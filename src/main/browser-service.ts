@@ -206,6 +206,7 @@ export class BrowserService extends EventEmitter {
     const existing = this.tabs.find((tab) => tab instanceof ImageTab && tab.key === key)
     if (existing) {
       this.selectTab(existing.id)
+      this.emit('state', existing.getState())
       return existing.id
     }
     const tab = new ImageTab(allocateTabId(), key, content, this.activeId)

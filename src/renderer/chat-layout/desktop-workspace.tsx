@@ -31,6 +31,13 @@ export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenC
   const [dragging, setDragging] = useState(false)
   const browser = useBrowserController(JSON.stringify([layout.browserVisible, layout.tree]), layout.browserVisible, dragging)
   const imageTabId = browser.browser.image?.tabId
+  const [browserRevealVersion, setBrowserRevealVersion] = useState(0)
+  useEffect(() => window.closedai.browser.onState((state) => {
+    if (state.image) {
+      layout.showBrowser()
+      setBrowserRevealVersion((value) => value + 1)
+    }
+  }), [layout.showBrowser])
   useEffect(() => {
     if (imageTabId) layout.showBrowser()
   }, [imageTabId, layout.showBrowser])
@@ -41,6 +48,7 @@ export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenC
   return <div className="chat-desktop-workspace">
     {(layout.error || actionError) && <div className="chat-layout-error" role="alert">{layout.error || actionError}</div>}
     <ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
+        browserRevealVersion={browserRevealVersion}
         onDragActive={setDragging}
         browserVisible={layout.browserVisible} onToggleBrowser={layout.toggleBrowser}
         title={(id) => chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat'}

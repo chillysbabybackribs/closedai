@@ -7,11 +7,12 @@ import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBrowser, renderBrowser, onDragActive, title, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserRevealVersion, onToggleBrowser, renderBrowser, onDragActive, title, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
   browserVisible: boolean
+  browserRevealVersion?: number
   renderBrowser: ReactNode
   onDragActive: (active: boolean) => void
   onToggleBrowser: () => void
@@ -84,6 +85,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
     }
   }, [onDragActive])
   const [soloPaneId, setSoloPaneId] = useState<string | null>(null)
+  useEffect(() => { setSoloPaneId(null) }, [browserRevealVersion])
   const visibleTree = browserVisible ? tree : removePane(tree, BROWSER_PANE_ID)!
   const geometry = layoutGeometry(visibleTree, size.width, size.height)
   const minimum = minimumSize(visibleTree)

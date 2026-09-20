@@ -50,31 +50,3 @@
   background: var(--muted);
   object-fit: contain;
 }
-
-.image-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 94vw;
-  max-height: 92vh;
-  padding: 10px;
-}
-
-.image-preview-title {
-  padding-right: 24px;
-  overflow: hidden;
-  color: var(--muted-foreground);
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.image-preview-image {
-  display: block;
-  width: auto;
-  height: auto;
-  max-width: calc(94vw - 20px);
-  max-height: calc(92vh - 46px);
-  border-radius: 8px;
-  object-fit: contain;
-}

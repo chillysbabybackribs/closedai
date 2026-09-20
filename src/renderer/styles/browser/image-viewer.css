@@ -1,3 +1,5 @@
+.browser-shell.has-image-viewer { grid-template-rows: auto minmax(0, 1fr); }
+
 .image-viewer {
   position: absolute;
   inset: 0;

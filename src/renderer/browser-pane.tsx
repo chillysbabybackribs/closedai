@@ -21,10 +21,10 @@ export const BrowserPane = memo(function BrowserPane({
   const downloads = useBrowserDownloadsController()
   return (
     <section className="browser-pane" aria-label="Browser" data-ui-surface="browser">
-      <div className={`browser-shell ${downloads.isOpen ? 'has-downloads' : ''}`}>
+      <div className={`browser-shell ${downloads.isOpen && !controller.browser.image ? 'has-downloads' : ''} ${controller.browser.image ? 'has-image-viewer' : ''}`}>
         <BrowserTabs controller={controller} />
         {!controller.browser.image && <BrowserToolbar controller={controller} downloads={downloads} />}
-        {downloads.isOpen ? <BrowserDownloadsShelf controller={downloads} /> : null}
+        {downloads.isOpen && !controller.browser.image ? <BrowserDownloadsShelf controller={downloads} /> : null}
         <div className={`browser-frame ${controller.browser.navigationError ? 'has-navigation-error' : ''}`}>
           <div
             className={`browser-view-host ${controller.browser.image ? 'is-image-viewer' : controller.browser.navigationError ? 'is-navigation-error' : ''}`}

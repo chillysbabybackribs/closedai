@@ -115,6 +115,11 @@ keeps its tabs, but semantic page input still requires a visible page.
 
 ### Application facts, browser targets, and batching
 
+Browser strip snapshots include app-owned image tabs, identified by `image` metadata.
+They support strip commands (select, close, rename, duplicate), but have no native web page
+or CDP target. Select a web tab for page tools, or use the `image.*` app controls for zoom,
+fit, pan, download, and reveal. Image bytes are not included in tool state or tab events.
+
 `investigation.read` offers `list` and `read` for durable artifacts; `investigation.manage`
 offers `import`, `export` and `delete`. Both are provider-neutral and deferred where supported.
 `browser_cdp.protocol command` accepts `retain: true`, with explicit `tab_id`, `operation_key`

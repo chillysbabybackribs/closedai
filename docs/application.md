@@ -335,7 +335,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   `example.com/path` become links too; the transformer skips code, existing links, and hosts outside
   its curated TLD list, which is what keeps `chat-transcript.tsx` and `package.json` as plain text.
   Explicit absolute local file links (including `file://` and optional line suffixes) are
-  clickable in chat responses. Raster images open in the existing image dialog through a
+  clickable in chat responses. Raster images open in browser-pane image tabs through a
   bounded 32 MB read; other files and directories are revealed in the file manager, never
   executed. Missing files and preview failures show an error. Other non-http schemes stay
   inert. This holds for every provider lane.
@@ -380,8 +380,17 @@ default of white. The renderer's overlay freeze waits for its still, then moves 
 native page outside the browser box instead of toggling its visibility; `browser:setBounds` waits
 for a painted frame before resolving the return. This avoids both a blank capture gap and Electron's
 loaded-view blanking failure when a `WebContentsView` is hidden and shown around an overlay.
-Modal backdrops participate in this overlap check, so image previews keep the browser behind
-them from initial mount through image loading and resizing.
+Modal backdrops participate in this overlap check. Image previews instead own a tab in the
+shared strip: `local-files/image-tab.ts` holds the image without a native browser view, and
+selecting it parks all native web views beyond the window before emitting renderer state.
+The app renderer displays fit-to-pane, zoom, actual size, drag-to-pan, download (raster data),
+and show-in-folder (local files) controls. Image bytes are fetched once per viewer, separately
+from tab metadata. Local links and attachment thumbnails use this same viewer; opening one
+reveals a hidden browser pane and exits maximized chat layout. Reopening the same canonical
+file or attachment source selects its existing tab. Closing an image returns to the previously
+selected tab when it is still open. Switching preserves the image's zoom/pan and the web page.
+Image tabs are session-only; they do not restore after app restart. Browser page/CDP tools
+operate on web tabs, not the app-owned image viewer; image controls use `closedai_app.ui`.
 Hiding the whole browser also keeps user tabs attached and parks the active surface beyond the
 window at its last usable size. Reopening restores that same loaded page without a reload;
 zero-size reports during panel collapse or expansion never replace the saved viewport. Keeping
