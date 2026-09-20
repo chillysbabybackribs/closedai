@@ -50,4 +50,4 @@ export function imageResult(
  * base64 text — 10k tokens of noise and no picture.
  */
 export const EXEC_IMAGE_HINT =
-  'exec scripts: const i = r.indexOf("data:image/"); text(r.slice(0, i)); image(r.slice(i)); — never text() the whole result.'
+  'exec scripts: const i = r.lastIndexOf("\\ndata:image/") + 1; text(r.slice(0, i)); image(r.slice(i).trim()); — never text() the whole result.'

@@ -7,6 +7,7 @@ import { abortable, RequestBudget } from '../request-budget.js'
 import { mergeDates, metaDate } from './source-metadata.js'
 import { boundedText, DEFAULT_SOURCE_BYTES, textLimit, validateCoverage, type SourceCoverage } from './coverage.js'
 import type { PdfReader } from './pdf/reader.js'
+import { replaceSource, sourceBase } from './source-revisions.js'
 
 // An HTML body with a script tag and almost no text is a client-rendered shell, not evidence.
 const SHELL_TEXT_LIMIT = 200
@@ -115,7 +116,11 @@ export class SourceStore {
   }
 
   async read(runId: string, sourceId: string): Promise<string> {
-    return readFile(join(this.root, runId, `${sourceId}.txt`), 'utf8')
+    return readFile(`${await sourceBase(this.root, runId, sourceId)}.txt`, 'utf8')
+  }
+
+  async pdfPath(runId: string, sourceId: string): Promise<string> {
+    return `${await sourceBase(this.root, runId, sourceId)}.raw`
   }
 
   async remove(runId: string): Promise<void> {
@@ -124,7 +129,7 @@ export class SourceStore {
 
   /** Expansion is staged under a temporary id. Only an accepted read replaces the text atomically. */
   async replace(runId: string, sourceId: string, stagedId: string): Promise<void> {
-    await rename(join(this.root, runId, `${stagedId}.txt`), join(this.root, runId, `${sourceId}.txt`))
+    await replaceSource(this.root, runId, sourceId, stagedId)
   }
 
   async discard(runId: string, sourceId: string): Promise<void> {
@@ -143,12 +148,14 @@ export class SourceStore {
     let prefix = Buffer.alloc(0)
     let bytes = 0
     let incomplete = false
+    const bytesHash = createHash('sha256')
     try {
       while (reader) {
         const chunk = await abortable(reader.read(), signal)
         if (chunk.done) break
         const kept = maxBytes === 0 ? chunk.value : chunk.value.subarray(0, maxBytes - bytes)
         await file.writeFile(kept)
+        bytesHash.update(kept)
         if (prefix.length < 1024) prefix = Buffer.concat([prefix, kept.subarray(0, 1024 - prefix.length)])
         bytes += kept.length
         if (kept.length < chunk.value.length) { incomplete = true; break }
@@ -171,6 +178,7 @@ export class SourceStore {
         await rename(join(directory, `${sourceId}.txt.tmp`), join(directory, `${sourceId}.txt`))
         return {
           ...extracted, url, contentType: 'application/pdf', representation: 'pdf_text',
+          pdf: { ...extracted.pdf, documentSha256: bytesHash.digest('hex'), bytes },
           sha256: createHash('sha256').update(extracted.text).digest('hex'),
           dates: this.transportDates(response)
         }

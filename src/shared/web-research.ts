@@ -6,7 +6,13 @@ export type ResearchState = 'running' | 'completed' | 'cancelled' | 'timed_out'
  * pdf_text: local PDF.js extraction of downloaded bytes, with page markers; no OCR or visual verification.
  */
 export type SourceRepresentation = 'static_text' | 'rendered_text' | 'provider_text' | 'pdf_text'
-export type PdfCoverage = { totalPages: number; extractedPages: number; pagesWithoutText: number }
+export type PdfCoverage = {
+  totalPages: number; extractedPages: number; pagesWithoutText: number
+  textStatus?: 'available' | 'none'
+  /** Original PDF identity; sha256 on ResearchSource hashes only retained native text. */
+  documentSha256?: string
+  bytes?: number
+}
 /** Reported date observations, never silently interpreted as verified event dates. */
 export type SourceDate = {
   kind: 'published' | 'modified' | 'index_reported' | 'http_last_modified'

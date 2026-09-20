@@ -43,7 +43,7 @@ async function extract(): Promise<PdfText> {
         }
       } finally { page.cleanup() }
     }
-    if (!hasText) throw new Error('PDF has no extractable text in the inspected pages; scanned/image-only PDFs require OCR, which is unavailable')
+    result.pdf.textStatus = hasText ? 'available' : 'none'
     result.incomplete ||= result.pdf.pagesWithoutText > 0
     return result
   } finally { await loading.destroy() }
