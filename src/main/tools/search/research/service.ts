@@ -7,6 +7,7 @@ import { publicUrl, SourceNeedsRendering, type SourceDocument, type SourceReader
 import { isResearchSourceUrl, SourcePresentation, type OpenSearchTab } from '../presentation.js'
 import { mergeDates } from './source-metadata.js'
 import { MAX_CANDIDATES, prefersDomain, SourceAdmission } from './source-admission.js'
+import { ResearchTiming, type ResearchTimingEvent } from './timing.js'
 
 export type ResearchOwner = { paneId: string; threadId: string; turnId: string | null; workspace: string }
 export type ResearchDependencies = {
@@ -18,6 +19,8 @@ export type ResearchDependencies = {
   remove(runId: string): Promise<void>
   /** Opens a retained, user-owned tab once. Never follows subsequent results automatically. */
   openLive?: OpenSearchTab
+  trace?: (owner: ResearchOwner, event: ResearchTimingEvent) => void
+  now?: () => number
 }
 export type ResearchInput = {
   queries: SearchRequest[]; urls: string[]; maxSources: number; deadlineMs: number; presentation: 'live' | 'background'
@@ -30,6 +33,7 @@ type Run = {
   listeners: Set<() => void>; timer: ReturnType<typeof setTimeout>
   presentation: SourcePresentation
   admission: SourceAdmission; preferredDomains: Set<string>; omittedCandidates: number
+  timing: ResearchTiming
 }
 
 /** The scheduler owns async work after the start tool returns; calls only observe/control it. */
@@ -58,6 +62,7 @@ export class ResearchService {
       maxSources: input.maxSources, sources: new Map(), errors: [], controller: new AbortController(),
       listeners: new Set(), presentation: new SourcePresentation(this.deps.openLive, context, input.presentation),
       admission: new SourceAdmission(input.maxSources, input.reserveSources), preferredDomains: new Set(), omittedCandidates: 0,
+      timing: new ResearchTiming(id, (event) => this.deps.trace?.(owner, event), this.deps.now),
       timer: setTimeout(() => this.finish(run, 'timed_out'), input.deadlineMs)
     }
     run.timer.unref?.()
@@ -207,12 +212,14 @@ export class ResearchService {
       discoveredBy: result.provider ? [result.provider] : [], state: 'deferred', revision: this.changed(run)
     }
     run.sources.set(key, source)
+    run.timing.discover(source.id)
   }
 
   private admit(run: Run): void {
     if (run.state !== 'running') return
     for (let source = run.admission.next(run.sources.values()); source; source = run.admission.next(run.sources.values())) {
       run.admission.begin(source)
+      run.timing.begin(source.id)
       source.state = 'queued'
       source.revision = this.changed(run)
       if (run.presentation.consider(source.url)) this.changed(run)
@@ -233,7 +240,7 @@ export class ResearchService {
         if (run.state !== 'running') return
         if (error instanceof SourceNeedsRendering) await this.render(run, source, null, error)
         else { source.state = 'failed'; source.error = message(error); source.revision = this.changed(run) }
-      } finally { run.admission.end(); this.admit(run) }
+      } finally { run.timing.end(source.id, source.state); run.admission.end(); this.admit(run) }
     })
   }
 
@@ -251,7 +258,7 @@ export class ResearchService {
     source.revision = this.changed(run)
     try {
       const document = await this.deps.render(source.url, run.id, source.id, run.controller.signal)
-      if (run.state === 'running') this.collected(run, source, document)
+      if (run.state === 'running') this.collected(run, source, { ...document, dates: mergeDates(document.dates, fallback?.dates) })
     } catch (error) {
       if (run.state !== 'running') return
       if (fallback) { this.collected(run, source, fallback); return }
@@ -287,6 +294,7 @@ export class ResearchService {
   private finish(run: Run, state: ResearchState): void {
     if (run.state !== 'running') return
     run.state = state
+    run.timing.finish(state)
     run.presentation.finish()
     clearTimeout(run.timer)
     if (state !== 'completed') {

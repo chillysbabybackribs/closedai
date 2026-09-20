@@ -11,6 +11,7 @@ import type { ResearchService } from './tools/search/research/service.js'
 import { SourceStore } from './tools/search/research/source-reader.js'
 import { SearchBrowserTabs } from './tools/search/presentation.js'
 import { ResearchLibrary } from './research-library/service.js'
+import { traceLog } from './trace/trace-log.js'
 
 /** Electron/session ownership stays outside the provider-neutral search implementation. */
 export async function createResearchRuntime(options: {
@@ -45,6 +46,10 @@ export async function createResearchRuntime(options: {
     library,
     onResearchCreated: (created) => { service = created },
     research: {
+      trace: (owner, event) => traceLog.record({ paneId: owner.paneId, turnId: owner.turnId, provider: null }, {
+        kind: 'note', label: `research.${event.event}`, summary: `Research ${event.event}: ${Math.round(event.elapsedMs)} ms`,
+        durationMs: event.durationMs, detail: event
+      }),
       owner: (context) => {
         if (!context.paneId || !context.threadId) throw new Error('Research requires an identified chat pane and thread')
         const snapshot = options.peers()?.paneSnapshot(context.paneId)
