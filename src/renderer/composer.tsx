@@ -261,6 +261,15 @@ export function Composer({
                     </Button>
                   </PromptInputAction>
 
+                  <AttachmentPicker
+                    disabled={!enabled || running || sending}
+                    inputRef={fileInputRef}
+                    onChange={(event) => {
+                      if (event.target.files) void addFiles(event.target.files)
+                      event.target.value = ''
+                    }}
+                  />
+
                   <div className="prompt-model-controls">
                     <ModelMenu
                       enabled={enabled && !running}
@@ -281,15 +290,6 @@ export function Composer({
                 </div>
 
                 <div className="prompt-composer-actions-end">
-                  <AttachmentPicker
-                    disabled={!enabled || running || sending}
-                    inputRef={fileInputRef}
-                    onChange={(event) => {
-                      if (event.target.files) void addFiles(event.target.files)
-                      event.target.value = ''
-                    }}
-                  />
-
                   {!running && paused ? (
                     <PromptInputAction tooltip={`Resume where ${CHAT_PROVIDER_LABELS[provider]} paused`}>
                       <Button
