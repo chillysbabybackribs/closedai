@@ -22,7 +22,8 @@ export function initialChatState(): ChatSnapshot {
     contextUsage: null,
     planUsage: null,
     turnContext: null,
-    items: []
+    items: [],
+    checkpoint: null
   }
 }
 
@@ -162,6 +163,8 @@ export function reduceChatEvent(state: ChatSnapshot, event: ChatEvent): ChatSnap
       return { ...state, planUsage: event.usage }
     case 'turnContext':
       return { ...state, turnContext: event.report }
+    case 'checkpoint':
+      return { ...state, checkpoint: event.checkpoint }
     case 'item': {
       if (state.history?.hasEarlier && event.appended === false && !state.items.some((item) => item.id === event.item.id)) {
         if (event.item.type !== 'tool' || !event.item.background) return state

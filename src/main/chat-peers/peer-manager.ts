@@ -23,7 +23,7 @@ import type { ChatStore } from '../chat-store/chat-store.js'
 import { CACHED_TRANSCRIPT_ITEMS, ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
 import { traceLog } from '../trace/trace-log.js'
 import { PeerChatCatalog } from './peer-chat-catalog.js'
-import { cachedPaneView, PeerEmitThrottle, readableView, rendererSnapshot, rowSummary } from './peer-events.js'
+import { cachedPaneView, PeerEmitThrottle, readableView, rendererSnapshot, rowSummary, syncStoreCheckpoint } from './peer-events.js'
 import { PeerIdleParking } from './peer-idle-parking.js'
 import { PeerLifecycle, type ChatPeerFactory, type PeerEntry } from './peer-lifecycle.js'
 import { openChatsPatch } from './peer-settings.js'
@@ -132,7 +132,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
         console.warn('[chat-peers] could not persist open chats:', error instanceof Error ? error.message : String(error))
       })
     }
-    store.on('change', () => this.chatsEmit.schedule())
+    store.on('change', (c?: { ids: string[] }) => { this.chatsEmit.schedule(); if (c?.ids) syncStoreCheckpoint(this.store, this.lifecycle, c.ids, (p, e) => this.onPaneEvent(p, e)) })
   }
 
   snapshot(window?: ChatHistoryWindow): ChatWorkspaceSnapshot {

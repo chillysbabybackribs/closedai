@@ -206,16 +206,24 @@ export function cachedPaneView(
   record: ChatRecord | undefined,
   cached: CachedChatView | null
 ): ChatSnapshot {
-  if (!cached || !record?.threadId || cached.threadId !== record.threadId) return snapshot
+  const threadId = snapshot.threadId ?? record?.threadId
+  const checkpoint = record?.checkpoint && record.checkpoint.threadId === threadId
+    ? record.checkpoint
+    : (snapshot.checkpoint ?? null)
+  if (!cached || !record?.threadId || cached.threadId !== record.threadId) {
+    return checkpoint === snapshot.checkpoint ? snapshot : { ...snapshot, checkpoint }
+  }
   const contextUsage = snapshot.contextUsage ?? cached.contextUsage
   if (snapshot.items.length > 0 || snapshot.activeTurnId) {
-    return contextUsage === snapshot.contextUsage ? snapshot : { ...snapshot, contextUsage }
+    const updated = contextUsage === snapshot.contextUsage ? snapshot : { ...snapshot, contextUsage }
+    return checkpoint === updated.checkpoint ? updated : { ...updated, checkpoint }
   }
   return {
     ...snapshot,
     threadId: snapshot.threadId ?? record.threadId,
     threadName: snapshot.threadName ?? cached.threadName,
     contextUsage,
+    checkpoint,
     items: cached.items,
     history: { ...snapshot.history, hasEarlier: cached.hasEarlier }
   }
@@ -232,9 +240,32 @@ export function readableView(
   record: ChatRecord | undefined,
   cached: CachedChatView | null
 ): { snapshot: ChatSnapshot; source: 'live' | 'saved' } {
-  if (live.items.length > 0) return { snapshot: live, source: 'live' }
+  if (live.items.length > 0) {
+    const threadId = live.threadId ?? record?.threadId
+    const checkpoint = record?.checkpoint && record.checkpoint.threadId === threadId
+      ? record.checkpoint
+      : (live.checkpoint ?? null)
+    return { snapshot: checkpoint === live.checkpoint ? live : { ...live, checkpoint }, source: 'live' }
+  }
   const filled = cachedPaneView(live, record, cached)
   return { snapshot: filled, source: filled === live ? 'live' : 'saved' }
+}
+
+/** Emit active checkpoint updates when a chat record in the store changes. */
+export function syncStoreCheckpoint<T extends { display: { current: { threadId: string | null } } }>(
+  store: { get(id: string): ChatRecord | undefined },
+  lifecycle: { get(id: string): T | undefined },
+  ids: string[],
+  emitPaneEvent: (peer: T, event: import('../../shared/chat.js').ChatEvent) => void
+): void {
+  for (const id of ids) {
+    const peer = lifecycle.get(id)
+    if (!peer) continue
+    const record = store.get(id)
+    const threadId = peer.display.current.threadId ?? record?.threadId
+    const checkpoint = record?.checkpoint && record.checkpoint.threadId === threadId ? record.checkpoint : null
+    emitPaneEvent(peer, { type: 'checkpoint', checkpoint })
+  }
 }
 
 /** The renderer receives the active tail turn plus any live background work outside it. */

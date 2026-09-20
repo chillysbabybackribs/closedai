@@ -258,6 +258,8 @@ export type ChatSnapshot = {
   items: ChatTranscriptItem[]
   /** Present on windowed renderer snapshots; provider history remains complete. */
   history?: { hasEarlier: boolean; title?: string; backgroundTasks?: ChatTranscriptItem[] }
+  /** Active working notes saved for this chat/thread. */
+  checkpoint?: import('./chat-memory.js').ChatMemoryCheckpoint | null
 }
 
 export type ChatEvent =
@@ -280,5 +282,6 @@ export type ChatEvent =
   | { type: 'context'; usage: ChatContextUsage | null }
   | { type: 'planUsage'; usage: ChatPlanUsage | null }
   | { type: 'turnContext'; report: ChatTurnContextReport }
+  | { type: 'checkpoint'; checkpoint: import('./chat-memory.js').ChatMemoryCheckpoint | null }
   | { type: 'item'; item: ChatTranscriptItem; appended?: boolean }
   | { type: 'itemDelta'; itemId: string; field: 'text' | 'output'; delta: string }

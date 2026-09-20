@@ -114,6 +114,7 @@ export const ChatPane = memo(function ChatPane({
           onOpenChange={setContextOpen}
           report={state.turnContext}
           usage={state.contextUsage}
+          checkpoint={state.checkpoint ?? null}
         />
         {historyOpen ? (
           <ChatHistory
