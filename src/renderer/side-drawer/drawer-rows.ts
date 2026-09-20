@@ -42,6 +42,13 @@ export function buildDrawerRows({
     // green and hollow depending on whether a tool call happened to be the final item.
     const hasConversation = threadId !== null || chat.preview !== ''
     const status: DrawerRowStatus = chat.running ? 'running' : hasConversation ? 'done' : 'chat'
+    const liveActivity = isSelected
+      ? (selected.items.findLast((item) => item.type === 'tool' || item.type === 'command' || item.type === 'fileChange') as { label?: string; command?: string; type?: string } | undefined)
+      : undefined
+    const selectedActivity = liveActivity
+      ? (liveActivity.label ?? (liveActivity.type === 'command' ? 'Run command' : liveActivity.type === 'fileChange' ? 'Edit file' : null))
+      : null
+    const activity = chat.activity ?? selectedActivity ?? null
     byId.set(chat.paneId, {
       id: chat.paneId,
       threadId,
@@ -57,7 +64,8 @@ export function buildDrawerRows({
       status,
       provider: isSelected ? selected.provider : chat.provider,
       chat,
-      children: []
+      children: [],
+      activity
     })
   }
 

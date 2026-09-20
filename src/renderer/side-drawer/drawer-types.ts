@@ -26,6 +26,7 @@ export type DrawerRowModel = {
   provider: ChatProvider
   chat: ChatRowSummary
   children: DrawerRowModel[]
+  activity?: string | null
 }
 
 /**

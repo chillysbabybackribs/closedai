@@ -2,7 +2,7 @@ import { useEffect, useState, type JSX, type MouseEvent } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { ProviderMark } from '../../components/ui/provider-mark.js'
 import type { ChatController } from '../chat-controller.js'
-import { formatChatTime, formatMessageCount, openFailureMessage } from './drawer-format.js'
+import { formatChatTime, formatLiveActivity, formatMessageCount, openFailureMessage } from './drawer-format.js'
 import type { DrawerController } from './drawer-controller.js'
 import { DrawerRowActions, DiffBadge } from './drawer-row-actions.js'
 import type { RowMenuTarget } from './drawer-row-menu.js'
@@ -147,10 +147,16 @@ export function DrawerRow({
 
 function buildRowMeta(row: DrawerRowModel): string {
   const parts: string[] = []
-  if (row.running) parts.push('Running')
-  else if (row.status === 'done') parts.push('Done')
-  else if (row.status === 'failed') parts.push('Failed')
-  else if (row.status === 'queued') parts.push('Queued')
+  if (row.running) {
+    const activity = formatLiveActivity(row.activity ?? row.chat.activity, row.chat.preview)
+    parts.push(activity)
+  } else if (row.status === 'done') {
+    parts.push('Done')
+  } else if (row.status === 'failed') {
+    parts.push('Failed')
+  } else if (row.status === 'queued') {
+    parts.push('Queued')
+  }
   const time = formatChatTime(row.updatedAt)
   if (time) parts.push(time)
   const count = formatMessageCount(row.messageCount)

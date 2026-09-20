@@ -77,7 +77,7 @@ export class PeerSummaryCache {
       }
       if (isNew || item.id === this.latestId) {
         this.setLatest(item)
-        summary = { ...summary, preview: previewFromItem(item).slice(0, MAX_PEER_PREVIEW_CHARS), activity: item.type === 'tool' ? item.label : null }
+        summary = { ...summary, preview: previewFromItem(item).slice(0, MAX_PEER_PREVIEW_CHARS), activity: activityFromItem(item) }
       }
     } else if (event.type === 'itemDelta' && event.itemId === this.latestId && event.field === 'text' && this.textDelta) {
       summary = { ...summary, preview: (summary.preview + event.delta.slice(0, MAX_PEER_PREVIEW_CHARS)).slice(0, MAX_PEER_PREVIEW_CHARS) }
@@ -155,7 +155,7 @@ export function summaryOf(
     title: paneTitle(snapshot, record),
     preview: itemText(latest).slice(0, MAX_PEER_PREVIEW_CHARS),
     running: snapshot.activeTurnId !== null,
-    activity: latest?.type === 'tool' ? latest.label : null,
+    activity: activityFromItem(latest),
     updatedAt
   }
 }
@@ -266,4 +266,12 @@ function previewFromItem(item: ChatTranscriptItem): string {
     return item.attachments?.[0]?.name ?? ''
   }
   return itemText(item)
+}
+
+function activityFromItem(item: ChatTranscriptItem | undefined): string | null {
+  if (!item) return null
+  if (item.type === 'tool') return item.label
+  if (item.type === 'command') return 'Run command'
+  if (item.type === 'fileChange') return 'Edit file'
+  return null
 }

@@ -47,3 +47,39 @@ export function basename(path: string): string {
   const index = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'))
   return index === -1 ? trimmed : trimmed.slice(index + 1) || trimmed
 }
+
+/**
+ * Format a live tool call, command, or background status for a running drawer row.
+ * E.g. "Read file" with "/path/to/network-rules.ts" -> "Read network-rules.ts",
+ * or "Run command" with "npm test" -> "Run npm test".
+ */
+export function formatLiveActivity(activity: string | null | undefined, preview?: string | null): string {
+  if (!activity) return 'Running'
+  const trimmedPreview = preview?.trim() ?? ''
+  if (!trimmedPreview) return activity
+
+  // If preview is a command, take the first short snippet
+  if (/^run\b|command/i.test(activity)) {
+    const singleLine = trimmedPreview.split('\n')[0]!.trim()
+    const cleanCommand = singleLine
+      .replace(/^(\/bin\/(?:bash|sh)\s+-lc\s+["']?|node\s+)/, '')
+      .replace(/["']$/, '')
+      .trim()
+    const shortCmd = cleanCommand.length > 25 ? `${cleanCommand.slice(0, 24)}…` : cleanCommand
+    return shortCmd ? `Run ${shortCmd}` : activity
+  }
+
+  // If preview looks like a file path, extract the basename
+  if (/[/\\]/.test(trimmedPreview) && !trimmedPreview.includes('\n')) {
+    const file = basename(trimmedPreview)
+    if (file && file !== trimmedPreview) {
+      if (/^read\b/i.test(activity)) return `Read ${file}`
+      if (/^edit\b/i.test(activity)) return `Edit ${file}`
+      if (/^write\b/i.test(activity)) return `Write ${file}`
+      if (/^list\b/i.test(activity)) return `List ${file}`
+      return `${activity} ${file}`
+    }
+  }
+
+  return activity
+}

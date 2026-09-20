@@ -159,3 +159,22 @@ test('a subagent row nests under its parent chat', () => {
   assert.deepEqual(rows[0]?.children.map((row) => row.id), ['sub-1'])
   assert.equal(rows[0]?.children[0]?.title, 'Subagent task')
 })
+
+test('rows carry live activity from chat summary or selected items', () => {
+  const selectedChat = selected('thread-a', 'Selected A')
+  selectedChat.items = [
+    { type: 'tool', id: 't1', turnId: 'turn-1', label: 'Read file', detail: '/src/index.ts', status: 'completed' }
+  ]
+  const rows = buildDrawerRows({
+    selected: selectedChat,
+    selectedPaneId: 'pane-a',
+    chats: [
+      chat('pane-a', 'thread-a', 100, { activity: null }),
+      chat('pane-b', 'thread-b', 200, { activity: 'Run command' })
+    ],
+    selectedDiff: { added: 0, removed: 0 }
+  })
+
+  assert.equal(rows.find((row) => row.id === 'pane-a')?.activity, 'Read file')
+  assert.equal(rows.find((row) => row.id === 'pane-b')?.activity, 'Run command')
+})
