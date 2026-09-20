@@ -57,7 +57,18 @@ export function mountedTurnWindowStart(rows: readonly TranscriptRow[], maxTurns:
 
 /** Never mount more than `maxTurns`; drop the oldest revealed turn when the window overflows. */
 export function clampVisibleStart(start: number, rows: readonly TranscriptRow[], maxTurns: number): number {
-  return Math.max(start, mountedTurnWindowStart(rows, maxTurns))
+  return Math.min(lastTurnRowStart(rows), Math.max(start, mountedTurnWindowStart(rows, maxTurns)))
+}
+
+/** Keep the display boundary attached to a row when history is prepended or trimmed. */
+export function transcriptRowKey(row: TranscriptRow | undefined): string | null {
+  if (!row) return null
+  return row.kind === 'item' ? `item:${row.item.id}` : `${row.kind}:${row.items[0]?.id}`
+}
+
+export function anchoredVisibleStart(anchor: string | null, rows: readonly TranscriptRow[], maxTurns: number): number {
+  const index = anchor === null ? -1 : rows.findIndex((row) => transcriptRowKey(row) === anchor)
+  return clampVisibleStart(index < 0 ? lastTurnRowStart(rows) : index, rows, maxTurns)
 }
 
 export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {

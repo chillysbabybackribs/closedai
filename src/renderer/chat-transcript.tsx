@@ -22,10 +22,12 @@ import { TranscriptAttachments } from './composer-attachments.js'
 import {
   activityHeadline,
   activityState,
+  anchoredVisibleStart,
   clampVisibleStart,
   lastTurnRowStart,
   previousTurnRowStart,
   transcriptRows,
+  transcriptRowKey,
   turnActionMessageIds,
   type ActivityItem,
   type StandaloneItem,
@@ -53,14 +55,15 @@ export const ChatTranscript = memo(function ChatTranscript({
   )
   const rows = useMemo(() => transcriptRows(items), [items])
   const tailStart = useMemo(() => lastTurnRowStart(rows), [rows])
-  const [visibleStart, setVisibleStart] = useState(tailStart)
+  const [visibleAnchor, setVisibleAnchor] = useState(() => transcriptRowKey(rows[tailStart]))
   const [loadingEarlier, setLoadingEarlier] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [loadEpoch, setLoadEpoch] = useState(0)
   const browsedEarlier = useRef(false)
   const { prepareForPrepend } = useMessageScroller()
   const scrollable = useMessageScrollerScrollable()
-  const start = visibleStart
+  const start = anchoredVisibleStart(visibleAnchor, rows, CHAT_MOUNTED_TURN_WINDOW)
+  const setVisibleStart = (index: number): void => setVisibleAnchor(transcriptRowKey(rows[index]))
   const visibleRows = rows.slice(start)
 
   useEffect(() => {
@@ -71,11 +74,12 @@ export const ChatTranscript = memo(function ChatTranscript({
   useEffect(() => {
     if (loadEpoch === 0) return
     setVisibleStart(clampVisibleStart(previousTurnRowStart(rows, tailStart), rows, CHAT_MOUNTED_TURN_WINDOW))
+    setLoadEpoch(0)
   }, [loadEpoch, rows, tailStart])
 
   useEffect(() => {
-    if (visibleStart < tailStart) browsedEarlier.current = true
-  }, [visibleStart, tailStart])
+    if (start < tailStart) browsedEarlier.current = true
+  }, [start, tailStart])
 
   useEffect(() => {
     if (!scrollable.end || !browsedEarlier.current) return

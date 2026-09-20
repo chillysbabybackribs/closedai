@@ -238,7 +238,10 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 - The renderer initially receives the latest turn. "View previous messages" reveals one earlier
   turn at a time and keeps at most three turns mounted; scrolling back to the bottom trims
   prepended history from renderer state. Older pages fetch by stable item id; stale responses
-  after a chat switch are ignored. Background-task status remains available outside the loaded
+  after a chat switch are ignored. The mounted display boundary also uses a stable row identity,
+  falling back to the latest turn when a snapshot removes that row, so trimming cannot leave
+  streamed messages hidden behind an out-of-range row offset. Earlier-page reveals apply once.
+  Background-task status remains available outside the loaded
   page. Provider sessions and the main-process transcript remain complete for continuation,
   branching, and peer reads; this is display paging, not model compaction. Codex history replay
   emits one replacement instead of streaming old items again.
