@@ -17,6 +17,10 @@ export function useExpandedSettled(): FoldSet {
   return usePersistedIdSet(EXPANDED_SETTLED_KEY)
 }
 
+export function useCollapsedDirectories(): FoldSet {
+  return usePersistedIdSet('closedai.drawer.collapsedDirectories')
+}
+
 function readIdSet(key: string): ReadonlySet<string> {
   try {
     const raw = window.localStorage.getItem(key)

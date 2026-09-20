@@ -24,6 +24,7 @@ export const UI_CONTROLS = {
   'layout.divider': 'Resize adjacent chat tiles with a drag or arrow keys; item is the split id',
 
   'drawer.new-agent': 'Start a new agent chat pane',
+  'drawer.directory': 'Expand or collapse a directory section without changing projects; item is its full directory path',
   'drawer.search': 'Search previous chats (combobox)',
   'drawer.search-clear': 'Clear the drawer search',
   'drawer.search-result': 'Drawer search hit; item is the row id',
