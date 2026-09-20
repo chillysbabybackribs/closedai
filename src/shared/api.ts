@@ -12,6 +12,9 @@ export type Unsubscribe = () => void
 export type ClosedaiApi = {
   localFiles: {
     open: (href: string) => Promise<import('./local-files.js').LocalFileResult>
+    openImage: (image: { name: string; src: string }) => Promise<string>
+    image: (id: string) => Promise<import('./local-files.js').ImageTabContent>
+    revealImage: (id: string) => Promise<void>
   }
   window: {
     minimize: () => Promise<void>

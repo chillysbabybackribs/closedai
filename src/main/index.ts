@@ -417,7 +417,7 @@ function registerIpc(): void {
   registerWindowIpc(ipcMain, () => mainWindow)
   registerBrowserCoreIpc(ipcMain, () => browserService)
   registerBrowserDownloadsIpc(ipcMain, () => browserDownloads)
-  registerLocalFilesIpc(ipcMain)
+  registerLocalFilesIpc(ipcMain, () => browserService)
   registerChatIpc(ipcMain, () => chatService)
   registerTraceIpc(ipcMain, traceLog)
   registerCredentialVaultIpc(ipcMain, () => credentialVault)

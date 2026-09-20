@@ -9,6 +9,9 @@ import type { TraceEvent, TraceSnapshot } from './trace.js'
 /** Invoke channels the preload bridge exposes on `window.closedai`. */
 export type IpcInvokeChannels = {
   'localFiles:open': { args: [string]; result: import('./local-files.js').LocalFileResult }
+  'localFiles:openImage': { args: [{ name: string; src: string }]; result: string }
+  'localFiles:image': { args: [string]; result: import('./local-files.js').ImageTabContent }
+  'localFiles:revealImage': { args: [string]; result: void }
   'window:minimize': { args: []; result: void }
   'window:maximize': { args: []; result: void }
   'window:toggleFullscreen': { args: []; result: void }
@@ -92,7 +95,10 @@ export type IpcEventChannel = keyof IpcEventChannels
 /** Canonical channel names grouped like the preload surface. */
 export const IPC = {
   invoke: {
-    localFiles: { open: 'localFiles:open' },
+    localFiles: {
+      open: 'localFiles:open', openImage: 'localFiles:openImage',
+      image: 'localFiles:image', revealImage: 'localFiles:revealImage'
+    },
     window: {
       minimize: 'window:minimize',
       maximize: 'window:maximize',
