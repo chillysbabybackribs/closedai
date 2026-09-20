@@ -29,7 +29,7 @@ test('images return preview bytes; files return path; directories reveal', async
     assert.deepEqual(revealed, [])
     const script = join(root, 'run.sh')
     await writeFile(script, 'exit 1')
-    assert.deepEqual(await openLocalFile(`${script}:10`, reveal), { kind: 'file', path: script })
+    assert.deepEqual(await openLocalFile(`${script}:10`, reveal), { kind: 'file', path: script, line: 10 })
     assert.deepEqual(revealed, [])
     const folder = join(root, 'subfolder')
     await mkdir(folder)

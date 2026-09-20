@@ -40,6 +40,5 @@ export type LocalFileResult =
   | { kind: 'revealed' }
 export type ImageTabContent = { name: string; src: string; path?: string }
 export type ImageTabIdentity = { tabId: string; name: string; path?: string }
-export type FileTabIdentity = { tabId: string; name: string; path: string; line?: number; endLine?: number }
+export type FileTabIdentity = { tabId: string; name: string; path: string; revision: number; line?: number; endLine?: number }
 export type FileTabContent = { name: string; path: string; content: string; line?: number; endLine?: number }
-

@@ -3,7 +3,9 @@ import { AlertCircle, Check, Copy, FileCode, FolderOpen, Loader2 } from 'lucide-
 import type { FileTabContent } from '../../shared/local-files.js'
 import { highlightTokens } from '../diff-viewer.js'
 
-export function FileViewer({ id, active }: { id: string; active: boolean }) {
+export function FileViewer({ id, active, revision, line, endLine }: {
+  id: string; active: boolean; revision: number; line?: number; endLine?: number
+}) {
   const [content, setContent] = useState<FileTabContent | null>(null)
   const [error, setError] = useState<string>('')
   const [loading, setLoading] = useState(true)
@@ -30,7 +32,7 @@ export function FileViewer({ id, active }: { id: string; active: boolean }) {
         }
       })
     return () => { live = false }
-  }, [id])
+  }, [id, revision, line, endLine])
 
   useEffect(() => {
     if (active && targetRef.current) {

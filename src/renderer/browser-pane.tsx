@@ -2,6 +2,7 @@ import type { JSX } from 'react'
 import { memo, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Download, FileCode, FileImage, Globe2, Loader2, Lock, Plus, RefreshCw, Search, X } from 'lucide-react'
 import { ImageViewer } from './image-viewer/image-viewer.js'
+import { FileViewer } from './file-viewer/file-viewer.js'
 import { BrowserSiteIcon } from './browser-site-icon.js'
 import type { BrowserController } from './browser-controller.js'
 import type { BrowserTabInfo } from '../shared/types.js'
@@ -40,7 +41,7 @@ export const BrowserPane = memo(function BrowserPane({
           {controller.tabs.filter((tab) => tab.image).map((tab) =>
             <ImageViewer key={tab.id} id={tab.id} active={controller.browser.image?.tabId === tab.id} />)}
           {controller.tabs.filter((tab) => tab.file).map((tab) =>
-            <FileViewer key={tab.id} id={tab.id} active={controller.browser.file?.tabId === tab.id} />)}
+            <FileViewer key={tab.id} id={tab.id} revision={tab.file!.revision} line={tab.file!.line} endLine={tab.file!.endLine} active={controller.browser.file?.tabId === tab.id} />)}
           {controller.browser.navigationError ? (
             <BrowserNavigationError
               error={controller.browser.navigationError}
@@ -99,7 +100,7 @@ function BrowserTabs({ controller }: { controller: BrowserController }): JSX.Ele
               id={`browser-tab-${tab.id}`}
               type="button"
               role="tab"
-              aria-controls={tab.image ? `image-page-${tab.id}` : 'browser-page'}
+              aria-controls={tab.image ? `image-page-${tab.id}` : tab.file ? `file-page-${tab.id}` : 'browser-page'}
               aria-selected={tab.active}
               tabIndex={tab.active ? 0 : -1}
               className="browser-tab-select"

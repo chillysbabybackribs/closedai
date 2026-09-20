@@ -90,7 +90,7 @@ export class BrowserService extends EventEmitter {
 
   // ---- Tab management -------------------------------------------------------
 
-  private get active(): BrowserTab | ImageTab | null {
+  private get active(): BrowserTab | ImageTab | FileTab | null {
     return this.tabs.find((tab) => tab.id === this.activeId) ?? null
   }
 
@@ -219,8 +219,8 @@ export class BrowserService extends EventEmitter {
 
   openFileTab(content: { path: string; name: string; line?: number; endLine?: number }): string {
     const existing = this.tabs.find((tab) => tab instanceof FileTab && tab.key === content.path)
-    if (existing) {
-      if (content.line !== undefined) existing.updateLine(content.line, content.endLine)
+    if (existing instanceof FileTab) {
+      existing.updateLine(content.line, content.endLine)
       this.selectTab(existing.id)
       this.emit('state', existing.getState())
       return existing.id
@@ -293,6 +293,13 @@ export class BrowserService extends EventEmitter {
     if (!tab) return
     if (tab instanceof ImageTab) {
       const duplicate = new ImageTab(allocateTabId(), tab.key, tab.content, this.activeId)
+      duplicate.rename(tab.getCustomTitle())
+      this.registerTab(duplicate, index + 1)
+      this.setActive(duplicate.id)
+      return
+    }
+    if (tab instanceof FileTab) {
+      const duplicate = new FileTab(allocateTabId(), tab.key, { ...tab.info }, this.activeId)
       duplicate.rename(tab.getCustomTitle())
       this.registerTab(duplicate, index + 1)
       this.setActive(duplicate.id)
@@ -381,7 +388,7 @@ export class BrowserService extends EventEmitter {
     this.pageVisible = pageVisible
     const active = this.active
     this.rendering.setPaneVisible(paneVisible)
-    if (active instanceof ImageTab) {
+    if (active instanceof ImageTab || active instanceof FileTab) {
       this.parkWebTabs()
       return
     }
@@ -464,6 +471,7 @@ export class BrowserService extends EventEmitter {
     if (popup && !popup.isDestroyed()) return popup
     const tab = tabId ? this.tabs.find((candidate) => candidate.id === tabId) ?? null : this.active
     if (tab instanceof ImageTab) throw new Error('This is an image viewer tab. Use a web tab for browser page tools.')
+    if (tab instanceof FileTab) throw new Error('This is a file viewer tab. Use a web tab for browser page tools.')
     if (tab) this.prepareTabForTool(tab)
     const contents = tab?.view.webContents
     return contents && !contents.isDestroyed() ? contents : null
@@ -516,6 +524,7 @@ export class BrowserService extends EventEmitter {
       const targeted = this.tabs.find((candidate) => candidate.id === tabId)
       if (!targeted) throw new Error(describeMissingTab(tabId, this.tabList()))
       if (targeted instanceof ImageTab) throw new Error('Open a new web tab to navigate from an image viewer.')
+      if (targeted instanceof FileTab) throw new Error('Open a new web tab to navigate from a file viewer.')
       tab = targeted
     } else {
       tab = this.requireActive()
@@ -600,7 +609,7 @@ export class BrowserService extends EventEmitter {
   private requireActive(): BrowserTab {
     const tab = this.active
     if (!tab) throw new Error('No active browser tab')
-    if (tab instanceof ImageTab) throw new Error('Open or select a web tab to use browser navigation.')
+    if (!(tab instanceof BrowserTab)) throw new Error('Open or select a web tab to use browser navigation.')
     return tab
   }
 
