@@ -25,6 +25,7 @@ async function harness(inspectPdf: NonNullable<ResearchDependencies['inspectPdf'
   })
   let run = service.start({ queries: [], urls: ['https://example.com/test.pdf'], maxSources: 1, deadlineMs: 1000, presentation: 'background' }, context)
   while (run.state === 'running') run = await service.wait(run.runId, context, run.cursor, 1000)
+  run = service.read(run.runId, context)
   return { service, id: run.runId, source: run.sources[0].id }
 }
 
