@@ -1,171 +1,60 @@
 import type { JSX } from 'react'
 import { memo, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, FolderOpen, Pin } from 'lucide-react'
 import type { ChatController } from '../chat-controller.js'
 import type { DrawerController } from './drawer-controller.js'
-import { useCollapsedParents, useExpandedSettled } from './drawer-fold-state.js'
+import { useCollapsedDirectories, useCollapsedParents, useExpandedSettled } from './drawer-fold-state.js'
 import { DrawerHeader } from './drawer-header.js'
-import { DrawerRow, type FoldState } from './drawer-row.js'
+import { DrawerDirectory } from './drawer-directory.js'
+import type { FoldState } from './drawer-row.js'
 import { DrawerRowMenu, type RowMenuTarget } from './drawer-row-menu.js'
-import { buildDrawerSections, countLiveRows, groupByDirectory } from './drawer-sections.js'
-import type { DrawerRowModel } from './drawer-types.js'
+import { groupByDirectory } from './drawer-sections.js'
 
-function SideDrawerView({
-  controller,
-  chat,
-  onSplitChat
-}: {
+function SideDrawerView({ controller, chat, onSplitChat }: {
   controller: DrawerController
   chat: ChatController
   onSplitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
 }): JSX.Element | null {
   const [collapsedParents, onToggleParent] = useCollapsedParents()
   const [expandedSettled, onToggleSettled] = useExpandedSettled()
+  const [collapsedDirectories, toggleDirectory] = useCollapsedDirectories()
   const [rowMenu, setRowMenu] = useState<RowMenuTarget | null>(null)
-
-  const { pinned, current, reviewQueue, history } = useMemo(
-    () => buildDrawerSections(controller.rows, controller.reviewQueue),
-    [controller.rows, controller.reviewQueue]
-  )
-
-  const liveCount = useMemo(() => countLiveRows(current), [current])
+  const directories = useMemo(() => groupByDirectory(controller.rows), [controller.rows])
   const fold: FoldState = { collapsedParents, onToggleParent, expandedSettled, onToggleSettled }
-
+  const cwd = chat.workspace?.cwd ?? chat.state.cwd
   if (controller.isCollapsed) return null
 
-  const renderRows = (
-    rows: DrawerRowModel[],
-    label: string,
-    options: { review?: boolean } = {}
-  ): JSX.Element => (
-    <div role="list" aria-label={label}>
-      {groupByDirectory(rows).map((group) => (
-        <div className="agents-dir-group" key={group.key}>
-          <div className="agents-dir-label" title={group.fullPath ?? undefined}>
-            <FolderOpen size={12} aria-hidden="true" />
-            <span>{group.label}</span>
-          </div>
-          {group.rows.map((row) => (
-            <DrawerRow
-              key={row.id}
-              row={row}
-              fold={fold}
-              controller={controller}
-              chat={chat}
-              onRowMenu={setRowMenu}
-              unread={options.review === true && controller.reviewQueue[row.id]?.viewedAt === null}
-            />
-          ))}
-        </div>
-      ))}
+  return <aside className="agents-pane" aria-label="Side drawer" data-ui-surface="side-drawer">
+    <DrawerHeader controller={controller} />
+    <div className="agents-list">
+      {directories.map((group) => <DrawerDirectory key={group.key} group={group}
+        collapsed={collapsedDirectories.has(group.key)} onToggle={() => toggleDirectory(group.key)}
+        controller={controller} chat={chat} fold={fold} onRowMenu={setRowMenu} />)}
+      {directories.length === 0 && <p className="agents-empty">Chats and background agents appear here.</p>}
     </div>
-  )
-
-  const isEmpty = pinned.length === 0 && current.length === 0 && reviewQueue.length === 0 && history.length === 0
-
-  return (
-    <aside
-      className="agents-pane"
-      aria-label="Side drawer"
-      data-ui-surface="side-drawer"
-    >
-      <DrawerHeader controller={controller} />
-
-      <div className="agents-list">
-        {pinned.length > 0 ? (
-          <>
-            <div className="agents-section-label">
-              <Pin size={11} aria-hidden="true" />
-              <span>Pinned</span>
-            </div>
-            {renderRows(pinned, 'Pinned chats', { review: true })}
-          </>
-        ) : null}
-        {current.length > 0 ? (
-          <>
-            <div className="agents-section-label">
-              <span>Current</span>
-              {liveCount > 0 ? (
-                <span className="agents-running-count" title={`${liveCount} running`}>
-                  {liveCount} running
-                </span>
-              ) : null}
-            </div>
-            {renderRows(current, 'Current chats')}
-          </>
-        ) : null}
-
-        {reviewQueue.length > 0 ? (
-          <>
-            <div className="agents-section-label">
-              <span>Recently completed</span>
-              <span className="agents-running-count">{reviewQueue.length}</span>
-            </div>
-            {renderRows(reviewQueue, 'Recently completed chats', { review: true })}
-          </>
-        ) : null}
-
-        {history.length > 0 ? (
-          <>
-            <button
-              type="button"
-              className="agents-section-toggle"
-              onClick={controller.toggleHistory}
-              aria-expanded={controller.isHistoryOpen}
-            >
-              {controller.isHistoryOpen ? (
-                <ChevronDown size={13} aria-hidden="true" />
-              ) : (
-                <ChevronRight size={13} aria-hidden="true" />
-              )}
-              <span>History</span>
-              <span className="agents-section-count">{history.length}</span>
-            </button>
-            {controller.isHistoryOpen ? renderRows(history, 'Chat history') : null}
-          </>
-        ) : null}
-
-        {isEmpty ? (
-          <p className="agents-empty">Chats and background agents appear here.</p>
-        ) : null}
-      </div>
-
-      <div className="agents-instance-footer">
-        {controller.error ? (
-          <span className="agents-footer-error" role="alert" title={controller.error}>
-            {controller.error}
-          </span>
-        ) : (
-          <span className="agents-instance-label">ClosedAI <span className="agents-instance-num">1</span></span>
-        )}
-      </div>
-
-      {rowMenu ? (
-        <DrawerRowMenu
-          target={rowMenu}
-          inheritedModel={rowMenu.modelId ?? chat.state.selectedModel}
-          models={chat.state.models}
-          onClose={() => setRowMenu(null)}
-          canSplit={rowMenu.id !== chat.selectedPaneId}
-          onSplit={(edge) => {
-            setRowMenu(null)
-            onSplitChat(rowMenu.id, edge).catch(controller.reportError)
-          }}
-          onTogglePin={() => {
-            setRowMenu(null)
-            chat.setChatPinned(rowMenu.id, !rowMenu.pinned).catch(controller.reportError)
-          }}
-          onFork={(modelId) => {
-            setRowMenu(null)
-            chat.continueFromChat(
-              { paneId: rowMenu.paneId, threadId: rowMenu.threadId },
-              modelId
-            ).catch(controller.reportError)
-          }}
-        />
-      ) : null}
-    </aside>
-  )
+    <div className="agents-instance-footer">
+      {controller.error ? <span className="agents-footer-error" role="alert" title={controller.error}>
+        {controller.error}
+      </span> : <span className="agents-instance-label">ClosedAI <span className="agents-instance-num">1</span></span>}
+    </div>
+    {rowMenu && <DrawerRowMenu target={rowMenu}
+      inheritedModel={rowMenu.modelId ?? chat.state.selectedModel} models={chat.state.models}
+      onClose={() => setRowMenu(null)}
+      canSplit={rowMenu.id !== chat.selectedPaneId && chat.chats.find((row) => row.paneId === rowMenu.id)?.cwd === cwd}
+      onSplit={(edge) => {
+        setRowMenu(null)
+        onSplitChat(rowMenu.id, edge).catch(controller.reportError)
+      }}
+      onTogglePin={() => {
+        setRowMenu(null)
+        chat.setChatPinned(rowMenu.id, !rowMenu.pinned).catch(controller.reportError)
+      }}
+      onFork={(modelId) => {
+        setRowMenu(null)
+        chat.openChat(rowMenu.id).then(() => chat.continueFromChat(
+          { paneId: rowMenu.id, threadId: rowMenu.threadId }, modelId
+        )).catch(controller.reportError)
+      }} />}
+  </aside>
 }
 
 export const SideDrawer = memo(SideDrawerView)

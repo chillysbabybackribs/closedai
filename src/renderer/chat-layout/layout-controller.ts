@@ -9,7 +9,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   const [layout, setLayout] = useState(() => {
     const saved = readLayout(window.localStorage, cwd)
     let tree = saved.tree
-    const available = new Set(snapshot.chats.map((chat) => chat.paneId))
+    const available = new Set(snapshot.chats.filter((chat) => chat.cwd === cwd).map((chat) => chat.paneId))
     tree = pruneTabs(tree, available)
     if (!tree) tree = { kind: 'pane' as const, id: snapshot.selectedPaneId }
     else if (!paneIds(tree).includes(snapshot.selectedPaneId)) {
@@ -49,7 +49,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     selected.current = next
     setLayout((value) => {
       let tree: ChatLayout | null = value.tree
-      const available = new Set(snapshot.chats.map((chat) => chat.paneId))
+      const available = new Set(snapshot.chats.filter((chat) => chat.cwd === cwd).map((chat) => chat.paneId))
       tree = pruneTabs(tree, available)
       if (!tree) tree = { kind: 'pane', id: next }
       else if (!paneIds(tree).includes(next)) {
@@ -57,7 +57,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       }
       return tree === value.tree ? value : { ...value, tree }
     })
-  }, [snapshot.selectedPaneId, snapshot.chats, busy])
+  }, [snapshot.selectedPaneId, snapshot.chats, busy, cwd])
 
   // A null edge adds a tab in the target tile without adding a split.
   const dock = useCallback(async (id: string | null, target: string, edge: DockEdge | null): Promise<void> => {
@@ -66,6 +66,9 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     setBusy(true)
     setError('')
     try {
+      if (id && snapshot.chats.find((chat) => chat.paneId === id)?.cwd !== cwd) {
+        throw new Error('Open this chat’s directory before splitting it into the layout')
+      }
       if (edge && paneIds(current.current.tree).length >= 32 && (!id || !paneIds(current.current.tree).includes(id))) {
         throw new Error('The workspace already has 32 visible chats')
       }
@@ -82,7 +85,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       })
     } catch (reason) { setError(String(reason)) }
     finally { pending.current = false; setBusy(false) }
-  }, [])
+  }, [snapshot.chats, cwd])
 
   const newChat = useCallback((target: string) => dock(null, target, null), [dock])
 

@@ -53,7 +53,7 @@ export function groupByDirectory(rows: DrawerRowModel[]): DirectoryGroup[] {
     }
     group.rows.push(row)
   }
-  const ordered = [...groups.values()]
+  const ordered = [...groups.values()].sort((a, b) => a.key.localeCompare(b.key))
   const noFolder = ordered.findIndex((group) => group.fullPath === null)
   if (noFolder !== -1 && ordered.length > 1) {
     ordered.push(...ordered.splice(noFolder, 1))
