@@ -16,7 +16,7 @@ export class SourceAdmission {
 
   next(sources: Iterable<ResearchSource>): ResearchSource | undefined {
     if (this.active >= MAX_CONCURRENT_READS || this.readCount >= this.maxReads) return undefined
-    const available = [...sources].filter((source) => source.state === 'deferred')
+    const available = [...sources].filter((source) => source.state === 'deferred' && !source.expanding)
     const priority = (source: ResearchSource) => source.selection === 'requested' ? 2 : source.selection === 'preferred_domain' ? 1 : 0
     available.sort((a, b) => priority(b) - priority(a)
       || (this.origins.get(new URL(a.url).origin) ?? 0) - (this.origins.get(new URL(b.url).origin) ?? 0))

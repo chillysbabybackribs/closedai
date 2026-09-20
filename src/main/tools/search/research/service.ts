@@ -44,7 +44,7 @@ type Run = {
   admission: SourceAdmission; preferredDomains: Set<string>; omittedCandidates: number
   timing: ResearchTiming
   coverage: SourceCoverage
-  expansions: Map<string, AbortController>
+  expansions: Map<string, { controller: AbortController; turnId: string }>
 }
 
 /** The scheduler owns async work after the start tool returns; calls only observe/control it. */
@@ -96,7 +96,7 @@ export class ResearchService {
 
   cancel(id: string, context: ToolContext): ResearchSnapshot {
     const run = this.owned(id, context)
-    for (const controller of run.expansions.values()) controller.abort(new Error('Expansion cancelled'))
+    for (const { controller } of run.expansions.values()) controller.abort(new Error('Expansion cancelled'))
     this.finish(run, 'cancelled')
     return this.snapshot(run)
   }
@@ -123,12 +123,18 @@ export class ResearchService {
     const controller = new AbortController()
     const signal = AbortSignal.any([controller.signal, context.signal, AbortSignal.timeout(45_000)])
     const stagedId = randomUUID()
-    run.expansions.set(sourceId, controller)
+    run.expansions.set(sourceId, { controller, turnId: owner.turnId })
     source.expanding = true
     delete source.expansionError
     source.revision = this.changed(run)
     try {
-      let document = await reader(source.requestedUrl ?? source.url, id, stagedId, signal, coverage)
+      const url = source.requestedUrl ?? source.url
+      let document: SourceDocument
+      try { document = await reader(url, id, stagedId, signal, coverage) }
+      catch (error) {
+        if (provider || !(error instanceof SourceNeedsRendering) || !this.deps.render) throw error
+        document = await this.deps.render(url, id, stagedId, signal, coverage)
+      }
       if (!provider && document.sparse && this.deps.render) {
         document = await this.deps.render(source.requestedUrl ?? source.url, id, stagedId, signal, coverage)
       }
@@ -137,7 +143,7 @@ export class ResearchService {
       if (this.deps.owner(context).turnId !== owner.turnId) throw new Error('The expansion turn has ended')
       if (source.state === 'ready' && document.text.length < (source.chars ?? 0)) {
         source.expansionError = 'Expansion returned less text; the previous document was preserved'
-        return { changed: false, source: { ...source }, untrusted: true }
+        return { changed: false, source: { ...source, expanding: false }, untrusted: true }
       }
       await this.deps.replace(id, sourceId, stagedId)
       this.collected(run, source, document)
@@ -152,7 +158,7 @@ export class ResearchService {
       source.expanding = false
       source.revision = this.changed(run)
       try { await this.deps.discard(id, stagedId) }
-      finally { run.expansions.delete(sourceId) }
+      finally { run.expansions.delete(sourceId); this.changed(run); this.admit(run) }
     }
   }
 
@@ -199,7 +205,10 @@ export class ResearchService {
   reconcile(paneId: string, threadId: string | null, turnId: string | null): void {
     if (this.stoppedTurns.get(paneId) !== `${threadId}:${turnId}`) this.stoppedTurns.delete(paneId)
     for (const run of this.runs.values()) {
-      if (run.owner.paneId === paneId && (run.owner.threadId !== threadId || run.owner.turnId !== turnId)) this.finish(run, 'cancelled')
+      if (run.owner.paneId === paneId) for (const expansion of run.expansions.values()) {
+        if (run.owner.threadId !== threadId || expansion.turnId !== turnId) expansion.controller.abort(new Error('The expansion turn has ended'))
+      }
+      if (run.owner.paneId === paneId && (run.owner.threadId !== threadId || run.owner.turnId !== turnId)) this.finish(run, 'cancelled', false)
     }
   }
 
@@ -290,7 +299,7 @@ export class ResearchService {
    * provenance of our own, so the representation says so. Sources already queued keep their fetch.
    */
   private retainProvided(run: Run, source: ResearchSource, provider: string, content: ProvidedContent): void {
-    if (!this.deps.retain || source.state !== 'deferred' || run.state !== 'running') return
+    if (!this.deps.retain || source.expanding || source.state !== 'deferred' || run.state !== 'running') return
     source.state = 'reading'
     source.revision = this.changed(run)
     run.timing.begin(source.id)
@@ -385,8 +394,8 @@ export class ResearchService {
     })
   }
 
-  private finish(run: Run, state: ResearchState): void {
-    if (state !== 'completed') for (const controller of run.expansions.values()) controller.abort(new Error(`Research ${state}`))
+  private finish(run: Run, state: ResearchState, cancelExpansions = true): void {
+    if (cancelExpansions && state !== 'completed') for (const { controller } of run.expansions.values()) controller.abort(new Error(`Research ${state}`))
     if (run.state !== 'running') return
     run.state = state
     run.timing.finish(state)
