@@ -56,6 +56,7 @@ test('local OCR reads an actual raster-only PDF, remains separate from native te
   assert.equal(page.ocr!.language, 'eng')
   assert.equal(page.ocr!.coordinateSpace, 'rendered_crop_pixels')
   assert.ok(page.ocr!.words.length > 0)
+  assert.ok(page.ocr!.words.every((word) => word.bbox.x0 >= 0 && word.bbox.y0 >= 0 && word.bbox.x1 <= page.width && word.bbox.y1 <= page.height))
   assert.ok(page.ocr!.confidence > 0)
   assert.equal(page.image, undefined)
   // A missing worker proves this request is fulfilled by the retained OCR, not recomputation.
@@ -68,7 +69,10 @@ test('local OCR reads an actual raster-only PDF, remains separate from native te
   const empty = await inspect(path, source.pdf!.documentSha256!, { ...request, page: 3 }, signal)
   assert.equal(empty.ocr!.text.trim(), '')
   assert.equal(empty.ocr!.incomplete, true)
-  assert.equal((await readdir(join(root, 'run'))).filter((name) => name.endsWith('.json')).length, 3)
+  const crop = await inspect(path, source.pdf!.documentSha256!, { ...request, crop: { x: 0, y: 0, width: 1, height: 0.25 } }, signal)
+  assert.equal(crop.height, 225)
+  assert.equal(crop.ocr!.text.trim(), '', 'a crop that excludes the scanned line must not OCR the full page')
+  assert.equal((await readdir(join(root, 'run'))).filter((name) => name.endsWith('.json')).length, 4)
 })
 
 test('inspection validates page/crop budgets before starting work', () => {
