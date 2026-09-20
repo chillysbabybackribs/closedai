@@ -10,6 +10,7 @@ import { searchTools } from './tools/search/index.js'
 import type { ResearchService } from './tools/search/research/service.js'
 import { SourceStore } from './tools/search/research/source-reader.js'
 import { createPdfReader } from './tools/search/research/pdf/reader.js'
+import { createPdfInspector } from './tools/search/research/pdf/inspector.js'
 import { textLimit } from './tools/search/research/coverage.js'
 import { SearchBrowserTabs } from './tools/search/presentation.js'
 import { ResearchLibrary } from './research-library/service.js'
@@ -35,6 +36,7 @@ export async function createResearchRuntime(options: {
   const library = ResearchLibrary.create(options.libraryPath, (input, init) => publicSession.fetch(input as string, init))
   const store = new SourceStore(options.root, (input, init) => publicSession.fetch(input as string, init),
     createPdfReader(new URL('./pdf-worker.js', import.meta.url)))
+  const inspectPdf = createPdfInspector(new URL('./pdf-page-worker.js', import.meta.url))
   const workers = new BrowserWorkerPool(createHiddenPageWorker)
   let service!: ResearchService
   const liveTabs = new SearchBrowserTabs({
@@ -71,6 +73,7 @@ export async function createResearchRuntime(options: {
       replace: (runId, sourceId, stagedId) => store.replace(runId, sourceId, stagedId),
       discard: (runId, sourceId) => store.discard(runId, sourceId),
       read: (runId, sourceId) => store.read(runId, sourceId),
+      inspectPdf: async (runId, sourceId, hash, request, signal) => inspectPdf(await store.pdfPath(runId, sourceId), hash, request, signal),
       remove: (runId) => store.remove(runId),
       openLive: (url, context) => {
         const snapshot = context.paneId ? options.peers()?.paneSnapshot(context.paneId) : null

@@ -9,6 +9,8 @@ import { mergeDates } from './source-metadata.js'
 import { MAX_CANDIDATES, prefersDomain, SourceAdmission } from './source-admission.js'
 import { ResearchTiming, type ResearchTimingEvent } from './timing.js'
 import { validateCoverage, type SourceCoverage } from './coverage.js'
+import type { PdfInspectionRequest, PdfPageEvidence } from '../../../../shared/pdf-evidence.js'
+import { validatePdfInspection } from './pdf/inspector.js'
 
 export type ResearchOwner = { paneId: string; threadId: string; turnId: string | null; workspace: string }
 export type ProvidedPage = { url: string; title: string; text: string; truncated: boolean }
@@ -25,6 +27,7 @@ export type ResearchDependencies = {
   discard?: (runId: string, sourceId: string) => Promise<void>
   read(runId: string, sourceId: string): Promise<string>
   remove(runId: string): Promise<void>
+  inspectPdf?: (runId: string, sourceId: string, documentSha256: string, request: PdfInspectionRequest, signal: AbortSignal) => Promise<PdfPageEvidence>
   /** Opens a retained, user-owned tab once. Never follows subsequent results automatically. */
   openLive?: OpenSearchTab
   trace?: (owner: ResearchOwner, event: ResearchTimingEvent) => void
@@ -115,7 +118,7 @@ export class ResearchService {
     validateCoverage(coverage)
     const source = [...run.sources.values()].find((item) => item.id === sourceId)
     if (!source || !['ready', 'failed', 'deferred'].includes(source.state)) throw new Error('Source is unavailable or still being collected')
-    if (run.expansions.has(sourceId)) throw new Error('This source is already expanding')
+    if (run.expansions.has(sourceId)) throw new Error('This source already has an expansion or PDF inspection in progress')
     if (!this.deps.replace || !this.deps.discard) throw new Error('Source expansion storage is unavailable')
     const provider = method === 'exa' || (method === 'auto' && source.contentProvider === 'exa')
     const reader = provider ? this.deps.extract : this.deps.collect
@@ -161,6 +164,37 @@ export class ResearchService {
       try { await this.deps.discard(id, stagedId) }
       finally { run.expansions.delete(sourceId); this.changed(run); this.admit(run) }
     }
+  }
+
+  /** Uses the same operation leases as expansion: pin files, serialize revision access, abort on turn end. */
+  async inspectPdf(id: string, sourceId: string, context: ToolContext, request: PdfInspectionRequest): Promise<PdfPageEvidence> {
+    validatePdfInspection(request)
+    const run = this.owned(id, context)
+    const owner = this.deps.owner(context)
+    if (this.disposed || !owner.turnId || this.stoppedTurns.get(owner.paneId) === `${owner.threadId}:${owner.turnId}`) {
+      throw new Error('Inspect PDFs during an active, unstopped turn')
+    }
+    const source = [...run.sources.values()].find((item) => item.id === sourceId)
+    const hash = source?.pdf?.documentSha256
+    if (source?.state !== 'ready' || source.representation !== 'pdf_text' || !hash) {
+      throw new Error('No retained PDF bytes for this source; use search.run expand with method direct first')
+    }
+    if (request.page > source.pdf!.totalPages) throw new Error(`Page must be between 1 and ${source.pdf!.totalPages}`)
+    if (!this.deps.inspectPdf) throw new Error('PDF inspection is unavailable')
+    if (run.expansions.has(sourceId)) throw new Error('This source already has an expansion or PDF inspection in progress')
+    const controller = new AbortController()
+    const signal = AbortSignal.any([controller.signal, context.signal, AbortSignal.timeout(60_000)])
+    run.expansions.set(sourceId, { controller, turnId: owner.turnId })
+    this.changed(run)
+    try {
+      const result = await this.deps.inspectPdf(id, sourceId, hash, request, signal)
+      signal.throwIfAborted()
+      this.owned(id, context)
+      if (this.deps.owner(context).turnId !== owner.turnId || result.documentSha256 !== hash) {
+        throw new Error('PDF inspection no longer belongs to this turn or source revision')
+      }
+      return result
+    } finally { run.expansions.delete(sourceId); this.changed(run) }
   }
 
   async source(id: string, sourceId: string, context: ToolContext, offset: number, maxChars: number, query?: string): Promise<unknown> {

@@ -4,6 +4,7 @@ import type { SearchRequest } from '../types.js'
 import { ResearchService } from './service.js'
 import { SEARCH_PRESENTATION_FIELD } from '../presentation.js'
 import { sourceOptions } from '../request-options.js'
+import { pdfTool } from './pdf/tools.js'
 
 const MAX_EVENT_WAIT_MS = 20_000
 const MAX_SOURCE_CHARS = 12_000
@@ -37,6 +38,7 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
   }
   const result = (value: unknown) => textResult(JSON.stringify(value))
   return [
+    pdfTool(service),
     defineActionTool({
       name: 'run',
       deferLoading: true,
