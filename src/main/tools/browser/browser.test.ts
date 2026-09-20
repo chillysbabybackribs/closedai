@@ -61,6 +61,37 @@ function textOf(result: { content: Array<{ type: string; text?: string }> }): st
   return result.content[0]?.type === 'text' ? result.content[0].text ?? '' : ''
 }
 
+test('read_page passes PDF page selection and reports native provenance and limits', async () => {
+  let selected: unknown
+  const { call } = harness({ readPage: async (_tab, options) => {
+    selected = options
+    return { url: 'https://a.test/paper.pdf', title: 'Paper', readyState: 'complete', text: 'PDF paragraph', truncated: false,
+      pdf: { page: 2, totalPages: 17, pagesAvailable: 3, available: true } }
+  } })
+  const result = await call({ action: 'read_page', pdf_page: 2 })
+  assert.equal((selected as { pdfPage: number }).pdfPage, 2)
+  assert.match(textOf(result), /PDF page: 2 of 17/)
+  assert.match(textOf(result), /Chromium native PDF accessibility/)
+  assert.match(textOf(result), /PDF paragraph/)
+  assert.match(textOf(result), /Native text can lose reading order/)
+  assert.equal(result.isError, undefined)
+})
+
+test('read_page distinguishes scans and unavailable PDF pages and rejects HTML selectors with PDF pages', async () => {
+  let available = true
+  const { call } = harness({ readPage: async () => ({
+    url: 'https://a.test/scan.pdf', title: 'Scan', readyState: 'complete', text: '', truncated: false,
+    pdf: { page: 1, totalPages: 1, pagesAvailable: available ? 1 : 0, available }
+  }) })
+  assert.match(textOf(await call({ action: 'read_page' })), /No native text.*scanned, blank, or inaccessible/)
+  available = false
+  const missing = await call({ action: 'read_page' })
+  assert.equal(missing.isError, true)
+  assert.match(textOf(missing), /PDF page 1 is unavailable/)
+  const invalid = await call({ action: 'read_page', selector: 'body', pdf_page: 1 })
+  assert.equal(invalid.errorKind, 'usage')
+})
+
 test('browser tool advertises page and deferred script tools', () => {
   const { registry } = harness()
   assert.deepEqual(registry.names(), ['embedded_browser.page', 'embedded_browser.script'])
