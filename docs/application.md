@@ -200,6 +200,15 @@ or stopping a running turn. Closing the active tab selects a neighbor; closing t
 tile removes that tile when another tile remains. The workspace always keeps at least one tab.
 Hidden tabs can be parked or detached by normal runtime trimming and are reattached when selected.
 
+Chat tabs carry a thin animated activity ribbon while working, an amber ribbon when paused,
+and a red ribbon for reported errors. A background completion briefly lights green and leaves
+an unread dot, using the sidebar's existing review queue; opening the chat clears that dot.
+Hovering or keyboard-focusing a tab shows a preview within the chat tile: current activity,
+up to three recent tool/command/edit steps, and time since the request when available. It uses
+existing snapshots without waking hidden chats; unavailable history is not fetched. Reduced-motion
+settings replace animation with a static working line. Paused state is explicit; the UI does not
+infer a request for user input from message text.
+
 Drag an individual conversation tab onto a tile's left or right edge to show chats side by side,
 or its top or bottom edge to stack them. A tab can split out of its own group, including the active
 tab; sibling conversations stay in place. Drop a tab onto another chat header to join its tab strip.

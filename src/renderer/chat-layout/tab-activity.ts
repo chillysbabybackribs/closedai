@@ -15,7 +15,13 @@ export type TabActivity = {
 /** Use provider state, never infer waiting or success from the assistant's prose. */
 export function tabActivity(row?: ChatRowSummary, snapshot?: ChatSnapshot, review?: DrawerReviewEntry): TabActivity {
   const items = snapshot?.items ?? []
-  const start = items.findLastIndex((item) => item.type === 'user')
+  let start = -1
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (items[i]?.type === 'user') {
+      start = i
+      break
+    }
+  }
   const turn = items.slice(Math.max(0, start)).filter((item) =>
     !snapshot?.activeTurnId || item.turnId === snapshot.activeTurnId)
   const running = row?.running ?? Boolean(snapshot?.activeTurnId)
@@ -28,7 +34,7 @@ export function tabActivity(row?: ChatRowSummary, snapshot?: ChatSnapshot, revie
   const steps = activitySteps(turn.filter(isActivity).slice(-3), Date.now()).map((step) => ({
     id: step.id, label: `${step.verb} ${step.label}`.trim().slice(0, 160), phase: step.phase
   }))
-  const lastMessage = turn.findLast((item) => item.type === 'assistant')
+  const lastMessage = [...turn].reverse().find((item) => item.type === 'assistant')
   const detail = (running ? row?.activity || 'Working on this conversation'
     : paused ? 'Open this chat to resume.'
       : failed ? snapshot?.connection.state === 'error' ? snapshot.connection.message : 'Open this chat to inspect the error.'
