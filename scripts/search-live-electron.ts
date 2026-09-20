@@ -73,10 +73,11 @@ async function verify(profile: string): Promise<void> {
       fetch: async (url) => {
         if (String(url).includes('serper.dev')) { await providerGate; return Response.json({ organic: [] }) }
         await searchGate
-        return Response.json({ web: { results: [
-          { title: 'Not a source', url: 'https://www.google.com/search?q=fixture' },
-          { title: 'Source', url: `${base}/article` }
-        ] } })
+        // Brave grounding shape (`/res/v1/llm/context`), not the human Web Search payload.
+        return Response.json({ grounding: { generic: [
+          { title: 'Not a source', url: 'https://www.google.com/search?q=fixture', snippets: ['results page'] },
+          { title: 'Source', url: `${base}/article`, snippets: ['article'] }
+        ] }, sources: {} })
       },
       onResearchCreated: (service) => { queryService = service },
       research: {
