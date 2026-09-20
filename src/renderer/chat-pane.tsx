@@ -23,7 +23,7 @@ import { TaskActivity } from './task-activity.js'
 import { ToolsModal } from './tools/tools-modal.js'
 import { TraceModal } from './trace/trace-modal.js'
 
-/** Pane-scoped dialogs the shell's File menu can open on the selected pane. */
+/** Pane-scoped dialogs the shell's Tools menu can open on the selected pane. */
 export type ChatPaneDialog = 'tools' | 'trace'
 
 export const ChatPane = memo(function ChatPane({
@@ -43,7 +43,7 @@ export const ChatPane = memo(function ChatPane({
   /** Supplied by the shell so the title bar menu and Ctrl+H reach this panel. */
   historyOpen?: boolean
   onHistoryOpenChange?: (open: boolean) => void
-  /** Same ownership as history: the File menu opens these on the selected pane. */
+  /** The Tools menu opens these on the selected pane. */
   dialog?: ChatPaneDialog | null
   onDialogChange?: (dialog: ChatPaneDialog | null) => void
 } = {}): JSX.Element {

@@ -1,5 +1,5 @@
 /* ---- Shell menu bar -------------------------------------------------------
-   File / Edit / View / Help, living in the title bar's drag region (titlebar-menu.tsx).
+   File / View / Tools, living in the title bar's drag region (titlebar-menu.tsx).
    Split out of titlebar.css, which is close to its line cap. */
 /* Sits at the left edge of the drag region, where a desktop app's menu bar lives.
    Only the tabs themselves opt out of dragging; the gap after them stays draggable. */
@@ -55,7 +55,7 @@
 }
 
 /* Menu-bar popups. Deliberately not the composer's .model-menu: shell chrome keeps
-   its own tighter, squarer surface so a File menu never reads as a chat control. */
+   its own tighter, squarer surface so application menus never read as chat controls. */
 .titlebar-menu-content {
   z-index: 60;
   min-width: 208px;

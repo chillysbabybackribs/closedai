@@ -76,7 +76,7 @@ export type TitlebarMenuProps = {
   onOpenPaneDialog: (dialog: 'tools' | 'trace') => void
 }
 
-/** The shell's File / Edit / View / Help bar, sitting in the title bar's drag region. */
+/** The shell's File / View / Tools bar, sitting in the title bar's drag region. */
 export const TitlebarMenu = memo(function TitlebarMenu({
   chatZoom,
   historyOpen,
