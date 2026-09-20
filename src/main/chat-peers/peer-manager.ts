@@ -12,7 +12,7 @@ import type {
   PeerChatReadResult
 } from '../../shared/chat-peers.js'
 import { chatProviderOfId } from '../../shared/chat-providers.js'
-import { chatRecordIsBlank, type ChatRecord } from '../../shared/chat-store.js'
+import { chatRecordIsBlank } from '../../shared/chat-store.js'
 import type { ChatContinuation } from '../../shared/types.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
