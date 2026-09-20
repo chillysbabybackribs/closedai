@@ -146,7 +146,7 @@ test('ui actions resolve controls by id, item, match, selector, or coordinates',
   await call('ui', { action: 'type', control: 'composer.input', text: 'hello', fallback_reason: 'Testing real composer input.' })
   await call('ui', { action: 'press_key', key: 'Enter', modifiers: ['ctrl'], fallback_reason: 'Testing the renderer shortcut.' })
   await call('ui', { action: 'scroll', delta_y: 400 })
-  await call('ui', { action: 'wait_for', control: 'composer.send', condition: 'enabled' })
+  await call('ui', { action: 'wait_for', control: 'composer.stop', condition: 'enabled' })
   assert.deepEqual(calls, [
     ['controls', { surface: 'side-drawer', query: 'row', maxControls: 60 }],
     ['click', { control: 'drawer.row', item: 'row-1', match: undefined, selector: undefined, x: undefined, y: undefined }],
@@ -154,7 +154,7 @@ test('ui actions resolve controls by id, item, match, selector, or coordinates',
     ['typeText', { control: 'composer.input', item: undefined, match: undefined, selector: undefined, text: 'hello', clear: true }],
     ['pressKey', 'Enter', ['ctrl']],
     ['scroll', { control: undefined, item: undefined, match: undefined, selector: undefined, deltaX: 0, deltaY: 400 }],
-    ['waitFor', { control: 'composer.send', item: undefined, match: undefined, selector: undefined, text: undefined, condition: 'enabled', timeoutMs: 3_000 }, false]
+    ['waitFor', { control: 'composer.stop', item: undefined, match: undefined, selector: undefined, text: undefined, condition: 'enabled', timeoutMs: 3_000 }, false]
   ])
 })
 

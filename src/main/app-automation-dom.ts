@@ -59,7 +59,6 @@ export function uiStateExpression(): string {
     const ids = (selector) => Array.from(document.querySelectorAll(selector)).filter(visible)
       .map((element) => element.getAttribute('data-ui') || element.getAttribute('aria-label') || element.tagName.toLowerCase());
     const input = byId('composer.input');
-    const send = byId('composer.send');
     const active = document.activeElement;
     const focused = active && active.closest ? active.closest('[data-ui]') : null;
     return {
@@ -75,7 +74,7 @@ export function uiStateExpression(): string {
       composer: input ? {
         enabled: !input.disabled,
         running: Boolean(byId('composer.stop')),
-        canSend: Boolean(send) && !send.disabled,
+        canSend: input.getAttribute('data-can-send') === 'true',
         draftLength: (input.value || '').length
       } : null,
       focused: focused ? {

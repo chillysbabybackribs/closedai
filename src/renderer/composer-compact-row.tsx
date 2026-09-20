@@ -1,5 +1,5 @@
 import type { ClipboardEvent, JSX } from 'react'
-import { ArrowUp, ChevronUp, Pause, Play } from 'lucide-react'
+import { ChevronUp, Pause, Play } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import { PromptInputAction, PromptInputTextarea } from '../components/ui/prompt-input.js'
@@ -17,7 +17,6 @@ export type ComposerCompactRowProps = {
   sending: boolean
   paused: boolean
   canSend: boolean
-  waitingForInput: boolean
   onPaste: (event: ClipboardEvent<HTMLTextAreaElement>) => void
   onFocus: () => void
   onBlur: () => void
@@ -36,7 +35,6 @@ export function ComposerCompactRow({
   sending,
   paused,
   canSend,
-  waitingForInput,
   onPaste,
   onFocus,
   onBlur,
@@ -58,6 +56,7 @@ export function ComposerCompactRow({
       <PromptInputTextarea
         aria-label="Message Codex"
         data-ui="composer.input"
+        data-can-send={canSend || undefined}
         placeholder={placeholder ?? (running ? 'Working on task…' : enabled ? 'Ask anything' : 'Codex is unavailable')}
         spellCheck={false}
         disableAutosize
@@ -101,28 +100,7 @@ export function ComposerCompactRow({
               <Play size={15} fill="currentColor" aria-hidden="true" />
             </Button>
           </PromptInputAction>
-        ) : (
-          <PromptInputAction tooltip="Send message">
-            <Button
-              type="submit"
-              variant="ghost"
-              size="icon"
-              className="prompt-composer-send rounded-full"
-              aria-label="Send message"
-              data-ui="composer.send"
-              data-waiting-for-input={waitingForInput || undefined}
-              disabled={!canSend}
-              onClick={(event) => {
-                if (!canSend) {
-                  event.stopPropagation()
-                  onExpand()
-                }
-              }}
-            >
-              <ArrowUp size={19} strokeWidth={2} aria-hidden="true" />
-            </Button>
-          </PromptInputAction>
-        )}
+        ) : null}
         <PromptInputAction tooltip="Expand composer">
           <Button
             type="button"

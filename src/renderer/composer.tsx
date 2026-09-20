@@ -1,6 +1,6 @@
 import type { ClipboardEvent, DragEvent, FormEvent, JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, ChevronDown, Pause, Play, Plus } from 'lucide-react'
+import { ChevronDown, Pause, Play, Plus } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import {
@@ -94,7 +94,6 @@ export function Composer({
     if (textareaFocusedRef.current) formRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus()
   }, [isCompact])
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !sending && enabled && !running
-  const waitingForInput = input.trim().length === 0 && attachments.length === 0 && enabled && !running && !sending
 
   useEffect(() => {
     if (sending || !focusAfterSendRef.current) return
@@ -215,7 +214,6 @@ export function Composer({
             sending={sending}
             paused={paused}
             canSend={canSend}
-            waitingForInput={waitingForInput}
             onPaste={pasteFiles}
             onFocus={() => {
               textareaFocusedRef.current = true
@@ -236,6 +234,7 @@ export function Composer({
               <PromptInputTextarea
                 aria-label="Message Codex"
                 data-ui="composer.input"
+                data-can-send={canSend || undefined}
                 placeholder={placeholder ?? (enabled ? 'Ask anything' : 'Codex is unavailable')}
                 spellCheck={false}
                 className="prompt-composer-textarea"
@@ -313,10 +312,10 @@ export function Composer({
               </PromptInputActions>
             </div>
 
-            {/* The primary action sits in its own column so it centres on the card's full
-                height rather than the action row. */}
-            <div className="prompt-composer-primary">
-              {running ? (
+            {/* Enter is the only way to send; the pause control sits in its own column so it
+                centres on the card's full height rather than the action row. */}
+            {running ? (
+              <div className="prompt-composer-primary">
                 <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}>
                   <Button
                     type="button"
@@ -330,23 +329,8 @@ export function Composer({
                     <Pause size={24} strokeWidth={2.25} aria-hidden="true" />
                   </Button>
                 </PromptInputAction>
-              ) : (
-                <PromptInputAction tooltip="Send message">
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="icon"
-                    className="prompt-composer-send rounded-full"
-                    aria-label="Send message"
-                    data-ui="composer.send"
-                    data-waiting-for-input={waitingForInput || undefined}
-                    disabled={!canSend}
-                  >
-                    <ArrowUp size={26} strokeWidth={2.25} aria-hidden="true" />
-                  </Button>
-                </PromptInputAction>
-              )}
-            </div>
+              </div>
+            ) : null}
           </div>
         )}
       </PromptInput>

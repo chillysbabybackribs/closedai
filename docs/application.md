@@ -360,7 +360,9 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   the SDK's `interrupt`, Cursor the `session/cancel` **notification** (as a request cursor-agent
   ignores it and streams on), and Antigravity, which has no interrupt, kills its process and
   resumes the conversation id on the next turn. Antigravity sends the user's prompt directly
-  on process startup; it has no hidden initialization turn. The composer preserves unsubmitted
+  on process startup; it has no hidden initialization turn. The composer has no send button:
+  Enter submits and Shift+Enter inserts a newline; only the pause control appears while a turn
+  runs. The composer preserves unsubmitted
   drafts (text and pending attachments) per conversation pane across tab switching and unmounting,
   clearing them only on submission. The context inspector
   modal provides a visual stacked token budget bar (retained history, ClosedAI additions, user turn,

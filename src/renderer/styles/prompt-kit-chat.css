@@ -427,7 +427,6 @@
   font-weight: 700;
 }
 
-.prompt-composer-send,
 .prompt-composer-resume,
 .prompt-composer-stop {
   width: 30px;
@@ -438,42 +437,17 @@
   transition: all 120ms ease;
 }
 
-.prompt-composer-primary .prompt-composer-send,
 .prompt-composer-primary .prompt-composer-stop {
   width: 40px;
   height: 40px;
 }
 
-.prompt-composer-primary .prompt-composer-send svg,
 .prompt-composer-primary .prompt-composer-stop svg {
   width: 26px;
   height: 26px;
 }
 
-/* Send and pause are bare icons, coloured like the chat-tab status indicators:
-   blue arrow for send, yellow pause bars while a task runs. */
-.prompt-composer-send:not(:disabled) {
-  background: transparent;
-  color: #60a5fa;
-}
-
-.prompt-composer-send:not(:disabled):hover {
-  background: rgb(96 165 250 / 14%);
-  color: #93c5fd;
-  transform: scale(1.06);
-}
-
-.prompt-composer-send:disabled {
-  background: transparent;
-  color: rgb(255 255 255 / 22%);
-}
-
-.prompt-composer-send[data-waiting-for-input='true'] {
-  background: transparent;
-  color: #60a5fa;
-  opacity: 1;
-}
-
+/* Pause is a bare icon in the chat-tab paused yellow; there is no send button, Enter sends. */
 .prompt-composer-stop {
   background: transparent;
   border: none;
@@ -590,7 +564,6 @@
   flex-shrink: 0;
 }
 
-.prompt-composer-compact-actions .prompt-composer-send,
 .prompt-composer-compact-actions .prompt-composer-stop,
 .prompt-composer-compact-actions .prompt-composer-resume {
   width: 28px;

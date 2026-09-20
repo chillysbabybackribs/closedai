@@ -159,7 +159,6 @@
   .chat-layout-content .context-meter-value { display: none; }
   .chat-layout-content .context-meter { flex-shrink: 0; padding-inline: 3px; }
   .chat-layout-content .prompt-composer-tool { width: 28px; min-width: 28px; padding-inline: 4px; }
-  .chat-layout-content .prompt-composer-send,
   .chat-layout-content .prompt-composer-resume,
   .chat-layout-content .prompt-composer-stop { width: 30px; height: 30px; }
 }

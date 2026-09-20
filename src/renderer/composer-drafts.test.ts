@@ -72,7 +72,6 @@ test('ComposerCompactRow renders compact model and controls', () => {
         sending: false,
         paused: false,
         canSend: true,
-        waitingForInput: false,
         onPaste: () => {},
         onFocus: () => {},
         onBlur: () => {},
@@ -85,7 +84,6 @@ test('ComposerCompactRow renders compact model and controls', () => {
 
   assert.match(html, /prompt-composer-compact-row/)
   assert.match(html, /data-ui="composer\.input"/)
-  assert.match(html, /data-ui="composer\.send"/)
   assert.match(html, /data-ui="composer\.compact-toggle"/)
   assert.match(html, /gpt-4o/)
 })

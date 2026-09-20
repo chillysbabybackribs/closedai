@@ -97,7 +97,7 @@ export const UI_CONTROLS = {
   'diff.collapse-hunk': 'Collapse or expand a specific diff hunk; item is the hunk index',
   'diff.copy-hunk': 'Copy an individual diff hunk to clipboard; item is the hunk index',
 
-  'composer.input': 'Message textarea of the selected pane',
+  'composer.input': 'Message textarea of the selected pane; Enter sends, Shift+Enter inserts a newline (there is no send button)',
   'composer.new-chat': 'Open a new chat tab in the composer’s tile, preserving the current chat and draft',
   'composer.project': 'Open the active project menu',
   'composer.project-new': 'Choose a folder as a new project',
@@ -118,7 +118,6 @@ export const UI_CONTROLS = {
   'composer.attachment-preview': 'Open an attached image in a browser-pane image tab; item is the attachment id',
   'composer.stop': 'Pause the running turn (present only while running)',
   'composer.resume': 'Resume the turn the pause button ended (present only while a turn is paused)',
-  'composer.send': 'Send the message (present only while idle)',
 
   'browser.tab': 'Select a browser tab; item is the tab id',
   'browser.tab-close': 'Close a browser tab; item is the tab id',

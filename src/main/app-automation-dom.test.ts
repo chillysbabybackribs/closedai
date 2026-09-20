@@ -25,7 +25,7 @@ test('control listing and ui state are bounded renderer expressions over data-ui
   assert.doesNotMatch(listing, /innerText\s*\|\|\s*document/)
   const state = uiStateExpression()
   validJavaScript(state)
-  for (const id of ['composer.input', 'composer.send', 'composer.stop', 'chat.history']) assert.match(state, new RegExp(id))
+  for (const id of ['composer.input', 'data-can-send', 'composer.stop', 'chat.history']) assert.match(state, new RegExp(id))
 })
 
 test('targets become attribute selectors and action expressions stay valid', () => {
@@ -33,7 +33,7 @@ test('targets become attribute selectors and action expressions stay valid', () 
   assert.equal(targetSelector({ selector: '.x' }), '.x')
   assert.equal(targetSelector({}), '')
   for (const expression of [
-    targetClickExpression({ control: 'composer.send' }),
+    targetClickExpression({ control: 'composer.stop' }),
     targetTypeExpression({ control: 'composer.input' }, true),
     targetValueExpression({ selector: 'textarea' }),
     conditionProbeExpression({ control: 'dialog.tools', text: 'Tools', condition: 'visible', timeoutMs: 500 })
@@ -88,7 +88,7 @@ test('repeated composer controls resolve to the focused tile', async () => {
   const a = fakeElement({ closest: () => ({ getAttribute: () => 'false' }) })
   const b = fakeElement({ disabled: true, closest: () => ({ getAttribute: () => 'true' }) })
   await withDom([a, b], () => assert.rejects(
-    new Function(`return ${targetClickExpression({ control: 'composer.send' })}`)(),
+    new Function(`return ${targetClickExpression({ control: 'composer.stop' })}`)(),
     /Element is disabled/
   ))
 })
@@ -97,7 +97,7 @@ test('control resolution names the failure: not rendered, disabled, or ambiguous
   const run = (expression: string) => (new Function(`return ${expression}`) as () => Promise<unknown>)()
   await withDom([], () => assert.rejects(run(targetClickExpression({ control: 'dialog.tools' })), /not rendered now/))
   await withDom([fakeElement({ disabled: true })], () =>
-    assert.rejects(run(targetClickExpression({ control: 'composer.send' })), /Element is disabled/))
+    assert.rejects(run(targetClickExpression({ control: 'composer.stop' })), /Element is disabled/))
   const rows = [
     fakeElement({ attributes: { 'data-ui-key': 'a' }, innerText: 'Alpha chat' }),
     fakeElement({ attributes: { 'data-ui-key': 'b' }, innerText: 'Beta chat' })
@@ -116,7 +116,7 @@ test('control resolution diagnoses elements belonging to unselected panes', asyn
     } : null
   })
   await withDom([otherPane], () =>
-    assert.rejects(run(targetClickExpression({ control: 'composer.send' })), /belongs to unselected pane pane-other/))
+    assert.rejects(run(targetClickExpression({ control: 'composer.stop' })), /belongs to unselected pane pane-other/))
 })
 
 test('click preparation reports covering elements', async () => {
