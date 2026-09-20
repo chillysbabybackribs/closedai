@@ -76,7 +76,7 @@ export function ContextInspectorModal({
   )
 }
 
-function ContextReport({
+export function ContextReport({
   report,
   usage,
   checkpoint,
@@ -301,7 +301,7 @@ function SectionHeading({ title, meta }: { title: string; meta: string }): JSX.E
   return <h3 className="context-inspector-section-title"><span>{title}</span><small>{meta}</small></h3>
 }
 
-function EmptyInspector(): JSX.Element {
+export function EmptyInspector(): JSX.Element {
   return <p className="context-inspector-no-report">Send a message to capture its turn context. Reports are kept in memory and reset with the provider surface.</p>
 }
 
