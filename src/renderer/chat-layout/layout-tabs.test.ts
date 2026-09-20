@@ -1,9 +1,39 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { dockPane, layoutGeometry, paneIds, readLayout, resizeSplit, saveLayout, type ChatLayout } from './layout-tree.ts'
-import { addTab, pruneTabs, removeTab, selectTab, tabIds } from './layout-tabs.ts'
+import { addTab, moveTab, pruneTabs, removeTab, selectTab, tabIds } from './layout-tabs.ts'
 
 const split = (): ChatLayout => resizeSplit(dockPane({ kind: 'pane', id: 'a' }, 'b', 'a', 'right', 'split'), 'split', 0.6)
+
+test('active and inactive tabs split out of their own group on every edge', () => {
+  for (const edge of ['left', 'right', 'top', 'bottom'] as const) {
+    for (const id of ['a', 'c']) {
+      const tree = moveTab(addTab({ kind: 'pane', id: 'a' }, 'a', 'c'), id, 'c', edge, 'new')
+      assert.equal(tree.kind, 'split')
+      assert.equal(new Set(tabIds(tree)).size, 2)
+      assert.equal(paneIds(tree).length, 2)
+      const panes = layoutGeometry(tree, 1000, 800).panes
+      if (edge === 'left' || edge === 'right') assert.ok(panes.every((pane) => pane.rect.height === 800))
+      else assert.ok(panes.every((pane) => pane.rect.width === 1000))
+      assert.equal(panes[edge === 'left' || edge === 'top' ? 0 : 1]!.id, id)
+    }
+  }
+})
+
+test('moving a tab between groups preserves siblings and collapses only an empty source', () => {
+  let tree = addTab(split(), 'a', 'c')
+  tree = moveTab(tree, 'c', 'b', null, 'unused')
+  assert.deepEqual(paneIds(tree), ['a', 'c'])
+  assert.deepEqual(tabIds(tree), ['a', 'b', 'c'])
+  assert.equal(tree.kind === 'split' && tree.ratio, 0.6)
+  tree = moveTab(tree, 'a', 'c', null, 'unused')
+  assert.equal(tree.kind, 'pane')
+  assert.deepEqual(tabIds(tree), ['b', 'c', 'a'])
+  assert.deepEqual(paneIds(tree), ['a'])
+  const alone: ChatLayout = { kind: 'pane', id: 'a' }
+  assert.equal(moveTab(alone, 'a', 'a', 'right', 'unused'), alone)
+  assert.equal(moveTab(tree, 'a', 'missing', 'bottom', 'unused'), tree)
+})
 
 test('new tabs keep each tile independent and preserve divider geometry', () => {
   let tree = split()

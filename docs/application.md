@@ -195,7 +195,13 @@ or stopping a running turn. Closing the active tab selects a neighbor; closing t
 tile removes that tile when another tile remains. The workspace always keeps at least one tab.
 Hidden tabs can be parked or detached by normal runtime trimming and are reattached when selected.
 
-Drag a chat header or sidebar chat row onto another tile's left, right, top, or bottom edge. A
+Drag an individual conversation tab onto a tile's left or right edge to show chats side by side,
+or its top or bottom edge to stack them. A tab can split out of its own group, including the active
+tab; sibling conversations stay in place. Drop a tab onto another chat header to join its tab strip.
+The highlighted region previews the split or tab destination. These moves preserve mounted drafts,
+attachments, and transcripts and persist with the project's layout.
+
+Drag a chat header grip or sidebar chat row onto another tile's left, right, top, or bottom edge. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its
 mounted composer, draft, attachments, and transcript scroller survive the move. Existing chats
 are added by dragging their sidebar rows onto a tile edge or right-clicking a row and choosing
