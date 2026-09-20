@@ -125,3 +125,35 @@ test('retryOnAuthFailure prevents duplicate retry attempts on the same turn', ()
   assert.equal(retryOnAuthFailure('turn-1', 'UNAUTHENTICATED (code 401): Request had invalid authentication credentials.'), false)
 })
 
+
+test('retryOnAuthFailure retries once per user turn and still records a turn whose retry fails', async () => {
+  const { service } = createService()
+  const internals = service as unknown as {
+    authRetrying: boolean
+    session: { conversationId: string; retire: () => Promise<void> } | null
+    history: { saveTranscript: (id: string, items: unknown[]) => Promise<void>; recordThread: (id: string, cwd: string, items: unknown[]) => Promise<void>; threadName: () => Promise<string | null> }
+    transcript: { addOptimisticUser: (id: string, text: string) => void }
+    retryOnAuthFailure: (turnId: string, error: string) => boolean
+  }
+  const saved: string[] = []
+  internals.history = {
+    saveTranscript: async (id) => { saved.push(id) },
+    recordThread: async () => {},
+    threadName: async () => null
+  }
+  let retired = 0
+  internals.session = { conversationId: 'conv-1', retire: async () => { retired += 1; throw new Error('CLI vanished') } }
+  internals.transcript.addOptimisticUser('u1', 'hello')
+  const authError = 'UNAUTHENTICATED (code 401): Request had invalid authentication credentials.'
+
+  assert.equal(internals.retryOnAuthFailure('turn-1', authError), true)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(retired, 1)
+  assert.deepEqual(saved, ['conv-1'], 'the failed turn is persisted when the retry cannot resume it')
+  assert.equal(internals.authRetrying, true, 'the retry budget stays spent until the next user turn')
+
+  assert.equal(internals.retryOnAuthFailure('turn-2', authError), false, 'a resumed turn that fails the same way is not retried again')
+  assert.equal(retired, 1)
+  const failure = service.snapshot().items.find((item) => item.type === 'notice' && item.text === 'CLI vanished')
+  assert.ok(failure, 'the retry error is surfaced as a notice')
+})

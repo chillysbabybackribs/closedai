@@ -127,6 +127,8 @@ If an OAuth token expires during an active turn, `agy`'s background refresher up
 keyring but its in-memory agent executor fails with `UNAUTHENTICATED (code 401)`. The service catches
 this failure via `retryOnAuthFailure` (`antigravity-service.ts`), verifies credential status with `agy models`,
 and automatically resumes the conversation trajectory on a fresh process without interrupting the user.
+The retry runs once per user turn: if the resumed turn fails the same way, or `agy models` reports
+the credentials are gone, the failure is shown and the turn's transcript is recorded as it stands.
 
 `--add-dir <workspace>` must be passed and must come first. The spawn cwd alone does not reach the
 model's shell, which otherwise starts in the CLI's state dir; the first `--add-dir` does.
