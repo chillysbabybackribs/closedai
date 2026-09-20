@@ -83,3 +83,47 @@ test('ChatCanvas renders single pane with disabled pane-hide and no dividers', (
   // No dividers in single pane
   assert.doesNotMatch(html, /data-ui="layout\.divider"/)
 })
+
+test('ChatCanvas renders tabbed pane with single tile, persistent header, and hidden inactive panel', () => {
+  const tabbedTree: ChatLayout = {
+    kind: 'pane',
+    id: 'tab-1',
+    tabs: ['tab-1', 'tab-2']
+  }
+  const html = renderToStaticMarkup(createElement(ChatCanvas, {
+    tree: tabbedTree,
+    selectedId: 'tab-1',
+    busy: false,
+    browserVisible: false,
+    renderBrowser: createElement('div', { id: 'browser-content' }, 'Browser'),
+    onDragActive: () => {},
+    onToggleBrowser: () => {},
+    title: (id) => `Chat ${id}`,
+    renderPane: (id) => createElement('div', { id: `content-${id}` }, `Content ${id}`),
+    onSelect: () => {},
+    onSelectTab: () => {},
+    onCloseTab: () => {},
+    onNewChat: () => {},
+    onDock: () => {},
+    onHide: () => {},
+    onResize: () => {}
+  }))
+
+  // Only one section tile rendered for the tabbed group
+  const chatTileMatches = html.match(/data-pane-id="tab-1"/g)
+  assert.equal(chatTileMatches?.length, 1)
+  assert.doesNotMatch(html, /data-pane-id="tab-2"/)
+  // Only one header rendered
+  const headerMatches = html.match(/class="chat-layout-header"/g)
+  assert.equal(headerMatches?.length, 1)
+  // Both tab buttons rendered in the header
+  assert.match(html, /data-ui="layout\.tab" data-ui-key="tab-1"/)
+  assert.match(html, /data-ui="layout\.tab" data-ui-key="tab-2"/)
+  // Tab 1 is active, Tab 2 is inactive
+  assert.match(html, /id="chat-tab-tab-1"[^>]*aria-selected="true"/)
+  assert.match(html, /id="chat-tab-tab-2"[^>]*aria-selected="false"/)
+  // Active panel is visible, inactive panel is hidden
+  assert.match(html, /id="chat-panel-tab-1"[^>]*><div id="content-tab-1">Content tab-1/)
+  assert.doesNotMatch(html, /id="chat-panel-tab-1"[^>]*hidden/)
+  assert.match(html, /id="chat-panel-tab-2"[^>]*hidden/)
+})
