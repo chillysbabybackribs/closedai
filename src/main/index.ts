@@ -106,12 +106,15 @@ let appCommandAccess: AppCommandAccess | null = null
 let stopBrowserCacheMaintenance: (() => void) | null = null
 let quitting = false
 let pendingLiveVerify: { mode: string; quitAfter: boolean } | null = null
+/** Set once any route (env, argv, second instance) asks for verification; never cleared. */
+let liveVerifyRequested = false
 
 function liveVerifyFromArgv(): string | undefined {
   return process.argv.find((arg) => arg.startsWith('--live-verify='))?.slice('--live-verify='.length).trim()
 }
 
 function requestLiveVerify(mode: string, quitAfter: boolean): void {
+  liveVerifyRequested = true
   pendingLiveVerify = { mode, quitAfter }
   void runPendingLiveVerify()
 }
@@ -250,7 +253,8 @@ async function main(): Promise<void> {
   const research = await createResearchRuntime({
     libraryPath: join(userData(), 'research-library.json'),
     root: join(userData(), 'research-runs'), browser: () => browserService,
-    peers: () => process.env.CLOSEDAI_LIVE_VERIFY?.trim()
+    // The verifier's synthetic pane owns research only in a process that was asked to verify.
+    peers: () => liveVerifyRequested
       ? ({
           paneSnapshot: () => ({ threadId: 'live-verify-thread', activeTurnId: 'live-verify-turn' })
         } as unknown as ChatPeerManager)
