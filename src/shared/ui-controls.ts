@@ -72,6 +72,11 @@ export const UI_CONTROLS = {
   'chat.history-retry': 'Retry loading chat history',
   'chat.sign-in': 'Sign in with ChatGPT when the pane is signed out',
 
+  'diff.toggle-view': 'Toggle between unified and side-by-side split diff view; item is unified or split',
+  'diff.collapse-all': 'Collapse or expand all hunks in the diff viewer',
+  'diff.collapse-hunk': 'Collapse or expand a specific diff hunk; item is the hunk index',
+  'diff.copy-hunk': 'Copy an individual diff hunk to clipboard; item is the hunk index',
+
   'composer.input': 'Message textarea of the selected pane',
   'composer.new-chat': 'Open a new chat tab in the composer’s tile, preserving the current chat and draft',
   'composer.project': 'Open the active project menu',
