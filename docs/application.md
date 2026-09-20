@@ -213,7 +213,7 @@ or stopping a running turn. Closing the active tab selects a neighbor; closing t
 tile removes that tile when another tile remains. The workspace always keeps at least one tab.
 Hidden tabs can be parked or detached by normal runtime trimming and are reattached when selected.
 
-Chat tabs show a compact continuously rotating spinner while working, an amber pause icon when paused,
+Chat tabs show a compact continuously rotating blue spinner while working, an amber pause icon when paused,
 and a red alert icon for reported errors. A background completion replaces the spinner with a solid
 green unread dot in the same position, using the sidebar's existing review queue; opening the chat clears that dot.
 Hovering or keyboard-focusing a tab shows a preview within the chat tile: current activity,
