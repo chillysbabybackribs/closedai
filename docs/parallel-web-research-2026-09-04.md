@@ -13,6 +13,11 @@ The current contract is in
 [Tools](tools.md#parallel-research-runs). Rendered workers, progress UI, target transfer, retry
 policies, and Follow/Take over remain proposed; the full architecture below is not yet shipped.
 
+Implementation update, 2026-09-20: the research activity view shipped. The main process
+publishes coalesced per-run events; the chat pane shows a strip control and a popover with
+queries, source states, errors, browser-tab state, Stop, open-in-browser, and paged retained
+excerpts. Rendered workers, target transfer, and Follow/Take over remain proposed.
+
 Follow-up correction: a saved Claude search omitted `presentation` and returned `state: none`;
 the initial background default made browser use disappear from normal research. Both search tools
 now default to live presentation, reuse a tab within a turn, and explicitly guide source inspection

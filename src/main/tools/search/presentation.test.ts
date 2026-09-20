@@ -36,10 +36,11 @@ test('both search paths wait for sources, open before slower providers finish, a
     fetch: async (url) => {
       if (String(url).includes('serper.dev')) { await slow; return Response.json({ organic: [] }) }
       await gate
-      return Response.json({ web: { results: [
-        { title: 'Search results', url: 'https://www.google.com/search?q=libraries' },
-        { title: 'Source', url: 'https://docs.example.com/libraries' }
-      ] } })
+      // Brave grounding shape (`/res/v1/llm/context`), not the human Web Search payload.
+      return Response.json({ grounding: { generic: [
+        { title: 'Search results', url: 'https://www.google.com/search?q=libraries', snippets: ['results page'] },
+        { title: 'Source', url: 'https://docs.example.com/libraries', snippets: ['library docs'] }
+      ] }, sources: {} })
     },
     onResearchCreated: (value) => { service = value },
     research: {

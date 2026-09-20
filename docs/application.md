@@ -344,7 +344,9 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   side-by-side split modes, collapsible hunks with expand/collapse all, individual hunk copying,
   and proportional addition/deletion statistics. Provider-native background tasks have a separate
   transcript group and a status popover. A turn ending does not prove that all background tasks
-  finished.
+  finished. App-owned web research runs have their own strip control and popover beside it,
+  fed by main-process events rather than transcript items.
+
 - Completed assistant responses offer copy and branching. Timestamps appear when recorded;
   older history does not acquire invented timestamps.
 - The project rail contains the working timer and project menu; Tool configuration, Turn trace,
@@ -515,6 +517,7 @@ and other frame documents may need navigation for cleanup. This is not transpare
 | Typed IPC contract and narrow preload | `src/shared/api.ts`, `src/preload/index.ts` |
 | Chat/project/sidebar orchestration | `src/renderer/chat-pane.tsx`, `src/renderer/project-menu.tsx`, `src/renderer/side-drawer/` |
 | Transcript steps, background work, response actions | `src/renderer/transcript-rows.ts`, `src/renderer/activity-steps.ts`, `src/renderer/background-tasks.tsx`, `src/renderer/message-actions.tsx` |
+| Web research activity view and its main-process publication | `src/renderer/research/activity-*.ts(x)`, `src/main/research-ipc.ts`, `src/main/tools/search/research/activity.ts` |
 | Reusable presentation and scrolling | `src/components/ui/`; backend access stays outside this layer |
 
 `src/shared/` remains dependency-free. Renderer backend calls go through preload; model calls go
@@ -635,7 +638,13 @@ the research presentation. Subsequent searches in the same pane/thread/turn reus
 Models receive its id for inspecting source pages while research continues. Explicit background
 mode opts out. Source fetching is unauthenticated; the visible tab uses the
 normal browser session. Runs are tied to the calling pane/thread/turn and stop with that turn or
-pane. There is no dedicated research activity panel or hidden rendered-worker pool yet. See
+pane. The pane shows its runs in a research activity control on the strip under the transcript:
+a summary of searches in flight and sources ready, and a popover per run with its queries, source
+states, provider errors, browser-tab state, a Stop control, open-in-browser per source, and the
+retained static text as a paged excerpt. Running work always shows; finished runs stay until the
+conversation moves past their turn. The main process publishes one coalesced event per run change
+over `research:event`; the renderer never drives the engine. There is no hidden rendered-worker
+pool, Follow/Take over, or live target transfer yet. See
 [Tools](tools.md#parallel-research-runs) for exact limits and the
 [design proposal](parallel-web-research-2026-09-04.md) for the remaining work.
 
