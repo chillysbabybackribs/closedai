@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatTranscriptItem } from '../shared/chat.ts'
+import type { ChatWorkspaceSnapshot } from '../shared/chat-peers.ts'
 import {
   activityHeadline,
   activityState,
@@ -21,7 +22,7 @@ test('history trimming keeps the latest prompt and subsequent streamed response 
   const rows = transcriptRows(items)
   const anchor = transcriptRowKey(rows[lastTurnRowStart(rows)])
   const initial = initialChatWorkspaceState()
-  let state = { ...initial, selectedPaneId: 'pane', selected: { ...initial.selected, threadId: 'thread', items } }
+  let state: ChatWorkspaceSnapshot = { ...initial, selectedPaneId: 'pane', selected: { ...initial.selected, threadId: 'thread', items } }
   state = reduceChatWorkspaceEvent(state, { type: 'trimMountedHistory', paneId: 'pane', threadId: 'thread' })
   assert.equal(state.selected.items.length, 1)
   for (const text of ['First token', 'First token and more']) {
@@ -31,7 +32,8 @@ test('history trimming keeps the latest prompt and subsequent streamed response 
     const current = transcriptRows(state.selected.items)
     const visible = current.slice(anchoredVisibleStart(anchor, current, 3))
     assert.deepEqual(visible.map(transcriptRowKey), ['item:u11', 'item:answer'])
-    assert.equal(visible.at(-1)?.kind === 'item' && visible.at(-1)?.item.type === 'assistant' && visible.at(-1)?.item.text, text)
+    const answer = visible.at(-1)
+    assert.equal(answer?.kind === 'item' && answer.item.type === 'assistant' && answer.item.text, text)
   }
 })
 
