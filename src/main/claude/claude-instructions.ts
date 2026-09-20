@@ -23,6 +23,10 @@ const INSTRUCTIONS = [
   EVIDENCE_CLAIMS_INSTRUCTION,
   DIRECT_CALL_TOOL_BATCHING_INSTRUCTION,
   APPLICATION_INSTRUCTIONS,
+  // The preset tells Claude to act on the literal request and never widen scope. That is the
+  // exact behaviour ClosedAI's objective instruction above asks for, so name the conflict, as the
+  // engineering line does for the preset's Bash preference; otherwise the preset wins.
+  'This overrides the preset’s instruction to act only on the literal request and never widen its scope: in ClosedAI, generalising a named instrument to the user’s objective, within that objective, is the requested scope.',
   engineeringInstructions('claude')
 ].join('\n')
 

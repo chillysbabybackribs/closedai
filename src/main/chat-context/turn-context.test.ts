@@ -27,6 +27,14 @@ test('developer instructions stay within their expanded budget and establish the
   assert.match(instructions, /before choosing dependent actions/)
 })
 
+test('developer instructions read a named instrument as an instance of the objective, bounded by it', () => {
+  const instructions = closedAiDeveloperInstructions()
+  assert.match(instructions, /best-known instance of what they are after, not as the boundary/)
+  assert.match(instructions, /pursue it with the named instrument first/)
+  assert.match(instructions, /never pad results with weaker material/)
+  assert.match(instructions, /part of the deliverable/)
+})
+
 test('new and resumed threads receive the same developer instructions', () => {
   const tools = new ToolRegistry([])
   const expected = closedAiDeveloperInstructions()
