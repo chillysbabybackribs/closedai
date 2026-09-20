@@ -2,17 +2,26 @@ import { createHash } from 'node:crypto'
 import { mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parse, type DefaultTreeAdapterMap } from 'parse5'
+import type { SourceRepresentation } from '../../../../shared/web-research.js'
 import { abortable, RequestBudget } from '../request-budget.js'
 
 const MAX_BYTES = 512 * 1024
-const MAX_TEXT = 120_000
+export const MAX_TEXT = 120_000
+// An HTML body with a script tag and almost no text is a client-rendered shell, not evidence.
+const SHELL_TEXT_LIMIT = 200
 const OMIT = new Set(['script', 'style', 'template', 'noscript', 'nav', 'footer', 'head'])
 const BLOCK = new Set(['p', 'div', 'section', 'article', 'main', 'h1', 'h2', 'h3', 'h4', 'li', 'tr', 'br', 'pre'])
 
 export type SourceDocument = {
   text: string; title: string; url: string; contentType: string; sha256: string; incomplete: boolean
+  representation: SourceRepresentation
 }
 export type SourceReader = (url: string, runId: string, sourceId: string, signal: AbortSignal) => Promise<SourceDocument>
+
+/** The static read succeeded but found no content; only a rendered read can do better. */
+export class SourceNeedsRendering extends Error {
+  override readonly name = 'SourceNeedsRendering'
+}
 
 export function publicUrl(value: string): string {
   const url = new URL(value)
@@ -60,29 +69,35 @@ export class SourceStore {
   async collect(url: string, runId: string, sourceId: string, signal: AbortSignal): Promise<SourceDocument> {
     const deadline = AbortSignal.any([signal, AbortSignal.timeout(20_000)])
     return this.budget.run(new URL(url).origin, runId, deadline, async () => {
-      let current = publicUrl(url)
-      for (let redirect = 0; redirect <= 5; redirect++) {
-        const response = await abortable(this.fetchPage(current, { signal: deadline, credentials: 'omit', redirect: 'manual' }), deadline)
-        if ([301, 302, 303, 307, 308].includes(response.status)) {
-          await response.body?.cancel()
-          const location = response.headers.get('location')
-          if (!location) throw new Error('Redirect did not include a location')
-          current = publicUrl(new URL(location, current).href)
-          continue
-        }
-        if (!response.ok) {
-          await response.body?.cancel()
-          throw new Error(`Source returned HTTP ${response.status}`)
-        }
-        const type = (response.headers.get('content-type') ?? '').toLowerCase().slice(0, 120)
-        if (!/^text\/|application\/(?:json|[^;]+\+json|xhtml\+xml)/.test(type)) {
-          await response.body?.cancel()
-          throw new Error(`Unsupported source type: ${type || 'missing content-type'}; open it in the browser`)
-        }
-        return this.archive(response, current, type, runId, sourceId, deadline)
+      // Chromium follows redirects itself; Electron's fetch rejects `manual` outright with
+      // "Redirect was cancelled". The final URL is the response's when the transport reports it.
+      const response = await abortable(this.fetchPage(publicUrl(url), { signal: deadline, credentials: 'omit', redirect: 'follow' }), deadline)
+      const current = response.url ? publicUrl(response.url) : publicUrl(url)
+      if (!response.ok) {
+        await response.body?.cancel()
+        throw new Error(`Source returned HTTP ${response.status}`)
       }
-      throw new Error('Too many source redirects')
+      const type = (response.headers.get('content-type') ?? '').toLowerCase().slice(0, 120)
+      if (!/^text\/|application\/(?:json|[^;]+\+json|xhtml\+xml)/.test(type)) {
+        await response.body?.cancel()
+        throw new Error(`Unsupported source type: ${type || 'missing content-type'}; open it in the browser`)
+      }
+      return this.archive(response, current, type, runId, sourceId, deadline)
     })
+  }
+
+  /** Keep text a hidden worker extracted from a rendered page under the same id scheme. */
+  async retain(runId: string, sourceId: string, page: { url: string; title: string; text: string; truncated: boolean }): Promise<SourceDocument> {
+    const text = page.text.slice(0, MAX_TEXT)
+    if (!text.trim()) throw new Error('The rendered page has no readable text')
+    const directory = join(this.root, runId)
+    await mkdir(directory, { recursive: true })
+    await writeFile(join(directory, `${sourceId}.txt.tmp`), text)
+    await rename(join(directory, `${sourceId}.txt.tmp`), join(directory, `${sourceId}.txt`))
+    return {
+      text, title: page.title, url: publicUrl(page.url), contentType: 'text/html', representation: 'rendered_text',
+      sha256: createHash('sha256').update(text).digest('hex'), incomplete: page.truncated || page.text.length > MAX_TEXT
+    }
   }
 
   async read(runId: string, sourceId: string): Promise<string> {
@@ -117,9 +132,12 @@ export class SourceStore {
       signal.throwIfAborted()
       const extracted = documentText(raw, contentType)
       const text = extracted.text.slice(0, MAX_TEXT)
-      if (!text.trim()) throw new Error('No readable source text; the page may require JavaScript')
-      const document = {
-        text, title: extracted.title, url, contentType,
+      if (!text.trim()) throw new SourceNeedsRendering('No readable source text; the page may require JavaScript')
+      if (contentType.includes('html') && text.length < SHELL_TEXT_LIMIT && /<script[\s>]/i.test(raw)) {
+        throw new SourceNeedsRendering('The page is a JavaScript shell with almost no static text')
+      }
+      const document: SourceDocument = {
+        text, title: extracted.title, url, contentType, representation: 'static_text',
         sha256: createHash('sha256').update(text).digest('hex'),
         incomplete: incomplete || extracted.text.length > MAX_TEXT
       }
