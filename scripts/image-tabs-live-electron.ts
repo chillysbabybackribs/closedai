@@ -47,7 +47,7 @@ async function check(root: string) {
     }
     throw new Error(`Timed out: ${code}`)
   }
-  const path = '/tmp/closedai-image-tab-check.png'
+  const path = join(root, 'Reference.png')
   try {
     // A large inert image makes zoom/pan measurable. Use the user's mockup for optional visual QA.
     const mockup = process.env.CLOSEDAI_IMAGE_CHECK_IMAGE
@@ -55,7 +55,7 @@ async function check(root: string) {
       Buffer.alloc(1600 * 1000 * 4, 180), { width: 1600, height: 1000 })
     assert.ok(!image.isEmpty())
     await writeFile(path, image.toPNG())
-    await window.loadFile(join(root, 'index.html'))
+    await window.loadFile(join(root, 'index.html'), { query: { image: path } })
     await until(`document.querySelector('[data-ui="chat.local-file"]') !== null`)
     await browser.navigate(`http://127.0.0.1:${address.port}`)
     const webId = browser.tabList()[0].id
@@ -97,8 +97,18 @@ async function check(root: string) {
     assertParked()
     assert.equal(await evaluate('document.querySelector(".image-viewer-scale").textContent'), '100%')
     assert.equal(await evaluate('document.querySelector(".image-viewer-stage").scrollLeft'), pan)
-    await evaluate('window.closedai.localFiles.open("/tmp/closedai-image-tab-check.png")')
+    await evaluate(`window.closedai.localFiles.open(${JSON.stringify(path)})`)
     assert.equal(browser.tabList().length, 2, 'reopening selects existing tab')
+    browser.selectTab(webId)
+    await evaluate(`document.querySelector('[data-ui="composer.attachment-preview"]').click()`)
+    await until('!document.querySelector(".image-viewer").hidden')
+    assert.equal(browser.tabList().length, 2, 'attachment uses the same tab as its file link')
+    const download = new Promise<string>((resolve) => window.webContents.session.once('will-download', (event, item) => {
+      event.preventDefault()
+      resolve(item.getURL())
+    }))
+    await evaluate(`document.querySelector('[data-ui="image.download"]').click()`)
+    assert.ok((await download).startsWith('data:image/png;base64,'))
     window.setSize(1400, 900)
     await until('window.innerWidth >= 1300')
     await new Promise((resolve) => setTimeout(resolve, 150))
@@ -112,7 +122,8 @@ async function check(root: string) {
     await until('document.querySelector(".image-viewer") === null')
     assert.ok(window.contentView.children[0].getBounds().x < window.getContentBounds().width)
     await writeFile(join(root, 'result.json'), JSON.stringify({ passed: true, checks: ['local-link-to-tab', 'native-view-parked', 'no-image-webcontents',
-      'viewer-fills-pane', 'zoom-and-pan-retained', 'web-draft-and-scroll-retained', 'deduplicate', 'resize', 'close-restores-web'], geometry }))
+      'viewer-fills-pane', 'zoom-and-pan-retained', 'web-draft-and-scroll-retained', 'deduplicate', 'attachment-to-tab',
+      'download', 'resize', 'close-restores-web'], geometry }))
   } finally {
     browser.dispose()
     window.destroy()

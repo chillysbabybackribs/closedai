@@ -39,11 +39,14 @@ export function validateImageSource(input: { name: string; src: string }): Image
     throw new Error('An image name and source are required.')
   }
   const src = input.src
+  if (src.length > 45 * 1024 * 1024) throw new Error('Image preview supports files up to 32 MB.')
   const raster = /^data:image\/(?:png|jpeg|gif|webp|avif|bmp);base64,[a-zA-Z0-9+/=\r\n]+$/.test(src)
   let remote = false
   try { remote = ['https:', 'http:'].includes(new URL(src).protocol) } catch { /* Not a web URL. */ }
   if (!raster && !remote) throw new Error('This image source is not supported.')
-  if (src.length > 45 * 1024 * 1024) throw new Error('Image preview supports files up to 32 MB.')
+  if (raster && Buffer.byteLength(src.slice(src.indexOf(',') + 1), 'base64') > 32 * 1024 * 1024) {
+    throw new Error('Image preview supports files up to 32 MB.')
+  }
   return { name: input.name.slice(0, 300) || 'Image', src }
 }
 
