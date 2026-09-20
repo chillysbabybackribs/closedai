@@ -56,10 +56,12 @@ async function fixture(t: test.TestContext, savedTools: unknown) {
   const runtime = { session: () => client } as unknown as CodexWorkspaceRuntime
   const service = new ChatService(directory, settings, tools, () => null, null, runtime, 'pane')
   const internal = service as unknown as {
+    connection: { state: string; message: string }
     resumeThread(id: string): Promise<void>
     ensureThread(clientUserMessageId?: string): Promise<string>
     transcript: { addOptimisticUser(id: string, text: string): void }
   }
+  internal.connection = { state: 'ready', message: 'Test runtime' }
   return { tools, settings, requests, internal, failStart: (value: boolean) => { failStart = value } }
 }
 
