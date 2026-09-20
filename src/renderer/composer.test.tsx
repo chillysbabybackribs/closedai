@@ -73,6 +73,7 @@ test('composer hides context info and standalone UI from default resting view', 
         displayName: 'GPT-4o',
         provider: 'codex',
         contextWindow: 128_000,
+        defaultReasoningEffort: 'low',
         supportedReasoningEfforts: [],
         isDefault: true,
         description: 'Omni model'
