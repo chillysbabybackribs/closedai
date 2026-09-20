@@ -15,7 +15,9 @@ export type ResearchSource = {
   discoveredBy: string[]
   snippet: string
   /** rendering: the static read found a JavaScript shell and a hidden worker is loading the page. */
-  state: 'queued' | 'reading' | 'rendering' | 'ready' | 'failed'
+  state: 'deferred' | 'queued' | 'reading' | 'rendering' | 'ready' | 'failed'
+  /** Read priority, not a credibility or factual correctness score. */
+  selection?: 'requested' | 'preferred_domain' | 'discovery'
   revision: number
   representation?: SourceRepresentation
   retrievedAt?: string
@@ -39,6 +41,10 @@ export type ResearchSnapshot = {
   sourceCount: number
   omittedSources: number
   omittedErrors: number
+  readCount?: number
+  maxReads?: number
+  reservedReads?: number
+  omittedCandidates?: number
   sources: ResearchSource[]
   errors: Array<{ query: string; provider?: string; message: string }>
   presentation: { state: 'none' | 'waiting_for_source' | 'no_source' | 'opened' | 'failed'; tabId?: string; error?: string }

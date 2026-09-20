@@ -6,6 +6,7 @@ import type { SearchRequest, SearchResult } from '../types.js'
 import { publicUrl, SourceNeedsRendering, type SourceDocument, type SourceReader } from './source-reader.js'
 import { isResearchSourceUrl, SourcePresentation, type OpenSearchTab } from '../presentation.js'
 import { mergeDates } from './source-metadata.js'
+import { MAX_CANDIDATES, prefersDomain, SourceAdmission } from './source-admission.js'
 
 export type ResearchOwner = { paneId: string; threadId: string; turnId: string | null; workspace: string }
 export type ResearchDependencies = {
@@ -20,6 +21,7 @@ export type ResearchDependencies = {
 }
 export type ResearchInput = {
   queries: SearchRequest[]; urls: string[]; maxSources: number; deadlineMs: number; presentation: 'live' | 'background'
+  reserveSources?: number
 }
 type Run = {
   id: string; owner: ResearchOwner; state: ResearchState; revision: number; pending: number
@@ -27,6 +29,7 @@ type Run = {
   sources: Map<string, ResearchSource>; errors: ResearchSnapshot['errors']; controller: AbortController
   listeners: Set<() => void>; timer: ReturnType<typeof setTimeout>
   presentation: SourcePresentation
+  admission: SourceAdmission; preferredDomains: Set<string>; omittedCandidates: number
 }
 
 /** The scheduler owns async work after the start tool returns; calls only observe/control it. */
@@ -54,6 +57,7 @@ export class ResearchService {
       id, owner, state: 'running', revision: 0, pending: 0, completedQueries: 0, totalQueries: 0,
       maxSources: input.maxSources, sources: new Map(), errors: [], controller: new AbortController(),
       listeners: new Set(), presentation: new SourcePresentation(this.deps.openLive, context, input.presentation),
+      admission: new SourceAdmission(input.maxSources, input.reserveSources), preferredDomains: new Set(), omittedCandidates: 0,
       timer: setTimeout(() => this.finish(run, 'timed_out'), input.deadlineMs)
     }
     run.timer.unref?.()
@@ -146,7 +150,9 @@ export class ResearchService {
 
   private add(run: Run, queries: SearchRequest[], urls: string[]): void {
     run.totalQueries += queries.length
-    for (const url of urls) this.discover(run, { url, title: url, snippet: '', provider: undefined })
+    for (const query of queries) for (const domain of query.preferredDomains ?? []) run.preferredDomains.add(domain)
+    for (const url of urls) this.discover(run, { url, title: url, snippet: '', provider: undefined }, true)
+    this.admit(run)
     for (const query of queries) this.track(run, async () => {
       try {
         await this.router.search({ ...query, includeAnswer: false }, run.controller.signal, (update) => {
@@ -156,6 +162,7 @@ export class ResearchService {
             this.changed(run)
           } else {
             for (const item of update.output.results.slice(0, query.count)) this.discover(run, item)
+            this.admit(run)
           }
         }, run.owner.paneId)
       } catch (error) {
@@ -167,7 +174,7 @@ export class ResearchService {
     this.changed(run)
   }
 
-  private discover(run: Run, result: Omit<SearchResult, 'provider'> & { provider?: string }): void {
+  private discover(run: Run, result: Omit<SearchResult, 'provider'> & { provider?: string }, requested = false): void {
     if (run.state !== 'running') return
     if (!isResearchSourceUrl(result.url)) return
     try { publicUrl(result.url) } catch { return }
@@ -175,6 +182,7 @@ export class ResearchService {
     const key = canonicalUrl(result.url)
     const existing = run.sources.get(key)
     if (existing) {
+      if (requested) existing.selection = 'requested'
       existing.dates = mergeDates(existing.dates, result.dates)
       if (result.discovery && !existing.discovery?.some((entry) => JSON.stringify(entry) === JSON.stringify(result.discovery))) {
         existing.discovery = [...(existing.discovery ?? []), result.discovery].slice(-8)
@@ -182,18 +190,37 @@ export class ResearchService {
       }
       if (result.provider && !existing.discoveredBy.includes(result.provider)) {
         existing.discoveredBy.push(result.provider)
-        existing.revision = this.changed(run)
       }
+      existing.revision = this.changed(run)
       return
     }
-    if (run.sources.size >= run.maxSources) return
+    if (run.sources.size >= MAX_CANDIDATES) {
+      run.omittedCandidates += 1
+      if (requested) run.errors.push({ query: '', message: 'Candidate budget is full; start another run for the requested URL' })
+      this.changed(run)
+      return
+    }
     const source: ResearchSource = {
       id: randomUUID(), url: result.url, title: result.title.slice(0, 180), snippet: result.snippet.slice(0, 240),
       requestedUrl: result.url, dates: result.dates, discovery: result.discovery ? [result.discovery] : [],
-      discoveredBy: result.provider ? [result.provider] : [], state: 'queued', revision: this.changed(run)
+      selection: requested ? 'requested' : prefersDomain(result.url, run.preferredDomains) ? 'preferred_domain' : 'discovery',
+      discoveredBy: result.provider ? [result.provider] : [], state: 'deferred', revision: this.changed(run)
     }
     run.sources.set(key, source)
-    if (run.presentation.consider(source.url)) this.changed(run)
+  }
+
+  private admit(run: Run): void {
+    if (run.state !== 'running') return
+    for (let source = run.admission.next(run.sources.values()); source; source = run.admission.next(run.sources.values())) {
+      run.admission.begin(source)
+      source.state = 'queued'
+      source.revision = this.changed(run)
+      if (run.presentation.consider(source.url)) this.changed(run)
+      this.collect(run, source)
+    }
+  }
+
+  private collect(run: Run, source: ResearchSource): void {
     this.track(run, async () => {
       source.state = 'reading'
       source.revision = this.changed(run)
@@ -206,7 +233,7 @@ export class ResearchService {
         if (run.state !== 'running') return
         if (error instanceof SourceNeedsRendering) await this.render(run, source, null, error)
         else { source.state = 'failed'; source.error = message(error); source.revision = this.changed(run) }
-      }
+      } finally { run.admission.end(); this.admit(run) }
     })
   }
 
@@ -292,6 +319,8 @@ export class ResearchService {
       runId: run.id, state: run.state, cursor: run.revision, pending: run.pending,
       completedQueries: run.completedQueries, totalQueries: run.totalQueries, sourceCount: run.sources.size,
       omittedSources: 0, omittedErrors: Math.max(0, run.errors.length - 12),
+      readCount: run.admission.readCount, maxReads: run.maxSources, reservedReads: run.admission.reserved,
+      omittedCandidates: run.omittedCandidates,
       sources: [], errors: run.errors.slice(-12), presentation: run.presentation.snapshot()
     }
     for (const source of candidates) {

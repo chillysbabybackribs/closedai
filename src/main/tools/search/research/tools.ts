@@ -37,13 +37,15 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
         {
           action: 'start', description: 'Start a research run. Supply queries and/or URLs. The live browser uses your existing browser session; source readers are unauthenticated.',
           inputSchema: schema({ queries, urls,
-            max_sources: { type: 'integer', minimum: 1, maximum: 20, description: 'Maximum unique documents to read; default twelve.' },
+            max_sources: { type: 'integer', minimum: 1, maximum: 20, description: 'Maximum documents to read; default twelve. Up to 80 candidate descriptors retained; deferred sources have not been read.' },
+            reserve_sources: { type: 'integer', minimum: 0, maximum: 20, description: 'Read slots reserved for supplied URLs or preferred domains; default up to two, leaving at least two ordinary reads. Set zero to use all slots for general discovery.' },
             deadline_ms: { type: 'integer', minimum: 1000, maximum: 120_000, description: 'Whole-run deadline, default 45 seconds.' },
             presentation: SEARCH_PRESENTATION_FIELD
           }),
           async run(input, context) {
             return result(service.start({ queries: parseQueries(input), urls: (input.urls ?? []) as string[],
               maxSources: numberArg(input, 'max_sources', 12), deadlineMs: numberArg(input, 'deadline_ms', 45_000),
+              reserveSources: input.reserve_sources === undefined ? undefined : numberArg(input, 'reserve_sources', 0),
               presentation: (input.presentation ?? 'live') as 'live' | 'background'
             }, context))
           }
@@ -63,7 +65,7 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
     defineActionTool({
       name: 'read',
       deferLoading: true,
-      description: 'Observe your research run without starting new requests. Results are JSON with bounded source metadata and errors. discoveredBy denotes index overlap, not independent factual confirmation. Read source excerpts before citing claims. Retains at most 32 runs for this app session; eviction removes their files. A completed run can contain failed sources: inspect errors and source states.',
+      description: 'Observe research without new requests. Bounded metadata, date observations, cache provenance, and errors; discoveredBy is index overlap, not independent confirmation. Deferred candidates have not been read; supply their URL to an active run or a new run to select them. Completed means requests settled; failures and unread candidates may remain. Read evidence before citing claims. Retains 32 runs; eviction removes files.',
       actions: [
         {
           action: 'results', description: 'Return incremental source updates. Continue with the returned cursor when omittedSources is nonzero. Keep source records by id because later updates replace earlier states.',

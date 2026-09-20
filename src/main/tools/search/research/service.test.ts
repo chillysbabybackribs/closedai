@@ -46,7 +46,7 @@ test('research disables discarded synthesis without contaminating standalone ans
   const standalone = await registry.call({ namespace: 'search', tool: 'query', arguments: args }, context)
   assert.equal(standalone.isError, undefined)
   assert.equal(bodies.length, 4, 'source-only cached responses must not replace standalone answer requests')
-  assert.equal(bodies.filter((call) => call.url.includes('tavily')).at(-1)?.body.include_answer, true)
+  assert.equal(bodies.filter((call) => call.url.includes('tavily')).at(-1)?.body.include_answer, 'basic')
   assert.equal(bodies.filter((call) => call.url.includes('ydc-index')).at(-1)?.body.knowledge, 'core')
 })
 

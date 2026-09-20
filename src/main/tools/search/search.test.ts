@@ -73,7 +73,7 @@ test('one tool can call all four providers, normalize results, deduplicate, and 
   assert.equal(deepBrave.searchParams.get('count'), '50')
   assert.equal(deepBrave.searchParams.get('maximum_number_of_urls'), '3')
   assert.equal(deepBrave.searchParams.get('maximum_number_of_tokens'), '16384')
-  assert.equal(deepBrave.searchParams.get('context_threshold_mode'), 'lenient')
+  assert.equal(deepBrave.searchParams.get('context_threshold_mode'), 'balanced')
 
   const second = await registry.call({ namespace: 'search', tool: 'query', arguments: args }, context)
   const cached = JSON.parse(second.content[0]!.type === 'text' ? second.content[0].text : '')
