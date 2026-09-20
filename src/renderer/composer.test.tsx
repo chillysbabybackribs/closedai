@@ -63,3 +63,28 @@ test('paused composer defaults to full mode with resume control', () => {
   assert.match(html, /aria-label="Collapse composer"/)
   assert.match(html, /data-ui="composer\.resume"/)
 })
+
+test('composer hides context info and standalone UI from default resting view', () => {
+  const html = renderToStaticMarkup(createElement(Composer, {
+    ...baseProps,
+    models: [
+      {
+        id: 'gpt-4o',
+        displayName: 'GPT-4o',
+        provider: 'codex',
+        contextWindow: 128_000,
+        supportedReasoningEfforts: [],
+        isDefault: true,
+        description: 'Omni model'
+      }
+    ],
+    selectedModel: 'gpt-4o'
+  }))
+  assert.match(html, /data-ui="composer\.model"/)
+  assert.match(html, /model-menu-trigger-model/)
+  assert.match(html, /GPT-4o/)
+  // Context info (128K) is hidden from the resting trigger text
+  assert.doesNotMatch(html, /model-menu-trigger-context/)
+  // Standalone context meter button is hidden from composer view
+  assert.doesNotMatch(html, /class="context-meter"/)
+})
