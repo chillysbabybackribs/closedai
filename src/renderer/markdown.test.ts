@@ -4,6 +4,16 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import { Markdown } from '../components/ui/markdown.js'
+import { LocalFileMarkdown } from './local-file-markdown.js'
+
+test('chat file links are actionable, preserve labels, and keep unsafe links inert', () => {
+  const html = renderToStaticMarkup(createElement(LocalFileMarkdown, null,
+    '[**View mockups**](/tmp/my%20image.png) [Source](file:///tmp/code.ts#L12) [unsafe](javascript:alert(1))'))
+  assert.equal((html.match(/data-ui="chat.local-file"/g) ?? []).length, 2)
+  assert.match(html, /<strong[^>]*>View mockups<\/strong>/)
+  assert.match(html, /data-ui-key="file:\/\/\/tmp\/code.ts#L12"/)
+  assert.doesNotMatch(html, /javascript:/)
+})
 
 test('renders the rich Prompt Kit markdown elements used in chat responses', () => {
   const source = [

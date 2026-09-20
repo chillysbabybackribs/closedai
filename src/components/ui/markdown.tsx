@@ -1,7 +1,7 @@
 import { Check, Copy } from 'lucide-react'
 import { marked } from 'marked'
 import { createElement, memo, useCallback, useId, useMemo, useState, type ReactNode } from 'react'
-import ReactMarkdown, { defaultUrlTransform, type Components } from 'react-markdown'
+import ReactMarkdown, { defaultUrlTransform, type Components, type ExtraProps } from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 
@@ -88,7 +88,7 @@ function CodeHeader({ language, code }: { language: string; code: string }) {
   )
 }
 
-export const MarkdownLink: NonNullable<Components['a']> = function LinkComponent({ href, children, node: _node, ...props }) {
+export function MarkdownLink({ href, children, node: _node, ...props }: React.ComponentProps<'a'> & ExtraProps) {
     const safeHref = safeWebUrl(href)
     if (safeHref) {
       const title = textContent(children) || hostname(safeHref)
