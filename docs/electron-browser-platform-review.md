@@ -195,9 +195,10 @@ database that Chromium uses to store cookies stores the values in plaintext" —
 - Keep `scripts/launch-electron-vite.mjs`: it strips PRIME/Optimus offload env vars before the
   binary starts (Chromium snapshots env before JS runs). Still relevant on 44 even though ANGLE is
   now statically linked (the EGL visual mismatch is in the driver path, not the ANGLE library).
-- `disable-accelerated-video-decode`: off by default on Chromium 152+ (Electron 44 retest). Set
-  `CLOSEDAI_DISABLE_HARDWARE_VIDEO_DECODE=1` if a driver still returns zero-filled H.264 frames.
-  `CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE=1` remains a legacy force-on escape hatch.
+- `disable-accelerated-video-decode`: on by default on Linux. The Chromium 152 / Electron 44
+  hardware-decode path was observed accepting and advancing H.264 video while returning blank
+  frames on the target driver stack. Set `CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE=1` to opt back in on
+  a known-good machine; `CLOSEDAI_DISABLE_HARDWARE_VIDEO_DECODE=1` takes precedence.
 - Log `app.getGPUFeatureStatus()` once at startup so a CPU-rasterization fallback is visible.
 - `--enable-features=SpareRendererForSitePerProcess`: keeps a warm renderer so a new tab does not
   wait for process launch; only applies to sandboxed views without `additionalArguments` /
@@ -237,7 +238,7 @@ database that Chromium uses to store cookies stores the values in plaintext" —
 | Session services (§3.7) | **Partial** | Downloads, persistent code cache, request identity rewriting, cookie persistence, and storage flush are implemented. There is no extension loading or clear-browsing-data UI, and the exact `setUserAgent(ua, acceptLanguages)` plan is not used. |
 | Package fuses (§3.8) | **Deferred** | `@electron/fuses`, ASAR fuse flipping, cookie encryption, custom-scheme migration, and the Linux post-install sandbox setup are not configured. |
 | Window and theme (§3.9) | **Partial** | Frameless chrome, dark native theme, removal of the application menu, and Electron 44 `windowStatePersistence` (`name: 'main'`) are implemented. The main window uses `show: false` until `ready-to-show`. |
-| GPU/Linux startup (§3.10) | **Partial** | The launcher scrubs GPU-offload environment variables, GTK portal switches remain, accelerated video decode is disabled unless overridden, `SpareRendererForSitePerProcess` is enabled at startup, and GPU feature status is logged once at launch. The video-decode workaround still needs the documented Electron 44 retest. |
+| GPU/Linux startup (§3.10) | **Partial** | The launcher scrubs GPU-offload environment variables, GTK portal switches remain, accelerated video decode is disabled unless explicitly overridden, `SpareRendererForSitePerProcess` is enabled at startup, and GPU feature status is logged once at launch. |
 | Verification (§3.11) | **Open** | Popup behavior has automated coverage. PDF rendering, site isolation, basic auth, fullscreen, persisted back/forward stacks, and the packaging/sandbox checks remain unverified or unimplemented. |
 
 Recent browser additions outside the original matrix: the omnibox now searches/removes history

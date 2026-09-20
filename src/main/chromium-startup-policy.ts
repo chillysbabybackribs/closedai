@@ -23,8 +23,10 @@ export function configureChromiumStartup(
   app.commandLine.appendSwitch('xdg-portal-required-version', '999')
   app.commandLine.appendSwitch('no-sandbox')
 
-  // Chromium 152+ (Electron 44) retested clean on the target stack; disable only when broken.
-  // Legacy escape hatch: CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE=1 still forces decode on.
+  // Some Linux driver stacks accept accelerated H.264 decode but return zero-filled
+  // frames after the initial paint. The media element keeps advancing without an
+  // error, leaving a blank video surface, so use the reliable software decoder by
+  // default. Known-good machines can opt back in explicitly.
   if (!linuxHardwareVideoDecodeEnabled(env)) {
     app.commandLine.appendSwitch('disable-accelerated-video-decode')
   }
@@ -33,7 +35,5 @@ export function configureChromiumStartup(
 /** Whether to leave Linux hardware video decode enabled at startup. */
 export function linuxHardwareVideoDecodeEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   if (env.CLOSEDAI_DISABLE_HARDWARE_VIDEO_DECODE === '1') return false
-  if (env.CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE === '1') return true
-  const chromeMajor = Number.parseInt(process.versions.chrome?.split('.')[0] ?? '0', 10)
-  return chromeMajor >= 152
+  return env.CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE === '1'
 }

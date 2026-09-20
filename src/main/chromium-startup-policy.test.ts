@@ -12,29 +12,36 @@ function configure(platform: NodeJS.Platform, env: NodeJS.ProcessEnv = {}) {
   return switches
 }
 
-test('Linux video decode follows the Chromium 152+ default policy', () => {
+test('Linux uses reliable software video decode by default', () => {
   const env: NodeJS.ProcessEnv = {}
-  const base: Array<[string, string | undefined]> = [
+  const switches = configure('linux', env)
+  assert.deepEqual(switches, [
     ['enable-features', 'SpareRendererForSitePerProcess'],
     ['xdg-portal-required-version', '999'],
-    ['no-sandbox', undefined]
-  ]
-  const switches = configure('linux', env)
-  assert.deepEqual(
-    switches,
-    linuxHardwareVideoDecodeEnabled({}) ? base : [...base, ['disable-accelerated-video-decode', undefined]]
-  )
+    ['no-sandbox', undefined],
+    ['disable-accelerated-video-decode', undefined]
+  ])
+  assert.equal(linuxHardwareVideoDecodeEnabled({}), false)
   assert.equal(env.GTK_USE_PORTAL, '0')
 })
 
 test('Linux hardware video decode can be forced off or on explicitly', () => {
   assert.equal(linuxHardwareVideoDecodeEnabled({ CLOSEDAI_DISABLE_HARDWARE_VIDEO_DECODE: '1' }), false)
   assert.equal(linuxHardwareVideoDecodeEnabled({ CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE: '1' }), true)
+  assert.equal(linuxHardwareVideoDecodeEnabled({
+    CLOSEDAI_DISABLE_HARDWARE_VIDEO_DECODE: '1',
+    CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE: '1'
+  }), false)
   assert.deepEqual(configure('linux', { CLOSEDAI_DISABLE_HARDWARE_VIDEO_DECODE: '1' }), [
     ['enable-features', 'SpareRendererForSitePerProcess'],
     ['xdg-portal-required-version', '999'],
     ['no-sandbox', undefined],
     ['disable-accelerated-video-decode', undefined]
+  ])
+  assert.deepEqual(configure('linux', { CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE: '1' }), [
+    ['enable-features', 'SpareRendererForSitePerProcess'],
+    ['xdg-portal-required-version', '999'],
+    ['no-sandbox', undefined]
   ])
 })
 
