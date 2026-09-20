@@ -36,7 +36,7 @@ export function browserTools(
       defineActionTool({
         name: 'page',
         description:
-          'Inspect the embedded browser page the user can see. navigate, read_page, and wait_for return plain text. ' +
+          'Inspect the embedded browser page the user can see. navigate, read_page, and wait_for return plain text. read_page also reads a visible native PDF by pdf_page. ' +
           'For fetch, extract, query, evaluate, and console use embedded_browser.script.',
         actions: [
           navigateAction(browser),

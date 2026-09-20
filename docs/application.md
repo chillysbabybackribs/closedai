@@ -473,6 +473,16 @@ bounds and visibility. This revives Electron's frame sink when a redirect leaves
 but the attached native surface blank.
 
 Browser inspection can read a background tab without selecting it. Semantic page input brings
+the tab forward. Native PDF text is an exception to background reading: select the PDF tab,
+then `embedded_browser.page read_page` reads `pdf_page` (one-based, default 1) from Chromium's
+already-loaded PDF accessibility tree. It uses a temporary sandboxed diagnostic WebContents,
+without refetching the PDF, selecting text, or running OCR. The helper owns and releases its
+scoped accessibility state. This internal Chromium interface is version-sensitive; see
+[Tools](tools.md) for verification and limits. Scans may have no native text. Existing browser
+capture supplies the visible page image when figures or layout matter. Native text is not
+a correctness or visual-verification claim.
+
+Semantic page input brings
 the tab forward, waits for rendering after a switch, and reports `activatedTab: true`. It fails
 if the browser page cannot be shown. Captures use a rendering lease and readiness checks;
 shared frame settling lives in `browser-frame-settle.ts`. See [CDP](cdp-tool-foundation.md).

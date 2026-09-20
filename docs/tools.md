@@ -118,6 +118,31 @@ keeps its tabs, but semantic page input still requires a visible page.
 
 ### Application facts, browser targets, and batching
 
+`embedded_browser.page read_page` reads a PDF already loaded in Chromium's built-in viewer
+using native PDF accessibility text. `pdf_page` is one-based and defaults to 1; `max_chars`
+bounds that page's text. Select the PDF tab first: hidden PDF views may not construct their
+native accessibility tree. `selector` remains an HTML-only option and cannot accompany
+`pdf_page`. The result identifies its source, requested page, total pages when available,
+and clipping. An unavailable page is an error; an empty native page is explicitly described
+as possibly scanned, blank, or inaccessible. Use the existing browser capture for the visible
+page's figures, equations, and layout. Capture remains viewport evidence, not a full-document image.
+
+The adapter in `browser-pdf/` uses a disposable, sandboxed `chrome://accessibility/` WebContents
+to request Chromium's native PDF tree. This is Chromium's internal diagnostic interface, not
+a stable public PDF extraction API. CDP's Blink accessibility tree did not expose the PDF
+plugin text in the tested Electron 44.1.1 / Chromium 152.0.7977.65 build. The helper resolves
+the native view from the target renderer and URL, rejects ambiguous matches, and releases
+its scoped accessibility mode when closed. It does not change global accessibility flags,
+select/copy text, fetch the document again, or run OCR. Cancellation and a nine-second deadline
+close the helper; main-frame navigation/renderer loss invalidate the result. Tree input is
+capped at eight million characters. Recheck the internal adapter on Electron upgrades using
+`scripts/pdf-native-live-check.mjs` with a local native PDF and scan.
+
+Native text does not establish complete reading order, table structure, math fidelity, or
+image coverage. The scan checked in this build returned no text: Google Chrome's separately
+distributed Screen AI OCR must not be assumed present in Electron. Research PDFs retained by
+`search.run` continue to use the independent `search.pdf` rendering/OCR path described below.
+
 Browser strip snapshots include app-owned image tabs, identified by `image` metadata.
 They support strip commands (select, close, rename, duplicate), but have no native web page
 or CDP target. Select a web tab for page tools, or use the `image.*` app controls for zoom,

@@ -250,6 +250,14 @@ Operation keys prevent committed retries from reexecuting CDP commands; interrup
 operations remain uncertain and refuse automatic reexecution. See [artifacts](investigation-artifacts.md).
 
 The shared routing instructions use `search.query` for a lookup, `search.run` for overlapping
+queries/source collection, and `search.read` for incremental evidence. For a PDF already open
+in the browser, shared guidance instead directs the model to select its tab and use
+`embedded_browser.page read_page` with one-based `pdf_page`. This uses Chromium's native
+PDF text. An empty result may be a scan; page text does not establish image coverage or layout
+accuracy. The model uses browser capture for visual evidence. See [Tools](tools.md) for the
+internal Chromium adapter's limits and lifecycle.
+
+Research uses `search.run` for overlapping
 queries/source collection, and `search.read` for incremental evidence. Research work belongs to the originating
 turn and is cancelled at its end, so models must retrieve needed evidence before finishing.
 Both search paths now default to live presentation and reuse one retained tab per pane/thread/turn.
