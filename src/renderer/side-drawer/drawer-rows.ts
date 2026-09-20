@@ -1,4 +1,4 @@
-import type { ChatSnapshot } from '../../shared/chat.js'
+import type { ChatSnapshot, ChatTranscriptItem } from '../../shared/chat.js'
 import { isInjectedContextTitle, sanitizeThreadTitle } from '../../shared/chat-display.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { DrawerRowModel, DrawerRowStatus } from './drawer-types.js'
@@ -16,6 +16,16 @@ type DrawerRowsInput = {
 }
 
 const PLACEHOLDER_TITLES = new Set(['', 'New chat', 'Peer chat', 'Active chat'])
+
+function latestLiveActivity(items: readonly ChatTranscriptItem[]): string | null {
+  for (let index = items.length - 1; index >= 0; index--) {
+    const item = items[index]!
+    if (item.type === 'tool') return item.label
+    if (item.type === 'command') return 'Run command'
+    if (item.type === 'fileChange') return 'Edit file'
+  }
+  return null
+}
 
 /**
  * One row per chat record, straight from the workspace's `chats`. Every fact that moves a row —
@@ -42,13 +52,7 @@ export function buildDrawerRows({
     // green and hollow depending on whether a tool call happened to be the final item.
     const hasConversation = threadId !== null || chat.preview !== ''
     const status: DrawerRowStatus = chat.running ? 'running' : hasConversation ? 'done' : 'chat'
-    const liveActivity = isSelected
-      ? (selected.items.findLast((item) => item.type === 'tool' || item.type === 'command' || item.type === 'fileChange') as { label?: string; command?: string; type?: string } | undefined)
-      : undefined
-    const selectedActivity = liveActivity
-      ? (liveActivity.label ?? (liveActivity.type === 'command' ? 'Run command' : liveActivity.type === 'fileChange' ? 'Edit file' : null))
-      : null
-    const activity = chat.activity ?? selectedActivity ?? null
+    const activity = chat.activity ?? (isSelected ? latestLiveActivity(selected.items) : null)
     byId.set(chat.paneId, {
       id: chat.paneId,
       threadId,
