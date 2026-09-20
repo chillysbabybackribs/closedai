@@ -142,6 +142,19 @@ test('state projects the workspace and a chat pane compactly', () => {
   assert.equal(JSON.stringify(state).length < 1_500, true)
 })
 
+test('browser state identifies image tabs without including their content', () => {
+  const tabs = browser()
+  const image = { tabId: 'tab-2', name: 'Reference.png', path: '/tmp/Reference.png' }
+  tabs.snapshot = () => ({ url: 'file:///tmp/Reference.png', title: image.name, isLoading: false,
+    canGoBack: false, canGoForward: false, image })
+  tabs.tabList = () => [{ id: image.tabId, pos: 1, title: image.name, url: 'file:///tmp/Reference.png',
+    favicon: null, isLoading: false, active: true, image }]
+  const { host } = access(new FakeWorkspace(), tabs)
+  const state = host.state(['browser'], undefined, null).browser as { active: { image: unknown }; tabs: { image: unknown }[] }
+  assert.deepEqual(state.active.image, image)
+  assert.deepEqual(state.tabs[0].image, image)
+})
+
 test('chat state defaults to the caller independently of UI focus, with an explicit target override', () => {
   const { host } = access()
   const own = host.state(['chat'], undefined, 'pane-2').chat as Record<string, unknown>

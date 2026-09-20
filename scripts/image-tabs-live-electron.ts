@@ -24,7 +24,7 @@ async function check(root: string) {
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const address = server.address()
   assert.ok(address && typeof address !== 'string')
-  const window = new BrowserWindow({ show: false, width: 1280, height: 850,
+  const window = new BrowserWindow({ show: true, width: 1280, height: 850,
     webPreferences: { preload: join(root, 'preload.cjs'), backgroundThrottling: false } })
   window.webContents.on('console-message', (event) => {
     if (event.level === 'error') console.error('Fixture renderer:', event.message)

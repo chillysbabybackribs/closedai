@@ -1,4 +1,5 @@
 // Real BrowserService + preload + React viewer, isolated from the user's running app/profile.
+// Linux: xvfb-run -a node scripts/image-tabs-live-check.mjs (uses a separate display).
 import { build } from 'esbuild'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
