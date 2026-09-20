@@ -635,8 +635,11 @@ reads continue. Discovery stays in the search APIs; search-engine results pages 
 the research presentation. Subsequent searches in the same pane/thread/turn reuse that tab.
 Models receive its id for inspecting source pages while research continues. Explicit background
 mode opts out. Source fetching is unauthenticated; the visible tab uses the
-normal browser session. Runs are tied to the calling pane/thread/turn and stop with that turn or
-pane. There is no dedicated research activity panel or hidden rendered-worker pool yet. See
+normal browser session. A source whose static body is a JavaScript shell is rendered once in a
+hidden page worker (`src/main/browser-workers/`, at most three, on the public research session,
+never shown or listed in the tab strip) and reported as `rendered_text`. Runs are tied to the
+calling pane/thread/turn and stop with that turn or pane, which also aborts rendered reads.
+There is no dedicated research activity panel, and workers cannot be handed to the user yet. See
 [Tools](tools.md#parallel-research-runs) for exact limits and the
 [design proposal](parallel-web-research-2026-09-04.md) for the remaining work.
 

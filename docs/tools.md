@@ -220,8 +220,19 @@ settled, not that every provider or source succeeded.
 Static sources use an isolated nonpersistent Electron session and omit credentials. Bodies are
 streamed to a bounded raw file (512 KiB), HTML is parsed inertly with parse5, and extracted text
 is retained up to 120k characters. Truncation is explicit. JSON and text are also supported;
-PDFs, empty JS shells, and unsupported MIME are reported for browser follow-up. Parsing does not
-execute JavaScript or resolve CSS visibility and is not a rendered-page verification.
+PDFs and unsupported MIME are reported for browser follow-up. Redirects are followed by the
+transport; the retained URL is the one requested. Parsing does not execute JavaScript or resolve
+CSS visibility and is not a rendered-page verification. A page whose static body is empty, or a
+script-bearing shell with under 200 characters of text, is loaded once in a hidden page worker
+(`src/main/browser-workers/`): an ordinary `BrowserTab` on the same public research session,
+outside the tab strip, recording no history and dropping popups. At most three workers exist
+process-wide and two serve one run; a worker waits up to eight seconds for the page text to
+settle, the whole rendered read is bounded to thirty seconds, and idle workers close after
+thirty seconds. Sources report `state: rendering` while that happens and
+`representation: rendered_text` (page `innerText`) or `static_text` when ready; `search.read
+source` echoes the representation. When no worker text is available the static outcome stands:
+sparse static text is kept, and an empty body is a failure naming both reads. Stop and run
+completion abort in-flight rendered reads.
 
 Both `search.query` and `search.run.start` default to `presentation: live`. The first live search
 in a pane/thread/turn opens the first eligible supplied source URL, or waits for an actual source
@@ -239,14 +250,16 @@ tab id once opened. If discovery finishes without an eligible source, state beco
 and no tab opens. Search-engine result URLs returned by providers are skipped for collection and
 presentation; explicitly supplying them as run source URLs is rejected. Browser failures are
 reported as `presentation.state: failed` while API research continues.
-Hidden rendered workers,
-live target transfer, dedicated progress UI, and Follow/Take over controls remain later slices.
+Live target transfer, showing a worker's page to the user, dedicated progress UI, and
+Follow/Take over controls remain later slices.
 `live: true` on each query still controls cache freshness only.
 
 Regression coverage includes omitted presentation on both tools, turn-scoped tab reuse, explicit
-background, and an isolated Chromium check: `node scripts/search-live-check.mjs`. The latter loads
-a real browser page through the production runtime while a local source response remains pending,
-using a temporary bundle and profile without rebuilding or restarting the user's app.
+background, and two isolated Chromium checks using a temporary bundle and profile without
+rebuilding or restarting the user's app: `node scripts/search-live-check.mjs` loads a real browser
+page through the production runtime while a local source response remains pending, and
+`node scripts/research-workers-live-check.mjs` proves hidden workers render script-only pages
+without the user's browser session, follow redirects, and keep popups out of the tab strip.
 
 The production search pipeline (real API credentials, `SourceStore`, live source tab, `search.read`
 excerpts) is verified with `npm run search:pipeline` (`scripts/search-pipeline-live-check.mjs`).

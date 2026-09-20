@@ -10,8 +10,20 @@ provider delivery, shared admission budgets, retained static source reading, tur
 cancellation, and live source tab opening as API results arrive. Search-engine results pages
 are never opened for gathering sources; the initial query-to-Google fallback was removed.
 The current contract is in
-[Tools](tools.md#parallel-research-runs). Rendered workers, progress UI, target transfer, retry
+[Tools](tools.md#parallel-research-runs). Progress UI, target transfer, retry
 policies, and Follow/Take over remain proposed; the full architecture below is not yet shipped.
+
+Implementation update, 2026-09-20: hidden rendered workers shipped as `src/main/browser-workers/`.
+A static read that finds an empty body or a script-bearing shell with almost no text escalates
+once to a hidden `BrowserTab` on the public research session (three process-wide, two per run,
+reaped after thirty seconds idle); its `innerText` replaces the static text as
+`representation: rendered_text`. Native hidden rendering was verified live with
+`node scripts/research-workers-live-check.mjs`: an unattached `WebContentsView` runs page script,
+carries no `persist:browser` cookie, and its popups never reach the tab strip. Showing a worker
+to the user and PDFs remain out of scope. The same change fixed the static reader: Electron's
+`fetch` rejects `redirect: 'manual'` outright ("Redirect was cancelled"), so redirects are now
+followed by the transport; `Response.url` stays empty in Electron, so a followed redirect keeps
+the requested URL.
 
 Follow-up correction: a saved Claude search omitted `presentation` and returned `state: none`;
 the initial background default made browser use disappear from normal research. Both search tools
