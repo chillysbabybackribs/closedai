@@ -51,8 +51,6 @@ export type ComposerProps = {
   activeTurnId: string | null
   onCompactConversation?: () => Promise<void>
   compactConversationEnabled?: boolean
-  selected?: boolean
-  hasMessages?: boolean
 }
 
 export function Composer({
@@ -82,29 +80,16 @@ export function Composer({
   onClearProject,
   activeTurnId,
   onCompactConversation,
-  compactConversationEnabled = false,
-  selected = true,
-  hasMessages = false
+  compactConversationEnabled = false
 }: ComposerProps): JSX.Element {
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<ChatAttachment[]>([])
   const [attachmentError, setAttachmentError] = useState('')
   const [sending, setSending] = useState(false)
-  const [manualExpanded, setManualExpanded] = useState<boolean | null>(null)
-  const prevRunningRef = useRef(running)
-  const prevSelectedRef = useRef(selected)
-
-  useEffect(() => {
-    if (prevRunningRef.current !== running || prevSelectedRef.current !== selected) {
-      prevRunningRef.current = running
-      prevSelectedRef.current = selected
-      setManualExpanded(null)
-    }
-  }, [running, selected])
+  const [manualExpanded, setManualExpanded] = useState(true)
 
   const hasDraft = input.trim().length > 0 || attachments.length > 0
-  const defaultCompact = hasMessages && (!selected || running)
-  const isCompact = !hasDraft && (manualExpanded !== null ? !manualExpanded : defaultCompact)
+  const isCompact = !hasDraft && !manualExpanded
   const formRef = useRef<HTMLFormElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const focusAfterSendRef = useRef(false)

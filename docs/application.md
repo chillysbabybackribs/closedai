@@ -245,8 +245,9 @@ Dividers resize horizontal and vertical splits independently; arrow keys resize 
 divider and double-click resets it to equal proportions. Nested splits support columns, rows,
 and quadrants, up to 32 visible chats. A tile has a 300 × 280 px minimum; the chat area scrolls
 when a small window cannot fit the chosen arrangement. Narrow tiles use compact composer
-controls, and running or inactive panes collapse to a compact progress bar with manual toggle
-controls (`composer.compact-toggle`) to preserve vertical space for transcripts. Right-clicking
+controls. Composers start fully expanded and stay expanded while running or inactive. The chevron
+(`composer.compact-toggle`) manually collapses or expands the composer; that choice survives turn
+and pane-selection changes while mounted. Drafts keep the full composer visible. Right-clicking
 any tile header or tab opens a context menu with **Maximize tile** (`layout.maximize`), **Split right**
 (`layout.split-right`), **Split below** (`layout.split-below`), **New chat** (`layout.new-chat`), and
 **Close tab** / **Hide pane** (`layout.pane-hide`). Double-clicking a tile header also toggles

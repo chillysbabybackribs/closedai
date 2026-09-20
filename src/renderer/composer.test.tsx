@@ -28,12 +28,10 @@ const baseProps: ComposerProps = {
   onChooseProject: async () => {},
   onSelectProject: async () => {},
   onClearProject: async () => {},
-  activeTurnId: null,
-  selected: true,
-  hasMessages: true
+  activeTurnId: null
 }
 
-test('idle selected composer with messages renders full mode with collapse toggle', () => {
+test('idle composer defaults to full mode with collapse toggle', () => {
   const html = renderToStaticMarkup(createElement(Composer, { ...baseProps }))
   assert.doesNotMatch(html, /prompt-composer is-compact/)
   assert.match(html, /data-ui="composer\.compact-toggle"/)
@@ -41,35 +39,27 @@ test('idle selected composer with messages renders full mode with collapse toggl
   assert.match(html, /data-ui="composer\.input"/)
 })
 
-test('running composer collapses to compact pill with stop and expand controls', () => {
+test('running composer stays full with stop and manual collapse controls', () => {
   const html = renderToStaticMarkup(createElement(Composer, {
     ...baseProps,
     running: true,
     activeTurnId: 'turn-123'
   }))
-  assert.match(html, /prompt-composer is-compact/)
-  assert.match(html, /prompt-composer-compact-row/)
+  assert.doesNotMatch(html, /prompt-composer is-compact/)
+  assert.doesNotMatch(html, /prompt-composer-compact-row/)
   assert.match(html, /data-ui="composer\.stop"/)
   assert.match(html, /data-ui="composer\.compact-toggle"/)
-  assert.match(html, /aria-label="Expand composer"/)
+  assert.match(html, /aria-label="Collapse composer"/)
   assert.match(html, /data-ui="composer\.input"/)
 })
 
-test('inactive unselected pane collapses to compact pill', () => {
+test('paused composer defaults to full mode with resume control', () => {
   const html = renderToStaticMarkup(createElement(Composer, {
     ...baseProps,
-    selected: false
-  }))
-  assert.match(html, /prompt-composer is-compact/)
-  assert.match(html, /data-ui="composer\.compact-toggle"/)
-  assert.match(html, /aria-label="Expand composer"/)
-})
-
-test('brand new empty chat does not collapse into compact pill', () => {
-  const html = renderToStaticMarkup(createElement(Composer, {
-    ...baseProps,
-    selected: false,
-    hasMessages: false
+    paused: true
   }))
   assert.doesNotMatch(html, /prompt-composer is-compact/)
+  assert.match(html, /data-ui="composer\.compact-toggle"/)
+  assert.match(html, /aria-label="Collapse composer"/)
+  assert.match(html, /data-ui="composer\.resume"/)
 })

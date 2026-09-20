@@ -34,8 +34,7 @@ export const ChatPane = memo(function ChatPane({
   historyOpen: controlledHistoryOpen,
   onHistoryOpenChange,
   dialog: controlledDialog,
-  onDialogChange,
-  selected = true
+  onDialogChange
 }: {
   controller?: ChatController
   zoom?: number
@@ -177,8 +176,6 @@ export const ChatPane = memo(function ChatPane({
           activeTurnId={state.activeTurnId}
           onCompactConversation={manualCompact ? chat.compactConversation : undefined}
           compactConversationEnabled={manualCompact && ready && !running && state.items.some((item) => item.type === 'user')}
-          selected={selected}
-          hasMessages={hasMessages}
         />
       </div>
     </aside>
