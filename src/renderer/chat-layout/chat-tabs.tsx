@@ -39,7 +39,9 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, onSel
           onDrag(id)
         }}
         onClick={() => onSelect(id)}
-        onContextMenu={() => { if (id !== activeId) onSelect(id) }}
+        // The header's context menu belongs to the active conversation; selection is async, so a
+        // right-click on another tab activates it without opening the wrong conversation's menu.
+        onContextMenu={(event) => { if (id !== activeId) { event.preventDefault(); onSelect(id) } }}
         onKeyDown={(event) => {
           const next = event.key === 'ArrowRight' ? (index + 1) % ids.length
             : event.key === 'ArrowLeft' ? (index + ids.length - 1) % ids.length

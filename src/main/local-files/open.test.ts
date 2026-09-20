@@ -4,7 +4,18 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openLocalFile } from './open.js'
-import { localFilePath } from '../../shared/local-files.js'
+import { localFilePath, parseLocalFileTarget } from '../../shared/local-files.js'
+
+test('line targets read ranges from #L anchors and a line, never a range, from compiler suffixes', () => {
+  assert.deepEqual(parseLocalFileTarget('/tmp/code.ts'), { path: '/tmp/code.ts' })
+  assert.deepEqual(parseLocalFileTarget('/tmp/code.ts:12'), { path: '/tmp/code.ts', line: 12 })
+  assert.deepEqual(parseLocalFileTarget('/tmp/code.ts:120:15'), { path: '/tmp/code.ts', line: 120 })
+  assert.deepEqual(parseLocalFileTarget('file:///tmp/code.ts#L12-L15'), { path: '/tmp/code.ts', line: 12, endLine: 15 })
+  assert.deepEqual(parseLocalFileTarget('/tmp/code.ts#L12-15'), { path: '/tmp/code.ts', line: 12, endLine: 15 })
+  assert.deepEqual(parseLocalFileTarget('/tmp/code.ts#L15-L12'), { path: '/tmp/code.ts', line: 15 })
+  assert.deepEqual(parseLocalFileTarget('/tmp/code.ts:0'), { path: '/tmp/code.ts' })
+  assert.equal(parseLocalFileTarget('https://example.com/a.ts:12'), null)
+})
 
 test('local links accept encoded paths and line suffixes but reject remote and unsafe targets', () => {
   assert.equal(localFilePath('/tmp/my%20image.png'), '/tmp/my image.png')

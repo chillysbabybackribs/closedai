@@ -118,12 +118,12 @@ function inputPolicyHarness(): { registry: ToolRegistry; log: string[] } {
     {
       name: 'embedded_browser',
       description: 'Browser reads',
-      tools: [{
-        name: 'page',
+      tools: ['page', 'network'].map((name) => ({
+        name,
         description: 'Read actions',
         inputSchema: { type: 'object', properties: { action: { type: 'string' } }, required: ['action'] },
         run: async (input) => { log.push(String(input.action)); return textResult(String(input.action)) }
-      }]
+      }))
     }
   ]
   let registry: ToolRegistry
@@ -262,6 +262,16 @@ test('real-input fallbacks require a sequential batch with a later verification 
   const verified = await call(registry, { calls: [click, verify] })
   assert.equal(verified.isError, undefined)
   assert.deepEqual(log, ['click', 'read_page'])
+
+  // Only actions the network tool still has count as verification; `body` moved to network_replay.
+  log.length = 0
+  const stale = await call(registry, { calls: [click, { tool: 'embedded_browser.network', arguments: { action: 'body' } }] })
+  assert.equal(stale.isError, true)
+  assert.match(batchText(stale), /later read or wait action/)
+  assert.deepEqual(log, [])
+  const waited = await call(registry, { calls: [click, { tool: 'embedded_browser.network', arguments: { action: 'wait' } }] })
+  assert.equal(waited.isError, undefined)
+  assert.deepEqual(log, ['click', 'wait'])
 })
 
 test('parallel batches serialize work on one explicit browser tab while other tabs run immediately', async () => {

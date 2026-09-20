@@ -93,6 +93,12 @@ export function Composer({
   const formRef = useRef<HTMLFormElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const focusAfterSendRef = useRef(false)
+  // Compact and full mode render different textareas. Typing the first character leaves compact
+  // mode, which unmounts the focused one; carry focus across so the rest of the word is not lost.
+  const textareaFocusedRef = useRef(false)
+  useEffect(() => {
+    if (textareaFocusedRef.current) formRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus()
+  }, [isCompact])
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !sending && enabled && !running
   const waitingForInput = input.trim().length === 0 && attachments.length === 0 && enabled && !running && !sending
 
@@ -232,8 +238,10 @@ export function Composer({
               className="prompt-composer-textarea prompt-composer-textarea-compact"
               onPaste={pasteFiles}
               onFocus={() => {
+                textareaFocusedRef.current = true
                 if (!running) setManualExpanded(true)
               }}
+              onBlur={() => { textareaFocusedRef.current = false }}
             />
             <div className="prompt-composer-compact-actions">
               {running ? (
@@ -283,6 +291,8 @@ export function Composer({
               spellCheck={false}
               className="prompt-composer-textarea"
               onPaste={pasteFiles}
+              onFocus={() => { textareaFocusedRef.current = true }}
+              onBlur={() => { textareaFocusedRef.current = false }}
             />
 
             {attachmentError && <div className="prompt-attachment-error" role="alert">{attachmentError}</div>}
