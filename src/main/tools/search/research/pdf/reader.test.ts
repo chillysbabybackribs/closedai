@@ -106,6 +106,18 @@ test('cancellation terminates a stuck parser and releases its admission slot', a
   }
 })
 
+test('password-protected PDFs report a password requirement without entering rendering fallback', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'pdf-password-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const bytes = new TextDecoder().decode(pdf(['Protected']))
+  // The security dictionary deliberately cannot authenticate an empty password.
+  const security = `/Encrypt << /Filter /Standard /V 1 /R 2 /O <${'00'.repeat(32)}> /U <${'00'.repeat(32)}> /P -4 >> /ID [<${'00'.repeat(16)}> <${'00'.repeat(16)}>]`
+  const body = new TextEncoder().encode(bytes.replace('/Info 4 0 R', `/Info 4 0 R ${security}`))
+  const store = new SourceStore(root, async () => new Response(body, { headers: { 'content-type': 'application/pdf' } }), reader)
+  await assert.rejects(store.collect(url, 'run', 'locked', signal), /PDF requires a password/)
+  assert.deepEqual(await readdir(join(root, 'run')), [])
+})
+
 test('completed research can expand PDF coverage, page retained text, and preserve evidence after parser failure', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'pdf-expand-'))
   let body = pdf(['First page evidence', 'Second page evidence'])
