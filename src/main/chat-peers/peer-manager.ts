@@ -68,6 +68,8 @@ export interface ChatWorkspaceSurface {
   /** Hide a chat: archive its provider thread if it has one, keep the record as archived, detach its pane. */
   archiveChat(chatId: string): Promise<void>
   setChatPinned(chatId: string, pinned: boolean): Promise<void>
+  renameChat(chatId: string, title: string | null): Promise<void>
+  retryChatTitle(chatId: string): Promise<void>
   archiveThread(threadId: string): Promise<void>
   compactConversation(paneId: ChatPaneId): Promise<void>
   selectProject(projectPath: string | null): Promise<void>
@@ -126,7 +128,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     })
     this.catalog = new PeerChatCatalog(store, () => this.workspace(), (fn) => this.withAwake(this.selectedPaneId, fn))
     const saved = settings.get()
-    this.selectedPaneId = this.restoreOpenChats(saved.chatOpenIds, saved.chatSelectedPaneId, null, null)
+    this.selectedPaneId = this.lifecycle.restoreOpenChats(saved.chatOpenIds, saved.chatSelectedPaneId, null, null, this.workspace())
     if (saved.chatSelectedPaneId !== this.selectedPaneId || saved.chatOpenIds.join() !== this.lifecycle.ids().join()) {
       void this.persistOpenChats().catch((error: unknown) => {
         console.warn('[chat-peers] could not persist open chats:', error instanceof Error ? error.message : String(error))
