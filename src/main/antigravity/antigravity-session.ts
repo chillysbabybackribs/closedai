@@ -43,6 +43,7 @@ export class AntigravitySession {
   private translator: AntigravityTurnTranslator | null = null
   private readonly idleGuard: IdleProcessGuard
   private stopping = false
+  private spawnedAt = 0
 
   constructor(private readonly deps: AntigravitySessionDeps) {
     this.idleGuard = new IdleProcessGuard(
@@ -59,6 +60,9 @@ export class AntigravitySession {
   send(content: string): string {
     if (this.activeTurnId) throw new Error('An Antigravity turn is already running')
     this.clearIdleTimer()
+    if (this.process?.alive && Date.now() - this.spawnedAt > 30 * 60 * 1000) {
+      void this.retire()
+    }
     const turnId = antigravityTurnId()
     this.activeTurnId = turnId
     this.deps.onTurn(turnId)
@@ -128,6 +132,7 @@ export class AntigravitySession {
       onSpawnError: (message) => { if (this.process === process) this.onExit(message, null) }
     })
     this.process = process
+    this.spawnedAt = Date.now()
     return process
   }
 

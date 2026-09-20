@@ -78,6 +78,7 @@ export class AntigravityChatService extends EventEmitter {
   private contextUsage: ContextUsage | null = null
   /** stdin content of the running turn, so a grant rejection can replay it on a rewritten profile. */
   private lastTurnContent: string | null = null
+  private authRetrying = false
   private readonly transcript: ChatTranscript
   private startPromise: Promise<void> | null = null
 
@@ -152,6 +153,7 @@ export class AntigravityChatService extends EventEmitter {
       if (!session.live) this.profile = await ensureAntigravityProfile(this.stateDir, { cwd: this.cwd })
       if (this.session !== session || (conversationId && session.conversationId !== conversationId) || this.activeTurnId) throw new Error('Antigravity conversation changed while preparing the turn')
       this.lastTurnContent = turn.content
+      this.authRetrying = false
       session.send(turn.content)
       this.setTurnContext(buildTurnContextReport({
         provider: 'antigravity',
@@ -484,6 +486,7 @@ export class AntigravityChatService extends EventEmitter {
 
   private onTurnEnd(turnId: string, end: TurnEnd): void {
     if (end.status === 'failed' && this.retryWithoutUndeclaredTools(turnId, end.error ?? '')) return
+    if (end.status === 'failed' && this.retryOnAuthFailure(turnId, end.error ?? '')) return
     handleProviderTurnEnd(turnId, end, {
       addNotice: (text, tone, id) => this.addNotice(text, tone, id),
       setPaused: (id) => this.setPaused(id)
@@ -494,6 +497,38 @@ export class AntigravityChatService extends EventEmitter {
     void Promise.all([this.history.saveTranscript(conversationId, items), this.history.recordThread(conversationId, this.cwd, items)])
       .catch((error: unknown) => { console.warn('[antigravity] could not record the conversation:', messageOf(error)) })
     void this.refreshThreadName(conversationId)
+  }
+
+  /**
+   * The CLI's OAuth access token expires after 60 minutes. In long agentic tasks, agy's background
+   * refresher updates the system keyring, but its active in-memory client fails on the next call
+   * with 401 UNAUTHENTICATED. Retiring the dead process and continuing on a fresh process
+   * seamlessly recovers the turn when the refreshed token is valid.
+   */
+  private retryOnAuthFailure(turnId: string, error: string): boolean {
+    if (!isAntigravityAuthFailure(error) || this.authRetrying) return false
+    const session = this.session
+    if (!session || !session.conversationId) return false
+    this.authRetrying = true
+    void (async () => {
+      try {
+        await session.retire()
+        const check = await runAntigravityCommand(['models'])
+        if (!check.ok) {
+          this.setConnection({ state: 'signed-out', message: SIGN_IN_MESSAGE })
+          this.addNotice('Antigravity session expired. Please sign in via terminal `agy` and retry.', 'error', turnId)
+          return
+        }
+        this.addNotice('Antigravity credentials refreshed; continuing turn…', 'info', turnId)
+        if (this.session !== session || this.activeTurnId) throw new Error('Antigravity conversation changed while retrying after auth refresh')
+        session.send('The stream was interrupted due to a credential refresh. Please continue the task you were working on.')
+      } catch (retryError) {
+        this.addNotice(messageOf(retryError), 'error', turnId)
+      } finally {
+        this.authRetrying = false
+      }
+    })()
+    return true
   }
 
   /**
