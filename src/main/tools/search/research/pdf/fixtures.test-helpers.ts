@@ -2,7 +2,7 @@ import { deflateSync } from 'node:zlib'
 import { createCanvas } from '@napi-rs/canvas'
 
 /** Small real PDFs: native text, raster-only scans, mixed content, rotation, and blank pages. */
-export function pdfFixture(pages: Array<{ text?: string; scan?: string; rotate?: number }>): Uint8Array<ArrayBuffer> {
+export function pdfFixture(pages: Array<{ text?: string; scan?: string; rotate?: number; imageWidth?: number }>): Uint8Array<ArrayBuffer> {
   const objects: Buffer[] = [Buffer.alloc(0), Buffer.alloc(0), Buffer.from('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>')]
   const add = (body: Buffer | string) => { objects.push(Buffer.from(body)); return objects.length }
   const stream = (data: Buffer, dictionary = '') => Buffer.concat([Buffer.from(`<< ${dictionary} /Length ${data.length} >>\nstream\n`), data, Buffer.from('\nendstream')])
@@ -18,7 +18,7 @@ export function pdfFixture(pages: Array<{ text?: string; scan?: string; rotate?:
       const rgba = context.getImageData(0, 0, 800, 300).data
       const rgb = Buffer.alloc(800 * 300 * 3)
       for (let i = 0; i < 800 * 300; i++) for (let c = 0; c < 3; c++) rgb[i * 3 + c] = rgba[i * 4 + c]
-      imageId = add(stream(deflateSync(rgb), '/Type /XObject /Subtype /Image /Width 800 /Height 300 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode'))
+      imageId = add(stream(deflateSync(rgb), `/Type /XObject /Subtype /Image /Width ${page.imageWidth ?? 800} /Height 300 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode`))
       commands += 'q 800 0 0 300 0 0 cm /Im0 Do Q\n'
     }
     if (page.text) commands += `BT /F1 24 Tf 30 250 Td (${page.text.replace(/[()\\]/g, '\\$&')}) Tj ET\n`

@@ -78,6 +78,15 @@ test('inspection validates page/crop budgets before starting work', () => {
   ]) assert.throws(() => validatePdfInspection({ action: 'page', ...request }))
 })
 
+test('oversized embedded rasters fail explicitly instead of producing incomplete page images', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'pdf-large-raster-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const bytes = pdfFixture([{ scan: 'OVERSIZE', imageWidth: 80_000 }])
+  const path = join(root, 'large.pdf')
+  await writeFile(path, bytes)
+  await assert.rejects(inspect(path, createHash('sha256').update(bytes).digest('hex'), { action: 'page', page: 1, dpi: 72 }, signal), /Image exceeded maximum allowed size/)
+})
+
 test('cancellation terminates nested workers and releases the inspection queue', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'pdf-child-abort-'))
   t.after(() => rm(root, { recursive: true, force: true }))

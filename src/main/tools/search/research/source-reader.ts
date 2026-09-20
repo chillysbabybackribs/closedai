@@ -127,7 +127,7 @@ export class SourceStore {
     await rm(join(this.root, runId), { recursive: true, force: true })
   }
 
-  /** Expansion is staged under a temporary id. Only an accepted read replaces the text atomically. */
+  /** Expansion publishes the staged text and original bytes under one revision pointer. */
   async replace(runId: string, sourceId: string, stagedId: string): Promise<void> {
     await replaceSource(this.root, runId, sourceId, stagedId)
   }
