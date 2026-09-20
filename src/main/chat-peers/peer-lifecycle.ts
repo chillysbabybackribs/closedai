@@ -177,7 +177,7 @@ export class PeerLifecycle {
     if (!record || !chatRecordIsBlank(record) || record.continuation?.handoff) return false
     const entry = this.peers.get(chatId)
     if (!entry) return true
-    if (entry.busy > 0) return false
+    if (entry.busy > 0 || entry.surface.hasRunningBackground?.()) return false
     const snapshot = entry.surface.snapshot({ limit: 1 })
     return !snapshot.items.some((item) => item.type === 'user') && !snapshot.activeTurnId
   }
@@ -192,7 +192,10 @@ export class PeerLifecycle {
   }
 
   isRunning(chatId: ChatPaneId): boolean {
-    return this.peers.get(chatId)?.surface.snapshot({ limit: 0 }).activeTurnId != null
+    const entry = this.peers.get(chatId)
+    if (!entry) return false
+    if (entry.surface.hasRunningBackground?.()) return true
+    return entry.surface.snapshot({ limit: 0 }).activeTurnId != null
   }
 
   /**

@@ -44,10 +44,11 @@ export class PeerIdleParking {
   schedule(paneId: ChatPaneId): void {
     const entry = this.peer(paneId)
     if (!entry || entry.parked || entry.idleTimer || entry.surface.snapshot({ limit: 0 }).activeTurnId) return
+    if (entry.surface.hasRunningBackground?.()) return
     const selected = paneId === this.selectedPaneId()
     entry.idleTimer = setTimeout(() => {
       entry.idleTimer = null
-      if (entry.surface.snapshot({ limit: 0 }).activeTurnId) return
+      if (entry.surface.snapshot({ limit: 0 }).activeTurnId || entry.surface.hasRunningBackground?.()) return
       // Selected since the clock started: it earns the longer window rather than parking now.
       if (!selected && paneId === this.selectedPaneId()) {
         this.schedule(paneId)
