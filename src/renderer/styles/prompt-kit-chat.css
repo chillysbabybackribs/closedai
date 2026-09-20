@@ -192,6 +192,9 @@
 }
 
 .prompt-composer-input {
+  /* The card is the query container for its own action row: when panes split the window,
+     the row adapts to the card's width, not the viewport's. */
+  container: composer / inline-size;
   max-width: calc(var(--chat-column-width) + 64px);
   margin-inline: auto;
   padding: 8px;
@@ -317,8 +320,52 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
   margin-top: 5px;
   padding: 0 3px 3px;
+}
+
+/* The start group is the only thing allowed to give way: the model name ellipsizes and the
+   qualifiers drop before the send/pause button on the end group can leave the card. */
+.prompt-composer-actions-start {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.prompt-composer-actions-end {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.prompt-composer-actions-start .prompt-model-controls {
+  flex: 1 1 auto;
+}
+
+.prompt-composer-actions-start .model-menu-trigger {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.prompt-composer-actions-start .context-meter {
+  flex: none;
+}
+
+@container composer (max-width: 420px) {
+  .prompt-composer-actions .model-menu-trigger-context,
+  .prompt-composer-actions .model-menu-trigger-effort {
+    display: none;
+  }
+}
+
+@container composer (max-width: 330px) {
+  .prompt-composer-actions .prompt-model-controls { gap: 4px; }
+  .prompt-composer-actions .context-meter-value { display: none; }
+  .prompt-composer-actions .context-meter { padding-inline: 4px; }
 }
 
 .prompt-composer-tool {

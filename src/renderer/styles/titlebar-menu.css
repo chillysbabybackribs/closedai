@@ -87,10 +87,8 @@
   color: var(--chrome-control-strong);
 }
 
-/* Every row is a placeholder today, so the disabled state IS the resting state:
-   legible rather than the usual near-invisible 35%. */
 .titlebar-menu-item[data-disabled] {
-  color: var(--chrome-control-muted);
+  color: color-mix(in srgb, var(--chrome-control-muted) 65%, transparent);
 }
 
 .titlebar-menu-shortcut {

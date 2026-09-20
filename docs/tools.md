@@ -475,7 +475,7 @@ subscriber errors after the model-visible result is produced.
 
 ## Turn trace
 
-Separate from telemetry, File → "Turn trace" in the title bar opens a live view of everything the main
+Separate from telemetry, Tools → "Turn trace" in the title bar opens a live view of everything the main
 process saw a model do: turn start and end with duration, every registry tool call with its
 full arguments and result (`registry.observe`), each normalized transcript item and context
 update, and the raw JSON lines exchanged with each provider process (Codex app-server, the

@@ -202,7 +202,7 @@ export function Composer({
           {attachmentError && <div className="prompt-attachment-error" role="alert">{attachmentError}</div>}
 
           <PromptInputActions className="prompt-composer-actions">
-            <div className="flex items-center gap-1">
+            <div className="prompt-composer-actions-start">
               <PromptInputAction tooltip="New chat">
                 <Button
                   type="button"
@@ -239,7 +239,7 @@ export function Composer({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="prompt-composer-actions-end">
               <AttachmentPicker
                 disabled={!enabled || running || sending}
                 inputRef={fileInputRef}

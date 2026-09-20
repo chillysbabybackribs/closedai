@@ -73,11 +73,20 @@ function App(): JSX.Element {
       } else if (shortcut === 'history') {
         event.preventDefault()
         toggleHistory()
+      } else if (shortcut === 'new-chat') {
+        event.preventDefault()
+        drawer.newChat()
+      } else if (shortcut === 'close-window') {
+        event.preventDefault()
+        void window.closedai.window.close()
+      } else if (shortcut === 'toggle-fullscreen') {
+        event.preventDefault()
+        void window.closedai.window.toggleFullscreen()
       }
     }
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [changeChatZoom, toggleHistory])
+  }, [changeChatZoom, drawer.newChat, toggleHistory])
 
   // Syntax grammars cost the same whenever they are compiled; paid here they are off every
   // chat switch, because the first transcript that holds a code block already finds them ready.
@@ -98,10 +107,16 @@ function App(): JSX.Element {
         <TitlebarMenu
           chatZoom={appearance.chatZoom}
           historyOpen={historyOpen}
+          drawerCollapsed={drawer.isCollapsed}
           onChatZoomChange={changeChatZoom}
+          onNewChat={drawer.newChat}
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenCredentials={() => setCredentialsOpen(true)}
           onToggleHistory={toggleHistory}
+          onToggleDrawer={drawer.toggleCollapsed}
+          onToggleBrowser={() => workspaceRef.current?.toggleBrowser()}
+          onToggleFullscreen={() => { void window.closedai.window.toggleFullscreen() }}
+          onCloseWindow={() => { void window.closedai.window.close() }}
           onOpenPaneDialog={setPaneDialog}
         />
         <AppWindowControls />

@@ -250,8 +250,10 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   status popover. A turn ending does not prove that all background tasks finished.
 - Completed assistant responses offer copy and branching. Timestamps appear when recorded;
   older history does not acquire invented timestamps.
-- The project rail contains the working timer and project menu; Tools and Turn trace open from
-  the title bar's File menu on the selected pane. Send, pause,
+- The project rail contains the working timer and project menu; Tool configuration, Turn trace,
+  and Credential Vault live in the title bar's Tools menu. File owns chat creation, history,
+  settings, and closing the window; View owns drawer/browser visibility, chat zoom, and fullscreen.
+  Send, pause,
   and resume controls live in the composer. Pause ends the provider turn — no protocol can suspend
   a generation and restart the same one — but every lane keeps the partial answer and the
   conversation, so Resume is an ordinary next turn carrying `CHAT_RESUME_PROMPT`. It is offered
@@ -261,7 +263,8 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   resumes the conversation id on the next turn. Antigravity sends the user's prompt directly
   on process startup; it has no hidden initialization turn. Appearance settings separate message and composer font sizes
   (defaults 14 and 15 px, range 13–22) from chat zoom.
-- Ctrl/Cmd+, opens settings. Ctrl/Cmd+H opens chat history. Browser and chat zoom have separate
+- Ctrl/Cmd+, opens settings, Ctrl/Cmd+H opens chat history, Ctrl/Cmd+N creates a chat,
+  Ctrl/Cmd+W closes the window, and F11 toggles fullscreen. Browser and chat zoom have separate
   controls; these shell shortcuts are handled in `renderer/app-shortcuts.ts`.
 - Every http(s) URL a response references is clickable and opens in the app browser through
   `browser.openTab`, rendered as a favicon source chip with a hover preview. `components/ui/markdown.tsx`
@@ -441,7 +444,7 @@ See [Tools](tools.md) for configuration and measurement limits.
 
 ## Credential vault
 
-`File ▸ Credential Vault` opens the app's store of API keys and logins. The fixed-size card keeps
+`Tools ▸ Credential Vault` opens the app's store of API keys and logins. The fixed-size card keeps
 the vault list and create form at the same dimensions. Entries render as a card grid — brand mark
 on a 44px tile, entry name and service tag, the service description, its fields with masked
 secrets, and a state dot showing whether the OS keychain encrypted them — closing on a dashed

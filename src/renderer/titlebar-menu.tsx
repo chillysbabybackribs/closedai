@@ -8,12 +8,13 @@ import {
 } from './chat-zoom.js'
 
 /** One menu's worth of rows. `null` is a separator. */
-type MenuRow = {
+type MenuAction = 'new-chat' | 'history' | 'settings' | 'close-window' | 'toggle-drawer' |
+  'toggle-browser' | 'toggle-fullscreen' | 'credentials' | 'tools' | 'trace'
+
+type MenuRow = ({
   label: string
   shortcut?: string
-  command?: ChatZoomCommand
-  action?: 'settings' | 'history' | 'credentials' | 'tools' | 'trace'
-} | null
+} & ({ command: ChatZoomCommand; action?: never } | { action: MenuAction; command?: never })) | null
 
 type Menu = { label: string; rows: MenuRow[] }
 
@@ -23,57 +24,37 @@ function zoomCommandIsDisabled(command: ChatZoomCommand, chatZoom: number): bool
   return chatZoom === CHAT_ZOOM_DEFAULT
 }
 
-/* Shell menus matching the desktop apps this chrome is modelled on. Rows without
-   commands remain placeholders until their application behavior exists. */
 const MENUS: Menu[] = [
   {
     label: 'File',
     rows: [
-      { label: 'New chat', shortcut: 'Ctrl+N' },
+      { label: 'New chat', shortcut: 'Ctrl+N', action: 'new-chat' },
       { label: 'Open chat history', shortcut: 'Ctrl+H', action: 'history' },
       null,
-      { label: 'Tools', action: 'tools' },
-      { label: 'Turn trace', action: 'trace' },
-      null,
-      { label: 'Credential Vault', action: 'credentials' },
       { label: 'Settings', shortcut: 'Ctrl+,', action: 'settings' },
       null,
-      { label: 'Close window', shortcut: 'Ctrl+W' }
-    ]
-  },
-  {
-    label: 'Edit',
-    rows: [
-      { label: 'Undo', shortcut: 'Ctrl+Z' },
-      { label: 'Redo', shortcut: 'Ctrl+Shift+Z' },
-      null,
-      { label: 'Cut', shortcut: 'Ctrl+X' },
-      { label: 'Copy', shortcut: 'Ctrl+C' },
-      { label: 'Paste', shortcut: 'Ctrl+V' },
-      null,
-      { label: 'Find in chat', shortcut: 'Ctrl+F' }
+      { label: 'Close window', shortcut: 'Ctrl+W', action: 'close-window' }
     ]
   },
   {
     label: 'View',
     rows: [
-      { label: 'Reload', shortcut: 'Ctrl+R' },
-      { label: 'Toggle browser pane' },
+      { label: 'Toggle side drawer', action: 'toggle-drawer' },
+      { label: 'Toggle browser pane', action: 'toggle-browser' },
       null,
       { label: 'Zoom in', shortcut: 'Ctrl+=', command: 'in' },
       { label: 'Zoom out', shortcut: 'Ctrl+-', command: 'out' },
-      { label: 'Actual size', shortcut: 'Ctrl+0', command: 'reset' },
+      { label: 'Reset zoom', shortcut: 'Ctrl+0', command: 'reset' },
       null,
-      { label: 'Full screen', shortcut: 'F11' }
+      { label: 'Toggle full screen', shortcut: 'F11', action: 'toggle-fullscreen' }
     ]
   },
   {
-    label: 'Help',
+    label: 'Tools',
     rows: [
-      { label: 'Documentation' },
-      { label: 'Keyboard shortcuts' },
-      null,
-      { label: 'About ClosedAI' }
+      { label: 'Tool configuration', action: 'tools' },
+      { label: 'Turn trace', action: 'trace' },
+      { label: 'Credential Vault', action: 'credentials' }
     ]
   }
 ]
@@ -81,10 +62,16 @@ const MENUS: Menu[] = [
 export type TitlebarMenuProps = {
   chatZoom: number
   historyOpen: boolean
+  drawerCollapsed: boolean
   onChatZoomChange: (command: ChatZoomCommand) => void
+  onNewChat: () => void
   onOpenSettings: () => void
   onOpenCredentials: () => void
   onToggleHistory: () => void
+  onToggleDrawer: () => void
+  onToggleBrowser: () => void
+  onToggleFullscreen: () => void
+  onCloseWindow: () => void
   /** Tools and turn trace dialogs belong to the selected chat pane. */
   onOpenPaneDialog: (dialog: 'tools' | 'trace') => void
 }
@@ -93,10 +80,16 @@ export type TitlebarMenuProps = {
 export const TitlebarMenu = memo(function TitlebarMenu({
   chatZoom,
   historyOpen,
+  drawerCollapsed,
   onChatZoomChange,
+  onNewChat,
   onOpenSettings,
   onOpenCredentials,
   onToggleHistory,
+  onToggleDrawer,
+  onToggleBrowser,
+  onToggleFullscreen,
+  onCloseWindow,
   onOpenPaneDialog
 }: TitlebarMenuProps): JSX.Element {
   return (
@@ -118,20 +111,28 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                       className="titlebar-menu-item"
                       data-ui="titlebar.menu-item"
                       data-ui-key={row.label.toLowerCase().replace(/\s+/g, '-')}
-                      disabled={
-                        (!row.command && !row.action) ||
-                        (row.command ? zoomCommandIsDisabled(row.command, chatZoom) : false)
-                      }
+                      disabled={row.command ? zoomCommandIsDisabled(row.command, chatZoom) : false}
                       onSelect={() => {
-                        if (row.command) onChatZoomChange(row.command)
+                        if (row.command) {
+                          onChatZoomChange(row.command)
+                          return
+                        }
+                        if (row.action === 'new-chat') onNewChat()
                         if (row.action === 'settings') onOpenSettings()
                         if (row.action === 'credentials') onOpenCredentials()
                         if (row.action === 'history') onToggleHistory()
+                        if (row.action === 'toggle-drawer') onToggleDrawer()
+                        if (row.action === 'toggle-browser') onToggleBrowser()
+                        if (row.action === 'toggle-fullscreen') onToggleFullscreen()
+                        if (row.action === 'close-window') onCloseWindow()
                         if (row.action === 'tools' || row.action === 'trace') onOpenPaneDialog(row.action)
                       }}
                     >
-                      {/* The row keeps its manifest key; only the wording follows the panel. */}
-                      <span>{row.action === 'history' && historyOpen ? 'Close chat history' : row.label}</span>
+                      <span>{
+                        row.action === 'history' && historyOpen ? 'Close chat history'
+                          : row.action === 'toggle-drawer' ? `${drawerCollapsed ? 'Show' : 'Hide'} side drawer`
+                            : row.label
+                      }</span>
                       {row.shortcut && (
                         <span className="titlebar-menu-shortcut">
                           {row.command === 'reset' ? `${chatZoom}%  ` : ''}{row.shortcut}
