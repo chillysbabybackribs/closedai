@@ -93,7 +93,9 @@ export class PeerLifecycle {
       // belongs to a pane that no longer exists and must not resurrect its summary.
       if (this.peers.get(record.id) !== entry) return
       const wasRunning = entry.display.current.running
+      const oldTitle = entry.display.current.title
       this.onEvent(entry, event)
+      if (entry.display.current.title !== oldTitle) this.onEvent(entry, { type: 'title', title: entry.display.current.title })
       if (wasRunning && !entry.display.current.running && surface.generateTitle) {
         void this.titles.generate(record.id, surface.snapshot(), surface.generateTitle.bind(surface))
       }
