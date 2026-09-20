@@ -316,7 +316,9 @@ without the user's browser session, follow redirects, and keep popups out of the
 
 The production search pipeline (real API credentials, `SourceStore`, live source tab, `search.read`
 excerpts) is verified with `npm run search:pipeline` (`scripts/search-pipeline-live-check.mjs`).
-Requires at least one search API key documented below.
+Requires at least one search API key documented below; `CLOSEDAI_LIVE_VERIFY_PROVIDER=exa` (or any
+provider id) pins the lane instead of taking the first credentialed one. The request goes to the
+already-running app when one owns the profile, so that app must be built from the current tree.
 
 ### Search credentials
 
