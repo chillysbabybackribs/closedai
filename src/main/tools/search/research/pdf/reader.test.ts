@@ -102,7 +102,7 @@ test('completed research can expand PDF coverage, page retained text, and preser
   const root = await mkdtemp(join(tmpdir(), 'pdf-expand-'))
   let body = pdf(['First page evidence', 'Second page evidence'])
   const store = new SourceStore(root, async () => new Response(body, { headers: { 'content-type': 'application/pdf' } }), reader)
-  const service = new ResearchService(new SearchRouter({ providers: [] }), {
+  const service = new ResearchService(new SearchRouter([]), {
     owner: () => ({ paneId: 'pane', threadId: 'thread', turnId: 'turn', workspace: '/test' }),
     collect: (...args) => store.collect(...args), read: (...args) => store.read(...args),
     replace: (...args) => store.replace(...args), discard: (...args) => store.discard(...args), remove: (id) => store.remove(id)
