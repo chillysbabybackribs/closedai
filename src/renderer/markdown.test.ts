@@ -87,8 +87,8 @@ test('tables render through the shadcn primitive and right-align numeric cells',
   assert.match(html, /<div data-slot="table-container" class="relative w-full overflow-x-auto"><table data-slot="table"/)
   assert.match(html, /<th data-slot="table-head" class="[^"]*whitespace-nowrap[^"]*text-right[^"]*">Latency<\/th>/)
   assert.match(html, /<td data-slot="table-cell" class="[^"]*tabular-nums whitespace-nowrap text-right[^"]*">42%<\/td>/)
-  assert.match(html, /<td data-slot="table-cell" class="[^"]*whitespace-normal \[overflow-wrap:normal\]">Shofer<\/td>/)
-  assert.match(html, /<td data-slot="table-cell" class="[^"]*whitespace-normal \[overflow-wrap:normal\]">v2\.5 beta<\/td>/)
+  assert.match(html, /<td data-slot="table-cell" class="[^"]*whitespace-normal">Shofer<\/td>/)
+  assert.match(html, /<td data-slot="table-cell" class="[^"]*whitespace-normal">v2\.5 beta<\/td>/)
 })
 
 test('leaves sentence punctuation and wrapping parentheses outside the link', () => {

@@ -141,7 +141,7 @@ const DEFAULT_COMPONENTS: Partial<Components> = {
   },
   td: function CellComponent({ node: _node, style, className, children, ...props }: CellProps) {
     const numeric = NUMERIC_CELL.test(textContent(children).trim())
-    return <TableCell className={cn('px-3 py-2 align-top whitespace-normal [overflow-wrap:normal]', numeric && 'tabular-nums whitespace-nowrap', cellAlign(style, numeric), className)} {...props}>{children}</TableCell>
+    return <TableCell className={cn('px-3 py-2 align-top whitespace-normal', numeric && 'tabular-nums whitespace-nowrap', cellAlign(style, numeric), className)} {...props}>{children}</TableCell>
   },
   a: MarkdownLink,
   code: function CodeComponent({ className, children, node: _node, ...props }) {

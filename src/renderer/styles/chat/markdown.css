@@ -167,7 +167,9 @@
 .aui-md .aui-md-code-body { font-size: var(--chat-fs-code, 12px); }
 
 /* Tables are the shadcn Table primitive (components/ui/table.tsx); the markdown renderer sets
-   per-cell alignment and wrapping. Only what the primitive cannot express lives here. */
+   per-cell alignment and wrapping. Only what the primitive cannot express lives here: the prose
+   container's `anywhere` wrapping must not reach cells, or a squeezed column breaks words. */
+.aui-md td { overflow-wrap: normal; }
 .aui-md td .prompt-source-trigger,
 .aui-md td code { white-space: nowrap; }
 .aui-md td > p { margin: 0; }
