@@ -42,7 +42,7 @@ export function youClient(deps: ProviderDeps): SearchProviderClient {
           ...(request.language ? { language: request.language.toUpperCase() } : {}),
           ...(hasInclude && !hasExclude ? { include_domains: includeDomains } : {}),
           ...(hasExclude && !hasInclude ? { exclude_domains: excludeDomains } : {}),
-          ...(request.intent === 'answer' ? { knowledge: 'core' } : {})
+          ...(request.intent === 'answer' && request.includeAnswer !== false ? { knowledge: 'core' } : {})
         }),
         signal
       })

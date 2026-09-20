@@ -9,7 +9,7 @@ export function tavilyClient(deps: ProviderDeps): SearchProviderClient {
     provider: 'tavily',
     async search(request, signal) {
       const key = await deps.readKey('tavily')
-      const includeAnswer = ['answer', 'research', 'finance'].includes(request.intent) || request.depth === 'deep'
+      const includeAnswer = request.includeAnswer !== false && (['answer', 'research', 'finance'].includes(request.intent) || request.depth === 'deep')
       const topic = request.intent === 'news' ? 'news' : request.intent === 'finance' ? 'finance' : 'general'
       const country = topic === 'general' && request.country ? countryName(request.country) : undefined
       const includeDomains = normalizedDomains(request.includeDomains).slice(0, 300)

@@ -148,7 +148,7 @@ export class ResearchService {
     for (const url of urls) this.discover(run, { url, title: url, snippet: '', provider: undefined })
     for (const query of queries) this.track(run, async () => {
       try {
-        await this.router.search(query, run.controller.signal, (update) => {
+        await this.router.search({ ...query, includeAnswer: false }, run.controller.signal, (update) => {
           if (run.state !== 'running') return
           if ('error' in update) {
             run.errors.push({ query: query.query.slice(0, 200), provider: update.error.provider, message: update.error.message.slice(0, 300) })

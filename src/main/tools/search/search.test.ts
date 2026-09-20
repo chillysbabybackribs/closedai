@@ -66,7 +66,7 @@ test('one tool can call all four providers, normalize results, deduplicate, and 
   assert.equal(output.results.length, 3)
   assert.equal(output.results[0].snippet, 'Brave result')
   assert.equal(output.results[0].age, '2 days ago')
-  assert.deepEqual(output.results[0].corroboratedBy, ['serper'])
+  assert.deepEqual(output.results[0].discoveredBy, ['serper'])
   assert.deepEqual(output.answers, [{ provider: 'tavily', text: 'Tavily synthesis' }])
   assert.doesNotMatch(JSON.stringify(output), /secret-/)
   const deepBrave = new URL(calls.find((url) => url.includes('brave.com'))!)

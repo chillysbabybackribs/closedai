@@ -19,6 +19,8 @@ export type SearchRequest = {
   language?: string
   includeDomains?: string[]
   excludeDomains?: string[]
+  /** Research runs consume sources only; do not pay for discarded provider synthesis. */
+  includeAnswer?: boolean
 }
 
 export type SearchResult = {
@@ -26,7 +28,7 @@ export type SearchResult = {
   url: string
   snippet: string
   provider: SearchProvider
-  corroboratedBy?: SearchProvider[]
+  discoveredBy?: SearchProvider[]
   age?: string
   score?: number
 }

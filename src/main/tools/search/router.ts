@@ -73,7 +73,7 @@ export class SearchRouter {
       if (cached && this.now() - cached.at < CACHE_TTL_MS) {
         for (const provider of providers) observe?.({ output: {
           provider,
-          results: cached.response.results.filter((item) => item.provider === provider || item.corroboratedBy?.includes(provider))
+          results: cached.response.results.filter((item) => item.provider === provider || item.discoveredBy?.includes(provider))
             .map((item) => ({ ...item, provider })),
           answer: cached.response.answers.find((item) => item.provider === provider)?.text
         } })
@@ -230,7 +230,7 @@ function mergeResults(outputs: ProviderSearchResult[], perProviderCount: number)
       const key = canonicalUrl(candidate.url)
       const existing = byUrl.get(key)
       if (existing) {
-        existing.corroboratedBy = [...new Set([...(existing.corroboratedBy ?? []), candidate.provider])]
+        existing.discoveredBy = [...new Set([...(existing.discoveredBy ?? []), candidate.provider])]
         continue
       }
       const copy = { ...candidate }
