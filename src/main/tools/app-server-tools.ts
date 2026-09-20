@@ -3,7 +3,7 @@ import type { ToolRegistry } from './registry.js'
 import type { ToolResult } from './tool.js'
 
 // Adapter between the ToolRegistry and the Codex app-server protocol: tools are advertised
-// as `dynamicTools` on thread/start + thread/resume, and Codex invokes one with an
+// as `dynamicTools` on thread/start (resume restores persisted tools), and Codex invokes one with an
 // `item/tool/call` server request that must be answered with a DynamicToolCallResponse.
 
 export type DynamicToolSpec = {

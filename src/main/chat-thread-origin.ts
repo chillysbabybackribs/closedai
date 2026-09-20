@@ -24,14 +24,21 @@ export type ThreadOriginReader = (path: string) => Promise<string | null>
  * treat as "cannot tell" rather than "not ours" — hiding a chat is worse than listing one.
  */
 export const readThreadOriginator: ThreadOriginReader = async (path) => {
+  const record = await readThreadMetadata(path)
+  const originator = record?.originator
+  return typeof originator === 'string' ? originator : null
+}
+
+/** Bounded rollout metadata read; never loads conversation bodies. */
+export async function readThreadMetadata(path: string): Promise<Record<string, unknown> | null> {
   let handle
   try {
     handle = await open(path, 'r')
     const line = await firstLine(handle)
     if (!line) return null
-    const record = JSON.parse(line) as { originator?: unknown; payload?: { originator?: unknown } }
-    const originator = record.payload?.originator ?? record.originator
-    return typeof originator === 'string' ? originator : null
+    const record = JSON.parse(line)
+    const metadata = record?.payload ?? record
+    return metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? metadata : null
   } catch {
     return null
   } finally {

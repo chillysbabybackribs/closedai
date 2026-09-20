@@ -1,4 +1,6 @@
 import { EventEmitter } from 'node:events'
+import { isDeepStrictEqual } from 'node:util'
+import { readThreadMetadata } from './chat-thread-origin.js'
 import type {
   ChatAccount,
   ChatAttachment,
@@ -36,7 +38,7 @@ import {
   type ThreadHandoffSource
 } from './chat-context/thread-handoff.js'
 import { buildTurnContextReport } from './chat-context/turn-inspector.js'
-import { AppServerToolCalls } from './tools/app-server-tools.js'
+import { AppServerToolCalls, dynamicToolSpecs } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
 import { reasoningEffortForModel } from './chat-model-catalog.js'
 import { ChatModelState } from './chat-model-state.js'
@@ -54,6 +56,7 @@ export class ChatService extends EventEmitter {
   private readonly modelState = new ChatModelState()
   private threadId: string | null = null
   private threadName: string | null = null
+  private threadToolCatalog: unknown = null
   private activeTurnId: string | null = null
   private pausedTurnId: string | null = null
   private turnContext: ChatTurnContextReport | null = null
@@ -181,7 +184,7 @@ export class ChatService extends EventEmitter {
         ? traceLog.responses.waitForCompaction(this.paneId) : () => {}
       await Promise.all([this.ensureReady(), manager.prepareForSend().finally(endCompactionWait)])
       if (this.activeTurnId) throw new Error('A Codex turn is already running')
-      const threadId = await this.ensureThread()
+      const threadId = await this.ensureThread(clientUserMessageId)
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const additionalContext = {
         ...this.turnAdditionalContext(prompt),
@@ -403,6 +406,8 @@ export class ChatService extends EventEmitter {
     if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')
     this.threadId = thread.id
     this.threadName = nullableString(thread.name)
+    const metadata = typeof thread.path === 'string' ? await readThreadMetadata(thread.path) : null
+    this.threadToolCatalog = Array.isArray(metadata?.dynamic_tools) ? metadata.dynamic_tools : null
     const saved = this.settings.get()
     this.modelState.adoptResumed(
       { model: saved.chatModelId, effort: saved.chatReasoningEffort },
@@ -427,14 +432,14 @@ export class ChatService extends EventEmitter {
   }
 
   /** Drop the provider thread while keeping the visible transcript; seed the next send. */
-  private async rotateProviderSession(): Promise<void> {
+  private async rotateProviderSession(excludeItemId?: string): Promise<void> {
     try {
       await applyProviderRotation(this.settings, {
         paneId: this.paneId,
         provider: 'codex',
         threadId: this.threadId,
         threadName: this.threadName,
-        items: this.transcript.snapshot()
+        items: this.transcript.snapshot().filter((item) => item.id !== excludeItemId)
       }, async () => {
         this.threadId = null
         this.compactor.reset()
@@ -473,7 +478,18 @@ export class ChatService extends EventEmitter {
     await this.start()
   }
 
-  private async ensureThread(): Promise<string> {
+  private async ensureThread(clientUserMessageId?: string): Promise<string> {
+    const catalog = dynamicToolSpecs(this.tools)
+    if (this.threadId && !isDeepStrictEqual(this.threadToolCatalog, catalog)) {
+      // Resume cannot replace dynamic tools. Keep the transcript and source recall while
+      // starting a provider thread with the current catalog, even when idle rotation is off.
+      await this.rotateProviderSession(clientUserMessageId ? `user:${clientUserMessageId}` : undefined)
+      if (this.threadId) {
+        // Empty conversations have no handoff to rotate; there is no history to summarize.
+        await this.settings.set({ chatThreadId: null })
+        this.threadId = null
+      }
+    }
     if (this.threadId) return this.threadId
     const response = await this.client.request<ThreadResponse>(
       'thread/start',
@@ -482,6 +498,7 @@ export class ChatService extends EventEmitter {
     const thread = recordOf(response.thread)
     if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')
     this.threadId = thread.id
+    this.threadToolCatalog = catalog
     this.threadName = nullableString(thread.name)
     this.modelState.adopt(response.model)
     await this.settings.set({ chatThreadId: thread.id })

@@ -14,25 +14,24 @@ export type ThreadModelSettings = {
 }
 import { closedAiDeveloperInstructions } from './developer-instructions.js'
 
-function sharedThreadParams(cwd: string, tools: ToolRegistry): Record<string, unknown> {
+function sharedThreadParams(cwd: string): Record<string, unknown> {
   return {
     cwd,
     approvalPolicy: 'never',
     sandbox: 'danger-full-access',
-    developerInstructions: closedAiDeveloperInstructions(),
-    ...(tools.isEmpty ? {} : { dynamicTools: dynamicToolSpecs(tools) })
+    developerInstructions: closedAiDeveloperInstructions()
   }
 }
 
 export function resumeThreadParams(
   threadId: string,
   cwd: string,
-  tools: ToolRegistry,
+  _tools: ToolRegistry,
   modelSettings: ThreadModelSettings = { model: null, effort: null }
 ): Record<string, unknown> {
   return {
     threadId,
-    ...sharedThreadParams(cwd, tools),
+    ...sharedThreadParams(cwd),
     excludeTurns: false,
     ...(modelSettings.model ? { model: modelSettings.model } : {}),
     ...threadConfig(modelSettings)
@@ -45,7 +44,8 @@ export function startThreadParams(
   modelSettings: ThreadModelSettings = { model: null, effort: null }
 ): Record<string, unknown> {
   return {
-    ...sharedThreadParams(cwd, tools),
+    ...sharedThreadParams(cwd),
+    dynamicTools: dynamicToolSpecs(tools),
     serviceName: 'closedai',
     ...(modelSettings.model ? { model: modelSettings.model } : {}),
     ...threadConfig(modelSettings)
