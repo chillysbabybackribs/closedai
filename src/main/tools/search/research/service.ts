@@ -44,7 +44,7 @@ type Run = {
   admission: SourceAdmission; preferredDomains: Set<string>; omittedCandidates: number
   timing: ResearchTiming
   coverage: SourceCoverage
-  expansions: Map<string, { controller: AbortController; turnId: string }>
+  expansions: Map<string, { controller: AbortController; turnId: string; committing?: boolean }>
 }
 
 /** The scheduler owns async work after the start tool returns; calls only observe/control it. */
@@ -145,6 +145,7 @@ export class ResearchService {
         source.expansionError = 'Expansion returned less text; the previous document was preserved'
         return { changed: false, source: { ...source, expanding: false }, untrusted: true }
       }
+      run.expansions.get(sourceId)!.committing = true
       await this.deps.replace(id, sourceId, stagedId)
       this.collected(run, source, document)
       delete source.error
@@ -166,8 +167,12 @@ export class ResearchService {
     const run = this.owned(id, context)
     const source = [...run.sources.values()].find((item) => item.id === sourceId)
     if (!source || source.state !== 'ready') throw new Error('Source is not ready or does not belong to this run')
+    const hash = source.sha256
+    const replacing = () => run.expansions.get(sourceId)?.committing === true
+    if (replacing()) throw new Error('Source text is being replaced; retry from a fresh offset')
     const text = await this.deps.read(id, sourceId)
     this.owned(id, context)
+    if (replacing() || source.sha256 !== hash) throw new Error('Source text changed during this read; retry from a fresh offset')
     const start = query ? text.toLowerCase().indexOf(query.toLowerCase(), offset) : offset
     if (start < 0) return { source, found: false }
     return {
