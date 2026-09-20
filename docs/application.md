@@ -151,7 +151,8 @@ decisions, progress, next steps, and file references. One checkpoint per chat is
 thread id, revision, and transcript boundary on the chat record; it is usable only for that
 thread. State is capped at 6,000 serialized characters and oversized saves are rejected. Writes
 require the caller's active turn and matching expected revision. These are model-authored notes,
-not verified facts or authorization. They are not automatically regenerated or injected each turn.
+not verified facts or authorization. They are not automatically regenerated or injected each turn;
+active checkpoints are surfaced visually in the Context Inspector dialog with goals, progress, decisions, and files.
 
 A continuation or provider switch copies an applicable checkpoint into its existing
 ≤12k-character handoff, alongside recent conversation. It freezes the source's last item id, and
