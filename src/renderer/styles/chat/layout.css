@@ -169,6 +169,7 @@
     font-weight: 500;
   }
   .chat-layout-content .prompt-composer-actions { margin-top: 2px; padding: 0 2px 2px; }
+  .chat-layout-content .model-menu-trigger { height: 30px; }
   .chat-layout-content .prompt-composer-tool { height: 30px; min-width: 30px; padding-inline: 5px; }
   .chat-layout-content .prompt-composer-actions .prompt-composer-send,
   .chat-layout-content .prompt-composer-actions .prompt-composer-resume,
