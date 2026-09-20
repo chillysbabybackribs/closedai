@@ -14,9 +14,11 @@ const context: ToolContext = { paneId: 'pane', threadId: 'thread', turnId: 'turn
 const tick = () => new Promise<void>((resolve) => setImmediate(resolve))
 const url = 'https://example.com/paper.pdf'
 
-async function fixture(t: TestContext) {
+async function fixture(t: TestContext, directText?: string) {
   const root = await mkdtemp(join(tmpdir(), 'research-expansion-'))
-  const store = new SourceStore(root, async () => new Response('PDF bytes', { headers: { 'content-type': 'application/pdf' } }))
+  const store = new SourceStore(root, async () => new Response(directText ?? 'PDF bytes', {
+    headers: { 'content-type': directText === undefined ? 'application/pdf' : 'text/plain' }
+  }))
   let service!: ResearchService
   let contentsCalls = 0
   let reply = async (_signal: AbortSignal): Promise<Response> => Response.json({
@@ -127,4 +129,31 @@ test('expansion ownership, duplicate requests, later turns, and cancellation pre
   assert.equal(f.service.read(run.runId, later).sources[0].sha256, source.sha256)
   assert.equal((await f.store.read(run.runId, source.id)).length, 10_000)
   await assert.rejects(f.service.expand(run.runId, source.id, later, {}), /unstopped/)
+})
+
+test('direct expansion accepts uncapped budgets and cannot pair replacement text with the earlier hash', async (t) => {
+  const body = 'Long direct evidence '.repeat(12_000)
+  const f = await fixture(t, body)
+  const run = await f.start(true)
+  const source = run.sources[0]
+  assert.equal(source.chars, 10_000)
+  let release!: () => void
+  let replaced!: () => void
+  const committing = new Promise<void>((resolve) => { replaced = resolve })
+  const gate = new Promise<void>((resolve) => { release = resolve })
+  const replace = f.store.replace.bind(f.store)
+  f.store.replace = async (...args) => { await replace(...args); replaced(); await gate }
+  const operation = f.service.expand(run.runId, source.id, context, { maxTextChars: 0, maxSourceBytes: 0 }, 'direct')
+  try {
+    await committing
+    await assert.rejects(f.service.source(run.runId, source.id, context, 0, 100), /being replaced/)
+  } finally { release() }
+  await operation
+  const after = f.service.read(run.runId, context).sources[0]
+  assert.equal(after.representation, 'static_text')
+  assert.equal(after.chars, body.length)
+  assert.equal(after.incomplete, false)
+  assert.equal(f.contentsCalls(), 0)
+  const excerpt = await f.service.source(run.runId, source.id, context, 200_000, 100) as { text: string }
+  assert.equal(excerpt.text, body.slice(200_000, 200_100))
 })
