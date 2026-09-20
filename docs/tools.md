@@ -402,9 +402,10 @@ To trial the smaller budget, quit ClosedAI, set `"chatCompactAtTokens": 32000` i
 `<userData>/app-settings.json`, and relaunch the updated build. There is not yet a settings UI
 for this field. Keep `chatCompactAtPercent` at 80 as the window-pressure fallback. Restore
 `chatCompactAtTokens` to 0 to disable only the experiment; existing history is unchanged either
-way. 32k is an evaluation starting point, not a measured optimum. Native compaction does not
-automatically generate the model-written checkpoints described below. Seamless provider-session
-rotation is not implemented.
+way. 32k is an evaluation starting point, not a measured optimum. With `chatSeamlessRotation`
+enabled (the default), these thresholds trigger session rotation; set it to false to evaluate
+native compaction instead. Neither path automatically generates the model-written checkpoints
+described below.
 
 ## Working memory and recall
 
@@ -426,7 +427,7 @@ thread/turn. It requires `expected_revision` (0 when absent) and `state` with `g
 at most 12 non-empty strings of at most 400 characters. The whole serialized state must fit
 6,000 characters. Oversized or stale-revision writes fail without replacing the checkpoint.
 The response contains revision and boundary metadata rather than echoing the entire state.
-One checkpoint per pane is persisted in the existing settings store, not a separate transcript
+One checkpoint per chat is persisted in `ChatStore` (`chats.json`), not a separate transcript
 database. It is model-authored data, not an approval or independently verified work record.
 
 `peer_chats.recall` is read-only and accepts `scope: current|source|history`, optional literal
@@ -457,12 +458,13 @@ Recall and checkpoint are deferred where supported. Checkpoints remain optional.
 does not require user-facing narration, but relevant uncertainty and requested sources are disclosed.
 Continuation copies applicable notes into the existing
 bounded handoff, marked untrusted; later conversation can supersede those notes. There is no
-new model call on Send and no automatic same-pane session replacement. Disabling the checkpoint
+new model call on Send from recall or checkpoints. Idle session rotation is a separate mechanism
+described above. Disabling the checkpoint
 tool prevents new model writes; existing notes/history are not deleted.
 
 ## Seeing what exists: the Tools modal
 
-The Tools button on the composer's project rail opens the Tools modal (`src/renderer/tools/`). It reads
+The title bar's Tools menu opens tool configuration (`src/renderer/tools/`). It reads
 the registry as data (`manifest.ts`): every namespace, tool, and action, the exact description
 and schema the model is sent, and which providers the registry is advertised to.
 

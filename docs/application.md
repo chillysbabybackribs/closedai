@@ -178,7 +178,7 @@ on Codex and Claude can rotate the provider session invisibly: the visible trans
 a thin seed is queued for the next send, and each rotation appends metadata to the chat record
 for later recall-chain work. Source recall on the same pane after rotation reads the in-memory
 transcript through the frozen boundary so tool output remains recoverable without reopening the
-dropped provider thread. Native compaction remains the default until rotation is validated.
+dropped provider thread. Disabling seamless rotation restores the native compaction path.
 See [Model context](model-context.md) for trust and [Tools](tools.md) for limits.
 
 New chats can retrieve earlier conversations through the same memory service without transcript

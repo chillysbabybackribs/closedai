@@ -2,7 +2,7 @@
 
 ClosedAI is an Electron 44 workspace with an embedded Chromium browser and a chat surface
 supporting Codex, Claude Code, Antigravity, and Cursor. Multiple chats can run in one project; the
-sidebar selects which conversation is visible. All chats share the app's browser session.
+sidebar selects conversations, and the layout can show several chats at once. All chats share the app's browser session.
 Project selection restores that directory's open chats and model preferences.
 
 The renderer talks to the main process through the typed `window.closedai` preload bridge.
@@ -26,7 +26,8 @@ npm run build && npm run preview
 
 `CLOSEDAI_WORKSPACE` selects the initial working directory. Otherwise the app uses its saved
 workspace or the application checkout on first launch. The composer's project menu can change
-the directory after startup. Stop running chats before switching projects.
+the directory after startup. Manual project switches keep running chats in their original
+directories; model-requested deferred switches wait for all chats to become idle.
 
 `scripts/launch-electron-vite.mjs` removes inherited GPU-offload and Electron identity variables
 so development uses the Electron installed here. Approval prompts are disabled in all four
