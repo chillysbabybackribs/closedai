@@ -81,6 +81,22 @@ turn. `index.ts` saves the departing project's open chat ids and restores the de
 including selection; conversation ids live on the records. A directory without saved open chats
 receives a fresh chat. This is directory selection; it does not create a Git branch or worktree.
 
+Models can request `closedai_app.command project_switch` with `op: request` and an absolute
+existing `project_path`. One in-memory request waits for every pane and pane operation to become
+idle. Acceptance means pending: the model must finish its turn. The app verifies the destination,
+creates a fresh chat using the caller's model and conversation handoff (independent of focus),
+and submits a continuation of the previously authorized task. Existing destination conversations
+are not sent messages. Completed means the switch was verified and the continuation submitted,
+not that the continued task succeeded.
+
+`closedai_app.state` exposes the active project and latest `workspace.projectSwitch` status,
+including failures and the destination pane when created. Transcript notices report status changes.
+`project_switch op: cancel` releases the caller's pending request. Stopping or messaging that
+caller, closing it, changing its thread, manual project selection, and app shutdown also cancel
+pending work. An applying switch blocks new sends and cannot be cancelled or retried automatically.
+Requests do not survive restarts. Failed sequential tool batches cancel their queued switch.
+A provider send failure leaves the destination and handoff available for inspection and recovery.
+
 On launch only the selected pane is warmed. Selecting another pane immediately displays its
 available snapshot, then wakes its runtime asynchronously. A pane with no snapshot of its own —
 parked, detached, or freshly restored — paints from the chat's saved view instead: the last 60
