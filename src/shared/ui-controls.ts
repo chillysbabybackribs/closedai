@@ -124,6 +124,8 @@ export const UI_CONTROLS = {
   'dialog.tools': 'Tools dialog root (present only while open)',
   'dialog.trace': 'Turn trace dialog root (present only while open)',
   'dialog.context': 'Context inspector dialog root (present only while open)',
+  'context.compact': 'Compact conversation context from the context inspector advisory',
+  'context.new-chat': 'Start a fresh chat from the context inspector advisory',
   'dialog.settings': 'Appearance settings dialog root (present only while open)',
   'dialog.credentials': 'Credential vault dialog root (present only while open)',
   'image.zoom-in': 'Zoom into the active image tab',
