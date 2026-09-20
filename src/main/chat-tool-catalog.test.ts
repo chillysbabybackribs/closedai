@@ -49,7 +49,7 @@ async function fixture(t: test.TestContext, savedTools: unknown) {
         return { thread: { id: 'new-thread' } }
       }
       return { thread: { id: 'old-thread', path, turns: [{ id: 'old-turn', items: [
-        { type: 'userMessage', id: 'old-user', content: [{ type: 'inputText', text: 'Investigate the page' }] }
+        { type: 'userMessage', id: 'old-user', content: [{ type: 'text', text: 'Investigate the page' }] }
       ] }] } }
     }
   })
