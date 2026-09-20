@@ -8,6 +8,7 @@ import { isResearchSourceUrl, SourcePresentation, type OpenSearchTab } from '../
 import { mergeDates } from './source-metadata.js'
 import { MAX_CANDIDATES, prefersDomain, SourceAdmission } from './source-admission.js'
 import { ResearchTiming, type ResearchTimingEvent } from './timing.js'
+import { validateCoverage, type SourceCoverage } from './coverage.js'
 
 export type ResearchOwner = { paneId: string; threadId: string; turnId: string | null; workspace: string }
 export type ProvidedPage = { url: string; title: string; text: string; truncated: boolean }
@@ -17,7 +18,11 @@ export type ResearchDependencies = {
   /** Hidden Chromium read for pages whose static body is a JavaScript shell; absent means no workers. */
   render?: SourceReader
   /** Keeps page text a provider returned with discovery; absent means provider text is ignored and pages are fetched. */
-  retain?: (runId: string, sourceId: string, page: ProvidedPage) => Promise<SourceDocument>
+  retain?: (runId: string, sourceId: string, page: ProvidedPage, coverage?: SourceCoverage) => Promise<SourceDocument>
+  /** Extract a selected URL with Exa, retaining it under the supplied staging id. */
+  extract?: SourceReader
+  replace?: (runId: string, sourceId: string, stagedId: string) => Promise<void>
+  discard?: (runId: string, sourceId: string) => Promise<void>
   read(runId: string, sourceId: string): Promise<string>
   remove(runId: string): Promise<void>
   /** Opens a retained, user-owned tab once. Never follows subsequent results automatically. */
@@ -28,6 +33,7 @@ export type ResearchDependencies = {
 export type ResearchInput = {
   queries: SearchRequest[]; urls: string[]; maxSources: number; deadlineMs: number; presentation: 'live' | 'background'
   reserveSources?: number
+  coverage?: SourceCoverage
 }
 type Run = {
   id: string; owner: ResearchOwner; state: ResearchState; revision: number; pending: number
@@ -37,6 +43,8 @@ type Run = {
   presentation: SourcePresentation
   admission: SourceAdmission; preferredDomains: Set<string>; omittedCandidates: number
   timing: ResearchTiming
+  coverage: SourceCoverage
+  expansions: Map<string, AbortController>
 }
 
 /** The scheduler owns async work after the start tool returns; calls only observe/control it. */
@@ -55,6 +63,7 @@ export class ResearchService {
       throw new Error('This turn was stopped; it cannot start more research')
     }
     this.validate(input.queries, input.urls)
+    validateCoverage(input.coverage ?? {})
     if ([...this.runs.values()].filter((run) => run.state === 'running').length >= 8) {
       throw new Error('Eight research runs are already active; extend an existing run or wait for it')
     }
@@ -66,6 +75,7 @@ export class ResearchService {
       listeners: new Set(), presentation: new SourcePresentation(this.deps.openLive, context, input.presentation),
       admission: new SourceAdmission(input.maxSources, input.reserveSources), preferredDomains: new Set(), omittedCandidates: 0,
       timing: new ResearchTiming(id, (event) => this.deps.trace?.(owner, event), this.deps.now),
+      coverage: input.coverage ?? {}, expansions: new Map(),
       timer: setTimeout(() => this.finish(run, 'timed_out'), input.deadlineMs)
     }
     run.timer.unref?.()
@@ -86,12 +96,64 @@ export class ResearchService {
 
   cancel(id: string, context: ToolContext): ResearchSnapshot {
     const run = this.owned(id, context)
+    for (const controller of run.expansions.values()) controller.abort(new Error('Expansion cancelled'))
     this.finish(run, 'cancelled')
     return this.snapshot(run)
   }
 
   read(id: string, context: ToolContext, after = 0): ResearchSnapshot {
     return this.snapshot(this.owned(id, context), after)
+  }
+
+  async expand(id: string, sourceId: string, context: ToolContext, coverage: SourceCoverage,
+    method: 'auto' | 'direct' | 'exa' = 'auto'): Promise<unknown> {
+    const run = this.owned(id, context)
+    const owner = this.deps.owner(context)
+    if (this.disposed || !owner.turnId || this.stoppedTurns.get(owner.paneId) === `${owner.threadId}:${owner.turnId}`) {
+      throw new Error('Expand sources during an active, unstopped turn')
+    }
+    validateCoverage(coverage)
+    const source = [...run.sources.values()].find((item) => item.id === sourceId)
+    if (!source || !['ready', 'failed', 'deferred'].includes(source.state)) throw new Error('Source is unavailable or still being collected')
+    if (run.expansions.has(sourceId)) throw new Error('This source is already expanding')
+    if (!this.deps.replace || !this.deps.discard) throw new Error('Source expansion storage is unavailable')
+    const provider = method === 'exa' || (method === 'auto' && source.contentProvider === 'exa')
+    const reader = provider ? this.deps.extract : this.deps.collect
+    if (!reader) throw new Error('Exa source extraction is unavailable')
+    const controller = new AbortController()
+    const signal = AbortSignal.any([controller.signal, context.signal, AbortSignal.timeout(45_000)])
+    const stagedId = randomUUID()
+    run.expansions.set(sourceId, controller)
+    source.expanding = true
+    delete source.expansionError
+    source.revision = this.changed(run)
+    try {
+      let document = await reader(source.requestedUrl ?? source.url, id, stagedId, signal, coverage)
+      if (!provider && document.sparse && this.deps.render) {
+        document = await this.deps.render(source.requestedUrl ?? source.url, id, stagedId, signal, coverage)
+      }
+      signal.throwIfAborted()
+      this.owned(id, context)
+      if (this.deps.owner(context).turnId !== owner.turnId) throw new Error('The expansion turn has ended')
+      if (source.state === 'ready' && document.text.length < (source.chars ?? 0)) {
+        source.expansionError = 'Expansion returned less text; the previous document was preserved'
+        return { changed: false, source: { ...source }, untrusted: true }
+      }
+      await this.deps.replace(id, sourceId, stagedId)
+      this.collected(run, source, document)
+      delete source.error
+      if (provider) source.contentProvider = 'exa'
+      else delete source.contentProvider
+      return { changed: true, source: { ...source, expanding: false }, untrusted: true }
+    } catch (error) {
+      source.expansionError = message(error)
+      throw error
+    } finally {
+      source.expanding = false
+      source.revision = this.changed(run)
+      try { await this.deps.discard(id, stagedId) }
+      finally { run.expansions.delete(sourceId) }
+    }
   }
 
   async source(id: string, sourceId: string, context: ToolContext, offset: number, maxChars: number, query?: string): Promise<unknown> {
@@ -111,7 +173,7 @@ export class ResearchService {
 
   async wait(id: string, context: ToolContext, after: number, timeoutMs: number): Promise<ResearchSnapshot> {
     const run = this.owned(id, context)
-    if (run.revision <= after && run.state === 'running') {
+    if (run.revision <= after && (run.state === 'running' || run.expansions.size > 0)) {
       await new Promise<void>((resolve, reject) => {
         const complete = () => { cleanup(); resolve() }
         const abort = () => { cleanup(); reject(context.signal.reason) }
@@ -167,7 +229,7 @@ export class ResearchService {
     this.admit(run)
     for (const query of queries) this.track(run, async () => {
       try {
-        await this.router.search({ ...query, includeAnswer: false, sourceText: true }, run.controller.signal, (update) => {
+        await this.router.search({ ...query, includeAnswer: false, sourceText: true, maxTextChars: run.coverage.maxTextChars }, run.controller.signal, (update) => {
           if (run.state !== 'running') return
           if ('error' in update) {
             run.errors.push({ query: query.query.slice(0, 200), provider: update.error.provider, message: update.error.message.slice(0, 300) })
@@ -235,7 +297,7 @@ export class ResearchService {
     if (run.presentation.consider(source.url)) this.changed(run)
     this.track(run, async () => {
       try {
-        const document = await this.deps.retain!(run.id, source.id, { url: source.url, title: source.title, text: content.text, truncated: content.truncated })
+        const document = await this.deps.retain!(run.id, source.id, { url: source.url, title: source.title, text: content.text, truncated: content.truncated }, run.coverage)
         if (run.state !== 'running') return
         this.collected(run, source, document)
         source.contentProvider = provider
@@ -264,7 +326,7 @@ export class ResearchService {
       source.state = 'reading'
       source.revision = this.changed(run)
       try {
-        const document = await this.deps.collect(source.url, run.id, source.id, run.controller.signal)
+        const document = await this.deps.collect(source.url, run.id, source.id, run.controller.signal, run.coverage)
         if (run.state !== 'running') return
         if (document.sparse && this.deps.render) await this.render(run, source, document)
         else this.collected(run, source, document)
@@ -289,7 +351,7 @@ export class ResearchService {
     source.state = 'rendering'
     source.revision = this.changed(run)
     try {
-      const document = await this.deps.render(source.url, run.id, source.id, run.controller.signal)
+      const document = await this.deps.render(source.url, run.id, source.id, run.controller.signal, run.coverage)
       if (run.state === 'running') this.collected(run, source, { ...document, dates: mergeDates(document.dates, fallback?.dates) })
     } catch (error) {
       if (run.state !== 'running') return
@@ -324,6 +386,7 @@ export class ResearchService {
   }
 
   private finish(run: Run, state: ResearchState): void {
+    if (state !== 'completed') for (const controller of run.expansions.values()) controller.abort(new Error(`Research ${state}`))
     if (run.state !== 'running') return
     run.state = state
     run.timing.finish(state)
@@ -356,7 +419,7 @@ export class ResearchService {
   private snapshot(run: Run, after = 0): ResearchSnapshot {
     const candidates = [...run.sources.values()].filter((source) => source.revision > after).sort((a, b) => a.revision - b.revision)
     const snapshot: ResearchSnapshot = {
-      runId: run.id, state: run.state, cursor: run.revision, pending: run.pending,
+      runId: run.id, state: run.state, cursor: run.revision, pending: run.pending + run.expansions.size,
       completedQueries: run.completedQueries, totalQueries: run.totalQueries, sourceCount: run.sources.size,
       omittedSources: 0, omittedErrors: Math.max(0, run.errors.length - 12),
       readCount: run.admission.readCount, maxReads: run.maxSources, reservedReads: run.admission.reserved,
@@ -374,7 +437,7 @@ export class ResearchService {
 
   private evict(): void {
     while (this.runs.size >= 32) {
-      const oldest = [...this.runs.values()].find((run) => run.state !== 'running' && run.pending === 0)
+      const oldest = [...this.runs.values()].find((run) => run.state !== 'running' && run.pending === 0 && run.expansions.size === 0)
       if (!oldest) throw new Error('Research retention is full; wait for cancelled work to settle')
       this.runs.delete(oldest.id)
       void this.deps.remove(oldest.id).catch((error: unknown) => console.warn('[research] evidence cleanup:', message(error)))

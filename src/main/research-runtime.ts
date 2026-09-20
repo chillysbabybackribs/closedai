@@ -9,6 +9,7 @@ import type { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { searchTools } from './tools/search/index.js'
 import type { ResearchService } from './tools/search/research/service.js'
 import { SourceStore } from './tools/search/research/source-reader.js'
+import { textLimit } from './tools/search/research/coverage.js'
 import { SearchBrowserTabs } from './tools/search/presentation.js'
 import { ResearchLibrary } from './research-library/service.js'
 import { traceLog } from './trace/trace-log.js'
@@ -59,12 +60,14 @@ export async function createResearchRuntime(options: {
           turnId: snapshot.activeTurnId === context.turnId ? context.turnId : null
         }
       },
-      collect: (url, runId, sourceId, signal) => store.collect(url, runId, sourceId, signal),
-      render: async (url, runId, sourceId, signal) => {
+      collect: (url, runId, sourceId, signal, coverage) => store.collect(url, runId, sourceId, signal, coverage),
+      render: async (url, runId, sourceId, signal, coverage) => {
         const deadline = AbortSignal.any([signal, AbortSignal.timeout(30_000)])
-        return store.retain(runId, sourceId, await readRenderedPage(workers, runId, url, deadline))
+        return store.retain(runId, sourceId, await readRenderedPage(workers, runId, url, deadline, textLimit(coverage)), 'rendered_text', coverage)
       },
-      retain: (runId, sourceId, page) => store.retain(runId, sourceId, page, 'provider_text'),
+      retain: (runId, sourceId, page, coverage) => store.retain(runId, sourceId, page, 'provider_text', coverage),
+      replace: (runId, sourceId, stagedId) => store.replace(runId, sourceId, stagedId),
+      discard: (runId, sourceId) => store.discard(runId, sourceId),
       read: (runId, sourceId) => store.read(runId, sourceId),
       remove: (runId) => store.remove(runId),
       openLive: (url, context) => {

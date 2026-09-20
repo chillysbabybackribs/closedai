@@ -2,7 +2,9 @@ import { defineTool } from '../tool.js'
 import { numberArg, stringArg, textResult } from '../tool.js'
 import type { JsonObject, ToolNamespace } from '../tool.js'
 import { braveClient } from './brave.js'
-import { exaClient } from './exa.js'
+import { exaClient, exaContents } from './exa.js'
+import { abortable, RequestBudget } from './request-budget.js'
+import { textLimit } from './research/coverage.js'
 import { readSearchKey, type SearchKeyReader } from './keyring.js'
 import { SearchRouter } from './router.js'
 import { serperClient } from './serper.js'
@@ -79,7 +81,18 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
         return textResult(JSON.stringify({ ...response, presentation: presentation.snapshot() }, null, 2))
       }
     })
-  const research = deps.research ? new ResearchService(router, deps.research) : null
+  const extractionBudget = new RequestBudget(2)
+  const research = deps.research ? new ResearchService(router, {
+    ...deps.research,
+    extract: deps.research.extract ?? (deps.research.retain ? async (url, runId, sourceId, signal, coverage) => {
+      return extractionBudget.run('exa', runId, signal, async () => {
+        const page = await abortable(exaContents(providerDeps, url, textLimit(coverage), signal), signal)
+        signal.throwIfAborted()
+        return deps.research!.retain!(runId, sourceId, { url: page.url, title: page.title,
+          text: page.content!.text, truncated: page.content!.truncated }, coverage)
+      })
+    } : undefined)
+  }) : null
   if (research) deps.onResearchCreated?.(research)
   return {
     name: 'search',
