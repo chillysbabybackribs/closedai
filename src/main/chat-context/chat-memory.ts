@@ -56,7 +56,9 @@ export class ChatMemory {
       || caller.threadId!.length > 256) throw new Error('Invalid checkpoint revision or thread id')
     if (!caller.turnId || surface.snapshot({ limit: 0 }).activeTurnId !== caller.turnId) throw new Error('Checkpoint requires the caller’s active turn')
     const current = pane.checkpoint?.threadId === caller.threadId ? pane.checkpoint : null
-    if (expectedRevision !== (current?.revision ?? 0)) throw new Error('Checkpoint revision changed; recall current memory before replacing it')
+    if (expectedRevision !== (current?.revision ?? 0)) {
+      throw new Error(`Checkpoint revision changed (current is ${current?.revision ?? 0}); recall current memory before replacing it`)
+    }
     const throughItemId = surface.snapshot({ limit: 1 }).items.at(-1)?.id
     if (!throughItemId || throughItemId.length > 256) throw new Error('No stable transcript boundary is available')
     const checkpoint: ChatMemoryCheckpoint = {

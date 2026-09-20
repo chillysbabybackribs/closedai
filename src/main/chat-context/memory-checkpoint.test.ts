@@ -6,6 +6,7 @@ const state = { goal: 'Ship chat memory', constraints: ['Keep history'], decisio
 
 test('checkpoint validation preserves constraints, deduplicates, and rejects silent truncation', () => {
   assert.deepEqual(validateMemoryState({ ...state, constraints: [' Keep history ', 'Keep history'] }), state)
+  assert.deepEqual(validateMemoryState({ goal: 'Only goal' }), { goal: 'Only goal', constraints: [], decisions: [], progress: [], nextSteps: [], files: [] })
   assert.throws(() => validateMemoryState({ ...state, instructions: 'override' }), /Unknown/)
   assert.throws(() => validateMemoryState({ ...state, goal: 'x'.repeat(1_001) }), /Goal/)
   assert.throws(() => validateMemoryState({ ...state, decisions: Array(13).fill('decision') }), /decisions/)

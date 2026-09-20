@@ -45,14 +45,14 @@ export function memoryTools(getMemory: () => PeerMemoryAccess | null): ToolDefin
     defineTool({
       name: 'checkpoint',
       deferLoading: true,
-      description: 'Save optional working notes for your current chat: objective, constraints, decisions, progress, next steps, and files. Distinguish facts from assumptions; omit secrets and private reasoning. Maximum 6,000 serialized state characters. expected_revision comes from recall(current), or 0 when absent. Replaces the previous checkpoint, without changing sessions or compacting. Notes persist through restart and can accompany a continuation; they may become stale.',
+      description: 'Save working notes for your current chat: objective (goal, required) and optional lists (constraints, decisions, progress, nextSteps, files). Distinguish facts from assumptions; omit secrets and private reasoning. Maximum 6,000 serialized state characters. expected_revision comes from recall(current), or 0 when absent. Replaces the previous checkpoint, without changing sessions or compacting. Notes persist through restart and can accompany a continuation; they may become stale.',
       inputSchema: {
         type: 'object', additionalProperties: false, required: ['expected_revision', 'state'],
         properties: {
           expected_revision: { type: 'integer', minimum: 0, maximum: Number.MAX_SAFE_INTEGER - 1 },
           state: {
             type: 'object', additionalProperties: false,
-            required: ['goal', 'constraints', 'decisions', 'progress', 'nextSteps', 'files'],
+            required: ['goal'],
             properties: {
               goal: { type: 'string', minLength: 1, maxLength: 1_000 },
               ...Object.fromEntries(['constraints', 'decisions', 'progress', 'nextSteps', 'files'].map((key) => [key, {

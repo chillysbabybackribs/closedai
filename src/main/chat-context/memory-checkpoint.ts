@@ -13,7 +13,7 @@ export function validateMemoryState(value: unknown): ChatMemoryState {
   if (typeof record.goal !== 'string' || !record.goal.trim() || record.goal.length > 1_000) throw new Error('Goal must contain 1–1,000 characters')
   const state = { goal: record.goal.trim() } as ChatMemoryState
   for (const field of LIST_FIELDS) {
-    const values = record[field]
+    const values = record[field] ?? []
     if (!Array.isArray(values) || values.length > 12 || values.some((entry) => typeof entry !== 'string' || !entry.trim() || entry.length > 400)) {
       throw new Error(`${field} must contain at most 12 non-empty strings of at most 400 characters`)
     }

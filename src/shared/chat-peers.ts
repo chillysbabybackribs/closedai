@@ -54,7 +54,7 @@ export type ChatContinuationSource = {
 
 export type ChatWorkspaceSnapshot = {
   selectedPaneId: ChatPaneId
-  /** Every chat of the active workspace, attached or not; see `ChatRowSummary`. */
+  /** Chats across directories, attached or not; see `ChatRowSummary`. */
   chats: ChatRowSummary[]
   selected: ChatSnapshot
   /** Bounded snapshots for chats displayed together; selection is keyboard focus, not visibility. */

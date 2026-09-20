@@ -170,7 +170,7 @@ export function Composer({
         cwd={cwd}
         projectPath={projectPath}
         recentProjects={recentProjects}
-        disabled={!enabled || running || sending}
+        disabled={sending}
         onChooseProject={onChooseProject}
         onSelectProject={onSelectProject}
         onClearProject={onClearProject}

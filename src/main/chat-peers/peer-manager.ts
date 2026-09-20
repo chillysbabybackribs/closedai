@@ -212,6 +212,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   async selectPane(paneId: ChatPaneId): Promise<void> {
     this.projectSwitch.assertAvailable()
     this.lifecycle.require(paneId)
+    const record = this.store.require(paneId)
+    if (record.cwd !== this.workspace().cwd) await this.selectProject(record.projectPath)
     if (paneId === this.selectedPaneId) return
     const previousPaneId = this.selectedPaneId
     this.selectedPaneId = paneId
@@ -326,7 +328,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     if (!this.lifecycle.get(paneId)) return
     const closing = this.lifecycle.require(paneId).surface.snapshot({ limit: 0 })
     if (!this.lifecycle.discardIfBlank(paneId)) this.lifecycle.detach(paneId)
-    if (this.lifecycle.peers.size === 0) {
+    const localIds = this.lifecycle.ids().filter((id) => this.store.require(id).cwd === this.workspace().cwd)
+    if (localIds.length === 0) {
       // Closing the last chat opens an empty one; it keeps the model the workspace was on
       // rather than dropping back to the first provider's default.
       const { cwd, projectPath } = this.workspace()
@@ -336,7 +339,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       this.lifecycle.attach(fresh)
       this.selectedPaneId = fresh.id
     } else if (this.selectedPaneId === paneId) {
-      this.selectedPaneId = this.lifecycle.ids()[0]!
+      this.selectedPaneId = localIds[0]!
     }
     await this.persistOpenChats()
     await this.wake(this.selectedPaneId)
@@ -359,7 +362,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.projectSwitch.assertAvailable()
     const record = this.store.get(chatId)
     if (!record || record.archived) throw new Error('That chat is no longer available')
-    if (record.cwd !== this.workspace().cwd) throw new Error('That chat belongs to another project')
+    if (record.cwd !== this.workspace().cwd) await this.selectProject(record.projectPath)
     if (this.lifecycle.get(chatId)) {
       await this.selectPane(chatId)
       return chatId
@@ -397,7 +400,6 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     if (typeof pinned !== 'boolean') throw new Error('Pinned must be a boolean')
     const record = this.store.get(chatId)
     if (!record || record.archived) throw new Error('That chat is no longer available')
-    if (record.cwd !== this.workspace().cwd) throw new Error('That chat belongs to another project')
     this.store.update(chatId, { pinnedAt: pinned ? record.pinnedAt ?? Date.now() : null })
     this.emitChats()
   }
@@ -432,17 +434,13 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     return this.withAwake(paneId, (surface) => surface.compactConversation())
   }
 
-  /** A provider process cannot safely change directories mid-turn. Swap the active pane set
-   * only after its project-scoped state has been persisted and the destination restored. */
+  /** Select a directory without changing the working directory or lifetime of existing chats. */
   async selectProject(projectPath: string | null, deferred = false): Promise<void> {
     if (!deferred) {
       this.projectSwitch.assertAvailable()
       this.projectSwitch.cancel('A manual project selection superseded the queued switch')
     }
     if (!this.workspaceSelector) throw new Error('Project selection is unavailable')
-    if (this.lifecycle.ids().some((chatId) => this.lifecycle.isRunning(chatId))) {
-      throw new Error('Stop running chats before changing projects')
-    }
     const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
     const selection = this.workspaceSelector.current()
     if (selection.projectPath === projectPath) return
@@ -455,7 +453,6 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.visibilityRevision += 1
     this.visiblePaneIds.clear()
     this.retainedTabIds.clear()
-    this.lifecycle.detachAll()
     this.catalog.invalidate()
     const restored = this.settings.get()
     this.selectedPaneId = this.restoreOpenChats(restored.chatOpenIds, restored.chatSelectedPaneId, current.selectedModel, current.selectedReasoningEffort)
@@ -536,7 +533,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   private async persistOpenChats(): Promise<void> {
     const selected = this.store.get(this.selectedPaneId) ?? null
     await this.settings.set({
-      chatOpenIds: this.lifecycle.ids(),
+      chatOpenIds: this.lifecycle.ids().filter((id) => this.store.require(id).cwd === this.workspace().cwd),
       chatSelectedPaneId: this.selectedPaneId,
       ...selectedMirror(selected)
     })
@@ -647,9 +644,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     return [...this.lifecycle.peers.values()].map((entry) => ({ ...entry.display.current }))
   }
 
-  /** Every chat of the workspace: attached ones as their live summary, the rest from the store. */
+  /** Directory sections share one catalog; attachment and activity are independent of focus. */
   private chatRows(): ChatRowSummary[] {
-    return this.store.list(this.workspace().cwd)
+    return this.store.ids().map((id) => this.store.require(id))
       .filter((record) => this.lifecycle.get(record.id) || record.pinnedAt !== null || !chatRecordIsBlank(record))
       .map((record) =>
       rowSummary(record, this.lifecycle.get(record.id)?.display.current ?? null))

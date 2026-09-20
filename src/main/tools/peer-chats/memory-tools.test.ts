@@ -60,7 +60,9 @@ test('checkpoint rejects malformed memory and responds with metadata rather than
   for (const args of [{ state }, { expected_revision: -1, state }, { expected_revision: 0, state: { ...state, constraints: Array(13).fill('x') } }]) {
     assert.equal((await h.call('checkpoint', args)).isError, true)
   }
-  assert.equal(h.calls.length, 1)
+  const minimal = await h.call('checkpoint', { expected_revision: 0, state: { goal: 'Minimal goal' } })
+  assert.equal(minimal.isError, undefined)
+  assert.equal(h.calls.length, 2)
 })
 
 test('history discovery and targeted recall route through the existing namespace', async () => {

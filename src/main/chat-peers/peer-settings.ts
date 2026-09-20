@@ -22,6 +22,8 @@ export class PeerSettings implements AppSettingsAccess {
     const chat = this.store.require(this.paneId)
     return {
       ...settings,
+      chatWorkspacePath: chat.cwd,
+      chatProjectPath: chat.projectPath,
       chatThreadId: chat.codexThreadId,
       chatClaudeSessionId: chat.claudeSessionId,
       chatAntigravityConversationId: chat.antigravityConversationId,

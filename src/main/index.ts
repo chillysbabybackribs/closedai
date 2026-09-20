@@ -87,7 +87,7 @@ let chatTranscripts: ChatTranscriptCache | null = null
 let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
 let credentialVault: CredentialVault | null = null
-let codexRuntime: CodexWorkspaceRuntime | null = null
+const codexRuntimes = new Map<string, CodexWorkspaceRuntime>()
 let toolRegistry: ToolRegistry | null = null
 let researchService: ResearchService | null = null
 let artifactStore: ArtifactStore | null = null
@@ -297,23 +297,24 @@ async function main(): Promise<void> {
   // What each chat last looked like, so opening one paints before its provider has replayed it.
   chatTranscripts = new ChatTranscriptCache(join(userData(), 'chat-transcripts'))
   chatService = new ChatPeerManager(settings, chatStore, (peerSettings, record) => {
-    const catalogs = catalogCache.forWorkspace(chatWorkspace)
-    if (!codexRuntime || codexRuntime.cwd !== chatWorkspace) {
-      codexRuntime?.stop()
-      codexRuntime = new CodexWorkspaceRuntime(chatWorkspace, settings!)
+    const catalogs = catalogCache.forWorkspace(record.cwd)
+    let codexRuntime = codexRuntimes.get(record.cwd)
+    if (!codexRuntime) {
+      codexRuntime = new CodexWorkspaceRuntime(record.cwd, settings!)
+      codexRuntimes.set(record.cwd, codexRuntime)
     }
     return new ChatHub({
     codex: new ChatService(
-      chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, codexRuntime, peerSettings.paneId
+      record.cwd, peerSettings, toolRegistry!, activeBrowserContext, screenshots, codexRuntime, peerSettings.paneId
     ),
     claude: new ClaudeChatService(
-      chatWorkspace, peerSettings, toolRegistry!, activeBrowserContext, screenshots, peerSettings.paneId
+      record.cwd, peerSettings, toolRegistry!, activeBrowserContext, screenshots, peerSettings.paneId
     ),
     antigravity: new AntigravityChatService(
-      chatWorkspace, peerSettings, antigravityBridge!, antigravityStateDir, activeBrowserContext, screenshots, peerSettings.paneId, catalogs
+      record.cwd, peerSettings, antigravityBridge!, antigravityStateDir, activeBrowserContext, screenshots, peerSettings.paneId, catalogs
     ),
     cursor: new CursorChatService(
-      chatWorkspace, peerSettings, cursorBridge!, cursorStateDir, activeBrowserContext, screenshots, peerSettings.paneId, catalogs
+      record.cwd, peerSettings, cursorBridge!, cursorStateDir, activeBrowserContext, screenshots, peerSettings.paneId, catalogs
     )
   }, record.modelId, peerSettings, {
     provider: record.provider,
@@ -482,7 +483,8 @@ app.on('before-quit', (event) => {
   stopBrowserCacheMaintenance?.()
   stopBrowserCacheMaintenance = null
   chatService?.stop()
-  codexRuntime?.stop()
+  for (const runtime of codexRuntimes.values()) runtime.stop()
+  codexRuntimes.clear()
   const flushSession = browserSessionFlush ?? browserService?.flushSessionData()
   void Promise.allSettled([
     browserHistory?.flush(),
