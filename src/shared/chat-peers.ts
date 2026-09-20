@@ -2,6 +2,19 @@ import type { ChatProvider, ChatSnapshot, ChatTranscriptItem } from './chat.js'
 
 export type ChatPaneId = string
 
+export type ProjectSwitchRequest = {
+  paneId: string
+  threadId: string
+  turnId: string
+  projectPath: string
+}
+
+export type ProjectSwitchStatus = ProjectSwitchRequest & {
+  status: 'pending' | 'switching' | 'completed' | 'cancelled' | 'failed'
+  destinationPaneId?: string
+  error?: string
+}
+
 export type ChatPeerKind = 'peer' | 'subagent'
 
 export type ChatPeerSummary = {
