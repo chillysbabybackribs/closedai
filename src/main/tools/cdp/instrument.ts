@@ -14,8 +14,8 @@ const channelsField: JsonObject = {
   items: { type: 'string', enum: [...INSTRUMENT_CHANNELS] },
   maxItems: INSTRUMENT_CHANNELS.length,
   description:
-    'Which APIs to watch: fetch, xhr, websocket, cookie, storage, eval (eval and the Function ' +
-    'constructor), fingerprint (navigator/screen getters, canvas.toDataURL, WebGL getParameter, ' +
+    'Which APIs to watch: fetch, xhr, websocket, cookie, storage, ' +
+    'fingerprint (navigator/screen getters, canvas.toDataURL, WebGL getParameter, ' +
     'timezone offset), error. Defaults to all of them.'
 }
 
@@ -31,10 +31,11 @@ export function cdpInstrumentTool(cdp: CdpHostProvider): ToolDefinition {
     description:
       'Watch what a page does from its very first instruction. The recorder is installed with ' +
       '`Page.addScriptToEvaluateOnNewDocument`, so it wraps fetch, XHR, WebSocket, document.cookie, ' +
-      'localStorage, eval and the fingerprinting getters before any of the site\'s own script runs, ' +
+      'storage and fingerprinting getters before the document scripts run, ' +
       'and it stays installed across navigations and redirects — which is the window ordinary page ' +
-      'evaluation cannot see, because by then the work has already happened. Patches observe only and ' +
-      'always call through, so the page behaves normally. Counting happens in the page and only a ' +
+      'evaluation cannot see, because by then the work has already happened. Wrappers are observable ' +
+      'and may affect page behavior; eval/Function are never wrapped. Inspect recording.patches for ' +
+      'failed or unavailable APIs. Worker coverage is not implied. Counting happens in the page and only a ' +
       'bounded fold is returned. Pair it with embedded_browser.network when you also need the wire ' +
       'view: this reports the call the page made, that reports the request that left.',
     actions: actions(cdp)
@@ -48,7 +49,7 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
       description:
         'Install the recorder on the tab\'s next document and on the one already loaded. Navigate ' +
         'afterwards to capture a page from its first instruction; hooking alone captures only what ' +
-        'the current document does from now on.',
+        'the current document does from now on. Replaces the current recorder and resets its counts.',
       inputSchema: objectSchema({
         tab_id: tabIdField,
         channels: channelsField,
@@ -68,7 +69,7 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
     {
       action: 'recording',
       description:
-        'Read the current document\'s recording: exact per-channel counts, the most frequent distinct ' +
+        'Read the current document\'s recording: patch installation status, per-channel observed counts, the most frequent distinct ' +
         'calls, and the most recent ones with their millisecond offset from document start. Reports ' +
         'installed false when the document has no recorder — a navigation without a hook in place.',
       inputSchema: objectSchema({
@@ -84,8 +85,9 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
     {
       action: 'unhook',
       description:
-        'Remove the recorder from future documents and drop it from the current one. The patched ' +
-        'APIs on the loaded document stay wrapped until it navigates; they pass through to the originals.',
+        'Remove the recorder from future documents and disable current recording. Restore owned API ' +
+        'descriptors and remove event listeners; preserve properties changed by the page and report ' +
+        'restoration failures. Retained wrapper references stop recording. Other frame documents may require navigation.',
       inputSchema: objectSchema({ tab_id: tabIdField }),
       run: async (input) => jsonResult(await requireCdp(cdp).instrument(tabIdFrom(input), 'unhook', {
         channels: [],
