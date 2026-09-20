@@ -9,6 +9,7 @@ import type {
   SearchResult
 } from './types.js'
 import { abortable, RequestBudget } from './request-budget.js'
+import { requiresBrave } from './request-options.js'
 
 export type SearchUpdate = { output: ProviderSearchResult } | { error: { provider: SearchProvider; message: string } }
 export type SearchObserver = (update: SearchUpdate) => void
@@ -47,6 +48,10 @@ const MIN_SUCCESSFUL: Partial<Record<SearchDepth, number>> = {
 }
 
 export function selectProviders(request: SearchRequest): SearchProvider[] {
+  if (requiresBrave(request)) {
+    if (request.providers?.length && !request.providers.includes('brave')) throw new Error('Requested source controls require Brave; include brave in providers or omit providers')
+    return request.providers?.length ? [...new Set(request.providers)] : ['brave']
+  }
   return request.providers?.length ? [...new Set(request.providers)] : ROUTES[request.intent][request.depth]
 }
 
@@ -74,10 +79,12 @@ export class SearchRouter {
         for (const provider of providers) observe?.({ output: {
           provider,
           results: cached.response.results.filter((item) => item.provider === provider || item.discoveredBy?.includes(provider))
-            .map((item) => ({ ...item, provider })),
+            .map((item) => ({ ...item, provider, discovery: { provider, observedAt: cached.response.observedAt!, cached: true } })),
           answer: cached.response.answers.find((item) => item.provider === provider)?.text
         } })
-        return { ...cached.response, cached: true }
+        return { ...cached.response, cached: true, results: cached.response.results.map((item) => ({
+          ...item, discovery: { provider: item.provider, observedAt: cached.response.observedAt!, cached: true }
+        })) }
       }
     }
 
@@ -100,6 +107,8 @@ export class SearchRouter {
       answers: outputs.flatMap((output) => output.answer ? [{ provider: output.provider, text: output.answer }] : []),
       results: mergeResults(outputs, request.count),
       errors,
+      observedAt: new Date(this.now()).toISOString(),
+      ...(requiresBrave(request) ? { controls: { appliedTo: ['brave'] as SearchProvider[], notAppliedTo: providers.filter((provider) => provider !== 'brave') } } : {}),
       ...(complete ? {} : { complete: false })
     }
     this.pruneCache()
@@ -195,7 +204,13 @@ export class SearchRouter {
         const client = this.clients.get(provider)
         if (!client) throw new Error(`${provider} client is not configured`)
         const deadline = AbortSignal.any([signal, AbortSignal.timeout(20_000)])
-        return abortable(client.search(request, deadline), deadline)
+        const compatible = provider === 'brave' || !requiresBrave(request) ? request : {
+          ...request, preferredDomains: undefined, goggles: undefined, relevance: undefined, contextTokens: undefined,
+          freshness: request.freshness?.includes('to') ? undefined : request.freshness
+        }
+        const found = await abortable(client.search(compatible, deadline), deadline)
+        const observedAt = new Date(this.now()).toISOString()
+        return { ...found, results: found.results.map((item) => ({ ...item, discovery: { provider, observedAt, cached: false } })) }
       })
       signal.throwIfAborted()
       observe?.({ output })

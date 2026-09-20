@@ -2,6 +2,12 @@
 export type ResearchState = 'running' | 'completed' | 'cancelled' | 'timed_out'
 /** static_text: inert parse of the fetched body. rendered_text: innerText of a hidden Chromium page. */
 export type SourceRepresentation = 'static_text' | 'rendered_text'
+/** Reported date observations, never silently interpreted as verified event dates. */
+export type SourceDate = {
+  kind: 'published' | 'modified' | 'index_reported' | 'http_last_modified'
+  value: string
+  source: string
+}
 export type ResearchSource = {
   id: string
   url: string
@@ -18,6 +24,9 @@ export type ResearchSource = {
   chars?: number
   incomplete?: boolean
   error?: string
+  requestedUrl?: string
+  dates?: SourceDate[]
+  discovery?: Array<{ provider: string; observedAt: string; cached: boolean }>
 }
 
 export type ResearchSnapshot = {

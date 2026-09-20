@@ -14,13 +14,17 @@ export type SearchRequest = {
   count: number
   live?: boolean
   providers?: SearchProvider[]
-  freshness?: 'day' | 'week' | 'month' | 'year'
+  freshness?: string
   country?: string
   language?: string
   includeDomains?: string[]
   excludeDomains?: string[]
   /** Research runs consume sources only; do not pay for discarded provider synthesis. */
   includeAnswer?: boolean
+  preferredDomains?: string[]
+  goggles?: string
+  relevance?: 'strict' | 'balanced' | 'lenient' | 'disabled'
+  contextTokens?: number
 }
 
 export type SearchResult = {
@@ -31,6 +35,9 @@ export type SearchResult = {
   discoveredBy?: SearchProvider[]
   age?: string
   score?: number
+  /** Provider-reported age is not a verified publication date. */
+  dates?: import('../../../shared/web-research.js').SourceDate[]
+  discovery?: { provider: SearchProvider; observedAt: string; cached: boolean }
 }
 
 export type ProviderSearchResult = {
@@ -55,4 +62,6 @@ export type SearchResponse = {
   /** False when the router returned before every selected provider finished. */
   complete?: boolean
   cached?: boolean
+  observedAt?: string
+  controls?: { appliedTo: SearchProvider[]; notAppliedTo: SearchProvider[] }
 }

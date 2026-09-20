@@ -3,6 +3,7 @@ import { numberArg, stringArg, textResult, type JsonObject, type ToolDefinition 
 import type { SearchRequest } from '../types.js'
 import { ResearchService } from './service.js'
 import { SEARCH_PRESENTATION_FIELD } from '../presentation.js'
+import { sourceOptions } from '../request-options.js'
 
 const MAX_EVENT_WAIT_MS = 20_000
 const MAX_SOURCE_CHARS = 12_000
@@ -19,6 +20,7 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
     return ((input.queries ?? []) as JsonObject[]).map((query) => ({
       query: String(query.query), intent: query.intent as SearchRequest['intent'],
       depth: (query.depth ?? 'quick') as SearchRequest['depth'], count: Number(query.count ?? 5),
+      ...sourceOptions(query),
       live: query.live === true, providers: query.providers as SearchRequest['providers'],
       freshness: query.freshness as SearchRequest['freshness'], country: query.country as string | undefined,
       language: query.language as string | undefined,

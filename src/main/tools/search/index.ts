@@ -13,6 +13,7 @@ import { researchTools } from './research/tools.js'
 import { SourcePresentation, SEARCH_PRESENTATION_FIELD } from './presentation.js'
 import { libraryTool } from './library.js'
 import type { ResearchLibrary } from '../../research-library/service.js'
+import { FRESHNESS_FIELD, SOURCE_OPTION_FIELDS, sourceOptions } from './request-options.js'
 
 export type SearchToolDeps = {
   fetch?: typeof fetch; readKey?: SearchKeyReader; now?: () => number
@@ -44,7 +45,8 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
           presentation: SEARCH_PRESENTATION_FIELD,
           providers: { type: 'array', items: { type: 'string', enum: [...SEARCH_PROVIDERS] }, description: 'Optional explicit provider override.' },
           count: { type: 'integer', minimum: 1, maximum: 20, description: 'Maximum results per provider; default 5.' },
-          freshness: { type: 'string', enum: ['day', 'week', 'month', 'year'], description: 'Optional recency filter.' },
+          freshness: FRESHNESS_FIELD,
+          ...SOURCE_OPTION_FIELDS,
           country: { type: 'string', minLength: 2, maxLength: 2, description: 'Optional two-letter country code.' },
           language: { type: 'string', minLength: 2, maxLength: 12, description: 'Optional BCP 47 language code.' },
           include_domains: { type: 'array', items: { type: 'string' }, description: 'Restrict supported providers to these domains.' },
@@ -59,6 +61,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
           intent: stringArg(input, 'intent') as SearchIntent,
           depth: stringArg(input, 'depth', 'quick') as SearchDepth,
           count: numberArg(input, 'count', 5),
+          ...sourceOptions(input),
           ...(input.live === true ? { live: true } : {}),
           ...optionalString(input, 'freshness'),
           ...optionalString(input, 'country'),
