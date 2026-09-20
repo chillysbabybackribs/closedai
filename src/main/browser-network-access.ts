@@ -71,8 +71,8 @@ export class BrowserNetworkAccess implements NetworkToolHost, SessionToolHost {
   }
 
   private async replayBody(service: BrowserService, record: NetworkRecord): Promise<NetworkBodyResult> {
-    if (record.postData && record.postData.text === null) {
-      throw new Error(`Request ${record.id} carried a binary or file upload body, which cannot be replayed`)
+    if (record.postData && (record.postData.text === null || record.postData.truncated)) {
+      throw new Error(`Request ${record.id} has an incomplete, binary or file upload body, which cannot be replayed`)
     }
     const browserSession = service.session
     const response = await fetchWithSession((url, init) => browserSession.fetch(url, init), {
