@@ -184,15 +184,31 @@ tab: batch independent reads, but sequence semantic inputs that switch between v
 twenty known URLs. At least one is required. It returns a run id immediately. Each provider's
 completion schedules source reading without waiting for other providers. Follow-ups use
 `extend` while the run is active, up to twelve queries total. Provider answers are not retained
-as retrieved document evidence. Index overlap is reported as `discoveredBy`, not factual
-corroboration. The legacy query's `corroboratedBy` field likewise means URL overlap only.
+as retrieved document evidence; runs explicitly disable discarded Tavily/You answer synthesis.
+Standalone answer lookups retain it and use separate cache entries. Index overlap in both query
+and run results is reported as `discoveredBy`, not factual corroboration.
 
 Brave discovery uses its `/res/v1/llm/context` endpoint rather than human-oriented Web Search.
 The adapter returns extracted grounding chunks as normalized snippets and uses source metadata for
 page age. Quick, balanced, and deep requests consider 10, 20, and 50 candidates with 2,048,
 8,192, and 16,384-token context budgets respectively; the requested result count remains the
-maximum number of returned URLs. Relevance thresholds progress from strict to balanced to lenient,
-and `live: true` adds Brave's best-effort `Cache-Control: no-cache` request header.
+maximum number of returned URLs. Relevance defaults to strict for quick, balanced for both balanced
+and deep; broader discovery does not automatically relax relevance. `relevance` and `context_tokens`
+override these controls independently. `preferred_domains` generates inline Brave Goggles boosts
+without excluding other domains; `goggles` accepts custom inline rules or a Goggle URL instead.
+The two ranking inputs are mutually exclusive. `freshness` accepts day/week/month/year or a validated
+inclusive `YYYY-MM-DDtoYYYY-MM-DD` range. These advanced controls select Brave automatically; explicit
+non-Brave/mixed provider requests fail with advice to issue a separate query, never silently drop
+unsupported filters. Domains remain discovery preferences, not proof of authority. Queries including
+domain filters over Brave's documented 600-character/75-word limit fail rather than silently
+truncating constraints. `live: true` adds Brave's best-effort no-cache header.
+
+Query results expose `observedAt` and per-result discovery timestamps/cache status. Reusing a cached
+query preserves its observation time. `live` bypasses the app cache; it does not establish that an
+upstream index or source is current. Source dates retain their provenance: provider-reported ages
+are `index_reported`; explicit HTML publication/modification metadata and HTTP Last-Modified are
+separate observations. Unknown/ambiguous dates remain unknown. Collected sources preserve their
+requested URL separately from the resolved URL. Date assertions remain untrusted source data.
 
 One registry-wide router admits four provider requests, at most two per provider, across both
 synchronous queries and research runs. Providers have twenty-second deadlines. A separate source
@@ -201,10 +217,25 @@ owners. The source reader currently does not retry or honor Retry-After; failure
 Redirects stay under the starting-origin slot. These are initial bounds, not measured optimal
 settings or a complete per-origin rate policy.
 
-Runs default to twelve documents and a 45-second deadline; callers may select 1–20 documents
-and 1–120 seconds. At most eight runs are active, and 32 completed/active runs are retained.
+Runs default to twelve document reads and a 45-second deadline; callers may select 1–20 reads
+and 1–120 seconds. They retain up to 80 deduplicated candidate descriptors separately from the read
+budget. `sourceCount` counts candidates, `readCount` counts admitted read attempts (including failures),
+and `omittedCandidates` exposes candidate overflow. Supplied URLs receive first priority, then
+preferred domains, then ordinary discoveries; ties favor origins with fewer admitted reads.
+At most eight reads per run are admitted concurrently, under the existing global reader limits.
+There is no additional model call or wait for all engines before admitting useful sources.
+
+`reserve_sources` reserves up to two slots by default for supplied URLs/preferred domains, leaving
+at least two ordinary slots for budgets of two or more. Set zero to spend the full budget on general
+discovery. Candidates that were not read remain `deferred`; they are not evidence. Supplying a deferred
+candidate URL to an active run promotes it within the remaining read budget. Once a run finishes,
+start a new run with the selected URL. Reserved slots do not keep an otherwise idle run alive.
+`selection` explains read priority, not credibility. No automatic recursive crawling is introduced.
+At most eight runs are active, and 32 completed/active runs are retained.
 Stop, pane detachment, turn replacement/completion, and shutdown cancel owned
-background work. Finish retrieval before ending the model turn. Completed runs remain readable
+background work. Read needed evidence and cancel unnecessary pending work before ending the model
+turn; ready sources remain readable after cancellation. Completed means work settled and can include
+failed reads or deferred candidates, not that the user's question is answered. Completed runs remain readable
 in the same pane/thread until eviction or app restart. Run files are an app-owned session cache
 under `<userData>/research-runs`, cleared on the next launch; eviction also removes their files.
 
@@ -221,7 +252,8 @@ Static sources use an isolated nonpersistent Electron session and omit credentia
 streamed to a bounded raw file (512 KiB), HTML is parsed inertly with parse5, and extracted text
 is retained up to 120k characters. Truncation is explicit. JSON and text are also supported;
 PDFs and unsupported MIME are reported for browser follow-up. Redirects are followed by the
-transport; the retained URL is the one requested. Parsing does not execute JavaScript or resolve
+transport; the resolved URL is retained when available, alongside the requested source URL.
+Parsing does not execute JavaScript or resolve
 CSS visibility and is not a rendered-page verification. A page whose static body is empty, or a
 script-bearing shell with under 200 characters of text, is loaded once in a hidden page worker
 (`src/main/browser-workers/`): an ordinary `BrowserTab` on the same public research session,
