@@ -199,6 +199,22 @@ test('paused chats and in-flight pane operations delay the switch', async (t) =>
   await until(() => h.manager.projectSwitch.state()?.status === 'completed')
 })
 
+test('running background tasks across any pane delay the project switch until completion', async (t) => {
+  const h = await fixture(t)
+  await h.queue()
+  h.finish('source')
+  const other = h.surfaces.get('other')!
+  other.runningBackground = true
+  h.finish('other')
+  await delay(140)
+  assert.equal(h.switches(), 0)
+  assert.equal(h.manager.projectSwitch.state()?.status, 'pending')
+
+  other.runningBackground = false
+  await until(() => h.manager.projectSwitch.state()?.status === 'completed')
+  assert.equal(h.switches(), 1)
+})
+
 test('destination removal and provider directory mismatch fail before any continuation send', async (t) => {
   for (const failure of ['removed', 'wrong-provider-directory']) {
     const h = await fixture(t)
