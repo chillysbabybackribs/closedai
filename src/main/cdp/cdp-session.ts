@@ -31,8 +31,33 @@ export type CdpTargetRecord = {
 }
 
 export type CdpEventListener = (method: string, params: unknown) => void
+export type CdpSend = (method: string, params?: Record<string, unknown>) => Promise<unknown>
+
+/**
+ * Something a caller wants in every matching child target, now and as they appear: enable a
+ * domain, install a script. `apply` runs when a child is attached, before a paused new target
+ * resumes, and its value is kept so `release` can undo exactly that child.
+ */
+export type CdpChildDirective<State = unknown> = {
+  /** Target types it applies to, for example iframe or worker. */
+  types: readonly string[]
+  apply(send: CdpSend, target: CdpTargetRecord): Promise<State>
+  release?(send: CdpSend, target: CdpTargetRecord, state: State): Promise<void>
+}
+export type CdpChildOutcome = {
+  sessionId: string
+  targetId: string
+  type: string
+  url: string
+  state?: unknown
+  error?: string
+}
+
+type DirectiveEntry = { key: string; directive: CdpChildDirective; outcomes: Map<string, CdpChildOutcome> }
 
 const EVENT_CAPACITY = 1_000
+// Child targets that can host documents and therefore further children.
+const DOCUMENT_TARGETS = new Set(['page', 'iframe'])
 const MAX_EVENT_CHARS = 64_000
 const EVENT_PREVIEW_CHARS = 8_000
 
@@ -49,6 +74,9 @@ export class CdpSession {
   private readonly targets = new Map<string, CdpTargetRecord>()
   private readonly targetIdBySession = new Map<string, string>()
   private readonly observers = new Set<CdpEventListener>()
+  private readonly directives = new Map<string, DirectiveEntry>()
+  /** Attach-time work per child session, so a release waits for the apply it undoes. */
+  private readonly childSetup = new Map<string, Promise<void>>()
 
   constructor(
     readonly tabId: string,
@@ -77,6 +105,59 @@ export class CdpSession {
     const result = await this.contents.debugger.sendCommand(method, params, sessionId)
     this.recordTargetCommand(method, params, result)
     return result
+  }
+
+  /**
+   * Hold a directive over every attached child of the listed types until it is released.
+   * Returns the outcome per child attached now; later children are handled as they attach and
+   * show up in `childOutcomes`.
+   */
+  async lease<State>(key: string, directive: CdpChildDirective<State>): Promise<CdpChildOutcome[]> {
+    await this.release(key)
+    this.ensureAttached()
+    await this.ensureTargetDiscovery()
+    const entry: DirectiveEntry = { key, directive: directive as CdpChildDirective, outcomes: new Map() }
+    this.directives.set(key, entry)
+    await Promise.all([...this.childSetup.values()])
+    const children = [...this.targets.values()].filter((target) => target.sessionId && directive.types.includes(target.type))
+    await Promise.all(children.map((target) => this.applyDirective(entry, target)))
+    return this.childOutcomes(key)
+  }
+
+  /** Undo a leased directive in every child that received it and forget it. */
+  async release(key: string): Promise<CdpChildOutcome[]> {
+    const entry = this.directives.get(key)
+    if (!entry) return []
+    this.directives.delete(key)
+    await Promise.all([...this.childSetup.values()])
+    const released: CdpChildOutcome[] = []
+    for (const outcome of entry.outcomes.values()) {
+      const target = this.targets.get(outcome.targetId)
+      if (outcome.error !== undefined || !entry.directive.release || !target?.sessionId || target.sessionId !== outcome.sessionId) {
+        released.push(outcome)
+        continue
+      }
+      try {
+        await entry.directive.release(this.childSend(outcome.sessionId), target, outcome.state)
+        released.push(this.currentOutcome(outcome))
+      } catch (error) {
+        released.push({ ...this.currentOutcome(outcome), error: errorMessage(error) })
+      }
+    }
+    return released
+  }
+
+  /** Outcomes carry the child's current type and URL, not the ones it attached with. */
+  childOutcomes(key: string): CdpChildOutcome[] {
+    const entry = this.directives.get(key)
+    if (!entry) return []
+    return [...entry.outcomes.values()].map((outcome) => this.currentOutcome(outcome))
+      .sort((left, right) => left.sessionId.localeCompare(right.sessionId))
+  }
+
+  private currentOutcome(outcome: CdpChildOutcome): CdpChildOutcome {
+    const target = this.targets.get(outcome.targetId)
+    return target ? { ...outcome, type: target.type, url: target.url } : outcome
   }
 
   /** The durable child-target catalog for this root tab's current debugger connection. */
@@ -188,11 +269,9 @@ export class CdpSession {
     const epoch = this.attachmentEpoch
     this.targetSetup = Promise.allSettled([
       this.contents.debugger.sendCommand('Target.setDiscoverTargets', { discover: true }),
-      this.contents.debugger.sendCommand('Target.setAutoAttach', {
-        autoAttach: true,
-        waitForDebuggerOnStart: false,
-        flatten: true
-      })
+      // New children start paused so a leased directive lands before their first script; the
+      // attach handler always resumes them, directives or not.
+      this.contents.debugger.sendCommand('Target.setAutoAttach', AUTO_ATTACH)
     ]).then((results) => {
       const allFulfilled = results.every((r) => r.status === 'fulfilled')
       if (!this.disposed && this.attachmentEpoch === epoch && allFulfilled) this.targetDiscoveryReady = true
@@ -240,6 +319,7 @@ export class CdpSession {
     if (method === 'Target.attachedToTarget') {
       const sessionId = nullableString(record.sessionId)
       this.upsertTarget(record.targetInfo, sessionId, Boolean(record.waitingForDebugger))
+      if (sessionId) this.onChildAttached(sessionId, Boolean(record.waitingForDebugger))
       return
     }
     if (method === 'Target.detachedFromTarget') {
@@ -247,6 +327,50 @@ export class CdpSession {
       const targetId = nullableString(record.targetId)
       if (sessionId) this.detachTargetSession(sessionId)
       else if (targetId) this.setTargetSession(targetId, null, false)
+    }
+  }
+
+  /**
+   * A child is usable the moment it attaches: it auto-attaches its own children, receives every
+   * leased directive, and only then resumes if it was started paused. Failures are recorded per
+   * child, never thrown into the event loop, and never leave a target paused.
+   */
+  private onChildAttached(sessionId: string, waitingForDebugger: boolean): void {
+    const targetId = this.targetIdBySession.get(sessionId)
+    const target = targetId ? this.targets.get(targetId) : undefined
+    if (!target) return
+    const send = this.childSend(sessionId)
+    const setup = (async () => {
+      try {
+        if (DOCUMENT_TARGETS.has(target.type)) await send('Target.setAutoAttach', AUTO_ATTACH).catch(() => undefined)
+        const entries = [...this.directives.values()].filter((entry) => entry.directive.types.includes(target.type))
+        await Promise.all(entries.map((entry) => this.applyDirective(entry, target)))
+      } finally {
+        if (waitingForDebugger) await send('Runtime.runIfWaitingForDebugger').catch(() => undefined)
+      }
+    })().finally(() => { if (this.childSetup.get(sessionId) === setup) this.childSetup.delete(sessionId) })
+    this.childSetup.set(sessionId, setup)
+  }
+
+  private async applyDirective(entry: DirectiveEntry, target: CdpTargetRecord): Promise<void> {
+    const sessionId = target.sessionId
+    if (!sessionId) return
+    const outcome: CdpChildOutcome = { sessionId, targetId: target.targetId, type: target.type, url: target.url }
+    try {
+      outcome.state = await entry.directive.apply(this.childSend(sessionId), target)
+    } catch (error) {
+      outcome.error = errorMessage(error)
+    }
+    // The directive may have been released, or the child detached, while apply ran.
+    if (this.directives.get(entry.key) !== entry) return
+    if (this.targetIdBySession.get(sessionId) !== target.targetId) return
+    entry.outcomes.set(sessionId, outcome)
+  }
+
+  private childSend(sessionId: string): CdpSend {
+    return async (method, params = {}) => {
+      this.assertLive()
+      return this.contents.debugger.sendCommand(method, params, sessionId)
     }
   }
 
@@ -285,6 +409,7 @@ export class CdpSession {
     if (!targetId) return
     this.targetIdBySession.delete(sessionId)
     this.setTargetSession(targetId, null, false)
+    for (const entry of this.directives.values()) entry.outcomes.delete(sessionId)
   }
 
   private removeTarget(targetId: string): void {
@@ -298,7 +423,15 @@ export class CdpSession {
     for (const [targetId, target] of this.targets) {
       this.targets.set(targetId, { ...target, attached: false, sessionId: null, waitingForDebugger: false })
     }
+    // Chromium drops the sessions with the connection; a directive is reapplied as they reattach.
+    for (const entry of this.directives.values()) entry.outcomes.clear()
   }
+}
+
+const AUTO_ATTACH = { autoAttach: true, waitForDebuggerOnStart: true, flatten: true } as const
+
+function errorMessage(error: unknown): string {
+  return (error instanceof Error ? error.message : String(error)).slice(0, 300)
 }
 
 function boundedParams(params: unknown): unknown {

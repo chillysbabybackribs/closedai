@@ -5,7 +5,7 @@ import { recordOf } from '../json-coerce.js'
 import type { CdpToolHost } from '../tools/cdp/host.js'
 import { CdpPageController } from './page-control/page-controller.js'
 import { CdpPageInput } from './page-control/page-input.js'
-import { CdpSession, type CdpEventPage } from './cdp-session.js'
+import { CdpSession, type CdpChildOutcome, type CdpEventPage, type CdpSend } from './cdp-session.js'
 import {
   decodeResponseBody,
   foldNetworkEvents,
@@ -40,6 +40,9 @@ import {
 
 /** How much of the event buffer a request listing folds; the buffer itself holds 1,000. */
 const EVENT_SCAN_LIMIT = 1_000
+// Child targets whose traffic Network can report, and the document ones a recorder can run in.
+const NETWORK_TARGETS = ['page', 'iframe', 'worker', 'shared_worker', 'service_worker']
+const DOCUMENT_TARGETS = ['page', 'iframe']
 
 /** Unwrap `Runtime.evaluate`'s `{ result: { value } }` envelope. */
 function evaluationValue(raw: unknown): unknown {
@@ -76,7 +79,7 @@ export class BrowserCdpAccess implements CdpToolHost {
     string,
     { channels: ReturnType<typeof profileChannelsFrom>; stopWatch?: () => void }
   >()
-  /** `Page.addScriptToEvaluateOnNewDocument` identifiers, so a hook can be removed again. */
+  /** Root `Page.addScriptToEvaluateOnNewDocument` identifiers, so a hook can be removed again. */
   private readonly instruments = new Map<string, string>()
 
   constructor(private readonly browser: () => CdpBrowserSource | null) {}
@@ -123,7 +126,9 @@ export class BrowserCdpAccess implements CdpToolHost {
   /**
    * Enabling Network here is deliberate: the first call answers from resource timing, which is
    * retroactive, and switches on capture so the next call also has methods, statuses, and the
-   * request ids that `responseBody` needs. Discovery costs one call instead of a reload.
+   * request ids that `responseBody` needs. Discovery costs one call instead of a reload. Capture
+   * is leased into every child target too — an iframe's or worker's requests live in its own
+   * session — and follows children that attach later.
    */
   async networkRequests(
     tabId: string | undefined,
@@ -136,6 +141,9 @@ export class BrowserCdpAccess implements CdpToolHost {
     } catch {
       capturing = false
     }
+    const children = capturing
+      ? await session.lease('network', { types: NETWORK_TARGETS, apply: (send) => send('Network.enable') })
+      : []
     const evaluated = await session.command('Runtime.evaluate', {
       expression: RESOURCE_TIMING_EXPRESSION,
       returnByValue: true
@@ -147,6 +155,7 @@ export class BrowserCdpAccess implements CdpToolHost {
       tab,
       connectionId: session.connectionId,
       capturing,
+      childSessions: summarizeChildren(children),
       bufferedEvents: buffered.events.length,
       missedEvents: buffered.missedEvents,
       timingEntries: timing.length,
@@ -238,7 +247,11 @@ export class BrowserCdpAccess implements CdpToolHost {
     return { ...head, ...report }
   }
 
-  /** Install, read, or remove the pre-document recorder. */
+  /**
+   * Install, read, or remove the pre-document recorder. The root install covers same-process
+   * frames; cross-origin frames are separate targets, so the same install is leased into each
+   * document child — a new frame starts paused, receives it, then runs its first script.
+   */
   async instrument(
     tabId: string | undefined,
     action: string,
@@ -253,11 +266,23 @@ export class BrowserCdpAccess implements CdpToolHost {
       const previous = this.instruments.get(tab.id)
       if (previous) await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: previous }).catch(() => undefined)
       if (installed.identifier) this.instruments.set(tab.id, installed.identifier)
-      return { ...head, channels, capacity: options.capacity, ...installed }
+      const frames = await session.lease('instrument', {
+        types: DOCUMENT_TARGETS,
+        apply: (childSend, target) => installInstrument(childSend, channels, options.capacity, { currentDocument: !target.waitingForDebugger }),
+        release: (childSend, _target, state) => removeInstrument(childSend, state)
+      })
+      return { ...head, channels, capacity: options.capacity, ...installed, frames: frameOutcomes(frames, 'hook') }
     }
     if (action === 'recording') {
       const raw = await send('Runtime.evaluate', { expression: RECORDING_EXPRESSION, returnByValue: true })
-      return { ...head, ...foldRecording(raw, { limit: options.limit }) }
+      const frames = await Promise.all(session.childOutcomes('instrument').map(async (child) => {
+        const frameSend: CdpSend = (method, params = {}) => session.command(method, params, child.sessionId)
+        const recording = await frameSend('Runtime.evaluate', { expression: RECORDING_EXPRESSION, returnByValue: true })
+          .then((value) => foldRecording(value, { limit: Math.min(options.limit, FRAME_RECORDING_LIMIT) }))
+          .catch((error: unknown) => ({ installed: false, error: String(error instanceof Error ? error.message : error).slice(0, 200) }))
+        return { ...recording, sessionId: child.sessionId, url: child.url }
+      }))
+      return { ...head, ...foldRecording(raw, { limit: options.limit }), frames }
     }
     const identifier = this.instruments.get(tab.id)
     if (identifier) {
@@ -266,7 +291,11 @@ export class BrowserCdpAccess implements CdpToolHost {
     }
     const removed = await send('Runtime.evaluate', { expression: REMOVE_EXPRESSION, returnByValue: true })
     const value = (removed as { result?: { value?: unknown } } | null)?.result?.value
-    return { ...head, removedFromFutureDocuments: Boolean(identifier), removedFromCurrentDocument: String(value ?? '') }
+    const frames = await session.release('instrument')
+    return {
+      ...head, removedFromFutureDocuments: Boolean(identifier), removedFromCurrentDocument: String(value ?? ''),
+      frames: frameOutcomes(frames, 'unhook')
+    }
   }
 
   /**
@@ -376,4 +405,35 @@ export class BrowserCdpAccess implements CdpToolHost {
     this.connections.set(tab.id, connection)
     return { tab, ...connection }
   }
+}
+
+// Per-frame recordings are folded smaller than the root's so a page with many frames stays bounded.
+const FRAME_RECORDING_LIMIT = 5
+
+/** Undo a child's recorder install: the future-document script and the live document's wrappers. */
+async function removeInstrument(send: CdpSend, state: unknown): Promise<void> {
+  const identifier = recordOf(state)?.identifier
+  if (typeof identifier === 'string') await send('Page.removeScriptToEvaluateOnNewDocument', { identifier })
+  const removed = await send('Runtime.evaluate', { expression: REMOVE_EXPRESSION, returnByValue: true })
+  const value = (removed as { result?: { value?: unknown } } | null)?.result?.value
+  // Surface the frame's own restoration report the way the root does, instead of the install state.
+  if (recordOf(state)) (state as Record<string, unknown>).removedFromCurrentDocument = String(value ?? '')
+}
+
+function summarizeChildren(children: CdpChildOutcome[]): { capturing: number; failed: Array<{ sessionId: string; type: string; url: string; error: string }> } {
+  return {
+    capturing: children.filter((child) => child.error === undefined).length,
+    failed: children.filter((child) => child.error !== undefined)
+      .map((child) => ({ sessionId: child.sessionId, type: child.type, url: child.url, error: child.error! }))
+  }
+}
+
+function frameOutcomes(frames: CdpChildOutcome[], phase: 'hook' | 'unhook'): Array<{ sessionId: string; url: string; onCurrentDocument?: string; removedFromCurrentDocument?: string; error?: string }> {
+  return frames.map((frame) => {
+    const state = recordOf(frame.state)
+    if (frame.error !== undefined) return { sessionId: frame.sessionId, url: frame.url, error: frame.error }
+    return phase === 'hook'
+      ? { sessionId: frame.sessionId, url: frame.url, onCurrentDocument: String(state?.onCurrentDocument ?? 'unknown') }
+      : { sessionId: frame.sessionId, url: frame.url, removedFromCurrentDocument: String(state?.removedFromCurrentDocument ?? '') }
+  })
 }

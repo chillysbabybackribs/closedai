@@ -1,7 +1,5 @@
-import type { JSX, ReactNode } from 'react'
+import type { CSSProperties, JSX, ReactNode } from 'react'
 import { useEffect, useState } from 'react'
-
-import { GenerationLoader } from '../components/ui/generation-loader.js'
 
 /** Ambient strip under the transcript. It now carries only the background-task control: the
  *  working timer moved onto the composer's project rail, where the turn is actually driven. */
@@ -11,27 +9,29 @@ export function TaskActivity({ children }: { children?: ReactNode }): JSX.Elemen
 }
 
 /** Widest timer the rail reserves room for: a four-digit "88m 88s" clock. Anything shorter is
- *  padded to the same box, so the pixel grid and the copy hold one position while time runs. */
+ *  padded to the same box, so the copy holds one position while time runs. */
 const RESERVED_TIMER_LABEL = 'Working for 88m 88s'
 
-/** The "Working for 12s" timer, rendered on the left edge of the composer project rail. */
+/** The "Working for 12s" timer, rendered on the left edge of the composer project rail. The only
+ *  motion is the highlight sweeping through its own glyphs — the same shimmer the transcript's
+ *  running headline uses — so the rail stays quiet while a turn runs. */
 export function TurnActivityIndicator({ activeTurnId }: { activeTurnId: string | null }): JSX.Element | null {
   const elapsedSeconds = useTurnElapsed(activeTurnId)
-  const tick = useLoaderTick(activeTurnId !== null)
 
   if (!activeTurnId) return null
   const label = `Working for ${formatElapsedTime(elapsedSeconds)}`
   return (
-    <GenerationLoader
-      className="composer-strip-activity"
-      label={label}
-      reserveLabel={RESERVED_TIMER_LABEL}
-      tick={tick}
-      animateLabel={false}
-      variant="rounded"
-      aria-label={label}
+    <div
+      className="composer-strip-activity task-timer"
+      role="status"
       aria-live="off"
-    />
+      aria-atomic="true"
+      aria-label={label}
+      style={{ '--shimmer-spread': `${RESERVED_TIMER_LABEL.length * 2}px` } as CSSProperties}
+    >
+      <span className="task-timer-reserve" aria-hidden="true">{RESERVED_TIMER_LABEL}</span>
+      <span className="task-timer-text">{label}</span>
+    </div>
   )
 }
 
@@ -69,16 +69,4 @@ function useTurnElapsed(activeTurnId: string | null): number {
   }, [activeTurnId])
 
   return clock.turnId === activeTurnId ? clock.seconds : 0
-}
-
-function useLoaderTick(active: boolean): number {
-  const [tick, setTick] = useState(0)
-
-  useEffect(() => {
-    if (!active) return
-    const id = window.setInterval(() => setTick((current) => current + 1), 120)
-    return () => window.clearInterval(id)
-  }, [active])
-
-  return tick
 }

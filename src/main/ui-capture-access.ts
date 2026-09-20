@@ -3,6 +3,10 @@ import type { BrowserService } from './browser-service.js'
 import { waitForPageReady, type PageReadiness, type PageReadyResult } from './browser-page-ready.js'
 import { settleFrames } from './browser-frame-settle.js'
 import { withCaptureDocument } from './browser-capture-guard.js'
+import {
+  coherenceVerdict, documentHidden, HIDDEN_CATCH_UP_MS, HIDDEN_SETTLE_BUDGET_MS, HIDDEN_STABILITY_GAP_MS,
+  observeDomMutations, type CaptureCoherence, type CaptureFrame
+} from './capture-coherence.js'
 import type { BrowserPageCapture, CapturedImage, ImageCrop, UiCaptureHost } from './tools/capture/index.js'
 import type { BrowserTabInfo } from '../shared/types.js'
 
@@ -57,11 +61,42 @@ export class UiCaptureAccess implements UiCaptureHost {
         observedReady = readiness
         const base = { tabId: tab.id, url: readiness.url || tab.url, title: readiness.title || tab.title, ready: readiness }
         if (!readiness.reached || readiness.conditionMet === false) return { ...base, image: null }
-        await settleFrames(contents)
-        if (contents.isDestroyed()) return { ...base, image: null, error: 'The tab closed before capture' }
-        const image = await contents.capturePage(undefined, { stayHidden: true, stayAwake: true })
+        // The coherence interval opens after readiness: from here until the pixels are read.
+        const startedAt = Date.now()
+        const readMutations = await observeDomMutations(contents)
+        const grab = () => contents.capturePage(undefined, { stayHidden: true, stayAwake: true })
+        let frame: CaptureFrame
+        let image: NativeImage
+        if (await documentHidden(contents)) {
+          // A hidden document cannot run animation frames, so the paint probe would only time
+          // out. Its compositor still folds DOM changes in by itself; give it that beat, then
+          // require two consecutive frames to agree (see capture-coherence.ts).
+          await sleep(HIDDEN_CATCH_UP_MS)
+          if (contents.isDestroyed()) return { ...base, image: null, error: 'The tab closed before capture' }
+          image = await grab()
+          frame = 'unsettled'
+          const deadline = Date.now() + HIDDEN_SETTLE_BUDGET_MS
+          do {
+            await sleep(HIDDEN_STABILITY_GAP_MS)
+            if (contents.isDestroyed()) return { ...base, image: null, error: 'The tab closed before capture' }
+            const next = await grab()
+            const same = next.toBitmap().equals(image.toBitmap())
+            image = next
+            if (same) { frame = 'settled'; break }
+          } while (Date.now() < deadline)
+        } else {
+          frame = await settleFrames(contents) ? 'painted' : 'unconfirmed'
+          if (contents.isDestroyed()) return { ...base, image: null, error: 'The tab closed before capture' }
+          image = await grab()
+        }
+        const domMutations = await readMutations()
+        const finishedAt = Date.now()
+        const coherence: CaptureCoherence = {
+          startedAt: new Date(startedAt).toISOString(), finishedAt: new Date(finishedAt).toISOString(),
+          intervalMs: finishedAt - startedAt, frame, domMutations, verdict: coherenceVerdict(frame, domMutations)
+        }
         const payload = this.payload(image)
-        return payload ? { ...base, image: payload } : { ...base, image: null, error: 'The page produced an empty frame' }
+        return payload ? { ...base, image: payload, coherence } : { ...base, image: null, coherence, error: 'The page produced an empty frame' }
       })
     } catch (error) {
       return {
@@ -126,4 +161,8 @@ function fitWithin(width: number, height: number, maxWidth: number, maxHeight: n
 
 function emptyReady(url: string, title: string): PageReadyResult {
   return { readyState: 'unknown', reached: false, conditionMet: null, elapsedMs: 0, url, title }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => { const timer = setTimeout(resolve, ms); timer.unref?.() })
 }

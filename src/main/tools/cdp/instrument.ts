@@ -35,7 +35,9 @@ export function cdpInstrumentTool(cdp: CdpHostProvider): ToolDefinition {
       'and it stays installed across navigations and redirects — which is the window ordinary page ' +
       'evaluation cannot see, because by then the work has already happened. Wrappers are observable ' +
       'and may affect page behavior; eval/Function are never wrapped. Inspect recording.patches for ' +
-      'failed or unavailable APIs. Worker coverage is not implied. Counting happens in the page and only a ' +
+      'failed or unavailable APIs. Cross-origin frames get the same recorder, including frames created ' +
+      'later, which start paused until it is installed; recording lists them under frames and unhook ' +
+      'cleans them. Workers are not recorded. Counting happens in the page and only a ' +
       'bounded fold is returned. Pair it with embedded_browser.network when you also need the wire ' +
       'view: this reports the call the page made, that reports the request that left.',
     actions: actions(cdp)
@@ -87,7 +89,8 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
       description:
         'Remove the recorder from future documents and disable current recording. Restore owned API ' +
         'descriptors and remove event listeners; preserve properties changed by the page and report ' +
-        'restoration failures. Retained wrapper references stop recording. Other frame documents may require navigation.',
+        'restoration failures. Retained wrapper references stop recording. Cross-origin frames are cleaned ' +
+        'the same way and reported under frames.',
       inputSchema: objectSchema({ tab_id: tabIdField }),
       run: async (input) => jsonResult(await requireCdp(cdp).instrument(tabIdFrom(input), 'unhook', {
         channels: [],

@@ -7,8 +7,14 @@ import { formatElapsedTime, TaskActivity, TurnActivityIndicator } from './task-a
 
 test('an active turn renders a Codex-style working timer instead of a thinking label', () => {
   const html = renderToStaticMarkup(createElement(TurnActivityIndicator, { activeTurnId: 'turn-1' }))
-  assert.match(html, />Working for 0s</)
+  assert.match(html, /task-timer-text[^>]*>Working for 0s</)
   assert.doesNotMatch(html, /Thinking/)
+})
+
+test('the timer shimmers through its own copy instead of carrying an animated icon', () => {
+  const html = renderToStaticMarkup(createElement(TurnActivityIndicator, { activeTurnId: 'turn-1' }))
+  assert.doesNotMatch(html, /task-generation-grid|task-generation-cell|task-generation-caret/)
+  assert.match(html, /--shimmer-spread:\s*38px/)
 })
 
 test('turn elapsed time uses seconds without a leading minute segment', () => {
@@ -39,11 +45,11 @@ test('the activity strip renders only when a background control needs it', () =>
   const withControl = renderToStaticMarkup(createElement(TaskActivity, null, control))
   assert.equal((withControl.match(/task-activity-strip/g) ?? []).length, 1)
   assert.match(withControl, /Background tasks/)
-  assert.doesNotMatch(withControl, /task-generation-loader/)
+  assert.doesNotMatch(withControl, /task-timer/)
   assert.equal(renderToStaticMarkup(createElement(TaskActivity, null)), '')
 })
 
 test('the timer reserves room for a four-digit clock so its position holds', () => {
   const html = renderToStaticMarkup(createElement(TurnActivityIndicator, { activeTurnId: 't' }))
-  assert.match(html, /task-generation-reserve[^>]*>Working for 88m 88s</)
+  assert.match(html, /task-timer-reserve[^>]*>Working for 88m 88s</)
 })

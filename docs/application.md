@@ -458,7 +458,12 @@ Browser-page captures watch main-frame navigation and renderer lifetime from bef
 readiness wait until the image returns. Navigation (including reload and same-document changes)
 or renderer loss discards the image with a retry message; listeners and rendering leases are
 released on success and failure. This guards page attribution, not atomic DOM/pixel coherence:
-DOM updates, animations, canvas/video, and subframes can still change during capture.
+DOM updates, animations, canvas/video, and subframes can still change during capture. The
+capture therefore also reports what it can honestly claim: the readiness-to-pixels interval, how
+the frame was established (painted for a visible document; settled or unsettled from consecutive
+captures of a hidden one, whose animation frames are paused; unconfirmed when a visible page did
+not paint), the DOM mutations counted meanwhile, and a verdict the model reads as verified or
+unverified evidence. See [Tools](tools.md) for the measured rules.
 After a navigation becomes usable, and again when loading stops, the tab reasserts its unchanged
 bounds and visibility. This revives Electron's frame sink when a redirect leaves DOM/CDP alive
 but the attached native surface blank.
@@ -489,7 +494,10 @@ response bodies are read only through exact CDP request/session ids. The separat
 session, labels its result as new evidence, and refuses incomplete or binary upload bodies.
 
 For exact captured-response work, `browser_cdp.protocol requests` preserves repeated URLs
-as separate requests and reports child session ids. Its `body` action accepts `session_id`
+as separate requests and reports child session ids. It leases `Network.enable` into every
+attached frame and worker target, including ones that attach later, so cross-origin frame and
+worker traffic is captured under its own session id; `childSessions` reports how many children
+are capturing and which refused. Its `body` action accepts `session_id`
 and reads that target's buffer without reissuing requests. Resource-timing URLs remain
 discovery hints and are not used to fill guessed fields on individual captured requests.
 The session-level body action and guessed URL/method association have been removed.
@@ -497,8 +505,12 @@ The session-level body action and guessed URL/method association have been remov
 Instrumentation does not wrap eval or Function, preserving direct eval's lexical scope.
 The current document's recorder reports installed/unavailable patches. Unhook disables retained
 wrapper references, restores descriptors still owned by the recorder, and removes its listeners;
-page replacements are preserved and restoration failures reported. Wrappers remain observable,
-and other frame documents may need navigation for cleanup. This is not transparent instrumentation.
+page replacements are preserved and restoration failures reported. The recorder is also leased
+into every cross-origin frame target: frames present at hook time get it immediately, and a frame
+created afterwards starts paused, receives it, and only then runs its first script. `recording`
+folds each frame separately under `frames`, and `unhook` removes it from each frame and reports
+per-frame outcomes. Workers are not recorded. Wrappers remain observable. This is not transparent
+instrumentation.
 
 ## Ownership map
 
@@ -654,8 +666,9 @@ There is no dedicated research activity panel, and workers cannot be handed to t
   are tracked across providers; outer pane idle parking, project switching, and pane trimming
   respect active background work, and explicit session retirement marks unfinished tasks stopped.
 - Raw `browser_cdp.protocol` calls bypass the semantic wrapper's input foregrounding and the
-  capture namespace's image budget/storage. Target auto-attachment does not make the semantic
-  wrapper traverse every out-of-process frame. These are described in the CDP guide.
+  capture namespace's image budget/storage. Target auto-attachment (now recursive, with leased
+  network capture and recording across frames and workers) does not make the semantic wrapper
+  traverse every out-of-process frame. These are described in the CDP guide.
 
 These are source-level findings, not reproduced live failures or fixes delivered by this
 documentation update. Dated visual verification gaps remain in [composer QA](../design-qa.md).

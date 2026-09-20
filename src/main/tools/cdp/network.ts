@@ -14,9 +14,11 @@ export function requestsAction(cdp: CdpHostProvider): ToolAction {
       'instead of reading its bundles. Resource timing answers retroactively, so a tab that loaded ' +
       'before anyone was watching still reports its XHR and fetch URLs with no reload; entries seen ' +
       'while Network capture was on also carry method, status, and a request id for body. This call ' +
-      'turns root capture on, so calling it once and acting on the page fills in the rest. Repeated URLs ' +
-      'retain distinct request ids; sessionId identifies child-target traffic already captured. Enable ' +
-      'Network in a child session explicitly when needed. Timing-only URLs are discovery hints.',
+      'turns capture on for the root and every attached frame and worker, including ones that attach ' +
+      'later, so calling it once and acting on the page fills in the rest. Repeated URLs retain distinct ' +
+      'request ids; sessionId names the child target a request belongs to and must accompany its body ' +
+      'read. childSessions reports how many children are capturing and any that refused. Timing-only ' +
+      'URLs are discovery hints.',
     inputSchema: objectSchema({
       tab_id: tabIdField,
       url_contains: { type: 'string', minLength: 1, description: 'Case-insensitive substring filter on the URL, for example /api/.' },

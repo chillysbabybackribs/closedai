@@ -148,7 +148,7 @@
   .chat-layout-content .chat-zoom-surface { --chat-column-gutter: 12px; }
   .chat-layout-content .composer-project-trigger { min-width: 0; padding-inline: 5px; }
   .chat-layout-content .composer-project-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .chat-layout-content .task-generation-copy { display: none; }
+  .chat-layout-content .task-timer { display: none; }
   .chat-layout-content .prompt-composer-actions { gap: 4px; }
   .chat-layout-content .prompt-composer-actions > div:first-child { flex: 1; min-width: 0; }
   .chat-layout-content .prompt-composer-actions > div:last-child { flex-shrink: 0; gap: 4px; }

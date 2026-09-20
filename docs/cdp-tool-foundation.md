@@ -14,8 +14,13 @@ Source review: 2026-09-04; the behavior below follows the current implementation
 - Destroying that `WebContents` destroys the connection and its event history.
 - A connection id distinguishes event cursor generations after a reconnect or replacement.
 - Flat child-target sessions are routed by the optional CDP `session_id`.
-- Target discovery and flattened auto-attach are initialized lazily. Session detach clears stored
-  session ids; a later attachment retries discovery. Discovered targets need not all have sessions.
+- Target discovery and flattened auto-attach are initialized lazily. Auto-attach is recursive:
+  each attached page or frame target auto-attaches its own frames and workers, so nested
+  out-of-process frames get sessions too. New children start paused
+  (`waitForDebuggerOnStart: true`); the session applies every leased child directive (network
+  capture, the recorder) and then resumes them, directives or not. Session detach clears stored
+  session ids and child outcomes; a later attachment retries discovery and reapplies directives as
+  children reattach. Discovered targets need not all have sessions.
 - Native popup windows are addressable by app-owned `popup-<webContents id>` roots even though
   they are absent from the regular tab strip.
 - DOM node ids, runtime object ids, execution contexts, frames, requests, and target sessions
@@ -34,8 +39,9 @@ assuming tip-of-tree support.
 Returns `Target.getTargetInfo` for the selected root, `Target.getTargets`, and the connection's
 live `inventory`. Each inventory entry includes type, title, URL, attachment status, `sessionId`,
 opener id, subtype, and waiting-for-debugger status. `Target.setDiscoverTargets` and
-`Target.setAutoAttach({ autoAttach: true, flatten: true, waitForDebuggerOnStart: false })` run
-on attachment. Use an inventory `sessionId` as `session_id` in subsequent commands. When a
+`Target.setAutoAttach({ autoAttach: true, flatten: true, waitForDebuggerOnStart: true })` run
+on attachment, and the same auto-attach is sent into each page/frame child as it attaches.
+Use an inventory `sessionId` as `session_id` in subsequent commands. When a
 discovered target has no usable session, attach it explicitly; reacquire stale ids after navigation.
 
 ### `target`
@@ -147,8 +153,9 @@ scrolling; inspect again before clicking.
 
 This first wrapper inspects frames reachable from the selected page target. Out-of-process
 frames that require their own flat target session are surfaced as uninspected frames. Automatic
-target attachment makes raw session commands possible; it does not extend semantic wrapper
-traversal to every OOPIF. Use the inventory and raw protocol for those frames.
+target attachment makes raw session commands possible, and `requests`/`instrument` follow every
+attached frame and worker; it does not extend semantic wrapper traversal (inspect/click/type) to
+every OOPIF. Use the inventory and raw protocol for those frames.
 
 ## Deliberately deferred
 

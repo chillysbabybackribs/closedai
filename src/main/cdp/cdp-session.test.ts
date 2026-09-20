@@ -54,7 +54,7 @@ test('CDP session attaches lazily and routes flat child-session commands', async
   assert.equal(contents.debugger.attachCount, 1)
   assert.deepEqual(contents.debugger.commands, [
     ['Target.setDiscoverTargets', { discover: true }, undefined],
-    ['Target.setAutoAttach', { autoAttach: true, flatten: true, waitForDebuggerOnStart: false }, undefined],
+    ['Target.setAutoAttach', { autoAttach: true, flatten: true, waitForDebuggerOnStart: true }, undefined],
     ['Runtime.evaluate', { expression: '2 + 2' }, 'child-7']
   ])
 
@@ -157,4 +157,76 @@ test('destroying WebContents does not access the destroyed target and notifies i
   contents.emit('destroyed')
   assert.deepEqual(closed, [session])
   assert.throws(() => session.ensureAttached(), /closed/)
+})
+
+const settle = () => new Promise<void>((resolve) => setImmediate(resolve))
+
+test('child targets auto-attach their own children, receive leased directives before resuming, and are released exactly', async () => {
+  const contents = new FakeContents()
+  const session = new CdpSession('tab-1', contents as unknown as WebContents)
+  const frame = { targetId: 'frame-1', type: 'iframe', title: '', url: 'https://ads.test/frame' }
+  const worker = { targetId: 'worker-1', type: 'worker', title: '', url: 'https://one.test/worker.js' }
+  session.ensureAttached()
+  contents.debugger.emit('message', {}, 'Target.attachedToTarget', { sessionId: 'frame-s', targetInfo: frame, waitingForDebugger: false })
+  await settle()
+  const frameCommands = () => contents.debugger.commands.filter(([, , sessionId]) => sessionId === 'frame-s').map(([method]) => method)
+  assert.deepEqual(frameCommands(), ['Target.setAutoAttach'], 'an attached document target auto-attaches its own children')
+
+  const released: string[] = []
+  const now = await session.lease('network', {
+    types: ['iframe', 'worker'],
+    apply: async (send, target) => { await send('Network.enable'); return `armed:${target.targetId}` },
+    release: async (_send, target) => { released.push(target.targetId) }
+  })
+  assert.deepEqual(now.map((outcome) => [outcome.sessionId, outcome.state, outcome.error]), [['frame-s', 'armed:frame-1', undefined]])
+  assert.deepEqual(frameCommands(), ['Target.setAutoAttach', 'Network.enable'])
+
+  contents.debugger.emit('message', {}, 'Target.attachedToTarget', { sessionId: 'worker-s', targetInfo: worker, waitingForDebugger: true })
+  await settle()
+  const workerCommands = contents.debugger.commands.filter(([, , sessionId]) => sessionId === 'worker-s').map(([method]) => method)
+  assert.deepEqual(workerCommands, ['Network.enable', 'Runtime.runIfWaitingForDebugger'], 'a paused worker gets the directive, then resumes; workers do not auto-attach')
+  assert.deepEqual(session.childOutcomes('network').map((outcome) => outcome.state), ['armed:frame-1', 'armed:worker-1'])
+
+  contents.debugger.emit('message', {}, 'Target.detachedFromTarget', { sessionId: 'worker-s' })
+  assert.deepEqual(session.childOutcomes('network').map((outcome) => outcome.sessionId), ['frame-s'])
+  const gone = await session.release('network')
+  assert.deepEqual(gone.map((outcome) => [outcome.sessionId, outcome.error]), [['frame-s', undefined]])
+  assert.deepEqual(released, ['frame-1'], 'release runs once per child that still holds the directive')
+  assert.deepEqual(session.childOutcomes('network'), [])
+  session.dispose()
+})
+
+test('a directive that fails in one child still resumes that child and reports the error; a failed release is reported', async () => {
+  const contents = new FakeContents()
+  const failing = new Set<string>()
+  contents.debugger.sendCommand = async (method, params, sessionId) => {
+    contents.debugger.commands.push([method, params, sessionId])
+    if (failing.has(method)) throw new Error(`${method} unsupported here`)
+    return { ok: true }
+  }
+  const session = new CdpSession('tab-1', contents as unknown as WebContents)
+  session.ensureAttached()
+  await session.lease('hook', {
+    types: ['iframe'],
+    apply: async (send) => send('Page.addScriptToEvaluateOnNewDocument', { source: 'x' }),
+    release: async (send) => { await send('Page.removeScriptToEvaluateOnNewDocument') }
+  })
+  failing.add('Page.addScriptToEvaluateOnNewDocument')
+  contents.debugger.emit('message', {}, 'Target.attachedToTarget', {
+    sessionId: 'frame-s', targetInfo: { targetId: 'frame-1', type: 'iframe', title: '', url: 'https://x.test' }, waitingForDebugger: true
+  })
+  await settle()
+  const frameCommands = contents.debugger.commands.filter(([, , sessionId]) => sessionId === 'frame-s').map(([method]) => method)
+  assert.equal(frameCommands.at(-1), 'Runtime.runIfWaitingForDebugger', 'the child resumes even though the directive failed')
+  assert.match(session.childOutcomes('hook')[0]?.error ?? '', /unsupported here/)
+
+  failing.clear()
+  contents.debugger.emit('message', {}, 'Target.attachedToTarget', {
+    sessionId: 'frame-t', targetInfo: { targetId: 'frame-2', type: 'iframe', title: '', url: 'https://y.test' }, waitingForDebugger: false
+  })
+  await settle()
+  failing.add('Page.removeScriptToEvaluateOnNewDocument')
+  const released = await session.release('hook')
+  assert.deepEqual(released.map((outcome) => [outcome.sessionId, outcome.error?.replace(/ .*/, '')]).sort(), [['frame-s', 'Page.addScriptToEvaluateOnNewDocument'], ['frame-t', 'Page.removeScriptToEvaluateOnNewDocument']])
+  session.dispose()
 })

@@ -6,19 +6,23 @@ import type { WebContents } from 'electron'
 // actually painted once, not merely that script ran.
 const FRAME_TIMEOUT_MS = 1_000
 
-/** Wait until a page has painted a frame; give up on the timeout so a stalled page cannot block. */
-export async function settleFrames(contents: WebContents, timeoutMs = FRAME_TIMEOUT_MS): Promise<void> {
-  if (contents.isDestroyed()) return
+/**
+ * Wait until a page has painted a frame; give up on the timeout so a stalled page cannot block.
+ * Resolves true when the page really painted, false when the wait was abandoned — a throttled
+ * hidden tab never answers, and pixels read after that may be stale.
+ */
+export async function settleFrames(contents: WebContents, timeoutMs = FRAME_TIMEOUT_MS): Promise<boolean> {
+  if (contents.isDestroyed()) return false
   // A page that navigates mid-settle rejects the evaluation; that is a settled frame's worth of
   // waiting either way, so fall through instead of failing the operation that needed the frame.
   const painted = contents.executeJavaScript(
     'new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))',
     true
-  ).then(() => {}, () => {})
-  await Promise.race([
+  ).then(() => true, () => false)
+  return Promise.race([
     painted,
-    new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, timeoutMs)
+    new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => resolve(false), timeoutMs)
       timer.unref?.()
     })
   ])

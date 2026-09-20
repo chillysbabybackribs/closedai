@@ -239,11 +239,16 @@ function parseRecording(raw: unknown): Record<string, unknown> | null {
   }
 }
 
-/** Install on the next document and on the one already loaded, so a hook takes effect at once. */
+/**
+ * Install on the next document and on the one already loaded, so a hook takes effect at once.
+ * A target paused before its first document has nothing to evaluate in yet; the new-document
+ * script alone covers it, and runs before its first script once the target resumes.
+ */
 export async function installInstrument(
   send: InstrumentSend,
   channels: InstrumentChannel[],
-  capacity: number
+  capacity: number,
+  options: { currentDocument?: boolean } = {}
 ): Promise<{ identifier: string | null; onCurrentDocument: string }> {
   const source = instrumentScript(channels, capacity)
   await send('Page.enable')
@@ -251,6 +256,7 @@ export async function installInstrument(
   const added = await send('Page.addScriptToEvaluateOnNewDocument', { source })
   const record = added !== null && typeof added === 'object' ? added as Record<string, unknown> : {}
   const identifier = typeof record.identifier === 'string' ? record.identifier : null
+  if (options.currentDocument === false) return { identifier, onCurrentDocument: 'first-document-pending' }
   try {
     const current = await send('Runtime.evaluate', { expression: source, returnByValue: true })
     const evaluated = current as { result?: { value?: unknown }; exceptionDetails?: unknown } | null

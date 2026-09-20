@@ -174,6 +174,43 @@ a maturity score or label the platform state of the art before comparative evide
 
 ## Current implementation record
 
+2026-09-20 (capture coherence): browser-page captures now carry a coherence record —
+interval, frame evidence, DOM mutation count and verdict — instead of implying verified pixels.
+`settleFrames` reports whether the page painted rather than swallowing its timeout. The native
+hidden-pixel fixture (`scripts/capture-coherence-live-check.mjs`) measured that a hidden
+document's animation frames are paused (the paint probe can only time out), that its compositor
+folds a DOM change in within 9–41 ms on its own but a capture landing inside that window
+returns the previous frame, that a freshly hidden tab keeps delivering first frames for several
+hundred milliseconds, and that rapid changes are coalesced so two identical consecutive frames
+do not prove quiescence. The shipped rule follows those measurements: hidden tabs get a 60 ms
+beat, then consecutive captures must agree within a 400 ms settle budget, and the DOM count is
+required for the verified verdict; a hidden capture that used to spend a full second in the
+paint-probe timeout now completes in ~120 ms. Coordinator changes were not needed. Also in this
+record: `instrument unhook` reports each frame's own restoration result.
+
+2026-09-20 (later): frame and worker traversal increment. `CdpSession` auto-attach is now
+recursive — each attached page/frame target auto-attaches its own frames and workers — and new
+children start paused (`waitForDebuggerOnStart: true`). The session holds *child directives*
+(`lease`/`release`): work applied to every matching attached child, now and as later ones attach,
+before a paused child resumes, with per-child outcomes and exact per-child release. Two directives
+use it: `protocol requests` leases `Network.enable` into every frame and worker (so
+`childSessions` and per-session request ids cover OOPIF and worker traffic, readable through
+`body` with `session_id`), and `instrument hook` leases the recorder into every cross-origin frame
+(future-document install only for a paused new frame, which then runs the recorder before its
+first script); `recording` folds each frame under `frames` and `unhook` cleans each frame. Workers
+are not recorded. This closes the "other frame cleanup" and "worker coverage not implied" gaps
+above for capture and recording; the semantic wrapper still does not traverse OOPIFs.
+
+Verification: 69 focused CDP tests (session directives, host lease/release, existing contracts),
+typecheck, hygiene and map check passed. Native behaviour was verified in the installed Chromium
+with `node scripts/cdp-frames-live-check.mjs`: three sites (`127.0.0.1`, `localhost`,
+`127.0.0.2`) nest outer → middle → inner frames plus a worker; the recorder hooked on a blank tab
+before navigation recorded the late cross-site frame and its nested frame from their first script
+(fetch and storage counts), `requests` captured `/api` under four sessions (root, middle, inner,
+worker), the worker's body read through its session id, and unhook released both frames. A
+same-host, different-port frame is same-site and stays in-process; it is covered by its parent's
+install as before.
+
 2026-09-20: observation correctness increment removes the ambiguous session-network body
 reader and its implicit replay. Exact historical body reads use CDP request/session ids;
 `embedded_browser.network_replay` is a separate explicit mutation that rejects incomplete

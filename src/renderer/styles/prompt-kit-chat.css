@@ -246,12 +246,10 @@
 .composer-strip-activity {
   flex: 0 1 auto;
   min-width: 0;
-  gap: 8px;
   padding-left: 4px;
+  font-size: 12px;
   color: #a9a9ad;
 }
-
-.composer-strip-activity .task-generation-copy { font-size: 12px; }
 
 .composer-project-menu {
   z-index: 70;

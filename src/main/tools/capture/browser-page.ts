@@ -1,4 +1,5 @@
 import { describeReadiness } from '../../browser-page-ready.js'
+import { describeCoherence } from '../../capture-coherence.js'
 import type { ToolAction } from '../action-tool.js'
 import { failureResult, stringArg } from '../tool.js'
 import { MAX_WAIT_MS, readinessFrom, readinessProperties, tabIdField } from '../browser/fields.js'
@@ -12,7 +13,7 @@ export function browserPageAction(capture: UiCaptureHostProvider, store: Screens
   return {
     action: 'browser_page',
     description:
-      'Capture one browser page without app chrome (active tab unless tab_id). Waits for load state and optional selector/text; fails if unmet or the main page navigates/loses its renderer during capture. Returns a scaled JPEG. DOM, animation, and subframes are not frozen; this is not an atomic DOM/pixel snapshot.',
+      'Capture one browser page without app chrome (active tab unless tab_id). Waits for load state and optional selector/text; fails if unmet or the main page navigates/loses its renderer during capture. Returns a scaled JPEG with a coherence line: verified means a fresh frame was painted and the DOM did not change during the capture interval; dom changing or possibly stale means treat the image as unverified evidence and capture again after the page settles. DOM, animation, and subframes are not frozen; this is not an atomic DOM/pixel snapshot.',
     inputSchema: {
       type: 'object',
       properties: { tab_id: tabIdField, ...readinessProperties },
@@ -26,7 +27,8 @@ export function browserPageAction(capture: UiCaptureHostProvider, store: Screens
       const result = await host.captureBrowserPage(tabId, readiness)
       if (!result) return failureResult(describeMissingTab(tabId, host.listTabs()))
       const ready = describeReadiness(readiness, result.ready)
-      const summary = `${result.title ? `Page: ${result.title}\n` : ''}URL: ${result.url}\nTab: ${result.tabId}\n${ready}`
+      const coherence = result.coherence ? `\n${describeCoherence(result.coherence)}` : ''
+      const summary = `${result.title ? `Page: ${result.title}\n` : ''}URL: ${result.url}\nTab: ${result.tabId}\n${ready}${coherence}`
       if (!result.image) return failureResult(`${summary}${result.error ? `\nCapture failed: ${result.error}` : ''}`)
       return imageResult(summary, result.image, 'browser_page', store, context.callId)
     }

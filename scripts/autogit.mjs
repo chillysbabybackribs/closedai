@@ -132,7 +132,10 @@ async function commitOnce({ dryRun = false } = {}) {
     for (const { code, path } of kept) console.log(`  ${code.trim() || '??'} ${path}`)
     return true
   }
-  await git(['add', '-A', '--', ...kept.map((entry) => entry.path)])
+  // A deletion already staged by someone else ("D ") matches neither the worktree nor the
+  // index, so naming it would abort the whole add; it is committed from the index as it stands.
+  const toAdd = kept.filter((entry) => entry.code !== 'D ').map((entry) => entry.path)
+  if (toAdd.length) await git(['add', '-A', '--', ...toAdd])
   const verify = VERIFY ? await typecheck() : null
   const body = [
     ...kept.slice(0, 40).map(({ code, path }) => `${code.trim() || '??'} ${path}`),

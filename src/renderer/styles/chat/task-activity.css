@@ -11,37 +11,14 @@
   overflow: hidden;
 }
 
-.task-generation-loader {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 9px;
-  color: var(--transcript-activity, #9b9ba1);
-}
-
-.task-generation-grid {
-  display: grid;
-  flex: 0 0 auto;
-  grid-template-columns: repeat(3, 4px);
-  gap: 2px;
-}
-
-.task-generation-cell {
-  width: 4px;
-  height: 4px;
-  background: var(--foreground, #ececee);
-  opacity: 0.16;
-  transition: opacity 300ms ease;
-}
-
-.task-generation-cell[data-active] {
-  opacity: 0.92;
-}
-
-.task-generation-copy {
+/* The composer-rail timer. No icon and no cursor: the copy itself carries the running state by
+   shimmering, reusing the transcript headline's prompt-process-shimmer sweep (tool-activity.css)
+   so exactly one kind of motion means "working" everywhere in the chat. */
+.task-timer {
   display: grid;
   min-width: 0;
   overflow: hidden;
+  color: var(--transcript-activity, #9b9ba1);
   font-size: var(--chat-fs-process, 13px);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -51,8 +28,8 @@
 
 /* Reserve and copy share one grid cell, so the box is as wide as the longest label and the
    timer counts up inside a fixed footprint instead of pushing everything left of it. */
-.task-generation-reserve,
-.task-generation-text {
+.task-timer-reserve,
+.task-timer-text {
   grid-area: 1 / 1;
   min-width: 0;
   overflow: hidden;
@@ -60,28 +37,31 @@
   white-space: nowrap;
 }
 
-.task-generation-reserve { visibility: hidden; }
+.task-timer-reserve { visibility: hidden; }
 
-.task-generation-caret {
-  display: inline-block;
-  width: 1px;
-  height: 1em;
-  margin-left: 2px;
-  vertical-align: -0.16em;
-  background: currentColor;
-  opacity: 0;
-}
-
-.task-generation-caret[data-typing] {
-  opacity: 0.75;
-  animation: task-generation-caret 720ms steps(1, end) infinite;
-}
-
-@keyframes task-generation-caret {
-  50% { opacity: 0; }
+.task-timer-text {
+  /* --shimmer-spread is set inline from the reserved label's length so the band is sized for the
+     widest clock and does not re-tune as the digits grow. */
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent calc(50% - var(--shimmer-spread, 40px)),
+      var(--transcript-activity-hover, #f4f4f5),
+      transparent calc(50% + var(--shimmer-spread, 40px))
+    ),
+    linear-gradient(var(--transcript-activity, #9b9ba1), var(--transcript-activity, #9b9ba1));
+  background-repeat: no-repeat, repeat;
+  background-size: 250% 100%, auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: prompt-process-shimmer 2s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .task-generation-cell { transition: none; }
-  .task-generation-caret { animation: none; }
+  .task-timer-text {
+    animation: none;
+    background-image: none;
+    color: var(--transcript-activity-hover, #d4d4d8);
+  }
 }

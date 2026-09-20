@@ -4,6 +4,7 @@ import test from 'node:test'
 import type { WebContents } from 'electron'
 import type { BrowserTabInfo } from '../../shared/types.ts'
 import { BrowserCdpAccess, type CdpBrowserSource, type CdpBrowserTarget } from './browser-cdp-access.ts'
+import { RECORDING_EXPRESSION } from './cdp-instrument.ts'
 
 class FakeDebugger extends EventEmitter {
   attached = false
@@ -207,4 +208,67 @@ test('real input refuses when no tab can receive it, rather than silently doing 
   await assert.rejects(() => access.clickElement('tab-1', 'p1:main:e1'), /not\s+on screen/)
   assert.ok(!contents.get('tab-1')?.debugger.commands.includes('Input.dispatchMouseEvent'))
   access.dispose()
+})
+
+const settle = () => new Promise<void>((resolve) => setImmediate(resolve))
+
+test('network capture and the recorder reach cross-origin frames and workers, and unhook cleans every frame', async () => {
+  const contents = new FakeContents(1)
+  const routed = contents.debugger.routed
+  contents.debugger.sendCommand = async (method: string, params?: unknown, sessionId?: string) => {
+    contents.debugger.commands.push(method)
+    routed.push({ method, sessionId })
+    if (method === 'Page.addScriptToEvaluateOnNewDocument') return { identifier: `script-${sessionId ?? 'root'}` }
+    if (method === 'Runtime.evaluate') {
+      const expression = String((params as { expression?: string })?.expression ?? '')
+      if (expression === RECORDING_EXPRESSION) {
+        return { result: { value: JSON.stringify({ installed: true, url: `https://${sessionId ?? 'root'}.test`, channels: ['fetch'], patches: [], counts: { fetch: sessionId ? 2 : 5 }, dropped: 0, events: [] }) } }
+      }
+      return { result: { value: sessionId ? 'installed' : '[]' } }
+    }
+    return {}
+  }
+  const access = new BrowserCdpAccess(() => ({
+    tabList: () => tabs,
+    contentsOf: () => contents as unknown as WebContents,
+    focusTabForInput: () => ({ activated: false })
+  }))
+  try {
+    const frame = { targetId: 'frame-1', type: 'iframe', title: '', url: 'https://ads.test/frame' }
+    const worker = { targetId: 'worker-1', type: 'worker', title: '', url: 'https://one.test/w.js' }
+    await access.capabilities('tab-1')
+    contents.debugger.emit('message', {}, 'Target.attachedToTarget', { sessionId: 'frame-s', targetInfo: frame, waitingForDebugger: false })
+    contents.debugger.emit('message', {}, 'Target.attachedToTarget', { sessionId: 'worker-s', targetInfo: worker, waitingForDebugger: false })
+    await settle()
+
+    const requests = await access.networkRequests('tab-1', { limit: 10 }) as { childSessions: { capturing: number; failed: unknown[] } }
+    assert.deepEqual(requests.childSessions, { capturing: 2, failed: [] })
+    assert.deepEqual(routed.filter((entry) => entry.method === 'Network.enable').map((entry) => entry.sessionId), [undefined, 'frame-s', 'worker-s'])
+
+    const hooked = await access.instrument('tab-1', 'hook', { channels: ['fetch'], capacity: 100, limit: 5 }) as { frames: unknown[] }
+    assert.deepEqual(hooked.frames, [{ sessionId: 'frame-s', url: 'https://ads.test/frame', onCurrentDocument: 'installed' }], 'the recorder is installed in the frame, not the worker')
+
+    // A frame that appears after the hook starts paused, is instrumented, then resumes.
+    contents.debugger.emit('message', {}, 'Target.attachedToTarget', {
+      sessionId: 'late-s', targetInfo: { targetId: 'frame-2', type: 'iframe', title: '', url: 'https://late.test' }, waitingForDebugger: true
+    })
+    await settle()
+    const late = routed.filter((entry) => entry.sessionId === 'late-s').map((entry) => entry.method)
+    assert.ok(late.indexOf('Page.addScriptToEvaluateOnNewDocument') < late.indexOf('Runtime.runIfWaitingForDebugger'), late.join(','))
+    assert.ok(!late.slice(0, late.indexOf('Runtime.runIfWaitingForDebugger')).includes('Runtime.evaluate'), 'a paused target has no current document to evaluate in')
+    assert.ok(late.includes('Network.enable'), 'network capture also follows the late frame')
+    contents.debugger.emit('message', {}, 'Target.targetInfoChanged', { targetInfo: { targetId: 'frame-2', type: 'iframe', title: '', url: 'https://late.test/loaded' } })
+
+    const recording = await access.instrument('tab-1', 'recording', { channels: [], capacity: 100, limit: 5 }) as { counts: Record<string, number>; frames: Array<{ sessionId: string; url: string; counts: Record<string, number> }> }
+    assert.deepEqual(recording.counts, { fetch: 5 })
+    assert.deepEqual(recording.frames.map((entry) => [entry.sessionId, entry.counts]), [['frame-s', { fetch: 2 }], ['late-s', { fetch: 2 }]])
+    assert.equal(recording.frames[1]?.url, 'https://late.test/loaded', 'frames report their current URL')
+
+    const unhooked = await access.instrument('tab-1', 'unhook', { channels: [], capacity: 100, limit: 5 }) as { frames: Array<{ sessionId: string; error?: string }> }
+    assert.deepEqual(unhooked.frames.map((entry) => [entry.sessionId, entry.error]), [['frame-s', undefined], ['late-s', undefined]])
+    const removals = routed.filter((entry) => entry.method === 'Page.removeScriptToEvaluateOnNewDocument').map((entry) => entry.sessionId)
+    assert.deepEqual(removals.sort(), [undefined, 'frame-s', 'late-s'].sort())
+  } finally {
+    access.dispose()
+  }
 })

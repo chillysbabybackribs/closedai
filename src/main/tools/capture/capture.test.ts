@@ -91,6 +91,17 @@ test('browser_page defaults to a dom-ready wait and passes deterministic conditi
   assert.equal(result.content[1].type, 'image')
 })
 
+test('browser_page tells the model whether the pixels are verified, stale, or taken while the DOM moved', async () => {
+  const coherent = { startedAt: 's', finishedAt: 'f', intervalMs: 35, frame: 'painted' as const, domMutations: 0, verdict: 'verified' as const }
+  const { call } = harness({
+    captureBrowserPage: async (tabId) => ({ image, tabId: tabId ?? 'tab-1', url: ready.url, title: ready.title, ready, coherence: tabId === 'stale'
+      ? { ...coherent, frame: 'unconfirmed', domMutations: 7, verdict: 'possibly_stale' }
+      : coherent })
+  })
+  assert.match(textOf(await call({ action: 'browser_page', tab_id: 'tab-4' })), /\nCapture verified: fresh frame painted; DOM unchanged over 35ms\n/)
+  assert.match(textOf(await call({ action: 'browser_page', tab_id: 'stale' })), /Capture possibly stale: no fresh frame within the wait — pixels may be stale; DOM changed 7 times/)
+})
+
 test('browser_page refuses an image when readiness was not reached', async () => {
   const waiting = { ...ready, reached: false, conditionMet: false, readyState: 'interactive', elapsedMs: 1_000 }
   const { call } = harness({

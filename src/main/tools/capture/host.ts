@@ -1,4 +1,5 @@
 import type { PageReadiness, PageReadyResult } from '../../browser-page-ready.js'
+import type { CaptureCoherence } from '../../capture-coherence.js'
 import type { BrowserTabInfo } from '../../../shared/types.js'
 
 export type ModelImage = {
@@ -25,6 +26,8 @@ export type BrowserPageCapture = {
   url: string
   title: string
   ready: PageReadyResult
+  /** Present with an image: what the pixels can be trusted to represent. */
+  coherence?: CaptureCoherence
   error?: string
 }
 
