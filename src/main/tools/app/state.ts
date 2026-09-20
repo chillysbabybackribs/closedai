@@ -10,7 +10,7 @@ export function appStateTool(app: () => AppCommandHost | null, ui: () => AppUiHo
   return defineTool({
     name: 'state',
     description:
-      'Compact app state without DOM: workspace (caller and selected pane), chat (your model, project, thread, usage, last messages), browser, downloads, window, ui. Pass include for subsets only.',
+      'Compact app state without DOM: workspace (caller, selected pane, active project, latest projectSwitch status), chat (your model, project, thread, usage, last messages), browser, downloads, window, ui. Pass include for subsets only.',
     inputSchema: objectSchema({
       include: {
         type: 'array', minItems: 1, uniqueItems: true,
