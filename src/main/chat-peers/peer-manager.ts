@@ -26,7 +26,7 @@ import { PeerChatCatalog } from './peer-chat-catalog.js'
 import { cachedPaneView, PeerEmitThrottle, readableView, rendererSnapshot, rowSummary } from './peer-events.js'
 import { PeerIdleParking } from './peer-idle-parking.js'
 import { PeerLifecycle, type ChatPeerFactory, type PeerEntry } from './peer-lifecycle.js'
-import { selectedMirror } from './peer-settings.js'
+import { openChatsPatch } from './peer-settings.js'
 import { pageResult, subagentSummaries } from './peer-summary.js'
 import { schedulePaneWarm } from './provider-warm.js'
 
@@ -445,30 +445,32 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     if (this.selectingProject) throw new Error('A project selection is already in progress')
     this.selectingProject = true
     try {
-    if (!deferred) {
-      this.projectSwitch.assertAvailable()
-      this.projectSwitch.cancel('A manual project selection superseded the queued switch')
+      if (!deferred) {
+        this.projectSwitch.assertAvailable()
+        this.projectSwitch.cancel('A manual project selection superseded the queued switch')
+      }
+      if (!this.workspaceSelector) throw new Error('Project selection is unavailable')
+      const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
+      const selection = this.workspaceSelector.current()
+      if (selection.projectPath === projectPath) return
+
+      await this.workspaceSelector.select(projectPath, {
+        modelId: current.selectedModel,
+        reasoningEffort: current.selectedReasoningEffort
+      })
+
+      this.visibilityRevision += 1
+      this.visiblePaneIds.clear()
+      this.retainedTabIds.clear()
+      this.catalog.invalidate()
+      const restored = this.settings.get()
+      this.selectedPaneId = this.restoreOpenChats(restored.chatOpenIds, restored.chatSelectedPaneId, current.selectedModel, current.selectedReasoningEffort)
+      await this.persistOpenChats()
+      this.emitWorkspace()
+      this.wakeLater(this.selectedPaneId, 'start the project chat')
+    } finally {
+      this.selectingProject = false
     }
-    if (!this.workspaceSelector) throw new Error('Project selection is unavailable')
-    const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
-    const selection = this.workspaceSelector.current()
-    if (selection.projectPath === projectPath) return
-
-    await this.workspaceSelector.select(projectPath, {
-      modelId: current.selectedModel,
-      reasoningEffort: current.selectedReasoningEffort
-    })
-
-    this.visibilityRevision += 1
-    this.visiblePaneIds.clear()
-    this.retainedTabIds.clear()
-    this.catalog.invalidate()
-    const restored = this.settings.get()
-    this.selectedPaneId = this.restoreOpenChats(restored.chatOpenIds, restored.chatSelectedPaneId, current.selectedModel, current.selectedReasoningEffort)
-    await this.persistOpenChats()
-    this.emitWorkspace()
-    this.wakeLater(this.selectedPaneId, 'start the project chat')
-    } finally { this.selectingProject = false }
   }
 
   beginLogin(): Promise<string | null> {
@@ -541,12 +543,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   /** Which chats are open and which is selected, plus the flat mirror of the selected one. */
   private async persistOpenChats(): Promise<void> {
-    const selected = this.store.get(this.selectedPaneId) ?? null
-    await this.settings.set({
-      chatOpenIds: this.lifecycle.ids().filter((id) => this.store.require(id).cwd === this.workspace().cwd),
-      chatSelectedPaneId: this.selectedPaneId,
-      ...selectedMirror(selected)
-    })
+    const records = this.lifecycle.ids().map((id) => this.store.require(id))
+    await this.settings.set(openChatsPatch(records, this.store.require(this.selectedPaneId)))
   }
 
   private wake(paneId: ChatPaneId): Promise<PeerEntry> {
