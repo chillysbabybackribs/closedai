@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
 import { DropdownMenu } from 'radix-ui'
 import { Check, Folder, Plus, X } from 'lucide-react'
 
@@ -15,6 +15,7 @@ type ProjectMenuProps = {
   onClearProject: () => Promise<void>
   /** Turn in flight, if any; drives the working timer on the left of the rail. */
   activeTurnId: string | null
+  trailing?: ReactNode
 }
 
 function folderName(path: string): string {
@@ -24,7 +25,7 @@ function folderName(path: string): string {
 
 /** Project context lives with the composer because it determines where the next turn runs. */
 export function ProjectMenu({
-  cwd, projectPath, recentProjects, disabled, onChooseProject, onSelectProject, onClearProject, activeTurnId
+  cwd, projectPath, recentProjects, disabled, onChooseProject, onSelectProject, onClearProject, activeTurnId, trailing
 }: ProjectMenuProps): JSX.Element {
   const label = projectPath ? folderName(projectPath) : 'No project'
 
@@ -94,6 +95,7 @@ export function ProjectMenu({
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
+      {trailing}
     </div>
   )
 }

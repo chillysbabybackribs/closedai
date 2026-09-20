@@ -75,7 +75,8 @@ function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, on
   const state = snapshot.panes?.[paneId] ?? (snapshot.selectedPaneId === paneId ? snapshot.selected : retained.current)
   retained.current = state
   const controller = usePaneChatController(snapshot, paneId, state, dispatch)
+  const isSelected = snapshot.selectedPaneId === paneId
   return <ChatPane controller={controller} zoom={appearance.chatZoom} fontSize={appearance.chatFontSize}
     composerFontSize={appearance.composerFontSize} historyOpen={historyOpen} onHistoryOpenChange={onHistoryOpenChange}
-    dialog={dialog} onDialogChange={onDialogChange} />
+    dialog={dialog} onDialogChange={onDialogChange} selected={isSelected} />
 }

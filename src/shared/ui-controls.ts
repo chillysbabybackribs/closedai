@@ -72,6 +72,7 @@ export const UI_CONTROLS = {
   'composer.context': 'Open the context inspector',
   'composer.usage-card': 'Context window and plan usage, shown while the context meter is hovered',
   'composer.compact': 'Compact provider-side context from a transcript summary',
+  'composer.compact-toggle': 'Toggle between compact progress pill and full composer',
   'composer.upload': 'Attach files',
   'composer.attachment-remove': 'Remove a pending attachment; item is the attachment id',
   'composer.attachment-preview': 'Open an attached image full size, in the composer or a sent message; item is the attachment id',
