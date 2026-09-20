@@ -18,7 +18,8 @@ test('the checkout uses native file tools without an injected map', () => {
 
 test('instructions include the shared objective enhancement without a forced procedural search', () => {
   const text = antigravityAgentInstructions('/w')
-  assert.match(text, /best-known instance of what they are after, not as the boundary/)
+  assert.match(text, /Treat diagnoses and proposed methods as hypotheses/)
+  assert.match(text, /Investigate a plausible better approach when it could materially improve the result/)
   assert.doesNotMatch(text, /run at least one search for alternatives to the named source/)
   assert.doesNotMatch(text, /"Sources checked" list/)
 })
