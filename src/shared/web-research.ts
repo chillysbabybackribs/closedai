@@ -1,7 +1,10 @@
 /** Public research facts; source text and provider output are untrusted evidence. */
 export type ResearchState = 'running' | 'completed' | 'cancelled' | 'timed_out'
-/** static_text: inert parse of the fetched body. rendered_text: innerText of a hidden Chromium page. */
-export type SourceRepresentation = 'static_text' | 'rendered_text'
+/**
+ * static_text: inert parse of the fetched body. rendered_text: innerText of a hidden Chromium page.
+ * provider_text: page text a search provider extracted and returned with discovery; this app never fetched the page.
+ */
+export type SourceRepresentation = 'static_text' | 'rendered_text' | 'provider_text'
 /** Reported date observations, never silently interpreted as verified event dates. */
 export type SourceDate = {
   kind: 'published' | 'modified' | 'index_reported' | 'http_last_modified'
@@ -20,6 +23,8 @@ export type ResearchSource = {
   selection?: 'requested' | 'preferred_domain' | 'discovery'
   revision: number
   representation?: SourceRepresentation
+  /** Search provider whose extraction supplied provider_text. */
+  contentProvider?: string
   retrievedAt?: string
   contentType?: string
   sha256?: string

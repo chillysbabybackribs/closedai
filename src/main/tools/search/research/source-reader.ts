@@ -95,16 +95,18 @@ export class SourceStore {
     })
   }
 
-  /** Keep text a hidden worker extracted from a rendered page under the same id scheme. */
-  async retain(runId: string, sourceId: string, page: { url: string; title: string; text: string; truncated: boolean }): Promise<SourceDocument> {
+  /** Keep text a hidden worker rendered, or a search provider extracted, under the same id scheme. */
+  async retain(runId: string, sourceId: string, page: { url: string; title: string; text: string; truncated: boolean },
+    representation: Exclude<SourceRepresentation, 'static_text'> = 'rendered_text'): Promise<SourceDocument> {
     const text = page.text.slice(0, MAX_TEXT)
-    if (!text.trim()) throw new Error('The rendered page has no readable text')
+    if (!text.trim()) throw new Error(representation === 'rendered_text' ? 'The rendered page has no readable text' : 'The provider returned no page text')
     const directory = join(this.root, runId)
     await mkdir(directory, { recursive: true })
     await writeFile(join(directory, `${sourceId}.txt.tmp`), text)
     await rename(join(directory, `${sourceId}.txt.tmp`), join(directory, `${sourceId}.txt`))
     return {
-      text, title: page.title, url: publicUrl(page.url), contentType: 'text/html', representation: 'rendered_text',
+      text, title: page.title, url: publicUrl(page.url), representation,
+      contentType: representation === 'rendered_text' ? 'text/html' : 'text/plain',
       sha256: createHash('sha256').update(text).digest('hex'), incomplete: page.truncated || page.text.length > MAX_TEXT
     }
   }

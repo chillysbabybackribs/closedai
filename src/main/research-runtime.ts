@@ -64,6 +64,7 @@ export async function createResearchRuntime(options: {
         const deadline = AbortSignal.any([signal, AbortSignal.timeout(30_000)])
         return store.retain(runId, sourceId, await readRenderedPage(workers, runId, url, deadline))
       },
+      retain: (runId, sourceId, page) => store.retain(runId, sourceId, page, 'provider_text'),
       read: (runId, sourceId) => store.read(runId, sourceId),
       remove: (runId) => store.remove(runId),
       openLive: (url, context) => {

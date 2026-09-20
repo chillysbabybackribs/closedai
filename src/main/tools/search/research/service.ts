@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { ResearchSnapshot, ResearchSource, ResearchState } from '../../../../shared/web-research.js'
 import type { ToolContext } from '../../tool.js'
 import { canonicalUrl, SearchRouter } from '../router.js'
-import type { SearchRequest, SearchResult } from '../types.js'
+import type { ProvidedContent, SearchRequest, SearchResult } from '../types.js'
 import { publicUrl, SourceNeedsRendering, type SourceDocument, type SourceReader } from './source-reader.js'
 import { isResearchSourceUrl, SourcePresentation, type OpenSearchTab } from '../presentation.js'
 import { mergeDates } from './source-metadata.js'
@@ -10,11 +10,14 @@ import { MAX_CANDIDATES, prefersDomain, SourceAdmission } from './source-admissi
 import { ResearchTiming, type ResearchTimingEvent } from './timing.js'
 
 export type ResearchOwner = { paneId: string; threadId: string; turnId: string | null; workspace: string }
+export type ProvidedPage = { url: string; title: string; text: string; truncated: boolean }
 export type ResearchDependencies = {
   owner(context: ToolContext): ResearchOwner
   collect: SourceReader
   /** Hidden Chromium read for pages whose static body is a JavaScript shell; absent means no workers. */
   render?: SourceReader
+  /** Keeps page text a provider returned with discovery; absent means provider text is ignored and pages are fetched. */
+  retain?: (runId: string, sourceId: string, page: ProvidedPage) => Promise<SourceDocument>
   read(runId: string, sourceId: string): Promise<string>
   remove(runId: string): Promise<void>
   /** Opens a retained, user-owned tab once. Never follows subsequent results automatically. */
@@ -164,7 +167,7 @@ export class ResearchService {
     this.admit(run)
     for (const query of queries) this.track(run, async () => {
       try {
-        await this.router.search({ ...query, includeAnswer: false }, run.controller.signal, (update) => {
+        await this.router.search({ ...query, includeAnswer: false, sourceText: true }, run.controller.signal, (update) => {
           if (run.state !== 'running') return
           if ('error' in update) {
             run.errors.push({ query: query.query.slice(0, 200), provider: update.error.provider, message: update.error.message.slice(0, 300) })
@@ -200,6 +203,7 @@ export class ResearchService {
         existing.discoveredBy.push(result.provider)
       }
       existing.revision = this.changed(run)
+      if (result.content && result.provider) this.retainProvided(run, existing, result.provider, result.content)
       return
     }
     if (run.sources.size >= MAX_CANDIDATES) {
@@ -216,6 +220,31 @@ export class ResearchService {
     }
     run.sources.set(key, source)
     run.timing.discover(source.id)
+    if (result.content && result.provider) this.retainProvided(run, source, result.provider, result.content)
+  }
+
+  /**
+   * Text a provider extracted is retained as it arrived: no fetch, no read slot, and no byte-level
+   * provenance of our own, so the representation says so. Sources already queued keep their fetch.
+   */
+  private retainProvided(run: Run, source: ResearchSource, provider: string, content: ProvidedContent): void {
+    if (!this.deps.retain || source.state !== 'deferred' || run.state !== 'running') return
+    source.state = 'reading'
+    source.revision = this.changed(run)
+    run.timing.begin(source.id)
+    if (run.presentation.consider(source.url)) this.changed(run)
+    this.track(run, async () => {
+      try {
+        const document = await this.deps.retain!(run.id, source.id, { url: source.url, title: source.title, text: content.text, truncated: content.truncated })
+        if (run.state !== 'running') return
+        this.collected(run, source, document)
+        source.contentProvider = provider
+      } catch (error) {
+        if (run.state !== 'running') return
+        // Retention failed locally; the ordinary fetch path can still read the page.
+        source.state = 'deferred'; source.error = message(error); source.revision = this.changed(run)
+      } finally { run.timing.end(source.id, source.state); this.admit(run) }
+    })
   }
 
   private admit(run: Run): void {
