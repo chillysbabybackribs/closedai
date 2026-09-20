@@ -61,6 +61,8 @@ export type IpcInvokeChannels = {
   'chat:openChat': { args: [string]; result: ChatPaneId }
   'chat:archiveChat': { args: [string]; result: void }
   'chat:setChatPinned': { args: [string, boolean]; result: void }
+  'chat:renameChat': { args: [string, string | null]; result: void }
+  'chat:retryChatTitle': { args: [string]; result: void }
   'chat:compactConversation': { args: [ChatPaneId]; result: void }
   'chat:chooseProject': { args: []; result: void }
   'chat:selectProject': { args: [string]; result: void }
@@ -156,6 +158,8 @@ export const IPC = {
       openChat: 'chat:openChat',
       archiveChat: 'chat:archiveChat',
       setChatPinned: 'chat:setChatPinned',
+      renameChat: 'chat:renameChat',
+      retryChatTitle: 'chat:retryChatTitle',
       compactConversation: 'chat:compactConversation',
       chooseProject: 'chat:chooseProject',
       selectProject: 'chat:selectProject',

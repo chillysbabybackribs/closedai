@@ -417,6 +417,16 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.emitChats()
   }
 
+  async renameChat(chatId: string, title: string | null): Promise<void> {
+    this.lifecycle.rename(chatId, title)
+    this.emitChats()
+  }
+
+  async retryChatTitle(chatId: string): Promise<void> {
+    await this.lifecycle.retryTitle(chatId, (fn) => this.withAwake(chatId, fn))
+    this.emitChats()
+  }
+
   async archiveChat(chatId: string): Promise<void> {
     this.projectSwitch.assertAvailable()
     this.projectSwitch.cancel('The requesting chat was archived', chatId)
@@ -476,7 +486,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       this.retainedTabIds.clear()
       this.catalog.invalidate()
       const restored = this.settings.get()
-      this.selectedPaneId = this.restoreOpenChats(restored.chatOpenIds, restored.chatSelectedPaneId, current.selectedModel, current.selectedReasoningEffort)
+      this.selectedPaneId = this.lifecycle.restoreOpenChats(restored.chatOpenIds, restored.chatSelectedPaneId, current.selectedModel, current.selectedReasoningEffort, this.workspace())
       this.lifecycle.parkExcessIdle(this.selectedPaneId)
       await this.trimAttached()
       await this.persistOpenChats()
@@ -506,25 +516,6 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       record: (paneId) => this.store.get(paneId),
       transcripts: this.transcripts
     }
-  }
-
-  /**
-   * Attach the workspace's saved open chats, or a fresh one when it has none, and pick the
-   * selection. Ids whose records are gone (archived, removed) are skipped rather than failing.
-   */
-  private restoreOpenChats(openIds: string[], selectedId: string | null, modelId: string | null, effort: string | null): ChatPaneId {
-    const { cwd, projectPath } = this.workspace()
-    const records = openIds.map((id) => this.store.get(id)).filter((record): record is ChatRecord =>
-      record !== undefined && !record.archived && record.cwd === cwd)
-    if (records.length === 0) {
-      const saved = this.settings.get()
-      const model = modelId ?? saved.chatModelId
-      records.push(this.store.create({
-        cwd, projectPath, provider: chatProviderOfId(model), modelId: model, reasoningEffort: effort ?? saved.chatReasoningEffort
-      }))
-    }
-    for (const record of records) this.lifecycle.attach(record)
-    return selectedId && records.some((record) => record.id === selectedId) ? selectedId : records[0]!.id
   }
 
   private workspace(): ChatWorkspaceSelection {

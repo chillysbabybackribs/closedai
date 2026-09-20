@@ -28,6 +28,8 @@ export type ChatController = {
   openChat: (chatId: string) => Promise<void>
   archiveChat: (chatId: string) => Promise<void>
   setChatPinned: (chatId: string, pinned: boolean) => Promise<void>
+  renameChat: (chatId: string, title: string | null) => Promise<void>
+  retryChatTitle: (chatId: string) => Promise<void>
   compactConversation: () => Promise<void>
   selectPane: (paneId: string) => Promise<void>
   closePeer: (paneId: string) => Promise<void>
@@ -100,6 +102,8 @@ export function usePaneChatController(
   const openChat = useCallback((chatId: string) => window.closedai.chat.openChat(chatId).then(() => undefined), [])
   const archiveChat = useCallback((chatId: string) => window.closedai.chat.archiveChat(chatId), [])
   const setChatPinned = useCallback((chatId: string, pinned: boolean) => window.closedai.chat.setChatPinned(chatId, pinned), [])
+  const renameChat = useCallback((chatId: string, title: string | null) => window.closedai.chat.renameChat(chatId, title), [])
+  const retryChatTitle = useCallback((chatId: string) => window.closedai.chat.retryChatTitle(chatId), [])
   const compactConversation = useCallback(() => window.closedai.chat.compactConversation(paneId), [paneId])
   const selectPane = useCallback((nextPaneId: string) => window.closedai.chat.selectPane(nextPaneId), [])
   const closePeer = useCallback((targetPaneId: string) => window.closedai.chat.closePeer(targetPaneId), [])
@@ -137,6 +141,8 @@ export function usePaneChatController(
     openChat,
     archiveChat,
     setChatPinned,
+    renameChat,
+    retryChatTitle,
     compactConversation,
     selectPane,
     closePeer,
@@ -146,6 +152,6 @@ export function usePaneChatController(
     state, workspace.workspace, workspace.preferences, workspace.chats, paneId,
     send, interrupt, interruptPane, selectModel, selectReasoningEffort, refreshPlanUsage, loginWithChatGPT,
     listChats, newThread, continueInNewThread, continueFromChat, openChat,
-    archiveChat, setChatPinned, compactConversation, selectPane, closePeer, loadEarlier, trimMountedHistory
+    archiveChat, setChatPinned, renameChat, retryChatTitle, compactConversation, selectPane, closePeer, loadEarlier, trimMountedHistory
   ])
 }

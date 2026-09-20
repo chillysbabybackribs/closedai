@@ -38,6 +38,12 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   ipcMain.handle(IPC.invoke.chat.openChat, (_event, chatId: string) => requireService().openChat(chatId))
   ipcMain.handle(IPC.invoke.chat.archiveChat, (_event, chatId: string) => requireService().archiveChat(chatId))
   ipcMain.handle(IPC.invoke.chat.setChatPinned, (_event, chatId: string, pinned: boolean) => requireService().setChatPinned(chatId, pinned))
+  ipcMain.handle(IPC.invoke.chat.renameChat, (_event, chatId: string, title: string | null) =>
+    requireService().renameChat(chatId, title)
+  )
+  ipcMain.handle(IPC.invoke.chat.retryChatTitle, (_event, chatId: string) =>
+    requireService().retryChatTitle(chatId)
+  )
   ipcMain.handle(IPC.invoke.chat.compactConversation, (_event, paneId: string) => requireService().compactConversation(paneId))
   ipcMain.handle(IPC.invoke.chat.chooseProject, async () => {
     const result = await dialog.showOpenDialog({

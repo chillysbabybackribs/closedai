@@ -85,6 +85,10 @@ export type ClosedaiApi = {
     /** Hide a chat from the workspace: its provider thread is archived and its pane, if any, closed. */
     archiveChat: (chatId: string) => Promise<void>
     setChatPinned: (chatId: string, pinned: boolean) => Promise<void>
+    /** Rename a chat with a manual title, or pass null/empty to revert to the default/generated title. */
+    renameChat: (chatId: string, title: string | null) => Promise<void>
+    /** Retry background auto-title generation for a completed conversation. */
+    retryChatTitle: (chatId: string) => Promise<void>
     /** Re-seed provider-side context from a bounded summary when the active provider supports it. */
     compactConversation: (paneId: ChatPaneId) => Promise<void>
     /** Choose a project directory and restore its saved panes, or create its first chat. */
