@@ -6,7 +6,7 @@ import { ChevronRight, ChevronUp, XCircle } from 'lucide-react'
 
 import { Bubble, BubbleContent } from '../components/ui/bubble.js'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible.js'
-import { Markdown } from '../components/ui/markdown.js'
+import { LocalFileMarkdown as Markdown } from './local-file-markdown.js'
 import { Marker, MarkerContent } from '../components/ui/marker.js'
 import { Message, MessageContent } from '../components/ui/message.js'
 import {

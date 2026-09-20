@@ -1,7 +1,7 @@
 import { Check, Copy } from 'lucide-react'
 import { marked } from 'marked'
 import { createElement, memo, useCallback, useId, useMemo, useState, type ReactNode } from 'react'
-import ReactMarkdown, { type Components } from 'react-markdown'
+import ReactMarkdown, { defaultUrlTransform, type Components } from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 
@@ -9,6 +9,7 @@ import { cn } from '../../lib/utils.js'
 import { Source, SourceContent, SourceTrigger } from '../prompt-kit/source.js'
 import { CodeBlock, CodeBlockCode } from './code-block.js'
 import { remarkBareUrls } from './markdown-links.js'
+import { localFilePath } from '../../shared/local-files.js'
 
 export type MarkdownProps = {
   children: string
@@ -87,9 +88,7 @@ function CodeHeader({ language, code }: { language: string; code: string }) {
   )
 }
 
-const DEFAULT_COMPONENTS: Partial<Components> = {
-  ...TAGGED_COMPONENTS,
-  a: function LinkComponent({ href, children, node: _node, ...props }) {
+export const MarkdownLink: NonNullable<Components['a']> = function LinkComponent({ href, children, node: _node, ...props }) {
     const safeHref = safeWebUrl(href)
     if (safeHref) {
       const title = textContent(children) || hostname(safeHref)
@@ -112,7 +111,11 @@ const DEFAULT_COMPONENTS: Partial<Components> = {
         {children}
       </a>
     )
-  },
+}
+
+const DEFAULT_COMPONENTS: Partial<Components> = {
+  ...TAGGED_COMPONENTS,
+  a: MarkdownLink,
   code: function CodeComponent({ className, children, node: _node, ...props }) {
     const code = String(children).replace(/\n$/, '')
     const multiline = code.includes('\n') || className?.includes('language-')
@@ -143,7 +146,7 @@ function hostname(href: string): string {
 }
 
 const MarkdownBlock = memo(function MarkdownBlock({ content, components }: { content: string; components: Partial<Components> }) {
-  return <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks, remarkBareUrls]} components={components}>{content}</ReactMarkdown>
+  return <ReactMarkdown urlTransform={(url, key) => key === 'href' && localFilePath(url) ? url : defaultUrlTransform(url)} remarkPlugins={[remarkGfm, remarkBreaks, remarkBareUrls]} components={components}>{content}</ReactMarkdown>
 }, (previous, next) => previous.content === next.content && previous.components === next.components)
 
 function MarkdownComponent({ children, id, className, components }: MarkdownProps) {

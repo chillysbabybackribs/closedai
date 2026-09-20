@@ -333,7 +333,11 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   runs `remarkBareUrls` (`markdown-links.ts`) after remark-gfm so scheme-less hosts such as
   `example.com/path` become links too; the transformer skips code, existing links, and hosts outside
   its curated TLD list, which is what keeps `chat-transcript.tsx` and `package.json` as plain text.
-  Non-http schemes stay inert. This is renderer-side, so it holds for every provider lane.
+  Explicit absolute local file links (including `file://` and optional line suffixes) are
+  clickable in chat responses. Raster images open in the existing image dialog through a
+  bounded 32 MB read; other files and directories are revealed in the file manager, never
+  executed. Missing files and preview failures show an error. Other non-http schemes stay
+  inert. This holds for every provider lane.
 
 Provider background tasks and app panes are separate concepts. Claude tracks task notifications
 across turn boundaries with `ClaudeBackgroundTasks`; Codex collaboration items are marked as

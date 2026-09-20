@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import { useState, type JSX } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '../components/ui/dialog.js'
 
 export type ImagePreviewTarget = { src: string; name: string }
@@ -15,12 +15,14 @@ export function ImagePreviewDialog({
   target: ImagePreviewTarget | null
   onClose: () => void
 }): JSX.Element | null {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
   if (!target) return null
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent className="image-preview" data-ui="dialog.image" aria-describedby={undefined}>
         <DialogTitle className="image-preview-title">{target.name}</DialogTitle>
-        <img className="image-preview-image" src={target.src} alt={target.name} />
+        {failedSrc === target.src ? <p role="alert">This image could not be displayed.</p> :
+          <img className="image-preview-image" src={target.src} alt={target.name} onError={() => setFailedSrc(target.src)} />}
       </DialogContent>
     </Dialog>
   )
