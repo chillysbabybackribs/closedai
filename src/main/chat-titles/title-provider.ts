@@ -2,14 +2,15 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { bareChatId, chatProviderOfId } from '../../shared/chat-providers.js'
+import { antigravityBinary } from '../antigravity/antigravity-cli.js'
 import { loadClaudeSdk } from '../claude/claude-sdk.js'
+import { cursorBinary } from '../cursor/cursor-cli.js'
 import { titleProcess } from './title-process.js'
 import { TITLE_INSTRUCTIONS, type TitleGenerator } from './title-policy.js'
 
-/** Separate ephemeral requests use the selected model and existing provider authentication. */
+/** Ephemeral requests use the active provider CLI / SDK and existing authentication. */
 export const generateChatTitle: TitleGenerator = async (request, signal) => {
   const provider = chatProviderOfId(request.modelId)
-  if (provider !== 'codex' && provider !== 'claude') throw new Error('Isolated title generation is unavailable for this provider')
   signal.throwIfAborted()
   const cwd = await mkdtemp(join(tmpdir(), 'closedai-title-'))
   try {
@@ -35,6 +36,14 @@ export const generateChatTitle: TitleGenerator = async (request, signal) => {
         query.close()
       }
     }
+    if (provider === 'antigravity') {
+      const output = await titleProcess(antigravityBinary(), antigravityTitleArgs(request.modelId, request.prompt), cwd, '', signal)
+      return output.trim()
+    }
+    if (provider === 'cursor') {
+      const output = await titleProcess(cursorBinary(), cursorTitleArgs(request.modelId, request.prompt), cwd, '', signal)
+      return output.trim()
+    }
     const instructions = join(cwd, 'instructions.txt')
     await writeFile(instructions, TITLE_INSTRUCTIONS)
     const output = await titleProcess(process.env.CLOSEDAI_CODEX_PATH?.trim() || 'codex', codexTitleArgs(request.modelId, instructions), cwd, request.prompt, signal)
@@ -42,6 +51,32 @@ export const generateChatTitle: TitleGenerator = async (request, signal) => {
   } finally {
     await rm(cwd, { recursive: true, force: true })
   }
+}
+
+export function antigravityTitleArgs(modelId: string, prompt: string): string[] {
+  const model = bareChatId('antigravity', modelId)
+  const args = [
+    `--print=${prompt}`,
+    '--output-format', 'text',
+    '--dangerously-skip-permissions',
+    '--disable-slash-commands',
+    '--effort', 'low'
+  ]
+  if (model) args.push('--model', model)
+  return args
+}
+
+export function cursorTitleArgs(modelId: string, prompt: string): string[] {
+  const model = bareChatId('cursor', modelId)
+  const args = [
+    '--trust',
+    '--print',
+    '--output-format', 'text',
+    '--mode', 'ask'
+  ]
+  if (model) args.push('--model', model)
+  args.push(prompt)
+  return args
 }
 
 export function codexTitleArgs(model: string, instructions: string): string[] {

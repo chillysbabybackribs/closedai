@@ -77,7 +77,7 @@ export class PeerLifecycle {
     await withSurface(async (surface) => {
       if (!surface.generateTitle) throw new Error('Title generation is not supported for this provider')
       const snapshot = surface.snapshot()
-      if (!titleRequest(snapshot)) throw new Error('Complete an exchange first before generating a title')
+      if (!titleRequest(snapshot)) throw new Error('Send a message first before generating a title')
       await this.titles.retry(chatId, snapshot, surface.generateTitle.bind(surface))
     })
   }
@@ -142,7 +142,11 @@ export class PeerLifecycle {
       const oldTitle = entry.display.current.title
       this.onEvent(entry, event)
       if (entry.display.current.title !== oldTitle) this.onEvent(entry, { type: 'title', title: entry.display.current.title })
-      if (wasRunning && !entry.display.current.running && surface.generateTitle) {
+      if (surface.generateTitle && (
+        (event.type === 'item' && event.item.type === 'user') ||
+        event.type === 'thread' ||
+        (wasRunning && !entry.display.current.running)
+      )) {
         void this.titles.generate(record.id, surface.snapshot(), surface.generateTitle.bind(surface))
       }
     })

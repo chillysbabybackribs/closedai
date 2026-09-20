@@ -10,11 +10,11 @@ export class ChatTitles {
 
   async generate(id: string, snapshot: ChatSnapshot, generate: TitleGenerator): Promise<void> {
     const record = this.store.get(id)
+    const threadId = record?.threadId ?? snapshot.threadId
     if (!record || record.archived || record.titleGenerationAttempted || record.titleSource === 'generated' ||
-      record.titleSource === 'manual' || this.pending.has(id) || !record.threadId) return
+      record.titleSource === 'manual' || this.pending.has(id) || !threadId) return
     const request = titleRequest(snapshot)
     if (!request) return
-    const threadId = record.threadId
     const controller = new AbortController()
     this.pending.set(id, controller)
     this.store.update(id, { titleGenerationAttempted: true })
@@ -22,7 +22,8 @@ export class ChatTitles {
     try {
       const title = cleanGeneratedTitle(await generate(request, controller.signal))
       const current = this.store.get(id)
-      if (!title || controller.signal.aborted || !current || current.archived || current.threadId !== threadId ||
+      if (!title || controller.signal.aborted || !current || current.archived ||
+        (threadId && current.threadId && current.threadId !== threadId) ||
         current.modelId !== record.modelId || current.titleSource === 'manual' || current.titleSource === 'generated') return
       this.store.update(id, { title, titleSource: 'generated' })
       this.changed(id)

@@ -4,7 +4,7 @@ import { ChatStore } from '../chat-store/chat-store.js'
 import { FakeSurface } from '../chat-peers/peer-manager-harness.js'
 import { ChatTitles } from './chat-titles.js'
 import { cleanGeneratedTitle, titleRequest } from './title-policy.js'
-import { codexTitleArgs, codexTitleOutput } from './title-provider.js'
+import { antigravityTitleArgs, codexTitleArgs, codexTitleOutput, cursorTitleArgs } from './title-provider.js'
 
 function harness() {
   const store = ChatStore.inMemory()
@@ -62,7 +62,7 @@ test('duplicates are joined by omission; detached, archived, changed-model and c
 })
 
 test('failure and invalid output preserve the fallback and do not retry every turn', async () => {
-  for (const value of [null, 'bad\nmultiline', 'x'.repeat(61)]) {
+  for (const value of [null, '', '   ', 'New chat', 'title: new chat']) {
     const h = harness()
     let calls = 0
     const generate = async () => { calls++; if (value === null) throw new Error('offline'); return value }
@@ -74,16 +74,41 @@ test('failure and invalid output preserve the fallback and do not retry every tu
   }
 })
 
-test('request includes bounded first exchange only and requires a completed response', () => {
+test('request includes bounded first user request and optional response', () => {
   const h = harness()
   h.snapshot.items.push({ type: 'user', id: 'u2', turnId: 't2', text: 'Later request excluded' })
   const request = titleRequest(h.snapshot)!
   assert.ok(request.prompt.includes('Build file previews'))
   assert.ok(!request.prompt.includes('Later request excluded'))
-  assert.equal(titleRequest({ ...h.snapshot, activeTurnId: 't' }), null)
-  assert.equal(titleRequest({ ...h.snapshot, pausedTurnId: 't' }), null)
-  assert.equal(titleRequest({ ...h.snapshot, items: h.snapshot.items.slice(0, 1) }), null)
+  assert.ok(request.prompt.includes('Added clickable file previews.'))
+
+  // User message alone without assistant response is also supported
+  const userOnlyRequest = titleRequest({ ...h.snapshot, items: h.snapshot.items.slice(0, 1) })!
+  assert.ok(userOnlyRequest.prompt.includes('Build file previews'))
+  assert.ok(!userOnlyRequest.prompt.includes('Added clickable file previews.'))
+
+  // Resilient title cleaning: quotes, prefixes, markdown, trailing period, multiline, truncation
   assert.equal(cleanGeneratedTitle('“Clickable Local File Previews”'), 'Clickable Local File Previews')
+  assert.equal(cleanGeneratedTitle('Title: Clickable Local File Previews'), 'Clickable Local File Previews')
+  assert.equal(cleanGeneratedTitle('**Clickable Local File Previews**'), 'Clickable Local File Previews')
+  assert.equal(cleanGeneratedTitle('`Clickable Local File Previews`'), 'Clickable Local File Previews')
+  assert.equal(cleanGeneratedTitle('Clickable Local File Previews.'), 'Clickable Local File Previews')
+  assert.equal(cleanGeneratedTitle('Clickable Local File Previews\nMore text'), 'Clickable Local File Previews')
+  assert.equal(cleanGeneratedTitle('A'.repeat(70))?.length, 60)
+  assert.equal(cleanGeneratedTitle('new chat'), null)
+})
+
+test('Antigravity and Cursor title args are properly constructed', () => {
+  const agyArgs = antigravityTitleArgs('agy:gemini-flash', 'Test prompt')
+  assert.ok(agyArgs.includes('--print=Test prompt'))
+  assert.ok(agyArgs.includes('--output-format'))
+  assert.equal(agyArgs[agyArgs.indexOf('--model') + 1], 'gemini-flash')
+
+  const cursorArgs = cursorTitleArgs('cursor:cursor-fast', 'Test prompt')
+  assert.ok(cursorArgs.includes('--trust'))
+  assert.ok(cursorArgs.includes('--print'))
+  assert.equal(cursorArgs[cursorArgs.indexOf('--model') + 1], 'cursor-fast')
+  assert.equal(cursorArgs.at(-1), 'Test prompt')
 })
 
 test('Codex request is ephemeral, selected-model, isolated from user config and accepts only completed output', () => {

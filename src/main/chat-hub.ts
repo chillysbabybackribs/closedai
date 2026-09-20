@@ -89,7 +89,7 @@ export type ChatHubOptions = {
 
 export class ChatHub extends EventEmitter implements ChatSurface {
   get generateTitle(): TitleGenerator | undefined {
-    return this.active === 'codex' || this.active === 'claude' ? generateChatTitle : undefined
+    return generateChatTitle
   }
   private active: ChatProvider
   /** Set by `stop`, so a background provider start that lands afterwards does not leave a process. */
