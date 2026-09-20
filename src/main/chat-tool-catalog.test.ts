@@ -29,7 +29,7 @@ async function fixture(t: test.TestContext, savedTools: unknown) {
   const tools = new ToolRegistry([{
     name: 'probe', description: 'Probe tools', tools: [{
       name: 'read', description: 'Current description', inputSchema: { type: 'object' },
-      async execute() { return { content: [{ type: 'text', text: 'ok' }] } }
+      async run() { return { content: [{ type: 'text', text: 'ok' }] } }
     }]
   }])
   let saved: AppSettings = { ...DEFAULT_APP_SETTINGS, chatSeamlessRotation: false }

@@ -292,7 +292,14 @@ actions require or use it. At call time the registry validates against the chose
 schema, so errors are precise even though the advertised schema is the union.
 
 Codex integration is in `app-server-tools.ts`. The registry is converted to app-server
-`dynamicTools` for `thread/start` and `thread/resume`, and calls arrive as `item/tool/call`.
+`dynamicTools` for `thread/start`, and calls arrive as `item/tool/call`.
+The installed Codex 0.154 protocol restores saved tools on resume and does not accept a replacement
+catalog there. ClosedAI reads the bounded rollout metadata and compares that catalog with the
+enabled registry before sending. A changed or unreadable catalog starts a fresh provider thread
+through the existing session handoff, preserving the visible transcript and source recall. The
+new user message is excluded from that handoff. Unchanged catalogs reuse the resumed thread;
+tool-switch changes also take effect before the next send. This refresh is independent of the
+idle context-rotation preference. A failed thread start retains the prepared handoff for retry.
 The adapter maps registry text results to `inputText` and image results to `inputImage`.
 
 Set `deferLoading: true` on rarely used tools. Codex advertises that discovery flag; Claude maps

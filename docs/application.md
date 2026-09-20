@@ -61,6 +61,13 @@ with reasoning options supplied by Codex and a native context capacity of 1,050,
 from [OpenAI's model documentation](https://developers.openai.com/api/docs/models/gpt-6-astra).
 Restart ClosedAI to refresh an already-loaded model catalog after a new model becomes available.
 
+Codex tool catalogs are saved with provider threads. Restarting loads new tool implementations,
+but Codex 0.154 does not replace a saved tool catalog on resume. Before the next send, ClosedAI
+compares the saved rollout catalog with the enabled registry. Changed or unreadable catalogs
+use the existing session handoff to start a fresh provider thread, preserving the visible
+conversation and source recall. This also applies to tool switches, independently of idle
+context rotation; unchanged catalogs keep their thread.
+
 The project menu below the composer offers a directory picker, recent projects, and “Don’t work
 in a project” (uses the home directory). A project switch is refused while any pane has an active
 turn. `index.ts` saves the departing project's open chat ids and restores the destination's,

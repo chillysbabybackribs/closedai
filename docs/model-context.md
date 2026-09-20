@@ -221,7 +221,11 @@ prompts; do not solve drift by injecting the entire documentation tree.
 ## Refreshing and checking changes
 
 After changing prompt source, load the updated main-process build. Codex receives new guidance
-when its thread is started or resumed; Claude needs a newly started query runtime. Antigravity
+when its thread is started or resumed. Its dynamic tool catalog is different: Codex 0.154 restores
+the saved catalog on resume. Before sending, ClosedAI compares saved rollout tools with the current
+registry and uses a fresh provider thread plus the existing conversation handoff when they differ
+or the saved catalog cannot be read. The visible transcript stays in place; source recall retains
+access to omitted evidence. Claude needs a newly started query runtime. Antigravity
 refreshes its app-private profile during provider connection, and a new CLI process reads it.
 Restarting ClosedAI reloads these paths. Merely changing Markdown or creating a new conversation
 inside an already loaded old build does not load new TypeScript prompt code.
