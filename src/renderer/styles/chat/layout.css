@@ -65,13 +65,48 @@
 .chat-layout-title span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .chat-layout-title svg { flex-shrink: 0; opacity: 0.6; }
 .chat-layout-tabs { position: relative; display: flex; flex: 1; min-width: 0; align-self: stretch; overflow-x: auto; scrollbar-width: thin; }
-.chat-layout-tab { display: flex; flex: 1 0 72px; max-width: 180px; min-width: 0; align-items: center; border-right: 1px solid var(--hairline); }
-.chat-layout-tab[data-active='true'] { background: var(--surface-control-hover); box-shadow: inset 0 -2px var(--focus-ink); }
+.chat-layout-tab { position: relative; display: flex; flex: 1 0 72px; max-width: 180px; min-width: 0; align-items: center; border-right: 1px solid var(--hairline); }
+.chat-layout-tab[data-active='true'] { background: var(--surface-control-hover); box-shadow: inset 0 2px var(--focus-ink); }
 .chat-layout-tab:not([data-active='true']) { color: var(--chrome-fg); }
 .chat-layout-tab > [role='tab'] { flex: 1; min-width: 0; justify-content: flex-start; cursor: grab; }
 .chat-layout-tab > [role='tab'] span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .chat-layout-tab .chat-layout-tab-close { width: 18px; padding: 0; margin-right: 2px; opacity: 0.65; }
 .chat-layout-tab .chat-layout-tab-close:hover { opacity: 1; }
+.chat-tab-ribbon { position: absolute; inset: auto 0 0; height: 2px; overflow: hidden; pointer-events: none; }
+.chat-layout-tab[data-status='working'] .chat-tab-ribbon { background: color-mix(in srgb, var(--focus-ink) 20%, transparent); }
+.chat-layout-tab[data-status='working'] .chat-tab-ribbon::after {
+  content: ''; display: block; width: 45%; height: 100%; background: var(--focus-ink);
+  animation: chat-tab-travel 2s ease-in-out infinite;
+}
+.chat-layout-tab[data-status='paused'] .chat-tab-ribbon { background: #dba74b; }
+.chat-layout-tab[data-status='failed'] .chat-tab-ribbon { background: #e27474; }
+.chat-layout-tab[data-status='unread'] .chat-tab-ribbon { background: #65b98a; animation: chat-tab-finish 1.2s ease-out both; }
+.chat-tab-unread { width: 5px; height: 5px; flex-shrink: 0; border-radius: 50%; background: #65b98a; }
+@keyframes chat-tab-travel { from { transform: translateX(-105%); } to { transform: translateX(325%); } }
+@keyframes chat-tab-finish { from { opacity: 1; } to { opacity: 0; } }
+.chat-tab-preview {
+  z-index: 50; box-sizing: border-box; width: 300px;
+  max-width: var(--radix-tooltip-content-available-width); max-height: var(--radix-tooltip-content-available-height);
+  overflow: auto; padding: 12px; border: 1px solid var(--hairline); border-radius: 9px;
+  color: var(--chrome-fg-strong); background: var(--surface-raised); box-shadow: 0 8px 28px #0005;
+  font: 12px/1.5 var(--font-sans, sans-serif); overflow-wrap: anywhere;
+}
+.chat-tab-preview > strong { display: block; font-size: 12px; }
+.chat-tab-preview-status { display: flex; justify-content: space-between; gap: 8px; margin-top: 7px; color: var(--focus-ink); }
+.chat-tab-preview-status > span { color: var(--chrome-fg); font-size: 10px; }
+.chat-tab-preview-status[data-status='paused'] { color: #dba74b; }
+.chat-tab-preview-status[data-status='failed'] { color: #e27474; }
+.chat-tab-preview-status[data-status='unread'] { color: #65b98a; }
+.chat-tab-preview p { margin: 7px 0; color: var(--chrome-fg); white-space: pre-line; }
+.chat-tab-preview ol { padding: 8px 0 0; margin: 0; border-top: 1px solid var(--hairline); list-style: none; }
+.chat-tab-preview li { display: flex; gap: 6px; margin-bottom: 5px; }
+.chat-tab-preview li > span:nth-child(2) { flex: 1; min-width: 0; }
+.chat-tab-preview li > small { color: var(--chrome-fg); font-size: 10px; }
+.chat-tab-preview footer { margin-top: 9px; color: var(--chrome-fg); font-size: 10px; }
+@media (prefers-reduced-motion: reduce) {
+  .chat-layout-tab[data-status='working'] .chat-tab-ribbon::after { animation: none; width: 100%; }
+  .chat-layout-tab[data-status='unread'] .chat-tab-ribbon { animation: none; opacity: 0; }
+}
 .chat-layout-content { display: grid; grid-template-rows: minmax(0, 1fr); flex: 1; min-height: 0; min-width: 0; }
 .chat-layout-content .chat-pane { width: 100%; min-width: 0; max-width: none; }
 
