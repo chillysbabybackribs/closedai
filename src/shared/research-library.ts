@@ -37,6 +37,7 @@ export type LibrarySnapshot = {
 
 export type ResearchLibraryApi = {
   snapshot(): Promise<LibrarySnapshot>
+  progress(): Promise<Pick<LibrarySnapshot, 'refreshing' | 'lastRefresh'>>
   configure(settings: LibrarySettings): Promise<LibrarySnapshot>
   refresh(): Promise<LibrarySnapshot>
   cancel(): Promise<void>

@@ -3,6 +3,7 @@ import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
+import { TooltipProvider } from '../components/ui/tooltip.js'
 import type { ChatAttachment } from '../shared/chat.js'
 import { ComposerCompactRow } from './composer-compact-row.tsx'
 import {
@@ -144,24 +145,28 @@ test('ComposerTokenBadge renders warning and critical indicators for large draft
 
 test('ComposerCompactRow renders compact model and controls', () => {
   const html = renderToStaticMarkup(
-    createElement(ComposerCompactRow, {
-      running: false,
-      activeTurnId: null,
-      selectedModel: 'gpt-4o',
-      provider: 'codex',
-      placeholder: 'Ask anything',
-      enabled: true,
-      sending: false,
-      paused: false,
-      canSend: true,
-      waitingForInput: false,
-      onPaste: () => {},
-      onFocus: () => {},
-      onBlur: () => {},
-      onStop: async () => {},
-      onResume: async () => {},
-      onExpand: () => {}
-    })
+    createElement(
+      TooltipProvider,
+      null,
+      createElement(ComposerCompactRow, {
+        running: false,
+        activeTurnId: null,
+        selectedModel: 'gpt-4o',
+        provider: 'codex',
+        placeholder: 'Ask anything',
+        enabled: true,
+        sending: false,
+        paused: false,
+        canSend: true,
+        waitingForInput: false,
+        onPaste: () => {},
+        onFocus: () => {},
+        onBlur: () => {},
+        onStop: async () => {},
+        onResume: async () => {},
+        onExpand: () => {}
+      })
+    )
   )
 
   assert.match(html, /prompt-composer-compact-row/)

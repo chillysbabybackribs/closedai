@@ -33,8 +33,13 @@ export function useResearchLibrary(open: boolean) {
     if (!open || !snapshot?.refreshing) return
     const current = epoch.current
     const timer = window.setTimeout(() => {
-      void window.closedai.researchLibrary.snapshot().then((next) => {
-        if (current === epoch.current) setSnapshot(next)
+      void window.closedai.researchLibrary.progress().then(async (progress) => {
+        if (current !== epoch.current) return
+        if (progress.refreshing) setSnapshot((previous) => previous ? { ...previous, ...progress } : previous)
+        else {
+          const next = await window.closedai.researchLibrary.snapshot()
+          if (current === epoch.current) setSnapshot(next)
+        }
       }).catch((failure) => {
         if (current === epoch.current) setError(String(failure.message ?? failure))
       })

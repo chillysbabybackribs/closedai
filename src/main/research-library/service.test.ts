@@ -65,15 +65,24 @@ test('partial and failed refreshes preserve prior evidence and report failures h
 
 test('simultaneous refreshes share work; cancellation discards partial collection and prevents settings races', async (t) => {
   const { store } = await fixture(t)
-  const library = new ResearchLibrary(store, () => new Promise(() => {}), () => now)
+  let blocked = false
+  const library = new ResearchLibrary(store, async (topic) => {
+    if (!blocked) return papers(topic)
+    if (topic === DEFAULT_SETTINGS.topics[0]) return papers(topic, '2609.54321')
+    return new Promise(() => {})
+  }, () => now)
+  await library.refresh()
+  blocked = true
   const first = library.refresh()
   assert.equal(library.refresh(), first)
-  assert.equal((await library.snapshot()).refreshing, true)
+  assert.deepEqual(Object.keys(await library.progress()).sort(), ['lastRefresh', 'refreshing'])
+  assert.equal((await library.progress()).refreshing, true)
   await assert.rejects(library.configure(DEFAULT_SETTINGS), /Stop the refresh/)
   library.cancel()
   const snapshot = await first
   assert.equal(snapshot.refreshing, false)
-  assert.equal(snapshot.total, 0)
+  assert.equal(snapshot.total, 1)
+  assert.equal(snapshot.papers[0]!.id, '2609.12345')
   assert.equal(snapshot.lastRefresh?.state, 'cancelled')
 })
 

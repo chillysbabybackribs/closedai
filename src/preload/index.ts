@@ -19,6 +19,7 @@ function subscribe<C extends IpcEventChannel>(channel: C, listener: (payload: Ip
 const api: ClosedaiApi = {
   researchLibrary: {
     snapshot: () => invoke(IPC.invoke.researchLibrary.snapshot),
+    progress: () => invoke(IPC.invoke.researchLibrary.progress),
     configure: (settings) => invoke(IPC.invoke.researchLibrary.configure, settings),
     refresh: () => invoke(IPC.invoke.researchLibrary.refresh),
     cancel: () => invoke(IPC.invoke.researchLibrary.cancel),

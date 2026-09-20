@@ -153,9 +153,16 @@ export class ResearchLibrary {
   }
 
   async status() {
-    const snapshot = await this.snapshot()
-    return { ...this.provenance(), settings: snapshot.settings, total: snapshot.total,
-      refreshing: snapshot.refreshing, lastRefresh: snapshot.lastRefresh }
+    await this.writes
+    const state = await this.load()
+    return { ...this.provenance(), settings: structuredClone(state.settings), total: this.visible(state).length,
+      refreshing: Boolean(this.pending), lastRefresh: structuredClone(state.lastRefresh) }
+  }
+
+  async progress() {
+    await this.writes
+    const state = await this.load()
+    return { refreshing: Boolean(this.pending), lastRefresh: structuredClone(state.lastRefresh) }
   }
 
   async search(query: string, limit = 5) {

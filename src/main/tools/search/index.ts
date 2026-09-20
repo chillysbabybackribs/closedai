@@ -79,7 +79,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
   if (research) deps.onResearchCreated?.(research)
   return {
     name: 'search',
-    description: 'Public web lookup and incremental parallel research with retained source evidence.',
+    description: 'Public web lookup, incremental parallel research, and an on-demand public paper library.',
     tools: [query, ...(research ? researchTools(research, query) : []), ...(deps.library ? [libraryTool(deps.library)] : [])]
   }
 }

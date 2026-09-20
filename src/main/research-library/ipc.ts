@@ -10,6 +10,7 @@ export function registerResearchLibraryIpc(ipcMain: Pick<IpcMain, 'handle'>, get
     return instance
   }
   registerInvoke(ipcMain, IPC.invoke.researchLibrary.snapshot, () => library().snapshot())
+  registerInvoke(ipcMain, IPC.invoke.researchLibrary.progress, () => library().progress())
   registerInvoke(ipcMain, IPC.invoke.researchLibrary.configure, (_event, settings) => library().configure(settings))
   registerInvoke(ipcMain, IPC.invoke.researchLibrary.refresh, () => library().refresh())
   registerInvoke(ipcMain, IPC.invoke.researchLibrary.cancel, () => library().cancel())

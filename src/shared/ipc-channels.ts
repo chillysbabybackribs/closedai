@@ -10,6 +10,7 @@ import type { LibrarySettings, LibrarySnapshot } from './research-library.js'
 /** Invoke channels the preload bridge exposes on `window.closedai`. */
 export type IpcInvokeChannels = {
   'researchLibrary:snapshot': { args: []; result: LibrarySnapshot }
+  'researchLibrary:progress': { args: []; result: Pick<LibrarySnapshot, 'refreshing' | 'lastRefresh'> }
   'researchLibrary:configure': { args: [LibrarySettings]; result: LibrarySnapshot }
   'researchLibrary:refresh': { args: []; result: LibrarySnapshot }
   'researchLibrary:cancel': { args: []; result: void }
@@ -108,6 +109,7 @@ export const IPC = {
   invoke: {
     researchLibrary: {
       snapshot: 'researchLibrary:snapshot', configure: 'researchLibrary:configure',
+      progress: 'researchLibrary:progress',
       refresh: 'researchLibrary:refresh', cancel: 'researchLibrary:cancel',
       dismiss: 'researchLibrary:dismiss', restore: 'researchLibrary:restore'
     },
