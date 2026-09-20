@@ -8,6 +8,7 @@
 }
 
 .context-inspector-header { padding: 18px 44px 12px 20px; border-bottom: 1px solid var(--border); }
+.context-inspector-header-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 2px; }
 
 .context-inspector-body {
   flex: 1 1 auto;
