@@ -18,10 +18,12 @@ try {
     bundle: true, platform: 'browser', format: 'iife', jsx: 'automatic' })
   await build({ entryPoints: [resolve('src/renderer/styles/browser.css')], outfile: join(root, 'browser.css'),
     bundle: true })
-  await writeFile(join(root, 'index.html'), `<!doctype html><html><head><link rel="stylesheet" href="browser.css">
+  await build({ entryPoints: [resolve('src/renderer/styles/chat/attachments.css')], outfile: join(root, 'attachments.css'), bundle: true })
+  await writeFile(join(root, 'index.html'), `<!doctype html><html><head><link rel="stylesheet" href="browser.css"><link rel="stylesheet" href="attachments.css">
     <style>:root{--background:#161617;--foreground:#eee;--muted:#343438;--muted-foreground:#aaa;--border:#38383e;--ring:#66aaff}
     *{box-sizing:border-box}body{margin:0;font:14px system-ui;background:#202023;color:#eee}
-    #root{height:100vh;display:grid;grid-template-columns:300px 1fr}aside{padding:24px}button{font:inherit}</style>
+    #root{height:100vh;display:grid;grid-template-columns:300px 1fr;grid-template-rows:minmax(0,1fr)}
+    aside{padding:24px;min-height:0;overflow:auto}button{font:inherit}</style>
     </head><body><div id="root"></div><script src="renderer.js"></script></body></html>`)
   const env = { ...sanitizeGpuEnv().env, CLOSEDAI_IMAGE_CHECK_ROOT: root }
   for (const key of ['ELECTRON_RUN_AS_NODE', 'ELECTRON_EXEC_PATH', 'ELECTRON_CLI_ARGS', 'NODE_OPTIONS']) delete env[key]

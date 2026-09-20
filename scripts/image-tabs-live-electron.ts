@@ -82,10 +82,19 @@ async function check(root: string) {
       return {width:viewer.width,height:viewer.height,frame:document.querySelector('.browser-frame').getBoundingClientRect().height};
     })()`)
     assert.ok(geometry.width > 500 && geometry.height > 500)
+    assert.ok(geometry.height < window.getContentBounds().height)
     assert.equal(geometry.height, geometry.frame)
     await evaluate(`document.querySelector('[data-ui="image.actual-size"]').click()`)
     await until('document.querySelector(".image-viewer-scale").textContent === "100%"')
     await evaluate('document.querySelector(".image-viewer-stage").scrollLeft = 120')
+    const point = await evaluate<{ x: number; y: number }>(`(() => {
+      const r = document.querySelector('.image-viewer-stage').getBoundingClientRect();
+      return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)};
+    })()`)
+    window.webContents.sendInputEvent({ type: 'mouseDown', ...point, button: 'left', clickCount: 1 })
+    window.webContents.sendInputEvent({ type: 'mouseMove', x: point.x - 80, y: point.y, movementX: -80, movementY: 0 })
+    window.webContents.sendInputEvent({ type: 'mouseUp', x: point.x - 80, y: point.y, button: 'left', clickCount: 1 })
+    await until('document.querySelector(".image-viewer-stage").scrollLeft > 120')
     const pan = await evaluate<number>('document.querySelector(".image-viewer-stage").scrollLeft')
     assert.ok(pan > 0)
     browser.selectTab(webId)
@@ -116,6 +125,11 @@ async function check(root: string) {
     await evaluate(`document.querySelector('[data-ui="image.fit"]').click()`)
     await until(`document.querySelector('[data-ui="image.fit"]').getAttribute('aria-pressed') === 'true'`)
     await new Promise((resolve) => setTimeout(resolve, 100))
+    assert.equal(await evaluate(`(() => {
+      const img = document.querySelector('.image-viewer:not([hidden]) img').getBoundingClientRect();
+      const stage = document.querySelector('.image-viewer-stage').getBoundingClientRect();
+      return img.left >= stage.left && img.top >= stage.top && img.right <= stage.right && img.bottom <= stage.bottom;
+    })()`), true, 'fit shows the entire image within the viewport')
     await writeFile('/tmp/closedai-image-tab-verification.png', (await window.webContents.capturePage()).toPNG())
     browser.closeTab(imageId)
     assert.equal(browser.tabList().find((tab) => tab.active)?.id, webId)
