@@ -22,7 +22,7 @@ attached chat has a pane, and **the pane id is the chat id**. Each attached chat
 multiple panes can be displayed together in a resizable chat layout. Selection identifies the focused
 chat independently of visibility. A background pane can continue its turn while another pane is
 selected. Hiding a tile only removes it from the layout. Detaching a pane stops its runtime and keeps the record, so the drawer row and its review
-state never change identity. The embedded browser belongs to the application and is shared across
+state never change identity. Running drawer rows surface live tool activity (e.g. active file reads, edits, or commands) in place of generic status text. The embedded browser belongs to the application and is shared across
 panes and project switches.
 
 `ChatHub` routes to Codex, Claude Code, Antigravity, or Cursor. Codex model/thread ids are
