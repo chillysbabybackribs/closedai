@@ -1,4 +1,5 @@
 import type { ChatPeerSummary, ChatWorkspaceEvent } from '../shared/chat-peers.js'
+import type { ProjectSwitchRequest, ProjectSwitchStatus } from '../shared/chat-peers.js'
 import type { ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
 import type {
   AppBrowserTabRequest,
@@ -72,6 +73,14 @@ export class AppCommandAccess implements AppCommandHost {
 
   async newChat(): Promise<{ paneId: string }> {
     return { paneId: await this.chat().newPeer() }
+  }
+
+  queueProjectSwitch(request: ProjectSwitchRequest, signal: AbortSignal): Promise<ProjectSwitchStatus> {
+    return this.chat().projectSwitch.request(request, signal)
+  }
+
+  cancelProjectSwitch(paneId: string): ProjectSwitchStatus | null {
+    return this.chat().projectSwitch.cancel('Cancelled by the requesting chat', paneId)
   }
 
   async sendMessage(request: AppSendRequest): Promise<AppSendResult> {
@@ -184,6 +193,8 @@ function projectWorkspace(chat: AppChatWorkspace, callerPaneId: string | null): 
   return {
     selectedPaneId: snapshot.selectedPaneId,
     callerPaneId,
+    project: snapshot.workspace ?? null,
+    projectSwitch: chat.projectSwitch.state(),
     paneCount: panes.length,
     ...(panes.length > shown.length ? { omittedPanes: panes.length - shown.length } : {}),
     panes: shown.map((peer) => ({

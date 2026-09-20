@@ -14,6 +14,30 @@ const AWAIT_TURN_MAX_MS = 120_000
 export function appCommandActions(app: () => AppCommandHost | null): ToolAction[] {
   return [
     {
+      action: 'switch_project',
+      description: 'Queue an authorized project switch for after all chats become idle. Requires an absolute existing directory. Returns pending, not completion: finish your turn after acceptance. The app verifies the destination and starts a fresh chat with your conversation handoff to continue the authorized task. One in-memory request; restart cancels it. Inspect state.workspace.projectSwitch for status or cancel_project_switch to release it.',
+      inputSchema: objectSchema({
+        project_path: { type: 'string', minLength: 1, maxLength: 4096, description: 'Absolute path to an existing project directory.' }
+      }, ['project_path']),
+      run: async (input, context) => {
+        if (!context.paneId || !context.threadId || !context.turnId) throw new Error('A current calling chat and turn are required')
+        const host = requireHost(app, 'app commands')
+        return jsonResult(await host.queueProjectSwitch({
+          paneId: context.paneId, threadId: context.threadId, turnId: context.turnId,
+          projectPath: stringArg(input, 'project_path')!
+        }, context.signal))
+      }
+    },
+    {
+      action: 'cancel_project_switch',
+      description: 'Cancel the calling chat’s pending project switch. A switch already applying cannot be cancelled; inspect state.workspace.projectSwitch.',
+      inputSchema: objectSchema({}),
+      run: async (_input, context) => {
+        if (!context.paneId) throw new Error('A calling chat is required')
+        return jsonResult({ projectSwitch: requireHost(app, 'app commands').cancelProjectSwitch(context.paneId) })
+      }
+    },
+    {
       action: 'new_chat',
       description: 'Open a new agent chat pane (what the New Agent button does) and select it. Returns its pane id.',
       inputSchema: objectSchema({}),

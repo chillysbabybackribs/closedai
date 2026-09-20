@@ -17,6 +17,7 @@ import type { ChatContinuation } from '../../shared/types.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import { continuePeer } from './peer-continuation.js'
+import { DeferredProjectSwitch } from './deferred-project-switch.js'
 import { ChatMemory } from '../chat-context/chat-memory.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
 import { CACHED_TRANSCRIPT_ITEMS, ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
@@ -75,6 +76,7 @@ export interface ChatWorkspaceSurface {
 
 export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurface {
   readonly memory: ChatMemory
+  readonly projectSwitch: DeferredProjectSwitch
   private selectedPaneId: ChatPaneId
   private visiblePaneIds = new Set<ChatPaneId>()
   private retainedTabIds = new Set<ChatPaneId>()
@@ -99,6 +101,23 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.memory = new ChatMemory(store, (paneId) => this.lifecycle.get(paneId)?.surface ?? null)
     this.parking = new PeerIdleParking((paneId) => this.lifecycle.get(paneId), () => this.selectedPaneId, idleParkMs)
     this.lifecycle = new PeerLifecycle(store, settings, createSurface, this.parking, (entry, event) => this.onPaneEvent(entry, event), cancelPaneWork)
+    this.projectSwitch = new DeferredProjectSwitch({
+      cwd: () => this.workspace().cwd,
+      source: (id) => this.paneSnapshot(id),
+      record: (id) => this.store.get(id) ?? null,
+      idle: () => this.paneOperations.size === 0 && [...this.lifecycle.peers.values()]
+        .every((entry) => entry.busy === 0 && !this.lifecycle.isRunning(entry.chatId)),
+      switchProject: (path) => this.selectProject(path, true),
+      create: (model, effort, continuation) => this.newChat(model, effort, continuation),
+      send: (id, text) => this.withAwake(id, (surface) => surface.send(text, []), true),
+      changed: (status) => {
+        this.emit('event', { type: 'pane', paneId: status.destinationPaneId ?? status.paneId,
+          event: { type: 'item', item: { type: 'notice', id: 'project-switch-' + status.turnId,
+            turnId: null, tone: status.status === 'failed' ? 'error' : 'info',
+            text: `Project switch ${status.status}: ${status.projectPath}${status.error ? '. ' + status.error : ''}` } }
+        } satisfies ChatWorkspaceEvent)
+      }
+    })
     this.catalog = new PeerChatCatalog(store, () => this.workspace(), (fn) => this.withAwake(this.selectedPaneId, fn))
     const saved = settings.get()
     this.selectedPaneId = this.restoreOpenChats(saved.chatOpenIds, saved.chatSelectedPaneId, null, null)
@@ -155,6 +174,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   stop(): void {
+    this.projectSwitch.stop()
     // A turn that ended just before quit has a `chats` update waiting; deliver it so the row moves.
     this.chatsEmit.flush()
     // Each attached pane saves what it is showing, so the next launch paints it without a replay.
@@ -163,6 +183,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async send(paneId: ChatPaneId, text: string, attachments: ChatAttachment[]): Promise<void> {
+    this.projectSwitch.assertAvailable()
+    this.projectSwitch.cancel('A new message superseded the queued continuation', paneId)
     const entry = this.lifecycle.require(paneId)
     const cancelTiming = text.trim() || attachments.length
       ? traceLog.responses.begin({ paneId, provider: entry.display.current.provider, turnId: null })
@@ -177,11 +199,13 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async interrupt(paneId: ChatPaneId): Promise<void> {
+    this.projectSwitch.cancel('The requesting chat was stopped', paneId)
     this.cancelPaneWork(paneId)
     await this.withAwake(paneId, (surface) => surface.interrupt())
   }
 
   async selectPane(paneId: ChatPaneId): Promise<void> {
+    this.projectSwitch.assertAvailable()
     this.lifecycle.require(paneId)
     if (paneId === this.selectedPaneId) return
     const previousPaneId = this.selectedPaneId
@@ -239,6 +263,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
    * as fast on a chat whose process is gone as on one that is running.
    */
   async selectModel(paneId: ChatPaneId, modelId: string): Promise<void> {
+    this.projectSwitch.assertAvailable()
     await this.lifecycle.require(paneId).surface.selectModel(modelId)
   }
 
@@ -265,6 +290,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async newPeer(): Promise<ChatPaneId> {
+    this.projectSwitch.assertAvailable()
     const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
     return this.newChat(current.selectedModel, current.selectedReasoningEffort, null)
   }
@@ -289,6 +315,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async closePeer(paneId: ChatPaneId): Promise<void> {
+    this.projectSwitch.assertAvailable()
+    this.projectSwitch.cancel('The requesting chat was closed', paneId)
     if (!this.lifecycle.get(paneId)) return
     const closing = this.lifecycle.require(paneId).surface.snapshot({ limit: 0 })
     if (!this.lifecycle.discardIfBlank(paneId)) this.lifecycle.detach(paneId)
@@ -321,6 +349,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async openChat(chatId: string): Promise<ChatPaneId> {
+    this.projectSwitch.assertAvailable()
     const record = this.store.get(chatId)
     if (!record || record.archived) throw new Error('That chat is no longer available')
     if (record.cwd !== this.workspace().cwd) throw new Error('That chat belongs to another project')
@@ -396,7 +425,11 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   /** A provider process cannot safely change directories mid-turn. Swap the active pane set
    * only after its project-scoped state has been persisted and the destination restored. */
-  async selectProject(projectPath: string | null): Promise<void> {
+  async selectProject(projectPath: string | null, deferred = false): Promise<void> {
+    if (!deferred) {
+      this.projectSwitch.assertAvailable()
+      this.projectSwitch.cancel('A manual project selection superseded the queued switch')
+    }
     if (!this.workspaceSelector) throw new Error('Project selection is unavailable')
     if (this.lifecycle.ids().some((chatId) => this.lifecycle.isRunning(chatId))) {
       throw new Error('Stop running chats before changing projects')
@@ -577,7 +610,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
    * moves the pane to a different provider, and the send starts its turn on the surface the
    * pane just left — invisibly, because the pane now reports on a surface with no turn.
    */
-  private async withAwake<T>(paneId: ChatPaneId, action: (surface: ChatSurface) => Promise<T>): Promise<T> {
+  private async withAwake<T>(paneId: ChatPaneId, action: (surface: ChatSurface) => Promise<T>, deferred = false): Promise<T> {
+    if (!deferred) this.projectSwitch.assertAvailable()
     const queued = (this.paneOperations.get(paneId) ?? Promise.resolve()).then(async () => {
       const entry = await this.wake(paneId)
       this.parking.cancel(entry)

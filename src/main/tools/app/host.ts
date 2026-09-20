@@ -1,4 +1,5 @@
 import type { ChatWorkspaceSnapshot, ChatPeerSummary, ChatWorkspaceEvent } from '../../../shared/chat-peers.js'
+import type { ProjectSwitchRequest, ProjectSwitchStatus } from '../../../shared/chat-peers.js'
 import type { ChatAttachment, ChatSnapshot, ChatThreadSummary } from '../../../shared/chat.js'
 import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../../../shared/types.js'
 
@@ -124,6 +125,8 @@ export type AppCommandHost = {
   state(sections: readonly AppStateSection[], paneId: string | undefined, callerPaneId: string | null): Record<string, unknown>
   selectedPaneId(): string
   newChat(): Promise<{ paneId: string }>
+  queueProjectSwitch(request: ProjectSwitchRequest, signal: AbortSignal): Promise<ProjectSwitchStatus>
+  cancelProjectSwitch(paneId: string): ProjectSwitchStatus | null
   sendMessage(request: AppSendRequest): Promise<AppSendResult>
   stopAgent(paneId: string): Promise<void>
   openChat(request: AppOpenChatRequest): Promise<{ paneId: string; threadId: string | null }>
@@ -134,6 +137,11 @@ export type AppCommandHost = {
 
 /** The slice of the chat workspace the command host needs; ChatPeerManager satisfies it. */
 export type AppChatWorkspace = {
+  projectSwitch: {
+    request(request: ProjectSwitchRequest, signal: AbortSignal): Promise<ProjectSwitchStatus>
+    cancel(reason?: string, paneId?: string): ProjectSwitchStatus | null
+    state(): ProjectSwitchStatus | null
+  }
   snapshot(): ChatWorkspaceSnapshot
   paneSnapshot(paneId: string): ChatSnapshot | null
   newPeer(): Promise<string>
