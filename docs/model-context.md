@@ -48,6 +48,12 @@ prior effects; work must respect cancellation, authorization, tool contracts, an
 Unresolved gaps are reported honestly. Checkpoints are optional when continuity warrants useful
 working notes; multi-step work alone does not require one. Research-library retrieval is optional
 discovery, never a prerequisite to execution or ordinary search.
+Stripe Directory is used when explicitly requested or when its vendor discovery or purchase
+capabilities materially help. This explicitly overrides the `stripe-directory` skill's blanket
+software/service discovery trigger: a suitable option that can be verified directly does not need
+a supplementary directory lookup. Useful alternative discovery and source checks remain encouraged;
+required payment, authorization, and safety steps still apply. The rule lives in shared app guidance,
+not an edit to the installed plugin cache.
 This is provider-shared prompt guidance, not an enforced scheduler, automatic continuation mechanism,
 or guarantee of task completion. Instruction assembly tests verify delivery; behavioral effectiveness
 requires live task evaluation. Existing provider sessions need refreshed instructions before evaluating it.

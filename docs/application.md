@@ -12,6 +12,9 @@ evidence, investigate consequential uncertainty, adapt failed approaches, and ve
 Research, planning, and checks must materially improve the result or satisfy a required contract;
 more steps or longer output alone do not establish quality. Checkpoints and research-library discovery
 are optional. Models account for prior effects before retrying mutations and disclose unresolved gaps.
+Stripe Directory's broad discovery trigger is narrowed by shared guidance: use it when explicitly
+requested or materially useful, and skip supplementary directory searches when a suitable option can
+be verified directly. Useful alternative discovery, source checks, and required purchase safeguards remain.
 This is prompt guidance, not a new background worker or enforced completion guarantee. See
 [Model context](model-context.md) for delivery and boundaries.
 
