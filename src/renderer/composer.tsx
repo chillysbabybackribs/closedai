@@ -14,7 +14,6 @@ import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
 import { ComposerCompactRow } from './composer-compact-row.js'
 import { useComposerDraft } from './composer-drafts.js'
-import { ContextMeter } from './context-meter.js'
 import { ModelMenu } from './model-menu.js'
 import { ProjectMenu } from './project-menu.js'
 

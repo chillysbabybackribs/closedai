@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import { DropdownMenu } from 'radix-ui'
 import { ArrowLeft, Check, ChevronDown, ChevronRight, ChevronUp, MoreHorizontal } from 'lucide-react'
 
-import type { ChatModel, ChatProvider } from '../shared/chat.js'
+import type { ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { ProviderMark } from '../components/ui/provider-mark.js'
+import { ContextMeter } from './context-meter.js'
 import {
   countModelUse, effortLabel, modelContextLabel, modelTriggerLabel, parseModelUsage, providerSections,
   type ModelUsage, type ProviderSection
@@ -16,6 +17,13 @@ export type ModelMenuProps = {
   models: ChatModel[]
   selectedModel: string | null
   selectedReasoningEffort: string | null
+  contextUsage?: ChatContextUsage | null
+  provider?: ChatProvider
+  planUsage?: ChatPlanUsage | null
+  onInspectContext?: () => void
+  onRefreshPlanUsage?: () => Promise<void>
+  onCompactConversation?: () => Promise<void>
+  compactConversationEnabled?: boolean
   onModelChange: (modelId: string) => Promise<void>
   onReasoningEffortChange: (effort: string) => Promise<void>
 }
@@ -35,12 +43,25 @@ export type ModelMenuProps = {
  * collision boundary so Radix can neither widen nor shift it over the browser.
  */
 export function ModelMenu({
-  enabled, models, selectedModel, selectedReasoningEffort, onModelChange, onReasoningEffortChange
+  enabled,
+  models,
+  selectedModel,
+  selectedReasoningEffort,
+  contextUsage = null,
+  provider = 'codex',
+  planUsage = null,
+  onInspectContext = () => {},
+  onRefreshPlanUsage = async () => {},
+  onCompactConversation,
+  compactConversationEnabled = false,
+  onModelChange,
+  onReasoningEffortChange
 }: ModelMenuProps): JSX.Element {
   const [usage, recordModelUse] = useModelUsage()
   const triggerRef = useRef<HTMLButtonElement>(null)
   // Resolved when the menu opens: the column the panel must stay inside, never the window.
   const [boundary, setBoundary] = useState<Element | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   const trigger = modelTriggerLabel(models, selectedModel, selectedReasoningEffort)
   const selected = models.find((model) => model.id === selectedModel)
   const chooseModel = (value: string): void => {
@@ -50,7 +71,11 @@ export function ModelMenu({
   return (
     <DropdownMenu.Root
       modal={false}
-      onOpenChange={(open) => { if (open) setBoundary(triggerRef.current?.closest('.chat-pane') ?? null) }}
+      open={menuOpen}
+      onOpenChange={(open) => {
+        setMenuOpen(open)
+        if (open) setBoundary(triggerRef.current?.closest('.chat-pane') ?? null)
+      }}
     >
       <DropdownMenu.Trigger
         ref={triggerRef}
@@ -58,11 +83,25 @@ export function ModelMenu({
         disabled={!enabled || models.length === 0}
         aria-label="Model and reasoning effort"
         data-ui="composer.model"
-        title={trigger.description || 'Choose a model'}
       >
-        {selected && <ProviderMark provider={selected.provider} className="model-menu-trigger-mark" />}
-        <span className="model-menu-trigger-name">{trigger.name}</span>
-        {trigger.context && <span className="model-menu-trigger-context">{trigger.context}</span>}
+        <ContextMeter
+          usage={contextUsage}
+          provider={selected?.provider ?? provider}
+          planUsage={planUsage}
+          modelName={trigger.name}
+          modelContext={trigger.context}
+          modelDescription={trigger.description}
+          onInspect={onInspectContext}
+          onRefreshPlanUsage={onRefreshPlanUsage}
+          onCompact={onCompactConversation}
+          compactEnabled={compactConversationEnabled}
+          disabled={menuOpen}
+        >
+          <span className="model-menu-trigger-model">
+            {selected && <ProviderMark provider={selected.provider} className="model-menu-trigger-mark" />}
+            <span className="model-menu-trigger-name">{trigger.name}</span>
+          </span>
+        </ContextMeter>
         {trigger.effort && <span className="model-menu-trigger-effort">{trigger.effort}</span>}
         <ChevronDown className="model-menu-trigger-caret" aria-hidden="true" />
       </DropdownMenu.Trigger>

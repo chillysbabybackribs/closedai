@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '../components/ui/hover-card.js'
@@ -27,77 +27,168 @@ export type ContextMeterProps = {
   /** Re-seed provider-side context when the active provider supports it. */
   onCompact?: () => Promise<void>
   compactEnabled?: boolean
+  modelName?: string | null
+  modelContext?: string | null
+  modelDescription?: string | null
+  disabled?: boolean
+  children?: ReactNode
 }
 
-/** How full the model's window is, drawn as a ring beside the model that owns that window.
+/** How full the model's window is, revealed on hover over the selected model or context trigger.
  *  Silent until the first response reports usage, and self-explaining once it is warm: the
  *  ring carries the proportion, the label the number, and the card the token counts plus the
- *  subscription windows the turn is spending — the one place both meters belong together.
- *
- *  The card is one monochrome list: the meter itself already colours the one number that
- *  warrants it, so repeating that colour per row made a quiet reading look like an alarm. */
-export function ContextMeter({ usage, provider, planUsage, onInspect, onRefreshPlanUsage, onCompact, compactEnabled = false }: ContextMeterProps): JSX.Element {
+ *  subscription windows the turn is spending. */
+export function ContextMeter({
+  usage,
+  provider,
+  planUsage,
+  onInspect,
+  onRefreshPlanUsage,
+  onCompact,
+  compactEnabled = false,
+  modelName,
+  modelContext,
+  modelDescription,
+  disabled = false,
+  children
+}: ContextMeterProps): JSX.Element {
   const percent = Math.min(100, Math.max(0, usage?.percent ?? 0))
   const level = percent >= HOT_PERCENT ? 'hot' : percent >= WARM_PERCENT ? 'warm' : 'cool'
   const detail = usage
     ? `Context — ${percent}% full, ${formatTokens(usage.usedTokens)} of ${formatTokens(usage.contextWindow)} tokens`
     : 'Context and plan usage'
+
+  const content = (
+    <HoverCardContent
+      className="usage-card"
+      align={children ? 'start' : 'end'}
+      side="top"
+      sideOffset={8}
+      data-ui="composer.usage-card"
+      data-level={level}
+    >
+      <UsageCardBody
+        provider={provider}
+        usage={usage}
+        planUsage={planUsage}
+        modelName={modelName}
+        modelContext={modelContext}
+        modelDescription={modelDescription}
+        level={level}
+        percent={percent}
+        onInspect={onInspect}
+        onCompact={onCompact}
+        compactEnabled={compactEnabled}
+      />
+    </HoverCardContent>
+  )
+
   return (
-    <HoverCard openDelay={120} closeDelay={80} onOpenChange={(open) => { if (open) void onRefreshPlanUsage() }}>
+    <HoverCard
+      open={disabled ? false : undefined}
+      openDelay={120}
+      closeDelay={80}
+      onOpenChange={(open) => { if (open) void onRefreshPlanUsage() }}
+    >
       <HoverCardTrigger asChild>
-        <button
-          type="button"
-          className="context-meter"
-          data-ui="composer.context"
-          data-level={level}
-          aria-label={detail}
-          onClick={onInspect}
-        >
-          <svg className="context-meter-ring" viewBox="0 0 14 14" width="14" height="14" aria-hidden="true">
-            <circle className="context-meter-track" cx="7" cy="7" r={RADIUS} />
-            <circle
-              className="context-meter-fill"
-              cx="7"
-              cy="7"
-              r={RADIUS}
-              strokeDasharray={`${(CIRCUMFERENCE * percent) / 100} ${CIRCUMFERENCE}`}
-            />
-          </svg>
-          <span className="context-meter-value">{usage ? `${percent}%` : 'Context'}</span>
-        </button>
+        {children ?? (
+          <button
+            type="button"
+            className="context-meter"
+            data-ui="composer.context"
+            data-level={level}
+            aria-label={detail}
+            onClick={onInspect}
+          >
+            <svg className="context-meter-ring" viewBox="0 0 14 14" width="14" height="14" aria-hidden="true">
+              <circle className="context-meter-track" cx="7" cy="7" r={RADIUS} />
+              <circle
+                className="context-meter-fill"
+                cx="7"
+                cy="7"
+                r={RADIUS}
+                strokeDasharray={`${(CIRCUMFERENCE * percent) / 100} ${CIRCUMFERENCE}`}
+              />
+            </svg>
+            <span className="context-meter-value">{usage ? `${percent}%` : 'Context'}</span>
+          </button>
+        )}
       </HoverCardTrigger>
-      <HoverCardContent className="usage-card" align="end" side="top" data-ui="composer.usage-card">
-        <UsageCardBody
-          provider={provider}
-          usage={usage}
-          planUsage={planUsage}
-          onCompact={onCompact}
-          compactEnabled={compactEnabled}
-        />
-      </HoverCardContent>
+      {content}
     </HoverCard>
   )
 }
 
-function UsageCardBody({ provider, usage, planUsage, onCompact, compactEnabled }: {
+function UsageCardBody({
+  provider,
+  usage,
+  planUsage,
+  modelName,
+  modelContext,
+  modelDescription,
+  level,
+  percent,
+  onInspect,
+  onCompact,
+  compactEnabled
+}: {
   provider: ChatProvider
   usage: ChatContextUsage | null
   planUsage: ChatPlanUsage | null
+  modelName?: string | null
+  modelContext?: string | null
+  modelDescription?: string | null
+  level: 'cool' | 'warm' | 'hot'
+  percent: number
+  onInspect?: () => void
   onCompact?: () => Promise<void>
   compactEnabled?: boolean
 }): JSX.Element {
   const now = useNow(planUsage !== null)
   const stale = planUsage && planUsage.updatedAt > 0 && now - planUsage.updatedAt > STALE_MS
+  const contextAside = usage
+    ? `${formatTokens(usage.usedTokens)}/${formatTokens(usage.contextWindow)}`
+    : (modelContext ? `—/${modelContext}` : '—')
+
   return (
     <>
       <p className="usage-card-title">
-        {CHAT_PROVIDER_LABELS[provider]}{planUsage?.plan ? ` · ${planUsage.plan}` : ''}
+        {modelName ?? CHAT_PROVIDER_LABELS[provider]}
+        {modelContext ? ` · ${modelContext}` : ''}
+        {planUsage?.plan ? ` · ${planUsage.plan}` : ''}
       </p>
-      <UsageRow
-        label="Context"
-        percent={usage?.percent ?? 0}
-        aside={usage ? `${formatTokens(usage.usedTokens)}/${formatTokens(usage.contextWindow)}` : '—'}
-      />
+      <div className="usage-row">
+        <div className="usage-row-line">
+          <span className="usage-row-label">
+            <svg
+              className="context-meter-ring"
+              data-level={level}
+              viewBox="0 0 14 14"
+              width="13"
+              height="13"
+              aria-hidden="true"
+            >
+              <circle className="context-meter-track" cx="7" cy="7" r={RADIUS} />
+              <circle
+                className="context-meter-fill"
+                cx="7"
+                cy="7"
+                r={RADIUS}
+                strokeDasharray={`${(CIRCUMFERENCE * percent) / 100} ${CIRCUMFERENCE}`}
+              />
+            </svg>
+            Context
+          </span>
+          <span className="usage-row-aside">{contextAside}</span>
+        </div>
+        <div className="usage-row-track" role="presentation">
+          <div
+            className="usage-row-fill"
+            data-level={level}
+            style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+          />
+        </div>
+      </div>
       {planUsage?.windows.map((window) => (
         <UsageRow
           key={window.label}
@@ -106,17 +197,30 @@ function UsageCardBody({ provider, usage, planUsage, onCompact, compactEnabled }
           aside={`${window.percent}%${window.resetsAt ? ` · ${resetNote(window.resetsAt, now)}` : ''}`}
         />
       ))}
-      {onCompact && (
-        <button
-          type="button"
-          className="usage-card-action"
-          data-ui="composer.compact"
-          disabled={!compactEnabled}
-          onClick={() => { void onCompact() }}
-        >
-          Compact conversation
-        </button>
-      )}
+      <div className="usage-card-actions">
+        {onInspect && (
+          <button
+            type="button"
+            className="usage-card-action"
+            data-ui="composer.context"
+            onClick={onInspect}
+          >
+            Inspect context
+          </button>
+        )}
+        {onCompact && (
+          <button
+            type="button"
+            className="usage-card-action"
+            data-ui="composer.compact"
+            disabled={!compactEnabled}
+            onClick={() => { void onCompact() }}
+          >
+            Compact conversation
+          </button>
+        )}
+      </div>
+      {modelDescription && <p className="usage-card-note">{modelDescription}</p>}
       {planUsage?.unavailable && <p className="usage-card-note">{planUsage.unavailable}</p>}
       {planUsage?.note && <p className="usage-card-note">{planUsage.note}</p>}
       {stale && <p className="usage-card-note">Read {ageNote(now - planUsage.updatedAt)}</p>}
