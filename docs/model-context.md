@@ -28,26 +28,23 @@ embedded Chromium browser, free to choose its approach and available tools for a
 Models should use their knowledge, reasoning, and reach to improve the user's starting approach
 and deliver a useful, accurate, finished result. More research, tool calls, or output alone do not
 establish higher quality.
-This role has one shared owner; adapters supply transport and provider facts. The same section
-tells every lane to read a site, tool, source, or method named in a request as the user's
-best-known instance of their objective rather than the task's boundary: pursue the named
-instrument directly first without degrading speed. The model enhances the user's approach with
-its broader intelligence: when a strictly superior tool, method, or source is known or directly
-apparent that better accomplishes the objective, leverage or suggest it, without running speculative
-searches or delaying execution when the named approach is already effective. Wider is only better
-when it is at least as good; weaker material from outside the request's direction is excluded. The
-Claude append states that this overrides the `claude_code` preset's literal-request, never-widen
-scope rule, as the engineering line does for the preset's Bash preference; without the named
-conflict the preset wins. Evidence guidance
-distinguishes observations from hypotheses. Shared application instructions favor the fastest reliable
-path to the intended outcome: act on sufficient evidence, investigate consequential unknowns with
-small checks, and adapt a failed approach using available tools, sources, or code. Research, planning,
-and checks should materially improve the result or satisfy a required contract, not become ritual
-steps. Stop when the requested outcome is complete and supported. Retries must account for possible
-prior effects; work must respect cancellation, authorization, tool contracts, and trust boundaries.
-Unresolved gaps are reported honestly. Checkpoints are optional when continuity warrants useful
-working notes; multi-step work alone does not require one. Research-library retrieval is optional
-discovery, never a prerequisite to execution or ordinary search.
+This role has one shared owner; adapters supply transport and provider facts. Models recover the
+intended outcome and respect explicit constraints, while treating diagnoses and proposed methods
+as hypotheses when their accuracy affects the result. Evidence selection is task-dependent: local
+state, authoritative APIs, current documentation, original research, or firsthand experience reports.
+Current evidence is the starting point; older work remains useful when applicable or foundational,
+and software guidance must match the relevant version. Models may investigate a plausible better
+approach within the user's objective. Quality comes first, latency close behind, token cost third.
+Claude's explicit preset override permits this objective-bounded work without overriding user
+constraints. Evidence guidance distinguishes observations from hypotheses.
+
+Independent retrieval and execution overlap; choices that depend on missing evidence wait. Research
+stops when important decisions are supported, material contradictions are resolved or disclosed,
+and further findings are unlikely to change the approach. Models read needed sources and cancel
+unnecessary pending work instead of waiting for every source. The task itself still requires a
+finished, verified result. Failed approaches are adapted; retries account for prior effects;
+authorization, cancellation, budgets, and trust boundaries remain binding. Search, library lookup,
+and checkpoints are not mandatory on every task. No evaluator or extra planning model call is added.
 Stripe Directory is used when explicitly requested or when its vendor discovery or purchase
 capabilities materially help. This explicitly overrides the `stripe-directory` skill's blanket
 software/service discovery trigger: a suitable option that can be verified directly does not need
@@ -275,8 +272,8 @@ Browser-page capture rejects main-frame navigation or renderer loss during the o
 Its tool description explicitly excludes an atomic DOM/pixel guarantee: DOM updates,
 animation, and subframe changes remain possible.
 
-The verification budgets are under 5,625 characters for Codex developer instructions, 6,500 for
-Claude, 7,750 for Antigravity, and 7,000 for Cursor. The separately appended
+The verification budgets in `model-efficiency-instructions.test.ts` are under 8,000 characters for
+Codex developer instructions, 8,500 for Claude, 9,000 for Antigravity, and 8,500 for Cursor. The separately appended
 root `AGENTS.md` is capped at 20,000. Share repeated guidance and remove duplication when expanding
 prompts; do not solve drift by injecting the entire documentation tree.
 

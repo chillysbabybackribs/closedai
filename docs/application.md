@@ -6,12 +6,16 @@ in the provider guides.
 
 ## Projects, chats, panes, and conversations
 
-All provider instruction builders favor the fastest reliable path to the user's intended outcome,
-using model knowledge, reasoning, and reach to improve the starting approach. Models act on sufficient
-evidence, investigate consequential uncertainty, adapt failed approaches, and verify completion.
-Research, planning, and checks must materially improve the result or satisfy a required contract;
-more steps or longer output alone do not establish quality. Checkpoints and research-library discovery
-are optional. Models account for prior effects before retrying mutations and disclose unresolved gaps.
+All provider instruction builders ask models to recover the intended outcome, respect explicit
+constraints, and treat diagnoses or proposed methods as hypotheses when their accuracy matters.
+Models use applicable local evidence, authoritative APIs, current documentation, original research,
+or firsthand experience reports according to the question. They start with current evidence and
+follow older work when relevant or foundational, matching the applicable version. Quality comes
+first, latency close behind, token cost third. Independent research and execution can overlap;
+dependent decisions wait for needed evidence. Research stops when important decisions are supported,
+material contradictions are resolved or disclosed, and further findings are unlikely to change the
+approach. The model still finishes and verifies the requested work. Search, library lookup, and
+checkpoints are optional, not per-task rituals. Models account for prior effects before retries.
 Stripe Directory's broad discovery trigger is narrowed by shared guidance: use it when explicitly
 requested or materially useful, and skip supplementary directory searches when a suitable option can
 be verified directly. Useful alternative discovery, source checks, and required purchase safeguards remain.
