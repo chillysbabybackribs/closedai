@@ -27,6 +27,7 @@ export type AntigravitySessionDeps = {
   onTurn: (turnId: string | null) => void
   onConversationId: (conversationId: string) => void
   onTurnEnd: (turnId: string, end: TurnEnd) => void
+  onTokenUsage?: (usage: { inputTokens: number; cacheReadTokens?: number; cacheAnomaly: boolean }) => void
   /** When set, every stream-json line in either direction is recorded in the turn trace. */
   traceScope?: () => TraceScope
   idleMs?: number
@@ -150,6 +151,7 @@ export class AntigravitySession {
       takeCallId: (namespace, tool) => this.deps.takeCallId(this.conversationId, namespace, tool),
       requestEmptySuccessRecovery: () => this.requestEmptySuccessRecovery(),
       onTokenUsage: (usage) => {
+        this.deps.onTokenUsage?.(usage)
         if (!this.deps.traceScope) return
         traceLog.record(this.deps.traceScope(), {
           kind: 'note',

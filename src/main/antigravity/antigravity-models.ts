@@ -30,6 +30,19 @@ export function parseAntigravityModelList(stdout: string): AntigravityCliModel[]
   return models
 }
 
+/**
+ * Context window capacity in tokens for Antigravity models.
+ * Gemini 3.x models support 1,000,000 tokens; Claude models support 200,000 tokens;
+ * and GPT-OSS models support 128,000 tokens.
+ */
+export function antigravityContextWindow(modelIdOrFamily: string | null | undefined): number {
+  if (!modelIdOrFamily) return 1_000_000
+  const normalized = (antigravityModelFamily(modelIdOrFamily) ?? modelIdOrFamily).toLowerCase()
+  if (normalized.startsWith('claude')) return 200_000
+  if (normalized.startsWith('gpt')) return 128_000
+  return 1_000_000
+}
+
 /** Composer models: one per family, with the CLI's effort variants as the effort options. */
 export function antigravityModelsFromCli(cliModels: readonly AntigravityCliModel[]): ChatModel[] {
   const families = new Map<string, { displayName: string; efforts: string[] }>()
@@ -48,6 +61,7 @@ export function antigravityModelsFromCli(cliModels: readonly AntigravityCliModel
       id: antigravityModelId(family),
       displayName: entry.displayName,
       description: 'On your Antigravity subscription',
+      contextWindow: antigravityContextWindow(family),
       defaultReasoningEffort: efforts.includes('high') ? 'high' : efforts[0] ?? '',
       supportedReasoningEfforts: efforts.map((effort): ChatReasoningEffort => ({ reasoningEffort: effort, description: EFFORT_DESCRIPTIONS[effort] ?? '' })),
       isDefault: false

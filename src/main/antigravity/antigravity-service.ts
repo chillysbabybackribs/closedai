@@ -4,6 +4,7 @@ import type {
   ChatSnapshot, ChatThreadContent, ChatThreadSummary, ChatTurnContextReport
 } from '../../shared/chat.js'
 import { applyProviderRotation, type RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
+import { describeUsage, type ContextUsage } from '../chat-context/context-compaction.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import {
   buildThreadHandoff,
@@ -26,7 +27,13 @@ import { AntigravityHistory } from './antigravity-history.js'
 import { antigravityConversationIdOf, antigravityThreadId } from './antigravity-ids.js'
 import { buildAntigravityPrompt } from './antigravity-input.js'
 import type { AntigravityToolBridge } from './antigravity-mcp.js'
-import { antigravityModelCatalog, antigravityWireModel, parseAntigravityModelList, type AntigravityCliModel } from './antigravity-models.js'
+import {
+  antigravityContextWindow,
+  antigravityModelCatalog,
+  antigravityWireModel,
+  parseAntigravityModelList,
+  type AntigravityCliModel
+} from './antigravity-models.js'
 import { ensureAntigravityProfile, recordUndeclarableTools, undeclarableToolsFrom, type AntigravityProfile } from './antigravity-profile.js'
 import { AntigravitySession } from './antigravity-session.js'
 import { applyTranscriptOp, handleProviderTurnEnd, type TranscriptOp, type TurnEnd } from '../chat-transcript-ops.js'
@@ -68,6 +75,7 @@ export class AntigravityChatService extends EventEmitter {
   private pausedTurnId: string | null = null
   private turnContext: ChatTurnContextReport | null = null
   private planUsage: ChatPlanUsage | null = null
+  private contextUsage: ContextUsage | null = null
   /** stdin content of the running turn, so a grant rejection can replay it on a rewritten profile. */
   private lastTurnContent: string | null = null
   private readonly transcript: ChatTranscript
@@ -102,7 +110,7 @@ export class AntigravityChatService extends EventEmitter {
       threadName: this.threadName,
       activeTurnId: this.activeTurnId,
       pausedTurnId: this.pausedTurnId,
-      contextUsage: null,
+      contextUsage: describeUsage(this.contextUsage),
       planUsage: this.planUsage,
       turnContext: this.turnContext,
       items: page?.items ?? this.transcript.snapshot(),
@@ -213,6 +221,12 @@ export class AntigravityChatService extends EventEmitter {
     await this.settings.set({ chatModelId: modelId, chatReasoningEffort: preference.effort })
     this.modelState.apply(preference)
     this.emitEvent({ type: 'model', selectedModel: modelId, selectedReasoningEffort: preference.effort })
+    if (this.contextUsage) {
+      const model = this.modelState.models.find((entry) => entry.id === modelId)
+      const contextWindow = model?.contextWindow ?? antigravityContextWindow(modelId)
+      this.contextUsage = { usedTokens: this.contextUsage.usedTokens, contextWindow }
+      this.emitEvent({ type: 'context', usage: describeUsage(this.contextUsage) })
+    }
     // The model is part of the wire process; the live one winds down behind the pick, not in front of it.
     this.retireQuietly()
   }
@@ -311,6 +325,7 @@ export class AntigravityChatService extends EventEmitter {
     if (!this.session) this.session = this.createSession()
     await this.session.compact(seed)
     if (previous) this.bridge.unbind(previous)
+    this.contextUsage = null
     await this.settings.set({ chatAntigravityConversationId: null })
     this.addNotice('Conversation context compacted; the next message continues from a summary.', 'info', null)
   }
@@ -367,6 +382,7 @@ export class AntigravityChatService extends EventEmitter {
       onTurn: (turnId) => this.setTurn(turnId),
       onConversationId: (conversationId) => this.adoptConversationId(conversationId),
       onTurnEnd: (turnId, end) => this.onTurnEnd(turnId, end),
+      onTokenUsage: (usage) => this.noteTokenUsage(usage),
       traceScope: () => ({ paneId: this.paneId, provider: 'antigravity', turnId: this.activeTurnId })
     })
   }
@@ -383,6 +399,7 @@ export class AntigravityChatService extends EventEmitter {
   }
 
   private async resumeConversation(conversationId: string): Promise<void> {
+    this.contextUsage = null
     const items = await this.history.loadTranscript(conversationId)
     await this.session!.adopt(conversationId)
     this.transcript.replaceItems(items ?? [])
@@ -400,10 +417,12 @@ export class AntigravityChatService extends EventEmitter {
     this.threadName = null
     this.activeTurnId = null
     this.turnContext = null
+    this.contextUsage = null
     await this.settings.set({ chatAntigravityConversationId: null })
   }
 
   private async rotateProviderSession(): Promise<void> {
+    const usage = this.contextUsage
     await applyProviderRotation(this.settings, {
       paneId: this.paneId,
       provider: 'antigravity',
@@ -415,9 +434,10 @@ export class AntigravityChatService extends EventEmitter {
       if (!this.session) this.session = this.createSession()
       else await this.session.reset()
       if (previous) this.bridge.unbind(previous)
+      this.contextUsage = null
       await this.settings.set({ chatAntigravityConversationId: null })
       this.emitEvent({ type: 'thread', threadId: null, threadName: this.threadName })
-    }, null)
+    }, usage)
   }
 
   private async ensureReady(): Promise<void> {
@@ -555,5 +575,13 @@ export class AntigravityChatService extends EventEmitter {
   private setTurnContext(report: ChatTurnContextReport): void {
     this.turnContext = report
     this.emitEvent({ type: 'turnContext', report })
+  }
+
+  private noteTokenUsage(usage: { inputTokens: number; cacheReadTokens?: number; cacheAnomaly: boolean }): void {
+    if (usage.inputTokens <= 0) return
+    const model = this.modelState.models.find((entry) => entry.id === this.modelState.selectedModel)
+    const contextWindow = model?.contextWindow ?? antigravityContextWindow(this.modelState.selectedModel)
+    this.contextUsage = { usedTokens: usage.inputTokens, contextWindow }
+    this.emitEvent({ type: 'context', usage: describeUsage(this.contextUsage) })
   }
 }

@@ -13,6 +13,11 @@ lines.on('line', (line) => {
   count++;
   console.log(JSON.stringify({ event: 'init', conversation_id: conversation, init: {} }));
   if (content === 'HOLD') return;
+  console.log(JSON.stringify({ event: 'step_update', step_update: {
+    conversation_id: conversation, step_index: 1, state: 'DONE', step_type: 'agent_response',
+    text_delta: count + ':' + content,
+    usage: { input_tokens: 1500, cache_read_tokens: 500 }
+  } }));
   console.log(JSON.stringify({ event: 'result', result: {
     status: 'SUCCESS', conversation_id: conversation, response: count + ':' + content
   } }));
@@ -28,6 +33,7 @@ function pending<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
 function harness() {
   const ops: TranscriptOp[] = []
   const ends: TurnEnd[] = []
+  const tokenUsages: Array<{ inputTokens: number; cacheReadTokens?: number; cacheAnomaly: boolean }> = []
   let completed = pending<TurnEnd>()
   const initialized = pending<string>()
   const session = new AntigravitySession({
@@ -36,9 +42,10 @@ function harness() {
     servers: () => [], displayScreenshot: () => null, takeCallId: () => null,
     apply: (op) => ops.push(op), onTurn: () => {},
     onConversationId: (id) => initialized.resolve(id),
-    onTurnEnd: (_id, end) => { ends.push(end); completed.resolve(end) }
+    onTurnEnd: (_id, end) => { ends.push(end); completed.resolve(end) },
+    onTokenUsage: (usage) => tokenUsages.push(usage)
   })
-  return { session, ops, ends, initialized: initialized.promise,
+  return { session, ops, ends, tokenUsages, initialized: initialized.promise,
     send(content: string) {
       completed = pending<TurnEnd>()
       session.send(content)
@@ -53,6 +60,7 @@ test('cold, warm, and resumed processes receive the user prompt without an initi
     assert.equal((await h.send('first')).status, 'completed')
     assert.match(JSON.stringify(h.ops), /1:first/)
     assert.equal(h.session.conversationId, 'new-conversation')
+    assert.deepEqual(h.tokenUsages[0], { inputTokens: 1500, cacheReadTokens: 500, cacheAnomaly: false })
     assert.equal((await h.send('second')).status, 'completed')
     assert.match(JSON.stringify(h.ops), /2:second/)
     await h.session.retire()

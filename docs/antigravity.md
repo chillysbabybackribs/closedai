@@ -99,6 +99,9 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
   sends one internal recovery prompt on the same process before surfacing a notice.
 - **Cache telemetry.** Per-turn usage with zero `cache_read_tokens` on large prompts is recorded in the
   turn trace as a cache anomaly (`antigravity-cache-diagnostics.ts`).
+- **Context gauge and token metering.** Turn step usage is translated against the active model's context
+  capacity (1,000,000 tokens for Gemini 3.x, 200,000 for Claude, 128,000 for GPT-OSS) into a live radial
+  context meter and token counter in the chat pane and rotation traces (`antigravity-models.ts`, `antigravity-service.ts`).
 
 ## Process lifecycle (`antigravity-session.ts`, `antigravity-process.ts`)
 
