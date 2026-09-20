@@ -43,6 +43,7 @@ export type ChatWorkspaceSelector = {
 }
 
 export interface ChatWorkspaceSurface {
+  readonly projectSwitch: DeferredProjectSwitch
   snapshot(window?: ChatHistoryWindow): ChatWorkspaceSnapshot
   readHistoryPage(paneId: ChatPaneId, threadId: string | null, beforeItemId: string): Promise<ChatHistoryPage>
   start(): Promise<void>
@@ -268,6 +269,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async selectReasoningEffort(paneId: ChatPaneId, effort: string): Promise<void> {
+    this.projectSwitch.assertAvailable()
     await this.lifecycle.require(paneId).surface.selectReasoningEffort(effort)
   }
 
@@ -338,6 +340,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async continueInNewPeer(source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId> {
+    this.projectSwitch.assertAvailable()
     return continuePeer({
       current: () => this.lifecycle.require(this.selectedPaneId).surface.snapshot(),
       attached: (id) => !!this.lifecycle.get(id),
@@ -574,6 +577,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   private onPaneEvent(entry: PeerEntry, event: ChatEvent): void {
+    if (event.type === 'item' && event.item.type === 'notice' && event.item.tone === 'error') {
+      this.projectSwitch.cancel('The requesting chat reported an error', entry.chatId)
+    }
     const paneId = entry.chatId
     traceLog.responses.event(paneId, event)
     entry.updatedAt = Date.now()

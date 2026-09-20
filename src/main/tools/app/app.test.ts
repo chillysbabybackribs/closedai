@@ -36,6 +36,8 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
       return Object.fromEntries(sections.map((section) => [section, { section }]))
     },
     selectedPaneId: () => 'pane-selected',
+    queueProjectSwitch: async (request) => { calls.push(['queueProjectSwitch', request]); return { ...request, status: 'pending' } },
+    cancelProjectSwitch: (paneId) => { calls.push(['cancelProjectSwitch', paneId]); return null },
     newChat: async () => { calls.push(['newChat']); return { paneId: 'pane-new' } },
     sendMessage: async (request) => {
       calls.push(['sendMessage', { ...request, signal: request.signal.aborted }])
@@ -66,7 +68,7 @@ test('namespace advertises state, deterministic commands, and control-level ui a
   const [state, command, ui] = registry.namespaces[0]!.tools
   assert.equal(state!.actions, undefined)
   assert.deepEqual(command!.actions?.map((action) => action.name), [
-    'new_chat', 'send_message', 'stop_agent', 'open_chat', 'close_chat', 'select_model', 'browser_tab'
+    'switch_project', 'cancel_project_switch', 'new_chat', 'send_message', 'stop_agent', 'open_chat', 'close_chat', 'select_model', 'browser_tab'
   ])
   assert.deepEqual(ui!.actions?.map((action) => action.name), [
     'controls', 'click', 'type', 'press_key', 'scroll', 'wait_for'

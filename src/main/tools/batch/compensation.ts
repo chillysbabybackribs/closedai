@@ -75,6 +75,11 @@ function ruleFor(call: CompensableCall, verb: (rule: Rule) => string): Rule | nu
 
 /** What would put the tab back, if this call armed something. Null for everything else. */
 export function compensationFor(call: CompensableCall): Compensation | null {
+  if (call.namespace === 'closedai_app' && call.tool === 'command' && actionOf(call) === 'switch_project') {
+    return { label: 'the queued project switch', call: {
+      namespace: 'closedai_app', tool: 'command', arguments: { action: 'cancel_project_switch' }
+    } }
+  }
   const rule = ruleFor(call, (candidate) => candidate.arms)
   if (!rule) return null
   const tab = tabOf(call)
@@ -93,6 +98,9 @@ export function compensationFor(call: CompensableCall): Compensation | null {
  * and stops needs no unwinding of the part it completed on purpose.
  */
 export function releases(call: CompensableCall, pending: Compensation): boolean {
+  if (call.namespace === 'closedai_app' && call.tool === 'command' && actionOf(call) === 'cancel_project_switch') {
+    return pending.call.namespace === 'closedai_app' && pending.call.arguments.action === 'cancel_project_switch'
+  }
   const rule = ruleFor(call, (candidate) => candidate.releases)
   if (!rule || rule.namespace !== pending.call.namespace || rule.tool !== pending.call.tool) return false
   return (tabOf(call) ?? null) === (typeof pending.call.arguments.tab_id === 'string'
