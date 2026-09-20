@@ -247,10 +247,11 @@ dragging a hidden tab's sidebar row to a tile edge splits that conversation out 
 Dividers resize horizontal and vertical splits independently; arrow keys resize a focused chat
 divider and double-click resets it to equal proportions. Nested splits support columns, rows,
 and quadrants, up to 32 visible chats. A tile has a 300 × 280 px minimum; the chat area scrolls
-when a small window cannot fit the chosen arrangement. Tiles at most 680 px wide or 640 px tall
-use a smaller expanded composer: a flat project/activity rail, less empty input space and tighter
-gutters. Drafts grow within a tile-relative height limit and then scroll, leaving room for the
-transcript in stacked rows. Narrow tiles also condense model details. Single-tab headers use the
+when a small window cannot fit the chosen arrangement. Every layout uses the smaller expanded
+composer: a flat project/activity rail, less empty input space, tighter gutters and 30 px controls.
+Drafts grow within a tile-relative height limit and then scroll, leaving room for the transcript.
+Tiles at most 680 px wide or 640 px tall also tighten transcript spacing, and narrow tiles
+condense model details. Single-tab headers use the
 available width for the title; the focused tile has the accent tab indicator.
 Composers start fully expanded and stay expanded while running or inactive. The chevron
 (`composer.compact-toggle`) manually collapses or expands the composer; that choice survives turn

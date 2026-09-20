@@ -130,51 +130,17 @@
 .chat-layout-drop span { padding: 6px 10px; border-radius: 6px; background: var(--surface-chrome); font-size: 12px; }
 .chat-layout-error { padding: 5px 10px; color: #ffb4ab; font-size: 12px; }
 
-/* A smaller expanded composer keeps the transcript useful in columns and stacked rows.
-   This changes density only: drafts, menus and the manual collapse choice stay mounted. */
+/* Bound draft growth to the tile in every layout, compensating for chat zoom. */
+.chat-layout-content .chat-zoom-surface {
+  --composer-max-height: max(38px, min(calc(26cqh * var(--chat-zoom-inverse, 1)), 160px));
+}
+
+/* Short and narrow tiles also tighten transcript spacing. */
 @container chat-tile (max-width: 680px) or (max-height: 640px) {
   .chat-layout-content .chat-zoom-surface {
     --chat-column-gutter: 12px;
-    --composer-max-height: max(38px, min(calc(26cqh * var(--chat-zoom-inverse, 1)), 160px));
   }
   .chat-layout-content .prompt-chat-content { padding: 12px 12px 8px; }
-  .chat-layout-content .prompt-composer { padding: 6px var(--chat-column-gutter) 10px; }
-  .chat-layout-content .composer-project-strip {
-    width: min(calc(var(--chat-column-width) + 64px), 100%);
-    min-height: 30px;
-    margin-bottom: 4px;
-    padding: 0 2px;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-  }
-  .chat-layout-content .composer-project-trigger {
-    min-width: 0;
-    max-width: 55%;
-    height: 28px;
-    gap: 6px;
-    padding-inline: 6px;
-    font-size: 12px;
-  }
-  .chat-layout-content .composer-project-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .chat-layout-content .composer-project-trigger svg { flex-shrink: 0; width: 15px; height: 15px; }
-  .chat-layout-content .composer-strip-activity { min-width: 0; padding-left: 4px; }
-  .chat-layout-content .prompt-composer-input:not(.is-compact) {
-    padding: 6px;
-    box-shadow: 0 1px 3px rgb(0 0 0 / 14%);
-  }
-  .chat-layout-content .prompt-composer-textarea:not(.prompt-composer-textarea-compact) {
-    min-height: 38px;
-    padding: 6px 8px;
-    font-weight: 500;
-  }
-  .chat-layout-content .prompt-composer-actions { margin-top: 2px; padding: 0 2px 2px; }
-  .chat-layout-content .model-menu-trigger { height: 30px; }
-  .chat-layout-content .prompt-composer-tool { height: 30px; min-width: 30px; padding-inline: 5px; }
-  .chat-layout-content .prompt-composer-actions .prompt-composer-send,
-  .chat-layout-content .prompt-composer-actions .prompt-composer-resume,
-  .chat-layout-content .prompt-composer-actions .prompt-composer-stop { width: 30px; height: 30px; }
-  .chat-layout-content .prompt-composer-input:focus-within { border-color: var(--focus-ink); }
   .chat-layout-content .prompt-chat-empty { min-height: 0; padding: 16px; }
 }
 
