@@ -32,7 +32,7 @@ export async function readNativePdf(
     try {
       stop.throwIfAborted()
       await contents.loadURL('chrome://accessibility/')
-      const result = await contents.executeJavaScript(nativePdfReadScript(frame.processId, frame.routingId, page, maxChars)) as NativePdfText
+      const result = await contents.executeJavaScript(nativePdfReadScript(frame.processId, target.getURL(), page, maxChars)) as NativePdfText
       stop.throwIfAborted()
       if (!result || typeof result.text !== 'string' || typeof result.available !== 'boolean') {
         throw new Error('Chromium returned an unsupported PDF accessibility response')

@@ -19,6 +19,12 @@ const tree = `rootWebArea
 ++++++++staticText name='Don't mistake quotes or <tags> for markup'
 ++staticText name='Outside PDF'`
 
+class TargetsRequest {
+  responseText = JSON.stringify({ pages: [{ processId: 7, routingId: 2, url: 'https://a.test/paper.pdf' }] })
+  open() {}
+  send() {}
+}
+
 test('native PDF text is scoped to a page and excludes toolbar, status, and inline duplicates', () => {
   const page = parseNativePdfTree(tree, 1, 2000)
   assert.equal(page.text, 'First paragraph\nsecond line\nlink text')
@@ -59,8 +65,8 @@ test('reader script filters response identity, bounds the result, and removes it
       listener({ processId: 7, routingId: 2, tree })
     }
   } }
-  const script = nativePdfReadScript(7, 2, 2, 30).replace("const cr = await import('chrome://resources/js/cr.js');", '')
-  const result = await new Function('cr', 'chrome', `return ${script}`)(cr, chrome)
+  const script = nativePdfReadScript(7, 'https://a.test/paper.pdf', 2, 30).replace("const cr = await import('chrome://resources/js/cr.js');", '')
+  const result = await new Function('cr', 'chrome', 'XMLHttpRequest', `return ${script}`)(cr, chrome, TargetsRequest)
   assert.equal(result.page, 2)
   assert.equal(result.text.length, 30)
   assert.equal(result.truncated, true)
@@ -74,7 +80,18 @@ test('reader script surfaces native errors and removes its listener', async () =
     removeWebUiListener: () => { listener = null }
   }
   const chrome = { send: () => listener?.({ processId: 7, routingId: 2, error: 'Document gone' }) }
-  const script = nativePdfReadScript(7, 2, 1, 100).replace("const cr = await import('chrome://resources/js/cr.js');", '')
-  await assert.rejects(new Function('cr', 'chrome', `return ${script}`)(cr, chrome), /Document gone/)
+  const script = nativePdfReadScript(7, 'https://a.test/paper.pdf', 1, 100).replace("const cr = await import('chrome://resources/js/cr.js');", '')
+  await assert.rejects(new Function('cr', 'chrome', 'XMLHttpRequest', `return ${script}`)(cr, chrome, TargetsRequest), /Document gone/)
   assert.equal(listener, null)
+})
+
+test('reader refuses duplicate renderer/URL targets before requesting a tree', async () => {
+  class Ambiguous extends TargetsRequest {
+    override responseText = JSON.stringify({ pages: [
+      { processId: 7, routingId: 2, url: 'https://a.test/paper.pdf' },
+      { processId: 7, routingId: 8, url: 'https://a.test/paper.pdf' }
+    ] })
+  }
+  const script = nativePdfReadScript(7, 'https://a.test/paper.pdf', 1, 100)
+  await assert.rejects(new Function('XMLHttpRequest', `return ${script}`)(Ambiguous), /missing or ambiguous/)
 })

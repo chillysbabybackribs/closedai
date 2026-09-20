@@ -28,7 +28,7 @@ try {
       const helper = new WebContentsView({ webPreferences: { session: target.session, sandbox: true, backgroundThrottling: false } });
       const diagnostics = helper.webContents;
       const mode = async () => diagnostics.executeJavaScript(
-        '(()=>{const x=new XMLHttpRequest();x.open("GET","targets-data.json",false);x.send();return JSON.parse(x.responseText).pages.find(p=>p.processId===' + target.mainFrame.processId + '&&p.routingId===' + target.mainFrame.routingId + ')?.a11yMode})()'
+        '(()=>{const x=new XMLHttpRequest();x.open("GET","targets-data.json",false);x.send();return JSON.parse(x.responseText).pages.find(p=>p.processId===' + target.mainFrame.processId + '&&p.url===' + JSON.stringify(target.getURL()) + ')?.a11yMode})()'
       );
       try {
         await diagnostics.loadURL('chrome://accessibility/');
@@ -41,8 +41,7 @@ try {
           }
           const baseline = webContents.getAllWebContents().length;
           const before = await mode();
-          console.log(JSON.stringify({stage:'before-read', processId:target.mainFrame.processId, routingId:target.mainFrame.routingId, visibility:await target.executeJavaScript('document.visibilityState'), before}));
-          console.log(await diagnostics.executeJavaScript('(()=>{const x=new XMLHttpRequest();x.open("GET","targets-data.json",false);x.send();return x.responseText})()'));
+          assert.equal(before, 0);
           const result = await readNativePdf(target, index === 0 ? 2 : 1, 12000);
           await new Promise(r=>setTimeout(r,100));
           assert.ok(result?.available, JSON.stringify(result));

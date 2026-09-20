@@ -4,10 +4,20 @@ import { parseNativePdfTree } from './accessibility-text.js'
  * requestWebContentsTree owns a scoped accessibility mode in its WebUI handler;
  * destroying the helper releases it. No global flags or clipboard operations.
  */
-export function nativePdfReadScript(processId: number, routingId: number, page: number, maxChars: number): string {
+export function nativePdfReadScript(processId: number, url: string, page: number, maxChars: number): string {
   return `(async () => {
     const parse = ${parseNativePdfTree.toString()};
-    const processId = ${processId}, routingId = ${routingId};
+    const processId = ${processId};
+    // WebUI identifies RenderViews, while Electron exposes RenderFrame routing ids.
+    // Match a unique live target; never guess a routing-id offset.
+    const request = new XMLHttpRequest();
+    request.open('GET', 'targets-data.json', false);
+    request.send(null);
+    const candidates = JSON.parse(request.responseText).pages.filter(
+      target => target.processId === processId && target.url === ${JSON.stringify(url)}
+    );
+    if (candidates.length !== 1) throw new Error('Native PDF target is missing or ambiguous');
+    const routingId = candidates[0].routingId;
     const cr = await import('chrome://resources/js/cr.js');
     let latest = null;
     for (let attempt = 0; attempt < 35; attempt++) {
