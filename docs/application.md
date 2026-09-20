@@ -394,12 +394,14 @@ shared strip: `local-files/image-tab.ts` holds the image without a native browse
 selecting it parks all native web views beyond the window before emitting renderer state.
 The app renderer displays fit-to-pane, zoom, actual size, drag-to-pan, download (raster data),
 and show-in-folder (local files) controls. Image bytes are fetched once per viewer, separately
-from tab metadata. Local links and attachment thumbnails use this same viewer; opening one
+from tab metadata. Local image links and attachment thumbnails use this image viewer, while
+other local file links open in native browser tabs as `file:` URLs. In both cases, opening one
 reveals a hidden browser pane and exits maximized chat layout. Reopening the same canonical
-file or attachment source selects its existing tab. Closing an image returns to the previously
-selected tab when it is still open. Switching preserves the image's zoom/pan and the web page.
-Image tabs are session-only; they do not restore after app restart. Browser page/CDP tools
-operate on web tabs, not the app-owned image viewer; image controls use `closedai_app.ui`.
+file or attachment source selects its existing tab. Directories reveal in the system file
+manager. Closing an image returns to the previously selected tab when it is still open. Switching
+preserves the image's zoom/pan and the web page. Image tabs are session-only; they do not
+restore after app restart. Browser page/CDP tools operate on web tabs, not the app-owned
+image viewer; image controls use `closedai_app.ui`.
 Hiding the whole browser also keeps user tabs attached and parks the active surface beyond the
 window at its last usable size. Reopening restores that same loaded page without a reload;
 zero-size reports during panel collapse or expansion never replace the saved viewport. Keeping

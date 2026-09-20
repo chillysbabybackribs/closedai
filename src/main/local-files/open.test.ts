@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openLocalFile } from './open.js'
@@ -16,7 +16,7 @@ test('local links accept encoded paths and line suffixes but reject remote and u
   }
 })
 
-test('images return bounded preview bytes; other files reveal without executing', async () => {
+test('images return preview bytes; files return path; directories reveal', async () => {
   const root = await mkdtemp(join(tmpdir(), 'closedai-local-file-'))
   try {
     const image = join(root, 'mockup.png')
@@ -29,8 +29,12 @@ test('images return bounded preview bytes; other files reveal without executing'
     assert.deepEqual(revealed, [])
     const script = join(root, 'run.sh')
     await writeFile(script, 'exit 1')
-    assert.deepEqual(await openLocalFile(`${script}:10`, reveal), { kind: 'revealed' })
-    assert.deepEqual(revealed, [script])
+    assert.deepEqual(await openLocalFile(`${script}:10`, reveal), { kind: 'file', path: script })
+    assert.deepEqual(revealed, [])
+    const folder = join(root, 'subfolder')
+    await mkdir(folder)
+    assert.deepEqual(await openLocalFile(folder, reveal), { kind: 'revealed' })
+    assert.deepEqual(revealed, [folder])
     await assert.rejects(openLocalFile(join(root, 'missing.png'), reveal), /ENOENT/)
     await assert.rejects(openLocalFile('https://example.com/a.png', reveal), /absolute local/)
     const oversized = join(root, 'large.png')
