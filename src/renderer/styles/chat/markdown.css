@@ -237,5 +237,5 @@
    link cell can shrink with its column instead of forcing the table to scroll. */
 .aui-md td code { white-space: nowrap; }
 .aui-md td .prompt-source-trigger { max-width: none; line-height: inherit; }
-.aui-md td .prompt-source-trigger span { overflow: visible; white-space: normal; }
+.aui-md td .prompt-source-trigger span { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
 .aui-md td > p { margin: 0; }
