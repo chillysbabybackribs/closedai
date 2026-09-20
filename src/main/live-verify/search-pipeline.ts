@@ -13,7 +13,14 @@ function textOf(result: ToolResult): string {
   return result.content[0]?.type === 'text' ? result.content[0].text ?? '' : ''
 }
 
+/** `CLOSEDAI_LIVE_VERIFY_PROVIDER` pins one lane; otherwise the first credentialed provider runs. */
 async function firstProvider(): Promise<SearchProvider> {
+  const pinned = process.env.CLOSEDAI_LIVE_VERIFY_PROVIDER?.trim() as SearchProvider | undefined
+  if (pinned) {
+    if (!PROVIDERS.includes(pinned)) throw new Error(`Unknown search provider ${pinned}; expected one of ${PROVIDERS.join(', ')}`)
+    await readSearchKey(pinned)
+    return pinned
+  }
   for (const provider of PROVIDERS) {
     try {
       await readSearchKey(provider)
@@ -79,7 +86,7 @@ export async function runSearchPipelineLiveVerify(
     state: string
     cursor: number
     presentation: { state: string; tabId?: string }
-    sources: Array<{ id: string; url: string; state: string }>
+    sources: Array<{ id: string; url: string; state: string; representation?: string; contentProvider?: string }>
   }
   for (let attempt = 0; attempt < 60; attempt++) {
     const ready = snapshot.sources.filter((source) => source.state === 'ready')
@@ -113,6 +120,8 @@ export async function runSearchPipelineLiveVerify(
     presentationTabId: snapshot.presentation.tabId,
     readySources: ready.length,
     sourceUrl: ready[0]?.url,
+    representation: ready[0]?.representation,
+    contentProvider: ready[0]?.contentProvider,
     excerptChars: excerptJson.text?.length ?? 0
   }
 }
