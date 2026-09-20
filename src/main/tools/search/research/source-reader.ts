@@ -2,10 +2,11 @@ import { createHash } from 'node:crypto'
 import { mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parse, type DefaultTreeAdapterMap } from 'parse5'
-import type { SourceDate, SourceRepresentation } from '../../../../shared/web-research.js'
+import type { PdfCoverage, SourceDate, SourceRepresentation } from '../../../../shared/web-research.js'
 import { abortable, RequestBudget } from '../request-budget.js'
 import { mergeDates, metaDate } from './source-metadata.js'
 import { boundedText, DEFAULT_SOURCE_BYTES, textLimit, validateCoverage, type SourceCoverage } from './coverage.js'
+import type { PdfReader } from './pdf/reader.js'
 
 // An HTML body with a script tag and almost no text is a client-rendered shell, not evidence.
 const SHELL_TEXT_LIMIT = 200
@@ -18,6 +19,7 @@ export type SourceDocument = {
   /** HTML with a script tag and almost no static text: probably a client-rendered shell. */
   sparse?: boolean
   dates?: SourceDate[]
+  pdf?: PdfCoverage
 }
 export type SourceReader = (url: string, runId: string, sourceId: string, signal: AbortSignal, coverage?: SourceCoverage) => Promise<SourceDocument>
 
@@ -72,7 +74,7 @@ export function documentText(raw: string, contentType: string): { text: string; 
 export class SourceStore {
   private readonly budget = new RequestBudget(8, 2)
 
-  constructor(readonly root: string, private readonly fetchPage: typeof fetch) {}
+  constructor(readonly root: string, private readonly fetchPage: typeof fetch, private readonly readPdf?: PdfReader) {}
 
   async collect(url: string, runId: string, sourceId: string, signal: AbortSignal, coverage: SourceCoverage = {}): Promise<SourceDocument> {
     validateCoverage(coverage)
@@ -87,7 +89,7 @@ export class SourceStore {
         throw new Error(`Source returned HTTP ${response.status}`)
       }
       const type = (response.headers.get('content-type') ?? '').toLowerCase().slice(0, 120)
-      if (!/^text\/|application\/(?:json|[^;]+\+json|xhtml\+xml)/.test(type)) {
+      if (type && !/^text\/|application\/(?:pdf|octet-stream|json|[^;]+\+json|xhtml\+xml)(?:;|$)/.test(type)) {
         await response.body?.cancel()
         throw new Error(`Unsupported source type: ${type || 'missing content-type'}; use search.run expand with method exa for provider text, or open it in the browser`)
       }
@@ -97,7 +99,7 @@ export class SourceStore {
 
   /** Keep text a hidden worker rendered, or a search provider extracted, under the same id scheme. */
   async retain(runId: string, sourceId: string, page: { url: string; title: string; text: string; truncated: boolean },
-    representation: Exclude<SourceRepresentation, 'static_text'> = 'rendered_text', coverage: SourceCoverage = {}): Promise<SourceDocument> {
+    representation: 'rendered_text' | 'provider_text' = 'rendered_text', coverage: SourceCoverage = {}): Promise<SourceDocument> {
     validateCoverage(coverage)
     const text = boundedText(page.text, textLimit(coverage))
     if (!text.trim()) throw new Error(representation === 'rendered_text' ? 'The rendered page has no readable text' : 'The provider returned no page text')
@@ -138,8 +140,7 @@ export class SourceStore {
     const temporary = join(directory, `${sourceId}.raw.tmp`)
     const file = await open(temporary, 'w')
     const reader = response.body?.getReader()
-    const decoder = new TextDecoder()
-    let raw = ''
+    let prefix = Buffer.alloc(0)
     let bytes = 0
     let incomplete = false
     try {
@@ -148,25 +149,46 @@ export class SourceStore {
         if (chunk.done) break
         const kept = maxBytes === 0 ? chunk.value : chunk.value.subarray(0, maxBytes - bytes)
         await file.writeFile(kept)
-        raw += decoder.decode(kept, { stream: true })
+        if (prefix.length < 1024) prefix = Buffer.concat([prefix, kept.subarray(0, 1024 - prefix.length)])
         bytes += kept.length
-        if (maxBytes > 0 && bytes >= maxBytes) { incomplete = true; break }
+        if (kept.length < chunk.value.length) { incomplete = true; break }
+        if (maxBytes > 0 && bytes === maxBytes) {
+          const next = await abortable(reader.read(), signal)
+          if (!next.done) incomplete = true
+          break
+        }
       }
-      raw += decoder.decode()
       signal.throwIfAborted()
+      await file.close()
+      if (contentType.split(';')[0].trim() === 'application/pdf' || prefix.includes(Buffer.from('%PDF-'))) {
+        if (incomplete) throw new Error(`PDF exceeds max_source_bytes (${maxBytes}); expand with a larger byte budget or 0 to download the complete PDF`)
+        if (!this.readPdf) throw new Error('PDF reader is unavailable; use search.run expand with method exa for provider text')
+        const extracted = await this.readPdf(temporary, textLimit(coverage), signal)
+        signal.throwIfAborted()
+        await writeFile(join(directory, `${sourceId}.txt.tmp`), extracted.text)
+        await rename(temporary, join(directory, `${sourceId}.raw`))
+        signal.throwIfAborted()
+        await rename(join(directory, `${sourceId}.txt.tmp`), join(directory, `${sourceId}.txt`))
+        return {
+          ...extracted, url, contentType: 'application/pdf', representation: 'pdf_text',
+          sha256: createHash('sha256').update(extracted.text).digest('hex'),
+          dates: this.transportDates(response)
+        }
+      }
+      if (!/^text\/|application\/(?:json|[^;]+\+json|xhtml\+xml)/.test(contentType)) {
+        throw new Error(`Unsupported source type: ${contentType || 'missing content-type'}; body is not a PDF`)
+      }
+      const raw = await readFile(temporary, 'utf8')
       const extracted = documentText(raw, contentType)
       const text = boundedText(extracted.text, textLimit(coverage))
       if (!text.trim()) throw new SourceNeedsRendering('No readable source text; the page may require JavaScript')
       const document: SourceDocument = {
         text, title: extracted.title, url, contentType, representation: 'static_text',
         sha256: createHash('sha256').update(text).digest('hex'),
-        dates: mergeDates(extracted.dates, response.headers.has('last-modified') ? [{
-          kind: 'http_last_modified', value: response.headers.get('last-modified')!, source: 'http:Last-Modified'
-        }] : []),
+        dates: mergeDates(extracted.dates, this.transportDates(response)),
         incomplete: incomplete || extracted.text.length > text.length
       }
       if (contentType.includes('html') && text.length < SHELL_TEXT_LIMIT && /<script[\s>]/i.test(raw)) document.sparse = true
-      await file.close()
       await rename(temporary, join(directory, `${sourceId}.raw`))
       await writeFile(join(directory, `${sourceId}.txt.tmp`), text)
       signal.throwIfAborted()
@@ -178,5 +200,11 @@ export class SourceStore {
       await rm(temporary, { force: true })
       await rm(join(directory, `${sourceId}.txt.tmp`), { force: true })
     }
+  }
+
+  private transportDates(response: Response): SourceDate[] {
+    return response.headers.has('last-modified') ? [{
+      kind: 'http_last_modified', value: response.headers.get('last-modified')!, source: 'http:Last-Modified'
+    }] : []
   }
 }

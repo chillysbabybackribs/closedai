@@ -87,7 +87,7 @@ test('oversized source bodies are cancelled and marked incomplete; unsupported M
   assert.equal(doc.incomplete, true)
   assert.equal(doc.text.length, 120_000)
   assert.equal(cancelled, true)
-  const unsupported = new SourceStore(root, async () => new Response('pdf', { headers: { 'content-type': 'application/pdf' } }))
+  const unsupported = new SourceStore(root, async () => new Response('image', { headers: { 'content-type': 'image/png' } }))
   await assert.rejects(unsupported.collect('https://example.com', 'run', 'pdf', new AbortController().signal), /Unsupported source/)
 })
 
