@@ -214,7 +214,7 @@ test('destination removal and provider directory mismatch fail before any contin
 })
 
 const savedChat = (id: string, cwd: string, updatedAt: number) =>
-  chatRecord(id, 'gpt', { cwd, projectPath: cwd, threadId: `${id}-thread`, codexThreadId: `${id}-thread`, preview: 'Saved', updatedAt })
+  chatRecord(id, 'gpt', { cwd, projectPath: cwd, threadId: `${id}-thread`, codexThreadId: `${id}-thread`, preview: 'Saved', messageSentAt: updatedAt, updatedAt })
 
 test('trimming attached chats keeps the pane that queued a switch until it completes', async (t) => {
   const h = await fixture(t)
