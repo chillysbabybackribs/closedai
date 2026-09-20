@@ -121,8 +121,12 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       await window.closedai.chat.openChat(id)
       selected.current = id
       setLayout((value) => ({ ...value, tree: selectTab(value.tree, paneIds(value.tree)[0]!, id) }))
-    } catch (reason) { setError(String(reason)) }
-    finally { pending.current = false; setBusy(false) }
+      setSelectionToConfirm(id)
+    } catch (reason) {
+      setError(String(reason))
+      pending.current = false
+      setBusy(false)
+    }
   }, [])
 
   const closeTab = useCallback(async (id: string): Promise<void> => {
@@ -140,10 +144,17 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
         // Open also reattaches a tab that was parked and trimmed in the background.
         await window.closedai.chat.openChat(next)
         selected.current = next
+        setSelectionToConfirm(next)
+      } else {
+        pending.current = false
+        setBusy(false)
       }
       setLayout((value) => ({ ...value, tree: remaining }))
-    } catch (reason) { setError(String(reason)) }
-    finally { pending.current = false; setBusy(false) }
+    } catch (reason) {
+      setError(String(reason))
+      pending.current = false
+      setBusy(false)
+    }
   }, [])
 
   const hide = useCallback(async (id: string): Promise<void> => {
