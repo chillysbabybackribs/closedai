@@ -20,7 +20,7 @@ export type LibraryPaper = {
 export type LibraryRefresh = {
   startedAt: string
   finishedAt: string
-  state: 'completed' | 'partial' | 'failed' | 'cancelled'
+  state: 'completed' | 'partial' | 'failed' | 'cancelled' | 'timed_out'
   received: number
   added: number
   errors: Array<{ topic: string; message: string }>

@@ -1,6 +1,7 @@
 import type { LibraryPaper, LibrarySettings, LibrarySnapshot } from '../../shared/research-library.js'
 import { discoverPapers, paperId } from './provider.js'
 import { LibraryStore, MAX_DISMISSED, MAX_PAPERS, validateSettings, type LibraryState } from './store.js'
+import { abortable } from '../tools/search/request-budget.js'
 
 type Discovery = (topic: string, since: string, now: string, signal: AbortSignal) => Promise<LibraryPaper[]>
 const DAY = 86_400_000
@@ -117,7 +118,7 @@ export class ResearchLibrary {
     // At most two public requests at a time and five per manual refresh; no retries.
     for (let index = 0; index < settings.topics.length && !signal.aborted; index += 2) {
       const topics = settings.topics.slice(index, index + 2)
-      const results = await Promise.allSettled(topics.map((topic) => this.discover(topic, since, startedAt, signal)))
+      const results = await Promise.allSettled(topics.map((topic) => abortable(this.discover(topic, since, startedAt, signal), signal)))
       results.forEach((result, offset) => {
         if (result.status === 'fulfilled') { incoming.push(...result.value); completed++ }
         else errors.push({ topic: topics[offset]!, message: String(result.reason?.message ?? result.reason).slice(0, 300) })
@@ -140,7 +141,8 @@ export class ResearchLibrary {
       }
       current.lastRefresh = {
         startedAt, finishedAt: new Date(this.now()).toISOString(),
-        state: signal.aborted ? 'cancelled' : errors.length ? completed ? 'partial' : 'failed' : 'completed',
+        state: signal.aborted ? signal.reason?.name === 'TimeoutError' ? 'timed_out' : 'cancelled'
+          : errors.length ? completed ? 'partial' : 'failed' : 'completed',
         received: signal.aborted ? 0 : new Set(incoming.map((paper) => paper.id)).size,
         added, errors
       }

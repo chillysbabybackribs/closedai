@@ -32,7 +32,7 @@ const paperSchema = z.object({
   paper.sha256 === paperDigest(paper.title, paper.abstract))
 const refreshSchema = z.object({
   startedAt: timestamp, finishedAt: timestamp,
-  state: z.enum(['completed', 'partial', 'failed', 'cancelled']),
+  state: z.enum(['completed', 'partial', 'failed', 'cancelled', 'timed_out']),
   received: z.number().int().nonnegative(), added: z.number().int().nonnegative(),
   errors: z.array(z.object({ topic: z.string().max(200), message: z.string().max(300) }).strict()).max(5)
 }).strict()
