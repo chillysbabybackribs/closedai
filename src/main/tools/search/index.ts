@@ -11,11 +11,14 @@ import { youClient } from './you.js'
 import { ResearchService, type ResearchDependencies } from './research/service.js'
 import { researchTools } from './research/tools.js'
 import { SourcePresentation, SEARCH_PRESENTATION_FIELD } from './presentation.js'
+import { libraryTool } from './library.js'
+import type { ResearchLibrary } from '../../research-library/service.js'
 
 export type SearchToolDeps = {
   fetch?: typeof fetch; readKey?: SearchKeyReader; now?: () => number
   research?: ResearchDependencies
   onResearchCreated?: (service: ResearchService) => void
+  library?: ResearchLibrary
 }
 
 export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
@@ -77,7 +80,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
   return {
     name: 'search',
     description: 'Public web lookup and incremental parallel research with retained source evidence.',
-    tools: [query, ...(research ? researchTools(research, query) : [])]
+    tools: [query, ...(research ? researchTools(research, query) : []), ...(deps.library ? [libraryTool(deps.library)] : [])]
   }
 }
 

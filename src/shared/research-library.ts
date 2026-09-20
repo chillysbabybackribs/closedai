@@ -41,4 +41,5 @@ export type ResearchLibraryApi = {
   refresh(): Promise<LibrarySnapshot>
   cancel(): Promise<void>
   dismiss(id: string): Promise<LibrarySnapshot>
+  restore(): Promise<LibrarySnapshot>
 }

@@ -7,10 +7,12 @@ import { searchTools } from './tools/search/index.js'
 import type { ResearchService } from './tools/search/research/service.js'
 import { SourceStore } from './tools/search/research/source-reader.js'
 import { SearchBrowserTabs } from './tools/search/presentation.js'
+import { ResearchLibrary } from './research-library/service.js'
 
 /** Electron/session ownership stays outside the provider-neutral search implementation. */
 export async function createResearchRuntime(options: {
   root: string
+  libraryPath: string
   browser(): BrowserService | null
   peers(): ChatPeerManager | null
   workspace(): string
@@ -24,6 +26,7 @@ export async function createResearchRuntime(options: {
     await rm(join(options.root, entry.name), { recursive: true, force: true })
   }
   const publicSession = session.fromPartition('research-public')
+  const library = ResearchLibrary.create(options.libraryPath, (input, init) => publicSession.fetch(input as string, init))
   const store = new SourceStore(options.root, (input, init) => publicSession.fetch(input as string, init))
   let service!: ResearchService
   const liveTabs = new SearchBrowserTabs({
@@ -35,6 +38,7 @@ export async function createResearchRuntime(options: {
     }
   })
   const namespace = searchTools({
+    library,
     onResearchCreated: (created) => { service = created },
     research: {
       owner: (context) => {
@@ -58,5 +62,5 @@ export async function createResearchRuntime(options: {
       }
     }
   })
-  return { namespace, service }
+  return { namespace, service, library }
 }

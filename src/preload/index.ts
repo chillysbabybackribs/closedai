@@ -17,6 +17,14 @@ function subscribe<C extends IpcEventChannel>(channel: C, listener: (payload: Ip
 }
 
 const api: ClosedaiApi = {
+  researchLibrary: {
+    snapshot: () => invoke(IPC.invoke.researchLibrary.snapshot),
+    configure: (settings) => invoke(IPC.invoke.researchLibrary.configure, settings),
+    refresh: () => invoke(IPC.invoke.researchLibrary.refresh),
+    cancel: () => invoke(IPC.invoke.researchLibrary.cancel),
+    dismiss: (id) => invoke(IPC.invoke.researchLibrary.dismiss, id),
+    restore: () => invoke(IPC.invoke.researchLibrary.restore)
+  },
   localFiles: {
     open: (href) => invoke(IPC.invoke.localFiles.open, href),
     openImage: (image) => invoke(IPC.invoke.localFiles.openImage, image),

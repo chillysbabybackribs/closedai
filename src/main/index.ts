@@ -46,6 +46,8 @@ import { captureTools, ScreenshotStore } from './tools/capture/index.js'
 import { credentialVaultTools } from './tools/credential-vault/index.js'
 import { batchTools } from './tools/batch/index.js'
 import { createResearchRuntime } from './research-runtime.js'
+import type { ResearchLibrary } from './research-library/service.js'
+import { registerResearchLibraryIpc } from './research-library/ipc.js'
 import { createArtifactRuntime } from './investigations/artifact-runtime.js'
 import type { ArtifactStore } from './investigations/artifact-store.js'
 import type { ResearchService } from './tools/search/research/service.js'
@@ -91,6 +93,7 @@ let credentialVault: CredentialVault | null = null
 const codexRuntimes = new Map<string, CodexWorkspaceRuntime>()
 let toolRegistry: ToolRegistry | null = null
 let researchService: ResearchService | null = null
+let researchLibrary: ResearchLibrary | null = null
 let artifactStore: ArtifactStore | null = null
 let toolTelemetry: ToolTelemetry | null = null
 let antigravityBridge: AntigravityToolBridge | null = null
@@ -244,6 +247,7 @@ async function main(): Promise<void> {
   // Full-resolution captures for the transcript; the model only ever receives the scaled copy.
   const screenshots = new ScreenshotStore()
   const research = await createResearchRuntime({
+    libraryPath: join(userData(), 'research-library.json'),
     root: join(userData(), 'research-runs'), browser: () => browserService,
     peers: () => process.env.CLOSEDAI_LIVE_VERIFY?.trim()
       ? ({
@@ -253,6 +257,7 @@ async function main(): Promise<void> {
     workspace: () => chatWorkspace
   })
   researchService = research.service
+  researchLibrary = research.library
   const artifacts = createArtifactRuntime({
     root: join(userData(), 'investigation-artifacts'), workerUrl: new URL('./artifact-worker.js', import.meta.url),
     chats: chatStore!, peers: () => chatService
@@ -418,6 +423,7 @@ function wireBrowserEvents(service: BrowserService): void {
 }
 
 function registerIpc(): void {
+  registerResearchLibraryIpc(ipcMain, () => researchLibrary)
   registerWindowIpc(ipcMain, () => mainWindow)
   registerBrowserCoreIpc(ipcMain, () => browserService)
   registerBrowserDownloadsIpc(ipcMain, () => browserDownloads)
@@ -469,6 +475,7 @@ async function importDefaultBrowserCookies(): Promise<void> {
 
 function disposeWindowServices(): void {
   researchService?.dispose()
+  researchLibrary?.dispose()
   browserSessionFlush = browserService?.flushSessionData() ?? null
   appAutomationAccess?.dispose()
   cdpAccess?.dispose()

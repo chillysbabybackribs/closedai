@@ -5,9 +5,16 @@ import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceE
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot } from './trace.js'
+import type { LibrarySettings, LibrarySnapshot } from './research-library.js'
 
 /** Invoke channels the preload bridge exposes on `window.closedai`. */
 export type IpcInvokeChannels = {
+  'researchLibrary:snapshot': { args: []; result: LibrarySnapshot }
+  'researchLibrary:configure': { args: [LibrarySettings]; result: LibrarySnapshot }
+  'researchLibrary:refresh': { args: []; result: LibrarySnapshot }
+  'researchLibrary:cancel': { args: []; result: void }
+  'researchLibrary:dismiss': { args: [string]; result: LibrarySnapshot }
+  'researchLibrary:restore': { args: []; result: LibrarySnapshot }
   'localFiles:open': { args: [string]; result: import('./local-files.js').LocalFileResult }
   'localFiles:openImage': { args: [{ name: string; src: string }]; result: string }
   'localFiles:image': { args: [string]; result: import('./local-files.js').ImageTabContent }
@@ -99,6 +106,11 @@ export type IpcEventChannel = keyof IpcEventChannels
 /** Canonical channel names grouped like the preload surface. */
 export const IPC = {
   invoke: {
+    researchLibrary: {
+      snapshot: 'researchLibrary:snapshot', configure: 'researchLibrary:configure',
+      refresh: 'researchLibrary:refresh', cancel: 'researchLibrary:cancel',
+      dismiss: 'researchLibrary:dismiss', restore: 'researchLibrary:restore'
+    },
     localFiles: {
       open: 'localFiles:open', openImage: 'localFiles:openImage',
       image: 'localFiles:image', revealImage: 'localFiles:revealImage',
