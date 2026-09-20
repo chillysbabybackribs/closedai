@@ -7,7 +7,7 @@ import type { ResearchService } from '../tools/search/research/service.js'
 import type { SearchProvider } from '../tools/search/types.js'
 import type { ToolResult } from '../tools/tool.js'
 
-const PROVIDERS: SearchProvider[] = ['brave', 'serper', 'tavily', 'you']
+const PROVIDERS: SearchProvider[] = ['brave', 'exa', 'serper', 'tavily', 'you']
 
 function textOf(result: ToolResult): string {
   return result.content[0]?.type === 'text' ? result.content[0].text ?? '' : ''
@@ -22,7 +22,7 @@ async function firstProvider(): Promise<SearchProvider> {
       continue
     }
   }
-  throw new Error('No search API credential (BRAVE_SEARCH_API_KEY, SERPER_API_KEY, TAVILY_API_KEY, or YOU_API_KEY)')
+  throw new Error('No search API credential (BRAVE_SEARCH_API_KEY, EXA_API_KEY, SERPER_API_KEY, TAVILY_API_KEY, or YOU_API_KEY)')
 }
 
 export async function runBrowserLiveVerify(registry: ToolRegistry): Promise<Record<string, unknown>> {

@@ -2,6 +2,7 @@ import { defineTool } from '../tool.js'
 import { numberArg, stringArg, textResult } from '../tool.js'
 import type { JsonObject, ToolNamespace } from '../tool.js'
 import { braveClient } from './brave.js'
+import { exaClient } from './exa.js'
 import { readSearchKey, type SearchKeyReader } from './keyring.js'
 import { SearchRouter } from './router.js'
 import { serperClient } from './serper.js'
@@ -25,12 +26,12 @@ export type SearchToolDeps = {
 export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
   const providerDeps = { fetch: deps.fetch ?? fetch, readKey: deps.readKey ?? readSearchKey }
   const router = new SearchRouter([
-    braveClient(providerDeps), serperClient(providerDeps), tavilyClient(providerDeps), youClient(providerDeps)
+    braveClient(providerDeps), exaClient(providerDeps, deps.now), serperClient(providerDeps), tavilyClient(providerDeps), youClient(providerDeps)
   ], deps.now)
   const query = defineTool({
       name: 'query',
       description:
-        'Search via Brave, Serper, Tavily, and You.com. Pick intent by evidence: general, news, research, answer, finance, technical. ' +
+        'Search via Brave, Exa, Serper, Tavily, and You.com. Pick intent by evidence: general, news, research, answer, finance, technical. ' +
         'Default depth=quick (one provider); balanced/deep widen discovery and may return complete=false once enough providers answer. discoveredBy means index overlap, not independent confirmation. live=true bypasses the ten-minute cache. ' +
         'Live opens source URLs, never search-engine pages; presentation=background opts out. Prefer search.run for parallel research. ' +
         'Results are normalized JSON; JSON.parse the returned string in exec scripts.',

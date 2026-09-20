@@ -1,6 +1,6 @@
 import type { JsonObject } from '../tool.js'
 import { normalizedDomains } from './provider-utils.js'
-import type { SearchRequest } from './types.js'
+import type { SearchProvider, SearchRequest } from './types.js'
 
 /** These controls have a documented implementation in Brave's LLM Context API. */
 export const SOURCE_OPTION_FIELDS: JsonObject = {
@@ -12,7 +12,7 @@ export const SOURCE_OPTION_FIELDS: JsonObject = {
 
 export const FRESHNESS_FIELD = {
   type: 'string', pattern: '^(day|week|month|year|[0-9]{4}-[0-9]{2}-[0-9]{2}to[0-9]{4}-[0-9]{2}-[0-9]{2})$',
-  description: 'Recency filter, or inclusive YYYY-MM-DDtoYYYY-MM-DD range (Brave only). Index dates may mean publication or modification, not verified evidence dates.'
+  description: 'Recency filter, or inclusive YYYY-MM-DDtoYYYY-MM-DD range (Brave and Exa only). Index dates may mean publication or modification, not verified evidence dates.'
 }
 
 export function sourceOptions(input: JsonObject): Partial<SearchRequest> {
@@ -29,8 +29,11 @@ export function sourceOptions(input: JsonObject): Partial<SearchRequest> {
   }
 }
 
-export function requiresBrave(request: SearchRequest): boolean {
-  return !!(request.preferredDomains?.length || request.goggles || request.relevance || request.contextTokens || request.freshness?.includes('to'))
+/** Providers with a documented implementation of every control on the request; undefined when none is set. */
+export function controlProviders(request: SearchRequest): SearchProvider[] | undefined {
+  if (request.preferredDomains?.length || request.goggles || request.relevance || request.contextTokens) return ['brave']
+  if (request.freshness?.includes('to')) return ['brave', 'exa']
+  return undefined
 }
 
 function validateDateRange(range: string): void {

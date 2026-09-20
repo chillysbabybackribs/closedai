@@ -9,20 +9,20 @@ import type {
   SearchResult
 } from './types.js'
 import { abortable, RequestBudget } from './request-budget.js'
-import { requiresBrave } from './request-options.js'
+import { controlProviders } from './request-options.js'
 
 export type SearchUpdate = { output: ProviderSearchResult } | { error: { provider: SearchProvider; message: string } }
 export type SearchObserver = (update: SearchUpdate) => void
 
 const ROUTES: Record<SearchIntent, Record<SearchDepth, SearchProvider[]>> = {
   general: {
-    quick: ['brave'], balanced: ['brave', 'serper'], deep: ['brave', 'serper', 'tavily']
+    quick: ['brave'], balanced: ['brave', 'serper'], deep: ['brave', 'serper', 'exa']
   },
   news: {
     quick: ['serper'], balanced: ['serper', 'you'], deep: ['serper', 'you', 'brave']
   },
   research: {
-    quick: ['tavily'], balanced: ['tavily', 'you'], deep: ['tavily', 'you', 'brave']
+    quick: ['exa'], balanced: ['exa', 'tavily'], deep: ['exa', 'tavily', 'brave']
   },
   answer: {
     quick: ['you'], balanced: ['you', 'tavily'], deep: ['you', 'tavily', 'brave']
@@ -31,7 +31,7 @@ const ROUTES: Record<SearchIntent, Record<SearchDepth, SearchProvider[]>> = {
     quick: ['you'], balanced: ['you', 'serper'], deep: ['you', 'serper', 'tavily']
   },
   technical: {
-    quick: ['brave'], balanced: ['brave', 'serper'], deep: ['brave', 'serper', 'tavily']
+    quick: ['brave'], balanced: ['brave', 'serper'], deep: ['brave', 'serper', 'exa']
   }
 }
 
@@ -48,11 +48,14 @@ const MIN_SUCCESSFUL: Partial<Record<SearchDepth, number>> = {
 }
 
 export function selectProviders(request: SearchRequest): SearchProvider[] {
-  if (requiresBrave(request)) {
-    if (request.providers?.some((provider) => provider !== 'brave')) throw new Error('Requested source controls require Brave only; use a separate query for other providers')
-    return ['brave']
+  const explicit = request.providers?.length ? [...new Set(request.providers)] : undefined
+  const capable = controlProviders(request)
+  if (!capable) return explicit ?? ROUTES[request.intent][request.depth]
+  if (explicit?.some((provider) => !capable.includes(provider))) {
+    throw new Error(`Requested source controls require ${capable.join(' or ')} only; use a separate query for other providers`)
   }
-  return request.providers?.length ? [...new Set(request.providers)] : ROUTES[request.intent][request.depth]
+  const routed = ROUTES[request.intent][request.depth].filter((provider) => capable.includes(provider))
+  return explicit ?? (routed.length ? routed : capable.slice(0, 1))
 }
 
 export class SearchRouter {
@@ -108,7 +111,7 @@ export class SearchRouter {
       results: mergeResults(outputs, request.count),
       errors,
       observedAt: new Date(this.now()).toISOString(),
-      ...(requiresBrave(request) ? { controls: { appliedTo: ['brave'] as SearchProvider[], notAppliedTo: providers.filter((provider) => provider !== 'brave') } } : {}),
+      ...(controlProviders(request) ? { controls: { appliedTo: providers, notAppliedTo: [] as SearchProvider[] } } : {}),
       ...(complete ? {} : { complete: false })
     }
     this.pruneCache()
@@ -242,6 +245,7 @@ function mergeResults(outputs: ProviderSearchResult[], perProviderCount: number)
       const existing = byUrl.get(key)
       if (existing) {
         existing.discoveredBy = [...new Set([...(existing.discoveredBy ?? []), candidate.provider])]
+        if (candidate.content && !existing.content) existing.content = candidate.content
         continue
       }
       const copy = { ...candidate }
