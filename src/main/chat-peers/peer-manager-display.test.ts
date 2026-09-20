@@ -5,6 +5,40 @@ import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import { ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
 import { chatRecord, harness, harnessWith } from './peer-manager-harness.js'
 import { rendererChatForwarder } from './peer-events.js'
+import { chatTitle, initialChatState, reduceChatEvent } from '../../renderer/chat-state.js'
+
+test('first completed exchange names sidebar, renderer and history; later provider names cannot overwrite it', async () => {
+  const { manager, surfaces, store } = harnessWith([
+    chatRecord('pane-a', 'gpt', { codexThreadId: 'thread', threadId: 'thread' })
+  ], 'pane-a')
+  const surface = surfaces[0]!
+  Object.assign(surface, { generateTitle: async () => 'Clickable Local File Previews' })
+  let rendered = initialChatState()
+  manager.on('event', (event: ChatWorkspaceEvent) => {
+    if (event.type === 'pane') rendered = reduceChatEvent(rendered, event.event)
+  })
+  surface.state.threadId = 'thread'
+  surface.state.items = [
+    { type: 'user', id: 'u', turnId: 't', text: 'can you add file previews' },
+    { type: 'assistant', id: 'a', turnId: 't', text: 'Added file previews.', phase: 'final_answer', streaming: false }
+  ]
+  surface.state.activeTurnId = 't'
+  surface.emit('event', { type: 'replace', snapshot: surface.snapshot() } satisfies ChatEvent)
+  surface.state.activeTurnId = null
+  surface.emit('event', { type: 'turn', turnId: null } satisfies ChatEvent)
+  const activity = manager.snapshot().chats[0]!.updatedAt
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(store.require('pane-a').titleSource, 'generated')
+  assert.equal(chatTitle(rendered), 'Clickable Local File Previews')
+  assert.equal(manager.snapshot().chats[0]!.title, 'Clickable Local File Previews')
+  assert.equal(manager.snapshot().chats[0]!.updatedAt, activity)
+  store.adopt('/workspace', '/workspace', { id: 'thread', title: 'Provider fallback', preview: '', createdAt: 1, updatedAt: 1 }, null)
+  surface.emit('event', { type: 'thread', threadId: 'thread', threadName: 'Provider fallback' } satisfies ChatEvent)
+  assert.equal(chatTitle(rendered), 'Clickable Local File Previews')
+  assert.equal(manager.snapshot({ limit: 200 }).selected.displayTitle, 'Clickable Local File Previews')
+  assert.equal((await manager.listThreads())[0]?.title, 'Clickable Local File Previews')
+  manager.stop()
+})
 
 test('IPC skips background streams while main observers retain them and selection restores current text', async () => {
   const { manager, surfaces } = harnessWith([

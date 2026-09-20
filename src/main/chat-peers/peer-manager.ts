@@ -595,7 +595,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     }
     const paneId = entry.chatId
     traceLog.responses.event(paneId, event)
-    entry.updatedAt = Date.now()
+    if (event.type !== 'title' && event.type !== 'checkpoint') entry.updatedAt = Date.now()
     const oldTitle = entry.display.current.title
     const oldPreview = entry.display.current.preview
     const wasRunning = entry.display.current.running

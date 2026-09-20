@@ -69,7 +69,7 @@ test('writes coalesce and survive a reload; remove forgets a chat outright', asy
   const file = join(dir, 'chats.json')
   const store = await ChatStore.open(file)
   const a = store.create(seed)
-  store.update(a.id, { title: 'First', pinnedAt: 123 })
+  store.update(a.id, { title: 'First', titleSource: 'generated', titleGenerationAttempted: true, pinnedAt: 123 })
   const b = store.create(seed)
   store.remove(b.id)
   await store.flush()
@@ -79,6 +79,8 @@ test('writes coalesce and survive a reload; remove forgets a chat outright', asy
 
   const reopened = await ChatStore.open(file)
   assert.equal(reopened.require(a.id).title, 'First')
+  assert.equal(reopened.require(a.id).titleSource, 'generated')
+  assert.equal(reopened.require(a.id).titleGenerationAttempted, true)
   assert.equal(reopened.require(a.id).pinnedAt, 123)
   reopened.update(a.id, { pinnedAt: null })
   await reopened.flush()
