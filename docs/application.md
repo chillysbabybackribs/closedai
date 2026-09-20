@@ -133,20 +133,19 @@ project selection does not stop another directory's runtime. Provider
 processes are spawned in their own process group and stopped as a group (SIGTERM, then SIGKILL
 after three seconds), so the worker a CLI launcher forks dies with it, and every tracked group is
 killed at quit (`src/main/process-tree.ts`). Titles and last turn-boundary times are persisted on
-the record so dormant chats can still be named after a restart. Codex and Claude chats request a
-short descriptive title in the background after a completed exchange, using the selected model in
-a separate ephemeral request. The input contains only bounded text from the first user/assistant
-exchange, with injected context stripped. Naming uses low reasoning, a 45-second deadline, and an
+the record so dormant chats can still be named after a restart. Active chats request a
+short descriptive title in the background from the initial user prompt and optional response, using the active provider
+in a separate ephemeral request. The input contains bounded text from the user request
+(and assistant response when available), with injected context stripped. Naming uses low reasoning, a 45-second deadline, and an
 isolated temporary working directory; it does not add turns to the conversation. Claude disables
 built-in tools and MCP; Codex disables shell, browsing, apps, image tools, delegation, and hooks,
-ignores user config, and uses a read-only sandbox. These requests consume provider usage.
+ignores user config, and uses a read-only sandbox; Antigravity runs in low-effort print mode; Cursor runs in ask print mode. These requests consume provider usage.
 
 The saved app-generated title wins in the sidebar, tabs, and history, survives provider refreshes,
 session changes and relaunches, and does not change the chat's activity time. Naming is attempted
 once per chat; failures keep the provider name or first-message fallback. Stale results after a
 thread/model change, archival, or detach are discarded. Existing chats become eligible on a later
-completed turn; startup does not bulk-generate names. Cursor and Antigravity retain provider names
-or the first-message fallback until an isolated naming adapter is available. Manual rename and
+completed turn; startup does not bulk-generate names. Manual rename and
 auto-title retry controls are available via row and tab context menus and the chat rename dialog;
 manual titles set `titleSource: 'manual'` and are preserved until cleared or reset. Fallback labels
 strip `<closedai_context>` blocks and clip the first nonempty user-message line.
@@ -667,9 +666,15 @@ the corresponding app cap. `search.run.expand` refetches one retained source wit
 including after completion, with uncapped text by default. Failed or shorter expansions preserve
 the earlier evidence. Direct PDF reads now extract text locally with PDF.js in cancellable workers,
 returning `pdf_text`, page markers, and page coverage. PDFs require a complete download within the
-byte budget; larger files can use expansion. Pages without text are flagged, and documents without
-extractable text fail explicitly. Exa expansion remains an alternative provider extraction path.
-OCR and visual/layout fidelity remain unimplemented. Excerpts remain separately bounded and pageable.
+byte budget; larger files can use expansion. Pages without text are flagged; documents without
+native text retain their bytes for inspection. Expansion atomically publishes matching bytes/text
+and reports a separate original-PDF hash. Exa expansion remains an alternative provider extraction path.
+`search.pdf page` renders a selected page/crop from the retained PDF for model visual inspection;
+`search.pdf ocr` performs explicit local English OCR with bundled language data. OCR is cached by
+revision/settings and stays separate from native extraction. Both are cancellable, bounded page
+operations; native geometry and OCR word boxes are available in pageable excerpts. There is no
+automatic document-wide verification or guarantee of reading order, table, equation, figure, or
+OCR accuracy. Models must inspect the relevant images and report the actual scope of their checks.
 There is no dedicated research activity panel, and workers cannot be handed to the user yet. See
 [Tools](tools.md#parallel-research-runs) for exact limits and the
 [design proposal](parallel-web-research-2026-09-04.md) for the remaining work.

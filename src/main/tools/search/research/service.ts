@@ -118,7 +118,7 @@ export class ResearchService {
     validateCoverage(coverage)
     const source = [...run.sources.values()].find((item) => item.id === sourceId)
     if (!source || !['ready', 'failed', 'deferred'].includes(source.state)) throw new Error('Source is unavailable or still being collected')
-    if (run.expansions.has(sourceId)) throw new Error('This source already has an expansion or PDF inspection in progress')
+    if (run.expansions.has(sourceId)) throw new Error('This source is already expanding or has a PDF inspection in progress')
     if (!this.deps.replace || !this.deps.discard) throw new Error('Source expansion storage is unavailable')
     const provider = method === 'exa' || (method === 'auto' && source.contentProvider === 'exa')
     const reader = provider ? this.deps.extract : this.deps.collect
@@ -181,7 +181,7 @@ export class ResearchService {
     }
     if (request.page > source.pdf!.totalPages) throw new Error(`Page must be between 1 and ${source.pdf!.totalPages}`)
     if (!this.deps.inspectPdf) throw new Error('PDF inspection is unavailable')
-    if (run.expansions.has(sourceId)) throw new Error('This source already has an expansion or PDF inspection in progress')
+    if (run.expansions.has(sourceId)) throw new Error('This source is already expanding or has a PDF inspection in progress')
     const controller = new AbortController()
     const signal = AbortSignal.any([controller.signal, context.signal, AbortSignal.timeout(60_000)])
     run.expansions.set(sourceId, { controller, turnId: owner.turnId })

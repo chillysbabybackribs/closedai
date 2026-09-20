@@ -261,8 +261,14 @@ An unset truncation flag does not prove extraction fidelity. Exa PDF-URL text re
 it is not proof that this app parsed PDF bytes or verified tables, equations, figures, or OCR.
 Direct `pdf_text` results come from local PDF.js parsing, with page markers and page coverage.
 PDF downloads must fit the byte budget in full; expansion can raise it. Pages without extractable
-text mark coverage incomplete; scanned documents require OCR, which is not implemented. Page
-counts and text extraction do not establish reading-order, equation, table, or visual fidelity.
+text mark coverage incomplete and remain available for `search.pdf` inspection. `search.pdf page`
+returns a selected page/crop image tied to the original PDF byte hash; inspect it for visual claims.
+`search.pdf ocr` performs local, explicitly requested English OCR and returns separate text,
+confidence and optional word boxes. It can be used even when a page has native text. Neither
+OCR confidence, capture freshness, nor rendering success proves content accuracy. There is no
+automatic verification flag: describe the pages/regions actually checked and unresolved limitations.
+Native transforms are not reconstructed reading order; OCR is not guaranteed table, equation or
+figure extraction. Prefer native text first and inspect/OCR selected pages as the task requires.
 
 The registry supplies provider-neutral descriptions and schemas. Codex gets dynamic tool
 specifications; Claude gets in-process MCP servers; Antigravity gets HTTP MCP servers. Tool

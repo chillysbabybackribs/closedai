@@ -212,7 +212,9 @@ The operation has a 45-second deadline; direct reads retain their 20-second dead
 It works on retained completed runs in the same pane/thread/workspace during an active turn.
 Stop, cancellation, turn replacement, and shutdown abort expansion as well as initial reads.
 
-Expansion stages files under a temporary id, then atomically replaces the retained text. A failed
+Expansion stages files under a temporary id, then atomically publishes a revision pointer for
+the corresponding text and original bytes. Old revisions remain until run eviction, so readers
+holding them stay valid. Provider-only replacements never inherit earlier PDF bytes. A failed
 or shorter extraction preserves the earlier text/hash; `expansionError` explains the failure or
 nonreplacement. Source id, requested URL, and discovery provenance remain; representation,
 content provider, resolved URL, retrieval time, hash, and offsets describe the replacement.
@@ -307,9 +309,43 @@ to expand using a larger byte budget or zero; truncated PDF bytes are never publ
 Results use `pdf_text`, `[Page N]` markers, and `pdf` coverage: `totalPages`, `extractedPages`
 (pages processed, including a character-clipped final page), and `pagesWithoutText` among processed
 pages. The hash covers retained text. Character limits or pages without text mark `incomplete`.
-No extractable text, password requirements, and parsing failures produce explicit failures.
-Empty/scanned pages cannot be distinguished by text extraction; there is no OCR, figure reading,
-or layout verification. Explicit Exa expansion remains available as provider extraction.
+`pdf.documentSha256` and `pdf.bytes` identify the original PDF separately from the text hash.
+`pdf.textStatus: none` means no native text was found among inspected pages; the source remains
+ready with retained bytes for page inspection/OCR, and `incomplete` is true. Empty/scanned pages
+cannot be distinguished by text extraction. Password requirements and parsing failures still fail.
+Explicit Exa expansion remains available as provider extraction.
+
+`search.pdf page` renders one selected page or normalized crop from those retained bytes, without
+refetching. It returns a JPEG, the original byte hash, page number, dimensions, effective DPI,
+and pageable native text plus optional text-item transforms. Native text/items cover the whole
+page even when the image is cropped; they are not reconstructed columns, tables, or reading order.
+Page numbers are one-based. Crops use top-left fractions of the rotated page; width/height are
+at least 0.01 and the crop must fit inside the page. DPI defaults to 144 for page, 216 for OCR,
+ranges from 72 to 216, and is reduced to fit a maximum 2400 pixels per edge. PDF.js may omit
+embedded rasters above 16 million pixels; results state that limit rather than promising fidelity.
+
+`search.pdf ocr` explicitly runs local Tesseract.js on one page/crop, including mixed native/image
+pages. English model data ships as a dependency; there are no runtime model downloads or document
+uploads. OCR text is separate from native text and has engine/language, confidence (not correctness
+probability), and optional word boxes in rendered-crop pixels. Empty OCR is marked incomplete.
+Results retain up to 120,000 characters and 5,000 items per page, flagging clipping; tool excerpts
+default to 3,000 characters (maximum 6,000) and zero items (maximum 30). Use offset/item_offset
+and nextOffset/nextItemsOffset to page. OCR results are cached separately by PDF revision and
+rendering settings; paging identical settings does not rerun recognition. The cache lives with
+research evidence, is removed with its run, and is cleared on restart.
+
+Both actions require the owning pane/thread and an active unstopped turn, pin the run against
+eviction, serialize against expansion of that source, and abort on cancellation, turn replacement,
+or shutdown. There is one inspection worker at a time, separate from the two text-parser slots,
+with a 60-second deadline including queue time. Workers have 256 MiB V8 old-generation limits;
+these are not total limits on native canvas/WASM memory. Abort terminates the worker and its
+Tesseract child. Page images are explicit research evidence and do not use the UI screenshot
+tool's two-image allowance; each call is limited to one page/crop. Code-mode callers split at
+the final newline-prefixed image data URL and pass it to `image()`, never print the whole payload.
+Rendering and OCR do not set a verification flag. Models must inspect images before visual claims
+and describe which pages/regions were checked; table, equation, figure, and OCR accuracy remain
+unverified unless checked. Provider-only sources need `search.run expand method=direct` first.
+
 Redirects are followed by the
 transport; the resolved URL is retained when available, alongside the requested source URL.
 Parsing does not execute JavaScript or resolve
