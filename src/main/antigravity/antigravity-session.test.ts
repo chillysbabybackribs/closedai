@@ -89,3 +89,19 @@ test('interrupt kills a running process and retains the conversation for the nex
     await h.session.retire()
   }
 })
+
+test('processes older than 30 minutes are retired before sending the next turn', { timeout: 5000 }, async () => {
+  const h = harness()
+  try {
+    assert.equal((await h.send('turn 1')).status, 'completed')
+    assert.equal(h.session.live, true)
+    // Simulate process having been spawned 31 minutes ago
+    ;(h.session as unknown as { spawnedAt: number }).spawnedAt = Date.now() - 31 * 60 * 1000
+    assert.equal((await h.send('turn 2')).status, 'completed')
+    // Fresh process started count at 1 rather than reusing the old process (which would be 2:turn 2)
+    assert.match(JSON.stringify(h.ops), /1:turn 2/)
+  } finally {
+    await h.session.retire()
+  }
+})
+

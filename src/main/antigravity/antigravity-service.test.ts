@@ -111,3 +111,17 @@ test('compactConversation resets contextUsage to null', async () => {
   await service.compactConversation()
   assert.equal(service.snapshot().contextUsage, null)
 })
+
+test('retryOnAuthFailure ignores non-auth errors', () => {
+  const { service } = createService()
+  const retryOnAuthFailure = (service as unknown as { retryOnAuthFailure: (turnId: string, error: string) => boolean }).retryOnAuthFailure.bind(service)
+  assert.equal(retryOnAuthFailure('turn-1', 'Random syntax error'), false)
+})
+
+test('retryOnAuthFailure prevents duplicate retry attempts on the same turn', () => {
+  const { service } = createService()
+  const retryOnAuthFailure = (service as unknown as { retryOnAuthFailure: (turnId: string, error: string) => boolean }).retryOnAuthFailure.bind(service)
+  ;(service as unknown as { authRetrying: boolean }).authRetrying = true
+  assert.equal(retryOnAuthFailure('turn-1', 'UNAUTHENTICATED (code 401): Request had invalid authentication credentials.'), false)
+})
+

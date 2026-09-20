@@ -119,6 +119,14 @@ turn resumes the conversation in a fresh process with `--conversation <id>`. `--
 empty value is load-bearing: a bare `--print` swallows the next flag as its prompt.
 The outer pane manager can park an unselected pane after five idle minutes, before the
 provider's 15-minute timer. Its conversation id remains available for resumption.
+To prevent long-running tasks from crossing Google's 60-minute OAuth access token expiration window
+mid-turn, a process older than 30 minutes is automatically retired between turns so the next turn
+spawns fresh with the latest keyring token.
+
+If an OAuth token expires during an active turn, `agy`'s background refresher updates the system
+keyring but its in-memory agent executor fails with `UNAUTHENTICATED (code 401)`. The service catches
+this failure via `retryOnAuthFailure` (`antigravity-service.ts`), verifies credential status with `agy models`,
+and automatically resumes the conversation trajectory on a fresh process without interrupting the user.
 
 `--add-dir <workspace>` must be passed and must come first. The spawn cwd alone does not reach the
 model's shell, which otherwise starts in the CLI's state dir; the first `--add-dir` does.
