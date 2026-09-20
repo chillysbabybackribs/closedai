@@ -37,10 +37,17 @@ test('a hidden workspace pane remains fully hidden regardless of modal state', (
   )
 })
 
-test('overlay occlusion keeps the compositor viewport intact outside the browser box', () => {
+test('overlay occlusion keeps the compositor viewport intact outside the entire window', () => {
   const occluded = browserOccludedBounds(rect)
-  assert.deepEqual(occluded, { x: 884, y: 40, width: 800, height: 600 })
-  assert.ok(occluded.x > rect.x + rect.width)
+  assert.deepEqual(occluded, { x: -864, y: 40, width: 800, height: 600 })
+  assert.ok(occluded.x + occluded.width < 0)
+  // A browser between two chats must not park its live surface over either chat.
+  for (const x of [0, 300, 1000]) {
+    const parked = browserOccludedBounds({ ...rect, x })
+    assert.ok(parked.x + parked.width < 0)
+    assert.equal(parked.width, rect.width)
+    assert.equal(parked.height, rect.height)
+  }
 })
 
 test('navigation refresh reasserts bounds and visibility only for an on-screen surface', () => {

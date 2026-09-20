@@ -30,14 +30,14 @@ export function browserSurfaceVisibility(bounds: BrowserBounds): BrowserSurfaceV
 /**
  * Keep an overlay-covered WebContentsView compositing without letting it paint through the
  * renderer overlay. Toggling setVisible(false/true) on a loaded view can return a permanently
- * blank Electron surface, so move the unchanged viewport just beyond its browser box instead.
+ * blank Electron surface, so move the unchanged viewport entirely left of the window instead.
+ * Parking beside the browser box can cover a chat pane docked on its right.
  */
 export function browserOccludedBounds(bounds: BrowserBounds): BrowserBounds {
-  const x = Math.max(0, Math.round(bounds.x))
   const y = Math.max(0, Math.round(bounds.y))
   const width = Math.max(1, Math.round(bounds.width))
   const height = Math.max(1, Math.round(bounds.height))
-  return { x: x + width + OCCLUDED_SURFACE_GUTTER, y, width, height }
+  return { x: -width - OCCLUDED_SURFACE_GUTTER, y, width, height }
 }
 
 /** Reassert a loaded on-screen view after Chromium replaces its navigation frame sink. */
