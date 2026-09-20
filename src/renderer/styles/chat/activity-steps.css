@@ -244,26 +244,200 @@
 .activity-card[data-tone='error'] .activity-card-footer { color: var(--destructive, #d28b8b); }
 .activity-card[data-tone='live'] .activity-card-footer { color: #09b6a2; }
 
-.activity-card-diff { border-top: 0; }
-
-.activity-card-diff-path {
-  padding: 8px 14px 0;
-  color: var(--code-muted, #8a8a8f);
+.activity-card-diff-container {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--background) 80%, black);
+  margin: 6px 14px 10px;
 }
 
-.activity-card-diff pre {
-  max-height: 280px;
-  margin: 0;
-  padding: 6px 14px 10px;
+.diff-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--foreground) 3.5%, transparent);
+  border-bottom: 1px solid var(--border);
+  font-size: 11.5px;
+}
+
+.diff-header-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.diff-header-icon {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: var(--muted-foreground);
+}
+
+.diff-header-path {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--foreground);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diff-header-path:hover {
+  text-decoration: underline;
+}
+
+.diff-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.diff-stat-add {
+  color: #10b981;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.diff-stat-del {
+  color: #f43f5e;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.diff-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--foreground) 2%, transparent);
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.diff-copy-btn:hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+
+.diff-btn-icon {
+  width: 11px;
+  height: 11px;
+}
+
+.diff-table {
+  display: flex;
+  flex-direction: column;
+  max-height: 360px;
   overflow: auto;
-  font: inherit;
-  white-space: pre;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  tab-size: 2;
 }
 
-.activity-card-diff span[data-line='add'] { color: #9ccb85; background: rgb(122 174 102 / 10%); }
-.activity-card-diff span[data-line='remove'] { color: #e6a2a2; background: rgb(210 139 139 / 10%); }
-.activity-card-diff span[data-line='hunk'] { color: #7fbfd6; }
-.activity-card-diff span[data-line='meta'] { color: var(--code-muted, #8a8a8f); }
+.diff-hunk-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.diff-row {
+  display: flex;
+  width: 100%;
+  min-width: max-content;
+}
+
+.diff-row:hover {
+  background: color-mix(in srgb, var(--foreground) 2%, transparent);
+}
+
+.diff-row-add {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.diff-row-remove {
+  background: rgba(244, 63, 94, 0.12);
+}
+
+.diff-row-hunk {
+  background: rgba(56, 189, 248, 0.08);
+  color: #7fbfd6;
+  font-size: 10.5px;
+}
+
+.diff-gutter {
+  user-select: none;
+  flex: none;
+  color: var(--muted-foreground);
+  opacity: 0.5;
+  padding: 0 4px;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.diff-gutter-old,
+.diff-gutter-new {
+  width: 32px;
+  text-align: right;
+}
+
+.diff-gutter-sign {
+  width: 14px;
+  text-align: center;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.diff-row-add .diff-gutter-sign {
+  color: #10b981;
+}
+
+.diff-row-remove .diff-gutter-sign {
+  color: #f43f5e;
+}
+
+.diff-code {
+  flex: 1 1 auto;
+  padding: 0 8px;
+  white-space: pre;
+  color: var(--foreground);
+}
+
+.diff-row-add .diff-code {
+  color: #c9f5d3;
+}
+
+.diff-row-remove .diff-code {
+  color: #fed7d7;
+}
+
+.diff-hunk-header {
+  color: #7fbfd6;
+  font-weight: 500;
+}
+
+.diff-token-keyword { color: #c678dd; font-weight: 600; }
+.diff-token-string { color: #98c379; }
+.diff-token-comment { color: #7f848e; font-style: italic; }
+.diff-token-literal { color: #e06c75; font-weight: 500; }
+.diff-token-number { color: #d19a66; }
+.diff-token-type { color: #e5c07b; }
 
 @media (prefers-reduced-motion: reduce) {
   .activity-step-spinner { animation: none; }

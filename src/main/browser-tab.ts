@@ -45,6 +45,8 @@ const MAX_CUSTOM_TITLE_LENGTH = 300
 
 let nextTabId = 1
 
+export function allocateTabId(): string { return `tab-${nextTabId++}` }
+
 /**
  * A restored tab keeps the id it was persisted under, so a model's `tab_id` from before the
  * restart still names the same page. New tabs then count on from above every restored id.
@@ -97,7 +99,7 @@ export class BrowserTab extends EventEmitter {
   ) {
     super()
     if (id) reserveTabId(id)
-    this.id = id ?? `tab-${nextTabId++}`
+    this.id = id ?? allocateTabId()
     // Node throws on unhandled 'error'; the service subscribes, but keep a no-op fallback.
     this.on('error', () => {})
     this.view = new WebContentsView({

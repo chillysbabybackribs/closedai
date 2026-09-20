@@ -12,6 +12,7 @@ import {
   type StepBody
 } from './activity-steps.js'
 import type { ActivityItem } from './transcript-rows.js'
+import { DiffViewer } from './diff-viewer.js'
 
 /**
  * The opened body of an activity row: a flat list, one line per step, that sits directly
@@ -133,14 +134,7 @@ function StepBodyView({ body }: { body: StepBody }): JSX.Element {
       ) : null}
       {body.output ? <pre className="activity-card-output">{body.output}</pre> : null}
       {body.diffs.map((entry) => (
-        <div key={entry.path} className="activity-card-diff">
-          <div className="activity-card-diff-path">{entry.path}</div>
-          <pre>
-            {entry.diff.split('\n').map((line, index) => (
-              <span key={index} data-line={diffLineKind(line)}>{line}{'\n'}</span>
-            ))}
-          </pre>
-        </div>
+        <DiffViewer key={entry.path} path={entry.path} diff={entry.diff} />
       ))}
       <div className="activity-card-footer">
         <StatusMark tone={body.status.tone} />
@@ -154,12 +148,4 @@ function StatusMark({ tone }: { tone: StepBody['status']['tone'] }): JSX.Element
   if (tone === 'live') return <LoaderCircle className="activity-card-mark animate-spin" aria-hidden="true" />
   if (tone === 'error') return <X className="activity-card-mark" aria-hidden="true" />
   return <Check className="activity-card-mark" aria-hidden="true" />
-}
-
-function diffLineKind(line: string): 'meta' | 'hunk' | 'add' | 'remove' | undefined {
-  if (line.startsWith('+++') || line.startsWith('---')) return 'meta'
-  if (line.startsWith('@@')) return 'hunk'
-  if (line.startsWith('+')) return 'add'
-  if (line.startsWith('-')) return 'remove'
-  return undefined
 }

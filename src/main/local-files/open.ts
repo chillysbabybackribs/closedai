@@ -1,6 +1,6 @@
 import { open, stat } from 'node:fs/promises'
 import { basename, extname } from 'node:path'
-import { localFilePath, type LocalFileResult } from '../../shared/local-files.js'
+import { localFilePath, type LocalFilePreview } from '../../shared/local-files.js'
 
 const IMAGE_TYPES: Record<string, string> = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
@@ -9,7 +9,7 @@ const IMAGE_TYPES: Record<string, string> = {
 const MAX_IMAGE_BYTES = 32 * 1024 * 1024
 
 /** User-clicked files are previewed as inert raster images or revealed, never executed. */
-export async function openLocalFile(href: string, reveal: (path: string) => void): Promise<LocalFileResult> {
+export async function openLocalFile(href: string, reveal: (path: string) => void): Promise<LocalFilePreview> {
   const path = typeof href === 'string' ? localFilePath(href) : null
   if (!path) throw new Error('This is not an absolute local file link.')
   const info = await stat(path)
