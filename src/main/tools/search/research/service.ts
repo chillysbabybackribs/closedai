@@ -156,6 +156,10 @@ export class ResearchService {
   private add(run: Run, queries: SearchRequest[], urls: string[]): void {
     run.totalQueries += queries.length
     for (const query of queries) for (const domain of query.preferredDomains ?? []) run.preferredDomains.add(domain)
+    for (const source of run.sources.values()) if (source.state === 'deferred' && source.selection === 'discovery' && prefersDomain(source.url, run.preferredDomains)) {
+      source.selection = 'preferred_domain'
+      source.revision = this.changed(run)
+    }
     for (const url of urls) this.discover(run, { url, title: url, snippet: '', provider: undefined }, true)
     this.admit(run)
     for (const query of queries) this.track(run, async () => {
@@ -191,7 +195,6 @@ export class ResearchService {
       existing.dates = mergeDates(existing.dates, result.dates)
       if (result.discovery && !existing.discovery?.some((entry) => JSON.stringify(entry) === JSON.stringify(result.discovery))) {
         existing.discovery = [...(existing.discovery ?? []), result.discovery].slice(-8)
-        existing.revision = this.changed(run)
       }
       if (result.provider && !existing.discoveredBy.includes(result.provider)) {
         existing.discoveredBy.push(result.provider)

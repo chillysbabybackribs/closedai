@@ -27,12 +27,13 @@ test('developer instructions stay within their expanded budget and establish the
   assert.match(instructions, /before choosing dependent actions/)
 })
 
-test('developer instructions read a named instrument as an instance of the objective, bounded by it', () => {
+test('developer instructions distinguish proposed methods from explicit constraints and stop research when supported', () => {
   const instructions = closedAiDeveloperInstructions()
-  assert.match(instructions, /best-known instance of what they are after, not as the boundary/)
-  assert.match(instructions, /pursue it directly with the named instrument first without degrading speed/)
-  assert.match(instructions, /never pad results with weaker material/)
-  assert.match(instructions, /when a strictly superior tool, method, or source is known/)
+  assert.match(instructions, /Recover the intended outcome and respect explicit constraints/)
+  assert.match(instructions, /Treat diagnoses and proposed methods as hypotheses/)
+  assert.match(instructions, /without expanding the user's objective/)
+  assert.match(instructions, /further findings are unlikely to change the approach/)
+  assert.match(instructions, /Quality comes first, latency close behind, token cost third/)
 })
 
 test('new and resumed threads receive the same developer instructions', () => {
