@@ -103,7 +103,7 @@ async function check(root: string) {
     assert.equal(browser.tabList().find((tab) => tab.active)?.id, webId)
     await until('document.querySelector(".image-viewer") === null')
     assert.ok(window.contentView.children[0].getBounds().x < window.getContentBounds().width)
-    console.log(JSON.stringify({ passed: true, checks: ['local-link-to-tab', 'native-view-parked', 'no-image-webcontents',
+    await writeFile(join(root, 'result.json'), JSON.stringify({ passed: true, checks: ['local-link-to-tab', 'native-view-parked', 'no-image-webcontents',
       'viewer-fills-pane', 'zoom-and-pan-retained', 'web-draft-and-scroll-retained', 'deduplicate', 'resize', 'close-restores-web'], geometry }))
   } finally {
     browser.dispose()

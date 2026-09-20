@@ -1,6 +1,6 @@
 // Real BrowserService + preload + React viewer, isolated from the user's running app/profile.
 import { build } from 'esbuild'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
@@ -29,4 +29,7 @@ try {
     child.once('error', reject)
     child.once('exit', (code) => done(code ?? 1))
   })
+  const result = JSON.parse(await readFile(join(root, 'result.json'), 'utf8'))
+  if (!result.passed) throw new Error('Image-tab verification did not complete')
+  console.log(JSON.stringify(result))
 } finally { await rm(root, { recursive: true, force: true }) }
