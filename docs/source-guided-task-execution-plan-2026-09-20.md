@@ -3,6 +3,8 @@
 Status: proposal, 2026-09-20. No runtime changes are implemented by this document.
 Priorities: quality first, latency a close second, token usage third. No evaluator,
 additional planning agent, persistent learning loop, or expanded conversational memory.
+Paid search APIs are eligible wherever they improve evidence quality, freshness, coverage, or speed.
+Free access is not a selection requirement. Compare total task cost rather than price per query alone.
 
 ## Intended behavior
 
@@ -69,6 +71,58 @@ existing owner. Reconcile documented prompt-size limits with the executable limi
 `model-efficiency-instructions.test.ts`; do not raise the test limits.
 
 ## 2. Improve the existing web research pipeline
+
+### Use provider capabilities, including paid options
+
+ClosedAI already implements Brave, Serper, Tavily, and You.com adapters with credential lookup.
+This establishes integration support, not that every account is configured or has a particular plan.
+Improve useful existing integrations before adding equivalent vendors. Add a provider when its
+coverage, customization, reliability, or latency supplies a measured advantage for a task class.
+
+| Candidate | Concrete capability to assess | Existing integration / next step |
+| --- | --- | --- |
+| Brave LLM Context | Goggles source boosting/downranking, custom freshness ranges, separate context/relevance controls, extracted page chunks. | Current adapter already uses LLM Context, token/URL limits, threshold modes, source metadata, and coarse freshness. Add supported customization and preserve more evidence structure. |
+| Serper | Google discovery and its advertised Scholar/other specialized search surfaces. | Current adapter uses web and news only. Verify the Scholar request/response contract and account access before implementing it. |
+| SerpApi | Documented Scholar citation searches, all-version searches, year bounds, date sorting, and payload field selection. | A distinct vendor from Serper. Compare only where these capabilities add value over existing discovery and a scholarly graph API. |
+| Tavily / You.com | Existing extraction/search controls, useful coverage, and incremental return timing. | Keep them available; tune against task results instead of treating research/answer intent as a permanent vendor ranking. |
+
+Brave's current documentation supports `goggles` on the existing LLM Context endpoint, including
+inline definitions, and custom date ranges. Implement small, inspectable source-ranking presets
+for relevant task classes, with caller-selected domains when appropriate. Prefer boosting over hard
+exclusion for exploratory work, keep an unfiltered fallback for coverage gaps, and do not let the
+presets erase contrary findings or mistake a preferred domain for proof. Include profile/version
+and date range in cache keys and result provenance. Preserve explicit user domain restrictions.
+
+Separate discovery breadth, relevance threshold, context amount, freshness, and provider selection.
+Today's Brave `deep` setting simultaneously increases breadth/context and relaxes relevance; more
+effort should not necessarily mean admitting less relevant material. Keep shared model inputs small
+and capability-based; map them to provider-specific parameters inside adapters. Unsupported controls
+must be reported or routed to a capable provider, not silently ignored or shown as applied.
+
+Preserve origin URLs and extraction provenance for provider-supplied page chunks. They may answer a
+narrow question without a duplicate fetch when the excerpt is sufficient. They do not establish that
+the full source was read or that a live page still matches; fetch original/full content when scope,
+currency, ambiguity, or important missing context requires it. Distinguish extracted source text
+from a provider-generated answer.
+
+Run a bounded comparison on representative tasks using the same queries where meaningful, recording
+primary-source discovery, applicable freshness, unique useful coverage, field/filter fidelity,
+time to usable evidence, tail latency, failure/rate-limit behavior, and total task cost. Validate
+vendor latency claims rather than adopting them as measurements. Use one well-suited provider by
+default; add a complementary parallel request when coverage or uncertainty justifies it. A second
+provider sharing the same underlying index may improve API behavior without independent coverage.
+Cancellation can save local work but must not be assumed to refund a billed request.
+
+Choose paid tiers and API spending limits when integrating, using current pricing and the intended
+request volume. Do not block a better paid option merely because a free alternative exists. This plan
+does not subscribe to services or authorize unbounded spending. Existing authorized API use remains
+available; new purchases/account changes require their normal explicit authorization.
+
+Official capability sources checked on 2026-09-20:
+
+- [Brave LLM Context, including Goggles and freshness](https://api-dashboard.search.brave.com/documentation/services/llm-context)
+- [Serper product surfaces](https://serper.dev/)
+- [SerpApi Google Scholar API](https://serpapi.com/google-scholar-api)
 
 ### Source selection
 
@@ -142,7 +196,8 @@ Paper candidates and collected sources return through the existing `search.read`
 discovery writes only the existing temporary run cache. Add no separate agent, queueing framework,
 or model invocation, and preserve current inputs during migration.
 
-Recommended first citation adapter: Semantic Scholar. Its official API documents graph records,
+Initial graph-API candidate: Semantic Scholar, compared with the applicable paid Scholar options
+above before selecting the first new adapter. Its official API documents graph records,
 citations/references, recommendations, batching, and selectable fields. Its documented initial keyed
 rate is one request per second, so budget and batch independently of the web engines. Validate
 endpoint access, availability, and latency before committing the adapter. Do not assume a key is
@@ -150,8 +205,8 @@ already present or provision a paid service as part of implementation. Use exist
 handling if configuration is needed; missing access produces an explicit capability result and a
 working web/alphaXiv fallback without repeated retries.
 
-OpenAlex is an alternative if this adapter cannot meet coverage/access/latency requirements. Do not
-build both initially. Its current API documentation describes a connected scholarly dataset and
+OpenAlex is another candidate if these options cannot meet coverage/access/latency requirements. Do
+not build every candidate initially. Its current API documentation describes a connected scholarly dataset and
 public basic access, but this review did not test its production endpoints or compare coverage.
 
 Traversal is one explicitly requested hop at a time, never an automatic recursive crawl. Fetch
@@ -257,7 +312,8 @@ explicitly. Missing provider usage/trace data remains marked unknown.
 1. **Guidance and waste removal:** shared contract, terminology, unused synthesis removal, and
    clarification of early cancellation. Ship independently; it adds no runtime model call.
 2. **Evidence metadata and admission:** structured freshness, candidate queue, reserved follow-up
-   access, and focused timing. Preserve current concurrency limits until measurements justify change.
+   access, Brave customization, and focused provider comparison/timing. Preserve current concurrency
+   limits until measurements justify change.
 3. **Paper path:** extract alphaXiv reuse, add on-demand discovery and one graph adapter, full-text
    resolution/extraction, and saved-paper handoff. Public source adapters are separately disableable.
 4. **Validation and refinement:** complete provider task trials, tune admission/cache settings, and
