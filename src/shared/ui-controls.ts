@@ -41,9 +41,6 @@ export const UI_CONTROLS = {
   'drawer.row-menu-item': 'Fork the row into a new chat; item is current or a model id',
 
   'chat.message-copy': 'Copy an assistant response; item is the message id',
-  'chat.message-feedback': 'Open response feedback choices; item is the message id',
-  'chat.message-like': 'Toggle positive local feedback; item is the message id',
-  'chat.message-dislike': 'Toggle negative local feedback; item is the message id',
   'chat.message-branch': 'Continue in a new chat through this response; item is the message id',
   'chat.background-group': 'Expand or collapse background work; item is the first task id',
   'chat.background-task': 'Expand task description and result; item is the task id',

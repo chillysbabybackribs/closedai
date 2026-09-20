@@ -20,9 +20,7 @@
   cursor: pointer;
 }
 
-.message-actions button:hover,
-.message-actions button[aria-pressed='true'],
-.message-actions button.is-rated {
+.message-actions button:hover {
   color: var(--foreground);
   background: var(--surface-control-hover);
 }
@@ -41,45 +39,6 @@
   width: 19px;
   height: 19px;
   stroke-width: 1.6;
-}
-
-.message-feedback {
-  position: relative;
-}
-
-.message-feedback-icon {
-  position: relative;
-  width: 23px;
-  height: 23px;
-}
-
-.message-feedback-icon svg {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-}
-
-.message-feedback-icon svg:first-child {
-  top: 1px;
-  left: 0;
-}
-
-.message-feedback-icon svg:last-child {
-  bottom: 0;
-  right: 0;
-}
-
-.message-feedback-options {
-  position: absolute;
-  z-index: 5;
-  bottom: calc(100% + 6px);
-  left: -12px;
-  display: flex;
-  padding: 4px;
-  border: 1px solid var(--hairline-strong);
-  border-radius: 8px;
-  background: var(--surface-raised);
-  box-shadow: 0 4px 14px rgb(0 0 0 / 20%);
 }
 
 .message-timestamp {

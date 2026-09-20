@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { Check, Copy } from 'lucide-react'
 import type { ChatTranscriptItem } from '../shared/chat.js'
 
 export type MessageActionContext = {
@@ -8,14 +8,13 @@ export type MessageActionContext = {
   branch: (itemId: string) => Promise<void>
 }
 type AssistantItem = Extract<ChatTranscriptItem, { type: 'assistant' }>
-type MessageMetadata = { createdAt?: number; feedback?: 'up' | 'down' }
+type MessageMetadata = { createdAt?: number }
 
 function readMetadata(key: string): MessageMetadata {
   try {
     const value = JSON.parse(localStorage.getItem(key) ?? '{}') as MessageMetadata | null
     return {
-      createdAt: typeof value?.createdAt === 'number' && Number.isFinite(value.createdAt) ? value.createdAt : undefined,
-      feedback: value?.feedback === 'up' || value?.feedback === 'down' ? value.feedback : undefined
+      createdAt: typeof value?.createdAt === 'number' && Number.isFinite(value.createdAt) ? value.createdAt : undefined
     }
   } catch { return {} }
 }
@@ -27,14 +26,13 @@ export function MessageActions({ item, context }: { item: AssistantItem; context
     return { ...saved, createdAt: item.createdAt ?? saved.createdAt ?? (item.streaming ? Date.now() : undefined) }
   })
   const [copied, setCopied] = useState(false)
-  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [branching, setBranching] = useState(false)
   const [error, setError] = useState('')
   const resetCopy = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (resetCopy.current) clearTimeout(resetCopy.current) }, [])
   useEffect(() => {
     if (!metadata.createdAt) return
-    try { localStorage.setItem(storageKey, JSON.stringify(metadata)) } catch { /* Rating writes report errors below. */ }
+    try { localStorage.setItem(storageKey, JSON.stringify(metadata)) } catch { /* Timestamps are a nicety; losing one is not worth an error. */ }
   }, [metadata, storageKey])
 
   async function copy(): Promise<void> {
@@ -45,16 +43,6 @@ export function MessageActions({ item, context }: { item: AssistantItem; context
       if (resetCopy.current) clearTimeout(resetCopy.current)
       resetCopy.current = setTimeout(() => setCopied(false), 2000)
     } catch { setError('Could not copy this response.') }
-  }
-
-  function rate(feedback: 'up' | 'down'): void {
-    const next = { ...metadata, feedback: metadata.feedback === feedback ? undefined : feedback }
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(next))
-      setMetadata(next)
-      setFeedbackOpen(false)
-      setError('')
-    } catch { setError('Could not save your feedback.') }
   }
 
   async function branch(): Promise<void> {
@@ -75,28 +63,6 @@ export function MessageActions({ item, context }: { item: AssistantItem; context
           title={copied ? 'Copied' : 'Copy'} aria-label={copied ? 'Copied' : 'Copy response'} onClick={() => void copy()}>
           {copied ? <Check /> : <Copy />}
         </button>
-        <div className="message-feedback" onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) setFeedbackOpen(false)
-        }} onKeyDown={(event) => { if (event.key === 'Escape') setFeedbackOpen(false) }}>
-          <button type="button" data-ui="chat.message-feedback" data-ui-key={item.id}
-            aria-label="Rate response" title="Rate response" aria-expanded={feedbackOpen}
-            className={metadata.feedback ? 'is-rated' : undefined}
-            onClick={() => setFeedbackOpen((open) => !open)}>
-            {metadata.feedback === 'up' ? <ThumbsUp /> : metadata.feedback === 'down' ? <ThumbsDown /> : (
-              <span className="message-feedback-icon"><ThumbsUp /><ThumbsDown /></span>
-            )}
-          </button>
-          {feedbackOpen ? (
-            <div className="message-feedback-options" role="group" aria-label="Save feedback locally">
-              <button type="button" data-ui="chat.message-like" data-ui-key={item.id}
-                aria-label="Good response" title="Good response (saved locally)" aria-pressed={metadata.feedback === 'up'}
-                onClick={() => rate('up')}><ThumbsUp /></button>
-              <button type="button" data-ui="chat.message-dislike" data-ui-key={item.id}
-                aria-label="Bad response" title="Bad response (saved locally)" aria-pressed={metadata.feedback === 'down'}
-                onClick={() => rate('down')}><ThumbsDown /></button>
-            </div>
-          ) : null}
-        </div>
         <button type="button" data-ui="chat.message-branch" data-ui-key={item.id}
           title={context.running ? 'Wait for the current turn to finish' : 'Branch in new chat'}
           aria-label="Branch in new chat" disabled={context.running || branching} onClick={() => void branch()}>

@@ -248,7 +248,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 - Tool activity is grouped into expandable step lists with arguments, output, status, and timing
   when available. Provider-native background tasks have a separate transcript group and a
   status popover. A turn ending does not prove that all background tasks finished.
-- Completed assistant responses offer copy, locally saved thumbs-up/down feedback, and branching.
+- Completed assistant responses offer copy and branching.
   Timestamps appear when recorded; older history does not acquire invented timestamps. Feedback
   is stored in renderer localStorage and is not sent to providers.
 - The project rail contains the working timer and project menu; Tools and Turn trace open from
@@ -405,7 +405,7 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 | `tool-telemetry.json` | Aggregate run/error/timeout counters; no arguments or conversation text |
 | `credential-vault.json` | Saved credentials: service id, entry label, timestamps, and one record per field. Secret fields are `safeStorage` ciphertext (base64); hosts, usernames and URLs stay readable so the list renders without decrypting. Written atomically at 0600. Entries the earlier localStorage vault held are moved here on first open and the localStorage copy is cleared only after every entry lands |
 | `antigravity/profile/`, `antigravity/attachments/`, `antigravity/transcripts/` | Generated agent plugin, materialized image attachments, and app-recorded transcripts; the CLI retains its own conversation store |
-| Renderer localStorage | Appearance, model-picker usage, drawer state/review queue (including review time), message timestamps and local feedback |
+| Renderer localStorage | Appearance, model-picker usage, drawer state/review queue (including review time), message timestamps |
 | In-memory trace | At most 4,000 entries and 24,000,000 detail characters, 48,000 characters per detail before its truncation marker; cleared on restart |
 
 Legacy top-level `chatThreadId`, `chatClaudeSessionId`, `chatAntigravityConversationId`, model,
