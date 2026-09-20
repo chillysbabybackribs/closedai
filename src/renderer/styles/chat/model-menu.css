@@ -8,9 +8,8 @@
   min-width: 0;
 }
 
-/* A monochrome pill on the chrome ground, the same material as the header tabs and the
-   background-task chip; hovering or opening lightens the ink and firms the hairline, so the
-   picker never competes with the blue focus ring or the send button. */
+/* Monochrome: plain grey ink with no chrome of its own; hovering or opening only lightens
+   the ink, so the picker never competes with the blue focus ring or the send button. */
 .model-menu-trigger {
   display: inline-flex;
   align-items: center;
@@ -18,9 +17,9 @@
   max-width: 260px;
   height: 28px;
   padding: 0 8px 0 7px;
-  border: 1px solid var(--hairline);
+  border: 0;
   border-radius: 6px;
-  background: var(--surface-chrome);
+  background: transparent;
   color: color-mix(in srgb, var(--foreground) 74%, transparent);
   font: inherit;
   font-size: 12.5px;
@@ -28,14 +27,12 @@
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
-  transition: color 110ms ease, border-color 110ms ease, background-color 110ms ease;
+  transition: color 110ms ease;
 }
 
 .model-menu-trigger:not(:disabled):hover,
 .model-menu-trigger[data-state='open'] {
   color: var(--foreground);
-  border-color: var(--hairline-strong);
-  background: var(--surface-control-hover);
 }
 
 .model-menu-trigger:focus-visible {
@@ -79,7 +76,7 @@
   content: '· ';
 }
 
-/* Effort sits in its own segment of the pill, behind a hairline divider. */
+/* Effort sits behind a hairline divider so it reads as a qualifier, not part of the name. */
 .model-menu-trigger-effort {
   display: inline-flex;
   align-items: center;

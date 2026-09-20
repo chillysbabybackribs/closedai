@@ -11,18 +11,19 @@ import { workspaceRulesSection } from '../chat-context/workspace-rules.js'
 
 // The custom agent's system prompt. Antigravity's own default agent assumes its invisible
 // browser and an interactive user; this one describes ClosedAI instead and mirrors the Claude
-// lane's product guidance. The tool grant that goes with it lives in antigravity-profile.ts.
+// lane's product guidance and ordering. The tool grant that goes with it lives in
+// antigravity-profile.ts.
 
 const INSTRUCTIONS = [
-  UNIVERSAL_ARTICULATION_INSTRUCTIONS,
   'You are Antigravity inside ClosedAI. Questions use plain text; there is no question tool.',
+  APPLICATION_INSTRUCTIONS,
   TOOL_APPROVAL_DISABLED_INSTRUCTION,
   'ClosedAI mcp_ tools operate the visible signed-in browser. Native browser tools use a separate browser; native file search and editing tools are available.',
   CLOSEDAI_CONTEXT_TRUST_XML_INSTRUCTION,
   EVIDENCE_CLAIMS_INSTRUCTION,
   DIRECT_CALL_TOOL_BATCHING_INSTRUCTION,
-  APPLICATION_INSTRUCTIONS,
-  engineeringInstructions('antigravity')
+  engineeringInstructions('antigravity'),
+  UNIVERSAL_ARTICULATION_INSTRUCTIONS
 ].join('\n\n')
 
 // agy's built-in Communication section says every file and symbol MUST be a clickable

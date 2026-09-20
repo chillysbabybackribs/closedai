@@ -11,18 +11,18 @@ import { workspaceRulesSection } from '../chat-context/workspace-rules.js'
 
 // Product guidance for Cursor's ACP lane. Unlike Claude or Antigravity there is no native
 // system-prompt hook, so the service injects this once per session as a closedai.instructions
-// application context block on the first turn.
+// application context block on the first turn. Ordering matches the other lanes.
 
 const INSTRUCTIONS = [
-  UNIVERSAL_ARTICULATION_INSTRUCTIONS,
   'You are Cursor inside ClosedAI. Questions use plain text; there is no question tool.',
+  APPLICATION_INSTRUCTIONS,
   TOOL_APPROVAL_DISABLED_INSTRUCTION,
   'ClosedAI MCP tools own the visible signed-in browser; shell browsers and external fetches do not share it.',
   CLOSEDAI_CONTEXT_TRUST_XML_INSTRUCTION,
   EVIDENCE_CLAIMS_INSTRUCTION,
   DIRECT_CALL_TOOL_BATCHING_INSTRUCTION,
-  APPLICATION_INSTRUCTIONS,
-  engineeringInstructions('cursor')
+  engineeringInstructions('cursor'),
+  UNIVERSAL_ARTICULATION_INSTRUCTIONS
 ].join('\n')
 
 /** Product guidance and the selected workspace's root policy. */
