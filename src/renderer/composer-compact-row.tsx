@@ -81,7 +81,7 @@ export function ComposerCompactRow({
                 void onStop()
               }}
             >
-              <Pause size={17} fill="currentColor" aria-hidden="true" />
+              <Pause size={17} strokeWidth={2.25} aria-hidden="true" />
             </Button>
           </PromptInputAction>
         ) : paused ? (

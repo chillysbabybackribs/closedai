@@ -315,6 +315,30 @@
 }
 
 .prompt-composer-textarea::placeholder { color: #727276; }
+
+/* Expanded card: the text/action column fills the card and the primary send/pause action
+   sits in a slim right-hand column, centred on the card's full height. */
+.prompt-composer-body {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+}
+
+.prompt-composer-column {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.prompt-composer-primary {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding-right: 2px;
+}
+
 .prompt-composer-actions {
   display: flex;
   align-items: center;
@@ -412,6 +436,18 @@
   display: grid;
   place-items: center;
   transition: all 120ms ease;
+}
+
+.prompt-composer-primary .prompt-composer-send,
+.prompt-composer-primary .prompt-composer-stop {
+  width: 40px;
+  height: 40px;
+}
+
+.prompt-composer-primary .prompt-composer-send svg,
+.prompt-composer-primary .prompt-composer-stop svg {
+  width: 26px;
+  height: 26px;
 }
 
 /* Send and pause are bare icons, coloured like the chat-tab status indicators:

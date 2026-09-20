@@ -362,8 +362,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   resumes the conversation id on the next turn. Antigravity sends the user's prompt directly
   on process startup; it has no hidden initialization turn. The composer preserves unsubmitted
   drafts (text and pending attachments) per conversation pane across tab switching and unmounting,
-  clearing them only on submission, and provides a live estimated token badge (`≈N tokens`) with
-  advisory warnings for large drafts (≥10k tokens) or context ceiling proximity. The context inspector
+  clearing them only on submission. The context inspector
   modal provides a visual stacked token budget bar (retained history, ClosedAI additions, user turn,
   and available headroom), live pressure badges (Cool, Warm, Hot), and actionable pressure advisories
   offering one-click conversation compaction or fresh chat branching. Appearance settings separate message and composer font sizes

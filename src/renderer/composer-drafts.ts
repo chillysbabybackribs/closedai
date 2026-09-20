@@ -7,9 +7,6 @@ export type ComposerDraft = {
   lastModified?: number
 }
 
-export const DRAFT_WARN_TOKENS = 10_000
-export const DRAFT_CRITICAL_TOKENS = 25_000
-
 const drafts = new Map<string, ComposerDraft>()
 
 export function getComposerDraft(paneId?: string | null): ComposerDraft {
@@ -34,52 +31,6 @@ export function clearComposerDraft(paneId?: string | null): void {
 
 export function resetAllComposerDrafts(): void {
   drafts.clear()
-}
-
-/** Fast token estimate: 4 characters per token for text, plus base estimate for attachments. */
-export function estimateDraftTokens(input: string, attachments: ChatAttachment[] = []): number {
-  const textTokens = input.length > 0 ? Math.ceil(input.length / 4) : 0
-  const attachmentTokens = attachments.reduce((sum, att) => {
-    if (att.kind === 'image') return sum + 1000
-    return sum + 250
-  }, 0)
-  return textTokens + attachmentTokens
-}
-
-export type DraftTokenLevel = 'normal' | 'warn' | 'critical'
-
-export function getDraftTokenStatus(
-  tokens: number,
-  contextWindow?: number | null,
-  usedTokens?: number | null
-): {
-  level: DraftTokenLevel
-  formattedTokens: string
-  label: string
-  tooltip: string
-} {
-  const formatted = tokens >= 1_000 ? `${(tokens / 1_000).toFixed(tokens >= 100_000 ? 0 : 1)}k` : String(tokens)
-  let level: DraftTokenLevel = 'normal'
-  let label = `≈${formatted} tokens`
-  let tooltip = `Estimated prompt size: ≈${tokens.toLocaleString()} tokens`
-
-  const remainingWindow = (contextWindow && usedTokens != null) ? Math.max(0, contextWindow - usedTokens) : null
-
-  if (remainingWindow !== null && tokens > remainingWindow) {
-    level = 'critical'
-    label = `≈${formatted} tokens · Exceeds context`
-    tooltip = `Estimated prompt (${tokens.toLocaleString()} tokens) exceeds available context headroom (${remainingWindow.toLocaleString()} tokens remaining)`
-  } else if (tokens >= DRAFT_CRITICAL_TOKENS) {
-    level = 'critical'
-    label = `≈${formatted} tokens · Very large`
-    tooltip = `Estimated prompt (${tokens.toLocaleString()} tokens) is very large. Responses may take longer or encounter rate limits.`
-  } else if (tokens >= DRAFT_WARN_TOKENS) {
-    level = 'warn'
-    label = `≈${formatted} tokens · Large prompt`
-    tooltip = `Estimated prompt (${tokens.toLocaleString()} tokens) is large. Consider breaking into smaller steps if necessary.`
-  }
-
-  return { level, formattedTokens: formatted, label, tooltip }
 }
 
 export function useComposerDraft(paneId?: string | null): {

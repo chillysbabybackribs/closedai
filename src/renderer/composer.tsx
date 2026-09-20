@@ -14,7 +14,6 @@ import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
 import { ComposerCompactRow } from './composer-compact-row.js'
 import { useComposerDraft } from './composer-drafts.js'
-import { ComposerTokenBadge } from './composer-token-badge.js'
 import { ContextMeter } from './context-meter.js'
 import { ModelMenu } from './model-menu.js'
 import { ProjectMenu } from './project-menu.js'
@@ -228,125 +227,126 @@ export function Composer({
             onExpand={() => setManualExpanded(true)}
           />
         ) : (
-          <div className="flex flex-col">
-            <AttachmentChips
-              attachments={attachments}
-              onRemove={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
-            />
-            <PromptInputTextarea
-              aria-label="Message Codex"
-              data-ui="composer.input"
-              placeholder={placeholder ?? (enabled ? 'Ask anything' : 'Codex is unavailable')}
-              spellCheck={false}
-              className="prompt-composer-textarea"
-              onPaste={pasteFiles}
-              onFocus={() => { textareaFocusedRef.current = true }}
-              onBlur={() => { textareaFocusedRef.current = false }}
-            />
+          <div className="prompt-composer-body">
+            <div className="prompt-composer-column">
+              <AttachmentChips
+                attachments={attachments}
+                onRemove={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
+              />
+              <PromptInputTextarea
+                aria-label="Message Codex"
+                data-ui="composer.input"
+                placeholder={placeholder ?? (enabled ? 'Ask anything' : 'Codex is unavailable')}
+                spellCheck={false}
+                className="prompt-composer-textarea"
+                onPaste={pasteFiles}
+                onFocus={() => { textareaFocusedRef.current = true }}
+                onBlur={() => { textareaFocusedRef.current = false }}
+              />
 
-            {attachmentError && <div className="prompt-attachment-error" role="alert">{attachmentError}</div>}
+              {attachmentError && <div className="prompt-attachment-error" role="alert">{attachmentError}</div>}
 
-            <PromptInputActions className="prompt-composer-actions">
-              <div className="prompt-composer-actions-start">
-                <PromptInputAction tooltip="New chat tab">
+              <PromptInputActions className="prompt-composer-actions">
+                <div className="prompt-composer-actions-start">
+                  <PromptInputAction tooltip="New chat tab">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="prompt-composer-tool prompt-composer-new-chat rounded-full"
+                      aria-label="New chat tab"
+                      data-ui="composer.new-chat"
+                      disabled={!enabled}
+                      onClick={onNewChat}
+                    >
+                      <Plus size={21} strokeWidth={2.6} aria-hidden="true" />
+                    </Button>
+                  </PromptInputAction>
+
+                  <div className="prompt-model-controls">
+                    <ModelMenu
+                      enabled={enabled && !running}
+                      models={models}
+                      selectedModel={selectedModel}
+                      selectedReasoningEffort={selectedReasoningEffort}
+                      onModelChange={onModelChange}
+                      onReasoningEffortChange={onReasoningEffortChange}
+                    />
+                    <ContextMeter
+                      usage={contextUsage}
+                      provider={provider}
+                      planUsage={planUsage}
+                      onInspect={onInspectContext}
+                      onRefreshPlanUsage={onRefreshPlanUsage}
+                      onCompact={onCompactConversation}
+                      compactEnabled={compactConversationEnabled}
+                    />
+                  </div>
+                </div>
+
+                <div className="prompt-composer-actions-end">
+                  <AttachmentPicker
+                    disabled={!enabled || running || sending}
+                    inputRef={fileInputRef}
+                    onChange={(event) => {
+                      if (event.target.files) void addFiles(event.target.files)
+                      event.target.value = ''
+                    }}
+                  />
+
+                  {!running && paused ? (
+                    <PromptInputAction tooltip={`Resume where ${CHAT_PROVIDER_LABELS[provider]} paused`}>
+                      <Button
+                        type="button"
+                        size="icon"
+                        className="prompt-composer-resume rounded-full"
+                        aria-label={`Resume where ${CHAT_PROVIDER_LABELS[provider]} paused`}
+                        data-ui="composer.resume"
+                        disabled={!enabled || sending}
+                        onClick={() => void resume()}
+                      >
+                        <Play size={15} fill="currentColor" aria-hidden="true" />
+                      </Button>
+                    </PromptInputAction>
+                  ) : null}
+                </div>
+              </PromptInputActions>
+            </div>
+
+            {/* The primary action sits in its own column so it centres on the card's full
+                height rather than the action row. */}
+            <div className="prompt-composer-primary">
+              {running ? (
+                <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="prompt-composer-tool prompt-composer-new-chat rounded-full"
-                    aria-label="New chat tab"
-                    data-ui="composer.new-chat"
-                    disabled={!enabled}
-                    onClick={onNewChat}
+                    className="prompt-composer-stop rounded-full"
+                    aria-label={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}
+                    data-ui="composer.stop"
+                    onClick={() => void onStop()}
                   >
-                    <Plus size={21} strokeWidth={2.6} aria-hidden="true" />
+                    <Pause size={24} strokeWidth={2.25} aria-hidden="true" />
                   </Button>
                 </PromptInputAction>
-
-                <div className="prompt-model-controls">
-                  <ModelMenu
-                    enabled={enabled && !running}
-                    models={models}
-                    selectedModel={selectedModel}
-                    selectedReasoningEffort={selectedReasoningEffort}
-                    onModelChange={onModelChange}
-                    onReasoningEffortChange={onReasoningEffortChange}
-                  />
-                  <ContextMeter
-                    usage={contextUsage}
-                    provider={provider}
-                    planUsage={planUsage}
-                    onInspect={onInspectContext}
-                    onRefreshPlanUsage={onRefreshPlanUsage}
-                    onCompact={onCompactConversation}
-                    compactEnabled={compactConversationEnabled}
-                  />
-                  <ComposerTokenBadge
-                    input={input}
-                    attachments={attachments}
-                    contextUsage={contextUsage}
-                  />
-                </div>
-              </div>
-
-              <div className="prompt-composer-actions-end">
-                <AttachmentPicker
-                  disabled={!enabled || running || sending}
-                  inputRef={fileInputRef}
-                  onChange={(event) => {
-                    if (event.target.files) void addFiles(event.target.files)
-                    event.target.value = ''
-                  }}
-                />
-
-                {!running && paused ? (
-                  <PromptInputAction tooltip={`Resume where ${CHAT_PROVIDER_LABELS[provider]} paused`}>
-                    <Button
-                      type="button"
-                      size="icon"
-                      className="prompt-composer-resume rounded-full"
-                      aria-label={`Resume where ${CHAT_PROVIDER_LABELS[provider]} paused`}
-                      data-ui="composer.resume"
-                      disabled={!enabled || sending}
-                      onClick={() => void resume()}
-                    >
-                      <Play size={15} fill="currentColor" aria-hidden="true" />
-                    </Button>
-                  </PromptInputAction>
-                ) : null}
-
-                {running ? (
-                  <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="prompt-composer-stop rounded-full"
-                      aria-label={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}
-                      data-ui="composer.stop"
-                      onClick={() => void onStop()}
-                    >
-                      <Pause size={17} fill="currentColor" aria-hidden="true" />
-                    </Button>
-                  </PromptInputAction>
-                ) : (
-                  <PromptInputAction tooltip="Send message">
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="icon"
-                      className="prompt-composer-send rounded-full"
-                      aria-label="Send message"
-                      data-ui="composer.send"
-                      data-waiting-for-input={waitingForInput || undefined}
-                      disabled={!canSend}
-                    >
-                      <ArrowUp size={19} strokeWidth={2} aria-hidden="true" />
-                    </Button>
-                  </PromptInputAction>
-                )}
-              </div>
-            </PromptInputActions>
+              ) : (
+                <PromptInputAction tooltip="Send message">
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    size="icon"
+                    className="prompt-composer-send rounded-full"
+                    aria-label="Send message"
+                    data-ui="composer.send"
+                    data-waiting-for-input={waitingForInput || undefined}
+                    disabled={!canSend}
+                  >
+                    <ArrowUp size={26} strokeWidth={2.25} aria-hidden="true" />
+                  </Button>
+                </PromptInputAction>
+              )}
+            </div>
           </div>
         )}
       </PromptInput>
