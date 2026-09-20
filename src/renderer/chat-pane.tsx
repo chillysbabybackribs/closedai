@@ -150,6 +150,7 @@ export const ChatPane = memo(function ChatPane({
           ) : null}
         </TaskActivity>
         <Composer
+          paneId={chat.selectedPaneId}
           enabled={usable}
           running={running}
           placeholder={connecting ? state.connection.message : undefined}
