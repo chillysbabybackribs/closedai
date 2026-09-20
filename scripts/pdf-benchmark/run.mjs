@@ -120,7 +120,7 @@ try {
     report.sources[id] = { ...source, documentSha256: sha256(bytes), bytes: bytes.length, nativeTiming: timings(samples), coverage: native.pdf }
   }
   for (const test of cases) {
-    const row = { id: test.id, source: test.source, page: test.page, crop: test.crop, manualChecks: test.manualChecks }
+    const row = { id: test.id, source: test.source, pageNumber: test.page, crop: test.crop, manualChecks: test.manualChecks }
     for (const action of ['page', 'ocr']) {
       const samples = []
       const outputHashes = []
