@@ -32,7 +32,8 @@ test('developer instructions read a named instrument as an instance of the objec
   assert.match(instructions, /best-known instance of what they are after, not as the boundary/)
   assert.match(instructions, /pursue it with the named instrument first/)
   assert.match(instructions, /never pad results with weaker material/)
-  assert.match(instructions, /part of the deliverable/)
+  assert.match(instructions, /search for better or equally good instruments/)
+  assert.match(instructions, /which alternatives you checked and why/)
 })
 
 test('new and resumed threads receive the same developer instructions', () => {
