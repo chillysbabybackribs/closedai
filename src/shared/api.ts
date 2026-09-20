@@ -13,6 +13,7 @@ export type ClosedaiApi = {
   window: {
     minimize: () => Promise<void>
     maximize: () => Promise<void>
+    toggleFullscreen: () => Promise<void>
     close: () => Promise<void>
   }
   browser: {

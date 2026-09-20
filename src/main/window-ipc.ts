@@ -15,6 +15,11 @@ export function registerWindowIpc(
     if (window.isMaximized()) window.unmaximize()
     else window.maximize()
   })
+  registerInvoke(ipcMain, IPC.invoke.window.toggleFullscreen, () => {
+    const window = getMainWindow()
+    if (!window) return
+    window.setFullScreen(!window.isFullScreen())
+  })
   registerInvoke(ipcMain, IPC.invoke.window.close, () => {
     getMainWindow()?.close()
   })

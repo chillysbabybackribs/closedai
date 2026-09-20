@@ -13,6 +13,7 @@ import { minimumSize } from './layout-tree.js'
 
 export type ChatLayoutHandle = {
   splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
+  toggleBrowser: () => void
 }
 
 export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, ref }: {
@@ -26,8 +27,9 @@ export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenC
 }) {
   const layout = useChatLayout(chat.snapshot)
   useImperativeHandle(ref, () => ({
-    splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge)
-  }), [layout.dock, chat.selectedPaneId])
+    splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),
+    toggleBrowser: layout.toggleBrowser
+  }), [layout.dock, layout.toggleBrowser, chat.selectedPaneId])
   const browser = useBrowserController(`browser:${layout.browserVisible}`, layout.browserVisible)
   const [actionError, setActionError] = useState('')
   const select = (id: string): void => {

@@ -20,6 +20,7 @@ const api: ClosedaiApi = {
   window: {
     minimize: () => invoke(IPC.invoke.window.minimize),
     maximize: () => invoke(IPC.invoke.window.maximize),
+    toggleFullscreen: () => invoke(IPC.invoke.window.toggleFullscreen),
     close: () => invoke(IPC.invoke.window.close)
   },
   browser: {

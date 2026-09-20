@@ -10,6 +10,7 @@ import type { TraceEvent, TraceSnapshot } from './trace.js'
 export type IpcInvokeChannels = {
   'window:minimize': { args: []; result: void }
   'window:maximize': { args: []; result: void }
+  'window:toggleFullscreen': { args: []; result: void }
   'window:close': { args: []; result: void }
   'browser:setBounds': { args: [BrowserBounds]; result: void }
   'browser:navigate': { args: [string]; result: void }
@@ -93,6 +94,7 @@ export const IPC = {
     window: {
       minimize: 'window:minimize',
       maximize: 'window:maximize',
+      toggleFullscreen: 'window:toggleFullscreen',
       close: 'window:close'
     },
     browser: {
