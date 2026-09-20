@@ -25,7 +25,7 @@ test('directory groups retain full-path identity, live counts, and independent h
   const controller = { reviewQueue: {} } as DrawerController
   const render = (index: number, collapsed: boolean, historyOpen = false) => renderToStaticMarkup(createElement(DrawerDirectory, {
     group: groups[index]!, collapsed, historyOpen, onToggle: () => {}, onToggleHistory: () => {}, controller, chat,
-    fold: { collapsedParents: new Set(), expandedSettled: new Set(), onToggleParent: () => {}, onToggleSettled: () => {} },
+    fold: { collapsedParents: new Set<string>(), expandedSettled: new Set<string>(), onToggleParent: () => {}, onToggleSettled: () => {} },
     onRowMenu: () => {}
   }))
   const hidden = render(0, true)
