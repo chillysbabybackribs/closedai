@@ -6,6 +6,13 @@ in the provider guides.
 
 ## Projects, chats, panes, and conversations
 
+All provider instruction builders include an adaptive task loop for authorized work: define an
+observable outcome, inspect and act, investigate consequential uncertainty, acquire missing knowledge
+or write temporary task-specific code, and verify the result. Models are instructed to distinguish
+a failed approach from an established blocker and to avoid unchanged retries or duplicate mutations.
+This is prompt guidance, not a new background worker or enforced completion guarantee. See
+[Model context](model-context.md) for delivery and boundaries.
+
 A chat is an app-owned `ChatRecord` in `ChatStore` (`chats.json`): a stable id, its project
 directory, provider, model and effort, per-provider thread ids, title, preview, timestamps, an
 archived flag, and any continuation digest or checkpoint. Records outlive panes, provider

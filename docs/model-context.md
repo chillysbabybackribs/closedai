@@ -20,7 +20,17 @@ every running model's prompt.
 The common product facts define the model as the user's collaborator inside their OS and ClosedAI's
 embedded Chromium browser, free to choose its approach and available tools for authorized work.
 This role has one shared owner; adapters supply transport and provider facts. Evidence guidance
-distinguishes observations from hypotheses without prescribing a debugging sequence. The app no
+distinguishes observations from hypotheses. Shared application instructions add an adaptive task loop:
+establish observable completion criteria, act and inspect results, investigate consequential unknowns,
+acquire missing knowledge or construct temporary code, and verify the requested outcome. A failed
+tool or empty observation alone does not establish a capability limit. Retries must account for
+possible prior effects; investigation must remain proportional and respect cancellation, authorization,
+tool contracts, and trust boundaries. A blocked result identifies evidence, uncertainty, and the
+smallest required intervention. Straightforward work does not require a formal investigation.
+This is provider-shared prompt guidance, not an enforced scheduler, automatic continuation mechanism,
+or guarantee of task completion. Instruction assembly tests verify delivery; behavioral effectiveness
+requires live task evaluation. Existing provider sessions need refreshed instructions before evaluating it.
+The app no
 longer adds a blanket restriction on delegation; applicable user and repository instructions still apply.
 Stable chat ids, the shared browser/sidebar, and the distinction between pane turns and provider
 background work provide orientation. App facts come from `closedai_app.state`,
