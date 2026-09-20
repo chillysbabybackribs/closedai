@@ -136,7 +136,7 @@ its scoped accessibility mode when closed. It does not change global accessibili
 select/copy text, fetch the document again, or run OCR. Cancellation and a nine-second deadline
 close the helper; main-frame navigation/renderer loss invalidate the result. Tree input is
 capped at eight million characters. Recheck the internal adapter on Electron upgrades using
-`scripts/pdf-native-live-check.mjs` with a local native PDF and scan.
+`scripts/pdf-native-live-check.mjs` with the benchmark's local `columns.pdf` and `book.pdf`.
 
 Native text does not establish complete reading order, table structure, math fidelity, or
 image coverage. The scan checked in this build returned no text: Google Chrome's separately

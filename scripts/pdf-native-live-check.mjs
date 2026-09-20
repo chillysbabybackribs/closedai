@@ -1,5 +1,6 @@
 // Isolated Electron integration check; uses local PDFs and a disposable profile.
-// node scripts/pdf-native-live-check.mjs /absolute/native.pdf /absolute/scan.pdf
+// Pass the benchmark's columns.pdf and book.pdf (Lost in the Middle and the book scan).
+// node scripts/pdf-native-live-check.mjs /absolute/columns.pdf /absolute/book.pdf
 import assert from 'node:assert/strict'
 import { build } from 'esbuild'
 import electron from 'electron'

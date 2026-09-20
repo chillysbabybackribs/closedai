@@ -27,7 +27,12 @@ export async function readNativePdf(
     const contents = helper.webContents
     const deadline = AbortSignal.timeout(9_000)
     const stop = signal ? AbortSignal.any([signal, deadline]) : deadline
-    const dispose = () => { if (!contents.isDestroyed()) contents.close() }
+    let closing: Promise<void> | undefined
+    const dispose = () => closing ??= new Promise<void>(resolve => {
+      if (contents.isDestroyed()) { resolve(); return }
+      contents.once('destroyed', () => resolve())
+      contents.close()
+    })
     contents.setWindowOpenHandler(() => ({ action: 'deny' }))
     stop.addEventListener('abort', dispose, { once: true })
     try {
@@ -45,7 +50,7 @@ export async function readNativePdf(
       throw error
     } finally {
       stop.removeEventListener('abort', dispose)
-      dispose()
+      await dispose()
     }
   })
 }
