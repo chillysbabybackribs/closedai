@@ -16,9 +16,22 @@ export function localFilePath(value: string | undefined): string | null {
   return path.startsWith('/') && !path.startsWith('//') && !/[\u0000-\u001f]/.test(path) ? path : null
 }
 
+export function parseLocalFileTarget(value: string | undefined): { path: string; line?: number; endLine?: number } | null {
+  const cleanPath = localFilePath(value)
+  if (!cleanPath) return null
+  if (!value) return { path: cleanPath }
+  const lineMatch = value.match(/#L(\d+)(?:-L?(\d+))?$/) || value.match(/:(\d+)(?::(\d+))?$/)
+  if (lineMatch) {
+    const line = parseInt(lineMatch[1]!, 10)
+    const endLine = lineMatch[2] ? parseInt(lineMatch[2], 10) : undefined
+    return { path: cleanPath, line, endLine }
+  }
+  return { path: cleanPath }
+}
+
 export type LocalFilePreview =
   | { kind: 'image'; name: string; src: string }
-  | { kind: 'file'; path: string }
+  | { kind: 'file'; path: string; line?: number; endLine?: number }
   | { kind: 'revealed' }
 
 export type LocalFileResult =
@@ -27,3 +40,6 @@ export type LocalFileResult =
   | { kind: 'revealed' }
 export type ImageTabContent = { name: string; src: string; path?: string }
 export type ImageTabIdentity = { tabId: string; name: string; path?: string }
+export type FileTabIdentity = { tabId: string; name: string; path: string; line?: number; endLine?: number }
+export type FileTabContent = { name: string; path: string; content: string; line?: number; endLine?: number }
+

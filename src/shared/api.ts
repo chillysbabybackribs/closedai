@@ -15,6 +15,8 @@ export type ClosedaiApi = {
     openImage: (image: { name: string; src: string }) => Promise<string>
     image: (id: string) => Promise<import('./local-files.js').ImageTabContent>
     revealImage: (id: string) => Promise<void>
+    file: (id: string) => Promise<import('./local-files.js').FileTabContent>
+    revealFile: (id: string) => Promise<void>
   }
   window: {
     minimize: () => Promise<void>

@@ -31,6 +31,7 @@ export type BrowserNavigationError = {
 
 export type BrowserState = {
   image?: import('./local-files.js').ImageTabIdentity
+  file?: import('./local-files.js').FileTabIdentity
   url: string
   title: string
   isLoading: boolean
@@ -45,6 +46,7 @@ export type BrowserState = {
 
 export type BrowserTabInfo = {
   image?: import('./local-files.js').ImageTabIdentity
+  file?: import('./local-files.js').FileTabIdentity
   id: string
   // 1-based left-to-right position in the tab strip. `id` is a monotonic creation counter
   // that is never reused; `pos` shifts whenever tabs open or close.

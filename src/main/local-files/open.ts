@@ -1,6 +1,6 @@
 import { open, stat } from 'node:fs/promises'
 import { basename, extname } from 'node:path'
-import { localFilePath, type LocalFilePreview } from '../../shared/local-files.js'
+import { parseLocalFileTarget, type LocalFilePreview } from '../../shared/local-files.js'
 
 const IMAGE_TYPES: Record<string, string> = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
@@ -10,8 +10,9 @@ const MAX_IMAGE_BYTES = 32 * 1024 * 1024
 
 /** User-clicked files are previewed in browser tabs (inert raster images or files); directories are revealed. */
 export async function openLocalFile(href: string, reveal: (path: string) => void): Promise<LocalFilePreview> {
-  const path = typeof href === 'string' ? localFilePath(href) : null
-  if (!path) throw new Error('This is not an absolute local file link.')
+  const target = typeof href === 'string' ? parseLocalFileTarget(href) : null
+  if (!target) throw new Error('This is not an absolute local file link.')
+  const { path, line, endLine } = target
   const info = await stat(path)
   if (!info.isFile() && !info.isDirectory()) throw new Error('This file type cannot be opened.')
   const mime = IMAGE_TYPES[extname(path).toLowerCase()]
@@ -31,7 +32,7 @@ export async function openLocalFile(href: string, reveal: (path: string) => void
       return { kind: 'image', name: basename(path), src: `data:${mime};base64,${bytes.subarray(0, length).toString('base64')}` }
     } finally { await file.close() }
   }
-  if (info.isFile()) return { kind: 'file', path }
+  if (info.isFile()) return { kind: 'file', path, ...(line ? { line } : {}), ...(endLine ? { endLine } : {}) }
   reveal(path)
   return { kind: 'revealed' }
 }

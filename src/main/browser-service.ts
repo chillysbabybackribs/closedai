@@ -5,9 +5,9 @@ import type { BrowserHistory } from './browser-history-store.js'
 import type { BrowserBounds, BrowserShot, BrowserState, BrowserTabInfo } from '../shared/types.js'
 import type { TabPersistRecord } from './browser-tab-session-store.js'
 import { BrowserTab, HOME_URL, PARTITION, allocateTabId } from './browser-tab.js'
-import { sameDocumentUrl } from './browser-url.js'
 import { ImageTab, imageKey } from './local-files/image-tab.js'
-import type { ImageTabContent } from '../shared/local-files.js'
+import { FileTab } from './local-files/file-tab.js'
+import type { FileTabContent, ImageTabContent } from '../shared/local-files.js'
 import { PersistentSessionCookies } from './persistent-session-cookies.js'
 import { BrowserObservers } from './browser-network/observers.js'
 import { describeMissingTab } from '../shared/browser-tabs.js'
@@ -41,7 +41,7 @@ const CAPTURE_SETTLE_MS = 250
 // Owns the ordered list of tabs and the single human-visible one. All tabs share one session
 // (persist:browser), so a login in one tab applies to all.
 export class BrowserService extends EventEmitter {
-  private tabs: (BrowserTab | ImageTab)[] = []
+  private tabs: (BrowserTab | ImageTab | FileTab)[] = []
   // Native popup windows intentionally stay outside the visible tab strip, but CDP still needs
   // a stable application-owned id to address their WebContents directly.
   private readonly nativePopups = new Map<string, { contents: WebContents; openerTabId: string }>()
@@ -151,7 +151,7 @@ export class BrowserService extends EventEmitter {
     return true
   }
 
-  private registerTab(tab: BrowserTab | ImageTab, index?: number): void {
+  private registerTab(tab: BrowserTab | ImageTab | FileTab, index?: number): void {
     tab.on('state', () => {
       // Only the active tab drives the address bar / nav buttons; every tab's state change can
       // still alter its label/spinner in the strip.
@@ -217,15 +217,25 @@ export class BrowserService extends EventEmitter {
     return tab.id
   }
 
-  openFileTab(url: string): string {
-    const existing = this.tabs.find((tab) => tab instanceof BrowserTab && sameDocumentUrl(tab.getState().url, url))
+  openFileTab(content: { path: string; name: string; line?: number; endLine?: number }): string {
+    const existing = this.tabs.find((tab) => tab instanceof FileTab && tab.key === content.path)
     if (existing) {
+      if (content.line !== undefined) existing.updateLine(content.line, content.endLine)
       this.selectTab(existing.id)
       this.emit('state', existing.getState())
       return existing.id
     }
-    const tab = this.openTab(url, true)
+    const tab = new FileTab(allocateTabId(), content.path, content, this.activeId)
+    const index = this.tabs.findIndex((item) => item.id === this.activeId)
+    this.registerTab(tab, index + 1)
+    this.setActive(tab.id)
     return tab.id
+  }
+
+  fileContent(id: string): Promise<FileTabContent> {
+    const tab = this.tabs.find((item) => item.id === id)
+    if (!(tab instanceof FileTab)) throw new Error('This file tab is no longer open.')
+    return tab.readContent()
   }
 
   imageContent(id: string): ImageTabContent {
@@ -253,7 +263,8 @@ export class BrowserService extends EventEmitter {
     // Chrome). Never leave zero tabs — open a fresh home tab instead.
     if (this.activeId === id) {
       this.activeId = null
-      const previous = tab instanceof ImageTab ? this.tabs.find((item) => item.id === tab.previousTabId) : null
+      const previous = (tab instanceof ImageTab || tab instanceof FileTab)
+        ? this.tabs.find((item) => item.id === tab.previousTabId) : null
       const next = previous ?? this.tabs[index] ?? this.tabs[index - 1] ?? null
       if (next) this.setActive(next.id)
       else this.openTab(HOME_URL, true)
@@ -305,7 +316,7 @@ export class BrowserService extends EventEmitter {
   private setActive(id: string): void {
     const next = this.tabs.find((tab) => tab.id === id)
     if (!next) return
-    if (next instanceof ImageTab) {
+    if (next instanceof ImageTab || next instanceof FileTab) {
       if (this.activeId !== id) next.previousTabId = this.activeId
       this.activeId = id
       this.parkWebTabs()
@@ -351,6 +362,7 @@ export class BrowserService extends EventEmitter {
         isLoading: state.isLoading,
         active: tab.id === this.activeId,
         ...(state.image ? { image: state.image } : {}),
+        ...(state.file ? { file: state.file } : {}),
         stack: tab.exportNavigationStack()
       }
     })

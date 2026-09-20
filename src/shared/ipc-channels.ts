@@ -12,6 +12,8 @@ export type IpcInvokeChannels = {
   'localFiles:openImage': { args: [{ name: string; src: string }]; result: string }
   'localFiles:image': { args: [string]; result: import('./local-files.js').ImageTabContent }
   'localFiles:revealImage': { args: [string]; result: void }
+  'localFiles:file': { args: [string]; result: import('./local-files.js').FileTabContent }
+  'localFiles:revealFile': { args: [string]; result: void }
   'window:minimize': { args: []; result: void }
   'window:maximize': { args: []; result: void }
   'window:toggleFullscreen': { args: []; result: void }
@@ -97,7 +99,8 @@ export const IPC = {
   invoke: {
     localFiles: {
       open: 'localFiles:open', openImage: 'localFiles:openImage',
-      image: 'localFiles:image', revealImage: 'localFiles:revealImage'
+      image: 'localFiles:image', revealImage: 'localFiles:revealImage',
+      file: 'localFiles:file', revealFile: 'localFiles:revealFile'
     },
     window: {
       minimize: 'window:minimize',
