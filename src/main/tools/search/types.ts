@@ -23,6 +23,8 @@ export type SearchRequest = {
   includeAnswer?: boolean
   /** Research runs ask providers that extract pages (Exa) for the text itself, not just snippets. */
   sourceText?: boolean
+  /** Per-page extraction coverage; zero requests text without a character cap. */
+  maxTextChars?: number
   preferredDomains?: string[]
   goggles?: string
   relevance?: 'strict' | 'balanced' | 'lenient' | 'disabled'
@@ -33,7 +35,7 @@ export type SearchRequest = {
 export type ProvidedContent = {
   text: string
   highlights: string[]
-  /** The provider's per-page character cap was reached; the page continues beyond this text. */
+  /** The requested character cap was reached; more text may exist. False is not a fidelity guarantee. */
   truncated: boolean
   author?: string
 }

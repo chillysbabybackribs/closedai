@@ -1,11 +1,12 @@
 import { checkedJson, compactText, normalizedDomains, records, result, text, type ProviderDeps } from './provider-utils.js'
 import type { SearchProviderClient, SearchResult } from './types.js'
+import { DEFAULT_TEXT_CHARS } from './research/coverage.js'
 
 const BASE = 'https://api.exa.ai/search'
 /** `deep` variants synthesize answers over tens of seconds; discovery stays within the router deadline. */
 const SEARCH_TYPE = { quick: 'fast', balanced: 'auto', deep: 'auto' } as const
-/** Exa's documented per-page maximum; longer pages arrive truncated and are marked incomplete. */
-export const EXA_TEXT_CHARS = 10_000
+/** Application default, adjustable per research run; not an Exa limit. */
+export const EXA_TEXT_CHARS = DEFAULT_TEXT_CHARS
 const HIGHLIGHT_CHARS = 1_500
 const FRESHNESS_DAYS: Record<string, number> = { day: 1, week: 7, month: 31, year: 366 }
 
@@ -37,21 +38,21 @@ export function exaClient(deps: ProviderDeps, now: () => number = Date.now): Sea
           ...(excludeDomains.length ? { excludeDomains } : {}),
           contents: {
             highlights: { query: request.query, maxCharacters: HIGHLIGHT_CHARS },
-            ...(request.sourceText ? { text: { maxCharacters: EXA_TEXT_CHARS, verbosity: 'compact' } } : {})
+            ...(request.sourceText ? { text: extractionText(request.maxTextChars ?? EXA_TEXT_CHARS) } : {})
           }
         }),
         signal
       })
       const body = await checkedJson(response, 'exa') as Record<string, unknown>
       const results = records(body.results)
-        .map((item) => exaResult(item, request.sourceText === true))
+        .map((item) => exaResult(item, request.sourceText === true, request.maxTextChars ?? EXA_TEXT_CHARS))
         .filter((item): item is SearchResult => item !== null)
       return { provider: 'exa', results }
     }
   }
 }
 
-function exaResult(item: Record<string, unknown>, wantText: boolean): SearchResult | null {
+function exaResult(item: Record<string, unknown>, wantText: boolean, maxChars: number): SearchResult | null {
   const highlights = Array.isArray(item.highlights) ? item.highlights.filter((value): value is string => typeof value === 'string' && value.trim() !== '') : []
   const pageText = text(item.text)
   const snippet = compactText(highlights) || text(item.summary) || pageText.slice(0, 600)
@@ -60,8 +61,31 @@ function exaResult(item: Record<string, unknown>, wantText: boolean): SearchResu
   const author = text(item.author).trim()
   return {
     ...base,
-    content: { text: pageText, highlights, truncated: pageText.length >= EXA_TEXT_CHARS, ...(author ? { author: author.slice(0, 200) } : {}) }
+    content: { text: pageText, highlights, truncated: maxChars > 0 && pageText.length >= maxChars, ...(author ? { author: author.slice(0, 200) } : {}) }
   }
+}
+
+function extractionText(maxChars: number, verbosity: 'compact' | 'full' = 'compact') {
+  return { ...(maxChars > 0 ? { maxCharacters: maxChars } : {}), verbosity }
+}
+
+/** Selected-source expansion uses Contents directly; no repeat discovery or generated summary. */
+export async function exaContents(deps: ProviderDeps, url: string, maxChars: number, signal: AbortSignal): Promise<SearchResult> {
+  const key = await deps.readKey('exa')
+  signal.throwIfAborted()
+  const response = await deps.fetch('https://api.exa.ai/contents', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key },
+    // A fresh crawl is required for the full verbosity selection to take effect.
+    body: JSON.stringify({ ids: [url], text: extractionText(maxChars, 'full'), maxAgeHours: 0, livecrawlTimeout: 15_000 }),
+    signal
+  })
+  const body = await checkedJson(response, 'exa') as Record<string, unknown>
+  const status = records(body.statuses)[0]
+  if (status && status.status !== 'success') throw new Error(`Exa contents failed: ${text(status.status)} ${text((status.error as Record<string, unknown> | undefined)?.tag)}`)
+  const item = records(body.results)[0]
+  const page = item && exaResult(item, true, maxChars)
+  if (!page?.content) throw new Error('Exa returned no page text for this URL')
+  return page
 }
 
 /** Relative windows and validated `YYYY-MM-DDtoYYYY-MM-DD` ranges become inclusive published-date bounds. */
