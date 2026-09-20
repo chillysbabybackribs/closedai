@@ -6,7 +6,7 @@ import { searchTools } from '../index.js'
 import { SearchRouter } from '../router.js'
 import type { ProviderSearchResult, SearchRequest } from '../types.js'
 import { ResearchService, type ResearchDependencies, type ResearchInput } from './service.js'
-import type { SourceDocument } from './source-reader.js'
+import { SourceNeedsRendering, type SourceDocument } from './source-reader.js'
 
 const context: ToolContext = { paneId: 'pane', threadId: 'thread', turnId: 'turn', callId: 'call', signal: new AbortController().signal }
 const query: SearchRequest = { query: 'topic', intent: 'general', depth: 'balanced', count: 5 }
@@ -222,4 +222,73 @@ test('source metadata is bounded and cursors do not skip omitted sources', async
     if (!page.omittedSources) break
   }
   assert.equal(seen.size, 20)
+})
+
+test('JavaScript shells escalate to a hidden rendered read; static text stands when rendering fails or is unavailable', async (t) => {
+  const rendered: SourceDocument = { ...document, text: 'Rendered evidence', representation: 'rendered_text' }
+  const sparse: SourceDocument = { ...document, text: 'Loading…', sparse: true }
+  const gate = deferred<void>()
+  const renders: string[] = []
+  const service = new ResearchService(new SearchRouter([]), dependencies({
+    collect: async (url) => {
+      if (url.endsWith('/shell')) throw new SourceNeedsRendering('No readable source text; the page may require JavaScript')
+      if (url.endsWith('/sparse')) return { ...sparse, url }
+      if (url.endsWith('/broken')) throw new SourceNeedsRendering('No readable source text; the page may require JavaScript')
+      return { ...document, url }
+    },
+    render: async (url, _run, _source, signal) => {
+      renders.push(url)
+      if (url.endsWith('/broken')) throw new Error('worker crashed')
+      if (url.endsWith('/sparse')) throw new Error('worker busy')
+      await gate.promise
+      signal.throwIfAborted()
+      return { ...rendered, url }
+    }
+  }))
+  t.after(() => service.dispose())
+  const run = service.start({ ...input, queries: [], urls: ['https://app.example/shell', 'https://app.example/sparse', 'https://app.example/broken', 'https://app.example/plain'] }, context)
+  await tick(); await tick()
+  const byUrl = () => Object.fromEntries(service.read(run.runId, context).sources.map((source) => [source.url.split('/').pop(), source]))
+  assert.equal(byUrl().shell.state, 'rendering')
+  assert.equal(byUrl().sparse.state, 'ready', 'a failed rendered read keeps the sparse static text')
+  assert.equal(byUrl().sparse.representation, 'static_text')
+  assert.equal(byUrl().broken.state, 'failed')
+  assert.match(byUrl().broken.error ?? '', /require JavaScript; rendered read failed: worker crashed/)
+  assert.equal(byUrl().plain.representation, 'static_text')
+  gate.resolve()
+  await tick(); await tick()
+  assert.equal(byUrl().shell.state, 'ready')
+  assert.equal(byUrl().shell.representation, 'rendered_text')
+  assert.equal(byUrl().shell.chars, 'Rendered evidence'.length)
+  assert.deepEqual(renders.sort(), ['https://app.example/broken', 'https://app.example/shell', 'https://app.example/sparse'])
+  assert.equal(service.read(run.runId, context).state, 'completed')
+  const excerpt = await service.source(run.runId, byUrl().shell.id, context, 0, 100) as { representation: string }
+  assert.equal(excerpt.representation, 'rendered_text')
+
+  const noWorkers = new ResearchService(new SearchRouter([]), dependencies({
+    collect: async () => { throw new SourceNeedsRendering('No readable source text; the page may require JavaScript') }
+  }))
+  t.after(() => noWorkers.dispose())
+  const plain = noWorkers.start({ ...input, queries: [], urls: ['https://app.example/shell'] }, context)
+  await tick(); await tick()
+  assert.equal(noWorkers.read(plain.runId, context).sources[0]?.state, 'failed')
+  assert.match(noWorkers.read(plain.runId, context).sources[0]?.error ?? '', /require JavaScript$/)
+})
+
+test('cancelling a run aborts an in-flight rendered read', async (t) => {
+  let aborted = false
+  const service = new ResearchService(new SearchRouter([]), dependencies({
+    collect: async () => { throw new SourceNeedsRendering('shell') },
+    render: (_url, _run, _source, signal) => new Promise((_resolve, reject) => {
+      signal.addEventListener('abort', () => { aborted = true; reject(signal.reason) }, { once: true })
+    })
+  }))
+  t.after(() => service.dispose())
+  const run = service.start({ ...input, queries: [], urls: ['https://app.example/shell'] }, context)
+  await tick(); await tick()
+  assert.equal(service.read(run.runId, context).sources[0]?.state, 'rendering')
+  service.cancel(run.runId, context)
+  await tick()
+  assert.equal(aborted, true)
+  assert.equal(service.read(run.runId, context).sources[0]?.state, 'failed')
 })
