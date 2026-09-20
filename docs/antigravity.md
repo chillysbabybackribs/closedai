@@ -50,14 +50,19 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
   is advertised after the next app launch.
 - **The custom agent** (`antigravity-profile.ts`) is written under `<userData>/antigravity/profile` and
   reaches the CLI as an extra `--add-dir` plus `--agent closedai`. Its frontmatter `tools:` list is the
-  agent's native tool grant (files, shell, tasks, browser, web research, and images). Without it a
+  agent's native tool grant (files, shell, tasks, web research, and images). Without it a
   `--agent` run keeps only a read-only set and the model narrates diffs instead of editing. The former
   app-authored native-browser `PreToolUse` denial is removed; refreshing an old profile also removes
   its generated hook and script. Routing guidance identifies ClosedAI tools as operating the visible
-  signed-in browser and native tools as operating a separate browser. Native tools are available
-  without pretending they share the embedded browser's sessions. On 2026-09-13 the installed CLI
-  discovered the revised agent and emitted initialization with no error in a no-prompt startup check;
-  this establishes profile loading, not live execution of every declared tool.
+  signed-in browser and native tools as operating a separate browser. The native browser tools are
+  not declared: agy 1.2.7 (2026-09-20) still lists them in `init.tools` but rejects them in a custom
+  agent, failing every turn with `failed to construct executor: … unknown component: tool
+  "open_browser_url" not found in registry`. Because the CLI self-updates, that rejection is handled
+  at runtime too: the service parses the names out of the failed `result`, records them in
+  `<userData>/antigravity/profile/undeclarable-tools.json`, rewrites the agent without them, and
+  replays the turn once on a fresh process (a name already recorded means the rewrite cannot help,
+  so the failure is shown as-is). Verified 2026-09-20 on agy 1.2.7: the regenerated profile answers
+  a turn with `--agent closedai`.
 - **Shared application voice and context.** The agent includes the common application,
   articulation, and engineering contracts: project-scoped panes, one shared browser, app/tool
   routing, concise result-led messages, native focused read/edit tools, narrow verification, and
