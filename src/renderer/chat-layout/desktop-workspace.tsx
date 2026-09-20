@@ -8,14 +8,17 @@ import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import { ChatCanvas } from './chat-canvas.js'
 import { useChatLayout } from './layout-controller.js'
+import { tabActivity } from './tab-activity.js'
+import type { DrawerReviewQueue } from '../side-drawer/drawer-review-queue.js'
 
 export type ChatLayoutHandle = {
   splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
   toggleBrowser: () => void
 }
 
-export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, ref }: {
+export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, ref }: {
   chat: ReturnType<typeof useChatController>
+  reviewQueue: DrawerReviewQueue
   appearance: AppearanceSettings
   historyOpen: boolean
   onHistoryOpenChange: (open: boolean) => void
@@ -52,6 +55,8 @@ export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenC
         onDragActive={setDragging}
         browserVisible={layout.browserVisible} onToggleBrowser={layout.toggleBrowser}
         title={(id) => chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat'}
+        activity={(id) => tabActivity(chat.chats.find((row) => row.paneId === id),
+          chat.snapshot.panes?.[id] ?? (id === chat.selectedPaneId ? chat.snapshot.selected : undefined), reviewQueue[id])}
         onSelect={select} onDock={(id, target, edge, singleTab) => { void layout.dock(id, target, edge, singleTab) }}
         onSelectTab={(id) => { onHistoryOpenChange(false); void layout.activateTab(id) }}
         onCloseTab={(id) => { void layout.closeTab(id) }}

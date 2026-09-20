@@ -4,10 +4,11 @@ import { Columns2, GripVertical, Maximize2, MessageSquarePlus, Minimize2, Monito
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { ChatTabs } from './chat-tabs.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
+import type { TabActivity } from './tab-activity.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserRevealVersion, onToggleBrowser, renderBrowser, onDragActive, title, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserRevealVersion, onToggleBrowser, renderBrowser, onDragActive, title, activity, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
@@ -17,6 +18,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
   onDragActive: (active: boolean) => void
   onToggleBrowser: () => void
   title: (id: string) => string
+  activity?: (id: string) => TabActivity
   renderPane: (id: string) => ReactNode
   onSelect: (id: string) => void
   onSelectTab: (id: string) => void
@@ -195,7 +197,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
                   <GripVertical size={13} aria-hidden="true" />
                 </button>
                 <ChatTabs ids={tabs} activeId={id} busy={busy} canClose={tabs.length > 1 || chatCount > 1}
-                  title={title} onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab}
+                  title={title} activity={activity} onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab}
                   onDrag={(tab) => setDragging({ id: tab, singleTab: true })} />
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger asChild>

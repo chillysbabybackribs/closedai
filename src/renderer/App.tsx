@@ -128,6 +128,7 @@ function App(): JSX.Element {
           key={chat.workspace?.cwd ?? chat.state.cwd}
           ref={workspaceRef}
           chat={chat}
+          reviewQueue={drawer.reviewQueue}
           appearance={appearance}
           historyOpen={historyOpen}
           onHistoryOpenChange={setHistoryOpen}
