@@ -30,10 +30,9 @@ test('developer instructions stay within their expanded budget and establish the
 test('developer instructions read a named instrument as an instance of the objective, bounded by it', () => {
   const instructions = closedAiDeveloperInstructions()
   assert.match(instructions, /best-known instance of what they are after, not as the boundary/)
-  assert.match(instructions, /pursue it with the named instrument first/)
+  assert.match(instructions, /pursue it directly with the named instrument first without degrading speed/)
   assert.match(instructions, /never pad results with weaker material/)
-  assert.match(instructions, /search for better or equally good instruments/)
-  assert.match(instructions, /which alternatives you checked and why/)
+  assert.match(instructions, /when a strictly superior tool, method, or source is known/)
 })
 
 test('new and resumed threads receive the same developer instructions', () => {

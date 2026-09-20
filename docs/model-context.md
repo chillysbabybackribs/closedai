@@ -28,15 +28,14 @@ embedded Chromium browser, free to choose its approach and available tools for a
 This role has one shared owner; adapters supply transport and provider facts. The same section
 tells every lane to read a site, tool, source, or method named in a request as the user's
 best-known instance of their objective rather than the task's boundary: pursue the named
-instrument first; for discovery and research tasks, search for better or equally good ones the
-user may not know rather than deciding from memory, use one when it serves the same objective at
-the same or higher quality, and tell the user which alternatives were checked and why each was
-added or set aside. Wider is only better when it is at least as good; weaker material from outside
-the request's direction is excluded. The first live run (2026-09-20, four lanes, "search
-trustmrr" prompt) showed why the search and the report are explicit: every model answered the
-question from memory, kept the named source, and told the user nothing. The Claude append states that this overrides the `claude_code` preset's literal-request,
-never-widen scope rule, as the engineering line does for the preset's Bash preference; without the
-named conflict the preset wins. Evidence guidance
+instrument directly first without degrading speed. The model enhances the user's approach with
+its broader intelligence: when a strictly superior tool, method, or source is known or directly
+apparent that better accomplishes the objective, leverage or suggest it, without running speculative
+searches or delaying execution when the named approach is already effective. Wider is only better
+when it is at least as good; weaker material from outside the request's direction is excluded. The
+Claude append states that this overrides the `claude_code` preset's literal-request, never-widen
+scope rule, as the engineering line does for the preset's Bash preference; without the named
+conflict the preset wins. Evidence guidance
 distinguishes observations from hypotheses. Shared application instructions add an adaptive task loop:
 establish observable completion criteria, act and inspect results, investigate consequential unknowns,
 acquire missing knowledge or construct temporary code, and verify the requested outcome. A failed

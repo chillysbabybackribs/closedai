@@ -38,24 +38,12 @@ function fileLinkInstructions(cwd: string): string {
   )
 }
 
-// gemini-3.8-flash follows concrete procedures and skips dispositions. Measured 2026-09-20 with
-// the shared objective instruction in place: four search_web calls, every query scoped to the
-// named site, no alternatives considered, none reported; Claude and Codex did both on the same
-// prompt. The link rule above was the same lesson, so this states the search as steps.
-const DISCOVERY_PROCEDURE =
-  'When a request names a site, tool, or source for a discovery or research task, the named source is step one, not the whole procedure. ' +
-  'Before writing the final answer: run at least one search for alternatives to the named source (for example "<source> alternatives" or "sites like <source>"), ' +
-  'open the strongest one or two candidates, and keep any that serve the same objective at the same or higher quality. ' +
-  'End the answer with a short "Sources checked" list naming each alternative and whether it was used or set aside and why. ' +
-  'Do this even when the named source turns out to be the best; the user is also asking what else exists.'
-
 /** Product guidance and the selected workspace's root policy. */
 export function antigravityAgentInstructions(cwd: string): string {
   const rules = workspaceRulesSection(cwd)
   return [
     INSTRUCTIONS,
     fileLinkInstructions(cwd),
-    DISCOVERY_PROCEDURE,
     rules
   ].filter(Boolean).join('\n\n')
 }
