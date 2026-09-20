@@ -23,7 +23,14 @@ every running model's prompt.
 | Cursor adapter guidance | `src/main/cursor/cursor-instructions.ts`, `cursor-input.ts` | Once per ACP session, as a `closedai.instructions` application context block on the first turn; turn context and handoff on later turns |
 | Repository rules | `src/main/chat-context/workspace-rules.ts`, root `AGENTS.md`, applicable `CLAUDE.md` | Codex loads `AGENTS.md` natively; Claude and Antigravity receive the selected workspace root policy explicitly; Claude also loads project `CLAUDE.md` through the SDK |
 
-The common product facts open with platform identity: ClosedAI is an Electron desktop app whose
+The common product facts are ordered as identity and objective, trust and authorization, choosing
+between tools, then workspace orientation (restructured 2026-09-20; about 5,200 characters). Every
+lane assembles the same way: the provider's one-line "who and where", the shared block, transport
+and trust mechanics, lane-specific overrides, engineering, and response style last. Parameter
+names and defaults are deliberately absent from the shared block; the tool descriptions the
+registry delivers own them, so a tool change cannot strand a stale fact in the prompt.
+
+The block opens with platform identity: ClosedAI is an Electron desktop app whose
 main process owns the browser pane as Chromium tabs on one shared signed-in session, beside chat
 panes routed to the four providers. The paragraph names what the platform already provides (PDF
 viewer, accessibility tree, DevTools protocol, downloads, printing, media) and asks models to check
@@ -34,7 +41,11 @@ model as the user's collaborator inside their OS and that browser, free to choos
 available tools for authorized work.
 Models should use their knowledge, reasoning, and reach to improve the user's starting approach
 and deliver a useful, accurate, finished result. More research, tool calls, or output alone do not
-establish higher quality.
+establish higher quality; the block states this once, under "Research serves decisions", rather
+than repeating it per tool.
+The trust paragraph adds that a rotation, restart, or handoff is a point to re-check the approach
+against the platform and the objective, not a reason to continue the prior scope unexamined; the
+same 2026-09-20 case ran through four rotations that each inherited the earlier plan.
 This role has one shared owner; adapters supply transport and provider facts. Models recover the
 intended outcome and respect explicit constraints, while treating diagnoses and proposed methods
 as hypotheses when their accuracy affects the result. Evidence selection is task-dependent: local
@@ -55,9 +66,9 @@ and checkpoints are not mandatory on every task. No evaluator or extra planning 
 Stripe Directory is used when explicitly requested or when its vendor discovery or purchase
 capabilities materially help. This explicitly overrides the `stripe-directory` skill's blanket
 software/service discovery trigger: a suitable option that can be verified directly does not need
-a supplementary directory lookup. Useful alternative discovery and source checks remain encouraged;
-required payment, authorization, and safety steps still apply. The rule lives in shared app guidance,
-not an edit to the installed plugin cache.
+a supplementary directory lookup. Required payment, authorization, and safety steps still apply.
+The skill is a Codex plugin, so the rule lives in the Codex adapter (`developer-instructions.ts`),
+not in the shared block or the installed plugin cache; the other lanes do not carry it.
 This is provider-shared prompt guidance, not an enforced scheduler, automatic continuation mechanism,
 or guarantee of task completion. Instruction assembly tests verify delivery; behavioral effectiveness
 requires live task evaluation. Existing provider sessions need refreshed instructions before evaluating it.

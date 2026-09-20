@@ -16,9 +16,9 @@ dependent decisions wait for needed evidence. Research stops when important deci
 material contradictions are resolved or disclosed, and further findings are unlikely to change the
 approach. The model still finishes and verifies the requested work. Search, library lookup, and
 checkpoints are optional, not per-task rituals. Models account for prior effects before retries.
-Stripe Directory's broad discovery trigger is narrowed by shared guidance: use it when explicitly
-requested or materially useful, and skip supplementary directory searches when a suitable option can
-be verified directly. Useful alternative discovery, source checks, and required purchase safeguards remain.
+Stripe Directory's broad discovery trigger is narrowed in the Codex lane, where the plugin lives: use
+it when explicitly requested or materially useful, and skip supplementary directory searches when a
+suitable option can be verified directly. Required purchase safeguards remain.
 This is prompt guidance, not a new background worker or enforced completion guarantee. See
 [Model context](model-context.md) for delivery and boundaries.
 
