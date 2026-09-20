@@ -248,9 +248,8 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 - Tool activity is grouped into expandable step lists with arguments, output, status, and timing
   when available. Provider-native background tasks have a separate transcript group and a
   status popover. A turn ending does not prove that all background tasks finished.
-- Completed assistant responses offer copy and branching.
-  Timestamps appear when recorded; older history does not acquire invented timestamps. Feedback
-  is stored in renderer localStorage and is not sent to providers.
+- Completed assistant responses offer copy and branching. Timestamps appear when recorded;
+  older history does not acquire invented timestamps.
 - The project rail contains the working timer and project menu; Tools and Turn trace open from
   the title bar's File menu on the selected pane. Send, pause,
   and resume controls live in the composer. Pause ends the provider turn — no protocol can suspend

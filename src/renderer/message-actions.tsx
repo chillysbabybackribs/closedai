@@ -21,7 +21,7 @@ function readMetadata(key: string): MessageMetadata {
 
 export function MessageActions({ item, context }: { item: AssistantItem; context: MessageActionContext }) {
   const storageKey = 'closedai:message:' + JSON.stringify([context.threadKey, item.id])
-  const [metadata, setMetadata] = useState<MessageMetadata>(() => {
+  const [metadata] = useState<MessageMetadata>(() => {
     const saved = readMetadata(storageKey)
     return { ...saved, createdAt: item.createdAt ?? saved.createdAt ?? (item.streaming ? Date.now() : undefined) }
   })
