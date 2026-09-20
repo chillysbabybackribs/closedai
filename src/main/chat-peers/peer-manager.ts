@@ -82,6 +82,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   private visiblePaneIds = new Set<ChatPaneId>()
   private retainedTabIds = new Set<ChatPaneId>()
   private visibilityRevision = 0
+  private selectingProject = false
   private readonly lifecycle: PeerLifecycle
   private readonly parking: PeerIdleParking
   private readonly catalog: PeerChatCatalog
@@ -412,7 +413,12 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     const attached = this.lifecycle.get(chatId) !== undefined
     if (record.threadId) {
       const threadId = record.threadId
-      await this.withAwake(attached ? chatId : this.selectedPaneId, (surface) => surface.archiveThread(threadId))
+      if (!attached) this.lifecycle.attach(record)
+      try {
+        await this.withAwake(chatId, (surface) => surface.archiveThread(threadId))
+      } finally {
+        if (!attached) this.lifecycle.detach(chatId)
+      }
     }
     this.store.archive(chatId)
     this.transcripts.forget(chatId)
@@ -436,6 +442,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   /** Select a directory without changing the working directory or lifetime of existing chats. */
   async selectProject(projectPath: string | null, deferred = false): Promise<void> {
+    if (this.selectingProject) throw new Error('A project selection is already in progress')
+    this.selectingProject = true
+    try {
     if (!deferred) {
       this.projectSwitch.assertAvailable()
       this.projectSwitch.cancel('A manual project selection superseded the queued switch')
@@ -459,6 +468,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     await this.persistOpenChats()
     this.emitWorkspace()
     this.wakeLater(this.selectedPaneId, 'start the project chat')
+    } finally { this.selectingProject = false }
   }
 
   beginLogin(): Promise<string | null> {

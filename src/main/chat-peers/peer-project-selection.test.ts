@@ -11,12 +11,13 @@ import { chatRecord, MemorySettings } from './peer-manager-harness.js'
 
 class Surface extends EventEmitter implements ChatSurface {
   stopped = false
-  constructor(private readonly modelId: string | null) { super() }
+  running = false
+  constructor(private readonly modelId: string | null, private readonly cwd: string) { super() }
   snapshot(): ChatSnapshot {
     return {
       provider: 'codex', connection: { state: 'ready', message: 'ready' }, account: null,
-      models: [], selectedModel: this.modelId, selectedReasoningEffort: null, cwd: '/workspace',
-      threadId: null, threadName: null, activeTurnId: null, pausedTurnId: null, contextUsage: null, planUsage: null,
+      models: [], selectedModel: this.modelId, selectedReasoningEffort: null, cwd: this.cwd,
+      threadId: null, threadName: null, activeTurnId: this.running ? 'turn' : null, pausedTurnId: null, contextUsage: null, planUsage: null,
       turnContext: null, items: []
     }
   }
@@ -37,7 +38,7 @@ class Surface extends EventEmitter implements ChatSurface {
   async beginLogin(): Promise<string | null> { return null }
 }
 
-test('choosing a project replaces workspace panes and publishes its selected directory', async () => {
+test('directory navigation retains running chats and opens them in their original directory', async (t) => {
   const settings = new MemorySettings({
     ...DEFAULT_APP_SETTINGS,
     chatOpenIds: ['pane-a'],
@@ -51,7 +52,8 @@ test('choosing a project replaces workspace panes and publishes its selected dir
     settings,
     store,
     (_settings, record) => {
-      const surface = new Surface(record.modelId)
+      assert.equal(_settings.get().chatWorkspacePath, record.cwd)
+      const surface = new Surface(record.modelId, record.cwd)
       surfaces.push(surface)
       return surface
     },
@@ -78,17 +80,32 @@ test('choosing a project replaces workspace panes and publishes its selected dir
       }
     }
   )
+  t.after(() => manager.stop())
+  surfaces[0]!.running = true
+  surfaces[0]!.emit('event', { type: 'turn', turnId: 'turn' })
 
   await manager.selectProject('/projects/new')
 
-  assert.equal(surfaces[0]!.stopped, true)
+  assert.equal(surfaces[0]!.stopped, false)
   assert.deepEqual(manager.snapshot().workspace, { cwd: '/projects/new', projectPath: '/projects/new' })
-  assert.equal(manager.snapshot().chats.length, 1)
+  assert.equal(manager.snapshot().chats.length, 2)
+  assert.equal(manager.snapshot().chats.find((row) => row.paneId === 'pane-a')?.running, true)
   assert.notEqual(manager.snapshot().selectedPaneId, 'pane-a')
   assert.equal(settings.get().chatOpenIds.length, 1)
   assert.equal(store.require(manager.snapshot().selectedPaneId).cwd, '/projects/new')
 
-  await manager.selectProject('/workspace')
+  const destination = manager.snapshot().selectedPaneId
+  surfaces[1]!.running = true
+  surfaces[1]!.emit('event', { type: 'turn', turnId: 'other-turn' })
+  await manager.openChat('pane-a')
   assert.equal(manager.snapshot().selectedPaneId, 'pane-a')
-  assert.deepEqual(manager.snapshot().chats.map((chat) => chat.paneId), ['pane-a'])
+  assert.equal(manager.snapshot().selected.cwd, '/workspace')
+  assert.deepEqual(settings.get().chatOpenIds, ['pane-a'])
+  assert.equal(manager.snapshot().chats.length, 2)
+  assert.equal(manager.snapshot().chats.every((row) => row.running), true)
+  assert.equal(surfaces.length, 2, 'navigation reuses both runtimes')
+  await manager.openChat(destination)
+  assert.equal(manager.snapshot().selected.cwd, '/projects/new')
+  assert.equal(manager.snapshot().selectedPaneId, destination)
+  assert.equal(surfaces.every((surface) => !surface.stopped), true)
 })
