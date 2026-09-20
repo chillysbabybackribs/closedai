@@ -13,15 +13,18 @@
   text-align: left;
   cursor: pointer;
 }
-/* A compact status chip sized to its label: it reports on the turn instead of filling the column. */
+/* Text only, set like the activity step rows above it: no chrome of its own, a quiet hover
+   wash, and the state carried by the leading glyph's ink. */
 .background-tasks-heading {
   width: fit-content;
   max-width: 100%;
-  min-height: 28px;
-  padding: 0 8px;
-  border: 1px solid var(--hairline);
-  border-radius: 6px;
-  background: var(--surface-chrome);
+  min-height: 26px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  font-size: var(--chat-fs-process, 12px);
+  line-height: 1.4;
 }
 .background-tasks-heading[data-state='done'] > svg:first-child { color: var(--ok-ink); }
 .background-tasks-heading[data-state='failed'] > svg:first-child { color: var(--destructive); }
@@ -88,7 +91,7 @@
   animation: background-task-rotate 1s linear infinite;
 }
 .background-tasks-heading:hover, .background-task summary:hover {
-  background: var(--surface-control-hover);
+  background: rgb(255 255 255 / 4%);
 }
 .background-tasks button:focus-visible, .background-task summary:focus-visible {
   outline: 2px solid var(--focus-ink);
