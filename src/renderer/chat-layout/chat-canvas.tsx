@@ -207,7 +207,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, onToggleBro
                     <DropdownMenu.Content className="titlebar-menu-content chat-layout-new-chat-menu" align="end" sideOffset={4} loop>
                       <DropdownMenu.Item className="titlebar-menu-item" data-ui="layout.new-chat" data-ui-key={id}
                         onSelect={() => onNewChat(id)}>
-                        <MessageSquarePlus size={14} aria-hidden="true" /><span>New chat</span>
+                        <MessageSquarePlus size={14} aria-hidden="true" /><span>New chat tab</span>
                       </DropdownMenu.Item>
                       <DropdownMenu.Item className="titlebar-menu-item" data-ui="layout.split-right" data-ui-key={id}
                         onSelect={() => {

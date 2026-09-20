@@ -19,6 +19,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [selectionToConfirm, setSelectionToConfirm] = useState<string | null>(null)
   const pending = useRef(false)
   const selected = useRef(snapshot.selectedPaneId)
   const current = useRef(layout)
@@ -43,7 +44,15 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   // A normal sidebar click focuses an existing tile, or replaces the focused tile.
   // Split/add operations manage their own destination while main announces selection.
   useEffect(() => {
-    if (pending.current) return
+    // Workspace events are delivered in a React transition. An IPC reply can arrive
+    // first; do not prune the new tab against the previous workspace snapshot.
+    if (selectionToConfirm) {
+      if (snapshot.selectedPaneId !== selectionToConfirm ||
+          !snapshot.chats.some((chat) => chat.paneId === selectionToConfirm)) return
+      pending.current = false
+      setSelectionToConfirm(null)
+      setBusy(false)
+    } else if (pending.current) return
     const next = snapshot.selectedPaneId
     const previous = selected.current
     selected.current = next
@@ -57,7 +66,12 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       }
       return tree === value.tree ? value : { ...value, tree: tree! }
     })
-  }, [snapshot.selectedPaneId, snapshot.chats, busy, cwd])
+  }, [snapshot.selectedPaneId, snapshot.chats, busy, cwd, selectionToConfirm])
+
+  const focusPane = useCallback(async (id: string): Promise<void> => {
+    // Menu focus restoration must not select the departing pane mid-operation.
+    if (!pending.current) await window.closedai.chat.selectPane(id)
+  }, [])
 
   // A null edge adds a tab in the target tile without adding a split.
   const dock = useCallback(async (id: string | null, target: string, edge: DockEdge | null, singleTab = false): Promise<void> => {
@@ -88,8 +102,12 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
           ? dockPane(tree, added, target, edge, crypto.randomUUID())
           : addTab(tree, target, added) }
       })
-    } catch (reason) { setError(String(reason)) }
-    finally { pending.current = false; setBusy(false) }
+      setSelectionToConfirm(added)
+    } catch (reason) {
+      setError(String(reason))
+      pending.current = false
+      setBusy(false)
+    }
   }, [snapshot.chats, cwd])
 
   const newChat = useCallback((target: string) => dock(null, target, null), [dock])
@@ -146,5 +164,5 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     setLayout((value) => ({ ...value, tree: resizeSplit(value.tree, id, ratio) }))
   }, [])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
-  return { ...layout, error, busy, dock, newChat, activateTab, closeTab, hide, resize, toggleBrowser }
+  return { ...layout, error, busy, dock, newChat, focusPane, activateTab, closeTab, hide, resize, toggleBrowser }
 }

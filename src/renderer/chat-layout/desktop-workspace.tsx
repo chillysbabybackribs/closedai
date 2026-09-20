@@ -32,7 +32,7 @@ export function DesktopWorkspace({ chat, appearance, historyOpen, onHistoryOpenC
   const browser = useBrowserController(JSON.stringify([layout.browserVisible, layout.tree]), layout.browserVisible, dragging)
   const [actionError, setActionError] = useState('')
   const select = (id: string): void => {
-    void chat.selectPane(id).catch((reason: unknown) => setActionError(String(reason)))
+    void layout.focusPane(id).catch((reason: unknown) => setActionError(String(reason)))
   }
   return <div className="chat-desktop-workspace">
     {(layout.error || actionError) && <div className="chat-layout-error" role="alert">{layout.error || actionError}</div>}

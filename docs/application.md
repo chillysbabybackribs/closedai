@@ -190,7 +190,9 @@ still detaches and stops it.
 
 Each tile header shows conversation tabs and a **+** button for **New chat tab**. It uses that
 tile's active chat model, adds a tab, and selects it while retaining the previous tabs and the
-other tiles and divider sizes. Click a tab to return to its conversation; arrow keys and Home/End
+other tiles and divider sizes. Tab creation waits for the renderer's workspace snapshot to
+catch up with the new chat before reconciling tabs; menu focus restoration cannot interrupt it.
+Click a tab to return to its conversation; arrow keys and Home/End
 also switch tabs. Tab strips scroll horizontally when full. Mounted drafts and attachments survive
 switching tabs. Each tab's close button removes it from the layout without deleting its history
 or stopping a running turn. Closing the active tab selects a neighbor; closing the last tab in a
