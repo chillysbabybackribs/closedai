@@ -333,8 +333,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   after a chat switch are ignored. The mounted display boundary also uses a stable row identity,
   falling back to the latest turn when a snapshot removes that row, so trimming cannot leave
   streamed messages hidden behind an out-of-range row offset. Earlier-page reveals apply once.
-  Background-task status remains available outside the loaded
-  page. Provider sessions and the main-process transcript remain complete for continuation,
+  Provider sessions and the main-process transcript remain complete for continuation,
   branching, and peer reads; this is display paging, not model compaction. Codex history replay
   emits one replacement instead of streaming old items again.
 - The model menu opens on the providers, one row each, naming the model in use where that
@@ -351,7 +350,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   when available. File modifications display interactive diff viewers supporting unified and
   side-by-side split modes, collapsible hunks with expand/collapse all, individual hunk copying,
   and proportional addition/deletion statistics. Provider-native background tasks have a separate
-  transcript group and a status popover. A turn ending does not prove that all background tasks
+  transcript group; there is no separate status strip above the composer. A turn ending does not prove that all background tasks
   finished.
 - Completed assistant responses offer copy and branching. Timestamps appear when recorded;
   older history does not acquire invented timestamps.

@@ -1,12 +1,5 @@
-import type { CSSProperties, JSX, ReactNode } from 'react'
+import type { CSSProperties, JSX } from 'react'
 import { useEffect, useState } from 'react'
-
-/** Ambient strip under the transcript. It now carries only the background-task control: the
- *  working timer moved onto the composer's project rail, where the turn is actually driven. */
-export function TaskActivity({ children }: { children?: ReactNode }): JSX.Element | null {
-  if (!children) return null
-  return <div className="task-activity-strip">{children}</div>
-}
 
 /** Widest timer the rail reserves room for: a four-digit "88m 88s" clock. Anything shorter is
  *  padded to the same box, so the copy holds one position while time runs. */

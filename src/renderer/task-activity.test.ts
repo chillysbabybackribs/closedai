@@ -3,7 +3,7 @@ import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-import { formatElapsedTime, TaskActivity, TurnActivityIndicator } from './task-activity.tsx'
+import { formatElapsedTime, TurnActivityIndicator } from './task-activity.tsx'
 
 test('an active turn renders a Codex-style working timer instead of a thinking label', () => {
   const html = renderToStaticMarkup(createElement(TurnActivityIndicator, { activeTurnId: 'turn-1' }))
@@ -36,17 +36,7 @@ test('turn elapsed time safely normalizes incomplete seconds', () => {
 test('the working timer is a bare indicator so the composer rail can host it', () => {
   const running = renderToStaticMarkup(createElement(TurnActivityIndicator, { activeTurnId: 't' }))
   assert.match(running, /composer-strip-activity/)
-  assert.doesNotMatch(running, /task-activity-strip/)
   assert.equal(renderToStaticMarkup(createElement(TurnActivityIndicator, { activeTurnId: null })), '')
-})
-
-test('the activity strip renders only when a background control needs it', () => {
-  const control = createElement('button', null, 'Background tasks')
-  const withControl = renderToStaticMarkup(createElement(TaskActivity, null, control))
-  assert.equal((withControl.match(/task-activity-strip/g) ?? []).length, 1)
-  assert.match(withControl, /Background tasks/)
-  assert.doesNotMatch(withControl, /task-timer/)
-  assert.equal(renderToStaticMarkup(createElement(TaskActivity, null)), '')
 })
 
 test('the timer reserves room for a four-digit clock so its position holds', () => {

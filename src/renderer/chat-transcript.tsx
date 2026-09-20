@@ -88,24 +88,6 @@ export const ChatTranscript = memo(function ChatTranscript({
     onTrimMountedHistory?.()
   }, [scrollable.end, tailStart, onTrimMountedHistory])
 
-  useEffect(() => {
-    const jump = (event: Event): void => {
-      const id = (event as CustomEvent<string>).detail
-      const index = rows.findIndex((row) => row.kind === 'background' && row.items.some((item) => item.id === id))
-      if (index < 0) return
-      setVisibleStart(Math.min(index, tailStart))
-      requestAnimationFrame(() => {
-        const target = document.getElementById('background-task-' + id)
-        target?.scrollIntoView({ block: 'center', behavior: 'auto' })
-        const heading = target?.closest('section')?.querySelector<HTMLButtonElement>('button')
-        if (heading?.getAttribute('aria-expanded') === 'false') heading.click()
-        heading?.focus({ preventScroll: true })
-      })
-    }
-    window.addEventListener('closedai:background-jump', jump)
-    return () => window.removeEventListener('closedai:background-jump', jump)
-  }, [rows, tailStart])
-
   const revealEarlier = async (): Promise<void> => {
     if (loadingEarlier) return
     prepareForPrepend()

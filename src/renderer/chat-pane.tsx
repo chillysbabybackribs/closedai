@@ -1,4 +1,3 @@
-import { BackgroundTaskIndicator, currentBackgroundTasks } from './background-tasks.js'
 import type { JSX } from 'react'
 import { memo, useState } from 'react'
 import { LogIn } from 'lucide-react'
@@ -19,7 +18,6 @@ import { PROVIDER_LABELS } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { ContextInspectorModal } from './context-inspector-modal.js'
-import { TaskActivity } from './task-activity.js'
 import { ToolsModal } from './tools/tools-modal.js'
 import { TraceModal } from './trace/trace-modal.js'
 
@@ -54,8 +52,6 @@ export const ChatPane = memo(function ChatPane({
   const chat = controller ?? internalChat
   const { state, preferences } = chat
   const manualCompact = state.provider === 'antigravity' && preferences?.chatSeamlessRotation !== true
-  const backgroundItems = state.history?.backgroundTasks?.length
-    ? [...state.history.backgroundTasks, ...state.items] : state.items
   const ready = state.connection.state === 'ready'
   const running = state.activeTurnId !== null
   const [ownHistoryOpen, setOwnHistoryOpen] = useState(false)
@@ -144,11 +140,6 @@ export const ChatPane = memo(function ChatPane({
             )}
           </TranscriptScroller>
         )}
-        <TaskActivity>
-          {currentBackgroundTasks(backgroundItems).length ? (
-            <BackgroundTaskIndicator key={state.items.filter((item) => item.type === 'user').at(-1)?.id ?? state.threadId} items={backgroundItems} />
-          ) : null}
-        </TaskActivity>
         <Composer
           paneId={chat.selectedPaneId}
           enabled={usable}

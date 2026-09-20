@@ -75,8 +75,6 @@ export const UI_CONTROLS = {
   'chat.message-branch': 'Continue in a new chat through this response; item is the message id',
   'chat.background-group': 'Expand or collapse background work; item is the first task id',
   'chat.background-task': 'Expand task description and result; item is the task id',
-  'chat.background-jump': 'Open background task details above the chat',
-  'chat.background-close': 'Close the background task details popup',
   'chat.history': 'Chat history panel (present only while open)',
   'chat.show-earlier': 'View or load one earlier user/model turn in the current chat',
   'chat.history-search': 'Filter the chat history list',
