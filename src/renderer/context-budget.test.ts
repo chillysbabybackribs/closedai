@@ -15,7 +15,7 @@ import {
   ContextBudgetSection,
   ContextPressureBadge
 } from './context-budget-view.tsx'
-import { ContextInspectorModal } from './context-inspector-modal.tsx'
+import { ContextInspectorModal, ContextReport, EmptyInspector } from './context-inspector-modal.tsx'
 
 function createSampleReport(overrides?: Partial<ChatTurnContextReport>): ChatTurnContextReport {
   return {
