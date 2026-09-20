@@ -9,7 +9,7 @@ import {
 
 /** One menu's worth of rows. `null` is a separator. */
 type MenuAction = 'new-chat' | 'history' | 'settings' | 'close-window' | 'toggle-drawer' |
-  'toggle-browser' | 'toggle-fullscreen' | 'credentials' | 'tools' | 'trace'
+  'toggle-browser' | 'toggle-fullscreen' | 'credentials' | 'tools' | 'trace' | 'research'
 
 type MenuRow = ({
   label: string
@@ -54,6 +54,7 @@ const MENUS: Menu[] = [
     rows: [
       { label: 'Tool configuration', action: 'tools' },
       { label: 'Turn trace', action: 'trace' },
+      { label: 'Research library', action: 'research' },
       { label: 'Credential Vault', action: 'credentials' }
     ]
   }
@@ -67,6 +68,7 @@ export type TitlebarMenuProps = {
   onNewChat: () => void
   onOpenSettings: () => void
   onOpenCredentials: () => void
+  onOpenResearch: () => void
   onToggleHistory: () => void
   onToggleDrawer: () => void
   onToggleBrowser: () => void
@@ -85,6 +87,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
   onNewChat,
   onOpenSettings,
   onOpenCredentials,
+  onOpenResearch,
   onToggleHistory,
   onToggleDrawer,
   onToggleBrowser,
@@ -120,6 +123,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                         if (row.action === 'new-chat') onNewChat()
                         if (row.action === 'settings') onOpenSettings()
                         if (row.action === 'credentials') onOpenCredentials()
+                        if (row.action === 'research') onOpenResearch()
                         if (row.action === 'history') onToggleHistory()
                         if (row.action === 'toggle-drawer') onToggleDrawer()
                         if (row.action === 'toggle-browser') onToggleBrowser()

@@ -21,6 +21,7 @@ import type { ChatPaneDialog } from './chat-pane.js'
 import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { AppearanceSettingsDialog } from './settings/appearance-settings-dialog.js'
 import { CredentialVaultModal } from './settings/credential-vault-modal.js'
+import { ResearchLibraryDialog } from './research/library-dialog.js'
 import {
   normalizeAppearanceSettings,
   persistAppearanceSettings,
@@ -35,6 +36,7 @@ function App(): JSX.Element {
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [credentialsOpen, setCredentialsOpen] = useState(false)
+  const [researchOpen, setResearchOpen] = useState(false)
   const [renamingChat, setRenamingChat] = useState<{ id: string; title: string } | null>(null)
   const workspaceRef = useRef<ChatLayoutHandle>(null)
   const splitSidebarChat = useCallback((chatId: string, edge: 'right' | 'bottom'): Promise<void> => {
@@ -114,6 +116,7 @@ function App(): JSX.Element {
           onNewChat={drawer.newChat}
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenCredentials={() => setCredentialsOpen(true)}
+          onOpenResearch={() => setResearchOpen(true)}
           onToggleHistory={toggleHistory}
           onToggleDrawer={drawer.toggleCollapsed}
           onToggleBrowser={() => workspaceRef.current?.toggleBrowser()}
@@ -165,6 +168,7 @@ function App(): JSX.Element {
         open={credentialsOpen}
         onOpenChange={setCredentialsOpen}
       />
+      <ResearchLibraryDialog open={researchOpen} onOpenChange={setResearchOpen} />
     </div>
   )
 }

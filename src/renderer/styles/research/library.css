@@ -1,0 +1,148 @@
+.research-library-dialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(880px, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.research-library-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 48px 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.research-library-heading [data-slot="dialog-description"] {
+  margin-top: 6px;
+}
+
+.research-library-body {
+  overflow-y: auto;
+  padding: 20px 24px 24px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.research-library-settings,
+.research-library-papers {
+  display: grid;
+  gap: 12px;
+}
+
+.research-library-settings {
+  padding-bottom: 24px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.research-library-dialog textarea,
+.research-library-dialog input[type="search"],
+.research-library-dialog select {
+  color: var(--foreground);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.research-library-dialog textarea {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+}
+
+.research-library-dialog button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: fit-content;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: var(--secondary);
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.research-library-dialog button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.research-library-dialog button:not(:disabled):hover {
+  background: var(--accent);
+}
+
+.research-library-dialog :is(button, input, textarea, select, summary):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.research-library-row,
+.research-library-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.research-library-spread {
+  justify-content: space-between;
+}
+
+.research-library-dialog .research-library-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.research-library-dialog .research-library-primary:not(:disabled):hover {
+  background: var(--primary);
+  filter: brightness(1.12);
+}
+
+.research-library-muted {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  margin: 0;
+}
+
+.research-library-error {
+  color: var(--destructive);
+  overflow-wrap: anywhere;
+}
+
+.research-library-filter {
+  display: grid;
+  gap: 6px;
+}
+
+.research-library-paper {
+  display: grid;
+  gap: 8px;
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+}
+
+.research-library-dialog .research-library-paper-title {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.research-library-paper summary {
+  cursor: pointer;
+  width: fit-content;
+}
+
+.research-library-abstract {
+  margin: 8px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

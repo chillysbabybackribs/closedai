@@ -4,6 +4,19 @@
 // guard test beside this file keeps the renderer source and this manifest in step.
 
 export const UI_CONTROLS = {
+  'dialog.research-library': 'Public research library dialog, opened through Tools → Research library',
+  'research.topics': 'Edit followed research topics, one per line (maximum five)',
+  'research.window': 'Choose the publication lookback window',
+  'research.enabled': 'Allow or disable agents searching the shared public library',
+  'research.save': 'Save research topics and settings',
+  'research.refresh': 'Manually update the research library from alphaXiv',
+  'research.cancel': 'Stop the current research library update',
+  'research.restore': 'Restore dismissed papers to eligibility; evicted papers need another update',
+  'research.filter': 'Filter saved papers locally by title, abstract, or topic',
+  'research.paper-open': 'Open a paper in the browser; item is its paper id',
+  'research.paper-details': 'Expand or collapse a saved abstract; item is its paper id',
+  'research.paper-dismiss': 'Hide a paper from the library and agent retrieval; item is its paper id',
+  'research.more': 'Show the next twenty saved papers',
   'file.copy-path': 'Copy the local file preview path',
   'file.copy-content': 'Copy the local file preview text',
   'file.reveal': 'Reveal the previewed local file in the system file manager',
