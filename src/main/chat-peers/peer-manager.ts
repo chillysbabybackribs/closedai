@@ -16,7 +16,7 @@ import { chatRecordIsBlank, type ChatRecord } from '../../shared/chat-store.js'
 import type { ChatContinuation } from '../../shared/types.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
-import { buildThreadHandoff } from '../chat-context/thread-handoff.js'
+import { continuePeer } from './peer-continuation.js'
 import { ChatMemory } from '../chat-context/chat-memory.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
 import { CACHED_TRANSCRIPT_ITEMS, ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
@@ -310,60 +310,14 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async continueInNewPeer(source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId> {
-    if (!source?.paneId && !source?.threadId) throw new Error('Choose a chat to continue')
-    const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot()
-    let sourceSnapshot: ChatSnapshot | null = null
-    let sourceThreadId = source.threadId
-    let sourceProvider = sourceThreadId ? chatProviderOfId(sourceThreadId) : current.provider
-    let items: ChatSnapshot['items']
-    let threadName: string | null
-
-    if (source.paneId && this.lifecycle.get(source.paneId)) {
-      sourceSnapshot = await this.withAwake(source.paneId, async (surface) => surface.snapshot())
-      if (sourceSnapshot.activeTurnId) throw new Error('Stop the current turn before continuing in a new chat')
-      sourceThreadId = sourceSnapshot.threadId ?? sourceThreadId
-      sourceProvider = sourceSnapshot.provider
-      items = sourceSnapshot.items
-      threadName = sourceSnapshot.threadName
-    } else {
-      // A detached chat is read from its thread without attaching it.
-      const threadId = sourceThreadId ?? (source.paneId ? this.store.get(source.paneId)?.threadId ?? null : null)
-      if (!threadId) throw new Error('There is no conversation to continue yet')
-      const content = await this.withAwake(this.selectedPaneId, (surface) => surface.readThread(threadId))
-      sourceThreadId = content.threadId
-      sourceProvider = chatProviderOfId(content.threadId)
-      items = content.items
-      threadName = content.threadName
-    }
-
-    if (source.throughItemId) {
-      const index = items.findIndex((item) => item.id === source.throughItemId)
-      const endpoint = items[index]
-      if (!endpoint || endpoint.type !== 'assistant' || endpoint.streaming) {
-        throw new Error('Choose a completed response to branch from')
-      }
-      items = items.slice(0, index + 1)
-    }
-    const savedCheckpoint = source.paneId ? this.store.get(source.paneId)?.checkpoint ?? null : null
-    const checkpoint = savedCheckpoint?.threadId === sourceThreadId
-      && items.some((item) => item.id === savedCheckpoint.throughItemId) ? savedCheckpoint : null
-    const handoff = buildThreadHandoff(items, threadName, checkpoint)
-    if (!handoff) throw new Error('There is no conversation to continue yet')
-    const targetModel = modelId ?? sourceSnapshot?.selectedModel ?? current.selectedModel
-    const targetEffort = targetModel === sourceSnapshot?.selectedModel
-      ? sourceSnapshot?.selectedReasoningEffort ?? null
-      : targetModel === current.selectedModel ? current.selectedReasoningEffort : null
-    const continuation: ChatContinuation = {
-      sourcePaneId: source.paneId,
-      sourceThreadId,
-      sourceProvider,
-      sourceTitle: handoff.title,
-      sourceThroughItemId: items.at(-1)?.id ?? null,
-      checkpoint,
-      handoff: handoff.text,
-      createdAt: Date.now()
-    }
-    return this.newChat(targetModel, targetEffort, continuation)
+    return continuePeer({
+      current: () => this.lifecycle.require(this.selectedPaneId).surface.snapshot(),
+      attached: (id) => !!this.lifecycle.get(id),
+      snapshot: (id) => this.withAwake(id, async (surface) => surface.snapshot()),
+      record: (id) => this.store.get(id) ?? undefined,
+      readThread: (id) => this.withAwake(this.selectedPaneId, (surface) => surface.readThread(id)),
+      create: (model, effort, continuation) => this.newChat(model, effort, continuation)
+    }, source, modelId)
   }
 
   async openChat(chatId: string): Promise<ChatPaneId> {
