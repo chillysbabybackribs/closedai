@@ -18,6 +18,7 @@ import { appShortcutForKey } from './app-shortcuts.js'
 import { TitlebarMenu } from './titlebar-menu.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
 import type { ChatPaneDialog } from './chat-pane.js'
+import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { AppearanceSettingsDialog } from './settings/appearance-settings-dialog.js'
 import { CredentialVaultModal } from './settings/credential-vault-modal.js'
 import {
@@ -34,6 +35,7 @@ function App(): JSX.Element {
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [credentialsOpen, setCredentialsOpen] = useState(false)
+  const [renamingChat, setRenamingChat] = useState<{ id: string; title: string } | null>(null)
   const workspaceRef = useRef<ChatLayoutHandle>(null)
   const splitSidebarChat = useCallback((chatId: string, edge: 'right' | 'bottom'): Promise<void> => {
     if (!workspaceRef.current) return Promise.reject(new Error('The workspace is still loading'))

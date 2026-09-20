@@ -16,7 +16,7 @@ export type ChatLayoutHandle = {
   toggleBrowser: () => void
 }
 
-export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, ref }: {
+export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onRenameChat, onRetryChatTitle, ref }: {
   chat: ReturnType<typeof useChatController>
   reviewQueue: DrawerReviewQueue
   appearance: AppearanceSettings
@@ -24,6 +24,8 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   onHistoryOpenChange: (open: boolean) => void
   dialog: ChatPaneDialog | null
   onDialogChange: (dialog: ChatPaneDialog | null) => void
+  onRenameChat?: (id: string, title: string) => void
+  onRetryChatTitle?: (id: string) => void
   ref?: Ref<ChatLayoutHandle>
 }) {
   const layout = useChatLayout(chat.snapshot)
@@ -61,6 +63,8 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         onSelectTab={(id) => { onHistoryOpenChange(false); void layout.activateTab(id) }}
         onCloseTab={(id) => { void layout.closeTab(id) }}
         onNewChat={(id) => { onHistoryOpenChange(false); void layout.newChat(id) }}
+        onRenameChat={onRenameChat ? (id) => onRenameChat(id, chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat') : undefined}
+        onRetryChatTitle={onRetryChatTitle}
         onHide={(id) => { void layout.hide(id) }} onResize={layout.resize}
         renderPane={(id) => <WorkspaceChat paneId={id} snapshot={chat.snapshot} dispatch={chat.dispatch}
           appearance={appearance} historyOpen={historyOpen && chat.selectedPaneId === id}

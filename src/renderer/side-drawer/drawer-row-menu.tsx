@@ -1,7 +1,7 @@
 import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Columns2, GitBranch, Pin, PinOff, Rows2 } from 'lucide-react'
+import { Columns2, GitBranch, Pencil, Pin, PinOff, Rows2, Sparkles } from 'lucide-react'
 import type { ChatModel } from '../../shared/chat.js'
 import { modelGroups } from '../model-menu-state.js'
 import { placeRowMenu, type MenuPlacement } from './drawer-row-position.js'
@@ -28,6 +28,8 @@ export function DrawerRowMenu({
   onTogglePin,
   canSplit,
   onSplit,
+  onRename,
+  onRetryTitle,
   onClose
 }: {
   target: RowMenuTarget
@@ -37,6 +39,8 @@ export function DrawerRowMenu({
   onTogglePin: () => void
   canSplit: boolean
   onSplit: (edge: 'right' | 'bottom') => void
+  onRename?: () => void
+  onRetryTitle?: () => void
   onClose: () => void
 }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
@@ -126,6 +130,32 @@ export function DrawerRowMenu({
         <Rows2 size={13} aria-hidden="true" />
         <span>Split below</span>
       </button>
+      {onRename && (
+        <button
+          type="button"
+          role="menuitem"
+          className="agents-row-menu-item agents-row-menu-rename"
+          data-ui="drawer.row-rename"
+          data-ui-key={target.id}
+          onClick={onRename}
+        >
+          <Pencil size={13} aria-hidden="true" />
+          <span>Rename chat</span>
+        </button>
+      )}
+      {onRetryTitle && (
+        <button
+          type="button"
+          role="menuitem"
+          className="agents-row-menu-item agents-row-menu-retry-title"
+          data-ui="drawer.row-retry-title"
+          data-ui-key={target.id}
+          onClick={onRetryTitle}
+        >
+          <Sparkles size={13} aria-hidden="true" />
+          <span>Generate title</span>
+        </button>
+      )}
       <div className="agents-row-menu-separator" role="separator" />
       <div className="agents-row-menu-heading">
         <GitBranch size={11} aria-hidden="true" />

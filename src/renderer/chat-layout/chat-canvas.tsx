@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ContextMenu, DropdownMenu } from 'radix-ui'
-import { Columns2, GripVertical, Maximize2, MessageSquarePlus, Minimize2, Monitor, PanelRightClose, Plus, Rows2, X } from 'lucide-react'
+import { Columns2, GripVertical, Maximize2, MessageSquarePlus, Minimize2, Monitor, PanelRightClose, Pencil, Plus, Rows2, Sparkles, X } from 'lucide-react'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { ChatTabs } from './chat-tabs.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
@@ -8,7 +8,7 @@ import type { TabActivity } from './tab-activity.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserRevealVersion, onToggleBrowser, renderBrowser, onDragActive, title, activity, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserRevealVersion, onToggleBrowser, renderBrowser, onDragActive, title, activity, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onRetryChatTitle, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
@@ -24,6 +24,8 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
   onSelectTab: (id: string) => void
   onCloseTab: (id: string) => void
   onNewChat: (id: string) => void
+  onRenameChat?: (id: string) => void
+  onRetryChatTitle?: (id: string) => void
   onDock: (id: string | null, target: string, edge: DockEdge | null, singleTab?: boolean) => void
   onHide: (id: string) => void
   onResize: (id: string, ratio: number) => void
@@ -290,6 +292,24 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
                     <span>Split below</span>
                   </div>
                 </ContextMenu.Item>
+                {onRenameChat && (
+                  <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.rename" data-ui-key={id}
+                    onSelect={() => onRenameChat(id)}>
+                    <div className="chat-layout-menu-item-left">
+                      <Pencil size={14} aria-hidden="true" />
+                      <span>Rename chat</span>
+                    </div>
+                  </ContextMenu.Item>
+                )}
+                {onRetryChatTitle && (
+                  <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.retry-title" data-ui-key={id}
+                    onSelect={() => onRetryChatTitle(id)}>
+                    <div className="chat-layout-menu-item-left">
+                      <Sparkles size={14} aria-hidden="true" />
+                      <span>Generate title</span>
+                    </div>
+                  </ContextMenu.Item>
+                )}
                 <ContextMenu.Separator className="titlebar-menu-separator" />
                 <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.new-chat" data-ui-key={id}
                   onSelect={() => onNewChat(id)}>

@@ -9,10 +9,12 @@ import type { FoldState } from './drawer-row.js'
 import { DrawerRowMenu, type RowMenuTarget } from './drawer-row-menu.js'
 import { groupByDirectory } from './drawer-sections.js'
 
-function SideDrawerView({ controller, chat, onSplitChat }: {
+function SideDrawerView({ controller, chat, onSplitChat, onRenameChat, onRetryChatTitle }: {
   controller: DrawerController
   chat: ChatController
   onSplitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
+  onRenameChat?: (chatId: string, title: string) => void
+  onRetryChatTitle?: (chatId: string) => void
 }): JSX.Element | null {
   const [collapsedParents, onToggleParent] = useCollapsedParents()
   const [expandedSettled, onToggleSettled] = useExpandedSettled()
@@ -49,6 +51,17 @@ function SideDrawerView({ controller, chat, onSplitChat }: {
       onTogglePin={() => {
         setRowMenu(null)
         chat.setChatPinned(rowMenu.id, !rowMenu.pinned).catch(controller.reportError)
+      }}
+      onRename={onRenameChat ? () => {
+        const target = rowMenu
+        setRowMenu(null)
+        onRenameChat(target.id, target.title)
+      } : undefined}
+      onRetryTitle={() => {
+        const id = rowMenu.id
+        setRowMenu(null)
+        if (onRetryChatTitle) onRetryChatTitle(id)
+        else chat.retryChatTitle(id).catch(controller.reportError)
       }}
       onFork={(modelId) => {
         setRowMenu(null)
