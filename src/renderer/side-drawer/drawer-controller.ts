@@ -18,7 +18,6 @@ import {
 import { buildDrawerRows } from './drawer-rows.js'
 
 const COLLAPSED_KEY = 'closedai.drawer.collapsed'
-const HISTORY_OPEN_KEY = 'closedai.drawer.historyOpen'
 /** How long a failure stays in the drawer footer before it clears itself. */
 const ERROR_VISIBLE_MS = 8000
 
@@ -45,7 +44,6 @@ export function reviewTransitions(
 
 export function useDrawerController(chat: ChatController) {
   const [isCollapsed, setIsCollapsed] = useState(() => window.localStorage.getItem(COLLAPSED_KEY) === '1')
-  const [isHistoryOpen, setIsHistoryOpen] = useState(() => window.localStorage.getItem(HISTORY_OPEN_KEY) === '1')
   const [reviewQueue, setReviewQueue] = useState<DrawerReviewQueue>(() =>
     readDrawerReviewQueue(window.localStorage)
   )
@@ -130,14 +128,6 @@ export function useDrawerController(chat: ChatController) {
     })
   }, [])
 
-  const toggleHistory = useCallback(() => {
-    setIsHistoryOpen((current) => {
-      const next = !current
-      window.localStorage.setItem(HISTORY_OPEN_KEY, next ? '1' : '0')
-      return next
-    })
-  }, [])
-
   /** Open a chat by id; the main process decides whether it takes the blank selected pane or opens beside it. */
   const openRow = useCallback(async (chatId: string) => {
     if (chatId === chat.selectedPaneId) return
@@ -186,8 +176,6 @@ export function useDrawerController(chat: ChatController) {
   return useMemo(() => ({
     isCollapsed,
     toggleCollapsed,
-    isHistoryOpen,
-    toggleHistory,
     reviewQueue,
     reviewQueueCount: countDrawerReviewQueue(reviewQueue),
     pendingDeleteId,
@@ -199,7 +187,7 @@ export function useDrawerController(chat: ChatController) {
     refreshChats,
     error,
     reportError
-  }), [isCollapsed, toggleCollapsed, isHistoryOpen, toggleHistory, reviewQueue, pendingDeleteId,
+  }), [isCollapsed, toggleCollapsed, reviewQueue, pendingDeleteId,
     deleteRow, openRow, newChat, rows, refreshChats, error, reportError])
 }
 

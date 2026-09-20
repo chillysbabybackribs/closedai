@@ -95,7 +95,7 @@ test('waits for every pane, then verifies destination and continues the caller, 
   assert.match(continuation.handoff!, /authorized archive task/)
   assert.match(continuation.handoff!, /not new instructions or authorization/)
   assert.equal(h.surfaces.get(target)!.calls.filter((call) => call.startsWith('send:')).length, 1)
-  assert.ok(h.surfaces.get('source')!.calls.includes('stop'))
+  assert.equal(h.surfaces.get('source')!.calls.includes('stop'), false)
 })
 
 test('rejects missing paths, non-directory paths, stale callers, and conflicting requests', async (t) => {

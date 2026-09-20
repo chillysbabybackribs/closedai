@@ -6,10 +6,12 @@ import type { RowMenuTarget } from './drawer-row-menu.js'
 import { buildDrawerSections, countLiveRows } from './drawer-sections.js'
 import type { DirectoryGroup, DrawerRowModel } from './drawer-types.js'
 
-export function DrawerDirectory({ group, collapsed, onToggle, controller, chat, fold, onRowMenu }: {
+export function DrawerDirectory({ group, collapsed, onToggle, historyOpen, onToggleHistory, controller, chat, fold, onRowMenu }: {
   group: DirectoryGroup
   collapsed: boolean
   onToggle: () => void
+  historyOpen: boolean
+  onToggleHistory: () => void
   controller: DrawerController
   chat: ChatController
   fold: FoldState
@@ -47,8 +49,12 @@ export function DrawerDirectory({ group, collapsed, onToggle, controller, chat, 
         {renderRows(sections.reviewQueue, 'Recently completed chats')}
       </>}
       {sections.history.length > 0 && <>
-        <div className="agents-section-label">History <span className="agents-section-count">{sections.history.length}</span></div>
-        {renderRows(sections.history, 'Chat history')}
+        <button type="button" className="agents-section-toggle" data-ui="drawer.directory-history"
+          data-ui-key={group.key} aria-expanded={historyOpen} onClick={onToggleHistory}>
+          {historyOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          History <span className="agents-section-count">{sections.history.length}</span>
+        </button>
+        {historyOpen && renderRows(sections.history, 'Chat history')}
       </>}
     </div>}
   </section>

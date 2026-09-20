@@ -657,6 +657,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   /** Directory sections share one catalog; attachment and activity are independent of focus. */
   private chatRows(): ChatRowSummary[] {
     return this.store.ids().map((id) => this.store.require(id))
+      .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
       .filter((record) => this.lifecycle.get(record.id) || record.pinnedAt !== null || !chatRecordIsBlank(record))
       .map((record) =>
       rowSummary(record, this.lifecycle.get(record.id)?.display.current ?? null))

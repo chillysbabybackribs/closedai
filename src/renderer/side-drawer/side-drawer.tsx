@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import { memo, useMemo, useState } from 'react'
 import type { ChatController } from '../chat-controller.js'
 import type { DrawerController } from './drawer-controller.js'
-import { useCollapsedDirectories, useCollapsedParents, useExpandedSettled } from './drawer-fold-state.js'
+import { useCollapsedDirectories, useCollapsedParents, useExpandedDirectoryHistory, useExpandedSettled } from './drawer-fold-state.js'
 import { DrawerHeader } from './drawer-header.js'
 import { DrawerDirectory } from './drawer-directory.js'
 import type { FoldState } from './drawer-row.js'
@@ -17,6 +17,7 @@ function SideDrawerView({ controller, chat, onSplitChat }: {
   const [collapsedParents, onToggleParent] = useCollapsedParents()
   const [expandedSettled, onToggleSettled] = useExpandedSettled()
   const [collapsedDirectories, toggleDirectory] = useCollapsedDirectories()
+  const [expandedHistory, toggleHistory] = useExpandedDirectoryHistory()
   const [rowMenu, setRowMenu] = useState<RowMenuTarget | null>(null)
   const directories = useMemo(() => groupByDirectory(controller.rows), [controller.rows])
   const fold: FoldState = { collapsedParents, onToggleParent, expandedSettled, onToggleSettled }
@@ -28,6 +29,7 @@ function SideDrawerView({ controller, chat, onSplitChat }: {
     <div className="agents-list">
       {directories.map((group) => <DrawerDirectory key={group.key} group={group}
         collapsed={collapsedDirectories.has(group.key)} onToggle={() => toggleDirectory(group.key)}
+        historyOpen={expandedHistory.has(group.key)} onToggleHistory={() => toggleHistory(group.key)}
         controller={controller} chat={chat} fold={fold} onRowMenu={setRowMenu} />)}
       {directories.length === 0 && <p className="agents-empty">Chats and background agents appear here.</p>}
     </div>

@@ -25,6 +25,7 @@ export const UI_CONTROLS = {
 
   'drawer.new-agent': 'Start a new agent chat pane',
   'drawer.directory': 'Expand or collapse a directory section without changing projects; item is its full directory path',
+  'drawer.directory-history': 'Expand or collapse chat history within a directory section; item is its full directory path',
   'drawer.search': 'Search previous chats (combobox)',
   'drawer.search-clear': 'Clear the drawer search',
   'drawer.search-result': 'Drawer search hit; item is the row id',

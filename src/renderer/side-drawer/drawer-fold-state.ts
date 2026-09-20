@@ -21,6 +21,10 @@ export function useCollapsedDirectories(): FoldSet {
   return usePersistedIdSet('closedai.drawer.collapsedDirectories')
 }
 
+export function useExpandedDirectoryHistory(): FoldSet {
+  return usePersistedIdSet('closedai.drawer.expandedDirectoryHistory')
+}
+
 function readIdSet(key: string): ReadonlySet<string> {
   try {
     const raw = window.localStorage.getItem(key)
