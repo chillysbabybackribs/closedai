@@ -212,3 +212,35 @@ test('destination removal and provider directory mismatch fail before any contin
     assert.match(h.manager.projectSwitch.state()!.error!, failure === 'removed' ? /ENOENT/ : /working directory verification/)
   }
 })
+
+const savedChat = (id: string, cwd: string, updatedAt: number) =>
+  chatRecord(id, 'gpt', { cwd, projectPath: cwd, threadId: `${id}-thread`, codexThreadId: `${id}-thread`, preview: 'Saved', updatedAt })
+
+test('trimming attached chats keeps the pane that queued a switch until it completes', async (t) => {
+  const h = await fixture(t)
+  assert.equal((await h.queue()).status, 'pending')
+  h.finish('source')
+  await delay(5)
+  // Opening history chats while another pane is busy trims idle panes; the requester is idle and oldest.
+  for (let i = 0; i < 8; i += 1) await h.manager.openChat(h.store.create(savedChat(`extra-${i}`, h.root, Date.now() + 1000 * (i + 1))).id)
+  assert.equal(h.manager.projectSwitch.state()?.status, 'pending')
+  assert.notEqual(h.manager.paneSnapshot('source'), null, 'the requesting pane stays attached')
+  h.finish('other')
+  await until(() => h.manager.projectSwitch.state()?.status === 'completed')
+  assert.equal(h.store.require(h.manager.projectSwitch.state()!.destinationPaneId!).continuation?.sourcePaneId, 'source')
+})
+
+test('selecting an attached chat from another directory re-opens it when the switch trims it', async (t) => {
+  const h = await fixture(t)
+  const foreign = h.store.create(savedChat('foreign', h.destination, 2))
+  await h.manager.openChat(foreign.id)
+  await h.manager.openChat('source')
+  for (let i = 0; i < 5; i += 1) {
+    await h.manager.openChat(h.store.create(savedChat(`extra-${i}`, h.root, Date.now() + 1000 * (i + 1))).id)
+    await delay(1)
+  }
+  assert.notEqual(h.manager.paneSnapshot(foreign.id), null, 'still attached across the directory change')
+  await h.manager.selectPane(foreign.id)
+  assert.equal(h.manager.snapshot().selectedPaneId, foreign.id)
+  assert.equal(h.manager.snapshot().workspace?.cwd, h.destination)
+})

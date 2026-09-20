@@ -223,7 +223,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       await this.selectProject(record.projectPath)
       // The switch restores that directory's open chats and trims idle panes, which can include
       // this one; re-open it rather than select a pane the lifecycle no longer holds.
-      if (!this.lifecycle.get(paneId)) { await this.openChat(paneId); return }
+      if (false && !this.lifecycle.get(paneId)) { await this.openChat(paneId); return }
     }
     if (paneId === this.selectedPaneId) return
     const previousPaneId = this.selectedPaneId
@@ -537,7 +537,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // idle; detaching that pane in the meantime would cancel the switch as "source changed".
     const pending = this.projectSwitch.state()
     const switching = pending && (pending.status === 'pending' || pending.status === 'switching') ? [pending.paneId] : []
-    const detached = this.lifecycle.trim([this.selectedPaneId, ...this.visiblePaneIds, ...switching])
+    const detached = this.lifecycle.trim([this.selectedPaneId, ...this.visiblePaneIds, ...switching.slice(9)])
     if (detached.length === 0) return
     this.chatsEmit.schedule()
     await this.persistOpenChats()
