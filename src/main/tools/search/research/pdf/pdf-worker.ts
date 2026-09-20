@@ -1,21 +1,12 @@
 import { parentPort, workerData } from 'node:worker_threads'
-import { readFile } from 'node:fs/promises'
-import { createRequire } from 'node:module'
-import { dirname, join, sep } from 'node:path'
-import { getDocument, VerbosityLevel } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { PdfText } from './reader.js'
+import { loadPdf } from './document.js'
 
 if (!parentPort) throw new Error('PDF parser requires a parent port')
 const port = parentPort
 
 async function extract(): Promise<PdfText> {
-  const assets = dirname(createRequire(import.meta.url).resolve('pdfjs-dist/package.json'))
-  const loading = getDocument({
-    data: new Uint8Array(await readFile(workerData.path)),
-    useWorkerFetch: false, disableFontFace: true, useSystemFonts: false,
-    enableXfa: false, stopAtErrors: true, verbosity: VerbosityLevel.ERRORS,
-    cMapUrl: join(assets, 'cmaps') + sep, standardFontDataUrl: join(assets, 'standard_fonts') + sep
-  })
+  const { loading } = await loadPdf(workerData.path)
   try {
     const document = await loading.promise
     const metadata = await document.getMetadata()
