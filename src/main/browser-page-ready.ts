@@ -40,7 +40,15 @@ export type PageText = {
   readyState: string
   text: string
   truncated: boolean
+  pdf?: {
+    page: number
+    totalPages: number | null
+    pagesAvailable: number
+    available: boolean
+  }
 }
+
+export type PageReadOptions = { selector?: string; maxChars: number; raw?: boolean; pdfPage?: number }
 
 export const IDLE_STABLE_MS = 200
 const POLL_MS = 75

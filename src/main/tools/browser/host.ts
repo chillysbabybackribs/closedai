@@ -1,5 +1,5 @@
 import type { PageFetchRequest, PageFetchResult } from '../../browser-page-fetch.js'
-import type { PageReadiness, PageReadyResult, PageText } from '../../browser-page-ready.js'
+import type { PageReadiness, PageReadyResult, PageText, PageReadOptions } from '../../browser-page-ready.js'
 import type { PageEvaluateRequest, PageEvaluateResult, PageQueryRequest, PageQueryResult } from '../../browser-page-evaluate.js'
 import type { ConsoleFilter, ConsoleListing } from '../../browser-network/console-log.js'
 import type { BrowserTabInfo } from '../../../shared/types.js'
@@ -21,7 +21,7 @@ export type BrowserToolHost = {
    * `raw` returns the text unsliced (up to a hard ceiling) so the caller can bound it in a
    * way that suits the content — structurally when it is JSON, rather than cutting it blind.
    */
-  readPage(tabId: string | undefined, options: { selector?: string; maxChars: number; raw?: boolean }): Promise<PageText | null>
+  readPage(tabId: string | undefined, options: PageReadOptions, signal?: AbortSignal): Promise<PageText | null>
   /** Fetch from inside the tab, inheriting its origin and session. Null when the tab is gone. */
   fetchPage(tabId: string | undefined, request: PageFetchRequest): Promise<PageFetchResult | null>
   navigate(url: string, options: { tabId?: string; newTab: boolean; ready: PageReadiness }): Promise<NavigateOutcome>

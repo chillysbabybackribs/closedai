@@ -1,6 +1,7 @@
 import type { BrowserService } from './browser-service.js'
 import { fetchInPage, type PageFetchRequest, type PageFetchResult } from './browser-page-fetch.js'
-import { needsReadinessPoll, probePageReady, readPageText, waitForPageReady, type PageReadiness, type PageReadyResult, type PageText } from './browser-page-ready.js'
+import { needsReadinessPoll, probePageReady, readPageText, waitForPageReady, type PageReadiness, type PageReadyResult, type PageText, type PageReadOptions } from './browser-page-ready.js'
+import { readNativePdf } from './browser-pdf/native-reader.js'
 import { evaluateInPage, queryInPage, type PageEvaluateRequest, type PageEvaluateResult, type PageQueryRequest, type PageQueryResult } from './browser-page-evaluate.js'
 import type { ConsoleFilter, ConsoleListing } from './browser-network/console-log.js'
 import type { BrowserTabInfo } from '../shared/types.js'
@@ -16,10 +17,22 @@ export class BrowserPageAccess implements BrowserToolHost {
 
   async readPage(
     tabId: string | undefined,
-    options: { selector?: string; maxChars: number; raw?: boolean }
+    options: PageReadOptions,
+    signal?: AbortSignal
   ): Promise<PageText | null> {
     const contents = this.browser()?.contentsOf(tabId)
     if (!contents) return null
+    if (!options.selector) {
+      const url = contents.getURL()
+      const title = contents.getTitle()
+      const pdf = await readNativePdf(contents, options.pdfPage ?? 1, options.maxChars, signal)
+      if (pdf) return {
+        url, title, readyState: pdf.available ? 'complete' : 'loading', text: pdf.text,
+        truncated: pdf.truncated,
+        pdf: { page: pdf.page, totalPages: pdf.totalPages, pagesAvailable: pdf.pagesAvailable, available: pdf.available }
+      }
+    }
+    if (options.pdfPage !== undefined) throw new Error('pdf_page requires Chromium’s loaded PDF viewer; it cannot select a page in HTML.')
     return readPageText(contents, options)
   }
 
