@@ -4,12 +4,49 @@ import type { ChatTranscriptItem } from '../shared/chat.ts'
 import {
   activityHeadline,
   activityState,
+  anchoredVisibleStart,
   clampVisibleStart,
   commandTitle,
   lastTurnRowStart,
   mountedTurnWindowStart,
-  transcriptRows
+  transcriptRows,
+  transcriptRowKey
 } from './transcript-rows.ts'
+import { initialChatWorkspaceState, reduceChatWorkspaceEvent } from './chat-state.ts'
+
+test('history trimming keeps the latest prompt and subsequent streamed response visible', () => {
+  const items: ChatTranscriptItem[] = Array.from({ length: 12 }, (_, index) => ({
+    type: 'user', id: `u${index}`, turnId: `t${index}`, text: `Prompt ${index}`
+  }))
+  const rows = transcriptRows(items)
+  const anchor = transcriptRowKey(rows[lastTurnRowStart(rows)])
+  const initial = initialChatWorkspaceState()
+  let state = { ...initial, selectedPaneId: 'pane', selected: { ...initial.selected, threadId: 'thread', items } }
+  state = reduceChatWorkspaceEvent(state, { type: 'trimMountedHistory', paneId: 'pane', threadId: 'thread' })
+  assert.equal(state.selected.items.length, 1)
+  for (const text of ['First token', 'First token and more']) {
+    state = reduceChatWorkspaceEvent(state, { type: 'pane', paneId: 'pane', event: {
+      type: 'item', item: { type: 'assistant', id: 'answer', turnId: 't11', text, phase: null, streaming: true }
+    } })
+    const current = transcriptRows(state.selected.items)
+    const visible = current.slice(anchoredVisibleStart(anchor, current, 3))
+    assert.deepEqual(visible.map(transcriptRowKey), ['item:u11', 'item:answer'])
+    assert.equal(visible.at(-1)?.kind === 'item' && visible.at(-1)?.item.type === 'assistant' && visible.at(-1)?.item.text, text)
+  }
+})
+
+test('display anchors survive prepends and recover when a replacement removes the anchor', () => {
+  const items: ChatTranscriptItem[] = Array.from({ length: 5 }, (_, index) => ({
+    type: 'user', id: `u${index}`, turnId: `t${index}`, text: `Prompt ${index}`
+  }))
+  const anchor = transcriptRowKey(transcriptRows(items.slice(2))[0])
+  assert.equal(anchoredVisibleStart(anchor, transcriptRows(items), 3), 2)
+  const replaced = transcriptRows(items.slice(3))
+  assert.equal(anchoredVisibleStart(anchor, replaced, 3), 1)
+  assert.equal(anchoredVisibleStart(anchor, [], 3), 0)
+  assert.equal(anchoredVisibleStart(null, replaced, 3), 1)
+  assert.equal(clampVisibleStart(50, replaced, 3), 1)
+})
 
 const command = (
   id: string,
