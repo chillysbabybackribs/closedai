@@ -23,11 +23,11 @@ import type { ChatStore } from '../chat-store/chat-store.js'
 import { CACHED_TRANSCRIPT_ITEMS, ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
 import { traceLog } from '../trace/trace-log.js'
 import { PeerChatCatalog } from './peer-chat-catalog.js'
-import { cachedPaneView, PeerEmitThrottle, readableView, rendererSnapshot, rowSummary, syncStoreCheckpoint } from './peer-events.js'
+import { cachedPaneView, PeerEmitThrottle, rendererSnapshot, rowSummary, syncStoreCheckpoint } from './peer-events.js'
 import { PeerIdleParking } from './peer-idle-parking.js'
 import { PeerLifecycle, type ChatPeerFactory, type PeerEntry } from './peer-lifecycle.js'
+import { listReadablePeers, readReadablePeer, type ReadablePeerHost } from './peer-readable.js'
 import { openChatsPatch } from './peer-settings.js'
-import { pageResult, subagentSummaries } from './peer-summary.js'
 import { schedulePaneWarm } from './provider-warm.js'
 
 export type { ChatPeerFactory } from './peer-lifecycle.js'
@@ -490,34 +490,20 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   listReadable(callerPaneId: string | null): ChatPeerSummary[] {
-    return this.peerSummaries().flatMap((peer) => [
-      ...(peer.paneId === callerPaneId ? [] : [peer]),
-      ...subagentSummaries(peer, this.lifecycle.require(peer.paneId).surface.snapshot())
-    ])
+    return listReadablePeers(this.readable(), callerPaneId)
   }
 
-  async readReadable(chatId: string, callerPaneId: string | null, options: PeerChatReadOptions): Promise<PeerChatReadResult | null> {
-    const direct = this.peerSummaries().find((peer) => peer.paneId === chatId && peer.paneId !== callerPaneId)
-    if (direct) {
-      const { snapshot, source } = await this.peerView(chatId)
-      return pageResult(direct, snapshot.items, options, source)
-    }
-    for (const peer of this.peerSummaries()) {
-      const { snapshot, source } = await this.peerView(peer.paneId)
-      const subagent = subagentSummaries(peer, snapshot).find((entry) => entry.paneId === chatId)
-      if (subagent) {
-        const itemId = chatId.slice(peer.paneId.length + 1)
-        return pageResult(subagent, snapshot.items.filter((item) => item.id === itemId), options, source)
-      }
-    }
-    return null
+  readReadable(chatId: string, callerPaneId: string | null, options: PeerChatReadOptions): Promise<PeerChatReadResult | null> {
+    return readReadablePeer(this.readable(), chatId, callerPaneId, options)
   }
 
-  /** The transcript a peer may read, loading the saved view a parked pane would need first. */
-  private async peerView(paneId: string): Promise<ReturnType<typeof readableView>> {
-    const live = this.lifecycle.require(paneId).surface.snapshot()
-    if (live.items.length === 0) await this.transcripts.load(paneId)
-    return readableView(live, this.store.get(paneId), this.transcripts.peek(paneId))
+  private readable(): ReadablePeerHost {
+    return {
+      summaries: () => this.peerSummaries(),
+      live: (paneId) => this.lifecycle.require(paneId).surface.snapshot(),
+      record: (paneId) => this.store.get(paneId),
+      transcripts: this.transcripts
+    }
   }
 
   /**
