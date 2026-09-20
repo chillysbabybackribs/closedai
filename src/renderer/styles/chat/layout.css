@@ -44,6 +44,11 @@
 .chat-layout-header { flex: 0 0 30px; padding: 0 4px; }
 .chat-layout-tile[data-selected='true'] > .chat-layout-header { color: var(--chrome-fg-strong); background: var(--surface-raised); }
 .chat-layout-header .chat-layout-title { padding-inline: 2px; cursor: grab; }
+
+/* The + menu borrows the shell menu surface; rows are icon + label, not label + shortcut. */
+.chat-layout-new-chat-menu { min-width: 168px; }
+.chat-layout-new-chat-menu .titlebar-menu-item { justify-content: flex-start; gap: 8px; cursor: pointer; }
+.chat-layout-new-chat-menu .titlebar-menu-item svg { color: var(--chrome-control-muted); }
 .chat-layout-title span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .chat-layout-title svg { flex-shrink: 0; opacity: 0.6; }
 .chat-layout-tabs { position: relative; display: flex; flex: 1; min-width: 0; align-self: stretch; overflow-x: auto; scrollbar-width: thin; }

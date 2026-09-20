@@ -32,7 +32,8 @@ previous conversations are readable through `peer_chats`.
 Renderer chat/composer control ids target the focused tile; use `layout.pane-drag` with a chat id
 to focus another tile before exercising its controls. The UI state includes visible pane ids and
 browser visibility. Browser pages use the CDP tools described in [Tools](tools.md) and [CDP](cdp-tool-foundation.md).
-Use `layout.new-chat` to add a conversation tab, `layout.tab` to select one, and `layout.tab-close`
+Open `layout.new-chat-menu` then `layout.new-chat` to add a conversation tab (`layout.split-right` and
+`layout.split-below` sit in the same menu), `layout.tab` to select one, and `layout.tab-close`
 to remove it from the tile; each control's item is the chat id. Switching or removing a tab does
 not stop its running turn or delete its history.
 The common routing policy prefers deterministic commands, page APIs, the session-owned
