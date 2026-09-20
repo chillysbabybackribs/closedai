@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import type { ResearchSnapshot, ResearchSource, ResearchState } from '../../../../shared/web-research.js'
+import type { ResearchActivity, ResearchActivityEvent, ResearchExcerpt, ResearchSnapshot, ResearchSource, ResearchState } from '../../../../shared/web-research.js'
+import { ActivityPublisher, toActivity } from './activity.js'
 import type { ToolContext } from '../../tool.js'
 import { canonicalUrl, SearchRouter } from '../router.js'
 import type { SearchRequest, SearchResult } from '../types.js'
@@ -20,6 +21,7 @@ export type ResearchInput = {
 }
 type Run = {
   id: string; owner: ResearchOwner; state: ResearchState; revision: number; pending: number
+  startedAt: number; finishedAt?: number; queries: string[]
   completedQueries: number; totalQueries: number; maxSources: number
   sources: Map<string, ResearchSource>; errors: ResearchSnapshot['errors']; controller: AbortController
   listeners: Set<() => void>; timer: ReturnType<typeof setTimeout>
@@ -30,6 +32,7 @@ type Run = {
 export class ResearchService {
   private readonly runs = new Map<string, Run>()
   private readonly stoppedTurns = new Map<string, string>()
+  private readonly publisher = new ActivityPublisher()
   private disposed = false
 
   constructor(private readonly router: SearchRouter, private readonly deps: ResearchDependencies) {}
@@ -48,7 +51,7 @@ export class ResearchService {
     this.evict()
     const id = randomUUID()
     const run: Run = {
-      id, owner, state: 'running', revision: 0, pending: 0, completedQueries: 0, totalQueries: 0,
+      id, owner, state: 'running', revision: 0, pending: 0, startedAt: Date.now(), queries: [], completedQueries: 0, totalQueries: 0,
       maxSources: input.maxSources, sources: new Map(), errors: [], controller: new AbortController(),
       listeners: new Set(), presentation: new SourcePresentation(this.deps.openLive, context, input.presentation),
       timer: setTimeout(() => this.finish(run, 'timed_out'), input.deadlineMs)
@@ -81,9 +84,7 @@ export class ResearchService {
 
   async source(id: string, sourceId: string, context: ToolContext, offset: number, maxChars: number, query?: string): Promise<unknown> {
     const run = this.owned(id, context)
-    const source = [...run.sources.values()].find((item) => item.id === sourceId)
-    if (!source || source.state !== 'ready') throw new Error('Source is not ready or does not belong to this run')
-    const text = await this.deps.read(id, sourceId)
+    const { source, text } = await this.retained(run, sourceId)
     this.owned(id, context)
     const start = query ? text.toLowerCase().indexOf(query.toLowerCase(), offset) : offset
     if (start < 0) return { source, found: false }
@@ -114,6 +115,38 @@ export class ResearchService {
     return this.read(id, context, after)
   }
 
+  /** Renderer publication: coalesced run updates and evictions, independent of model reads. */
+  subscribe(listener: (event: ResearchActivityEvent) => void): () => void {
+    return this.publisher.subscribe(listener)
+  }
+
+  /** Retained runs the user can see for a pane, oldest first. */
+  activity(paneId: string): ResearchActivity[] {
+    return [...this.runs.values()].filter((run) => run.owner.paneId === paneId)
+      .sort((a, b) => a.startedAt - b.startedAt).map(toActivity)
+  }
+
+  /** The user's own Stop for one run; ownership is the app's, not a model turn's. */
+  cancelRun(id: string): void {
+    const run = this.runs.get(id)
+    if (!run) throw new Error('Research run is no longer retained')
+    this.finish(run, 'cancelled')
+  }
+
+  /** Retained text for the user's own reading, paged like the model-facing source action. */
+  async excerpt(id: string, sourceId: string, offset: number, maxChars: number): Promise<ResearchExcerpt> {
+    const run = this.runs.get(id)
+    if (!run) throw new Error('Research run is no longer retained')
+    const { source, text } = await this.retained(run, sourceId)
+    const start = Math.min(Math.max(0, offset), text.length)
+    return {
+      runId: id, sourceId, url: source.url, title: source.title, offset: start, text: text.slice(start, start + maxChars),
+      nextOffset: start + maxChars < text.length ? start + maxChars : null, chars: text.length,
+      ...(source.sha256 ? { sha256: source.sha256 } : {}), ...(source.retrievedAt ? { retrievedAt: source.retrievedAt } : {}),
+      ...(source.incomplete ? { incomplete: true } : {})
+    }
+  }
+
   cancelPane(paneId: string, threadId?: string | null, turnId?: string | null): void {
     if (threadId && turnId) this.stoppedTurns.set(paneId, `${threadId}:${turnId}`)
     for (const run of this.runs.values()) if (run.owner.paneId === paneId) this.finish(run, 'cancelled')
@@ -129,6 +162,13 @@ export class ResearchService {
   dispose(): void {
     this.disposed = true
     for (const run of this.runs.values()) this.finish(run, 'cancelled')
+    this.publisher.dispose()
+  }
+
+  private async retained(run: Run, sourceId: string): Promise<{ source: ResearchSource; text: string }> {
+    const source = [...run.sources.values()].find((item) => item.id === sourceId)
+    if (!source || source.state !== 'ready') throw new Error('Source is not ready or does not belong to this run')
+    return { source, text: await this.deps.read(run.id, sourceId) }
   }
 
   private validate(queries: SearchRequest[], urls: string[]): void {
@@ -143,6 +183,7 @@ export class ResearchService {
 
   private add(run: Run, queries: SearchRequest[], urls: string[]): void {
     run.totalQueries += queries.length
+    for (const query of queries) run.queries.push(query.query.slice(0, 200))
     for (const url of urls) this.discover(run, { url, title: url, snippet: '', provider: undefined })
     for (const query of queries) this.track(run, async () => {
       try {
@@ -223,6 +264,7 @@ export class ResearchService {
   private finish(run: Run, state: ResearchState): void {
     if (run.state !== 'running') return
     run.state = state
+    run.finishedAt = Date.now()
     run.presentation.finish()
     clearTimeout(run.timer)
     if (state !== 'completed') {
@@ -232,6 +274,7 @@ export class ResearchService {
       }
     }
     this.changed(run)
+    this.publisher.flush(run)
   }
 
   private owned(id: string, context: ToolContext): Run {
@@ -246,6 +289,7 @@ export class ResearchService {
   private changed(run: Run): number {
     run.revision += 1
     for (const listener of [...run.listeners]) listener()
+    this.publisher.schedule(run)
     return run.revision
   }
 
@@ -271,6 +315,7 @@ export class ResearchService {
       const oldest = [...this.runs.values()].find((run) => run.state !== 'running' && run.pending === 0)
       if (!oldest) throw new Error('Research retention is full; wait for cancelled work to settle')
       this.runs.delete(oldest.id)
+      this.publisher.evicted(oldest.id)
       void this.deps.remove(oldest.id).catch((error: unknown) => console.warn('[research] evidence cleanup:', message(error)))
     }
   }
