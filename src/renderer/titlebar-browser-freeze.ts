@@ -18,7 +18,9 @@ export function rectsOverlap(a: DOMRectReadOnly, b: DOMRectReadOnly): boolean {
 }
 
 export function overlayIsOpen(overlay: Element): boolean {
-  if (overlay.hasAttribute('hidden') || overlay.getAttribute('aria-hidden') === 'true') return false
+  if (overlay.hasAttribute('hidden')) return false
+  // Radix hides the decorative backdrop from assistive technology while it remains painted.
+  if (overlay.getAttribute('aria-hidden') === 'true' && overlay.getAttribute('data-slot') !== 'dialog-overlay') return false
   const state = overlay.getAttribute('data-state')
   if (state === 'closed') return false
   const details = overlay.closest('details')

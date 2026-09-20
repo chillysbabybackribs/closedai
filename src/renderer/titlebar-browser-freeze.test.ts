@@ -39,7 +39,9 @@ test('modal backdrop occludes the browser before an image dialog grows into it',
   try {
     const host = new Surface(900, 380)
     const dialog = new Surface(400, 400, { 'data-state': 'open' })
-    const backdrop = new Surface(0, 1280, { 'data-state': 'open' })
+    const backdrop = new Surface(0, 1280, {
+      'data-state': 'open', 'data-slot': 'dialog-overlay', 'aria-hidden': 'true'
+    })
     const root = {
       querySelector: () => host,
       querySelectorAll: (selector: string) => selector.includes('[data-slot="dialog-overlay"]')
