@@ -75,9 +75,10 @@ function ruleFor(call: CompensableCall, verb: (rule: Rule) => string): Rule | nu
 
 /** What would put the tab back, if this call armed something. Null for everything else. */
 export function compensationFor(call: CompensableCall): Compensation | null {
-  if (call.namespace === 'closedai_app' && call.tool === 'command' && actionOf(call) === 'switch_project') {
+  if (call.namespace === 'closedai_app' && call.tool === 'command' &&
+    actionOf(call) === 'project_switch' && call.arguments.op === 'request') {
     return { label: 'the queued project switch', call: {
-      namespace: 'closedai_app', tool: 'command', arguments: { action: 'cancel_project_switch' }
+      namespace: 'closedai_app', tool: 'command', arguments: { action: 'project_switch', op: 'cancel' }
     } }
   }
   const rule = ruleFor(call, (candidate) => candidate.arms)
@@ -98,8 +99,9 @@ export function compensationFor(call: CompensableCall): Compensation | null {
  * and stops needs no unwinding of the part it completed on purpose.
  */
 export function releases(call: CompensableCall, pending: Compensation): boolean {
-  if (call.namespace === 'closedai_app' && call.tool === 'command' && actionOf(call) === 'cancel_project_switch') {
-    return pending.call.namespace === 'closedai_app' && pending.call.arguments.action === 'cancel_project_switch'
+  if (call.namespace === 'closedai_app' && call.tool === 'command' &&
+    actionOf(call) === 'project_switch' && call.arguments.op === 'cancel') {
+    return pending.call.namespace === 'closedai_app' && pending.call.arguments.action === 'project_switch'
   }
   const rule = ruleFor(call, (candidate) => candidate.releases)
   if (!rule || rule.namespace !== pending.call.namespace || rule.tool !== pending.call.tool) return false

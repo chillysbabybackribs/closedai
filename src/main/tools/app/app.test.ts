@@ -68,7 +68,7 @@ test('namespace advertises state, deterministic commands, and control-level ui a
   const [state, command, ui] = registry.namespaces[0]!.tools
   assert.equal(state!.actions, undefined)
   assert.deepEqual(command!.actions?.map((action) => action.name), [
-    'switch_project', 'cancel_project_switch', 'new_chat', 'send_message', 'stop_agent', 'open_chat', 'close_chat', 'select_model', 'browser_tab'
+    'project_switch', 'new_chat', 'send_message', 'stop_agent', 'open_chat', 'close_chat', 'select_model', 'browser_tab'
   ])
   assert.deepEqual(ui!.actions?.map((action) => action.name), [
     'controls', 'click', 'type', 'press_key', 'scroll', 'wait_for'

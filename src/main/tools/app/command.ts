@@ -14,27 +14,22 @@ const AWAIT_TURN_MAX_MS = 120_000
 export function appCommandActions(app: () => AppCommandHost | null): ToolAction[] {
   return [
     {
-      action: 'switch_project',
-      description: 'Queue an authorized project switch for after all chats become idle. Requires an absolute existing directory. Returns pending, not completion: finish your turn after acceptance. The app verifies the destination and starts a fresh chat with your conversation handoff to continue the authorized task. One in-memory request; restart cancels it. Inspect state.workspace.projectSwitch for status or cancel_project_switch to release it.',
+      action: 'project_switch',
+      description: 'Request or cancel a deferred project switch. request validates an absolute existing directory and queues a switch after all chats become idle. Acceptance is pending: finish your turn. The app verifies the destination and starts a fresh chat with your conversation handoff to continue the authorized task. cancel releases only the caller’s pending request. Restart cancels pending work. Inspect state.workspace.projectSwitch for status; completed means the continuation was submitted, not the task finished.',
       inputSchema: objectSchema({
-        project_path: { type: 'string', minLength: 1, maxLength: 4096, description: 'Absolute path to an existing project directory.' }
-      }, ['project_path']),
+        op: { type: 'string', enum: ['request', 'cancel'] },
+        project_path: { type: 'string', minLength: 1, maxLength: 4096, description: 'Required for request: absolute path to an existing directory.' }
+      }, ['op']),
       run: async (input, context) => {
-        if (!context.paneId || !context.threadId || !context.turnId) throw new Error('A current calling chat and turn are required')
-        const host = requireHost(app, 'app commands')
-        return jsonResult(await host.queueProjectSwitch({
-          paneId: context.paneId, threadId: context.threadId, turnId: context.turnId,
-          projectPath: stringArg(input, 'project_path')!
-        }, context.signal))
-      }
-    },
-    {
-      action: 'cancel_project_switch',
-      description: 'Cancel the calling chat’s pending project switch. A switch already applying cannot be cancelled; inspect state.workspace.projectSwitch.',
-      inputSchema: objectSchema({}),
-      run: async (_input, context) => {
         if (!context.paneId) throw new Error('A calling chat is required')
-        return jsonResult({ projectSwitch: requireHost(app, 'app commands').cancelProjectSwitch(context.paneId) })
+        const host = requireHost(app, 'app commands')
+        if (input.op === 'cancel') return jsonResult({ projectSwitch: host.cancelProjectSwitch(context.paneId) })
+        if (!context.threadId || !context.turnId) throw new Error('A current calling thread and turn are required')
+        const projectPath = stringArg(input, 'project_path')
+        if (!projectPath) throw new Error('project_path is required for request')
+        return jsonResult(await host.queueProjectSwitch({
+          paneId: context.paneId, threadId: context.threadId, turnId: context.turnId, projectPath
+        }, context.signal))
       }
     },
     {
