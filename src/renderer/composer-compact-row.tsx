@@ -71,6 +71,7 @@ export function ComposerCompactRow({
           <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}>
             <Button
               type="button"
+              variant="ghost"
               size="icon"
               className="prompt-composer-stop rounded-full"
               aria-label={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}
@@ -80,7 +81,7 @@ export function ComposerCompactRow({
                 void onStop()
               }}
             >
-              <Pause size={15} fill="currentColor" aria-hidden="true" />
+              <Pause size={17} fill="currentColor" aria-hidden="true" />
             </Button>
           </PromptInputAction>
         ) : paused ? (
@@ -104,6 +105,7 @@ export function ComposerCompactRow({
           <PromptInputAction tooltip="Send message">
             <Button
               type="submit"
+              variant="ghost"
               size="icon"
               className="prompt-composer-send rounded-full"
               aria-label="Send message"

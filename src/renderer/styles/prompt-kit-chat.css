@@ -414,40 +414,40 @@
   transition: all 120ms ease;
 }
 
+/* Send and pause are bare icons, coloured like the chat-tab status indicators:
+   blue arrow for send, yellow pause bars while a task runs. */
 .prompt-composer-send:not(:disabled) {
-  background: #fff;
-  color: #171717;
-  box-shadow: 0 1px 4px rgb(255 255 255 / 22%);
+  background: transparent;
+  color: #60a5fa;
 }
 
 .prompt-composer-send:not(:disabled):hover {
-  background: #e8e8e8;
-  transform: scale(1.04);
+  background: rgb(96 165 250 / 14%);
+  color: #93c5fd;
+  transform: scale(1.06);
 }
 
 .prompt-composer-send:disabled {
-  background: rgb(255 255 255 / 6%);
+  background: transparent;
   color: rgb(255 255 255 / 22%);
 }
 
 .prompt-composer-send[data-waiting-for-input='true'] {
-  background: #fff;
-  color: #171717;
+  background: transparent;
+  color: #60a5fa;
   opacity: 1;
-  box-shadow: 0 1px 4px rgb(255 255 255 / 22%);
 }
 
 .prompt-composer-stop {
-  background: #fff;
+  background: transparent;
   border: none;
-  color: #000;
-  box-shadow: 0 1px 4px rgb(255 255 255 / 22%);
+  color: #dba74b;
 }
 
 .prompt-composer-stop:hover {
-  background: #e8e8e8;
-  color: #000;
-  transform: scale(1.04);
+  background: rgb(219 167 75 / 14%);
+  color: #e8bc6a;
+  transform: scale(1.06);
 }
 
 .prompt-composer-resume {
