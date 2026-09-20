@@ -24,10 +24,16 @@ function latestReadable(items: readonly ChatTranscriptItem[]): ChatTranscriptIte
   return undefined
 }
 
+type ToolTask = Extract<ChatTranscriptItem, { type: 'tool' }>
+
+function isToolTask(item: ChatTranscriptItem): item is ToolTask {
+  return item.type === 'tool' && Boolean(item.background)
+}
+
 /** Keeps only ordering ids and a bounded preview; transcript content stays with the provider. */
 export class PeerSummaryCache {
   private readonly ids = new Set<string>()
-  private readonly activeBackgroundTasks = new Map<string, Extract<ChatTranscriptItem, { type: 'tool' }>>()
+  private readonly activeBackgroundTasks = new Map<string, ToolTask>()
   private turnActive = false
   private latestId: string | null = null
   private textDelta = false
@@ -55,8 +61,7 @@ export class PeerSummaryCache {
       this.ids.clear()
       this.activeBackgroundTasks.clear()
       for (const item of event.snapshot.items) this.ids.add(item.id)
-      const bgTasks = event.snapshot.history?.backgroundTasks ?? event.snapshot.items.filter((item): item is Extract<ChatTranscriptItem, { type: 'tool' }> =>
-        item.type === 'tool' && Boolean(item.background))
+      const bgTasks = (event.snapshot.history?.backgroundTasks ?? event.snapshot.items).filter(isToolTask)
       for (const task of bgTasks) {
         if (['running', 'pending'].includes(activityPhase(task.status))) {
           this.activeBackgroundTasks.set(task.id, task)
@@ -175,8 +180,7 @@ export function summaryOf(
   record: ChatRecord
 ): ChatPeerSummary {
   const latest = latestReadable(snapshot.items)
-  const bgTasks = snapshot.history?.backgroundTasks ?? snapshot.items.filter((item): item is Extract<ChatTranscriptItem, { type: 'tool' }> =>
-    item.type === 'tool' && Boolean(item.background))
+  const bgTasks = (snapshot.history?.backgroundTasks ?? snapshot.items).filter(isToolTask)
   const activeBg = bgTasks.find((item) => ['running', 'pending'].includes(activityPhase(item.status)))
   const running = snapshot.activeTurnId !== null || activeBg !== undefined
   const activity = snapshot.activeTurnId !== null
