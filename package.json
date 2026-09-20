@@ -14,7 +14,7 @@
     "build": "tsc --noEmit && electron-vite build",
     "preview": "ELECTRON_DISABLE_SANDBOX=1 node scripts/launch-electron-vite.mjs preview",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs --test \"src/**/*.test.ts\"",
+    "test": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs --test \"src/**/*.test.ts\" \"src/**/*.test.tsx\"",
     "closure": "node scripts/closure-gate.mjs",
     "hygiene": "node scripts/hygiene-gate.mjs",
     "map": "node scripts/repo-tree.mjs --write",

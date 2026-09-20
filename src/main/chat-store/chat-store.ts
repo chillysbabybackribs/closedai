@@ -16,7 +16,8 @@ const WRITE_DELAY_MS = 150
 
 export const CHAT_STORE_MAX_PREVIEW = 240
 
-export type ChatStoreChange = { ids: string[] }
+/** `checkpointIds` names the changed records whose active checkpoint may now differ. */
+export type ChatStoreChange = { ids: string[]; checkpointIds: string[] }
 
 export class ChatStore extends EventEmitter {
   private readonly chats = new Map<string, ChatRecord>()
@@ -133,7 +134,10 @@ export class ChatStore extends EventEmitter {
     merged.threadId = chatRecordThreadId(provider, merged)
     merged.preview = merged.preview.slice(0, CHAT_STORE_MAX_PREVIEW)
     this.chats.set(id, merged)
-    this.changed([id])
+    // The active checkpoint is the saved one only while it belongs to the record's thread, so a
+    // thread change can retire it without the checkpoint field itself changing.
+    const checkpointChanged = current.checkpoint !== merged.checkpoint || current.threadId !== merged.threadId
+    this.changed([id], checkpointChanged ? [id] : [])
     return merged
   }
 
@@ -190,7 +194,7 @@ export class ChatStore extends EventEmitter {
     await this.writing
   }
 
-  private changed(ids: string[]): void {
+  private changed(ids: string[], checkpointIds: string[] = ids): void {
     this.dirty = true
     if (this.filePath && !this.writeTimer) {
       this.writeTimer = setTimeout(() => {
@@ -199,7 +203,7 @@ export class ChatStore extends EventEmitter {
       }, WRITE_DELAY_MS)
       this.writeTimer.unref?.()
     }
-    this.emit('change', { ids } satisfies ChatStoreChange)
+    this.emit('change', { ids, checkpointIds } satisfies ChatStoreChange)
   }
 
   private persist(): void {

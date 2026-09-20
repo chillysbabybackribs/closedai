@@ -20,13 +20,15 @@ export function parseLocalFileTarget(value: string | undefined): { path: string;
   const cleanPath = localFilePath(value)
   if (!cleanPath) return null
   if (!value) return { path: cleanPath }
-  const lineMatch = value.match(/#L(\d+)(?:-L?(\d+))?$/) || value.match(/:(\d+)(?::(\d+))?$/)
-  if (lineMatch) {
-    const line = parseInt(lineMatch[1]!, 10)
-    const endLine = lineMatch[2] ? parseInt(lineMatch[2], 10) : undefined
-    return { path: cleanPath, line, endLine }
-  }
-  return { path: cleanPath }
+  // `#L12-L15` is a line range; `:12:4` is the compiler form, line then column, never a range.
+  const range = value.match(/#L(\d+)(?:-L?(\d+))?$/)
+  const compiler = range ? null : value.match(/:(\d+)(?::\d+)?$/)
+  const match = range ?? compiler
+  if (!match) return { path: cleanPath }
+  const line = parseInt(match[1]!, 10)
+  const endLine = match[2] ? parseInt(match[2], 10) : undefined
+  if (!(line > 0)) return { path: cleanPath }
+  return endLine !== undefined && endLine > line ? { path: cleanPath, line, endLine } : { path: cleanPath, line }
 }
 
 export type LocalFilePreview =

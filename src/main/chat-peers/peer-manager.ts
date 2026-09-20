@@ -132,7 +132,12 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
         console.warn('[chat-peers] could not persist open chats:', error instanceof Error ? error.message : String(error))
       })
     }
-    store.on('change', (c?: { ids: string[] }) => { this.chatsEmit.schedule(); if (c?.ids) syncStoreCheckpoint(this.store, this.lifecycle, c.ids, (p, e) => this.onPaneEvent(p, e)) })
+    // Only a checkpoint (or thread) change earns a pane event; title, preview, and timestamp
+    // writes happen inside turn handling and must not re-enter it.
+    store.on('change', (c?: { ids: string[]; checkpointIds?: string[] }) => {
+      this.chatsEmit.schedule()
+      if (c?.checkpointIds?.length) syncStoreCheckpoint(this.store, this.lifecycle, c.checkpointIds, (p, e) => this.onPaneEvent(p, e))
+    })
   }
 
   snapshot(window?: ChatHistoryWindow): ChatWorkspaceSnapshot {
@@ -214,7 +219,12 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.projectSwitch.assertAvailable()
     this.lifecycle.require(paneId)
     const record = this.store.require(paneId)
-    if (record.cwd !== this.workspace().cwd) await this.selectProject(record.projectPath)
+    if (record.cwd !== this.workspace().cwd) {
+      await this.selectProject(record.projectPath)
+      // The switch restores that directory's open chats and trims idle panes, which can include
+      // this one; re-open it rather than select a pane the lifecycle no longer holds.
+      if (!this.lifecycle.get(paneId)) { await this.openChat(paneId); return }
+    }
     if (paneId === this.selectedPaneId) return
     const previousPaneId = this.selectedPaneId
     this.selectedPaneId = paneId
@@ -537,7 +547,11 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   /** Detach beyond the cap and record the open set; the drawer learns of the change at once. */
   private async trimAttached(): Promise<void> {
-    const detached = this.lifecycle.trim([this.selectedPaneId, ...this.visiblePaneIds])
+    // A queued project switch reads its handoff from the requesting pane once every chat is
+    // idle; detaching that pane in the meantime would cancel the switch as "source changed".
+    const pending = this.projectSwitch.state()
+    const switching = pending && (pending.status === 'pending' || pending.status === 'switching') ? [pending.paneId] : []
+    const detached = this.lifecycle.trim([this.selectedPaneId, ...this.visiblePaneIds, ...switching])
     if (detached.length === 0) return
     this.chatsEmit.schedule()
     await this.persistOpenChats()
