@@ -26,8 +26,8 @@ async function check(root: string) {
   assert.ok(address && typeof address !== 'string')
   const window = new BrowserWindow({ show: false, width: 1280, height: 850,
     webPreferences: { preload: join(root, 'preload.cjs'), backgroundThrottling: false } })
-  window.webContents.on('console-message', (_event, level, message) => {
-    if (level >= 2) console.error('Fixture renderer:', message)
+  window.webContents.on('console-message', (event) => {
+    if (event.level === 'error') console.error('Fixture renderer:', event.message)
   })
   const browser = new BrowserService(window, EPHEMERAL_BROWSER_HISTORY, { initialUrl: 'about:blank' })
   registerBrowserCoreIpc(ipcMain, () => browser)
@@ -56,13 +56,13 @@ async function check(root: string) {
     assert.ok(!image.isEmpty())
     await writeFile(path, image.toPNG())
     await window.loadFile(join(root, 'index.html'))
-    await until('document.querySelector("[data-ui=\"chat.local-file\"]") !== null')
+    await until(`document.querySelector('[data-ui="chat.local-file"]') !== null`)
     await browser.navigate(`http://127.0.0.1:${address.port}`)
     const webId = browser.tabList()[0].id
     const contents = browser.contentsOf(webId)!
     await contents.executeJavaScript('window.probeToken = "retained"; document.querySelector("#draft").value = "unfinished"; window.scrollTo(0, 250)')
     await until('document.querySelector("#browser-page").getBoundingClientRect().height > 100')
-    await evaluate('document.querySelector("[data-ui=\"chat.local-file\"]").click()')
+    await evaluate(`document.querySelector('[data-ui="chat.local-file"]').click()`)
     await until('document.querySelector(".image-viewer:not([hidden]) img")?.naturalWidth > 0')
     const imageId = browser.snapshot().image!.tabId
     assert.ok(imageId)
@@ -82,7 +82,7 @@ async function check(root: string) {
     })()`)
     assert.ok(geometry.width > 500 && geometry.height > 500)
     assert.equal(geometry.height, geometry.frame)
-    await evaluate('document.querySelector("[data-ui=\"image.actual-size\"]").click()')
+    await evaluate(`document.querySelector('[data-ui="image.actual-size"]').click()`)
     await until('document.querySelector(".image-viewer-scale").textContent === "100%"')
     await evaluate('document.querySelector(".image-viewer-stage").scrollLeft = 120')
     const pan = await evaluate<number>('document.querySelector(".image-viewer-stage").scrollLeft')
@@ -102,8 +102,8 @@ async function check(root: string) {
     await until('window.innerWidth >= 1300')
     await new Promise((resolve) => setTimeout(resolve, 150))
     assertParked()
-    await evaluate('document.querySelector("[data-ui=\"image.fit\"]").click()')
-    await until('document.querySelector("[data-ui=\"image.fit\"]").getAttribute("aria-pressed") === "true"')
+    await evaluate(`document.querySelector('[data-ui="image.fit"]').click()`)
+    await until(`document.querySelector('[data-ui="image.fit"]').getAttribute('aria-pressed') === 'true'`)
     await new Promise((resolve) => setTimeout(resolve, 100))
     await writeFile('/tmp/closedai-image-tab-verification.png', (await window.webContents.capturePage()).toPNG())
     browser.closeTab(imageId)

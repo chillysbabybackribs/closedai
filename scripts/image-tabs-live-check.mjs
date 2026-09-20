@@ -29,6 +29,7 @@ try {
     child.once('error', reject)
     child.once('exit', (code) => done(code ?? 1))
   })
+  if (process.exitCode) throw new Error('Image-tab Electron check failed; see diagnostics above')
   const result = JSON.parse(await readFile(join(root, 'result.json'), 'utf8'))
   if (!result.passed) throw new Error('Image-tab verification did not complete')
   console.log(JSON.stringify(result))
