@@ -17,13 +17,13 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
       action: 'project_switch',
       description: 'Request or cancel a deferred project switch. request validates an absolute existing directory and queues a switch after all chats become idle. Acceptance is pending: finish your turn. The app verifies the destination and starts a fresh chat with your conversation handoff to continue the authorized task. cancel releases only the caller’s pending request. Restart cancels pending work. Inspect state.workspace.projectSwitch for status; completed means the continuation was submitted, not the task finished.',
       inputSchema: objectSchema({
-        op: { type: 'string', enum: ['request', 'cancel'] },
+        project_op: { type: 'string', enum: ['request', 'cancel'] },
         project_path: { type: 'string', minLength: 1, maxLength: 4096, description: 'Required for request: absolute path to an existing directory.' }
-      }, ['op']),
+      }, ['project_op']),
       run: async (input, context) => {
         if (!context.paneId) throw new Error('A calling chat is required')
         const host = requireHost(app, 'app commands')
-        if (input.op === 'cancel') return jsonResult({ projectSwitch: host.cancelProjectSwitch(context.paneId) })
+        if (input.project_op === 'cancel') return jsonResult({ projectSwitch: host.cancelProjectSwitch(context.paneId) })
         if (!context.threadId || !context.turnId) throw new Error('A current calling thread and turn are required')
         const projectPath = stringArg(input, 'project_path')
         if (!projectPath) throw new Error('project_path is required for request')

@@ -32,13 +32,13 @@ or guarantee of task completion. Instruction assembly tests verify delivery; beh
 requires live task evaluation. Existing provider sessions need refreshed instructions before evaluating it.
 
 The deferred project-switch command is a specific runtime continuation mechanism, separate from
-that general guidance. `closedai_app.command project_switch` with `op: request` validates the
+that general guidance. `closedai_app.command project_switch` with `project_op: request` validates the
 calling pane/thread/turn and an existing absolute directory, then waits for all chats to be idle.
 The caller must end its turn after a pending receipt. The destination gets a new chat with the
 existing bounded, untrusted conversation handoff and frozen source lineage; a fixed continuation
 message asks it to finish only the previously authorized task and verify its working directory.
 Focus does not determine the source. The latest status is readable through app state, and
-`op: cancel` releases a pending request. Cancellation, source replacement, and shutdown do not
+`project_op: cancel` releases a pending request. Cancellation, source replacement, and shutdown do not
 start a continuation. Failures are exposed without automatic retries; completed describes
 switch-and-submit, not task completion. Pending state is in memory only.
 The app no

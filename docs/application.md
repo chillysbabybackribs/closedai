@@ -81,7 +81,7 @@ turn. `index.ts` saves the departing project's open chat ids and restores the de
 including selection; conversation ids live on the records. A directory without saved open chats
 receives a fresh chat. This is directory selection; it does not create a Git branch or worktree.
 
-Models can request `closedai_app.command project_switch` with `op: request` and an absolute
+Models can request `closedai_app.command project_switch` with `project_op: request` and an absolute
 existing `project_path`. One in-memory request waits for every pane and pane operation to become
 idle. Acceptance means pending: the model must finish its turn. The app verifies the destination,
 creates a fresh chat using the caller's model and conversation handoff (independent of focus),
@@ -91,7 +91,7 @@ not that the continued task succeeded.
 
 `closedai_app.state` exposes the active project and latest `workspace.projectSwitch` status,
 including failures and the destination pane when created. Transcript notices report status changes.
-`project_switch op: cancel` releases the caller's pending request. Stopping or messaging that
+`project_switch project_op: cancel` releases the caller's pending request. Stopping or messaging that
 caller, closing it, changing its thread, manual project selection, and app shutdown also cancel
 pending work. An applying switch blocks new sends and cannot be cancelled or retried automatically.
 Requests do not survive restarts. Failed sequential tool batches cancel their queued switch.
