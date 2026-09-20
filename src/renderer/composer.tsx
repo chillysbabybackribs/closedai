@@ -289,6 +289,11 @@ export function Composer({
                     onCompact={onCompactConversation}
                     compactEnabled={compactConversationEnabled}
                   />
+                  <ComposerTokenBadge
+                    input={input}
+                    attachments={attachments}
+                    contextUsage={contextUsage}
+                  />
                 </div>
               </div>
 
