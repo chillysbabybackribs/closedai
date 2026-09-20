@@ -29,7 +29,7 @@ export class BrowserWorkerPool {
 
   constructor(
     private readonly create: () => Worker,
-    private readonly capacity = WORKER_CAPACITY,
+    capacity = WORKER_CAPACITY,
     private readonly idleMs = IDLE_MS
   ) {
     this.budget = new RequestBudget(capacity, PER_OWNER)

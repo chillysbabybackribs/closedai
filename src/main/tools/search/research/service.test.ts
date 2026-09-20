@@ -11,7 +11,7 @@ import type { SourceDocument } from './source-reader.js'
 const context: ToolContext = { paneId: 'pane', threadId: 'thread', turnId: 'turn', callId: 'call', signal: new AbortController().signal }
 const query: SearchRequest = { query: 'topic', intent: 'general', depth: 'balanced', count: 5 }
 const input: ResearchInput = { queries: [query], urls: [], maxSources: 12, deadlineMs: 30_000, presentation: 'live' }
-const document: SourceDocument = { url: 'https://example.com/source', title: 'Source', text: 'Actual evidence', contentType: 'text/plain', sha256: 'hash', incomplete: false }
+const document: SourceDocument = { url: 'https://example.com/source', title: 'Source', text: 'Actual evidence', contentType: 'text/plain', sha256: 'hash', incomplete: false, representation: 'static_text' }
 const tick = () => new Promise<void>((resolve) => setImmediate(resolve))
 function deferred<T>() {
   let resolve!: (value: T) => void

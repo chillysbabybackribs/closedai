@@ -3,13 +3,15 @@ import type { ResearchSnapshot, ResearchSource, ResearchState } from '../../../.
 import type { ToolContext } from '../../tool.js'
 import { canonicalUrl, SearchRouter } from '../router.js'
 import type { SearchRequest, SearchResult } from '../types.js'
-import { publicUrl, type SourceDocument, type SourceReader } from './source-reader.js'
+import { publicUrl, SourceNeedsRendering, type SourceDocument, type SourceReader } from './source-reader.js'
 import { isResearchSourceUrl, SourcePresentation, type OpenSearchTab } from '../presentation.js'
 
 export type ResearchOwner = { paneId: string; threadId: string; turnId: string | null; workspace: string }
 export type ResearchDependencies = {
   owner(context: ToolContext): ResearchOwner
   collect: SourceReader
+  /** Hidden Chromium read for pages whose static body is a JavaScript shell; absent means no workers. */
+  render?: SourceReader
   read(runId: string, sourceId: string): Promise<string>
   remove(runId: string): Promise<void>
   /** Opens a retained, user-owned tab once. Never follows subsequent results automatically. */
@@ -90,7 +92,7 @@ export class ResearchService {
     return {
       source, offset: start, text: text.slice(start, start + maxChars),
       nextOffset: start + maxChars < text.length ? start + maxChars : null,
-      evidence: 'retrieved_document', representation: 'static_text', untrusted: true
+      evidence: 'retrieved_document', representation: source.representation ?? 'static_text', untrusted: true
     }
   }
 
@@ -190,20 +192,47 @@ export class ResearchService {
       source.revision = this.changed(run)
       try {
         const document = await this.deps.collect(source.url, run.id, source.id, run.controller.signal)
-        if (run.state === 'running') this.collected(run, source, document)
+        if (run.state !== 'running') return
+        if (document.sparse && this.deps.render) await this.render(run, source, document)
+        else this.collected(run, source, document)
       } catch (error) {
-        if (run.state === 'running') {
-          source.state = 'failed'; source.error = message(error); source.revision = this.changed(run)
-        }
+        if (run.state !== 'running') return
+        if (error instanceof SourceNeedsRendering) await this.render(run, source, null, error)
+        else { source.state = 'failed'; source.error = message(error); source.revision = this.changed(run) }
       }
     })
+  }
+
+  /**
+   * Static reads come first because they are cheap and inert. A page that yields nothing, or
+   * a script-bearing shell with almost no text, is loaded once in a hidden worker; the worker's
+   * text replaces the static text. With no worker, or when it fails, the static outcome stands.
+   */
+  private async render(run: Run, source: ResearchSource, fallback: SourceDocument | null, cause?: Error): Promise<void> {
+    if (!this.deps.render) {
+      if (!fallback) { source.state = 'failed'; source.error = message(cause); source.revision = this.changed(run) }
+      return
+    }
+    source.state = 'rendering'
+    source.revision = this.changed(run)
+    try {
+      const document = await this.deps.render(source.url, run.id, source.id, run.controller.signal)
+      if (run.state === 'running') this.collected(run, source, document)
+    } catch (error) {
+      if (run.state !== 'running') return
+      if (fallback) { this.collected(run, source, fallback); return }
+      source.state = 'failed'
+      source.error = `${message(cause)}; rendered read failed: ${message(error)}`.slice(0, 300)
+      source.revision = this.changed(run)
+    }
   }
 
   private collected(run: Run, source: ResearchSource, document: SourceDocument): void {
     Object.assign(source, {
       state: 'ready', title: document.title.slice(0, 180) || source.title, url: document.url,
       contentType: document.contentType, sha256: document.sha256, chars: document.text.length,
-      incomplete: document.incomplete, retrievedAt: new Date().toISOString(), revision: this.changed(run)
+      incomplete: document.incomplete, representation: document.representation,
+      retrievedAt: new Date().toISOString(), revision: this.changed(run)
     })
   }
 
@@ -227,7 +256,7 @@ export class ResearchService {
     clearTimeout(run.timer)
     if (state !== 'completed') {
       run.controller.abort(new Error(`Research ${state}`))
-      for (const source of run.sources.values()) if (source.state === 'queued' || source.state === 'reading') {
+      for (const source of run.sources.values()) if (source.state === 'queued' || source.state === 'reading' || source.state === 'rendering') {
         source.state = 'failed'; source.error = `Research ${state}`; source.revision = ++run.revision
       }
     }
