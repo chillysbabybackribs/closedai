@@ -174,7 +174,7 @@
 .prompt-composer {
   grid-row: 3;
   min-width: 0;
-  padding: 18px var(--chat-column-gutter) 14px;
+  padding: 6px 12px 10px;
   border-top: none;
   background: transparent;
 }
@@ -197,41 +197,39 @@
   container: composer / inline-size;
   max-width: calc(var(--chat-column-width) + 64px);
   margin-inline: auto;
-  padding: 8px;
+  padding: 6px;
   border: 1px solid #333;
   border-radius: 10px;
   background: var(--antigravity-card-bg, #252526);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 22%), 0 1px 2px rgb(0 0 0 / 14%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 14%);
   transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
-/* The project rail deliberately tucks behind the prompt card, as in Codex Desktop: it gives
-   the working directory its own durable home without turning the composer into a toolbar. */
+/* A flat project/activity rail keeps the expanded composer light in every layout. */
 .composer-project-strip {
   display: flex;
   align-items: center;
   gap: 2px;
-  /* The rail is 16 px narrower on either side than the composing surface. This creates the
-     Codex-like tab silhouette instead of making the rail read as a second full-width card. */
-  width: min(calc(var(--chat-column-width) + 32px), calc(100% - 32px));
-  min-height: 52px;
-  margin: 0 auto -10px;
-  padding: 5px 10px 15px;
-  border: 1px solid rgb(255 255 255 / 5%);
-  border-bottom: 0;
-  border-radius: 16px 16px 0 0;
-  background: #1e1e1f;
+  width: min(calc(var(--chat-column-width) + 64px), 100%);
+  min-height: 30px;
+  margin: 0 auto 4px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .composer-project-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 9px;
+  min-width: 0;
+  max-width: 55%;
+  gap: 6px;
+  height: 28px;
+  padding: 0 6px;
   border-radius: 8px;
   color: #dedee0;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -240,14 +238,16 @@
   color: #fff;
 }
 
-.composer-project-trigger svg { color: #c8c8ca; }
+.composer-project-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.composer-project-trigger svg { flex-shrink: 0; width: 15px; height: 15px; color: #c8c8ca; }
 .composer-project-strip-spacer { flex: 1 1 auto; }
 
 /* The working timer sits on the left of the rail, opposite the folder. */
 .composer-strip-activity {
   flex: 0 1 auto;
+  min-width: 0;
   gap: 8px;
-  padding-left: 6px;
+  padding-left: 4px;
   color: #a9a9ad;
 }
 
@@ -300,17 +300,17 @@
 .composer-project-recent[data-highlighted] { background: rgb(255 255 255 / 9%); }
 
 .prompt-composer-input:focus-within {
-  border-color: #454545;
+  border-color: var(--focus-ink);
   box-shadow: 0 2px 8px rgb(0 0 0 / 22%), 0 1px 2px rgb(0 0 0 / 14%);
 }
 
 .prompt-composer-textarea {
-  min-height: 76px;
+  min-height: 38px;
   max-height: var(--composer-max-height, min(34vh, 260px));
-  padding: 10px 12px 8px;
+  padding: 6px 8px;
   color: #fff;
   font-size: var(--composer-font-size, 15px);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.55;
 }
 
@@ -321,8 +321,8 @@
   justify-content: space-between;
   gap: 10px;
   min-width: 0;
-  margin-top: 5px;
-  padding: 0 3px 3px;
+  margin-top: 2px;
+  padding: 0 2px 2px;
 }
 
 /* The start group is the only thing allowed to give way: the model name ellipsizes and the
@@ -349,6 +349,7 @@
 .prompt-composer-actions-start .model-menu-trigger {
   flex: 0 1 auto;
   min-width: 0;
+  height: 30px;
 }
 
 .prompt-composer-actions-start .context-meter {
@@ -369,9 +370,9 @@
 }
 
 .prompt-composer-tool {
-  height: 36px;
-  min-width: 36px;
-  padding: 0 8px;
+  height: 30px;
+  min-width: 30px;
+  padding: 0 5px;
   border: none;
   border-radius: 6px;
   background: transparent;
