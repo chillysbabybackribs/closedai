@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { BrowserShot } from '../shared/types.js'
 
 // DOM surfaces that may paint over the browser column.
-const OVERLAY_SELECTOR = '.browser-suggestions, .browser-downloads, [role="dialog"], [role="menu"]'
+// Modal backdrops cover the browser even before async content (such as an image) has
+// given the dialog its final size. Native views must also stay behind that backdrop.
+const OVERLAY_SELECTOR = '.browser-suggestions, .browser-downloads, [data-slot="dialog-overlay"], [role="dialog"], [role="menu"]'
 const BROWSER_HOST_SELECTOR = '#browser-page'
 const EAGER_CAPTURE_TRIGGER = '[data-ui="browser.address"], [aria-label="Downloads"], [aria-label="Tools"]'
 // Right-clicking browser chrome opens a menu over the page, and unlike the triggers above it

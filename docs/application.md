@@ -379,6 +379,8 @@ default of white. The renderer's overlay freeze waits for its still, then moves 
 native page outside the browser box instead of toggling its visibility; `browser:setBounds` waits
 for a painted frame before resolving the return. This avoids both a blank capture gap and Electron's
 loaded-view blanking failure when a `WebContentsView` is hidden and shown around an overlay.
+Modal backdrops participate in this overlap check, so image previews keep the browser behind
+them from initial mount through image loading and resizing.
 Hiding the whole browser also keeps user tabs attached and parks the active surface beyond the
 window at its last usable size. Reopening restores that same loaded page without a reload;
 zero-size reports during panel collapse or expansion never replace the saved viewport. Keeping
