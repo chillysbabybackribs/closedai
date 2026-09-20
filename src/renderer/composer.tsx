@@ -205,7 +205,7 @@ export function Composer({
         onSubmit={() => void submit()}
         isLoading={running || sending}
         disabled={!enabled || sending}
-        maxHeight={isCompact ? 28 : 'min(36vh, 240px)'}
+        maxHeight={isCompact ? 28 : 'var(--composer-max-height, min(36vh, 240px))'}
         className={`prompt-composer-input${isCompact ? ' is-compact' : ''}`}
         onClick={() => {
           if (isCompact && !running) setManualExpanded(true)
