@@ -10,7 +10,7 @@ import { pdfTool } from './tools.js'
 const context: ToolContext = { paneId: 'pane', threadId: 'thread', turnId: 'turn', callId: 'call', signal: new AbortController().signal }
 const evidence: PdfPageEvidence = {
   documentSha256: 'hash', page: 1, totalPages: 1, width: 800, height: 300, requestedDpi: 72, effectiveDpi: 72,
-  crop: { x: 0, y: 0, width: 1, height: 1 }, pageTransform: [1, 0, 0, -1, 0, 300],
+  crop: { x: 0, y: 0, width: 1, height: 1 }, pageTransform: [1, 0, 0, -1, 0, 300], renderIncomplete: false,
   native: { text: 'native evidence', items: [], incomplete: false, scope: 'whole_page' }, image: 'data:image/jpeg;base64,anBn',
   ocr: { text: 'recognized evidence', words: [], confidence: 95, incomplete: false, engine: 'fixture', language: 'eng', coordinateSpace: 'rendered_crop_pixels' }
 }

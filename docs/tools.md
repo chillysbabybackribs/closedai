@@ -321,8 +321,10 @@ and pageable native text plus optional text-item transforms. Native text/items c
 page even when the image is cropped; they are not reconstructed columns, tables, or reading order.
 Page numbers are one-based. Crops use top-left fractions of the rotated page; width/height are
 at least 0.01 and the crop must fit inside the page. DPI defaults to 144 for page, 216 for OCR,
-ranges from 72 to 216, and is reduced to fit a maximum 2400 pixels per edge. Rendering rejects
-embedded rasters above 16 million pixels with an explicit error rather than silently dropping them.
+ranges from 72 to 216, and is reduced to fit a maximum 2400 pixels per edge. PDF.js can omit
+embedded rasters above 16 million pixels or unsupported content, even with stopAtErrors enabled.
+An empty drawing-operation list marks `renderIncomplete` and `incomplete`: it can mean a blank
+page or a failed render. Nonempty operations do not prove fidelity; results disclose this limit.
 
 `search.pdf ocr` explicitly runs local Tesseract.js on one page/crop, including mixed native/image
 pages. English model data ships as a dependency; there are no runtime model downloads or document

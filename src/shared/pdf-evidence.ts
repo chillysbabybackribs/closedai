@@ -20,6 +20,8 @@ export type PdfPageEvidence = {
   crop: PdfCrop
   /** PDF coordinates -> rotated page coordinates at 72 dpi, before crop. */
   pageTransform: number[]
+  /** Empty drawing operations can mean a blank page or an incomplete PDF.js render. */
+  renderIncomplete: boolean
   native: { text: string; items: PdfTextItem[]; incomplete: boolean; scope: 'whole_page' }
   image?: string
   ocr?: {

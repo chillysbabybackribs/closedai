@@ -53,8 +53,8 @@ function evidenceResult(evidence: PdfPageEvidence, action: 'page' | 'ocr', input
     text: data.text.slice(offset, offset + count), offset, nextOffset: offset + count < data.text.length ? offset + count : null,
     items: itemCount ? items.slice(itemOffset, itemOffset + itemCount) : [], itemOffset,
     nextItemsOffset: itemCount && itemOffset + itemCount < items.length ? itemOffset + itemCount : null,
-    totalItems: items.length, incomplete: data.incomplete,
-    limitations: 'Native geometry is not reconstructed reading order. OCR confidence is not correctness. Rendering rejects embedded rasters above 16 million pixels; successful rendering is not a fidelity guarantee.'
+    totalItems: items.length, incomplete: data.incomplete || evidence.renderIncomplete,
+    limitations: 'Native geometry is not reconstructed reading order. OCR confidence is not correctness. PDF.js may omit embedded rasters above 16 million pixels or unsupported content. Empty drawing operations mark renderIncomplete, but false does not establish fidelity.'
   }
   return { content: [
     { type: 'text', text: JSON.stringify(summary) + (image ? `\n${EXEC_IMAGE_HINT}` : '') },

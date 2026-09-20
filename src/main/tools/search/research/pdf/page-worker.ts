@@ -29,6 +29,10 @@ async function inspect(): Promise<PdfPageEvidence> {
       const height = Math.max(1, Math.ceil(viewport.height * crop.height))
       const canvas = createCanvas(width, height)
       try {
+        // PDF.js can settle a render after an operator-stream error. An empty list is
+        // ambiguous, so never publish it as evidence of a definitely blank source page.
+        const operators = await page.getOperatorList()
+        const renderIncomplete = operators.fnArray.length === 0
         await page.render({
           canvas: null, canvasContext: canvas.getContext('2d') as unknown as CanvasRenderingContext2D,
           viewport, transform: [1, 0, 0, 1, -viewport.width * crop.x, -viewport.height * crop.y],
@@ -39,7 +43,7 @@ async function inspect(): Promise<PdfPageEvidence> {
         const text = items.map((item) => item.str + (item.hasEOL ? '\n' : ' ')).join('').trim()
         const result: PdfPageEvidence = {
           documentSha256, page: request.page, totalPages: document.numPages, width, height,
-          requestedDpi: request.dpi, effectiveDpi: scale * 72, crop, pageTransform: base.transform,
+          requestedDpi: request.dpi, effectiveDpi: scale * 72, crop, pageTransform: base.transform, renderIncomplete,
           native: {
             text: text.slice(0, TEXT_LIMIT), scope: 'whole_page',
             items: items.slice(0, ITEM_LIMIT).map((item) => ({ text: item.str.slice(0, 1000), transform: item.transform, width: item.width, height: item.height })),
@@ -60,7 +64,7 @@ async function inspect(): Promise<PdfPageEvidence> {
             result.ocr = {
               text: data.text.slice(0, TEXT_LIMIT), confidence: data.confidence,
               words: words.slice(0, ITEM_LIMIT).map((word) => ({ text: word.text.slice(0, 1000), confidence: word.confidence, bbox: word.bbox })),
-              incomplete: !data.text.trim() || data.text.length > TEXT_LIMIT || words.length > ITEM_LIMIT || words.some((word) => word.text.length > 1000),
+              incomplete: renderIncomplete || !data.text.trim() || data.text.length > TEXT_LIMIT || words.length > ITEM_LIMIT || words.some((word) => word.text.length > 1000),
               engine: `tesseract.js 7.0.0 / ${data.version}`, language: 'eng', coordinateSpace: 'rendered_crop_pixels'
             }
           } finally { await worker.terminate() }
