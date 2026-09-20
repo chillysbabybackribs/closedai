@@ -169,3 +169,93 @@
 .chat-layout-tile[data-solo='true'] > .chat-layout-header {
   border-bottom-color: var(--focus-ink);
 }
+
+/* Chat rename dialog */
+.chat-rename-dialog {
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  padding: 18px 20px;
+}
+
+.chat-rename-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.chat-rename-input {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--hairline-strong, rgb(255 255 255 / 16%));
+  border-radius: 6px;
+  background: var(--surface-raised, #2a2a2b);
+  color: var(--foreground, #eceef0);
+  font-size: 13px;
+  outline: none;
+}
+
+.chat-rename-input:focus {
+  border-color: var(--focus-ink, #3b82f6);
+}
+
+.chat-rename-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chat-rename-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-rename-btn {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s ease;
+}
+
+.chat-rename-reset {
+  background: transparent;
+  color: var(--muted-foreground, #8e8e93);
+  padding-left: 0;
+}
+
+.chat-rename-reset:hover:not(:disabled) {
+  color: var(--foreground, #eceef0);
+  text-decoration: underline;
+}
+
+.chat-rename-cancel {
+  background: transparent;
+  color: var(--muted-foreground, #8e8e93);
+  border: 1px solid var(--hairline, rgb(255 255 255 / 10%));
+}
+
+.chat-rename-cancel:hover:not(:disabled) {
+  background: var(--surface-control-hover, rgb(255 255 255 / 6%));
+  color: var(--foreground, #eceef0);
+}
+
+.chat-rename-save {
+  background: var(--focus-ink, #3b82f6);
+  color: #fff;
+}
+
+.chat-rename-save:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.chat-rename-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

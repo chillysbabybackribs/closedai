@@ -125,7 +125,13 @@ function App(): JSX.Element {
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
       <div className="workspace" data-mode="chat" data-agents={drawer.isCollapsed ? 'closed' : 'open'}>
-        <SideDrawer controller={drawer} chat={chat.sidebar} onSplitChat={splitSidebarChat} />
+        <SideDrawer
+          controller={drawer}
+          chat={chat.sidebar}
+          onSplitChat={splitSidebarChat}
+          onRenameChat={(id, title) => setRenamingChat({ id, title })}
+          onRetryChatTitle={(id) => { void chat.sidebar.retryChatTitle(id).catch(drawer.reportError) }}
+        />
         {chat.selectedPaneId && <DesktopWorkspace
           key={chat.workspace?.cwd ?? chat.state.cwd}
           ref={workspaceRef}
@@ -136,8 +142,19 @@ function App(): JSX.Element {
           onHistoryOpenChange={setHistoryOpen}
           dialog={paneDialog}
           onDialogChange={setPaneDialog}
+          onRenameChat={(id, title) => setRenamingChat({ id, title })}
+          onRetryChatTitle={(id) => { void chat.sidebar.retryChatTitle(id).catch(drawer.reportError) }}
         />}
       </div>
+      <ChatRenameDialog
+        open={Boolean(renamingChat)}
+        chatId={renamingChat?.id ?? ''}
+        currentTitle={renamingChat?.title ?? ''}
+        onClose={() => setRenamingChat(null)}
+        onSave={async (id, title) => {
+          await chat.sidebar.renameChat(id, title)
+        }}
+      />
       <AppearanceSettingsDialog
         open={settingsOpen}
         {...appearance}
