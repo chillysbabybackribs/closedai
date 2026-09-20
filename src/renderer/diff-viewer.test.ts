@@ -182,7 +182,7 @@ test('DiffViewer renders split view mode with dual panes', () => {
   assert.match(html, /diff-table-split/)
   assert.match(html, /diff-split-left diff-split-remove/)
   assert.match(html, /diff-split-right diff-split-add/)
-  assert.match(html, /data-ui="diff\.toggle-view" data-ui-key="split" class="diff-mode-btn is-active"/)
+  assert.match(html, /class="diff-mode-btn is-active" data-ui="diff\.toggle-view" data-ui-key="split"/)
 })
 
 test('DiffViewer renders collapse-all button when multi-hunk diff exists', () => {
