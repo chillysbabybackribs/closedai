@@ -380,7 +380,7 @@ export class ResearchService {
     Object.assign(source, {
       state: 'ready', title: document.title.slice(0, 180) || source.title, url: document.url,
       contentType: document.contentType, sha256: document.sha256, chars: document.text.length,
-      incomplete: document.incomplete, representation: document.representation,
+      incomplete: document.incomplete, representation: document.representation, pdf: document.pdf,
       dates: mergeDates(document.dates, source.dates),
       retrievedAt: new Date().toISOString(), revision: this.changed(run)
     })

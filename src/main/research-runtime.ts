@@ -9,6 +9,7 @@ import type { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { searchTools } from './tools/search/index.js'
 import type { ResearchService } from './tools/search/research/service.js'
 import { SourceStore } from './tools/search/research/source-reader.js'
+import { createPdfReader } from './tools/search/research/pdf/reader.js'
 import { textLimit } from './tools/search/research/coverage.js'
 import { SearchBrowserTabs } from './tools/search/presentation.js'
 import { ResearchLibrary } from './research-library/service.js'
@@ -32,7 +33,8 @@ export async function createResearchRuntime(options: {
   }
   const publicSession = session.fromPartition(RESEARCH_PARTITION)
   const library = ResearchLibrary.create(options.libraryPath, (input, init) => publicSession.fetch(input as string, init))
-  const store = new SourceStore(options.root, (input, init) => publicSession.fetch(input as string, init))
+  const store = new SourceStore(options.root, (input, init) => publicSession.fetch(input as string, init),
+    createPdfReader(new URL('./pdf-worker.js', import.meta.url)))
   const workers = new BrowserWorkerPool(createHiddenPageWorker)
   let service!: ResearchService
   const liveTabs = new SearchBrowserTabs({
