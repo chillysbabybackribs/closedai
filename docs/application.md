@@ -212,7 +212,8 @@ Dividers resize horizontal and vertical splits independently; arrow keys resize 
 divider and double-click resets it to equal proportions. Nested splits support columns, rows,
 and quadrants, up to 32 visible chats. A tile has a 300 × 280 px minimum; the chat area scrolls
 when a small window cannot fit the chosen arrangement. Narrow tiles use compact composer
-controls. Browser visibility and the chat tree, including divider ratios, are saved per project
+controls, and running or inactive panes collapse to a compact progress bar with manual toggle
+controls (`composer.compact-toggle`) to preserve vertical space for transcripts. Browser visibility and the chat tree, including divider ratios, are saved per project
 in renderer localStorage, including tab order and each tile's active tab. Missing/archived chats
 are removed from a restored layout; layouts saved before tabs remain compatible.
 
