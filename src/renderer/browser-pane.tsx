@@ -21,24 +21,26 @@ export const BrowserPane = memo(function BrowserPane({
   const downloads = useBrowserDownloadsController()
   return (
     <section className="browser-pane" aria-label="Browser" data-ui-surface="browser">
-      <div className={`browser-shell ${downloads.isOpen && !controller.browser.image ? 'has-downloads' : ''} ${controller.browser.image ? 'has-image-viewer' : ''}`}>
+      <div className={`browser-shell ${downloads.isOpen && !controller.browser.image && !controller.browser.file ? 'has-downloads' : ''} ${controller.browser.image ? 'has-image-viewer' : ''} ${controller.browser.file ? 'has-file-viewer' : ''}`}>
         <BrowserTabs controller={controller} />
-        {!controller.browser.image && <BrowserToolbar controller={controller} downloads={downloads} />}
-        {downloads.isOpen && !controller.browser.image ? <BrowserDownloadsShelf controller={downloads} /> : null}
+        {!controller.browser.image && !controller.browser.file && <BrowserToolbar controller={controller} downloads={downloads} />}
+        {downloads.isOpen && !controller.browser.image && !controller.browser.file ? <BrowserDownloadsShelf controller={downloads} /> : null}
         <div className={`browser-frame ${controller.browser.navigationError ? 'has-navigation-error' : ''}`}>
           <div
-            className={`browser-view-host ${controller.browser.image ? 'is-image-viewer' : controller.browser.navigationError ? 'is-navigation-error' : ''}`}
+            className={`browser-view-host ${controller.browser.image ? 'is-image-viewer' : controller.browser.file ? 'is-file-viewer' : controller.browser.navigationError ? 'is-navigation-error' : ''}`}
             id="browser-page"
             role="tabpanel"
             aria-label="Browser page"
-            aria-hidden={controller.browser.image || controller.browser.navigationError ? 'true' : undefined}
+            aria-hidden={controller.browser.image || controller.browser.file || controller.browser.navigationError ? 'true' : undefined}
             ref={controller.browserHostRef}
           />
-          {controller.titlebarFreeze && !controller.browser.image ? (
+          {controller.titlebarFreeze && !controller.browser.image && !controller.browser.file ? (
             <img className="browser-view-freeze" src={controller.titlebarFreeze.imageUrl} alt="" aria-hidden="true" />
           ) : null}
           {controller.tabs.filter((tab) => tab.image).map((tab) =>
             <ImageViewer key={tab.id} id={tab.id} active={controller.browser.image?.tabId === tab.id} />)}
+          {controller.tabs.filter((tab) => tab.file).map((tab) =>
+            <FileViewer key={tab.id} id={tab.id} active={controller.browser.file?.tabId === tab.id} />)}
           {controller.browser.navigationError ? (
             <BrowserNavigationError
               error={controller.browser.navigationError}
