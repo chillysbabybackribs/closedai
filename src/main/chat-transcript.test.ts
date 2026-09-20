@@ -168,16 +168,20 @@ test('background task lifecycle queries, zero-limit paging, and graceful stop', 
   clock.now = 1200
   const stopped = store.stopBackgroundTasks('Session detached')
   assert.equal(stopped.length, 1)
-  assert.equal(stopped[0]!.status, 'stopped')
-  assert.equal(stopped[0]!.finishedAt, 1200)
-  assert.equal(stopped[0]!.output, 'Session detached')
+  const stoppedItem = stopped[0]!
+  assert.equal(stoppedItem.type, 'tool')
+  if (stoppedItem.type === 'tool') {
+    assert.equal(stoppedItem.status, 'stopped')
+    assert.equal(stoppedItem.finishedAt, 1200)
+    assert.equal(stoppedItem.output, 'Session detached')
+  }
   assert.equal(store.hasRunningBackground(), false)
   assert.deepEqual(store.runningBackgroundTasks(), [])
 
   // Verify stop event was emitted
   const lastEvent = events.at(-1)
   assert.equal(lastEvent?.type, 'item')
-  if (lastEvent?.type === 'item') {
+  if (lastEvent?.type === 'item' && lastEvent.item.type === 'tool') {
     assert.equal(lastEvent.item.id, 'bg-1')
     assert.equal(lastEvent.item.status, 'stopped')
   }
