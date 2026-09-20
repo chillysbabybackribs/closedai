@@ -16,6 +16,22 @@ test('HTML extraction is inert, decodes entities, excludes scripts and preserves
   assert.throws(() => publicUrl('https://user:secret@example.com'), /credentials/)
 })
 
+test('publication, modification and transport dates retain distinct provenance; generic dates are not guessed', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'research-dates-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const store = new SourceStore(root, async () => new Response(
+    '<head><meta property="article:published_time" content="2020-01-01"><meta name="dateModified" content="2026-09-20"><meta name="date" content="2030-01-01"></head><main>Evidence</main>',
+    { headers: { 'content-type': 'text/html', 'last-modified': 'Sun, 20 Sep 2026 12:00:00 GMT' } }
+  ))
+  const doc = await store.collect('https://example.com/source', 'run', 'dates', new AbortController().signal)
+  assert.deepEqual(doc.dates, [
+    { kind: 'published', value: '2020-01-01', source: 'html:article:published_time' },
+    { kind: 'modified', value: '2026-09-20', source: 'html:datemodified' },
+    { kind: 'http_last_modified', value: 'Sun, 20 Sep 2026 12:00:00 GMT', source: 'http:Last-Modified' }
+  ])
+  assert.equal(documentText('<main>No dates</main>', 'text/html').dates?.length, 0)
+})
+
 test('collector lets the transport follow redirects, records the final URL, omits credentials, and retains hashed bounded text', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'research-source-'))
   t.after(() => rm(root, { recursive: true, force: true }))
