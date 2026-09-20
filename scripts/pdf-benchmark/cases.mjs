@@ -42,7 +42,7 @@ export const cases = [
   {
     id: 'skew-page', source: 'skew', page: 1,
     probes: ['32 Track MIDI Sequence Recorder', '100,000', '16 MIDI channels', 'TEMPO CHANGES', 'ANY TIME SIGNATURE'],
-    orderedAnchors: ['Recording a Sequence', 'Editing', 'Creating a Song', 'Composition Without Compromise', 'Additional Features']
+    orderedAnchors: ['Recording a Sequence', 'To erase a wrong note', 'Creating a Song', 'Composition Without Compromise', 'Additional Features']
   },
   {
     id: 'mixed-page', source: 'mixed', page: 1,

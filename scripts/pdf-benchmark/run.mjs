@@ -1,5 +1,5 @@
 // A small diagnostic benchmark, not a correctness gate or a representative accuracy estimate.
-// node scripts/pdf-benchmark/run.mjs /absolute/output/directory [repetitions=3]
+// node scripts/pdf-benchmark/run.mjs /absolute/output/directory [repetitions=3] [--rescore]
 import { build } from 'esbuild'
 import electron from 'electron'
 import { spawn } from 'node:child_process'
@@ -19,7 +19,7 @@ if (!Number.isInteger(repetitions) || repetitions < 1 || repetitions > 10) throw
 
 if (!process.versions.electron) {
   const code = await new Promise((done, reject) => {
-    const child = spawn(electron, [filename, output, String(repetitions)], {
+    const child = spawn(electron, [filename, output, String(repetitions), ...process.argv.slice(4)], {
       env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, stdio: 'inherit'
     })
     child.once('error', reject)
@@ -30,6 +30,7 @@ if (!process.versions.electron) {
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex')
 const normalize = (text) => text.normalize('NFKC').toLowerCase().replace(/[’‘]/g, "'")
+  .replace(/(?<!\p{L})'|'(?!\p{L})/gu, ' ')
   .replace(/[^\p{L}\p{N}']+/gu, ' ').trim().replace(/\s+/g, ' ')
 function wordErrorRate(expected, actual) {
   const a = normalize(expected).split(' ')
@@ -75,6 +76,24 @@ async function worker(entry, data) {
   } finally { clearTimeout(timer); await thread.terminate() }
 }
 
+const normalization = 'NFKC, lowercase, curly apostrophes normalized, apostrophes retained only inside words, other punctuation replaced with spaces, whitespace collapsed. WER is word-level Levenshtein distance/reference words; punctuation/math fidelity is not measured by WER.'
+if (process.argv.includes('--rescore')) {
+  const report = JSON.parse(await readFile(join(output, 'results.json'), 'utf8'))
+  report.normalization = normalization
+  report.rescoredAt = new Date().toISOString()
+  for (const row of report.cases) {
+    const test = cases.find((test) => test.id === row.id)
+    row.pageNumber = test.page
+    for (const action of ['page', 'ocr']) {
+      const evidence = JSON.parse(await readFile(join(output, `${test.id}-${action}.json`), 'utf8'))
+      row[action].score = score(test, action === 'ocr' ? evidence.ocr.text : evidence.native.text, action === 'ocr' || !test.crop)
+    }
+  }
+  await writeFile(join(output, 'results.json'), JSON.stringify(report, null, 2))
+  console.log('Rescored saved evidence; no PDF workers or network requests ran.')
+  process.exit(0)
+}
+
 await mkdir(output, { recursive: true })
 await mkdir(join(project, 'out'), { recursive: true })
 const bundle = await mkdtemp(join(project, 'out/pdf-benchmark-'))
@@ -82,7 +101,7 @@ const report = {
   measuredAt: new Date().toISOString(), repetitions,
   environment: { electron: process.versions.electron, node: process.versions.node, platform: process.platform, arch: process.arch, cpu: cpus()[0]?.model },
   method: 'Fresh disposable worker for each sample; timings include worker startup and local rendering/OCR, exclude download/build/queue/cache. Native timing is whole-document; page/OCR timing is selected region.',
-  normalization: 'NFKC, lowercase, curly apostrophes normalized, punctuation replaced with spaces, whitespace collapsed. WER is word-level Levenshtein distance/reference words; punctuation/math fidelity is not measured by WER.',
+  normalization,
   sources: {}, cases: []
 }
 try {
