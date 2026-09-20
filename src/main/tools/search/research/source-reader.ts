@@ -15,6 +15,8 @@ const BLOCK = new Set(['p', 'div', 'section', 'article', 'main', 'h1', 'h2', 'h3
 export type SourceDocument = {
   text: string; title: string; url: string; contentType: string; sha256: string; incomplete: boolean
   representation: SourceRepresentation
+  /** HTML with a script tag and almost no static text: probably a client-rendered shell. */
+  sparse?: boolean
 }
 export type SourceReader = (url: string, runId: string, sourceId: string, signal: AbortSignal) => Promise<SourceDocument>
 
@@ -133,14 +135,12 @@ export class SourceStore {
       const extracted = documentText(raw, contentType)
       const text = extracted.text.slice(0, MAX_TEXT)
       if (!text.trim()) throw new SourceNeedsRendering('No readable source text; the page may require JavaScript')
-      if (contentType.includes('html') && text.length < SHELL_TEXT_LIMIT && /<script[\s>]/i.test(raw)) {
-        throw new SourceNeedsRendering('The page is a JavaScript shell with almost no static text')
-      }
       const document: SourceDocument = {
         text, title: extracted.title, url, contentType, representation: 'static_text',
         sha256: createHash('sha256').update(text).digest('hex'),
         incomplete: incomplete || extracted.text.length > MAX_TEXT
       }
+      if (contentType.includes('html') && text.length < SHELL_TEXT_LIMIT && /<script[\s>]/i.test(raw)) document.sparse = true
       await file.close()
       await rename(temporary, join(directory, `${sourceId}.raw`))
       await writeFile(join(directory, `${sourceId}.txt.tmp`), text)
