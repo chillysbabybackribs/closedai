@@ -4,7 +4,14 @@ import { PeerIdleParking, type ParkablePeer } from './peer-idle-parking.js'
 import type { ChatSurface } from '../chat-hub.js'
 import type { ChatSnapshot } from '../../shared/chat.js'
 
-function fakeSurface(overrides: { activeTurnId?: string | null; runningBackground?: boolean } = {}): ChatSurface {
+type TestSurface = ChatSurface & {
+  _stopped: string[]
+  _started: string[]
+  _running: boolean
+  _turn: string | null
+}
+
+function fakeSurface(overrides: { activeTurnId?: string | null; runningBackground?: boolean } = {}): TestSurface {
   let running = overrides.runningBackground ?? false
   let turn = overrides.activeTurnId ?? null
   const stopped: string[] = []
@@ -32,7 +39,7 @@ function fakeSurface(overrides: { activeTurnId?: string | null; runningBackgroun
     get _started() { return started },
     set _running(v: boolean) { running = v },
     set _turn(t: string | null) { turn = t }
-  } as unknown as ChatSurface & { _stopped: string[]; _started: string[]; _running: boolean; _turn: string | null }
+  } as unknown as TestSurface
 }
 
 test('idle parking does not schedule when background tasks are active', () => {

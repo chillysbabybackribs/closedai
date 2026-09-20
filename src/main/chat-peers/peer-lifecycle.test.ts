@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { PeerLifecycle, MAX_ATTACHED_CHATS } from './peer-lifecycle.js'
-import type { ChatStore } from '../chat-store/chat-store.js'
+import { PeerLifecycle } from './peer-lifecycle.js'
+import { ChatStore } from '../chat-store/chat-store.js'
+import { chatRecord } from './peer-manager-harness.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import type { ChatSnapshot } from '../../shared/chat.js'
@@ -32,17 +33,12 @@ function fakeSurface(overrides: { activeTurnId?: string | null; runningBackgroun
   }
 }
 
-function makeLifecycle(): { lifecycle: PeerLifecycle; records: Map<string, ChatRecord>; surfaces: Map<string, ChatSurface> } {
-  const records = new Map<string, ChatRecord>()
+function makeLifecycle(initialRecords: ChatRecord[] = []): { lifecycle: PeerLifecycle; store: ChatStore; surfaces: Map<string, ChatSurface> } {
   const surfaces = new Map<string, ChatSurface>()
-  const store: Partial<ChatStore> = {
-    get: (id: string) => records.get(id),
-    update: () => {},
-    remove: (id: string) => { records.delete(id) }
-  }
+  const store = ChatStore.inMemory(initialRecords)
   const settings: Partial<AppSettingsAccess> = {
-    get: () => ({} as any),
-    set: async () => {}
+    get: () => ({ chatModelId: 'gpt' } as any),
+    set: async () => ({} as any)
   }
   const parking: Partial<PeerIdleParking> = {
     schedule: () => {},
@@ -56,34 +52,30 @@ function makeLifecycle(): { lifecycle: PeerLifecycle; records: Map<string, ChatR
   }
 
   const lifecycle = new PeerLifecycle(
-    store as ChatStore,
+    store,
     settings as AppSettingsAccess,
     factory,
     parking as PeerIdleParking,
     () => {},
     () => {}
   )
-  return { lifecycle, records, surfaces }
+  return { lifecycle, store, surfaces }
 }
 
 test('isRunning returns true if activeTurnId is present or background tasks are active', () => {
-  const { lifecycle, records, surfaces } = makeLifecycle()
+  const rec1 = chatRecord('chat-turn', 'gpt', { title: 'T' })
+  const rec2 = chatRecord('chat-bg', 'gpt', { title: 'B' })
+  const rec3 = chatRecord('chat-idle', 'gpt', { title: 'I' })
 
-  const rec1: ChatRecord = { id: 'chat-turn', cwd: '/w', modelId: 'm', threadId: 't1', title: 'T', preview: '', createdAt: 1, updatedAt: 1 }
-  const rec2: ChatRecord = { id: 'chat-bg', cwd: '/w', modelId: 'm', threadId: 't2', title: 'B', preview: '', createdAt: 2, updatedAt: 2 }
-  const rec3: ChatRecord = { id: 'chat-idle', cwd: '/w', modelId: 'm', threadId: 't3', title: 'I', preview: '', createdAt: 3, updatedAt: 3 }
-
-  records.set(rec1.id, rec1)
-  records.set(rec2.id, rec2)
-  records.set(rec3.id, rec3)
+  const { lifecycle, surfaces } = makeLifecycle([rec1, rec2, rec3])
 
   surfaces.set(rec1.id, fakeSurface({ activeTurnId: 'turn-123', runningBackground: false }))
   surfaces.set(rec2.id, fakeSurface({ activeTurnId: null, runningBackground: true }))
   surfaces.set(rec3.id, fakeSurface({ activeTurnId: null, runningBackground: false }))
 
-  lifecycle.attach(rec1.id)
-  lifecycle.attach(rec2.id)
-  lifecycle.attach(rec3.id)
+  lifecycle.attach(rec1)
+  lifecycle.attach(rec2)
+  lifecycle.attach(rec3)
 
   assert.equal(lifecycle.isRunning('chat-turn'), true)
   assert.equal(lifecycle.isRunning('chat-bg'), true)
@@ -91,21 +83,20 @@ test('isRunning returns true if activeTurnId is present or background tasks are 
 })
 
 test('trim protects chats with active background tasks from being detached', () => {
-  const { lifecycle, records, surfaces } = makeLifecycle()
+  const initialRecords = Array.from({ length: 10 }, (_, i) => chatRecord(`chat-${i}`, 'gpt', { title: `Title ${i}`, updatedAt: i }))
+  const { lifecycle, surfaces } = makeLifecycle(initialRecords)
 
   for (let i = 0; i < 10; i++) {
     const id = `chat-${i}`
-    const rec: ChatRecord = { id, cwd: '/w', modelId: 'm', threadId: `t${i}`, title: `Title ${i}`, preview: '', createdAt: i, updatedAt: i }
-    records.set(id, rec)
     // chat-2 has background tasks running
     const bg = i === 2
     surfaces.set(id, fakeSurface({ activeTurnId: null, runningBackground: bg }))
-    lifecycle.attach(id)
+    lifecycle.attach(initialRecords[i]!)
   }
 
   // Trim attached down to 5
   const detached = lifecycle.trim(['chat-9'], 5)
   // chat-2 must NOT be in detached
   assert.equal(detached.includes('chat-2'), false, 'chat with running background tasks must remain attached')
-  assert.equal(lifecycle.has('chat-2'), true)
+  assert.equal(lifecycle.peers.has('chat-2'), true)
 })
