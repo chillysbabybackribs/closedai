@@ -340,8 +340,11 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   browser column and never triggers the freeze-and-still path that a DOM overlay across the
   divider requires.
 - Tool activity is grouped into expandable step lists with arguments, output, status, and timing
-  when available. Provider-native background tasks have a separate transcript group and a
-  status popover. A turn ending does not prove that all background tasks finished.
+  when available. File modifications display interactive diff viewers supporting unified and
+  side-by-side split modes, collapsible hunks with expand/collapse all, individual hunk copying,
+  and proportional addition/deletion statistics. Provider-native background tasks have a separate
+  transcript group and a status popover. A turn ending does not prove that all background tasks
+  finished.
 - Completed assistant responses offer copy and branching. Timestamps appear when recorded;
   older history does not acquire invented timestamps.
 - The project rail contains the working timer and project menu; Tool configuration, Turn trace,
