@@ -135,7 +135,7 @@
 @container chat-tile (max-width: 680px) or (max-height: 640px) {
   .chat-layout-content .chat-zoom-surface {
     --chat-column-gutter: 12px;
-    --composer-max-height: max(38px, min(26cqh, 160px));
+    --composer-max-height: max(38px, min(calc(26cqh * var(--chat-zoom-inverse, 1)), 160px));
   }
   .chat-layout-content .prompt-chat-content { padding: 12px 12px 8px; }
   .chat-layout-content .prompt-composer { padding: 6px var(--chat-column-gutter) 10px; }
