@@ -146,3 +146,44 @@ test('compensation covers armed state only, and follows the tab it was armed on'
   assert.ok(!releases({ namespace: 'browser_cdp', tool: 'profile', arguments: { action: 'stop', tab_id: 'tab-2' } }, armed))
   assert.ok(!releases({ namespace: 'browser_cdp', tool: 'instrument', arguments: { action: 'unhook', tab_id: 'tab-1' } }, armed))
 })
+
+test('a sequential batch with continue_on_error still unwinds armed state if a step fails', async () => {
+  const { registry, log } = harness()
+  const result = await run(registry, {
+    continue_on_error: true,
+    calls: [
+      { tool: 'browser_cdp.profile', arguments: { action: 'start', tab_id: 'tab-5' } },
+      { tool: 'browser_cdp.page', arguments: { action: 'navigate' } },
+      { tool: 'browser_cdp.instrument', arguments: { action: 'hook', tab_id: 'tab-5' } }
+    ]
+  })
+  assert.equal(result.isError, true)
+  assert.deepEqual(log, [
+    'profile.start:tab-5',
+    'page.failed',
+    'instrument.hook:tab-5',
+    'instrument.unhook:tab-5',
+    'profile.stop:tab-5'
+  ])
+  assert.match(text(result), /Unwound after the failure/)
+})
+
+test('a sequential batch with continue_on_error does not unwind state explicitly released by later steps', async () => {
+  const { registry, log } = harness()
+  const result = await run(registry, {
+    continue_on_error: true,
+    calls: [
+      { tool: 'browser_cdp.profile', arguments: { action: 'start', tab_id: 'tab-6' } },
+      { tool: 'browser_cdp.page', arguments: { action: 'navigate' } },
+      { tool: 'browser_cdp.profile', arguments: { action: 'stop', tab_id: 'tab-6' } }
+    ]
+  })
+  assert.equal(result.isError, true)
+  assert.deepEqual(log, [
+    'profile.start:tab-6',
+    'page.failed',
+    'profile.stop:tab-6'
+  ])
+  assert.doesNotMatch(text(result), /Unwound after the failure/)
+})
+

@@ -39,9 +39,9 @@ function harness(): ToolRegistry {
   return registry
 }
 
-function call(registry: ToolRegistry, calls: unknown[], parallel = false): Promise<ToolResult> {
+function call(registry: ToolRegistry, calls: unknown[], parallel = false, continueOnError = false): Promise<ToolResult> {
   return registry.call({
-    namespace: 'tool_batch', tool: 'run', arguments: { calls, parallel }
+    namespace: 'tool_batch', tool: 'run', arguments: { calls, parallel, continue_on_error: continueOnError }
   }, context)
 }
 
@@ -97,4 +97,35 @@ test('large successful results cannot hide a short failure in the middle of a ba
   ], true)
 
   assert.match(batchText(result), /\[2\] sized\.run — failed\nrecover with tab-1/)
+})
+
+test('sequential batch with continue_on_error executes subsequent calls after an earlier step fails', async () => {
+  const result = await call(harness(), [
+    { tool: 'lab.echo', arguments: { text: 'step 1' } },
+    { tool: 'lab.boom' },
+    { tool: 'lab.echo', arguments: { text: 'step 3' } }
+  ], false, true)
+
+  assert.equal(result.isError, true)
+  const text = batchText(result)
+  assert.match(text, /^2 of 3 calls succeeded\./)
+  assert.doesNotMatch(text, /skipped/)
+  assert.match(text, /\[1\] lab\.echo — ok\nstep 1/)
+  assert.match(text, /\[2\] lab\.boom — failed\nit broke/)
+  assert.match(text, /\[3\] lab\.echo — ok\nstep 3/)
+})
+
+test('sequential batch without continue_on_error skips remaining calls on first failure', async () => {
+  const result = await call(harness(), [
+    { tool: 'lab.echo', arguments: { text: 'step 1' } },
+    { tool: 'lab.boom' },
+    { tool: 'lab.echo', arguments: { text: 'step 3' } }
+  ], false, false)
+
+  assert.equal(result.isError, true)
+  const text = batchText(result)
+  assert.match(text, /^1 of 3 calls succeeded \(1 skipped\)\./)
+  assert.match(text, /\[1\] lab\.echo — ok\nstep 1/)
+  assert.match(text, /\[2\] lab\.boom — failed\nit broke/)
+  assert.match(text, /\[3\] lab\.echo — skipped: call \[2\] failed and the batch is sequential/)
 })
