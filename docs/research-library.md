@@ -83,3 +83,10 @@ Focused tests exercise parsing/transport limits, cancellation, partial failure, 
 refreshes, persistence, deduplication, dismissal/disable behavior, relevance/date filtering,
 bounded retention/output, and storage failures. This is the foundation for a later evaluation
 bench; it does not establish that retrieval improves task quality or reduces token usage.
+
+`xvfb-run -a node scripts/research-library-live-check.mjs` runs the real React dialog, preload,
+IPC handlers, provider parser, and disk store in an isolated Electron profile with deterministic
+discovery responses. It checks manual refresh, deduplication, opening a source, dismissal/restore,
+retrieval disable, and reopening without network requests. Set `CLOSEDAI_KEEP_LIBRARY_CHECK=1`
+to retain its screenshot and report for visual review. This fixture never touches the user's
+running app or library; production endpoint availability needs a separate live check.

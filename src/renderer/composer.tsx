@@ -74,17 +74,9 @@ export function Composer({
   paused,
   onResume,
   onInspectContext,
-  onNewChat,
-  cwd,
-  projectPath,
-  recentProjects,
-  onChooseProject,
-  onSelectProject,
-  onClearProject,
-  activeTurnId,
-  onCompactConversation,
-  compactConversationEnabled = false,
-  paneId
+  onNewChat, cwd, projectPath, recentProjects,
+  onChooseProject, onSelectProject, onClearProject,
+  activeTurnId, onCompactConversation, compactConversationEnabled = false, paneId
 }: ComposerProps): JSX.Element {
   const { input, setInput, attachments, setAttachments, clearDraft } = useComposerDraft(paneId)
   const [attachmentError, setAttachmentError] = useState('')

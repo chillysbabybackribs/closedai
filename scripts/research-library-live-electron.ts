@@ -31,7 +31,7 @@ async function verify(directory: string) {
     webPreferences: { preload: join(directory, 'preload.cjs'), contextIsolation: true, sandbox: true }
   })
   const errors: string[] = []
-  window.webContents.on('console-message', (_event, details) => {
+  window.webContents.on('console-message', (details) => {
     if (details.level === 'error') errors.push(details.message)
   })
   async function evaluate<T>(expression: string): Promise<T> { return window.webContents.executeJavaScript(expression) }
