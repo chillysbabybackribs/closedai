@@ -183,6 +183,14 @@ preserving page replacements. Other frame cleanup, coherent capture, continuous 
 and isolated laboratories remain separate work. Earlier dated records below describe their
 then-current boundaries.
 
+Verification for this increment: 55 focused tests passed across instrumentation, network
+host/tools, browser/session/CDP tool contracts and provider instructions; typecheck, hygiene
+and map check passed. The generated recorder was evaluated directly in the installed Chromium
+on a temporary blank fixture: direct eval returned 42 before and during recording, a fetch
+was counted, an unavailable getter was reported, and cleanup restored fetch and disabled a
+retained wrapper. The fixture was closed. This validates the new page script, not a reloaded
+main-process tool registry or all-frame cleanup. Main-process changes require rebuild/restart.
+
 2026-09-13: first network-identity slice implemented in the existing CDP services. Repeated
 URLs retain separate captured records; overlapping root/child request ids are separated;
 body reads accept the listed child session; URL timing no longer supplies guessed request
