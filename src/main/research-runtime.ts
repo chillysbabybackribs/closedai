@@ -2,6 +2,9 @@ import { session } from 'electron'
 import { readdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { BrowserService } from './browser-service.js'
+import { createHiddenPageWorker, RESEARCH_PARTITION } from './browser-workers/hidden-page-worker.js'
+import { readRenderedPage } from './browser-workers/rendered-reader.js'
+import { BrowserWorkerPool } from './browser-workers/worker-pool.js'
 import type { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { searchTools } from './tools/search/index.js'
 import type { ResearchService } from './tools/search/research/service.js'
@@ -25,9 +28,10 @@ export async function createResearchRuntime(options: {
   for (const entry of entries) if (entry.isDirectory() && /^[a-f0-9-]{36}$/.test(entry.name)) {
     await rm(join(options.root, entry.name), { recursive: true, force: true })
   }
-  const publicSession = session.fromPartition('research-public')
+  const publicSession = session.fromPartition(RESEARCH_PARTITION)
   const library = ResearchLibrary.create(options.libraryPath, (input, init) => publicSession.fetch(input as string, init))
   const store = new SourceStore(options.root, (input, init) => publicSession.fetch(input as string, init))
+  const workers = new BrowserWorkerPool(createHiddenPageWorker)
   let service!: ResearchService
   const liveTabs = new SearchBrowserTabs({
     exists: (tabId) => options.browser()?.tabList().some((tab) => tab.id === tabId) ?? false,
@@ -51,6 +55,10 @@ export async function createResearchRuntime(options: {
         }
       },
       collect: (url, runId, sourceId, signal) => store.collect(url, runId, sourceId, signal),
+      render: async (url, runId, sourceId, signal) => {
+        const deadline = AbortSignal.any([signal, AbortSignal.timeout(30_000)])
+        return store.retain(runId, sourceId, await readRenderedPage(workers, runId, url, deadline))
+      },
       read: (runId, sourceId) => store.read(runId, sourceId),
       remove: (runId) => store.remove(runId),
       openLive: (url, context) => {
@@ -62,5 +70,5 @@ export async function createResearchRuntime(options: {
       }
     }
   })
-  return { namespace, service, library }
+  return { namespace, service, library, dispose: () => { service.dispose(); workers.dispose() } }
 }

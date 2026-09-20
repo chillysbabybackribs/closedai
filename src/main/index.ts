@@ -94,6 +94,7 @@ const codexRuntimes = new Map<string, CodexWorkspaceRuntime>()
 let toolRegistry: ToolRegistry | null = null
 let researchService: ResearchService | null = null
 let researchLibrary: ResearchLibrary | null = null
+let disposeResearch: (() => void) | null = null
 let artifactStore: ArtifactStore | null = null
 let toolTelemetry: ToolTelemetry | null = null
 let antigravityBridge: AntigravityToolBridge | null = null
@@ -258,6 +259,7 @@ async function main(): Promise<void> {
   })
   researchService = research.service
   researchLibrary = research.library
+  disposeResearch = research.dispose
   const artifacts = createArtifactRuntime({
     root: join(userData(), 'investigation-artifacts'), workerUrl: new URL('./artifact-worker.js', import.meta.url),
     chats: chatStore!, peers: () => chatService
@@ -474,7 +476,7 @@ async function importDefaultBrowserCookies(): Promise<void> {
 }
 
 function disposeWindowServices(): void {
-  researchService?.dispose()
+  disposeResearch?.()
   researchLibrary?.dispose()
   browserSessionFlush = browserService?.flushSessionData() ?? null
   appAutomationAccess?.dispose()
