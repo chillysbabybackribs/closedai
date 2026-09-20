@@ -138,8 +138,9 @@ once per chat; failures keep the provider name or first-message fallback. Stale 
 thread/model change, archival, or detach are discarded. Existing chats become eligible on a later
 completed turn; startup does not bulk-generate names. Cursor and Antigravity retain provider names
 or the first-message fallback until an isolated naming adapter is available. Manual rename and
-retry controls are not implemented. Fallback labels strip `<closedai_context>` blocks and clip the
-first nonempty user-message line.
+auto-title retry controls are available via row and tab context menus and the chat rename dialog;
+manual titles set `titleSource: 'manual'` and are preserved until cleared or reset. Fallback labels
+strip `<closedai_context>` blocks and clip the first nonempty user-message line.
 
 Startup, new chat, and opening a chat trim attached panes toward eight, least recently active
 first. The selected and visible panes, active turns, operations in flight, and undelivered continuation
@@ -616,8 +617,6 @@ pane. There is no dedicated research activity panel or hidden rendered-worker po
 [Tools](tools.md#parallel-research-runs) for exact limits and the
 [design proposal](parallel-web-research-2026-09-04.md) for the remaining work.
 
-- The saved “No project” identity is currently coalesced to the working directory on startup in
-  `index.ts`; the home directory can therefore return with a project label after relaunch.
 - Provider threads the store has never seen appear in the drawer only after the background
   reconciliation adopts them, so a chat created in a provider's own CLI can lag one refresh.
 - Claude's session idle timer respects background tasks, but outer pane parking and project
