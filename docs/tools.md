@@ -218,8 +218,8 @@ nonreplacement. Source id, requested URL, and discovery provenance remain; repre
 content provider, resolved URL, retrieval time, hash, and offsets describe the replacement.
 Read excerpts again after a successful expansion. `expanding` and `pending` expose outstanding
 expansion even when the initial run is completed. Duplicate expansion of the same source is refused;
-active expansions prevent run eviction. Neither uncapped extraction nor Exa text for a PDF URL
-establishes native PDF parsing, OCR, table, equation, image, or page-layout fidelity.
+active expansions prevent run eviction. Exa text for a PDF URL remains provider extraction.
+Neither uncapped extraction nor local PDF text establishes OCR, table, equation, image, or page-layout fidelity.
 
 Exa discovery uses `POST /search` on Exa's own index with `type: fast` for quick and `auto` for
 balanced and deep requests (the `deep*` types synthesize answers over tens of seconds and are not
@@ -296,8 +296,20 @@ Static sources use an isolated nonpersistent Electron session and omit credentia
 streamed to a raw file (default 512 KiB, adjustable with run `max_source_bytes`; zero removes
 the byte cap), HTML is parsed inertly with parse5, and extracted text uses `max_text_chars`.
 The text limit also applies to rendered/provider text; the direct byte budget does not control
-provider or rendered-page downloads. Truncation is explicit. JSON and text are also supported;
-direct PDF parsing remains unsupported; use explicit expansion via Exa or browser follow-up.
+provider or rendered-page downloads. Truncation is explicit. JSON and text are also supported.
+PDF bytes are parsed locally with Mozilla PDF.js in a disposable Node worker, at most two at
+once, with a 256 MiB V8 old-generation limit per worker. Cancellation or the direct-read deadline
+terminates the worker. It receives only downloaded bytes from the app-owned temporary file and
+uses packaged font/CMap assets; it does not load the source URL or execute document JavaScript.
+`application/pdf` and PDF signatures in otherwise accepted bodies (including generic/missing MIME)
+are recognized. A PDF requires the complete body: exceeding `max_source_bytes` fails with guidance
+to expand using a larger byte budget or zero; truncated PDF bytes are never published as text.
+Results use `pdf_text`, `[Page N]` markers, and `pdf` coverage: `totalPages`, `extractedPages`
+(pages processed, including a character-clipped final page), and `pagesWithoutText` among processed
+pages. The hash covers retained text. Character limits or pages without text mark `incomplete`.
+No extractable text, password requirements, and parsing failures produce explicit failures.
+Empty/scanned pages cannot be distinguished by text extraction; there is no OCR, figure reading,
+or layout verification. Explicit Exa expansion remains available as provider extraction.
 Redirects are followed by the
 transport; the resolved URL is retained when available, alongside the requested source URL.
 Parsing does not execute JavaScript or resolve

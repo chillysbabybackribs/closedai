@@ -369,7 +369,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   resumes the conversation id on the next turn. Antigravity sends the user's prompt directly
   on process startup; it has no hidden initialization turn. The composer has no send button:
   Enter submits and Shift+Enter inserts a newline; only the pause control appears while a turn
-  runs. The composer preserves unsubmitted
+  runs (Escape also acts as a hotkey to pause the running task). The composer preserves unsubmitted
   drafts (text and pending attachments) per conversation pane across tab switching and unmounting,
   clearing them only on submission. The context inspector
   modal provides a visual stacked token budget bar (retained history, ClosedAI additions, user turn,
@@ -377,7 +377,8 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   offering one-click conversation compaction or fresh chat branching. Appearance settings separate message and composer font sizes
   (defaults 14 and 15 px, range 13–22) from chat zoom.
 - Ctrl/Cmd+, opens settings, Ctrl/Cmd+H opens chat history, Ctrl/Cmd+N creates a chat,
-  Ctrl/Cmd+W closes the window, and F11 toggles fullscreen. Browser and chat zoom have separate
+  Ctrl/Cmd+W closes the window, F11 toggles fullscreen, and Escape pauses a running task (when no
+  modal overlay or special input is active). Browser and chat zoom have separate
   controls; these shell shortcuts are handled in `renderer/app-shortcuts.ts`.
 - Every http(s) URL a response references is clickable and opens in the app browser through
   `browser.openTab`, rendered as a favicon source chip with a hover preview. `components/ui/markdown.tsx`
@@ -664,8 +665,11 @@ Source coverage is adjustable per run: `max_text_chars` defaults to 120,000 (inc
 previously limited to 10,000), and `max_source_bytes` controls direct downloads. Zero removes
 the corresponding app cap. `search.run.expand` refetches one retained source without rediscovery,
 including after completion, with uncapped text by default. Failed or shorter expansions preserve
-the earlier evidence. Explicit Exa expansion can retrieve provider text for PDF URLs; native PDF
-parsing and visual/OCR fidelity remain unimplemented. Excerpts remain separately bounded and pageable.
+the earlier evidence. Direct PDF reads now extract text locally with PDF.js in cancellable workers,
+returning `pdf_text`, page markers, and page coverage. PDFs require a complete download within the
+byte budget; larger files can use expansion. Pages without text are flagged, and documents without
+extractable text fail explicitly. Exa expansion remains an alternative provider extraction path.
+OCR and visual/layout fidelity remain unimplemented. Excerpts remain separately bounded and pageable.
 There is no dedicated research activity panel, and workers cannot be handed to the user yet. See
 [Tools](tools.md#parallel-research-runs) for exact limits and the
 [design proposal](parallel-web-research-2026-09-04.md) for the remaining work.

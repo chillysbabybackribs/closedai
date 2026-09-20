@@ -67,13 +67,13 @@ export function ComposerCompactRow({
       />
       <div className="prompt-composer-compact-actions">
         {running ? (
-          <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}>
+          <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]} (Esc)`}>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               className="prompt-composer-stop rounded-full"
-              aria-label={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}
+              aria-label={`Pause ${CHAT_PROVIDER_LABELS[provider]} (Esc)`}
               data-ui="composer.stop"
               onClick={(event) => {
                 event.stopPropagation()

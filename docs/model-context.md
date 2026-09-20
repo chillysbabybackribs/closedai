@@ -259,6 +259,10 @@ including completed runs. Expansion performs new requests; `search.read` remains
 Models can inspect `incomplete`, expand, and page the replacement text without repeating discovery.
 An unset truncation flag does not prove extraction fidelity. Exa PDF-URL text remains `provider_text`;
 it is not proof that this app parsed PDF bytes or verified tables, equations, figures, or OCR.
+Direct `pdf_text` results come from local PDF.js parsing, with page markers and page coverage.
+PDF downloads must fit the byte budget in full; expansion can raise it. Pages without extractable
+text mark coverage incomplete; scanned documents require OCR, which is not implemented. Page
+counts and text extraction do not establish reading-order, equation, table, or visual fidelity.
 
 The registry supplies provider-neutral descriptions and schemas. Codex gets dynamic tool
 specifications; Claude gets in-process MCP servers; Antigravity gets HTTP MCP servers. Tool

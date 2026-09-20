@@ -313,13 +313,13 @@ export function Composer({
                 centres on the card's full height rather than the action row. */}
             {running ? (
               <div className="prompt-composer-primary">
-                <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}>
+                <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]} (Esc)`}>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     className="prompt-composer-stop rounded-full"
-                    aria-label={`Pause ${CHAT_PROVIDER_LABELS[provider]}`}
+                    aria-label={`Pause ${CHAT_PROVIDER_LABELS[provider]} (Esc)`}
                     data-ui="composer.stop"
                     onClick={() => void onStop()}
                   >

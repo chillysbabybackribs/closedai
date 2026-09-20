@@ -160,7 +160,7 @@ export class SourceStore {
       }
       signal.throwIfAborted()
       await file.close()
-      if (contentType.split(';')[0].trim() === 'application/pdf' || prefix.includes(Buffer.from('%PDF-'))) {
+      if (contentType.split(';')[0].trim() === 'application/pdf' || /^\s*%PDF-/.test(prefix.toString('latin1'))) {
         if (incomplete) throw new Error(`PDF exceeds max_source_bytes (${maxBytes}); expand with a larger byte budget or 0 to download the complete PDF`)
         if (!this.readPdf) throw new Error('PDF reader is unavailable; use search.run expand with method exa for provider text')
         const extracted = await this.readPdf(temporary, textLimit(coverage), signal)

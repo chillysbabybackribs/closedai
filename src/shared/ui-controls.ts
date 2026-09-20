@@ -109,7 +109,7 @@ export const UI_CONTROLS = {
   'composer.upload': 'Attach files',
   'composer.attachment-remove': 'Remove a pending attachment; item is the attachment id',
   'composer.attachment-preview': 'Open an attached image in a browser-pane image tab; item is the attachment id',
-  'composer.stop': 'Pause the running turn (present only while running)',
+  'composer.stop': 'Pause the running turn via button or Escape key (present only while running)',
   'composer.resume': 'Resume the turn the pause button ended (present only while a turn is paused)',
 
   'browser.tab': 'Select a browser tab; item is the tab id',

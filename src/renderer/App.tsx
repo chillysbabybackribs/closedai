@@ -14,7 +14,7 @@ import {
   chatZoomCommandForKey,
   type ChatZoomCommand
 } from './chat-zoom.js'
-import { appShortcutForKey } from './app-shortcuts.js'
+import { appShortcutForKey, targetRunningPaneId } from './app-shortcuts.js'
 import { TitlebarMenu } from './titlebar-menu.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
 import type { ChatPaneDialog } from './chat-pane.js'
@@ -32,12 +32,17 @@ import './styles.css'
 
 function App(): JSX.Element {
   const chat = useChatController()
+  const chatRef = useRef(chat)
+  chatRef.current = chat
   const drawer = useDrawerController(chat.sidebar)
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [credentialsOpen, setCredentialsOpen] = useState(false)
   const [researchOpen, setResearchOpen] = useState(false)
   const [renamingChat, setRenamingChat] = useState<{ id: string; title: string } | null>(null)
+  const [paneDialog, setPaneDialog] = useState<ChatPaneDialog | null>(null)
+  const dialogsRef = useRef({ settingsOpen, credentialsOpen, researchOpen, renamingChat, paneDialog })
+  dialogsRef.current = { settingsOpen, credentialsOpen, researchOpen, renamingChat, paneDialog }
   const workspaceRef = useRef<ChatLayoutHandle>(null)
   const splitSidebarChat = useCallback((chatId: string, edge: 'right' | 'bottom'): Promise<void> => {
     if (!workspaceRef.current) return Promise.reject(new Error('The workspace is still loading'))
@@ -46,7 +51,6 @@ function App(): JSX.Element {
   // Owned here because the title bar menu and Ctrl+H reach the panel that lives in the chat pane.
   const [historyOpen, setHistoryOpen] = useState(false)
   const toggleHistory = useCallback(() => setHistoryOpen((open) => !open), [])
-  const [paneDialog, setPaneDialog] = useState<ChatPaneDialog | null>(null)
   const updateAppearance = useCallback((patch: Partial<AppearanceSettings>): void => {
     setAppearance((current) => {
       const next = normalizeAppearanceSettings({ ...current, ...patch })
@@ -86,6 +90,34 @@ function App(): JSX.Element {
       } else if (shortcut === 'toggle-fullscreen') {
         event.preventDefault()
         void window.closedai.window.toggleFullscreen()
+      } else if (shortcut === 'pause-task') {
+        const dialogs = dialogsRef.current
+        const hasOpenModal = dialogs.settingsOpen || dialogs.credentialsOpen || dialogs.researchOpen ||
+          Boolean(dialogs.renamingChat) || Boolean(dialogs.paneDialog)
+        const hasOverlay = hasOpenModal || Boolean(document.querySelector(
+          '[role="dialog"], [role="menu"], [data-radix-menu-content], [data-radix-popper-content-wrapper], .radix-dropdown-menu-content'
+        ))
+        if (hasOverlay) return
+
+        const active = document.activeElement as HTMLElement | null
+        if (active?.getAttribute('data-ui') === 'drawer.search' || active?.classList.contains('browser-omnibox-input')) {
+          return
+        }
+
+        const currentChat = chatRef.current
+        const runningPaneId = targetRunningPaneId(
+          currentChat.selectedPaneId,
+          currentChat.state.activeTurnId,
+          currentChat.snapshot.panes
+        )
+
+        if (runningPaneId) {
+          event.preventDefault()
+          event.stopPropagation()
+          void (runningPaneId === currentChat.selectedPaneId
+            ? currentChat.interrupt()
+            : currentChat.interruptPane(runningPaneId))
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown, { capture: true })
