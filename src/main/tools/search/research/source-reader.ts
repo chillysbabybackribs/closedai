@@ -5,9 +5,8 @@ import { parse, type DefaultTreeAdapterMap } from 'parse5'
 import type { SourceDate, SourceRepresentation } from '../../../../shared/web-research.js'
 import { abortable, RequestBudget } from '../request-budget.js'
 import { mergeDates, metaDate } from './source-metadata.js'
+import { boundedText, DEFAULT_SOURCE_BYTES, textLimit, validateCoverage, type SourceCoverage } from './coverage.js'
 
-const MAX_BYTES = 512 * 1024
-export const MAX_TEXT = 120_000
 // An HTML body with a script tag and almost no text is a client-rendered shell, not evidence.
 const SHELL_TEXT_LIMIT = 200
 const OMIT = new Set(['script', 'style', 'template', 'noscript', 'nav', 'footer', 'head'])
@@ -20,7 +19,7 @@ export type SourceDocument = {
   sparse?: boolean
   dates?: SourceDate[]
 }
-export type SourceReader = (url: string, runId: string, sourceId: string, signal: AbortSignal) => Promise<SourceDocument>
+export type SourceReader = (url: string, runId: string, sourceId: string, signal: AbortSignal, coverage?: SourceCoverage) => Promise<SourceDocument>
 
 /** The static read succeeded but found no content; only a rendered read can do better. */
 export class SourceNeedsRendering extends Error {
@@ -75,7 +74,8 @@ export class SourceStore {
 
   constructor(readonly root: string, private readonly fetchPage: typeof fetch) {}
 
-  async collect(url: string, runId: string, sourceId: string, signal: AbortSignal): Promise<SourceDocument> {
+  async collect(url: string, runId: string, sourceId: string, signal: AbortSignal, coverage: SourceCoverage = {}): Promise<SourceDocument> {
+    validateCoverage(coverage)
     const deadline = AbortSignal.any([signal, AbortSignal.timeout(20_000)])
     return this.budget.run(new URL(url).origin, runId, deadline, async () => {
       // Chromium follows redirects itself; Electron's fetch rejects `manual` outright with
@@ -89,16 +89,17 @@ export class SourceStore {
       const type = (response.headers.get('content-type') ?? '').toLowerCase().slice(0, 120)
       if (!/^text\/|application\/(?:json|[^;]+\+json|xhtml\+xml)/.test(type)) {
         await response.body?.cancel()
-        throw new Error(`Unsupported source type: ${type || 'missing content-type'}; open it in the browser`)
+        throw new Error(`Unsupported source type: ${type || 'missing content-type'}; use search.run expand with method exa for provider text, or open it in the browser`)
       }
-      return this.archive(response, current, type, runId, sourceId, deadline)
+      return this.archive(response, current, type, runId, sourceId, deadline, coverage)
     })
   }
 
   /** Keep text a hidden worker rendered, or a search provider extracted, under the same id scheme. */
   async retain(runId: string, sourceId: string, page: { url: string; title: string; text: string; truncated: boolean },
-    representation: Exclude<SourceRepresentation, 'static_text'> = 'rendered_text'): Promise<SourceDocument> {
-    const text = page.text.slice(0, MAX_TEXT)
+    representation: Exclude<SourceRepresentation, 'static_text'> = 'rendered_text', coverage: SourceCoverage = {}): Promise<SourceDocument> {
+    validateCoverage(coverage)
+    const text = boundedText(page.text, textLimit(coverage))
     if (!text.trim()) throw new Error(representation === 'rendered_text' ? 'The rendered page has no readable text' : 'The provider returned no page text')
     const directory = join(this.root, runId)
     await mkdir(directory, { recursive: true })
@@ -107,7 +108,7 @@ export class SourceStore {
     return {
       text, title: page.title, url: publicUrl(page.url), representation,
       contentType: representation === 'rendered_text' ? 'text/html' : 'text/plain',
-      sha256: createHash('sha256').update(text).digest('hex'), incomplete: page.truncated || page.text.length > MAX_TEXT
+      sha256: createHash('sha256').update(text).digest('hex'), incomplete: page.truncated || page.text.length > text.length
     }
   }
 
@@ -119,7 +120,19 @@ export class SourceStore {
     await rm(join(this.root, runId), { recursive: true, force: true })
   }
 
-  private async archive(response: Response, url: string, contentType: string, runId: string, sourceId: string, signal: AbortSignal): Promise<SourceDocument> {
+  /** Expansion is staged under a temporary id. Only an accepted read replaces the text atomically. */
+  async replace(runId: string, sourceId: string, stagedId: string): Promise<void> {
+    await rename(join(this.root, runId, `${stagedId}.txt`), join(this.root, runId, `${sourceId}.txt`))
+  }
+
+  async discard(runId: string, sourceId: string): Promise<void> {
+    for (const suffix of ['txt', 'raw', 'txt.tmp', 'raw.tmp']) {
+      await rm(join(this.root, runId, `${sourceId}.${suffix}`), { force: true })
+    }
+  }
+
+  private async archive(response: Response, url: string, contentType: string, runId: string, sourceId: string, signal: AbortSignal, coverage: SourceCoverage): Promise<SourceDocument> {
+    const maxBytes = coverage.maxSourceBytes ?? DEFAULT_SOURCE_BYTES
     const directory = join(this.root, runId)
     await mkdir(directory, { recursive: true })
     const temporary = join(directory, `${sourceId}.raw.tmp`)
@@ -133,16 +146,16 @@ export class SourceStore {
       while (reader) {
         const chunk = await abortable(reader.read(), signal)
         if (chunk.done) break
-        const kept = chunk.value.subarray(0, MAX_BYTES - bytes)
+        const kept = maxBytes === 0 ? chunk.value : chunk.value.subarray(0, maxBytes - bytes)
         await file.writeFile(kept)
         raw += decoder.decode(kept, { stream: true })
         bytes += kept.length
-        if (bytes >= MAX_BYTES) { incomplete = true; break }
+        if (maxBytes > 0 && bytes >= maxBytes) { incomplete = true; break }
       }
       raw += decoder.decode()
       signal.throwIfAborted()
       const extracted = documentText(raw, contentType)
-      const text = extracted.text.slice(0, MAX_TEXT)
+      const text = boundedText(extracted.text, textLimit(coverage))
       if (!text.trim()) throw new SourceNeedsRendering('No readable source text; the page may require JavaScript')
       const document: SourceDocument = {
         text, title: extracted.title, url, contentType, representation: 'static_text',
@@ -150,7 +163,7 @@ export class SourceStore {
         dates: mergeDates(extracted.dates, response.headers.has('last-modified') ? [{
           kind: 'http_last_modified', value: response.headers.get('last-modified')!, source: 'http:Last-Modified'
         }] : []),
-        incomplete: incomplete || extracted.text.length > MAX_TEXT
+        incomplete: incomplete || extracted.text.length > text.length
       }
       if (contentType.includes('html') && text.length < SHELL_TEXT_LIMIT && /<script[\s>]/i.test(raw)) document.sparse = true
       await file.close()

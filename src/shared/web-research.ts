@@ -30,6 +30,9 @@ export type ResearchSource = {
   sha256?: string
   chars?: number
   incomplete?: boolean
+  /** Expansion preserves the previous readable document until a replacement succeeds. */
+  expanding?: boolean
+  expansionError?: string
   error?: string
   requestedUrl?: string
   dates?: SourceDate[]

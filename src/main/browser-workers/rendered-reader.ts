@@ -7,7 +7,6 @@ export type RenderedWorker = Worker & { contents(): (ScriptRunner & Pick<WebCont
 // A rendered read waits for the page's text to stop changing, bounded so a page that streams
 // forever still yields what it has. The whole read is bounded again by the caller's signal.
 const SETTLE_TIMEOUT_MS = 8_000
-const MAX_CHARS = 120_000
 
 /**
  * Load a URL in a hidden worker and return the page's rendered text. No page state survives
@@ -17,7 +16,8 @@ export async function readRenderedPage(
   pool: BrowserWorkerPool,
   owner: string,
   url: string,
-  signal: AbortSignal
+  signal: AbortSignal,
+  maxChars = 120_000
 ): Promise<PageText> {
   return pool.lease(owner, signal, async (leased) => {
     const worker = leased as RenderedWorker
@@ -36,7 +36,7 @@ export async function readRenderedPage(
       signal.throwIfAborted()
       await waitForPageReady(contents(), { until: 'idle', timeoutMs: SETTLE_TIMEOUT_MS })
       signal.throwIfAborted()
-      const page = await readPageText(contents(), { maxChars: MAX_CHARS })
+      const page = await readPageText(contents(), { maxChars: maxChars === 0 ? Number.MAX_SAFE_INTEGER : maxChars })
       if (!page) throw new Error('The rendered page did not answer')
       return page
     } finally {
