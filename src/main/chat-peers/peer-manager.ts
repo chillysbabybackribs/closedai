@@ -104,7 +104,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.lifecycle = new PeerLifecycle(store, settings, createSurface, this.parking, (entry, event) => this.onPaneEvent(entry, event), cancelPaneWork)
     this.projectSwitch = new DeferredProjectSwitch({
       cwd: () => this.workspace().cwd,
-      source: (id) => this.paneSnapshot(id),
+      source: (id, full) => this.lifecycle.get(id)?.surface.snapshot(full ? undefined : { limit: 0 }) ?? null,
       record: (id) => this.store.get(id) ?? null,
       idle: () => this.paneOperations.size === 0 && [...this.lifecycle.peers.values()]
         .every((entry) => entry.busy === 0 && !this.lifecycle.isRunning(entry.chatId) && !entry.surface.snapshot({ limit: 0 }).pausedTurnId),

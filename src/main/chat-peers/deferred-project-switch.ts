@@ -8,7 +8,7 @@ import { buildThreadHandoff } from '../chat-context/thread-handoff.js'
 
 type Host = {
   cwd(): string
-  source(paneId: string): ChatSnapshot | null
+  source(paneId: string, includeTranscript?: boolean): ChatSnapshot | null
   record(paneId: string): ChatRecord | null
   idle(): boolean
   switchProject(path: string): Promise<void>
@@ -95,13 +95,15 @@ export class DeferredProjectSwitch {
   private async advance(): Promise<void> {
     const request = this.value
     if (!request || request.status !== 'pending' || this.stopped) return
-    const source = this.host.source(request.paneId)
+    let source = this.host.source(request.paneId)
     if (!source || source.threadId !== request.threadId ||
       (source.activeTurnId && source.activeTurnId !== request.turnId)) {
       this.cancel('The source chat or turn changed')
       return
     }
     if (!this.host.idle()) { this.schedule(); return }
+    source = this.host.source(request.paneId, true)
+    if (!source) { this.cancel('The source chat disappeared'); return }
     // Claim synchronously before awaits so new sends cannot race the workspace teardown.
     this.update({ ...request, status: 'switching' })
     try {
