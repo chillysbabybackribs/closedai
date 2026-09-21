@@ -20,5 +20,5 @@ try {
     child.once('exit', code => resolveCode(code ?? 1))
   })
 } finally {
-  await rm(root, { recursive: true, force: true })
+  await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
 }

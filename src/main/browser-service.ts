@@ -499,11 +499,14 @@ export class BrowserService extends EventEmitter {
   private prepareTabForTool(tab: BrowserTab): void {
     if (this.rendering.describe(tab.id).pins > 0 &&
         (tab.id !== this.activeId || !browserSurfaceVisibility(this.bounds).pageVisible)) {
-      // A never-shown view has no usable frame sink. Render a capture lease outside the
-      // window, preserving the selected tab and giving Chromium a full-sized live surface.
-      tab.applyBounds(this.bounds, true)
+      // A never-shown view has no usable frame sink. Initialize it underneath the opaque
+      // active browser surface, then restore its hidden state when the lease ends. Never
+      // expose a view over chats or a renderer overlay when the browser itself is hidden.
       const active = this.active
-      if (active instanceof BrowserTab && active.id !== tab.id) this.attachTabView(active.id)
+      if (active instanceof BrowserTab && active.id !== tab.id && browserSurfaceVisibility(this.bounds).pageVisible) {
+        tab.applyBounds(this.bounds, true)
+        this.attachTabView(active.id)
+      } else tab.applyBounds({ ...this.bounds, occluded: true }, false)
       return
     }
     prepareTabSurfaceForTool(tab, this.activeId, this.bounds, browserSurfaceVisibility(this.bounds))
