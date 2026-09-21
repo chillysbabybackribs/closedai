@@ -13,7 +13,7 @@ export type ComposerCompactRowProps = {
   /** Display name of the selected model; the raw id carries provider prefixes and [1m] suffixes. */
   selectedModelLabel: string | null
   provider: ChatProvider
-  placeholder?: string
+  placeholder: string
   enabled: boolean
   sending: boolean
   paused: boolean
@@ -58,7 +58,7 @@ export function ComposerCompactRow({
         aria-label="Message Codex"
         data-ui="composer.input"
         data-can-send={canSend || undefined}
-        placeholder={placeholder ?? (running ? 'Working on task…' : enabled ? 'Ask anything' : 'Codex is unavailable')}
+        placeholder={placeholder}
         spellCheck={false}
         disableAutosize
         className="prompt-composer-textarea prompt-composer-textarea-compact"

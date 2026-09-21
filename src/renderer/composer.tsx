@@ -85,6 +85,11 @@ export function Composer({
   // chose, so a collapsed composer keeps its one-line footprint across turns, new chats, and restarts.
   const [layout, setLayout] = useComposerLayout()
   const isCompact = layout === 'compact'
+  const inputPlaceholder = running
+    ? 'Esc to pause'
+    : placeholder ?? (enabled
+      ? isCompact ? 'Enter to send' : 'Enter to send · Shift+Enter for newline'
+      : 'Codex is unavailable')
   const formRef = useRef<HTMLFormElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const focusAfterSendRef = useRef(false)
@@ -217,7 +222,7 @@ export function Composer({
             activeTurnId={activeTurnId}
             selectedModelLabel={models.find((model) => model.id === selectedModel)?.displayName ?? null}
             provider={provider}
-            placeholder={placeholder}
+            placeholder={inputPlaceholder}
             enabled={enabled}
             sending={sending}
             paused={paused}
@@ -240,7 +245,7 @@ export function Composer({
                 aria-label="Message Codex"
                 data-ui="composer.input"
                 data-can-send={canSend || undefined}
-                placeholder={placeholder ?? (enabled ? 'Ask anything' : 'Codex is unavailable')}
+                placeholder={inputPlaceholder}
                 spellCheck={false}
                 className="prompt-composer-textarea"
                 onPaste={pasteFiles}

@@ -484,7 +484,10 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   resumes the conversation id on the next turn. Antigravity sends the user's prompt directly
   on process startup; it has no hidden initialization turn. The composer has no send button:
   Enter submits and Shift+Enter inserts a newline; only the pause control appears while a turn
-  runs (Escape also acts as a hotkey to pause the running task). The composer preserves unsubmitted
+  runs (Escape also acts as a hotkey to pause the running task). An empty composer shows the muted
+  placeholder “Enter to send · Shift+Enter for newline” (just “Enter to send” when collapsed),
+  changing to “Esc to pause” during a running task. Typed drafts naturally hide the placeholder;
+  connection/unavailable messages retain precedence while idle. The composer preserves unsubmitted
   drafts (text and pending attachments) per conversation pane across tab switching and unmounting,
   clearing them only on submission. The context inspector
   modal provides a visual stacked token budget bar (retained history, ClosedAI additions, user turn,
