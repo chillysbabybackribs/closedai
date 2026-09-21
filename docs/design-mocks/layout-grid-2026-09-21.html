@@ -103,8 +103,8 @@ and arranges them. Every workspace below is rendered to scale from the real numb
         <div class="hdr">New chat grid · 1920 × 1048, browser docked</div>
         <div class="it">2 × 2 &nbsp;·&nbsp; 4 chats <span class="tag ok" style="margin-left:auto">fits</span></div>
         <div class="it">3 × 2 &nbsp;·&nbsp; 6 chats <span class="tag warn" style="margin-left:auto">tight</span></div>
-        <div class="it dim">4 × 2 &nbsp;·&nbsp; 8 chats <span class="tag warn" style="margin-left:auto">hide browser</span></div>
-        <div class="it dim">4 × 3 &nbsp;·&nbsp; 10 chats <span class="tag warn" style="margin-left:auto">hide browser</span></div>
+        <div class="it">3 × 3 &nbsp;·&nbsp; 8 chats <span class="tag warn" style="margin-left:auto">tight</span></div>
+        <div class="it dim">5 × 2 &nbsp;·&nbsp; 10 chats <span class="tag warn" style="margin-left:auto">hide browser</span></div>
       </div>
     </div>
   </div>
@@ -146,7 +146,7 @@ presets are the wrong shape: 6 chats is a 3 × 2 grid on your screen but a 2 × 
 <div class="row" id="defaults"></div>
 
 <script>
-const DIV = 14, MIN_W = 300, MIN_H = 280, GOOD_W = 440, GOOD_H = 420, TITLEBAR = 34;
+const DIV = 14, MIN_W = 300, MIN_H = 280, GOOD_W = 440, GOOD_H = 600, ASPECT = 0.8, TITLEBAR = 34;
 
 // Choose columns/rows for n chats in a w×h chat canvas. Returns null when nothing fits the hard minimum.
 function chooseGrid(n, w, h) {
@@ -158,8 +158,11 @@ function chooseGrid(n, w, h) {
     if (tw < MIN_W || th < MIN_H) continue;
     const comfort = Math.min(tw / GOOD_W, 1) * Math.min(th / GOOD_H, 1);
     const empty = cols * rows - n;
-    const cand = { cols, rows, tw, th, comfort, empty };
-    if (!best || cand.comfort > best.comfort + 1e-6 || (Math.abs(cand.comfort - best.comfort) < 1e-6 && cand.empty < best.empty)) best = cand;
+    const aspectGap = Math.abs(tw / th - ASPECT);
+    const cand = { cols, rows, tw, th, comfort, empty, aspectGap };
+    // largest comfortable tile, then fewest empty cells, then a chat-like (tall) aspect
+    if (!best || cand.comfort > best.comfort + 1e-6
+      || (Math.abs(cand.comfort - best.comfort) < 1e-6 && (cand.empty < best.empty || (cand.empty === best.empty && cand.aspectGap < best.aspectGap)))) best = cand;
   }
   return best;
 }

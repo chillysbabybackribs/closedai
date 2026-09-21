@@ -77,6 +77,23 @@ test('user turns are scroller rows and attachments render as attachment cards', 
   assert.match(html, /notes\.md/)
 })
 
+test('a compacted activity headline does not dump a file path', () => {
+  const items: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u', turnId: 't', text: 'Go' },
+    {
+      type: 'fileChange', id: 'f1', turnId: 't', status: 'completed',
+      changes: [{ path: '/home/dp/Desktop/closedai/src/a.ts', kind: 'update', diff: '+a' }]
+    },
+    {
+      type: 'tool', id: 'r1', turnId: 't', label: 'Read src/renderer/titlebar-menu.tsx (79 - 103)',
+      detail: '/home/dp/Desktop/closedai/src/renderer/titlebar-menu.tsx', status: 'inProgress'
+    }
+  ]
+  const html = renderTranscript({ items, activeTurnId: 't' })
+  assert.match(html, /Editing 1 file, Reading file/)
+  assert.doesNotMatch(html, /src\/renderer\/titlebar-menu|home\/dp\/Desktop/)
+})
+
 test('identically named tool calls collapse to a counted label', () => {
   const items: ChatTranscriptItem[] = [
     { type: 'user', id: 'u', turnId: 't', text: 'Go' },
