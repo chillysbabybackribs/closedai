@@ -125,11 +125,11 @@ function requestLiveVerify(mode: string, quitAfter: boolean): void {
 
 async function runPendingLiveVerify(): Promise<void> {
   const pending = pendingLiveVerify
-  if (!pending || !toolRegistry || !researchService) return
+  if (!pending || !toolRegistry) return
   pendingLiveVerify = null
   try {
     const { runLiveVerify } = await import('./live-verify/search-pipeline.js')
-    const result = await runLiveVerify(pending.mode, toolRegistry, researchService)
+    const result = await runLiveVerify(pending.mode, toolRegistry, researchService, userData())
     console.log(`[live-verify:${pending.mode}]`, JSON.stringify(result))
   } catch (error) {
     console.error(`[live-verify:${pending.mode}]`, error)
