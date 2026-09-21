@@ -120,7 +120,9 @@ With multiple visible tiles, `layout.new-chat` starts a fresh chat in the tile n
 without changing the other tiles or the split geometry.
 `composer.new-chat` opens a new tab in the focused tile, preserving the original chat and draft.
 The header's `titlebar.chat-search` searches saved chat titles across projects;
-`titlebar.chat-search-result` opens a suggestion by chat id. Empty input shows recent chats.
+`titlebar.chat-search-result` opens a suggestion by chat id. `titlebar.chat-search-pause` and
+`titlebar.chat-search-resume` control the row's chat without opening it, using the chat id as item.
+Empty input groups running chats, paused chats, unread completions, and recent history.
 Ctrl+H focuses it; arrows select, Enter opens, and Escape dismisses. UI state exposes
 `chatSearchOpen`. There is no sidebar or drawer toggle.
 Hiding a tile keeps its turn running; `close_chat` still detaches and stops it. A hidden browser

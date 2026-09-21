@@ -75,7 +75,7 @@ async function serve() {
   const state = { root, protocol, instance, pid: process.pid, url: '' }
   const server = await createServer({ root: join(root, 'src/renderer'),
     configFile: join(root, 'web.vite.config.ts'), clearScreen: false,
-    server: { host: '127.0.0.1', port: 0, strictPort: true },
+    server: { host: '127.0.0.1', port: 5173, strictPort: false },
     plugins: [{ name: 'closedai-preview-health', configureServer(vite) {
       vite.middlewares.use('/__closedai_preview', (_request, response) => {
         response.setHeader('Content-Type', 'application/json')
@@ -132,7 +132,8 @@ async function run() {
     if (existing) return printState(existing, true)
     const log = openSync(logFile, 'w', 0o600)
     const child = spawn(process.execPath, [fileURLToPath(import.meta.url), '--serve'], {
-      cwd: root, detached: true, stdio: ['ignore', log, log], env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
+      cwd: root, detached: true, stdio: ['ignore', log, log],
+      env: { ...process.env, NODE_ENV: 'development', ELECTRON_RUN_AS_NODE: '1' }
     })
     closeSync(log)
     let failure

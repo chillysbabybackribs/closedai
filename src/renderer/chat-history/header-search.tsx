@@ -158,6 +158,18 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
             const index = hits.indexOf(hit)
             const status = hit.status === 'running' ? 'Running' : hit.status === 'paused' ? 'Paused' : hit.status === 'completed'
               ? `Finished ${formatChatTime(hit.completedAt!).toLowerCase()}` : formatChatTime(hit.row.updatedAt)
+            const turnButtonProps = {
+              className: 'header-chat-search-turn',
+              'data-ui-key': hit.row.paneId,
+              'aria-label': `${hit.row.running ? 'Pause' : 'Resume'} “${hit.row.title}”`,
+              title: hit.row.running ? 'Pause chat' : 'Resume chat',
+              disabled: busy,
+              onMouseDown: (event: React.MouseEvent) => event.preventDefault(),
+              onClick: () => { void toggleTurn(hit) },
+              children: changingTurn === hit.row.paneId
+                ? <LoaderCircle size={14} className="header-chat-search-spinner" aria-hidden="true" />
+                : hit.row.running ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />
+            }
             return <div key={hit.row.paneId} id={optionId(index)} role="row"
               aria-selected={index === cursor} className="header-chat-search-row"
               onMouseEnter={() => setHighlight(index)}>
@@ -184,16 +196,9 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
                 </button>
               </div>
               <div role="gridcell" className="header-chat-search-actions">
-                {(hit.row.running || hit.row.paused) && <button type="button"
-                  className="header-chat-search-turn"
-                  data-ui={hit.row.running ? 'titlebar.chat-search-pause' : 'titlebar.chat-search-resume'}
-                  data-ui-key={hit.row.paneId}
-                  aria-label={`${hit.row.running ? 'Pause' : 'Resume'} “${hit.row.title}”`}
-                  title={hit.row.running ? 'Pause chat' : 'Resume chat'} disabled={busy}
-                  onMouseDown={event => event.preventDefault()} onClick={() => { void toggleTurn(hit) }}>
-                  {changingTurn === hit.row.paneId ? <LoaderCircle size={14} className="header-chat-search-spinner" aria-hidden="true" />
-                    : hit.row.running ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
-                </button>}
+                {hit.row.running
+                  ? <button type="button" data-ui="titlebar.chat-search-pause" {...turnButtonProps} />
+                  : hit.row.paused && <button type="button" data-ui="titlebar.chat-search-resume" {...turnButtonProps} />}
                 <button type="button" className="header-chat-search-delete"
                   data-ui="titlebar.chat-search-delete" data-ui-key={hit.row.paneId}
                   aria-label={`Delete “${hit.row.title}”`}

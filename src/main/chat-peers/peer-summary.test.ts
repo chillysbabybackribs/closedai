@@ -212,6 +212,22 @@ test('cache titles follow the first user message and bounded provider name', () 
   assert.equal(cache.current.running, true)
 })
 
+test('pause state reaches summaries and clears when the next turn starts', () => {
+  const cache = new PeerSummaryCache('pane-a', () => record())
+  cache.update({ type: 'turn', turnId: 'turn-1' }, 1)
+  cache.update({ type: 'paused', turnId: 'turn-1' }, 2)
+  cache.update({ type: 'turn', turnId: null }, 3)
+  assert.equal(cache.current.running, false)
+  assert.equal(cache.current.paused, true)
+  const paused = snapshot({ pausedTurnId: 'turn-1' })
+  assert.equal(summaryOf('pane-a', paused, 4, record()).paused, true)
+  cache.update({ type: 'replace', snapshot: paused }, 4)
+  assert.equal(cache.current.paused, true)
+  cache.update({ type: 'turn', turnId: 'turn-2' }, 5)
+  assert.equal(cache.current.paused, false)
+  assert.equal(cache.current.running, true)
+})
+
 test('background tasks surface in running state and live activity disclosure', () => {
   const bgTask = {
     type: 'tool' as const,

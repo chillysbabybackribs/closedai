@@ -9,8 +9,13 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), {
     name: 'closedai-ui-preview',
     apply: 'serve',
-    transformIndexHtml(html) {
-      return html.replace('./main.tsx', './preview/entry.tsx')
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html) {
+        return html.replace('./main.tsx', './preview/entry.tsx')
+          // React's development refresh preamble is inline; production keeps its CSP.
+          .replace("script-src 'self';", "script-src 'self' 'unsafe-inline';")
+      }
     }
   }],
   resolve: { alias: { '@': resolve('src') } },

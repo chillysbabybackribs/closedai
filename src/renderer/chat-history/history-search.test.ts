@@ -89,6 +89,19 @@ test('search flattens activity into title-ranked results and keeps global activi
   assert.equal(chatSearchView(rows, 'zzzzz', reviews).unreadCount, 1)
 })
 
+test('paused chats stay visible outside bounded history and are not unread completions', () => {
+  const paused = { ...chat('paused', 'Paused task', 1), attached: true, paused: true }
+  const rows = [paused, ...Array.from({ length: 12 }, (_, i) => chat(`old-${i}`, 'History', 100 + i))]
+  const reviews = { paused: { queuedAt: 100, viewedAt: null } }
+  const view = chatSearchView(rows, '', reviews)
+  assert.deepEqual(view.sections.map(section => section.label), ['Paused', 'History'])
+  assert.equal(view.sections[0]!.hits[0]!.row.paneId, 'paused')
+  assert.equal(view.runningCount, 0)
+  assert.equal(view.unreadCount, 0)
+  assert.equal(chatSearchView(rows, 'paused', reviews).sections[0]!.hits[0]!.status, 'paused')
+  assert.equal(chatSearchView([{ ...paused, running: true, paused: false }], '', {}).sections[0]!.label, 'Running')
+})
+
 test('opening a completion moves it into history and empty sections disappear', () => {
   const rows = [chat('finished', 'Finished task')]
   assert.deepEqual(chatSearchView(rows, '', { finished: { queuedAt: 1, viewedAt: null } })

@@ -103,6 +103,12 @@ test('every turn that finishes is reported, watched or not; fresh panes are not'
   assert.deepEqual([...result.nextRunning], [['pane-a', false], ['pane-b', false], ['pane-new', false]])
 })
 
+test('pausing does not enqueue a completion and removes any interim completion marker', () => {
+  const result = reviewTransitions(new Map([['pane-a', true]]), [{ ...peer('pane-a', false), paused: true }])
+  assert.deepEqual(result.finished, [])
+  assert.deepEqual(result.runningAgain, ['pane-a'])
+})
+
 test('a pane that starts running again is reported so its queue entry can be dropped', () => {
   const prior = new Map([['pane-a', false]])
   const result = reviewTransitions(prior, [peer('pane-a', true)])

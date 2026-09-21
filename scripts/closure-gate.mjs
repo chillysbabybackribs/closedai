@@ -7,11 +7,11 @@ import { resolve, dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-// Keep these aligned with electron.vite.config.ts and src/renderer/index.html.
+// Keep these aligned with the Electron/web Vite configs and src/renderer/index.html.
 // The artifact worker is launched by URL rather than a module import.
 const entries = [
   'src/main/index.ts', 'src/main/investigations/artifact-worker.ts',
-  'src/preload/index.ts', 'src/renderer/App.tsx'
+  'src/preload/index.ts', 'src/renderer/main.tsx', 'src/renderer/preview/entry.tsx'
 ]
 const allowedPackages = new Set([
   'electron', 'react', 'react-dom', 'lucide-react', 'clsx', 'tailwind-merge',

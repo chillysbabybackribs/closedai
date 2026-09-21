@@ -362,7 +362,10 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 - Header search reads chat records across directories, attached or detached, including child chats.
   It matches titles; project names provide context. Opening a result calls `openChat` and selects
   an existing tab or replaces the focused tab. Archived chats are excluded by the store.
-  Running results show a status label. Tab completion indicators retain their persisted review
+  Running results show a status label and Pause button; paused chats stay in a Paused section
+  with a Resume button. Both actions target the row without opening the chat and use the same
+  interrupt/continuation behavior as the composer. Pauses do not count as unread completions.
+  Tab completion indicators retain their persisted review
   marks; opening the chat clears its unread mark. The old directory/pin/review sections, New Agent
   button, drawer toggle, and sidebar row menus are removed. Saved records and pin metadata remain.
   History, new-chat, and title-action failures appear below the header search for eight seconds.
@@ -440,7 +443,8 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   and Credential Vault live in the title bar's Tools menu. File owns chat creation, history,
   settings, and closing the window; View owns browser visibility, chat zoom, and fullscreen.
   Send, pause,
-  and resume controls live in the composer. Pause ends the provider turn — no protocol can suspend
+  and resume controls live in the composer; Pause and Resume also appear in header search rows.
+  Pause ends the provider turn — no protocol can suspend
   a generation and restart the same one — but every lane keeps the partial answer and the
   conversation, so Resume is an ordinary next turn carrying `CHAT_RESUME_PROMPT`. It is offered
   from the turn's `paused` event until the next turn starts. Codex sends `turn/interrupt`, Claude
