@@ -441,7 +441,8 @@ const TOOLS = [
 const READ_ONLY = new Set(['closedai_app.state', 'closedai_ui.capture', 'peer_chats.list', 'peer_chats.read', 'peer_chats.recall', 'investigation.read',
   ...TOOLS.filter((t) => t.group === 'reads-web').map((t) => t.id)]);
 
-const state = { open: null, group: 'reads-web', filter: '', accordion: new Set(['reads-web']) };
+const params = new URLSearchParams(location.search);
+const state = { open: params.get('open'), group: 'reads-web', filter: '', accordion: new Set(['reads-web']) };
 
 const fmt = (n) => n < 1000 ? String(n) : (n / 1000).toFixed(n < 10000 ? 1 : 0) + 'k';
 const inGroup = (id) => TOOLS.filter((t) => t.group === id);
