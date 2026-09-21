@@ -34,32 +34,33 @@ export type ToolCardProps = {
 export function ToolCard({ row, effect, open, now, since, onOpenChange, onToggle, onRepair }: ToolCardProps): JSX.Element {
   const { tool } = row
   return (
-    <Collapsible open={open} onOpenChange={onOpenChange} asChild>
-      <Card
-        data-enabled={tool.enabled}
-        data-tool={tool.id}
-        className={cn(
-          'gap-3 py-4 transition-[opacity,box-shadow]',
-          'data-[state=open]:col-span-full data-[state=open]:ring-1 data-[state=open]:ring-ring/40',
-          !tool.enabled && 'opacity-60'
-        )}
-      >
-        <CardHeader className="gap-1 px-4">
-          <CardTitle className="flex items-center gap-2 text-[13.5px]">
-            <span className="truncate">{tool.label}</span>
-            {row.flag ? <span aria-hidden="true" className={cn('size-1.5 shrink-0 rounded-full', row.flag === 'bad' ? 'bg-destructive' : 'bg-[color:var(--warning,#c58b45)]')} /> : null}
-          </CardTitle>
-          <CardDescription className="text-xs leading-relaxed">{tool.summary || tool.offEffect}</CardDescription>
-          <CardAction>
-            <Switch
-              checked={tool.enabled}
-              onCheckedChange={onToggle}
-              aria-label={`${tool.enabled ? 'Turn off' : 'Turn on'} ${tool.label}`}
-              data-ui="tools.toggle"
-              data-ui-key={tool.id}
-            />
-          </CardAction>
-        </CardHeader>
+    <Card
+      data-enabled={tool.enabled}
+      data-tool={tool.id}
+      data-state={open ? 'open' : 'closed'}
+      className={cn(
+        'gap-3 py-4 transition-[opacity,box-shadow]',
+        open && 'col-span-full ring-1 ring-ring/40',
+        !tool.enabled && 'opacity-60'
+      )}
+    >
+      <CardHeader className="gap-1 px-4">
+        <CardTitle className="flex items-center gap-2 text-[13.5px]">
+          <span className="truncate">{tool.label}</span>
+          {row.flag ? <span aria-hidden="true" className={cn('size-1.5 shrink-0 rounded-full', row.flag === 'bad' ? 'bg-destructive' : 'bg-[color:var(--warning,#c58b45)]')} /> : null}
+        </CardTitle>
+        <CardDescription className="text-xs leading-relaxed">{tool.summary || tool.offEffect}</CardDescription>
+        <CardAction>
+          <Switch
+            checked={tool.enabled}
+            onCheckedChange={onToggle}
+            aria-label={`${tool.enabled ? 'Turn off' : 'Turn on'} ${tool.label}`}
+            data-ui="tools.toggle"
+            data-ui-key={tool.id}
+          />
+        </CardAction>
+      </CardHeader>
+      <Collapsible open={open} onOpenChange={onOpenChange} className="contents">
         <CardFooter className="mt-auto items-center justify-between gap-3 px-4">
           <span className={cn('truncate text-xs text-muted-foreground', row.flag && TONE_TEXT[row.flag])}>
             {row.note || `${tool.costTokens} tokens / turn`}
@@ -76,8 +77,8 @@ export function ToolCard({ row, effect, open, now, since, onOpenChange, onToggle
             <ToolDetails row={row} effect={effect} now={now} since={since} onToggle={onToggle} onRepair={onRepair} />
           </CardContent>
         </CollapsibleContent>
-      </Card>
-    </Collapsible>
+      </Collapsible>
+    </Card>
   )
 }
 
