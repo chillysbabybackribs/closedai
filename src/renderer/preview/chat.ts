@@ -12,7 +12,8 @@ export function createPreviewChat(scenario: Scenario, report: (message: string) 
   const publish = () => {
     state.selected = state.panes![state.selectedPaneId]!
     state.chats = state.chats.map((row) => {
-      const chat = state.panes![row.paneId]!
+      const chat = state.panes?.[row.paneId]
+      if (!chat) return row
       return { ...row, title: chat.threadName ?? 'New chat', modelId: chat.selectedModel,
         running: !!chat.activeTurnId, paused: !!chat.pausedTurnId,
         activity: chat.activeTurnId ? 'Writing a sample response' : null }
@@ -84,7 +85,18 @@ export function createPreviewChat(scenario: Scenario, report: (message: string) 
     selectReasoningEffort: async (id, effort) => { pane(id).selectedReasoningEffort = effort; publish() },
     refreshPlanUsage: async () => {}, loginWithChatGPT: native,
     listChats: async () => structuredClone(state.chats), newPeer: create, closePeer: close,
-    continueInNewPeer: create, openChat: async (id) => { await select(id); return id }, archiveChat: close,
+    continueInNewPeer: create, openChat: async (id) => {
+      if (!state.panes?.[id]) {
+        const row = state.chats.find((entry) => entry.paneId === id)
+        if (!row) throw new Error(`Unknown preview chat: ${id}`)
+        const chat = sampleChat(id)
+        chat.threadName = row.title
+        state.panes![id] = chat
+        row.attached = true
+      }
+      await select(id)
+      return id
+    }, archiveChat: close,
     setChatPinned: async (id, pinned) => {
       const row = state.chats.find((entry) => entry.paneId === id)
       if (row) row.pinnedAt = pinned ? Date.now() : null

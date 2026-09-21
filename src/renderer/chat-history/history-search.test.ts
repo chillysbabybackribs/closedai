@@ -82,7 +82,7 @@ test('search flattens activity into title-ranked results and keeps global activi
   const view = chatSearchView(rows, 'browser', reviews)
   assert.deepEqual(view.sections.map(section => section.label), ['Matching chats'])
   assert.deepEqual(view.sections[0]!.hits.map(hit => [hit.row.paneId, hit.status]),
-    [['history', 'history'], ['running', 'running']])
+    [['history', 'closed'], ['running', 'running']])
   assert.equal(view.runningCount, 1)
   assert.equal(view.unreadCount, 1)
   assert.deepEqual(chatSearchView(rows, 'zzzzz', reviews).sections, [])

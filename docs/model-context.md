@@ -96,9 +96,9 @@ switch-and-submit, not task completion. Pending state is in memory only.
 The app no
 longer adds a blanket restriction on delegation; applicable user and repository instructions still apply.
 The centered header search suggests saved chat titles across directories. With no query it groups
-running chats, paused chats, unread completions, and recent history. Hover opens the dropdown and leaving the field and results hides it; focus, typing,
+running chats, paused chats, unread completions, open tabs, and closed chats. Hover opens the dropdown and leaving the field and results hides it; focus, typing,
 and arrow keys also open it. Row controls pause or resume a chat without opening it; paused chats
-remain discoverable in their own section. Opening a completion moves it into History. Each composer's folder
+remain discoverable in their own section. Opening a completion moves it into Open or Closed. Each composer's folder
 menu changes only that chat's directory, preserving the layout and other chats; a running chat
 queues its choice until its own work finishes. Visible chats can use different directories.
 The model's deferred project-switch command still waits for all chats to idle and creates a
