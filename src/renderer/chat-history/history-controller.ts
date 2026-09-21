@@ -117,7 +117,7 @@ export function useHistoryController(chat: ChatController) {
     chat.newThread().catch(reportError)
   }, [chat, reportError])
 
-  return { reviewQueue, openRow, newChat, refreshChats, error, reportError }
+  return { reviewQueue, openRow, deleteRow: chat.archiveChat, newChat, refreshChats, error, reportError }
 }
 
 export type HistoryController = ReturnType<typeof useHistoryController>

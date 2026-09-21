@@ -221,7 +221,10 @@ a guarantee that every model retrieves or phrases its response identically.
 The workspace has no sidebar. A centered title-bar input searches saved chat titles across projects.
 Clicking it shows up to eight recent chats; typing shows ranked, case-insensitive title matches with
 matched characters highlighted and project/time labels. Arrow keys select, Enter or click opens,
-and Escape dismisses. Ctrl+H and File → Search chats focus it. File → Manage chat history retains
+and Escape dismisses. Each result has a trash button that removes the chat from history in one
+click without confirmation, using the existing provider/app archival path. Running chats cannot
+be deleted; pending actions disable the buttons and failures appear below the search. The dropdown
+stays open after deletion. Ctrl+H and File → Search chats focus it. File → Manage chat history retains
 the full history management panel. New chats use the tab + button or File → New chat (Ctrl+N).
 Two full-height chats can
 sit on either side of the browser. The browser starts on the right; drag a conversation tab,

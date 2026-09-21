@@ -23,6 +23,7 @@ export const UI_CONTROLS = {
   'titlebar.chat-search': 'Search saved chat titles across projects with autocomplete',
   'titlebar.chat-search-clear': 'Clear chat title search',
   'titlebar.chat-search-result': 'Open a chat history suggestion; item is the chat id',
+  'titlebar.chat-search-delete': 'Delete a chat from history immediately without confirmation; item is the chat id',
   'titlebar.menu': 'Application menu tab; item is file, edit, view, or help',
   'titlebar.menu-item': 'Application menu row; item is the slugged label, for example new-chat',
   'window.minimize': 'Minimize the window',
