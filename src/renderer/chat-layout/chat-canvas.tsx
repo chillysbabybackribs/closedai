@@ -78,15 +78,18 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
       onDragActive(true)
     }
     const clear = (): void => { setDragging(null); setDrop(null); dropTarget.current = null; onDragActive(false) }
+    const cancel = (event: KeyboardEvent): void => { if (event.key === 'Escape') clear() }
     window.addEventListener('dragstart', start)
     window.addEventListener('dragend', clear)
     window.addEventListener('drop', clear)
     window.addEventListener('blur', clear)
+    window.addEventListener('keydown', cancel)
     return () => {
       window.removeEventListener('dragstart', start)
       window.removeEventListener('dragend', clear)
       window.removeEventListener('drop', clear)
       window.removeEventListener('blur', clear)
+      window.removeEventListener('keydown', cancel)
       onDragActive(false)
     }
   }, [onDragActive])
