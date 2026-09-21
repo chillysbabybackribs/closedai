@@ -87,9 +87,7 @@ export function Composer({
   const isCompact = layout === 'compact'
   const inputPlaceholder = running
     ? 'Esc to pause'
-    : placeholder ?? (enabled
-      ? isCompact ? 'Enter to send' : 'Enter to send · Shift+Enter for newline'
-      : 'Codex is unavailable')
+    : placeholder ?? (enabled ? 'Enter to send · Shift+Enter for newline' : 'Codex is unavailable')
   const formRef = useRef<HTMLFormElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const focusAfterSendRef = useRef(false)
