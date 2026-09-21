@@ -165,7 +165,7 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
     {
       action: 'dismiss_overlay',
       description:
-        'Detect and dismiss a blocking modal, dialog, or cookie banner on the active tab. Tries consent accept, ' +
+        'Detect and dismiss a blocking modal, dialog, or cookie banner on this chat’s targeted tab. Tries consent accept, ' +
         'Escape, semantic close controls, then a pointer click on the close control, verifying dismissal after each step.',
       inputSchema: objectSchema({
         tab_id: tabIdField,

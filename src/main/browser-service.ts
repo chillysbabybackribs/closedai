@@ -511,13 +511,13 @@ export class BrowserService extends EventEmitter {
   }
 
   back(tabId?: string): void {
-    if (tabId) this.tabs.find(tab => tab.id === tabId)?.back()
-    else this.requireActive().back()
+    const tab = tabId ? this.tabs.find(tab => tab.id === tabId) : this.requireActive()
+    if (tab instanceof BrowserTab) tab.back()
   }
 
   forward(tabId?: string): void {
-    if (tabId) this.tabs.find(tab => tab.id === tabId)?.forward()
-    else this.requireActive().forward()
+    const tab = tabId ? this.tabs.find(tab => tab.id === tabId) : this.requireActive()
+    if (tab instanceof BrowserTab) tab.forward()
   }
 
   reload(): void {

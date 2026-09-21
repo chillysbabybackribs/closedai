@@ -13,7 +13,7 @@ export function browserPageAction(capture: UiCaptureHostProvider, store: Screens
   return {
     action: 'browser_page',
     description:
-      'Capture one browser page without app chrome (active tab unless tab_id). Waits for load state and optional selector/text; fails if unmet or the main page navigates/loses its renderer during capture. Returns a scaled JPEG with a coherence line: verified means a fresh frame was painted and the DOM did not change during the capture interval; dom changing or possibly stale means treat the image as unverified evidence and capture again after the page settles. DOM, animation, and subframes are not frozen; this is not an atomic DOM/pixel snapshot.',
+      'Capture one browser page without app chrome (this chat’s assigned tab unless tab_id), including background tabs without selecting them. Waits for load state and optional selector/text; fails if unmet or the main page navigates/loses its renderer during capture. Returns a scaled JPEG with a coherence line: verified means a fresh frame was painted and the DOM did not change during the capture interval; dom changing or possibly stale means treat the image as unverified evidence and capture again after the page settles. DOM, animation, and subframes are not frozen; this is not an atomic DOM/pixel snapshot.',
     inputSchema: {
       type: 'object',
       properties: { tab_id: tabIdField, ...readinessProperties },

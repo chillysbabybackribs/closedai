@@ -8,13 +8,13 @@ export function navigateAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'navigate',
     description:
-      'Open a URL or search query, wait for readiness, and return final URL, title, and load state.',
+      'Open a URL or search query in this chat’s assigned tab, wait for readiness, and return final URL, title, and load state. The first untargeted navigation creates a private background tab; new_tab creates another. Assignments prevent other chats from using the tab until released.',
     inputSchema: {
       type: 'object',
       properties: {
         url: urlField,
         tab_id: tabIdField,
-        new_tab: { type: 'boolean', description: 'Open in a new tab instead of the active one.' },
+        new_tab: { type: 'boolean', description: 'Open a new background tab assigned to this chat.' },
         ...readinessProperties
       },
       required: ['url'],

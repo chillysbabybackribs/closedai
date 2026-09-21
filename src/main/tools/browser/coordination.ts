@@ -104,9 +104,9 @@ export class BrowserCoordination {
   private checkProtocol(input: JsonObject, pane: string): void {
     const method = String(input.method ?? '')
     // Raw Target commands can address another root through the caller’s debugger connection.
-    // Keep discovery, but route lifecycle changes through the ownership-aware tab commands.
+    // They remain available exclusively; addressed app commands also work alongside peers.
     if (input.action === 'target' || (method.startsWith('Target.') && !['Target.getTargets', 'Target.getTargetInfo'].includes(method))) {
-      throw new Error('Use closedai_app.command browser_tab for tab lifecycle changes. Raw Target mutations bypass chat tab assignments; child sessions are attached automatically and listed by protocol targets.')
+      this.exclusiveSession(pane)
     }
     if (/^(Browser|Storage)\./.test(method) && !/\.(get|can)/.test(method) ||
         /^Network\.(setCookie|setCookies|deleteCookies|clearBrowserCookies|clearBrowserCache)$/.test(method)) this.exclusiveSession(pane)
