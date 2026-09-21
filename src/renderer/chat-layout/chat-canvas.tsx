@@ -36,6 +36,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
   const [drop, setDrop] = useState<{ target: string; edge: DockEdge | null } | null>(null)
   const dropTarget = useRef<typeof drop>(null)
   const tabFocus = useRef<string | null>(null)
+  const paneDragBlocked = useRef(false)
   useEffect(() => {
     if (!tabFocus.current) return
     const tab = document.getElementById(`chat-tab-${tabFocus.current}`)
@@ -182,6 +183,9 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
             <ContextMenu.Trigger asChild>
               <header className="chat-layout-header" draggable={!busy}
                 data-ui="layout.pane-drag" data-ui-key={activeId}
+                onPointerDownCapture={(event) => {
+                  paneDragBlocked.current = (event.target as HTMLElement).closest('button') !== null
+                }}
                 onClick={(event) => {
                   if (!(event.target as HTMLElement).closest('button')) onSelect(activeId)
                 }}
@@ -189,7 +193,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
                   // Tabs carry their own single-conversation payload. Only empty header space
                   // moves the entire pane; action buttons must never start a pane drag.
                   if (event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE)) return
-                  if (busy || (event.target as HTMLElement).closest('button')) {
+                  if (busy || paneDragBlocked.current || (event.target as HTMLElement).closest('button')) {
                     event.preventDefault()
                     return
                   }

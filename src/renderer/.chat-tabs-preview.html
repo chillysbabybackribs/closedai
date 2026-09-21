@@ -1,0 +1,16 @@
+<!doctype html><html><head><title>Chat tab drag preview</title></head><body><div id="root"></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { ChatCanvas } from './chat-layout/chat-canvas.tsx';
+import './styles.css';
+window.check={selected:[],closed:[],drags:[]};
+const titles={a:'Assessing the Need for Agent Sidebar',b:'Chat history navigation',c:'Browser layout'};
+const tree={kind:'split',id:'split',axis:'vertical',ratio:0.5,first:{kind:'pane',id:'a',tabs:['a','b']},second:{kind:'pane',id:'c'}};
+createRoot(document.getElementById('root')).render(React.createElement(ChatCanvas,{
+tree,selectedId:'a',busy:false,browserVisible:false,renderBrowser:null,onDragActive:()=>{},onToggleBrowser:()=>{},title:id=>titles[id],renderPane:id=>React.createElement('div',null,titles[id]),onSelect:id=>window.check.selected.push(id),onSelectTab:id=>window.check.selected.push(id),onCloseTab:id=>window.check.closed.push(id),onNewChat:()=>{},onDock:()=>{},onHide:()=>{},onResize:()=>{}
+}));
+document.addEventListener('dragstart',event=>{window.check.drags.push({target:event.target.getAttribute('data-ui'),types:[...event.dataTransfer.types],prevented:event.defaultPrevented});event.preventDefault();});
+</script>
+<style>html,body,#root {height:100%;margin:0} #root{display:flex;padding:20px;background:var(--background)}.chat-layout-panel{padding:16px;color:var(--chrome-fg)}</style>
+</body></html>

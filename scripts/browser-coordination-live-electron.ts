@@ -90,6 +90,16 @@ async function verify() {
     assertColor(hiddenImage.dataUrl, true)
     assert.equal(BrowserWindow.getAllWindows().length, 1, 'temporary capture window is released')
     const restoredId = coordination.snapshot('a').defaultTabId!
+    assert.equal(browser.contentsOf(restoredId)!.getBackgroundThrottling(), true, 'capture restores throttling')
+    // Exercise cold hidden surfaces repeatedly; DOM readiness can precede the first Viz frame.
+    for (let index = 0; index < 3; index++) {
+      const cold = browser.openNewTab(`${base}/a-cold-${index}`, false)
+      const image = await capture.captureBrowserPage(cold, { until: 'load', timeoutMs: 5000 })
+      assert.ok(image?.image, JSON.stringify(image))
+      assertColor(image.image.dataUrl, true)
+      assert.equal(BrowserWindow.getAllWindows().length, 1)
+      browser.closeTab(cold)
+    }
     await browser.setBounds({ x: 0, y: 0, width: 800, height: 600, visible: true })
     browser.selectTab(restoredId)
     const restored = await capture.captureBrowserPage(restoredId, { until: 'load', timeoutMs: 5000 })
