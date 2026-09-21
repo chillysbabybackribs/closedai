@@ -41,6 +41,33 @@
 .chat-layout-viewport { flex: 1; min-height: 0; min-width: 0; overflow: auto; }
 .chat-layout-browser-frame { position: relative; display: flex; flex: 1; min-height: 0; min-width: 0; }
 .chat-layout-browser-frame > .workspace-right { flex: 1; }
+.browser-layout-drag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+  align-self: stretch;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--chrome-fg);
+  cursor: grab;
+}
+.browser-layout-drag:hover { background: var(--surface-control-hover); color: var(--chrome-fg-strong); }
+.browser-layout-drag:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -2px; }
+.browser-layout-drag:active { cursor: grabbing; }
+.browser-layout-drag:disabled { opacity: 0.3; cursor: default; }
+.chat-layout-workspace-dock {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 22px;
+  z-index: 6;
+  background: rgb(138 180 248 / 20%);
+  border: 1px dashed #8ab4f8;
+}
+.chat-layout-workspace-dock[data-edge='left'] { left: 0; }
+.chat-layout-workspace-dock[data-edge='right'] { right: 0; }
 .chat-layout-browser-shield {
   position: absolute;
   inset: 0;

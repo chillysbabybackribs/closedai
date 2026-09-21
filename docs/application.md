@@ -259,6 +259,12 @@ tab; sibling conversations stay in place. Drop a tab onto another chat header to
 The highlighted region previews the split or tab destination. These moves preserve mounted drafts,
 attachments, and transcripts and persist with the project's layout.
 
+The grip at the left of the browser tab strip moves the whole shared browser. Drop it at a
+chat's top or bottom edge to stack it above or below that chat, or at a side edge to dock beside
+it. During a browser drag, highlighted strips at the workspace's far left and right place the
+browser in a full-height column beside all chats. Moving the browser preserves its tabs and
+the selected chat; its position uses the same saved layout and resizable dividers.
+
 Drag a chat header grip onto another tile's left, right, top, or bottom edge. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its
 mounted composer, draft, attachments, and transcript scroller survive the move. Open an existing chat

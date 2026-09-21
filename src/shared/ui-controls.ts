@@ -32,6 +32,8 @@ export const UI_CONTROLS = {
 
   'layout.browser-toggle': 'Chat-header control to show or hide the shared browser independently of the chat arrangement; item is the chat id',
   'layout.browser-dock': 'Drop a chat tab or pane on the left or right half to place it beside the browser',
+  'layout.browser-drag': 'Drag the shared browser by its tab-strip grip to a chat edge to stack or dock it',
+  'layout.workspace-dock': 'Browser-drag drop target at the workspace edge for a full-height column; item is left or right',
   'layout.pane-drag': 'Focus a chat or drag its header to dock beside another; item is the chat id',
   'layout.new-chat': 'Header + button (also a context-menu row): add and select a fresh conversation tab in this tile, preserving its existing tabs, other tiles and split sizes; item is the active chat id',
   'layout.tab': 'Select a conversation tab, or drag it to a chat header to join its tabs or a pane edge to split out this conversation; item is the chat id',

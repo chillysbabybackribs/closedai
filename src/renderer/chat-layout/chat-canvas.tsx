@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ContextMenu } from 'radix-ui'
 import { Columns2, GripVertical, Maximize2, MessageSquarePlus, Minimize2, Monitor, PanelRightClose, Pencil, Plus, Rows2, Sparkles, X } from 'lucide-react'
-import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
+import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { ChatTabs } from './chat-tabs.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import type { TabActivity } from './tab-activity.js'
@@ -155,7 +155,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
             const y = (event.clientY - bounds.top) / bounds.height
             const edges: Array<[DockEdge, number]> = [['left', x], ['right', 1 - x], ['top', y], ['bottom', 1 - y]]
             const edge = activeId === BROWSER_PANE_ID ? (x < 0.5 ? 'left' : 'right')
-              : (event.target as HTMLElement).closest('.chat-layout-header') ? null
+              : dragging?.id !== BROWSER_PANE_ID && (event.target as HTMLElement).closest('.chat-layout-header') ? null
               : edges.sort((a, b) => a[1] - b[1])[0]![0]
             dropTarget.current = { target: activeId, edge }
             setDrop(dropTarget.current)
@@ -311,7 +311,9 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
           </ContextMenu.Root>}
           {activeId === BROWSER_PANE_ID ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
             {renderBrowser}
-            {dragging && <div className="chat-layout-browser-shield">Drop on either side to place a chat beside the browser</div>}
+            {dragging && <div className="chat-layout-browser-shield">{dragging.id === BROWSER_PANE_ID
+              ? 'Drop above or below a chat to stack; use the workspace edges for a full-height column'
+              : 'Drop on either side to place a chat beside the browser'}</div>}
           </div> : tabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
             aria-label={title(tabId)} hidden={tabId !== activeId}>{renderPane(tabId)}</div>)}
           {drop?.target === activeId && (dragging?.id !== activeId || (dragging.singleTab && tabs.length > 1)) && <div className="chat-layout-drop" data-edge={drop.edge ?? 'tab'}>
@@ -319,6 +321,30 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
           </div>}
         </section>
       })}
+      {dragging?.id === BROWSER_PANE_ID && !busy && <>
+        {(['left', 'right'] as const).map((edge) => <div key={edge}
+          className="chat-layout-workspace-dock" data-edge={edge} data-ui="layout.workspace-dock" data-ui-key={edge}
+          aria-label={`Move browser to full-height ${edge} column`}
+          onDragOver={(event) => {
+            event.preventDefault()
+            event.dataTransfer.dropEffect = 'move'
+            dropTarget.current = { target: WORKSPACE_DOCK_ID, edge }
+            setDrop(dropTarget.current)
+          }}
+          onDragLeave={() => { dropTarget.current = null; setDrop(null) }}
+          onDrop={(event) => {
+            if (event.dataTransfer.getData(CHAT_DRAG_TYPE) !== BROWSER_PANE_ID) return
+            event.preventDefault()
+            onDock(BROWSER_PANE_ID, WORKSPACE_DOCK_ID, edge)
+            dropTarget.current = null
+            setDragging(null)
+            setDrop(null)
+            onDragActive(false)
+          }} />)}
+        {drop?.target === WORKSPACE_DOCK_ID && <div className="chat-layout-drop" data-edge={drop.edge}>
+          <span>Full-height browser column</span>
+        </div>}
+      </>}
       {!soloTile && geometry.dividers.map((divider) => <div key={divider.id} className="chat-layout-divider"
         style={position(divider.rect)} data-axis={divider.axis} role="separator" tabIndex={0}
         data-ui="layout.divider" data-ui-key={divider.id}
