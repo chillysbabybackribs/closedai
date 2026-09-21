@@ -37,7 +37,12 @@ function recordError(value: unknown) {
   document.documentElement.dataset.previewState = 'error'
   report(`Preview error: ${String(value)}`)
 }
-const onError = (event: ErrorEvent) => recordError(event.message)
+// Chromium reports a ResizeObserver callback that resized an observed box as a window error
+// event. It is a one-frame relayout notice, not an exception, so it is not a preview failure.
+const onError = (event: ErrorEvent) => {
+  if (event.message.startsWith('ResizeObserver loop')) return
+  recordError(event.message)
+}
 const onRejection = (event: PromiseRejectionEvent) => recordError(event.reason)
 const preventDrop = (event: Event) => event.preventDefault()
 window.addEventListener('error', onError)
