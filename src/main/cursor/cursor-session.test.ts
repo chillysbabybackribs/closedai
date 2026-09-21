@@ -7,7 +7,7 @@ function session(overrides: Partial<CursorSessionDeps> = {}): { session: CursorS
   const adopted: string[] = []
   const deps: CursorSessionDeps = {
     cwd: '/workspace',
-    mcpServers: () => [],
+    mcpServers: async () => [],
     modelId: () => null,
     apply: () => {},
     onTurn: () => {},
