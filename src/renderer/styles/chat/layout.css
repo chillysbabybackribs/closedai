@@ -19,6 +19,23 @@
   font-size: 12px;
 }
 
+.chat-layout-notice {
+  position: absolute;
+  top: 38px;
+  left: 12px;
+  z-index: 3;
+  max-width: calc(100% - 24px);
+  padding: 8px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-chrome);
+  color: var(--chrome-fg-strong);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
+  font-size: 12px;
+  pointer-events: none;
+}
+.chat-layout-notice:empty { padding: 0; border: 0; box-shadow: none; }
+
 .chat-layout-header button {
   display: inline-flex;
   flex-shrink: 0;

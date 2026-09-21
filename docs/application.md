@@ -358,7 +358,10 @@ composer accepts and sends drafts on its single line; its attachment chips and t
 any tile header or tab opens a context menu with **Maximize tile** (`layout.maximize`), **Split right**
 (`layout.split-right`), **Split below** (`layout.split-below`), **New chat** (`layout.new-chat`), and
 **Close tab** / **Hide pane** (`layout.pane-hide`). Double-clicking a tile header also toggles
-maximize mode. In maximized/solo mode, the tile expands to 100% canvas dimensions while background
+maximize mode. Close/hide tooltips explain that these actions do not stop tasks; tab-close
+tooltips name running or paused state when available. Successful closes and hides show a
+4.5-second status message over the focused chat, noting continuing or paused tasks when present.
+The message takes no layout space and adds no controls. In maximized/solo mode, the tile expands to 100% canvas dimensions while background
 tiles and the browser remain mounted and hidden with active agent tasks running undisturbed.
 The context menu displays **Restore split grid** (`layout.restore`), and pressing `Escape` or
 double-clicking the header immediately restores the full split grid layout without modifying

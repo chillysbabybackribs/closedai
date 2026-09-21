@@ -10,10 +10,11 @@ import { browserDropAt, browserDropPreview, sameBrowserDrop, type BrowserDrop } 
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onRetryChatTitle, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onRetryChatTitle, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
+  notice?: string
   browserVisible: boolean
   browserRevealVersion?: number
   renderBrowser: ReactNode
@@ -246,7 +247,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
                   <Plus size={14} aria-hidden="true" />
                 </button>
                 <button data-ui="layout.pane-hide" data-ui-key={activeId} disabled={busy || chatCount < 2}
-                  title="Hide this pane; its chat keeps running" aria-label="Hide chat pane" onClick={() => {
+                  title="Hide pane · Does not stop tasks" aria-label="Hide chat pane · Does not stop tasks" onClick={() => {
                     if (soloTile) setSoloPaneId(null)
                     onHide(activeId)
                   }}>
@@ -323,6 +324,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
                   </div>
                 </ContextMenu.Item>
                 <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.pane-hide" data-ui-key={activeId}
+                  title={`${tabs.length > 1 ? 'Close tab' : 'Hide pane'} · Does not stop tasks`}
                   disabled={busy || (chatCount < 2 && tabs.length < 2)}
                   onSelect={() => {
                     if (soloTile) setSoloPaneId(null)
@@ -337,6 +339,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
               </ContextMenu.Content>
             </ContextMenu.Portal>
           </ContextMenu.Root>}
+          {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
           {activeId === BROWSER_PANE_ID ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
             {renderBrowser}
             {dragging && <div className="chat-layout-browser-shield">{dragging.id === BROWSER_PANE_ID
