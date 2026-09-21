@@ -1,0 +1,54 @@
+#root:has(.preview-toolbar) {
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 8px 12px;
+  background: #202a35;
+  color: #f3f5f7;
+  font: 12px/1.4 system-ui, sans-serif;
+}
+
+.preview-toolbar nav {
+  display: flex;
+  gap: 12px;
+}
+
+.preview-toolbar a {
+  color: #bce0ff;
+  text-decoration: underline;
+}
+
+.preview-toolbar a[aria-current] {
+  color: white;
+  font-weight: 700;
+}
+
+.preview-toolbar + .shell {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+.preview-native-surface {
+  position: fixed;
+  z-index: 1;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #9aa9b7;
+  background: #131b24;
+  text-align: center;
+  font: 14px/1.5 system-ui, sans-serif;
+}
+
+.preview-native-surface[hidden] {
+  display: none;
+}
