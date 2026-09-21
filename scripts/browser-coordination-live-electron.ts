@@ -127,8 +127,14 @@ async function verify() {
     assertColor(restored.image.dataUrl, true)
     browser.selectTab(foreground)
     ok(await call('a', 'embedded_browser', 'page', { action: 'read_page', tab_id: a }))
+    // Another chat's page is readable by anyone and owned by one: looking takes nothing.
+    const peerRead = ok(await call('b', 'embedded_browser', 'page', { action: 'read_page', tab_id: a }))
+    assert.match(text(peerRead), /Alpha/)
+    assert.equal(coordination.canUse(a, 'b'), false, 'reading another chat’s tab must not claim it')
+    assert.notEqual(coordination.snapshot('b').defaultTabId, a)
     const blocked = await call('b', 'embedded_browser', 'page', { action: 'navigate', tab_id: a, url: `${base}/wrong` })
     assert.equal(blocked.isError, true)
+    assert.match(text(blocked), /You can still read it/)
     assert.equal(browser.contentsOf(a)!.getURL(), `${base}/a`)
     const before = browser.tabList().length
     assert.equal((await call('a', 'closedai_app', 'command', { action: 'browser_tab', op: 'close_others', tab_id: a })).isError, true)
@@ -159,7 +165,8 @@ async function verify() {
     assert.ok(opened)
     assert.equal(active(), opened.id)
     ok(await call('a', 'closedai_app', 'command', { action: 'browser_tab', op: 'release', tab_id: a }))
-    ok(await call('b', 'embedded_browser', 'page', { action: 'read_page', tab_id: a }))
+    // Released: the tab can now be acted in, not merely read.
+    ok(await call('b', 'embedded_browser', 'page', { action: 'navigate', tab_id: a, url: `${base}/a` }))
     browser.closeTab(a)
     assert.equal((await call('b', 'embedded_browser', 'page', { action: 'read_page' })).isError, true)
     // The exemption is scoped to tool work: once nobody is driving the tab, Chromium's default
@@ -173,7 +180,7 @@ async function verify() {
     console.log(JSON.stringify({ ok: true, checks: ['parallel navigation', 'parallel text', 'background capture pixels',
       'selected model tab', 'driven-page cadence', 'idle throttling restored',
       'collapsed browser capture and restoration', 'ownership conflict', 'bulk close preflight', 'foreground input exclusion',
-      'popup ownership', 'release', 'closed target'] }))
+      'popup ownership', 'peer read without claim', 'release', 'closed target'] }))
   } finally {
     clearTimeout(watchdog)
     cdp.dispose()
