@@ -33,7 +33,7 @@ export function openFailureMessage(error: unknown): string {
 }
 
 /** A failure as the drawer footer shows it: the message itself, without Electron's IPC prefix. */
-export function drawerErrorMessage(error: unknown): string {
+export function historyErrorMessage(error: unknown): string {
   const text = (error instanceof Error ? error.message : String(error))
     .replace(/^Error invoking remote method '[^']*': /, '')
     .replace(/^\w*Error: /, '')

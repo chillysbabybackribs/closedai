@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { placeRowMenu, rowMenuAnchor } from './drawer-row-position.js'
+import { placeRowMenu, rowMenuAnchor } from './menu-position.js'
 
 test('rowMenuAnchor extracts top-right coordinates', () => {
   const anchor = rowMenuAnchor({ right: 258, top: 120 })

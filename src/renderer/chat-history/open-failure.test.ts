@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { openFailureMessage } from './drawer-format.js'
+import { openFailureMessage } from './history-format.js'
 
 test('a writer-lock conflict names the cause instead of reading as a fault', () => {
   // Verbatim shape of the rejection Electron surfaces for chat:openThread, from a session where the

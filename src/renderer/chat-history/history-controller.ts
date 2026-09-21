@@ -1,23 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ChatTranscriptItem } from '../../shared/chat.js'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { ChatController } from '../chat-controller.js'
-import { drawerErrorMessage } from './drawer-format.js'
+import { historyErrorMessage } from './history-format.js'
 import {
-  countDrawerReviewQueue,
-  dequeueDrawerReview,
-  enqueueDrawerReview,
-  expireDrawerReviews,
-  markDrawerReviewViewed,
-  nextDrawerReviewExpiry,
-  persistDrawerReviewQueue,
-  pruneDrawerReviewQueue,
-  readDrawerReviewQueue,
-  type DrawerReviewQueue
-} from './drawer-review-queue.js'
-import { buildDrawerRows } from './drawer-rows.js'
+  countChatReviewQueue,
+  dequeueChatReview,
+  enqueueChatReview,
+  expireChatReviews,
+  markChatReviewViewed,
+  nextChatReviewExpiry,
+  persistChatReviewQueue,
+  pruneChatReviewQueue,
+  readChatReviewQueue,
+  type ChatReviewQueue
+} from './review-queue.js'
 
-const COLLAPSED_KEY = 'closedai.drawer.collapsed'
 /** How long a failure stays in the drawer footer before it clears itself. */
 const ERROR_VISIBLE_MS = 8000
 
@@ -42,18 +39,16 @@ export function reviewTransitions(
   return { finished, runningAgain, nextRunning }
 }
 
-export function useDrawerController(chat: ChatController) {
-  const [isCollapsed, setIsCollapsed] = useState(() => window.localStorage.getItem(COLLAPSED_KEY) === '1')
-  const [reviewQueue, setReviewQueue] = useState<DrawerReviewQueue>(() =>
-    readDrawerReviewQueue(window.localStorage)
+export function useHistoryController(chat: ChatController) {
+  const [reviewQueue, setReviewQueue] = useState<ChatReviewQueue>(() =>
+    readChatReviewQueue(window.localStorage)
   )
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const priorRunningRef = useRef<Map<string, boolean>>(new Map())
 
   // Failures used to be swallowed (`.catch(() => {})`) or reach only the console, so a click that
   // did nothing looked like a dead control. Every drawer action reports here instead.
-  const reportError = useCallback((failure: unknown) => setError(drawerErrorMessage(failure)), [])
+  const reportError = useCallback((failure: unknown) => setError(historyErrorMessage(failure)), [])
   useEffect(() => {
     if (!error) return
     const timer = window.setTimeout(() => setError(null), ERROR_VISIBLE_MS)
@@ -92,41 +87,33 @@ export function useDrawerController(chat: ChatController) {
     priorRunningRef.current = nextRunning
     const knownChatIds = new Set(chat.chats.map((entry) => entry.paneId))
     setReviewQueue((current) => {
-      let next = pruneDrawerReviewQueue(current, knownChatIds)
+      let next = pruneChatReviewQueue(current, knownChatIds)
       const now = Date.now()
-      for (const chatId of finished) next = enqueueDrawerReview(next, chatId, now)
-      for (const chatId of runningAgain) next = dequeueDrawerReview(next, chatId)
-      return markDrawerReviewViewed(next, chat.selectedPaneId)
+      for (const chatId of finished) next = enqueueChatReview(next, chatId, now)
+      for (const chatId of runningAgain) next = dequeueChatReview(next, chatId)
+      return markChatReviewViewed(next, chat.selectedPaneId)
     })
   }, [chat.chats, chat.selectedPaneId])
 
   // Opening a completed chat reviews it without moving it. It stays visible for a ten-minute
   // grace period unless a new message starts first and returns it to Current.
   useEffect(() => {
-    setReviewQueue((current) => markDrawerReviewViewed(current, chat.selectedPaneId))
+    setReviewQueue((current) => markChatReviewViewed(current, chat.selectedPaneId))
   }, [chat.selectedPaneId])
 
   useEffect(() => {
-    const expiresAt = nextDrawerReviewExpiry(reviewQueue)
+    const expiresAt = nextChatReviewExpiry(reviewQueue)
     if (expiresAt === null) return
     const delay = Math.max(0, expiresAt - Date.now())
     const timer = window.setTimeout(() => {
-      setReviewQueue((current) => expireDrawerReviews(current, Math.max(Date.now(), expiresAt)))
+      setReviewQueue((current) => expireChatReviews(current, Math.max(Date.now(), expiresAt)))
     }, delay)
     return () => window.clearTimeout(timer)
   }, [reviewQueue])
 
   useEffect(() => {
-    persistDrawerReviewQueue(window.localStorage, reviewQueue)
+    persistChatReviewQueue(window.localStorage, reviewQueue)
   }, [reviewQueue])
-
-  const toggleCollapsed = useCallback(() => {
-    setIsCollapsed((current) => {
-      const next = !current
-      window.localStorage.setItem(COLLAPSED_KEY, next ? '1' : '0')
-      return next
-    })
-  }, [])
 
   /** Open a chat by id; the main process decides whether it takes the blank selected pane or opens beside it. */
   const openRow = useCallback(async (chatId: string) => {
@@ -138,75 +125,7 @@ export function useDrawerController(chat: ChatController) {
     chat.newThread().catch(reportError)
   }, [chat, reportError])
 
-  // An attached row closes (its chat stays in History); a detached row archives the chat itself.
-  const deleteRow = useCallback(async (id: string, attached: boolean) => {
-    try {
-      if (attached) await chat.closePeer(id)
-      else await chat.archiveChat(id)
-      setReviewQueue((current) => dequeueDrawerReview(current, id))
-    } catch (failure) {
-      reportError(failure)
-    } finally {
-      setPendingDeleteId(null)
-    }
-  }, [chat, reportError])
-
-  const linesDiff = useMemo(() => {
-    let added = 0
-    let removed = 0
-    for (const item of chat.state.items) {
-      if (item.type === 'fileChange') {
-        const counts = countFileChangeDiff(item)
-        added += counts.added
-        removed += counts.removed
-      }
-    }
-    return { added, removed }
-  }, [chat.state.items])
-
-  const rows = useMemo(() => {
-    return buildDrawerRows({
-      selected: chat.state,
-      selectedPaneId: chat.selectedPaneId,
-      chats: chat.chats,
-      selectedDiff: linesDiff
-    })
-  }, [chat.state, chat.selectedPaneId, chat.chats, linesDiff])
-
-  return useMemo(() => ({
-    isCollapsed,
-    toggleCollapsed,
-    reviewQueue,
-    reviewQueueCount: countDrawerReviewQueue(reviewQueue),
-    pendingDeleteId,
-    setPendingDeleteId,
-    deleteRow,
-    openRow,
-    newChat,
-    rows,
-    refreshChats,
-    error,
-    reportError
-  }), [isCollapsed, toggleCollapsed, reviewQueue, pendingDeleteId,
-    deleteRow, openRow, newChat, rows, refreshChats, error, reportError])
+  return { reviewQueue, openRow, newChat, refreshChats, error, reportError }
 }
 
-export type DrawerController = ReturnType<typeof useDrawerController>
-
-const fileChangeDiffCache = new WeakMap<object, { added: number; removed: number }>()
-
-function countFileChangeDiff(item: Extract<ChatTranscriptItem, { type: 'fileChange' }>): { added: number; removed: number } {
-  const cached = fileChangeDiffCache.get(item)
-  if (cached) return cached
-  let added = 0
-  let removed = 0
-  for (const change of item.changes) {
-    for (const line of change.diff.split('\n')) {
-      if (line.startsWith('+') && !line.startsWith('+++')) added += 1
-      if (line.startsWith('-') && !line.startsWith('---')) removed += 1
-    }
-  }
-  const result = { added, removed }
-  fileChangeDiffCache.set(item, result)
-  return result
-}
+export type HistoryController = ReturnType<typeof useHistoryController>

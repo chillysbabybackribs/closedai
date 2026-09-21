@@ -1,18 +1,18 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
-import { reviewTransitions } from './drawer-controller.js'
+import { reviewTransitions } from './history-controller.js'
 import {
-  DRAWER_REVIEW_QUEUE_STORAGE_KEY,
-  DRAWER_REVIEW_RETENTION_MS,
-  dequeueDrawerReview,
-  enqueueDrawerReview,
-  expireDrawerReviews,
-  markDrawerReviewViewed,
-  nextDrawerReviewExpiry,
-  pruneDrawerReviewQueue,
-  readDrawerReviewQueue
-} from './drawer-review-queue.js'
+  CHAT_REVIEW_QUEUE_STORAGE_KEY,
+  CHAT_REVIEW_RETENTION_MS,
+  dequeueChatReview,
+  enqueueChatReview,
+  expireChatReviews,
+  markChatReviewViewed,
+  nextChatReviewExpiry,
+  pruneChatReviewQueue,
+  readChatReviewQueue
+} from './review-queue.js'
 
 function peer(paneId: string, running: boolean): ChatRowSummary {
   return {
@@ -46,26 +46,26 @@ test('a stored queue loads legacy timestamps as unread entries and drops junk', 
       negative: -1
     })
   }
-  assert.deepEqual(readDrawerReviewQueue(storage), {
+  assert.deepEqual(readChatReviewQueue(storage), {
     legacy: { queuedAt: 1200, viewedAt: null },
     current: { queuedAt: 1300, viewedAt: 1300 },
     timestamped: { queuedAt: 1400, viewedAt: 1500 }
   })
-  assert.equal(DRAWER_REVIEW_QUEUE_STORAGE_KEY, 'closedai.drawer.reviewQueue')
+  assert.equal(CHAT_REVIEW_QUEUE_STORAGE_KEY, 'closedai.drawer.reviewQueue')
 })
 
 test('enqueue keeps the first completion time; viewed and dequeue are idempotent', () => {
-  let queue = enqueueDrawerReview({}, 'pane-a', 10)
-  queue = enqueueDrawerReview(queue, 'pane-a', 20)
+  let queue = enqueueChatReview({}, 'pane-a', 10)
+  queue = enqueueChatReview(queue, 'pane-a', 20)
   assert.deepEqual(queue, { 'pane-a': { queuedAt: 10, viewedAt: null } })
 
-  const viewed = markDrawerReviewViewed(queue, 'pane-a', 30)
+  const viewed = markChatReviewViewed(queue, 'pane-a', 30)
   assert.equal(viewed['pane-a']?.viewedAt, 30)
-  assert.equal(markDrawerReviewViewed(viewed, 'pane-a', 40), viewed)
-  assert.equal(markDrawerReviewViewed(viewed, 'missing', 40), viewed)
+  assert.equal(markChatReviewViewed(viewed, 'pane-a', 40), viewed)
+  assert.equal(markChatReviewViewed(viewed, 'missing', 40), viewed)
 
-  assert.deepEqual(dequeueDrawerReview(viewed, 'pane-a'), {})
-  assert.equal(dequeueDrawerReview(viewed, 'missing'), viewed)
+  assert.deepEqual(dequeueChatReview(viewed, 'pane-a'), {})
+  assert.equal(dequeueChatReview(viewed, 'missing'), viewed)
 })
 
 test('pruning removes entries for chats the store no longer lists', () => {
@@ -73,10 +73,10 @@ test('pruning removes entries for chats the store no longer lists', () => {
     'pane-a': { queuedAt: 1, viewedAt: null },
     'pane-gone': { queuedAt: 2, viewedAt: null }
   }
-  assert.deepEqual(pruneDrawerReviewQueue(queue, new Set(['pane-a'])), {
+  assert.deepEqual(pruneChatReviewQueue(queue, new Set(['pane-a'])), {
     'pane-a': { queuedAt: 1, viewedAt: null }
   })
-  assert.equal(pruneDrawerReviewQueue(queue, new Set(['pane-a', 'pane-gone'])), queue)
+  assert.equal(pruneChatReviewQueue(queue, new Set(['pane-a', 'pane-gone'])), queue)
 })
 
 test('only reviewed completions expire after the ten-minute inactivity grace period', () => {
@@ -86,8 +86,8 @@ test('only reviewed completions expire after the ten-minute inactivity grace per
     expired: { queuedAt: 300, viewedAt: 500 }
   }
 
-  assert.equal(nextDrawerReviewExpiry(queue), 500 + DRAWER_REVIEW_RETENTION_MS)
-  assert.deepEqual(expireDrawerReviews(queue, 500 + DRAWER_REVIEW_RETENTION_MS), {
+  assert.equal(nextChatReviewExpiry(queue), 500 + CHAT_REVIEW_RETENTION_MS)
+  assert.deepEqual(expireChatReviews(queue, 500 + CHAT_REVIEW_RETENTION_MS), {
     unread: { queuedAt: 100, viewedAt: null },
     recent: { queuedAt: 200, viewedAt: 1_000 }
   })
