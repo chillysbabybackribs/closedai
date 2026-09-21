@@ -562,7 +562,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   /** Keep the chat's saved view current; a chat with no thread of its own has nothing to save. */
   private rememberTranscript(entry: PeerEntry): void {
-    const threadId = this.store.get(entry.chatId)?.threadId
+    const record = this.store.get(entry.chatId)
+    const threadId = record?.threadId ?? (record?.continuation?.sourceCwd ? record.continuation.sourceThreadId : null)
     if (!threadId) return
     this.transcripts.remember(entry.chatId, threadId, entry.surface.snapshot({ limit: CACHED_TRANSCRIPT_ITEMS, unit: 'item' }))
   }

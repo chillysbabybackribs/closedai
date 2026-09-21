@@ -121,7 +121,7 @@ export class ChatMemory {
       const live = surface.snapshot()
       if (live.items.length) return { threadId: source.sourceThreadId!, threadName: live.threadName, items: live.items }
     }
-    return this.read(source.sourcePaneId, source.sourceThreadId!, surface)
+    return this.read(source.sourcePaneId, source.sourceThreadId!, surface, source.sourceCwd)
   }
 
   private async read(paneId: string | null | undefined, threadId: string, surface: MemorySurface, cwd?: string) {

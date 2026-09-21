@@ -79,7 +79,9 @@ export function projectConversationPatch(record: ChatRecord, source: ChatSnapsho
     ...selection,
     codexThreadId: null, claudeSessionId: null, antigravityConversationId: null, cursorSessionId: null,
     continuation: handoff ? {
-      sourcePaneId: record.id, sourceThreadId: source.threadId, sourceProvider: source.provider,
+      sourcePaneId: record.id, sourceThreadId: source.threadId ?? record.continuation?.sourceThreadId ?? null,
+      sourceCwd: source.threadId ? record.cwd : record.continuation?.sourceCwd ?? record.cwd,
+      sourceProvider: source.provider,
       sourceTitle: handoff.title, sourceThroughItemId: source.items.at(-1)?.id ?? null,
       checkpoint, handoff: handoff.text, createdAt: Date.now()
     } : record.continuation

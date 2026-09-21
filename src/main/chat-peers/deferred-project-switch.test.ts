@@ -246,7 +246,7 @@ test('trimming attached chats keeps the pane that queued a switch until it compl
   assert.equal(h.store.require(h.manager.projectSwitch.state()!.destinationPaneId!).continuation?.sourcePaneId, 'source')
 })
 
-test('selecting an attached chat from another directory re-opens it when the switch trims it', async (t) => {
+test('selecting an attached chat from another directory preserves the workspace', async (t) => {
   const h = await fixture(t)
   const foreign = h.store.create(savedChat('foreign', h.destination, 2))
   await h.manager.openChat(foreign.id)
@@ -258,5 +258,5 @@ test('selecting an attached chat from another directory re-opens it when the swi
   assert.notEqual(h.manager.paneSnapshot(foreign.id), null, 'still attached across the directory change')
   await h.manager.selectPane(foreign.id)
   assert.equal(h.manager.snapshot().selectedPaneId, foreign.id)
-  assert.equal(h.manager.snapshot().workspace?.cwd, h.destination)
+  assert.equal(h.manager.snapshot().workspace?.cwd, h.root)
 })

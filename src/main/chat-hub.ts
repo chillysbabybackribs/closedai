@@ -155,6 +155,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
    */
   async start(): Promise<void> {
     this.stopped = false
+    await this.restoreDirectoryHistory()
     // A dormant provider waits for the first message; a ready one is not connected again (every
     // connect re-reads the catalog and replays the thread, which a warm-up must not repeat).
     if (!this.dormant.has(this.active) && !this.isReady(this.active)) {
@@ -167,6 +168,20 @@ export class ChatHub extends EventEmitter implements ChatSurface {
         // Its catalog is now cached; the process it needed to read it has no further use here.
         .then(() => { if (this.stopped || name !== this.active) this.providers[name].stop() })
         .catch((error: unknown) => console.warn(`[chat] ${name} start failed:`, error))
+    }
+  }
+
+  private async restoreDirectoryHistory(): Promise<void> {
+    const source = this.settings.get().chatContinuation
+    if (this.carriedHistory || !source?.sourceCwd || !source.sourceThreadId || !source.sourceThroughItemId) return
+    try {
+      const history = await this.readThread(source.sourceThreadId, source.sourceCwd)
+      const end = history.items.findIndex((item) => item.id === source.sourceThroughItemId)
+      if (end < 0 || this.stopped || this.settings.get().chatContinuation?.sourceThreadId !== source.sourceThreadId) return
+      this.restoreConversation({ ...this.current().snapshot(), threadName: history.threadName, items: history.items.slice(0, end + 1) })
+      this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
+    } catch (error) {
+      console.warn('[chat] could not restore the previous directory’s transcript:', error)
     }
   }
 

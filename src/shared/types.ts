@@ -85,6 +85,8 @@ export type ChatContinuation = {
   /** Stable lineage retained after the one-shot handoff has been delivered. */
   sourcePaneId: string | null
   sourceThreadId: string | null
+  /** Original directory for restoring a conversation moved within the same chat. */
+  sourceCwd?: string
   sourceProvider: ChatProvider
   sourceTitle: string
   /** Cleared after the destination's first turn is accepted; lineage remains. */
@@ -121,7 +123,7 @@ export type ChatPeerRecord = {
   updatedAt?: number | null
 }
 
-/** Open panes are scoped to their working directory so changing projects never discards chats. */
+/** Saved workspace selections; individual open chats may use different working directories. */
 export type ChatWorkspaceRecord = {
   cwd: string
   projectPath: string | null

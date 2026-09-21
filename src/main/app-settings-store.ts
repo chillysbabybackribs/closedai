@@ -235,6 +235,7 @@ export function normalizeContinuation(value: unknown): ChatContinuation | null {
     sourceThreadId,
     sourceProvider: record.sourceProvider,
     sourceTitle: typeof record.sourceTitle === 'string' ? record.sourceTitle : '',
+    ...(typeof record.sourceCwd === 'string' ? { sourceCwd: record.sourceCwd } : {}),
     handoff: optionalString(record.handoff),
     createdAt: record.createdAt,
     ...(record.sourceThroughItemId !== undefined ? { sourceThroughItemId: optionalString(record.sourceThroughItemId) } : {}),
