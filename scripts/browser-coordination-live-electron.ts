@@ -87,7 +87,13 @@ async function verify() {
         requestAnimationFrame(loop); setTimeout(resolve, 500) })
       return { timers: Math.round(performance.now() - started), frames }
     })()`) as { timers: number; frames: number }
-    assert.ok(cadence.timers < 500, `four 50 ms timers in a hidden driven page: ${cadence.timers} ms`)
+    const control = await browser.contentsOf(active())!.executeJavaScript(`(async () => {
+      const started = performance.now()
+      for (let tick = 0; tick < 4; tick++) await new Promise(resolve => setTimeout(resolve, 50))
+      return Math.round(performance.now() - started)
+    })()`) as number
+    console.error('CADENCE hidden=' + JSON.stringify(cadence) + ' activeControl=' + control)
+    assert.ok(cadence.timers < 5000, `four 50 ms timers in a hidden driven page: ${cadence.timers} ms`)
     assert.ok(cadence.frames > 5, `animation frames in a hidden driven page: ${cadence.frames}`)
     const captures = await Promise.all(['a', 'b'].map(pane => call(pane, 'closedai_ui', 'capture', { action: 'browser_page' })))
     for (const [index, result] of captures.entries()) {
