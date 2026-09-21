@@ -3,6 +3,7 @@ import type { BrowserBounds, BrowserState, BrowserTabInfo } from '../../shared/t
 import type { LibrarySnapshot } from '../../shared/research-library.js'
 import { createPreviewChat } from './chat.js'
 import type { Scenario } from './fixtures.js'
+import { sampleToolManifest, sampleToolTelemetry } from './tools-fixture.js'
 
 /** Compile-time complete: additions to the real bridge must be considered here too. */
 export function createPreviewBridge(scenario: Scenario, report: (message: string) => void,
@@ -91,8 +92,8 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
       configure: async (settings) => { library.settings = settings; return structuredClone(library) },
       refresh: async () => { await native(); return structuredClone(library) }, cancel: native,
       dismiss: async () => structuredClone(library), restore: async () => structuredClone(library) },
-    tools: { manifest: async () => ({ namespaces: [], providers: [], groups: [], advertisedTokens: 0, readOnlyIds: [] }),
-      telemetry: async () => ({ stats: [], totalCalls: 0 }), clearTelemetry: native,
+    tools: { manifest: async () => sampleToolManifest(),
+      telemetry: async () => sampleToolTelemetry(), clearTelemetry: native,
       setEnabled: native, setEnabledMany: native, onEvent: idleSubscription },
     trace: { setActive: async () => {}, snapshot: async () => ({ entries: [], dropped: 0, capacity: 0 }),
       clear: native, onEvent: idleSubscription }

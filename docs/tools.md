@@ -692,16 +692,33 @@ new model call on Send from recall or checkpoints. Idle session rotation is a se
 described above. Disabling the checkpoint
 tool prevents new model writes; existing notes/history are not deleted.
 
-## Seeing what exists: the Tools modal
+## Seeing what exists: Tools & capabilities
 
-The title bar's Agent menu opens Tools & capabilities (`src/renderer/tools/`). It reads
-the registry as data (`manifest.ts`): every namespace, tool, and action, the exact description
-and schema the model is sent, and which providers the registry is advertised to.
+The title bar's Agent menu opens Tools & capabilities (`src/renderer/tools/`). It reads the
+registry as data (`manifest.ts`) joined with the human catalog (`catalog.ts`): for every tool a
+person-facing name, a one-line summary, what switching it off changes, an effect group, and an
+estimated per-turn token cost (characters / 4 of the advertised name, description, and schema;
+a deferred tool counts its name only). The manifest also carries the effect groups in display
+order, the total cost of the enabled set, and the ids the Read-only preset keeps on. A tool
+missing from the catalog still appears under a generated name; `catalog.test.ts` keeps entries
+complete.
 
-The same modal owns persisted enable/disable switches. A disabled plain tool is not advertised to
-providers and calls are refused. A disabled action is removed from the action enum when the action
-tool supports restriction; otherwise the call is refused if the model still tries it. Toggle state
-is stored in `app-settings.json` and applied before each `ChatService` starts or resumes a thread.
+The dialog groups tools by effect rather than namespace, because a switch is a trust decision:
+Read the web (reads only), Act in the browser (acts as you), Control ClosedAI, Your secrets, This
+machine. Each group has one switch (mixed when partly off) and shows its cost; each row is a
+name and a switch, with a red dot for errors or an amber dot for refused calls, and a click drops
+down the overview: technical id and verbs, summary and off effect, effect, cost, runs, the exact
+text the model reads, and the advertised schema. The footer offers presets: Full turns everything
+on; Read-only keeps `READ_ONLY_TOOL_IDS` (the reads-only group plus app state, screenshots, and
+chat reading) and turns the rest off; Custom is the detected state of any other combination.
+
+Switches are persisted enable/disable state. A disabled plain tool is not advertised to
+providers and calls are refused. Switching a row off disables every verb of an action tool; the
+registry still supports per-verb restriction (`restrictActions`) for callers that need it, but
+the dialog does not expose verbs. Bulk changes (a row of an action tool, a group, a preset) go
+through `tools:setEnabledMany`, one persisted write, after which the renderer re-reads the
+manifest. Toggle state is stored in `app-settings.json` and applied before each `ChatService`
+starts or resumes a thread.
 
 ## Telemetry
 
@@ -715,14 +732,14 @@ counts waits for pending writes to drain.
 
 On the first start after this format was introduced, ClosedAI reads only the counters from the
 old `tool-telemetry.jsonl`, writes the aggregate JSON file with mode `0600`, and removes the old
-text-bearing log. The Tools modal shows the on/off switch, run count, and error count for each
-switchable capability and updates those counters live. "Clear counts" resets every aggregate.
+text-bearing log. The Tools & capabilities dialog shows runs, errors, refused calls, and timeouts
+in a tool's overview and updates them live. "Reset counts" resets every aggregate.
 Failures from unknown, disabled, and invalid calls are counted too.
 
 Misuse is counted separately as a subset of failures: calls the app refused before the tool ran —
 an unknown name, a switched-off tool, invalid arguments, a wrong action verb, or a documented rule
-a tool enforces itself with `usageResult(...)`. The Tools modal shows a misuse count on a card only
-once that tool has one. Treat a rising misuse count as a defect in that tool's directions, not as
+a tool enforces itself with `usageResult(...)`. The dialog flags a row amber and says "refused
+calls" only once that tool has one. Treat a rising misuse count as a defect in that tool's directions, not as
 noise: it names the description models keep misreading, which is the loop that keeps this honest
 instead of relying on anyone noticing a bad call.
 
