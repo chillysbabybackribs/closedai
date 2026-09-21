@@ -1,10 +1,11 @@
-import { useCallback, useRef, useState, type JSX } from 'react'
+import { useCallback, useImperativeHandle, useRef, useState, type JSX, type Ref } from 'react'
 import { DropdownMenu } from 'radix-ui'
 import { Check, ChevronDown, ChevronRight, ChevronUp, MoreHorizontal } from 'lucide-react'
 
 import type { ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { ProviderMark } from '../components/ui/provider-mark.js'
 import { ContextMeter } from './context-meter.js'
+import { errorMessage } from './error-message.js'
 import {
   countModelUse, effortLabel, modelContextLabel, modelTriggerLabel, parseModelUsage, providerSections,
   type ModelUsage, type ProviderSection
@@ -12,7 +13,11 @@ import {
 
 const MODEL_USAGE_KEY = 'closedai.composer.modelUsage'
 
+/** Opens the menu from outside its trigger, e.g. the empty pane's "Choose model" hint. */
+export type ModelMenuHandle = { open: () => void }
+
 export type ModelMenuProps = {
+  ref?: Ref<ModelMenuHandle>
   enabled: boolean
   models: ChatModel[]
   selectedModel: string | null
@@ -26,6 +31,8 @@ export type ModelMenuProps = {
   compactConversationEnabled?: boolean
   onModelChange: (modelId: string) => Promise<void>
   onReasoningEffortChange: (effort: string) => Promise<void>
+  /** Where a failed model or effort change is shown; the composer's alert row. */
+  onError?: (message: string) => void
 }
 
 /**
@@ -43,6 +50,7 @@ export type ModelMenuProps = {
  * collision boundary so Radix can neither widen nor shift it over the browser.
  */
 export function ModelMenu({
+  ref,
   enabled,
   models,
   selectedModel,
@@ -55,32 +63,35 @@ export function ModelMenu({
   onCompactConversation,
   compactConversationEnabled = false,
   onModelChange,
-  onReasoningEffortChange
+  onReasoningEffortChange,
+  onError = () => {}
 }: ModelMenuProps): JSX.Element {
   const [usage, recordModelUse] = useModelUsage()
   const triggerRef = useRef<HTMLButtonElement>(null)
   // Resolved when the menu opens: the column the panel must stay inside, never the window.
   const [boundary, setBoundary] = useState<Element | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const setOpen = useCallback((open: boolean): void => {
+    setMenuOpen(open)
+    if (open) setBoundary(triggerRef.current?.closest('.chat-pane') ?? null)
+  }, [])
+  const canOpen = enabled && models.length > 0
+  useImperativeHandle(ref, () => ({ open: () => { if (canOpen) setOpen(true) } }), [canOpen, setOpen])
   const trigger = modelTriggerLabel(models, selectedModel, selectedReasoningEffort)
   const selected = models.find((model) => model.id === selectedModel)
   const chooseModel = (value: string): void => {
     recordModelUse(value)
-    void onModelChange(value).catch(() => {})
+    void onModelChange(value).catch((error: unknown) => onError(errorMessage(error, 'Could not change the model')))
+  }
+  const chooseEffort = (value: string): void => {
+    void onReasoningEffortChange(value).catch((error: unknown) => onError(errorMessage(error, 'Could not change the reasoning effort')))
   }
   return (
-    <DropdownMenu.Root
-      modal={false}
-      open={menuOpen}
-      onOpenChange={(open) => {
-        setMenuOpen(open)
-        if (open) setBoundary(triggerRef.current?.closest('.chat-pane') ?? null)
-      }}
-    >
+    <DropdownMenu.Root modal={false} open={menuOpen} onOpenChange={setOpen}>
       <DropdownMenu.Trigger
         ref={triggerRef}
         className="model-menu-trigger"
-        disabled={!enabled || models.length === 0}
+        disabled={!canOpen}
         aria-label="Model and reasoning effort"
         data-ui="composer.model"
       >
@@ -122,7 +133,10 @@ export function ModelMenu({
             selectedModel={selectedModel}
             selectedReasoningEffort={selectedReasoningEffort}
             onChooseModel={chooseModel}
-            onReasoningEffortChange={onReasoningEffortChange}
+            onChooseEffort={chooseEffort}
+            onInspectContext={onInspectContext}
+            onCompactConversation={onCompactConversation}
+            compactConversationEnabled={compactConversationEnabled}
           />
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
@@ -136,19 +150,25 @@ type ModelMenuPanelProps = {
   selectedModel: string | null
   selectedReasoningEffort: string | null
   onChooseModel: (modelId: string) => void
-  onReasoningEffortChange: (effort: string) => Promise<void>
+  onChooseEffort: (effort: string) => void
+  onInspectContext: () => void
+  onCompactConversation?: () => Promise<void>
+  compactConversationEnabled: boolean
 }
 
 /**
  * Two columns inside the one popover: providers on the left, the hovered provider's models on
  * the right, plus the selected model's effort levels under the providers. Hovering or focusing
  * a provider row switches the right column; nothing needs a click before a model is visible.
+ * The context actions close the left column: the pill's hover card offers the same two, but a
+ * hover card has no keyboard path, and the menu is where the keyboard already is.
  * A Radix Sub would fly out beside the panel and can reach over the native browser view, so
  * the models column is ordinary panel content that the collision boundary already contains.
  * Mounted with the open menu, so the hovered provider and its expanded state reset on close.
  */
 function ModelMenuPanel({
-  models, usage, selectedModel, selectedReasoningEffort, onChooseModel, onReasoningEffortChange
+  models, usage, selectedModel, selectedReasoningEffort, onChooseModel, onChooseEffort,
+  onInspectContext, onCompactConversation, compactConversationEnabled
 }: ModelMenuPanelProps): JSX.Element {
   const sections = providerSections(models, usage, selectedModel)
   const selected = models.find((model) => model.id === selectedModel)
@@ -176,7 +196,7 @@ function ModelMenuPanel({
             <DropdownMenu.Label className="model-menu-label">Reasoning effort</DropdownMenu.Label>
             <DropdownMenu.RadioGroup
               value={selectedReasoningEffort ?? ''}
-              onValueChange={(value) => { void onReasoningEffortChange(value).catch(() => {}) }}
+              onValueChange={onChooseEffort}
             >
               {efforts.map((option) => (
                 <DropdownMenu.RadioItem key={option.reasoningEffort} value={option.reasoningEffort} className="model-menu-item model-menu-item-compact" textValue={option.reasoningEffort} data-ui="composer.effort-item" data-ui-key={option.reasoningEffort}>
@@ -187,6 +207,19 @@ function ModelMenuPanel({
               ))}
             </DropdownMenu.RadioGroup>
           </>
+        )}
+        <DropdownMenu.Separator className="model-menu-separator" />
+        <DropdownMenu.Label className="model-menu-label">Context</DropdownMenu.Label>
+        <DropdownMenu.Item className="model-menu-item model-menu-item-compact" textValue="Inspect context"
+          data-ui="composer.context" onSelect={onInspectContext}>
+          <span className="model-menu-item-name">Inspect context</span>
+        </DropdownMenu.Item>
+        {onCompactConversation && (
+          <DropdownMenu.Item className="model-menu-item model-menu-item-compact" textValue="Compact conversation"
+            data-ui="composer.compact" disabled={!compactConversationEnabled}
+            onSelect={() => { void onCompactConversation() }}>
+            <span className="model-menu-item-name">Compact conversation</span>
+          </DropdownMenu.Item>
         )}
       </div>
       {section && (

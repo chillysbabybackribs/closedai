@@ -1,8 +1,6 @@
 import type { JSX } from 'react'
-import { memo, useState } from 'react'
-import { LogIn } from 'lucide-react'
+import { memo, useRef, useState } from 'react'
 
-import { Button } from '../components/ui/button.js'
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -11,13 +9,16 @@ import {
   MessageScrollerViewport
 } from '../components/ui/message-scroller.js'
 import { CHAT_RESUME_PROMPT } from '../shared/chat.js'
-import type { ChatAttachment, ChatConnectionState, ChatProvider } from '../shared/chat.js'
+import type { ChatAttachment } from '../shared/chat.js'
+import { ConnectionBanner, EmptyState } from './chat-connection.js'
 import { useChatController, type ChatController } from './chat-controller.js'
 import { ChatHistory } from './chat-history.js'
-import { PROVIDER_LABELS } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
+import { injectComposerDraft } from './composer-drafts.js'
 import { ContextInspectorModal } from './context-inspector-modal.js'
+import { errorMessage } from './error-message.js'
+import type { ModelMenuHandle } from './model-menu.js'
 import { ToolsModal } from './tools/tools-modal.js'
 import { TraceModal } from './trace/trace-modal.js'
 
@@ -82,6 +83,20 @@ export const ChatPane = memo(function ChatPane({
   // process was ready made every launch and every provider switch a pause the user could feel.
   const usable = ready || connecting
   const centerComposer = !blocked && !hasMessages && !historyOpen
+  const modelMenuRef = useRef<ModelMenuHandle>(null)
+  const openModelMenu = (): void => modelMenuRef.current?.open()
+  // What the pane itself could not do, shown above the composer until the next attempt.
+  const [notice, setNotice] = useState('')
+  const canCompact = manualCompact && ready && !running && state.items.some((item) => item.type === 'user')
+
+  async function compactConversation(): Promise<void> {
+    setNotice('')
+    try {
+      await chat.compactConversation()
+    } catch (error) {
+      setNotice(errorMessage(error, 'Could not compact the conversation'))
+    }
+  }
 
   async function sendMessage(text: string, attachments: ChatAttachment[]): Promise<void> {
     setHistoryOpen(false)
@@ -110,7 +125,8 @@ export const ChatPane = memo(function ChatPane({
           '--composer-font-size': `${composerFontSize}px`
         } as React.CSSProperties}
       >
-        <ToolsModal open={dialog === 'tools'} onOpenChange={(open) => setDialog(open ? 'tools' : null)} />
+        <ToolsModal open={dialog === 'tools'} onOpenChange={(open) => setDialog(open ? 'tools' : null)}
+          onSendToChat={(text) => { injectComposerDraft(chat.selectedPaneId, text); setDialog(null) }} />
         <TraceModal open={dialog === 'trace'} onOpenChange={(open) => setDialog(open ? 'trace' : null)} paneId={chat.selectedPaneId} />
         <ContextInspectorModal
           open={contextOpen}
@@ -118,8 +134,8 @@ export const ChatPane = memo(function ChatPane({
           report={state.turnContext}
           usage={state.contextUsage}
           checkpoint={state.checkpoint ?? null}
-          onCompact={manualCompact ? () => { void chat.compactConversation(); setContextOpen(false); } : undefined}
-          compactEnabled={manualCompact && ready && !running && state.items.some((item) => item.type === 'user')}
+          onCompact={manualCompact ? () => { void compactConversation(); setContextOpen(false); } : undefined}
+          compactEnabled={canCompact}
           onNewChat={() => { startNewChat(); setContextOpen(false); }}
         />
         {historyOpen ? (
@@ -135,7 +151,8 @@ export const ChatPane = memo(function ChatPane({
         ) : (
           <TranscriptScroller paneId={chat.selectedPaneId}>
             {!hasMessages && blocked ? (
-              <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
+              <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message}
+                onLogin={chat.loginWithChatGPT} onChooseModel={openModelMenu} />
             ) : hasMessages ? (
               <ChatTranscript items={state.items} activeTurnId={state.activeTurnId}
                 hasEarlier={state.history?.hasEarlier} loadEarlier={chat.loadEarlier}
@@ -151,8 +168,19 @@ export const ChatPane = memo(function ChatPane({
             )}
           </TranscriptScroller>
         )}
+        {hasMessages && blocked && !historyOpen && (
+          <ConnectionBanner provider={state.provider} state={state.connection.state} message={state.connection.message}
+            onLogin={chat.loginWithChatGPT} onChooseModel={openModelMenu} />
+        )}
+        {notice && (
+          <div className="chat-pane-notice" role="alert">
+            <span>{notice}</span>
+            <button type="button" className="chat-connection-link" onClick={() => setNotice('')}>Dismiss</button>
+          </div>
+        )}
         <Composer
           paneId={chat.selectedPaneId}
+          modelMenuRef={modelMenuRef}
           enabled={usable}
           running={running}
           placeholder={connecting ? state.connection.message : undefined}
@@ -178,8 +206,8 @@ export const ChatPane = memo(function ChatPane({
           onSelectProject={(projectPath) => window.closedai.chat.selectProject(chat.selectedPaneId, projectPath)}
           onClearProject={() => window.closedai.chat.clearProject(chat.selectedPaneId)}
           activeTurnId={state.activeTurnId}
-          onCompactConversation={manualCompact ? chat.compactConversation : undefined}
-          compactConversationEnabled={manualCompact && ready && !running && state.items.some((item) => item.type === 'user')}
+          onCompactConversation={manualCompact ? compactConversation : undefined}
+          compactConversationEnabled={canCompact}
         />
       </div>
     </aside>
@@ -216,31 +244,5 @@ function TranscriptScroller({
         <MessageScrollerButton direction="end" />
       </MessageScroller>
     </MessageScrollerProvider>
-  )
-}
-
-function EmptyState({
-  provider,
-  state,
-  message,
-  onLogin
-}: {
-  provider: ChatProvider
-  state: ChatConnectionState
-  message: string
-  onLogin: () => Promise<void>
-}): JSX.Element {
-  return (
-    <div className="prompt-chat-empty chat-empty">
-      <h2>{`Start with ${PROVIDER_LABELS[provider]}`}</h2>
-      <p>{message}</p>
-      {/* Claude Code signs in from its own CLI; the message above says how. */}
-      {state === 'signed-out' && provider === 'codex' && (
-        <Button type="button" variant="secondary" data-ui="chat.sign-in" onClick={() => void onLogin()}>
-          <LogIn className="size-4" aria-hidden="true" />
-          Sign in with ChatGPT
-        </Button>
-      )}
-    </div>
   )
 }

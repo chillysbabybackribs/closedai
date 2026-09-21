@@ -210,3 +210,133 @@
   font-size: 13px;
   line-height: 1.5;
 }
+
+/* Connection guidance (chat-connection.tsx): the empty pane's hint under the heading, and the
+   strip above the composer once a transcript exists. Both share the same link-styled action. */
+.chat-empty-hint {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 8px;
+  margin-top: 16px;
+}
+
+.chat-connection-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--link-ink, var(--foreground, #ececee));
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.chat-connection-link:hover,
+.chat-connection-link:focus-visible {
+  outline: none;
+  text-decoration-thickness: 2px;
+}
+
+.chat-connection-banner,
+.chat-pane-notice {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 0 var(--composer-inset, 16px) 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border, #2a2a2c);
+  border-radius: 8px;
+  background: var(--card, #1c1c1c);
+  color: var(--muted-foreground, #8c8c8e);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.chat-connection-banner strong {
+  margin-right: 4px;
+  color: var(--foreground, #ececee);
+  font-weight: 600;
+}
+
+.chat-connection-banner[data-state='error'],
+.chat-pane-notice {
+  border-color: color-mix(in srgb, var(--destructive, #e5484d) 40%, transparent);
+}
+
+.chat-connection-banner-actions {
+  display: inline-flex;
+  flex: none;
+  gap: 12px;
+}
+
+/* Shell-level notices (App.tsx, app-startup.tsx, app-error-boundary.tsx): the workspace area
+   before the first snapshot, the render-failure panel, and a refused shortcut. */
+.shell-startup {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  padding: 32px;
+  color: var(--muted-foreground, #8c8c8e);
+  text-align: center;
+}
+
+.shell-startup h1 {
+  margin: 0;
+  color: var(--foreground, #ececee);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
+
+.shell-startup p {
+  max-width: 420px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.shell-startup-action {
+  margin-top: 8px;
+  padding: 6px 14px;
+  border: 1px solid var(--border, #2a2a2c);
+  border-radius: 6px;
+  background: var(--card, #1c1c1c);
+  color: var(--foreground, #ececee);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.shell-startup-action:hover,
+.shell-startup-action:focus-visible {
+  outline: none;
+  border-color: var(--foreground, #ececee);
+}
+
+.shell-alert {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 16px;
+  background: color-mix(in srgb, var(--destructive, #e5484d) 14%, var(--card, #1c1c1c));
+  color: var(--foreground, #ececee);
+  font-size: 12.5px;
+}
+
+.shell-alert-dismiss {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

@@ -40,7 +40,7 @@ function tileHint(size: CanvasSize, preset: LayoutPreset): { text: string; tight
 
 function slotNote(slots: number, tileCount: number): string {
   if (tileCount === slots) return `Uses your ${slots} open chat${slots === 1 ? '' : 's'}.`
-  if (tileCount > slots) return `Uses your first ${slots} open chats; the other ${tileCount - slots} join the last tile as tabs.`
+  if (tileCount > slots) return `Uses your first ${slots} open chats; the other ${tileCount - slots} join the last chat as tabs.`
   const created = slots - tileCount
   return `Uses your ${tileCount} open chat${tileCount === 1 ? '' : 's'} and creates ${created} new one${created === 1 ? '' : 's'}.`
 }

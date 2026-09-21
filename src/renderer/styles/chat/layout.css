@@ -197,14 +197,17 @@
   transition: background-color 120ms ease, color 120ms ease;
 }
 .chat-layout-tab:only-child { max-width: 300px; }
-/* Equal-width tabs when a tile is narrow so the pane grip stays the only whole-tile drag target. */
+/* Equal-width tabs when a tile is narrow so the pane grip stays the only whole-tile drag target.
+   The floor keeps a label legible: past it the strip overflows and scrolls (wheel, arrow keys,
+   selection) rather than shrinking every tab to nothing. */
 @container chat-tile (max-width: 720px) {
   .chat-layout-tabs:has(.chat-layout-tab + .chat-layout-tab) .chat-layout-tab {
     flex: 1 1 0;
-    min-width: 0;
+    min-width: 72px;
     max-width: none;
   }
 }
+.chat-layout-tabs::-webkit-scrollbar { display: none; }
 .chat-layout-tab:not([data-active='true']) { color: var(--chrome-fg); }
 .chat-layout-tab:not([data-active='true']):hover { color: var(--chrome-fg-strong); background: var(--surface-highlight); }
 .chat-layout-tab[data-active='true'] { color: var(--chrome-fg-strong); background: var(--tab-active-surface); }

@@ -527,7 +527,19 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   runs (Escape also acts as a hotkey to pause the running task). An empty composer shows the muted
   placeholder “Enter to send · Shift+Enter for newline” (just “Enter to send” when collapsed),
   changing to “Esc to pause” during a running task. Typed drafts naturally hide the placeholder;
-  connection/unavailable messages retain precedence while idle. The composer preserves unsubmitted
+  connection/unavailable messages retain precedence while idle. The textarea label, the disabled
+  placeholder, and the pause/resume tooltips name the pane's provider. Before the first snapshot
+  the workspace area shows “Starting ClosedAI…”, or “Could not start” with the reason and Retry
+  when the snapshot request fails. A pane whose provider cannot take a message shows connection
+  guidance (`chat-connection.tsx`): the empty pane's heading is “Sign in to <Provider>”,
+  “<Provider> is unavailable”, or “Starting <Provider>…” by connection state over main's message
+  (install steps, sign-in path, or failure), with Sign in with ChatGPT for a signed-out Codex pane
+  and a “Choose model” hint that opens the model menu for every blocked state; once a transcript
+  exists the same guidance is a strip above the composer instead of replacing the messages.
+  Failed pause, model, and effort changes appear in the composer's alert row; a failed compaction
+  or refused shell shortcut appears as a dismissible notice. The model menu lists Inspect context
+  and Compact conversation under its effort levels, so both are reachable by keyboard as well as
+  from the pill's hover card. The composer preserves unsubmitted
   drafts (text and pending attachments) per conversation pane across tab switching and unmounting,
   clearing them only on submission. The context inspector
   modal provides a visual stacked token budget bar (retained history, ClosedAI additions, user turn,
@@ -537,8 +549,13 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 - Ctrl/Cmd+, opens settings, Ctrl/Cmd+H opens chat history, Ctrl/Cmd+N creates a chat,
   Ctrl/Cmd+W closes the focused chat tab or hides its tile (same path as the ×; the last
   remaining chat stays), Ctrl/Cmd+Shift+W closes the window, F11 toggles fullscreen, and Escape
-  pauses a running task (when no modal overlay or special input is active). Browser and chat zoom
-  have separate controls; these shell shortcuts are handled in `renderer/app-shortcuts.ts`.
+  pauses a running task in any pane. Escape yields (`escapePausesTask` in
+  `renderer/app-shortcuts.ts`) when a dialog, menu, or popover is open, when any input, textarea,
+  or editable element other than the composer textarea has focus, when a tile is maximized (the
+  tile carries `data-solo`), or during a pane drag (`data-layout-drag` on the canvas) or divider
+  resize (`data-layout-resize` on `body`); those owners handle it in the bubble phase, which the
+  shell no longer stops. Browser and chat zoom have separate controls; these shell shortcuts are
+  handled in `renderer/app-shortcuts.ts`.
 - Every http(s) URL a response references is clickable and opens in the app browser through
   `browser.openTab`, rendered as a favicon source chip with a hover preview. `components/ui/markdown.tsx`
   runs `remarkBareUrls` (`markdown-links.ts`) after remark-gfm so scheme-less hosts such as

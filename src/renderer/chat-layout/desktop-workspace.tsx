@@ -7,6 +7,7 @@ import { initialChatState, type ChatWorkspaceAction } from '../chat-state.js'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import { ChatCanvas } from './chat-canvas.js'
+import { ChatLayoutActions } from './layout-context-menu.js'
 import { useChatLayout } from './layout-controller.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, paneIds } from './layout-tree.js'
 import { LayoutPresetsDialog } from './layout-presets-dialog.js'
@@ -67,12 +68,11 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   useEffect(() => {
     if (imageTabId) layout.showBrowser()
   }, [imageTabId, layout.showBrowser])
-  const [actionError, setActionError] = useState('')
-  const select = (id: string): void => {
-    void layout.focusPane(id).catch((reason: unknown) => setActionError(String(reason)))
-  }
+  const select = (id: string): void => { void layout.focusPane(id) }
+  const actions = useMemo(() => ({ moveTab: layout.moveTabToTile }), [layout.moveTabToTile])
   return <div className="chat-desktop-workspace">
-    {(layout.error || actionError) && <div className="chat-layout-error" role="alert">{layout.error || actionError}</div>}
+    {layout.error && <div className="chat-layout-error" role="alert">{layout.error}</div>}
+    <ChatLayoutActions.Provider value={actions}>
     <ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
         notice={layout.notice}
         browserRevealVersion={browserRevealVersion}
@@ -104,6 +104,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         </div>
       </div>}
     />
+    </ChatLayoutActions.Provider>
     <LayoutPresetsDialog open={presetsOpen} size={canvasSize.current} tileCount={paneIds(layout.tree).length}
       onClose={() => setPresetsOpen(false)}
       onApply={(preset) => {

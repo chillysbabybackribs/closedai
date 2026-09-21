@@ -33,7 +33,13 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, onSel
     }
   }, [activeId, ids.length])
 
-  return <div ref={list} className="chat-layout-tabs" role="tablist" aria-label="Chat conversations">
+  return <div ref={list} className="chat-layout-tabs" role="tablist" aria-label="Chat conversations"
+    // The strip hides its scrollbar; a plain wheel over it pans the tabs instead of doing nothing.
+    onWheel={(event) => {
+      const strip = event.currentTarget
+      if (event.deltaX || !event.deltaY || strip.scrollWidth <= strip.clientWidth) return
+      strip.scrollLeft += event.deltaY
+    }}>
     {ids.map((id, index) => {
       const status = activity?.(id)
       const closeHint = tabCloseHint(status?.state)
@@ -41,7 +47,7 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, onSel
       <button type="button" role="tab" data-ui="layout.tab" data-ui-key={id}
         id={`chat-tab-${id}`} aria-controls={`chat-panel-${id}`} aria-selected={id === activeId}
         tabIndex={id === activeId ? 0 : -1} disabled={busy} draggable={!busy}
-        title={`${title(id)} — Drag to move, right-click for layout options`}
+        title={id === activeId ? `${title(id)} — Drag to move, right-click for layout options` : `${title(id)} — Click to activate, drag to move`}
         aria-label={`${title(id)}${status ? ` — ${status.label}` : ''}`}
         onDragStart={(event) => {
           event.dataTransfer.setData(CHAT_DRAG_TYPE, id)
@@ -54,6 +60,11 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, onSel
         // right-click on another tab activates it without opening the wrong conversation's menu.
         onContextMenu={(event) => { if (id !== activeId) { event.preventDefault(); onSelect(id) } }}
         onKeyDown={(event) => {
+          if (event.key === 'Delete' && canClose && !busy) {
+            event.preventDefault()
+            onClose(id)
+            return
+          }
           const next = event.key === 'ArrowRight' ? (index + 1) % ids.length
             : event.key === 'ArrowLeft' ? (index + ids.length - 1) % ids.length
               : event.key === 'Home' ? 0 : event.key === 'End' ? ids.length - 1 : null
@@ -70,7 +81,9 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, onSel
         </span>}
         <span>{title(id)}</span></button>
       {canClose && <button type="button" className="chat-layout-tab-close" data-ui="layout.tab-close" data-ui-key={id}
-        disabled={busy} aria-label={`Close tab: ${title(id)} · ${closeHint}`} title={`Close tab · ${closeHint}`}
+        // Inactive tabs keep their close out of the tab order; Delete on the focused tab closes it.
+        tabIndex={id === activeId ? 0 : -1}
+        disabled={busy} aria-label={`Close tab: ${title(id)} · ${closeHint}${id === activeId ? ' · Delete' : ''}`} title={`Close tab · ${closeHint}`}
         onClick={() => onClose(id)}><X size={11} aria-hidden="true" /></button>}
     </div>})}
   </div>

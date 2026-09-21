@@ -48,7 +48,7 @@ export function ComposerCompactRow({
     <div className="prompt-composer-compact-row">
       <div className="prompt-composer-compact-model">{modelMenu}</div>
       <PromptInputTextarea
-        aria-label="Message Codex"
+        aria-label={`Message ${CHAT_PROVIDER_LABELS[provider]}`}
         data-ui="composer.input"
         data-can-send={canSend || undefined}
         placeholder={placeholder}

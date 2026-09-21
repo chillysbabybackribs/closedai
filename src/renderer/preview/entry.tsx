@@ -1,6 +1,7 @@
-import { Component, StrictMode, useEffect, useState, type ReactNode } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from '../App.js'
+import { AppErrorBoundary, watchUnhandledRejections } from '../app-error-boundary.js'
 import { saveLayout } from '../chat-layout/layout-tree.js'
 import { createPreviewBridge } from './bridge.js'
 import { parseScenario, PREVIEW_CWD, sampleLayout } from './fixtures.js'
@@ -43,19 +44,12 @@ const onError = (event: ErrorEvent) => {
   if (event.message.startsWith('ResizeObserver loop')) return
   recordError(event.message)
 }
-const onRejection = (event: PromiseRejectionEvent) => recordError(event.reason)
 const preventDrop = (event: Event) => event.preventDefault()
 window.addEventListener('error', onError)
-window.addEventListener('unhandledrejection', onRejection)
+const stopWatchingRejections = watchUnhandledRejections(recordError)
 window.addEventListener('dragover', preventDrop)
 window.addEventListener('drop', preventDrop)
-
-class PreviewBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false }
-  static getDerivedStateFromError() { return { failed: true } }
-  componentDidCatch(error: Error) { recordError(error.message) }
-  render() { return this.state.failed ? <p role="alert">The preview failed to render. Check the browser console.</p> : this.props.children }
-}
+const previewFallback = () => <p role="alert">The preview failed to render. Check the browser console.</p>
 
 function Preview() {
   const [message, setMessage] = useState(latestNotice)
@@ -80,7 +74,9 @@ function Preview() {
     return () => { notice.removeEventListener('change', changed); observer.disconnect() }
   }, [])
   return <>
-    <PreviewBoundary><App initialSettingsOpen={scenario === 'settings'} /></PreviewBoundary>
+    <AppErrorBoundary fallback={previewFallback} onError={(error) => recordError(error.message)}>
+      <App initialSettingsOpen={scenario === 'settings'} />
+    </AppErrorBoundary>
     {message && <aside className="preview-notice" aria-label="UI preview notice">
       <span role="status">{message}</span>
       <button type="button" data-ui="preview.dismiss-notice" aria-label="Dismiss preview notice"
@@ -98,7 +94,7 @@ import.meta.hot?.dispose(() => {
   root.unmount()
   surface.remove()
   window.removeEventListener('error', onError)
-  window.removeEventListener('unhandledrejection', onRejection)
+  stopWatchingRejections()
   window.removeEventListener('dragover', preventDrop)
   window.removeEventListener('drop', preventDrop)
   Reflect.deleteProperty(window, 'closedai')

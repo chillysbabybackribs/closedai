@@ -45,7 +45,7 @@ export function ResearchLibraryDialog({ open, onOpenChange }: {
           {library.error && <p className="research-library-error" role="alert">{library.error}</p>}
           {!snapshot && library.error && (
             <div className="research-library-actions">
-              <button type="button" onClick={library.retryLoad}>Try again</button>
+              <button type="button" data-ui="research.retry" onClick={library.retryLoad}>Try again</button>
             </div>
           )}
           {!snapshot && !library.error && <p role="status">Loading library…</p>}

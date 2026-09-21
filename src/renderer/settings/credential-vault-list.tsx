@@ -80,7 +80,7 @@ export function CredentialVaultList({
             {entry.committing ? '…' : '.'}
           </span>
           {entry.committing ? null : (
-            <button type="button" className="font-medium text-primary hover:underline" onClick={() => onUndoRemove(entry.id)}>
+            <button type="button" data-ui="credentials.undo-remove" data-ui-key={entry.id} className="font-medium text-primary hover:underline" onClick={() => onUndoRemove(entry.id)}>
               Undo
             </button>
           )}

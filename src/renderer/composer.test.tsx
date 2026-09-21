@@ -105,3 +105,14 @@ test('a persisted compact choice renders the pill for a fresh composer', () => {
     resetComposerLayoutCache()
   }
 })
+
+test('composer copy names the pane provider, not Codex', () => {
+  const claude = renderToStaticMarkup(createElement(Composer, { ...baseProps, provider: 'claude', enabled: false }))
+  assert.match(claude, /aria-label="Message Claude Code"/)
+  assert.match(claude, /placeholder="Claude Code is unavailable"/)
+  assert.doesNotMatch(claude, /Codex/)
+  setComposerLayout('compact')
+  const cursor = renderToStaticMarkup(createElement(Composer, { ...baseProps, provider: 'cursor' }))
+  assert.match(cursor, /aria-label="Message Cursor"/)
+  resetComposerLayoutCache()
+})

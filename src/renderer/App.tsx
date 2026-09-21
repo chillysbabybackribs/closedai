@@ -12,7 +12,9 @@ import {
   chatZoomCommandForKey,
   type ChatZoomCommand
 } from './chat-zoom.js'
-import { appShortcutForKey, targetRunningPaneId } from './app-shortcuts.js'
+import { appShortcutForKey, escapePausesTask, targetRunningPaneId } from './app-shortcuts.js'
+import { AppStartup } from './app-startup.js'
+import { errorMessage } from './error-message.js'
 import { TitlebarMenu, type MenuAction } from './titlebar-menu.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
 import type { ChatPaneDialog } from './chat-pane.js'
@@ -45,6 +47,9 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   dialogsRef.current = { settingsOpen, researchOpen, renamingChat, paneDialog }
   const workspaceRef = useRef<ChatLayoutHandle>(null)
   const [browserVisible, setBrowserVisible] = useState(false)
+  // A shortcut or menu action main refused; shown under the title bar until dismissed.
+  const [shellError, setShellError] = useState<string | null>(null)
+  const report = useCallback((fallback: string) => (error: unknown) => setShellError(errorMessage(error, fallback)), [])
   // The File menu retains the history management panel; Ctrl+H focuses header search.
   const [historyOpen, setHistoryOpen] = useState(false)
   const toggleHistory = useCallback(() => setHistoryOpen((open) => !open), [])
@@ -83,7 +88,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         window.location.reload()
       } else if (shortcut === 'toggle-devtools') {
         event.preventDefault()
-        void window.closedai.window.toggleDevTools()
+        window.closedai.window.toggleDevTools().catch(report('Could not open developer tools'))
       } else if (shortcut === 'history') {
         event.preventDefault()
         focusSearch()
@@ -92,26 +97,26 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         history.newChat()
       } else if (shortcut === 'close-tab') {
         event.preventDefault()
-        void workspaceRef.current?.closeFocused()
+        workspaceRef.current?.closeFocused().catch(report('Could not close the chat'))
       } else if (shortcut === 'close-window') {
         event.preventDefault()
-        void window.closedai.window.close()
+        window.closedai.window.close().catch(report('Could not close the window'))
       } else if (shortcut === 'toggle-fullscreen') {
         event.preventDefault()
-        void window.closedai.window.toggleFullscreen()
+        window.closedai.window.toggleFullscreen().catch(report('Could not toggle fullscreen'))
       } else if (shortcut === 'pause-task') {
         const dialogs = dialogsRef.current
         const hasOpenModal = dialogs.settingsOpen || dialogs.researchOpen ||
           Boolean(dialogs.renamingChat) || Boolean(dialogs.paneDialog)
-        const hasOverlay = hasOpenModal || Boolean(document.querySelector(
-          '[role="dialog"], [role="menu"], [data-radix-menu-content], [data-radix-popper-content-wrapper], .radix-dropdown-menu-content'
-        ))
-        if (hasOverlay) return
-
-        const active = document.activeElement as HTMLElement | null
-        if (active?.getAttribute('data-ui') === 'titlebar.chat-search' || active?.classList.contains('browser-omnibox-input')) {
-          return
-        }
+        const pauses = escapePausesTask({
+          overlayOpen: hasOpenModal || Boolean(document.querySelector(
+            '[role="dialog"], [role="menu"], [data-radix-menu-content], [data-radix-popper-content-wrapper], .radix-dropdown-menu-content'
+          )),
+          activeElement: document.activeElement,
+          soloActive: Boolean(document.querySelector('.chat-layout-tile[data-solo="true"]')),
+          layoutBusy: document.body.hasAttribute('data-layout-resize') || Boolean(document.querySelector('[data-layout-drag]'))
+        })
+        if (!pauses) return
 
         const currentChat = chatRef.current
         const runningPaneId = targetRunningPaneId(
@@ -119,19 +124,20 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           currentChat.state.activeTurnId,
           currentChat.snapshot.panes
         )
-
+        // No stopPropagation: bubble-phase owners (solo exit, drag cancel) already declined above,
+        // and the pause request must not silence a listener the decision did not know about.
         if (runningPaneId) {
           event.preventDefault()
-          event.stopPropagation()
-          void (runningPaneId === currentChat.selectedPaneId
+          const pause = runningPaneId === currentChat.selectedPaneId
             ? currentChat.interrupt()
-            : currentChat.interruptPane(runningPaneId))
+            : currentChat.interruptPane(runningPaneId)
+          pause.catch(report('Could not pause the task'))
         }
       }
     }
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [changeChatZoom, history.newChat, focusSearch])
+  }, [changeChatZoom, history.newChat, focusSearch, report])
 
   // Syntax grammars cost the same whenever they are compiled; paid here they are off every
   // chat switch, because the first transcript that holds a code block already finds them ready.
@@ -160,16 +166,16 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       case 'history': toggleHistory(); break
       case 'toggle-browser': workspaceRef.current?.toggleBrowser(); break
       case 'layout': workspaceRef.current?.openLayoutPresets(); break
-      case 'toggle-fullscreen': void window.closedai.window.toggleFullscreen(); break
-      case 'close-tab': void workspaceRef.current?.closeFocused(); break
-      case 'close-window': void window.closedai.window.close(); break
+      case 'toggle-fullscreen': window.closedai.window.toggleFullscreen().catch(report('Could not toggle fullscreen')); break
+      case 'close-tab': workspaceRef.current?.closeFocused().catch(report('Could not close the chat')); break
+      case 'close-window': window.closedai.window.close().catch(report('Could not close the window')); break
       case 'tools': case 'trace': case 'context': setPaneDialog(action); break
-      case 'compact': void chatRef.current.compactConversation(); break
-      case 'stop-turn': void chatRef.current.interrupt(); break
+      case 'compact': chatRef.current.compactConversation().catch(report('Could not compact the conversation')); break
+      case 'stop-turn': chatRef.current.interrupt().catch(report('Could not pause the task')); break
       case 'reload': window.location.reload(); break
-      case 'devtools': void window.closedai.window.toggleDevTools(); break
+      case 'devtools': window.closedai.window.toggleDevTools().catch(report('Could not open developer tools')); break
     }
-  }, [history.newChat, toggleHistory])
+  }, [history.newChat, toggleHistory, report])
 
   return (
     <div className="shell" data-ui-surface="shell">
@@ -198,7 +204,14 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
+      {shellError && (
+        <div className="shell-alert" role="alert">
+          <span>{shellError}</span>
+          <button type="button" className="shell-alert-dismiss" onClick={() => setShellError(null)}>Dismiss</button>
+        </div>
+      )}
       <div className="workspace" data-mode="chat">
+        {!chat.selectedPaneId && <AppStartup connection={chat.state.connection} onRetry={chat.retryStartup} />}
         {chat.selectedPaneId && <DesktopWorkspace
           key={chat.workspace?.cwd ?? chat.state.cwd}
           ref={workspaceRef}

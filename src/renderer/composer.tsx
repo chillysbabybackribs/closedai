@@ -1,4 +1,4 @@
-import type { ClipboardEvent, DragEvent, FormEvent, JSX } from 'react'
+import type { ClipboardEvent, DragEvent, FormEvent, JSX, Ref } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Pause, Play } from 'lucide-react'
 
@@ -15,7 +15,8 @@ import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './compo
 import { ComposerCompactRow } from './composer-compact-row.js'
 import { useComposerLayout } from './composer-layout.js'
 import { useComposerDraft } from './composer-drafts.js'
-import { ModelMenu } from './model-menu.js'
+import { errorMessage } from './error-message.js'
+import { ModelMenu, type ModelMenuHandle } from './model-menu.js'
 import { ProjectMenu } from './project-menu.js'
 
 export type ComposerProps = {
@@ -53,6 +54,8 @@ export type ComposerProps = {
   onCompactConversation?: () => Promise<void>
   compactConversationEnabled?: boolean
   paneId?: string | null
+  /** Lets the pane's connection guidance open the model picker. */
+  modelMenuRef?: Ref<ModelMenuHandle>
 }
 
 export function Composer({
@@ -75,10 +78,12 @@ export function Composer({
   onInspectContext,
   cwd, projectPath, projectPending, recentProjects,
   onChooseProject, onSelectProject, onClearProject,
-  activeTurnId, onCompactConversation, compactConversationEnabled = false, paneId
+  activeTurnId, onCompactConversation, compactConversationEnabled = false, paneId, modelMenuRef
 }: ComposerProps): JSX.Element {
   const { input, setInput, attachments, setAttachments, clearDraft } = useComposerDraft(paneId)
-  const [attachmentError, setAttachmentError] = useState('')
+  // One alert row for whatever the composer's own controls could not do: attach, pause, pick.
+  const [composerError, setComposerError] = useState('')
+  const providerLabel = CHAT_PROVIDER_LABELS[provider]
   const [sending, setSending] = useState(false)
   // Only the chevron changes modes: typing, focusing, and sending all stay in the mode the user
   // chose, so a collapsed composer keeps its one-line footprint across turns, new chats, and restarts.
@@ -86,7 +91,7 @@ export function Composer({
   const isCompact = layout === 'compact'
   const inputPlaceholder = running
     ? 'Esc to pause'
-    : placeholder ?? (enabled ? 'Enter to send · Shift+Enter for newline' : 'Codex is unavailable')
+    : placeholder ?? (enabled ? 'Enter to send · Shift+Enter for newline' : `${providerLabel} is unavailable`)
   const formRef = useRef<HTMLFormElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const focusAfterSendRef = useRef(false)
@@ -103,6 +108,14 @@ export function Composer({
     focusAfterSendRef.current = false
     formRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus()
   }, [sending])
+
+  async function stop(): Promise<void> {
+    try {
+      await onStop()
+    } catch (error) {
+      setComposerError(errorMessage(error, `Could not pause ${providerLabel}`))
+    }
+  }
 
   /** Resume is an ordinary turn, so it shares the send guard rather than racing one. */
   async function resume(): Promise<void> {
@@ -125,7 +138,7 @@ export function Composer({
     // so the composer empties on submit. Holding the draft until the send resolved was the visible
     // half of a slow first message: the text sat in the box and the chat stayed empty.
     clearDraft()
-    setAttachmentError('')
+    setComposerError('')
     try {
       await onSend(submittedInput, submittedAttachments)
       focusAfterSendRef.current = true
@@ -143,7 +156,7 @@ export function Composer({
       if (result.attachments.length > available) result.errors.push('Attach no more than 20 files at once')
       return [...current, ...result.attachments.slice(0, available)]
     })
-    setAttachmentError(result.errors[0] ?? '')
+    setComposerError(result.errors[0] ?? '')
   }
 
   function pasteFiles(event: ClipboardEvent<HTMLTextAreaElement>): void {
@@ -173,7 +186,7 @@ export function Composer({
             attachments={attachments}
             onRemove={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
           />
-          {attachmentError && <div className="prompt-attachment-error" role="alert">{attachmentError}</div>}
+          {composerError && <div className="prompt-attachment-error" role="alert">{composerError}</div>}
         </div>
       )}
       <ProjectMenu
@@ -218,6 +231,7 @@ export function Composer({
             running={running}
             modelMenu={
               <ModelMenu
+                ref={modelMenuRef}
                 enabled={enabled && !running}
                 models={models}
                 selectedModel={selectedModel}
@@ -231,6 +245,7 @@ export function Composer({
                 compactConversationEnabled={compactConversationEnabled}
                 onModelChange={onModelChange}
                 onReasoningEffortChange={onReasoningEffortChange}
+                onError={setComposerError}
               />
             }
             attachmentPicker={
@@ -252,7 +267,7 @@ export function Composer({
             onPaste={pasteFiles}
             onFocus={() => { textareaFocusedRef.current = true }}
             onBlur={() => { textareaFocusedRef.current = false }}
-            onStop={onStop}
+            onStop={stop}
             onResume={resume}
             onExpand={() => setLayout('full')}
           />
@@ -264,7 +279,7 @@ export function Composer({
                 onRemove={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
               />
               <PromptInputTextarea
-                aria-label="Message Codex"
+                aria-label={`Message ${providerLabel}`}
                 data-ui="composer.input"
                 data-can-send={canSend || undefined}
                 placeholder={inputPlaceholder}
@@ -275,7 +290,7 @@ export function Composer({
                 onBlur={() => { textareaFocusedRef.current = false }}
               />
 
-              {attachmentError && <div className="prompt-attachment-error" role="alert">{attachmentError}</div>}
+              {composerError && <div className="prompt-attachment-error" role="alert">{composerError}</div>}
 
               <PromptInputActions className="prompt-composer-actions">
                 <div className="prompt-composer-actions-start">
@@ -290,6 +305,7 @@ export function Composer({
 
                   <div className="prompt-model-controls">
                     <ModelMenu
+                      ref={modelMenuRef}
                       enabled={enabled && !running}
                       models={models}
                       selectedModel={selectedModel}
@@ -303,18 +319,19 @@ export function Composer({
                       compactConversationEnabled={compactConversationEnabled}
                       onModelChange={onModelChange}
                       onReasoningEffortChange={onReasoningEffortChange}
+                      onError={setComposerError}
                     />
                   </div>
                 </div>
 
                 <div className="prompt-composer-actions-end">
                   {!running && paused ? (
-                    <PromptInputAction tooltip={`Resume where ${CHAT_PROVIDER_LABELS[provider]} paused`}>
+                    <PromptInputAction tooltip={`Resume where ${providerLabel} paused`}>
                       <Button
                         type="button"
                         size="icon"
                         className="prompt-composer-resume rounded-full"
-                        aria-label={`Resume where ${CHAT_PROVIDER_LABELS[provider]} paused`}
+                        aria-label={`Resume where ${providerLabel} paused`}
                         data-ui="composer.resume"
                         disabled={!enabled || sending}
                         onClick={() => void resume()}
@@ -331,15 +348,15 @@ export function Composer({
                 centres on the card's full height rather than the action row. */}
             {running ? (
               <div className="prompt-composer-primary">
-                <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]} (Esc)`}>
+                <PromptInputAction tooltip={`Pause ${providerLabel} (Esc)`}>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     className="prompt-composer-stop rounded-full"
-                    aria-label={`Pause ${CHAT_PROVIDER_LABELS[provider]} (Esc)`}
+                    aria-label={`Pause ${providerLabel} (Esc)`}
                     data-ui="composer.stop"
-                    onClick={() => void onStop()}
+                    onClick={() => void stop()}
                   >
                     <Pause size={24} strokeWidth={2.25} aria-hidden="true" />
                   </Button>

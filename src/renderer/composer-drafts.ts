@@ -29,6 +29,21 @@ export function clearComposerDraft(paneId?: string | null): void {
   drafts.delete(key)
 }
 
+type DraftInjection = { key: string; input: string }
+const injectionListeners = new Set<(injection: DraftInjection) => void>()
+
+/**
+ * Put text into a pane's composer from outside it (a dialog handing the chat something to do).
+ * Existing text is kept above it; the mounted composer for that pane updates at once.
+ */
+export function injectComposerDraft(paneId: string | null | undefined, text: string): void {
+  const key = paneId || 'default'
+  const current = getComposerDraft(paneId)
+  const input = current.input.trim() ? `${current.input.replace(/\s+$/, '')}\n\n${text}` : text
+  setComposerDraft(paneId, { input, attachments: current.attachments })
+  for (const listener of injectionListeners) listener({ key, input })
+}
+
 export function resetAllComposerDrafts(): void {
   drafts.clear()
 }
@@ -52,6 +67,14 @@ export function useComposerDraft(paneId?: string | null): {
       setAttachmentsState(draft.attachments)
     }
   }, [paneId])
+
+  useEffect(() => {
+    const listener = (injection: DraftInjection): void => {
+      if (injection.key === (activePaneRef.current || 'default')) setInputState(injection.input)
+    }
+    injectionListeners.add(listener)
+    return () => { injectionListeners.delete(listener) }
+  }, [])
 
   const setInput = useCallback((valOrUpdater: string | ((curr: string) => string)) => {
     setInputState((prev) => {

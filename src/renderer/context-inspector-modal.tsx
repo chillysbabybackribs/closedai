@@ -298,6 +298,8 @@ function CheckpointFileTag({ file }: { file: string }): JSX.Element {
   return (
     <button
       type="button"
+      data-ui="context.open-file"
+      data-ui-key={file}
       className={`checkpoint-file-tag${missing ? ' checkpoint-file-tag-missing' : ''}`}
       title={missing ? `${file} could not be opened` : `Open ${file}`}
       onClick={() => {
