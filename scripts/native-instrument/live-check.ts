@@ -55,7 +55,7 @@ try {
   checks.push('process discovery, module/thread inspection, detach')
 
   const args = { target_id: identity.id, operation_key: 'hook', duration_ms: 100, source: `
-const address = Process.mainModule.getExportByName('fixture_add');
+const address = Process.mainModule.enumerateSymbols().find(s => s.name === 'fixture_add').address;
 const call = new NativeFunction(address, 'int', ['int']);
 send({kind:'baseline',value:call(5)});
 Interceptor.attach(address, {
