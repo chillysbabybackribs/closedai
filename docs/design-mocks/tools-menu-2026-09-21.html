@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tools menu + Tools dialog — mockup</title>
+<style>
+  :root {
+    --chrome: #121213;
+    --canvas: #19191b;
+    --card: #1e1e20;
+    --raised: #232325;
+    --control: #28282a;
+    --hair: rgb(255 255 255 / 8%);
+    --hair-strong: rgb(255 255 255 / 14%);
+    --fg: #98989c;
+    --fg-quiet: #5c5c5e;
+    --fg-strong: #eeeef0;
+    --accent: #8ab4f8;
+    --ok: #65b98a;
+    --warn: #d9a441;
+    --bad: #d96a5c;
+    --mono: "Berkeley Mono", "Geist Mono Variable", "SFMono-Regular", Consolas, monospace;
+    font-family: "OpenAI Sans", "Inter Variable", Inter, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    color: var(--fg-strong);
+    letter-spacing: -0.006em;
+  }
+  body { margin: 0; padding: 20px 24px 80px; background: #0c0c0d; }
+  h1 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+  .sub { color: var(--fg); font-size: 12.5px; margin: 0 0 22px; max-width: 900px; line-height: 1.5; }
+  h2 { margin: 34px 0 10px; font-size: 12px; font-weight: 600; color: var(--fg); letter-spacing: 0.04em; text-transform: uppercase; }
+  .caption { color: var(--fg); font-size: 12px; margin: 8px 0 0; max-width: 960px; line-height: 1.5; }
+  .caption b { color: var(--fg-strong); font-weight: 500; }
+  .row { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .lbl { font-size: 11px; color: var(--fg-quiet); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 6px; }
+
+  /* ---------- title bar + menus ---------- */
+  .bar { width: 440px; background: var(--chrome); border: 1px solid var(--hair-strong); border-radius: 8px; overflow: hidden; }
+  .bar .tb { display: flex; align-items: center; height: 34px; padding: 0 8px; gap: 2px; border-bottom: 1px solid var(--hair); }
+  .bar .tab { padding: 4px 8px; font-size: 12.5px; color: var(--fg); border-radius: 4px; }
+  .bar .tab.open { background: rgb(255 255 255 / 9%); color: var(--fg-strong); }
+  .bar .body { position: relative; height: 250px; background: var(--canvas); }
+  .menu { position: absolute; top: 4px; min-width: 232px; padding: 4px; background: var(--raised); border: 1px solid var(--hair-strong); border-radius: 8px; box-shadow: 0 10px 30px rgb(0 0 0 / 50%); font-size: 12.5px; }
+  .menu .it { display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 6px 10px; border-radius: 5px; color: var(--fg-strong); }
+  .menu .it.hl { background: rgb(255 255 255 / 7%); }
+  .menu .it.dis { color: var(--fg-quiet); }
+  .menu .it .k { color: var(--fg-quiet); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .menu .it .k.pane { color: var(--fg); font-style: italic; }
+  .menu .sep { height: 1px; background: var(--hair); margin: 4px 6px; }
+  .menu .hd { padding: 6px 10px 2px; font-size: 10.5px; color: var(--fg-quiet); text-transform: uppercase; letter-spacing: 0.05em; }
+  .menu .chev::after { content: "›"; color: var(--fg); }
+  .sub-menu { left: 240px; top: 86px; min-width: 190px; }
+  .ghost { color: var(--bad); text-decoration: line-through; opacity: 0.7; }
+  .new { color: var(--ok); }
+
+  /* ---------- stage + dialog ---------- */
+  .stage { position: relative; width: 960px; height: 560px; border: 1px solid var(--hair-strong); border-radius: 8px; overflow: hidden; background: var(--chrome); }
+  .bg { position: absolute; inset: 0; }
+  .bg .titlebar { height: 34px; background: var(--chrome); border-bottom: 1px solid var(--hair); display: flex; align-items: center; padding: 0 10px; gap: 12px; font-size: 12px; color: var(--fg); }
+  .bg .tile, .bg .browser { position: absolute; background: var(--canvas); border: 1px solid var(--hair-strong); border-radius: 4px; box-sizing: border-box; }
+  .bg .tile .hd { height: 22px; background: #1f1f21; border-bottom: 1px solid var(--hair); }
+  .bg .browser { background: #161617; }
+  .scrim { position: absolute; inset: 0; background: rgb(0 0 0 / 55%); }
+
+  .modal { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 860px; height: 500px; background: var(--card); border: 1px solid var(--hair-strong); border-radius: 10px; box-shadow: 0 18px 60px rgb(0 0 0 / 60%); display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; }
+  .mh { display: flex; align-items: center; gap: 14px; padding: 12px 16px 10px; border-bottom: 1px solid var(--hair); }
+  .mh .t { font-size: 14px; font-weight: 600; }
+  .mh .d { color: var(--fg); font-size: 12px; margin-top: 2px; }
+  .mh .x { margin-left: auto; color: var(--fg); width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; border: 1px solid var(--hair); }
+  .seg { display: inline-flex; border: 1px solid var(--hair-strong); border-radius: 6px; overflow: hidden; font-size: 12px; }
+  .seg span { padding: 4px 11px; color: var(--fg); }
+  .seg span.on { background: var(--control); color: var(--fg-strong); }
+  .mb { display: grid; grid-template-columns: 236px 1fr; min-height: 0; }
+
+  /* left: namespaces */
+  .nav { border-right: 1px solid var(--hair); display: flex; flex-direction: column; min-height: 0; }
+  .search { margin: 10px 10px 6px; display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid var(--hair-strong); border-radius: 6px; background: var(--canvas); color: var(--fg-quiet); font-size: 12px; }
+  .ns-list { overflow: auto; padding: 4px 6px 8px; }
+  .ns { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 6px; padding: 6px 6px; border-radius: 6px; font-size: 12.5px; }
+  .ns.sel { background: rgb(255 255 255 / 7%); }
+  .ns .n { font-family: var(--mono); font-size: 11.5px; color: var(--fg-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ns .c { color: var(--fg-quiet); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .ns .c.part { color: var(--warn); }
+  .ns.off .n { color: var(--fg); }
+  .sw { width: 24px; height: 14px; border-radius: 7px; background: #3a3a3d; position: relative; box-sizing: border-box; }
+  .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: #9a9a9e; }
+  .sw.on { background: var(--accent); }
+  .sw.on::after { left: 12px; background: #0c0c0d; }
+  .sw.mixed { background: #5b6f8f; }
+  .sw.mixed::after { left: 7px; background: #0c0c0d; }
+  .sw.sm { width: 20px; height: 12px; }
+  .sw.sm::after { width: 8px; height: 8px; }
+  .sw.sm.on::after { left: 10px; }
+
+  /* right: tools of the namespace */
+  .main { overflow: auto; padding: 12px 16px 14px; min-height: 0; }
+  .nsh { display: flex; align-items: baseline; gap: 10px; margin: 0 0 4px; }
+  .nsh b { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+  .nsh span { color: var(--fg); font-size: 12px; }
+  .nsd { color: var(--fg); font-size: 12px; line-height: 1.45; margin: 0 0 12px; }
+  .tool { border: 1px solid var(--hair); border-radius: 8px; background: var(--canvas); padding: 10px 12px; margin-bottom: 8px; }
+  .tool .th { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 8px; }
+  .tool .th .n { font-family: var(--mono); font-size: 12.5px; }
+  .tool .th .n i { color: var(--fg-quiet); font-style: normal; }
+  .tool .th .meta { display: flex; gap: 10px; font-size: 11px; color: var(--fg-quiet); font-variant-numeric: tabular-nums; }
+  .tool .th .meta .bad { color: var(--bad); }
+  .tool .th .meta .warn { color: var(--warn); }
+  .tool .desc { color: var(--fg); font-size: 12px; line-height: 1.45; margin: 6px 0 0 36px; }
+  .verbs { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0 36px; }
+  .verb { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 6px; border: 1px solid var(--hair-strong); border-radius: 999px; font-family: var(--mono); font-size: 11px; background: var(--card); }
+  .verb.off { color: var(--fg-quiet); border-style: dashed; }
+  .verb .cnt { color: var(--fg-quiet); font-family: inherit; }
+  .tool .more { margin: 8px 0 0 36px; font-size: 11.5px; color: var(--fg); }
+  .tool .more span { color: var(--accent); }
+  .fields { margin: 6px 0 0 36px; border-left: 2px solid var(--hair-strong); padding-left: 10px; font-size: 11.5px; color: var(--fg); display: grid; grid-template-columns: max-content max-content 1fr; gap: 3px 12px; }
+  .fields code { font-family: var(--mono); font-size: 11px; color: var(--fg-strong); }
+  .fields .req { color: var(--warn); }
+
+  .mf { display: flex; align-items: center; gap: 12px; padding: 9px 16px; border-top: 1px solid var(--hair); font-size: 11.5px; color: var(--fg); }
+  .mf .spacer { flex: 1; }
+  .mf .btn { padding: 4px 10px; border: 1px solid var(--hair-strong); border-radius: 6px; color: var(--fg-strong); font-size: 12px; }
+  .mf .btn.pri { background: var(--accent); color: #0c0c0d; border-color: transparent; font-weight: 600; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--hair-strong); font-size: 11px; color: var(--fg); }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+  .pill .dot.warn { background: var(--warn); }
+
+  /* this-chat view */
+  .chat-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; font-size: 12px; }
+  .chat-list .r { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--hair); }
+  .chat-list .r .n { font-family: var(--mono); font-size: 11.5px; flex: 1; }
+  .chat-list .r .s { font-size: 11px; color: var(--fg-quiet); font-variant-numeric: tabular-nums; }
+  .chat-list .r.drift .n { color: var(--warn); }
+  .chat-list .r.drift .s { color: var(--warn); }
+  .notice { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid rgb(217 164 65 / 40%); background: rgb(217 164 65 / 8%); border-radius: 8px; font-size: 12px; margin: 0 0 12px; }
+  .notice .btn { margin-left: auto; padding: 3px 10px; border: 1px solid var(--hair-strong); border-radius: 6px; font-size: 12px; color: var(--fg-strong); white-space: nowrap; }
+</style>
+</head>
+<body>
+<h1>Tools menu → Agent / Developer, and the rebuilt Tools dialog</h1>
+<p class="sub">Three parts. (1) The title bar menu regrouped by who the item serves. (2) The Tool configuration dialog as a two-level browser: namespaces on the left with master switches, the selected namespace's tools on the right with descriptions, verbs, and a provider filter. (3) The same dialog's <b>This chat</b> view, answering "what was this pane actually given?".</p>
+
+<h2>1 · Title bar menu — now vs proposed</h2>
+<div class="row">
+  <div>
+    <p class="lbl">Now</p>
+    <div class="bar">
+      <div class="tb"><span class="tab">File</span><span class="tab">View</span><span class="tab open">Tools</span></div>
+      <div class="body">
+        <div class="menu" style="left:76px">
+          <div class="it hl"><span>Tool configuration</span></div>
+          <div class="it"><span>Turn trace</span></div>
+          <div class="it"><span>Research library</span></div>
+          <div class="it"><span>Credential Vault</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="caption">No shortcuts, no scope hint, one real "tool" item among diagnostics, a library, and a secrets store.</p>
+  </div>
+  <div>
+    <p class="lbl">Proposed · Agent</p>
+    <div class="bar">
+      <div class="tb"><span class="tab">File</span><span class="tab">View</span><span class="tab open">Agent</span><span class="tab">Developer</span></div>
+      <div class="body">
+        <div class="menu" style="left:118px">
+          <div class="it hl"><span>Tools &amp; capabilities…</span><span class="k">Ctrl+Shift+T</span></div>
+          <div class="it"><span>Research library…</span></div>
+          <div class="sep"></div>
+          <div class="hd">Selected chat · "Redesigning Tools…"</div>
+          <div class="it"><span>Context inspector…</span><span class="k">Ctrl+Shift+K</span></div>
+          <div class="it"><span>Compact context</span></div>
+          <div class="it"><span>New thread, same tools</span></div>
+          <div class="it dis"><span>Stop turn</span><span class="k">Esc</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="caption">What the model gets, and what the selected chat is doing with it. The section header names the pane so pane-scoped rows stop being a mystery.</p>
+  </div>
+  <div>
+    <p class="lbl">Proposed · Developer</p>
+    <div class="bar">
+      <div class="tb"><span class="tab">File</span><span class="tab">View</span><span class="tab">Agent</span><span class="tab open">Developer</span></div>
+      <div class="body">
+        <div class="menu" style="left:170px">
+          <div class="it hl"><span>Turn trace…</span><span class="k">Ctrl+Shift+I</span></div>
+          <div class="it"><span>Tool call log…</span><span class="k new">new</span></div>
+          <div class="sep"></div>
+          <div class="it"><span>Reload renderer</span><span class="k">Ctrl+R</span></div>
+          <div class="it"><span>Toggle DevTools</span><span class="k">F12</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="caption"><b>Credential Vault</b> moves to <b>File → Settings</b> as a tab beside Appearance (still Ctrl+, away). Diagnostics get their own menu so Agent stays short.</p>
+  </div>
+</div>
+
+<h2>2 · Tools &amp; capabilities — namespace browser</h2>
+<div class="stage">
+  <div class="bg">
+    <div class="titlebar"><span>File</span><span>View</span><span style="color:var(--fg-strong)">Agent</span><span>Developer</span></div>
+    <div class="tile" style="left:8px;top:42px;width:300px;height:510px"><div class="hd"></div></div>
+    <div class="browser" style="left:316px;top:42px;width:420px;height:510px"></div>
+    <div class="tile" style="left:744px;top:42px;width:208px;height:510px"><div class="hd"></div></div>
+  </div>
+  <div class="scrim"></div>
+  <div class="modal">
+    <div class="mh">
+      <div>
+        <div class="t">Tools &amp; capabilities</div>
+        <div class="d">86 of 89 on · 10 namespaces · advertised to Codex, Claude Code, Antigravity, Cursor</div>
+      </div>
+      <div class="seg"><span class="on">Registry</span><span>This chat</span></div>
+      <div class="seg"><span class="on">All providers</span><span>Codex</span><span>Claude</span><span>Antigravity</span><span>Cursor</span></div>
+      <div class="x">×</div>
+    </div>
+    <div class="mb">
+      <div class="nav">
+        <div class="search">⌕&nbsp; Search tools, verbs, fields…</div>
+        <div class="ns-list">
+          <div class="ns"><span class="sw on"></span><span class="n">browser_cdp</span><span class="c">5 · 5</span></div>
+          <div class="ns"><span class="sw on"></span><span class="n">closedai_app</span><span class="c">3 · 3</span></div>
+          <div class="ns"><span class="sw on"></span><span class="n">closedai_ui</span><span class="c">1 · 1</span></div>
+          <div class="ns"><span class="sw on"></span><span class="n">credential_vault</span><span class="c">2 · 2</span></div>
+          <div class="ns sel"><span class="sw mixed"></span><span class="n">embedded_browser</span><span class="c part">4 · 5</span></div>
+          <div class="ns"><span class="sw on"></span><span class="n">investigation</span><span class="c">2 · 2</span></div>
+          <div class="ns off"><span class="sw"></span><span class="n">native_instrument</span><span class="c">0 · 3</span></div>
+          <div class="ns"><span class="sw on"></span><span class="n">peer_chats</span><span class="c">4 · 4</span></div>
+          <div class="ns"><span class="sw on"></span><span class="n">search</span><span class="c">5 · 5</span></div>
+          <div class="ns"><span class="sw on"></span><span class="n">tool_batch</span><span class="c">1 · 1</span></div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="nsh"><b>embedded_browser</b><span>4 of 5 tools on · 212 runs · 3 errors</span></div>
+        <p class="nsd">The embedded web browser shown next to this chat, its network traffic, and its signed-in session.</p>
+
+        <div class="tool">
+          <div class="th"><span class="sw sm on"></span><span class="n"><i>embedded_browser.</i>page</span><span class="meta"><span>131 runs</span><span class="bad">2 errors</span><span>0 timeouts</span></span></div>
+          <div class="desc">Inspect the embedded browser page the user can see. navigate, read_page, and wait_for return plain text. read_page also reads a visible native PDF by pdf_page.</div>
+          <div class="verbs">
+            <span class="verb"><span class="sw sm on"></span>navigate <span class="cnt">58</span></span>
+            <span class="verb"><span class="sw sm on"></span>read_page <span class="cnt">61</span></span>
+            <span class="verb"><span class="sw sm on"></span>wait_for <span class="cnt">12</span></span>
+          </div>
+          <div class="fields">
+            <code>action</code><span class="req">required</span><span>navigate · read_page · wait_for</span>
+            <code>url</code><span>navigate</span><span>Absolute URL, relative path, or search query</span>
+            <code>selector</code><span>optional</span><span>CSS selector in the main frame</span>
+          </div>
+          <div class="more"><span>Hide schema</span> · timeout 15 s · deferred load</div>
+        </div>
+
+        <div class="tool">
+          <div class="th"><span class="sw sm on"></span><span class="n"><i>embedded_browser.</i>script</span><span class="meta"><span>64 runs</span><span>0 errors</span><span class="warn">1 timeout</span></span></div>
+          <div class="desc">Run page-side work in the assigned tab: fetch, extract, query, evaluate, and console.</div>
+          <div class="verbs">
+            <span class="verb"><span class="sw sm on"></span>fetch <span class="cnt">20</span></span>
+            <span class="verb"><span class="sw sm on"></span>extract <span class="cnt">31</span></span>
+            <span class="verb"><span class="sw sm on"></span>query <span class="cnt">9</span></span>
+            <span class="verb off"><span class="sw sm"></span>evaluate <span class="cnt">0</span></span>
+            <span class="verb"><span class="sw sm on"></span>console <span class="cnt">4</span></span>
+          </div>
+          <div class="more"><span>Show schema</span> · timeout 30 s</div>
+        </div>
+
+        <div class="tool">
+          <div class="th"><span class="sw sm on"></span><span class="n"><i>embedded_browser.</i>network</span><span class="meta"><span>17 runs</span><span>1 error</span><span>0 timeouts</span></span></div>
+          <div class="desc">Request logs for the assigned tab, filtered by URL, method, status, or resource type.</div>
+          <div class="more"><span>Show schema</span> · plain tool · timeout 10 s</div>
+        </div>
+
+        <div class="tool" style="opacity:.6">
+          <div class="th"><span class="sw sm"></span><span class="n"><i>embedded_browser.</i>network_replay</span><span class="meta"><span>0 runs</span></span></div>
+          <div class="desc">Reissue a captured request with edited headers or body. <b style="color:var(--warn);font-weight:500">Off</b> — refused immediately; dropped from new chats.</div>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <span class="pill"><span class="dot"></span>Registry matches this chat</span>
+      <span>Switching off refuses calls now and drops the tool from the next chat. Open chats keep their list — see <b style="color:var(--fg-strong);font-weight:500">This chat</b>.</span>
+      <span class="spacer"></span>
+      <span class="btn">Usage ▾</span>
+      <span class="btn">Reset counts</span>
+    </div>
+  </div>
+</div>
+<p class="caption"><b>What changed:</b> namespace master switches (mixed state when some tools are off) replace ~15 clicks with one; descriptions and schemas come from data the manifest already carries; verbs are chips on their tool instead of separate cards; counters move to the tool row and to a Usage drawer; the provider segment shows exactly what each adapter is advertised.</p>
+
+<h2>3 · Same dialog · "This chat" view</h2>
+<div class="stage" style="height:420px">
+  <div class="bg">
+    <div class="titlebar"><span>File</span><span>View</span><span style="color:var(--fg-strong)">Agent</span><span>Developer</span></div>
+    <div class="tile" style="left:8px;top:42px;width:300px;height:370px"><div class="hd"></div></div>
+    <div class="browser" style="left:316px;top:42px;width:420px;height:370px"></div>
+    <div class="tile" style="left:744px;top:42px;width:208px;height:370px"><div class="hd"></div></div>
+  </div>
+  <div class="scrim"></div>
+  <div class="modal" style="height:370px;grid-template-rows:auto 1fr auto">
+    <div class="mh">
+      <div>
+        <div class="t">Tools &amp; capabilities</div>
+        <div class="d">"Redesigning Tools…" · Claude Code · thread started 21:02 · 84 tools advertised</div>
+      </div>
+      <div class="seg"><span>Registry</span><span class="on">This chat</span></div>
+      <div class="x">×</div>
+    </div>
+    <div class="main">
+      <div class="notice">
+        <span>⚠</span>
+        <span>The registry changed since this thread started: <b style="font-weight:500">native_instrument</b> was switched off (3 tools) and <b style="font-weight:500">embedded_browser.script.evaluate</b> was switched off. This chat still advertises them; calls are refused.</span>
+        <span class="btn">New thread with current tools</span>
+      </div>
+      <div class="chat-list">
+        <div class="r"><span class="sw sm on"></span><span class="n">browser_cdp.*</span><span class="s">5 tools · 12 runs</span></div>
+        <div class="r drift"><span class="sw sm on"></span><span class="n">native_instrument.*</span><span class="s">3 tools · now off in registry</span></div>
+        <div class="r"><span class="sw sm on"></span><span class="n">closedai_app.*</span><span class="s">3 tools · 41 runs</span></div>
+        <div class="r"><span class="sw sm on"></span><span class="n">peer_chats.*</span><span class="s">4 tools · 0 runs</span></div>
+        <div class="r"><span class="sw sm on"></span><span class="n">closedai_ui.capture</span><span class="s">9 runs</span></div>
+        <div class="r"><span class="sw sm on"></span><span class="n">search.*</span><span class="s">5 tools · 2 runs</span></div>
+        <div class="r"><span class="sw sm on"></span><span class="n">credential_vault.*</span><span class="s">2 tools · 0 runs</span></div>
+        <div class="r"><span class="sw sm on"></span><span class="n">tool_batch.run</span><span class="s">6 runs</span></div>
+        <div class="r drift"><span class="sw sm on"></span><span class="n">embedded_browser.*</span><span class="s">5 tools · evaluate now off</span></div>
+        <div class="r"><span class="sw sm on"></span><span class="n">investigation.*</span><span class="s">2 tools · 0 runs</span></div>
+      </div>
+    </div>
+    <div class="mf">
+      <span class="pill"><span class="dot warn"></span>Drifted from registry</span>
+      <span>Read-only: a running thread's tool list is fixed by its provider. Change the registry, then start a new thread.</span>
+      <span class="spacer"></span>
+      <span class="btn">Copy tool list</span>
+    </div>
+  </div>
+</div>
+<p class="caption"><b>Why this view exists:</b> today's footer text ("a chat that is already open keeps its tool list") states the problem without letting the user see it. This tab shows the advertised set per pane, flags drift against the registry, and offers the one action that resolves it.</p>
+</body>
+</html>
