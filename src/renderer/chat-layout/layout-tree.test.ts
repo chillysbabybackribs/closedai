@@ -1,7 +1,45 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { BROWSER_PANE_ID, withBrowser, dockPane, layoutGeometry, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout } from './layout-tree.ts'
+import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, withBrowser, dockBrowser, dockPane, layoutGeometry, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout } from './layout-tree.ts'
 import { addTab, moveTab, pruneTabs, tabIds } from './layout-tabs.ts'
+
+test('the browser stacks over one chat and returns to a full-height column without changing chat groups', () => {
+  const group = addTab({ kind: 'pane', id: 'a' }, 'a', 'inactive')
+  const chats = dockPane(group, 'b', 'inactive', 'right', 'chats')
+  for (const edge of ['top', 'bottom', 'left', 'right'] as const) {
+    const stacked = dockBrowser(withBrowser(chats), 'b', edge, 'browser-dock')
+    const geometry = layoutGeometry(stacked, 1600, 900)
+    const browser = geometry.panes.find((pane) => pane.id === BROWSER_PANE_ID)!.rect
+    const target = geometry.panes.find((pane) => pane.id === 'b')!.rect
+    if (edge === 'top' || edge === 'bottom') {
+      assert.equal(browser.x, target.x)
+      assert.equal(browser.width, target.width)
+      assert.equal(browser.y < target.y, edge === 'top')
+    } else {
+      assert.equal(browser.y, target.y)
+      assert.equal(browser.height, target.height)
+      assert.equal(browser.x < target.x, edge === 'left')
+    }
+    assert.deepEqual(removePane(stacked, BROWSER_PANE_ID), chats)
+    assert.deepEqual(tabIds(stacked), tabIds(chats))
+    for (const side of ['left', 'right'] as const) {
+      const column = dockBrowser(stacked, WORKSPACE_DOCK_ID, side, 'outer')
+      const panes = layoutGeometry(column, 1600, 900).panes
+      assert.equal(panes.find((pane) => pane.id === BROWSER_PANE_ID)!.rect.height, 900)
+      assert.equal(panes[side === 'left' ? 0 : panes.length - 1]!.id, BROWSER_PANE_ID)
+      assert.deepEqual(removePane(column, BROWSER_PANE_ID), chats)
+      assert.deepEqual(readLayout({ getItem: () => JSON.stringify({ tree: column, browserVisible: true }) }, '/a').tree, column)
+    }
+  }
+})
+
+test('invalid browser destinations do not lose or duplicate the browser', () => {
+  const tree = withBrowser({ kind: 'pane', id: 'a' })
+  assert.equal(dockBrowser(tree, BROWSER_PANE_ID, 'top', 'self'), tree)
+  assert.equal(dockBrowser(tree, 'missing', 'left', 'missing'), tree)
+  const noBrowser: ChatLayout = { kind: 'pane', id: 'a' }
+  assert.equal(dockBrowser(noBrowser, WORKSPACE_DOCK_ID, 'left', 'missing'), noBrowser)
+})
 
 test('a tab splits to the right of the browser while its sibling remains on the left', () => {
   const original = withBrowser(addTab({ kind: 'pane', id: 'a' }, 'a', 'b'))

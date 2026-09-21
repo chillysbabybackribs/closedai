@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useRef, useState, type Dispatch, type Ref } from 'react'
+import { useEffect, useImperativeHandle, useMemo, useRef, useState, type Dispatch, type Ref } from 'react'
 import { GripVertical } from 'lucide-react'
 import { BrowserPane } from '../browser-pane.js'
 import { useBrowserController } from '../browser-controller.js'
@@ -31,6 +31,13 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   ref?: Ref<ChatLayoutHandle>
 }) {
   const layout = useChatLayout(chat.snapshot)
+  const browserDragHandle = useMemo(() => <button type="button"
+    className="browser-layout-drag" data-ui="layout.browser-drag" draggable={!layout.busy} disabled={layout.busy}
+    aria-label="Move browser" title="Drag above or beside a chat; drop at the workspace edge for a full-height column"
+    onDragStart={(event) => {
+      event.dataTransfer.setData(CHAT_DRAG_TYPE, BROWSER_PANE_ID)
+      event.dataTransfer.effectAllowed = 'move'
+    }}><GripVertical size={13} aria-hidden="true" /></button>, [layout.busy])
   useImperativeHandle(ref, () => ({
     splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),
     toggleBrowser: layout.toggleBrowser
@@ -74,13 +81,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
           onDialogChange={onDialogChange} onNewChat={() => { void layout.newChat(id) }} />}
       renderBrowser={<div className="workspace-right" data-mode="browser" data-with-browser={layout.browserVisible ? 'yes' : 'no'}>
         <div className={`workspace-surface workspace-surface-browser${layout.browserVisible ? '' : ' is-collapsed'}`}>
-          <BrowserPane controller={browser} dragHandle={<button type="button"
-            className="browser-layout-drag" data-ui="layout.browser-drag" draggable={!layout.busy} disabled={layout.busy}
-            aria-label="Move browser" title="Drag above or beside a chat; drop at the workspace edge for a full-height column"
-            onDragStart={(event) => {
-              event.dataTransfer.setData(CHAT_DRAG_TYPE, BROWSER_PANE_ID)
-              event.dataTransfer.effectAllowed = 'move'
-            }}><GripVertical size={13} aria-hidden="true" /></button>} />
+          <BrowserPane controller={browser} dragHandle={browserDragHandle} />
         </div>
       </div>}
     />

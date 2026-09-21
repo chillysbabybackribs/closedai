@@ -20,7 +20,7 @@ export const UI_CONTROLS = {
   'file.copy-path': 'Copy the local file preview path',
   'file.copy-content': 'Copy the local file preview text',
   'file.reveal': 'Reveal the previewed local file in the system file manager',
-  'titlebar.chat-search': 'Search saved chat titles across projects with autocomplete',
+  'titlebar.chat-search': 'Browse running chats, unread completions, and recent history, or search saved chat titles across projects with autocomplete',
   'titlebar.chat-search-clear': 'Clear chat title search',
   'titlebar.chat-search-result': 'Open a chat history suggestion; item is the chat id',
   'titlebar.chat-search-delete': 'Delete a chat from history immediately without confirmation; item is the chat id',

@@ -90,7 +90,9 @@ start a continuation. Failures are exposed without automatic retries; completed 
 switch-and-submit, not task completion. Pending state is in memory only.
 The app no
 longer adds a blanket restriction on delegation; applicable user and repository instructions still apply.
-The centered header search suggests saved chat titles across directories. Each composer's folder
+The centered header search suggests saved chat titles across directories. With no query it groups
+running chats, unread completions, and recent history; running and unread counts remain visible
+while closed. Opening a completion moves it into History. Each composer's folder
 menu changes only that chat's directory, preserving the layout and other chats; a running chat
 queues its choice until its own work finishes. Visible chats can use different directories.
 The model's deferred project-switch command still waits for all chats to idle and creates a

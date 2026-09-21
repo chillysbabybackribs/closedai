@@ -219,8 +219,13 @@ a guarantee that every model retrieves or phrases its response identically.
 ## Workspace layout
 
 The workspace has no sidebar. A centered title-bar input searches saved chat titles across projects.
-Clicking it shows up to eight recent chats; typing shows ranked, case-insensitive title matches with
-matched characters highlighted and project/time labels. Arrow keys select, Enter or click opens,
+Clicking it groups chats into Running, Recently completed (unread), and History (up to eight recent
+chats), omitting empty groups and showing each chat once. Running and unread counts remain visible
+in the input while the dropdown is closed. Activity groups include all matching chats in the scrollable
+dropdown; unread completions use the persisted review queue and move into History when opened.
+Typing shows one list of up to eight ranked, case-insensitive title matches across all groups, with
+matched characters highlighted, activity indicators, and project/time labels. Counts in the input
+still reflect all chats while searching. Arrow keys select, Enter or click opens,
 and Escape dismisses. Each result has a trash button that removes the chat from history in one
 click without confirmation, using the existing provider/app archival path. Running chats cannot
 be deleted; pending actions disable the buttons and failures appear below the search. The dropdown
