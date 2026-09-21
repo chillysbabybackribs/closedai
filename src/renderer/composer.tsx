@@ -218,7 +218,23 @@ export function Composer({
           <ComposerCompactRow
             running={running}
             activeTurnId={activeTurnId}
-            selectedModelLabel={models.find((model) => model.id === selectedModel)?.displayName ?? null}
+            modelMenu={
+              <ModelMenu
+                enabled={enabled && !running}
+                models={models}
+                selectedModel={selectedModel}
+                selectedReasoningEffort={selectedReasoningEffort}
+                contextUsage={contextUsage}
+                provider={provider}
+                planUsage={planUsage}
+                onInspectContext={onInspectContext}
+                onRefreshPlanUsage={onRefreshPlanUsage}
+                onCompactConversation={onCompactConversation}
+                compactConversationEnabled={compactConversationEnabled}
+                onModelChange={onModelChange}
+                onReasoningEffortChange={onReasoningEffortChange}
+              />
+            }
             provider={provider}
             placeholder={inputPlaceholder}
             enabled={enabled}

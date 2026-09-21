@@ -1,4 +1,4 @@
-import type { ClipboardEvent, JSX } from 'react'
+import type { ClipboardEvent, JSX, ReactNode } from 'react'
 import { ChevronUp, Pause, Play } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
@@ -10,8 +10,8 @@ import { TurnActivityIndicator } from './task-activity.js'
 export type ComposerCompactRowProps = {
   running: boolean
   activeTurnId: string | null
-  /** Display name of the selected model; the raw id carries provider prefixes and [1m] suffixes. */
-  selectedModelLabel: string | null
+  /** The model picker, rendered where the full view would show it; the row supplies the slot. */
+  modelMenu: ReactNode
   provider: ChatProvider
   placeholder: string
   enabled: boolean
@@ -29,7 +29,7 @@ export type ComposerCompactRowProps = {
 export function ComposerCompactRow({
   running,
   activeTurnId,
-  selectedModelLabel,
+  modelMenu,
   provider,
   placeholder,
   enabled,
@@ -50,9 +50,7 @@ export function ComposerCompactRow({
           <TurnActivityIndicator activeTurnId={activeTurnId} />
         </div>
       ) : (
-        <div className="prompt-composer-compact-model">
-          <span>{selectedModelLabel ?? CHAT_PROVIDER_LABELS[provider]}</span>
-        </div>
+        <div className="prompt-composer-compact-model">{modelMenu}</div>
       )}
       <PromptInputTextarea
         aria-label="Message Codex"
