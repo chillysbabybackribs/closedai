@@ -149,6 +149,41 @@
   .card.hover { border-color: var(--hair-strong); background: var(--raised); }
   .tip { position: absolute; left: 0; top: calc(100% + 6px); width: 280px; padding: 9px 11px; background: #2a2a2d; border: 1px solid var(--hair-strong); border-radius: 7px; box-shadow: 0 10px 30px rgb(0 0 0 / 55%); font-size: 11.5px; line-height: 1.45; color: var(--fg-strong); z-index: 5; }
   .tip .k { font-family: var(--mono); font-size: 10.5px; color: var(--fg); display: block; margin-bottom: 4px; }
+
+  /* ---------- grouped rows ---------- */
+  .rows-modal { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 760px; height: 520px; background: var(--card); border: 1px solid var(--hair-strong); border-radius: 10px; box-shadow: 0 18px 60px rgb(0 0 0 / 60%); display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; }
+  .rows-modal .mh { padding: 12px 16px 10px; }
+  .rows-modal .search { width: 180px; margin: 0 0 0 auto; }
+  .rows-modal .x { margin-left: 0; }
+  .list { overflow: auto; padding: 4px 0 8px; }
+  .grp { padding: 10px 16px 4px; }
+  .grp + .grp { border-top: 1px solid var(--hair); margin-top: 6px; }
+  .gh2 { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px; padding: 4px 0 6px; }
+  .gh2 .t { font-size: 13px; font-weight: 600; color: var(--fg-strong); }
+  .gh2 .s { font-size: 11.5px; color: var(--fg); margin-top: 1px; }
+  .badge { font-size: 10.5px; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--hair-strong); color: var(--fg); white-space: nowrap; letter-spacing: 0.01em; }
+  .badge.act { color: var(--warn); border-color: rgb(217 164 65 / 45%); }
+  .badge.sec { color: var(--bad); border-color: rgb(217 106 92 / 45%); }
+  .badge.read { color: var(--ok); border-color: rgb(101 185 138 / 40%); }
+  .gh2 .cost { font-size: 11px; color: var(--fg-quiet); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .r2 { position: relative; display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px; padding: 6px 8px; margin: 0 -8px; border-radius: 6px; }
+  .r2:hover, .r2.hover { background: rgb(255 255 255 / 5%); }
+  .r2 .n { font-size: 12.5px; color: var(--fg-strong); }
+  .r2 .d { font-size: 11.5px; color: var(--fg); margin-top: 1px; }
+  .r2 .m { font-size: 11px; color: var(--fg-quiet); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .r2 .m.bad { color: var(--bad); }
+  .r2.off .n, .r2.off .d { color: var(--fg-quiet); }
+  .r2 .tip { left: 24px; top: calc(100% + 2px); width: 340px; }
+  .tip .k { font-family: var(--mono); font-size: 10.5px; color: var(--fg); display: block; margin-bottom: 4px; }
+  .tip .q { color: var(--fg); font-style: italic; display: block; margin: 4px 0; }
+  .tip { position: absolute; padding: 9px 11px; background: #2a2a2d; border: 1px solid var(--hair-strong); border-radius: 7px; box-shadow: 0 10px 30px rgb(0 0 0 / 55%); font-size: 11.5px; line-height: 1.45; color: var(--fg-strong); z-index: 5; }
+  .sw { width: 24px; height: 14px; border-radius: 7px; background: #3a3a3d; position: relative; box-sizing: border-box; }
+  .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: #9a9a9e; }
+  .sw.on { background: var(--accent); } .sw.on::after { left: 12px; background: #0c0c0d; }
+  .sw.mixed { background: #5b6f8f; } .sw.mixed::after { left: 7px; background: #0c0c0d; }
+  .preset { display: inline-flex; border: 1px solid var(--hair-strong); border-radius: 6px; overflow: hidden; font-size: 11.5px; }
+  .preset span { padding: 3px 10px; color: var(--fg); }
+  .preset span.on { background: var(--control); color: var(--fg-strong); }
 </style>
 </head>
 <body>
@@ -209,30 +244,31 @@
   </div>
 </div>
 
-<h2>2 · Tools &amp; capabilities — one card per tool</h2>
-<div class="stage">
+<h2>2 · Tools &amp; capabilities — grouped by what it can do</h2>
+<div class="stage" style="height:580px">
   <div class="bg">
     <div class="titlebar"><span>File</span><span>View</span><span style="color:var(--fg-strong)">Agent</span><span>Developer</span></div>
-    <div class="tile" style="left:8px;top:42px;width:300px;height:510px"><div class="hd"></div></div>
-    <div class="browser" style="left:316px;top:42px;width:420px;height:510px"></div>
-    <div class="tile" style="left:744px;top:42px;width:208px;height:510px"><div class="hd"></div></div>
+    <div class="tile" style="left:8px;top:42px;width:300px;height:530px"><div class="hd"></div></div>
+    <div class="browser" style="left:316px;top:42px;width:420px;height:530px"></div>
+    <div class="tile" style="left:744px;top:42px;width:208px;height:530px"><div class="hd"></div></div>
   </div>
   <div class="scrim"></div>
-  <div class="grid-modal">
+  <div class="rows-modal">
     <div class="mh">
       <div>
         <div class="t">Tools &amp; capabilities</div>
-        <div class="d">27 of 31 on</div>
+        <div class="d">27 of 31 on · about 4.1k tokens of every turn</div>
       </div>
       <div class="search">⌕&nbsp; Filter</div>
       <div class="x">×</div>
     </div>
-    <div class="cards"><div class="gh">embedded_browser</div><div class="card"><span class="n">Browse a page</span><span class="sw on"></span><span class="d">Open a URL in the browser pane and read what is on it.</span></div><div class="card hover"><span class="n">Run page scripts</span><span class="sw on"></span><span class="d">Fetch, extract, or evaluate JavaScript inside the open page.</span><div class="tip"><span class="k">embedded_browser.script</span>Runs in the tab the chat is assigned, so it sees the same cookies and login as you. Off: the model can still read pages but cannot execute code in them.</div></div><div class="card"><span class="n">Network log</span><span class="sw on"></span><span class="d">See the requests a page made and what came back.</span></div><div class="card off"><span class="n">Replay a request</span><span class="sw "></span><span class="d">Send a captured request again, with edits.</span></div><div class="card"><span class="n">Signed-in session</span><span class="sw on"></span><span class="d">Call site APIs using your existing login.</span></div><div class="gh">closedai_app</div><div class="card"><span class="n">App state</span><span class="sw on"></span><span class="d">Read which chats, tabs, and models are open.</span></div><div class="card"><span class="n">App commands</span><span class="sw on"></span><span class="d">Open chats, switch models, manage browser tabs.</span></div><div class="card"><span class="n">Click the app</span><span class="sw on"></span><span class="d">Press real buttons in ClosedAI when nothing else works.</span></div><div class="gh">search</div><div class="card"><span class="n">Web search</span><span class="sw on"></span><span class="d">Look things up across several search providers.</span></div><div class="card"><span class="n">Research runs</span><span class="sw on"></span><span class="d">Read many sources in parallel and keep notes.</span></div><div class="card"><span class="n">Read a source</span><span class="sw on"></span><span class="d">Open one page or PDF and extract its text.</span></div><div class="card"><span class="n">Paper library</span><span class="sw on"></span><span class="d">Search the saved research papers.</span></div><div class="gh">native_instrument</div><div class="card off"><span class="n">List processes</span><span class="sw "></span><span class="d">See local processes the model may inspect.</span></div><div class="card off"><span class="n">Inspect a process</span><span class="sw "></span><span class="d">Attach to a native process and read its state.</span></div><div class="card off"><span class="n">Custom probes</span><span class="sw "></span><span class="d">Inject code into a local process. Can crash it.</span></div></div>
+    <div class="list"><div class="grp"><div class="gh2"><div><div class="t">Read the web <span class="badge read">Reads only</span></div><div class="s">Open pages, search, and read sources. Nothing is changed on any site.</div></div><span class="cost">1.4k tokens / turn</span><span class="sw on"></span></div><div class="r2"><div><div class="n">Browse a page</div><div class="d">Open a URL in the browser pane and read what is on it.</div></div><span class="m"></span><span class="sw on"></span></div><div class="r2"><div><div class="n">Web search</div><div class="d">Look things up across several search providers.</div></div><span class="m"></span><span class="sw on"></span></div><div class="r2"><div><div class="n">Research runs</div><div class="d">Read many sources in parallel and keep notes.</div></div><span class="m"></span><span class="sw on"></span></div><div class="r2"><div><div class="n">Read a source or PDF</div><div class="d">Extract text from one page or document.</div></div><span class="m"></span><span class="sw on"></span></div><div class="r2"><div><div class="n">Network log</div><div class="d">See the requests a page made and what came back.</div></div><span class="m"></span><span class="sw on"></span></div><div class="r2"><div><div class="n">Paper library</div><div class="d">Search the saved research papers.</div></div><span class="m">never used</span><span class="sw on"></span></div></div><div class="grp"><div class="gh2"><div><div class="t">Act in the browser <span class="badge act">Acts as you</span></div><div class="s">Runs code and requests inside your signed-in tabs. Sites see it as you.</div></div><span class="cost">1.1k tokens / turn</span><span class="sw on"></span></div><div class="r2 hover"><div><div class="n">Run page scripts</div><div class="d">Fetch, extract, or evaluate JavaScript inside the open page.</div></div><span class="m"></span><span class="sw on"></span><div class="tip"><span class="k">embedded_browser.script</span>Runs in the tab assigned to the chat, with your cookies and login. Off: the model can still read pages but cannot execute code in them.<span class="q">Model sees: “Run scripts and extract data from the embedded browser page. All actions return JSON…”</span></div></div><div class="r2"><div><div class="n">Signed-in requests</div><div class="d">Call a site’s API using your existing login.</div></div><span class="m"></span><span class="sw on"></span></div><div class="r2 off"><div><div class="n">Replay a request</div><div class="d">Send a captured request again, with edits.</div></div><span class="m"></span><span class="sw "></span></div><div class="r2"><div><div class="n">DevTools access</div><div class="d">Debug, profile, emulate devices, raw protocol.</div></div><span class="m bad">3 errors</span><span class="sw on"></span></div></div><div class="grp"><div class="gh2"><div><div class="t">Control ClosedAI <span class="badge act">Controls the app</span></div><div class="s">Read app state, open chats, switch models, press buttons, take screenshots.</div></div><span class="cost">0.9k tokens / turn</span><span class="sw on"></span></div><div class="r2"><div><div class="n">App state and commands</div><div class="d">See what is open; open chats, switch models, manage tabs.</div></div><span class="m"></span><span class="sw on"></span></div><div class="r2"><div><div class="n">Click the app</div><div class="d">Press real controls when a command cannot do it.</div></div><span class="m"></span><span class="sw on"></span></div><div class="r2"><div><div class="n">Screenshots</div><div class="d">Capture the window or a page for visual checks.</div></div><span class="m"></span><span class="sw on"></span></div><div class="r2"><div><div class="n">Other chats</div><div class="d">List, read, and recall your other conversations.</div></div><span class="m"></span><span class="sw on"></span></div></div><div class="grp"><div class="gh2"><div><div class="t">Your secrets <span class="badge sec">Reads secrets</span></div><div class="s">Decrypts credentials from the vault for a task you asked for.</div></div><span class="cost">0.3k tokens / turn</span><span class="sw on"></span></div><div class="r2"><div><div class="n">List credentials</div><div class="d">Masked names and fields only.</div></div><span class="m"></span><span class="sw on"></span></div><div class="r2"><div><div class="n">Read a credential</div><div class="d">Decrypt one field for immediate use. Never shown to you in chat.</div></div><span class="m"></span><span class="sw on"></span></div></div><div class="grp"><div class="gh2"><div><div class="t">This machine <span class="badge sec">Runs native code</span></div><div class="s">Attaches to local processes and can inject code. Can crash the target.</div></div><span class="cost">0.4k tokens / turn</span><span class="sw "></span></div><div class="r2 off"><div><div class="n">List processes</div><div class="d">See which local processes could be inspected.</div></div><span class="m"></span><span class="sw "></span></div><div class="r2 off"><div><div class="n">Inspect a process</div><div class="d">Attach and read a process’s state.</div></div><span class="m"></span><span class="sw "></span></div><div class="r2 off"><div><div class="n">Custom probes</div><div class="d">Inject a script into a process.</div></div><span class="m"></span><span class="sw "></span></div></div></div>
     <div class="mf">
-      <span>Off takes effect immediately. Open chats keep their tool list until the next thread.</span>
+      <span class="preset"><span>Full</span><span>Read-only</span><span class="on">Custom</span></span>
+      <span>Off takes effect now. Open chats keep their list until their next thread.</span>
     </div>
   </div>
 </div>
-<p class="caption"><b>One card per tool.</b> A plain-English name, a one-line description written for a person (not the model's schema text), and a switch. Hovering a card shows the technical id and a longer explanation of what "off" changes. Namespaces are just small section labels in the grid. Action tools (page, script, …) are one card each; their verbs are not exposed.</p>
+<p class="caption"><b>Groups are effects, not namespaces.</b> Each group is a trust decision with one switch and a badge: reads only, acts as you, controls the app, reads secrets, runs native code. The header and each group show what the advertised schemas cost per turn, computed from the manifest. Notes like “never used” and “3 errors” appear only when non-zero. Hover gives the technical id, what off changes, and the exact text the model sees. Presets in the footer: Full, Read-only, Custom.</p>
 </body>
 </html>
