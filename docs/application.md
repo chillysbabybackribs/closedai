@@ -368,8 +368,8 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 
 - The window header is 44 px tall, with 14 px menu/search text, a 34 px search field,
   a 24 px textured Earth browser globe with a 15° axial tilt and a subtle brightness lift on hover,
-  and enlarged window buttons. Its locally bundled texture rotates once per 24 seconds while hovered
-  or keyboard-focused, pauses in place otherwise, and stops while the document is hidden. Reduced motion
+  and enlarged window buttons. Its locally bundled texture rotates continuously once per 24 seconds
+  and pauses while the document is hidden. Reduced motion
   disables rotation and the 140 ms brightness fade. A local PNG remains the loading/failure fallback.
   The shell reserves the header's
   natural height so the workspace begins directly below its divider.

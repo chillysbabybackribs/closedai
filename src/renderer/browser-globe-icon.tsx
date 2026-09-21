@@ -15,8 +15,7 @@ export function BrowserGlobeIcon({ size = 24 }: { size?: number }) {
   useEffect(() => {
     const canvas = canvasRef.current
     const context = canvas?.getContext('2d')
-    const button = canvas?.closest('button')
-    if (!canvas || !context || !button) return
+    if (!canvas || !context) return
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
     const pixels = context.createImageData(resolution, resolution)
@@ -43,7 +42,6 @@ export function BrowserGlobeIcon({ size = 24 }: { size?: number }) {
     let longitude = -0.8
     let frame = 0
     let previousTime: number | undefined
-    let hovered = button.matches(':hover')
     let disposed = false
     const atmosphere = [65, 145, 235]
 
@@ -63,8 +61,7 @@ export function BrowserGlobeIcon({ size = 24 }: { size?: number }) {
     }
 
     function running() {
-      return !disposed && texture && !document.hidden && !reduced.matches && !button!.disabled
-        && (hovered || button!.matches(':focus-visible'))
+      return !disposed && texture && !document.hidden && !reduced.matches
     }
 
     function tick(time: number) {
@@ -89,12 +86,6 @@ export function BrowserGlobeIcon({ size = 24 }: { size?: number }) {
         previousTime = undefined
       }
     }
-    const enter = () => { hovered = true; sync() }
-    const leave = () => { hovered = false; sync() }
-    button.addEventListener('pointerenter', enter)
-    button.addEventListener('pointerleave', leave)
-    button.addEventListener('focus', sync)
-    button.addEventListener('blur', sync)
     reduced.addEventListener('change', sync)
     document.addEventListener('visibilitychange', sync)
 
@@ -118,10 +109,6 @@ export function BrowserGlobeIcon({ size = 24 }: { size?: number }) {
       disposed = true
       cancelAnimationFrame(frame)
       map.onload = null
-      button.removeEventListener('pointerenter', enter)
-      button.removeEventListener('pointerleave', leave)
-      button.removeEventListener('focus', sync)
-      button.removeEventListener('blur', sync)
       reduced.removeEventListener('change', sync)
       document.removeEventListener('visibilitychange', sync)
     }
