@@ -62,8 +62,9 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
           'results are numbered [1], [2], …. Default sequential: failure skips the rest and unwinds armed browser state ' +
           '(pass `continue_on_error: true` to continue). `parallel` true for independent work; same-target work still serializes. ' +
           'Only ClosedAI tools routable — call native file/shell tools directly. Real-input fallbacks need inspection and ' +
-          'verification in the same sequential batch. `include_result` false omits successful intermediate bodies; any failure ' +
-          'makes the batch an error. In exec, await tools directly.',
+          'verification in the same sequential batch. `include_result` false omits successful intermediate bodies; failures ' +
+          'always come back, and the summary names every failed call. A failed call makes the batch an error, except under ' +
+          '`continue_on_error`, where the batch stays ok if the plan ran through. In exec, await tools directly.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -102,6 +103,8 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
               description:
                 'When true in sequential mode, execution continues even if an individual call fails. ' +
                 'Subsequent calls still run, but armed browser state from any failed step will still be unwound. ' +
+                'Tolerated failures keep the batch result ok — read the per-call statuses — while a skipped call, ' +
+                'a batch where nothing succeeded, or a failed release is still an error. ' +
                 'Default false: the first failure skips remaining calls.'
             }
           },
@@ -117,9 +120,9 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
           const continueOnError = booleanArg(input, 'continue_on_error', false)
           const policyProblem = validateRealInputBatch(parsed, parallel)
           if (policyProblem) return usageResult(`tool_batch.run: ${policyProblem}`)
-          if (parallel) return assembleResult(parsed, await runParallel(registry(), parsed, context), [])
+          if (parallel) return assembleResult(parsed, await runParallel(registry(), parsed, context), [], false)
           const { outcomes, unwound } = await runSequential(registry(), parsed, context, continueOnError)
-          return assembleResult(parsed, outcomes, unwound)
+          return assembleResult(parsed, outcomes, unwound, continueOnError)
         }
       })
     ]
@@ -176,7 +179,12 @@ function isVerificationCall(call: BatchCall): boolean {
     return ['targets', 'events', 'requests', 'body'].includes(action)
   }
   if (call.namespace === 'embedded_browser' && call.tool === 'page') {
-    return ['read_page', 'wait_for', 'extract', 'query', 'console'].includes(action)
+    return ['read_page', 'wait_for'].includes(action)
+  }
+  // Reading the page back through a script is the most direct assertion available; extract, query,
+  // evaluate, and console live on `script`, not `page`.
+  if (call.namespace === 'embedded_browser' && call.tool === 'script') {
+    return ['extract', 'query', 'evaluate', 'console', 'fetch'].includes(action)
   }
   if (call.namespace === 'embedded_browser' && call.tool === 'network') {
     return ['requests', 'wait', 'rules'].includes(action)
@@ -382,7 +390,12 @@ function batchResourceKey(call: BatchCall): string | null {
 }
 
 /** Separate call blocks let the registry's aggregate budget preserve short failures and ids. */
-function assembleResult(calls: BatchCall[], outcomes: BatchOutcome[], unwound: UnwindRecord[]): ToolResult {
+function assembleResult(
+  calls: BatchCall[],
+  outcomes: BatchOutcome[],
+  unwound: UnwindRecord[],
+  tolerateFailures: boolean
+): ToolResult {
   const sections: string[] = []
   const images: ToolContent[] = []
   let succeeded = 0
@@ -408,13 +421,26 @@ function assembleResult(calls: BatchCall[], outcomes: BatchOutcome[], unwound: U
     const body = text || imageNote ? `\n${text}${imageNote}` : ''
     sections.push(`[${call.index}] ${call.label} — ${result.isError ? 'failed' : 'ok'}${body}`)
   })
-  const summary = `${succeeded} of ${calls.length} calls succeeded${skipped ? ` (${skipped} skipped)` : ''}.`
+  // One line, because it is also the note telemetry keeps: a bare count says nothing about which
+  // step broke, so the failing calls and the first failure's own words belong in it.
+  const summary = `${succeeded} of ${calls.length} calls succeeded${skipped ? ` (${skipped} skipped)` : ''}.` +
+    failureNote(calls, outcomes)
   if (unwound.length) {
     const released = unwound
       .map((record) => `${record.label} — ${record.ok ? 'released' : `still armed: ${record.detail ?? 'the release failed'}`}`)
       .join('; ')
     sections.push(`Unwound after the failure: ${released}.`)
   }
+  const releaseFailed = unwound.some((record) => !record.ok)
+  // `continue_on_error` is the caller declaring that individual failures are expected results, not
+  // an abandoned plan: the batch ran everything it was given, so the envelope stays successful and
+  // the per-call statuses carry the failures. Without it, a partially executed plan is an error.
+  // Either way the batch failed as a unit when it ran nothing useful, dropped calls, or could not
+  // put back the state it armed.
+  const planIncomplete = skipped > 0 || (calls.length > 0 && succeeded === 0)
+  const isError = tolerateFailures
+    ? planIncomplete || releaseFailed
+    : succeeded !== calls.length || releaseFailed
   return {
     content: [
       { type: 'text', text: summary },
@@ -422,6 +448,27 @@ function assembleResult(calls: BatchCall[], outcomes: BatchOutcome[], unwound: U
       ...images
     ],
     // Preserve successful evidence without claiming a partially executed plan completed.
-    ...(succeeded !== calls.length || unwound.some((record) => !record.ok) ? { isError: true } : {})
+    ...(isError ? { isError: true } : {})
   }
+}
+
+/** Names the calls that failed, with the first one's own first line, for the summary and telemetry. */
+function failureNote(calls: BatchCall[], outcomes: BatchOutcome[]): string {
+  const failed = outcomes.flatMap((outcome, position) => outcome.status === 'ran' && outcome.result.isError
+    ? [{ call: calls[position]!, result: outcome.result }]
+    : [])
+  if (failed.length === 0) return ''
+  const named = failed.map(({ call }) => `[${call.index}] ${call.label}`).join(', ')
+  const detail = firstLine(failed[0]!.result)
+  return ` Failed: ${named}${detail ? ` — ${detail}` : ''}`
+}
+
+const FAILURE_DETAIL_CHARS = 160
+
+function firstLine(result: ToolResult): string {
+  const line = result.content
+    .flatMap((item) => (item.type === 'text' ? item.text.split('\n') : []))
+    .map((entry) => entry.trim())
+    .find((entry) => entry.length > 0) ?? ''
+  return line.length > FAILURE_DETAIL_CHARS ? `${line.slice(0, FAILURE_DETAIL_CHARS - 1)}…` : line
 }

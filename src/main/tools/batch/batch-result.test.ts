@@ -106,13 +106,33 @@ test('sequential batch with continue_on_error executes subsequent calls after an
     { tool: 'lab.echo', arguments: { text: 'step 3' } }
   ], false, true)
 
-  assert.equal(result.isError, true)
+  // The caller asked for the failures to be tolerated and the plan ran through, so the batch
+  // itself did its job; the failure lives in call [2]'s own status, not in the envelope.
+  assert.equal(result.isError, undefined)
   const text = batchText(result)
-  assert.match(text, /^2 of 3 calls succeeded\./)
+  assert.match(text, /^2 of 3 calls succeeded\. Failed: \[2\] lab\.boom — it broke/)
   assert.doesNotMatch(text, /skipped/)
   assert.match(text, /\[1\] lab\.echo — ok\nstep 1/)
   assert.match(text, /\[2\] lab\.boom — failed\nit broke/)
   assert.match(text, /\[3\] lab\.echo — ok\nstep 3/)
+})
+
+test('a tolerated batch is still an error when nothing succeeded or a call was dropped', async () => {
+  const allFailed = await call(harness(), [{ tool: 'lab.boom' }, { tool: 'lab.boom' }], false, true)
+  assert.equal(allFailed.isError, true)
+  assert.match(batchText(allFailed), /^0 of 2 calls succeeded\. Failed: \[1\] lab\.boom, \[2\] lab\.boom — it broke/)
+
+  const registry = harness()
+  const batch = registry.find('tool_batch', 'run')
+  assert.ok(batch)
+  const controller = new AbortController()
+  controller.abort()
+  const aborted = await batch.run({
+    continue_on_error: true,
+    calls: [{ tool: 'lab.echo', arguments: { text: 'never' } }]
+  }, { ...context, signal: controller.signal })
+  assert.equal(aborted.isError, true)
+  assert.match(batchText(aborted), /^0 of 1 calls succeeded \(1 skipped\)\./)
 })
 
 test('sequential batch without continue_on_error skips remaining calls on first failure', async () => {
@@ -124,7 +144,7 @@ test('sequential batch without continue_on_error skips remaining calls on first 
 
   assert.equal(result.isError, true)
   const text = batchText(result)
-  assert.match(text, /^1 of 3 calls succeeded \(1 skipped\)\./)
+  assert.match(text, /^1 of 3 calls succeeded \(1 skipped\)\. Failed: \[2\] lab\.boom — it broke/)
   assert.match(text, /\[1\] lab\.echo — ok\nstep 1/)
   assert.match(text, /\[2\] lab\.boom — failed\nit broke/)
   assert.match(text, /\[3\] lab\.echo — skipped: call \[2\] failed and the batch is sequential/)

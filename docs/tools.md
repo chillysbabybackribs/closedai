@@ -87,7 +87,7 @@ before the app-server starts.
 | `peer_chats` | `list`, `read` | plain tools | Read-only status and paginated transcript access to other panes and visible subagent summaries. `read` is deferred where supported; it takes an id from `list` and pages the newest 30 items backwards by default (at most 100), inside a serialized budget (`max_chars`, 6k default, 16k ceiling) that clips long tool detail, output, diffs and screenshot data URLs and reports `totalItems`; `order: "oldest"` follows a chat forward and `types` narrows to the item kinds wanted. It does not start or control agents. Reasoning items are excluded from both previews and pages, matching `recall` and thread handoff, so one model's thinking never enters another model's context. |
 | `peer_chats` | `recall` | plain tool, read-only | Bounded phrase search or exact-message excerpts from the caller's current chat, frozen direct continuation source (live in-memory transcript after same-pane rotation), or a previous conversation across projects, plus saved checkpoint state and optional `sessionRotationEpoch`. |
 | `peer_chats` | `checkpoint` | plain tool, writes notes | Revision-checked replacement of the caller's structured working notes; cannot control sessions or write other panes. |
-| `tool_batch` | `run` | plain tool | Runs up to 16 other tools by default, sequentially or in parallel by resource. Set `continue_on_error: true` in sequential batches to run remaining steps despite earlier failures while still unwinding unreleased armed state. Same-target work serializes; distinct explicit browser targets can run concurrently. When the outer batch ends or times out, its signal cancels in-flight inner calls and prevents queued calls from starting; a resource lock remains until the underlying call settles. `toolBatchMaxCalls` configures 1–64 at startup; nested batches are refused. A failed sequential batch compensates itself: profiling recorders, pre-document hooks, and device emulation armed by earlier steps are released in reverse order using their resolved tab ids, including after a timeout. State already released is not released twice; visible mutations (an opened tab, a cookie, a network rule) are never undone. Parallel calls are declared independent, so a failure does not unwind them. See `src/main/tools/batch/compensation.ts`. |
+| `tool_batch` | `run` | plain tool | Runs up to 16 other tools by default, sequentially or in parallel by resource. Set `continue_on_error: true` in sequential batches to run remaining steps despite earlier failures while still unwinding unreleased armed state; a plan that runs through keeps a successful batch result, because the caller declared those failures expected. Same-target work serializes; distinct explicit browser targets can run concurrently. When the outer batch ends or times out, its signal cancels in-flight inner calls and prevents queued calls from starting; a resource lock remains until the underlying call settles. `toolBatchMaxCalls` configures 1–64 at startup; nested batches are refused. A failed sequential batch compensates itself: profiling recorders, pre-document hooks, and device emulation armed by earlier steps are released in reverse order using their resolved tab ids, including after a timeout. State already released is not released twice; visible mutations (an opened tab, a cookie, a network rule) are never undone. Parallel calls are declared independent, so a failure does not unwind them. See `src/main/tools/batch/compensation.ts`. |
 
 `embedded_browser.network_replay` is a separate deferred tool taking `request_id` from the
 session request log. It always sends a new request using the recorded method, replayable
@@ -200,8 +200,11 @@ Every call name is resolved against the registry before the first one runs: a ba
 the app does not own — typically one of the model's own harness tools, which are not routable here —
 fails as a unit, names the tools a batch can run, and executes nothing.
 Each nested call retains validation, switches, timing, and telemetry. Set `include_result: false`
-for successful intermediate payloads; failures are always included. Any failed or skipped call
-makes the batch result an error, while successful results stay available. Inspect the per-call
+for successful intermediate payloads; failures are always included, and the summary's first line
+names every failed call plus the first failure's own words, so the telemetry note says which step
+broke. A failed or skipped call makes the batch result an error, except under `continue_on_error`,
+where tolerated failures keep the result successful and only a skipped call, a batch where nothing
+succeeded, or a failed release is an error. Inspect the per-call
 status and retry only the work that needs recovery; never replay successful mutations just because
 the batch failed. In Codex exec scripts use direct `await`/`Promise.allSettled` instead of wrapping
 another batch tool. Batching ordinary work is optional: group independent reads when useful,
@@ -214,7 +217,9 @@ Group the fallback with the inspection that identified its target and a post-act
 the same sequential batch. A Codex exec script is the batching boundary; direct-call providers use
 `tool_batch.run`, and the runtime refuses their unbatched input calls. Coordinate clicks remain the
 last fallback after semantic refs. The batch validator also refuses real input in parallel batches
-or without a later recognized read/wait/capture action that can verify the result.
+or without a later recognized read/wait/capture action that can verify the result. Recognized
+verification includes `embedded_browser.page` read_page/wait_for and the `embedded_browser.script`
+read actions, so a scripted read of the page counts as the assertion.
 
 `browser/coordination.ts` resolves a model call's tab before `resource-locks.ts` acquires its lock.
 Assignments belong to stable chat ids and span turns; they are independent of project and UI focus.

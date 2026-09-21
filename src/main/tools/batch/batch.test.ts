@@ -118,7 +118,7 @@ function inputPolicyHarness(): { registry: ToolRegistry; log: string[] } {
     {
       name: 'embedded_browser',
       description: 'Browser reads',
-      tools: ['page', 'network'].map((name) => ({
+      tools: ['page', 'script', 'network'].map((name) => ({
         name,
         description: 'Read actions',
         inputSchema: { type: 'object', properties: { action: { type: 'string' } }, required: ['action'] },
@@ -262,6 +262,23 @@ test('real-input fallbacks require a sequential batch with a later verification 
   const verified = await call(registry, { calls: [click, verify] })
   assert.equal(verified.isError, undefined)
   assert.deepEqual(log, ['click', 'read_page'])
+
+  // Reading the page back with a script verifies the input just as a page read does; extract,
+  // query, evaluate, and console are actions of `embedded_browser.script`, not `page`.
+  log.length = 0
+  const scripted = await call(registry, {
+    calls: [click, { tool: 'embedded_browser.script', arguments: { action: 'evaluate' } }]
+  })
+  assert.equal(scripted.isError, undefined)
+  assert.deepEqual(log, ['click', 'evaluate'])
+
+  log.length = 0
+  const movedAction = await call(registry, {
+    calls: [click, { tool: 'embedded_browser.page', arguments: { action: 'query' } }]
+  })
+  assert.equal(movedAction.isError, true)
+  assert.match(batchText(movedAction), /later read or wait action/)
+  assert.deepEqual(log, [])
 
   // Only actions the network tool still has count as verification; `body` moved to network_replay.
   log.length = 0

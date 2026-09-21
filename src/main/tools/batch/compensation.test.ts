@@ -157,7 +157,9 @@ test('a sequential batch with continue_on_error still unwinds armed state if a s
       { tool: 'browser_cdp.instrument', arguments: { action: 'hook', tab_id: 'tab-5' } }
     ]
   })
-  assert.equal(result.isError, true)
+  // Tolerated failures leave the batch result successful, but the teardown it performed on the
+  // caller's behalf is still reported, next to the step that triggered it.
+  assert.equal(result.isError, undefined)
   assert.deepEqual(log, [
     'profile.start:tab-5',
     'page.failed',
@@ -165,6 +167,7 @@ test('a sequential batch with continue_on_error still unwinds armed state if a s
     'instrument.unhook:tab-5',
     'profile.stop:tab-5'
   ])
+  assert.match(text(result), /Failed: \[2\] browser_cdp\.page — renderer crashed/)
   assert.match(text(result), /Unwound after the failure/)
 })
 
@@ -178,7 +181,7 @@ test('a sequential batch with continue_on_error does not unwind state explicitly
       { tool: 'browser_cdp.profile', arguments: { action: 'stop', tab_id: 'tab-6' } }
     ]
   })
-  assert.equal(result.isError, true)
+  assert.equal(result.isError, undefined)
   assert.deepEqual(log, [
     'profile.start:tab-6',
     'page.failed',
