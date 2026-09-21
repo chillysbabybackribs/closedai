@@ -83,6 +83,7 @@ function BrowserTabs({ controller, dragHandle }: { controller: BrowserController
             setMenuTarget({ tab, index, x: event.clientX, y: event.clientY })
           }}
         >
+          <span className="browser-tab-separator" aria-hidden="true" />
           {renaming?.id === tab.id ? (
             <BrowserTabRename
               tab={tab}
@@ -135,12 +136,12 @@ function BrowserTabs({ controller, dragHandle }: { controller: BrowserController
               void window.closedai.browser.closeTab(tab.id)
             }}
           >
-            <X size={12} />
+            <X size={14} strokeWidth={2} />
           </button>
         </div>
       ))}
       <button type="button" className="browser-tab-new" data-ui="browser.tab-new" aria-label="New tab" title="New tab" onClick={() => void window.closedai.browser.newTab()}>
-        <Plus size={14} />
+        <Plus size={16} strokeWidth={2} />
       </button>
       {menuTarget ? (
         <BrowserTabMenu
@@ -157,13 +158,13 @@ function BrowserTabs({ controller, dragHandle }: { controller: BrowserController
 function TabIcon({ tab }: { tab: BrowserTabInfo }): JSX.Element {
   const [failed, setFailed] = useState(false)
   useEffect(() => setFailed(false), [tab.favicon])
-  if (tab.image) return <FileImage className="browser-tab-icon" size={13} aria-hidden="true" />
-  if (tab.isLoading) return <Loader2 className="spin browser-tab-icon" size={12} aria-hidden="true" />
+  if (tab.image) return <FileImage className="browser-tab-icon" size={16} aria-hidden="true" />
+  if (tab.isLoading) return <Loader2 className="spin browser-tab-icon" size={14} aria-hidden="true" />
   if (tab.favicon && !failed) {
     return <img className="browser-tab-favicon" src={tab.favicon} alt="" aria-hidden="true" onError={() => setFailed(true)} />
   }
-  if (tab.url.startsWith('file:')) return <FileCode className="browser-tab-icon" size={13} aria-hidden="true" />
-  return <Globe2 className="browser-tab-icon browser-tab-fallback" size={13} aria-hidden="true" />
+  if (tab.url.startsWith('file:')) return <FileCode className="browser-tab-icon" size={16} aria-hidden="true" />
+  return <Globe2 className="browser-tab-icon browser-tab-fallback" size={16} aria-hidden="true" />
 }
 
 function BrowserToolbar({

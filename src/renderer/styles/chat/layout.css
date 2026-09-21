@@ -75,7 +75,8 @@
   opacity: 0.7;
   transition: opacity 120ms ease;
 }
-.browser-tabstrip:has(> .browser-layout-drag) { padding: 3px 5px; gap: 4px; }
+.browser-tabstrip:has(> .browser-layout-drag) { padding-left: 4px; }
+.browser-tabstrip > .browser-layout-drag { align-self: center; margin: -6px 6px 0 0; }
 .browser-layout-drag:hover { color: var(--chrome-fg-strong); }
 .browser-layout-drag:hover .browser-layout-drag-dots,
 .browser-layout-drag:active .browser-layout-drag-dots { opacity: 1; }

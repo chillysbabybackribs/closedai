@@ -32,15 +32,23 @@
 }
 
 
-/* Tab strip: a horizontal, scrollable row of tab chips plus a new-tab button. Sits
-   above the toolbar and shares the chrome's dark surface. */
+/* Tab strip: Chrome's tab shape, rebuilt one to one. The strip is the darker frame; the
+   active tab takes the toolbar's fill and continues into it without a seam, its bottom corners
+   flaring outward through two concave feet. Inactive tabs are transparent, separated by short
+   hairlines that hide beside the active or hovered tab, and hover paints the same tab shape in
+   a quieter fill. Sits above the toolbar in the shell grid. */
 .browser-tabstrip {
+  --tab-height: 34px;
+  --tab-radius: 8px;
+  --tab-fill-active: var(--surface-raised);
+  --tab-fill-hover: color-mix(in srgb, var(--surface-raised) 55%, var(--surface-chrome));
+  --tab-separator: var(--hairline-strong);
   display: flex;
-  align-items: center;
-  gap: 2px;
+  align-items: flex-end;
   min-width: 0;
-  padding: 5px 7px 0;
+  padding: 6px 8px 0;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
   border-radius: 9px 9px 0 0;
   background: var(--surface-chrome);
@@ -51,30 +59,76 @@
 }
 
 .browser-tab {
+  --tab-fill: transparent;
+  position: relative;
   display: flex;
   align-items: center;
-  flex: 0 1 180px;
-  min-width: 54px;
-  max-width: 180px;
-  height: 30px;
-  border-radius: 7px 7px 0 0;
-  color: var(--muted-foreground);
-  background: transparent;
-  transition:
-    background 110ms var(--ease-chrome),
-    color 110ms var(--ease-chrome);
+  flex: 1 1 240px;
+  min-width: 52px;
+  max-width: 240px;
+  height: var(--tab-height);
+  border-radius: var(--tab-radius) var(--tab-radius) 0 0;
+  color: var(--chrome-fg);
+  background: var(--tab-fill);
+  transition: background 90ms var(--ease-chrome), color 90ms var(--ease-chrome);
+}
+
+/* Feet: an 8px square outside each bottom corner, filled except for the quarter circle
+   nearest the strip, so the tab's silhouette curves outward into the toolbar. They read the
+   same fill as the tab body, so hover and active only change one variable. */
+.browser-tab::before,
+.browser-tab::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  width: var(--tab-radius);
+  height: var(--tab-radius);
+  pointer-events: none;
+}
+
+.browser-tab::before {
+  left: calc(-1 * var(--tab-radius));
+  background: radial-gradient(circle at 0 0, transparent calc(var(--tab-radius) - 0.5px), var(--tab-fill) var(--tab-radius));
+}
+
+.browser-tab::after {
+  right: calc(-1 * var(--tab-radius));
+  background: radial-gradient(circle at 100% 0, transparent calc(var(--tab-radius) - 0.5px), var(--tab-fill) var(--tab-radius));
 }
 
 .browser-tab:hover,
 .browser-tab:focus-within {
-  background: var(--surface-control);
-  color: #cfcfd2;
+  --tab-fill: var(--tab-fill-hover);
+  color: var(--chrome-fg-strong);
 }
 
 .browser-tab.is-active {
-  color: #f4f4f5;
-  background: var(--surface-raised);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+  --tab-fill: var(--tab-fill-active);
+  z-index: 1;
+  color: var(--chrome-fg-strong);
+}
+
+/* Separator: a 16px hairline on the left of every tab except the first, dropped when either
+   neighbour is the active or hovered tab, exactly as Chrome does. */
+.browser-tab-separator {
+  position: absolute;
+  top: 50%;
+  left: -0.5px;
+  width: 1px;
+  height: 16px;
+  transform: translateY(-50%);
+  background: var(--tab-separator);
+  pointer-events: none;
+}
+
+.browser-tab:first-of-type .browser-tab-separator,
+.browser-tab.is-active .browser-tab-separator,
+.browser-tab:hover .browser-tab-separator,
+.browser-tab:focus-within .browser-tab-separator,
+.browser-tab.is-active + .browser-tab .browser-tab-separator,
+.browser-tab:hover + .browser-tab .browser-tab-separator,
+.browser-tab:focus-within + .browser-tab .browser-tab-separator {
+  opacity: 0;
 }
 
 .browser-tab-select {
@@ -82,11 +136,11 @@
   flex: 1 1 auto;
   min-width: 0;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   height: 100%;
   padding: 0 4px 0 10px;
   border: 0;
-  border-radius: 7px 0 0;
+  border-radius: var(--tab-radius) 0 0;
   color: inherit;
   background: transparent;
   font: inherit;
@@ -95,7 +149,8 @@
 
 .browser-tab-select:focus-visible {
   outline: 2px solid var(--focus-ink);
-  outline-offset: -2px;
+  outline-offset: -3px;
+  border-radius: var(--tab-radius);
 }
 
 /* Strip position. Deliberately quiet — it is a coordinate for pointing at a tab in
@@ -111,10 +166,6 @@
   opacity: 0.6;
 }
 
-.browser-tab.is-active .browser-tab-title {
-  font-weight: 500;
-}
-
 .browser-tab.is-active .browser-tab-pos {
   opacity: 0.9;
 }
@@ -125,8 +176,8 @@
 }
 
 .browser-tab-favicon {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   flex: 0 0 auto;
   object-fit: contain;
 }
@@ -140,10 +191,12 @@
   min-width: 0;
   overflow: hidden;
   font-size: 12px;
-  font-weight: 450;
+  font-weight: 400;
   letter-spacing: var(--tracking-ui);
   white-space: nowrap;
   text-overflow: ellipsis;
+  /* Chrome fades the title out under the close button rather than cutting it with an ellipsis. */
+  mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent);
 }
 
 .browser-tab-rename {
@@ -158,12 +211,12 @@
 .browser-tab-rename-input {
   width: 100%;
   min-width: 0;
-  height: 20px;
-  padding: 0 5px;
+  height: 22px;
+  padding: 0 6px;
   border: 1px solid var(--focus-ink);
   border-radius: 4px;
-  background: #101011;
-  color: #f4f4f5;
+  background: var(--surface-chrome);
+  color: var(--foreground);
   font: inherit;
   font-size: 12px;
   letter-spacing: var(--tracking-ui);
@@ -187,54 +240,57 @@
 .browser-tab-close {
   display: grid;
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
   place-items: center;
+  padding: 0;
   border: 0;
-  border-radius: 5px;
+  border-radius: 50%;
   color: inherit;
   background: transparent;
   opacity: 0;
   transition:
-    background 110ms var(--ease-chrome),
-    opacity 110ms var(--ease-chrome);
+    background 90ms var(--ease-chrome),
+    opacity 90ms var(--ease-chrome);
 }
 
 .browser-tab:hover .browser-tab-close,
+.browser-tab:focus-within .browser-tab-close,
 .browser-tab.is-active .browser-tab-close {
-  opacity: 0.72;
+  opacity: 1;
 }
 
 .browser-tab-close:hover {
-  opacity: 1;
-  background: rgb(255 255 255 / 12%);
+  background: rgb(255 255 255 / 14%);
 }
 
 .browser-tab-close:focus-visible {
   opacity: 1;
   outline: 2px solid var(--focus-ink);
-  outline-offset: -2px;
+  outline-offset: 1px;
 }
 
+/* Chrome's new-tab button: a 28px circle riding the baseline of the tabs. */
 .browser-tab-new {
   display: grid;
   flex: 0 0 auto;
   width: 28px;
   height: 28px;
   place-items: center;
-  margin-left: 2px;
+  margin: 0 0 3px 6px;
   border: 0;
-  border-radius: 7px;
-  color: var(--muted-foreground);
+  border-radius: 50%;
+  color: var(--chrome-fg);
   background: transparent;
   transition:
-    background 110ms var(--ease-chrome),
-    color 110ms var(--ease-chrome);
+    background 90ms var(--ease-chrome),
+    color 90ms var(--ease-chrome);
 }
 
 .browser-tab-new:hover {
-  color: #d0d0d0;
-  background: var(--surface-control);
+  color: var(--chrome-fg-strong);
+  background: var(--tab-fill-hover);
 }
 
 .browser-tab-menu {
@@ -320,7 +376,7 @@
   min-width: 0;
   padding: 0 10px;
   background: var(--surface-raised);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
+  /* No top highlight: the active tab flows into this bar without a seam. */
 }
 
 .browser-nav-button {
