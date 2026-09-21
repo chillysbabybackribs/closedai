@@ -15,8 +15,8 @@ import type { AcpMcpServer } from './cursor-acp.js'
 //   turns at once.
 
 export class CursorToolBridge extends McpHttpBridge {
-  constructor(registry: ToolRegistry) {
-    super(registry, { label: 'cursor', keyedByPath: true })
+  constructor(registry: ToolRegistry, options: { version?: string } = {}) {
+    super(registry, { label: 'cursor', keyedByPath: true, version: options.version })
   }
 
   /** The `session/new` server list for one pane, addressed by that pane's bridge key. */

@@ -1,9 +1,11 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeTheme, safeStorage, session } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, safeStorage, session } from 'electron'
 import { mkdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { configureChromiumStartup } from './chromium-startup-policy.js'
 import { logGpuFeatureStatus } from './gpu-startup-diagnostics.js'
 import { claimProfileInstance } from './app-single-instance.js'
+import { installCrashGuard, runBootstrap } from './app-crash-guard.js'
+import { QUIT_SETTLE_TIMEOUT_MS, settleWithin } from './app-quit.js'
 import { browserUserAgentFallback } from './browser-identity.js'
 import { createMainWindow } from './main-window.js'
 import { BrowserService } from './browser-service.js'
@@ -157,7 +159,10 @@ if (!claimProfileInstance(app, { profile: userData(), checkout: app.getAppPath()
     const mode = argv.map(String).find((arg) => arg.startsWith('--live-verify='))?.slice('--live-verify='.length).trim()
     if (mode) requestLiveVerify(mode, false)
   })
-  void app.whenReady().then(main)
+  // A bootstrap failure is shown and ends the app; a later stray fault is logged and survived.
+  const crashHost = { app, process, showErrorBox: dialog.showErrorBox, hasWindow: () => mainWindow !== null }
+  installCrashGuard(crashHost)
+  void app.whenReady().then(() => runBootstrap(main, crashHost))
 }
 
 async function main(): Promise<void> {
@@ -322,11 +327,11 @@ async function main(): Promise<void> {
   }
   // One MCP bridge serves every pane's `agy` processes; calls carry the conversation id back.
   // The CLI config is shared by every instance, so only the default profile registers bare names.
-  antigravityBridge = new AntigravityToolBridge(toolRegistry, { profileKey: profileKeyFor(userData()) })
+  antigravityBridge = new AntigravityToolBridge(toolRegistry, { profileKey: profileKeyFor(userData()), version: app.getVersion() })
   const antigravityStateDir = join(userData(), 'antigravity')
   const cursorStateDir = join(userData(), 'cursor')
   // ACP takes its MCP servers per session, so this bridge registers nothing outside the app.
-  cursorBridge = new CursorToolBridge(toolRegistry)
+  cursorBridge = new CursorToolBridge(toolRegistry, { version: app.getVersion() })
   // Model catalogs are shared per workspace and across launches, so a pane's non-active
   // providers fill the picker from the last catalog seen instead of each starting a process.
   const catalogCache = await ProviderCatalogCache.open(join(userData(), 'provider-catalogs.json'))
@@ -337,7 +342,7 @@ async function main(): Promise<void> {
     const catalogs = catalogCache.forWorkspace(record.cwd)
     let codexRuntime = codexRuntimes.get(record.cwd)
     if (!codexRuntime) {
-      codexRuntime = new CodexWorkspaceRuntime(record.cwd, settings!)
+      codexRuntime = new CodexWorkspaceRuntime(record.cwd, settings!, { clientVersion: app.getVersion() })
       codexRuntimes.set(record.cwd, codexRuntime)
     }
     return new ChatHub({
@@ -532,7 +537,8 @@ app.on('before-quit', (event) => {
   for (const runtime of codexRuntimes.values()) runtime.stop()
   codexRuntimes.clear()
   const flushSession = browserSessionFlush ?? browserService?.flushSessionData()
-  void Promise.allSettled([
+  // Bounded: a store or listener that will not settle must not hold the quit open.
+  void settleWithin([
     browserHistory?.flush(),
     browserTabSession?.close(),
     settings?.set({}),
@@ -545,7 +551,8 @@ app.on('before-quit', (event) => {
     antigravityBridge?.stop(),
     // Nothing outside the app to clean up here; this only closes the listener.
     cursorBridge?.stop()
-  ]).finally(() => {
+  ], QUIT_SETTLE_TIMEOUT_MS).then((outcome) => {
+    if (outcome === 'timed-out') console.warn(`[main] shutdown flush exceeded ${QUIT_SETTLE_TIMEOUT_MS} ms; quitting anyway`)
     // Provider processes were asked to stop above; none may outlive the app.
     stopAllProcessGroups()
     app.quit()

@@ -33,7 +33,9 @@ export class AppServerClient extends StdioJsonRpcClient {
     /** Extra `codex app-server` arguments, read at each spawn so a restart picks up changes. */
     launchArgs: () => string[] = () => [],
     /** When set, every line in either direction is recorded in the turn trace under this scope. */
-    traceScope: ((direction: 'in' | 'out', message: unknown) => TraceScope) | null = null
+    traceScope: ((direction: 'in' | 'out', message: unknown) => TraceScope) | null = null,
+    /** Announced as `clientInfo.version`; the Electron app passes `app.getVersion()`. */
+    private readonly clientVersion: string = '0.1.0'
   ) {
     super({
       peer: 'Codex app-server',
@@ -55,7 +57,7 @@ export class AppServerClient extends StdioJsonRpcClient {
     await super.start()
     try {
       await this.request('initialize', {
-        clientInfo: { name: 'closedai', title: 'ClosedAI', version: '0.1.0' },
+        clientInfo: { name: 'closedai', title: 'ClosedAI', version: this.clientVersion },
         capabilities: {
           // Opts in to experimental fields such as thread/start `dynamicTools` (tools/).
           experimentalApi: true,

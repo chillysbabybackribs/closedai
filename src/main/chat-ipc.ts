@@ -5,6 +5,7 @@ import { CHAT_TURN_PAGE_SIZE } from '../shared/chat.js'
 import type { ChatContinuationSource } from '../shared/chat-peers.js'
 import { IPC } from '../shared/ipc-channels.js'
 import type { ChatWorkspaceSurface } from './chat-peers/peer-manager.js'
+import { detectProviderAvailability } from './provider-availability.js'
 
 export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspaceSurface | null): void {
   const requireService = (): ChatWorkspaceSurface => {
@@ -58,6 +59,8 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
     return requireService().selectChatProject(paneId, resolve(projectPath))
   })
   ipcMain.handle(IPC.invoke.chat.clearProject, (_event, paneId: string) => requireService().selectChatProject(paneId, null))
+  // Needs no service: a first-run screen asks this before any chat has started a provider.
+  ipcMain.handle(IPC.invoke.chat.providerAvailability, () => detectProviderAvailability())
   ipcMain.handle(IPC.invoke.chat.login, async () => {
     const authUrl = await requireService().beginLogin()
     if (authUrl) await shell.openExternal(authUrl)

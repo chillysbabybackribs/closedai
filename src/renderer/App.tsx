@@ -207,7 +207,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       {shellError && (
         <div className="shell-alert" role="alert">
           <span>{shellError}</span>
-          <button type="button" className="shell-alert-dismiss" onClick={() => setShellError(null)}>Dismiss</button>
+          <button type="button" className="shell-alert-dismiss" data-ui="shell.alert-dismiss" onClick={() => setShellError(null)}>Dismiss</button>
         </div>
       )}
       <div className="workspace" data-mode="chat">

@@ -57,6 +57,7 @@ export const UI_CONTROLS = {
   'layout.preset-apply': 'Layout dialog: apply the selected arrangement; open tiles keep their tabs, missing slots get new chats',
   'layout.preset-cancel': 'Layout dialog: close without changing the layout',
   'layout.divider': 'Resize adjacent chat or browser tiles by dragging the gutter or using arrow keys (Shift for fine control); double-click balances, Escape cancels a drag; item is the split id',
+  'layout.tab-move': 'Tab context menu: move the active conversation into the next or previous tile in reading order; item is next or previous',
 
 
   'chat.rename-dialog': 'Dialog for renaming a chat conversation',
@@ -76,6 +77,11 @@ export const UI_CONTROLS = {
   'chat.history-archive': 'Archive a thread from history immediately; item is the thread id',
   'chat.history-retry': 'Retry loading chat history',
   'chat.sign-in': 'Sign in with ChatGPT when the pane is signed out',
+  'chat.choose-model': 'Open the model menu from an unavailable or signed-out empty state or connection banner',
+  'chat.notice-dismiss': 'Dismiss the pane-level notice shown after a failed pane action',
+  'shell.startup-retry': 'Retry the initial chat workspace snapshot after a failed start',
+  'shell.error-reload': 'Reload the renderer from the error panel after a render failure',
+  'shell.alert-dismiss': 'Dismiss the shell-level alert shown after a failed shortcut or menu action',
 
   'diff.toggle-view': 'Toggle between unified and side-by-side split diff view; item is unified or split',
   'diff.collapse-all': 'Collapse or expand all hunks in the diff viewer',
@@ -103,6 +109,7 @@ export const UI_CONTROLS = {
   'composer.resume': 'Resume the turn the pause button ended (present only while a turn is paused)',
 
   'browser.tab': 'Select a browser tab; item is the tab id',
+  'browser.notice-dismiss': 'Dismiss the browser chrome notice reporting a rejected tab or navigation command',
   'browser.tab-close': 'Close a browser tab; item is the tab id',
   'browser.tab-menu': 'Right-click context menu for a browser tab',
   'browser.tab-menu-item': 'Browser tab context menu item; item is new-right, reload, duplicate, rename, close, close-others, or close-right',

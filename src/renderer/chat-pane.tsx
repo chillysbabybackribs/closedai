@@ -175,7 +175,7 @@ export const ChatPane = memo(function ChatPane({
         {notice && (
           <div className="chat-pane-notice" role="alert">
             <span>{notice}</span>
-            <button type="button" className="chat-connection-link" onClick={() => setNotice('')}>Dismiss</button>
+            <button type="button" className="chat-connection-link" data-ui="chat.notice-dismiss" onClick={() => setNotice('')}>Dismiss</button>
           </div>
         )}
         <Composer

@@ -22,7 +22,7 @@ export function AppStartup({ connection, onRetry }: {
     <div className="shell-startup" role="alert" data-ui-surface="shell-startup">
       <h1>Could not start</h1>
       <p>{connection.message}</p>
-      <button type="button" className="shell-startup-action" onClick={onRetry}>Retry</button>
+      <button type="button" className="shell-startup-action" data-ui="shell.startup-retry" onClick={onRetry}>Retry</button>
     </div>
   )
 }

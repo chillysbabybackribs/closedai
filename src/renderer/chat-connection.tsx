@@ -50,7 +50,7 @@ export function EmptyState({ provider, state, message, onLogin, onChooseModel }:
       {offersModelSwitch(state) && (
         <p className="chat-empty-hint">
           Choose another model to use a different provider.
-          <button type="button" className="chat-connection-link" onClick={onChooseModel}>Choose model</button>
+          <button type="button" className="chat-connection-link" data-ui="chat.choose-model" onClick={onChooseModel}>Choose model</button>
         </p>
       )}
     </div>
@@ -74,7 +74,7 @@ export function ConnectionBanner({ provider, state, message, onLogin, onChooseMo
           </button>
         )}
         {offersModelSwitch(state) && (
-          <button type="button" className="chat-connection-link" onClick={onChooseModel}>Choose model</button>
+          <button type="button" className="chat-connection-link" data-ui="chat.choose-model" onClick={onChooseModel}>Choose model</button>
         )}
       </span>
     </div>

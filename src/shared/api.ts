@@ -2,6 +2,7 @@ import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
+import type { ProviderAvailability } from './provider-availability.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot } from './trace.js'
@@ -102,6 +103,8 @@ export type ClosedaiApi = {
     selectProject: (paneId: ChatPaneId, projectPath: string) => Promise<void>
     /** Use the home directory for this chat. */
     clearProject: (paneId: ChatPaneId) => Promise<void>
+    /** Which providers can start on this machine (binary present), with an install or sign-in sentence each; for onboarding. */
+    providerAvailability: () => Promise<ProviderAvailability[]>
     onEvent: (listener: (event: ChatWorkspaceEvent) => void) => Unsubscribe
   }
   /** OS-keychain-backed credential store. Secrets cross the bridge one field at a time, on request. */

@@ -59,7 +59,7 @@ const settings = (): MemorySettings => new MemorySettings({
 
 test('two Codex pane sessions share one cold start and one account/model read', async () => {
   const transport = new FakeTransport()
-  const runtime = new CodexWorkspaceRuntime('/workspace', settings(), 'codex', transport)
+  const runtime = new CodexWorkspaceRuntime('/workspace', settings(), { executable: 'codex', transport })
   const sessionA = runtime.session('pane-a', () => 'thread-a', () => 'turn-a')
   const sessionB = runtime.session('pane-b', () => 'thread-b', () => 'turn-b')
 
@@ -87,7 +87,7 @@ test('two Codex pane sessions share one cold start and one account/model read', 
 
 test('thread events and server requests route only to their owning pane', async () => {
   const transport = new FakeTransport()
-  const runtime = new CodexWorkspaceRuntime('/workspace', settings(), 'codex', transport)
+  const runtime = new CodexWorkspaceRuntime('/workspace', settings(), { executable: 'codex', transport })
   const sessionA = runtime.session('pane-a', () => 'thread-a', () => 'turn-a')
   const sessionB = runtime.session('pane-b', () => 'thread-b', () => 'turn-b')
   const notificationsA: string[] = []

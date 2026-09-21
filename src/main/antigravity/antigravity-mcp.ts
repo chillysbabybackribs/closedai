@@ -41,9 +41,9 @@ export class AntigravityToolBridge extends McpHttpBridge {
 
   constructor(
     registry: ToolRegistry,
-    private readonly options: { configPath?: string; profileKey?: string | null } = {}
+    private readonly options: { configPath?: string; profileKey?: string | null; version?: string } = {}
   ) {
-    super(registry, { label: 'antigravity', keyedByPath: false, keyFromMeta: conversationIdOf })
+    super(registry, { label: 'antigravity', keyedByPath: false, keyFromMeta: conversationIdOf, version: options.version })
   }
 
   /** The MCP server name a namespace is registered under for this profile. */

@@ -38,7 +38,7 @@ export function AppErrorPanel({ message }: { message: string }): JSX.Element {
     <div className="shell-startup" role="alert" data-ui-surface="shell-error">
       <h1>Something went wrong</h1>
       <p>{message}</p>
-      <button type="button" className="shell-startup-action" onClick={() => window.location.reload()}>
+      <button type="button" className="shell-startup-action" data-ui="shell.error-reload" onClick={() => window.location.reload()}>
         Reload
       </button>
     </div>

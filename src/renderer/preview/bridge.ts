@@ -1,6 +1,7 @@
 import type { ClosedaiApi } from '../../shared/api.js'
 import type { BrowserBounds, BrowserState, BrowserTabInfo } from '../../shared/types.js'
 import type { LibrarySnapshot } from '../../shared/research-library.js'
+import type { ProviderAvailability } from '../../shared/provider-availability.js'
 import { createPreviewChat } from './chat.js'
 import type { Scenario } from './fixtures.js'
 import { sampleToolManifest, sampleToolTelemetry } from './tools-fixture.js'
@@ -50,8 +51,19 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
     if (!tabs.some((tab) => tab.active)) tabs[0]!.active = true
     publishBrowser()
   }
+  // Onboarding fixture: Codex present, the external CLIs absent, Claude bundled.
+  const providerAvailability: ProviderAvailability[] = [
+    { provider: 'codex', installed: true, path: '/usr/local/bin/codex',
+      hint: 'Codex is installed. Sign in with ChatGPT from a Codex chat when prompted.' },
+    { provider: 'claude', installed: true, path: null,
+      hint: 'Claude Code is bundled with the app. Sign in from a Claude chat when prompted.' },
+    { provider: 'antigravity', installed: false, path: null,
+      hint: 'Antigravity is not installed. Install the Antigravity CLI (agy) and sign in with Google, or choose another model.' },
+    { provider: 'cursor', installed: false, path: null,
+      hint: 'Cursor is not installed. Install the Cursor CLI (cursor-agent) and run `cursor-agent login`, or choose another model.' }
+  ]
   const api: ClosedaiApi = {
-    chat: chat.api,
+    chat: { ...chat.api, providerAvailability: async () => structuredClone(providerAvailability) },
     window: { minimize: native, maximize: native, toggleFullscreen: native, close: native, toggleDevTools: native },
     browser: {
       setBounds: async (bounds) => boundsChanged(bounds),

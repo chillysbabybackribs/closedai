@@ -6,6 +6,7 @@ import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from '
 import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot } from './trace.js'
 import type { LibrarySettings, LibrarySnapshot } from './research-library.js'
+import type { ProviderAvailability } from './provider-availability.js'
 
 /** Invoke channels the preload bridge exposes on `window.closedai`. */
 export type IpcInvokeChannels = {
@@ -77,6 +78,7 @@ export type IpcInvokeChannels = {
   'chat:chooseProject': { args: [ChatPaneId]; result: void }
   'chat:selectProject': { args: [ChatPaneId, string]; result: void }
   'chat:clearProject': { args: [ChatPaneId]; result: void }
+  'chat:providerAvailability': { args: []; result: ProviderAvailability[] }
   'credentials:status': { args: []; result: CredentialVaultStatus }
   'credentials:list': { args: []; result: CredentialSummary[] }
   'credentials:save': { args: [CredentialDraft]; result: CredentialSummary }
@@ -182,7 +184,8 @@ export const IPC = {
       compactConversation: 'chat:compactConversation',
       chooseProject: 'chat:chooseProject',
       selectProject: 'chat:selectProject',
-      clearProject: 'chat:clearProject'
+      clearProject: 'chat:clearProject',
+      providerAvailability: 'chat:providerAvailability'
     },
     credentials: {
       status: 'credentials:status',

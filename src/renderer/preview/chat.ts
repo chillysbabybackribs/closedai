@@ -79,7 +79,7 @@ export function createPreviewChat(scenario: Scenario, report: (message: string) 
     publish()
   }
   const native = async () => { report('This action requires real Electron; it is unavailable in the UI preview.') }
-  const api: ClosedaiApi['chat'] = {
+  const api: Omit<ClosedaiApi['chat'], 'providerAvailability'> = {
     snapshot: async () => structuredClone(state),
     historyPage: async () => ({ items: [], hasEarlier: false }),
     send: async (id, text, attachments) => {

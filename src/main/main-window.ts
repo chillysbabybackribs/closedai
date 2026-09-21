@@ -1,8 +1,9 @@
-import { app, BrowserWindow, Menu, nativeImage, type NativeImage } from 'electron'
+import { app, BrowserWindow, dialog, Menu, nativeImage, type NativeImage } from 'electron'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { installAppContextMenu } from './app-context-menu.js'
+import { installRendererRecovery } from './main-window-recovery.js'
 
 export type MainWindowActions = {
   openLinkInNewTab: (url: string) => void
@@ -63,5 +64,6 @@ export function createMainWindow(actions: MainWindowActions): BrowserWindow {
   })
 
   installAppContextMenu(window.webContents, Menu, actions)
+  installRendererRecovery(window, { showErrorBox: (title, content) => dialog.showErrorBox(title, content) })
   return window
 }

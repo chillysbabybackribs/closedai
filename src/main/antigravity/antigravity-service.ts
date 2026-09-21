@@ -20,6 +20,7 @@ import { PROVIDER_CATALOG_TTL_MS, type WorkspaceCatalogs } from '../chat-context
 import { buildChatInput } from '../chat-input.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { messageOf } from '../chat-normalizers.js'
+import { isMissingExecutable, missingProviderMessage } from '../provider-binary.js'
 import { ChatTranscript } from '../chat-transcript.js'
 import type { ScreenshotStore } from '../tools/capture/screenshot-store.js'
 import { antigravityBinary, antigravityChatArgs, isAntigravityAuthFailure, runAntigravityCommand } from './antigravity-cli.js'

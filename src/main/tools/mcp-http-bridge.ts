@@ -36,6 +36,8 @@ export type McpHttpBridgeOptions = {
   keyedByPath: boolean
   /** Reads the caller key from an MCP call's `_meta`; used only when `keyedByPath` is false. */
   keyFromMeta?: (extra: unknown) => string | null
+  /** The server version announced to MCP clients; the Electron app passes `app.getVersion()`. */
+  version?: string
 }
 
 const MAX_LEDGER = 50
@@ -67,6 +69,9 @@ export class McpHttpBridge {
     this.starting = null
     for (const session of this.sessions.values()) await session.transport.close().catch(() => {})
     this.sessions.clear()
+    // `close()` alone waits for every open connection; a provider mid-stream would hold the app's
+    // quit open. Drop them first, so stopping is bounded by the local teardown only.
+    this.http?.closeAllConnections()
     await new Promise<void>((resolve) => (this.http ? this.http.close(() => resolve()) : resolve()))
     this.http = null
     this.port = null
@@ -167,7 +172,10 @@ export class McpHttpBridge {
    */
   private createSession(namespaceName: string, pathKey: string | null): Session {
     const namespace = this.registry.enabledNamespaces().find((entry) => entry.name === namespaceName)
-    const server = new McpServer({ name: namespaceName, version: '0.1.0' }, { instructions: namespace?.description ?? '' })
+    const server = new McpServer(
+      { name: namespaceName, version: this.bridgeOptions.version ?? '0.1.0' },
+      { instructions: namespace?.description ?? '' }
+    )
     for (const tool of namespace?.tools ?? []) {
       server.registerTool(
         tool.name,
