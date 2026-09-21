@@ -44,6 +44,15 @@
    first row of the shell grid, so trapping a descendant there would push it
    behind the workspace rather than merely reordering it. */
 .shell-titlebar {
+  /* Brighter than the shared lattice: the bar is a thin strip on a mid-dark grey, so the
+     ambient 3.7% dots fall under the perceptual floor there. */
+  --dotfield:
+    radial-gradient(
+      circle 2px at 50% 50%,
+      rgb(255 255 255 / 9%) 0%,
+      rgb(255 255 255 / 3.5%) 45%,
+      rgb(255 255 255 / 0%) 100%
+    );
   background-image: var(--dotfield);
   background-size: var(--dotfield-pitch) var(--dotfield-pitch);
 }
