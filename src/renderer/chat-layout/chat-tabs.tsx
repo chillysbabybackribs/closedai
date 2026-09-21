@@ -39,6 +39,7 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, onSel
       <button type="button" role="tab" data-ui="layout.tab" data-ui-key={id}
         id={`chat-tab-${id}`} aria-controls={`chat-panel-${id}`} aria-selected={id === activeId}
         tabIndex={id === activeId ? 0 : -1} disabled={busy} draggable={!busy}
+        title={`${title(id)} — Drag to move, right-click for layout options`}
         aria-label={`${title(id)}${status ? ` — ${status.label}` : ''}`}
         onDragStart={(event) => {
           event.dataTransfer.setData(CHAT_DRAG_TYPE, id)

@@ -111,7 +111,7 @@ UI selection, direct models to inspect `state.browser.coordination`, and disclos
 session and human/provider-native input boundary. Assignments last across turns; they are not a
 claim of account isolation. Search-created tabs use the same assignments without stealing focus.
 
-Renderer chat/composer control ids target the focused tile; use `layout.pane-drag` with a chat id
+Renderer chat/composer control ids target the focused tile; use `layout.tab` with a chat id
 to focus another tile before exercising its controls. The UI state includes visible pane ids and
 browser visibility. Browser pages use the CDP tools described in [Tools](tools.md) and [CDP](cdp-tool-foundation.md).
 Shared guidance also states that page-requested popups, including login windows, open as regular

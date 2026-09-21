@@ -53,9 +53,13 @@ export class UiCaptureAccess implements UiCaptureHost {
     const release = service.leaseTabRendering(tab.id)
     if (!release) return null
     let observedReady: PageReadyResult | null = null
+    let restoreThrottling: (() => void) | undefined
     try {
       const contents = service.contentsOf(tab.id)
       if (!contents) return null
+      const throttled = contents.getBackgroundThrottling()
+      contents.setBackgroundThrottling(false)
+      restoreThrottling = () => { if (!contents.isDestroyed()) contents.setBackgroundThrottling(throttled) }
       return await withCaptureDocument(contents, async () => {
         const readiness = await waitForPageReady(contents, ready)
         observedReady = readiness
@@ -110,6 +114,7 @@ export class UiCaptureAccess implements UiCaptureHost {
         error: error instanceof Error ? error.message : String(error)
       }
     } finally {
+      restoreThrottling?.()
       release()
     }
   }

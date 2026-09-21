@@ -42,12 +42,13 @@ test('ChatCanvas renders multi-pane split with context menu trigger and dividers
   // Both panes rendered as tiles
   assert.match(html, /data-pane-id="pane-a"/)
   assert.match(html, /data-pane-id="pane-b"/)
-  // Drag handles rendered with layout options tooltip
+  // The header retains whole-pane dragging without a detached grip.
   assert.match(html, /data-ui="layout\.pane-drag" data-ui-key="pane-a"/)
   assert.match(html, /data-ui="layout\.pane-drag" data-ui-key="pane-b"/)
   assert.match(html, /right-click for layout options/)
+  assert.doesNotMatch(html, /chat-layout-title|lucide-grip-vertical/)
   // Context menu trigger wrapped around header
-  assert.match(html, /class="chat-layout-header" data-state="closed"/)
+  assert.match(html, /class="chat-layout-header"[^>]*draggable="true"[^>]*data-state="closed"/)
   // Divider rendered in split mode
   assert.match(html, /data-ui="layout\.divider" data-ui-key="split-1"/)
   // Pane hide buttons are enabled when multiple panes exist
@@ -77,7 +78,7 @@ test('ChatCanvas renders single pane with disabled pane-hide and no dividers', (
 
   assert.match(html, /data-pane-id="pane-single"/)
   // Context menu trigger installed on header
-  assert.match(html, /class="chat-layout-header" data-state="closed"/)
+  assert.match(html, /class="chat-layout-header"[^>]*data-state="closed"/)
   // In single chat mode without browser, hide button is disabled
   assert.match(html, /data-ui="layout\.pane-hide" data-ui-key="pane-single"[^>]*disabled/)
   // No dividers in single pane
@@ -122,6 +123,8 @@ test('ChatCanvas renders tabbed pane with single tile, persistent header, and hi
   // Tab 1 is active, Tab 2 is inactive
   assert.match(html, /id="chat-tab-tab-1"[^>]*aria-selected="true"/)
   assert.match(html, /id="chat-tab-tab-2"[^>]*aria-selected="false"/)
+  assert.match(html, /id="chat-tab-tab-1"[^>]*draggable="true"/)
+  assert.match(html, /id="chat-tab-tab-2"[^>]*draggable="true"/)
   // Active panel is visible, inactive panel is hidden
   assert.match(html, /id="chat-panel-tab-1"[^>]*><div id="content-tab-1">Content tab-1/)
   assert.doesNotMatch(html, /id="chat-panel-tab-1"[^>]*hidden/)

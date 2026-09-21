@@ -83,14 +83,12 @@
 /* Geometry supplies both dimensions, so descendants can adapt to short rows as well as columns. */
 .chat-layout-tile { position: absolute; display: flex; flex-direction: column; overflow: hidden; container: chat-tile / size; }
 .chat-layout-tile[hidden] { display: none; }
-.chat-layout-header { flex: 0 0 38px; padding: 0 4px 0 2px; }
+.chat-layout-header { flex: 0 0 38px; padding: 0 4px 0 0; }
+.chat-layout-header[draggable='true'] { cursor: grab; }
+.chat-layout-header[draggable='true']:active { cursor: grabbing; }
 /* Selection is carried by the active tab's surface and label weight, never by a header
    fill: a lighter header bar read as a second user bubble stacked above the transcript. */
 .chat-layout-tile[data-selected='true'] > .chat-layout-header { color: var(--chrome-fg-strong); }
-.chat-layout-header .chat-layout-title { padding-inline: 2px; cursor: grab; }
-
-.chat-layout-title span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.chat-layout-title svg { flex-shrink: 0; opacity: 0.6; }
 /* IDE-style tabs: each tab is sized to its label, the active one lifts one stop above the
    transcript canvas (well short of the user bubble's card fill). In an
    unselected pane the label drops to the muted ink. */
@@ -102,7 +100,6 @@
   min-width: 88px;
   max-width: 220px;
   align-items: center;
-  padding-right: 4px;
   border-right: 1px solid var(--hairline);
   transition: background-color 120ms ease, color 120ms ease;
 }
@@ -112,11 +109,14 @@
 .chat-layout-tab[data-active='true'] { color: var(--chrome-fg-strong); background: var(--tab-active-surface); }
 .chat-layout-tile:not([data-selected='true']) .chat-layout-tab[data-active='true'] { color: var(--chrome-fg); }
 .chat-layout-tab > [role='tab'] { flex: 1; min-width: 0; height: 100%; padding: 0 6px 0 12px; border-radius: 0; justify-content: flex-start; cursor: grab; }
+.chat-layout-tab:has(.chat-layout-tab-close) > [role='tab'] { padding-right: 30px; }
+.chat-layout-tab > [role='tab']:active { cursor: grabbing; }
+.chat-layout-tab > [role='tab']:disabled { cursor: default; }
 .chat-layout-tab > [role='tab']:hover { background: transparent; }
 .chat-layout-tab[data-active='true'] > [role='tab'] { font-weight: 500; }
 .chat-layout-tab > [role='tab'] span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* Close affordances surface on the active tab and on hover, as in editor tab strips. */
-.chat-layout-tab .chat-layout-tab-close { width: 18px; height: 18px; padding: 0; margin-right: 2px; opacity: 0; transition: opacity 120ms ease; }
+.chat-layout-tab .chat-layout-tab-close { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; padding: 0; opacity: 0; transition: opacity 120ms ease; }
 .chat-layout-tab[data-active='true'] .chat-layout-tab-close,
 .chat-layout-tab:hover .chat-layout-tab-close,
 .chat-layout-tab .chat-layout-tab-close:focus-visible { opacity: 0.7; }

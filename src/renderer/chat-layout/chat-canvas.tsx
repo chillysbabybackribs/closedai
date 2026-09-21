@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ContextMenu } from 'radix-ui'
-import { Columns2, GripVertical, Maximize2, MessageSquarePlus, Minimize2, Monitor, PanelRightClose, Pencil, Plus, Rows2, Sparkles, X } from 'lucide-react'
+import { Columns2, Maximize2, MessageSquarePlus, Minimize2, Monitor, PanelRightClose, Pencil, Plus, Rows2, Sparkles, X } from 'lucide-react'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { ChatTabs } from './chat-tabs.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
@@ -180,7 +180,23 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
           }}>
           {activeId !== BROWSER_PANE_ID && <ContextMenu.Root>
             <ContextMenu.Trigger asChild>
-              <header className="chat-layout-header"
+              <header className="chat-layout-header" draggable={!busy}
+                data-ui="layout.pane-drag" data-ui-key={activeId}
+                onClick={(event) => {
+                  if (!(event.target as HTMLElement).closest('button')) onSelect(activeId)
+                }}
+                onDragStart={(event) => {
+                  // Tabs carry their own single-conversation payload. Only empty header space
+                  // moves the entire pane; action buttons must never start a pane drag.
+                  if (event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE)) return
+                  if (busy || (event.target as HTMLElement).closest('button')) {
+                    event.preventDefault()
+                    return
+                  }
+                  event.dataTransfer.setData(CHAT_DRAG_TYPE, activeId)
+                  event.dataTransfer.effectAllowed = 'move'
+                  setDragging({ id: activeId, singleTab: false })
+                }}
                 onDoubleClick={(event) => {
                   if ((event.target as HTMLElement).closest('button')) return
                   if (canMaximize || isThisTileSolo) {
@@ -188,17 +204,6 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
                   }
                 }}
               >
-                <button className="chat-layout-title" draggable={!busy} data-ui="layout.pane-drag" data-ui-key={activeId}
-                  aria-label={`Move pane: ${title(activeId)}`}
-                  title={isThisTileSolo ? `${title(activeId)} — Tile maximized; right-click or press Esc to restore split grid` : `${title(activeId)} — Drag to move, right-click for layout options`}
-                  onClick={() => onSelect(activeId)}
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData(CHAT_DRAG_TYPE, activeId)
-                    event.dataTransfer.effectAllowed = 'move'
-                    setDragging({ id: activeId, singleTab: false })
-                  }}>
-                  <GripVertical size={13} aria-hidden="true" />
-                </button>
                 <ChatTabs ids={tabs} activeId={activeId} busy={busy} canClose={tabs.length > 1 || chatCount > 1}
                   title={title} activity={activity} onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab}
                   onDrag={(tab) => setDragging({ id: tab, singleTab: true })} />

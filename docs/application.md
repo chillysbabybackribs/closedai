@@ -263,7 +263,7 @@ stays open after deletion. Ctrl+H and File → Search chats focus it. File → M
 the full history management panel. New chats use the tab + button or File → New chat (Ctrl+N).
 Two full-height chats can
 sit on either side of the browser. The browser starts on the right; drag a conversation tab,
-or chat header grip onto the browser's left or right half to dock it on that side.
+or empty chat header space onto the browser's left or right half to dock it on that side.
 During a chat drag, the native browser view is temporarily covered so the drop targets can receive
 the gesture. A toggle in each chat header hides/restores the browser in its saved position without
 closing tabs. Chat headers offer **New chat to the right**, **New chat below**, and **Hide chat pane**.
@@ -274,6 +274,8 @@ Each tile header shows conversation tabs and a **+** button for **New chat tab**
 tile's active chat model, adds a tab, and selects it while retaining the previous tabs and the
 other tiles and divider sizes. Tab creation waits for the renderer's workspace snapshot to
 catch up with the new chat before reconciling tabs; menu focus restoration cannot interrupt it.
+The tab's full surface, including its title, activity icon, and padding, is the drag target;
+there is no separate chat drag grip. The overlaid close button keeps its own click action.
 Click a tab to return to its conversation; arrow keys and Home/End
 also switch tabs. Tab strips scroll horizontally when full. Mounted drafts and attachments survive
 switching tabs. Each tab's close button removes it from the layout without deleting its history
@@ -300,7 +302,7 @@ it. During a browser drag, highlighted strips at the workspace's far left and ri
 browser in a full-height column beside all chats. Moving the browser preserves its tabs and
 the selected chat; its position uses the same saved layout and resizable dividers.
 
-Drag a chat header grip onto another tile's left, right, top, or bottom edge. A
+Drag empty chat header space onto another tile's left, right, top, or bottom edge to move the whole pane. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its
 mounted composer, draft, attachments, and transcript scroller survive the move. Open an existing chat
 through header search, then drag its tab to a tile edge to place it alongside another chat. New chats
