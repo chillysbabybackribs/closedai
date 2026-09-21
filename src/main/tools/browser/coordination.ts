@@ -15,9 +15,16 @@ export class BrowserCoordination {
 
   constructor(private readonly host: BrowserCoordinationHost) {}
 
-  prepare(request: ToolCallRequest, original: JsonObject, context: Pick<ToolContext, 'paneId'>): JsonObject {
+  prepare(request: ToolCallRequest, original: JsonObject, context: Pick<ToolContext, 'paneId' | 'source'>): JsonObject {
     const pane = context.paneId
-    if (!pane) return original
+    if (!pane) {
+      const browserCall = ['embedded_browser', 'browser_cdp'].includes(request.namespace ?? '') ||
+        (request.namespace === 'closedai_ui' && original.action === 'browser_page') ||
+        (request.namespace === 'closedai_app' && (original.action === 'browser_tab' ||
+          (request.tool === 'ui' && ['click', 'type', 'press_key', 'scroll'].includes(String(original.action)))))
+      if (browserCall && context.source !== 'system') throw new Error('Browser tools require an identified calling chat; UI selection is not caller identity.')
+      return original
+    }
     this.prune()
     const input = { ...original }
     const { namespace, tool } = request
@@ -28,7 +35,8 @@ export class BrowserCoordination {
       return input
     }
     if (namespace === 'embedded_browser' && tool === 'network') {
-      if (['add_rule', 'remove_rule', 'clear'].includes(action)) this.exclusiveSession(pane)
+      if (action === 'add_rule' && typeof input.tab_id === 'string') this.claim(input.tab_id, pane)
+      else if (['add_rule', 'remove_rule', 'clear'].includes(action)) this.exclusiveSession(pane)
       return input
     }
     if (namespace === 'closedai_app' && tool === 'ui' && ['click', 'type', 'press_key', 'scroll'].includes(action)) {
@@ -120,7 +128,7 @@ export class BrowserCoordination {
     if (input.action === 'target' || (method.startsWith('Target.') && !['Target.getTargets', 'Target.getTargetInfo'].includes(method))) {
       this.exclusiveSession(pane)
     }
-    if (/^(Browser|Storage)\./.test(method) && !/\.(get|can)/.test(method) ||
+    if ((/^(Browser|Storage)\./.test(method) && !/\.(get|can)/.test(method)) ||
         /^Network\.(setCookie|setCookies|deleteCookies|clearBrowserCookies|clearBrowserCache)$/.test(method)) this.exclusiveSession(pane)
   }
 

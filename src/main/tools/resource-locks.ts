@@ -34,6 +34,7 @@ export function resourceKey(request: ToolCallRequest, input: JsonObject): string
   if (request.namespace === 'embedded_browser') {
     if (['page', 'script'].includes(request.tool)) return input.new_tab === true ? 'browser:global' : browserTarget()
     if (request.tool === 'session') return 'browser:global'
+    if (request.tool === 'network' && action === 'add_rule' && input.tab_id) return browserTarget()
     if (request.tool === 'network' && ['add_rule', 'remove_rule', 'clear'].includes(action)) return 'browser:global'
   }
   if (request.namespace === 'closedai_app' && request.tool === 'command' && action === 'browser_tab') return 'browser:global'

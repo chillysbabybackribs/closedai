@@ -60,6 +60,24 @@ test('detaching a chat releases assignments; focus and turns do not', () => {
   assert.equal(policy.snapshot('a').defaultTabId, null)
 })
 
+test('popups inherit ownership without changing the caller default', () => {
+  const { prepare, policy, tabs } = harness()
+  prepare('a', { action: 'read_page', tab_id: 'user' })
+  tabs.push({ id: 'popup', active: false })
+  policy.inherit('user', 'popup')
+  assert.equal(policy.snapshot('a').defaultTabId, 'user')
+  assert.equal(policy.canUse('popup', 'a'), true)
+  assert.equal(policy.canUse('popup', 'b'), false)
+  assert.throws(() => prepare('b', { action: 'read_page', tab_id: 'popup' }), /assigned to chat a/)
+})
+
+test('a missing model caller cannot fall back to the selected chat', () => {
+  const { policy } = harness()
+  const request = { namespace: 'embedded_browser', tool: 'page', arguments: { action: 'read_page' } }
+  assert.throws(() => policy.prepare(request, request.arguments, { source: 'model' }), /identified calling chat/)
+  assert.deepEqual(policy.prepare(request, request.arguments, { source: 'system' }), request.arguments)
+})
+
 test('bulk close preflights every affected tab and shared session mutations refuse peer assignments', () => {
   const { prepare } = harness()
   prepare('a', { action: 'read_page', tab_id: 'user' })

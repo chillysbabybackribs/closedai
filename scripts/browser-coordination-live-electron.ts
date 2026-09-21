@@ -88,6 +88,7 @@ async function verify() {
     const hiddenImage = collapsed.content.find(item => item.type === 'image')
     assert.ok(hiddenImage && hiddenImage.type === 'image')
     assertColor(hiddenImage.dataUrl, true)
+    assert.equal(BrowserWindow.getAllWindows().length, 1, 'temporary capture window is released')
     const restoredId = coordination.snapshot('a').defaultTabId!
     await browser.setBounds({ x: 0, y: 0, width: 800, height: 600, visible: true })
     browser.selectTab(restoredId)

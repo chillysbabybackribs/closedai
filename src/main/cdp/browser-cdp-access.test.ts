@@ -156,6 +156,10 @@ test('real input foregrounds a background tab and reports the switch', async () 
   assert.equal(background.activatedTab, true)
   assert.ok(contents.get('tab-2')?.debugger.commands.includes('Input.dispatchKeyEvent'))
 
+  const raw = await access.command('tab-2', 'Input.dispatchKeyEvent', { type: 'keyDown', key: 'a' }) as Record<string, unknown>
+  assert.equal(raw.activatedTab, true)
+  assert.deepEqual(focused, ['tab-2', 'tab-2'])
+
   // The already-active tab is left alone, so no needless tab switch is reported.
   const active = await access.pressKey('tab-1', 'Enter', []) as Record<string, unknown>
   assert.equal(active.activatedTab, undefined)
