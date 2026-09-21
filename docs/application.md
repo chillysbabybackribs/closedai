@@ -505,9 +505,14 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   finished.
 - Completed assistant responses offer copy and branching. Timestamps appear when recorded;
   older history does not acquire invented timestamps.
-- The project rail contains the working timer and project menu; Tool configuration, Turn trace,
-  and Credential Vault live in the title bar's Tools menu. File owns chat creation, history,
-  settings, and closing the window; View owns browser visibility, chat zoom, and fullscreen.
+- The project rail contains the working timer and project menu. The title bar has four menus.
+  File owns chat creation, history, Settings (Appearance and Credentials tabs), and closing the
+  window; View owns browser visibility, layout, chat zoom, and fullscreen; Agent owns what the
+  model is given (Tools & capabilities, Research library) and a "Selected chat" section naming
+  the pane its rows act on (Context inspector, Compact context, Stop turn; rows that do not apply
+  are disabled, not hidden); Developer owns Turn trace, Reload renderer, and Toggle DevTools.
+  Shortcuts: Ctrl+Shift+T tools, Ctrl+Shift+K context, Ctrl+Shift+I trace, Ctrl+R reload, F12
+  DevTools.
   Send, pause,
   and resume controls live in the composer; Pause and Resume also appear in header search rows.
   Pause ends the provider turn — no protocol can suspend
@@ -718,7 +723,7 @@ DOM selectors. The generated workspace index is a maintenance artifact; it is no
 
 ## State and retention
 
-Tools → **Research library** provides a manually refreshed, app-shared public paper index.
+Agent → **Research library** provides a manually refreshed, app-shared public paper index.
 Users choose topics and a publication window, update from alphaXiv without model calls, dismiss
 papers, and control agent retrieval. The bounded index persists in `research-library.json`;
 `search.library` retrieves metadata/abstracts only when requested, without automatic context
@@ -788,7 +793,7 @@ See [Tools](tools.md) for configuration and measurement limits.
 
 ## Credential vault
 
-`Tools ▸ Credential Vault` opens the app's store of API keys and logins. The fixed-size card keeps
+`File ▸ Settings ▸ Credentials` opens the app's store of API keys and logins. The fixed-size dialog keeps
 the vault list and create form at the same dimensions. Entries render as a card grid — brand mark
 on a 44px tile, entry name and service tag, the service description, its fields with masked
 secrets, and a state dot showing whether the OS keychain encrypted them — closing on a dashed

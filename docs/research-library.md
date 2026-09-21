@@ -1,6 +1,6 @@
 # Research library
 
-Tools → **Research library** opens an app-shared collection of public paper titles and
+Agent → **Research library** opens an app-shared collection of public paper titles and
 abstracts. This is the first research-context slice: manual collection and bounded,
 on-demand reading. It does not run experiments, synthesize findings, schedule background
 agents, or modify model instructions with retrieved content.

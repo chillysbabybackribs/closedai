@@ -80,7 +80,7 @@ before the app-server starts.
 | `browser_cdp` | `instrument` | `hook`, `recording`, `unhook` | Pre-document API recording. The recorder is installed with `Page.addScriptToEvaluateOnNewDocument`, so it wraps selected fetch, XHR, WebSocket, cookie, storage, fingerprinting and error APIs before document scripts run. It survives navigations and is leased into every cross-origin frame target, including frames created later, which start paused until it is installed; workers are not recorded. Eval/Function are never wrapped. Wrappers are observable and may affect behavior. `recording` reports per-feature patch installation/failure, observed counts, frequent retained calls and recent events. Unhook disables current recording, restores owned descriptors and removes listeners without overwriting page replacements, in the root and in every recorded frame (`frames`). |
 | `browser_cdp` | `emulate` | `apply`, `reset` | Device and environment emulation that actually lands. `Emulation.setDeviceMetricsOverride` alone applies screen metrics, `devicePixelRatio` and touch points but leaves the layout viewport following the headful widget, so a responsive site keeps serving its desktop breakpoint; `apply` therefore also shrinks the tab's native surface to the emulated viewport (`BrowserTab.setEmulatedViewport`), the way DevTools device mode resizes the inspected view. Presets plus user agent, colour scheme, reduced motion, timezone, locale, geolocation, network throttling and CPU slowdown. Every result carries the page's own measurement, so an override that did not land is visible rather than assumed. |
 | `search` | `query` | plain tool | Routed public-web search across Brave, Exa, Serper, Tavily, and You.com, with normalized, deduplicated results and bounded in-memory caching. Defaults to `depth: quick` (one provider) and `presentation: live` (reuse one tab per pane/thread/turn); `live: true` bypasses the ten-minute cache and refreshes it with current provider results. |
-| `search` | `library` | `status`, `search`, `read` | Read-only, durable app-shared public paper index. Local lexical search returns five results by default (maximum ten, 400-character excerpts); read returns one saved abstract up to 6,000 characters. No network/model calls or automatic prompt injection. Manual alphaXiv refresh and retrieval permission live in Tools → Research library; see [contracts and limits](research-library.md). |
+| `search` | `library` | `status`, `search`, `read` | Read-only, durable app-shared public paper index. Local lexical search returns five results by default (maximum ten, 400-character excerpts); read returns one saved abstract up to 6,000 characters. No network/model calls or automatic prompt injection. Manual alphaXiv refresh and retrieval permission live in Agent → Research library; see [contracts and limits](research-library.md). |
 | `search` | `run` | `start`, `extend`, `expand`, `cancel` | Incremental public-web research with adjustable source coverage. Exa page text is retained as `provider_text` without a fetch/read slot. Live presentation opens an actual source tab. `extend` adds discovery to active runs; `expand` refetches a selected source even after completion. |
 | `search` | `read` | `results`, `wait`, `source` | Cursor-based source updates, bounded event waits, and retained document excerpts. Observes the calling pane/thread's runs without starting more requests. Oversized wait and excerpt budgets are capped at 20 seconds and 12,000 characters rather than rejected. |
 | `search` | `pdf` | `page`, `ocr` | Local, cancellable inspection of one retained PDF page/crop. Returns page images or separate English OCR text with byte identity, coordinates, and explicit limits. No refetch, upload, or automatic correctness/visual-verification claim. |
@@ -694,7 +694,7 @@ tool prevents new model writes; existing notes/history are not deleted.
 
 ## Seeing what exists: the Tools modal
 
-The title bar's Tools menu opens tool configuration (`src/renderer/tools/`). It reads
+The title bar's Agent menu opens Tools & capabilities (`src/renderer/tools/`). It reads
 the registry as data (`manifest.ts`): every namespace, tool, and action, the exact description
 and schema the model is sent, and which providers the registry is advertised to.
 
@@ -740,7 +740,7 @@ downstream reader queueing and rendering; it is not a pure network timer. The fi
 marks the first readable document, not the model's acceptance of that evidence. These notes add no
 persisted content ledger or background model call; trace failures cannot interrupt retrieval.
 
-Separate from telemetry, Tools → "Turn trace" in the title bar opens a live view of everything the main
+Separate from telemetry, Developer → "Turn trace" in the title bar opens a live view of everything the main
 process saw a model do: turn start and end with duration, every registry tool call with its
 full arguments and result (`registry.observe`), each normalized transcript item and context
 update, and the raw JSON lines exchanged with each provider process (Codex app-server, the
