@@ -29,7 +29,7 @@
   border: solid var(--hairline);
   border-width: 1px 0;
   border-radius: 0;
-  background: #212122;
+  background: var(--surface-raised);
   color: #e8e8e9;
   font-size: var(--chat-fs-body, 14px);
   line-height: 1.6;

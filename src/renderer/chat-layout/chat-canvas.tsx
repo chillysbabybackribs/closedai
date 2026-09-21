@@ -48,7 +48,11 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
   }, [tree])
   useEffect(() => {
     const host = viewport.current!
-    const observer = new ResizeObserver(() => setSize({ width: host.clientWidth, height: host.clientHeight }))
+    // Content box: the viewport's padding is the gutter around the tiles, not tile space.
+    const observer = new ResizeObserver((entries) => {
+      const box = entries[0]?.contentRect
+      setSize(box ? { width: Math.floor(box.width), height: Math.floor(box.height) } : { width: host.clientWidth, height: host.clientHeight })
+    })
     observer.observe(host)
     return () => observer.disconnect()
   }, [])

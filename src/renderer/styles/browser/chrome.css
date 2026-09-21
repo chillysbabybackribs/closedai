@@ -24,7 +24,7 @@
   overflow: hidden;
   border: 1px solid var(--hairline);
   border-radius: 10px;
-  background: #101011;
+  background: var(--surface-chrome);
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 3%),
     0 1px 2px rgb(0 0 0 / 28%),
@@ -43,7 +43,7 @@
   overflow-x: auto;
   scrollbar-width: none;
   border-radius: 9px 9px 0 0;
-  background: #161617;
+  background: var(--surface-chrome);
 }
 
 .browser-tabstrip::-webkit-scrollbar {

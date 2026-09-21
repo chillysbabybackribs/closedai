@@ -13,7 +13,9 @@
   min-width: 0;
   color: var(--chrome-fg);
   background: var(--surface-chrome);
-  border-bottom: 1px solid var(--hairline);
+  /* An inset line rather than a border: the active tab paints over it, so the tab
+     opens into the transcript below instead of sitting behind a rule. */
+  box-shadow: inset 0 -1px 0 var(--hairline);
   font-size: 12px;
 }
 
@@ -38,9 +40,14 @@
 .chat-layout-tabs button:disabled { opacity: 1; }
 .chat-layout-header button:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -1px; }
 
-.chat-layout-viewport { flex: 1; min-height: 0; min-width: 0; overflow: auto; }
+/* The padding is the chassis gutter around the tile cards; the canvas measures its
+   content box, so tiles never overlap it. */
+.chat-layout-viewport { flex: 1; min-height: 0; min-width: 0; padding: 8px; overflow: auto; }
 .chat-layout-browser-frame { position: relative; display: flex; flex: 1; min-height: 0; min-width: 0; }
 .chat-layout-browser-frame > .workspace-right { flex: 1; }
+/* Inside a tile the tile is the card, so the browser drops its own gutter and shell edge. */
+.chat-layout-browser-frame .browser-pane { padding: 0; background: transparent; }
+.chat-layout-browser-frame .browser-shell { border: 0; border-radius: 0; box-shadow: none; }
 .browser-layout-drag {
   position: sticky;
   left: 0;
@@ -106,7 +113,20 @@
 .chat-layout-browser-frame:has(.chat-layout-browser-shield) .browser-tabstrip { position: relative; z-index: 5; }
 .chat-layout-canvas { position: relative; width: 100%; height: 100%; }
 /* Geometry supplies both dimensions, so descendants can adapt to short rows as well as columns. */
-.chat-layout-tile { position: absolute; display: flex; flex-direction: column; overflow: hidden; container: chat-tile / size; }
+/* Each tile is a card lifted off the chassis: one drawn edge, a short contact shadow, and
+   a soft cast. Dividers and the viewport gutter show the chassis between cards. */
+.chat-layout-tile {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid var(--tile-edge);
+  border-radius: 10px;
+  background: var(--surface-card);
+  box-shadow: var(--tile-shadow);
+  container: chat-tile / size;
+}
 .chat-layout-tile[hidden] { display: none; }
 .chat-layout-header { flex: 0 0 38px; padding: 0 4px 0 0; }
 .chat-layout-header[draggable='true'] { cursor: grab; }
@@ -165,7 +185,7 @@
 @media (prefers-reduced-motion: reduce) {
   .chat-layout-content:not([hidden]) { animation: none; }
 }
-.chat-layout-content .chat-pane { width: 100%; min-width: 0; max-width: none; }
+.chat-layout-content .chat-pane { width: 100%; min-width: 0; max-width: none; border-right: 0; }
 
 .chat-layout-divider {
   position: absolute;
@@ -178,12 +198,8 @@
 }
 .chat-layout-divider[data-axis='horizontal'] { cursor: col-resize; }
 .chat-layout-divider[data-axis='vertical'] { cursor: row-resize; }
-.chat-layout-divider::before,
-.chat-layout-divider::after { content: ''; position: absolute; pointer-events: none; border-radius: 3px; }
-.chat-layout-divider::before { background: var(--hairline); }
-.chat-layout-divider::after { background: var(--chrome-fg); }
-.chat-layout-divider[data-axis='horizontal']::before { width: 1px; height: 100%; }
-.chat-layout-divider[data-axis='vertical']::before { height: 1px; width: 100%; }
+/* Only the grip: the card edges on either side already draw the seam. */
+.chat-layout-divider::after { content: ''; position: absolute; pointer-events: none; border-radius: 3px; background: var(--chrome-fg); }
 .chat-layout-divider[data-axis='horizontal']::after { width: 3px; height: 32px; }
 .chat-layout-divider[data-axis='vertical']::after { height: 3px; width: 32px; }
 .chat-layout-divider:hover,

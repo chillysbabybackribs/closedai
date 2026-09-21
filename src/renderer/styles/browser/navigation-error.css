@@ -11,7 +11,7 @@
   min-height: 0;
   padding: 6px;
   border-radius: 0 0 9px 9px;
-  background: #161617;
+  background: var(--surface-card);
 }
 
 .browser-view-host.is-navigation-error {
@@ -141,7 +141,7 @@
   min-height: 0;
   overflow: hidden;
   border-radius: 7px;
-  background: #1c1c1d;
+  background: var(--surface-card);
   /* One drawn seam around the page, plus the shortest possible contact
      shadow. The 6px/18px ambient cast that used to sit under this was doing
      the opposite of its job: a wide blur under a 1px ring blooms across the
