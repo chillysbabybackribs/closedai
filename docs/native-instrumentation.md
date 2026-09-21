@@ -87,7 +87,11 @@ CLOSEDAI_NATIVE_EXECUTABLE="$PWD/node_modules/electron/dist/electron" node --exp
 The live check compiles the fixture in a temporary directory and removes it afterward.
 Its checks cover discovery, inspection, arguments and return values, controlled return
 replacement, binary messages, hook removal, duplicate receipts, event overflow, stale identity,
-agent errors, cancellation, a stuck agent and target exit. It targets no browser or user app.
+agent errors, cancellation, a stuck agent, the independent controller deadline and target exit.
+It targets no browser or user app. The final Electron-runtime run passed all nine check groups,
+including ten consecutive attach/inspect/detach cycles. Stuck-agent cancellation confirmed
+script unload, session detach and device-manager closure. Typecheck, 11 targeted unit tests,
+the checkout production build, hygiene and workspace-index checks also passed.
 
 An early direct experiment timed out when Node both owned the fixture child and attached to
 it in the same process, at both Yama settings. Frida spawn succeeded at setting `1`, and
@@ -96,6 +100,14 @@ ownership/wait handling matters; it does not establish the precise cause of that
 The live check uses a separate controller. Main-executable export lookup also failed on the
 fixture despite its exported ELF symbol; the verified probe resolves its symbol through
 `Process.mainModule.enumerateSymbols()`.
+
+An intermediate implementation exited its helper after session detach without explicitly
+closing the device manager. One repeat run crashed the fixture during a later attachment.
+The final controller owns and closes its manager, and interrupts cancelled scripts before
+unloading. The final repeated-cycle run passed; that establishes the tested outcome, not a
+universal explanation or guarantee against native target crashes. The earlier hung-agent
+test also left cleanup unconfirmed before interruption was added. Those failures are why
+unknown receipts remain part of the contract.
 
 Remote/mobile devices, arbitrary program spawning, persistent sessions, host RPC, native
 evidence archives, browser-to-process mapping, kernel/Barebone work and performance benchmarks
