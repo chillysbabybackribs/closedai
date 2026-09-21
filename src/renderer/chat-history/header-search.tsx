@@ -161,8 +161,8 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
         </button>
         : <span className="header-chat-search-hint" aria-hidden="true"><kbd>Ctrl</kbd><kbd>H</kbd></span>}
     </div>
-    {(expanded || controller.archiveUndo) && <div ref={popupRef} className="header-chat-search-sheet">
-      {expanded && <div className="header-chat-search-popup">
+    {expanded && <div ref={popupRef} className="header-chat-search-sheet">
+      <div className="header-chat-search-popup">
         <div ref={resultsRef} id={listId} role="grid" aria-label="Chat history suggestions" aria-busy={busy}
           className="header-chat-search-list">
           {view.sections.map(section => <div role="rowgroup" key={section.label}
@@ -196,14 +196,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
               : `${hits.length} ${hits.length === 1 ? 'chat' : 'chats'}`}
           </span>
         </div>
-      </div>}
-      {controller.archiveUndo && <button type="button" className="header-chat-search-undo"
-        data-ui="titlebar.chat-search-undo"
-        aria-label={`Undo archive of “${controller.archiveUndo.title}”`}
-        onMouseDown={event => event.preventDefault()}
-        onClick={() => { void controller.undoArchive().catch(controller.reportError) }}>
-        Undo
-      </button>}
+      </div>
     </div>}
     {controller.error && <div className="header-chat-search-error" role="alert">{controller.error}</div>}
   </div>

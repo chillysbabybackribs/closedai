@@ -12,7 +12,7 @@ export type ChatHistoryProps = {
   /** True while a turn is running: switching or archiving is blocked by the main process. */
   busy: boolean
   listChats: () => Promise<ChatRowSummary[]>
-  /** Live workspace rows; when provided, the panel stays in step with trash Undo. */
+  /** Live workspace rows; when provided, the panel stays in step with header search deletes. */
   chats?: ChatRowSummary[]
   openChat: (chatId: string) => Promise<void>
   archiveChat: (chatId: string) => Promise<void>

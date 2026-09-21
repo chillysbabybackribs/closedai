@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
-import { archiveUndoFromRow, reviewTransitions } from './history-controller.js'
+import { reviewTransitions } from './history-controller.js'
 import {
   CHAT_REVIEW_QUEUE_STORAGE_KEY,
   CHAT_REVIEW_RETENTION_MS,
@@ -116,9 +116,3 @@ test('a pane that starts running again is reported so its queue entry can be dro
   assert.deepEqual(result.runningAgain, ['pane-a'])
 })
 
-test('archive undo keeps the chat id, title, and whether it was attached', () => {
-  assert.deepEqual(archiveUndoFromRow(peer('pane-a', false), 'pane-a'), {
-    id: 'pane-a', title: 'Chat pane-a', attached: true
-  })
-  assert.deepEqual(archiveUndoFromRow(undefined, 'gone'), { id: 'gone', title: 'Chat', attached: false })
-})

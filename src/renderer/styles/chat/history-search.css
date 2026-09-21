@@ -439,30 +439,6 @@
 
 .header-chat-search-sheet ~ .header-chat-search-error { position: relative; top: auto; margin-top: 8px; }
 
-.header-chat-search-undo {
-  flex: 0 0 auto;
-  height: 28px;
-  padding: 0 12px;
-  border: 1px solid var(--hairline-strong);
-  border-radius: 7px;
-  background: var(--popover);
-  color: var(--search-ink-muted);
-  font: 500 12px/1 var(--font-sans);
-  letter-spacing: var(--tracking-ui);
-  box-shadow:
-    0 0 0 1px rgb(0 0 0 / 20%),
-    0 2px 5px rgb(0 0 0 / 18%);
-  pointer-events: auto;
-  cursor: default;
-}
-
-.header-chat-search-undo:hover {
-  background: color-mix(in srgb, var(--popover-foreground) 4%, var(--popover));
-  color: var(--search-ink);
-}
-
-.header-chat-search-undo:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: 1px; }
-
 @media (prefers-reduced-motion: reduce) {
   .header-chat-search-popup { animation: none; }
   .header-chat-search-spinner { animation: none; }
