@@ -66,6 +66,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   return <div className="chat-desktop-workspace">
     {(layout.error || actionError) && <div className="chat-layout-error" role="alert">{layout.error || actionError}</div>}
     <ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
+        notice={layout.notice}
         browserRevealVersion={browserRevealVersion}
         onDragActive={setDragging}
         browserVisible={layout.browserVisible}

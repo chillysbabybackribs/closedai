@@ -35,6 +35,8 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, onSel
   return <div ref={list} className="chat-layout-tabs" role="tablist" aria-label="Chat conversations">
     {ids.map((id, index) => {
       const status = activity?.(id)
+      const closeHint = status?.state === 'working' ? 'Task keeps running'
+        : status?.state === 'paused' ? 'Task stays paused' : 'Does not stop tasks'
       return <div key={id} className="chat-layout-tab" data-active={id === activeId} data-status={status?.state} role="presentation">
       <button type="button" role="tab" data-ui="layout.tab" data-ui-key={id}
         id={`chat-tab-${id}`} aria-controls={`chat-panel-${id}`} aria-selected={id === activeId}
@@ -68,7 +70,7 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, onSel
         </span>}
         <span>{title(id)}</span></button>
       {canClose && <button type="button" className="chat-layout-tab-close" data-ui="layout.tab-close" data-ui-key={id}
-        disabled={busy} aria-label={`Close tab: ${title(id)}`} title="Close tab; keep chat in history"
+        disabled={busy} aria-label={`Close tab: ${title(id)} · ${closeHint}`} title={`Close tab · ${closeHint}`}
         onClick={() => onClose(id)}><X size={11} aria-hidden="true" /></button>}
     </div>})}
   </div>

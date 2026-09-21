@@ -18,6 +18,20 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     return { ...saved, tree: withBrowser(tree!) }
   })
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState<{ text: string } | null>(null)
+  const latestSnapshot = useRef(snapshot)
+  latestSnapshot.current = snapshot
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice(null), 4500)
+    return () => window.clearTimeout(timer)
+  }, [notice])
+  const reportRemoval = useCallback((ids: string[], label: string) => {
+    const rows = latestSnapshot.current.chats.filter((row) => ids.includes(row.paneId))
+    const detail = rows.some((row) => row.running) ? 'Tasks continue in the background'
+      : rows.some((row) => row.paused) ? 'Tasks remain paused' : ''
+    setNotice({ text: detail ? `${label} · ${detail}` : label })
+  }, [])
   const [busy, setBusy] = useState(false)
   const [selectionToConfirm, setSelectionToConfirm] = useState<string | null>(null)
   const pending = useRef(false)
@@ -146,15 +160,17 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
         setBusy(false)
       }
       setLayout((value) => ({ ...value, tree: remaining }))
+      reportRemoval([id], 'Tab closed')
     } catch (reason) {
       setError(String(reason))
       pending.current = false
       setBusy(false)
     }
-  }, [])
+  }, [reportRemoval])
 
   const hide = useCallback(async (id: string): Promise<void> => {
-    const remaining = removePane(current.current.tree, id)
+    const tree = current.current.tree
+    const remaining = removePane(tree, id)
     if (!remaining || !paneIds(remaining).length || pending.current) return
     pending.current = true
     try {
@@ -163,14 +179,15 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
         await window.closedai.chat.selectPane(selected.current)
       }
       setLayout((value) => ({ ...value, tree: remaining }))
+      reportRemoval(tabIds(tree).filter((tab) => tabOwner(tree, tab) === id), 'Pane hidden')
     } catch (reason) { setError(String(reason)) }
     finally { pending.current = false }
-  }, [])
+  }, [reportRemoval])
 
   const resize = useCallback((id: string, ratio: number) => {
     setLayout((value) => ({ ...value, tree: resizeSplit(value.tree, id, ratio) }))
   }, [])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
-  return { ...layout, error, busy, dock, newChat, focusPane, activateTab, closeTab, hide, resize, toggleBrowser, showBrowser }
+  return { ...layout, error, notice: notice?.text ?? '', busy, dock, newChat, focusPane, activateTab, closeTab, hide, resize, toggleBrowser, showBrowser }
 }
