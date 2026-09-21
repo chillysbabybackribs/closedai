@@ -1,5 +1,4 @@
 import { useEffect, useImperativeHandle, useMemo, useRef, useState, type Dispatch, type Ref } from 'react'
-import { GripVertical } from 'lucide-react'
 import { BrowserPane } from '../browser-pane.js'
 import { useBrowserController } from '../browser-controller.js'
 import { ChatPane, type ChatPaneDialog } from '../chat-pane.js'
@@ -39,7 +38,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
     onDragStart={(event) => {
       event.dataTransfer.setData(CHAT_DRAG_TYPE, BROWSER_PANE_ID)
       event.dataTransfer.effectAllowed = 'move'
-    }}><GripVertical size={18} aria-hidden="true" /></button>, [layout.busy])
+    }}><span className="browser-layout-drag-dots" aria-hidden="true" /></button>, [layout.busy])
   const [dragging, setDragging] = useState(false)
   const browser = useBrowserController(JSON.stringify([layout.browserVisible, layout.tree]), layout.browserVisible, dragging)
   const imageTabId = browser.browser.image?.tabId

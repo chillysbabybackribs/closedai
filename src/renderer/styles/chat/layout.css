@@ -59,8 +59,19 @@
   cursor: grab;
   user-select: none;
 }
+.browser-layout-drag-dots {
+  display: block;
+  width: 15px;
+  height: 20px;
+  background-image: radial-gradient(circle, currentColor 1px, transparent 1.5px);
+  background-size: 5px 5px;
+  opacity: 0.7;
+  transition: opacity 120ms ease;
+}
 .browser-tabstrip:has(> .browser-layout-drag) { padding: 3px 5px; gap: 4px; }
 .browser-layout-drag:hover { background: var(--surface-control-hover); color: var(--chrome-fg-strong); }
+.browser-layout-drag:hover .browser-layout-drag-dots,
+.browser-layout-drag:active .browser-layout-drag-dots { opacity: 1; }
 .browser-layout-drag:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -2px; }
 .browser-layout-drag:active { cursor: grabbing; }
 .browser-layout-drag:disabled { opacity: 0.3; cursor: default; }

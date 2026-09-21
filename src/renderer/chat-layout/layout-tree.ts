@@ -4,6 +4,8 @@ export type ChatLayout = { kind: 'pane'; id: string; tabs?: string[] } | {
   first: ChatLayout; second: ChatLayout
 }
 export type Rect = { x: number; y: number; width: number; height: number }
+// Reserve the entire grab target: native browser views paint above renderer overlays.
+export const DIVIDER_SIZE = 14
 export const CHAT_DRAG_TYPE = 'application/x-closedai-chat'
 // Reserved layout leaf: never sent to chat services or included in conversation tabs.
 export const BROWSER_PANE_ID = 'closedai:shared-browser'
@@ -80,8 +82,8 @@ export function minimumSize(tree: ChatLayout): { width: number; height: number }
   const a = minimumSize(tree.first)
   const b = minimumSize(tree.second)
   return tree.axis === 'horizontal'
-    ? { width: a.width + b.width + 5, height: Math.max(a.height, b.height) }
-    : { width: Math.max(a.width, b.width), height: a.height + b.height + 5 }
+    ? { width: a.width + b.width + DIVIDER_SIZE, height: Math.max(a.height, b.height) }
+    : { width: Math.max(a.width, b.width), height: a.height + b.height + DIVIDER_SIZE }
 }
 
 /** Flat geometry keeps React pane keys and composer state stable across tree rearrangements. */
@@ -92,15 +94,15 @@ export function layoutGeometry(tree: ChatLayout, width: number, height: number) 
     if (node.kind === 'pane') { panes.push({ id: node.id, tabs: node.tabs ?? [node.id], rect }); return }
     const horizontal = node.axis === 'horizontal'
     const dimension = horizontal ? 'width' : 'height'
-    const available = rect[dimension] - 5
+    const available = rect[dimension] - DIVIDER_SIZE
     const min = minimumSize(node.first)[dimension] / available
     const max = 1 - minimumSize(node.second)[dimension] / available
     const ratio = Math.max(min, Math.min(max, node.ratio))
     const size = available * ratio
     const first = { ...rect, [dimension]: size }
     const second = { ...rect, [dimension]: available - size,
-      [horizontal ? 'x' : 'y']: (horizontal ? rect.x : rect.y) + size + 5 }
-    const divider = { ...rect, [dimension]: 5,
+      [horizontal ? 'x' : 'y']: (horizontal ? rect.x : rect.y) + size + DIVIDER_SIZE }
+    const divider = { ...rect, [dimension]: DIVIDER_SIZE,
       [horizontal ? 'x' : 'y']: (horizontal ? rect.x : rect.y) + size }
     dividers.push({ id: node.id, axis: node.axis, rect: divider, parent: rect, ratio, min, max })
     visit(node.first, first)
