@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { CredentialVault, type VaultEncryption } from './credential-vault.ts'
+import { CredentialVault, KEYCHAIN_REQUIRED_MESSAGE, type VaultEncryption, type VaultPolicy } from './credential-vault.ts'
 
 /** Stands in for safeStorage: reversible, and obviously not the stored plaintext. */
 function fakeEncryption(available = true): VaultEncryption {
@@ -22,12 +22,13 @@ function fakeEncryption(available = true): VaultEncryption {
 
 async function withVault(
   encryption: VaultEncryption,
-  run: (vault: CredentialVault, filePath: string) => Promise<void>
+  run: (vault: CredentialVault, filePath: string) => Promise<void>,
+  policy?: VaultPolicy
 ): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), 'closedai-vault-'))
   const filePath = join(dir, 'credential-vault.json')
   try {
-    await run(new CredentialVault(filePath, encryption), filePath)
+    await run(new CredentialVault(filePath, encryption, policy), filePath)
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
@@ -124,5 +125,59 @@ test('reveal reports a decrypt failure instead of returning ciphertext', async (
       }
     })
     await assert.rejects(broken.reveal(saved.id, 'apiKey'), /Unable to decrypt API key: keyring changed/)
+  })
+})
+
+test('secretsRequireKeychain refuses a plain secret and still accepts a secret-free draft', async () => {
+  const policy: VaultPolicy = { secretsRequireKeychain: () => true }
+  await withVault(fakeEncryption(false), async (vault) => {
+    await assert.rejects(
+      vault.save({ serviceId: 'resend', label: '', values: { apiKey: 're_plain' } }),
+      { message: KEYCHAIN_REQUIRED_MESSAGE }
+    )
+    assert.deepEqual(await vault.list(), [])
+    const saved = await vault.save({ serviceId: 'custom', label: 'Host only', values: { url: 'https://x.example', secret: '' } })
+      .catch((error: Error) => error)
+    assert.ok(saved instanceof Error, 'custom requires its secret, so the catalog check still runs first')
+  }, policy)
+  await withVault(fakeEncryption(true), async (vault) => {
+    const saved = await vault.save({ serviceId: 'resend', label: '', values: { apiKey: 're_enc' } })
+    assert.equal(saved.encrypted, true)
+  }, policy)
+})
+
+test('agent access defaults on, persists when switched off, and is read back for older records', async () => {
+  await withVault(fakeEncryption(), async (vault, filePath) => {
+    const saved = await vault.save({ serviceId: 'openai', label: 'Key', values: { apiKey: 'sk-1' } })
+    assert.equal(saved.agentAccess, true)
+    const off = await vault.setAgentAccess(saved.id, false)
+    assert.equal(off.agentAccess, false)
+    assert.equal(off.updatedAt, saved.updatedAt, 'the switch does not reorder the list')
+    assert.equal((await new CredentialVault(filePath, fakeEncryption()).list())[0]?.agentAccess, false)
+    await assert.rejects(vault.setAgentAccess('nope', true), /Credential not found/)
+
+    // A record written before the field existed carries no key at all.
+    const raw = JSON.parse(await readFile(filePath, 'utf8')) as { credentials: Record<string, unknown>[] }
+    delete raw.credentials[0]!.agentAccess
+    await writeFile(filePath, JSON.stringify(raw))
+    assert.equal((await new CredentialVault(filePath, fakeEncryption()).list())[0]?.agentAccess, true)
+  })
+})
+
+test('an unreadable vault file is moved aside and never overwritten by the next save', async () => {
+  await withVault(fakeEncryption(), async (vault, filePath) => {
+    await writeFile(filePath, '{"version":1,"credentials":[{"id":"keep-me"')
+    const original = console.warn
+    console.warn = () => {}
+    try {
+      assert.deepEqual(await vault.list(), [])
+      await vault.save({ serviceId: 'openai', label: '', values: { apiKey: 'sk-2' } })
+    } finally {
+      console.warn = original
+    }
+    const entries = (await readdir(join(filePath, '..'))).sort()
+    assert.equal(entries[0], 'credential-vault.json')
+    assert.match(entries[1]!, /^credential-vault\.json\.corrupt-/)
+    assert.match(await readFile(join(filePath, '..', entries[1]!), 'utf8'), /keep-me/)
   })
 })

@@ -37,7 +37,7 @@ development mode even when its parent Electron process has `NODE_ENV=production`
 ## Repeatable states
 
 The query parameter `scenario` chooses the fixture. The launcher output includes direct links to
-all six states (for example `/?scenario=split`); `npm run dev:web -- start settings` returns the
+all seven states (for example `/?scenario=split`); `npm run dev:web -- start settings` returns the
 settings URL on the same server. There is no preview toolbar: the real app occupies the full
 viewport, with no extra header height or preview overrides of the app shell's sizing. The browser
 tab title identifies the preview and current scenario.
@@ -54,6 +54,7 @@ preserve the current document's state; navigation/reload resets it.
 | `settings` | Appearance settings open over a populated conversation |
 | `split` | Two stacked chats beside the browser chrome and labeled native-surface placeholder |
 | `unavailable` | Empty chat whose provider executable is missing: first-run guidance, provider availability list, and the disabled composer |
+| `security` | Populated conversation beside the browser chrome with the opt-in security prompts pending: credential approval cards above the composer and web permission bars under the tab strip (both off by default in the real app) |
 
 Sending a message streams a local canned response. Pausing, creating/selecting/renaming/closing
 sample chats, model effort selection, layout changes, and appearance settings exercise real

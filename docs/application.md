@@ -459,6 +459,11 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   marks; opening the chat clears its unread mark. The old directory/pin/review sections, New Agent
   button, drawer toggle, and sidebar row menus are removed. Saved records and pin metadata remain.
   History, new-chat, and title-action failures appear below the header search for eight seconds.
+- Credential approval card (`credential-approval-card.tsx`, off by default): with Settings → Security →
+  "credentials require approval" on, an agent's request to read a saved secret appears above the
+  composer of the chat that asked (orphaned requests fall to the selected pane) with the credential,
+  its fields, the agent's reason as plain text, and Allow/Deny (`chat.credential-allow`,
+  `chat.credential-deny`, keyed by request id); `security-requests.ts` is the one seam to the bridge.
   `listChats` answers from the store at once, then reconciles the providers' thread catalogs in
   the background (adopting threads the store has not seen, cached five seconds, invalidated on turn
   end, archive, open, and project switch; a scan that lands after a project switch is dropped).
@@ -635,6 +640,12 @@ navigation command the main process rejects shows its reason on one line under t
 dismissed by its button (`browser.notice-dismiss`) or after 8 s. Custom tab
 names are tab-strip labels stored separately from the page title and are persisted with the tab
 session.
+
+Web permission bar (`web-permission-bar.tsx`, off by default): with Settings → Security → web
+permissions set to Ask, a page's camera/microphone, screen, location, or notifications request
+shows as one line under the tab strip for the active tab only, with Allow/Block
+(`browser.permission-allow`, `browser.permission-block`, keyed by request id); requests for other
+tabs wait for their tab and expire in main after 60 s.
 
 All page-requested windows become regular browser tabs, including OAuth/login windows, sized
 utility popups, and `about:blank` children. Electron's `createWindow` callback hands the original

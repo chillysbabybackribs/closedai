@@ -1,6 +1,6 @@
-import { readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { writeAtomic } from './atomic-write.js'
+import { readJsonOrQuarantine } from './corrupt-file-quarantine.js'
 import {
   credentialService,
   maskSecret,
@@ -31,6 +31,13 @@ export type VaultEncryption = {
   backend(): string
 }
 
+export type VaultPolicy = {
+  /** Settings → Security: refuse to store a secret plainly when the keychain cannot encrypt it. */
+  secretsRequireKeychain(): boolean
+}
+
+export const KEYCHAIN_REQUIRED_MESSAGE = 'Secrets are only saved when the OS keychain is available (Settings → Security).'
+
 type StoredField = {
   id: string
   label: string
@@ -45,6 +52,8 @@ type StoredCredential = {
   label: string
   createdAt: number
   updatedAt: number
+  /** Whether `credential_vault.read` may return this entry; records written before the field are on. */
+  agentAccess: boolean
   fields: StoredField[]
 }
 
@@ -55,11 +64,13 @@ const EMPTY: StoredVault = { version: 1, credentials: [] }
 export class CredentialVault {
   #filePath: string
   #encryption: VaultEncryption
+  #policy: VaultPolicy
   #loaded: Promise<StoredVault> | null = null
 
-  constructor(filePath: string, encryption: VaultEncryption) {
+  constructor(filePath: string, encryption: VaultEncryption, policy: VaultPolicy = { secretsRequireKeychain: () => false }) {
     this.#filePath = filePath
     this.#encryption = encryption
+    this.#policy = policy
   }
 
   async status(): Promise<CredentialVaultStatus> {
@@ -85,6 +96,10 @@ export class CredentialVault {
     if (missing.length > 0) {
       throw new Error(`Missing required ${service.name} field(s): ${missing.map((field) => field.label).join(', ')}`)
     }
+    const storesSecret = service.fields.some((spec) => spec.kind === 'secret' && draft.values[spec.id]?.trim())
+    if (storesSecret && this.#policy.secretsRequireKeychain() && !this.#encryption.isAvailable()) {
+      throw new Error(KEYCHAIN_REQUIRED_MESSAGE)
+    }
 
     const now = Date.now()
     const record: StoredCredential = {
@@ -93,6 +108,7 @@ export class CredentialVault {
       label: draft.label.trim() || service.name,
       createdAt: now,
       updatedAt: now,
+      agentAccess: true,
       fields: service.fields.flatMap((spec) => {
         const value = draft.values[spec.id]?.trim() ?? ''
         if (!value) return []
@@ -141,15 +157,26 @@ export class CredentialVault {
     return summarize(record)
   }
 
+  /** Settings → Security per-entry switch; `updatedAt` is untouched so the list order holds. */
+  async setAgentAccess(credentialId: string, allowed: boolean): Promise<CredentialSummary> {
+    const vault = await this.#load()
+    const record = vault.credentials.find((entry) => entry.id === credentialId)
+    if (!record) throw new Error('Credential not found')
+    record.agentAccess = allowed
+    await this.#persist(vault)
+    return summarize(record)
+  }
+
   #protect(kind: CredentialFieldKind, value: string): { value: string; encrypted: boolean } {
     if (kind !== 'secret' || !this.#encryption.isAvailable()) return { value, encrypted: false }
     return { value: this.#encryption.encrypt(value), encrypted: true }
   }
 
+  // Only a missing file is an empty vault. Anything else is moved aside by the reader so the
+  // next save cannot overwrite credentials the user may still be able to recover.
   #load(): Promise<StoredVault> {
-    this.#loaded ??= readFile(this.#filePath, 'utf8')
-      .then((raw) => normalize(JSON.parse(raw) as unknown))
-      .catch(() => structuredClone(EMPTY))
+    this.#loaded ??= readJsonOrQuarantine(this.#filePath, 'credential vault')
+      .then((parsed) => parsed === null ? structuredClone(EMPTY) : normalize(parsed))
     return this.#loaded
   }
 
@@ -165,10 +192,12 @@ function normalize(parsed: unknown): StoredVault {
   if (!Array.isArray(credentials)) return structuredClone(EMPTY)
   return {
     version: 1,
-    credentials: credentials.filter(
-      (record): record is StoredCredential =>
-        Boolean(record) && typeof record.id === 'string' && Array.isArray(record.fields)
-    )
+    credentials: credentials
+      .filter(
+        (record): record is StoredCredential =>
+          Boolean(record) && typeof record.id === 'string' && Array.isArray(record.fields)
+      )
+      .map((record) => ({ ...record, agentAccess: record.agentAccess !== false }))
   }
 }
 
@@ -182,6 +211,7 @@ function summarize(record: StoredCredential): CredentialSummary {
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
     encrypted: record.fields.every((field) => field.kind !== 'secret' || field.encrypted),
+    agentAccess: record.agentAccess,
     fields: record.fields.map((field) => ({
       id: field.id,
       label: field.label,

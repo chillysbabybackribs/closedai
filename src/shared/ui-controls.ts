@@ -80,6 +80,8 @@ export const UI_CONTROLS = {
   'chat.sign-in': 'Sign in with ChatGPT when the pane is signed out',
   'chat.choose-model': 'Open the model menu from an unavailable or signed-out empty state or connection banner',
   'chat.notice-dismiss': 'Dismiss the pane-level notice shown after a failed pane action',
+  'chat.credential-allow': 'Approval card (Settings → Security, off by default): let the agent read the requested credential fields; item is the request id',
+  'chat.credential-deny': 'Approval card (Settings → Security, off by default): refuse the credential request; item is the request id',
   'shell.startup-retry': 'Retry the initial chat workspace snapshot after a failed start',
   'shell.error-reload': 'Reload the renderer from the error panel after a render failure',
   'shell.alert-dismiss': 'Dismiss the shell-level alert shown after a failed shortcut or menu action',
@@ -111,6 +113,8 @@ export const UI_CONTROLS = {
 
   'browser.tab': 'Select a browser tab; item is the tab id',
   'browser.notice-dismiss': 'Dismiss the browser chrome notice reporting a rejected tab or navigation command',
+  'browser.permission-allow': 'Permission bar (Settings → Security set to Ask): grant the active page its camera, microphone, screen, location, or notification request; item is the request id',
+  'browser.permission-block': 'Permission bar (Settings → Security set to Ask): refuse the active page’s request; item is the request id',
   'browser.tab-close': 'Close a browser tab; item is the tab id',
   'browser.tab-menu': 'Right-click context menu for a browser tab',
   'browser.tab-menu-item': 'Browser tab context menu item; item is new-right, reload, duplicate, rename, close, close-others, or close-right',
