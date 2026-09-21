@@ -5,6 +5,7 @@ import { app, BrowserWindow, type WebContents } from 'electron'
 import { BrowserService } from '../src/main/browser-service.js'
 import { EPHEMERAL_BROWSER_HISTORY } from '../src/main/browser-history-store.js'
 import { createHiddenPageWorker } from '../src/main/browser-workers/hidden-page-worker.js'
+import { settleFrames } from '../src/main/browser-frame-settle.js'
 
 const root = process.env.CLOSEDAI_POPUP_CHECK_ROOT
 if (!root) throw new Error('Run scripts/popup-tabs-live-check.mjs')
@@ -76,6 +77,9 @@ async function check() {
     // Popup geometry never overrides the browser pane, and standard screenshot/input access works.
     assert.equal(await evalPage(login.contents, 'innerWidth'), 1000)
     assert.deepEqual(browser.focusTabForInput(login.id), { activated: false })
+    window.focus()
+    login.contents.focus()
+    await settleFrames(login.contents)
     await evalPage(login.contents, `document.querySelector('#input').focus()`)
     login.contents.sendInputEvent({ type: 'char', keyCode: 'x' })
     await until(() => evalPage(login.contents, `document.querySelector('#input').value === 'x'`), 'tab input')

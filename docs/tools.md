@@ -565,6 +565,8 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   tab. With the browser collapsed or covered, a temporary never-shown native window hosts the same
   WebContentsView, with geometry set before reparenting; release returns it to the main window.
   Native `capturePage` may request visible rendering internally without showing that window.
+  Background throttling is disabled only during capture and restored afterward, allowing the
+  readiness check to wait for actual paints even when the browser panel is hidden.
   A 1×1 placeholder is rejected. The isolated browser-coordination live check verifies simultaneous
   background capture pixels, collapsed-panel capture, and restoration to the visible browser.
 - Capture actions return a bounded image to the model (image tokens scale with pixels) and keep

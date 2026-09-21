@@ -54,7 +54,7 @@ async function verify(): Promise<void> {
     assert.ok(first?.image, JSON.stringify(first))
     assert.ok(near(centrePixel(first.image.dataUrl), [0, 0, 255]), `hidden tab captured blue: ${centrePixel(first.image.dataUrl)}`)
     assert.equal(first.coherence?.verdict, 'verified', JSON.stringify(first.coherence))
-    assert.equal(first.coherence?.frame, 'settled', 'a hidden document cannot paint on request; its frame is proven by stability')
+    assert.equal(first.coherence?.frame, 'painted', 'the temporary capture lease lets a background document paint')
     assert.ok((first.coherence?.intervalMs ?? 9999) < 600, `no paint-probe timeout spent on a hidden tab: ${first.coherence?.intervalMs}ms`)
 
     // Change the hidden page's colour while it stays hidden; the next capture must show it.
@@ -62,7 +62,7 @@ async function verify(): Promise<void> {
     const second = await capture.captureBrowserPage(hidden, { until: 'load', timeoutMs: 5_000 })
     assert.ok(second?.image)
     assert.ok(near(centrePixel(second.image.dataUrl), [255, 0, 0]), `hidden tab recaptured red, not a stale blue frame: ${centrePixel(second.image.dataUrl)}`)
-    assert.equal(second.coherence?.frame, 'settled', JSON.stringify(second.coherence))
+    assert.equal(second.coherence?.frame, 'painted', JSON.stringify(second.coherence))
 
     // A hidden page that keeps changing is delivered, but never as verified. The hidden compositor
     // coalesces rapid changes, so consecutive frames can still agree; the DOM observer is what
