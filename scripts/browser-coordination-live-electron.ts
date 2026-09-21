@@ -60,6 +60,7 @@ async function verify() {
     const navigations = await Promise.all(['a', 'b'].map(pane => call(pane, 'embedded_browser', 'page',
       { action: 'navigate', url: `${base}/${pane}`, wait_until: 'load', timeout_ms: 5000 })))
     navigations.forEach(ok)
+    await new Promise(resolve => setTimeout(resolve, 800))
     const a = coordination.snapshot('a').defaultTabId!
     const b = coordination.snapshot('b').defaultTabId!
     assert.notEqual(a, b)
