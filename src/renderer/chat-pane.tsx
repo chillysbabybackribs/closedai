@@ -126,6 +126,7 @@ export const ChatPane = memo(function ChatPane({
             activeChatId={chat.selectedPaneId}
             busy={running}
             listChats={chat.listChats}
+            chats={chat.chats}
             openChat={chat.openChat}
             archiveChat={archiveChat ?? chat.archiveChat}
             onClose={() => setHistoryOpen(false)}

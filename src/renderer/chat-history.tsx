@@ -12,6 +12,8 @@ export type ChatHistoryProps = {
   /** True while a turn is running: switching or archiving is blocked by the main process. */
   busy: boolean
   listChats: () => Promise<ChatRowSummary[]>
+  /** Live workspace rows; when provided, the panel stays in step with trash Undo. */
+  chats?: ChatRowSummary[]
   openChat: (chatId: string) => Promise<void>
   archiveChat: (chatId: string) => Promise<void>
   onClose: () => void
@@ -23,7 +25,7 @@ type LoadState =
   | { status: 'error'; message: string }
 
 /** In-pane list of past chats for this workspace. Replaces the transcript while open. */
-export function ChatHistory({ activeChatId, busy, listChats, openChat, archiveChat, onClose }: ChatHistoryProps): JSX.Element {
+export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, archiveChat, onClose }: ChatHistoryProps): JSX.Element {
   const [load, setLoad] = useState<LoadState>({ status: 'loading' })
   const [query, setQuery] = useState('')
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -31,13 +33,17 @@ export function ChatHistory({ activeChatId, busy, listChats, openChat, archiveCh
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
+    if (chats) {
+      setLoad({ status: 'ready', threads: chats })
+      return
+    }
     let active = true
     setLoad({ status: 'loading' })
     listChats()
       .then((threads) => { if (active) setLoad({ status: 'ready', threads }) })
       .catch((error: unknown) => { if (active) setLoad({ status: 'error', message: messageOf(error) }) })
     return () => { active = false }
-  }, [listChats, reloadKey])
+  }, [listChats, reloadKey, chats])
 
   const visible = useMemo(() => {
     if (load.status !== 'ready') return []
@@ -69,9 +75,11 @@ export function ChatHistory({ activeChatId, busy, listChats, openChat, archiveCh
     setActionError(null)
     try {
       await archiveChat(chatId)
-      setLoad((current) => current.status === 'ready'
-        ? { status: 'ready', threads: current.threads.filter((thread) => thread.paneId !== chatId) }
-        : current)
+      if (!chats) {
+        setLoad((current) => current.status === 'ready'
+          ? { status: 'ready', threads: current.threads.filter((thread) => thread.paneId !== chatId) }
+          : current)
+      }
     } catch (error) {
       setActionError(`Could not archive that chat: ${messageOf(error)}`)
     } finally {
