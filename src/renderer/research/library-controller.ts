@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LibrarySettings, LibrarySnapshot } from '../../shared/research-library.js'
+import { errorMessage } from '../error-message.js'
 
 export function useResearchLibrary(open: boolean) {
   const [snapshot, setSnapshot] = useState<LibrarySnapshot | null>(null)
@@ -9,6 +10,8 @@ export function useResearchLibrary(open: boolean) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const epoch = useRef(0)
+  // Bumped by "Try again" so the initial load can be re-run after it failed.
+  const [loadAttempt, setLoadAttempt] = useState(0)
 
   useEffect(() => {
     const current = ++epoch.current
@@ -22,11 +25,11 @@ export function useResearchLibrary(open: boolean) {
       setTopics(next.settings.topics.join('\n'))
       setDays(next.settings.lookbackDays)
       setEnabled(next.settings.enabled)
-    }).catch((failure) => {
-      if (current === epoch.current) setError(String(failure.message ?? failure))
+    }).catch((failure: unknown) => {
+      if (current === epoch.current) setError(errorMessage(failure, 'The research library could not be loaded.'))
     })
     return () => { epoch.current++ }
-  }, [open])
+  }, [open, loadAttempt])
 
   // Refresh belongs to the app, so reopening the dialog reconnects to its progress.
   useEffect(() => {
@@ -40,8 +43,8 @@ export function useResearchLibrary(open: boolean) {
           const next = await window.closedai.researchLibrary.snapshot()
           if (current === epoch.current) setSnapshot(next)
         }
-      }).catch((failure) => {
-        if (current === epoch.current) setError(String(failure.message ?? failure))
+      }).catch((failure: unknown) => {
+        if (current === epoch.current) setError(errorMessage(failure))
       })
     }, 1000)
     return () => window.clearTimeout(timer)
@@ -69,7 +72,7 @@ export function useResearchLibrary(open: boolean) {
         }
       }
     } catch (failure) {
-      if (current === epoch.current) setError(String((failure as Error).message ?? failure))
+      if (current === epoch.current) setError(errorMessage(failure))
     } finally {
       if (current === epoch.current) setBusy(false)
     }
@@ -90,11 +93,13 @@ export function useResearchLibrary(open: boolean) {
 
   return {
     snapshot, topics, setTopics, days, setDays, enabled, setEnabled, dirty, valid, busy, error,
+    /** Re-run the initial load after it failed; a no-op once a snapshot is present. */
+    retryLoad: () => setLoadAttempt((attempt) => attempt + 1),
     save: () => act(() => window.closedai.researchLibrary.configure(settings), true),
     refresh,
-    cancel: () => { void window.closedai.researchLibrary.cancel().catch((failure) => setError(String(failure.message ?? failure))) },
+    cancel: () => { void window.closedai.researchLibrary.cancel().catch((failure: unknown) => setError(errorMessage(failure))) },
     dismiss: (id: string) => act(() => window.closedai.researchLibrary.dismiss(id)),
     restore: () => act(() => window.closedai.researchLibrary.restore()),
-    openPaper: (url: string) => { void window.closedai.browser.openTab(url).catch((failure) => setError(String(failure.message ?? failure))) }
+    openPaper: (url: string) => { void window.closedai.browser.openTab(url).catch((failure: unknown) => setError(errorMessage(failure))) }
   }
 }

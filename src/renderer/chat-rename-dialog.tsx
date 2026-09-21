@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type JSX } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog.js'
+import { errorMessage } from './error-message.js'
 
 export function ChatRenameForm({
   chatId,
@@ -14,11 +15,13 @@ export function ChatRenameForm({
 }): JSX.Element {
   const [value, setValue] = useState(currentTitle)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setValue(currentTitle)
     setSaving(false)
+    setError('')
     const timer = setTimeout(() => {
       inputRef.current?.focus()
       inputRef.current?.select()
@@ -26,28 +29,27 @@ export function ChatRenameForm({
     return () => clearTimeout(timer)
   }, [currentTitle])
 
-  const handleSubmit = async (event: FormEvent): Promise<void> => {
-    event.preventDefault()
+  // A failed save keeps the dialog open with the reason beside the field.
+  const submit = async (title: string | null): Promise<void> => {
     if (saving) return
     setSaving(true)
+    setError('')
     try {
-      await onSave(chatId, value.trim() || null)
+      await onSave(chatId, title)
       onClose()
+    } catch (cause) {
+      setError(errorMessage(cause, 'The title could not be saved.'))
     } finally {
       setSaving(false)
     }
   }
 
-  const handleReset = async (): Promise<void> => {
-    if (saving) return
-    setSaving(true)
-    try {
-      await onSave(chatId, null)
-      onClose()
-    } finally {
-      setSaving(false)
-    }
+  const handleSubmit = (event: FormEvent): Promise<void> => {
+    event.preventDefault()
+    return submit(value.trim() || null)
   }
+
+  const handleReset = (): Promise<void> => submit(null)
 
   return (
     <form onSubmit={handleSubmit} className="chat-rename-form">
@@ -62,7 +64,10 @@ export function ChatRenameForm({
         placeholder="Conversation title"
         maxLength={100}
         spellCheck={false}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? 'chat-rename-error' : undefined}
       />
+      {error && <p id="chat-rename-error" className="chat-rename-error" role="alert">{error}</p>}
       <div className="chat-rename-actions">
         <button
           type="button"

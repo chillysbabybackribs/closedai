@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { TraceEntry, TraceKind } from '../../shared/trace.js'
+import { errorMessage } from '../error-message.js'
 import { summarizeTracePerformance, type TracePerformance } from './trace-performance.js'
 
 // Loads the trace ring once the panel opens and keeps it live from push events. The renderer
@@ -27,6 +28,8 @@ export type TraceController = {
   allPanes: boolean
   setAllPanes: (all: boolean) => void
   error: string | null
+  /** True once the first snapshot read has settled, so an empty ring is not shown as loading. */
+  loaded: boolean
   refresh: () => Promise<void>
   clear: () => Promise<void>
 }
@@ -37,6 +40,7 @@ export function useTraceController(active: boolean, paneId: string): TraceContro
   const [error, setError] = useState<string | null>(null)
   const [kinds, setKinds] = useState<Set<TraceKind>>(() => new Set(['turn', 'tool', 'event']))
   const [allPanes, setAllPanes] = useState(false)
+  const [loaded, setLoaded] = useState(false)
 
   const refresh = useCallback(async () => {
     try {
@@ -45,7 +49,9 @@ export function useTraceController(active: boolean, paneId: string): TraceContro
       setDropped(snapshot.dropped)
       setError(null)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught))
+      setError(errorMessage(caught, 'The trace could not be read.'))
+    } finally {
+      setLoaded(true)
     }
   }, [])
 
@@ -75,7 +81,11 @@ export function useTraceController(active: boolean, paneId: string): TraceContro
   }, [active, refresh])
 
   const clear = useCallback(async () => {
-    await window.closedai.trace.clear()
+    try {
+      await window.closedai.trace.clear()
+    } catch (caught) {
+      setError(errorMessage(caught, 'The trace could not be cleared.'))
+    }
   }, [])
 
   const toggleKind = useCallback((kind: TraceKind) => {
@@ -92,7 +102,7 @@ export function useTraceController(active: boolean, paneId: string): TraceContro
     return filterTurnGroups(groupByTurn(scoped), kinds)
   }, [entries, allPanes, paneId, kinds])
 
-  return { groups, total: entries.length, dropped, kinds, toggleKind, allPanes, setAllPanes, error, refresh, clear }
+  return { groups, total: entries.length, dropped, kinds, toggleKind, allPanes, setAllPanes, error, loaded, refresh, clear }
 }
 
 /**

@@ -17,6 +17,7 @@ import {
 import { usePacedText } from '../components/ui/paced-text.js'
 import type { ChatTranscriptItem } from '../shared/chat.js'
 import { ActivitySteps } from './activity-step-list.js'
+import { errorMessage } from './error-message.js'
 import { MessageActions, type MessageActionContext } from './message-actions.js'
 import { ChatScreenshot } from './chat-screenshot.js'
 import { TranscriptAttachments } from './composer-attachments.js'
@@ -103,7 +104,7 @@ export const ChatTranscript = memo(function ChatTranscript({
       const count = await loadEarlier()
       if (count > 0) setLoadEpoch((epoch) => epoch + 1)
     } catch (error) {
-      setHistoryError(error instanceof Error ? error.message : 'Could not load earlier messages. Try again.')
+      setHistoryError(errorMessage(error, 'Could not load earlier messages. Try again.'))
     } finally {
       setLoadingEarlier(false)
     }

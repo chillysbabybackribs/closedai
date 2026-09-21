@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from '../../shared/credentials.js'
+import { errorMessage } from '../error-message.js'
 
 /**
  * Renderer-side access to the main-process vault, plus the one-time move of entries the
@@ -51,19 +52,26 @@ export function useCredentialVault(open: boolean): CredentialVaultState {
       setStatus(vaultStatus)
       setError(null)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      setError(errorMessage(cause, 'The credential vault could not be read.'))
     } finally {
       setLoading(false)
     }
   }, [])
 
+  // The migration and the first read belong to one open; a close/reopen before they settle
+  // must not apply a stale result or run the legacy import twice.
+  const openEpoch = useRef(0)
   useEffect(() => {
     if (!open) return
+    const current = ++openEpoch.current
+    setError(null)
     void (async () => {
       const moved = await migrateLegacyCredentials()
+      if (current !== openEpoch.current) return
       setMigrated(moved)
       await refresh()
     })()
+    return () => { openEpoch.current++ }
   }, [open, refresh])
 
   const save = useCallback(
@@ -78,7 +86,11 @@ export function useCredentialVault(open: boolean): CredentialVaultState {
 
   const remove = useCallback(
     async (id: string) => {
-      await requireApi().remove(id)
+      try {
+        await requireApi().remove(id)
+      } catch (cause) {
+        throw new Error(errorMessage(cause, 'The credential could not be removed.'))
+      }
       await refresh()
     },
     [refresh]

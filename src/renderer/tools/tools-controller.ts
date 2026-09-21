@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ToolCallEvent, ToolManifest, ToolSwitch, ToolTelemetrySnapshot } from '../../shared/tools.js'
+import { errorMessage } from '../error-message.js'
 
 export type ToolsController = {
   manifest: ToolManifest | null
@@ -28,7 +29,7 @@ export function useToolsController(active: boolean): ToolsController {
       setTelemetry(nextTelemetry)
       setError(null)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught))
+      setError(errorMessage(caught, 'Tool settings could not be read.'))
     }
   }, [])
 
@@ -55,7 +56,12 @@ export function useToolsController(active: boolean): ToolsController {
   }, [active, refresh])
 
   const clearTelemetry = useCallback(async () => {
-    await window.closedai.tools.clearTelemetry()
+    try {
+      await window.closedai.tools.clearTelemetry()
+    } catch (caught) {
+      setError(errorMessage(caught, 'Tool activity could not be cleared.'))
+      return
+    }
     await refresh()
   }, [refresh])
 
@@ -65,7 +71,7 @@ export function useToolsController(active: boolean): ToolsController {
     try {
       await window.closedai.tools.setEnabled(toolId, enabled)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught))
+      setError(errorMessage(caught))
       await refresh()
     }
   }, [refresh])
@@ -77,7 +83,7 @@ export function useToolsController(active: boolean): ToolsController {
     try {
       await window.closedai.tools.setEnabledMany(switches)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught))
+      setError(errorMessage(caught))
     }
     // Bulk changes emit no per-id events; the manifest's cost total comes back from this read.
     await refresh()
