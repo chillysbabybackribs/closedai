@@ -49,7 +49,7 @@
 }
 .header-chat-search-count { display: flex; align-items: center; gap: 4px; font-size: 10px; font-variant-numeric: tabular-nums; }
 .header-chat-search [data-status='running'] { color: var(--tab-accent); }
-.header-chat-search [data-status='completed'] { color: var(--status-ready-ink, var(--tab-accent)); }
+.header-chat-search [data-status='completed'] { color: #65b98a; }
 .header-chat-search-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .header-chat-search-spinner { animation: header-chat-search-spin 1.2s linear infinite; }
 @keyframes header-chat-search-spin { to { transform: rotate(360deg); } }

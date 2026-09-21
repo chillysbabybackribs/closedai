@@ -128,40 +128,40 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
             const status = hit.status === 'running' ? 'Running' : hit.status === 'completed'
               ? `Finished ${formatChatTime(hit.completedAt!).toLowerCase()}` : formatChatTime(hit.row.updatedAt)
             return <div key={hit.row.paneId} id={optionId(index)} role="row"
-          aria-selected={index === cursor} className="header-chat-search-row"
-          onMouseEnter={() => setHighlight(index)}>
-          <div role="gridcell" className="header-chat-search-main">
-            <button type="button" tabIndex={-1}
-              aria-label={`${hit.row.title} — ${hit.row.cwd} — ${status}${hit.status === 'completed' ? ' — Unread' : ''}`}
-              className="header-chat-search-result" data-ui="titlebar.chat-search-result"
-              data-ui-key={hit.row.paneId} disabled={busy} title={hit.row.cwd}
-              onMouseDown={event => event.preventDefault()} onClick={() => { void open(hit) }}>
-              <span className="header-chat-search-symbol" data-status={hit.status} aria-hidden="true">
-                {hit.status === 'running' ? <LoaderCircle size={14} className="header-chat-search-spinner" />
-                  : hit.status === 'completed' ? <span className="header-chat-search-dot" /> : <MessageSquare size={14} />}
-              </span>
-              <span className="header-chat-search-copy">
-                <span className="header-chat-search-title">
-                  {segmentTitle(hit.row.title, hit.titleRanges).map((segment, position) => segment.matched
-                    ? <mark key={position}>{segment.text}</mark> : <span key={position}>{segment.text}</span>)}
-                </span>
-                <span className="header-chat-search-meta">
-                  {hit.folder ? `${hit.folder} · ` : ''}{status}
-                </span>
-              </span>
-            </button>
-          </div>
-          <div role="gridcell">
-            <button type="button" className="header-chat-search-delete"
-              data-ui="titlebar.chat-search-delete" data-ui-key={hit.row.paneId}
-              aria-label={`Delete “${hit.row.title}”`}
-              title={hit.row.running ? 'Wait for this chat to finish before deleting' : 'Delete chat'}
-              disabled={busy || hit.row.running}
-              onMouseDown={event => event.preventDefault()} onClick={() => { void remove(hit) }}>
-              <Trash2 size={14} aria-hidden="true" />
-            </button>
-          </div>
-        </div>
+              aria-selected={index === cursor} className="header-chat-search-row"
+              onMouseEnter={() => setHighlight(index)}>
+              <div role="gridcell" className="header-chat-search-main">
+                <button type="button" tabIndex={-1}
+                  aria-label={`${hit.row.title} — ${hit.row.cwd} — ${status}${hit.status === 'completed' ? ' — Unread' : ''}`}
+                  className="header-chat-search-result" data-ui="titlebar.chat-search-result"
+                  data-ui-key={hit.row.paneId} disabled={busy} title={hit.row.cwd}
+                  onMouseDown={event => event.preventDefault()} onClick={() => { void open(hit) }}>
+                  <span className="header-chat-search-symbol" data-status={hit.status} aria-hidden="true">
+                    {hit.status === 'running' ? <LoaderCircle size={14} className="header-chat-search-spinner" />
+                      : hit.status === 'completed' ? <span className="header-chat-search-dot" /> : <MessageSquare size={14} />}
+                  </span>
+                  <span className="header-chat-search-copy">
+                    <span className="header-chat-search-title">
+                      {segmentTitle(hit.row.title, hit.titleRanges).map((segment, position) => segment.matched
+                        ? <mark key={position}>{segment.text}</mark> : <span key={position}>{segment.text}</span>)}
+                    </span>
+                    <span className="header-chat-search-meta">
+                      {hit.folder ? `${hit.folder} · ` : ''}{status}
+                    </span>
+                  </span>
+                </button>
+              </div>
+              <div role="gridcell">
+                <button type="button" className="header-chat-search-delete"
+                  data-ui="titlebar.chat-search-delete" data-ui-key={hit.row.paneId}
+                  aria-label={`Delete “${hit.row.title}”`}
+                  title={hit.row.running ? 'Wait for this chat to finish before deleting' : 'Delete chat'}
+                  disabled={busy || hit.row.running}
+                  onMouseDown={event => event.preventDefault()} onClick={() => { void remove(hit) }}>
+                  <Trash2 size={14} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
           })}
         </div>)}
       </div>
