@@ -120,6 +120,6 @@
   gap: 6px;
 }
 
-.research-library-rows { margin: 4px 0 0; padding: 0; list-style: none; }
+.research-library-rows { --disclosure-control-width: max-content; margin: 4px 0 0; padding: 0; list-style: none; }
 
 .research-library-abstract { max-height: 220px; }

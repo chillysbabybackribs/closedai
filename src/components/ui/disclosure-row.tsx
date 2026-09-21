@@ -54,8 +54,8 @@ export function DisclosureRow({
           <span className="disclosure-row-name">{label}</span>
           {flag ? <span className="disclosure-row-flag" data-tone={flag} aria-hidden="true" /> : null}
         </button>
-        {note ? <span className="disclosure-row-note" data-tone={noteTone ?? undefined}>{note}</span> : null}
-        {trailing}
+        <span className="disclosure-row-note" data-tone={noteTone ?? undefined}>{note}</span>
+        <span className="disclosure-row-trailing">{trailing}</span>
       </div>
       {open ? <div className="disclosure-row-panel">{children}</div> : null}
     </li>
