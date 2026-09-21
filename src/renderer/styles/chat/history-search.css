@@ -49,6 +49,7 @@
 }
 .header-chat-search-count { display: flex; align-items: center; gap: 4px; font-size: 10px; font-variant-numeric: tabular-nums; }
 .header-chat-search [data-status='running'] { color: var(--tab-accent); }
+.header-chat-search [data-status='paused'] { color: #dba74b; }
 .header-chat-search [data-status='completed'] { color: #65b98a; }
 .header-chat-search-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .header-chat-search-spinner { animation: header-chat-search-spin 1.2s linear infinite; }
@@ -131,7 +132,9 @@
 .header-chat-search-main { flex: 1; min-width: 0; }
 .header-chat-search-symbol { display: grid; place-items: center; flex: 0 0 14px; height: 17px; color: var(--chrome-fg); }
 .header-chat-search-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.header-chat-search-delete {
+.header-chat-search-actions { display: flex; align-items: center; flex-shrink: 0; }
+.header-chat-search-delete,
+.header-chat-search-turn {
   display: grid;
   place-items: center;
   width: 28px;
@@ -144,8 +147,11 @@
   color: var(--chrome-fg);
 }
 .header-chat-search-delete:hover:not(:disabled) { background: var(--chrome-control-hover); color: var(--stop-ink); }
-.header-chat-search-delete:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: 1px; }
-.header-chat-search-delete:disabled { opacity: 0.4; cursor: default; }
+.header-chat-search-turn:hover:not(:disabled) { background: var(--chrome-control-hover); color: var(--tab-accent); }
+.header-chat-search-delete:focus-visible,
+.header-chat-search-turn:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: 1px; }
+.header-chat-search-delete:disabled,
+.header-chat-search-turn:disabled { opacity: 0.4; cursor: default; }
 .header-chat-search-result:disabled { opacity: 0.6; }
 .header-chat-search-title { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .header-chat-search-title mark { background: transparent; color: var(--tab-accent); }

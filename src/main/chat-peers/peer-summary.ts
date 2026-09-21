@@ -198,6 +198,7 @@ export function summaryOf(
     title: paneTitle(snapshot, record),
     preview: itemText(latest).slice(0, MAX_PEER_PREVIEW_CHARS),
     running,
+    paused: snapshot.pausedTurnId !== null,
     activity,
     updatedAt
   }

@@ -24,6 +24,8 @@ export const UI_CONTROLS = {
   'titlebar.chat-search': 'Hover or focus to browse running chats, unread completions, and recent history; type to search saved chat titles across projects. Leaving the field and dropdown hides suggestions',
   'titlebar.chat-search-clear': 'Clear chat title search',
   'titlebar.chat-search-result': 'Open a chat history suggestion; item is the chat id',
+  'titlebar.chat-search-pause': 'Pause a running chat without opening it; item is the chat id',
+  'titlebar.chat-search-resume': 'Resume a paused chat without opening it; item is the chat id',
   'titlebar.chat-search-delete': 'Delete a chat from history immediately without confirmation; item is the chat id',
   'titlebar.menu': 'Application menu tab; item is file, edit, view, or help',
   'titlebar.menu-item': 'Application menu row; item is the slugged label, for example new-chat',
