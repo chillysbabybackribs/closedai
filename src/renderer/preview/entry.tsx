@@ -60,7 +60,8 @@ function Preview() {
     // App effects subscribe before streaming starts; cleanup also covers StrictMode's replay.
     bridge.start()
     const ready = () => {
-      const count = document.querySelectorAll('[data-ui="composer.input"]').length
+      const count = [...document.querySelectorAll('[data-ui="composer.input"]')]
+        .filter((element) => element.getBoundingClientRect().width > 0).length
       const expected = scenario === 'split' ? 2 : 1
       if (!errors.length && count === expected && document.querySelector('[data-ui-key="preview-chat-1"]')
         && (scenario !== 'settings' || document.querySelector('[role="dialog"]'))) {
@@ -69,7 +70,7 @@ function Preview() {
       }
     }
     const observer = new MutationObserver(ready)
-    observer.observe(document.getElementById('root')!, { childList: true, subtree: true })
+    observer.observe(document.getElementById('root')!, { childList: true, subtree: true, attributes: true })
     ready()
     return () => { notice.removeEventListener('change', changed); observer.disconnect() }
   }, [])
