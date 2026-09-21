@@ -8,7 +8,7 @@ export function navigateAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'navigate',
     description:
-      'Open a URL or search query in this chat’s assigned tab, wait for readiness, and return final URL, title, and load state. The first untargeted navigation opens an assigned tab and selects it; new_tab opens another. Pages run at full speed whether or not their tab is the selected one. Assignments prevent other chats from using the tab until released; cookies and website accounts remain shared.',
+      'Open a URL or search query in this chat’s assigned tab, wait for readiness, and return final URL, title, and load state. The first untargeted navigation opens an assigned tab and selects it; new_tab opens another. Pages run at full speed whether or not their tab is the selected one. Assignments keep other chats from acting in the tab until released, though any chat may read it; cookies and website accounts remain shared.',
     inputSchema: {
       type: 'object',
       properties: {

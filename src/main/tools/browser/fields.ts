@@ -11,7 +11,7 @@ export const MAX_CHARS = 100_000
 
 export const tabIdField: JsonObject = {
   type: 'string',
-  description: 'Tab id from navigate. Defaults to this chat’s assigned tab, independent of UI selection. Another chat’s assigned tab is refused.'
+  description: 'Tab id from navigate. Defaults to this chat’s assigned tab, independent of UI selection. Another chat’s assigned tab can be read, not acted in.'
 }
 
 export const selectorField: JsonObject = {

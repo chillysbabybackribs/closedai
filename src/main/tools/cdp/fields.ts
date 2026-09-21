@@ -3,7 +3,7 @@ import { numberArg, stringArg, type JsonObject } from '../tool.js'
 export const tabIdField: JsonObject = {
   type: 'string',
   minLength: 1,
-  description: 'ClosedAI tab id. Defaults to this chat’s assigned tab, independent of UI selection. Another chat’s assigned tab is refused.'
+  description: 'ClosedAI tab id. Defaults to this chat’s assigned tab, independent of UI selection. Another chat’s assigned tab can be inspected, not driven.'
 }
 
 export const refField: JsonObject = {

@@ -72,8 +72,12 @@ is lost for a non-clean reason and reports a second loss within a minute instead
 Model browser tools assign tabs to the calling chat, independently of directory and UI selection.
 The first untargeted navigation creates a tab and selects it, as does `new_tab` and the
 `browser_tab` new/new_right/duplicate commands: a page a model drives is one the user can watch.
-Inspection can claim an unassigned visible tab. Later omitted targets use that chat's last assigned tab. Explicit targeting claims
-an unassigned tab, but refuses another attached chat's tab, including for reads and captures.
+Observing verbs — `read_page`, `wait_for`, `query`, `extract`, `console`, `capture browser_page`,
+CDP `inspect_page`/`metrics`/`events`/`requests`/`body`, and `browser_tab select` — run against any
+tab, including another chat's, and claim nothing: looking at a page is not taking it over, so a chat
+asked what is on screen does not end up owning the user's page. Acting in a page claims the tab, and
+is what another chat's assignment refuses (`evaluate` and page `fetch` count as acting). Later
+omitted targets use that chat's last assigned tab.
 Assignments protect the intervals between calls and survive turn completion and focus changes.
 `closedai_app.state` exposes `browser.coordination` (the caller's default and tab assignments).
 `browser_tab release` relinquishes a tab without closing it; detaching the chat or restarting
