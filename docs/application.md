@@ -382,6 +382,21 @@ persisted divider ratios. Browser visibility and the chat tree, including divide
 in renderer localStorage, including tab order and each tile's active tab. Missing/archived chats
 are removed from a restored layout; layouts saved before tabs remain compatible.
 
+**View → Workspace layout…** and the tile context menu's **Workspace layout…** row (`layout.presets`)
+open a dialog (`layout.presets-dialog`) with two starting arrangements drawn to scale for the current
+canvas: **Browser centre** (`layout.preset-browser-centre`), the browser at 42 % width between two
+stacked chats on each side; and **Chats only** (`layout.preset-grid`), the browser hidden and a
+chosen number of chats (`layout.preset-grid-count`, stepper `layout.preset-grid-decrement` /
+`layout.preset-grid-increment`) in a balanced grid. The grid picks columns and rows for the canvas,
+preferring tiles of at least 440 × 480 px, then squarer tiles; a short last row spreads across the
+full width. The count is clamped to what fits the 300 × 280 px minimum, at most 12. Each hint shows
+the resulting chat size, amber when tight; the footer says how many open chats are reused and how
+many are created. **Apply** (`layout.preset-apply`) keeps each visible tile's tab group in tile
+order, merges surplus tiles into the last slot as tabs, creates new chats for empty slots, and
+writes the result to the same per-project saved layout as any hand-built arrangement: nothing is
+locked, no preset persists as a mode, and drag, resize, split, hide, and the browser grip apply to
+it immediately. **Cancel** (`layout.preset-cancel`) leaves the layout unchanged.
+
 `src/renderer/chat-layout/` owns the shared tree, geometry, persistence, and tile controls. The browser
 is a reserved layout leaf, excluded from chat subscriptions, tab lists, and the 32-chat limit.
 Hiding it only removes it from displayed geometry; its position and divider ratios remain saved.
