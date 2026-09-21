@@ -288,7 +288,8 @@ tile's active chat model, adds a tab, and selects it while retaining the previou
 other tiles and divider sizes. Tab creation waits for the renderer's workspace snapshot to
 catch up with the new chat before reconciling tabs; menu focus restoration cannot interrupt it.
 The tab's full surface, including its title, activity icon, and padding, is the drag target;
-there is no separate chat drag grip. The overlaid close button keeps its own click action.
+there is no separate chat drag grip. The overlaid close button keeps its own click action; its
+hit area is a 24 × tab-height strip around the existing 11 px icon, without a larger hover chip.
 Click a tab to return to its conversation; arrow keys and Home/End
 also switch tabs. Tab strips scroll horizontally when full. Mounted drafts and attachments survive
 switching tabs. Each tab's close button removes it from the layout without deleting its history

@@ -172,18 +172,30 @@
 .chat-layout-tab[data-active='true'] { color: var(--chrome-fg-strong); background: var(--tab-active-surface); }
 .chat-layout-tile:not([data-selected='true']) .chat-layout-tab[data-active='true'] { color: var(--chrome-fg); }
 .chat-layout-tab > [role='tab'] { flex: 1; min-width: 0; height: 100%; padding: 0 6px 0 12px; border-radius: 0; justify-content: flex-start; cursor: grab; }
-.chat-layout-tab:has(.chat-layout-tab-close) > [role='tab'] { padding-right: 30px; }
+.chat-layout-tab:has(.chat-layout-tab-close) > [role='tab'] { padding-right: 32px; }
 .chat-layout-tab > [role='tab']:active { cursor: grabbing; }
 .chat-layout-tab > [role='tab']:disabled { cursor: default; }
 .chat-layout-tab > [role='tab']:hover { background: transparent; }
 .chat-layout-tab[data-active='true'] > [role='tab'] { font-weight: 500; }
 .chat-layout-tab > [role='tab'] span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-/* Close affordances surface on the active tab and on hover, as in editor tab strips. */
-.chat-layout-tab .chat-layout-tab-close { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; padding: 0; opacity: 0; transition: opacity 120ms ease; }
+/* Close stays an 11 px icon; the control is a 24 px-wide strip so the hit area meets
+   the 24 px minimum without a larger hover chip. Header button rules lose here. */
+.chat-layout-tab button.chat-layout-tab-close {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  width: 24px;
+  height: 100%;
+  padding: 0;
+  background: transparent;
+  opacity: 0;
+  transform: none;
+  transition: opacity 120ms ease;
+}
 .chat-layout-tab[data-active='true'] .chat-layout-tab-close,
 .chat-layout-tab:hover .chat-layout-tab-close,
 .chat-layout-tab .chat-layout-tab-close:focus-visible { opacity: 0.7; }
-.chat-layout-tab .chat-layout-tab-close:hover { opacity: 1; }
+.chat-layout-tab button.chat-layout-tab-close:hover { opacity: 1; background: transparent; }
 .chat-tab-indicator { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex-shrink: 0; color: var(--focus-ink); }
 .chat-tab-spinner { color: #60a5fa; animation: chat-tab-spin 1s linear infinite; }
 .chat-layout-tab[data-status='paused'] .chat-tab-indicator { color: #dba74b; }

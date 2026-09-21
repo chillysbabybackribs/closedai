@@ -19,6 +19,8 @@ are candidates, not instructions to implement them all. Tackle one agreed item a
   and draft. A chat already open is selected in place instead of duplicated; split geometry stays put.
 - [x] Close/hide tooltips clarify that tasks are not stopped. Brief feedback after a tab closes
   or a pane hides identifies continuing or paused tasks, without permanent controls or layout shifts.
+- [x] Tab-close hit area is a 24 × tab-height strip around the existing 11 px icon, without a
+  larger hover chip or extra chrome.
 
 ## Candidates awaiting selection
 
@@ -28,7 +30,6 @@ are candidates, not instructions to implement them all. Tackle one agreed item a
 | History | Clear orientation and a return-to-conversation action; evaluate consolidation with search. |
 | Close/hide/archive | Revisit archive recovery and Ctrl+W (currently closes the window). |
 | Layout | Make existing split/maximize actions discoverable; consider consolidation or presets. |
-| Click targets | Increase small tab-close hit areas without increasing visible icon size. |
 | Visual hierarchy | Clarify the focused chat and secondary text with restrained contrast. |
 | Empty chat | Assess whether optional first-use guidance earns its space. |
 | Search | Clarify title-only scope; consider project filters or conversation-content search. |
