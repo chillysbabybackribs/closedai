@@ -492,13 +492,17 @@ export class BrowserService extends EventEmitter {
     const tab = this.tabs.find((candidate) => candidate.id === tabId)
     if (!(tab instanceof BrowserTab)) return null
     const release = this.rendering.pin(tabId)
-    const hiddenRelease = !browserSurfaceVisibility(this.bounds).pageVisible || !(this.active instanceof BrowserTab)
-      ? this.captureSurfaces.acquire(tab, this.bounds) : undefined
-    this.prepareTabForTool(tab)
+    let hiddenRelease: (() => void) | undefined
+    try {
+      hiddenRelease = !browserSurfaceVisibility(this.bounds).pageVisible || !(this.active instanceof BrowserTab)
+        ? this.captureSurfaces.acquire(tab, this.bounds) : undefined
+      this.prepareTabForTool(tab)
+    } catch (error) { hiddenRelease?.(); release(); throw error }
     return () => {
-      hiddenRelease?.()
-      release()
-      if (this.tabs.includes(tab)) this.prepareTabForTool(tab)
+      try { hiddenRelease?.() } finally {
+        release()
+        if (this.tabs.includes(tab)) this.prepareTabForTool(tab)
+      }
     }
   }
 

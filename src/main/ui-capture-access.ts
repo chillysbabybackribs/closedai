@@ -64,6 +64,8 @@ export class UiCaptureAccess implements UiCaptureHost {
         // The coherence interval opens after readiness: from here until the pixels are read.
         const startedAt = Date.now()
         const readMutations = await observeDomMutations(contents)
+        // The leased surface stays covered or in an unmapped window. Let Electron's
+        // capturer request fresh frames even when the document has never been selected.
         const grab = () => contents.capturePage(undefined, { stayHidden: false, stayAwake: true })
         let frame: CaptureFrame
         let image: NativeImage
@@ -127,7 +129,7 @@ export class UiCaptureAccess implements UiCaptureHost {
 
   private payload(image: NativeImage): CapturedImage | null {
     const size = image.getSize()
-    if (size.width === 0 || size.height === 0) return null
+    if (size.width <= 1 || size.height <= 1) return null
     const display = fitImage(image, MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT)
     const model = fitImage(display, MODEL_MAX_WIDTH, MODEL_MAX_HEIGHT)
     const displaySize = display.getSize()

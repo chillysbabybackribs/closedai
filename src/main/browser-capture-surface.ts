@@ -17,8 +17,16 @@ export class HiddenCaptureSurfaces {
         webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } })
       entry = { host, count: 0, tab }
       this.leases.set(tab.id, entry)
-      tab.applyBounds({ x: 0, y: 0, width: bounds.width, height: bounds.height }, true)
-      host.contentView.addChildView(tab.view)
+      try {
+        // Initialize geometry before reparenting: attaching an offscreen/1px widget first
+        // can leave Chromium without a usable frame sink even after its bounds change.
+        tab.applyBounds({ x: 0, y: 0, width: bounds.width, height: bounds.height }, true)
+        host.contentView.addChildView(tab.view)
+      } catch (error) {
+        this.leases.delete(tab.id)
+        host.destroy()
+        throw error
+      }
     }
     entry.count++
     let released = false
@@ -27,16 +35,19 @@ export class HiddenCaptureSurfaces {
       released = true
       if (--entry.count > 0) return
       this.leases.delete(tab.id)
-      if (!this.home.isDestroyed() && !tab.view.webContents.isDestroyed()) {
-        tab.hide()
-        this.home.contentView.addChildView(tab.view)
+      try {
+        if (!this.home.isDestroyed() && !tab.view.webContents.isDestroyed()) {
+          tab.hide()
+          this.home.contentView.addChildView(tab.view)
+        }
+      } finally {
+        if (!entry.host.isDestroyed()) entry.host.destroy()
       }
-      entry.host.destroy()
     }
   }
 
   dispose(): void {
-    for (const entry of this.leases.values()) entry.host.destroy()
+    for (const entry of this.leases.values()) if (!entry.host.isDestroyed()) entry.host.destroy()
     this.leases.clear()
   }
 }
