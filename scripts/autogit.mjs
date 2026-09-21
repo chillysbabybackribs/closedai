@@ -34,9 +34,21 @@ const TICK_MS = 60_000
 const VERIFY = process.env.AUTOGIT_VERIFY !== '0'
 const PUSH = process.env.AUTOGIT_PUSH === '1'
 const MAX_FILE_BYTES = 5 * 1024 * 1024
-// Credential-shaped files only: source files that merely mention tokens (control-tokens.css)
-// must not trip this.
-const SECRET_PATH = /(^|\/)(\.env(\..*)?|.*\.(pem|key|p12|pfx|keystore)|id_(rsa|ed25519|ecdsa)(\.pub)?|auth\.json|credentials?(\.[a-z]+)?|secrets?(\.[a-z]+)?|.*tokens?\.(json|txt|ya?ml|toml|env))$/i
+// Credential-shaped files only: a source file that merely carries one of these words in its
+// name (control-tokens.css, src/shared/credentials.ts) must not trip this, so the word counts
+// only when the file is bare or carries a data extension — never a code one.
+const SECRET_DATA = String.raw`(json|txt|ya?ml|toml|env|ini|cfg|conf)`
+const SECRET_PATH = new RegExp(
+  String.raw`(^|/)(` +
+    String.raw`\.env(\..*)?` +
+    String.raw`|.*\.(pem|key|p12|pfx|keystore)` +
+    String.raw`|id_(rsa|ed25519|ecdsa)(\.pub)?` +
+    String.raw`|auth\.json` +
+    String.raw`|(credential|secret)s?(\.${SECRET_DATA})?` +
+    String.raw`|.*tokens?\.${SECRET_DATA}` +
+  String.raw`)$`,
+  'i',
+)
 const IGNORED_DIRS = new Set(['.git', 'node_modules', 'out', 'dist', '.claude'])
 const SERVICE = 'closedai-autogit'
 const LOCK = join(ROOT, '.git', 'autogit.lock')
