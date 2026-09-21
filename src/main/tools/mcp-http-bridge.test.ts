@@ -115,7 +115,8 @@ test('only a same-machine client naming this listener is served', async () => {
     assert.equal(await initialize(url, { host: 'evil.example:80' }), 403)
     assert.equal(await initialize(url, { host: `127.0.0.1:${Number(port) + 1}` }), 403)
     assert.equal(await initialize(url, { host: '127.0.0.1' }), 403)
-    assert.equal(await request(url, { setHost: false }), 403)
+    // Node's server refuses an HTTP/1.1 request that carries no Host at all before the bridge sees it.
+    assert.equal(await request(url, { setHost: false }), 400)
     // A browser page always sends Origin on a cross-site POST; the CLIs never send one.
     assert.equal(await initialize(url, { origin: `http://127.0.0.1:${port}` }), 403)
     assert.equal(await initialize(url, { origin: 'null' }), 403)

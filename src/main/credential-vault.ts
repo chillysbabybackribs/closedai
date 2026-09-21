@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { writeAtomic } from './atomic-write.js'
-import { readJsonOrQuarantine } from './corrupt-file-quarantine.js'
+import { readStoreFile } from './store-recovery.js'
 import {
   credentialService,
   maskSecret,
@@ -175,8 +175,8 @@ export class CredentialVault {
   // Only a missing file is an empty vault. Anything else is moved aside by the reader so the
   // next save cannot overwrite credentials the user may still be able to recover.
   #load(): Promise<StoredVault> {
-    this.#loaded ??= readJsonOrQuarantine(this.#filePath, 'credential vault')
-      .then((parsed) => parsed === null ? structuredClone(EMPTY) : normalize(parsed))
+    this.#loaded ??= readStoreFile(this.#filePath, '[credential-vault]', (text) => normalize(JSON.parse(text) as unknown))
+      .then((vault) => vault ?? structuredClone(EMPTY))
     return this.#loaded
   }
 

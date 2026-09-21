@@ -1,5 +1,5 @@
 import { writeAtomic } from './atomic-write.js'
-import { readJsonOrQuarantine } from './corrupt-file-quarantine.js'
+import { readStoreFile } from './store-recovery.js'
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, type SecuritySettings } from '../shared/security.js'
 
 export type SecuritySettingsAccess = {
@@ -22,9 +22,8 @@ export class SecuritySettingsStore implements SecuritySettingsAccess {
   ) {}
 
   static async open(filePath: string): Promise<SecuritySettingsStore> {
-    const parsed = await readJsonOrQuarantine(filePath, 'security settings')
-    const settings = parsed === null ? { ...DEFAULT_SECURITY_SETTINGS } : normalizeSecuritySettings(parsed)
-    return new SecuritySettingsStore(filePath, settings)
+    const settings = await readStoreFile(filePath, '[security-settings]', (text) => normalizeSecuritySettings(JSON.parse(text)))
+    return new SecuritySettingsStore(filePath, settings ?? { ...DEFAULT_SECURITY_SETTINGS })
   }
 
   get(): SecuritySettings {
