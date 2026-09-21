@@ -556,17 +556,14 @@
   border: none !important;
   resize: none !important;
   overflow: hidden !important;
-  /* The hint sits in the middle of the pill; typing pulls the caret back to the left. */
-  text-align: center;
 }
 
+/* The hint sits in the middle of the pill while the field itself stays left-aligned, so the
+   caret waits at the left edge where typing starts. */
 .prompt-composer-textarea-compact::placeholder {
   color: var(--muted-foreground);
   opacity: 0.55;
-}
-
-.prompt-composer-textarea-compact:not(:placeholder-shown) {
-  text-align: left;
+  text-align: center;
 }
 
 .prompt-composer-compact-actions {
