@@ -501,7 +501,9 @@ export class BrowserService extends EventEmitter {
         (tab.id !== this.activeId || !browserSurfaceVisibility(this.bounds).pageVisible)) {
       // A never-shown view has no usable frame sink. Render a capture lease outside the
       // window, preserving the selected tab and giving Chromium a full-sized live surface.
-      tab.applyBounds({ ...this.bounds, occluded: true }, false)
+      tab.applyBounds(this.bounds, true)
+      const active = this.active
+      if (active instanceof BrowserTab && active.id !== tab.id) this.attachTabView(active.id)
       return
     }
     prepareTabSurfaceForTool(tab, this.activeId, this.bounds, browserSurfaceVisibility(this.bounds))
