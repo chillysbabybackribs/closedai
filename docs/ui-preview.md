@@ -37,10 +37,10 @@ development mode even when its parent Electron process has `NODE_ENV=production`
 ## Repeatable states
 
 The query parameter `scenario` chooses the fixture; the preview toolbar provides the same links.
-Navigating to a scenario resets sample conversations and its layout. Appearance preferences
-use this preview origin's local storage and persist; changing preview ports changes that origin.
-Each tab has its own in-memory bridge and conversations. Shared-origin layout preferences still
-use local storage, but fixture navigation reseeds the requested layout.
+Navigating to a scenario resets sample conversations, layout, drafts, and appearance preferences.
+The preview supplies document-private, in-memory storage to the real renderer in place of local
+storage. Tabs cannot overwrite one another's fixtures or preferences. Component hot updates
+preserve the current document's state; navigation/reload resets it.
 
 | Scenario | Initial state |
 | --- | --- |

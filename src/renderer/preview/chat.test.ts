@@ -3,7 +3,19 @@ import test from 'node:test'
 import { createPreviewChat } from './chat.js'
 import { createPreviewBridge } from './bridge.js'
 import { parseScenario } from './fixtures.js'
+import { createPreviewStorage } from './storage.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
+
+test('preview preferences stay private to a document and reset on a new fixture', () => {
+  const first = createPreviewStorage()
+  const second = createPreviewStorage()
+  first.setItem('closedai.chat-layout', 'split')
+  assert.equal(second.getItem('closedai.chat-layout'), null)
+  assert.equal(first.length, 1)
+  assert.equal(first.key(0), 'closedai.chat-layout')
+  first.removeItem('closedai.chat-layout')
+  assert.equal(first.length, 0)
+})
 
 test('preview snapshots and events are isolated from consumers and other instances', async () => {
   const first = createPreviewChat('conversation', () => {})

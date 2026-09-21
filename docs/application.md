@@ -4,12 +4,12 @@ Source review: 2026-09-13, including the current uncommitted changes. This descr
 behavior, not a new live UI or provider verification. Protocol measurements retain their dates
 in the provider guides.
 
-## Native instrumentation
-
 For browser-only frontend development, `npm run dev:web` manages a reusable Vite preview of the
 actual renderer with a typed, in-memory bridge and direct sample-state links. It does not start
 Electron or model providers. The production entry remains separate. See [UI preview](ui-preview.md)
 for operation, readiness checks, and the boundary between UI fixtures and native verification.
+
+## Native instrumentation
 
 The initial local Linux backend offers process discovery, finite native inspection and custom
 Frida probes through a separate controller. Each experiment attempts unload/detach before returning;

@@ -4,9 +4,14 @@ import { App } from '../App.js'
 import { saveLayout } from '../chat-layout/layout-tree.js'
 import { createPreviewBridge } from './bridge.js'
 import { parseScenario, PREVIEW_CWD, sampleLayout, SCENARIOS } from './fixtures.js'
+import { createPreviewStorage } from './storage.js'
 import '../styles/preview/shell.css'
 
 if (window.closedai) throw new Error('The UI preview must not replace a real Electron bridge.')
+// Real components use localStorage. Keep their preferences/drafts private to this document,
+// so other model tabs cannot alter a scenario between seeding it and React mounting it.
+const storageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage')!
+Object.defineProperty(window, 'localStorage', { configurable: true, value: createPreviewStorage() })
 const scenario = parseScenario(new URLSearchParams(location.search).get('scenario'))
 document.title = `ClosedAI UI preview — ${scenario}`
 document.documentElement.dataset.previewState = 'loading'
@@ -54,10 +59,19 @@ function Preview() {
     notice.addEventListener('change', changed)
     // App effects subscribe before streaming starts; cleanup also covers StrictMode's replay.
     bridge.start()
-    const frame = requestAnimationFrame(() => {
-      if (!errors.length) document.documentElement.dataset.previewState = 'ready'
-    })
-    return () => { notice.removeEventListener('change', changed); cancelAnimationFrame(frame) }
+    const ready = () => {
+      const count = document.querySelectorAll('[data-ui="composer.input"]').length
+      const expected = scenario === 'split' ? 2 : 1
+      if (!errors.length && count === expected && document.querySelector('[data-ui-key="preview-chat-1"]')
+        && (scenario !== 'settings' || document.querySelector('[role="dialog"]'))) {
+        document.documentElement.dataset.previewState = 'ready'
+        observer.disconnect()
+      }
+    }
+    const observer = new MutationObserver(ready)
+    observer.observe(document.getElementById('root')!, { childList: true, subtree: true })
+    ready()
+    return () => { notice.removeEventListener('change', changed); observer.disconnect() }
   }, [])
   return <>
     <div className="preview-toolbar">
@@ -84,4 +98,5 @@ import.meta.hot?.dispose(() => {
   window.removeEventListener('dragover', preventDrop)
   window.removeEventListener('drop', preventDrop)
   Reflect.deleteProperty(window, 'closedai')
+  Object.defineProperty(window, 'localStorage', storageDescriptor)
 })
