@@ -1,7 +1,7 @@
 import type { ImgHTMLAttributes } from 'react'
 
-// The selected Blue glass artwork, bundled locally at 4× its 24px display size.
-const globeUrl = new URL('./assets/browser-globe-blue-glass.png', import.meta.url).href
+// The selected Natural Earth artwork, bundled locally at 4× its 24px display size.
+const globeUrl = new URL('./assets/browser-globe-natural-earth.png', import.meta.url).href
 
 type Props = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src' | 'alt'> & { size?: number }
 
