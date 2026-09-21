@@ -54,7 +54,7 @@
   resize: vertical;
 }
 
-.research-library-dialog button {
+.research-library-dialog button:not(.disclosure-row-open, .disclosure-row-action, .disclosure-panel-action) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -68,12 +68,12 @@
   cursor: pointer;
 }
 
-.research-library-dialog button:disabled {
+.research-library-dialog button:disabled:not(.disclosure-row-action) {
   opacity: 0.5;
   cursor: default;
 }
 
-.research-library-dialog button:not(:disabled):hover {
+.research-library-dialog button:not(:disabled, .disclosure-row-open, .disclosure-row-action, .disclosure-panel-action):hover {
   background: var(--accent);
 }
 

@@ -101,7 +101,10 @@ export class ClaudeSession {
   }
 
   async interrupt(): Promise<void> {
-    if (!this.activeTurnId || !this.runtime || this.runtime.closed) return
+    if (!this.runtime || this.runtime.closed) return
+    // Between turns the only live work is background tasks; the SDK has nothing to interrupt,
+    // so closing the process is what stops them (the session id survives for the next turn).
+    if (!this.activeTurnId) { if (this.backgroundTasks.running) await this.retire(); return }
     await this.runtime.interrupt()
   }
 

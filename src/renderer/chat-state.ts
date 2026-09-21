@@ -32,6 +32,18 @@ export function initialChatState(): ChatSnapshot {
   }
 }
 
+const liveBackground = (item: ChatTranscriptItem): boolean =>
+  item.type === 'tool' && Boolean(item.background) && ['running', 'pending'].includes(activityPhase(item.status))
+
+/**
+ * Whether the pane is still working. A provider can end its turn while a background agent it
+ * spawned keeps running and will start a follow-up turn on its own; the pane stays "running"
+ * through that gap so the composer, message actions and drawer do not read as finished.
+ */
+export function chatRunning(state: Pick<ChatSnapshot, 'activeTurnId' | 'items' | 'history'>): boolean {
+  return state.activeTurnId !== null || state.items.some(liveBackground) || (state.history?.backgroundTasks ?? []).some(liveBackground)
+}
+
 export function initialChatWorkspaceState(): ChatWorkspaceSnapshot {
   return { selectedPaneId: '', chats: [], selected: initialChatState() }
 }

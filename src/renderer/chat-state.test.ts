@@ -4,6 +4,7 @@ import {
   chatTitle,
   coalesceChatEvents,
   coalesceChatWorkspaceEvents,
+  chatRunning,
   initialChatState,
   initialChatWorkspaceState,
   initialChatRendererState,
@@ -325,4 +326,16 @@ test('the startup notice seeds no provider name and yields to the first snapshot
   assert.equal(started.selected.connection.state, 'starting')
   // Once a pane exists, its own connection events own the state; a late startup notice is ignored.
   assert.equal(reduceChatWorkspaceEvent(started, { type: 'startup', connection: { state: 'error', message: 'late' } }), started)
+})
+
+test('pane stays running while a background task outlives its turn', () => {
+  const agent = { type: 'tool' as const, id: 'agent', turnId: 'old', label: 'Agent', detail: 'working',
+    status: 'running', background: { taskId: 'agent', kind: 'agent' as const } }
+  const idle = initialChatState()
+  assert.equal(chatRunning(idle), false)
+  assert.equal(chatRunning({ ...idle, activeTurnId: 'turn' }), true)
+  assert.equal(chatRunning({ ...idle, items: [agent] }), true)
+  assert.equal(chatRunning({ ...idle, items: [{ ...agent, status: 'completed' }] }), false)
+  assert.equal(chatRunning({ ...idle, history: { hasEarlier: true, backgroundTasks: [agent] } }), true)
+  assert.equal(chatRunning({ ...idle, items: [{ ...agent, background: undefined }] }), false)
 })

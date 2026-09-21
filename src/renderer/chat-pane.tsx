@@ -13,6 +13,7 @@ import type { ChatAttachment } from '../shared/chat.js'
 import { ConnectionBanner, EmptyState, useProviderAvailability } from './chat-connection.js'
 import { useChatController, type ChatController } from './chat-controller.js'
 import { ChatHistory } from './chat-history.js'
+import { chatRunning } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { injectComposerDraft } from './composer-drafts.js'
@@ -63,7 +64,7 @@ export const ChatPane = memo(function ChatPane({
   ].map((entry) => [entry.projectPath, entry])).values()].filter((entry) => entry.projectPath !== project.projectPath)
   const manualCompact = state.provider === 'antigravity' && preferences?.chatSeamlessRotation !== true
   const ready = state.connection.state === 'ready'
-  const running = state.activeTurnId !== null
+  const running = chatRunning(state)
   const [ownHistoryOpen, setOwnHistoryOpen] = useState(false)
   const historyOpen = controlledHistoryOpen ?? ownHistoryOpen
   const setHistoryOpen = onHistoryOpenChange ?? setOwnHistoryOpen
