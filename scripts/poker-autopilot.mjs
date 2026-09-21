@@ -14,7 +14,7 @@ const statusPath = join(userData, 'poker-autopilot-status.json')
 
 const command = process.argv[2]?.trim() || 'help'
 
-async function printStatus(): Promise<void> {
+async function printStatus() {
   try {
     const text = await readFile(statusPath, 'utf8')
     console.log(text)
