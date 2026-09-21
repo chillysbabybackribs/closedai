@@ -109,7 +109,33 @@ universal explanation or guarantee against native target crashes. The earlier hu
 test also left cleanup unconfirmed before interruption was added. Those failures are why
 unknown receipts remain part of the contract.
 
+### Restarted-app Chromium validation
+
+On 2026-09-20, the restarted app exposed all three native tools and reported Frida 17.18.0
+with `ptrace_scope=0`. A disposable data-URL tab was tested through the actual model tool
+route against Chromium 152.0.7977.65 on Linux x64. A short CDP `devtools.timeline` trace
+identified the renderer PID by matching an `EvaluateScript` event's frame id to
+`Page.getFrameTree`; tracing completed without data loss before native attachment.
+Process discovery then supplied the birth/executable-bound native target id.
+
+Fixed inspection found 103 modules, returned the matching libc module and thread inventory,
+and completed in 277 ms. A custom probe hooked libc `getpid`, invoked it three times from
+the agent, observed the expected renderer PID on all three returns, removed the hook and
+verified another call succeeded without adding a hit. Its binary event retained bytes
+`01 02 03` without truncation. Reusing the same probe key and arguments returned the identical
+receipt. Three further inspect/attach/detach cycles completed in 264–291 ms. Every operation
+reported script unload/destruction, session detach and device-manager closure, with no event
+loss. Page JavaScript responded correctly after each experiment. The disposable tab was
+closed and the original browser tab restored.
+
+This verifies finite inspection, controlled native calls/hooks and receipt reuse on one
+renderer under this app's current launch configuration. It does not qualify sandboxed
+Chromium configurations, GPU/network processes, arbitrary native hooks, page-to-native
+causal attribution or performance overhead. The hook calls originated in the agent, not
+page activity. Frame/PID correlation used existing CDP evidence for this experiment; there
+is still no dedicated browser-to-process mapping API.
+
 Remote/mobile devices, arbitrary program spawning, persistent sessions, host RPC, native
-evidence archives, browser-to-process mapping, kernel/Barebone work and performance benchmarks
-remain future work. A fixture pass does not establish attachment compatibility with Chromium
-or arbitrary applications. Restart the built app to load the new tool registry.
+evidence archives, a dedicated browser-to-process mapping API, kernel/Barebone work and
+performance benchmarks remain future work. Other applications and Chromium process types
+still require target-specific validation. Restart the built app after changing its tool registry.
