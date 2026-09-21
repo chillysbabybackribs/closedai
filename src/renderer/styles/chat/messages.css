@@ -30,7 +30,7 @@
   border-width: 1px 0;
   border-radius: 0;
   background: var(--surface-raised);
-  color: #e8e8e9;
+  color: var(--foreground);
   font-size: var(--chat-fs-body, 14px);
   line-height: 1.6;
   white-space: pre-wrap;
