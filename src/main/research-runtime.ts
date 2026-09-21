@@ -15,6 +15,7 @@ import { textLimit } from './tools/search/research/coverage.js'
 import { SearchBrowserTabs } from './tools/search/presentation.js'
 import { ResearchLibrary } from './research-library/service.js'
 import { traceLog } from './trace/trace-log.js'
+import type { BrowserCoordination } from './tools/browser/coordination.js'
 
 /** Electron/session ownership stays outside the provider-neutral search implementation. */
 export async function createResearchRuntime(options: {
@@ -23,6 +24,7 @@ export async function createResearchRuntime(options: {
   browser(): BrowserService | null
   peers(): ChatPeerManager | null
   workspace(): string
+  browserCoordination?: BrowserCoordination
 }) {
   // Runs are session-local. Remove only our UUID-named cache directories from earlier launches.
   const entries = await readdir(options.root, { withFileTypes: true }).catch((error: NodeJS.ErrnoException) => {
@@ -44,7 +46,7 @@ export async function createResearchRuntime(options: {
     open: (url) => {
       const browser = options.browser()
       if (!browser) throw new Error('The live browser is unavailable')
-      return browser.openNewTab(url, true)
+      return browser.openNewTab(url, false)
     }
   })
   const namespace = searchTools({
@@ -80,7 +82,9 @@ export async function createResearchRuntime(options: {
         if (!snapshot || snapshot.threadId !== context.threadId || snapshot.activeTurnId !== context.turnId) {
           throw new Error('The live search caller is no longer in this turn')
         }
-        return liveTabs.open(url, context)
+        const tabId = liveTabs.open(url, context)
+        options.browserCoordination?.claim(tabId, context.paneId!)
+        return tabId
       }
     }
   })

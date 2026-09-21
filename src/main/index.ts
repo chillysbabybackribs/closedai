@@ -33,6 +33,7 @@ import { CursorChatService } from './cursor/cursor-service.js'
 import { CursorToolBridge } from './cursor/cursor-mcp.js'
 import { AntigravityToolBridge } from './antigravity/antigravity-mcp.js'
 import { BrowserPageAccess } from './browser-page-access.js'
+import { BrowserCoordination } from './tools/browser/coordination.js'
 import { BrowserNetworkAccess } from './browser-network-access.js'
 import { BrowserCdpAccess } from './cdp/browser-cdp-access.js'
 import { AppAutomationAccess } from './app-automation-access.js'
@@ -244,12 +245,21 @@ async function main(): Promise<void> {
     }
   }
   // Tools resolve the browser lazily: it is created with the window, after the chat service.
+  const browserCoordination = new BrowserCoordination({
+    tabs: () => browserService?.tabList() ?? [],
+    create: () => {
+      if (!browserService) throw new Error('The browser is not available yet')
+      return browserService.openNewTab('about:blank', false)
+    },
+    paneExists: paneId => !!chatService?.paneSnapshot(paneId)
+  })
   const pageAccess = new BrowserPageAccess(() => browserService)
   cdpAccess = new BrowserCdpAccess(() => browserService)
   const networkAccess = new BrowserNetworkAccess(() => browserService)
   appAutomationAccess = new AppAutomationAccess(() => mainWindow)
   appCommandAccess = new AppCommandAccess({
-    chat: () => chatService, browser: () => browserService, downloads: () => browserDownloads, window: () => mainWindow
+    chat: () => chatService, browser: () => browserService, downloads: () => browserDownloads, window: () => mainWindow,
+    browserCoordination
   })
   const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService)
   // Full-resolution captures for the transcript; the model only ever receives the scaled copy.
@@ -263,7 +273,8 @@ async function main(): Promise<void> {
           paneSnapshot: () => ({ threadId: 'live-verify-thread', activeTurnId: 'live-verify-turn' })
         } as unknown as ChatPeerManager)
       : chatService,
-    workspace: () => chatWorkspace
+    workspace: () => chatWorkspace,
+    browserCoordination
   })
   researchService = research.service
   researchLibrary = research.library
@@ -290,6 +301,7 @@ async function main(): Promise<void> {
     // Lazy self-reference: the batch dispatches into the registry it is registered in.
     batchTools(() => toolRegistry!, { maxCalls: settings.get().toolBatchMaxCalls })
   ])
+  toolRegistry.browserCoordination = browserCoordination
   for (const toolId of settings.get().disabledTools) toolRegistry.setEnabled(toolId, false)
   toolTelemetry = await ToolTelemetry.open(
     join(userData(), 'tool-telemetry.json'),
