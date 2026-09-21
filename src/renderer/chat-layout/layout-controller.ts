@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
+import { errorMessage } from '../error-message.js'
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
-import { addTab, focusedCloseAction, moveTab, pruneTabs, removeTab, selectTab, tabIds, tabOwner } from './layout-tabs.js'
+import { addTab, focusedCloseAction, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds, tabOwner, type TileDirection } from './layout-tabs.js'
 import { removalNotice } from './layout-copy.js'
 import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
+
+const ERROR_TTL_MS = 8000
+/** Main announces a selection within one workspace event; past this the layout resyncs instead of staying locked. */
+const CONFIRM_TIMEOUT_MS = 5000
 
 /** The component owning this hook is keyed by project directory. */
 export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
@@ -19,7 +24,8 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     }
     return { ...saved, tree: withBrowser(tree!) }
   })
-  const [error, setError] = useState('')
+  // Objects rather than strings: repeating the same message restarts its dismissal timer.
+  const [error, setError] = useState<{ text: string } | null>(null)
   const [notice, setNotice] = useState<{ text: string } | null>(null)
   const latestSnapshot = useRef(snapshot)
   latestSnapshot.current = snapshot
@@ -28,6 +34,13 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     const timer = window.setTimeout(() => setNotice(null), 4500)
     return () => window.clearTimeout(timer)
   }, [notice])
+  useEffect(() => {
+    if (!error) return
+    const timer = window.setTimeout(() => setError(null), ERROR_TTL_MS)
+    return () => window.clearTimeout(timer)
+  }, [error])
+  const fail = useCallback((reason: unknown) => setError({ text: errorMessage(reason) }), [])
+  const clearError = useCallback(() => setError(null), [])
   const reportRemoval = useCallback((ids: string[], label: string) => {
     const rows = latestSnapshot.current.chats.filter((row) => ids.includes(row.paneId))
     setNotice({ text: removalNotice(label, rows) })
@@ -40,6 +53,11 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   current.current = layout
   const idsKey = JSON.stringify(paneIds(layout.tree))
   const tabsKey = JSON.stringify(tabIds(layout.tree))
+  const release = useCallback(() => {
+    pending.current = false
+    setSelectionToConfirm(null)
+    setBusy(false)
+  }, [])
 
   useEffect(() => {
     saveLayout(window.localStorage, cwd, layout)
@@ -50,10 +68,10 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     if (!ids.length || !ids[0]) return
     let active = true
     void window.closedai.chat.setVisiblePanes(cwd, ids, JSON.parse(tabsKey) as string[]).catch((reason: unknown) => {
-      if (active) setError(String(reason))
+      if (active) fail(reason)
     })
     return () => { active = false }
-  }, [cwd, idsKey, tabsKey])
+  }, [cwd, idsKey, tabsKey, fail])
 
   // History/search selection focuses an existing tab or adds one to the focused tile.
   // Split/add operations manage their own destination while main announces selection.
@@ -63,9 +81,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     if (selectionToConfirm) {
       if (snapshot.selectedPaneId !== selectionToConfirm ||
           !snapshot.chats.some((chat) => chat.paneId === selectionToConfirm)) return
-      pending.current = false
-      setSelectionToConfirm(null)
-      setBusy(false)
+      release()
     } else if (pending.current) return
     const next = snapshot.selectedPaneId
     const previous = selected.current
@@ -80,12 +96,27 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       }
       return tree === value.tree ? value : { ...value, tree: tree! }
     })
-  }, [snapshot.selectedPaneId, snapshot.chats, busy, cwd, selectionToConfirm])
+  }, [snapshot.selectedPaneId, snapshot.chats, busy, cwd, selectionToConfirm, release])
+
+  // A confirmation that never arrives would leave every structural control disabled. Releasing
+  // re-runs the reconciliation above against the latest snapshot, which drops any tab main never opened.
+  useEffect(() => {
+    if (!selectionToConfirm) return
+    const timer = window.setTimeout(() => {
+      release()
+      fail(new Error('The workspace did not confirm the new tab in time; the layout was refreshed from the current chats'))
+    }, CONFIRM_TIMEOUT_MS)
+    return () => window.clearTimeout(timer)
+  }, [selectionToConfirm, release, fail])
 
   const focusPane = useCallback(async (id: string): Promise<void> => {
     // Menu focus restoration must not select the departing pane mid-operation.
-    if (!pending.current) await window.closedai.chat.selectPane(id)
-  }, [])
+    if (pending.current) return
+    try {
+      await window.closedai.chat.selectPane(id)
+      clearError()
+    } catch (reason) { fail(reason) }
+  }, [clearError, fail])
 
   // A null edge adds a tab in the target tile without adding a split.
   const dock = useCallback(async (id: string | null, target: string, edge: DockEdge | null, singleTab = false): Promise<void> => {
@@ -97,7 +128,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     if (target === WORKSPACE_DOCK_ID || (target === BROWSER_PANE_ID && (!id || !edge))) return
     pending.current = true
     setBusy(true)
-    setError('')
+    clearError()
     try {
       const treeBefore = current.current.tree
       const sourceOwner = id ? tabOwner(treeBefore, id) : null
@@ -120,11 +151,10 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       })
       setSelectionToConfirm(added)
     } catch (reason) {
-      setError(String(reason))
-      pending.current = false
-      setBusy(false)
+      fail(reason)
+      release()
     }
-  }, [])
+  }, [clearError, fail, release])
 
   const newChat = useCallback((target: string) => dock(null, target, null), [dock])
 
@@ -134,18 +164,30 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     setLayout((value) => ({ ...value, tree: selectTab(value.tree, paneIds(value.tree)[0]!, id) }))
     try {
       await window.closedai.chat.openChat(id)
+      clearError()
     } catch (reason) {
-      setError(String(reason))
+      fail(reason)
     }
+  }, [clearError, fail])
+
+  // Keyboard counterpart to dragging a tab onto another tile's header: no IPC, the chat stays selected.
+  const moveTabToTile = useCallback((id: string, direction: TileDirection): void => {
+    if (pending.current) return
+    setLayout((value) => {
+      const target = neighborTile(value.tree, id, direction)
+      return target ? { ...value, tree: moveTab(value.tree, id, target, null, crypto.randomUUID()) } : value
+    })
   }, [])
 
+  // Close and hide recompute the tree when they commit: a divider resize during the round trip must
+  // survive, so the snapshot taken before awaiting only decides what the operation needs from main.
   const closeTab = useCallback(async (id: string): Promise<void> => {
     const tree = current.current.tree
     const remaining = removeTab(tree, id)
     if (!remaining || !paneIds(remaining).length || pending.current) return
     pending.current = true
     setBusy(true)
-    setError('')
+    clearError()
     try {
       const owner = tabOwner(tree, id)
       if (owner === id) {
@@ -156,17 +198,18 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
         selected.current = next
         setSelectionToConfirm(next)
       } else {
-        pending.current = false
-        setBusy(false)
+        release()
       }
-      setLayout((value) => ({ ...value, tree: remaining }))
+      setLayout((value) => {
+        const next = removeTab(value.tree, id)
+        return next && paneIds(next).length ? { ...value, tree: next } : value
+      })
       reportRemoval([id], 'Tab closed')
     } catch (reason) {
-      setError(String(reason))
-      pending.current = false
-      setBusy(false)
+      fail(reason)
+      release()
     }
-  }, [reportRemoval])
+  }, [clearError, fail, release, reportRemoval])
 
   const hide = useCallback(async (id: string): Promise<void> => {
     const tree = current.current.tree
@@ -178,11 +221,15 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
         selected.current = paneIds(remaining)[0]!
         await window.closedai.chat.selectPane(selected.current)
       }
-      setLayout((value) => ({ ...value, tree: remaining }))
+      setLayout((value) => {
+        const next = removePane(value.tree, id)
+        return next && paneIds(next).length ? { ...value, tree: next } : value
+      })
+      clearError()
       reportRemoval(tabIds(tree).filter((tab) => tabOwner(tree, tab) === id), 'Pane hidden')
-    } catch (reason) { setError(String(reason)) }
+    } catch (reason) { fail(reason) }
     finally { pending.current = false }
-  }, [reportRemoval])
+  }, [clearError, fail, reportRemoval])
 
   const resize = useCallback((id: string, ratio: number) => {
     setLayout((value) => ({ ...value, tree: resizeSplit(value.tree, id, ratio) }))
@@ -202,7 +249,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     if (pending.current) return
     pending.current = true
     setBusy(true)
-    setError('')
+    clearError()
     try {
       const { groups, missing } = assignGroups(current.current.tree, presetSlots(preset))
       const visible = paneIds(current.current.tree)
@@ -227,16 +274,14 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
         selected.current = created
         setSelectionToConfirm(created)
       } else {
-        pending.current = false
-        setBusy(false)
+        release()
       }
     } catch (reason) {
-      setError(String(reason))
-      pending.current = false
-      setBusy(false)
+      fail(reason)
+      release()
     }
-  }, [cwd])
+  }, [cwd, clearError, fail, release])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
-  return { ...layout, error, notice: notice?.text ?? '', busy, dock, newChat, focusPane, activateTab, closeTab, hide, closeFocused, resize, arrange, toggleBrowser, showBrowser }
+  return { ...layout, error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, focusPane, activateTab, moveTabToTile, closeTab, hide, closeFocused, resize, arrange, toggleBrowser, showBrowser }
 }
