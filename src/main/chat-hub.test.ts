@@ -138,6 +138,32 @@ test('an agy model routes to the Antigravity provider and its threads merge into
   assert.equal(hub.activeProvider, 'codex')
 })
 
+test('a moved chat restores bounded history from its original directory and keeps it through startup', async () => {
+  const { hub, codex, settings } = build('gpt-5.6-sol')
+  settings.saved.chatContinuation = {
+    sourcePaneId: 'pane', sourceThreadId: 'old-thread', sourceCwd: '/old-project',
+    sourceProvider: 'codex', sourceTitle: 'Existing task', sourceThroughItemId: 'before',
+    handoff: 'Continue the task', createdAt: 1
+  }
+  codex.threadId = null
+  codex.readThread = async (threadId, cwd) => {
+    assert.equal(threadId, 'old-thread')
+    assert.equal(cwd, '/old-project')
+    return { threadId, threadName: 'Existing task', items: [
+      { type: 'user', id: 'before', turnId: null, text: 'Keep this' },
+      { type: 'user', id: 'later', turnId: null, text: 'Outside the frozen boundary' }
+    ] }
+  }
+  await hub.start()
+  codex.replace()
+  assert.deepEqual(hub.snapshot().items.map((item) => item.id), ['before'])
+  codex.threadId = 'new-thread'
+  settings.saved.chatContinuation.handoff = null
+  codex.items = [{ type: 'user', id: 'next', turnId: null, text: 'Next task' }]
+  codex.replace()
+  assert.deepEqual(hub.snapshot().items.map((item) => item.id), ['before', 'next'])
+})
+
 test('the saved model decides the initial provider and which one starts warm', async () => {
   const codexFirst = build('gpt-5.6-sol')
   assert.equal(codexFirst.hub.activeProvider, 'codex')

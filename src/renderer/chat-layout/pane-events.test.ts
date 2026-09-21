@@ -27,3 +27,15 @@ test('interleaved streams and history pages update their own visible pane', () =
   const stale = reduceChatWorkspaceEvent(state, { type: 'historyPage', paneId: 'b', threadId: 'old', beforeItemId: 'b0', page: { items: [], hasEarlier: false } })
   assert.equal(stale, state)
 })
+
+test('moving a chat to a fresh runtime keeps previously expanded messages mounted', () => {
+  const previous = { ...initialChatState(), threadId: 'old-thread', cwd: '/old', items: [
+    { type: 'user' as const, id: 'earlier', turnId: null, text: 'Earlier turn' },
+    { type: 'user' as const, id: 'latest', turnId: null, text: 'Current turn' }
+  ] }
+  const state: ChatWorkspaceSnapshot = { selectedPaneId: 'a', selected: previous, panes: { a: previous }, chats: [] }
+  const next = { ...previous, threadId: null, cwd: '/new', items: previous.items.slice(1) }
+  const moved = reduceChatWorkspaceEvent(state, { type: 'pane', paneId: 'a', event: { type: 'replace', snapshot: next } })
+  assert.equal(moved.selected.cwd, '/new')
+  assert.deepEqual(moved.selected.items.map((item) => item.id), ['earlier', 'latest'])
+})

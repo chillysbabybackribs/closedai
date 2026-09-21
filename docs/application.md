@@ -92,13 +92,21 @@ use the existing session handoff to start a fresh provider thread, preserving th
 conversation and source recall. This also applies to tool switches, independently of idle
 context rotation; unchanged catalogs keep their thread.
 
-The project menu below the composer offers a directory picker, recent projects, and “Don’t work
-in a project” (uses the home directory). Manual project selection keeps existing chats and running
-turns alive in their original directories. `index.ts` saves the departing project's open chat ids
-and restores the destination's, including selection; conversation ids live on the records. Opening
-a history search result from another directory selects that directory automatically. A directory without
-saved open chats receives a fresh chat. This is directory selection; it does not create a Git branch
-or worktree. Layouts remain per directory; splitting chats across directories is not supported.
+The folder menu above each composer changes only that chat's working directory. It offers a
+directory picker, recent projects, and “Don’t work in a project” (uses the home directory).
+The chat keeps its identity, messages, draft, and scroll position; other tabs, split panes, and the
+browser stay in place. Chats from different directories can share the layout, and focusing a chat
+or opening a history search result does not switch the workspace. New chats inherit the focused
+chat's directory. Open chat ids are restored across directories after relaunch.
+
+A folder selected during a turn is labeled “queued” and applies after that chat's foreground and
+background work finishes; paused work also waits. Other chats can keep running. The latest queued
+choice wins, selecting the current folder cancels it, and unapplied choices do not survive restart.
+Applying rebuilds only the selected chat's provider runtime with the new cwd and a bounded
+conversation handoff for its next message. The existing transcript remains visible; the original
+provider thread and directory are retained as the bounded history source for reopening and recall.
+This does not create a Git branch or worktree. The model-requested workspace switch below remains
+a separate operation with its existing workspace selection and continuation behavior.
 
 Models can request `closedai_app.command project_switch` with `project_op: request` and an absolute
 existing `project_path`. One in-memory request waits for every pane and pane operation to become
