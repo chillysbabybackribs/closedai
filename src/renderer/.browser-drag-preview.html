@@ -1,0 +1,19 @@
+<!doctype html><html><head><title>Browser drag verification</title></head><body style="margin:0;background:#181819;color:#ddd"><div id="root"></div><script type="module">
+import React, { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { ChatCanvas } from './chat-layout/chat-canvas.tsx';
+import { dockBrowser, BROWSER_PANE_ID, CHAT_DRAG_TYPE } from './chat-layout/layout-tree.ts';
+import './styles/chat/layout.css';
+import './styles/browser/chrome.css';
+const initial = { kind:'split',id:'outer',axis:'horizontal',ratio:0.67,first:{kind:'split',id:'chats',axis:'horizontal',ratio:0.5,first:{kind:'pane',id:'a'},second:{kind:'pane',id:'b'}},second:{kind:'pane',id:BROWSER_PANE_ID} };
+const noop=()=>{};
+function App(){
+ const [tree,setTree]=useState(initial); const [active,setActive]=useState(false);
+ window.dragQA={tree,active,reset:()=>setTree(initial)};
+ return React.createElement('div',{style:{height:'100vh',display:'flex','--surface-chrome':'#202124','--surface-control':'#303134','--chrome-fg':'#bbb','--chrome-fg-strong':'#fff','--hairline':'#444'}},React.createElement(ChatCanvas,{
+ tree,selectedId:'a',busy:false,browserVisible:true,onDragActive:setActive,onToggleBrowser:noop,title:id=>id==='a'?'First chat':'Second chat',renderPane:id=>React.createElement('textarea',{defaultValue:'Preserved draft '+id,style:{height:'100%',background:'#202123',color:'white'}}),onSelect:noop,onSelectTab:noop,onCloseTab:noop,onNewChat:noop,onHide:noop,onResize:noop,
+ onDock:(id,target,edge)=>setTree(t=>dockBrowser(t,target,edge,'moved')),
+ renderBrowser:React.createElement('div',{style:{width:'100%'}},React.createElement('div',{className:'browser-tabstrip'},React.createElement('button',{className:'browser-layout-drag','data-ui':'layout.browser-drag',draggable:true,onDragStart:e=>{e.dataTransfer.setData(CHAT_DRAG_TYPE,BROWSER_PANE_ID);e.dataTransfer.effectAllowed='move'}},'⠿'),React.createElement('div',{className:'browser-tab is-active'},'Browser')),React.createElement('p',null,'Native page area'))
+ }));
+}createRoot(document.getElementById('root')).render(React.createElement(App));
+</script></body></html>
