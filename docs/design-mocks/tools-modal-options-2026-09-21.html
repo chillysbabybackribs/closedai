@@ -193,14 +193,17 @@
   .attention .btn { margin-left: auto; }
 
   /* ---- option A: grouped ledger -------------------------------------- */
+  /* The group's own switch sits at the far right, alone: the left column then belongs to tools
+     only, so the two switch levels stop reading as one flat list of thirty-six switches. */
   .grp-head {
     position: sticky; top: 0; z-index: 1;
-    display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto; align-items: center; gap: 12px;
-    padding: 9px 18px 8px;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto 62px 26px; align-items: center; gap: 12px;
+    padding: 13px 18px 9px;
     border-bottom: 1px solid var(--hairline);
     background: linear-gradient(var(--surface-card) 82%, rgb(26 26 27 / 88%));
     backdrop-filter: blur(6px);
   }
+  .grp-head + .rows .row { padding-left: 18px; }
   .grp-head + .rows { padding-bottom: 6px; }
   .grp-title { font-size: 12.5px; font-weight: 600; }
   .grp-effect { margin-left: 8px; font-size: 11px; font-weight: 400; }
@@ -541,14 +544,14 @@ function renderA() {
     const gs = groupState(list);
     return [
       el('div', { class: 'grp-head' }, [
-        switchEl(gs !== 'off', gs === 'mixed', `Turn ${gs === 'off' ? 'on' : 'off'} ${group.label}`,
-          () => { const next = gs === 'off'; for (const t of list) t.on = next; render(); }),
         el('div', {}, [
           el('span', { class: 'grp-title', text: group.label }),
           el('span', { class: 'grp-effect eff-' + group.id, text: group.effect })
         ]),
-        el('span', { class: 'grp-meta', text: `${onOf(list)} of ${list.length}` }),
-        el('span', { class: 'grp-meta', style: 'min-width:58px;text-align:right', text: costOf(list) ? fmt(costOf(list)) : 'off' })
+        el('span', { class: 'grp-meta', text: `${onOf(list)} of ${list.length} on` }),
+        el('span', { class: 'grp-meta', style: 'text-align:right', text: costOf(list) ? fmt(costOf(list)) : 'off' }),
+        switchEl(gs !== 'off', gs === 'mixed', `Turn ${gs === 'off' ? 'on' : 'off'} ${group.label}`,
+          () => { const next = gs === 'off'; for (const t of list) t.on = next; render(); })
       ]),
       el('div', { class: 'rows' }, list.flatMap((tool) => toolRow(tool, render)))
     ];
@@ -643,17 +646,21 @@ function renderC() {
 
 function render() { renderA(); renderB(); renderC(); }
 
-document.getElementById('tabs').addEventListener('click', (event) => {
-  const button = event.target.closest('button[data-view]');
-  if (!button) return;
-  for (const tab of document.querySelectorAll('#tabs button')) tab.setAttribute('aria-selected', String(tab === button));
+function showView(view) {
+  for (const tab of document.querySelectorAll('#tabs button')) tab.setAttribute('aria-selected', String(tab.dataset.view === view));
   for (const section of document.querySelectorAll('.stage > section')) {
-    if (section.dataset.view === button.dataset.view) section.setAttribute('data-active', '');
+    if (section.dataset.view === view) section.setAttribute('data-active', '');
     else section.removeAttribute('data-active');
   }
+}
+document.getElementById('tabs').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-view]');
+  if (button) location.hash = button.dataset.view;
 });
+addEventListener('hashchange', () => showView(location.hash.slice(1) || 'a'));
 document.getElementById('c-search').addEventListener('input', (event) => { state.filter = event.target.value; renderC(); });
 render();
+showView(location.hash.slice(1) || 'a');
 </script>
 </body>
 </html>
