@@ -62,7 +62,8 @@ export function HeaderChatSearchRow({
     </div>
     <div role="gridcell" className="header-chat-search-actions">
       {turnControl && <button type="button" className="header-chat-search-turn"
-        data-ui={`titlebar.chat-search-${turnControl}`} data-ui-key={row.paneId}
+        data-ui={turnControl === 'pause' ? 'titlebar.chat-search-pause' : 'titlebar.chat-search-resume'}
+        data-ui-key={row.paneId}
         aria-label={`${row.running ? 'Pause' : 'Resume'} “${row.title}”`}
         title={row.running ? 'Pause chat' : 'Resume chat'} disabled={busy}
         onMouseDown={swallowFocus} onClick={onToggleTurn}>
