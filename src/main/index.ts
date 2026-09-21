@@ -52,6 +52,9 @@ import { createArtifactRuntime } from './investigations/artifact-runtime.js'
 import type { ArtifactStore } from './investigations/artifact-store.js'
 import type { ResearchService } from './tools/search/research/service.js'
 import { peerChatTools } from './tools/peer-chats/index.js'
+import { NativeControllerClient } from './native-instrument/client.js'
+import { NativeInstrumentService } from './native-instrument/service.js'
+import { nativeInstrumentTools } from './tools/native-instrument/index.js'
 import { ToolTelemetry } from './tools/telemetry.js'
 import { registerToolsIpc } from './tools/ipc.js'
 import { registerTraceIpc } from './trace/ipc.js'
@@ -101,6 +104,7 @@ let antigravityBridge: AntigravityToolBridge | null = null
 let cursorBridge: CursorToolBridge | null = null
 let browserSessionFlush: Promise<void> | null = null
 let cdpAccess: BrowserCdpAccess | null = null
+let nativeInstrument: NativeInstrumentService | null = null
 let appAutomationAccess: AppAutomationAccess | null = null
 let appCommandAccess: AppCommandAccess | null = null
 let stopBrowserCacheMaintenance: (() => void) | null = null
@@ -269,7 +273,12 @@ async function main(): Promise<void> {
     chats: chatStore!, peers: () => chatService
   })
   artifactStore = artifacts.store
+  nativeInstrument = new NativeInstrumentService(new NativeControllerClient(new URL('./native-controller.js', import.meta.url)))
   toolRegistry = createToolRegistry([
+    nativeInstrumentTools(nativeInstrument, context => {
+      const snapshot = context.paneId ? chatService?.paneSnapshot(context.paneId) : undefined
+      return !!context.threadId && !!context.turnId && snapshot?.threadId === context.threadId && snapshot.activeTurnId === context.turnId
+    }),
     credentialVaultTools(() => credentialVault),
     appTools(() => appCommandAccess, () => appAutomationAccess),
     browserTools(() => pageAccess, () => networkAccess, () => networkAccess),
@@ -480,6 +489,7 @@ async function importDefaultBrowserCookies(): Promise<void> {
 }
 
 function disposeWindowServices(): void {
+  nativeInstrument?.dispose()
   disposeResearch?.()
   researchLibrary?.dispose()
   browserSessionFlush = browserService?.flushSessionData() ?? null
@@ -499,6 +509,7 @@ app.on('before-quit', (event) => {
   if (quitting) return
   event.preventDefault()
   quitting = true
+  nativeInstrument?.dispose()
   stopBrowserCacheMaintenance?.()
   stopBrowserCacheMaintenance = null
   chatService?.stop()
