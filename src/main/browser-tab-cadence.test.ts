@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { TabCadencePolicy } from './browser-tab-cadence.js'
+import { TabCadencePolicy, webContentsCadence } from './browser-tab-cadence.js'
 
 const GRACE_MS = 40
 
@@ -101,6 +101,23 @@ test('dispose drops pending restores', async () => {
   await settle()
 
   assert.deepEqual(log, ['tab-1:false'])
+})
+
+test('the live adapter leaves an unknown or destroyed tab alone', () => {
+  const allowed: boolean[] = []
+  const contents = {
+    destroyed: false,
+    isDestroyed: () => contents.destroyed,
+    setBackgroundThrottling: (allow: boolean) => { allowed.push(allow) }
+  }
+  const adapter = webContentsCadence((tabId) => (tabId === 'tab-1' ? contents : null))
+
+  adapter.setThrottled('tab-1', false)
+  adapter.setThrottled('tab-9', true)
+  contents.destroyed = true
+  adapter.setThrottled('tab-1', true)
+
+  assert.deepEqual(allowed, [false], 'only the live tab is told, and `throttled` is Electron’s `allowed`')
 })
 
 test('tabs are exempted independently', async () => {

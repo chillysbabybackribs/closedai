@@ -13,7 +13,7 @@ import { BrowserObservers } from './browser-network/observers.js'
 import { describeMissingTab } from '../shared/browser-tabs.js'
 import { installPermissionPolicy, type PermissionPolicyDeps } from './browser-permissions.js'
 import { TabRenderingPolicy } from './browser-tab-rendering.js'
-import { TabCadencePolicy } from './browser-tab-cadence.js'
+import { TabCadencePolicy, webContentsCadence } from './browser-tab-cadence.js'
 import { allSettledBounded } from './bounded-concurrency.js'
 import { restorePlan, type RestoredTabSession } from './browser-tab-session-store.js'
 import { browserPaneBounds, browserSurfaceVisibility } from './browser-surface-visibility.js'
@@ -73,14 +73,10 @@ export class BrowserService extends EventEmitter {
   })
   // A hidden tab runs at ~1 Hz with no animation frames; a page under tool control needs real
   // cycles to finish loading itself. See browser-tab-cadence.ts for the measurement.
-  private readonly cadence = new TabCadencePolicy({
-    setThrottled: (tabId, throttled) => {
-      const tab = this.tabs.find((candidate) => candidate.id === tabId)
-      if (!(tab instanceof BrowserTab)) return
-      const contents = tab.view.webContents
-      if (!contents.isDestroyed()) contents.setBackgroundThrottling(throttled)
-    }
-  })
+  private readonly cadence = new TabCadencePolicy(webContentsCadence((tabId) => {
+    const tab = this.tabs.find((candidate) => candidate.id === tabId)
+    return tab instanceof BrowserTab ? tab.view.webContents : null
+  }))
 
   constructor(
     private readonly window: BrowserWindow,

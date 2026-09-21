@@ -20,8 +20,21 @@
 export const CADENCE_GRACE_MS = 5_000
 
 export type TabCadenceAdapter = {
-  /** Electron's setBackgroundThrottling inverted: `throttled` is the default Chromium behavior. */
+  /** `throttled` true is Chromium's default (Electron's `setBackgroundThrottling(allowed)`). */
   setThrottled(tabId: string, throttled: boolean): void
+}
+
+/** The slice of WebContents this needs; a closed tab resolves to null and is left alone. */
+export type ThrottleableContents = { isDestroyed(): boolean; setBackgroundThrottling(allowed: boolean): void }
+
+/** Adapter over live tabs. Only the runtime call restores animation frames to a hidden view. */
+export function webContentsCadence(find: (tabId: string) => ThrottleableContents | null): TabCadenceAdapter {
+  return {
+    setThrottled: (tabId, throttled) => {
+      const contents = find(tabId)
+      if (contents && !contents.isDestroyed()) contents.setBackgroundThrottling(throttled)
+    }
+  }
 }
 
 export class TabCadencePolicy {
