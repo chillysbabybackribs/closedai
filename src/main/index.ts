@@ -405,6 +405,7 @@ function createWindow(): void {
   browserService = new BrowserService(window, browserHistory!, {
     restore: browserTabSession?.restored() ?? undefined
   })
+  browserService.on('popup', (opener: string, child: string) => toolRegistry?.browserCoordination?.inherit(opener, child))
   wireBrowserEvents(browserService)
   // Attached to the partition session rather than a tab: a download outlives the tab that
   // started it. Files land in the OS downloads folder like Chrome.

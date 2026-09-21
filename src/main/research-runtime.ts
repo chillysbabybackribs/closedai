@@ -42,7 +42,8 @@ export async function createResearchRuntime(options: {
   const workers = new BrowserWorkerPool(createHiddenPageWorker)
   let service!: ResearchService
   const liveTabs = new SearchBrowserTabs({
-    exists: (tabId) => options.browser()?.tabList().some((tab) => tab.id === tabId) ?? false,
+    exists: (tabId, context) => !!options.browser()?.tabList().some((tab) => tab.id === tabId) &&
+      (options.browserCoordination?.canUse(tabId, context.paneId!) ?? true),
     open: (url) => {
       const browser = options.browser()
       if (!browser) throw new Error('The live browser is unavailable')

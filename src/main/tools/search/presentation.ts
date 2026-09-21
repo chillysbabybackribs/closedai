@@ -3,7 +3,7 @@ import type { ToolContext } from '../tool.js'
 
 export const SEARCH_PRESENTATION_FIELD = {
   type: 'string', enum: ['live', 'background'],
-  description: 'Default live: open/reuse an actual source page as API results arrive. Never opens a search-engine results page. Until a source arrives, state is waiting_for_source. background opts out of browser presentation.'
+  description: 'Default live: open/reuse an actual source page in a background tab assigned to this chat as API results arrive, preserving the selected tab. Never opens a search-engine results page. Until a source arrives, state is waiting_for_source. background opts out of browser presentation.'
 }
 
 export type OpenSearchTab = (url: string, context: ToolContext) => string
@@ -67,14 +67,14 @@ export function presentSearch(
 export class SearchBrowserTabs {
   private readonly tabs = new Map<string, string>()
 
-  constructor(private readonly host: { exists(tabId: string): boolean; open(url: string): string }) {}
+  constructor(private readonly host: { exists(tabId: string, context: ToolContext): boolean; open(url: string): string }) {}
 
   open(url: string, context: ToolContext): string {
     if (!isResearchSourceUrl(url)) throw new Error('Search-engine pages cannot be opened for research source gathering')
     if (!context.paneId || !context.threadId || !context.turnId) throw new Error('Live search needs an active pane, thread, and turn')
     const key = JSON.stringify([context.paneId, context.threadId, context.turnId])
     const existing = this.tabs.get(key)
-    if (existing && this.host.exists(existing)) return existing
+    if (existing && this.host.exists(existing, context)) return existing
     const tabId = this.host.open(url)
     this.tabs.delete(key)
     this.tabs.set(key, tabId)

@@ -73,6 +73,18 @@ export class BrowserCoordination {
     this.defaults.set(paneId, tabId)
   }
 
+  inherit(openerTabId: string, childTabId: string): void {
+    this.prune()
+    const owner = this.owners.get(openerTabId)
+    if (owner) this.owners.set(childTabId, owner)
+  }
+
+  canUse(tabId: string, paneId: string): boolean {
+    this.prune()
+    const owner = this.owners.get(tabId)
+    return !owner || owner === paneId
+  }
+
   release(tabId: string | undefined, paneId: string): void {
     this.prune()
     const id = tabId ?? this.defaults.get(paneId)

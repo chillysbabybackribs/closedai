@@ -104,10 +104,14 @@ export class BrowserService extends EventEmitter {
   private createTab(activate: boolean, index?: number, id?: string, popupOptions?: WebContentsViewConstructorOptions): BrowserTab {
     const tab = new BrowserTab(
       this.history,
-      (request) => { this.openTab(request.url, request.activate, request.options) },
+      (request) => {
+        const child = this.openTab(request.url, request.activate, request.options)
+        this.emit('popup', tab.id, child.id)
+      },
       PARTITION,
       (options, request) => {
-        const child = this.createTab(request.activate, undefined, undefined, options)
+        const child = this.createTab(request.activate && this.activeId === tab.id, undefined, undefined, options)
+        this.emit('popup', tab.id, child.id)
         // Chromium navigates adopted children itself. Background-tab opens may not supply
         // WebContents; only that deferred case needs an explicit initial navigation.
         if (!options.webContents) {

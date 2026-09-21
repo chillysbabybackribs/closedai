@@ -111,6 +111,11 @@ export class BrowserCdpAccess implements CdpToolHost {
     params: Record<string, unknown>,
     sessionId?: string
   ): Promise<unknown> {
+    if (method.startsWith('Input.')) {
+      return this.realInput(tabId, async ({ session }) => ({
+        method, sessionId: sessionId ?? null, result: await session.command(method, params, sessionId)
+      }))
+    }
     const { tab, session } = this.resolve(tabId)
     const result = await session.command(method, params, sessionId)
     return { tab, connectionId: session.connectionId, method, sessionId: sessionId ?? null, result }
