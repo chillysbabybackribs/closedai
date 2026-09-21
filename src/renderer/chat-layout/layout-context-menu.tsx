@@ -41,8 +41,19 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
   const turnControl = tabActivity?.state === 'working' ? 'pause'
     : tabActivity?.state === 'paused' ? 'resume' : null
   const hasChatActions = Boolean(onRename || onTogglePin || turnControl)
+  const hasCloseActions = canCloseTab || canHidePane
+  const hasFollowing = Boolean(onOpenPresets || hasChatActions)
 
   return <ContextMenu.Content className="titlebar-menu-content chat-layout-context-menu" loop>
+    {canCloseTab && (
+      <LayoutMenuRow data-ui="layout.tab-close" data-ui-key={activeId} label="Close tab" hint={closeHint}
+        shortcut="Ctrl+W" icon={<X size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onCloseTab} />
+    )}
+    {canHidePane && (
+      <LayoutMenuRow data-ui="layout.pane-hide" data-ui-key={activeId} label="Hide pane" hint={hideHint}
+        icon={<PanelLeftClose size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onHide} />
+    )}
+    {hasCloseActions && hasFollowing && <ContextMenu.Separator className="titlebar-menu-separator" />}
     {onOpenPresets && (
       <LayoutMenuRow data-ui="layout.presets" data-ui-key={activeId} label="Workspace layout…"
         icon={<LayoutGrid size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onOpenPresets} />
@@ -65,17 +76,6 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
       {turnControl === 'resume' && onResume && (
         <LayoutMenuRow data-ui="layout.resume-tab" data-ui-key={activeId} label="Resume task"
           icon={<Play size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onResume} />
-      )}
-    </>}
-    {(canCloseTab || canHidePane) && <>
-      <ContextMenu.Separator className="titlebar-menu-separator" />
-      {canCloseTab && (
-        <LayoutMenuRow data-ui="layout.tab-close" data-ui-key={activeId} label="Close tab" hint={closeHint}
-          shortcut="Ctrl+W" icon={<X size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onCloseTab} />
-      )}
-      {canHidePane && (
-        <LayoutMenuRow data-ui="layout.pane-hide" data-ui-key={activeId} label="Hide pane" hint={hideHint}
-          icon={<PanelLeftClose size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onHide} />
       )}
     </>}
   </ContextMenu.Content>

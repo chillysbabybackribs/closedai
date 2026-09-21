@@ -41,13 +41,12 @@ test('ChatCanvas renders multi-pane split with context menu trigger and dividers
   // Both panes rendered as tiles
   assert.match(html, /data-pane-id="pane-a"/)
   assert.match(html, /data-pane-id="pane-b"/)
-  // The header retains whole-pane dragging without a detached grip.
-  assert.match(html, /data-ui="layout\.pane-drag" data-ui-key="pane-a"/)
-  assert.match(html, /data-ui="layout\.pane-drag" data-ui-key="pane-b"/)
+  assert.match(html, /class="chat-layout-drag"[^>]*data-ui="layout\.pane-drag" data-ui-key="pane-a"[^>]*draggable="true"/)
+  assert.match(html, /class="chat-layout-drag"[^>]*data-ui="layout\.pane-drag" data-ui-key="pane-b"[^>]*draggable="true"/)
   assert.match(html, /right-click for layout options/)
-  assert.doesNotMatch(html, /chat-layout-title|lucide-grip-vertical/)
+  assert.doesNotMatch(html, /class="chat-layout-header"[^>]*draggable="true"/)
   // Context menu trigger wrapped around header
-  assert.match(html, /class="chat-layout-header"[^>]*draggable="true"[^>]*data-state="closed"/)
+  assert.match(html, /class="chat-layout-header"[^>]*data-state="closed"/)
   // Divider rendered in split mode
   assert.match(html, /data-ui="layout\.divider" data-ui-key="split-1"/)
   // Pane hide buttons are enabled when multiple panes exist

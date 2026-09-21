@@ -47,7 +47,6 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
   const [drop, setDrop] = useState<{ target: string; edge: DockEdge | null } | null>(null)
   const dropTarget = useRef<typeof drop>(null)
   const tabFocus = useRef<string | null>(null)
-  const paneDragBlocked = useRef(false)
   useEffect(() => {
     if (!tabFocus.current) return
     const tab = document.getElementById(`chat-tab-${tabFocus.current}`)
@@ -226,25 +225,9 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
           }}>
           {activeId !== BROWSER_PANE_ID && <ContextMenu.Root>
             <ContextMenu.Trigger asChild>
-              <header className="chat-layout-header" draggable={!busy}
-                data-ui="layout.pane-drag" data-ui-key={activeId}
-                onPointerDownCapture={(event) => {
-                  paneDragBlocked.current = (event.target as HTMLElement).closest('button') !== null
-                }}
+              <header className="chat-layout-header"
                 onClick={(event) => {
                   if (!(event.target as HTMLElement).closest('button')) onSelect(activeId)
-                }}
-                onDragStart={(event) => {
-                  // Tabs carry their own single-conversation payload. Only empty header space
-                  // moves the entire pane; action buttons must never start a pane drag.
-                  if (event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE)) return
-                  if (busy || paneDragBlocked.current || (event.target as HTMLElement).closest('button')) {
-                    event.preventDefault()
-                    return
-                  }
-                  event.dataTransfer.setData(CHAT_DRAG_TYPE, activeId)
-                  event.dataTransfer.effectAllowed = 'move'
-                  setDragging({ id: activeId, singleTab: false })
                 }}
                 onDoubleClick={(event) => {
                   if ((event.target as HTMLElement).closest('button')) return
@@ -253,6 +236,16 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
                   }
                 }}
               >
+                <button type="button" className="chat-layout-drag" data-ui="layout.pane-drag" data-ui-key={activeId}
+                  draggable={!busy} disabled={busy} aria-label="Drag to move chat pane"
+                  title="Drag to move pane"
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData(CHAT_DRAG_TYPE, activeId)
+                    event.dataTransfer.effectAllowed = 'move'
+                    setDragging({ id: activeId, singleTab: false })
+                  }}>
+                  <span className="chat-layout-drag-dots" aria-hidden="true" />
+                </button>
                 <ChatTabs ids={tabs} activeId={activeId} busy={busy} canClose={tabs.length > 1 || chatCount > 1}
                   title={title} activity={activity} onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab}
                   onDrag={(tab) => setDragging({ id: tab, singleTab: true })} />
