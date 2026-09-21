@@ -372,7 +372,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 
 ## Chat surface
 
-- Dark-theme chat panels use a neutral near-black (`#141414`) canvas, with neutral
+- Dark-theme chat panels use a neutral near-black (`#181818`) canvas, with neutral
   charcoal (`#1c1c1c`) user cards, composers, and active tabs. These colors are scoped
   to chat so the window header and browser keep their own surface colors. Chat and
   browser tab headers share the same shell chrome background (`#141415`), with a
