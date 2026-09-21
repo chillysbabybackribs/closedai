@@ -347,7 +347,8 @@ available width for the title; the focused tile has the accent tab indicator.
 Composers start fully expanded and stay expanded while running or inactive. The chevron
 (`composer.compact-toggle`) is the only control that collapses or expands the composer; that
 choice survives typing, sending, turn, and pane-selection changes while mounted. A collapsed
-composer accepts and sends drafts on its single line. Right-clicking
+composer accepts and sends drafts on its single line; its attachment chips and the project rail
+(folder icon and name) sit above the pill instead of inside it. Right-clicking
 any tile header or tab opens a context menu with **Maximize tile** (`layout.maximize`), **Split right**
 (`layout.split-right`), **Split below** (`layout.split-below`), **New chat** (`layout.new-chat`), and
 **Close tab** / **Hide pane** (`layout.pane-hide`). Double-clicking a tile header also toggles
@@ -371,7 +372,8 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 
 ## Chat surface
 
-- The window header is 44 px tall, with 14 px menu/search text, a 34 px search field,
+- The window header has a soft charcoal (`#181819`) background in the dark theme.
+  It is 44 px tall, with 14 px menu/search text, a 34 px search field,
   a 24 px textured Earth browser globe with a 15° axial tilt and a subtle brightness lift on hover,
   and enlarged window buttons. Its locally bundled texture rotates continuously once per 24 seconds
   and pauses while the document is hidden. Reduced motion

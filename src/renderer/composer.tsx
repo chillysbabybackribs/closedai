@@ -163,36 +163,45 @@ export function Composer({
       onDragOver={(event) => event.preventDefault()}
       onDrop={dropFiles}
     >
-      {!isCompact && (
-        <ProjectMenu
-          cwd={cwd}
-          projectPath={projectPath}
-          pending={projectPending}
-          recentProjects={recentProjects}
-          disabled={sending}
-          onChooseProject={onChooseProject}
-          onSelectProject={onSelectProject}
-          onClearProject={onClearProject}
-          activeTurnId={activeTurnId}
-          trailing={
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="prompt-composer-toggle-compact rounded-full"
-              aria-label="Collapse composer"
-              title="Collapse composer"
-              data-ui="composer.compact-toggle"
-              onClick={(event) => {
-                event.stopPropagation()
-                setManualExpanded(false)
-              }}
-            >
-              <ChevronDown size={15} aria-hidden="true" />
-            </Button>
-          }
-        />
+      {/* Collapsed, the pill has no room for chips, so attachments sit above it beside the
+          project rail; the rail itself stays in both modes because it says where the turn runs. */}
+      {isCompact && (
+        <div className="prompt-composer-compact-attachments">
+          <AttachmentChips
+            attachments={attachments}
+            onRemove={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
+          />
+          {attachmentError && <div className="prompt-attachment-error" role="alert">{attachmentError}</div>}
+        </div>
       )}
+      <ProjectMenu
+        cwd={cwd}
+        projectPath={projectPath}
+        pending={projectPending}
+        recentProjects={recentProjects}
+        disabled={sending}
+        onChooseProject={onChooseProject}
+        onSelectProject={onSelectProject}
+        onClearProject={onClearProject}
+        activeTurnId={activeTurnId}
+        trailing={isCompact ? undefined : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="prompt-composer-toggle-compact rounded-full"
+            aria-label="Collapse composer"
+            title="Collapse composer"
+            data-ui="composer.compact-toggle"
+            onClick={(event) => {
+              event.stopPropagation()
+              setManualExpanded(false)
+            }}
+          >
+            <ChevronDown size={15} aria-hidden="true" />
+          </Button>
+        )}
+      />
       <PromptInput
         value={input}
         onValueChange={setInput}

@@ -119,9 +119,9 @@
   --tracking-display: -0.022em;
 
   /* Monochrome surface ramp. One material system for the shell: recessed
-     chassis (titlebar, divider, browser gutter) → chrome cards → the chat
+     chassis (divider, browser gutter) → chrome cards → the chat
      canvas, which stays the lightest large surface. */
-  /* Depth ladder, darkest to lightest: chassis (title bar, gutters, dividers) is the
+  /* Depth ladder, darkest to lightest: chassis (gutters, dividers) is the
      recessed frame; chrome is the tab rail on top of a card; card is the content surface
      you read on; raised is anything that sits on a card (toolbar, bubble, popover).
      Adjacent steps stay >= 8 luminance points apart so each reads as its own plane. */
@@ -136,7 +136,7 @@
   --surface-control-hover: #303033;
   --hairline: rgb(255 255 255 / 8%);
   --hairline-strong: rgb(255 255 255 / 14%);
-  --titlebar-surface: var(--chassis);
+  --titlebar-surface: #181819;
   --chrome-fg: #a1a1a5;
   --chrome-fg-strong: #f1f1f3;
   /* Chrome icon/control ink — measured from Cursor + Antigravity dark_modern

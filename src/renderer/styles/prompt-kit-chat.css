@@ -486,6 +486,16 @@
   padding: 6px var(--chat-column-gutter) 8px;
 }
 
+/* Above the pill: attachment chips, then the project rail. The compact row already carries
+   the working timer, so the rail's copy of it is hidden here. */
+.prompt-composer-compact-attachments {
+  width: min(calc(var(--chat-column-width) + 64px), 100%);
+  margin: 0 auto;
+}
+.prompt-composer-compact-attachments .prompt-attachments { padding: 0 2px 4px; }
+.prompt-composer.is-compact .composer-project-strip { min-height: 26px; margin-bottom: 2px; }
+.prompt-composer.is-compact .composer-project-strip .composer-strip-activity { display: none; }
+
 .prompt-composer-input.is-compact {
   min-height: 38px;
   padding: 4px 8px;
