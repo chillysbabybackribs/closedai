@@ -530,7 +530,9 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   side-by-side split modes, collapsible hunks with expand/collapse all, individual hunk copying,
   and proportional addition/deletion statistics. Provider-native background tasks have a separate
   transcript group; there is no separate status strip above the composer. A turn ending does not prove that all background tasks
-  finished.
+  finished: while any spawned task is still live the pane stays in its running state (composer
+  shows Pause, response actions wait, drawer treats it as busy) until the provider's follow-up turn
+  completes, and Pause between turns retires the process, marking those tasks stopped.
 - Completed assistant responses offer copy and branching. Timestamps appear when recorded;
   older history does not acquire invented timestamps.
 - The project rail contains the working timer and project menu. The title bar has four menus.
