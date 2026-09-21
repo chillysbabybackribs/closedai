@@ -76,6 +76,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
         const source = surface.snapshot()
         const record = store.require(id)
         await rememberChatProjects(settings, record, selection)
+        if (this.projectChanges.selection(id) !== selection || this.lifecycle.get(id)?.surface !== surface) return
         this.lifecycle.relocate(id, projectConversationPatch(record, source, selection), source)
         this.catalog.invalidate()
         await this.persistOpenChats()

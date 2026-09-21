@@ -91,7 +91,7 @@ test('directory navigation retains running chats and opens them in their origina
   assert.equal(manager.snapshot().chats.length, 2)
   assert.equal(manager.snapshot().chats.find((row) => row.paneId === 'pane-a')?.running, true)
   assert.notEqual(manager.snapshot().selectedPaneId, 'pane-a')
-  assert.equal(settings.get().chatOpenIds.length, 1)
+  assert.equal(settings.get().chatOpenIds.length, 2)
   assert.equal(store.require(manager.snapshot().selectedPaneId).cwd, '/projects/new')
 
   const destination = manager.snapshot().selectedPaneId
@@ -100,7 +100,8 @@ test('directory navigation retains running chats and opens them in their origina
   await manager.openChat('pane-a')
   assert.equal(manager.snapshot().selectedPaneId, 'pane-a')
   assert.equal(manager.snapshot().selected.cwd, '/workspace')
-  assert.deepEqual(settings.get().chatOpenIds, ['pane-a'])
+  assert.deepEqual(settings.get().chatOpenIds, ['pane-a', destination])
+  assert.equal(manager.snapshot().workspace?.cwd, '/projects/new', 'focusing a chat does not switch the workspace')
   assert.equal(manager.snapshot().chats.length, 2)
   assert.equal(manager.snapshot().chats.every((row) => row.running), true)
   assert.equal(surfaces.length, 2, 'navigation reuses both runtimes')

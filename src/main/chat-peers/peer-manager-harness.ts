@@ -107,6 +107,9 @@ export class FakeSurface extends EventEmitter implements ChatSurface {
     return structuredClone({ ...this.state, items: this.state.items.slice(start, end), history: { hasEarlier: start > 0 } })
   }
   async start(): Promise<void> { this.calls.push('start') }
+  restoreConversation(source: ChatSnapshot): void {
+    this.state = { ...this.state, items: source.items, threadName: source.threadName }
+  }
   stop(): void { this.calls.push('stop') }
   async send(text: string, _attachments: ChatAttachment[]): Promise<void> {
     this.calls.push(`send:${text}`)
@@ -162,6 +165,7 @@ export function harnessWith(
   const surfaces: FakeSurface[] = []
   const manager = new ChatPeerManager(settings, store, (_peerSettings, record) => {
     const surface = new FakeSurface(record.modelId)
+    surface.state.cwd = record.cwd
     surfaces.push(surface)
     return surface
   }, idleParkMs, undefined, transcripts)

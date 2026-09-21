@@ -84,12 +84,7 @@ export function reduceChatWorkspaceEvent(
   if (event.type === 'workspace') {
     const panes = Object.fromEntries(Object.entries(event.snapshot.panes ?? {}).map(([id, next]) => {
       const previous = state.panes?.[id]
-      const boundary = previous && next.items.length
-        ? previous.items.findIndex((item) => item.id === next.items[0]!.id) : -1
-      return [id, boundary > 0 && previous ? { ...next,
-        items: [...previous.items.slice(0, boundary), ...next.items],
-        history: { ...next.history, hasEarlier: previous.history?.hasEarlier ?? false }
-      } : next]
+      return [id, previous ? preserveMountedHistory(previous, next) : next]
     }))
     return { ...event.snapshot, panes, selected: panes[event.snapshot.selectedPaneId] ?? event.snapshot.selected }
   }
@@ -246,6 +241,15 @@ export function coalesceChatWorkspaceEvents(events: ChatWorkspaceEvent[]): ChatW
     merged.push(event)
   }
   return merged
+}
+
+/** A runtime handoff can change thread ids while keeping the same displayed conversation. */
+function preserveMountedHistory(previous: ChatSnapshot, next: ChatSnapshot): ChatSnapshot {
+  const boundary = next.items.length ? previous.items.findIndex((item) => item.id === next.items[0]!.id) : -1
+  return boundary > 0 ? { ...next,
+    items: [...previous.items.slice(0, boundary), ...next.items],
+    history: { ...next.history, hasEarlier: previous.history?.hasEarlier ?? false }
+  } : next
 }
 
 function upsertItem(items: ChatTranscriptItem[], next: ChatTranscriptItem): ChatTranscriptItem[] {
