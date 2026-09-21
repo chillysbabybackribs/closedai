@@ -31,20 +31,61 @@ test('two chats navigate independently and keep their targets when UI selection 
   assert.equal(prepare('a', { action: 'command', method: 'DOM.getDocument' }, 'browser_cdp', 'protocol').tab_id, a.tab_id)
 })
 
-test('inspection claims a tab across calls and rejects another chat before any action', () => {
+test('acting in a tab claims it across calls and rejects another chat before any action', () => {
   const { prepare, policy } = harness()
-  prepare('a', { action: 'read_page', tab_id: 'user' })
-  for (const action of ['navigate', 'read_page', 'wait_for']) {
+  prepare('a', { action: 'evaluate', expression: '1', tab_id: 'user' })
+  for (const action of ['navigate', 'evaluate', 'fetch']) {
     assert.throws(() => prepare('b', { action, tab_id: 'user' }), /assigned to chat a/)
   }
   assert.throws(() => policy.release('user', 'b'), /assigned to chat a/)
   policy.release('user', 'a')
-  assert.equal(prepare('b', { action: 'read_page', tab_id: 'user' }).tab_id, 'user')
+  assert.equal(prepare('b', { action: 'evaluate', expression: '1', tab_id: 'user' }).tab_id, 'user')
+})
+
+test('any chat reads or selects a tab another chat is working in, and takes nothing by doing it', () => {
+  const { prepare, policy } = harness()
+  prepare('a', { action: 'navigate', url: 'https://a.test', tab_id: 'user' })
+
+  for (const input of [
+    { action: 'read_page', tab_id: 'user' },
+    { action: 'wait_for', tab_id: 'user' }
+  ]) assert.equal(prepare('b', input).tab_id, 'user')
+  for (const input of [
+    { action: 'query', selector: 'h1', tab_id: 'user' },
+    { action: 'extract', path: 'data', tab_id: 'user' },
+    { action: 'console', tab_id: 'user' }
+  ]) assert.equal(prepare('b', input, 'embedded_browser', 'script').tab_id, 'user')
+  assert.equal(prepare('b', { action: 'browser_page', tab_id: 'user' }, 'closedai_ui', 'capture').tab_id, 'user')
+  assert.equal(prepare('b', { action: 'inspect_page', tab_id: 'user' }, 'browser_cdp', 'page').tab_id, 'user')
+  assert.equal(prepare('b', { action: 'body', request_id: '1', tab_id: 'user' }, 'browser_cdp', 'protocol').tab_id, 'user')
+  assert.equal(prepare('b', { action: 'browser_tab', op: 'select', tab_id: 'user' }, 'closedai_app', 'command').tab_id, 'user')
+
+  // None of that moved ownership, and b never acquired a default it did not ask for.
+  assert.equal(policy.snapshot('a').defaultTabId, 'user')
+  assert.equal(policy.snapshot('b').defaultTabId, null)
+  assert.equal(policy.canUse('user', 'b'), false)
+  // Acting in it still belongs to its owner, and the refusal says reading is available.
+  assert.throws(() => prepare('b', { action: 'evaluate', expression: 'location.reload()', tab_id: 'user' }),
+    /assigned to chat a\. You can still read it/)
+  assert.throws(() => prepare('b', { action: 'browser_tab', op: 'reload', tab_id: 'user' }, 'closedai_app', 'command'),
+    /assigned to chat a/)
+})
+
+test('reading the visible page leaves it alone: the next navigation opens the chat its own tab', () => {
+  const { prepare, policy, tabs } = harness()
+  assert.equal(prepare('a', { action: 'read_page' }).tab_id, 'user', 'an untargeted read uses what is on screen')
+  assert.equal(policy.snapshot('a').defaultTabId, null)
+
+  const navigated = prepare('a', { action: 'navigate', url: 'https://a.test' })
+
+  assert.notEqual(navigated.tab_id, 'user')
+  assert.equal(policy.canUse('user', 'b'), true, 'the page the user was reading is still unowned')
+  assert.equal(tabs.find(tab => tab.active)?.id, 'user')
 })
 
 test('closing a default tab never falls back to the visible page; new_tab recovers', () => {
   const { prepare, tabs } = harness()
-  prepare('a', { action: 'read_page', tab_id: 'other' })
+  prepare('a', { action: 'evaluate', expression: '1', tab_id: 'other' })
   tabs.splice(1, 1)
   assert.throws(() => prepare('a', { action: 'navigate', url: 'https://a.test' }), /closed or unavailable/)
   const recovered = prepare('a', { action: 'navigate', new_tab: true, url: 'https://a.test' })
@@ -53,22 +94,22 @@ test('closing a default tab never falls back to the visible page; new_tab recove
 
 test('detaching a chat releases assignments; focus and turns do not', () => {
   const { prepare, panes, policy } = harness()
-  prepare('a', { action: 'read_page' })
+  prepare('a', { action: 'evaluate', expression: '1' })
   assert.equal(policy.snapshot('a').defaultTabId, 'user')
   panes.delete('a')
-  assert.equal(prepare('b', { action: 'read_page' }).tab_id, 'user')
+  assert.equal(prepare('b', { action: 'evaluate', expression: '1' }).tab_id, 'user')
   assert.equal(policy.snapshot('a').defaultTabId, null)
 })
 
 test('popups inherit ownership without changing the caller default', () => {
   const { prepare, policy, tabs } = harness()
-  prepare('a', { action: 'read_page', tab_id: 'user' })
+  prepare('a', { action: 'evaluate', expression: '1', tab_id: 'user' })
   tabs.push({ id: 'popup', active: false })
   policy.inherit('user', 'popup')
   assert.equal(policy.snapshot('a').defaultTabId, 'user')
   assert.equal(policy.canUse('popup', 'a'), true)
   assert.equal(policy.canUse('popup', 'b'), false)
-  assert.throws(() => prepare('b', { action: 'read_page', tab_id: 'popup' }), /assigned to chat a/)
+  assert.throws(() => prepare('b', { action: 'navigate', url: 'https://b.test', tab_id: 'popup' }), /assigned to chat a/)
 })
 
 test('a missing model caller cannot fall back to the selected chat', () => {
@@ -93,8 +134,8 @@ test('assignment discovery is bounded and keeps the caller default first', () =>
 
 test('bulk close preflights every affected tab and shared session mutations refuse peer assignments', () => {
   const { prepare } = harness()
-  prepare('a', { action: 'read_page', tab_id: 'user' })
-  prepare('b', { action: 'read_page', tab_id: 'other' })
+  prepare('a', { action: 'evaluate', expression: '1', tab_id: 'user' })
+  prepare('b', { action: 'evaluate', expression: '1', tab_id: 'other' })
   for (const op of ['close_others', 'close_right']) {
     assert.throws(() => prepare('a', { action: 'browser_tab', op, tab_id: 'user' }, 'closedai_app', 'command'), /assigned to chat b/)
   }
@@ -122,7 +163,7 @@ test('registry resolves bare tool names and defaults before cross-chat locks', a
   const first = call('a', { action: 'navigate', url: 'https://a.test', hold: true })
   await running
   assert.equal((await call('b', { action: 'navigate', url: 'https://b.test' })).isError, undefined)
-  const conflict = await call('b', { action: 'read_page', tab_id: received[0].tab_id })
+  const conflict = await call('b', { action: 'evaluate', expression: '1', tab_id: received[0].tab_id })
   assert.equal(conflict.isError, true)
   assert.equal(received.length, 2)
   assert.notEqual(received[0].tab_id, received[1].tab_id)
