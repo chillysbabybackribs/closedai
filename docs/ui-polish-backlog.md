@@ -10,11 +10,13 @@ are candidates, not instructions to implement them all. Tackle one agreed item a
 - Prefer contextual phantom text in the existing input over another label, row, or control.
 - Reassess each suggestion against these principles before starting it.
 
-## Current item
+## Completed items
 
 - [x] Composer keyboard hints: idle “Enter to send · Shift+Enter for newline”; collapsed idle
   “Enter to send”; running “Esc to pause.” Use the existing placeholder styling and footprint.
   Drafts hide the hint; connection/unavailable messages still appear while idle.
+- [x] History/search selections open a new tab in the focused tile, preserving the current chat
+  and draft. A chat already open is selected in place instead of duplicated; split geometry stays put.
 
 ## Candidates awaiting selection
 

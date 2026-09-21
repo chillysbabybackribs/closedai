@@ -329,11 +329,12 @@ highlight previews the destination. Moving a tile collapses its former empty spl
 mounted composer, draft, attachments, and transcript scroller survive the move. Open an existing chat
 through header search, then drag its tab to a tile edge to place it alongside another chat. New chats
 can also be added using the split controls in each chat header.
-Opening a header search result selects an existing tab wherever it lives, or replaces the focused tab,
-leaving the other tabs and tiles in place. The composer’s + button opens and selects a new chat tab
+Opening a chat from header search or Manage chat history selects its existing tab wherever it lives,
+or adds and selects a new tab in the focused tile. The current chat and its draft remain in their
+original tab; sibling tabs, other tiles, and divider sizes stay in place. The composer’s + button opens and selects a new chat tab
 in its tile, preserving the original chat, draft, attachments, and any running turn.
-File → New chat and continuation select a chat in the focused
-tab; the split buttons explicitly add another tile. Moving a visible tile carries its tab group;
+File → New chat and continuation also add a tab in the focused
+tile; the split buttons explicitly add another tile. Moving a visible tile carries its tab group;
 dragging a tab to a tile edge splits that conversation out of its group.
 
 Dividers reserve a 14 px grab area between panes, with a center grip and hover, focus, and active
@@ -392,7 +393,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   natural height so the workspace begins directly below its divider.
 - Header search reads chat records across directories, attached or detached, including child chats.
   It matches titles; project names provide context. Opening a result calls `openChat` and selects
-  an existing tab or replaces the focused tab. Archived chats are excluded by the store.
+  an existing tab or adds a new tab to the focused tile. Archived chats are excluded by the store.
   Running results show a status label and Pause button; paused chats stay in a Paused section
   with a Resume button. Both actions target the row without opening the chat and use the same
   interrupt/continuation behavior as the composer. Pauses do not count as unread completions.

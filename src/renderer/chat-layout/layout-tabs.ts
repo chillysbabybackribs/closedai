@@ -1,4 +1,4 @@
-import { BROWSER_PANE_ID, dockPane, replacePane, type ChatLayout, type DockEdge } from './layout-tree.js'
+import { BROWSER_PANE_ID, dockPane, type ChatLayout, type DockEdge } from './layout-tree.js'
 
 export const CHAT_TAB_DRAG_TYPE = 'application/x-closedai-chat-tab'
 
@@ -26,10 +26,10 @@ export function tabOwner(tree: ChatLayout | null, id: string): string | null {
     : tabOwner(tree.first, id) ?? tabOwner(tree.second, id)
 }
 
-/** Select an existing tab wherever it lives; sidebar opens replace only the focused tab. */
+/** Select an existing tab wherever it lives; unopened chats join the focused tile as a new tab. */
 export function selectTab(tree: ChatLayout, target: string, id: string): ChatLayout {
   const owner = tabOwner(tree, id)
-  if (!owner) return replacePane(tree, target, id)
+  if (!owner) return addTab(tree, target, id)
   const visit = (node: ChatLayout): ChatLayout => node.kind === 'pane'
     ? node.id === owner ? { ...node, id, tabs: node.tabs ?? [node.id] } : node
     : { ...node, first: visit(node.first), second: visit(node.second) }

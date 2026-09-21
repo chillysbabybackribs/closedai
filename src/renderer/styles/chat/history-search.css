@@ -5,10 +5,16 @@
   -webkit-app-region: no-drag;
 }
 
+/* At rest the glass and placeholder sit together in the centre as one ghosted hint. Focus
+   or a query stretches the input to the full field, docking the glass at the left edge, so
+   typing reads like an ordinary field. `field-sizing: content` lets the resting input shrink
+   to its placeholder, which is what makes the flex row centre the pair with no measured
+   offsets. */
 .header-chat-search-field {
   display: flex;
   align-items: center;
-  gap: 9px;
+  justify-content: center;
+  gap: 8px;
   height: 34px;
   padding: 0 10px;
   border: 1px solid var(--hairline-strong);
@@ -23,7 +29,9 @@
 }
 
 .header-chat-search-field input {
-  width: 100%;
+  field-sizing: content;
+  width: auto;
+  max-width: 100%;
   min-width: 0;
   padding: 0;
   border: 0;
@@ -33,8 +41,29 @@
   font-size: 14px;
 }
 
-.header-chat-search-field input::placeholder { color: var(--chrome-fg); }
-.header-chat-search-field > svg { flex-shrink: 0; }
+.header-chat-search-field input::placeholder {
+  color: var(--chrome-fg);
+  opacity: 0.55;
+}
+
+.header-chat-search-field > svg {
+  flex-shrink: 0;
+  opacity: 0.55;
+  transition: opacity 140ms var(--ease-chrome);
+}
+
+.header-chat-search-field:focus-within input,
+.header-chat-search-field:has(input:not(:placeholder-shown)) input {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.header-chat-search-field:focus-within > svg,
+.header-chat-search-field:has(input:not(:placeholder-shown)) > svg {
+  opacity: 1;
+}
+
+.header-chat-search-field:focus-within input::placeholder { opacity: 0.4; }
 
 .header-chat-search [data-status='running'] { color: var(--tab-accent); }
 .header-chat-search [data-status='paused'] { color: #dba74b; }

@@ -41,7 +41,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     return () => { active = false }
   }, [cwd, idsKey, tabsKey])
 
-  // A normal sidebar click focuses an existing tile, or replaces the focused tile.
+  // History/search selection focuses an existing tab or adds one to the focused tile.
   // Split/add operations manage their own destination while main announces selection.
   useEffect(() => {
     // Workspace events are delivered in a React transition. An IPC reply can arrive

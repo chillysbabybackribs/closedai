@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { dockPane, layoutGeometry, paneIds, readLayout, resizeSplit, saveLayout, type ChatLayout } from './layout-tree.ts'
+import { dockPane, layoutGeometry, paneIds, readLayout, resizeSplit, saveLayout, withBrowser, type ChatLayout } from './layout-tree.ts'
 import { addTab, moveTab, pruneTabs, removeTab, selectTab, tabIds } from './layout-tabs.ts'
 
 const split = (): ChatLayout => resizeSplit(dockPane({ kind: 'pane', id: 'a' }, 'b', 'a', 'right', 'split'), 'split', 0.6)
@@ -47,7 +47,24 @@ test('new tabs keep each tile independent and preserve divider geometry', () => 
   assert.deepEqual(paneIds(tree), ['a', 'd'])
   assert.deepEqual(tabIds(tree), ['a', 'c', 'b', 'd'])
   tree = selectTab(tree, 'a', 'history')
-  assert.deepEqual(tabIds(tree), ['history', 'c', 'b', 'd'])
+  assert.deepEqual(tabIds(tree), ['a', 'c', 'history', 'b', 'd'])
+  assert.deepEqual(paneIds(tree), ['history', 'd'])
+  assert.deepEqual(layoutGeometry(tree, 1000, 700).panes.map((pane) => pane.rect), before)
+})
+
+test('history opens preserve existing tabs and browser geometry, and reuse tabs across tiles', () => {
+  const original = withBrowser(addTab(split(), 'a', 'draft'))
+  const before = layoutGeometry(original, 1400, 900).panes.map((pane) => pane.rect)
+  let tree = selectTab(original, 'draft', 'history')
+  assert.deepEqual(tabIds(original), ['a', 'draft', 'b'])
+  assert.deepEqual(tabIds(tree), ['a', 'draft', 'history', 'b'])
+  tree = selectTab(tree, 'history', 'older-history')
+  assert.deepEqual(tabIds(tree), ['a', 'draft', 'history', 'older-history', 'b'])
+  tree = selectTab(tree, 'older-history', 'b')
+  tree = selectTab(tree, 'b', 'history')
+  assert.deepEqual(tabIds(tree), ['a', 'draft', 'history', 'older-history', 'b'])
+  assert.deepEqual(paneIds(tree), ['history', 'b'])
+  assert.deepEqual(layoutGeometry(tree, 1400, 900).panes.map((pane) => pane.rect), before)
 })
 
 test('closing tabs selects a neighbor, pruning archives preserves siblings, moving a tile carries tabs', () => {
