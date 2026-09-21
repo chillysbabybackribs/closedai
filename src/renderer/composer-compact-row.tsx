@@ -12,6 +12,8 @@ export type ComposerCompactRowProps = {
   activeTurnId: string | null
   /** The model picker, rendered where the full view would show it; the row supplies the slot. */
   modelMenu: ReactNode
+  /** The + upload button and its file input, shared with the full view. */
+  attachmentPicker: ReactNode
   provider: ChatProvider
   placeholder: string
   enabled: boolean
@@ -30,6 +32,7 @@ export function ComposerCompactRow({
   running,
   activeTurnId,
   modelMenu,
+  attachmentPicker,
   provider,
   placeholder,
   enabled,
@@ -65,6 +68,7 @@ export function ComposerCompactRow({
         onBlur={onBlur}
       />
       <div className="prompt-composer-compact-actions">
+        {attachmentPicker}
         {running ? (
           <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]} (Esc)`}>
             <Button

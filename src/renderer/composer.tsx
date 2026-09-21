@@ -234,6 +234,16 @@ export function Composer({
                 onReasoningEffortChange={onReasoningEffortChange}
               />
             }
+            attachmentPicker={
+              <AttachmentPicker
+                disabled={!enabled || running || sending}
+                inputRef={fileInputRef}
+                onChange={(event) => {
+                  if (event.target.files) void addFiles(event.target.files)
+                  event.target.value = ''
+                }}
+              />
+            }
             provider={provider}
             placeholder={inputPlaceholder}
             enabled={enabled}
