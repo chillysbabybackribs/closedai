@@ -3,7 +3,6 @@ import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/inter/wght-italic.css'
 import '@fontsource-variable/geist-mono/wght.css'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Globe } from 'lucide-react'
 import { HeaderChatSearch } from './chat-history/header-search.js'
 import { useHistoryController } from './chat-history/history-controller.js'
 import { AppWindowControls } from './app-window-controls.js'
@@ -21,6 +20,7 @@ import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { AppearanceSettingsDialog } from './settings/appearance-settings-dialog.js'
 import { CredentialVaultModal } from './settings/credential-vault-modal.js'
 import { ResearchLibraryDialog } from './research/library-dialog.js'
+import { BrowserGlobeIcon } from './browser-globe-icon'
 import {
   normalizeAppearanceSettings,
   persistAppearanceSettings,
@@ -160,7 +160,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             aria-pressed={browserVisible} aria-label={browserVisible ? 'Hide browser' : 'Show browser'}
             title={browserVisible ? 'Hide browser' : 'Show browser'}
             onClick={() => workspaceRef.current?.toggleBrowser()}>
-            <Globe size={16} aria-hidden="true" />
+            <BrowserGlobeIcon size={16} />
           </button>
         </div>
         <AppWindowControls />
