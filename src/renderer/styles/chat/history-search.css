@@ -89,6 +89,16 @@
   overflow-y: auto;
 }
 
+/* Bridge the visual gap so moving from the field into its popup never leaves the component. */
+.header-chat-search-popup::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -1px;
+  right: -1px;
+  height: 8px;
+}
+
 .header-chat-search-caption,
 .header-chat-search-empty {
   margin: 0;

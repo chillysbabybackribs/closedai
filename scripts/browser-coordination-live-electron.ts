@@ -80,6 +80,12 @@ async function verify() {
         `capture ${index} must show the owning chat’s red/blue page: ${[...bitmap.subarray(offset, offset + 4)]}; ${text(result)}`)
     }
     assert.equal(active(), foreground)
+    await browser.setBounds({ x: 0, y: 0, width: 800, height: 600, visible: false })
+    ok(await call('a', 'embedded_browser', 'page', { action: 'navigate', new_tab: true, url: `${base}/a-hidden` }))
+    const collapsed = ok(await call('a', 'closedai_ui', 'capture', { action: 'browser_page' }))
+    assert.ok(collapsed.content.some(item => item.type === 'image'), 'collapsed browser still captures its assigned tab')
+    await browser.setBounds({ x: 0, y: 0, width: 800, height: 600, visible: true })
+    ok(await call('a', 'embedded_browser', 'page', { action: 'read_page', tab_id: a }))
     const blocked = await call('b', 'embedded_browser', 'page', { action: 'navigate', tab_id: a, url: `${base}/wrong` })
     assert.equal(blocked.isError, true)
     assert.equal(browser.contentsOf(a)!.getURL(), `${base}/a`)
@@ -100,7 +106,7 @@ async function verify() {
     await browser.contentsOf(a)!.executeJavaScript(`void window.open('${base}/a-popup')`, true)
     const deadline = Date.now() + 3000
     while (browser.tabList().length === before && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 20))
-    const popup = browser.tabList().find(tab => ![foreground, a, b].includes(tab.id))
+    const popup = browser.tabList().find(tab => tab.url.includes('/a-popup'))
     assert.ok(popup)
     assert.equal(active(), b)
     assert.equal(coordination.canUse(popup.id, 'b'), false)

@@ -13,10 +13,11 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
 }): JSX.Element {
   const [query, setQuery] = useState('')
   const [highlight, setHighlight] = useState(0)
-  const [focused, setFocused] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const [opening, setOpening] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const actionRef = useRef(false)
+  const hoveredRef = useRef(false)
   const resultsRef = useRef<HTMLDivElement>(null)
   const listId = useId()
   const view = useMemo(() => chatSearchView(chats, query, controller.reviewQueue),
@@ -27,7 +28,12 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
 
   useEffect(() => {
     resultsRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
-  }, [cursor, focused, query, hits])
+  }, [cursor, expanded, query, hits])
+
+  const refreshChats = controller.refreshChats
+  useEffect(() => {
+    if (expanded) refreshChats()
+  }, [expanded, refreshChats])
 
   const open = async (hit: ChatSearchHit | undefined): Promise<void> => {
     if (!hit || actionRef.current) return
@@ -38,7 +44,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
       onOpened?.()
       setQuery('')
       setHighlight(0)
-      setFocused(false)
+      setExpanded(false)
       inputRef.current?.blur()
     } catch (error) {
       controller.reportError(error)
@@ -66,13 +72,21 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
 
   const busy = opening || deleting !== null
 
-  return <div className="header-chat-search" onBlur={event => {
-    if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false)
+  return <div className="header-chat-search" onPointerEnter={event => {
+    if (event.pointerType === 'touch') return
+    hoveredRef.current = true
+    setExpanded(true)
+  }} onPointerLeave={event => {
+    if (event.pointerType === 'touch') return
+    hoveredRef.current = false
+    setExpanded(false)
+  }} onBlur={event => {
+    if (!hoveredRef.current && !event.currentTarget.contains(event.relatedTarget)) setExpanded(false)
   }} onKeyDown={event => {
     if (event.key === 'Escape') {
       event.preventDefault()
       event.stopPropagation()
-      setFocused(false)
+      setExpanded(false)
       inputRef.current?.blur()
     }
   }}>
@@ -80,21 +94,21 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
       <Search size={13} aria-hidden="true" />
       <input ref={inputRef} type="text" value={query} placeholder="Search chats"
         aria-label="Search previous chat titles" role="combobox" aria-autocomplete="list" aria-haspopup="grid"
-        aria-expanded={focused} aria-controls={focused ? listId : undefined}
-        aria-activedescendant={focused && hits.length ? optionId(cursor) : undefined}
+        aria-expanded={expanded} aria-controls={expanded ? listId : undefined}
+        aria-activedescendant={expanded && hits.length ? optionId(cursor) : undefined}
         autoComplete="off" spellCheck={false} data-ui="titlebar.chat-search"
-        onChange={event => { setQuery(event.target.value); setHighlight(0); setFocused(true) }}
-        onFocus={() => { setFocused(true); controller.refreshChats() }}
-        onClick={() => setFocused(true)}
+        onChange={event => { setQuery(event.target.value); setHighlight(0); setExpanded(true) }}
+        onFocus={() => setExpanded(true)}
+        onClick={() => setExpanded(true)}
         onKeyDown={event => {
           if (event.nativeEvent.isComposing) return
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault()
-            setFocused(true)
+            setExpanded(true)
             setHighlight(stepHighlight(cursor, event.key === 'ArrowDown' ? 1 : -1, hits.length))
           } else if (event.key === 'Enter') {
             event.preventDefault()
-            if (focused) void open(hits[cursor])
+            if (expanded) void open(hits[cursor])
           }
         }} />
       {(view.runningCount > 0 || view.unreadCount > 0) && <div className="header-chat-search-counts"
@@ -114,7 +128,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
         <X size={12} aria-hidden="true" />
       </button>}
     </div>
-    {focused && <div className="header-chat-search-popup">
+    {expanded && <div className="header-chat-search-popup">
       <div ref={resultsRef} id={listId} role="grid" aria-label="Chat history suggestions" aria-busy={busy}>
         {view.sections.map(section => <div role="rowgroup" key={section.label}
           className="header-chat-search-section" aria-label={section.label}>

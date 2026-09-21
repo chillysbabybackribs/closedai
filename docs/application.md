@@ -219,7 +219,10 @@ a guarantee that every model retrieves or phrases its response identically.
 ## Workspace layout
 
 The workspace has no sidebar. A centered title-bar input searches saved chat titles across projects.
-Clicking it groups chats into Running, Recently completed (unread), and History (up to eight recent
+Hovering over it opens a dropdown that stays open across the field, the gap, and the results;
+leaving the component hides it, even while the input retains focus. Hovering does not steal keyboard
+focus. Focusing, clicking, typing, or using arrow keys also opens it for keyboard and touch access.
+The dropdown groups chats into Running, Recently completed (unread), and History (up to eight recent
 chats), omitting empty groups and showing each chat once. Running and unread counts remain visible
 in the input while the dropdown is closed. Activity groups include all matching chats in the scrollable
 dropdown; unread completions use the persisted review queue and move into History when opened.
