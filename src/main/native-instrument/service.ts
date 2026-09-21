@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { MAX_DURATION_MS, type ProbeRequest, type ProbeResult } from './contracts.js'
+import { FRIDA_VERSION, MAX_DURATION_MS, type ProbeRequest, type ProbeResult } from './contracts.js'
 import type { NativeControllerClient } from './client.js'
 
 type Operation = { hash: string; targetId: string; result?: ProbeResult; promise: Promise<ProbeResult> }
@@ -41,6 +41,14 @@ export class NativeInstrumentService {
     const operation: Operation = { hash, targetId: request.targetId, promise: Promise.resolve().then(async () => {
       try {
         operation.result = await this.client.run(request, abort.signal)
+        return operation.result
+      } catch (error) {
+        operation.result = {
+          state: 'unknown', targetId: request.targetId, fridaVersion: FRIDA_VERSION,
+          sourceHash: createHash('sha256').update(request.source).digest('hex'), elapsedMs: 0,
+          events: [], received: 0, dropped: 0, truncated: 0,
+          cleanup: { script: 'unconfirmed', session: 'unconfirmed' }, error: String(error).slice(0, 1_000)
+        }
         return operation.result
       } finally {
         clearInterval(monitor)

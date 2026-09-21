@@ -1,6 +1,6 @@
 import { defineActionTool } from '../action-tool.js'
 import { jsonResult, objectSchema } from '../json-result.js'
-import { defineTool, numberArg, stringArg, type ToolContext, type ToolNamespace } from '../tool.js'
+import { defineTool, numberArg, stringArg, textResult, type ToolContext, type ToolNamespace } from '../tool.js'
 import { FRIDA_VERSION, MAX_DURATION_MS } from '../../native-instrument/contracts.js'
 import { listTargets, ptracePolicy } from '../../native-instrument/targets.js'
 import type { NativeInstrumentService } from '../../native-instrument/service.js'
@@ -17,7 +17,7 @@ export function nativeInstrumentTools(service: NativeInstrumentService, isCurren
     const result = await service.run(owner(context), stringArg(input, 'operation_key')!, {
       targetId: stringArg(input, 'target_id')!, source, durationMs
     }, context.signal, () => isCurrent(context))
-    return { ...jsonResult(result), isError: result.state !== 'completed' }
+    return { ...textResult(JSON.stringify(result)), isError: result.state !== 'completed' }
   }
   return {
     name: 'native_instrument',
@@ -34,7 +34,7 @@ export function nativeInstrumentTools(service: NativeInstrumentService, isCurren
           }), run: async input => jsonResult(await listTargets(stringArg(input, 'query', '')!, numberArg(input, 'limit', 15))) },
           { action: 'operation', description: 'Read this chat’s experiment result, including after provider rotation. Receipts are in memory and do not survive app restart. Not-found does not prove that a prior attempt never ran.',
             inputSchema: objectSchema({ operation_key: operationKey }, ['operation_key']),
-            run: async (input, context) => jsonResult(service.read(owner(context), stringArg(input, 'operation_key')!)) }
+            run: async (input, context) => textResult(JSON.stringify(service.read(owner(context), stringArg(input, 'operation_key')!))) }
         ]
       }),
       defineTool({
