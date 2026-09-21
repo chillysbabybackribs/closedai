@@ -1,0 +1,169 @@
+<div id="chat-history-activity" aria-label="Chat history dropdown mockup">
+  <div class="ch-preview">
+    <div class="ch-field">
+      <i data-lucide="search" aria-hidden="true"></i>
+      <input aria-label="Search chats" placeholder="Search chats" autocomplete="off" spellcheck="false" aria-controls="ch-results" aria-expanded="true">
+      <div class="ch-counts" aria-label="2 running chats, 2 unread completions">
+        <span class="ch-count ch-running" data-tooltip="Running chats"><i data-lucide="loader-circle" aria-hidden="true"></i><span data-running-count>2</span></span>
+        <span class="ch-count ch-complete" data-tooltip="Unread completions"><span class="ch-dot"></span><span data-unread-count>2</span></span>
+      </div>
+      <button class="ch-clear" aria-label="Clear search" hidden><i data-lucide="x" aria-hidden="true"></i></button>
+    </div>
+    <div class="ch-popup" id="ch-results">
+      <div class="ch-groups"></div>
+      <div class="ch-footer"><span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span><span><kbd>↵</kbd> Open</span><span><kbd>esc</kbd> Close</span></div>
+    </div>
+    <div class="ch-feedback" role="status" aria-live="polite"></div>
+  </div>
+</div>
+<style>
+  #chat-history-activity {
+    --ch-surface: light-dark(#ffffff, #222224);
+    --ch-input: light-dark(#f9f9fa, #29292c);
+    --ch-text: light-dark(#202023, #ededee);
+    --ch-muted: light-dark(#69696f, #aaaab1);
+    --ch-line: light-dark(#e2e2e5, #3a3a3e);
+    --ch-hover: light-dark(#f0f0f3, #303034);
+    --ch-blue: light-dark(#3863ba, #9bbaff);
+    --ch-green: light-dark(#267349, #95c9aa);
+    --ch-danger: light-dark(#b82e36, #f1979d);
+    color: var(--ch-text);
+    font: 13px/1.4 Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 16px 8px 6px;
+  }
+  #chat-history-activity * { box-sizing: border-box; }
+  #chat-history-activity [hidden] { display: none !important; }
+  #chat-history-activity button, #chat-history-activity input { font: inherit; color: inherit; }
+  #chat-history-activity button { cursor: pointer; }
+  #chat-history-activity button:focus-visible { outline: 2px solid var(--ch-blue); outline-offset: -2px; }
+  #chat-history-activity .ch-preview { width: 100%; max-width: 440px; margin: 0 auto; }
+  #chat-history-activity .ch-field {
+    display: flex; align-items: center; gap: 9px; padding: 0 11px; height: 36px;
+    background: var(--ch-input); border: 1px solid var(--ch-line); border-radius: 7px;
+  }
+  #chat-history-activity .ch-field:focus-within { border-color: var(--ch-blue); }
+  #chat-history-activity .ch-field > svg { width: 15px; height: 15px; color: var(--ch-muted); flex-shrink: 0; }
+  #chat-history-activity input { background: transparent; border: 0; outline: none; width: 100%; min-width: 0; padding: 0; }
+  #chat-history-activity input::placeholder { color: var(--ch-muted); }
+  #chat-history-activity .ch-counts { display: flex; align-items: center; gap: 12px; padding-left: 9px; border-left: 1px solid var(--ch-line); }
+  #chat-history-activity .ch-count { display: flex; align-items: center; gap: 5px; font-size: 11px; font-variant-numeric: tabular-nums; }
+  #chat-history-activity .ch-running { color: var(--ch-blue); }
+  #chat-history-activity .ch-complete { color: var(--ch-green); }
+  #chat-history-activity .ch-count svg { width: 12px; height: 12px; }
+  #chat-history-activity .ch-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block; flex-shrink: 0; }
+  #chat-history-activity .ch-clear { display: grid; place-items: center; padding: 0; border: 0; background: transparent; }
+  #chat-history-activity .ch-clear svg { width: 14px; height: 14px; }
+  #chat-history-activity .ch-popup { margin-top: 7px; padding: 5px; border: 1px solid var(--ch-line); border-radius: 9px; background: var(--ch-surface); box-shadow: 0 8px 24px #00000018; }
+  #chat-history-activity .ch-section + .ch-section { border-top: 1px solid var(--ch-line); margin-top: 5px; padding-top: 5px; }
+  #chat-history-activity .ch-heading { display: flex; align-items: center; gap: 7px; margin: 0; padding: 9px 10px 5px; font-size: 11px; font-weight: 550; color: var(--ch-muted); }
+  #chat-history-activity .ch-heading span { font-weight: 400; opacity: .8; }
+  #chat-history-activity .ch-row { display: flex; align-items: center; border-radius: 5px; }
+  #chat-history-activity .ch-row:hover, #chat-history-activity .ch-row.ch-selected { background: var(--ch-hover); }
+  #chat-history-activity .ch-open { flex: 1; min-width: 0; border: 0; background: transparent; padding: var(--ch-row-pad, 10px) 10px; text-align: left; display: flex; align-items: flex-start; gap: 9px; }
+  #chat-history-activity .ch-symbol { width: 15px; height: 17px; display: grid; place-items: center; flex-shrink: 0; margin-top: 1px; color: var(--ch-muted); }
+  #chat-history-activity .ch-symbol svg { width: 14px; height: 14px; }
+  #chat-history-activity .ch-symbol.ch-running { color: var(--ch-blue); }
+  #chat-history-activity .ch-symbol.ch-complete { color: var(--ch-green); }
+  #chat-history-activity .ch-copy { min-width: 0; }
+  #chat-history-activity .ch-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 450; }
+  #chat-history-activity .ch-meta { display: block; font-size: 11px; color: var(--ch-muted); margin-top: 3px; }
+  #chat-history-activity .ch-delete { display: grid; place-items: center; flex: 0 0 28px; height: 28px; margin-right: 6px; border: 0; border-radius: 4px; background: transparent; color: var(--ch-muted); }
+  #chat-history-activity .ch-delete svg { width: 14px; height: 14px; }
+  #chat-history-activity .ch-delete:hover:not(:disabled) { color: var(--ch-danger); background: var(--ch-input); }
+  #chat-history-activity .ch-delete:disabled { opacity: .25; cursor: default; }
+  #chat-history-activity mark { background: transparent; color: var(--ch-blue); font-weight: 600; }
+  #chat-history-activity .ch-footer { display: flex; flex-wrap: wrap; gap: 15px; padding: 10px 10px 5px; border-top: 1px solid var(--ch-line); margin-top: 5px; font-size: 10px; color: var(--ch-muted); }
+  #chat-history-activity kbd { font: inherit; margin-right: 3px; }
+  #chat-history-activity .ch-empty { padding: 20px 10px; color: var(--ch-muted); }
+  #chat-history-activity .ch-feedback { min-height: 23px; padding: 7px 2px 0; font-size: 11px; color: var(--ch-muted); }
+</style>
+<script>
+(() => {
+  const root = document.getElementById('chat-history-activity');
+  const input = root.querySelector('input');
+  const popup = root.querySelector('.ch-popup');
+  const groups = root.querySelector('.ch-groups');
+  const clear = root.querySelector('.ch-clear');
+  const feedback = root.querySelector('.ch-feedback');
+  const design = { compact: false, showCounts: true };
+  let rows = [
+    { id: 1, title: 'Refine chat history navigation', project: 'closedai', status: 'running', time: 'Running · 2m' },
+    { id: 2, title: 'Investigate browser memory usage', project: 'closedai', status: 'running', time: 'Running · 6m' },
+    { id: 3, title: 'Add one-click chat deletion', project: 'closedai', status: 'complete', time: 'Finished 3m ago' },
+    { id: 4, title: 'Polish the model picker', project: 'closedai', status: 'complete', time: 'Finished 12m ago' },
+    { id: 5, title: 'Replace the agent sidebar with search', project: 'closedai', status: 'history', time: 'Today' },
+    { id: 6, title: 'Plan the portfolio homepage', project: 'portfolio', status: 'history', time: 'Yesterday' },
+    { id: 7, title: 'Review browser tab shortcuts', project: 'closedai', status: 'history', time: 'Yesterday' }
+  ];
+  let selected = -1;
+  let visible = [];
+  const escape = text => text.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function titleMarkup(title, query) {
+    const index = title.toLowerCase().indexOf(query);
+    if (!query || index < 0) return escape(title);
+    return escape(title.slice(0, index)) + '<mark>' + escape(title.slice(index, index + query.length)) + '</mark>' + escape(title.slice(index + query.length));
+  }
+  function rowMarkup(row, query) {
+    const statusClass = row.status === 'running' ? 'ch-running' : row.status === 'complete' ? 'ch-complete' : '';
+    const symbol = row.status === 'complete' ? '<span class="ch-dot"></span>' : '<i data-lucide="' + (row.status === 'running' ? 'loader-circle' : 'message-square') + '" aria-hidden="true"></i>';
+    return '<div class="ch-row' + (visible[selected]?.id === row.id ? ' ch-selected' : '') + '"><button class="ch-open" data-open="' + row.id + '"><span class="ch-symbol ' + statusClass + '">' + symbol + '</span><span class="ch-copy"><span class="ch-title">' + titleMarkup(row.title, query) + '</span><span class="ch-meta">' + row.project + ' · ' + row.time + '</span></span></button><button class="ch-delete" data-delete="' + row.id + '" aria-label="Delete ' + escape(row.title) + '"' + (row.status === 'running' ? ' disabled' : '') + '><i data-lucide="trash-2" aria-hidden="true"></i></button></div>';
+  }
+  function render() {
+    const query = input.value.trim().toLowerCase();
+    visible = rows.filter(row => row.title.toLowerCase().includes(query));
+    if (query) visible.sort((a, b) => Number(b.title.toLowerCase().startsWith(query)) - Number(a.title.toLowerCase().startsWith(query)));
+    selected = Math.min(selected, visible.length - 1);
+    const sections = query ? [['Matching chats', visible]] : [
+      ['Running', visible.filter(row => row.status === 'running')],
+      ['Recently completed', visible.filter(row => row.status === 'complete')],
+      ['History', visible.filter(row => row.status === 'history')]
+    ];
+    groups.innerHTML = sections.filter(([, entries]) => entries.length).map(([label, entries]) => '<section class="ch-section"><h3 class="ch-heading">' + label + '<span>' + entries.length + '</span></h3>' + entries.map(row => rowMarkup(row, query)).join('') + '</section>').join('') || '<div class="ch-empty">No matching chats</div>';
+    clear.hidden = !input.value;
+    root.querySelector('[data-running-count]').textContent = rows.filter(row => row.status === 'running').length;
+    root.querySelector('[data-unread-count]').textContent = rows.filter(row => row.status === 'complete').length;
+    root.querySelector('.ch-counts').setAttribute('aria-label', rows.filter(row => row.status === 'running').length + ' running chats, ' + rows.filter(row => row.status === 'complete').length + ' unread completions');
+    root.querySelector('.ch-counts').hidden = !design.showCounts;
+    root.style.setProperty('--ch-row-pad', design.compact ? '7px' : '10px');
+    if (globalThis.lucide) lucide.createIcons({ attrs: { width: 16, height: 16 } });
+  }
+  function setOpen(open) { popup.hidden = !open; input.setAttribute('aria-expanded', String(open)); }
+  function openRow(id) {
+    const row = rows.find(item => item.id === id);
+    if (!row) return;
+    if (row.status === 'complete') { row.status = 'history'; row.time = 'Today'; }
+    feedback.textContent = 'Previewing “' + row.title + '”';
+    setOpen(false); render();
+  }
+  input.addEventListener('focus', () => setOpen(true));
+  input.addEventListener('click', () => setOpen(true));
+  input.addEventListener('input', () => { selected = -1; setOpen(true); feedback.textContent = ''; render(); });
+  clear.addEventListener('click', () => { input.value = ''; selected = -1; input.focus(); render(); });
+  root.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { setOpen(false); input.blur(); }
+    if (event.target !== input) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault(); setOpen(true);
+      selected = visible.length ? (selected + (event.key === 'ArrowDown' ? 1 : -1) + visible.length) % visible.length : -1;
+      render();
+    }
+    if (event.key === 'Enter' && !popup.hidden && visible[selected]) { event.preventDefault(); openRow(visible[selected].id); }
+  });
+  groups.addEventListener('click', event => {
+    const remove = event.target.closest('[data-delete]');
+    if (remove && !remove.disabled) {
+      rows = rows.filter(row => row.id !== Number(remove.dataset.delete));
+      feedback.textContent = 'Chat removed from history';
+      input.focus(); render(); return;
+    }
+    const open = event.target.closest('[data-open]');
+    if (open) openRow(Number(open.dataset.open));
+  });
+  render();
+  if (globalThis.Tweak) {
+    const tweak = new Tweak({ container: root, onChange: render });
+    tweak.addToggle(design, 'compact', { label: 'Compact rows' });
+    tweak.addToggle(design, 'showCounts', { label: 'Activity counts in search' });
+  }
+})();
+</script>

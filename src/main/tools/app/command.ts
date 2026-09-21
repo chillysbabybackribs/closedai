@@ -126,13 +126,13 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
     {
       action: 'browser_tab',
       description:
-        'Browser strip: new, new_right, select, close, close_others, close_right, duplicate, rename, back, forward, reload. Returns browser state.',
+        'Browser tabs assigned to this chat: new, new_right, select, close, close_others, close_right, duplicate, rename, back, forward, reload, release. New tabs open in the background. Defaults target this chat’s tab, independent of selection. release gives up this chat’s assignment without closing the tab. Other chats’ assigned tabs are protected. Returns browser state and assignments.',
       inputSchema: objectSchema({
         op: {
           type: 'string',
           enum: [
             'new', 'new_right', 'select', 'close', 'close_others', 'close_right',
-            'duplicate', 'back', 'forward', 'reload', 'rename'
+            'duplicate', 'back', 'forward', 'reload', 'rename', 'release'
           ]
         },
         tab_id: {
@@ -143,14 +143,14 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
         url: { type: 'string', minLength: 1, maxLength: 2_000, description: 'Optional URL or query for new.' },
         tab_title: { type: 'string', maxLength: 300, description: 'Custom title for rename; empty clears the custom title.' }
       }, ['op']),
-      run: async (input) => {
+      run: async (input, context) => {
         const host = requireHost(app, 'app commands')
         return jsonResult(await host.browserTab({
           op: stringArg(input, 'op') as AppBrowserTabRequest['op'],
           tabId: stringArg(input, 'tab_id'),
           url: stringArg(input, 'url'),
           title: stringArg(input, 'tab_title')
-        }))
+        }, context.paneId))
       }
     }
   ]

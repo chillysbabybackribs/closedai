@@ -197,10 +197,10 @@ export class BrowserService extends EventEmitter {
     this.openTab(HOME_URL, true)
   }
 
-  newTabToRight(id: string): void {
+  newTabToRight(id: string, activate = true): void {
     const index = this.tabs.findIndex((tab) => tab.id === id)
     if (index === -1) return
-    this.openTab(HOME_URL, true, undefined, index + 1)
+    this.openTab(HOME_URL, activate, undefined, index + 1)
   }
 
   openNewTab(input: string, activate = true): string {
@@ -292,7 +292,7 @@ export class BrowserService extends EventEmitter {
     for (const tabId of closing) this.closeTab(tabId)
   }
 
-  duplicateTab(id: string): void {
+  duplicateTab(id: string, activate = true): void {
     const index = this.tabs.findIndex((tab) => tab.id === id)
     const tab = index === -1 ? null : this.tabs[index]
     if (!tab) return
@@ -300,18 +300,20 @@ export class BrowserService extends EventEmitter {
       const duplicate = new ImageTab(allocateTabId(), tab.key, tab.content, this.activeId)
       duplicate.rename(tab.getCustomTitle())
       this.registerTab(duplicate, index + 1)
-      this.setActive(duplicate.id)
+      if (activate) this.setActive(duplicate.id)
+      else this.emitTabs()
       return
     }
     if (tab instanceof FileTab) {
       const duplicate = new FileTab(allocateTabId(), tab.key, { ...tab.info }, this.activeId)
       duplicate.rename(tab.getCustomTitle())
       this.registerTab(duplicate, index + 1)
-      this.setActive(duplicate.id)
+      if (activate) this.setActive(duplicate.id)
+      else this.emitTabs()
       return
     }
     const state = tab.getState()
-    const duplicate = this.openTab(state.url, true, undefined, index + 1)
+    const duplicate = this.openTab(state.url, activate, undefined, index + 1)
     duplicate.rename(tab.getCustomTitle())
   }
 
@@ -508,12 +510,14 @@ export class BrowserService extends EventEmitter {
     return tab.id
   }
 
-  back(): void {
-    this.requireActive().back()
+  back(tabId?: string): void {
+    if (tabId) this.tabs.find(tab => tab.id === tabId)?.back()
+    else this.requireActive().back()
   }
 
-  forward(): void {
-    this.requireActive().forward()
+  forward(tabId?: string): void {
+    if (tabId) this.tabs.find(tab => tab.id === tabId)?.forward()
+    else this.requireActive().forward()
   }
 
   reload(): void {

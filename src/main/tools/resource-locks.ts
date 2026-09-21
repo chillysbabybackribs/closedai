@@ -9,15 +9,14 @@ export class ToolResourceLocks {
   tryAcquire(request: ToolCallRequest, input: JsonObject, paneId: string | null, callId: string): (() => void) | string {
     const key = resourceKey(request, input)
     if (!key || !paneId) return () => {}
-    const holder = [...this.held.entries()].find(([heldKey, held]) => (
-      held.callId !== callId && resourcesConflict(key, heldKey)
-    ))?.[1]
-    if (holder && holder.callId !== callId) {
+    const holder = [...this.held.entries()].find(([heldKey]) => resourcesConflict(key, heldKey))?.[1]
+    if (holder) {
       return `${describeResource(key)} is busy in peer chat ${holder.paneId}; use another target or inspect it with peer_chats`
     }
-    this.held.set(key, { paneId, callId })
+    const entry = { paneId, callId }
+    this.held.set(key, entry)
     return () => {
-      if (this.held.get(key)?.callId === callId) this.held.delete(key)
+      if (this.held.get(key) === entry) this.held.delete(key)
     }
   }
 }
@@ -30,17 +29,20 @@ export function resourceKey(request: ToolCallRequest, input: JsonObject): string
     return tab ? `browser:tab:${tab}` : 'browser:global'
   }
   if (request.namespace === 'closedai_app' && request.tool === 'ui' && ['click', 'type', 'press_key', 'scroll'].includes(action)) {
-    return 'app:input'
+    return 'browser:global'
   }
-  if (request.namespace === 'embedded_browser' && request.tool === 'page' && action === 'navigate') return browserTarget()
-  if (request.namespace === 'embedded_browser' && request.tool === 'script' && action === 'evaluate') return browserTarget()
+  if (request.namespace === 'embedded_browser') {
+    if (['page', 'script'].includes(request.tool)) return input.new_tab === true ? 'browser:global' : browserTarget()
+    if (request.tool === 'session') return 'browser:global'
+    if (request.tool === 'network' && ['add_rule', 'remove_rule', 'clear'].includes(action)) return 'browser:global'
+  }
   if (request.namespace === 'closedai_app' && request.tool === 'command' && action === 'browser_tab') return 'browser:global'
   if (request.namespace === 'closedai_ui' && request.tool === 'capture' && action === 'browser_page') return browserTarget()
-  if (
-    request.namespace === 'browser_cdp' &&
-    ((request.tool === 'page' && ['click', 'click_at', 'type', 'press_key', 'scroll'].includes(action)) ||
-      (request.tool === 'protocol' && action === 'command'))
-  ) {
+  if (request.namespace === 'browser_cdp') {
+    // Trusted input activates tabs. Different tab ids still share one foreground surface.
+    if (request.tool === 'page' && ['click', 'click_at', 'type', 'press_key', 'scroll', 'dismiss_overlay'].includes(action)) return 'browser:global'
+    if (request.tool === 'protocol' && (action === 'target' ||
+        (action === 'command' && /^(Input|Target|Browser|Storage)\.|^Network\.(setCookie|setCookies|deleteCookies|clearBrowser)/.test(String(input.method))))) return 'browser:global'
     return browserTarget()
   }
   return null

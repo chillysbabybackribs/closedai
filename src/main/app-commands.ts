@@ -1,6 +1,7 @@
 import type { ChatPeerSummary, ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import type { ProjectSwitchRequest, ProjectSwitchStatus } from '../shared/chat-peers.js'
 import type { ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
+import type { BrowserCoordination } from './tools/browser/coordination.js'
 import type {
   AppBrowserTabRequest,
   AppBrowserTabs,
@@ -23,6 +24,7 @@ export type AppCommandDeps = {
   browser: () => AppBrowserTabs | null
   downloads: () => AppDownloadList | null
   window: () => AppWindowInfo | null
+  browserCoordination?: BrowserCoordination
 }
 
 const PEER_LIMIT = 12
@@ -46,7 +48,7 @@ export class AppCommandAccess implements AppCommandHost {
     }
     if (sections.includes('browser')) {
       const browser = this.deps.browser()
-      result.browser = browser ? projectBrowser(browser) : null
+      result.browser = browser ? { ...projectBrowser(browser), coordination: this.deps.browserCoordination?.snapshot(callerPaneId) } : null
     }
     if (sections.includes('downloads')) {
       const downloads = this.deps.downloads()?.list() ?? []
@@ -146,7 +148,7 @@ export class AppCommandAccess implements AppCommandHost {
     if (effort) await chat.selectReasoningEffort(paneId, effort)
   }
 
-  async browserTab(request: AppBrowserTabRequest): Promise<unknown> {
+  async browserTab(request: AppBrowserTabRequest, paneId?: string | null): Promise<unknown> {
     const browser = this.deps.browser()
     if (!browser) throw new Error('The browser is not available yet')
     const requireTab = (): string => {
@@ -154,20 +156,27 @@ export class AppCommandAccess implements AppCommandHost {
       if (!browser.tabList().some((tab) => tab.id === request.tabId)) throw new Error(`Unknown tab ${request.tabId}`)
       return request.tabId
     }
+    const previous = new Set(browser.tabList().map(tab => tab.id))
     switch (request.op) {
-      case 'new': request.url ? browser.openNewTab(request.url, true) : browser.newTab(); break
-      case 'new_right': browser.newTabToRight(requireTab()); break
+      case 'new': browser.openNewTab(request.url ?? 'about:blank', !paneId); break
+      case 'new_right': browser.newTabToRight(requireTab(), !paneId); break
       case 'select': browser.selectTab(requireTab()); break
       case 'close': browser.closeTab(requireTab()); break
       case 'close_others': browser.closeOtherTabs(requireTab()); break
       case 'close_right': browser.closeTabsToRight(requireTab()); break
-      case 'duplicate': browser.duplicateTab(requireTab()); break
-      case 'back': browser.back(); break
-      case 'forward': browser.forward(); break
+      case 'duplicate': browser.duplicateTab(requireTab(), !paneId); break
+      case 'back': browser.back(request.tabId); break
+      case 'forward': browser.forward(request.tabId); break
       case 'reload': request.tabId ? browser.reloadTab(requireTab()) : browser.reload(); break
       case 'rename': browser.renameTab(requireTab(), request.title ?? null); break
+      case 'release':
+        if (!paneId) throw new Error('Releasing a tab requires a calling chat')
+        this.deps.browserCoordination?.release(request.tabId, paneId)
+        break
     }
-    return projectBrowser(browser)
+    const created = browser.tabList().filter(tab => !previous.has(tab.id))
+    if (paneId) for (const tab of created) this.deps.browserCoordination?.claim(tab.id, paneId)
+    return { ...projectBrowser(browser), coordination: this.deps.browserCoordination?.snapshot(paneId) }
   }
 
   private chat(): AppChatWorkspace {

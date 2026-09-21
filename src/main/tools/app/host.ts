@@ -116,6 +116,7 @@ export type AppBrowserTabRequest = {
     | 'forward'
     | 'reload'
     | 'rename'
+    | 'release'
   tabId?: string
   url?: string
   title?: string | null
@@ -132,7 +133,7 @@ export type AppCommandHost = {
   openChat(request: AppOpenChatRequest): Promise<{ paneId: string; threadId: string | null }>
   closeChat(paneId: string): Promise<void>
   selectModel(paneId: string, modelId: string, effort: string | undefined): Promise<void>
-  browserTab(request: AppBrowserTabRequest): Promise<unknown>
+  browserTab(request: AppBrowserTabRequest, paneId?: string | null): Promise<unknown>
 }
 
 /** The slice of the chat workspace the command host needs; ChatPeerManager satisfies it. */
@@ -161,17 +162,17 @@ export type AppBrowserTabs = {
   tabList(): BrowserTabInfo[]
   snapshot(): BrowserState
   newTab(): void
-  newTabToRight(id: string): void
+  newTabToRight(id: string, activate?: boolean): void
   openNewTab(input: string, activate?: boolean): void
   selectTab(id: string): void
   closeTab(id: string): void
   closeOtherTabs(id: string): void
   closeTabsToRight(id: string): void
-  duplicateTab(id: string): void
+  duplicateTab(id: string, activate?: boolean): void
   reloadTab(id: string): void
   renameTab(id: string, title: string | null): void
-  back(): void
-  forward(): void
+  back(tabId?: string): void
+  forward(tabId?: string): void
   reload(): void
 }
 
