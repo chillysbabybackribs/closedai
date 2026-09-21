@@ -1,31 +1,62 @@
+/* ---- Title-bar chat search --------------------------------------------------
+   A command-center pill in the title bar (Cursor's centred search) that opens a
+   command-palette surface below it (shadcn/cmdk Command anatomy: list of groups
+   with headings, single-line items, hairline separators, kbd footer).
+
+   Every fill in the palette is mixed from the popover's own foreground so the
+   surface reads the same on the dark chassis and the warm paper theme without a
+   second token set. */
+
 .header-chat-search {
+  --search-fill: color-mix(in srgb, var(--popover-foreground) 4%, transparent);
+  --search-fill-hover: color-mix(in srgb, var(--popover-foreground) 7%, transparent);
+  --search-row-selected: color-mix(in srgb, var(--popover-foreground) 8%, transparent);
+  --search-ink: var(--popover-foreground);
+  --search-ink-muted: color-mix(in srgb, var(--popover-foreground) 58%, transparent);
+  --search-ink-quiet: color-mix(in srgb, var(--popover-foreground) 40%, transparent);
+  --search-line: var(--hairline);
+  --search-kbd-edge: color-mix(in srgb, var(--popover-foreground) 14%, transparent);
+
   position: relative;
   flex: 1;
   min-width: 0;
   -webkit-app-region: no-drag;
 }
 
-/* At rest the glass and placeholder sit together in the centre as one ghosted hint. Focus
-   or a query stretches the input to the full field, docking the glass at the left edge, so
-   typing reads like an ordinary field. `field-sizing: content` lets the resting input shrink
-   to its placeholder, which is what makes the flex row centre the pair with no measured
-   offsets. */
+/* ---- The pill ---------------------------------------------------------------
+   At rest the glass and placeholder sit together in the centre as one ghosted hint
+   with the shortcut docked right. Focus or a query stretches the input to the full
+   field, docking the glass at the left edge, so typing reads like an ordinary
+   field. `field-sizing: content` lets the resting input shrink to its placeholder,
+   which is what makes the flex row centre the pair with no measured offsets. */
 .header-chat-search-field {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 34px;
-  padding: 0 10px;
+  gap: 7px;
+  height: 30px;
+  padding: 0 6px 0 9px;
   border: 1px solid var(--hairline-strong);
-  border-radius: 6px;
-  background: var(--surface-card);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--chrome-fg-strong) 4%, var(--titlebar-surface));
   color: var(--chrome-fg);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
+  transition:
+    background 120ms var(--ease-chrome),
+    border-color 120ms var(--ease-chrome),
+    box-shadow 120ms var(--ease-chrome);
 }
 
-.header-chat-search-field:focus-within {
+.header-chat-search-field:hover {
+  background: color-mix(in srgb, var(--chrome-fg-strong) 7%, var(--titlebar-surface));
+  border-color: color-mix(in srgb, var(--chrome-fg-strong) 22%, transparent);
+}
+
+.header-chat-search-field:focus-within,
+.header-chat-search[data-expanded='true'] .header-chat-search-field:focus-within {
+  background: color-mix(in srgb, var(--chrome-fg-strong) 5%, var(--titlebar-surface));
   border-color: var(--focus-ink);
-  box-shadow: 0 0 0 1px var(--focus-halo);
+  box-shadow: 0 0 0 1px var(--focus-halo), inset 0 1px 0 rgb(255 255 255 / 3%);
 }
 
 .header-chat-search-field input {
@@ -33,22 +64,25 @@
   width: auto;
   max-width: 100%;
   min-width: 0;
+  height: 100%;
   padding: 0;
   border: 0;
   outline: none;
   background: transparent;
   color: var(--chrome-fg-strong);
-  font-size: 14px;
+  font-size: 13px;
+  letter-spacing: var(--tracking-ui);
 }
 
 .header-chat-search-field input::placeholder {
   color: var(--chrome-fg);
-  opacity: 0.55;
+  opacity: 0.7;
 }
 
 .header-chat-search-field > svg {
   flex-shrink: 0;
-  opacity: 0.55;
+  color: var(--chrome-fg);
+  opacity: 0.7;
   transition: opacity 140ms var(--ease-chrome);
 }
 
@@ -63,49 +97,83 @@
   opacity: 1;
 }
 
-.header-chat-search-field:focus-within input::placeholder { opacity: 0.4; }
+.header-chat-search-field:focus-within input::placeholder { opacity: 0.45; }
 
-.header-chat-search [data-status='running'] { color: var(--tab-accent); }
-.header-chat-search [data-status='paused'] { color: #dba74b; }
-.header-chat-search [data-status='completed'] { color: #65b98a; }
-.header-chat-search [data-status='closed'] { opacity: 0.72; }
-.header-chat-search-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.header-chat-search-spinner { animation: header-chat-search-spin 1.2s linear infinite; }
-@keyframes header-chat-search-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) {
-  .header-chat-search-spinner { animation: none; }
+/* Shortcut chips: present at rest, gone once the field is live so the input owns the width. */
+.header-chat-search-hint {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  opacity: 0.75;
 }
+
+.header-chat-search-field:focus-within .header-chat-search-hint { display: none; }
 
 .header-chat-search-clear {
   display: grid;
   place-items: center;
-  flex: 0 0 24px;
-  height: 26px;
+  flex: 0 0 22px;
+  height: 22px;
+  margin-left: auto;
   padding: 0;
   border: 0;
-  border-radius: 3px;
+  border-radius: 5px;
   background: transparent;
+  color: var(--chrome-fg);
 }
 
-.header-chat-search-clear:hover { background: var(--chrome-control-hover); }
+.header-chat-search-clear:hover { background: var(--chrome-control-hover); color: var(--chrome-fg-strong); }
 
+/* One kbd treatment for the pill hint and the palette footer. */
+.header-chat-search kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border: 1px solid var(--search-kbd-edge);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--search-fill);
+  color: var(--search-ink-muted);
+  font: 500 10px/1 var(--font-sans);
+  letter-spacing: 0;
+}
+
+.header-chat-search-field kbd {
+  border-color: color-mix(in srgb, var(--chrome-fg-strong) 14%, transparent);
+  background: color-mix(in srgb, var(--chrome-fg-strong) 4%, transparent);
+  color: var(--chrome-fg);
+}
+
+/* ---- The palette ------------------------------------------------------------
+   Wider than the pill and centred beneath it, like a quick-open widget under a
+   command center. Padding lives on the list so the rounded frame clips the scroll. */
 .header-chat-search-popup,
 .header-chat-search-error {
   position: absolute;
-  top: calc(100% + 7px);
-  left: 0;
-  width: 100%;
-  padding: 5px;
+  top: calc(100% + 6px);
+  left: 50%;
+  width: max(100%, min(620px, calc(100vw - 32px)));
   border: 1px solid var(--hairline-strong);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--popover);
-  color: var(--popover-foreground);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 40%);
+  color: var(--search-ink);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 28%),
+    0 2px 6px rgb(0 0 0 / 24%),
+    0 18px 44px rgb(0 0 0 / 46%);
+  transform: translateX(-50%);
 }
 
-.header-chat-search-popup [role='grid'] {
-  max-height: min(520px, calc(100vh - 130px));
-  overflow-y: auto;
+.header-chat-search-popup {
+  overflow: hidden;
+  animation: header-chat-search-enter 140ms var(--ease-chrome);
+}
+
+@keyframes header-chat-search-enter {
+  from { opacity: 0; transform: translateX(-50%) translateY(-4px) scale(0.985); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 
 /* Bridge the visual gap so moving from the field into its popup never leaves the component. */
@@ -113,77 +181,230 @@
   content: '';
   position: absolute;
   top: -8px;
-  left: -1px;
-  right: -1px;
+  left: 0;
+  right: 0;
   height: 8px;
 }
 
-.header-chat-search-caption,
-.header-chat-search-empty {
-  margin: 0;
-  padding: 7px 9px;
-  color: var(--chrome-fg);
-  font-size: 11px;
+.header-chat-search-list {
+  max-height: min(520px, calc(100vh - 120px));
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--popover-foreground) 18%, transparent) transparent;
 }
-.header-chat-search-caption { display: flex; align-items: center; gap: 7px; font-weight: 500; }
-.header-chat-search-caption > span { font-weight: 400; }
+
 .header-chat-search-section + .header-chat-search-section {
-  border-top: 1px solid var(--hairline);
-  margin-top: 5px;
-  padding-top: 5px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--search-line);
 }
+
+.header-chat-search-caption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 7px 8px 5px;
+  color: var(--search-ink-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: var(--tracking-ui);
+}
+
+.header-chat-search-caption > span {
+  color: var(--search-ink-quiet);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Rows -------------------------------------------------------------------- */
+.header-chat-search-row {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: background 60ms var(--ease-chrome);
+}
+
+.header-chat-search-row[aria-selected='true'] { background: var(--search-row-selected); }
+.header-chat-search-main { flex: 1; min-width: 0; }
 
 .header-chat-search-result {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 9px;
   width: 100%;
-  padding: 9px;
+  min-height: 34px;
+  padding: 0 8px 0 9px;
   border: 0;
-  border-radius: 5px;
+  border-radius: 6px;
   background: transparent;
+  color: inherit;
   text-align: left;
+  cursor: default;
 }
 
-.header-chat-search-row { display: flex; align-items: center; border-radius: 5px; }
-.header-chat-search-row[aria-selected='true'] { background: var(--chrome-control-active); }
-.header-chat-search-main { flex: 1; min-width: 0; }
-.header-chat-search-symbol { display: grid; place-items: center; flex: 0 0 14px; height: 17px; color: var(--chrome-fg); }
-.header-chat-search-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.header-chat-search-actions { display: flex; align-items: center; flex-shrink: 0; }
+.header-chat-search-result:disabled { opacity: 0.6; }
+
+.header-chat-search-symbol {
+  display: grid;
+  place-items: center;
+  flex: 0 0 16px;
+  height: 16px;
+  color: var(--search-ink-muted);
+}
+
+.header-chat-search-provider {
+  width: 14px;
+  height: 14px;
+  opacity: 0.8;
+}
+
+.header-chat-search-row[aria-selected='true'] .header-chat-search-provider { opacity: 1; }
+.header-chat-search-row[data-status='running'] .header-chat-search-symbol { color: var(--tab-accent); }
+.header-chat-search-row[data-status='paused'] .header-chat-search-symbol { color: #dba74b; }
+.header-chat-search-row[data-status='completed'] .header-chat-search-symbol { color: var(--ok-ink); }
+.header-chat-search-row[data-status='closed'] .header-chat-search-title { color: var(--search-ink-muted); }
+.header-chat-search-row[data-status='closed'][aria-selected='true'] .header-chat-search-title { color: var(--search-ink); }
+
+.header-chat-search-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.header-chat-search-spinner { animation: header-chat-search-spin 1.1s linear infinite; }
+@keyframes header-chat-search-spin { to { transform: rotate(360deg); } }
+
+.header-chat-search-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--search-ink);
+  font-size: 13px;
+  letter-spacing: var(--tracking-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Quick-open highlight: matched characters take the accent in a heavier weight. */
+.header-chat-search-title mark {
+  background: transparent;
+  color: var(--tab-accent);
+  font-weight: 600;
+}
+
+/* Description slot, as in an editor's quick open: the folder trails the title in a quieter ink. */
+.header-chat-search-folder {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--search-ink-quiet);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-chat-search-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--search-ink-quiet);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.header-chat-search-place {
+  padding: 1px 5px;
+  border: 1px solid var(--search-kbd-edge);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: var(--tracking-ui);
+}
+
+.header-chat-search-row[data-status='running'] .header-chat-search-when { color: var(--tab-accent); }
+.header-chat-search-row[data-status='paused'] .header-chat-search-when { color: #dba74b; }
+.header-chat-search-row[data-status='completed'] .header-chat-search-when { color: var(--ok-ink); }
+
+/* Row actions paint only for the selected row; they stay in the tree so keyboard
+   selection reaches them and automation finds them. */
+.header-chat-search-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  padding-right: 4px;
+  opacity: 0;
+  transition: opacity 80ms var(--ease-chrome);
+}
+
+.header-chat-search-row[aria-selected='true'] .header-chat-search-actions,
+.header-chat-search-row:hover .header-chat-search-actions,
+.header-chat-search-actions:focus-within { opacity: 1; }
+
 .header-chat-search-delete,
 .header-chat-search-turn {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  margin-right: 5px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: 5px;
   background: transparent;
-  color: var(--chrome-fg);
+  color: var(--search-ink-muted);
 }
-.header-chat-search-delete:hover:not(:disabled) { background: var(--chrome-control-hover); color: var(--stop-ink); }
-.header-chat-search-turn:hover:not(:disabled) { background: var(--chrome-control-hover); color: var(--tab-accent); }
+
+.header-chat-search-delete:hover:not(:disabled) { background: var(--search-fill-hover); color: var(--stop-ink); }
+.header-chat-search-turn:hover:not(:disabled) { background: var(--search-fill-hover); color: var(--tab-accent); }
 .header-chat-search-delete:focus-visible,
 .header-chat-search-turn:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: 1px; }
 .header-chat-search-delete:disabled,
-.header-chat-search-turn:disabled { opacity: 0.4; cursor: default; }
-.header-chat-search-result:disabled { opacity: 0.6; }
-.header-chat-search-title { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.header-chat-search-title mark { background: transparent; color: var(--tab-accent); }
-.header-chat-search-meta { color: var(--chrome-fg); font-size: 10px; }
+.header-chat-search-turn:disabled { opacity: 0.35; cursor: default; }
+
+/* ---- Empty state and footer ------------------------------------------------- */
+.header-chat-search-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 26px 16px 24px;
+  color: var(--search-ink-quiet);
+  font-size: 11.5px;
+  text-align: center;
+}
+
+.header-chat-search-empty > svg { margin-bottom: 6px; opacity: 0.7; }
+.header-chat-search-empty > strong { color: var(--search-ink-muted); font-size: 12.5px; font-weight: 500; }
+
 .header-chat-search-footer {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 14px;
-  border-top: 1px solid var(--hairline);
-  margin-top: 5px;
-  padding: 9px 9px 4px;
-  color: var(--chrome-fg);
-  font-size: 10px;
+  padding: 7px 12px;
+  border-top: 1px solid var(--search-line);
+  background: color-mix(in srgb, var(--popover-foreground) 2%, transparent);
+  color: var(--search-ink-quiet);
+  font-size: 10.5px;
+  letter-spacing: var(--tracking-ui);
 }
-.header-chat-search-footer kbd { font: inherit; margin-right: 3px; }
-.header-chat-search-error { z-index: 1; padding: 10px; font-size: 12px; color: var(--stop-ink); }
+
+.header-chat-search-footer > span { display: inline-flex; align-items: center; gap: 5px; }
+.header-chat-search-footer kbd + kbd { margin-left: -3px; }
+.header-chat-search-count { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+.header-chat-search-error { z-index: 1; padding: 10px 12px; font-size: 12px; color: var(--stop-ink); }
 .header-chat-search-popup ~ .header-chat-search-error { position: relative; top: auto; margin-top: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .header-chat-search-popup { animation: none; }
+  .header-chat-search-spinner { animation: none; }
+}
