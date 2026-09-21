@@ -725,7 +725,8 @@ DOM selectors. The generated workspace index is a maintenance artifact; it is no
 
 Agent → **Research library** provides a manually refreshed, app-shared public paper index.
 Users choose topics and a publication window, update from alphaXiv without model calls, dismiss
-papers, and control agent retrieval. The bounded index persists in `research-library.json`;
+papers, and control agent retrieval. If the library cannot be read when the dialog opens, the
+reason is shown with a `Try again` control that re-runs the load. The bounded index persists in `research-library.json`;
 `search.library` retrieves metadata/abstracts only when requested, without automatic context
 injection. See [Research library](research-library.md) for limits, trust, and failure behavior.
 
@@ -799,7 +800,10 @@ on a 44px tile, entry name and service tag, the service description, its fields 
 secrets, and a state dot showing whether the OS keychain encrypted them — closing on a dashed
 `Create new` tile. An entry the catalog has no brand mark for wears the icon of the site its URL
 field points at. Reveal and copy each ask the main process for that single field, so the renderer
-never holds more plaintext than the user asked to see.
+never holds more plaintext than the user asked to see. `Remove` hides the card at once and leaves a
+`Removed <name>. Undo` row for six seconds; the vault is only asked to forget the entry when that
+window elapses or the Credentials panel closes, and a removal the vault refuses brings the card
+back with the reason on it.
 `Create credential` replaces the list in place with one editor. Pasting a service URL selects the
 service that claims that host, names the entry after it, and fills any URL field it has; a host no
 catalog service claims becomes a Custom entry named after the domain, wearing that site's own icon

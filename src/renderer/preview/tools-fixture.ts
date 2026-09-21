@@ -50,12 +50,21 @@ export function sampleToolManifest(): ToolManifest {
 }
 
 export function sampleToolTelemetry(): ToolTelemetrySnapshot {
+  const now = Date.now()
+  const hours = (n: number): number => now - n * 3_600_000
   return {
     totalCalls: 41,
+    since: hours(24 * 60),
     stats: [
-      { toolId: 'browser_cdp.protocol', action: null, calls: 12, failures: 3, timeouts: 0, misuses: 0 },
-      { toolId: 'embedded_browser.network_replay', action: null, calls: 2, failures: 2, timeouts: 0, misuses: 2 },
-      { toolId: 'embedded_browser.page', action: null, calls: 27, failures: 0, timeouts: 1, misuses: 0 }
+      { toolId: 'browser_cdp.protocol', action: null, calls: 12, failures: 3, timeouts: 0, misuses: 0, lastCalledAt: hours(2), lastFailedAt: hours(2) },
+      { toolId: 'embedded_browser.network_replay', action: null, calls: 2, failures: 2, timeouts: 0, misuses: 2, lastCalledAt: hours(30), lastFailedAt: hours(30) },
+      { toolId: 'embedded_browser.page', action: null, calls: 27, failures: 0, timeouts: 1, misuses: 0, lastCalledAt: hours(0.1), lastFailedAt: hours(50) },
+      { toolId: 'search.query', action: null, calls: 3, failures: 0, timeouts: 0, misuses: 0, lastCalledAt: hours(24 * 45), lastFailedAt: null }
+    ],
+    errors: [
+      { toolId: 'browser_cdp.protocol', action: 'command', at: hours(2), kind: 'error', message: 'Target closed: the tab navigated during Runtime.evaluate' },
+      { toolId: 'browser_cdp.protocol', action: 'targets', at: hours(5), kind: 'error', message: 'Session detached before the response arrived' },
+      { toolId: 'embedded_browser.network_replay', action: null, at: hours(30), kind: 'misuse', message: 'Tool is switched off' }
     ]
   }
 }

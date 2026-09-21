@@ -30,7 +30,7 @@ test('groups follow manifest order, drop empty groups, and report mixed state an
     tool('embedded_browser.page', 'reads-web', true, ['navigate', 'read_page'], 300),
     tool('search.query', 'reads-web', false, [], 200),
     tool('embedded_browser.script', 'acts-in-browser', true, [], 150)
-  ]), { stats: [], totalCalls: 0 })
+  ]), { stats: [], totalCalls: 0, since: 1, errors: [] })
   assert.deepEqual(groups.map((group) => group.group.id), ['reads-web', 'acts-in-browser'])
   assert.equal(groups[0]!.state, 'mixed')
   assert.equal(groups[0]!.costTokens, 300)
@@ -42,9 +42,9 @@ test('rows flag genuine errors red and misuse amber, wording refused calls for a
     tool('embedded_browser.page', 'reads-web'),
     tool('search.query', 'reads-web', false),
     tool('embedded_browser.script', 'acts-in-browser')
-  ]), { totalCalls: 9, stats: [
-    { toolId: 'embedded_browser.page', action: null, calls: 5, failures: 3, timeouts: 0, misuses: 1 },
-    { toolId: 'search.query', action: null, calls: 2, failures: 2, timeouts: 0, misuses: 2 }
+  ]), { totalCalls: 9, since: 1, errors: [], stats: [
+    { toolId: 'embedded_browser.page', action: null, calls: 5, failures: 3, timeouts: 0, misuses: 1, lastCalledAt: 5, lastFailedAt: 5 },
+    { toolId: 'search.query', action: null, calls: 2, failures: 2, timeouts: 0, misuses: 2, lastCalledAt: 4, lastFailedAt: 4 }
   ] })
   const [page, query] = groups[0]!.rows
   assert.deepEqual([page!.flag, page!.note], ['bad', '2 errors'])

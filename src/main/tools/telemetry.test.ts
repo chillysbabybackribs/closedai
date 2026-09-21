@@ -8,25 +8,42 @@ import { ToolRegistry } from './registry.js'
 import { textResult, timeoutResult } from './tool.js'
 import { ToolTelemetry } from './telemetry.js'
 
+const T0 = 1_700_000_000_000
 const record = (overrides: Partial<ToolCallEvent> = {}): ToolCallEvent => ({
-  toolId: 'ns.tool', action: null, ok: true, timedOut: false, misuse: false, ...overrides
+  toolId: 'ns.tool', action: null, ok: true, timedOut: false, misuse: false, at: T0, message: null, ...overrides
 })
 
-test('telemetry keeps aggregate run, failure, and timeout counts separately', () => {
+test('telemetry keeps aggregate run, failure, and timeout counts separately, with last-use times', () => {
   const telemetry = ToolTelemetry.ephemeral()
   telemetry.record(record())
-  telemetry.record(record({ action: 'read', ok: false }))
-  telemetry.record(record({ action: 'write' }))
-  telemetry.record(record({ action: 'read', ok: false, timedOut: true }))
+  telemetry.record(record({ action: 'read', ok: false, at: T0 + 1, message: 'boom' }))
+  telemetry.record(record({ action: 'write', at: T0 + 2 }))
+  telemetry.record(record({ action: 'read', ok: false, timedOut: true, at: T0 + 3, message: 'not ready' }))
 
-  assert.deepEqual(telemetry.snapshot(), {
-    totalCalls: 4,
-    stats: [
-      { toolId: 'ns.tool', action: null, calls: 4, failures: 1, timeouts: 1, misuses: 0 },
-      { toolId: 'ns.tool', action: 'read', calls: 2, failures: 1, timeouts: 1, misuses: 0 },
-      { toolId: 'ns.tool', action: 'write', calls: 1, failures: 0, timeouts: 0, misuses: 0 }
-    ]
-  })
+  const snapshot = telemetry.snapshot()
+  assert.equal(snapshot.totalCalls, 4)
+  assert.ok(snapshot.since !== null && snapshot.since <= Date.now())
+  assert.deepEqual(snapshot.stats, [
+    { toolId: 'ns.tool', action: null, calls: 4, failures: 1, timeouts: 1, misuses: 0, lastCalledAt: T0 + 3, lastFailedAt: T0 + 3 },
+    { toolId: 'ns.tool', action: 'read', calls: 2, failures: 1, timeouts: 1, misuses: 0, lastCalledAt: T0 + 3, lastFailedAt: T0 + 3 },
+    { toolId: 'ns.tool', action: 'write', calls: 1, failures: 0, timeouts: 0, misuses: 0, lastCalledAt: T0 + 2, lastFailedAt: null }
+  ])
+  assert.deepEqual(snapshot.errors, [
+    { toolId: 'ns.tool', action: 'read', at: T0 + 3, kind: 'timeout', message: 'not ready' },
+    { toolId: 'ns.tool', action: 'read', at: T0 + 1, kind: 'error', message: 'boom' }
+  ])
+})
+
+test('error notes keep the newest few per tool and nothing for successes', () => {
+  const telemetry = ToolTelemetry.ephemeral()
+  for (let i = 0; i < 5; i += 1) telemetry.record(record({ ok: false, at: T0 + i, message: `fail ${i}` }))
+  telemetry.record(record({ toolId: 'ns.other', ok: false, misuse: true, at: T0 + 9, message: 'refused' }))
+  telemetry.record(record({ toolId: 'ns.other', ok: true, at: T0 + 10, message: 'ignored' }))
+
+  const errors = telemetry.snapshot().errors
+  assert.deepEqual(errors.map((note) => [note.toolId, note.kind, note.message]), [
+    ['ns.other', 'misuse', 'refused'], ['ns.tool', 'error', 'fail 4'], ['ns.tool', 'error', 'fail 3'], ['ns.tool', 'error', 'fail 2']
+  ])
 })
 
 test('aggregate counters persist without per-call content and clear cleanly', async () => {
@@ -42,14 +59,14 @@ test('aggregate counters persist without per-call content and clear cleanly', as
     const persisted = JSON.parse(contents) as { stats: unknown[]; totalCalls: number }
     assert.equal(persisted.totalCalls, 2)
     assert.equal(persisted.stats.length, 2)
-    assert.doesNotMatch(contents, /arguments|output|thread|turn|callId|duration|error\s*:/i)
+    assert.doesNotMatch(contents, /arguments|output|thread|turn|callId|duration/i)
     assert.equal((await stat(file)).mode & 0o777, 0o600)
 
     const reopened = await ToolTelemetry.open(file)
     assert.deepEqual(reopened.snapshot(), telemetry.snapshot())
     await reopened.clear()
-    assert.deepEqual(reopened.snapshot(), { stats: [], totalCalls: 0 })
-    assert.deepEqual((await ToolTelemetry.open(file)).snapshot(), { stats: [], totalCalls: 0 })
+    assert.deepEqual(reopened.snapshot().stats, [])
+    assert.deepEqual((await ToolTelemetry.open(file)).snapshot().totalCalls, 0)
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
@@ -102,7 +119,7 @@ test('the registry reports aggregate-only events for successes, failures, and un
   await registry.call({ namespace: 'ns', tool: 'nope', arguments: {} }, context)
   stop()
 
-  assert.deepEqual(seen, [
+  assert.deepEqual(seen.map(({ at, message, ...rest }) => rest), [
     { toolId: 'ns.echo', action: 'say', ok: true, timedOut: false, misuse: false },
     // Missing a required argument and naming a tool that does not exist are both the app
     // refusing the call, so they are misuse rather than the tool failing at runtime.
@@ -110,7 +127,12 @@ test('the registry reports aggregate-only events for successes, failures, and un
     { toolId: 'ns.echo', action: null, ok: false, timedOut: true, misuse: false },
     { toolId: 'ns.nope', action: null, ok: false, timedOut: false, misuse: true }
   ])
-  assert.doesNotMatch(JSON.stringify(seen), /PRIVATE_VALUE|required|unknown/i)
+  assert.ok(seen.every((entry) => entry.at > 0))
+  // A success carries no message; a failure carries the first line the model was told, and
+  // never an argument value.
+  assert.equal(seen[0]!.message, null)
+  assert.ok(seen.slice(1).every((entry) => typeof entry.message === 'string' && entry.message.length <= 240))
+  assert.doesNotMatch(JSON.stringify(seen), /PRIVATE_VALUE/)
 })
 
 test('bursts share one pending write and clear waits for changes made during an active write', async () => {

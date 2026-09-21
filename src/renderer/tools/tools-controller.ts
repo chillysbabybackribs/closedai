@@ -40,7 +40,7 @@ export function useToolsController(active: boolean): ToolsController {
     const unsubscribe = window.closedai.tools.onEvent((event) => {
       if (!live) return
       if (event.type === 'cleared') {
-        setTelemetry((current) => current ? { ...current, stats: [], totalCalls: 0 } : current)
+        setTelemetry((current) => current ? { ...current, stats: [], totalCalls: 0, errors: [], since: Date.now() } : current)
         return
       }
       if (event.type === 'enabled') {
@@ -108,30 +108,42 @@ function withEnabled(manifest: ToolManifest, id: string, enabled: boolean): Tool
   }
 }
 
+/** Failure notes kept per tool in the live snapshot; the main process keeps the same number. */
+const ERROR_NOTES_PER_TOOL = 3
+
 /** Fold one new call into the snapshot so the modal updates without a round trip. */
 export function applyRecord(snapshot: ToolTelemetrySnapshot, record: ToolCallEvent): ToolTelemetrySnapshot {
   const keys: Array<string | null> = record.action ? [null, record.action] : [null]
   let stats = snapshot.stats
+  const failed = !record.ok && !record.timedOut
   for (const action of keys) {
     const existing = stats.find((stat) => stat.toolId === record.toolId && stat.action === action)
-    const failed = !record.ok && !record.timedOut
-    const updated = existing
-      ? {
-          ...existing,
-          calls: existing.calls + 1,
-          failures: existing.failures + (failed ? 1 : 0),
-          timeouts: existing.timeouts + (record.timedOut ? 1 : 0),
-          misuses: existing.misuses + (failed && record.misuse ? 1 : 0)
-        }
-      : {
-          toolId: record.toolId,
-          action,
-          calls: 1,
-          failures: failed ? 1 : 0,
-          timeouts: record.timedOut ? 1 : 0,
-          misuses: failed && record.misuse ? 1 : 0
-        }
+      ?? { toolId: record.toolId, action, calls: 0, failures: 0, timeouts: 0, misuses: 0, lastCalledAt: null, lastFailedAt: null }
+    const updated = {
+      ...existing,
+      calls: existing.calls + 1,
+      failures: existing.failures + (failed ? 1 : 0),
+      timeouts: existing.timeouts + (record.timedOut ? 1 : 0),
+      misuses: existing.misuses + (failed && record.misuse ? 1 : 0),
+      lastCalledAt: record.at || existing.lastCalledAt,
+      lastFailedAt: record.ok ? existing.lastFailedAt : (record.at || existing.lastFailedAt)
+    }
     stats = [updated, ...stats.filter((stat) => !(stat.toolId === record.toolId && stat.action === action))]
   }
-  return { ...snapshot, stats, totalCalls: snapshot.totalCalls + 1 }
+  let errors = snapshot.errors
+  if (!record.ok && record.message) {
+    const note = {
+      toolId: record.toolId,
+      action: record.action,
+      at: record.at,
+      kind: record.timedOut ? 'timeout' as const : record.misuse ? 'misuse' as const : 'error' as const,
+      message: record.message
+    }
+    errors = [
+      note,
+      ...errors.filter((entry) => entry.toolId === record.toolId).slice(0, ERROR_NOTES_PER_TOOL - 1),
+      ...errors.filter((entry) => entry.toolId !== record.toolId)
+    ]
+  }
+  return { ...snapshot, stats, errors, totalCalls: snapshot.totalCalls + 1 }
 }

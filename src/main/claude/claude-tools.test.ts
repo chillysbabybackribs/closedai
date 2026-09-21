@@ -79,10 +79,14 @@ test('a call runs through the registry and emits aggregate-only telemetry', asyn
   const page = servers[0]!.tools[0]!
   const result = await page.handler({ action: 'read', echo: 'x' }, { _meta: { 'claudecode/toolUseId': 'toolu_42' } }) as { content: unknown[]; isError?: boolean }
   assert.deepEqual(result, { content: [{ type: 'text', text: 'read:x' }, { type: 'image', data: 'QUJD', mimeType: 'image/png' }] })
-  assert.deepEqual(records[0], { toolId: 'embedded_browser.page', action: 'read', ok: true, timedOut: false, misuse: false })
+  const { at: at0, ...first } = records[0]!
+  assert.ok(at0 > 0)
+  assert.deepEqual(first, { toolId: 'embedded_browser.page', action: 'read', ok: true, timedOut: false, misuse: false, message: null })
   const failed = await page.handler({ action: 'read', echo: 'fail' }, {}) as { isError?: boolean }
   assert.equal(failed.isError, true)
-  assert.deepEqual(records[1], { toolId: 'embedded_browser.page', action: 'read', ok: false, timedOut: false, misuse: false })
+  const { at: at1, message, ...second } = records[1]!
+  assert.ok(at1 > 0 && typeof message === 'string')
+  assert.deepEqual(second, { toolId: 'embedded_browser.page', action: 'read', ok: false, timedOut: false, misuse: false })
 })
 
 test('invalid arguments come back as a tool error the model can read', async () => {
