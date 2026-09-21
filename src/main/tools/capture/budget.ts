@@ -1,9 +1,10 @@
 // Every screenshot is replayed to the model on every later call of the thread, and a turn of
 // UI work has been observed taking 16 of them. Guidance alone did not hold the count down, so
-// the tool enforces a per-turn ceiling: past it, capture actions fail with advice to verify by
-// reading page state instead. The count resets when the app-server starts a new turn.
+// the tool enforces a per-turn ceiling high enough for real UI work but not runaway loops: past
+// it, capture actions fail with advice to verify by reading page state instead. The count resets
+// when the app-server starts a new turn.
 
-export const DEFAULT_MAX_CAPTURES_PER_TURN = 2
+export const DEFAULT_MAX_CAPTURES_PER_TURN = 10
 
 export type CaptureBudgetUse = {
   allowed: boolean

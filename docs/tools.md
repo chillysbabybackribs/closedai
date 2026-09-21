@@ -540,7 +540,7 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   because it projects before serialising rather than truncating afterwards. CDP JSON results are capped tighter
   still at 16k characters (`tools/json-result.ts`, shared by the CDP and app tools) because
   protocol dumps are the chattiest text source.
-- Capture actions are capped at `DEFAULT_MAX_CAPTURES_PER_TURN` (2) images per turn across
+- Capture actions are capped at `DEFAULT_MAX_CAPTURES_PER_TURN` (10) images per turn across
   `app_window`, `browser_page`, and `crop`; past that the action fails with advice to read page
   state instead, and each image result reports how many are left. A capture scaled below 60% of
   its source width tells the model to crop for detail rather than capture again
