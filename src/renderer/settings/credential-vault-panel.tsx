@@ -22,7 +22,7 @@ export function CredentialVaultPanel({ active }: CredentialVaultPanelProps): JSX
   }, [active])
 
   return (
-    <div className="settings-panel credential-panel" data-ui="dialog.credentials">
+    <div className="settings-panel credential-vault-panel" data-ui="dialog.credentials">
       {view === 'list' ? (
         <CredentialVaultList
           credentials={vault.credentials}
