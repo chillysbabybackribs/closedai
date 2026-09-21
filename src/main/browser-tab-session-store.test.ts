@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, describe, it } from 'node:test'
@@ -176,11 +176,22 @@ describe('BrowserTabSessionStore', () => {
     assert.equal(store.restored(), null)
   })
 
-  it('starts clean on a corrupt file rather than throwing', async () => {
+  it('starts clean on a corrupt file, keeping the original beside it', async () => {
     const filePath = await sessionFile()
     await writeFile(filePath, '{ not json')
-    const store = await BrowserTabSessionStore.open(filePath)
+    const warn = console.warn
+    console.warn = () => {}
+    let store: BrowserTabSessionStore
+    try {
+      store = await BrowserTabSessionStore.open(filePath)
+    } finally {
+      console.warn = warn
+    }
     assert.equal(store.restored(), null)
+    const names = await readdir(join(filePath, '..'))
+    assert.equal(names.length, 1)
+    assert.match(names[0]!, /^browser-tabs\.json\.corrupt-/)
+    assert.equal(await readFile(join(filePath, '..', names[0]!), 'utf8'), '{ not json')
   })
 
   it('persists a navigation stack when the strip has more than one entry', () => {

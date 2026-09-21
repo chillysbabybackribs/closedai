@@ -155,7 +155,9 @@ global there is no per-session URL to carry a caller key, which is why this lane
 
 
 The main process hosts one streamable-HTTP MCP endpoint per enabled namespace on
-`127.0.0.1:<random port>/mcp/<namespace>` (MCP SDK 1.30). The CLI POSTs `initialize` and then opens a
+`127.0.0.1:<random port>/mcp/<token>/<namespace>` (MCP SDK 1.30), where the token is random per
+bridge instance and written into the config with the URL; a request without it, with a Host that
+is not this loopback listener, or with an Origin header is refused. The CLI POSTs `initialize` and then opens a
 standalone GET SSE stream, so the transport is stateful (one per `mcp-session-id`). Registration is
 global, in `~/.gemini/config/mcp_config.json`. The bridge writes its entries there itself in one
 pass — `{serverUrl, tools: {<name>: {eager: true}}}` per namespace, the same shape `agy mcp add

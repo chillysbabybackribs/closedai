@@ -1,6 +1,6 @@
 import type { ChatFileChange, ChatTranscriptItem } from '../../shared/chat.js'
 import { recordOfOrEmpty, stringOf } from '../json-coerce.js'
-import { closedAiToolItem, jsonPreview, promoteCaptureToScreenshot } from '../tool-transcript-shared.js'
+import { closedAiToolItem, jsonPreview, promoteCaptureToScreenshot, recordableToolOutput } from '../tool-transcript-shared.js'
 
 // Pure translations from Claude Code tool calls to the transcript vocabulary Codex items use,
 // so the renderer's activity rows, diffs, and screenshots need no provider branches. Built-in
@@ -53,7 +53,7 @@ export function toolResultItem(
   if (item.type !== 'tool') return item
   const screenshot = captureScreenshot(item, result, displayScreenshot)
   if (screenshot) return screenshot
-  const output = clip(text, MAX_DETAIL_CHARS).trim()
+  const output = recordableToolOutput(item.label, clip(text, MAX_DETAIL_CHARS).trim(), result.isError)
   return output ? { ...item, status, output } : { ...item, status }
 }
 

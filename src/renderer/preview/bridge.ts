@@ -2,6 +2,8 @@ import type { ClosedaiApi } from '../../shared/api.js'
 import type { BrowserBounds, BrowserState, BrowserTabInfo } from '../../shared/types.js'
 import type { LibrarySnapshot } from '../../shared/research-library.js'
 import type { ProviderAvailability } from '../../shared/provider-availability.js'
+import type { CredentialSummary } from '../../shared/credentials.js'
+import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, type SecuritySettings } from '../../shared/security.js'
 import { createPreviewChat } from './chat.js'
 import type { Scenario } from './fixtures.js'
 import { createToolsFixture } from './tools-fixture.js'
@@ -73,6 +75,9 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
     { provider: 'cursor', installed: false, path: null,
       hint: 'Cursor is not installed. Install the Cursor CLI (cursor-agent) and run `cursor-agent login`, or choose another model.' }
   ]
+  // Settings → Security: the preview holds the defaults in memory and reports the native-only import.
+  let security: SecuritySettings = { ...DEFAULT_SECURITY_SETTINGS }
+  const credentials: CredentialSummary[] = []
   const api: ClosedaiApi = {
     chat: { ...chat.api, providerAvailability: async () => structuredClone(providerAvailability) },
     window: { minimize: native, maximize: native, toggleFullscreen: native, close: native, toggleDevTools: native },
@@ -101,15 +106,27 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
         if (tab) { tab.customTitle = title; tab.title = title || 'Sample browser tab'; publishBrowser() }
       },
       capture: async () => null,
+      resolvePermission: async () => {},
       onState: (listener) => { stateListeners.add(listener); return () => { stateListeners.delete(listener) } },
-      onTabs: (listener) => { tabListeners.add(listener); return () => { tabListeners.delete(listener) } }
+      onTabs: (listener) => { tabListeners.add(listener); return () => { tabListeners.delete(listener) } },
+      onPermissionRequests: idleSubscription
     },
     browserDownloads: { list: async () => [], pause: native, resume: native, cancel: native,
       reveal: native, clear: native, onChanged: idleSubscription },
     localFiles: { open: unavailable, openImage: unavailable, image: unavailable,
       revealImage: native, file: unavailable, revealFile: native },
     credentials: { status: async () => ({ encryptionAvailable: false, backend: 'UI preview — no vault', count: 0 }),
-      list: async () => [], save: unavailable, reveal: unavailable, remove: native, rename: unavailable },
+      list: async () => structuredClone(credentials), save: unavailable, reveal: unavailable, remove: native, rename: unavailable,
+      setAgentAccess: async (id, allowed) => {
+        const entry = credentials.find((candidate) => candidate.id === id)
+        if (!entry) throw new Error('Credential not found')
+        entry.agentAccess = allowed
+        return structuredClone(entry)
+      } },
+    security: { get: async () => ({ ...security }),
+      set: async (patch) => { security = normalizeSecuritySettings({ ...security, ...patch }); return { ...security } },
+      importCookies: async () => { await native(); return { source: null, imported: 0, failed: 0, skipped: 0 } },
+      resolveCredentialApproval: async () => {}, onCredentialApprovals: idleSubscription },
     researchLibrary: { snapshot: async () => structuredClone(library),
       progress: async () => ({ refreshing: false, lastRefresh: null }),
       configure: async (settings) => { library.settings = settings; return structuredClone(library) },

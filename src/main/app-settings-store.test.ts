@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { ChatContinuation } from '../shared/types.ts'
@@ -24,6 +24,26 @@ test('a missing file yields the defaults, including the compaction threshold', a
   assert.equal(store.get().chatMidTurnCompactTokens, 0)
   assert.equal(store.get().toolBatchMaxCalls, 16)
   assert.equal(store.get().chatSeamlessRotation, true)
+})
+
+test('a corrupt file yields the defaults and is set aside before the next write', async () => {
+  const warn = console.warn
+  console.warn = () => {}
+  let opened: { store: AppSettingsStore; file: string }
+  try {
+    opened = await storeWith('{"chatWorkspacePath": "/w", ')
+  } finally {
+    console.warn = warn
+  }
+  const { store, file } = opened
+  assert.deepEqual(store.get(), DEFAULT_APP_SETTINGS)
+  const before = await readdir(dirname(file))
+  assert.equal(before.length, 1)
+  assert.match(before[0]!, /^app-settings\.json\.corrupt-/)
+  await store.set({ chatWorkspacePath: '/x' })
+  const after = await readdir(dirname(file))
+  assert.deepEqual(after.sort(), ['app-settings.json', before[0]!].sort(), 'the new file sits beside the preserved one')
+  assert.equal(await readFile(join(dirname(file), before[0]!), 'utf8'), '{"chatWorkspacePath": "/w", ')
 })
 
 test('seamless rotation is on by default and can be opted out explicitly', async () => {

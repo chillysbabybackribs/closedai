@@ -767,6 +767,7 @@ instrumentation.
 | Launch fault handling, renderer-loss recovery, bounded quit | `src/main/app-crash-guard.ts`, `src/main/main-window-recovery.ts`, `src/main/app-quit.ts` |
 | Provider install detection and missing-binary messages | `src/main/provider-availability.ts`, `src/main/provider-binary.ts`, `src/shared/provider-availability.ts` |
 | Chat records and persistence, settings migration | `src/main/chat-store/`, `src/shared/chat-store.ts` |
+| Store file reads that set a damaged file aside, durable atomic writes | `src/main/store-recovery.ts`, `src/main/atomic-write.ts` |
 | Attach/detach lifecycle, summaries, per-chat settings, idle parking, catalog reconciliation | `src/main/chat-peers/` |
 | Per-workspace provider model catalog cache | `src/main/chat-context/provider-catalog-cache.ts` |
 | Provider routing and id families | `src/main/chat-hub.ts`, `src/shared/chat-providers.ts` |
@@ -826,6 +827,14 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 | `antigravity/profile/`, `antigravity/attachments/`, `antigravity/transcripts/` | Generated agent plugin, materialized image attachments, and app-recorded transcripts; the CLI retains its own conversation store |
 | Renderer localStorage | Appearance, model-picker usage, completion review queue (including review time; legacy storage key retained), message timestamps |
 | In-memory trace | At most 4,000 entries and 24,000,000 detail characters, 48,000 characters per detail before its truncation marker; cleared on restart |
+
+Only a missing store file means a fresh start. When `chats.json`, `app-settings.json`, or
+`browser-tabs.json` cannot be read or parsed, the file is renamed beside itself to
+`<name>.corrupt-<timestamp>`, one warning names that copy, and the store starts from defaults, so
+the next debounced write never replaces the only copy of the user's data. Store writes reach the
+disk (`fsync`) before the temp file is renamed into place. A `credential_vault.read` result never
+enters `chat-transcripts/` or the Antigravity transcript copies: the model receives the values,
+and the transcript's tool row keeps `[credential values withheld from the record]`.
 
 Legacy top-level `chatThreadId`, `chatClaudeSessionId`, `chatAntigravityConversationId`, model,
 and effort fields coexist with chat records. New code should use `PeerSettings` (a projection of

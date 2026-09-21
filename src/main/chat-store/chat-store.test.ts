@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { mkdtemp, readFile } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { chatRecordIsBlank } from '../../shared/chat-store.js'
@@ -90,6 +90,27 @@ test('writes coalesce and survive a reload; remove forgets a chat outright', asy
   await reopened.flush()
   assert.equal((await ChatStore.open(file)).require(a.id).pinnedAt, null)
   assert.equal(reopened.get(b.id), undefined)
+})
+
+test('a file that will not parse is set aside, and the next write does not touch it', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'closedai-chats-'))
+  const file = join(dir, 'chats.json')
+  await writeFile(file, '{"version":1,"chats":[{"id":"keep-me"', 'utf8')
+  const warn = console.warn
+  console.warn = () => {}
+  let store: ChatStore
+  try {
+    store = await ChatStore.open(file)
+  } finally {
+    console.warn = warn
+  }
+  assert.deepEqual(store.ids(), [])
+  const preserved = (await readdir(dir)).filter((name) => name.startsWith('chats.json.corrupt-'))
+  assert.equal(preserved.length, 1)
+  store.create(seed)
+  await store.flush()
+  assert.equal(await readFile(join(dir, preserved[0]!), 'utf8'), '{"version":1,"chats":[{"id":"keep-me"')
+  assert.equal((JSON.parse(await readFile(file, 'utf8')) as { chats: unknown[] }).chats.length, 1)
 })
 
 test('records read back from disk are shape-checked and legacy pane records keep their id', () => {

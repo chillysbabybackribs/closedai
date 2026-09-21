@@ -36,6 +36,28 @@ export function closedAiToolItem(
   }
 }
 
+/** What a transcript row keeps in place of a result that must never enter a record. */
+export const WITHHELD_TOOL_OUTPUT = '[credential values withheld from the record]'
+
+// Tools whose successful result the registry marks `sensitive`. The registry strips that flag
+// before a provider sees the result, and the providers echo results back by tool name, so the
+// transcript recognizes the tool rather than the flag. The model still receives the real content;
+// only the row that the transcript cache, the Antigravity transcript copy, and the trace's item
+// events would persist carries the placeholder.
+const WITHHELD_RESULT_TOOLS = new Set(['credential_vault.read'])
+
+/** True when a successful result of this ClosedAI tool is secret material. */
+export function toolResultWithheld(namespace: string, tool: string): boolean {
+  return WITHHELD_RESULT_TOOLS.has(`${namespace}.${tool}`)
+}
+
+/** The output a settled `namespace · tool` row may keep: the placeholder for a withheld result. */
+export function recordableToolOutput(label: string, output: string, failed: boolean): string {
+  if (failed || !output) return output
+  const [namespace, tool] = label.split(' · ')
+  return namespace && tool && toolResultWithheld(namespace, tool) ? WITHHELD_TOOL_OUTPUT : output
+}
+
 export type PromoteCaptureInput = {
   itemId: string
   turnId: string | null

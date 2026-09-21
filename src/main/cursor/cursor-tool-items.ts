@@ -1,6 +1,6 @@
 import type { ChatFileChange, ChatTranscriptItem } from '../../shared/chat.js'
 import { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
-import { closedAiToolItem, jsonPreview } from '../tool-transcript-shared.js'
+import { closedAiToolItem, jsonPreview, recordableToolOutput } from '../tool-transcript-shared.js'
 
 // Pure translations from ACP tool calls to the transcript vocabulary Codex items use, so the
 // renderer's activity rows and diffs need no provider branches. ACP already normalises what the
@@ -92,7 +92,7 @@ export function cursorToolResult(item: ChatTranscriptItem, outcome: CursorToolOu
   }
   if (item.type === 'fileChange') return { ...item, status }
   if (item.type === 'tool') {
-    const result = output.slice(0, MAX_TOOL_OUTPUT_CHARS).trim()
+    const result = recordableToolOutput(item.label, output.slice(0, MAX_TOOL_OUTPUT_CHARS).trim(), status === 'failed')
     return result ? { ...item, status, output: result } : { ...item, status }
   }
   return item

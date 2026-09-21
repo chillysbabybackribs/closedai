@@ -7,6 +7,7 @@ import type {
   ChatTranscriptItem
 } from '../shared/chat.js'
 import { nullableString, recordOf, stringOf } from './json-coerce.js'
+import { WITHHELD_TOOL_OUTPUT, toolResultWithheld } from './tool-transcript-shared.js'
 
 export { nullableString, recordOf, stringOf } from './json-coerce.js'
 
@@ -119,12 +120,13 @@ export function normalizeItem(
         label: [stringOf(item.server), stringOf(item.tool)].filter(Boolean).join(' · ') || 'Tool call',
         detail: jsonPreview(item.arguments),
         status: stringOf(item.status),
-        ...toolOutput(item)
+        ...toolOutput(item, toolResultWithheld(stringOf(item.server), stringOf(item.tool)))
       }
     case 'dynamicToolCall':
       return normalizeScreenshot(item, id, turnId) ?? {
         type: 'tool', id, turnId, label: dynamicToolLabel(item),
-        detail: jsonPreview(item.arguments), status: stringOf(item.status), ...toolOutput(item)
+        detail: jsonPreview(item.arguments), status: stringOf(item.status),
+        ...toolOutput(item, toolResultWithheld(stringOf(item.namespace), stringOf(item.tool)))
       }
     case 'collabAgentToolCall':
       return {
@@ -291,9 +293,10 @@ const MAX_TOOL_OUTPUT_CHARS = 4_000
  * What a tool call came back with: the error message when it failed, otherwise the text
  * blocks of its result. MCP calls carry `result.content`; dynamic (app) tools carry
  * `contentItems`. Either way only text is kept, clipped so a page read cannot bloat the
- * transcript.
+ * transcript. A `withheld` tool's successful text is replaced by the placeholder: the model
+ * already has it, and this row is what the transcript cache persists.
  */
-function toolOutput(item: Record<string, unknown>): { output: string } | Record<never, never> {
+function toolOutput(item: Record<string, unknown>, withheld = false): { output: string } | Record<never, never> {
   const error = recordOf(item.error)
   const message = error ? stringOf(error.message) : stringOf(item.error)
   if (message.trim()) return { output: message.trim().slice(0, MAX_TOOL_OUTPUT_CHARS) }
@@ -303,5 +306,6 @@ function toolOutput(item: Record<string, unknown>): { output: string } | Record<
     const block = recordOf(entry)
     return block && typeof block.text === 'string' ? [block.text] : []
   }).join('\n').trim()
-  return text ? { output: text.slice(0, MAX_TOOL_OUTPUT_CHARS) } : {}
+  if (!text) return {}
+  return { output: withheld ? WITHHELD_TOOL_OUTPUT : text.slice(0, MAX_TOOL_OUTPUT_CHARS) }
 }

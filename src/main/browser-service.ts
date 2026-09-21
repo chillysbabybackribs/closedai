@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session, type LoadURLOptions, type WebContents, type WebContentsViewConstructorOptions } from 'electron'
+import { app, BrowserWindow, desktopCapturer, session, type LoadURLOptions, type WebContents, type WebContentsViewConstructorOptions } from 'electron'
 import { EventEmitter } from 'node:events'
 import { join } from 'node:path'
 import type { BrowserHistory } from './browser-history-store.js'
@@ -11,7 +11,7 @@ import type { FileTabContent, ImageTabContent } from '../shared/local-files.js'
 import { PersistentSessionCookies } from './persistent-session-cookies.js'
 import { BrowserObservers } from './browser-network/observers.js'
 import { describeMissingTab } from '../shared/browser-tabs.js'
-import { installPermissionPolicy } from './browser-permissions.js'
+import { installPermissionPolicy, type PermissionPolicyDeps } from './browser-permissions.js'
 import { TabRenderingPolicy } from './browser-tab-rendering.js'
 import { allSettledBounded } from './bounded-concurrency.js'
 import { restorePlan, type RestoredTabSession } from './browser-tab-session-store.js'
@@ -26,6 +26,8 @@ type BrowserServiceOptions = {
   initialUrl?: string
   // The previous run's tab strip, read from disk before the window exists.
   restore?: RestoredTabSession
+  // Settings → Security web permission policy and the chrome that asks; absent means allow-all.
+  permissions?: Pick<PermissionPolicyDeps, 'policy' | 'ask'>
 }
 
 // How many restored pages load at once. The strip is rebuilt instantly either way; this only
@@ -53,6 +55,7 @@ export class BrowserService extends EventEmitter {
   // See browser-page-background.ts for what it buys.
   private readonly pageBackgrounds = new PageBackgroundMemory()
   private readonly partitionSession: Electron.Session
+  private readonly permissions: Pick<PermissionPolicyDeps, 'policy' | 'ask'>
   private readonly persistentSessionCookies: PersistentSessionCookies
   private readonly captureSurfaces: HiddenCaptureSurfaces
   // What the app records about every tab without a debugger: network traffic and rules on
@@ -76,6 +79,7 @@ export class BrowserService extends EventEmitter {
     super()
     this.captureSurfaces = new HiddenCaptureSurfaces(window)
     this.on('error', () => {})
+    this.permissions = options.permissions ?? { policy: () => 'allow', ask: async () => true }
     this.partitionSession = session.fromPartition(PARTITION)
     this.configureSession(this.partitionSession)
     this.persistentSessionCookies = new PersistentSessionCookies(this.partitionSession)
@@ -126,6 +130,7 @@ export class BrowserService extends EventEmitter {
       id,
       popupOptions
     )
+    tab.permissionPolicy = this.permissions.policy
     if (!activate) tab.applyBounds({ ...this.bounds, occluded: true }, false)
     this.observers.watchTab(tab.id, tab.view.webContents)
     this.registerTab(tab, index)
@@ -637,7 +642,11 @@ export class BrowserService extends EventEmitter {
     // Normalize wire identity (strip the embedder tokens from the UA, Google auth client hints)
     // and install the session-level network observer and rules on the same header pipeline.
     this.observers.install(partitionSession, app.getName())
-    installPermissionPolicy(partitionSession)
+    installPermissionPolicy(partitionSession, {
+      ...this.permissions,
+      tabIdFor: (contents) => this.tabIdForContents(contents.id),
+      captureSources: () => desktopCapturer.getSources({ types: ['screen', 'window'] })
+    })
     // Persistent V8 code cache, as Chrome keeps for every profile.
     partitionSession.setCodeCachePath(join(app.getPath('userData'), 'code-cache'))
   }

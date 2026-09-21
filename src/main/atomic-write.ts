@@ -1,4 +1,4 @@
-import { chmod, mkdir, rename, unlink, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, open, rename, unlink } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
 export async function writeAtomic(filePath: string, contents: string): Promise<void> {
@@ -8,7 +8,15 @@ export async function writeAtomic(filePath: string, contents: string): Promise<v
   // chmod, producing ENOENT and leaving the scheduled flush unhandled.
   const temporaryPath = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`
   try {
-    await writeFile(temporaryPath, contents, { encoding: 'utf8', mode: 0o600 })
+    const handle = await open(temporaryPath, 'w', 0o600)
+    try {
+      await handle.writeFile(contents, 'utf8')
+      // The bytes reach the disk before the rename does: a crash in between must leave the
+      // previous file under the real name, never an empty or half-written one.
+      await handle.sync()
+    } finally {
+      await handle.close()
+    }
     await chmod(temporaryPath, 0o600)
     await rename(temporaryPath, filePath)
   } finally {

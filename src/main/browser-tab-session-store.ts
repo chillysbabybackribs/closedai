@@ -1,5 +1,5 @@
-import { readFile } from 'node:fs/promises'
 import { writeAtomic } from './atomic-write.js'
+import { readStoreFile } from './store-recovery.js'
 import type { BrowserTabInfo } from '../shared/types.js'
 import { TAB_ID_PATTERN } from '../shared/browser-tabs.js'
 import {
@@ -215,15 +215,10 @@ function navigationStacksEqual(
 
 type MaybePersisted = { version?: unknown; tabs?: unknown; activeIndex?: unknown }
 
-async function readSession(filePath: string): Promise<PersistedTabSession | null> {
-  try {
-    const parsed = JSON.parse(await readFile(filePath, 'utf8')) as MaybePersisted
-    return normalizeSession(parsed)
-  } catch (error) {
-    const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
-    if (code !== 'ENOENT') console.warn('Unable to read browser tab session; starting clean', error)
-    return null
-  }
+// A file JSON rejects is set aside as `<name>.corrupt-<time>` rather than overwritten by the
+// next strip change; a well-formed file of the wrong shape simply restores nothing.
+function readSession(filePath: string): Promise<PersistedTabSession | null> {
+  return readStoreFile(filePath, '[browser-tabs]', (text) => normalizeSession(JSON.parse(text) as MaybePersisted))
 }
 
 // Every field is re-validated: a truncated or hand-edited file must degrade to "fewer tabs

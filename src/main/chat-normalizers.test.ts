@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { normalizeItem, normalizeModels } from './chat-normalizers.js'
+import { WITHHELD_TOOL_OUTPUT } from './tool-transcript-shared.js'
 
 test('models retain their advertised reasoning effort choices', () => {
   const models = normalizeModels([{
@@ -145,6 +146,18 @@ test('tool calls keep their error message or result text as output', () => {
     contentItems: [{ type: 'inputText', text: '{"running":true}' }]
   }, 'd1', 'turn-1', true)
   assert.equal(dynamic?.type === 'tool' && dynamic.output, '{"running":true}')
+
+  // A credential read's values reach the model through the app-server, never this row.
+  const secret = normalizeItem({
+    type: 'dynamicToolCall', namespace: 'credential_vault', tool: 'read', arguments: { credential_id: 'c' }, status: 'completed',
+    contentItems: [{ type: 'inputText', text: '{"values":{"password":"hunter2"}}' }]
+  }, 'd2', 'turn-1', true)
+  assert.equal(secret?.type === 'tool' && secret.output, WITHHELD_TOOL_OUTPUT)
+  const refused = normalizeItem({
+    type: 'dynamicToolCall', namespace: 'credential_vault', tool: 'read', arguments: {}, status: 'failed',
+    error: { message: 'Credential field not found: token' }
+  }, 'd3', 'turn-1', true)
+  assert.equal(refused?.type === 'tool' && refused.output, 'Credential field not found: token')
 
   const silent = normalizeItem({ type: 'mcpToolCall', server: 's', tool: 't', arguments: {}, status: 'completed' }, 'm3', 'turn-1', true)
   assert.equal(silent?.type === 'tool' && 'output' in silent, false)

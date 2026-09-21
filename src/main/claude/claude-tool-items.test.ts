@@ -70,6 +70,17 @@ test('a capture result becomes a screenshot item, preferring the full-resolution
   assert.equal(errored.type, 'tool')
 })
 
+test('a credential read row keeps a placeholder while every other registry result is shown', () => {
+  const read = toolUseItem({ id: 'v1', name: 'mcp__credential_vault__read', input: { credential_id: 'c', field_ids: ['password'] } }, 'turn', '/w')
+  const done = toolResultItem(read, { content: [{ type: 'text', text: '{"values":{"password":"hunter2"}}' }], isError: false }, noScreenshot)
+  assert.equal(done.type === 'tool' && done.output, '[credential values withheld from the record]')
+  const failed = toolResultItem(read, { content: 'Credential field not found: token', isError: true }, noScreenshot)
+  assert.equal(failed.type === 'tool' && failed.output, 'Credential field not found: token')
+  const list = toolUseItem({ id: 'v2', name: 'mcp__credential_vault__list', input: {} }, 'turn', '/w')
+  const listed = toolResultItem(list, { content: '{"credentials":[]}', isError: false }, noScreenshot)
+  assert.equal(listed.type === 'tool' && listed.output, '{"credentials":[]}')
+})
+
 test('result text and images are read from either wire shape', () => {
   assert.equal(resultText('plain'), 'plain')
   assert.equal(resultText([{ type: 'text', text: 'a' }, { type: 'image' }, { type: 'text', text: 'b' }]), 'a\nb')

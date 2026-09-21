@@ -17,7 +17,7 @@ import { registerBrowserCoreIpc } from './browser-core-ipc.js'
 import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
 import { registerLocalFilesIpc } from './local-files/ipc.js'
 import { maintainBrowserCache, scheduleBrowserCacheMaintenance } from './browser-cache-maintenance.js'
-import { discoverSources, importCookies } from './import-cookies.js'
+import { importBrowserCookiesNow, importDefaultBrowserCookies, type CookieImportDeps } from './browser-cookie-import.js'
 import { PARTITION } from './browser-url.js'
 import { ChatService } from './chat-service.js'
 import { CodexWorkspaceRuntime } from './codex-workspace-runtime.js'
@@ -69,6 +69,11 @@ import { registerChatIpc } from './chat-ipc.js'
 import { registerWindowIpc } from './window-ipc.js'
 import { CredentialVault } from './credential-vault.js'
 import { registerCredentialVaultIpc } from './credential-vault-ipc.js'
+import { safeStorageEncryption } from './safe-storage-encryption.js'
+import { SecuritySettingsStore } from './security-settings-store.js'
+import { CredentialApprovalBroker } from './security-approvals.js'
+import { BrowserPermissionBroker } from './browser-permission-broker.js'
+import { registerSecurityIpc } from './security-ipc.js'
 import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
 import { CHAT_PROVIDERS } from '../shared/chat-providers.js'
@@ -96,6 +101,10 @@ let chatTranscripts: ChatTranscriptCache | null = null
 let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
 let credentialVault: CredentialVault | null = null
+let securitySettings: SecuritySettingsStore | null = null
+// Pending user decisions (credential reads, page permissions); empty unless Settings → Security asks for them.
+const credentialApprovals = new CredentialApprovalBroker()
+const permissionRequests = new BrowserPermissionBroker()
 const codexRuntimes = new Map<string, CodexWorkspaceRuntime>()
 let toolRegistry: ToolRegistry | null = null
 let researchService: ResearchService | null = null
@@ -168,21 +177,15 @@ if (!claimProfileInstance(app, { profile: userData(), checkout: app.getAppPath()
 async function main(): Promise<void> {
   logGpuFeatureStatus()
   await mkdir(userData(), { recursive: true })
-  ;[browserHistory, browserTabSession, settings, chatStore] = await Promise.all([
+  ;[browserHistory, browserTabSession, settings, chatStore, securitySettings] = await Promise.all([
     BrowserHistoryStore.open(join(userData(), 'browser-history.json')),
     BrowserTabSessionStore.open(join(userData(), 'browser-tabs.json')),
     AppSettingsStore.open(join(userData(), 'app-settings.json')),
-    ChatStore.open(join(userData(), 'chats.json'))
+    ChatStore.open(join(userData(), 'chats.json')),
+    SecuritySettingsStore.open(join(userData(), 'security-settings.json'))
   ])
-  credentialVault = new CredentialVault(join(userData(), 'credential-vault.json'), {
-    isAvailable: () => safeStorage.isEncryptionAvailable(),
-    encrypt: (plain) => safeStorage.encryptString(plain).toString('base64'),
-    decrypt: (payload) => safeStorage.decryptString(Buffer.from(payload, 'base64')),
-    // Linux reports which keyring backend was selected; elsewhere safeStorage is the OS store.
-    backend: () =>
-      safeStorage.isEncryptionAvailable()
-        ? (process.platform === 'linux' ? safeStorage.getSelectedStorageBackend() : process.platform === 'darwin' ? 'keychain' : 'dpapi')
-        : 'unavailable'
+  credentialVault = new CredentialVault(join(userData(), 'credential-vault.json'), safeStorageEncryption(safeStorage, process.platform), {
+    secretsRequireKeychain: () => securitySettings!.get().secretsRequireKeychain
   })
   const configuredWorkspace = process.env.CLOSEDAI_WORKSPACE?.trim()
   // An environment-supplied workspace wins for the initial launch, but project changes are
@@ -295,7 +298,10 @@ async function main(): Promise<void> {
       const snapshot = context.paneId ? chatService?.paneSnapshot(context.paneId) : undefined
       return !!context.threadId && !!context.turnId && snapshot?.threadId === context.threadId && snapshot.activeTurnId === context.turnId
     }),
-    credentialVaultTools(() => credentialVault),
+    credentialVaultTools(() => credentialVault, () => ({
+      requireApproval: () => securitySettings!.get().credentialsRequireApproval,
+      approve: (request, signal) => credentialApprovals.ask(request, signal)
+    })),
     appTools(() => appCommandAccess, () => appAutomationAccess),
     browserTools(() => pageAccess, () => networkAccess, () => networkAccess),
     cdpTools(() => cdpAccess, artifacts.service),
@@ -375,7 +381,7 @@ async function main(): Promise<void> {
   registerIpc()
   // The one-shot cookie import runs before the first tab loads, so a restored or home page
   // arrives already signed in rather than racing the import.
-  await importDefaultBrowserCookies()
+  await importDefaultBrowserCookies(cookieImportDeps())
   // Measure and prune before the first tab paints so a bloated cache does not slow restore.
   void maintainBrowserCache(userData()).catch((error: unknown) => {
     console.warn('[browser-cache] startup maintenance failed', error)
@@ -408,7 +414,8 @@ function createWindow(): void {
   // Reopen the tabs the last run ended with. The session was read from disk above, so the
   // strip is rebuilt inside the constructor with no async gap the renderer could observe.
   browserService = new BrowserService(window, browserHistory!, {
-    restore: browserTabSession?.restored() ?? undefined
+    restore: browserTabSession?.restored() ?? undefined,
+    permissions: { policy: () => securitySettings!.get().webPermissions, ask: (request) => permissionRequests.ask(request) }
   })
   browserService.on('popup', (opener: string, child: string) => toolRegistry?.browserCoordination?.inherit(opener, child))
   wireBrowserEvents(browserService)
@@ -464,6 +471,10 @@ function registerIpc(): void {
   registerChatIpc(ipcMain, () => chatService)
   registerTraceIpc(ipcMain, traceLog)
   registerCredentialVaultIpc(ipcMain, () => credentialVault)
+  registerSecurityIpc(ipcMain, {
+    settings: () => securitySettings, vault: () => credentialVault, credentialApprovals, permissions: permissionRequests,
+    importCookies: () => importBrowserCookiesNow(cookieImportDeps()), send: sendToMainWindow
+  })
   registerToolsIpc(ipcMain, {
     registry: () => toolRegistry,
     telemetry: () => toolTelemetry,
@@ -479,34 +490,13 @@ function registerIpc(): void {
   })
 }
 
-// One-shot clone of the user's real browser session (cookies) into persist:browser, so the
-// embedded browser starts signed in where the user already is. Latched in settings, but an
-// empty session with the latch set means a lost import, so re-run it in that case.
-async function importDefaultBrowserCookies(): Promise<void> {
-  if (!settings) return
-  if (settings.get().browserCookiesImported) {
-    try {
-      const existing = await session.fromPartition(PARTITION).cookies.get({})
-      if (existing.length > 0) return
-      console.warn('[cookie-import] latch set but session is empty; re-importing')
-    } catch {
-      // Reading cookies failed — fall through and attempt a fresh import.
-    }
-  }
-  const chosen = discoverSources()[0]
-  if (!chosen) {
-    console.warn('[cookie-import] no supported browser profile found; skipping')
-    return
-  }
-  try {
-    const target = session.fromPartition(PARTITION)
-    const result = await importCookies(chosen, target)
-    await target.cookies.flushStore()
-    await settings.set({ browserCookiesImported: true })
-    console.log(`[cookie-import] imported ${result.imported} cookies from ${result.source} (${result.failed} failed, ${result.skipped} skipped)`)
-  } catch (error) {
-    // Do not latch on failure — retry on the next launch.
-    console.warn('[cookie-import] failed:', error instanceof Error ? error.message : error)
+// The launch import (browser-cookie-import.ts) and the Settings → Security "Import now" share
+// the latch, the switch, and the persist:browser session.
+function cookieImportDeps(): CookieImportDeps {
+  return {
+    latch: settings!,
+    enabled: () => securitySettings!.get().importBrowserCookies,
+    target: () => session.fromPartition(PARTITION)
   }
 }
 

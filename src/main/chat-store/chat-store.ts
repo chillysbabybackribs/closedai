@@ -1,9 +1,9 @@
 import { EventEmitter } from 'node:events'
-import { readFile } from 'node:fs/promises'
 import type { ChatThreadSummary } from '../../shared/chat.js'
 import { chatRecordThreadId, type ChatRecord, type ChatRecordPatch, type ChatRecordSeed, type ChatStoreFile } from '../../shared/chat-store.js'
 import { bareChatId, chatProviderOfId } from '../../shared/chat-providers.js'
 import { writeAtomic } from '../atomic-write.js'
+import { readStoreFile } from '../store-recovery.js'
 import { normalizeChatRecord } from './chat-record.js'
 
 // Every chat the app has shown, in one file. Reads are synchronous from memory because the
@@ -31,15 +31,12 @@ export class ChatStore extends EventEmitter {
 
   static async open(filePath: string): Promise<ChatStore> {
     const store = new ChatStore(filePath)
-    try {
-      const parsed = JSON.parse(await readFile(filePath, 'utf8')) as Partial<ChatStoreFile>
-      for (const candidate of Array.isArray(parsed?.chats) ? parsed.chats : []) {
-        const record = normalizeChatRecord(candidate)
-        if (record && !store.chats.has(record.id)) store.chats.set(record.id, record)
-      }
-    } catch (error) {
-      const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
-      if (code !== 'ENOENT') console.warn('[chat-store] unreadable, starting empty:', error instanceof Error ? error.message : String(error))
+    // A damaged file is set aside before the store starts empty; otherwise the first debounced
+    // write would replace every chat record the user has with none.
+    const parsed = await readStoreFile(filePath, '[chat-store]', (text) => JSON.parse(text) as Partial<ChatStoreFile>)
+    for (const candidate of Array.isArray(parsed?.chats) ? parsed.chats : []) {
+      const record = normalizeChatRecord(candidate)
+      if (record && !store.chats.has(record.id)) store.chats.set(record.id, record)
     }
     return store
   }

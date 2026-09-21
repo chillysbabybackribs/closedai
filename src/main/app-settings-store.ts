@@ -1,6 +1,6 @@
-import { readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { writeAtomic } from './atomic-write.js'
+import { readStoreFile } from './store-recovery.js'
 import type { ChatProvider } from '../shared/chat.js'
 import type { AppSettings, ChatContinuation, ChatPeerRecord, ChatWorkspaceRecord } from '../shared/types.ts'
 import { bareChatId, chatProviderOfId, isChatProvider } from '../shared/chat-providers.js'
@@ -257,16 +257,11 @@ export class AppSettingsStore {
   ) {}
 
   static async open(filePath: string): Promise<AppSettingsStore> {
-    let settings: AppSettings = { ...DEFAULT_APP_SETTINGS }
-    try {
-      settings = normalize(JSON.parse(await readFile(filePath, 'utf8')))
-    } catch (error) {
-      const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
-      // A missing file is the first-run case; a malformed file falls back to defaults
-      // rather than crashing startup. Either way the next write lays down clean JSON.
-      if (code !== 'ENOENT') console.warn('app settings unreadable, using defaults:', messageOf(error))
-    }
-    return new AppSettingsStore(filePath, settings)
+    // A missing file is the first-run case. A malformed one is set aside under a `.corrupt-`
+    // name before the defaults apply, so the next write lays down clean JSON without
+    // overwriting the only copy of the user's settings.
+    const settings = await readStoreFile(filePath, '[app-settings]', (text) => normalize(JSON.parse(text)))
+    return new AppSettingsStore(filePath, settings ?? { ...DEFAULT_APP_SETTINGS })
   }
 
   get(): AppSettings {

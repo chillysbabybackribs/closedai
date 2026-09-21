@@ -11,6 +11,7 @@ import { installTabZoom } from './browser-tab-zoom.js'
 import type { CreatePopupTab, PopupTabRequest } from './browser-popup-policy.js'
 import { installPopupBridge } from './browser-popup-bridge.js'
 import { installContentsPermissionPolicy } from './browser-permissions.js'
+import type { WebPermissionPolicy } from '../shared/security.js'
 import { showBrowserContextMenu } from './browser-context-menu.js'
 import { cookieImportTargetFor, refreshCookiesForUrl } from './cookie-refresh.js'
 import { BrowserNavigationFailureState } from './browser-navigation-failure-state.js'
@@ -61,6 +62,8 @@ type TabLiveness =
   | { alive: false; category: 'target-closed' | 'target-crashed'; detail: string }
 
 export class BrowserTab extends EventEmitter {
+  /** Settings → Security web permission policy for this tab's pickers; the service sets it per tab. */
+  permissionPolicy: () => WebPermissionPolicy = () => 'allow'
   readonly id: string
   readonly view: WebContentsView
   private bounds: BrowserBounds = hiddenBounds
@@ -489,7 +492,7 @@ export class BrowserTab extends EventEmitter {
     })
     // Alt+wheel page zoom; owns its own input-event and did-finish-load listeners.
     installTabZoom(contents)
-    installContentsPermissionPolicy(contents)
+    installContentsPermissionPolicy(contents, () => this.permissionPolicy())
     contents.on('page-title-updated', () => {
       this.refreshState()
       this.history.updateTitle(this.state.url, this.state.title)
