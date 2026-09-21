@@ -256,12 +256,11 @@ Hovering over it opens a dropdown that stays open across the field, the gap, and
 leaving the component hides it, even while the input retains focus. Hovering does not steal keyboard
 focus. Focusing, clicking, typing, or using arrow keys also opens it for keyboard and touch access.
 The dropdown groups chats into Running, Recently completed (unread), and History (up to eight recent
-chats), omitting empty groups and showing each chat once. Running and unread counts remain visible
-in the input while the dropdown is closed. Activity groups include all matching chats in the scrollable
+chats), omitting empty groups and showing each chat once. The closed input shows no count badges.
+Activity groups include all matching chats in the scrollable
 dropdown; unread completions use the persisted review queue and move into History when opened.
 Typing shows one list of up to eight ranked, case-insensitive title matches across all groups, with
-matched characters highlighted, activity indicators, and project/time labels. Counts in the input
-still reflect all chats while searching. Arrow keys select, Enter or click opens,
+matched characters highlighted, activity indicators, and project/time labels. Arrow keys select, Enter or click opens,
 and Escape dismisses. Each result has a trash button that removes the chat from history in one
 click without confirmation, using the existing provider/app archival path. Running chats cannot
 be deleted; pending actions disable the buttons and failures appear below the search. The dropdown

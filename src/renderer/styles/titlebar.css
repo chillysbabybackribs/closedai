@@ -51,7 +51,7 @@
 }
 
 .titlebar-search-tools .titlebar-browser-toggle { flex: 0 0 36px; height: 34px; cursor: pointer; }
-.titlebar-search-tools .titlebar-browser-toggle::before { width: 34px; height: 32px; }
+.titlebar-search-tools .titlebar-browser-toggle::before { content: none; }
 .titlebar-browser-toggle img { position: relative; display: block; object-fit: contain; }
 .titlebar-browser-toggle:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -1px; border-radius: 6px; }
 

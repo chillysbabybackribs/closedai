@@ -36,15 +36,6 @@
 .header-chat-search-field input::placeholder { color: var(--chrome-fg); }
 .header-chat-search-field > svg { flex-shrink: 0; }
 
-.header-chat-search-counts {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-left: 8px;
-  border-left: 1px solid var(--hairline-strong);
-  flex-shrink: 0;
-}
-.header-chat-search-count { display: flex; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
 .header-chat-search [data-status='running'] { color: var(--tab-accent); }
 .header-chat-search [data-status='paused'] { color: #dba74b; }
 .header-chat-search [data-status='completed'] { color: #65b98a; }
