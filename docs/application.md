@@ -388,7 +388,7 @@ chosen number of chats (`layout.preset-grid-count`, stepper `layout.preset-grid-
 preferring tiles of at least 440 × 480 px, then squarer tiles; a short last row spreads across the
 full width. The count is clamped to what fits the 300 × 280 px minimum, at most 12. Each hint shows
 the resulting chat size, amber when tight; the footer says how many open chats are reused and how
-many are created. **Apply** (`layout.preset-apply`) keeps each visible tile's tab group in tile
+many are created. **Apply layout** (`layout.preset-apply`, also Enter; ←/→ switch options) keeps each visible tile's tab group in tile
 order, merges surplus tiles into the last slot as tabs, creates new chats for empty slots, and
 writes the result to the same per-project saved layout as any hand-built arrangement: nothing is
 locked, no preset persists as a mode, and drag, resize, split, hide, and the browser grip apply to
