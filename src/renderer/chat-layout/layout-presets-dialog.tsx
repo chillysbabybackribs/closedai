@@ -15,12 +15,14 @@ const previewTree = (preset: LayoutPreset, size: CanvasSize) => {
 
 /** Preset previews are the preset's own tree laid out at the canvas' aspect ratio. */
 function PresetWireframe({ preset, size }: { preset: LayoutPreset; size: CanvasSize }): JSX.Element {
-  const { panes } = layoutGeometry(previewTree(preset, size), size.width, size.height)
+  const { panes, minimum } = layoutGeometry(previewTree(preset, size), size.width, size.height)
+  // Geometry grows to the tile minimums on a small canvas, exactly as the scrolling workspace does.
+  const extent = { width: Math.max(size.width, minimum.width), height: Math.max(size.height, minimum.height) }
   const percent = (rect: Rect) => ({
-    left: `${(rect.x / size.width) * 100}%`, top: `${(rect.y / size.height) * 100}%`,
-    width: `${(rect.width / size.width) * 100}%`, height: `${(rect.height / size.height) * 100}%`
+    left: `${(rect.x / extent.width) * 100}%`, top: `${(rect.y / extent.height) * 100}%`,
+    width: `${(rect.width / extent.width) * 100}%`, height: `${(rect.height / extent.height) * 100}%`
   })
-  return <div className="layout-preset-wire" style={{ aspectRatio: `${size.width} / ${size.height}` }} aria-hidden="true">
+  return <div className="layout-preset-wire" style={{ aspectRatio: `${extent.width} / ${extent.height}` }} aria-hidden="true">
     {panes.map((pane) => pane.id === BROWSER_PANE_ID
       ? <div key={pane.id} className="layout-preset-wire-browser" style={percent(pane.rect)}><span>browser</span></div>
       : <div key={pane.id} className="layout-preset-wire-chat" style={percent(pane.rect)} />)}
