@@ -18,6 +18,13 @@ app.setPath('userData', profile)
 const watchdog = setTimeout(() => { console.error('Browser coordination fixture timed out'); app.exit(1) }, 40_000)
 const text = (result: ToolResult) => result.content.filter(item => item.type === 'text').map(item => item.text).join('\n')
 const ok = (result: ToolResult) => { assert.ok(!result.isError, text(result)); return result }
+function assertColor(dataUrl: string, red: boolean) {
+  const pixels = nativeImage.createFromDataURL(dataUrl)
+  const { width, height } = pixels.getSize()
+  assert.ok(width > 100 && height > 100, `usable screenshot viewport: ${width}x${height}`)
+  const offset = (Math.floor(height / 2) * width + Math.floor(width / 2)) * 4
+  assert.ok(pixels.toBitmap()[offset + (red ? 2 : 0)] > 220, 'screenshot has the expected page color')
+}
 
 async function verify() {
   await app.whenReady()
@@ -72,19 +79,22 @@ async function verify() {
       ok(result)
       const image = result.content.find(item => item.type === 'image')
       assert.ok(image && image.type === 'image')
-      const pixels = nativeImage.createFromDataURL(image.dataUrl)
-      const { width, height } = pixels.getSize()
-      const offset = (Math.floor(height / 2) * width + Math.floor(width / 2)) * 4
-      const bitmap = pixels.toBitmap()
-      assert.ok(bitmap[offset + (index === 0 ? 2 : 0)] > 220,
-        `capture ${index} must show the owning chat’s red/blue page: ${[...bitmap.subarray(offset, offset + 4)]}; ${text(result)}`)
+      assertColor(image.dataUrl, index === 0)
     }
     assert.equal(active(), foreground)
     await browser.setBounds({ x: 0, y: 0, width: 800, height: 600, visible: false })
     ok(await call('a', 'embedded_browser', 'page', { action: 'navigate', new_tab: true, url: `${base}/a-hidden` }))
     const collapsed = ok(await call('a', 'closedai_ui', 'capture', { action: 'browser_page' }))
-    assert.ok(collapsed.content.some(item => item.type === 'image'), 'collapsed browser still captures its assigned tab')
+    const hiddenImage = collapsed.content.find(item => item.type === 'image')
+    assert.ok(hiddenImage && hiddenImage.type === 'image')
+    assertColor(hiddenImage.dataUrl, true)
+    const restoredId = coordination.snapshot('a').defaultTabId!
     await browser.setBounds({ x: 0, y: 0, width: 800, height: 600, visible: true })
+    browser.selectTab(restoredId)
+    const restored = await capture.captureBrowserPage(restoredId, { until: 'load', timeoutMs: 5000 })
+    assert.ok(restored?.image)
+    assertColor(restored.image.dataUrl, true)
+    browser.selectTab(foreground)
     ok(await call('a', 'embedded_browser', 'page', { action: 'read_page', tab_id: a }))
     const blocked = await call('b', 'embedded_browser', 'page', { action: 'navigate', tab_id: a, url: `${base}/wrong` })
     assert.equal(blocked.isError, true)
@@ -103,10 +113,11 @@ async function verify() {
     assert.equal(await browser.contentsOf(b)!.executeJavaScript('window.keys'), 1)
     assert.equal(active(), b)
     // A background opener cannot steal focus; its child is protected by the same chat.
+    const beforePopup = new Set(browser.tabList().map(tab => tab.id))
     await browser.contentsOf(a)!.executeJavaScript(`void window.open('${base}/a-popup')`, true)
     const deadline = Date.now() + 3000
     while (browser.tabList().length === before && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 20))
-    const popup = browser.tabList().find(tab => tab.url.includes('/a-popup'))
+    const popup = browser.tabList().find(tab => !beforePopup.has(tab.id))
     assert.ok(popup)
     assert.equal(active(), b)
     assert.equal(coordination.canUse(popup.id, 'b'), false)
@@ -118,7 +129,8 @@ async function verify() {
     browser.closeTab(a)
     assert.equal((await call('b', 'embedded_browser', 'page', { action: 'read_page' })).isError, true)
     console.log(JSON.stringify({ ok: true, checks: ['parallel navigation', 'parallel text', 'background capture pixels',
-      'ownership conflict', 'bulk close preflight', 'foreground input exclusion', 'popup ownership', 'release', 'closed target'] }))
+      'collapsed browser capture and restoration', 'ownership conflict', 'bulk close preflight', 'foreground input exclusion',
+      'popup ownership', 'release', 'closed target'] }))
   } finally {
     clearTimeout(watchdog)
     cdp.dispose()
