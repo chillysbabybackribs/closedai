@@ -1,6 +1,6 @@
 import type { ClipboardEvent, DragEvent, FormEvent, JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, Pause, Play, Plus } from 'lucide-react'
+import { ChevronDown, Pause, Play } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import {
@@ -41,7 +41,6 @@ export type ComposerProps = {
   paused: boolean
   onResume: () => Promise<void>
   onInspectContext: () => void
-  onNewChat?: () => void
   cwd: string
   projectPath: string | null
   projectPending?: boolean
@@ -74,7 +73,7 @@ export function Composer({
   paused,
   onResume,
   onInspectContext,
-  onNewChat, cwd, projectPath, projectPending, recentProjects,
+  cwd, projectPath, projectPending, recentProjects,
   onChooseProject, onSelectProject, onClearProject,
   activeTurnId, onCompactConversation, compactConversationEnabled = false, paneId
 }: ComposerProps): JSX.Element {
@@ -271,21 +270,6 @@ export function Composer({
 
               <PromptInputActions className="prompt-composer-actions">
                 <div className="prompt-composer-actions-start">
-                  <PromptInputAction tooltip="New chat tab">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="prompt-composer-tool prompt-composer-new-chat rounded-full"
-                      aria-label="New chat tab"
-                      data-ui="composer.new-chat"
-                      disabled={!enabled}
-                      onClick={onNewChat}
-                    >
-                      <Plus size={21} strokeWidth={2.6} aria-hidden="true" />
-                    </Button>
-                  </PromptInputAction>
-
                   <AttachmentPicker
                     disabled={!enabled || running || sending}
                     inputRef={fileInputRef}

@@ -263,8 +263,10 @@ The workspace has no sidebar. A centered title-bar input searches saved chat tit
 Hovering over it opens a dropdown that stays open across the field, the gap, and the results;
 leaving the component hides it, even while the input retains focus. Hovering does not steal keyboard
 focus. Focusing, clicking, typing, or using arrow keys also opens it for keyboard and touch access.
-The dropdown groups chats into Running, Recently completed (unread), and History (up to eight recent
-chats), omitting empty groups and showing each chat once. The closed input shows no count badges.
+The dropdown groups chats into Running, Paused, Recently completed (unread), Open (still attached),
+and Closed (detached). Open and Closed each show up to eight chats, newest last turn first, and
+closed rows say Closed in the subtitle. Empty groups are omitted and each chat appears once. The
+closed input shows no count badges.
 Activity groups include all matching chats in the scrollable
 dropdown; unread completions use the persisted review queue and move into History when opened.
 Typing shows one list of up to eight ranked, case-insensitive title matches across all groups, with
@@ -332,8 +334,8 @@ through header search, then drag its tab to a tile edge to place it alongside an
 can also be added using the split controls in each chat header.
 Opening a chat from header search or Manage chat history selects its existing tab wherever it lives,
 or adds and selects a new tab in the focused tile. The current chat and its draft remain in their
-original tab; sibling tabs, other tiles, and divider sizes stay in place. The composer’s + button opens and selects a new chat tab
-in its tile, preserving the original chat, draft, attachments, and any running turn.
+original tab; sibling tabs, other tiles, and divider sizes stay in place. The tab strip's + button is
+the only new-chat control in a tile; the composer's + attaches files.
 File → New chat and continuation also add a tab in the focused
 tile; the split buttons explicitly add another tile. Moving a visible tile carries its tab group;
 dragging a tab to a tile edge splits that conversation out of its group.

@@ -12,14 +12,31 @@ export type ChatSearchHit = {
 const DEFAULT_LIMIT = 8
 
 export type ChatActivityHit = ChatSearchHit & {
-  status: 'running' | 'paused' | 'completed' | 'history'
+  status: 'running' | 'paused' | 'completed' | 'open' | 'closed'
   completedAt: number | null
+}
+
+export function activityAt(row: ChatRowSummary): number {
+  return row.lastTurnEndedAt ?? row.updatedAt
+}
+
+export function chatSearchMeta(hit: ChatActivityHit, formatTime: (ms: number) => string): string {
+  const when = hit.status === 'completed' && hit.completedAt != null
+    ? `Finished ${formatTime(hit.completedAt).toLowerCase()}`
+    : hit.status === 'running' ? 'Running'
+      : hit.status === 'paused' ? 'Paused'
+        : formatTime(activityAt(hit.row))
+  const place = hit.status === 'closed' ? 'Closed' : hit.status === 'open' ? 'Open' : null
+  return [hit.folder, place, when].filter(Boolean).join(' · ')
 }
 
 export type ChatSearchSection = {
   label: string
   hits: ChatActivityHit[]
 }
+
+const compareActivity = (a: ChatActivityHit, b: ChatActivityHit): number =>
+  activityAt(b.row) - activityAt(a.row) || a.row.paneId.localeCompare(b.row.paneId)
 
 /** Activity is never displaced by newer history; title queries retain their relevance ranking. */
 export function chatSearchView(rows: ChatRowSummary[], query: string, reviews: ChatReviewQueue): {
@@ -32,7 +49,8 @@ export function chatSearchView(rows: ChatRowSummary[], query: string, reviews: C
     const unread = review?.viewedAt === null
     return {
       ...hit,
-      status: hit.row.running ? 'running' : hit.row.paused ? 'paused' : unread ? 'completed' : 'history',
+      status: hit.row.running ? 'running' : hit.row.paused ? 'paused' : unread ? 'completed'
+        : hit.row.attached ? 'open' : 'closed',
       completedAt: unread ? review.queuedAt : null
     }
   }
@@ -40,13 +58,16 @@ export function chatSearchView(rows: ChatRowSummary[], query: string, reviews: C
   const running = recent.filter(hit => hit.status === 'running')
   const completed = recent.filter(hit => hit.status === 'completed')
     .sort((a, b) => b.completedAt! - a.completedAt! || a.row.paneId.localeCompare(b.row.paneId))
+  const open = recent.filter(hit => hit.status === 'open').sort(compareActivity).slice(0, DEFAULT_LIMIT)
+  const closed = recent.filter(hit => hit.status === 'closed').sort(compareActivity).slice(0, DEFAULT_LIMIT)
   const sections = query.trim()
     ? [{ label: 'Matching chats', hits: searchChats(rows, query).map(withActivity) }]
     : [
         { label: 'Running', hits: running },
         { label: 'Paused', hits: recent.filter(hit => hit.status === 'paused') },
         { label: 'Recently completed', hits: completed },
-        { label: 'History', hits: recent.filter(hit => hit.status === 'history').slice(0, DEFAULT_LIMIT) }
+        { label: 'Open', hits: open },
+        { label: 'Closed', hits: closed }
       ]
   return {
     sections: sections.filter(section => section.hits.length > 0),
@@ -64,7 +85,7 @@ export function searchChats(
   if (trimmed === '') return rows
     .filter(row => row.threadId || row.preview || row.running)
     .slice()
-    .sort((a, b) => b.updatedAt - a.updatedAt || a.paneId.localeCompare(b.paneId))
+    .sort((a, b) => activityAt(b) - activityAt(a) || a.paneId.localeCompare(b.paneId))
     .slice(0, Math.max(0, limit))
     .map(row => ({ row, titleRanges: [], folder: basename(row.cwd), score: 0 }))
 
@@ -82,7 +103,7 @@ export function searchChats(
   hits.sort(
     (left, right) =>
       right.score - left.score ||
-      right.row.updatedAt - left.row.updatedAt ||
+      activityAt(right.row) - activityAt(left.row) ||
       left.row.paneId.localeCompare(right.row.paneId)
   )
   return hits.slice(0, Math.max(0, limit))

@@ -21,13 +21,15 @@ are candidates, not instructions to implement them all. Tackle one agreed item a
   or a pane hides identifies continuing or paused tasks, without permanent controls or layout shifts.
 - [x] Tab-close hit area is a 24 × tab-height strip around the existing 11 px icon, without a
   larger hover chip or extra chrome.
+- [x] Search chats idle dropdown separates open tabs from closed chats. Closed rows say Closed
+  and sort by last turn; open rows stay in their own group.
 
 ## Candidates awaiting selection
 
 | Area | Candidate to revisit |
 | --- | --- |
 | Composer actions | Clarify or consolidate new-chat and attachment actions. |
-| History | Clear orientation and a return-to-conversation action; evaluate consolidation with search. |
+| History | Return-to-conversation action; evaluate consolidation with the full history panel. |
 | Close/hide/archive | Revisit archive recovery and Ctrl+W (currently closes the window). |
 | Layout | Make existing split/maximize actions discoverable; consider consolidation or presets. |
 | Visual hierarchy | Clarify the focused chat and secondary text with restrained contrast. |

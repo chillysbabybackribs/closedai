@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
-import { chatSearchView, searchChats, segmentTitle, stepHighlight } from './history-search.js'
+import { chatSearchMeta, chatSearchView, searchChats, segmentTitle, stepHighlight } from './history-search.js'
 
 function chat(paneId: string, title: string, updatedAt = 100, cwd = '/projects/app'): ChatRowSummary {
   return {
@@ -63,7 +63,7 @@ test('activity groups are exclusive and precede recent history without hiding ol
     viewed: { queuedAt: 100, viewedAt: 101 },
     deleted: { queuedAt: 100, viewedAt: null }
   })
-  assert.deepEqual(view.sections.map(section => section.label), ['Running', 'Recently completed', 'History'])
+  assert.deepEqual(view.sections.map(section => section.label), ['Running', 'Recently completed', 'Closed'])
   assert.deepEqual(view.sections[0]!.hits.map(hit => hit.row.paneId), ['running'])
   assert.deepEqual(view.sections[1]!.hits.map(hit => hit.row.paneId), ['newly-finished', 'finished'])
   assert.equal(view.sections[2]!.hits.length, 8)
@@ -94,7 +94,7 @@ test('paused chats stay visible outside bounded history and are not unread compl
   const rows = [paused, ...Array.from({ length: 12 }, (_, i) => chat(`old-${i}`, 'History', 100 + i))]
   const reviews = { paused: { queuedAt: 100, viewedAt: null } }
   const view = chatSearchView(rows, '', reviews)
-  assert.deepEqual(view.sections.map(section => section.label), ['Paused', 'History'])
+  assert.deepEqual(view.sections.map(section => section.label), ['Paused', 'Closed'])
   assert.equal(view.sections[0]!.hits[0]!.row.paneId, 'paused')
   assert.equal(view.runningCount, 0)
   assert.equal(view.unreadCount, 0)
@@ -107,7 +107,27 @@ test('opening a completion moves it into history and empty sections disappear', 
   assert.deepEqual(chatSearchView(rows, '', { finished: { queuedAt: 1, viewedAt: null } })
     .sections.map(section => section.label), ['Recently completed'])
   const viewed = chatSearchView(rows, '', { finished: { queuedAt: 1, viewedAt: 2 } })
-  assert.deepEqual(viewed.sections.map(section => section.label), ['History'])
+  assert.deepEqual(viewed.sections.map(section => section.label), ['Closed'])
   assert.equal(viewed.unreadCount, 0)
   assert.deepEqual(chatSearchView([], '', {}).sections, [])
+})
+
+test('open tabs stay out of Closed and closed chats sort by last turn, not store touch', () => {
+  const open = { ...chat('open', 'Still open', 500), attached: true, lastTurnEndedAt: 50 }
+  const touched = { ...chat('touched', 'Touched later', 400), lastTurnEndedAt: 10 }
+  const recentTurn = { ...chat('recent-turn', 'Older store row', 20), lastTurnEndedAt: 300 }
+  const view = chatSearchView([open, touched, recentTurn], '', {})
+  assert.deepEqual(view.sections.map(section => section.label), ['Open', 'Closed'])
+  assert.deepEqual(view.sections[0]!.hits.map(hit => hit.row.paneId), ['open'])
+  assert.deepEqual(view.sections[1]!.hits.map(hit => hit.row.paneId), ['recent-turn', 'touched'])
+})
+
+test('row meta names closed chats and uses last-turn time', () => {
+  const closed = chatSearchView([{ ...chat('old', 'Prior work', 10), lastTurnEndedAt: 80 }], '', {})
+    .sections[0]!.hits[0]!
+  assert.equal(closed.status, 'closed')
+  assert.equal(chatSearchMeta(closed, () => '2h ago'), 'app · Closed · 2h ago')
+  const open = chatSearchView([{ ...chat('live', 'Current tab', 10), attached: true }], '', {})
+    .sections[0]!.hits[0]!
+  assert.equal(chatSearchMeta(open, () => 'Just now'), 'app · Open · Just now')
 })

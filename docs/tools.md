@@ -118,7 +118,8 @@ removes it from the tile without stopping its turn or deleting history; items ar
 The browser toggle is a plain header button. Their item is the chat id.
 With multiple visible tiles, `layout.new-chat` starts a fresh chat in the tile named by its item
 without changing the other tiles or the split geometry.
-`composer.new-chat` opens a new tab in the focused tile, preserving the original chat and draft.
+The + at the end of a tile's tab strip is the same `layout.new-chat`; the composer's own + is
+`composer.upload`, which attaches files.
 The header's `titlebar.chat-search` searches saved chat titles across projects;
 `titlebar.chat-search-result` opens a suggestion by chat id. `titlebar.chat-search-pause` and
 `titlebar.chat-search-resume` control the row's chat without opening it, using the chat id as item.

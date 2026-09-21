@@ -42,13 +42,27 @@ export function sampleRow(id: string, chat: ChatSnapshot): ChatRowSummary {
     createdAt: 1_790_000_000_000, lastTurnEndedAt: null }
 }
 
+function sampleClosed(id: string, title: string, endedAt: number, cwd: string): ChatRowSummary {
+  const chat = sampleChat(id)
+  chat.threadName = title
+  return { ...sampleRow(id, chat), attached: false, running: false, activity: null,
+    updatedAt: endedAt + 86_400_000, lastTurnEndedAt: endedAt, cwd, projectPath: cwd }
+}
+
 export function sampleWorkspace(scenario: Scenario): ChatWorkspaceSnapshot {
   const first = sampleChat('preview-chat-1', scenario === 'empty')
   const second = sampleChat('preview-chat-2')
   second.threadName = 'Composer review'
   const panes = { 'preview-chat-1': first, 'preview-chat-2': second }
+  const open = Object.entries(panes).map(([id, chat]) => sampleRow(id, chat))
+  const now = Date.now()
+  const closed = scenario === 'empty' ? [] : [
+    sampleClosed('preview-closed-1', 'PDF table extraction', now - 2 * 3_600_000, '/projects/notes'),
+    sampleClosed('preview-closed-2', 'Auth token refresh', now - 3 * 86_400_000, PREVIEW_CWD),
+    sampleClosed('preview-closed-3', 'Invoice layout pass', now - 14 * 86_400_000, '/projects/billing')
+  ]
   return { selectedPaneId: 'preview-chat-1', selected: first, panes,
-    chats: Object.entries(panes).map(([id, chat]) => sampleRow(id, chat)),
+    chats: [...open, ...closed],
     workspace: { cwd: PREVIEW_CWD, projectPath: PREVIEW_CWD, recentProjects: [] },
     preferences: { chatSeamlessRotation: true } }
 }

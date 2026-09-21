@@ -166,7 +166,6 @@ export const ChatPane = memo(function ChatPane({
           paused={state.pausedTurnId !== null}
           onResume={() => sendMessage(CHAT_RESUME_PROMPT, [])}
           onInspectContext={() => setContextOpen(true)}
-          onNewChat={startNewChat}
           cwd={project.cwd}
           projectPath={project.projectPath}
           projectPending={Boolean(record?.pendingProject)}

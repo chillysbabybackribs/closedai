@@ -3,7 +3,7 @@ import { LoaderCircle, MessageSquare, Pause, Play, Search, Trash2, X } from 'luc
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { HistoryController } from './history-controller.js'
 import { formatChatTime } from './history-format.js'
-import { chatSearchView, segmentTitle, stepHighlight, type ChatSearchHit } from './history-search.js'
+import { chatSearchMeta, chatSearchView, segmentTitle, stepHighlight, type ChatSearchHit } from './history-search.js'
 
 export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   chats: ChatRowSummary[]
@@ -145,8 +145,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
           </div>
           {section.hits.map(hit => {
             const index = hits.indexOf(hit)
-            const status = hit.status === 'running' ? 'Running' : hit.status === 'paused' ? 'Paused' : hit.status === 'completed'
-              ? `Finished ${formatChatTime(hit.completedAt!).toLowerCase()}` : formatChatTime(hit.row.updatedAt)
+            const status = chatSearchMeta(hit, formatChatTime)
             const turnButtonProps = {
               className: 'header-chat-search-turn',
               'data-ui-key': hit.row.paneId,
@@ -164,7 +163,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
               onMouseEnter={() => setHighlight(index)}>
               <div role="gridcell" className="header-chat-search-main">
                 <button type="button" tabIndex={-1}
-                  aria-label={`${hit.row.title} — ${hit.row.cwd} — ${status}${hit.status === 'completed' ? ' — Unread' : ''}`}
+                  aria-label={`${hit.row.title} — ${status}${hit.status === 'completed' ? ' — Unread' : ''}`}
                   className="header-chat-search-result" data-ui="titlebar.chat-search-result"
                   data-ui-key={hit.row.paneId} disabled={busy} title={hit.row.cwd}
                   onMouseDown={event => event.preventDefault()} onClick={() => { void open(hit) }}>
@@ -178,9 +177,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
                       {segmentTitle(hit.row.title, hit.titleRanges).map((segment, position) => segment.matched
                         ? <mark key={position}>{segment.text}</mark> : <span key={position}>{segment.text}</span>)}
                     </span>
-                    <span className="header-chat-search-meta">
-                      {hit.folder ? `${hit.folder} · ` : ''}{status}
-                    </span>
+                    <span className="header-chat-search-meta">{status}</span>
                   </span>
                 </button>
               </div>

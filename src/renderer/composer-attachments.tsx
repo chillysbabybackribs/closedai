@@ -1,5 +1,5 @@
 import type { ChangeEvent, JSX, RefObject } from 'react'
-import { FileImage, FileText, FileUp, X } from 'lucide-react'
+import { FileImage, FileText, Plus, X } from 'lucide-react'
 import {
   Attachment,
   AttachmentAction,
@@ -76,13 +76,13 @@ export function AttachmentPicker({
           type="button"
           variant="ghost"
           size="icon"
-          className="prompt-composer-tool rounded-full"
+          className="prompt-composer-tool prompt-composer-attachment rounded-full"
           aria-label="Upload files"
           data-ui="composer.upload"
           disabled={disabled}
           onClick={() => inputRef.current?.click()}
         >
-          <FileUp size={20} strokeWidth={2.1} aria-hidden="true" />
+          <Plus size={21} strokeWidth={2.6} aria-hidden="true" />
         </Button>
       </PromptInputAction>
     </>

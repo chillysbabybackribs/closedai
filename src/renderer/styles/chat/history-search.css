@@ -68,6 +68,7 @@
 .header-chat-search [data-status='running'] { color: var(--tab-accent); }
 .header-chat-search [data-status='paused'] { color: #dba74b; }
 .header-chat-search [data-status='completed'] { color: #65b98a; }
+.header-chat-search [data-status='closed'] { opacity: 0.72; }
 .header-chat-search-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .header-chat-search-spinner { animation: header-chat-search-spin 1.2s linear infinite; }
 @keyframes header-chat-search-spin { to { transform: rotate(360deg); } }
