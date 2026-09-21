@@ -36,7 +36,11 @@ development mode even when its parent Electron process has `NODE_ENV=production`
 
 ## Repeatable states
 
-The query parameter `scenario` chooses the fixture; the preview toolbar provides the same links.
+The query parameter `scenario` chooses the fixture. The launcher output includes direct links to
+all five states (for example `/?scenario=split`); `npm run dev:web -- start settings` returns the
+settings URL on the same server. There is no preview toolbar: the real app occupies the full
+viewport, with no extra header height or preview overrides of the app shell's sizing. The browser
+tab title identifies the preview and current scenario.
 Navigating to a scenario resets sample conversations, layout, drafts, and appearance preferences.
 The preview supplies document-private, in-memory storage to the real renderer in place of local
 storage. Tabs cannot overwrite one another's fixtures or preferences. Component hot updates
@@ -65,7 +69,8 @@ decision. Extend the fixtures for a new UI state instead of building a separate 
 
 Native window actions, real filesystem access, credentials, provider calls, browser page content,
 downloads, and IPC/security behavior need real Electron verification. Unsupported actions display
-a preview notice; operations requiring native return data reject rather than inventing it. The
+an on-demand, dismissible preview notice over the bottom of the viewport; it does not resize the
+app. Dismiss it before visual comparison. Operations requiring native return data reject rather than inventing it. The
 tools, trace, downloads, credentials, and research panels have empty sample read models, not live
 data. No credentials or conversations are copied out of the running app.
 

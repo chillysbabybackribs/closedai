@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from '../App.js'
 import { saveLayout } from '../chat-layout/layout-tree.js'
 import { createPreviewBridge } from './bridge.js'
-import { parseScenario, PREVIEW_CWD, sampleLayout, SCENARIOS } from './fixtures.js'
+import { parseScenario, PREVIEW_CWD, sampleLayout } from './fixtures.js'
 import { createPreviewStorage } from './storage.js'
 import '../styles/preview/shell.css'
 
@@ -18,7 +18,7 @@ document.documentElement.dataset.previewState = 'loading'
 saveLayout(localStorage, PREVIEW_CWD, sampleLayout(scenario))
 
 const notice = new EventTarget()
-let latestNotice = 'Sample data only · Native features require Electron'
+let latestNotice = ''
 const report = (message: string) => { latestNotice = message; notice.dispatchEvent(new Event('change')) }
 const surface = document.createElement('div')
 surface.className = 'preview-native-surface'
@@ -75,14 +75,12 @@ function Preview() {
     return () => { notice.removeEventListener('change', changed); observer.disconnect() }
   }, [])
   return <>
-    <div className="preview-toolbar">
-      <strong>UI preview</strong>
-      <nav aria-label="Preview scenarios">{SCENARIOS.map((name) => <a key={name}
-        href={`?scenario=${name}`} data-ui="preview.scenario" data-ui-key={name}
-        aria-current={scenario === name ? 'page' : undefined}>{name}</a>)}</nav>
-      <span role="status">{message}</span>
-    </div>
     <PreviewBoundary><App initialSettingsOpen={scenario === 'settings'} /></PreviewBoundary>
+    {message && <aside className="preview-notice" aria-label="UI preview notice">
+      <span role="status">{message}</span>
+      <button type="button" data-ui="preview.dismiss-notice" aria-label="Dismiss preview notice"
+        onClick={() => { latestNotice = ''; setMessage('') }}>Dismiss</button>
+    </aside>}
   </>
 }
 

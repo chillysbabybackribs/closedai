@@ -4,7 +4,7 @@
 // guard test beside this file keeps the renderer source and this manifest in step.
 
 export const UI_CONTROLS = {
-  'preview.scenario': 'Browser UI preview only: load a fresh sample state; item is conversation, empty, streaming, settings, or split',
+  'preview.dismiss-notice': 'Browser UI preview only: dismiss an unsupported-operation or error notice without changing the app layout',
   'dialog.research-library': 'Public research library dialog, opened through Tools → Research library',
   'research.topics': 'Edit followed research topics, one per line (maximum five)',
   'research.window': 'Choose the publication lookback window',
