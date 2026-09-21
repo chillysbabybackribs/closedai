@@ -205,10 +205,17 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     setError('')
     try {
       const { groups, missing } = assignGroups(current.current.tree, presetSlots(preset))
+      const visible = paneIds(current.current.tree)
+      const retained = tabIds(current.current.tree)
       let created: string | null = null
       for (let index = 0; index < missing; index++) {
         created = await window.closedai.chat.newPeer()
         groups.push(singleGroup(created))
+        visible.push(created)
+        retained.push(created)
+        // Register at once: main trims attached chats beyond its cap and discards blank unselected
+        // ones unless they are visible, and the tree only registers them after every slot exists.
+        await window.closedai.chat.setVisiblePanes(cwd, visible, retained)
       }
       let tree = presetLayout(preset, groups, size, () => crypto.randomUUID())
       // A merged tile keeps the selected chat active rather than parking it behind a sibling tab.
@@ -228,7 +235,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       pending.current = false
       setBusy(false)
     }
-  }, [])
+  }, [cwd])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
   return { ...layout, error, notice: notice?.text ?? '', busy, dock, newChat, focusPane, activateTab, closeTab, hide, closeFocused, resize, arrange, toggleBrowser, showBrowser }
