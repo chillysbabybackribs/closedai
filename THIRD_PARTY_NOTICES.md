@@ -59,11 +59,3 @@ SOFTWARE.
 
 The OpenAI, Anthropic, and Google marks are trademarks of their respective
 owners and are used here only to identify the model provider a chat is running.
-
-## Twemoji
-
-The globe in the title bar's browser toggle (`src/renderer/browser-globe-icon.tsx`) is
-the "globe showing Americas" glyph from [Twemoji](https://github.com/twitter/twemoji),
-copyright 2020 Twitter, Inc and other contributors, licensed under
-[CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/). The graphic is used unmodified
-apart from sizing.
