@@ -66,7 +66,7 @@ before the app-server starts.
 | `investigation` | `read` | `list`, `read` | Chat/project-private durable artifact descriptors, verified byte pages, provenance and JSON-pointer projections; source content remains untrusted. |
 | `investigation` | `manage` | `import`, `export`, `delete` | Explicit file retention, verified no-clobber artifact export and scoped deletion. Protocol command retention uses the same worker store. |
 | `credential_vault` | `list`, `read` | — | Gives every provider access to credentials saved in the app. `list` returns labels, ids, types, and masked field metadata without decrypting secrets. `read` requires one credential id, exact field ids, and an audit reason; it returns only those values, rejects `tool_batch` aggregation, and marks its result sensitive so the Turn Trace records a redacted placeholder. Shared model instructions allow reads only for the current user-requested operation and prohibit echoing, logging, or persisting retrieved secrets. |
-| `embedded_browser` | `page` | `navigate`, `read_page`, `wait_for` | Browser-page inspection for the pane the user can see. It can open a URL or search query in an explicit `tab_id` (or the active tab by default), wait for page readiness, and read visible text from the whole page or one selector. `tab_id` and `new_tab` are mutually exclusive. For fetch, extract, query, evaluate, and console use `embedded_browser.script`. |
+| `embedded_browser` | `page` | `navigate`, `read_page`, `wait_for` | Browser-page inspection and navigation in the caller's assigned tab, or an explicit `tab_id`. First untargeted navigation and `new_tab` create an assigned background tab; first inspection can claim the unassigned visible tab. Another chat's assigned tab is refused. Waits for page readiness and reads text from the whole page or one selector. `tab_id` and `new_tab` are mutually exclusive. For fetch, extract, query, evaluate, and console use `embedded_browser.script`. |
 | `embedded_browser` | `script` | `fetch`, `extract`, `query`, `evaluate`, `console` | Page scripting and structured extraction, deferred where supported. `fetch` issues a request from inside the tab, so it inherits that tab's origin, cookies, and signed-in session — the way to reach a same-origin API the page itself calls, including POST endpoints; a JSON body is returned parsed, a text body is bounded by `max_chars` and flagged when cut. `extract` projects a JSON document (`path` to a subtree, `fields` per item, `limit` rows) so a large response costs only the part that was asked for. `query` returns structured facts (tag, id, classes, role, name, text, value, href, src, disabled, checked, visibility, bounds, named attributes) for every element matching a selector, with `text_contains` and `visible_only` filters. `evaluate` runs JavaScript in the main frame through the WebContents the app owns (an expression, or statements with `return`; promises awaited) and returns a bounded JSON value with DOM nodes summarised and cycles cut. `console` lists the tab's captured console messages and page errors with navigation markers, `min_level`, `since_navigation`, and cursor paging. None attach a debugger. |
 | `embedded_browser` | `network` | `requests`, `wait`, `rules`, `add_rule`, `remove_rule`, `clear` | The session's always-on request record, captured in the main process from Electron's `webRequest` hooks (`src/main/browser-network/`): every request from every tab and from the session itself, with method, resource type, status, request and response headers, timing, redirects, post data, cache flag, and error, kept across navigations in a 2,000-record ring with cursors. `requests` filters by tab, URL substring, type, method, status, state, and `after_cursor`; `wait` resolves when a matching request finishes after a cursor taken before acting, so the request an action triggers is the one returned. This log has no historical body reader: its ids cannot be correlated exactly with CDP by URL/method. Use `browser_cdp.protocol requests/body` for captured responses. Rules act at the session's blocking stages without pausing the page: `block`, `redirect`, `request_headers`, and `response_headers` (null removes), scoped globally or to one tab, with hit counts. |
 | `embedded_browser` | `session` | `fetch`, `cookies`, `set_cookie`, `remove_cookie` | The user's signed-in session used directly by the main process. `fetch` sends through Chromium's network stack on the browser partition with the session's cookies and no CORS policy, so cross-origin APIs that reject a page's fetch answer here; it returns status, response headers, redirect facts, and the body (JSON parsed when it fits `max_chars`, text otherwise, binary as base64 with byte length). A large JSON response is projected rather than truncated: `json_path`, `fields`, and `limit` run before serialisation, the same projection `page.extract` uses. For HTML documents, `format: 'text'` extracts clean prose and document title, stripping scripts, styles, and navigation chrome. Cookie actions read and write the cookie store for any domain or URL, no page required. |
@@ -87,7 +87,7 @@ before the app-server starts.
 | `peer_chats` | `list`, `read` | plain tools | Read-only status and paginated transcript access to other panes and visible subagent summaries. `read` is deferred where supported; it takes an id from `list` and pages the newest 30 items backwards by default (at most 100), inside a serialized budget (`max_chars`, 6k default, 16k ceiling) that clips long tool detail, output, diffs and screenshot data URLs and reports `totalItems`; `order: "oldest"` follows a chat forward and `types` narrows to the item kinds wanted. It does not start or control agents. Reasoning items are excluded from both previews and pages, matching `recall` and thread handoff, so one model's thinking never enters another model's context. |
 | `peer_chats` | `recall` | plain tool, read-only | Bounded phrase search or exact-message excerpts from the caller's current chat, frozen direct continuation source (live in-memory transcript after same-pane rotation), or a previous conversation across projects, plus saved checkpoint state and optional `sessionRotationEpoch`. |
 | `peer_chats` | `checkpoint` | plain tool, writes notes | Revision-checked replacement of the caller's structured working notes; cannot control sessions or write other panes. |
-| `tool_batch` | `run` | plain tool | Runs up to 16 other tools by default, sequentially or in parallel by resource. Set `continue_on_error: true` in sequential batches to run remaining steps despite earlier failures while still unwinding unreleased armed state. Same-target work serializes; distinct explicit browser targets can run concurrently. When the outer batch ends or times out, its signal cancels in-flight inner calls, releases their resource locks, and prevents queued calls in that target lane from starting. `toolBatchMaxCalls` configures 1–64 at startup; nested batches are refused. A failed sequential batch compensates itself: browser state armed by earlier steps that nothing on screen reveals — profiling recorders, a pre-document hook, device emulation — is released in reverse order and reported, including after a batch timeout, because the plan that justified arming it no longer holds. State a completed step deliberately released is not released twice, visible or consequential mutations (an opened tab, a cookie, a network rule) are never undone, and parallel calls are declared independent so a failure does not unwind them. See `src/main/tools/batch/compensation.ts`. |
+| `tool_batch` | `run` | plain tool | Runs up to 16 other tools by default, sequentially or in parallel by resource. Set `continue_on_error: true` in sequential batches to run remaining steps despite earlier failures while still unwinding unreleased armed state. Same-target work serializes; distinct explicit browser targets can run concurrently. When the outer batch ends or times out, its signal cancels in-flight inner calls and prevents queued calls from starting; a resource lock remains until the underlying call settles. `toolBatchMaxCalls` configures 1–64 at startup; nested batches are refused. A failed sequential batch compensates itself: profiling recorders, pre-document hooks, and device emulation armed by earlier steps are released in reverse order using their resolved tab ids, including after a timeout. State already released is not released twice; visible mutations (an opened tab, a cookie, a network rule) are never undone. Parallel calls are declared independent, so a failure does not unwind them. See `src/main/tools/batch/compensation.ts`. |
 
 `embedded_browser.network_replay` is a separate deferred tool taking `request_id` from the
 session request log. It always sends a new request using the recorded method, replayable
@@ -213,12 +213,23 @@ the same sequential batch. A Codex exec script is the batching boundary; direct-
 last fallback after semantic refs. The batch validator also refuses real input in parallel batches
 or without a later recognized read/wait/capture action that can verify the result.
 
-`resource-locks.ts` shares those keys with registry locking. Lock conflicts fail with a busy
-target message rather than wait indefinitely. Current keys cover app input, navigation, semantic
-page input, raw `protocol.command`, browser-page captures, and app tab commands. The newer
-`protocol.target` convenience action currently has no resource key. These locks do not coordinate
-human input or provider-native tools, and distinct tab locks do not serialize the shared foreground
-tab: batch independent reads, but sequence semantic inputs that switch between visible tabs.
+`browser/coordination.ts` resolves a model call's tab before `resource-locks.ts` acquires its lock.
+Assignments belong to stable chat ids and span turns; they are independent of project and UI focus.
+The first untargeted navigation creates a background tab. Inspection may claim an unassigned visible
+tab; later omitted targets use the chat's default. Explicit targeting claims an unassigned tab or
+refuses another chat's tab. A closed default fails without falling back. `browser_tab release`
+relinquishes an assignment without closing the page; detaching the chat and app restart also release
+assignments. `state.browser.coordination` reports defaults and owners. Bulk closes preflight all
+affected tabs. Search tabs and page popups participate in the same assignments.
+
+Per-tab locks cover page reads, scripts, captures, and CDP work. Foreground semantic and raw input,
+tab-strip commands, session operations, and raw cross-target commands share a browser-wide lock.
+Different tab reads/captures can overlap; input calls that would fight for focus fail busy.
+Locks survive cancellation/timeout until the underlying operation actually settles. Session-wide
+cookie writes, mutating session fetches, network-rule changes, renderer input, and raw Target
+mutations refuse while another chat has assigned tabs. Use addressed app tab commands instead of
+raw cross-target commands during parallel work. Human input and provider-native tools are outside
+these locks, and page scripts/site actions still share cookies and remote account state.
 
 ### Parallel research runs
 
@@ -414,7 +425,8 @@ in a pane/thread/turn opens the first eligible supplied source URL, or waits for
 URL from the search APIs. It never opens search-engine results pages for discovery. The first
 source opens while other providers and background reads continue. Further searches reuse the tab
 without navigating away from a source the model or user is reading; a closed tab is recreated.
-The visible tab uses the normal browser session. The result reports `presentation.tabId` and
+The tab opens in the background with the caller's assignment and uses the normal browser session.
+A released tab assigned to another chat is replaced rather than reused. The result reports `presentation.tabId` and
 that it opened, not that navigation completed. Models should inspect relevant sources in that
 tab while background research continues and capture pages when making visual claims. The engine
 does not automatically follow results or close the tab on cancellation. Explicit
@@ -547,6 +559,13 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   `node scripts/capture-coherence-live-check.mjs`: a hidden tab recolored between captures is
   recaptured with its new colour and no paint-probe timeout, a flickering hidden tab and a
   churning visible tab are delivered without the verified verdict.
+- New background views are sized before attachment so their first compositor surface has a usable
+  viewport. A capture lease renders beneath the opaque active browser view without selecting the
+  tab. With the browser collapsed or covered, a temporary never-shown native window hosts the same
+  WebContentsView, with geometry set before reparenting; release returns it to the main window.
+  Native `capturePage` may request visible rendering internally without showing that window.
+  A 1×1 placeholder is rejected. The isolated browser-coordination live check verifies simultaneous
+  background capture pixels, collapsed-panel capture, and restoration to the visible browser.
 - Capture actions return a bounded image to the model (image tokens scale with pixels) and keep
   the larger display capture in `capture/screenshot-store.ts`, keyed by the tool call id. The
   transcript looks the call id up when it renders the screenshot item and falls back to the

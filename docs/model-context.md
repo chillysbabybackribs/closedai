@@ -295,7 +295,8 @@ Research work belongs to the originating
 turn and is cancelled at its end, so models must retrieve needed evidence before finishing.
 Both search paths now default to live presentation and reuse one retained tab per pane/thread/turn.
 Discovery must use the search APIs, never Google or other search-engine pages in the browser.
-The tab opens on an actual source URL as results arrive; until then, presentation reports
+The assigned tab opens in the background on an actual source URL as results arrive, preserving UI
+selection; until then, presentation reports
 `waiting_for_source`. Finishing without an eligible URL reports `no_source` and opens no tab.
 The shared instructions ask models to inspect the live source tab and capture pages when visual
 evidence is needed. Explicit background mode is for user-requested

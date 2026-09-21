@@ -66,6 +66,8 @@ Electron tabs, parallel navigation and extraction, background screenshot pixels,
 exclusion, popup ownership, bulk-close preflight, release, and closed-target recovery without
 touching the user's profile. Background surfaces receive a usable viewport before attachment;
 capture leases can render underneath the opaque active browser surface without selecting the tab.
+When the browser is collapsed or covered, a temporary never-shown native window hosts the same
+view for capture and returns it afterward. The live check verifies its pixels and later restoration.
 
 `ChatHub` routes to Codex, Claude Code, Antigravity, or Cursor. Codex model/thread ids are
 unprefixed; Claude ids use `claude:`, Antigravity ids use `agy:`, and Cursor ids use `cursor:`. Picking another provider's model keeps the
