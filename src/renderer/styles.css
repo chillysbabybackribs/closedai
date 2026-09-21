@@ -36,6 +36,7 @@
 @import "./styles/chat-history.css";
 @import "./styles/tools/modal.css";
 @import "./styles/trace/modal.css";
+@import "./styles/settings/dialog.css";
 @import "./styles/settings/appearance.css";
 @import "./styles/settings/credentials.css";
 @import "./styles/research/library.css";

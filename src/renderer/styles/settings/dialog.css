@@ -1,0 +1,80 @@
+/* File → Settings: a fixed-size dialog with a tab strip in its heading. The panels below fill
+   the remaining height so the credential grid and the appearance sliders share one frame. */
+.settings-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, calc(100vw - 32px));
+  height: min(580px, calc(100vh - 32px));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+}
+
+.settings-tabs-root {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.settings-heading {
+  flex-shrink: 0;
+  padding-right: 44px;
+}
+
+.settings-heading-copy { min-width: 0; flex: 1; }
+
+.settings-tabs {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 7px;
+  background: var(--surface-control);
+}
+
+.settings-tab {
+  padding: 4px 11px;
+  border-radius: 5px;
+  color: var(--chrome-control-muted);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.settings-tab:hover { color: var(--chrome-control-strong); }
+
+.settings-tab[data-state='active'] {
+  background: var(--surface-card);
+  color: var(--chrome-control-strong);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 30%);
+}
+
+.settings-tab:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+
+.settings-tab-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.settings-tab-content[data-state='inactive'] { display: none; }
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Appearance has three rows; keep them a readable column instead of stretching to 680px. */
+.appearance-panel .appearance-controls {
+  width: min(460px, 100%);
+  margin: 0 auto;
+  padding-top: 18px;
+}
+
+.appearance-panel .appearance-dialog-footer { margin-top: auto; }

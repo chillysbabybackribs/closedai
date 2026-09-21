@@ -1,12 +1,6 @@
 import type { JSX } from 'react'
-import { Minus, Plus, RotateCcw, Type } from 'lucide-react'
+import { Minus, Plus, RotateCcw } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle
-} from '../../components/ui/dialog.js'
 import {
   CHAT_FONT_SIZE_DEFAULT,
   CHAT_FONT_SIZE_MAX,
@@ -24,37 +18,23 @@ import {
   CHAT_ZOOM_STEP
 } from '../chat-zoom.js'
 
-export type AppearanceSettingsDialogProps = AppearanceSettings & {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+export type AppearancePanelProps = AppearanceSettings & {
   onChange: (patch: Partial<AppearanceSettings>) => void
 }
 
-export function AppearanceSettingsDialog({
-  open,
+/** The Appearance tab of Settings: three sliders and a reset. Persistence belongs to the caller. */
+export function AppearancePanel({
   chatFontSize,
   composerFontSize,
   chatZoom,
-  onOpenChange,
   onChange
-}: AppearanceSettingsDialogProps): JSX.Element {
+}: AppearancePanelProps): JSX.Element {
   const isDefault = chatFontSize === CHAT_FONT_SIZE_DEFAULT
     && composerFontSize === COMPOSER_FONT_SIZE_DEFAULT
     && chatZoom === CHAT_ZOOM_DEFAULT
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="appearance-dialog" aria-describedby="appearance-description" data-ui="dialog.settings">
-        <div className="appearance-dialog-heading">
-          <div className="appearance-dialog-icon" aria-hidden="true"><Type size={18} /></div>
-          <div>
-            <DialogTitle className="appearance-dialog-title">Appearance</DialogTitle>
-            <DialogDescription id="appearance-description">
-              Adjust chat readability without changing the browser pane.
-            </DialogDescription>
-          </div>
-        </div>
-
+    <div className="settings-panel appearance-panel">
         <div className="appearance-controls">
           <AppearanceControl
             id="chat-font-size"
@@ -105,8 +85,7 @@ export function AppearanceSettingsDialog({
           </Button>
           <span>Changes are saved automatically</span>
         </div>
-      </DialogContent>
-    </Dialog>
+    </div>
   )
 }
 
