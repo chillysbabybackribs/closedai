@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
@@ -14,12 +14,19 @@ import type { ToolRegistry } from './registry.js'
 // and how a call names its caller, which each provider's own bridge supplies.
 //
 // Two routing shapes are supported, because the providers differ in when they can name a call:
-// - **Keyed by path** (`/mcp/<key>/<namespace>`): the caller key is minted before the session
-//   exists and baked into the URL. Cursor takes its server list as a `session/new` parameter,
-//   so this is exact and needs no cooperation from the CLI.
-// - **Keyed by `_meta`** (`/mcp/<namespace>`): one shared endpoint set, with each call carrying
-//   an id the provider stamps on it. Antigravity's CLI registers servers globally in one config
-//   file, so it has no per-session URL to carry a key.
+// - **Keyed by path** (`/mcp/<token>/<key>/<namespace>`): the caller key is minted before the
+//   session exists and baked into the URL. Cursor takes its server list as a `session/new`
+//   parameter, so this is exact and needs no cooperation from the CLI.
+// - **Keyed by `_meta`** (`/mcp/<token>/<namespace>`): one shared endpoint set, with each call
+//   carrying an id the provider stamps on it. Antigravity's CLI registers servers globally in one
+//   config file, so it has no per-session URL to carry a key.
+//
+// The listener is loopback-only, but every local process and every page in any browser on the
+// machine can reach loopback. So each bridge instance mints one unguessable token that every
+// endpoint URL carries as its first segment, and a request is served only when it presents that
+// token, names this listener in its Host header, and carries no Origin (a browser always sends
+// one on a cross-site POST; the CLIs never do). The providers only ever see `endpoints()`, so the
+// token costs them nothing.
 
 export type McpNamespaceEndpoint = { namespace: string; url: string }
 
@@ -41,6 +48,7 @@ export type McpHttpBridgeOptions = {
 }
 
 const MAX_LEDGER = 50
+const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]'])
 
 export class McpHttpBridge {
   private http: Server | null = null
@@ -49,12 +57,13 @@ export class McpHttpBridge {
   private readonly sessions = new Map<string, Session>()
   private readonly bindings = new Map<string, McpCallContext>()
   private readonly ledger = new Map<string, ServedCall[]>()
+  /** The path segment every endpoint carries; a request without it is not a route. */
+  private readonly token = randomBytes(24).toString('base64url')
 
   constructor(
     protected readonly registry: ToolRegistry,
     private readonly bridgeOptions: McpHttpBridgeOptions
   ) {}
-
 
   /** Listen on localhost. Cheap once done; concurrent callers share the one start. */
   start(): Promise<void> {
@@ -84,10 +93,10 @@ export class McpHttpBridge {
   /** One endpoint per enabled namespace, for a caller identified by `key` when keyed by path. */
   endpoints(key?: string): McpNamespaceEndpoint[] {
     if (this.port === null) return []
-    const prefix = this.bridgeOptions.keyedByPath && key ? `/mcp/${encodeURIComponent(key)}` : '/mcp'
+    const caller = this.bridgeOptions.keyedByPath && key ? `/${encodeURIComponent(key)}` : ''
     return this.registry.enabledNamespaces().map((namespace) => ({
       namespace: namespace.name,
-      url: `http://127.0.0.1:${this.port}${prefix}/${namespace.name}`
+      url: `http://127.0.0.1:${this.port}/mcp/${this.token}${caller}/${namespace.name}`
     }))
   }
 
@@ -130,6 +139,10 @@ export class McpHttpBridge {
 
   private async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
+      if (!this.localRequest(req)) {
+        res.writeHead(403).end()
+        return
+      }
       const route = this.route(req.url ?? '')
       if (!route) {
         res.writeHead(404).end()
@@ -155,14 +168,33 @@ export class McpHttpBridge {
     }
   }
 
+  /**
+   * A same-machine client that names this listener. A page cannot set the Host of a fetch to
+   * loopback and always carries an Origin on a cross-site POST; the CLIs do neither.
+   */
+  private localRequest(req: IncomingMessage): boolean {
+    if (req.headers.origin !== undefined) return false
+    const host = req.headers.host ?? ''
+    const separator = host.lastIndexOf(':')
+    if (separator < 0) return false
+    return LOCAL_HOSTS.has(host.slice(0, separator)) && Number(host.slice(separator + 1)) === this.port
+  }
+
   private route(url: string): { key: string | null; namespace: string } | null {
     const path = url.split('?')[0] ?? ''
-    if (this.bridgeOptions.keyedByPath) {
-      const match = /^\/mcp\/([^/]+)\/([a-z0-9_]+)\/?$/i.exec(path)
-      return match ? { key: decodeURIComponent(match[1]!), namespace: match[2]! } : null
-    }
-    const match = /^\/mcp\/([a-z0-9_]+)\/?$/i.exec(path)
-    return match ? { key: null, namespace: match[1]! } : null
+    const match = this.bridgeOptions.keyedByPath
+      ? /^\/mcp\/([^/]+)\/([^/]+)\/([a-z0-9_]+)\/?$/i.exec(path)
+      : /^\/mcp\/([^/]+)\/([a-z0-9_]+)\/?$/i.exec(path)
+    if (!match || !this.tokenMatches(match[1]!)) return null
+    return this.bridgeOptions.keyedByPath
+      ? { key: decodeURIComponent(match[2]!), namespace: match[3]! }
+      : { key: null, namespace: match[2]! }
+  }
+
+  private tokenMatches(segment: string): boolean {
+    const expected = Buffer.from(this.token)
+    const given = Buffer.from(segment)
+    return given.length === expected.length && timingSafeEqual(given, expected)
   }
 
   /**
