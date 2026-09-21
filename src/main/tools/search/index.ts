@@ -34,6 +34,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
       name: 'query',
       description:
         'Search via Brave, Exa, Serper, Tavily, and You.com. Pick intent by evidence: general, news, research, answer, finance, technical. ' +
+        'For technology/product questions, boost the canonical official-documentation domain with preferred_domains. ' +
         'Default depth=quick (one provider); balanced/deep widen discovery and may return complete=false once enough providers answer. discoveredBy means index overlap, not independent confirmation. live=true bypasses the ten-minute cache. ' +
         'Live opens source URLs, never search-engine pages; presentation=background opts out. Prefer search.run for parallel research. ' +
         'Results are normalized JSON; JSON.parse the returned string in exec scripts.',

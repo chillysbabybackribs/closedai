@@ -33,6 +33,9 @@ test('each adapter includes each shared contract once, within the existing promp
     assert.match(value, /Choose your approach/)
     assert.match(value, /Treat diagnoses and proposed methods as hypotheses/)
     assert.match(value, /No mandatory search or library lookup/)
+    // Official-docs sourcing is operationalized, not just aspirational: the boost knob is named.
+    assert.match(value, /boost it with preferred_domains/)
+    assert.match(value, /old index age is not staleness/)
     assert.match(value, /cancel unnecessary pending work/)
     assert.doesNotMatch(value, /named instrument first|strictly superior/)
     assert.match(value, /explicit references outweigh recency/)

@@ -75,5 +75,5 @@ test('cached discovery reports original observation time without claiming curren
   assert.equal(cached.results[0].discovery.cached, true)
   assert.equal(cached.results[0].discovery.observedAt, original.observedAt)
   assert.equal(cached.results[0].dates[0].kind, 'index_reported')
-  assert.equal(cached.results[0].dates[0].value, '6 years ago')
+  assert.equal(cached.results[0].dates[0].value, '2020-01-01')
 })

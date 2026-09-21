@@ -53,7 +53,9 @@ test('one tool can call all four providers, normalize results, deduplicate, and 
       grounding: { generic: [{
         title: 'Shared', url: 'https://example.com/item?utm_source=brave', snippets: ['Brave result']
       }] },
-      sources: { 'https://example.com/item?utm_source=brave': { age: ['January 1, 2026', '2026-01-01', '2 days ago'] } }
+      sources: { 'https://example.com/item?utm_source=brave': {
+        age: ['January 1, 2026', '2026-01-01', '2 days ago'], fetched_content_timestamp: 1_767_225_600
+      } }
     })
     if (url.includes('serper.dev')) return json({ organic: [{ title: 'Shared', link: 'https://example.com/item', snippet: 'Serper result', position: 1 }] })
     if (url.includes('tavily.com')) return json({ answer: 'Tavily synthesis', results: [{ title: 'Research', url: 'https://research.example/a', content: 'Research result', score: 0.9 }] })
@@ -75,7 +77,13 @@ test('one tool can call all four providers, normalize results, deduplicate, and 
   assert.equal(calls.length, 4)
   assert.equal(output.results.length, 3)
   assert.equal(output.results[0].snippet, 'Brave result')
-  assert.equal(output.results[0].age, '2 days ago')
+  // The ISO index age is preferred over relative strings, and Brave's content-crawl
+  // time arrives as a distinct content_fetched observation.
+  assert.equal(output.results[0].age, '2026-01-01')
+  assert.deepEqual(output.results[0].dates, [
+    { kind: 'index_reported', value: '2026-01-01', source: 'brave' },
+    { kind: 'content_fetched', value: new Date(1_767_225_600 * 1_000).toISOString(), source: 'brave' }
+  ])
   assert.deepEqual(output.results[0].discoveredBy, ['serper'])
   assert.deepEqual(output.answers, [{ provider: 'tavily', text: 'Tavily synthesis' }])
   assert.doesNotMatch(JSON.stringify(output), /secret-/)

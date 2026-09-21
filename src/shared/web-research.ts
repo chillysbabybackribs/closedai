@@ -13,9 +13,14 @@ export type PdfCoverage = {
   documentSha256?: string
   bytes?: number
 }
-/** Reported date observations, never silently interpreted as verified event dates. */
+/**
+ * Reported date observations, never silently interpreted as verified event dates.
+ * content_fetched is the search index's own content-crawl time: it shows how current the
+ * extract is, not when the page was published. A living docs page can carry an old
+ * index_reported age beside a recent content_fetched date.
+ */
 export type SourceDate = {
-  kind: 'published' | 'modified' | 'index_reported' | 'http_last_modified'
+  kind: 'published' | 'modified' | 'index_reported' | 'http_last_modified' | 'content_fetched'
   value: string
   source: string
 }

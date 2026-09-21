@@ -4,7 +4,7 @@ import type { SearchProvider, SearchRequest } from './types.js'
 
 /** These controls have a documented implementation in Brave's LLM Context API. */
 export const SOURCE_OPTION_FIELDS: JsonObject = {
-  preferred_domains: { type: 'array', maxItems: 20, items: { type: 'string', maxLength: 253 }, description: 'Boost these domains without excluding others (Brave Goggles). Also prioritizes research reads. Requires Brave only; omit providers to select it.' },
+  preferred_domains: { type: 'array', maxItems: 20, items: { type: 'string', maxLength: 253 }, description: 'Boost these domains without excluding others (Brave Goggles), e.g. a technology\u2019s official documentation domain. Also prioritizes research reads. Requires Brave only; omit providers to select it.' },
   goggles: { type: 'string', minLength: 1, maxLength: 6000, description: 'Brave Goggle URL or inline ranking rules. Cannot combine with preferred_domains. Requires Brave only; omit providers to select it.' },
   relevance: { type: 'string', enum: ['strict', 'balanced', 'lenient', 'disabled'], description: 'Brave extraction relevance threshold, independent of depth. Defaults to strict for quick, balanced otherwise.' },
   context_tokens: { type: 'integer', minimum: 1024, maximum: 32768, description: 'Brave extracted-context budget, independent of discovery breadth. Requires Brave only; omit providers to select it.' }

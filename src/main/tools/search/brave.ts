@@ -1,5 +1,6 @@
 import { asRecord, checkedJson, queryWithDomains, records, result, text, type ProviderDeps } from './provider-utils.js'
 import type { SearchProviderClient, SearchRequest } from './types.js'
+import type { SourceDate } from '../../../shared/web-research.js'
 
 const BASE = 'https://api.search.brave.com/res/v1/llm/context'
 const FRESHNESS: Record<string, string> = { day: 'pd', week: 'pw', month: 'pm', year: 'py' }
@@ -43,19 +44,30 @@ export function braveClient(deps: ProviderDeps): SearchProviderClient {
       const sources = asRecord(body.sources)
       const results = records(grounding?.generic).map((item) => {
         const source = asRecord(sources?.[text(item.url)])
-        const ages = Array.isArray(source?.age) ? source.age : []
+        const ages = Array.isArray(source?.age) ? source.age.filter((age): age is string => typeof age === 'string') : []
         const normalized = {
           ...item,
           title: text(item.title) || text(source?.title),
-          age: ages.find((age, index) => index >= 2 && typeof age === 'string') ?? ages.find((age) => typeof age === 'string')
+          // Prefer the ISO form of the index-reported age. Relative strings ("1693 days ago")
+          // read as staleness on living docs pages whose content the index crawled recently.
+          age: ages.find((age) => /^\d{4}-\d{2}-\d{2}$/.test(age)) ?? ages.find((age) => /^\d{4}-\d{2}-\d{2}T/.test(age)) ?? ages[0]
         }
-        return result('brave', normalized, {
+        const mapped = result('brave', normalized, {
           url: ['url'], title: ['title'], snippet: ['snippets'], age: ['age']
         })
+        const fetched = contentFetchedAt(source)
+        return mapped && fetched ? { ...mapped, dates: [...(mapped.dates ?? []), fetched] } : mapped
       }).filter((item) => item !== null)
       return { provider: 'brave', results }
     }
   }
+}
+
+/** Brave's content-crawl time: the extract's currency, distinct from the page's first-index age. */
+function contentFetchedAt(source: Record<string, unknown> | null): SourceDate | undefined {
+  const stamp = source?.fetched_content_timestamp
+  if (typeof stamp !== 'number' || !Number.isFinite(stamp) || stamp <= 0) return undefined
+  return { kind: 'content_fetched', value: new Date(stamp * 1_000).toISOString(), source: 'brave' }
 }
 
 function braveQuery(request: SearchRequest): string {
