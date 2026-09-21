@@ -15,7 +15,7 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
     uiState: async () => {
       calls.push(['uiState'])
       return {
-        drawerOpen: true, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
+        chatSearchOpen: true, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
         composer: { enabled: true, running: false, canSend: false, draftLength: 0 }, focused: null,
         viewport: { width: 1920, height: 1048 }
       }
@@ -79,11 +79,11 @@ test('namespace advertises state, deterministic commands, and control-level ui a
 test('state returns every section by default and only the requested ones otherwise', async () => {
   const { calls, call } = harness()
   const full = await call('state', {})
-  assert.match(textOf(full), /"drawerOpen": true/)
+  assert.match(textOf(full), /"chatSearchOpen": true/)
   assert.deepEqual(calls[0], ['state', ['workspace', 'chat', 'browser', 'downloads', 'window'], undefined, 'pane-caller'])
   calls.length = 0
   const narrow = await call('state', { include: ['chat'], pane_id: 'pane-2' })
-  assert.doesNotMatch(textOf(narrow), /drawerOpen/)
+  assert.doesNotMatch(textOf(narrow), /chatSearchOpen/)
   assert.deepEqual(calls, [['state', ['chat'], 'pane-2', 'pane-caller']])
 })
 
@@ -140,16 +140,16 @@ test('commands route to the host with the selected pane as the default target', 
 
 test('ui actions resolve controls by id, item, match, selector, or coordinates', async () => {
   const { calls, call } = harness()
-  await call('ui', { action: 'controls', surface: 'side-drawer', query: 'row' })
-  await call('ui', { action: 'click', control: 'drawer.row', item: 'row-1', fallback_reason: 'Testing the rendered control itself.' })
+  await call('ui', { action: 'controls', surface: 'shell', query: 'row' })
+  await call('ui', { action: 'click', control: 'titlebar.chat-search-result', item: 'row-1', fallback_reason: 'Testing the rendered control itself.' })
   await call('ui', { action: 'click', x: 100, y: 200, fallback_reason: 'No manifest control exists at this test point.' })
   await call('ui', { action: 'type', control: 'composer.input', text: 'hello', fallback_reason: 'Testing real composer input.' })
   await call('ui', { action: 'press_key', key: 'Enter', modifiers: ['ctrl'], fallback_reason: 'Testing the renderer shortcut.' })
   await call('ui', { action: 'scroll', delta_y: 400 })
   await call('ui', { action: 'wait_for', control: 'composer.stop', condition: 'enabled' })
   assert.deepEqual(calls, [
-    ['controls', { surface: 'side-drawer', query: 'row', maxControls: 60 }],
-    ['click', { control: 'drawer.row', item: 'row-1', match: undefined, selector: undefined, x: undefined, y: undefined }],
+    ['controls', { surface: 'shell', query: 'row', maxControls: 60 }],
+    ['click', { control: 'titlebar.chat-search-result', item: 'row-1', match: undefined, selector: undefined, x: undefined, y: undefined }],
     ['click', { control: undefined, item: undefined, match: undefined, selector: undefined, x: 100, y: 200 }],
     ['typeText', { control: 'composer.input', item: undefined, match: undefined, selector: undefined, text: 'hello', clear: true }],
     ['pressKey', 'Enter', ['ctrl']],
@@ -180,7 +180,7 @@ test('direct-call providers must dispatch renderer input through tool_batch', as
     {
       namespace: 'closedai_app',
       tool: 'ui',
-      arguments: { action: 'click', control: 'drawer.row', fallback_reason: 'Testing a rendered interaction.' }
+      arguments: { action: 'click', control: 'titlebar.chat-search-result', fallback_reason: 'Testing a rendered interaction.' }
     },
     { threadId: null, turnId: null, callId: 'app-direct', paneId: 'pane-caller', source: 'model' }
   )
@@ -207,7 +207,7 @@ test('schemas reject stale-shaped and oversized arguments before dispatch', asyn
 test('renderer real-input actions require a fallback reason before dispatch', async () => {
   const { calls, call } = harness()
   for (const arguments_ of [
-    { action: 'click', control: 'drawer.row' },
+    { action: 'click', control: 'titlebar.chat-search-result' },
     { action: 'type', control: 'composer.input', text: 'hello' },
     { action: 'press_key', key: 'Enter' }
   ]) {
@@ -215,7 +215,7 @@ test('renderer real-input actions require a fallback reason before dispatch', as
     assert.equal(result.isError, true)
     assert.match(textOf(result), /fallback_reason/)
   }
-  const blank = await call('ui', { action: 'click', control: 'drawer.row', fallback_reason: '   ' })
+  const blank = await call('ui', { action: 'click', control: 'titlebar.chat-search-result', fallback_reason: '   ' })
   assert.equal(blank.isError, true)
   assert.match(textOf(blank), /fallback_reason/)
   assert.deepEqual(calls, [])

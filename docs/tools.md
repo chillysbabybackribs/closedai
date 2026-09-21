@@ -119,8 +119,10 @@ The browser toggle is a plain header button. Their item is the chat id.
 With multiple visible tiles, `layout.new-chat` starts a fresh chat in the tile named by its item
 without changing the other tiles or the split geometry.
 `composer.new-chat` opens a new tab in the focused tile, preserving the original chat and draft.
-The sidebar context menu's `drawer.row-split-right` and `drawer.row-split-below` open or move the
-row's existing chat alongside the focused pane; their item is the chat id.
+The header's `titlebar.chat-search` searches saved chat titles across projects;
+`titlebar.chat-search-result` opens a suggestion by chat id. Empty input shows recent chats.
+Ctrl+H focuses it; arrows select, Enter opens, and Escape dismisses. UI state exposes
+`chatSearchOpen`. There is no sidebar or drawer toggle.
 Hiding a tile keeps its turn running; `close_chat` still detaches and stops it. A hidden browser
 keeps its tabs, but semantic page input still requires a visible page.
 

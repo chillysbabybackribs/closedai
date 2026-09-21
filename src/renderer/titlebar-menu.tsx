@@ -40,7 +40,6 @@ const MENUS: Menu[] = [
   {
     label: 'View',
     rows: [
-      { label: 'Toggle side drawer', action: 'toggle-drawer' },
       { label: 'Toggle browser pane', action: 'toggle-browser' },
       null,
       { label: 'Zoom in', shortcut: 'Ctrl+=', command: 'in' },
@@ -124,7 +123,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                         if (row.action === 'credentials') onOpenCredentials()
                         if (row.action === 'research') onOpenResearch()
                         if (row.action === 'history') onToggleHistory()
-                        if (row.action === 'toggle-drawer') onSearchChats()
+                        if (row.action === 'search-chats') onSearchChats()
                         if (row.action === 'toggle-browser') onToggleBrowser()
                         if (row.action === 'toggle-fullscreen') onToggleFullscreen()
                         if (row.action === 'close-window') onCloseWindow()
@@ -133,8 +132,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                     >
                       <span>{
                         row.action === 'history' && historyOpen ? 'Close chat history'
-                          : row.action === 'toggle-drawer' ? `${drawerCollapsed ? 'Show' : 'Hide'} side drawer`
-                            : row.label
+                          : row.label
                       }</span>
                       {row.shortcut && (
                         <span className="titlebar-menu-shortcut">
