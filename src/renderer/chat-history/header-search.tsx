@@ -161,48 +161,50 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
         </button>
         : <span className="header-chat-search-hint" aria-hidden="true"><kbd>Ctrl</kbd><kbd>H</kbd></span>}
     </div>
-    {expanded && <div ref={popupRef} className="header-chat-search-popup">
-      <div ref={resultsRef} id={listId} role="grid" aria-label="Chat history suggestions" aria-busy={busy}
-        className="header-chat-search-list">
-        {view.sections.map(section => <div role="rowgroup" key={section.label}
-          className="header-chat-search-section" aria-label={section.label}>
-          <div role="row">
-            <div role="columnheader" aria-colspan={2} className="header-chat-search-caption">
-              {section.label}<span>{section.hits.length}</span>
+    {(expanded || controller.archiveUndo) && <div ref={popupRef} className="header-chat-search-sheet">
+      {expanded && <div className="header-chat-search-popup">
+        <div ref={resultsRef} id={listId} role="grid" aria-label="Chat history suggestions" aria-busy={busy}
+          className="header-chat-search-list">
+          {view.sections.map(section => <div role="rowgroup" key={section.label}
+            className="header-chat-search-section" aria-label={section.label}>
+            <div role="row">
+              <div role="columnheader" aria-colspan={2} className="header-chat-search-caption">
+                {section.label}<span>{section.hits.length}</span>
+              </div>
             </div>
-          </div>
-          {section.hits.map(hit => {
-            const index = hits.indexOf(hit)
-            return <HeaderChatSearchRow key={hit.row.paneId} hit={hit} id={optionId(index)}
-              selected={index === cursor} busy={busy} changingTurn={changingTurn === hit.row.paneId}
-              searching={searching} onHover={() => setHighlight(index)}
-              onOpen={() => { void open(hit) }} onToggleTurn={() => { void toggleTurn(hit) }}
-              onDelete={() => { void remove(hit) }} />
-          })}
-        </div>)}
-        {!hits.length && <div className="header-chat-search-empty" role="status">
-          {searching ? <SearchX size={20} aria-hidden="true" /> : <MessageSquareDashed size={20} aria-hidden="true" />}
-          <strong>{searching ? 'No matching chats' : 'No previous chats'}</strong>
-          <span>{searching ? `Nothing titled like “${query.trim()}”` : 'Chats appear here once they have a title'}</span>
-        </div>}
-      </div>
-      <div className="header-chat-search-footer">
-        <span aria-hidden="true"><kbd>↑</kbd><kbd>↓</kbd>Navigate</span>
-        <span aria-hidden="true"><kbd>↵</kbd>Open</span>
-        <span aria-hidden="true"><kbd>Esc</kbd>Close</span>
-        <span className="header-chat-search-count">
-          {searching ? `${hits.length} ${hits.length === 1 ? 'match' : 'matches'}`
-            : `${hits.length} ${hits.length === 1 ? 'chat' : 'chats'}`}
-        </span>
-      </div>
-    </div>}
-    {controller.error && <div className="header-chat-search-error" role="alert">{controller.error}</div>}
-    {controller.archiveUndo && <div className="header-chat-search-undo" role="status">
-      <span>Archived “{controller.archiveUndo.title}”</span>
-      <button type="button" data-ui="titlebar.chat-search-undo"
+            {section.hits.map(hit => {
+              const index = hits.indexOf(hit)
+              return <HeaderChatSearchRow key={hit.row.paneId} hit={hit} id={optionId(index)}
+                selected={index === cursor} busy={busy} changingTurn={changingTurn === hit.row.paneId}
+                searching={searching} onHover={() => setHighlight(index)}
+                onOpen={() => { void open(hit) }} onToggleTurn={() => { void toggleTurn(hit) }}
+                onDelete={() => { void remove(hit) }} />
+            })}
+          </div>)}
+          {!hits.length && <div className="header-chat-search-empty" role="status">
+            {searching ? <SearchX size={20} aria-hidden="true" /> : <MessageSquareDashed size={20} aria-hidden="true" />}
+            <strong>{searching ? 'No matching chats' : 'No previous chats'}</strong>
+            <span>{searching ? `Nothing titled like “${query.trim()}”` : 'Chats appear here once they have a title'}</span>
+          </div>}
+        </div>
+        <div className="header-chat-search-footer">
+          <span aria-hidden="true"><kbd>↑</kbd><kbd>↓</kbd>Navigate</span>
+          <span aria-hidden="true"><kbd>↵</kbd>Open</span>
+          <span aria-hidden="true"><kbd>Esc</kbd>Close</span>
+          <span className="header-chat-search-count">
+            {searching ? `${hits.length} ${hits.length === 1 ? 'match' : 'matches'}`
+              : `${hits.length} ${hits.length === 1 ? 'chat' : 'chats'}`}
+          </span>
+        </div>
+      </div>}
+      {controller.archiveUndo && <button type="button" className="header-chat-search-undo"
+        data-ui="titlebar.chat-search-undo"
+        aria-label={`Undo archive of “${controller.archiveUndo.title}”`}
+        onMouseDown={event => event.preventDefault()}
         onClick={() => { void controller.undoArchive().catch(controller.reportError) }}>
         Undo
-      </button>
+      </button>}
     </div>}
+    {controller.error && <div className="header-chat-search-error" role="alert">{controller.error}</div>}
   </div>
 }

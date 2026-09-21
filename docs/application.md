@@ -276,8 +276,8 @@ Typing shows one list of up to eight ranked, case-insensitive title matches acro
 matched characters highlighted. Arrow keys select, Enter or click opens, and Escape dismisses; the
 footer lists those keys and the result count. Each result has a trash button, shown for the selected
 or hovered row, that removes the chat from history in one click without confirmation. The chat
-hides immediately; a brief Undo under Search chats restores it before the provider thread is
-archived. Running chats cannot
+hides immediately; a brief Undo button under the search dropdown restores it before the provider
+thread is archived. Running chats cannot
 be deleted; pending actions disable the buttons and failures appear below the search. The dropdown
 stays open after deletion. Archive in the history panel uses the same undo. Ctrl+H and File →
 Search chats focus it. File → Manage chat history retains the full history management panel.

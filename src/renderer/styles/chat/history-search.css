@@ -153,13 +153,25 @@
 /* ---- The palette ------------------------------------------------------------
    Wider than the pill and centred beneath it, like a quick-open widget under a
    command center. Padding lives on the list so the rounded frame clips the scroll. */
-.header-chat-search-popup,
-.header-chat-search-error,
-.header-chat-search-undo {
+.header-chat-search-sheet,
+.header-chat-search-error {
   position: absolute;
   top: calc(100% + 6px);
   left: 50%;
   width: max(100%, min(620px, calc(100vw - 32px)));
+  transform: translateX(-50%);
+}
+
+.header-chat-search-sheet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.header-chat-search-popup {
+  width: 100%;
   border: 1px solid var(--hairline-strong);
   border-radius: 10px;
   background: var(--popover);
@@ -168,17 +180,24 @@
     0 0 0 1px rgb(0 0 0 / 28%),
     0 2px 6px rgb(0 0 0 / 24%),
     0 18px 44px rgb(0 0 0 / 46%);
-  transform: translateX(-50%);
-}
-
-.header-chat-search-popup {
   overflow: hidden;
+  pointer-events: auto;
   animation: header-chat-search-enter 140ms var(--ease-chrome);
 }
 
 @keyframes header-chat-search-enter {
-  from { opacity: 0; transform: translateX(-50%) translateY(-4px) scale(0.985); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(-4px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.header-chat-search-sheet::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  pointer-events: auto;
 }
 
 /* The gap between field and popup is bridged by pointer geometry in header-search.tsx, not by
@@ -399,43 +418,45 @@
 .header-chat-search-footer kbd + kbd { margin-left: -3px; }
 .header-chat-search-count { margin-left: auto; font-variant-numeric: tabular-nums; }
 
-.header-chat-search-error { z-index: 1; padding: 10px 12px; font-size: 12px; color: var(--stop-ink); }
-.header-chat-search-popup ~ .header-chat-search-error,
-.header-chat-search-popup ~ .header-chat-search-undo { position: relative; top: auto; margin-top: 8px; }
-.header-chat-search-error ~ .header-chat-search-undo { margin-top: 8px; }
+.header-chat-search-error {
+  z-index: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 10px;
+  background: var(--popover);
+  font-size: 12px;
+  color: var(--stop-ink);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 28%),
+    0 2px 6px rgb(0 0 0 / 24%),
+    0 18px 44px rgb(0 0 0 / 46%);
+}
+
+.header-chat-search-sheet ~ .header-chat-search-error { position: relative; top: auto; margin-top: 8px; }
 
 .header-chat-search-undo {
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 10px 9px 12px;
-  font-size: 12px;
-  color: var(--search-ink);
-  pointer-events: auto;
-}
-
-.header-chat-search-undo span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.header-chat-search-undo button {
   flex: 0 0 auto;
-  height: 24px;
-  padding: 0 8px;
-  border: 1px solid var(--search-kbd-edge);
-  border-radius: 5px;
-  background: var(--search-fill);
-  color: var(--search-ink);
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 7px;
+  background: var(--popover);
+  color: var(--search-ink-muted);
   font: 500 12px/1 var(--font-sans);
+  letter-spacing: var(--tracking-ui);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 20%),
+    0 2px 5px rgb(0 0 0 / 18%);
+  pointer-events: auto;
+  cursor: default;
 }
 
-.header-chat-search-undo button:hover { background: var(--search-fill-hover); }
-.header-chat-search-undo button:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: 1px; }
+.header-chat-search-undo:hover {
+  background: color-mix(in srgb, var(--popover-foreground) 4%, var(--popover));
+  color: var(--search-ink);
+}
+
+.header-chat-search-undo:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: 1px; }
 
 @media (prefers-reduced-motion: reduce) {
   .header-chat-search-popup { animation: none; }
