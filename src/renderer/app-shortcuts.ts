@@ -48,3 +48,38 @@ export function targetRunningPaneId(
   }
   return null
 }
+
+/** The focused element as the Escape decision needs it; a plain object in tests. */
+export type EscapeFocusTarget = {
+  tagName: string
+  isContentEditable?: boolean
+  getAttribute: (name: string) => string | null
+} | null
+
+export type EscapeContext = {
+  /** A dialog, menu, or popover is open; it owns Escape. */
+  overlayOpen: boolean
+  /** `document.activeElement` at the keypress. */
+  activeElement: EscapeFocusTarget
+  /** A maximized (solo) tile is showing; Escape restores the grid. */
+  soloActive: boolean
+  /** A tile drag or divider resize is in progress; Escape cancels it. */
+  layoutBusy: boolean
+}
+
+/**
+ * Whether an unmodified Escape should pause the running task rather than be left to whatever
+ * closer owner is listening. Every editable control except the composer textarea keeps Escape
+ * (search fields clear, the omnibox restores the URL, editors close completions), and layout
+ * modes that already answer Escape — a maximized tile, a drag, a divider resize — come first.
+ */
+export function escapePausesTask(context: EscapeContext): boolean {
+  if (context.overlayOpen || context.soloActive || context.layoutBusy) return false
+  const active = context.activeElement
+  if (!active) return true
+  if (active.getAttribute('data-ui') === 'composer.input') return true
+  const tag = active.tagName.toUpperCase()
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return false
+  const editable = active.getAttribute('contenteditable')
+  return !(active.isContentEditable || (editable !== null && editable !== 'false'))
+}

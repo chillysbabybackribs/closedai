@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { appShortcutForKey, targetRunningPaneId } from './app-shortcuts.ts'
+import { appShortcutForKey, escapePausesTask, targetRunningPaneId, type EscapeContext } from './app-shortcuts.ts'
 
 const press = (key: string, modifiers: Partial<KeyboardEvent> = {}) => appShortcutForKey({
   key, altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, ...modifiers
@@ -45,4 +45,34 @@ test('targetRunningPaneId identifies the running task to pause', () => {
   // Returns null when no pane has a running task
   assert.equal(targetRunningPaneId('pane-1', null, { 'pane-1': { activeTurnId: null }, 'pane-2': { activeTurnId: null } }), null)
   assert.equal(targetRunningPaneId('pane-1', null, null), null)
+})
+
+const focus = (tagName: string, attributes: Record<string, string> = {}, isContentEditable = false) => ({
+  tagName, isContentEditable, getAttribute: (name: string) => attributes[name] ?? null
+})
+const escapeContext = (overrides: Partial<EscapeContext> = {}): EscapeContext => ({
+  overlayOpen: false, activeElement: null, soloActive: false, layoutBusy: false, ...overrides
+})
+
+test('Escape pauses the task from the composer, the transcript, or nothing focused', () => {
+  assert.equal(escapePausesTask(escapeContext()), true)
+  assert.equal(escapePausesTask(escapeContext({ activeElement: focus('BODY') })), true)
+  assert.equal(escapePausesTask(escapeContext({ activeElement: focus('BUTTON') })), true)
+  assert.equal(escapePausesTask(escapeContext({ activeElement: focus('textarea', { 'data-ui': 'composer.input' }) })), true)
+})
+
+test('Escape is left to every other editable control', () => {
+  assert.equal(escapePausesTask(escapeContext({ activeElement: focus('INPUT', { 'data-ui': 'titlebar.chat-search' }) })), false)
+  assert.equal(escapePausesTask(escapeContext({ activeElement: focus('input', { class: 'browser-omnibox-input' }) })), false)
+  assert.equal(escapePausesTask(escapeContext({ activeElement: focus('TEXTAREA') })), false)
+  assert.equal(escapePausesTask(escapeContext({ activeElement: focus('SELECT') })), false)
+  assert.equal(escapePausesTask(escapeContext({ activeElement: focus('DIV', {}, true) })), false)
+  assert.equal(escapePausesTask(escapeContext({ activeElement: focus('DIV', { contenteditable: '' }) })), false)
+  assert.equal(escapePausesTask(escapeContext({ activeElement: focus('DIV', { contenteditable: 'false' }) })), true)
+})
+
+test('Escape is left to overlays and layout modes that already answer it', () => {
+  assert.equal(escapePausesTask(escapeContext({ overlayOpen: true })), false)
+  assert.equal(escapePausesTask(escapeContext({ soloActive: true })), false)
+  assert.equal(escapePausesTask(escapeContext({ layoutBusy: true })), false)
 })
