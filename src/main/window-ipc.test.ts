@@ -32,8 +32,26 @@ test('fullscreen IPC toggles the current window state', async () => {
   assert.equal(fullScreen, false)
 })
 
+test('devtools IPC toggles the app window inspector', async () => {
+  let open = false
+  const window = {
+    webContents: {
+      isDevToolsOpened: () => open,
+      openDevTools: () => { open = true },
+      closeDevTools: () => { open = false }
+    }
+  } as unknown as BrowserWindow
+  const invoke = harness(window)
+
+  await invoke('window:toggleDevTools')
+  assert.equal(open, true)
+  await invoke('window:toggleDevTools')
+  assert.equal(open, false)
+})
+
 test('window IPC is a no-op after the window has gone away', async () => {
   const invoke = harness(null)
   await invoke('window:toggleFullscreen')
+  await invoke('window:toggleDevTools')
   await invoke('window:close')
 })

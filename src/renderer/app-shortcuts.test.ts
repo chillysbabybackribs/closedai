@@ -16,6 +16,11 @@ test('ctrl and meta match the implemented application commands', () => {
   assert.equal(press('w', { ctrlKey: true, shiftKey: true }), 'close-window')
   assert.equal(press('F11'), 'toggle-fullscreen')
   assert.equal(press('Escape'), 'pause-task')
+  assert.equal(press('F12'), 'toggle-devtools')
+  assert.equal(press('r', { ctrlKey: true }), 'reload')
+  assert.equal(press('T', { ctrlKey: true, shiftKey: true }), 'tools')
+  assert.equal(press('k', { metaKey: true, shiftKey: true }), 'context')
+  assert.equal(press('I', { ctrlKey: true, shiftKey: true }), 'trace')
 })
 
 test('unmodified and conflicting modified keys are left to the focused control', () => {
@@ -28,6 +33,8 @@ test('unmodified and conflicting modified keys are left to the focused control',
   assert.equal(press('Escape', { shiftKey: true }), null)
   assert.equal(press('Escape', { metaKey: true }), null)
   assert.equal(press('j', { ctrlKey: true }), null)
+  assert.equal(press('r', { ctrlKey: true, shiftKey: true }), null)
+  assert.equal(press('F12', { shiftKey: true }), null)
 })
 
 test('targetRunningPaneId identifies the running task to pause', () => {

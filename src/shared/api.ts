@@ -24,6 +24,8 @@ export type ClosedaiApi = {
     maximize: () => Promise<void>
     toggleFullscreen: () => Promise<void>
     close: () => Promise<void>
+    /** Developer menu: open or close DevTools for the app window itself, not a browser tab. */
+    toggleDevTools: () => Promise<void>
   }
   browser: {
     setBounds: (bounds: BrowserBounds) => Promise<void>

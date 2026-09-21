@@ -38,7 +38,8 @@ const api: ClosedaiApi = {
     minimize: () => invoke(IPC.invoke.window.minimize),
     maximize: () => invoke(IPC.invoke.window.maximize),
     toggleFullscreen: () => invoke(IPC.invoke.window.toggleFullscreen),
-    close: () => invoke(IPC.invoke.window.close)
+    close: () => invoke(IPC.invoke.window.close),
+    toggleDevTools: () => invoke(IPC.invoke.window.toggleDevTools)
   },
   browser: {
     setBounds: (bounds: BrowserBounds) => invoke(IPC.invoke.browser.setBounds, bounds),

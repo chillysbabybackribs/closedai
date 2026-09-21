@@ -51,7 +51,7 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
   }
   const api: ClosedaiApi = {
     chat: chat.api,
-    window: { minimize: native, maximize: native, toggleFullscreen: native, close: native },
+    window: { minimize: native, maximize: native, toggleFullscreen: native, close: native, toggleDevTools: native },
     browser: {
       setBounds: async (bounds) => boundsChanged(bounds),
       navigate: async (url) => {

@@ -23,4 +23,10 @@ export function registerWindowIpc(
   registerInvoke(ipcMain, IPC.invoke.window.close, () => {
     getMainWindow()?.close()
   })
+  registerInvoke(ipcMain, IPC.invoke.window.toggleDevTools, () => {
+    const contents = getMainWindow()?.webContents
+    if (!contents) return
+    if (contents.isDevToolsOpened()) contents.closeDevTools()
+    else contents.openDevTools({ mode: 'detach' })
+  })
 }

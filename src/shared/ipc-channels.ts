@@ -26,6 +26,7 @@ export type IpcInvokeChannels = {
   'window:maximize': { args: []; result: void }
   'window:toggleFullscreen': { args: []; result: void }
   'window:close': { args: []; result: void }
+  'window:toggleDevTools': { args: []; result: void }
   'browser:setBounds': { args: [BrowserBounds]; result: void }
   'browser:navigate': { args: [string]; result: void }
   'browser:back': { args: []; result: void }
@@ -123,7 +124,8 @@ export const IPC = {
       minimize: 'window:minimize',
       maximize: 'window:maximize',
       toggleFullscreen: 'window:toggleFullscreen',
-      close: 'window:close'
+      close: 'window:close',
+      toggleDevTools: 'window:toggleDevTools'
     },
     browser: {
       setBounds: 'browser:setBounds',

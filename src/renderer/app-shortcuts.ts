@@ -1,22 +1,33 @@
-export type AppShortcut = 'settings' | 'history' | 'new-chat' | 'close-tab' | 'close-window' | 'toggle-fullscreen' | 'pause-task'
+export type AppShortcut =
+  | 'settings' | 'history' | 'new-chat' | 'close-tab' | 'close-window' | 'toggle-fullscreen' | 'pause-task'
+  | 'tools' | 'context' | 'trace' | 'reload' | 'toggle-devtools'
 
 /**
  * Window-level chords the shell owns, matched the same way for every platform key modifier.
- * Chat zoom has its own module; this covers the shell surfaces the title bar menu also opens.
+ * Chat zoom has its own module; this covers the shell surfaces the title bar menus also open.
  */
 export function appShortcutForKey(
   event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>
 ): AppShortcut | null {
   if (!event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
     if (event.key === 'F11') return 'toggle-fullscreen'
+    if (event.key === 'F12') return 'toggle-devtools'
     if (event.key === 'Escape') return 'pause-task'
   }
   if (event.altKey || (!event.ctrlKey && !event.metaKey)) return null
-  if (event.key.toLowerCase() === 'w') return event.shiftKey ? 'close-window' : 'close-tab'
-  if (event.shiftKey) return null
+  const key = event.key.toLowerCase()
+  if (key === 'w') return event.shiftKey ? 'close-window' : 'close-tab'
+  if (event.shiftKey) {
+    // Agent and Developer menu rows: Ctrl+Shift+letter so they never collide with editing chords.
+    if (key === 't') return 'tools'
+    if (key === 'k') return 'context'
+    if (key === 'i') return 'trace'
+    return null
+  }
   if (event.key === ',') return 'settings'
-  if (event.key.toLowerCase() === 'h') return 'history'
-  if (event.key.toLowerCase() === 'n') return 'new-chat'
+  if (key === 'h') return 'history'
+  if (key === 'n') return 'new-chat'
+  if (key === 'r') return 'reload'
   return null
 }
 
