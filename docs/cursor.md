@@ -69,7 +69,7 @@ opportunistic — do not design as though all file IO routes through the app.
 | `cursor-models.ts` | `availableModels` → the composer catalog. |
 | `cursor-instructions.ts` | Shared ClosedAI product guidance injected once per session as `closedai.instructions`. |
 | `cursor-input.ts` | One user turn as ACP prompt blocks, including images (`promptCapabilities.image` is true). |
-| `cursor-mcp.ts` | The `session/new` server list, on the shared `McpHttpBridge`. |
+| `cursor-mcp.ts` | The server list passed when a session opens (`session/new` and `session/load`), on the shared `McpHttpBridge`. |
 | `cursor-archive.ts` | The locally archived session ids. |
 | `cursor-ids.ts` | `cursor:` prefix arithmetic, delegating to `src/shared/chat-providers.ts`. |
 
@@ -83,6 +83,19 @@ only the `session/new` server list.
 
 Verified live on 2026-09-03, and each point cost a real bug or would have:
 
+- **A session learns about the tools exactly once, when it opens.** Verified 2026-09-21: both
+  `session/new` and `session/load` connect the servers they are given (each produces an MCP
+  `initialize` plus `notifications/initialized` against the endpoint), and the agent never asks
+  again. So the endpoints are resolved through `bridge.start()` at the moment a session opens
+  (`CursorSessionDeps.mcpServers` is async for that reason) rather than from whatever the listener
+  happened to have — a pane that warmed or replayed before the listener was up used to be handed
+  an empty list and then ran every later turn with no ClosedAI tools at all, while a pane whose
+  session opened during a turn had all of them. `CursorSession` also records the endpoint set its
+  live session was opened with and reopens the session when that set changes, so a pane repairs
+  itself instead of staying toolless for its lifetime.
+- `session/load` of a session that has no messages yet fails with "Invalid params"; a real
+  conversation loads and replays normally. `ensureSession` falls back to `session/new`, so an
+  empty saved id costs a session rather than a turn.
 - An `mcpServers` entry **must** carry `headers` (an array). Omitting it fails `session/new` schema
   validation with "expected array" rather than being treated as absent.
 - A served call arrives as `kind: "other"`, announced as `title: "MCP: tool"` with an empty

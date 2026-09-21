@@ -380,7 +380,11 @@ export class CursorChatService extends EventEmitter {
       // replayed its session before the listener existed would otherwise run every later turn
       // against an agent that was never given them.
       mcpServers: async () => {
-        await this.bridge.start()
+        // A listener that cannot bind must not cost the pane its chat: warming stays usable and
+        // the turn path's own `bridge.start()` reports the failure where it can be acted on.
+        await this.bridge.start().catch((error: unknown) => {
+          console.warn('[cursor] tool bridge unavailable; this session opens without ClosedAI tools:', messageOf(error))
+        })
         return this.bridge.servers(this.bridgeKey)
       },
       modelId: () => cursorAcpModelId(this.modelState.selectedModel),
