@@ -73,7 +73,8 @@ async function verify() {
       const { width, height } = pixels.getSize()
       const offset = (Math.floor(height / 2) * width + Math.floor(width / 2)) * 4
       const bitmap = pixels.toBitmap()
-      assert.ok(bitmap[offset + (index === 0 ? 2 : 0)] > 220, 'capture must show the owning chat’s red/blue page')
+      assert.ok(bitmap[offset + (index === 0 ? 2 : 0)] > 220,
+        `capture ${index} must show the owning chat’s red/blue page: ${[...bitmap.subarray(offset, offset + 4)]}; ${text(result)}`)
     }
     assert.equal(active(), foreground)
     const blocked = await call('b', 'embedded_browser', 'page', { action: 'navigate', tab_id: a, url: `${base}/wrong` })

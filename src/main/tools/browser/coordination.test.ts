@@ -102,7 +102,7 @@ test('registry resolves bare tool names and defaults before cross-chat locks', a
 test('batch cleanup uses the actual armed tab even after the chat default changes', async () => {
   const { policy } = harness()
   const calls: JsonObject[] = []
-  const registry = new ToolRegistry([{ name: 'browser_cdp', description: 'test', tools: [{
+  const registry: ToolRegistry = new ToolRegistry([{ name: 'browser_cdp', description: 'test', tools: [{
     name: 'profile', description: 'test', inputSchema: { type: 'object' },
     run: async input => { calls.push(input); return input.fail ? { ...textResult('failed'), isError: true } : textResult('ok') }
   }] }, batchTools(() => registry)])
