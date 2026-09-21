@@ -347,6 +347,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     if (!this.dormant.has(this.active)) return
     const provider = this.providers[this.active]
     if (!this.isReady(this.active)) await provider.start({ warm: true })
+    // Read after start: a provider may rewrite a saved id it matched under a newer alias.
     const saved = this.settings.get()
     const loaded = provider.snapshot({ limit: 0 })
     if (saved.chatModelId && loaded.selectedModel !== saved.chatModelId) {

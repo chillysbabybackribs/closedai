@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ModelInfo } from '@anthropic-ai/claude-agent-sdk'
 import { claudeModelId, claudeModelValue, claudeSessionIdOf, claudeThreadId, isClaudeModelId, isClaudeThreadId } from './claude-ids.js'
-import { claudeDisplayName, claudeModelCatalog, claudeModelsFromInfo, supportsAdaptiveThinking } from './claude-models.js'
+import { claudeDisplayName, claudeModelCatalog, claudeModelsFromInfo, resolveClaudeModelId, supportsAdaptiveThinking } from './claude-models.js'
 
 // The catalog the CLI reported on 2026-09-02 (SDK 0.3.258), trimmed to the fields used.
 const infos: ModelInfo[] = [
@@ -60,4 +60,20 @@ test('adaptive thinking follows the catalog entry, and the default entry for no 
   assert.equal(supportsAdaptiveThinking(infos, 'opus[1m]'), true)
   assert.equal(supportsAdaptiveThinking(infos, 'haiku'), false)
   assert.equal(supportsAdaptiveThinking(infos, null), true)
+})
+
+test('a saved id survives the CLI renaming its alias between launches', () => {
+  // Yesterday's CLI listed Fable without the tier suffix; the pane saved that id.
+  const renamed: ModelInfo[] = infos.map((info) => info.value === 'claude-fable-5-1[1m]'
+    ? { ...info, value: 'claude-fable-5-1' } : info)
+  assert.equal(resolveClaudeModelId(renamed, 'claude:claude-fable-5-1[1m]'), 'claude:claude-fable-5-1')
+  assert.equal(claudeModelCatalog(renamed, 'claude:claude-fable-5-1[1m]', 'high').selectedModel, 'claude:claude-fable-5-1')
+  // And the reverse: saved without the suffix, listed with it today.
+  assert.equal(resolveClaudeModelId(infos, 'claude:claude-fable-5-1'), 'claude:claude-fable-5-1[1m]')
+  assert.equal(claudeModelCatalog(infos, 'claude:claude-fable-5-1', 'high').selectedModel, 'claude:claude-fable-5-1[1m]')
+  // Exact matches pass through; ids for models the CLI no longer lists resolve to nothing.
+  assert.equal(resolveClaudeModelId(infos, 'claude:opus[1m]'), 'claude:opus[1m]')
+  assert.equal(resolveClaudeModelId(infos, 'claude:sonnet'), null)
+  assert.equal(resolveClaudeModelId(infos, 'gpt-5.6-sol'), null)
+  assert.equal(claudeModelCatalog(infos, 'claude:sonnet', 'high').selectedModel, 'claude:opus[1m]')
 })

@@ -1,7 +1,7 @@
 import type { ChatModel, ChatReasoningEffort } from '../../shared/chat.js'
 import type { ModelInfo } from '@anthropic-ai/claude-agent-sdk'
 import { reasoningEffortForModel, type ChatModelCatalog } from '../chat-model-catalog.js'
-import { claudeModelId } from './claude-ids.js'
+import { claudeModelId, claudeModelValue } from './claude-ids.js'
 
 // The Claude catalog is read live from the CLI (`Query.supportedModels()`), never hardcoded:
 // the CLI knows which models the signed-in account can use and what each supports. Verified
@@ -65,6 +65,25 @@ function effortOptions(info: ModelInfo): ChatReasoningEffort[] {
   return levels.map((level) => ({ reasoningEffort: level, description: EFFORT_DESCRIPTIONS[level] ?? '' }))
 }
 
+/**
+ * The composer id in this catalog for a saved preference. The CLI's `value` aliases are not
+ * stable across launches (`claude-fable-5-1` one day, `claude-fable-5-1[1m]` the next) while
+ * `resolvedModel` names the same model throughout, so a saved id that no longer appears
+ * verbatim is matched through the model it resolved to. Null when nothing corresponds.
+ */
+export function resolveClaudeModelId(infos: readonly ModelInfo[], preferredModel: string | null): string | null {
+  const value = claudeModelValue(preferredModel)
+  if (!value) return null
+  const exact = infos.find((info) => info.value === value && info.value !== 'default')
+  if (exact) return claudeModelId(exact.value)
+  // The saved alias is gone; find what it pointed at, then the alias that points there now.
+  const target = infos.find((info) => info.value === value)?.resolvedModel ?? value
+  const stripTier = (id: string): string => id.replace(/\[.*\]$/, '')
+  const sameModel = infos.find((info) => info.value !== 'default'
+    && (info.resolvedModel === target || info.value === target || stripTier(info.resolvedModel ?? info.value) === stripTier(target)))
+  return sameModel ? claudeModelId(sameModel.value) : null
+}
+
 /** The catalog with the saved preference applied, in the shape ChatModelState loads. */
 export function claudeModelCatalog(
   infos: readonly ModelInfo[],
@@ -72,8 +91,9 @@ export function claudeModelCatalog(
   preferredEffort: string | null
 ): ChatModelCatalog {
   const models = claudeModelsFromInfo(infos)
-  const selectedModel = models.some((model) => model.id === preferredModel)
-    ? preferredModel
+  const resolved = resolveClaudeModelId(infos, preferredModel)
+  const selectedModel = resolved && models.some((model) => model.id === resolved)
+    ? resolved
     : models.find((model) => model.isDefault)?.id ?? models[0]?.id ?? null
   return { models, selectedModel, selectedReasoningEffort: reasoningEffortForModel(models, selectedModel, preferredEffort) }
 }

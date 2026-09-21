@@ -36,7 +36,7 @@ import { archiveClaudeThread, claudeThreadName, listClaudeThreads, replayClaudeS
 import { claudeModelValue, claudeSessionIdOf, claudeThreadId } from './claude-ids.js'
 import { buildClaudeUserMessage } from './claude-input.js'
 import { claudeSystemPromptAppend } from './claude-instructions.js'
-import { claudeModelCatalog, supportsAdaptiveThinking } from './claude-models.js'
+import { claudeModelCatalog, resolveClaudeModelId, supportsAdaptiveThinking } from './claude-models.js'
 import { loadClaudeSdk, type ClaudeSdk } from './claude-sdk.js'
 import { ClaudeSession } from './claude-session.js'
 import { applyTranscriptOp, handleProviderTurnEnd, type TranscriptOp, type TurnEnd } from '../chat-transcript-ops.js'
@@ -180,8 +180,10 @@ export class ClaudeChatService extends EventEmitter {
     else if (!this.planUsage) this.setPlanUsage(planUsageUnavailable('Send a message to read plan usage.'))
   }
 
-  async selectModel(modelId: string): Promise<void> {
+  async selectModel(requestedId: string): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before changing models')
+    // A pane restored with an alias the CLI has since renamed still names the same model.
+    const modelId = resolveClaudeModelId(this.modelInfos, requestedId) ?? requestedId
     const preference = this.modelState.preferenceForModel(modelId)
     await this.settings.set({ chatModelId: modelId, chatReasoningEffort: preference.effort })
     this.modelState.apply(preference)
@@ -291,6 +293,13 @@ export class ClaudeChatService extends EventEmitter {
       this.modelInfos = catalog.models
       const saved = this.settings.get()
       this.modelState.load(claudeModelCatalog(catalog.models, saved.chatModelId, saved.chatReasoningEffort))
+      // The CLI renames its aliases between launches; a saved id matched through the model it
+      // resolves to is written back under today's alias so the next launch matches verbatim.
+      const loadedModel = this.modelState.selectedModel
+      if (saved.chatModelId && loadedModel && loadedModel !== saved.chatModelId
+        && resolveClaudeModelId(catalog.models, saved.chatModelId) === loadedModel) {
+        await this.settings.set({ chatModelId: loadedModel })
+      }
       // Applied before the process exists, this only records the preference the spawn will use.
       await this.applyModelPreference()
       const account = catalog.account
