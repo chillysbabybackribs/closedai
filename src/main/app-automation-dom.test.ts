@@ -105,7 +105,7 @@ test('control resolution names the failure: not rendered, disabled, or ambiguous
   await withDom(rows, () =>
     assert.rejects(run(targetClickExpression({ control: 'titlebar.chat-search-result' })), /matches 2 elements.*Items: a: Alpha chat \| b: Beta chat/))
   await withDom(rows, () =>
-    assert.rejects(run(targetClickExpression({ control: 'titlebar.chat-search-result', match: 'gamma' })), /No visible drawer\.row matches "gamma"/))
+    assert.rejects(run(targetClickExpression({ control: 'titlebar.chat-search-result', match: 'gamma' })), /No visible titlebar\.chat-search-result matches "gamma"/))
 })
 
 test('control resolution diagnoses elements belonging to unselected panes', async () => {

@@ -50,6 +50,17 @@ test('modal backdrop occludes the browser before an image dialog grows into it',
     assert.equal(overlayBlocksBrowser(root), true)
     backdrop.attributes['data-state'] = 'closed'
     assert.equal(overlayBlocksBrowser(root), false)
+    const search = new Surface(750, 440)
+    const searchRoot = {
+      querySelector: () => host,
+      querySelectorAll: (selector: string) => selector.includes('.header-chat-search-popup') ? [search] : []
+    } as unknown as ParentNode
+    assert.equal(overlayBlocksBrowser(searchRoot), true, 'header suggestions freeze an overlapping native page')
+    const clearRoot = {
+      querySelector: () => host,
+      querySelectorAll: () => [new Surface(100, 440)]
+    } as unknown as ParentNode
+    assert.equal(overlayBlocksBrowser(clearRoot), false, 'search outside browser bounds leaves the page live')
   } finally {
     if (originalElement) Object.defineProperty(globalThis, 'Element', originalElement)
     else Reflect.deleteProperty(globalThis, 'Element')

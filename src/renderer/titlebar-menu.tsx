@@ -1,4 +1,4 @@
-import { memo, type JSX } from 'react'
+import { memo, useRef, type JSX } from 'react'
 import { Menubar } from 'radix-ui'
 import {
   CHAT_ZOOM_DEFAULT,
@@ -93,6 +93,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
   onCloseWindow,
   onOpenPaneDialog
 }: TitlebarMenuProps): JSX.Element {
+  const searchOnClose = useRef(false)
   return (
     <Menubar.Root className="titlebar-nav-menu" aria-label="Application menu">
       <div className="titlebar-nav-group">
@@ -102,7 +103,13 @@ export const TitlebarMenu = memo(function TitlebarMenu({
               {menu.label}
             </Menubar.Trigger>
             <Menubar.Portal>
-              <Menubar.Content className="titlebar-menu-content" align="start" sideOffset={4} loop>
+              <Menubar.Content className="titlebar-menu-content" align="start" sideOffset={4} loop
+                onCloseAutoFocus={event => {
+                  if (!searchOnClose.current) return
+                  event.preventDefault()
+                  searchOnClose.current = false
+                  onSearchChats()
+                }}>
                 {menu.rows.map((row, index) =>
                   row === null ? (
                     <Menubar.Separator key={`sep-${index}`} className="titlebar-menu-separator" />
@@ -123,7 +130,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                         if (row.action === 'credentials') onOpenCredentials()
                         if (row.action === 'research') onOpenResearch()
                         if (row.action === 'history') onToggleHistory()
-                        if (row.action === 'search-chats') onSearchChats()
+                        if (row.action === 'search-chats') searchOnClose.current = true
                         if (row.action === 'toggle-browser') onToggleBrowser()
                         if (row.action === 'toggle-fullscreen') onToggleFullscreen()
                         if (row.action === 'close-window') onCloseWindow()
