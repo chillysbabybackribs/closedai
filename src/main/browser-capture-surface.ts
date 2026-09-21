@@ -17,8 +17,8 @@ export class HiddenCaptureSurfaces {
         webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } })
       entry = { host, count: 0, tab }
       this.leases.set(tab.id, entry)
-      host.contentView.addChildView(tab.view)
       tab.applyBounds({ x: 0, y: 0, width: bounds.width, height: bounds.height }, true)
+      host.contentView.addChildView(tab.view)
     }
     entry.count++
     let released = false
