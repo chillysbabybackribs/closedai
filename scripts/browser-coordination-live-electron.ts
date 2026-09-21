@@ -46,7 +46,7 @@ async function verify() {
   browser.setBounds({ x: 0, y: 0, width: 800, height: 600, visible: true })
   const foreground = browser.tabList().find(tab => tab.active)!.id
   const coordination = new BrowserCoordination({ tabs: () => browser.tabList(),
-    create: () => browser.openNewTab('about:blank', false), paneExists: pane => ['a', 'b'].includes(pane) })
+    create: () => browser.openNewTab('about:blank', true), paneExists: pane => ['a', 'b'].includes(pane) })
   browser.on('popup', (opener, child) => coordination.inherit(opener, child))
   const page = new BrowserPageAccess(() => browser)
   await page.waitFor(foreground, { until: 'load', timeoutMs: 5000 })
@@ -70,10 +70,25 @@ async function verify() {
     const a = coordination.snapshot('a').defaultTabId!
     const b = coordination.snapshot('b').defaultTabId!
     assert.notEqual(a, b)
-    assert.equal(active(), foreground, 'background navigation must preserve user selection')
+    assert.ok([a, b].includes(active()), 'a tab opened for a chat is selected, not left behind the user tab')
     const reads = await Promise.all(['a', 'b'].map(pane => call(pane, 'embedded_browser', 'page', { action: 'read_page' })))
     assert.match(text(ok(reads[0])), /Alpha/)
     assert.match(text(ok(reads[1])), /Beta/)
+    // The unselected chat's page is hidden, where Chromium runs timers at ~1 Hz with no animation
+    // frames. Under tool control it must still get real cycles (browser-tab-cadence.ts).
+    const hidden = active() === a ? b : a
+    assert.equal(await browser.contentsOf(hidden)!.executeJavaScript('document.visibilityState'), 'hidden')
+    assert.equal(browser.contentsOf(hidden)!.getBackgroundThrottling(), false, 'a driven page is not throttled')
+    const cadence = await browser.contentsOf(hidden)!.executeJavaScript(`(async () => {
+      const started = performance.now()
+      for (let tick = 0; tick < 4; tick++) await new Promise(resolve => setTimeout(resolve, 50))
+      let frames = 0
+      await new Promise(resolve => { const loop = () => { frames++; requestAnimationFrame(loop) }
+        requestAnimationFrame(loop); setTimeout(resolve, 500) })
+      return { timers: Math.round(performance.now() - started), frames }
+    })()`) as { timers: number; frames: number }
+    assert.ok(cadence.timers < 500, `four 50 ms timers in a hidden driven page: ${cadence.timers} ms`)
+    assert.ok(cadence.frames > 5, `animation frames in a hidden driven page: ${cadence.frames}`)
     const captures = await Promise.all(['a', 'b'].map(pane => call(pane, 'closedai_ui', 'capture', { action: 'browser_page' })))
     for (const [index, result] of captures.entries()) {
       ok(result)
@@ -81,6 +96,10 @@ async function verify() {
       assert.ok(image && image.type === 'image')
       assertColor(image.dataUrl, index === 0)
     }
+    // A capture reads a chat's page without selecting it; the user's tab keeps the front.
+    browser.selectTab(foreground)
+    const framed = await Promise.all(['a', 'b'].map(pane => call(pane, 'closedai_ui', 'capture', { action: 'browser_page' })))
+    framed.forEach(ok)
     assert.equal(active(), foreground)
     await browser.setBounds({ x: 0, y: 0, width: 800, height: 600, visible: false })
     ok(await call('a', 'embedded_browser', 'page', { action: 'navigate', new_tab: true, url: `${base}/a-hidden` }))
@@ -90,7 +109,7 @@ async function verify() {
     assertColor(hiddenImage.dataUrl, true)
     assert.equal(BrowserWindow.getAllWindows().length, 1, 'temporary capture window is released')
     const restoredId = coordination.snapshot('a').defaultTabId!
-    assert.equal(browser.contentsOf(restoredId)!.getBackgroundThrottling(), true, 'capture restores throttling')
+    assert.equal(browser.contentsOf(restoredId)!.getBackgroundThrottling(), false, 'a driven page keeps its cycles')
     // Exercise cold hidden surfaces repeatedly; DOM readiness can precede the first Viz frame.
     for (let index = 0; index < 3; index++) {
       const cold = browser.openNewTab(`${base}/a-cold-${index}`, false)
@@ -132,14 +151,26 @@ async function verify() {
     assert.ok(popup)
     assert.equal(active(), b)
     assert.equal(coordination.canUse(popup.id, 'b'), false)
-    // App new also stays in the background, and release allows an explicit handoff.
+    // App new opens in front like a chat's own navigation, and release allows an explicit handoff.
+    const beforeNew = new Set(browser.tabList().map(tab => tab.id))
     ok(await call('a', 'closedai_app', 'command', { action: 'browser_tab', op: 'new', url: `${base}/new` }))
-    assert.equal(active(), b)
+    const opened = browser.tabList().find(tab => !beforeNew.has(tab.id))
+    assert.ok(opened)
+    assert.equal(active(), opened.id)
     ok(await call('a', 'closedai_app', 'command', { action: 'browser_tab', op: 'release', tab_id: a }))
     ok(await call('b', 'embedded_browser', 'page', { action: 'read_page', tab_id: a }))
     browser.closeTab(a)
     assert.equal((await call('b', 'embedded_browser', 'page', { action: 'read_page' })).isError, true)
+    // The exemption is scoped to tool work: once nobody is driving the tab, Chromium's default
+    // throttling comes back on its own. Poll the saved contents — contentsOf would renew it.
+    const idle = browser.contentsOf(restoredId)!
+    const graceDeadline = Date.now() + 8_000
+    while (!idle.getBackgroundThrottling() && Date.now() < graceDeadline) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+    assert.equal(idle.getBackgroundThrottling(), true, 'an idle tab returns to Chromium’s throttling')
     console.log(JSON.stringify({ ok: true, checks: ['parallel navigation', 'parallel text', 'background capture pixels',
+      'selected model tab', 'driven-page cadence', 'idle throttling restored',
       'collapsed browser capture and restoration', 'ownership conflict', 'bulk close preflight', 'foreground input exclusion',
       'popup ownership', 'release', 'closed target'] }))
   } finally {
