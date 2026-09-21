@@ -2,50 +2,48 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Tools & Capabilities Modal — UI Review & Interactive Mockups</title>
+<title>Tools & Capabilities Modal — ChatGPT Desktop Style Upgrade</title>
 <style>
   :root {
-    --bg-dark: #0c0c0d;
-    --chrome: #121213;
-    --canvas: #18181b;
-    --card: #1f1f23;
-    --card-hover: #26262b;
-    --border: rgb(255 255 255 / 9%);
-    --border-strong: rgb(255 255 255 / 16%);
-    --fg: #a1a1aa;
-    --fg-quiet: #71717a;
-    --fg-strong: #f4f4f5;
-    --accent: #8ab4f8;
-    --accent-dim: rgb(138 180 248 / 15%);
-    --ok: #4ade80;
-    --ok-dim: rgb(74 222 128 / 15%);
-    --warn: #fbbf24;
-    --warn-dim: rgb(251 191 36 / 15%);
-    --bad: #f87171;
-    --bad-dim: rgb(248 113 113 / 15%);
-    --mono: "Geist Mono", "SFMono-Regular", Consolas, monospace;
-    font-family: Inter, system-ui, -apple-system, sans-serif;
-    color: var(--fg-strong);
-    background: var(--bg-dark);
+    --bg-page: #0a0a0b;
+    --modal-bg: #141415;
+    --modal-elevated: #1a1a1c;
+    --row-hover: #1e1e22;
+    --border: rgb(255 255 255 / 8%);
+    --border-strong: rgb(255 255 255 / 14%);
+    --fg-primary: #f4f4f5;
+    --fg-secondary: #8e8e93;
+    --fg-muted: #636366;
+    --accent: #10a37f; /* OpenAI green, or ClosedAI blue #8ab4f8 */
+    --accent-blue: #3b82f6;
+    --accent-glow: rgb(59 130 246 / 15%);
+    --warn: #eab308;
+    --warn-bg: rgb(234 179 8 / 12%);
+    --bad: #ef4444;
+    --bad-bg: rgb(239 68 68 / 12%);
+    --mono: "Geist Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+    color: var(--fg-primary);
+    background: var(--bg-page);
   }
   * { box-sizing: border-box; }
   body { margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-  /* Top Navigation Bar */
+  /* Top Navigation */
   .top-nav {
     height: 52px;
-    background: var(--chrome);
+    background: #111112;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     padding: 0 20px;
-    gap: 18px;
+    gap: 16px;
     flex-shrink: 0;
   }
   .brand {
     font-weight: 600;
     font-size: 13.5px;
-    color: var(--fg-strong);
+    color: var(--fg-primary);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -54,387 +52,398 @@
     font-size: 11px;
     padding: 2px 7px;
     border-radius: 4px;
-    background: var(--accent-dim);
-    color: var(--accent);
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
     font-weight: 500;
   }
-  .tabs {
+  .nav-tabs {
     display: flex;
     gap: 4px;
-    background: #141416;
+    background: #18181b;
     padding: 3px;
     border-radius: 8px;
     border: 1px solid var(--border);
   }
-  .tab-btn {
-    padding: 5px 12px;
+  .nav-tab-btn {
+    padding: 5px 14px;
     border: 0;
     background: transparent;
-    color: var(--fg);
+    color: var(--fg-secondary);
     font-size: 12px;
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.15s;
     white-space: nowrap;
   }
-  .tab-btn:hover { color: var(--fg-strong); background: rgb(255 255 255 / 4%); }
-  .tab-btn.active {
-    background: var(--card);
-    color: var(--fg-strong);
+  .nav-tab-btn:hover { color: var(--fg-primary); }
+  .nav-tab-btn.active {
+    background: #27272a;
+    color: var(--fg-primary);
     font-weight: 500;
-    box-shadow: 0 1px 4px rgb(0 0 0 / 40%);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
   }
-  .nav-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--fg-quiet); }
 
-  /* Main Stage Container */
-  .viewport { flex: 1; overflow: auto; padding: 24px; display: flex; justify-content: center; }
-  .view-panel { width: 100%; max-width: 1060px; display: none; }
+  /* Stage Viewport */
+  .viewport {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .view-panel {
+    width: 100%;
+    max-width: 980px;
+    display: none;
+  }
   .view-panel.active { display: block; animation: fadeIn 0.15s ease-out; }
-
   @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
-  /* Shared Mockup Modal Frame */
-  .modal-frame {
-    background: var(--card);
+  /* ChatGPT Desktop Inspired Modal Frame */
+  .chatgpt-modal {
+    background: var(--modal-bg);
     border: 1px solid var(--border-strong);
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgb(0 0 0 / 70%);
-    overflow: hidden;
+    border-radius: 14px;
+    box-shadow: 0 24px 70px rgb(0 0 0 / 75%);
     display: flex;
     flex-direction: column;
-    height: 720px;
-    position: relative;
+    min-height: 740px;
+    overflow: hidden;
   }
-  .modal-hdr {
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--border);
+
+  /* Header */
+  .c-header {
+    padding: 24px 28px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .c-title-area h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0 0 4px;
+    color: var(--fg-primary);
+  }
+  .c-title-area p {
+    font-size: 13px;
+    color: var(--fg-secondary);
+    margin: 0;
+    line-height: 1.4;
+  }
+  .c-header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  .c-preset-btn {
     display: flex;
     align-items: center;
-    gap: 16px;
-    background: var(--chrome);
+    gap: 6px;
+    background: #202023;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 5px 11px;
+    font-size: 12px;
+    color: var(--fg-primary);
+    cursor: pointer;
+    transition: all 0.12s;
   }
-  .modal-title { font-size: 15px; font-weight: 600; margin: 0; color: var(--fg-strong); }
-  .modal-subtitle { font-size: 12.5px; color: var(--fg); margin-top: 3px; }
-  .modal-search {
-    margin-left: auto;
+  .c-preset-btn:hover { background: #2a2a2e; border-color: var(--border-strong); }
+  .c-token-stat {
+    font-size: 11.5px;
+    color: var(--fg-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Controls Row: Category Pills + Search */
+  .c-controls-row {
+    padding: 0 28px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+  .c-pills {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+  }
+  .c-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--fg-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .c-pill:hover { color: var(--fg-primary); border-color: var(--border-strong); }
+  .c-pill.active {
+    background: #242427;
+    color: var(--fg-primary);
+    border-color: rgba(255, 255, 255, 0.18);
+    font-weight: 500;
+  }
+  .c-pill-count {
+    color: var(--fg-muted);
+    font-size: 11px;
+  }
+  .c-pill.active .c-pill-count { color: var(--fg-secondary); }
+
+  /* Search capsule */
+  .c-search {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: var(--canvas);
+    background: #1a1a1d;
     border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 12px;
-    width: 220px;
+    border-radius: 999px;
+    padding: 6px 14px;
+    width: 250px;
+    transition: border-color 0.15s;
   }
-  .modal-search input {
+  .c-search:focus-within { border-color: var(--border-strong); }
+  .c-search svg { width: 14px; height: 14px; color: var(--fg-muted); flex-shrink: 0; }
+  .c-search input {
     background: transparent;
     border: 0;
     outline: none;
-    color: var(--fg-strong);
+    color: var(--fg-primary);
     font-size: 12px;
     width: 100%;
   }
-  .modal-search input::placeholder { color: var(--fg-quiet); }
-  .modal-close {
-    width: 28px;
-    height: 28px;
-    display: grid;
-    place-items: center;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    color: var(--fg);
-    cursor: pointer;
-    font-size: 14px;
-    background: transparent;
-  }
-  .modal-close:hover { background: rgb(255 255 255 / 8%); color: var(--fg-strong); }
-
-  .modal-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
-  .modal-ftr {
-    height: 48px;
-    border-top: 1px solid var(--border);
-    background: var(--chrome);
-    display: flex;
-    align-items: center;
-    padding: 0 24px;
-    gap: 14px;
-    font-size: 12px;
-    color: var(--fg);
-  }
-
-  /* Segmented Control */
-  .segmented {
-    display: inline-flex;
-    background: #141416;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 2px;
-  }
-  .segmented button {
-    border: 0;
-    background: transparent;
-    color: var(--fg);
-    font-size: 11.5px;
-    padding: 4px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  .segmented button.on { background: var(--card); color: var(--fg-strong); font-weight: 500; }
-
-  /* iOS Switch */
-  .sw {
-    width: 28px;
-    height: 16px;
-    border-radius: 999px;
-    background: #3f3f46;
-    position: relative;
-    cursor: pointer;
-    border: 0;
-    padding: 0;
-    flex-shrink: 0;
-    transition: background 0.15s;
-  }
-  .sw::after {
-    content: "";
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #d4d4d8;
-    transition: transform 0.15s;
-  }
-  .sw.on { background: var(--accent); }
-  .sw.on::after { transform: translateX(12px); background: #0c0c0d; }
-  .sw.mixed { background: #5a76a8; }
-  .sw.mixed::after { transform: translateX(6px); background: #0c0c0d; }
+  .c-search input::placeholder { color: var(--fg-muted); }
 
   /* Suggestion Alert */
-  .sugg-box {
+  .c-alert {
+    margin: 0 28px 12px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: rgba(234, 179, 8, 0.08);
+    border: 1px solid rgba(234, 179, 8, 0.22);
     display: flex;
     align-items: center;
     gap: 10px;
-    background: rgb(251 191 36 / 6%);
-    border: 1px solid rgb(251 191 36 / 25%);
-    border-radius: 8px;
-    padding: 8px 14px;
-    margin-bottom: 18px;
-    font-size: 12.5px;
-    color: var(--fg);
+    font-size: 12px;
+    color: #d4d4d8;
   }
-  .sugg-box b { color: var(--fg-strong); }
-  .sugg-btn {
+  .c-alert-btn {
     margin-left: auto;
-    padding: 4px 10px;
-    border: 1px solid rgb(251 191 36 / 35%);
-    border-radius: 6px;
+    padding: 3px 9px;
+    border-radius: 5px;
+    border: 1px solid rgba(234, 179, 8, 0.35);
     background: transparent;
     color: var(--warn);
-    font-size: 11.5px;
-    cursor: pointer;
-    font-weight: 500;
-  }
-  .sugg-btn:hover { background: var(--warn-dim); }
-
-  /* Group & Row Styling (Option 1) */
-  .grp-sec { margin-bottom: 22px; }
-  .grp-hdr {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid rgb(255 255 255 / 4%);
-  }
-  .grp-title-area { display: flex; align-items: baseline; gap: 8px; }
-  .grp-name { font-size: 13.5px; font-weight: 600; color: var(--fg-strong); }
-  .grp-summary { font-size: 12px; color: var(--fg-quiet); }
-  .grp-meta { display: flex; align-items: center; gap: 12px; font-size: 11.5px; color: var(--fg-quiet); }
-
-  /* Badges */
-  .badge {
-    font-size: 10.5px;
-    font-weight: 500;
-    padding: 1px 6px;
-    border-radius: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .badge.read { background: var(--ok-dim); color: var(--ok); }
-  .badge.act { background: var(--warn-dim); color: var(--warn); }
-  .badge.sec { background: var(--bad-dim); color: var(--bad); }
-
-  /* Flat Tool Row */
-  .tool-row-item {
-    border-radius: 6px;
-    margin-bottom: 2px;
-    transition: background 0.1s;
-  }
-  .tool-row-item:hover { background: rgb(255 255 255 / 4%); }
-  .tool-row-item.open { background: rgb(255 255 255 / 4%); }
-  .row-bar {
-    display: grid;
-    grid-template-columns: 20px 1fr auto auto 36px;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 10px;
-    cursor: pointer;
-  }
-  .row-chev {
-    color: var(--fg-quiet);
-    font-size: 12px;
-    transition: transform 0.15s;
-    user-select: none;
-  }
-  .tool-row-item.open .row-chev { transform: rotate(90deg); color: var(--fg-strong); }
-  .row-name { font-size: 13px; font-weight: 500; color: var(--fg-strong); display: flex; align-items: center; gap: 6px; }
-  .row-dot { width: 6px; height: 6px; border-radius: 50%; }
-  .row-dot.bad { background: var(--bad); }
-  .row-dot.warn { background: var(--warn); }
-  .row-verbs { font-family: var(--mono); font-size: 11px; color: var(--fg-quiet); }
-  .row-note { font-size: 11.5px; color: var(--fg-quiet); }
-  .row-note.bad { color: var(--bad); }
-  .row-note.warn { color: var(--warn); }
-  .tool-row-item.off .row-name { color: var(--fg-quiet); }
-
-  /* Row Expanded Inspector Drawer */
-  .row-drawer {
-    display: none;
-    padding: 12px 14px 14px 42px;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    background: #17171a;
-    font-size: 12px;
-  }
-  .tool-row-item.open .row-drawer { display: block; }
-  .drawer-grid {
-    display: grid;
-    grid-template-columns: 1.5fr 1fr;
-    gap: 16px;
-  }
-  .drawer-tech { font-family: var(--mono); font-size: 11px; color: var(--accent); margin-bottom: 6px; }
-  .drawer-desc { line-height: 1.5; color: var(--fg); margin: 0 0 10px; }
-  .drawer-facts { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; font-size: 11.5px; }
-  .drawer-facts dt { color: var(--fg-quiet); }
-  .drawer-facts dd { margin: 0; color: var(--fg); }
-  .drawer-facts dd.bad { color: var(--bad); }
-  .drawer-code-box {
-    background: #111113;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px;
     font-size: 11px;
-    line-height: 1.45;
-    color: var(--fg);
-    max-height: 130px;
-    overflow-y: auto;
-  }
-  .drawer-code-title {
-    font-size: 9.5px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--fg-quiet);
-    margin-bottom: 4px;
-    display: block;
-  }
-  .drawer-actions { display: flex; gap: 8px; margin-top: 12px; }
-  .btn-quiet {
-    padding: 4px 10px;
-    border: 1px solid var(--border-strong);
-    background: var(--canvas);
-    color: var(--fg-strong);
-    border-radius: 5px;
-    font-size: 11.5px;
+    font-weight: 500;
     cursor: pointer;
   }
-  .btn-quiet:hover { background: rgb(255 255 255 / 8%); }
+  .c-alert-btn:hover { background: rgba(234, 179, 8, 0.15); }
 
-  /* Option 2: Two Pane Layout */
-  .two-pane { display: grid; grid-template-columns: 240px 1fr; height: 100%; min-height: 0; }
-  .side-nav {
-    border-right: 1px solid var(--border);
-    background: #151517;
-    display: flex;
-    flex-direction: column;
+  /* Tool List Rows */
+  .c-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 28px 24px;
   }
-  .side-search { padding: 12px; border-bottom: 1px solid var(--border); }
-  .side-list { overflow-y: auto; padding: 6px; flex: 1; }
-  .side-item {
+  .c-row-wrapper {
+    margin-bottom: 4px;
+  }
+  .c-row {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 36px 1fr auto auto 44px;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 14px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .c-row:hover { background: var(--row-hover); }
+  .c-row-wrapper.open .c-row { background: var(--row-hover); }
+
+  /* Icon glyph */
+  .c-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #202024;
+    border: 1px solid var(--border);
+    display: grid;
+    place-items: center;
+    color: var(--fg-secondary);
+    font-size: 14px;
+  }
+
+  .c-info { min-width: 0; }
+  .c-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--fg-primary);
+    display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 10px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12.5px;
-    color: var(--fg);
-    margin-bottom: 2px;
   }
-  .side-item:hover { background: rgb(255 255 255 / 5%); color: var(--fg-strong); }
-  .side-item.selected { background: rgb(255 255 255 / 8%); color: var(--fg-strong); font-weight: 500; }
-  .side-badge { font-size: 11px; color: var(--fg-quiet); font-variant-numeric: tabular-nums; }
-  .pane-main { overflow-y: auto; padding: 20px 24px; background: var(--card); }
-
-  /* Option 3: Modern Cards Grid + Drawer */
-  .cards-stage { position: relative; height: 100%; overflow: hidden; display: flex; }
-  .cards-scroll { flex: 1; overflow-y: auto; padding: 20px; }
-  .c-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
-  .c-item {
-    background: var(--canvas);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 110px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .c-item:hover { border-color: var(--border-strong); background: var(--card-hover); transform: translateY(-1px); }
-  .c-head { display: flex; justify-content: space-between; align-items: flex-start; }
-  .c-name { font-size: 13px; font-weight: 600; color: var(--fg-strong); }
-  .c-desc { font-size: 11.5px; color: var(--fg); margin: 6px 0; line-height: 1.4; }
-  .c-foot { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--fg-quiet); }
-  .c-drawer {
-    width: 380px;
-    border-left: 1px solid var(--border-strong);
-    background: #161619;
-    padding: 20px;
-    overflow-y: auto;
-    box-shadow: -10px 0 30px rgb(0 0 0 / 50%);
-    display: none;
-  }
-  .c-drawer.open { display: block; animation: slideIn 0.2s ease-out; }
-  @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-
-  /* Gallery / Review Styles */
-  .review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  .review-card {
-    background: var(--chrome);
-    border: 1px solid var(--border-strong);
-    border-radius: 10px;
-    padding: 16px;
-  }
-  .review-card h3 { margin: 0 0 8px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
-  .review-card p { font-size: 12.5px; color: var(--fg); line-height: 1.5; margin: 0 0 12px; }
-  .img-wrap {
-    border: 1px solid var(--border);
-    border-radius: 6px;
+  .c-summary {
+    font-size: 12px;
+    color: var(--fg-secondary);
+    margin-top: 2px;
+    line-height: 1.4;
+    white-space: nowrap;
     overflow: hidden;
-    background: #000;
+    text-overflow: ellipsis;
   }
-  .img-wrap img { width: 100%; height: auto; display: block; }
-  .flaw-tag {
-    background: var(--bad-dim);
-    color: var(--bad);
+  .c-tech-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--fg-muted);
+    margin-top: 2px;
+  }
+
+  .c-status {
     font-size: 11px;
     padding: 2px 7px;
     border-radius: 4px;
     font-weight: 500;
+    white-space: nowrap;
   }
+  .c-status.bad { background: var(--bad-bg); color: var(--bad); }
+  .c-status.warn { background: var(--warn-bg); color: var(--warn); }
+  .c-status.quiet { color: var(--fg-muted); }
+
+  .c-cost {
+    font-size: 11.5px;
+    color: var(--fg-muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* Sleek iOS/OpenAI Toggle Switch */
+  .c-switch {
+    width: 38px;
+    height: 22px;
+    border-radius: 999px;
+    background: #333338;
+    position: relative;
+    cursor: pointer;
+    border: 0;
+    padding: 0;
+    transition: background 0.18s;
+  }
+  .c-switch::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ffffff;
+    transition: transform 0.18s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  .c-switch.on { background: #3b82f6; }
+  .c-switch.on::after { transform: translateX(16px); }
+
+  /* Expandable Detail Inspector */
+  .c-inspector {
+    display: none;
+    margin: 4px 0 10px;
+    padding: 16px 20px;
+    background: #18181b;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    font-size: 12.5px;
+  }
+  .c-row-wrapper.open .c-inspector { display: block; animation: fadeIn 0.15s ease-out; }
+  .c-insp-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 20px;
+  }
+  .c-insp-facts {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 14px;
+    margin-top: 10px;
+    font-size: 12px;
+  }
+  .c-insp-facts dt { color: var(--fg-muted); }
+  .c-insp-facts dd { margin: 0; color: var(--fg-primary); }
+  .c-insp-facts dd.bad { color: var(--bad); font-weight: 500; }
+
+  .c-insp-code {
+    background: #101012;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+    color: #a1a1aa;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  .c-insp-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .c-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-strong);
+    background: #202024;
+    color: var(--fg-primary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .c-btn:hover { background: #28282d; }
+  .c-btn.pri {
+    background: #3b82f6;
+    color: #ffffff;
+    border-color: transparent;
+    font-weight: 500;
+  }
+  .c-btn.pri:hover { background: #2563eb; }
+
+  /* Footer */
+  .c-footer {
+    height: 52px;
+    border-top: 1px solid var(--border);
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--fg-muted);
+  }
+
+  /* Comparison Styles */
+  .comp-container { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .comp-box {
+    background: var(--modal-bg);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .comp-box h3 { margin: 0 0 6px; font-size: 15px; color: var(--fg-primary); }
+  .comp-box p { margin: 0 0 14px; font-size: 12.5px; color: var(--fg-secondary); line-height: 1.45; }
+  .comp-img {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+  }
+  .comp-img img { width: 100%; height: auto; display: block; }
 </style>
 </head>
 <body>
@@ -442,513 +451,408 @@
 <header class="top-nav">
   <div class="brand">
     ClosedAI
-    <span class="brand-tag">Tools Modal Upgrade</span>
+    <span class="brand-tag">Design Target Upgrade</span>
   </div>
 
-  <nav class="tabs">
-    <button class="tab-btn active" data-tab="tab-list">Option 1: Grouped List (Recommended)</button>
-    <button class="tab-btn" data-tab="tab-twopane">Option 2: Two-Pane Inspector</button>
-    <button class="tab-btn" data-tab="tab-cards">Option 3: Cards + Drawer</button>
-    <button class="tab-btn" data-tab="tab-review">Flaws in Current UI</button>
-    <button class="tab-btn" data-tab="tab-gallery">AI Mockup Renders</button>
+  <nav class="nav-tabs">
+    <button class="nav-tab-btn active" data-tab="tab-target">Target Design (ChatGPT Desktop Pattern)</button>
+    <button class="nav-tab-btn" data-tab="tab-reference">Side-by-Side Reference Comparison</button>
+    <button class="nav-tab-btn" data-tab="tab-renders">Design Renders (High-Res)</button>
   </nav>
 
-  <div class="nav-actions">
-    <span>Target: <code>src/renderer/tools/</code></span>
+  <div style="margin-left:auto; font-size:12px; color:var(--fg-muted)">
+    Live on <code>http://127.0.0.1:5173/</code>
   </div>
 </header>
 
 <main class="viewport">
 
-  <!-- TAB 1: OPTION 1 SLEEK GROUPED LIST -->
-  <section id="tab-list" class="view-panel active">
-    <div class="modal-frame">
-      <header class="modal-hdr">
-        <div>
-          <h2 class="modal-title">Tools &amp; capabilities</h2>
-          <div class="modal-subtitle" id="list-status">27 of 31 on · about 4.1k tokens of every turn</div>
+  <!-- TAB 1: TARGET DESIGN (CHATGPT DESKTOP PATTERN) -->
+  <section id="tab-target" class="view-panel active">
+    <div class="chatgpt-modal">
+
+      <!-- Modal Header -->
+      <div class="c-header">
+        <div class="c-title-area">
+          <h1>Tools &amp; capabilities</h1>
+          <p>Manage model tools, browser execution permissions, and MCP services</p>
         </div>
-        <div class="modal-search">
-          <span style="color:var(--fg-quiet)">⌕</span>
-          <input type="text" id="tool-filter-input" placeholder="Filter by name or verb…">
-        </div>
-        <button class="modal-close" title="Close dialog">×</button>
-      </header>
-
-      <div class="modal-body" id="list-scroll-area">
-        <!-- Compact Suggestion Banner -->
-        <div class="sugg-box">
-          <span>💡 <b>6 suggestions.</b> Unused tools cost <b>2,030 tokens</b> of every turn.</span>
-          <button class="sugg-btn" onclick="applySuggestions()">Turn all 6 off</button>
-        </div>
-
-        <!-- Group 1: Read the web -->
-        <div class="grp-sec" data-group="reads-web">
-          <div class="grp-hdr">
-            <div class="grp-title-area">
-              <span class="grp-name">Read the web</span>
-              <span class="badge read">Reads only</span>
-              <span class="grp-summary">— Open pages, search, and read sources safely</span>
-            </div>
-            <div class="grp-meta">
-              <span>1.1k tokens / turn</span>
-              <button class="sw on" data-grp="reads-web" title="Toggle group"></button>
-            </div>
-          </div>
-
-          <div class="tool-row-item" data-tool="embedded_browser.page">
-            <div class="row-bar" onclick="toggleDrawer(this)">
-              <span class="row-chev">›</span>
-              <span class="row-name">Browse a page</span>
-              <span class="row-verbs">navigate, read_page, wait_for</span>
-              <span class="row-note">310 t/turn</span>
-              <button class="sw on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-            </div>
-            <div class="row-drawer">
-              <div class="drawer-grid">
-                <div>
-                  <div class="drawer-tech">embedded_browser.page</div>
-                  <p class="drawer-desc">Open a URL in the browser pane and read what is on it. Off: Calls are refused at once and the tool is not offered to new chats.</p>
-                  <dl class="drawer-facts">
-                    <dt>Effect</dt><dd>Reads web content (no site modifications)</dd>
-                    <dt>Cost</dt><dd>310 tokens / turn · 3 verbs · 30s timeout</dd>
-                    <dt>Runs</dt><dd>27 runs recorded · 1 timeout</dd>
-                    <dt>Last called</dt><dd>13 minutes ago</dd>
-                  </dl>
-                  <div class="drawer-actions">
-                    <button class="btn-quiet">Show full schema</button>
-                    <button class="btn-quiet">Send to chat for repair</button>
-                  </div>
-                </div>
-                <div class="drawer-code-box">
-                  <span class="drawer-code-title">What the model reads</span>
-                  Browser-page inspection and navigation in the caller's assigned tab, or an explicit tab_id. Waits for readiness and reads text.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="tool-row-item" data-tool="search.query">
-            <div class="row-bar" onclick="toggleDrawer(this)">
-              <span class="row-chev">›</span>
-              <span class="row-name">Web search</span>
-              <span class="row-verbs">query</span>
-              <span class="row-note warn">unused 6 wk · suggested off</span>
-              <button class="sw on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-            </div>
-            <div class="row-drawer">
-              <div class="drawer-grid">
-                <div>
-                  <div class="drawer-tech">search.query</div>
-                  <p class="drawer-desc">Look things up across several search providers with deduplicated results and bounded cache.</p>
-                  <dl class="drawer-facts">
-                    <dt>Cost</dt><dd>540 tokens / turn</dd>
-                    <dt>Last called</dt><dd>6 weeks ago</dd>
-                  </dl>
-                </div>
-                <div class="drawer-code-box">
-                  <span class="drawer-code-title">What the model reads</span>
-                  Routed public-web search across Brave, Exa, Serper, Tavily, and You.com.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="tool-row-item" data-tool="search.library">
-            <div class="row-bar" onclick="toggleDrawer(this)">
-              <span class="row-chev">›</span>
-              <span class="row-name">Paper library</span>
-              <span class="row-verbs">status, search, read</span>
-              <span class="row-note warn">unused 8 wk · suggested off</span>
-              <button class="sw on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-            </div>
-            <div class="row-drawer">
-              <div class="drawer-grid">
-                <div>
-                  <div class="drawer-tech">search.library</div>
-                  <p class="drawer-desc">Search the papers saved in the Research library.</p>
-                </div>
-                <div class="drawer-code-box">Local lexical search returns five results by default.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Group 2: Act in the browser -->
-        <div class="grp-sec" data-group="acts-in-browser">
-          <div class="grp-hdr">
-            <div class="grp-title-area">
-              <span class="grp-name">Act in the browser</span>
-              <span class="badge act">Acts as you</span>
-              <span class="grp-summary">— Executes scripts &amp; requests inside your signed-in tabs</span>
-            </div>
-            <div class="grp-meta">
-              <span>1.3k tokens / turn</span>
-              <button class="sw on" data-grp="acts-in-browser" title="Toggle group"></button>
-            </div>
-          </div>
-
-          <div class="tool-row-item" data-tool="embedded_browser.script">
-            <div class="row-bar" onclick="toggleDrawer(this)">
-              <span class="row-chev">›</span>
-              <span class="row-name">Run page scripts</span>
-              <span class="row-verbs">fetch, extract, query, evaluate, console</span>
-              <span class="row-note">620 t/turn</span>
-              <button class="sw on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-            </div>
-            <div class="row-drawer">
-              <div class="drawer-grid">
-                <div>
-                  <div class="drawer-tech">embedded_browser.script</div>
-                  <p class="drawer-desc">Runs JavaScript and extracts data from open pages.</p>
-                </div>
-                <div class="drawer-code-box">Fetch, extract, query, evaluate, console in tab session.</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="tool-row-item" data-tool="browser_cdp.protocol">
-            <div class="row-bar" onclick="toggleDrawer(this)">
-              <span class="row-chev">›</span>
-              <span class="row-name">
-                Raw DevTools protocol
-                <span class="row-dot bad" title="Has errors"></span>
-              </span>
-              <span class="row-verbs">capabilities, targets, command</span>
-              <span class="row-note bad">3 errors recorded</span>
-              <button class="sw on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-            </div>
-            <div class="row-drawer">
-              <div class="drawer-grid">
-                <div>
-                  <div class="drawer-tech">browser_cdp.protocol</div>
-                  <p class="drawer-desc">Low-level Chrome DevTools Protocol access: debugging, profiling, emulation.</p>
-                  <dl class="drawer-facts">
-                    <dt>Failures</dt><dd class="bad">3 errors: "Target closed" 2 hours ago</dd>
-                    <dt>Cost</dt><dd>700 tokens / turn</dd>
-                  </dl>
-                  <div class="drawer-actions">
-                    <button class="btn-quiet" style="color:var(--bad)">Send to chat for repair</button>
-                    <button class="btn-quiet">Show schema</button>
-                  </div>
-                </div>
-                <div class="drawer-code-box">
-                  <span class="drawer-code-title">Recent failure log</span>
-                  [2h ago] error · target closed unexpectedly during CDP send.<br>
-                  [1d ago] timeout · protocol response exceeded 30000ms.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="tool-row-item off" data-tool="embedded_browser.network_replay">
-            <div class="row-bar" onclick="toggleDrawer(this)">
-              <span class="row-chev">›</span>
-              <span class="row-name">Replay a request</span>
-              <span class="row-verbs">replay</span>
-              <span class="row-note">2 refused calls</span>
-              <button class="sw" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-            </div>
-            <div class="row-drawer">
-              <div class="drawer-grid">
-                <div>
-                  <div class="drawer-tech">embedded_browser.network_replay</div>
-                  <p class="drawer-desc">Send a captured request again, with edits. Can repeat a mutation.</p>
-                </div>
-                <div class="drawer-code-box">Replay request with cookies and CSRF headers.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Group 3: Secrets -->
-        <div class="grp-sec" data-group="reads-secrets">
-          <div class="grp-hdr">
-            <div class="grp-title-area">
-              <span class="grp-name">Your secrets</span>
-              <span class="badge sec">Reads secrets</span>
-              <span class="grp-summary">— Decrypts credentials from vault only on explicit demand</span>
-            </div>
-            <div class="grp-meta">
-              <span>160 tokens / turn</span>
-              <button class="sw on" data-grp="reads-secrets" title="Toggle group"></button>
-            </div>
-          </div>
-
-          <div class="tool-row-item" data-tool="credential_vault.read">
-            <div class="row-bar" onclick="toggleDrawer(this)">
-              <span class="row-chev">›</span>
-              <span class="row-name">Read a credential</span>
-              <span class="row-verbs">read</span>
-              <span class="row-note">160 t/turn</span>
-              <button class="sw on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-            </div>
-            <div class="row-drawer">
-              <div class="drawer-grid">
-                <div>
-                  <div class="drawer-tech">credential_vault.read</div>
-                  <p class="drawer-desc">Decrypts one requested field for the current operation. Never logs or persists secrets.</p>
-                </div>
-                <div class="drawer-code-box">Requires credential id and exact field IDs with audit reason.</div>
-              </div>
-            </div>
-          </div>
+        <div class="c-header-right">
+          <button class="c-preset-btn" onclick="cyclePresets()">
+            <span id="preset-label">Preset: Custom</span>
+            <span style="font-size:10px; color:var(--fg-muted)">▾</span>
+          </button>
+          <span class="c-token-stat" id="token-counter">27 of 31 active · 4.1k tokens / turn</span>
         </div>
       </div>
 
-      <footer class="modal-ftr">
-        <div class="segmented" id="preset-controls">
-          <button class="on" onclick="setPreset('full', this)">Full</button>
-          <button onclick="setPreset('read-only', this)">Read-only</button>
-          <button onclick="setPreset('custom', this)">Custom</button>
+      <!-- Controls: Category Filter Pills + Search -->
+      <div class="c-controls-row">
+        <div class="c-pills">
+          <button class="c-pill active" onclick="filterCategory('all', this)">All <span class="c-pill-count">10</span></button>
+          <button class="c-pill" onclick="filterCategory('web', this)">Web <span class="c-pill-count">3</span></button>
+          <button class="c-pill" onclick="filterCategory('browser', this)">Browser <span class="c-pill-count">3</span></button>
+          <button class="c-pill" onclick="filterCategory('app', this)">ClosedAI <span class="c-pill-count">2</span></button>
+          <button class="c-pill" onclick="filterCategory('secrets', this)">Secrets <span class="c-pill-count">1</span></button>
+          <button class="c-pill" onclick="filterCategory('native', this)">Native <span class="c-pill-count">1</span></button>
         </div>
-        <span style="color:var(--fg-quiet)">Off takes effect now. Open chats preserve tools until new thread.</span>
-        <button class="btn-quiet" style="margin-left:auto; font-size:11px" onclick="alert('Telemetry reset')">Reset counts</button>
-      </footer>
-    </div>
-  </section>
 
-  <!-- TAB 2: OPTION 2 TWO-PANE INSPECTOR -->
-  <section id="tab-twopane" class="view-panel">
-    <div class="modal-frame">
-      <header class="modal-hdr">
-        <div>
-          <h2 class="modal-title">Tools &amp; capabilities</h2>
-          <div class="modal-subtitle">Master-Detail category inspection view</div>
+        <div class="c-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="tool-search-input" placeholder="Search tools or verbs…">
         </div>
-        <button class="modal-close">×</button>
-      </header>
-
-      <div class="two-pane">
-        <aside class="side-nav">
-          <div class="side-search">
-            <div class="modal-search" style="width:100%">
-              <span>⌕</span>
-              <input type="text" placeholder="Filter categories…">
-            </div>
-          </div>
-          <div class="side-list">
-            <div class="side-item selected" onclick="selectCategory(this, 'pane-cat-web')">
-              <span>🌐 Read the web</span>
-              <span class="side-badge">3/3</span>
-              <button class="sw on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-            </div>
-            <div class="side-item" onclick="selectCategory(this, 'pane-cat-browser')">
-              <span>⚡ Act in browser</span>
-              <span class="side-badge">2/3</span>
-              <button class="sw on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-            </div>
-            <div class="side-item" onclick="selectCategory(this, 'pane-cat-control')">
-              <span>🖥️ Control ClosedAI</span>
-              <span class="side-badge">2/2</span>
-              <button class="sw on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-            </div>
-            <div class="side-item" onclick="selectCategory(this, 'pane-cat-secrets')">
-              <span>🔒 Your secrets</span>
-              <span class="side-badge">1/1</span>
-              <button class="sw on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-            </div>
-            <div class="side-item" onclick="selectCategory(this, 'pane-cat-native')">
-              <span>⚙️ This machine</span>
-              <span class="side-badge">0/1</span>
-              <button class="sw" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-            </div>
-          </div>
-        </aside>
-
-        <section class="pane-main">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-            <div>
-              <h3 style="margin:0; font-size:16px;">Read the web <span class="badge read">Reads only</span></h3>
-              <p style="margin:4px 0 0; font-size:12.5px; color:var(--fg);">Open pages, search, and read sources. Nothing is changed on any site.</p>
-            </div>
-            <div style="text-align:right;">
-              <span style="font-size:12px; color:var(--fg-quiet); display:block; margin-bottom:4px;">1.1k tokens / turn</span>
-              <button class="sw on"></button>
-            </div>
-          </div>
-
-          <div style="display:grid; gap:12px;">
-            <div style="background:var(--canvas); border:1px solid var(--border); border-radius:8px; padding:14px;">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <b style="font-size:13.5px;">Browse a page</b>
-                <button class="sw on"></button>
-              </div>
-              <p style="font-size:12px; color:var(--fg); margin:6px 0 10px;">Open a URL in the browser pane and read what is on it.</p>
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:11.5px; color:var(--fg-quiet); background:#141416; padding:10px; border-radius:6px;">
-                <div>ID: <code>embedded_browser.page</code></div>
-                <div>Cost: 310 tokens / turn</div>
-                <div>Timeout: 30 seconds</div>
-                <div>Status: Healthy (27 calls)</div>
-              </div>
-            </div>
-
-            <div style="background:var(--canvas); border:1px solid var(--border); border-radius:8px; padding:14px;">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <b style="font-size:13.5px;">Web search</b>
-                <button class="sw on"></button>
-              </div>
-              <p style="font-size:12px; color:var(--fg); margin:6px 0 10px;">Look things up across several search providers.</p>
-              <div style="font-size:11.5px; color:var(--warn);">⚠️ Unused in 6 weeks — suggested to disable to save 540 tokens/turn.</div>
-            </div>
-          </div>
-        </section>
       </div>
 
-      <footer class="modal-ftr">
-        <div class="segmented">
-          <button class="on">Full</button><button>Read-only</button><button>Custom</button>
-        </div>
-        <span>Changes apply instantly to next agent turn.</span>
-      </footer>
-    </div>
-  </section>
-
-  <!-- TAB 3: OPTION 3 CARDS + DRAWER -->
-  <section id="tab-cards" class="view-panel">
-    <div class="modal-frame">
-      <header class="modal-hdr">
-        <div>
-          <h2 class="modal-title">Tools &amp; capabilities</h2>
-          <div class="modal-subtitle">Stable card grid — click any card to inspect in slide-over drawer</div>
-        </div>
-        <button class="modal-close">×</button>
-      </header>
-
-      <div class="cards-stage">
-        <div class="cards-scroll">
-          <h4 style="margin:0 0 10px; font-size:12px; text-transform:uppercase; color:var(--fg-quiet); letter-spacing:0.05em;">Read the web</h4>
-          <div class="c-grid">
-            <div class="c-item" onclick="openCardDrawer('Browse a page', 'embedded_browser.page', 'Open a URL in the browser pane and read what is on it.', '310 t/turn')">
-              <div class="c-head">
-                <span class="c-name">Browse a page</span>
-                <button class="sw on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-              </div>
-              <div class="c-desc">Open a URL in the browser pane and read what is on it.</div>
-              <div class="c-foot">
-                <span>310 tokens / turn</span>
-                <span style="color:var(--accent)">Inspect →</span>
-              </div>
-            </div>
-
-            <div class="c-item" onclick="openCardDrawer('Web search', 'search.query', 'Look things up across several search providers.', '540 t/turn')">
-              <div class="c-head">
-                <span class="c-name">Web search</span>
-                <button class="sw on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-              </div>
-              <div class="c-desc">Look things up across several search providers.</div>
-              <div class="c-foot">
-                <span style="color:var(--warn)">unused 6 wk</span>
-                <span style="color:var(--accent)">Inspect →</span>
-              </div>
-            </div>
-          </div>
-
-          <h4 style="margin:16px 0 10px; font-size:12px; text-transform:uppercase; color:var(--fg-quiet); letter-spacing:0.05em;">Act in browser</h4>
-          <div class="c-grid">
-            <div class="c-item" onclick="openCardDrawer('Run page scripts', 'embedded_browser.script', 'Fetch, extract, or evaluate JavaScript inside the open page.', '620 t/turn')">
-              <div class="c-head">
-                <span class="c-name">Run page scripts</span>
-                <button class="sw on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-              </div>
-              <div class="c-desc">Fetch, extract, or evaluate JavaScript inside the open page.</div>
-              <div class="c-foot">
-                <span>620 tokens / turn</span>
-                <span style="color:var(--accent)">Inspect →</span>
-              </div>
-            </div>
-
-            <div class="c-item" onclick="openCardDrawer('Raw DevTools protocol', 'browser_cdp.protocol', 'Send any DevTools command, list targets, and read captured request bodies.', '700 t/turn')">
-              <div class="c-head">
-                <span class="c-name">Raw DevTools protocol</span>
-                <button class="sw on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
-              </div>
-              <div class="c-desc">Send any DevTools command, list targets, and read captured bodies.</div>
-              <div class="c-foot">
-                <span style="color:var(--bad)">3 errors</span>
-                <span style="color:var(--accent)">Inspect →</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <aside class="c-drawer" id="side-drawer">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <b id="drawer-title" style="font-size:15px;">Browse a page</b>
-            <button class="modal-close" style="width:24px; height:24px;" onclick="closeCardDrawer()">×</button>
-          </div>
-          <div id="drawer-id" style="font-family:var(--mono); font-size:11.5px; color:var(--accent); margin-bottom:8px;">embedded_browser.page</div>
-          <p id="drawer-p" style="font-size:12.5px; color:var(--fg); line-height:1.5;">Open a URL in the browser pane and read what is on it.</p>
-          <hr style="border:0; border-top:1px solid var(--border); margin:16px 0;">
-          <div style="display:grid; gap:8px; font-size:12px;">
-            <div style="display:flex; justify-content:space-between;"><span style="color:var(--fg-quiet)">Cost:</span><span id="drawer-cost">310 t/turn</span></div>
-            <div style="display:flex; justify-content:space-between;"><span style="color:var(--fg-quiet)">Status:</span><span style="color:var(--ok)">Enabled</span></div>
-          </div>
-          <div style="margin-top:20px; display:flex; flex-direction:column; gap:8px;">
-            <button class="btn-quiet" style="width:100%; padding:8px;">Send to chat for repair</button>
-            <button class="btn-quiet" style="width:100%; padding:8px;">Show parameter schema</button>
-          </div>
-        </aside>
+      <!-- Unused Savings Alert -->
+      <div class="c-alert" id="savings-banner">
+        <span>💡 <b>6 unused tools are active.</b> Turning them off reduces base turn cost by <b>2,030 tokens</b>.</span>
+        <button class="c-alert-btn" onclick="dismissSavings()">Turn all 6 off</button>
       </div>
 
-      <footer class="modal-ftr">
-        <div class="segmented">
-          <button class="on">Full</button><button>Read-only</button><button>Custom</button>
+      <!-- Tool Rows List -->
+      <div class="c-list" id="tool-list">
+
+        <!-- Tool 1 -->
+        <div class="c-row-wrapper" data-cat="web">
+          <div class="c-row" onclick="toggleInspector(this)">
+            <div class="c-icon">🌐</div>
+            <div class="c-info">
+              <div class="c-name">Browse a page</div>
+              <div class="c-summary">Open URLs in the embedded browser pane and read rendered content safely</div>
+              <div class="c-tech-meta">embedded_browser.page · navigate, read_page, wait_for</div>
+            </div>
+            <span class="c-status quiet">Healthy</span>
+            <span class="c-cost">310 t/turn</span>
+            <button class="c-switch on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
+          </div>
+          <div class="c-inspector">
+            <div class="c-insp-grid">
+              <div>
+                <div style="font-weight:600; color:var(--fg-primary); margin-bottom:4px;">Browser Page Inspection</div>
+                <div style="color:var(--fg-secondary); line-height:1.45;">Reads visible text and accessibility tree from the chat's assigned tab. Refuses background navigation on active chats.</div>
+                <dl class="c-insp-facts">
+                  <dt>Effect:</dt><dd>Read-only (No site state modified)</dd>
+                  <dt>Timeout:</dt><dd>30,000 ms</dd>
+                  <dt>Activity:</dt><dd>27 runs recorded · 1 timeout</dd>
+                  <dt>Last used:</dt><dd>13 minutes ago</dd>
+                </dl>
+                <div class="c-insp-actions">
+                  <button class="c-btn">Show full schema</button>
+                  <button class="c-btn">Send to chat for repair</button>
+                </div>
+              </div>
+              <div class="c-insp-code">
+                <span style="color:#71717a; display:block; margin-bottom:4px;">// Tool prompt excerpt</span>
+                "Open a URL or search query in this chat’s assigned tab, wait for readiness, and return final URL, title, and load state..."
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- Tool 2 -->
+        <div class="c-row-wrapper" data-cat="web">
+          <div class="c-row" onclick="toggleInspector(this)">
+            <div class="c-icon">🔍</div>
+            <div class="c-info">
+              <div class="c-name">Web search</div>
+              <div class="c-summary">Fast web search across multiple search providers with deduplication</div>
+              <div class="c-tech-meta">search.query · brave, exa, serper, tavily</div>
+            </div>
+            <span class="c-status warn">unused 6 wk</span>
+            <span class="c-cost">540 t/turn</span>
+            <button class="c-switch on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
+          </div>
+          <div class="c-inspector">
+            <div class="c-insp-grid">
+              <div>
+                <div style="font-weight:600; color:var(--fg-primary); margin-bottom:4px;">Web Search Aggregator</div>
+                <div style="color:var(--fg-secondary); line-height:1.45;">Queries external search APIs. Returns bounded, deduplicated snippets.</div>
+                <dl class="c-insp-facts">
+                  <dt>Recommendation:</dt><dd class="warn" style="color:var(--warn)">Suggested off — has not been called in 6 weeks</dd>
+                  <dt>Base Cost:</dt><dd>540 tokens / turn</dd>
+                </dl>
+                <div class="c-insp-actions">
+                  <button class="c-btn" onclick="toggleThisRow(this, false)">Turn off to save tokens</button>
+                </div>
+              </div>
+              <div class="c-insp-code">
+                "Search via Brave, Exa, Serper, Tavily, and You.com. Pick intent by evidence: general, news, research..."
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool 3 -->
+        <div class="c-row-wrapper" data-cat="web">
+          <div class="c-row" onclick="toggleInspector(this)">
+            <div class="c-icon">📚</div>
+            <div class="c-info">
+              <div class="c-name">Paper library</div>
+              <div class="c-summary">Search locally indexed research papers and PDF documents</div>
+              <div class="c-tech-meta">search.library · status, search, read</div>
+            </div>
+            <span class="c-status warn">unused 8 wk</span>
+            <span class="c-cost">210 t/turn</span>
+            <button class="c-switch on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
+          </div>
+          <div class="c-inspector">
+            <div class="c-insp-grid">
+              <div>
+                <div style="font-weight:600; color:var(--fg-primary); margin-bottom:4px;">Research Library Access</div>
+                <div style="color:var(--fg-secondary); line-height:1.45;">Local lexical index over papers saved in the application library.</div>
+              </div>
+              <div class="c-insp-code">
+                "Read-only, durable app-shared public paper index. Local lexical search returns five results..."
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool 4 -->
+        <div class="c-row-wrapper" data-cat="browser">
+          <div class="c-row" onclick="toggleInspector(this)">
+            <div class="c-icon">⚡</div>
+            <div class="c-info">
+              <div class="c-name">Run page scripts</div>
+              <div class="c-summary">Execute JavaScript and structured DOM extract inside open pages</div>
+              <div class="c-tech-meta">embedded_browser.script · fetch, extract, query, evaluate</div>
+            </div>
+            <span class="c-status quiet">Healthy</span>
+            <span class="c-cost">620 t/turn</span>
+            <button class="c-switch on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
+          </div>
+          <div class="c-inspector">
+            <div class="c-insp-grid">
+              <div>
+                <div style="font-weight:600; color:var(--fg-primary); margin-bottom:4px;">In-Page Script Runner</div>
+                <div style="color:var(--fg-secondary); line-height:1.45;">Runs code directly inside the WebContents. Inherits session cookies and login state.</div>
+              </div>
+              <div class="c-insp-code">
+                "fetch, extract, query, evaluate, console in tab session..."
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool 5 -->
+        <div class="c-row-wrapper" data-cat="browser">
+          <div class="c-row" onclick="toggleInspector(this)">
+            <div class="c-icon">🛠️</div>
+            <div class="c-info">
+              <div class="c-name">Raw DevTools protocol</div>
+              <div class="c-summary">Low-level Chrome DevTools Protocol access for profiling and raw commands</div>
+              <div class="c-tech-meta">browser_cdp.protocol · capabilities, targets, command</div>
+            </div>
+            <span class="c-status bad">3 errors recorded</span>
+            <span class="c-cost">700 t/turn</span>
+            <button class="c-switch on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
+          </div>
+          <div class="c-inspector">
+            <div class="c-insp-grid">
+              <div>
+                <div style="font-weight:600; color:var(--fg-primary); margin-bottom:4px;">Chrome DevTools Protocol (CDP)</div>
+                <div style="color:var(--fg-secondary); line-height:1.45;">Provides raw DevTools Protocol hooks. Caution: can crash renderer if misused.</div>
+                <dl class="c-insp-facts">
+                  <dt>Errors:</dt><dd class="bad">3 errors: "Target closed unexpectedly" 2h ago</dd>
+                  <dt>Base Cost:</dt><dd>700 tokens / turn (Loaded on demand)</dd>
+                </dl>
+                <div class="c-insp-actions">
+                  <button class="c-btn pri">Send to chat for repair</button>
+                  <button class="c-btn">Show full schema</button>
+                </div>
+              </div>
+              <div class="c-insp-code">
+                "Low-level Chrome DevTools Protocol access to tabs owned by the embedded browser..."
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool 6 -->
+        <div class="c-row-wrapper" data-cat="browser">
+          <div class="c-row" onclick="toggleInspector(this)">
+            <div class="c-icon">🔁</div>
+            <div class="c-info">
+              <div class="c-name">Replay request</div>
+              <div class="c-summary">Send captured HTTP requests again with custom modifications</div>
+              <div class="c-tech-meta">embedded_browser.network_replay · replay</div>
+            </div>
+            <span class="c-status quiet">2 refused</span>
+            <span class="c-cost">180 t/turn</span>
+            <button class="c-switch" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
+          </div>
+          <div class="c-inspector">
+            <div class="c-insp-grid">
+              <div>
+                <div style="font-weight:600; color:var(--fg-primary); margin-bottom:4px;">Request Replayer</div>
+                <div style="color:var(--fg-secondary); line-height:1.45;">Replays mutations captured by network monitoring. Currently disabled.</div>
+              </div>
+              <div class="c-insp-code">
+                "embedded_browser.network_replay is a separate deferred tool taking request_id..."
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool 7 -->
+        <div class="c-row-wrapper" data-cat="app">
+          <div class="c-row" onclick="toggleInspector(this)">
+            <div class="c-icon">🖥️</div>
+            <div class="c-info">
+              <div class="c-name">App state</div>
+              <div class="c-summary">Read which chats, tabs, models, and dialogs are active in ClosedAI</div>
+              <div class="c-tech-meta">closedai_app.state · plain tool</div>
+            </div>
+            <span class="c-status quiet">Healthy</span>
+            <span class="c-cost">240 t/turn</span>
+            <button class="c-switch on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
+          </div>
+          <div class="c-inspector">
+            <div class="c-insp-grid">
+              <div>
+                <div style="font-weight:600; color:var(--fg-primary); margin-bottom:4px;">Application State Access</div>
+                <div style="color:var(--fg-secondary); line-height:1.45;">Provides ambient facts to agent about open tabs, active workspace pane, and project directory.</div>
+              </div>
+              <div class="c-insp-code">
+                "Compact app facts from the main process (workspace panes, chat pane, browser tabs...)"
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool 8 -->
+        <div class="c-row-wrapper" data-cat="app">
+          <div class="c-row" onclick="toggleInspector(this)">
+            <div class="c-icon">📸</div>
+            <div class="c-info">
+              <div class="c-name">Screenshots &amp; visual evidence</div>
+              <div class="c-summary">Capture the app window or open browser page for visual review</div>
+              <div class="c-tech-meta">closedai_ui.capture · app_window, browser_page, crop</div>
+            </div>
+            <span class="c-status quiet">Healthy</span>
+            <span class="c-cost">260 t/turn</span>
+            <button class="c-switch on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
+          </div>
+          <div class="c-inspector">
+            <div class="c-insp-grid">
+              <div>
+                <div style="font-weight:600; color:var(--fg-primary); margin-bottom:4px;">Visual Evidence Engine</div>
+                <div style="color:var(--fg-secondary); line-height:1.45;">Takes scaled screenshots of the browser pane or app frame with frame coherence verification.</div>
+              </div>
+              <div class="c-insp-code">
+                "Visual evidence, deferred where supported. Captures composed app or readiness-gated page..."
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool 9 -->
+        <div class="c-row-wrapper" data-cat="secrets">
+          <div class="c-row" onclick="toggleInspector(this)">
+            <div class="c-icon">🔑</div>
+            <div class="c-info">
+              <div class="c-name">Credential vault</div>
+              <div class="c-summary">Decrypt credentials only for explicit user tasks with full audit trail</div>
+              <div class="c-tech-meta">credential_vault.read · read</div>
+            </div>
+            <span class="c-status quiet">Healthy</span>
+            <span class="c-cost">160 t/turn</span>
+            <button class="c-switch on" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
+          </div>
+          <div class="c-inspector">
+            <div class="c-insp-grid">
+              <div>
+                <div style="font-weight:600; color:var(--fg-primary); margin-bottom:4px;">Secure Credential Storage</div>
+                <div style="color:var(--fg-secondary); line-height:1.45;">Requires explicit field IDs and user audit reason. Never persisted or echoed in chat transcripts.</div>
+              </div>
+              <div class="c-insp-code">
+                "Decrypts credentials from the vault for a task you asked for. Rejects tool_batch aggregation..."
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool 10 -->
+        <div class="c-row-wrapper" data-cat="native">
+          <div class="c-row" onclick="toggleInspector(this)">
+            <div class="c-icon">⚙️</div>
+            <div class="c-info">
+              <div class="c-name">Custom native probes</div>
+              <div class="c-summary">Inject scripts into local native processes (Frida engine)</div>
+              <div class="c-tech-meta">native_instrument.probe · probe</div>
+            </div>
+            <span class="c-status quiet">Off</span>
+            <span class="c-cost">330 t/turn</span>
+            <button class="c-switch" onclick="event.stopPropagation(); toggleSwitch(this)"></button>
+          </div>
+          <div class="c-inspector">
+            <div class="c-insp-grid">
+              <div>
+                <div style="font-weight:600; color:var(--fg-primary); margin-bottom:4px;">Native Instrumentation Engine</div>
+                <div style="color:var(--fg-secondary); line-height:1.45;">Temporarily injects scripts into native OS processes for authorized debugging. Can modify or crash target.</div>
+              </div>
+              <div class="c-insp-code">
+                "native_instrument.probe temporarily attaches/injects and owns cleanup within one call..."
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <footer class="c-footer">
+        <span>Off takes effect immediately. Active chats preserve their tools until next thread.</span>
+        <button class="c-btn" onclick="alert('Telemetry counters reset to zero')">Reset telemetry counts</button>
       </footer>
+
     </div>
   </section>
 
-  <!-- TAB 4: FLAWS IN CURRENT UI -->
-  <section id="tab-review" class="view-panel">
+  <!-- TAB 2: REFERENCE COMPARISON -->
+  <section id="tab-reference" class="view-panel">
     <div style="margin-bottom:20px;">
-      <h2 style="margin:0 0 6px; font-size:18px;">Why the current UI needs an overhaul</h2>
-      <p style="margin:0; font-size:13px; color:var(--fg);">Visual breakdown of the layout reflows and information hierarchy defects introduced by the last agent.</p>
+      <h2 style="margin:0 0 6px; font-size:18px;">Reference Alignment: ChatGPT Desktop Plugins vs ClosedAI</h2>
+      <p style="margin:0; font-size:13px; color:var(--fg-secondary);">
+        Direct comparison showing how the proposed redesign translates ChatGPT Desktop's layout, hierarchy, and density into ClosedAI's technical tools context.
+      </p>
     </div>
 
-    <div class="review-grid">
-      <div class="review-card">
-        <h3><span class="flaw-tag">Flaw 1</span> Grid Jumping on Card Expand</h3>
-        <p>Expanding a card injects <code>col-span-full</code> into an auto-fill grid, forcing sibling cards into awkward orphan slots below it and distorting the page.</p>
-        <div class="img-wrap">
-          <img src="/mockup-assets/current_modal_expanded.jpg" alt="Expanded card glitch">
+    <div class="comp-container">
+      <div class="comp-box">
+        <h3>User Reference: ChatGPT Desktop Plugins Page</h3>
+        <p>Large clean header, category filter pills on left, capsule search on right, spacious row list with clean typography and right-aligned toggles.</p>
+        <div class="comp-img">
+          <img src="/mockup-assets/chatgpt_reference.jpg" alt="ChatGPT Plugins Page Reference">
         </div>
       </div>
 
-      <div class="review-card">
-        <h3><span class="flaw-tag">Flaw 2</span> Low Density &amp; Bloated Banners</h3>
-        <p>A massive suggestions box and thick card padding waste vertical real estate, displaying only 3–4 tools above the fold and forcing constant scrolling.</p>
-        <div class="img-wrap">
-          <img src="/mockup-assets/current_modal_collapsed.jpg" alt="Collapsed card state">
+      <div class="comp-box">
+        <h3>ClosedAI Proposed Design</h3>
+        <p>Adopted identical visual language: clean pill categories, capsule search, spacious list rows, subtle category glyphs, technical metadata, and inline inspector.</p>
+        <div class="comp-img">
+          <img src="/mockup-assets/chatgpt_tools_modal_1790030211846.jpg" alt="ClosedAI Redesign">
         </div>
       </div>
     </div>
   </section>
 
-  <!-- TAB 5: AI MOCKUP RENDERS -->
-  <section id="tab-gallery" class="view-panel">
-    <div style="display:grid; gap:32px;">
-      <div>
-        <h3 style="margin:0 0 6px; font-size:16px;">Option 1: Linear-Inspired Dense Grouped List</h3>
-        <p style="margin:0 0 12px; font-size:12.5px; color:var(--fg);">Single-column accordion layout with rigid vertical alignment, real-time search, and compact suggestions.</p>
-        <div class="img-wrap">
-          <img src="/mockup-assets/tools_modal_linear_1790029627447.jpg" alt="Option 1 Render">
+  <!-- TAB 3: DESIGN RENDERS -->
+  <section id="tab-renders" class="view-panel">
+    <div style="display:grid; gap:28px;">
+      <div class="comp-box">
+        <h3>1. Default State: Clean Spacious List &amp; Capsule Search</h3>
+        <p>Full overview showing the pill filter navigation, token cost telemetry, and calm list items without any distracting card borders.</p>
+        <div class="comp-img">
+          <img src="/mockup-assets/chatgpt_tools_modal_1790030211846.jpg" alt="Default List View">
         </div>
       </div>
 
-      <div>
-        <h3 style="margin:0 0 6px; font-size:16px;">Option 2: Two-Pane Master-Detail Inspector</h3>
-        <p style="margin:0 0 12px; font-size:12.5px; color:var(--fg);">macOS / IDE-style settings layout with a 240px sidebar for namespaces and dedicated right-hand inspector.</p>
-        <div class="img-wrap">
-          <img src="/mockup-assets/tools_modal_sidebar_1790029615265.jpg" alt="Option 2 Render">
-        </div>
-      </div>
-
-      <div>
-        <h3 style="margin:0 0 6px; font-size:16px;">Option 3: Modern Capability Grid</h3>
-        <p style="margin:0 0 12px; font-size:12.5px; color:var(--fg);">Balanced multi-column cards with fixed dimensions and dedicated side drawer for deep inspection.</p>
-        <div class="img-wrap">
-          <img src="/mockup-assets/tools_modal_list_1790029602733.jpg" alt="Option 3 Render">
+      <div class="comp-box">
+        <h3>2. Expanded State: Inline Technical Inspector</h3>
+        <p>When a tool row is clicked, it opens an inline card detailing parameters, error telemetry, prompt excerpt, and repair draft trigger without shifting unrelated rows.</p>
+        <div class="comp-img">
+          <img src="/mockup-assets/chatgpt_tools_expanded_1790030231216.jpg" alt="Expanded Inspector View">
         </div>
       </div>
     </div>
@@ -957,10 +861,10 @@
 </main>
 
 <script>
-  // Tab Switching
-  document.querySelectorAll('.tab-btn').forEach(btn => {
+  // Tab switching
+  document.querySelectorAll('.nav-tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.nav-tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       const target = document.getElementById(btn.dataset.tab);
@@ -968,80 +872,84 @@
     });
   });
 
-  // Switch Toggle Logic
+  // Switch toggle
   function toggleSwitch(el) {
     el.classList.toggle('on');
+    updateCounter();
   }
 
-  // Row Accordion Toggle
-  function toggleDrawer(bar) {
-    const item = bar.closest('.tool-row-item');
-    const wasOpen = item.classList.contains('open');
-    // Close others
-    document.querySelectorAll('.tool-row-item.open').forEach(i => i.classList.remove('open'));
-    if (!wasOpen) item.classList.add('open');
+  // Row Inspector toggle
+  function toggleInspector(row) {
+    const wrapper = row.closest('.c-row-wrapper');
+    const wasOpen = wrapper.classList.contains('open');
+    document.querySelectorAll('.c-row-wrapper.open').forEach(w => w.classList.remove('open'));
+    if (!wasOpen) wrapper.classList.add('open');
   }
 
-  // Filter Tool Rows
-  const filterInput = document.getElementById('tool-filter-input');
-  if (filterInput) {
-    filterInput.addEventListener('input', (e) => {
+  // Category Filter Pills
+  function filterCategory(cat, btn) {
+    document.querySelectorAll('.c-pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.c-row-wrapper').forEach(row => {
+      if (cat === 'all' || row.dataset.cat === cat) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+
+  // Real-time Search Input
+  const searchInput = document.getElementById('tool-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
       const q = e.target.value.toLowerCase().trim();
-      document.querySelectorAll('.tool-row-item').forEach(row => {
+      document.querySelectorAll('.c-row-wrapper').forEach(row => {
         const text = row.textContent.toLowerCase();
         row.style.display = text.includes(q) ? '' : 'none';
       });
     });
   }
 
-  // Apply Suggestions demo
-  function applySuggestions() {
-    document.querySelectorAll('.row-note.warn').forEach(note => {
-      const row = note.closest('.tool-row-item');
-      const sw = row.querySelector('.sw');
+  // Dismiss Savings
+  function dismissSavings() {
+    document.querySelectorAll('.c-status.warn').forEach(s => {
+      const row = s.closest('.c-row-wrapper');
+      const sw = row.querySelector('.c-switch');
       if (sw) sw.classList.remove('on');
-      row.classList.add('off');
-      note.textContent = 'off';
+      s.textContent = 'Off';
+      s.className = 'c-status quiet';
     });
-    const box = document.querySelector('.sugg-box');
-    if (box) box.style.display = 'none';
-    const status = document.getElementById('list-status');
-    if (status) status.textContent = '21 of 31 on · about 2.1k tokens of every turn';
+    document.getElementById('savings-banner').style.display = 'none';
+    updateCounter();
   }
 
-  // Preset Switcher demo
-  function setPreset(preset, btn) {
-    document.querySelectorAll('#preset-controls button').forEach(b => b.classList.remove('on'));
-    btn.classList.add('on');
-    if (preset === 'read-only') {
-      document.querySelectorAll('.grp-sec').forEach(grp => {
-        const isRead = grp.dataset.group === 'reads-web';
-        grp.querySelectorAll('.sw').forEach(sw => {
-          if (isRead) sw.classList.add('on');
-          else sw.classList.remove('on');
-        });
-        grp.querySelectorAll('.tool-row-item').forEach(item => {
-          if (isRead) item.classList.remove('off');
-          else item.classList.add('off');
-        });
-      });
-    } else if (preset === 'full') {
-      document.querySelectorAll('.sw').forEach(sw => sw.classList.add('on'));
-      document.querySelectorAll('.tool-row-item').forEach(item => item.classList.remove('off'));
+  // Update active counter
+  function updateCounter() {
+    const active = document.querySelectorAll('.c-switch.on').length;
+    const total = document.querySelectorAll('.c-switch').length;
+    const counter = document.getElementById('token-counter');
+    if (counter) {
+      counter.textContent = `${active} of ${total} active · ${Math.round(active * 320 / 100) / 10}k tokens / turn`;
     }
   }
 
-  // Option 3 Drawer
-  function openCardDrawer(title, id, desc, cost) {
-    const drawer = document.getElementById('side-drawer');
-    document.getElementById('drawer-title').textContent = title;
-    document.getElementById('drawer-id').textContent = id;
-    document.getElementById('drawer-p').textContent = desc;
-    document.getElementById('drawer-cost').textContent = cost;
-    drawer.classList.add('open');
-  }
-  function closeCardDrawer() {
-    document.getElementById('side-drawer').classList.remove('open');
+  // Preset cycling demo
+  const presets = ['Custom', 'Full', 'Read-only'];
+  let curPreset = 0;
+  function cyclePresets() {
+    curPreset = (curPreset + 1) % presets.length;
+    document.getElementById('preset-label').textContent = `Preset: ${presets[curPreset]}`;
+    if (presets[curPreset] === 'Read-only') {
+      document.querySelectorAll('.c-row-wrapper').forEach(row => {
+        const sw = row.querySelector('.c-switch');
+        if (row.dataset.cat === 'web') sw.classList.add('on');
+        else sw.classList.remove('on');
+      });
+    } else if (presets[curPreset] === 'Full') {
+      document.querySelectorAll('.c-switch').forEach(sw => sw.classList.add('on'));
+    }
+    updateCounter();
   }
 </script>
 </body>

@@ -621,6 +621,18 @@ cover the rest; reasoning items still never cross into another pane.
 login state, history, and downloads are app-wide. The initial cookie import runs before the first
 page load. Tab state and history are persisted separately.
 
+Page permission requests follow `Settings ▸ Security ▸ Web permissions` (`src/main/browser-permissions.ts`).
+The default, `allow`, is the historical policy: every Chromium permission request, permission check,
+and device request is granted, `getDisplayMedia` takes the first screen or window source, and the
+HID, serial, USB, and Bluetooth pickers choose their first candidate without prompting. `block` denies
+the four prompts Chrome shows — camera/microphone (`media`), screen capture, location, and
+notifications — plus device access and the pickers, while clipboard, fullscreen, pointer lock, and
+the rest stay granted as Chrome grants them without a prompt. `ask` routes those four kinds through
+`BrowserPermissionBroker` (`src/main/browser-permission-broker.ts`): the pending list reaches the
+renderer on `browser:permissionRequests` with the tab id, origin, and kind, `browser.resolvePermission`
+answers it, and an unanswered request is denied after 60 s. The policy is read per request, so a
+settings change applies to the next request without a restart. Nothing else is remembered per origin.
+
 On Linux, startup disables accelerated video decode by default because affected driver stacks can
 accept and advance H.264 playback while compositing blank frames. This leaves GPU compositing and
 WebGL available; only media decoding falls back to software. A known-good machine can opt back in
@@ -779,7 +791,9 @@ instrumentation.
 | Deterministic app commands and renderer control access | `src/main/app-commands.ts`, `src/main/app-automation-*.ts`, `src/shared/ui-controls.ts` |
 | Browser, history, popups, CDP sessions and input | `src/main/browser-*.ts`, `src/main/cdp/` |
 | Session network record, interception rules, console capture, session fetch and cookies | `src/main/browser-network/`, `src/main/browser-network-access.ts` |
-| Stored API keys and logins, OS-keychain encryption | `src/main/credential-vault.ts`, `src/shared/credentials.ts`, `src/renderer/settings/credential-*` |
+| Stored API keys and logins, OS-keychain encryption | `src/main/credential-vault.ts`, `src/main/safe-storage-encryption.ts`, `src/shared/credentials.ts`, `src/renderer/settings/credential-*` |
+| Security settings, credential approval cards, page permission requests | `src/main/security-settings-store.ts`, `src/main/security-ipc.ts`, `src/main/security-approvals.ts`, `src/main/browser-permission-broker.ts`, `src/main/decision-broker.ts`, `src/shared/security.ts` |
+| Default-browser cookie import (launch and on demand) | `src/main/browser-cookie-import.ts`, `src/main/import-cookies.ts` |
 | Typed IPC contract and narrow preload | `src/shared/api.ts`, `src/preload/index.ts` |
 | Chat/project/history orchestration | `src/renderer/chat-pane.tsx`, `src/renderer/project-menu.tsx`, `src/renderer/chat-history/` |
 | Transcript steps, background work, response actions | `src/renderer/transcript-rows.ts`, `src/renderer/activity-steps.ts`, `src/renderer/background-tasks.tsx`, `src/renderer/message-actions.tsx` |
@@ -823,7 +837,8 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 | `Partitions/browser`, `code-cache/` | Chromium session data and app-configured code cache |
 | `browser-cache-state.json` | Last measured regenerable browser cache size and prune timestamp; when Cache + Service Worker + GPU caches exceed 768MB and the seven-day cooldown has elapsed, startup and periodic maintenance clear only regenerable stores (cookies, localStorage, and IndexedDB stay intact) |
 | `tool-telemetry.json` | Aggregate run/error/timeout counters; no arguments or conversation text |
-| `credential-vault.json` | Saved credentials: service id, entry label, timestamps, and one record per field. Secret fields are `safeStorage` ciphertext (base64); hosts, usernames and URLs stay readable so the list renders without decrypting. Written atomically at 0600. Entries the earlier localStorage vault held are moved here on first open and the localStorage copy is cleared only after every entry lands |
+| `security-settings.json` | Settings ▸ Security: `credentialsRequireApproval`, `secretsRequireKeychain`, `webPermissions`, `importBrowserCookies`. A missing file is every default, which is the behavior before the tab existed; an unreadable one is set aside as `security-settings.json.corrupt-<time>` and never overwritten |
+| `credential-vault.json` | Saved credentials: service id, entry label, timestamps, per-entry `agentAccess` (absent on older records, read as on), and one record per field. Secret fields are `safeStorage` ciphertext (base64); hosts, usernames and URLs stay readable so the list renders without decrypting. Written atomically at 0600. Only a missing file is an empty vault; a file that cannot be read is set aside as `credential-vault.json.corrupt-<time>` before the vault continues empty, so the next save never overwrites it. Entries the earlier localStorage vault held are moved here on first open and the localStorage copy is cleared only after every entry lands |
 | `antigravity/profile/`, `antigravity/attachments/`, `antigravity/transcripts/` | Generated agent plugin, materialized image attachments, and app-recorded transcripts; the CLI retains its own conversation store |
 | Renderer localStorage | Appearance, model-picker usage, completion review queue (including review time; legacy storage key retained), message timestamps |
 | In-memory trace | At most 4,000 entries and 24,000,000 detail characters, 48,000 characters per detail before its truncation marker; cleared on restart |
@@ -905,7 +920,22 @@ secret fields with Electron `safeStorage` before writing;
 exercise the round trip outside Electron. When no OS keychain is available the vault still works
 but says so — the create form warns before saving and the saved row carries an `Unencrypted`
 badge — rather than silently degrading. A decrypt that fails against a changed keyring raises
-instead of returning ciphertext as if it were the secret.
+instead of returning ciphertext as if it were the secret. On Linux, Electron reports encryption as
+available for the `basic_text` backend too, which protects nothing; `safe-storage-encryption.ts`
+reports that backend as unavailable so the badge and each entry's `encrypted` flag are honest.
+
+`Settings ▸ Security` adds the user's choices on top, each defaulting to the behavior above
+(`src/shared/security.ts`, persisted in `security-settings.json`). Every saved entry carries an
+`agentAccess` switch, on by default; `credentials.setAgentAccess` turns it off and
+`credential_vault.read` then refuses that entry with a message that points the model at the
+setting. With `credentialsRequireApproval` on, each `read` first posts a `CredentialApprovalRequest`
+(pane, credential, field ids, the model's stated reason) through `security:credentialApprovals`; the
+tool waits for `security.resolveCredentialApproval`, refuses on deny, and an unanswered card is denied
+after 120 s (the tool's own timeout is longer, and an interrupted turn withdraws the card). With
+`secretsRequireKeychain` on, `CredentialVault.save` refuses a draft with a secret field whenever
+encryption is unavailable instead of storing it plainly. `importBrowserCookies` gates only the launch
+import; `security.importCookies` runs the same import on demand regardless of the latch and returns
+its counts, with `source: null` when no supported browser profile exists.
 
 ## Settings → Security
 
