@@ -80,7 +80,11 @@ view for capture and returns it afterward. The live check verifies its pixels an
 Capture temporarily disables background throttling and restores the previous setting afterward.
 
 `ChatHub` routes to Codex, Claude Code, Antigravity, or Cursor. Codex model/thread ids are
-unprefixed; Claude ids use `claude:`, Antigravity ids use `agy:`, and Cursor ids use `cursor:`. Picking another provider's model keeps the
+unprefixed; Claude ids use `claude:`, Antigravity ids use `agy:`, and Cursor ids use `cursor:`. Claude ids
+wrap the CLI's model alias, which the CLI renames between launches (`claude-fable-5-1` one day,
+`claude-fable-5-1[1m]` the next); a saved id the current catalog no longer lists verbatim is
+matched through the model it resolved to and rewritten under today's alias, so a Claude pane
+reopens on its own model rather than the default. Picking another provider's model keeps the
 pane in its conversation: the destination leaves whatever chat it last had open, starts a fresh
 thread carrying a digest of the visible one (the same handoff “Continue in new chat” builds, sent
 with the next message), and the pane keeps showing the transcript it had. An applicable working
