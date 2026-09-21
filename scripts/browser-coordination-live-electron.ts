@@ -88,20 +88,25 @@ async function verify() {
       await new Promise(res => { const loop = () => { raf++; requestAnimationFrame(loop) }; requestAnimationFrame(loop); setTimeout(res, 600) })
       return { timers: Math.round(performance.now() - t0), raf }
     })()`)
-    console.error('REAPPLIED ' + JSON.stringify(afterReapply))
-    const cadence = await browser.contentsOf(hidden)!.executeJavaScript(`(async () => {
-      const started = performance.now()
-      for (let tick = 0; tick < 4; tick++) await new Promise(resolve => setTimeout(resolve, 50))
-      let frames = 0
-      await new Promise(resolve => { const loop = () => { frames++; requestAnimationFrame(loop) }
-        requestAnimationFrame(loop); setTimeout(resolve, 500) })
-      return { timers: Math.round(performance.now() - started), frames }
-    })()`) as { timers: number; frames: number }
-    const control = await browser.contentsOf(active())!.executeJavaScript(`(async () => {
-      const started = performance.now()
-      for (let tick = 0; tick < 4; tick++) await new Promise(resolve => setTimeout(resolve, 50))
-      return Math.round(performance.now() - started)
-    })()`) as number
+    const probe = `(async () => {
+      const t0 = performance.now()
+      for (let i = 0; i < 4; i++) await new Promise(r => setTimeout(r, 50))
+      const timers = Math.round(performance.now() - t0)
+      let raf = 0
+      await new Promise(res => { const loop = () => { raf++; requestAnimationFrame(loop) }; requestAnimationFrame(loop); setTimeout(res, 600) })
+      return { timers, raf }
+    })()`
+    const cold = browser.openNewTab(`${base}/cold`, false)
+    const coldContents = browser.contentsOf(cold)!
+    await page.waitFor(cold, { until: 'load', timeoutMs: 5000 })
+    coldContents.setBackgroundThrottling(true)
+    console.error('COLD throttled      ' + JSON.stringify(await coldContents.executeJavaScript(probe)))
+    coldContents.setBackgroundThrottling(false)
+    console.error('COLD unthrottled    ' + JSON.stringify(await coldContents.executeJavaScript(probe)))
+    browser.selectTab(cold)
+    await new Promise(resolve => setTimeout(resolve, 300))
+    console.error('COLD selected       ' + JSON.stringify(await coldContents.executeJavaScript(probe)))
+    browser.closeTab(cold)
     console.error('CADENCE hidden=' + JSON.stringify(cadence) + ' activeControl=' + control)
     assert.ok(cadence.timers < 5000, `four 50 ms timers in a hidden driven page: ${cadence.timers} ms`)
     assert.ok(cadence.frames > 5, `animation frames in a hidden driven page: ${cadence.frames}`)
