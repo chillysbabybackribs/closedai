@@ -5,6 +5,7 @@ import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, layoutGeometry, min
 import { ChatTabs } from './chat-tabs.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import type { TabActivity } from './tab-activity.js'
+import { browserDropAt, browserDropPreview, sameBrowserDrop, type BrowserDrop } from './browser-drop.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
@@ -132,9 +133,47 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
     width: Math.max(size.width, minimum.width),
     height: Math.max(size.height, minimum.height)
   }
+  const browserDrop = drop?.edge && dragging?.id === BROWSER_PANE_ID ? drop as BrowserDrop : null
+  const preview = browserDrop ? browserDropPreview(tree, browserDrop, size.width, size.height) : null
+  const resolveBrowserDrop = (element: HTMLElement, x: number, y: number): BrowserDrop | null => {
+    const bounds = element.getBoundingClientRect()
+    return browserDropAt(geometry.panes, bounds.width, bounds.height, x - bounds.left, y - bounds.top,
+      dropTarget.current?.edge ? dropTarget.current as BrowserDrop : null)
+  }
 
   return <div className="chat-layout-viewport" ref={viewport}>
-    <div className="chat-layout-canvas" style={{ minWidth: minimum.width, minHeight: minimum.height }}>
+    <div className="chat-layout-canvas" style={{ minWidth: minimum.width, minHeight: minimum.height }}
+      onDragOverCapture={(event) => {
+        if (dragging?.id !== BROWSER_PANE_ID) return
+        event.stopPropagation()
+        if (busy) { event.dataTransfer.dropEffect = 'none'; return }
+        event.preventDefault()
+        if (soloTile) setSoloPaneId(null)
+        const next = resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
+        event.dataTransfer.dropEffect = next ? 'move' : 'none'
+        if (sameBrowserDrop(browserDrop, next)) return
+        dropTarget.current = next
+        setDrop(next)
+      }}
+      onDragLeave={(event) => {
+        if (dragging?.id !== BROWSER_PANE_ID) return
+        const bounds = event.currentTarget.getBoundingClientRect()
+        if (event.clientX <= bounds.left || event.clientX >= bounds.right || event.clientY <= bounds.top || event.clientY >= bounds.bottom) {
+          dropTarget.current = null
+          setDrop(null)
+        }
+      }}
+      onDropCapture={(event) => {
+        if (event.dataTransfer.getData(CHAT_DRAG_TYPE) !== BROWSER_PANE_ID) return
+        event.preventDefault()
+        event.stopPropagation()
+        const target = resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
+        if (!busy && target) onDock(BROWSER_PANE_ID, target.target, target.edge)
+        dropTarget.current = null
+        setDragging(null)
+        setDrop(null)
+        onDragActive(false)
+      }}>
       {tiles.map(({ id: activeId, tabs, rect }) => {
         const isThisTileSolo = soloTile ? (soloTile.id === activeId || soloTile.tabs.includes(activeId)) : false
         const tileRect = isThisTileSolo ? soloRect : rect
@@ -162,6 +201,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
             setDrop(dropTarget.current)
           }}
           onDragLeave={(event) => {
+            if (dragging?.id === BROWSER_PANE_ID) return
             if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
               dropTarget.current = null
               setDrop(null)
@@ -325,7 +365,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
               : 'Drop on either side to place a chat beside the browser'}</div>}
           </div> : tabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
             aria-label={title(tabId)} hidden={tabId !== activeId}>{renderPane(tabId)}</div>)}
-          {drop?.target === activeId && (dragging?.id !== activeId || (dragging.singleTab && tabs.length > 1)) && <div className="chat-layout-drop" data-edge={drop.edge ?? 'tab'}>
+          {dragging?.id !== BROWSER_PANE_ID && drop?.target === activeId && (dragging?.id !== activeId || (dragging.singleTab && tabs.length > 1)) && <div className="chat-layout-drop" data-edge={drop.edge ?? 'tab'}>
             <span>{drop.edge === null ? 'Move to tab strip' : drop.edge === 'top' ? 'Place above' : drop.edge === 'bottom' ? 'Place below' : `Place ${drop.edge}`}</span>
           </div>}
         </section>
@@ -333,26 +373,16 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
       {dragging?.id === BROWSER_PANE_ID && !busy && <>
         {(['left', 'right'] as const).map((edge) => <div key={edge}
           className="chat-layout-workspace-dock" data-edge={edge} data-ui="layout.workspace-dock" data-ui-key={edge}
+          data-active={browserDrop?.target === WORKSPACE_DOCK_ID && browserDrop.edge === edge}
           aria-label={`Move browser to full-height ${edge} column`}
-          onDragOver={(event) => {
-            event.preventDefault()
-            event.dataTransfer.dropEffect = 'move'
-            dropTarget.current = { target: WORKSPACE_DOCK_ID, edge }
-            setDrop(dropTarget.current)
-          }}
-          onDragLeave={() => { dropTarget.current = null; setDrop(null) }}
-          onDrop={(event) => {
-            if (event.dataTransfer.getData(CHAT_DRAG_TYPE) !== BROWSER_PANE_ID) return
-            event.preventDefault()
-            onDock(BROWSER_PANE_ID, WORKSPACE_DOCK_ID, edge)
-            dropTarget.current = null
-            setDragging(null)
-            setDrop(null)
-            onDragActive(false)
-          }} />)}
-        {drop?.target === WORKSPACE_DOCK_ID && <div className="chat-layout-drop" data-edge={drop.edge}>
-          <span>Full-height browser column</span>
-        </div>}
+        ><span>Full-height column</span></div>)}
+        {preview?.panes.map(({ id, rect }) => <div key={id} className="chat-layout-browser-preview"
+          data-browser={id === BROWSER_PANE_ID} style={position(rect)}>
+          {id === BROWSER_PANE_ID && <span role="status">Release to place browser {browserDrop?.target === WORKSPACE_DOCK_ID
+            ? `in a full-height ${browserDrop.edge} column`
+            : `${browserDrop?.edge === 'top' ? 'above' : browserDrop?.edge === 'bottom' ? 'below' : `to the ${browserDrop?.edge} of`} ${title(browserDrop!.target)}`}
+            <br /><small>Esc to cancel</small></span>}
+        </div>)}
       </>}
       {!soloTile && geometry.dividers.map((divider) => <div key={divider.id} className="chat-layout-divider"
         style={position(divider.rect)} data-axis={divider.axis} role="separator" tabIndex={0}

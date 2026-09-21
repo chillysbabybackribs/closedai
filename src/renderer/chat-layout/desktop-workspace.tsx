@@ -37,7 +37,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
     onDragStart={(event) => {
       event.dataTransfer.setData(CHAT_DRAG_TYPE, BROWSER_PANE_ID)
       event.dataTransfer.effectAllowed = 'move'
-    }}><GripVertical size={13} aria-hidden="true" /></button>, [layout.busy])
+    }}><GripVertical size={18} aria-hidden="true" /></button>, [layout.busy])
   useImperativeHandle(ref, () => ({
     splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),
     toggleBrowser: layout.toggleBrowser
