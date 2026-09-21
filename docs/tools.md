@@ -8,6 +8,14 @@ protocol: `app-server-tools.ts` for Codex (`dynamicTools` + `item/tool/call`),
 `embedded_browser.page`, `mcp__embedded_browser__page`, and `mcp_embedded_browser_page`, respectively.
 Source review: 2026-09-04. See [Model context](model-context.md) for instruction assembly.
 
+## Native instrumentation
+
+`native_instrument.query` exposes read-only `capabilities`, `processes` and `operation` actions.
+The separate `inspect` and `probe` tools temporarily attach/inject and own their cleanup within
+one call. The latter accepts arbitrary native-capable JavaScript and is explicitly mutating.
+All three tools are deferred where supported and appear in the existing Tools switches.
+See [runtime, ownership, result budgets and limitations](native-instrumentation.md).
+
 ## Three levels, three rules
 
 Decide where a capability goes before writing it. Pick the lowest level that fits.

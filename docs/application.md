@@ -4,6 +4,14 @@ Source review: 2026-09-13, including the current uncommitted changes. This descr
 behavior, not a new live UI or provider verification. Protocol measurements retain their dates
 in the provider guides.
 
+## Native instrumentation
+
+The initial local Linux backend offers process discovery, finite native inspection and custom
+Frida probes through a separate controller. Each experiment unloads/detaches before returning;
+receipts, cancellation and event budgets belong to the main-process service. Custom probes can
+modify or crash the target. Browser semantics remain in the browser/CDP services. See
+[implemented contracts and validation](native-instrumentation.md).
+
 ## Projects, chats, panes, and conversations
 
 All provider instruction builders ask models to recover the intended outcome, respect explicit

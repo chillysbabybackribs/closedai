@@ -10,6 +10,11 @@ Source review: 2026-09-13. Common product facts, provider-specific rules, runtim
 repository documentation have separate owners. Editing a Markdown guide alone does not change
 every running model's prompt.
 
+Shared application guidance now routes authorized native-process experiments to
+`native_instrument`, distinguishes discovery from injection, describes custom probe effects,
+and requires operation-receipt reconciliation after uncertainty. It marks native output as
+untrusted. Parameter limits remain owned by the tools; see [native instrumentation](native-instrumentation.md).
+
 ## Instruction assembly
 
 | Layer | Owner | Delivery |

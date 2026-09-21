@@ -2,8 +2,11 @@
 
 Research date: 2026-09-20 America/New_York / 2026-09-21 UTC.
 Repository baseline: `2d61205`, clean working tree when this review began.
-Status: research and proposed design, not an implemented contract. No Frida installation,
-process attachment, injection, kernel change, or benchmark was performed.
+Status at the time of this assessment: research and proposed design. No Frida installation,
+process attachment, injection, kernel change, or benchmark had been performed.
+The subsequent [initial implementation and fixture validation](native-instrumentation.md)
+supersede the no-installation/no-integration observations below. The broader capability map
+and remaining proposed stages are still research, not an implemented contract.
 
 ## Assessment
 
