@@ -1,7 +1,7 @@
-import type { ChatEvent } from '../../shared/chat.js'
+import type { ChatEvent, ChatSnapshot } from '../../shared/chat.js'
 import type { ChatPaneId, ChatPeerSummary } from '../../shared/chat-peers.js'
 import { chatProviderOfId } from '../../shared/chat-providers.js'
-import { chatRecordIsBlank, type ChatRecord } from '../../shared/chat-store.js'
+import { chatRecordIsBlank, type ChatRecord, type ChatRecordPatch } from '../../shared/chat-store.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
@@ -95,7 +95,7 @@ export class PeerLifecycle {
   ): ChatPaneId {
     const { cwd, projectPath } = workspace
     const records = openIds.map((id) => this.store.get(id)).filter((record): record is ChatRecord =>
-      record !== undefined && !record.archived && record.cwd === cwd)
+      record !== undefined && !record.archived)
     if (records.length === 0) {
       const saved = this.settings.get()
       const model = modelId ?? saved.chatModelId
@@ -152,6 +152,31 @@ export class PeerLifecycle {
     })
     this.peers.set(record.id, entry)
     return entry
+  }
+
+  /** Stop the chat's runtime and forget its pane; the record stays. */
+  relocate(chatId: ChatPaneId, patch: ChatRecordPatch, source: ChatSnapshot): void {
+    const previous = this.require(chatId)
+    const record = this.store.require(chatId)
+    this.parking.cancel(previous)
+    this.titles.cancel(chatId)
+    this.cancelPaneWork(chatId)
+    this.peers.delete(chatId)
+    try {
+      const next = this.attach(this.store.update(chatId, patch))
+      if (!next.surface.restoreConversation) throw new Error('This provider cannot move a conversation between directories')
+      next.surface.restoreConversation(source)
+      this.onEvent(next, { type: 'replace', snapshot: next.surface.snapshot() })
+    } catch (error) {
+      this.detach(chatId)
+      this.store.update(chatId, record)
+      this.peers.set(chatId, previous)
+      this.parking.schedule(chatId)
+      throw error
+    }
+    // Retire only this pane's old runtime. Its late events are ignored by the entry identity guard.
+    if (previous.surface.dispose) previous.surface.dispose()
+    else previous.surface.stop()
   }
 
   /** Stop the chat's runtime and forget its pane; the record stays. */

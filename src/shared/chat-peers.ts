@@ -41,6 +41,9 @@ export type ChatRowSummary = ChatPeerSummary & {
   attached: boolean
   pinnedAt: number | null
   cwd: string
+  projectPath?: string | null
+  /** A directory chosen for this chat that is waiting for its running work to finish. */
+  pendingProject?: { cwd: string; projectPath: string | null }
   createdAt: number
   lastTurnEndedAt: number | null
 }

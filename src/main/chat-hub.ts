@@ -34,6 +34,8 @@ export type ChatSurface = {
   stop(): void
   /** Permanently release listeners/resources when the pane detaches; unlike stop, it is not parking. */
   dispose?(): void
+  /** Preserve the visible conversation when rebuilding this chat's runtime in a new directory. */
+  restoreConversation?(source: ChatSnapshot): void
   send(text: string, attachments: ChatAttachment[]): Promise<void>
   interrupt(): Promise<void>
   selectModel(modelId: string): Promise<void>
@@ -127,6 +129,10 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   get activeProvider(): ChatProvider {
     return this.active
+  }
+
+  restoreConversation(source: ChatSnapshot): void {
+    this.carriedHistory = { provider: this.active, threadName: source.threadName, items: source.items }
   }
 
   snapshot(window?: ChatHistoryWindow): ChatSnapshot {
@@ -561,7 +567,8 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     if (event.type === 'replace') {
       // The provider clearing itself — archiving this chat, resetting after a failure — ends the
       // conversation the carried messages belong to.
-      if (event.snapshot.items.length === 0 && !event.snapshot.threadId) this.carriedHistory = null
+      if (event.snapshot.items.length === 0 && !event.snapshot.threadId &&
+          !this.settings.get().chatContinuation?.handoff) this.carriedHistory = null
       this.emitEvent({ type: 'replace', snapshot: this.merge(event.snapshot) })
     }
     else this.emitEvent(event)

@@ -187,6 +187,7 @@ export function rowSummary(record: ChatRecord, live: ChatPeerSummary | null): Ch
     attached: live !== null,
     pinnedAt: record.pinnedAt,
     cwd: record.cwd,
+    projectPath: record.projectPath,
     createdAt: record.createdAt,
     lastTurnEndedAt: record.lastTurnEndedAt
   }

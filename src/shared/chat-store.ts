@@ -54,7 +54,7 @@ export type ChatRecordSeed = Pick<ChatRecord, 'cwd' | 'projectPath' | 'provider'
   Partial<Omit<ChatRecord, 'cwd' | 'projectPath' | 'provider' | 'modelId' | 'reasoningEffort'>>
 
 /** Fields a `ChatRecord` patch may carry; identity and creation time never change. */
-export type ChatRecordPatch = Partial<Omit<ChatRecord, 'id' | 'createdAt' | 'cwd' | 'projectPath' | 'threadId'>>
+export type ChatRecordPatch = Partial<Omit<ChatRecord, 'id' | 'createdAt' | 'threadId'>>
 
 /** The persisted file: every chat the app has shown, across workspaces. */
 export type ChatStoreFile = {

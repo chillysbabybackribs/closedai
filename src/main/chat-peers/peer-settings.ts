@@ -69,7 +69,7 @@ export class PeerSettings implements AppSettingsAccess {
 /** The flat single-chat fields as the selected chat's record fills them. */
 export function openChatsPatch(records: ChatRecord[], selected: ChatRecord): Partial<AppSettings> {
   return {
-    chatOpenIds: records.filter((record) => record.cwd === selected.cwd).map((record) => record.id),
+    chatOpenIds: records.map((record) => record.id),
     chatSelectedPaneId: selected.id,
     ...selectedMirror(selected)
   }
