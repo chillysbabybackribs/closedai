@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { basename, formatChatTime, formatLiveActivity, formatMessageCount } from './drawer-format.ts'
+import { basename, formatChatTime, formatLiveActivity, formatMessageCount } from './history-format.ts'
 
 test('formatLiveActivity extracts filenames from tool activities and paths', () => {
   assert.equal(

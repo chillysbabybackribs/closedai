@@ -3,7 +3,6 @@ import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { ChatController } from '../chat-controller.js'
 import { historyErrorMessage } from './history-format.js'
 import {
-  countChatReviewQueue,
   dequeueChatReview,
   enqueueChatReview,
   expireChatReviews,
@@ -15,14 +14,12 @@ import {
   type ChatReviewQueue
 } from './review-queue.js'
 
-/** How long a failure stays in the drawer footer before it clears itself. */
+/** How long a history action failure stays visible in the header. */
 const ERROR_VISIBLE_MS = 8000
 
 /**
  * Which chats finished a turn and which are running, from one `chats` update to the next. Every
- * finish counts, watched or not, so a completed chat collects under "Recently completed" instead of
- * sitting in Current wearing a status dot. Chats seen for the first time (startup, a fresh chat)
- * never count as "just finished"; a chat running again has a new message and belongs in Current.
+ * finish counts, watched or not. Chats seen for the first time never count as just finished.
  */
 export function reviewTransitions(
   priorRunning: ReadonlyMap<string, boolean>,
@@ -47,7 +44,7 @@ export function useHistoryController(chat: ChatController) {
   const priorRunningRef = useRef<Map<string, boolean>>(new Map())
 
   // Failures used to be swallowed (`.catch(() => {})`) or reach only the console, so a click that
-  // did nothing looked like a dead control. Every drawer action reports here instead.
+  // did nothing looked like a dead control. History and title actions report here.
   const reportError = useCallback((failure: unknown) => setError(historyErrorMessage(failure)), [])
   useEffect(() => {
     if (!error) return
@@ -76,11 +73,7 @@ export function useHistoryController(chat: ChatController) {
     }
   }, [refreshChats, chat.state.threadId])
 
-  // A turn starting or ending is the only thing that moves a row: finishing drops a chat into
-  // "Recently completed", sending the next message lifts it back into Current. The chat the user
-  // is watching is recorded as completed too, but as already viewed, so it carries no unread mark.
-  // Entries are pruned against the store's chats, not attached panes, so a completion survives
-  // the chat's pane being detached or the app relaunching.
+  // Preserve unread completion markers across detachment and relaunch.
   useEffect(() => {
     if (chat.chats.length === 0) return
     const { finished, runningAgain, nextRunning } = reviewTransitions(priorRunningRef.current, chat.chats)
@@ -95,8 +88,7 @@ export function useHistoryController(chat: ChatController) {
     })
   }, [chat.chats, chat.selectedPaneId])
 
-  // Opening a completed chat reviews it without moving it. It stays visible for a ten-minute
-  // grace period unless a new message starts first and returns it to Current.
+  // Opening a completed chat clears its unread marker.
   useEffect(() => {
     setReviewQueue((current) => markChatReviewViewed(current, chat.selectedPaneId))
   }, [chat.selectedPaneId])
