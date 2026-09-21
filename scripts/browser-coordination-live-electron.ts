@@ -79,6 +79,16 @@ async function verify() {
     const hidden = active() === a ? b : a
     assert.equal(await browser.contentsOf(hidden)!.executeJavaScript('document.visibilityState'), 'hidden')
     assert.equal(browser.contentsOf(hidden)!.getBackgroundThrottling(), false, 'a driven page is not throttled')
+    const reapplied = browser.contentsOf(hidden)!
+    reapplied.setBackgroundThrottling(false)
+    const afterReapply = await reapplied.executeJavaScript(`(async () => {
+      const t0 = performance.now()
+      for (let i = 0; i < 4; i++) await new Promise(r => setTimeout(r, 50))
+      let raf = 0
+      await new Promise(res => { const loop = () => { raf++; requestAnimationFrame(loop) }; requestAnimationFrame(loop); setTimeout(res, 600) })
+      return { timers: Math.round(performance.now() - t0), raf }
+    })()`)
+    console.error('REAPPLIED ' + JSON.stringify(afterReapply))
     const cadence = await browser.contentsOf(hidden)!.executeJavaScript(`(async () => {
       const started = performance.now()
       for (let tick = 0; tick < 4; tick++) await new Promise(resolve => setTimeout(resolve, 50))
