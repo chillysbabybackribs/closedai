@@ -123,11 +123,12 @@ export class BrowserService extends EventEmitter {
       id,
       popupOptions
     )
+    if (!activate) tab.applyBounds({ ...this.bounds, occluded: true }, false)
     this.observers.watchTab(tab.id, tab.view.webContents)
     this.registerTab(tab, index)
     if (activate) this.setActive(tab.id)
     else {
-      tab.park(this.bounds)
+      tab.applyBounds({ ...this.bounds, occluded: true }, false)
       this.emitTabs()
     }
     return tab
