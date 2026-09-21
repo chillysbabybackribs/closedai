@@ -158,11 +158,55 @@ test('read_page returns header, load state, and text; missing tabs fail', async 
   assert.equal(textOf(missing), 'No tab with id missing. Open tabs: tab-1 (active) "A". Pass one of these, or omit tab_id for the active tab.')
 })
 
-test('wait_for reports an unmet wait as a failure the model can act on', async () => {
+test('wait_for reports an unmet wait as a timeout the model can act on, not an error', async () => {
   const { call } = harness()
   const result = await call({ action: 'wait_for', wait_until: 'load', timeout_ms: 1_000 })
   assert.equal(result.isError, true)
+  // docs/tools.md promises an unreached condition counts as a timeout, so exploratory waits
+  // do not inflate the error count; the registry reads that off errorKind.
+  assert.equal(result.errorKind, 'timeout')
   assert.match(textOf(result), /Not ready: still "dom-ready" when the 1s wait ended/)
+  // The outcome leads; a truncated log line has to carry the reason, not the page title.
+  assert.match(textOf(result), /^Not ready:/)
+})
+
+test('read_page separates a rejected selector from one that simply did not match', async () => {
+  const invalid = harness({ readPage: async () => ({ problem: 'selector-invalid', detail: "'div:has-text(\"a\")' is not a valid selector." }) })
+  const rejected = await invalid.call({ action: 'read_page', selector: 'div:has-text("a")' })
+  assert.equal(rejected.errorKind, 'usage')
+  assert.match(textOf(rejected), /rejected "div:has-text\(\\"a\\"\)" as a CSS selector/)
+  assert.match(textOf(rejected), /Only standard CSS works here/)
+  // The claim the old handler made for every null: reserved for the one case that supports it.
+  assert.doesNotMatch(textOf(rejected), /Nothing matches/)
+
+  const absent = harness({ readPage: async () => ({ problem: 'selector-missing' }) })
+  const missing = await absent.call({ action: 'read_page', selector: '.itemlist' })
+  assert.equal(missing.isError, true)
+  assert.equal(missing.errorKind, undefined)
+  assert.match(textOf(missing), /Nothing matches selector "\.itemlist"\. The selector is valid/)
+})
+
+test('read_page says a page went quiet instead of blaming the selector', async () => {
+  const { call } = harness({ readPage: async () => ({ problem: 'unavailable' }) })
+  const result = await call({ action: 'read_page', selector: '.itemlist' })
+  assert.equal(result.isError, true)
+  assert.match(textOf(result), /did not answer the read.*navigating/)
+  assert.doesNotMatch(textOf(result), /Nothing matches/)
+})
+
+test('wait_for rejects a selector the page cannot parse instead of waiting out the timeout', async () => {
+  const { call } = harness({
+    waitFor: async () => ({
+      ...ready, reached: false, conditionMet: false, elapsedMs: 0,
+      selectorError: "'div:has-text(\"Appearance\")' is not a valid selector."
+    })
+  })
+  const result = await call({ action: 'wait_for', wait_for_selector: 'div:has-text("Appearance")', timeout_ms: 15_000 })
+  assert.equal(result.errorKind, 'usage')
+  assert.match(textOf(result), /rejected "div:has-text\(\\"Appearance\\"\)" as a CSS selector, so the wait stopped without testing it/)
+  assert.match(textOf(result), /Only standard CSS works here/)
+  // "not found" and "Not ready" are both claims about a page this wait never managed to test.
+  assert.doesNotMatch(textOf(result), /not found|Not ready/)
 })
 
 const apiBody = JSON.stringify({ data: { items: [{ name: 'One', mrr: 1 }, { name: 'Two', mrr: 2 }] } })

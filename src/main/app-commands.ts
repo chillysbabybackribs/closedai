@@ -158,13 +158,15 @@ export class AppCommandAccess implements AppCommandHost {
     }
     const previous = new Set(browser.tabList().map(tab => tab.id))
     switch (request.op) {
-      case 'new': browser.openNewTab(request.url ?? 'about:blank', !paneId); break
-      case 'new_right': browser.newTabToRight(requireTab(), !paneId); break
+      // A tab opened for browser work comes to the front, whoever asked for it: the user sees
+      // what the model is doing, and a selected tab is the one Chromium runs at full speed.
+      case 'new': browser.openNewTab(request.url ?? 'about:blank', true); break
+      case 'new_right': browser.newTabToRight(requireTab(), true); break
       case 'select': browser.selectTab(requireTab()); break
       case 'close': browser.closeTab(requireTab()); break
       case 'close_others': browser.closeOtherTabs(requireTab()); break
       case 'close_right': browser.closeTabsToRight(requireTab()); break
-      case 'duplicate': browser.duplicateTab(requireTab(), !paneId); break
+      case 'duplicate': browser.duplicateTab(requireTab(), true); break
       case 'back': browser.back(request.tabId); break
       case 'forward': browser.forward(request.tabId); break
       case 'reload': request.tabId ? browser.reloadTab(requireTab()) : browser.reload(); break

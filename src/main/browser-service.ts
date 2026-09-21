@@ -13,6 +13,7 @@ import { BrowserObservers } from './browser-network/observers.js'
 import { describeMissingTab } from '../shared/browser-tabs.js'
 import { installPermissionPolicy, type PermissionPolicyDeps } from './browser-permissions.js'
 import { TabRenderingPolicy } from './browser-tab-rendering.js'
+import { TabCadencePolicy } from './browser-tab-cadence.js'
 import { allSettledBounded } from './bounded-concurrency.js'
 import { restorePlan, type RestoredTabSession } from './browser-tab-session-store.js'
 import { browserPaneBounds, browserSurfaceVisibility } from './browser-surface-visibility.js'
@@ -68,6 +69,16 @@ export class BrowserService extends EventEmitter {
     raiseActive: () => {
       const active = this.active
       if (active && this.bounds.visible !== false) this.attachTabView(active.id)
+    }
+  })
+  // A hidden tab runs at ~1 Hz with no animation frames; a page under tool control needs real
+  // cycles to finish loading itself. See browser-tab-cadence.ts for the measurement.
+  private readonly cadence = new TabCadencePolicy({
+    setThrottled: (tabId, throttled) => {
+      const tab = this.tabs.find((candidate) => candidate.id === tabId)
+      if (!(tab instanceof BrowserTab)) return
+      const contents = tab.view.webContents
+      if (!contents.isDestroyed()) contents.setBackgroundThrottling(throttled)
     }
   })
 
@@ -271,6 +282,7 @@ export class BrowserService extends EventEmitter {
     if (index === -1) return
     const [tab] = this.tabs.splice(index, 1)
     this.rendering.unregister(id)
+    this.cadence.forget(id)
     try {
       if (tab instanceof BrowserTab) this.window.contentView.removeChildView(tab.view)
     } catch {
@@ -470,6 +482,9 @@ export class BrowserService extends EventEmitter {
     if (tab instanceof ImageTab) throw new Error('This is an image viewer tab. Use a web tab for browser page tools.')
     if (tab instanceof FileTab) throw new Error('This is a file viewer tab. Use a web tab for browser page tools.')
     if (tab) this.prepareTabForTool(tab)
+    // Every page tool reaches its page through here: keep the page it is about to read running
+    // at full speed, and for a beat afterwards so a burst of calls is one exemption.
+    if (tab instanceof BrowserTab) this.cadence.touch(tab.id)
     const contents = tab?.view.webContents
     return contents && !contents.isDestroyed() ? contents : null
   }
@@ -544,7 +559,14 @@ export class BrowserService extends EventEmitter {
     } else {
       tab = this.requireActive()
     }
-    await tab.navigate(input)
+    // Hold full cadence across the load itself: a throttled page reaches dom-ready and then
+    // stalls on its own deferred work, which is exactly what the caller is waiting for.
+    const release = this.cadence.hold(tab.id)
+    try {
+      await tab.navigate(input)
+    } finally {
+      release()
+    }
     return tab.id
   }
 
@@ -607,6 +629,7 @@ export class BrowserService extends EventEmitter {
     this.disposed = true
     this.persistentSessionCookies.dispose()
     this.rendering.dispose()
+    this.cadence.dispose()
     this.captureSurfaces.dispose()
     for (const tab of this.tabs) {
       try {

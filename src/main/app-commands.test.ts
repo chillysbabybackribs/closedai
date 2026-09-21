@@ -100,13 +100,13 @@ function browser(): AppBrowserTabs & { calls: unknown[] } {
     tabList: () => [{ id: '1', pos: 1, title: 'Google', url: 'https://google.com', favicon: null, isLoading: false, active: true }],
     snapshot: () => ({ url: 'https://google.com', title: 'Google', isLoading: false, canGoBack: false, canGoForward: false }),
     newTab: () => { calls.push(['newTab']) },
-    newTabToRight: (id) => { calls.push(['newTabToRight', id]) },
+    newTabToRight: (id, activate) => { calls.push(['newTabToRight', id, activate]) },
     openNewTab: (input, activate) => { calls.push(['openNewTab', input, activate]) },
     selectTab: (id) => { calls.push(['selectTab', id]) },
     closeTab: (id) => { calls.push(['closeTab', id]) },
     closeOtherTabs: (id) => { calls.push(['closeOtherTabs', id]) },
     closeTabsToRight: (id) => { calls.push(['closeTabsToRight', id]) },
-    duplicateTab: (id) => { calls.push(['duplicateTab', id]) },
+    duplicateTab: (id, activate) => { calls.push(['duplicateTab', id, activate]) },
     reloadTab: (id) => { calls.push(['reloadTab', id]) },
     renameTab: (id, title) => { calls.push(['renameTab', id, title]) },
     back: () => { calls.push(['back']) },
@@ -236,11 +236,23 @@ test('model, close, and browser commands call the underlying services', async ()
   assert.deepEqual(tabs.calls, [
     ['openNewTab', 'https://example.com', true],
     ['selectTab', '1'],
-    ['newTabToRight', '1'],
-    ['duplicateTab', '1'],
+    ['newTabToRight', '1', true],
+    ['duplicateTab', '1', true],
     ['renameTab', '1', 'Docs'],
     ['reloadTab', '1'],
     ['closeTabsToRight', '1'],
     ['closeOtherTabs', '1']
+  ])
+})
+
+test('a tab a chat opens for its own work is selected, like one the user opens', async () => {
+  const { host, tabs } = access()
+  await host.browserTab({ op: 'new', url: 'https://example.com' }, 'pane-1')
+  await host.browserTab({ op: 'new_right', tabId: '1' }, 'pane-1')
+  await host.browserTab({ op: 'duplicate', tabId: '1' }, 'pane-1')
+  assert.deepEqual(tabs.calls, [
+    ['openNewTab', 'https://example.com', true],
+    ['newTabToRight', '1', true],
+    ['duplicateTab', '1', true]
   ])
 })

@@ -74,6 +74,46 @@ test('waitForPageReady survives a probe failing mid-navigation and honours a sel
   assert.match(describeReadiness({ until: 'load', selector: '#done', timeoutMs: 5_000 }, result), /Selector "#done": found/)
 })
 
+test('an unparseable selector stops the wait instead of polling a condition that cannot come true', async () => {
+  let probes = 0
+  const contents: ScriptRunner = {
+    isDestroyed: () => false,
+    async executeJavaScript() {
+      probes += 1
+      return { readyState: 'complete', textLength: 4, url: 'https://a.test/', title: 'A', selectorError: "'div:has-text(\"x\")' is not a valid selector." }
+    }
+  }
+  let clock = 0
+  const result = await waitForPageReady(
+    contents,
+    { until: 'load', selector: 'div:has-text("x")', timeoutMs: 15_000 },
+    () => clock,
+    async (ms) => { clock += ms }
+  )
+  assert.equal(probes, 1)
+  assert.equal(clock, 0)
+  assert.match(result.selectorError ?? '', /not a valid selector/)
+  // The page is "complete"; only the selector was bad, so neither claim about it is made.
+  const described = describeReadiness({ until: 'load', selector: 'div:has-text("x")', timeoutMs: 15_000 }, result)
+  assert.match(described, /rejected "div:has-text\(\\"x\\"\)" as a CSS selector/)
+  assert.doesNotMatch(described, /not found|Not ready/)
+})
+
+test('readPageText reports a rejected selector, an absent element, and a silent page apart', async () => {
+  const page = (result: unknown): ScriptRunner => ({ isDestroyed: () => false, async executeJavaScript() { return result } })
+  assert.deepEqual(
+    await readPageText(page({ selectorError: 'bad' }), { selector: 'x', maxChars: 100 }),
+    { problem: 'selector-invalid', detail: 'bad' }
+  )
+  assert.deepEqual(
+    await readPageText(page({ selectorMissing: true }), { selector: '.itemlist', maxChars: 100 }),
+    { problem: 'selector-missing' }
+  )
+  assert.deepEqual(await readPageText(page(undefined), { maxChars: 100 }), { problem: 'unavailable' })
+  // A page that is gone is still the one case the caller must treat as "no tab".
+  assert.equal(await readPageText({ isDestroyed: () => true, async executeJavaScript() { return null } }, { maxChars: 100 }), null)
+})
+
 test('readPageText tidies whitespace and truncates', async () => {
   const contents: ScriptRunner = {
     isDestroyed: () => false,

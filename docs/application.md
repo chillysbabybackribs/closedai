@@ -70,8 +70,9 @@ is lost for a non-clean reason and reports a second loss within a minute instead
 (`src/main/app-quit.ts`); the MCP HTTP bridges drop open connections before closing their listener.
 
 Model browser tools assign tabs to the calling chat, independently of directory and UI selection.
-The first untargeted navigation creates a background tab; inspection can claim an unassigned
-visible tab. Later omitted targets use that chat's last assigned tab. Explicit targeting claims
+The first untargeted navigation creates a tab and selects it, as does `new_tab` and the
+`browser_tab` new/new_right/duplicate commands: a page a model drives is one the user can watch.
+Inspection can claim an unassigned visible tab. Later omitted targets use that chat's last assigned tab. Explicit targeting claims
 an unassigned tab, but refuses another attached chat's tab, including for reads and captures.
 Assignments protect the intervals between calls and survive turn completion and focus changes.
 `closedai_app.state` exposes `browser.coordination` (the caller's default and tab assignments).
@@ -82,8 +83,10 @@ chosen. Bulk tab close commands preflight all affected tabs before closing any.
 Independent tabs can navigate, extract, and capture concurrently. Foreground input and tab-strip
 commands take a shared browser lock; conflicting calls fail busy. A timed-out operation keeps its
 lock until its underlying work settles. Raw Input commands use the same foregrounding path as
-semantic input. New model tabs and research source tabs preserve browser selection; popups inherit
-their opener's assignment and a background opener cannot activate its popup. Session-wide cookie,
+semantic input. A tab opened for a chat's browser work is selected (first untargeted navigation,
+`new_tab`, and the `browser_tab` new/new_right/duplicate commands); research source tabs still
+preserve browser selection, and popups inherit their opener's assignment while a background opener
+cannot activate its popup. Session-wide cookie,
 global network-rule, raw Target mutations, and renderer input are refused while another chat holds tabs.
 This coordinates app-owned tools, not human input or provider-native browser tools. Website account
 state and cookies are still shared; it is not isolation between separate browser profiles.
@@ -96,6 +99,16 @@ capture leases can render underneath the opaque active browser surface without s
 When the browser is collapsed or covered, a temporary never-shown native window hosts the same
 view for capture and returns it afterward. The live check verifies its pixels and later restoration.
 Capture temporarily disables background throttling and restores the previous setting afterward.
+
+Chromium throttles a hidden page to ~1 Hz timers with no animation frames, which is what an
+unselected tab is. `browser-tab-cadence.ts` therefore exempts a tab while a tool operates on it
+and for a 5 s grace afterwards, so a burst of model calls is one exemption and the page keeps
+loading itself between them: navigation holds the exemption across the load, and every page tool
+touches it through `contentsOf`. A runtime `setBackgroundThrottling(false)` is what restores both
+50 ms timers and 60 fps rAF to a hidden view (the `webPreferences` flag alone does not restore
+rAF); `visibilityState` stays `hidden`, because the page is not on screen. Tabs nobody is driving
+keep Chromium's default throttling, and a closed tab's exemption is dropped without touching its
+destroyed WebContents.
 
 `ChatHub` routes to Codex, Claude Code, Antigravity, or Cursor. Codex model/thread ids are
 unprefixed; Claude ids use `claude:`, Antigravity ids use `agy:`, and Cursor ids use `cursor:`. Claude ids

@@ -257,7 +257,9 @@ async function main(): Promise<void> {
     tabs: () => browserService?.tabList() ?? [],
     create: () => {
       if (!browserService) throw new Error('The browser is not available yet')
-      return browserService.openNewTab('about:blank', false)
+      // A chat opening a tab for its own work brings it to the front: the user watches the page
+      // the model is driving, and Chromium gives the selected tab full cycles to load with.
+      return browserService.openNewTab('about:blank', true)
     },
     paneExists: paneId => !!chatService?.paneSnapshot(paneId)
   })

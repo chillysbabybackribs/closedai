@@ -126,7 +126,7 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
     {
       action: 'browser_tab',
       description:
-        'Browser tabs assigned to this chat: new, new_right, select, close, close_others, close_right, duplicate, rename, back, forward, reload, release. New tabs open in the background. Defaults target this chat’s tab, independent of selection. release gives up this chat’s assignment without closing the tab. Other chats’ assigned tabs are protected. Returns browser state and assignments.',
+        'Browser tabs assigned to this chat: new, new_right, select, close, close_others, close_right, duplicate, rename, back, forward, reload, release. New tabs open selected. Defaults target this chat’s tab, independent of selection. release gives up this chat’s assignment without closing the tab. Other chats’ assigned tabs are protected. Returns browser state and assignments.',
       inputSchema: objectSchema({
         op: {
           type: 'string',

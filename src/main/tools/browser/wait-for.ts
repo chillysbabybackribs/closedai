@@ -1,6 +1,6 @@
 import { describeReadiness } from '../../browser-page-ready.js'
 import type { ToolAction } from '../action-tool.js'
-import { failureResult, stringArg, textResult, usageResult } from '../tool.js'
+import { stringArg, textResult, timeoutResult, usageResult } from '../tool.js'
 import { MAX_WAIT_MS, readinessFrom, readinessProperties, tabIdField } from './fields.js'
 import { missingTabResult, requireBrowser, type BrowserHostProvider } from './host.js'
 
@@ -25,7 +25,10 @@ export function waitForAction(browser: BrowserHostProvider): ToolAction {
       // The outcome leads: it is the answer, and it is all a truncated log line keeps.
       const where = `${result.url ? `\nURL: ${result.url}` : ''}${result.title ? ` — ${result.title}` : ''}`
       const text = `${outcome}${where}`
-      return result.reached && result.conditionMet !== false ? textResult(text) : failureResult(text)
+      if (result.reached && result.conditionMet !== false) return textResult(text)
+      // A condition that did not arrive in time is this tool working, not breaking: it is
+      // counted as a timeout so exploratory waits stay out of the error count.
+      return timeoutResult(text)
     }
   }
 }
