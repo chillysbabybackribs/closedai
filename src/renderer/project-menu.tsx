@@ -1,4 +1,5 @@
 import type { JSX, ReactNode } from 'react'
+import { useState } from 'react'
 import { DropdownMenu } from 'radix-ui'
 import { Check, Folder, Plus, X } from 'lucide-react'
 
@@ -8,6 +9,7 @@ import { TurnActivityIndicator } from './task-activity.js'
 type ProjectMenuProps = {
   cwd: string
   projectPath: string | null
+  pending?: boolean
   recentProjects: Array<{ cwd: string; projectPath: string }>
   disabled: boolean
   onChooseProject: () => Promise<void>
@@ -25,9 +27,14 @@ function folderName(path: string): string {
 
 /** Project context lives with the composer because it determines where the next turn runs. */
 export function ProjectMenu({
-  cwd, projectPath, recentProjects, disabled, onChooseProject, onSelectProject, onClearProject, activeTurnId, trailing
+  cwd, projectPath, pending = false, recentProjects, disabled, onChooseProject, onSelectProject, onClearProject, activeTurnId, trailing
 }: ProjectMenuProps): JSX.Element {
   const label = projectPath ? folderName(projectPath) : 'No project'
+  const [error, setError] = useState('')
+  async function choose(action: () => Promise<void>): Promise<void> {
+    setError('')
+    try { await action() } catch (reason) { setError(String(reason)) }
+  }
 
   return (
     <div className="composer-project-strip">
@@ -42,10 +49,10 @@ export function ProjectMenu({
             aria-label="Choose project"
             data-ui="composer.project"
             disabled={disabled}
-            title={projectPath ?? cwd}
+            title={`${projectPath ?? cwd}${pending ? ' — applies after this chat finishes its current work' : ''}`}
           >
             <Folder size={18} aria-hidden="true" />
-            <span>{label}</span>
+            <span>{label}{pending ? ' (queued)' : ''}</span>
           </Button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
@@ -67,7 +74,7 @@ export function ProjectMenu({
                   data-ui="composer.project-recent"
                   data-ui-key={project.projectPath}
                   title={project.cwd}
-                  onSelect={() => void onSelectProject(project.projectPath)}
+                  onSelect={() => void choose(() => onSelectProject(project.projectPath))}
                 >
                   <Folder size={17} aria-hidden="true" />
                   <span>{folderName(project.projectPath)}</span>
@@ -78,7 +85,7 @@ export function ProjectMenu({
             <DropdownMenu.Item
               className="composer-project-item"
               data-ui="composer.project-new"
-              onSelect={() => void onChooseProject()}
+              onSelect={() => void choose(onChooseProject)}
             >
               <Plus size={18} aria-hidden="true" />
               <span>New project</span>
@@ -87,7 +94,7 @@ export function ProjectMenu({
               className="composer-project-item"
               data-ui="composer.project-clear"
               disabled={!projectPath}
-              onSelect={() => void onClearProject()}
+              onSelect={() => void choose(onClearProject)}
             >
               <X size={18} aria-hidden="true" />
               <span>Don’t work in a project</span>
@@ -95,6 +102,7 @@ export function ProjectMenu({
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
+      {error && <span className="composer-project-error" role="alert">{error}</span>}
       {trailing}
     </div>
   )

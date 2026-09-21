@@ -84,7 +84,7 @@ export function reduceChatWorkspaceEvent(
   if (event.type === 'workspace') {
     const panes = Object.fromEntries(Object.entries(event.snapshot.panes ?? {}).map(([id, next]) => {
       const previous = state.panes?.[id]
-      const boundary = previous?.threadId === next.threadId && next.items.length
+      const boundary = previous && next.items.length
         ? previous.items.findIndex((item) => item.id === next.items[0]!.id) : -1
       return [id, boundary > 0 && previous ? { ...next,
         items: [...previous.items.slice(0, boundary), ...next.items],

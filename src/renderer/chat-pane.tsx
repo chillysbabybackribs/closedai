@@ -51,6 +51,13 @@ export const ChatPane = memo(function ChatPane({
   const internalChat = useChatController(!controller)
   const chat = controller ?? internalChat
   const { state, preferences } = chat
+  const record = chat.chats.find((row) => row.paneId === chat.selectedPaneId)
+  const project = record?.pendingProject ?? { cwd: record?.cwd ?? state.cwd,
+    projectPath: record?.projectPath === undefined ? state.cwd : record.projectPath }
+  const recentProjects = [...new Map([
+    ...(chat.workspace?.recentProjects ?? []),
+    ...chat.chats.filter((row) => row.projectPath).map((row) => ({ cwd: row.cwd, projectPath: row.projectPath! }))
+  ].map((entry) => [entry.projectPath, entry])).values()].filter((entry) => entry.projectPath !== project.projectPath)
   const manualCompact = state.provider === 'antigravity' && preferences?.chatSeamlessRotation !== true
   const ready = state.connection.state === 'ready'
   const running = state.activeTurnId !== null
@@ -122,7 +129,7 @@ export const ChatPane = memo(function ChatPane({
             onClose={() => setHistoryOpen(false)}
           />
         ) : (
-          <TranscriptScroller threadId={state.threadId} paneId={chat.selectedPaneId}>
+          <TranscriptScroller paneId={chat.selectedPaneId}>
             {!hasMessages && blocked ? (
               <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} onLogin={chat.loginWithChatGPT} />
             ) : hasMessages ? (
@@ -160,12 +167,13 @@ export const ChatPane = memo(function ChatPane({
           onResume={() => sendMessage(CHAT_RESUME_PROMPT, [])}
           onInspectContext={() => setContextOpen(true)}
           onNewChat={startNewChat}
-          cwd={chat.workspace?.cwd ?? state.cwd}
-          projectPath={chat.workspace?.projectPath ?? state.cwd}
-          recentProjects={chat.workspace?.recentProjects ?? []}
-          onChooseProject={() => window.closedai.chat.chooseProject()}
-          onSelectProject={(projectPath) => window.closedai.chat.selectProject(projectPath)}
-          onClearProject={() => window.closedai.chat.clearProject()}
+          cwd={project.cwd}
+          projectPath={project.projectPath}
+          projectPending={Boolean(record?.pendingProject)}
+          recentProjects={recentProjects}
+          onChooseProject={() => window.closedai.chat.chooseProject(chat.selectedPaneId)}
+          onSelectProject={(projectPath) => window.closedai.chat.selectProject(chat.selectedPaneId, projectPath)}
+          onClearProject={() => window.closedai.chat.clearProject(chat.selectedPaneId)}
           activeTurnId={state.activeTurnId}
           onCompactConversation={manualCompact ? chat.compactConversation : undefined}
           compactConversationEnabled={manualCompact && ready && !running && state.items.some((item) => item.type === 'user')}
@@ -177,11 +185,9 @@ export const ChatPane = memo(function ChatPane({
 
 
 function TranscriptScroller({
-  threadId,
   paneId,
   children
 }: {
-  threadId: string | null
   paneId: string
   children: JSX.Element
 }): JSX.Element {
@@ -191,7 +197,7 @@ function TranscriptScroller({
   // the end. The peek keeps a sliver of the previous turn visible above the anchored prompt.
   return (
     <MessageScrollerProvider
-      key={JSON.stringify([paneId, threadId])}
+      key={paneId}
       autoScroll
       anchorPrompts
       defaultScrollPosition="end"

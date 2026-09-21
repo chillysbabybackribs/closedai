@@ -80,6 +80,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
       <div ref={resultsRef} id={listId} role="listbox" aria-label="Chat history suggestions" aria-busy={opening}>
         {hits.map((hit, index) => <button key={hit.row.paneId} id={optionId(index)}
           type="button" role="option" tabIndex={-1} aria-selected={index === cursor}
+          aria-label={`${hit.row.title} — ${hit.row.cwd}${hit.row.running ? ' — Running' : ''}`}
           className="header-chat-search-result" data-ui="titlebar.chat-search-result"
           data-ui-key={hit.row.paneId} disabled={opening} title={hit.row.cwd}
           onMouseDown={event => event.preventDefault()} onClick={() => { void open(hit) }}

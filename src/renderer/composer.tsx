@@ -43,6 +43,7 @@ export type ComposerProps = {
   onNewChat?: () => void
   cwd: string
   projectPath: string | null
+  projectPending?: boolean
   recentProjects: Array<{ cwd: string; projectPath: string }>
   onChooseProject: () => Promise<void>
   onSelectProject: (projectPath: string) => Promise<void>
@@ -72,7 +73,7 @@ export function Composer({
   paused,
   onResume,
   onInspectContext,
-  onNewChat, cwd, projectPath, recentProjects,
+  onNewChat, cwd, projectPath, projectPending, recentProjects,
   onChooseProject, onSelectProject, onClearProject,
   activeTurnId, onCompactConversation, compactConversationEnabled = false, paneId
 }: ComposerProps): JSX.Element {
@@ -165,6 +166,7 @@ export function Composer({
         <ProjectMenu
           cwd={cwd}
           projectPath={projectPath}
+          pending={projectPending}
           recentProjects={recentProjects}
           disabled={sending}
           onChooseProject={onChooseProject}

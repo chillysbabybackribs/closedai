@@ -9,7 +9,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   const [layout, setLayout] = useState(() => {
     const saved = readLayout(window.localStorage, cwd)
     let tree = saved.tree
-    const available = new Set(snapshot.chats.filter((chat) => chat.cwd === cwd).map((chat) => chat.paneId))
+    const available = new Set(snapshot.chats.map((chat) => chat.paneId))
     tree = pruneTabs(tree, available)
     if (!tree || !paneIds(tree).length) tree = { kind: 'pane' as const, id: snapshot.selectedPaneId }
     else if (!paneIds(tree).includes(snapshot.selectedPaneId)) {
@@ -58,7 +58,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     selected.current = next
     setLayout((value) => {
       let tree: ChatLayout | null = value.tree
-      const available = new Set(snapshot.chats.filter((chat) => chat.cwd === cwd).map((chat) => chat.paneId))
+      const available = new Set(snapshot.chats.map((chat) => chat.paneId))
       tree = pruneTabs(tree, available)
       if (!tree || !paneIds(tree).length) tree = withBrowser({ kind: 'pane', id: next })
       else if (!paneIds(tree).includes(next)) {
@@ -80,9 +80,6 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     setBusy(true)
     setError('')
     try {
-      if (id && snapshot.chats.find((chat) => chat.paneId === id)?.cwd !== cwd) {
-        throw new Error('Open this chat’s directory before splitting it into the layout')
-      }
       const treeBefore = current.current.tree
       const sourceOwner = id ? tabOwner(treeBefore, id) : null
       const sourceHasSiblings = sourceOwner && tabIds(treeBefore).some((tab) => tab !== id && tabOwner(treeBefore, tab) === sourceOwner)
@@ -108,7 +105,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       pending.current = false
       setBusy(false)
     }
-  }, [snapshot.chats, cwd])
+  }, [])
 
   const newChat = useCallback((target: string) => dock(null, target, null), [dock])
 

@@ -284,3 +284,4 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+.composer-project-error { color: var(--destructive); font-size: 12px; }
