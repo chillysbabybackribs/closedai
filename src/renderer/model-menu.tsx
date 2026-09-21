@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
+import { useCallback, useRef, useState, type JSX } from 'react'
 import { DropdownMenu } from 'radix-ui'
-import { ArrowLeft, Check, ChevronDown, ChevronRight, ChevronUp, MoreHorizontal } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, ChevronUp, MoreHorizontal } from 'lucide-react'
 
 import type { ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { ProviderMark } from '../components/ui/provider-mark.js'
@@ -140,117 +140,108 @@ type ModelMenuPanelProps = {
 }
 
 /**
- * The panel's contents: providers, or one provider's models. Mounted with the open menu, so both
- * the drilled-into provider and its expanded state reset on close — expanding is a per-visit
- * choice, not a mode.
+ * Two columns inside the one popover: providers on the left, the hovered provider's models on
+ * the right, plus the selected model's effort levels under the providers. Hovering or focusing
+ * a provider row switches the right column; nothing needs a click before a model is visible.
+ * A Radix Sub would fly out beside the panel and can reach over the native browser view, so
+ * the models column is ordinary panel content that the collision boundary already contains.
+ * Mounted with the open menu, so the hovered provider and its expanded state reset on close.
  */
 function ModelMenuPanel({
   models, usage, selectedModel, selectedReasoningEffort, onChooseModel, onReasoningEffortChange
 }: ModelMenuPanelProps): JSX.Element {
-  const [view, setView] = useState<ChatProvider | null>(null)
-  const [expanded, setExpanded] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
   const sections = providerSections(models, usage, selectedModel)
-  const section = sections.find((entry) => entry.provider === view)
   const selected = models.find((model) => model.id === selectedModel)
+  const [view, setView] = useState<ChatProvider | null>(selected?.provider ?? sections[0]?.provider ?? null)
+  const [expanded, setExpanded] = useState(false)
+  const section = sections.find((entry) => entry.provider === view) ?? sections[0]
   const efforts = selected?.supportedReasoningEfforts ?? []
-  const open = (provider: ChatProvider): void => { setExpanded(false); setView(provider) }
-
-  // Swapping the contents unmounts the focused row, so hand focus to the panel the user is now
-  // looking at: the first model on the way in, and the provider row they came from on the way back.
-  useFocusOnViewChange(rootRef, view)
-
-  if (section) {
-    const listed = expanded ? section.all : section.featured
-    return (
-      <div
-        ref={rootRef}
-        className="model-menu-panel"
-        // The flyout it replaced closed on ArrowLeft; the drill-down keeps that key meaning "back".
-        onKeyDown={(event) => {
-          if (event.key !== 'ArrowLeft') return
-          event.preventDefault()
-          setView(null)
-        }}
-      >
-        <DropdownMenu.Item
-          className="model-menu-item model-menu-item-compact model-menu-back"
-          textValue={`Back to providers from ${section.label}`}
-          data-ui="composer.model-back"
-          data-ui-key={section.provider}
-          onSelect={(event) => { event.preventDefault(); setView(null) }}
-        >
-          <ArrowLeft className="model-menu-back-mark" aria-hidden="true" />
-          <ProviderMark provider={section.provider} className="model-menu-label-mark" />
-          <span className="model-menu-item-name">{section.label}</span>
-          <span className="model-menu-item-detail">{modelCountLabel(section.all.length)}</span>
-        </DropdownMenu.Item>
-        <DropdownMenu.RadioGroup value={selectedModel ?? ''} onValueChange={onChooseModel}>
-          {listed.map((model) => (
-            <DropdownMenu.RadioItem key={model.id} value={model.id} className="model-menu-item" textValue={model.displayName} data-ui="composer.model-item" data-ui-key={model.id}>
-              <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>
-              <span className="model-menu-item-heading">
-                <span className="model-menu-item-name">{model.displayName}</span>
-                {modelContextLabel(model.contextWindow) && (
-                  <span className="model-menu-item-context">{modelContextLabel(model.contextWindow)}</span>
-                )}
-              </span>
-              {model.description && <span className="model-menu-item-detail">{model.description}</span>}
-            </DropdownMenu.RadioItem>
-          ))}
-        </DropdownMenu.RadioGroup>
-        {section.hiddenCount > 0 && (
-          <DropdownMenu.Item
-            className="model-menu-item model-menu-item-compact model-menu-more"
-            textValue={expanded ? 'Show fewer models' : 'Show all models'}
-            data-ui="composer.model-more"
-            data-ui-key={section.provider}
-            onSelect={(event) => { event.preventDefault(); setExpanded(!expanded) }}
-          >
-            {expanded
-              ? <ChevronUp className="model-menu-more-mark" aria-hidden="true" />
-              : <MoreHorizontal className="model-menu-more-mark" aria-hidden="true" />}
-            <span className="model-menu-item-name">
-              {expanded ? 'Show fewer models' : `Show ${section.hiddenCount} more models`}
-            </span>
-          </DropdownMenu.Item>
-        )}
-      </div>
-    )
+  const show = (provider: ChatProvider): void => {
+    if (provider === view) return
+    setExpanded(false)
+    setView(provider)
   }
+  const listed = section ? (expanded ? section.all : section.featured) : []
 
   return (
-    <div ref={rootRef} className="model-menu-panel model-menu-providers">
-      {sections.map((entry) => (
-        <ProviderRow key={entry.provider} section={entry} selectedModel={selectedModel} onOpen={() => open(entry.provider)} />
-      ))}
-      {efforts.length > 0 && (
-        <>
-          <DropdownMenu.Separator className="model-menu-separator" />
-          <DropdownMenu.Label className="model-menu-label">Reasoning effort</DropdownMenu.Label>
-          <DropdownMenu.RadioGroup
-            value={selectedReasoningEffort ?? ''}
-            onValueChange={(value) => { void onReasoningEffortChange(value).catch(() => {}) }}
-          >
-            {efforts.map((option) => (
-              <DropdownMenu.RadioItem key={option.reasoningEffort} value={option.reasoningEffort} className="model-menu-item model-menu-item-compact" textValue={option.reasoningEffort} data-ui="composer.effort-item" data-ui-key={option.reasoningEffort}>
+    <div className="model-menu-panel model-menu-columns">
+      <div className="model-menu-column model-menu-providers" role="presentation">
+        {sections.map((entry) => (
+          <ProviderRow key={entry.provider} section={entry} selectedModel={selectedModel}
+            shown={entry.provider === section?.provider} onShow={() => show(entry.provider)} />
+        ))}
+        {efforts.length > 0 && (
+          <>
+            <DropdownMenu.Separator className="model-menu-separator" />
+            <DropdownMenu.Label className="model-menu-label">Reasoning effort</DropdownMenu.Label>
+            <DropdownMenu.RadioGroup
+              value={selectedReasoningEffort ?? ''}
+              onValueChange={(value) => { void onReasoningEffortChange(value).catch(() => {}) }}
+            >
+              {efforts.map((option) => (
+                <DropdownMenu.RadioItem key={option.reasoningEffort} value={option.reasoningEffort} className="model-menu-item model-menu-item-compact" textValue={option.reasoningEffort} data-ui="composer.effort-item" data-ui-key={option.reasoningEffort}>
+                  <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>
+                  <span className="model-menu-item-name">{effortLabel(option.reasoningEffort)}</span>
+                  {option.description && <span className="model-menu-item-detail">{option.description}</span>}
+                </DropdownMenu.RadioItem>
+              ))}
+            </DropdownMenu.RadioGroup>
+          </>
+        )}
+      </div>
+      {section && (
+        <div className="model-menu-column model-menu-models" role="presentation" data-provider={section.provider}>
+          <DropdownMenu.Label className="model-menu-label">
+            <ProviderMark provider={section.provider} className="model-menu-label-mark" />
+            <span>{section.label}</span>
+            <span className="model-menu-label-count">{modelCountLabel(section.all.length)}</span>
+          </DropdownMenu.Label>
+          <DropdownMenu.RadioGroup value={selectedModel ?? ''} onValueChange={onChooseModel}>
+            {listed.map((model) => (
+              <DropdownMenu.RadioItem key={model.id} value={model.id} className="model-menu-item" textValue={model.displayName} data-ui="composer.model-item" data-ui-key={model.id}>
                 <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>
-                <span className="model-menu-item-name">{effortLabel(option.reasoningEffort)}</span>
-                {option.description && <span className="model-menu-item-detail">{option.description}</span>}
+                <span className="model-menu-item-heading">
+                  <span className="model-menu-item-name">{model.displayName}</span>
+                  {modelContextLabel(model.contextWindow) && (
+                    <span className="model-menu-item-context">{modelContextLabel(model.contextWindow)}</span>
+                  )}
+                </span>
+                {model.description && <span className="model-menu-item-detail">{model.description}</span>}
               </DropdownMenu.RadioItem>
             ))}
           </DropdownMenu.RadioGroup>
-        </>
+          {section.hiddenCount > 0 && (
+            <DropdownMenu.Item
+              className="model-menu-item model-menu-item-compact model-menu-more"
+              textValue={expanded ? 'Show fewer models' : 'Show all models'}
+              data-ui="composer.model-more"
+              data-ui-key={section.provider}
+              onSelect={(event) => { event.preventDefault(); setExpanded(!expanded) }}
+            >
+              {expanded
+                ? <ChevronUp className="model-menu-more-mark" aria-hidden="true" />
+                : <MoreHorizontal className="model-menu-more-mark" aria-hidden="true" />}
+              <span className="model-menu-item-name">
+                {expanded ? 'Show fewer models' : `Show ${section.hiddenCount} more models`}
+              </span>
+            </DropdownMenu.Item>
+          )}
+        </div>
       )}
     </div>
   )
 }
 
-/** One provider row: the mark, the name, and the model in use where that provider owns it. */
-function ProviderRow({ section, selectedModel, onOpen }: {
+/**
+ * One provider row: the mark, the name, and the model in use where that provider owns it.
+ * Pointer or keyboard focus shows its models; select (click, Enter) does the same and keeps the
+ * menu open so the models column is reachable with ArrowRight.
+ */
+function ProviderRow({ section, selectedModel, shown, onShow }: {
   section: ProviderSection
   selectedModel: string | null
-  onOpen: () => void
+  shown: boolean
+  onShow: () => void
 }): JSX.Element {
   const active = section.all.find((model) => model.id === selectedModel)
   return (
@@ -260,7 +251,10 @@ function ProviderRow({ section, selectedModel, onOpen }: {
       data-ui="composer.model-provider"
       data-ui-key={section.provider}
       data-active={active ? 'true' : undefined}
-      onSelect={(event) => { event.preventDefault(); onOpen() }}
+      data-shown={shown ? 'true' : undefined}
+      onPointerEnter={onShow}
+      onFocus={onShow}
+      onSelect={(event) => { event.preventDefault(); onShow() }}
     >
       <ProviderMark provider={section.provider} className="model-menu-label-mark" />
       <span className="model-menu-item-name">{section.label}</span>
@@ -274,26 +268,6 @@ function ProviderRow({ section, selectedModel, onOpen }: {
 
 function modelCountLabel(count: number): string {
   return `${count} model${count === 1 ? '' : 's'}`
-}
-
-/** Move focus into the panel that replaced the one holding the focused row. */
-function useFocusOnViewChange(rootRef: React.RefObject<HTMLDivElement | null>, view: ChatProvider | null): void {
-  const previous = useRef<ChatProvider | null>(null)
-  useEffect(() => {
-    const from = previous.current
-    previous.current = view
-    if (from === view) return
-    const frame = requestAnimationFrame(() => {
-      const root = rootRef.current
-      if (!root) return
-      // Back to the providers: land on the row just left, not at the top of the list.
-      const target = view === null && from
-        ? root.querySelector<HTMLElement>(`[data-ui="composer.model-provider"][data-ui-key="${from}"]`)
-        : root.querySelector<HTMLElement>('[data-ui="composer.model-item"], [data-ui="composer.model-back"]')
-      target?.focus()
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [rootRef, view])
 }
 
 /** The picker's own memory of which models get chosen, kept in this window rather than settings. */
