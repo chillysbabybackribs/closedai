@@ -13,24 +13,30 @@ export function closeIncompleteMarkdown(block: string): string {
   if (countOf(block, '```') % 2 === 1) return block
   let out = block
   let stripped = withoutCodeSpans(out)
-  // An incomplete trailing link or image is held back entirely: swapping loose text for a link
-  // chip mid-word flickers more than a briefly missing tail. The character classes exclude
-  // backticks, so the match is guaranteed to sit outside the code spans removed above and the
-  // same suffix can be sliced off the raw block.
-  const partialLink = stripped.match(/!?\[[^\]\n`]*(\]\([^)\n`]*)?$/)
-  if (partialLink) {
-    out = out.slice(0, out.length - partialLink[0].length)
-    stripped = withoutCodeSpans(out)
-  }
   let closers = ''
-  const danglingCode = stripped.indexOf('`')
-  // Everything after an unclosed backtick is literal code: close it, and only count emphasis
-  // that was opened before it.
-  const analysis = danglingCode >= 0 ? stripped.slice(0, danglingCode) : stripped
-  if (danglingCode >= 0) closers += '`'
-  if (countOf(analysis, '**') % 2 === 1) closers += '**'
-  if (countOf(analysis, '~~') % 2 === 1) closers += '~~'
-  return closers ? out + closers : out
+  if (stripped.includes('`')) {
+    // Everything after an unclosed backtick is literal code: close it, skip link handling (a
+    // bracket in there is code, not a link), and only count emphasis opened before it.
+    closers += '`'
+    stripped = stripped.slice(0, stripped.indexOf('`'))
+  } else {
+    // An incomplete trailing link or image is held back entirely: swapping loose text for a link
+    // chip mid-word flickers more than a briefly missing tail. The character classes exclude
+    // backticks, so the match sits after every complete code span removed above and the same
+    // suffix can be sliced off the raw block.
+    const partialLink = stripped.match(/!?\[[^\]\n`]*(\]\([^)\n`]*)?$/)
+    if (partialLink) {
+      out = out.slice(0, out.length - partialLink[0].length)
+      stripped = withoutCodeSpans(out)
+    }
+  }
+  if (countOf(stripped, '**') % 2 === 1) closers += '**'
+  if (countOf(stripped, '~~') % 2 === 1) closers += '~~'
+  if (!closers) return out
+  // Emphasis closers do not count after whitespace (and a block's raw text usually ends with a
+  // newline), so the closers go in front of the trailing whitespace run.
+  const trailing = out.match(/\s+$/)?.[0] ?? ''
+  return out.slice(0, out.length - trailing.length) + closers + trailing
 }
 
 function withoutCodeSpans(text: string): string {

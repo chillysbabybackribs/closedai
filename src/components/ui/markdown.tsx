@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Source, SourceContent, SourceTrigger } from '../prompt-kit/source.js'
 import { CodeBlock, CodeBlockCode } from './code-block.js'
 import { remarkBareUrls } from './markdown-links.js'
+import { closeIncompleteMarkdown } from './markdown-stream.js'
 import { localFilePath } from '../../shared/local-files.js'
 
 export type MarkdownProps = {
@@ -17,6 +18,8 @@ export type MarkdownProps = {
   id?: string
   className?: string
   components?: Partial<Components>
+  /** Still-streaming text: the trailing block's unfinished inline syntax is closed before lexing. */
+  streaming?: boolean
 }
 
 function parseMarkdownIntoBlocks(markdown: string): string[] {
@@ -177,13 +180,20 @@ const MarkdownBlock = memo(function MarkdownBlock({ content, components }: { con
   return <ReactMarkdown urlTransform={(url, key) => key === 'href' && localFilePath(url) ? url : defaultUrlTransform(url)} remarkPlugins={[remarkGfm, remarkBreaks, remarkBareUrls]} components={components}>{content}</ReactMarkdown>
 }, (previous, next) => previous.content === next.content && previous.components === next.components)
 
-function MarkdownComponent({ children, id, className, components }: MarkdownProps) {
+function MarkdownComponent({ children, id, className, components, streaming = false }: MarkdownProps) {
   const generatedId = useId()
   const blockId = id ?? generatedId
 
   // Chat events already arrive in animation-frame batches. Lex their latest text in the same
   // render, keeping completed blocks memoized without a second timer or stale final frame.
-  const blocks = useMemo(() => parseMarkdownIntoBlocks(children), [children])
+  // While streaming, only the trailing block can be mid-token; earlier blocks are settled.
+  const blocks = useMemo(() => {
+    const parsed = parseMarkdownIntoBlocks(children)
+    if (streaming && parsed.length > 0) {
+      parsed[parsed.length - 1] = closeIncompleteMarkdown(parsed[parsed.length - 1]!)
+    }
+    return parsed
+  }, [children, streaming])
 
   const mergedComponents = useMemo(() => ({ ...DEFAULT_COMPONENTS, ...components }), [components])
   return (

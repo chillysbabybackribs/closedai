@@ -22,7 +22,7 @@ function LocalFileLink({ href, children }: { href: string; children?: React.Reac
   </>
 }
 
-export function LocalFileMarkdown({ children }: { children: string }) {
+export function LocalFileMarkdown({ children, streaming }: { children: string; streaming?: boolean }) {
   const components = useMemo<Partial<Components>>(() => ({
     a: function FileOrWebLink(props) {
       return localFilePath(props.href)
@@ -30,5 +30,5 @@ export function LocalFileMarkdown({ children }: { children: string }) {
         : <MarkdownLink {...props} />
     }
   }), [])
-  return <Markdown components={components}>{children}</Markdown>
+  return <Markdown components={components} streaming={streaming}>{children}</Markdown>
 }

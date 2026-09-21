@@ -32,7 +32,12 @@ test('an incomplete trailing link or image is held back until it closes', () => 
 })
 
 test('holding back a link still closes emphasis opened before it', () => {
-  assert.equal(closeIncompleteMarkdown('**Read [the guide](https://exa'), '**Read **')
+  // The closer lands before the trailing space: `**Read **` would not parse as bold.
+  assert.equal(closeIncompleteMarkdown('**Read [the guide](https://exa'), '**Read** ')
+})
+
+test('closers precede a trailing newline, where marked block raws end', () => {
+  assert.equal(closeIncompleteMarkdown('This is **important\n'), 'This is **important**\n')
 })
 
 test('an unclosed code fence is left for the lexer to render as a code block', () => {

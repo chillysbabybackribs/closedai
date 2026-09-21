@@ -14,6 +14,7 @@ import {
   useMessageScroller,
   useMessageScrollerScrollable
 } from '../components/ui/message-scroller.js'
+import { usePacedText } from '../components/ui/paced-text.js'
 import type { ChatTranscriptItem } from '../shared/chat.js'
 import { ActivitySteps } from './activity-step-list.js'
 import { MessageActions, type MessageActionContext } from './message-actions.js'
@@ -274,13 +275,19 @@ const ToolActivity = memo(function ToolActivity({
   )
 }, (prev, next) => sameGroup(prev, next) && prev.isRunning === next.isRunning)
 
-const AssistantMessage = memo(function AssistantMessage({ item, actions }: { item: Extract<ChatTranscriptItem, { type: 'assistant' }>; actions?: MessageActionContext }): JSX.Element {
+const AssistantMessage = memo(function AssistantMessage({ item, actions }: { item: Extract<ChatTranscriptItem, { type: 'assistant' }>; actions?: MessageActionContext }): JSX.Element | null {
+  // The displayed text trails what has streamed in by a bounded catch-up window, so one-token,
+  // sentence-burst, and whole-message chunk cadences all paint as the same typewriter. Settled
+  // items render in full immediately; the drain also finishes turns that never settle their item.
+  const text = usePacedText(item.text, !item.streaming)
+  const streaming = Boolean(item.streaming) || text.length < item.text.length
+  if (!text) return null
   return (
     <Message className="message message-assistant prompt-message prompt-message-assistant" data-phase={item.phase ?? 'unknown'}>
       <MessageContent>
         <Bubble variant="ghost">
           <BubbleContent className="prompt-message-assistant-content prose max-w-none dark:prose-invert">
-            <Markdown>{item.text}</Markdown>
+            <Markdown streaming={streaming}>{text}</Markdown>
           </BubbleContent>
         </Bubble>
         {actions ? <MessageActions key={actions.threadKey + item.id} item={item} context={actions} /> : null}
