@@ -1,8 +1,12 @@
 import type { JSX } from 'react'
 import { useMemo, useState } from 'react'
 
+import { Button } from '../../components/ui/button.js'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog.js'
-import { ToolRow, ToolSwitch } from './tool-row.js'
+import { Switch } from '../../components/ui/switch.js'
+import { cn } from '../../lib/utils.js'
+import type { ToolEffect } from '../../shared/tools.js'
+import { ToolCard } from './tool-card.js'
 import { useToolsController } from './tools-controller.js'
 import {
   detectPreset,
@@ -30,10 +34,19 @@ const PRESETS: Array<{ id: ToolPreset; label: string }> = [
   { id: 'custom', label: 'Custom' }
 ]
 
+/** The effect label is coloured text, never a pill: green observes, amber acts, red is dangerous. */
+const EFFECT_TEXT: Record<ToolEffect, string> = {
+  'reads-web': 'text-[color:var(--ok-ink)]',
+  'acts-in-browser': 'text-[color:var(--warning,#c58b45)]',
+  'controls-app': 'text-[color:var(--warning,#c58b45)]',
+  'reads-secrets': 'text-destructive',
+  'runs-native': 'text-destructive'
+}
+
 /**
- * Agent → Tools & capabilities. Tools grouped by what they let the model do to the user, one
- * switch per group and per tool, and an overview that drops down under a clicked row. The
- * header carries the one number the switches change: what the enabled set costs every turn.
+ * Agent → Tools & capabilities. One section per effect group with a master switch, a card per
+ * tool inside it, and the one number the switches change in the header: what the enabled set
+ * costs every turn.
  */
 export function ToolsModal({ open, onOpenChange, onSendToChat }: ToolsModalProps): JSX.Element {
   const tools = useToolsController(open)
@@ -53,78 +66,84 @@ export function ToolsModal({ open, onOpenChange, onSendToChat }: ToolsModalProps
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="tools-modal" aria-describedby="tools-modal-description" data-ui="dialog.tools">
-        <header className="tools-modal-header">
-          <DialogTitle className="tools-modal-title">Tools &amp; capabilities</DialogTitle>
-          <DialogDescription id="tools-modal-description" className="tools-modal-summary">
+        <header className="shrink-0 border-b px-7 py-4 pr-14">
+          <DialogTitle className="text-base font-semibold">Tools &amp; capabilities</DialogTitle>
+          <DialogDescription id="tools-modal-description" className="mt-1 text-[13px] text-muted-foreground">
             {tools.manifest
               ? `${on} of ${total} on · about ${formatTokens(tools.manifest.advertisedTokens)} tokens of every turn`
               : 'Loading…'}
           </DialogDescription>
         </header>
 
-        {tools.error && <p className="tools-modal-error" role="alert">{tools.error}</p>}
+        {tools.error && <p className="bg-destructive/15 px-7 py-2 text-[13px]" role="alert">{tools.error}</p>}
 
-        <div className="tools-modal-list">
+        <div className="min-h-0 flex-1 overflow-y-auto px-7 py-5 [scrollbar-width:thin]">
           {suggested.rows.length > 0 ? (
-            <div className="tools-suggestions" role="status">
+            <div className="mb-5 flex items-center gap-3 rounded-lg border bg-muted/30 px-4 py-3 text-[13px] text-muted-foreground" role="status">
               <span>
-                <b>{plural(suggested.rows.length, 'suggestion')}.</b>{' '}
+                <b className="font-medium text-foreground">{plural(suggested.rows.length, 'suggestion')}.</b>{' '}
                 {suggested.rows.map((row) => row.tool.label).join(', ')} {suggested.rows.length === 1 ? 'has' : 'have'} not been used in weeks
                 and cost{suggested.rows.length === 1 ? 's' : ''} {suggested.costTokens} tokens of every turn.
               </span>
-              <button type="button" className="tools-suggestions-apply" data-ui="tools.suggestions-apply"
+              <Button variant="outline" size="sm" className="ml-auto shrink-0" data-ui="tools.suggestions-apply"
                 onClick={() => void tools.setEnabledMany(suggested.rows.flatMap((row) => toolSwitches(row.tool, false)))}>
                 Turn {suggested.rows.length === 1 ? 'it' : 'all'} off
-              </button>
+              </Button>
             </div>
           ) : null}
-          {groups.map((group) => (
-            <section key={group.group.id} className="tools-group" aria-labelledby={`tools-group-${group.group.id}`}>
-              <div className="tools-group-head">
-                <div className="tools-group-copy">
-                  <h3 id={`tools-group-${group.group.id}`} className="tools-group-title">
-                    {group.group.label}
-                    <span className="tools-group-effect" data-effect={group.group.id}>{group.group.effect}</span>
-                  </h3>
-                  <p className="tools-group-summary">{group.group.summary}</p>
+
+          <div className="grid gap-7">
+            {groups.map((group) => (
+              <section key={group.group.id} aria-labelledby={`tools-group-${group.group.id}`}>
+                <div className="mb-3 flex items-end justify-between gap-6">
+                  <div className="min-w-0">
+                    <h3 id={`tools-group-${group.group.id}`} className="text-[15px] font-semibold">
+                      {group.group.label}
+                      <span className={cn('ml-2.5 text-xs font-normal', EFFECT_TEXT[group.group.id])}>{group.group.effect}</span>
+                    </h3>
+                    <p className="mt-0.5 text-[13px] text-muted-foreground">{group.group.summary}</p>
+                  </div>
+                  <label className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground tabular-nums">
+                    <span>{group.state === 'off' ? `0 of ${group.rows.length} on` : `${group.on} of ${group.rows.length} on · ${formatTokens(group.costTokens)} tokens / turn`}</span>
+                    <Switch
+                      checked={group.state !== 'off'}
+                      className={cn(group.state === 'mixed' && 'data-[state=checked]:bg-primary/55')}
+                      aria-label={`${group.state === 'off' ? 'Turn on' : 'Turn off'} ${group.group.label}`}
+                      data-ui="tools.group-toggle"
+                      data-ui-key={group.group.id}
+                      onCheckedChange={() => void tools.setEnabledMany(groupSwitches(group))}
+                    />
+                  </label>
                 </div>
-                <span className="tools-group-cost">{group.state === 'off' ? 'off' : `${formatTokens(group.costTokens)} tokens / turn`}</span>
-                <ToolSwitch
-                  state={group.state}
-                  label={`${group.state === 'off' ? 'Turn on' : 'Turn off'} ${group.group.label}`}
-                  control="tools.group-toggle"
-                  item={group.group.id}
-                  onToggle={() => void tools.setEnabledMany(groupSwitches(group))}
-                />
-              </div>
-              <ul className="tools-group-rows">
-                {group.rows.map((row) => (
-                  <ToolRow
-                    key={row.tool.id}
-                    row={row}
-                    effect={group.group.effect}
-                    open={openId === row.tool.id}
-                    now={now}
-                    since={tools.telemetry?.since ?? null}
-                    onOpenChange={(next) => setOpenId(next ? row.tool.id : null)}
-                    onToggle={(enabled) => void tools.setEnabledMany(toolSwitches(row.tool, enabled))}
-                    onRepair={() => onSendToChat(repairDraft(row, now))}
-                  />
-                ))}
-              </ul>
-            </section>
-          ))}
-          {tools.manifest && groups.length === 0 && <p className="tools-modal-empty">No tools are registered.</p>}
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
+                  {group.rows.map((row) => (
+                    <ToolCard
+                      key={row.tool.id}
+                      row={row}
+                      effect={group.group.effect}
+                      open={openId === row.tool.id}
+                      now={now}
+                      since={tools.telemetry?.since ?? null}
+                      onOpenChange={(next) => setOpenId(next ? row.tool.id : null)}
+                      onToggle={(enabled) => void tools.setEnabledMany(toolSwitches(row.tool, enabled))}
+                      onRepair={() => onSendToChat(repairDraft(row, now))}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+          {tools.manifest && groups.length === 0 && <p className="text-[13px] text-muted-foreground">No tools are registered.</p>}
         </div>
 
-        <footer className="tools-modal-footer">
-          <div className="tools-presets" role="radiogroup" aria-label="Preset">
+        <footer className="flex shrink-0 items-center gap-4 border-t px-7 py-3 text-xs text-muted-foreground">
+          <div className="flex gap-3" role="radiogroup" aria-label="Preset">
             {PRESETS.map((entry) => (
               <button
                 key={entry.id}
                 type="button"
                 role="radio"
-                className="tools-preset"
+                className={cn('text-xs hover:enabled:text-foreground disabled:cursor-default', preset === entry.id && 'font-semibold text-foreground')}
                 aria-checked={preset === entry.id}
                 disabled={entry.id === 'custom' || !tools.manifest}
                 data-ui="tools.preset"
@@ -137,8 +156,8 @@ export function ToolsModal({ open, onOpenChange, onSendToChat }: ToolsModalProps
               </button>
             ))}
           </div>
-          <span className="tools-modal-note">Off takes effect now. Open chats keep their list until their next thread.</span>
-          <button type="button" className="tools-modal-link" disabled={totalCalls === 0} data-ui="tools.clear"
+          <span className="min-w-0 flex-1">Off takes effect now. Open chats keep their list until their next thread.</span>
+          <button type="button" className="whitespace-nowrap hover:enabled:text-foreground disabled:text-muted-foreground/50" disabled={totalCalls === 0} data-ui="tools.clear"
             onClick={() => void tools.clearTelemetry()}>
             Reset counts
           </button>

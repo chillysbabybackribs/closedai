@@ -705,10 +705,13 @@ complete.
 
 The dialog groups tools by effect rather than namespace, because a switch is a trust decision:
 Read the web (reads only), Act in the browser (acts as you), Control ClosedAI, Your secrets, This
-machine. Each group has one switch (mixed when partly off) and shows its cost; each row is a
-name and a switch, with a red dot for errors or an amber dot for refused calls, and a click drops
-down the overview: technical id and verbs, summary and off effect, effect, cost, runs, the exact
-text the model reads, and the advertised schema. The footer offers presets: Full turns everything
+machine. Each group is a section with one switch (dimmed when partly off), its count and cost,
+and a card grid: one shadcn Card per tool (`src/components/ui/card.tsx`) with the name and switch
+in the header, the person-facing summary, a status line (cost, or the error, refused-call, or
+suggestion note with a red or amber dot), and a Details disclosure that opens the card to full
+width: technical id and verbs, summary and off effect, effect, cost, last use, runs, recent
+failure notes, the exact text the model reads, and the advertised schema. The footer offers
+presets: Full turns everything
 on; Read-only keeps `READ_ONLY_TOOL_IDS` (the reads-only group plus app state, screenshots, and
 chat reading) and turns the rest off; Custom is the detected state of any other combination.
 

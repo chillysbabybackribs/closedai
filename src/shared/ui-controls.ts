@@ -151,7 +151,7 @@ export const UI_CONTROLS = {
   'tools.clear': 'Reset tool usage counts',
   'tools.toggle': 'Turn a tool on or off (every verb of an action tool); item is the tool id',
   'tools.group-toggle': 'Turn a whole effect group on or off; item is reads-web, acts-in-browser, controls-app, reads-secrets, or runs-native',
-  'tools.row': 'Open or close a tool\u2019s overview under its row; item is the tool id',
+  'tools.row': 'Open or close a tool card\u2019s details; item is the tool id',
   'tools.schema': 'Show or hide the advertised schema inside an open tool overview; item is the tool id',
   'tools.preset': 'Apply a preset to every switch; item is full or read-only (custom is the detected state, not a button)',
   'tools.suggest-off': 'Turn off a tool the dialog suggests is unused and costly; item is the tool id',
