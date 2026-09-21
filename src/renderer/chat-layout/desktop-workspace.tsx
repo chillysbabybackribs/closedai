@@ -21,7 +21,7 @@ export type ChatLayoutHandle = {
   openLayoutPresets: () => void
 }
 
-export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onRenameChat, onRetryChatTitle, onBrowserVisibilityChange, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onRenameChat, onBrowserVisibilityChange, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
   reviewQueue: ChatReviewQueue
   appearance: AppearanceSettings
@@ -30,7 +30,6 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   dialog: ChatPaneDialog | null
   onDialogChange: (dialog: ChatPaneDialog | null) => void
   onRenameChat?: (id: string, title: string) => void
-  onRetryChatTitle?: (id: string) => void
   onBrowserVisibilityChange: (visible: boolean) => void
   archiveChat?: (chatId: string) => Promise<void>
   ref?: Ref<ChatLayoutHandle>
@@ -87,13 +86,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         onCloseTab={(id) => { void layout.closeTab(id) }}
         onNewChat={(id) => { onHistoryOpenChange(false); void layout.newChat(id) }}
         onRenameChat={onRenameChat ? (id) => onRenameChat(id, chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat') : undefined}
-        onRetryChatTitle={onRetryChatTitle}
         chatRow={(id) => chat.chats.find((row) => row.paneId === id)}
-        canRegenerateTitle={(id) => {
-          const row = chat.chats.find((entry) => entry.paneId === id)
-          const pane = chat.snapshot.panes?.[id] ?? (id === chat.selectedPaneId ? chat.snapshot.selected : undefined)
-          return Boolean(row?.threadId && pane?.items.some((item) => item.type === 'user'))
-        }}
         onTogglePin={(id, pinned) => { void chat.sidebar.setChatPinned(id, pinned).catch(() => {}) }}
         onPauseTab={(id) => { void chat.interruptPane(id) }}
         onResumeTab={(id) => { void chat.resumePane(id) }}

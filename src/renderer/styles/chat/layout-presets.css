@@ -1,39 +1,80 @@
 /* Workspace layout dialog: two preset cards with to-scale wireframes of the current canvas. */
 
 .layout-presets-dialog {
-  width: 640px;
-  max-width: calc(100vw - 32px);
-  padding: 18px 20px 16px;
+  width: 920px;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 22px 24px 20px;
+}
+
+.layout-preset-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-right: 28px;
+}
+
+.layout-presets-dialog [data-slot='dialog-title'] {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.layout-preset-canvas {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.layout-presets-dialog [data-slot='dialog-description'] {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.layout-preset-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 18px;
 }
 
 .layout-preset-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 14px;
+  gap: 16px;
 }
 
 .layout-preset-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--hairline-strong, rgb(255 255 255 / 16%));
-  border-radius: 8px;
-  background: var(--surface-card, #1a1a1c);
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 10px;
+  background: var(--surface-card);
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.layout-preset-card:hover {
+  border-color: color-mix(in srgb, var(--foreground) 28%, transparent);
 }
 
 .layout-preset-card[data-selected='true'] {
-  border-color: var(--tab-accent, #8ab4f8);
-  box-shadow: inset 0 0 0 1px var(--tab-accent, #8ab4f8);
+  border-color: var(--tab-accent);
+  background: color-mix(in srgb, var(--tab-accent) 7%, var(--surface-card));
+  box-shadow: inset 0 0 0 1px var(--tab-accent);
 }
 
 .layout-preset-choice {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   padding: 0;
   border: none;
+  border-radius: 6px;
   background: transparent;
   color: inherit;
   font: inherit;
@@ -42,55 +83,69 @@
 }
 
 .layout-preset-choice:focus-visible {
-  outline: 2px solid var(--focus-ink, #3b82f6);
-  outline-offset: 4px;
-  border-radius: 4px;
+  outline: 2px solid var(--focus-ink);
+  outline-offset: 6px;
 }
 
 .layout-preset-title {
   display: flex;
   align-items: center;
-  gap: 9px;
-  font-size: 13px;
+  gap: 10px;
+  color: var(--foreground);
+  font-size: 14px;
   font-weight: 600;
 }
 
 .layout-preset-radio {
   box-sizing: border-box;
-  width: 14px;
-  height: 14px;
-  border: 1.5px solid var(--muted-foreground, #8e8e93);
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--muted-foreground);
   border-radius: 50%;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .layout-preset-card[data-selected='true'] .layout-preset-radio {
-  border-color: var(--tab-accent, #8ab4f8);
-  background: radial-gradient(circle, var(--tab-accent, #8ab4f8) 0 40%, transparent 45%);
+  border-color: var(--tab-accent);
+  background: radial-gradient(circle, var(--tab-accent) 0 38%, transparent 44%);
 }
 
 .layout-preset-text {
-  min-height: 32px;
-  color: var(--muted-foreground, #8e8e93);
-  font-size: 11.5px;
-  line-height: 1.45;
+  min-height: 36px;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+  line-height: 1.5;
 }
+
+/* ---- wireframe ---------------------------------------------------------- */
 
 .layout-preset-wire {
   position: relative;
   width: 100%;
   overflow: hidden;
-  border: 1px solid var(--hairline, rgb(255 255 255 / 10%));
-  border-radius: 4px;
-  background: var(--chassis, #121213);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--chassis);
 }
 
 .layout-preset-wire-chat,
 .layout-preset-wire-browser {
   position: absolute;
   box-sizing: border-box;
-  border: 1px solid var(--tile-edge, rgb(255 255 255 / 14%));
-  border-radius: 2px;
-  background: var(--surface-raised, #202022);
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--tile-edge);
+  border-radius: 3px;
+  background: var(--surface-raised);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.layout-preset-card[data-selected='true'] .layout-preset-wire-chat {
+  border-color: color-mix(in srgb, var(--tab-accent) 55%, var(--tile-edge));
+  color: var(--foreground);
 }
 
 /* Header strip and composer pill sketch a chat tile. */
@@ -99,25 +154,22 @@
   position: absolute;
   inset: 0 0 auto;
   height: 12%;
-  border-bottom: 1px solid var(--hairline, rgb(255 255 255 / 10%));
-  background: var(--surface-control, #2a2a2c);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-control);
 }
 
 .layout-preset-wire-chat::after {
   content: "";
   position: absolute;
   inset: auto 10% 9%;
-  height: 14%;
-  border: 1px solid var(--hairline-strong, rgb(255 255 255 / 16%));
-  border-radius: 3px;
+  height: 15%;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 4px;
+  background: var(--surface-card);
 }
 
 .layout-preset-wire-browser {
-  display: grid;
-  place-items: center;
-  background: var(--surface-chrome, #17171a);
-  color: var(--muted-foreground, #8e8e93);
-  font-size: 10.5px;
+  background: var(--surface-chrome);
 }
 
 .layout-preset-wire-browser::before {
@@ -125,61 +177,80 @@
   position: absolute;
   inset: 0 0 auto;
   height: 9%;
-  border-bottom: 1px solid var(--hairline, rgb(255 255 255 / 10%));
-  background: var(--surface-control, #2a2a2c);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-control);
 }
+
+/* ---- per-card controls -------------------------------------------------- */
 
 .layout-preset-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 26px;
-  color: var(--muted-foreground, #8e8e93);
-  font-size: 12px;
+  gap: 10px;
+  min-height: 32px;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+}
+
+.layout-preset-count {
+  color: var(--foreground);
+  font-weight: 500;
 }
 
 .layout-preset-stepper {
   display: inline-flex;
   align-items: center;
   overflow: hidden;
-  border: 1px solid var(--hairline-strong, rgb(255 255 255 / 16%));
-  border-radius: 6px;
-  background: var(--surface-raised, #1a1a1c);
+  border: 1px solid var(--input);
+  border-radius: 7px;
+  background: var(--surface-control);
 }
 
 .layout-preset-stepper button {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--foreground, #eceef0);
-  font-size: 14px;
+  color: var(--foreground);
+  font-size: 16px;
+  line-height: 1;
   cursor: pointer;
 }
 
 .layout-preset-stepper button:hover:not(:disabled) {
-  background: var(--surface-control-hover, rgb(255 255 255 / 6%));
+  background: var(--surface-control-hover);
+}
+
+.layout-preset-stepper button:focus-visible {
+  outline: 2px solid var(--focus-ink);
+  outline-offset: -2px;
 }
 
 .layout-preset-stepper button:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
 .layout-preset-stepper input {
-  width: 38px;
-  height: 26px;
+  width: 46px;
+  height: 32px;
   padding: 0;
   border: none;
-  background: transparent;
-  color: var(--foreground, #eceef0);
-  font-size: 13px;
+  border-inline: 1px solid var(--hairline);
+  background: var(--surface-card);
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: center;
   outline: none;
   appearance: textfield;
   -moz-appearance: textfield;
+}
+
+.layout-preset-stepper input:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--focus-ink);
 }
 
 .layout-preset-stepper input::-webkit-outer-spin-button,
@@ -189,62 +260,69 @@
 }
 
 .layout-preset-hint {
-  color: var(--ok-ink, #65b98a);
-  font-size: 11px;
+  color: var(--ok-ink);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
+  line-height: 1.4;
 }
 
 .layout-preset-hint.is-tight {
   color: #dba74b;
 }
 
+/* ---- footer ------------------------------------------------------------- */
+
 .layout-preset-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--hairline, rgb(255 255 255 / 10%));
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
 }
 
 .layout-preset-note {
-  color: var(--muted-foreground, #8e8e93);
-  font-size: 11.5px;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+  line-height: 1.4;
 }
 
 .layout-preset-actions {
   display: flex;
   flex-shrink: 0;
-  gap: 8px;
+  gap: 10px;
 }
 
 .layout-preset-btn {
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--hairline, rgb(255 255 255 / 10%));
-  border-radius: 5px;
-  background: transparent;
-  color: var(--muted-foreground, #8e8e93);
-  font-size: 12px;
+  height: 36px;
+  padding: 0 18px;
+  border: 1px solid var(--input);
+  border-radius: 7px;
+  background: var(--surface-control);
+  color: var(--foreground);
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, filter 0.15s ease;
 }
 
 .layout-preset-btn:hover {
-  background: var(--surface-control-hover, rgb(255 255 255 / 6%));
-  color: var(--foreground, #eceef0);
+  background: var(--surface-control-hover);
+}
+
+.layout-preset-btn:focus-visible {
+  outline: 2px solid var(--focus-ink);
+  outline-offset: 2px;
 }
 
 .layout-preset-btn.is-primary {
   border-color: transparent;
-  background: var(--focus-ink, #3b82f6);
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
 }
 
 .layout-preset-btn.is-primary:hover {
-  background: var(--focus-ink, #3b82f6);
-  color: #fff;
-  opacity: 0.9;
+  background: var(--primary);
+  filter: brightness(1.12);
 }

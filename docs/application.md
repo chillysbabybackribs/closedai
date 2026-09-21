@@ -365,20 +365,17 @@ and new chat at once and survives typing, sending, turns, pane changes, and rest
 composer accepts and sends drafts on its single line; its attachment chips and the project rail
 (folder icon and name) sit above the pill instead of inside it, and the model picker
 (`composer.model`) sits at the pill's left edge with the same menu as the full view. Right-clicking
-any tile header or tab opens a context menu with **Full height** / **Restore layout**
-(`layout.maximize` / `layout.restore`), **Chat beside…** / **Chat below…** (`layout.split-right` /
-`layout.split-below`), **Rename…**, optional **Pin chat**, **Regenerate title…**, pause/resume when
-the tab’s task is running or paused, and separate **Close tab** (`layout.tab-close`, Ctrl/Cmd+W) and
-**Hide pane** (`layout.pane-hide`) rows with subtitles when tasks continue. Ctrl/Cmd+W uses that same close or hide
-path for the focused chat. Double-clicking a tile header also toggles
-maximize mode. Close/hide tooltips explain that these actions do not stop tasks and name
-running or paused state when available. Successful closes and hides show a
-4.5-second status message over the focused chat, noting continuing or paused tasks when present.
-The message takes no layout space and adds no controls. In maximized/solo mode, the tile expands to 100% canvas dimensions while background
-tiles and the browser remain mounted and hidden with active agent tasks running undisturbed.
-The context menu displays **Restore split grid** (`layout.restore`), and pressing `Escape` or
-double-clicking the header immediately restores the full split grid layout without modifying
-persisted divider ratios. Browser visibility and the chat tree, including divider ratios, are saved per project
+any tile header or tab opens a context menu with **Workspace layout…** (`layout.presets`), **Rename…**,
+optional **Pin chat**, pause/resume when the tab’s task is running or paused, and separate **Close tab**
+(`layout.tab-close`, Ctrl/Cmd+W) and **Hide pane** (`layout.pane-hide`) rows with subtitles when tasks
+continue. Ctrl/Cmd+W uses that same close or hide path for the focused chat. Double-clicking a tile
+header toggles maximize mode (`layout.maximize` / `layout.restore`). Close/hide tooltips explain that
+these actions do not stop tasks and name running or paused state when available. Successful closes
+and hides show a 4.5-second status message over the focused chat, noting continuing or paused tasks
+when present. The message takes no layout space and adds no controls. In maximized/solo mode, the
+tile expands to 100% canvas dimensions while background tiles and the browser remain mounted and
+hidden with active agent tasks running undisturbed. Pressing `Escape` or double-clicking the header
+immediately restores the full split grid layout without modifying persisted divider ratios. Browser visibility and the chat tree, including divider ratios, are saved per project
 in renderer localStorage, including tab order and each tile's active tab. Missing/archived chats
 are removed from a restored layout; layouts saved before tabs remain compatible.
 

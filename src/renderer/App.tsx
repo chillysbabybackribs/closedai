@@ -184,7 +184,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           dialog={paneDialog}
           onDialogChange={setPaneDialog}
           onRenameChat={(id, title) => setRenamingChat({ id, title })}
-          onRetryChatTitle={(id) => { void chat.sidebar.retryChatTitle(id).catch(history.reportError) }}
           archiveChat={history.deleteRow}
         />}
       </div>

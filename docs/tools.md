@@ -113,9 +113,9 @@ The renderer can show several chats at once. `closedai_app.state` UI facts inclu
 The `layout` control family exposes conversation-tab, split, hide, browser-toggle, and resize controls.
 `layout.new-chat` adds a tab in the target tile, `layout.tab` selects one, and `layout.tab-close`
 removes it from the tile without stopping its turn or deleting history; items are chat ids.
-`layout.new-chat` is the header's plain `+` button (it adds a tab immediately, no menu);
-`layout.split-right` and `layout.split-below` are rows of the header's right-click context menu.
-The browser toggle is a plain header button. Their item is the chat id.
+`layout.new-chat` is the header's plain `+` button (it adds a tab immediately, no menu). Splitting
+uses drag-and-drop on tabs and pane headers; `layout.presets` opens the workspace layout dialog from
+the tile context menu or View menu. The browser toggle is a plain header button. Their item is the chat id.
 With multiple visible tiles, `layout.new-chat` starts a fresh chat in the tile named by its item
 without changing the other tiles or the split geometry.
 The + at the end of a tile's tab strip is the same `layout.new-chat`; the composer's own + is

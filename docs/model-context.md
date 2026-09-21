@@ -123,8 +123,8 @@ Shared guidance also states that page-requested popups, including login windows,
 browser tabs with native opener behavior; they use the same tab ids, capture and input tools.
 Chats can dock on either side of the shared browser via `layout.browser-dock`; the browser's
 position and visibility are saved per directory with the chat layout.
-Press `layout.new-chat` (the header `+`) to add a conversation tab (`layout.split-right` and
-`layout.split-below` sit in the header's context menu), `layout.tab` to select one, and `layout.tab-close`
+Press `layout.new-chat` (the header `+`) to add a conversation tab, drag tabs or panes to split the
+layout, `layout.tab` to select one, and `layout.tab-close`
 to remove it from the tile; each control's item is the chat id. Switching or removing a tab does
 not stop its running turn or delete its history.
 The common routing policy prefers deterministic commands, page APIs, the session-owned

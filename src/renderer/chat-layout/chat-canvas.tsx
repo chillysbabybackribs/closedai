@@ -13,7 +13,7 @@ import { browserDropAt, browserDropPreview, sameBrowserDrop, type BrowserDrop } 
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, chatRow, canRegenerateTitle, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onRetryChatTitle, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
@@ -25,14 +25,12 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
   title: (id: string) => string
   activity?: (id: string) => TabActivity
   chatRow?: (id: string) => ChatRowSummary | undefined
-  canRegenerateTitle?: (id: string) => boolean
   renderPane: (id: string) => ReactNode
   onSelect: (id: string) => void
   onSelectTab: (id: string) => void
   onCloseTab: (id: string) => void
   onNewChat: (id: string) => void
   onRenameChat?: (id: string) => void
-  onRetryChatTitle?: (id: string) => void
   onTogglePin?: (id: string, pinned: boolean) => void
   onPauseTab?: (id: string) => void
   onResumeTab?: (id: string) => void
@@ -185,7 +183,6 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
         const hideHint = paneHideHint(tabs.map((id) => activity?.(id)?.state))
         const closeHint = tabCloseHint(activity?.(activeId)?.state)
         const row = chatRow?.(activeId)
-        const regenerate = canRegenerateTitle?.(activeId) ?? false
         return <section key={tileKey}
           className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID ? undefined : activeId}
           data-solo={isThisTileSolo ? 'true' : undefined}
@@ -275,16 +272,10 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
               </header>
             </ContextMenu.Trigger>
             <ChatLayoutContextMenu activeId={activeId} tabs={tabs} chatCount={chatCount} busy={busy}
-              isTileSolo={isThisTileSolo} canMaximize={canMaximize}
               hideHint={hideHint} closeHint={closeHint} tabActivity={activity?.(activeId)}
-              pinned={row?.pinnedAt != null} canRegenerateTitle={regenerate}
-              onRestore={() => setSoloPaneId(null)}
-              onMaximize={() => setSoloPaneId(activeId)}
-              onSplitRight={() => { if (soloTile) setSoloPaneId(null); onDock(null, activeId, 'right') }}
-              onSplitBelow={() => { if (soloTile) setSoloPaneId(null); onDock(null, activeId, 'bottom') }}
+              pinned={row?.pinnedAt != null}
               onOpenPresets={onOpenPresets ? () => { if (soloTile) setSoloPaneId(null); onOpenPresets() } : undefined}
               onRename={onRenameChat ? () => onRenameChat(activeId) : undefined}
-              onRetryTitle={onRetryChatTitle ? () => onRetryChatTitle(activeId) : undefined}
               onTogglePin={onTogglePin ? () => onTogglePin(activeId, row?.pinnedAt == null) : undefined}
               onPause={onPauseTab ? () => onPauseTab(activeId) : undefined}
               onResume={onResumeTab ? () => onResumeTab(activeId) : undefined}
