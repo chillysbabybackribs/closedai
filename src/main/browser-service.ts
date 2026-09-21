@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session, type LoadURLOptions, type WebContents } from 'electron'
+import { app, BrowserWindow, session, type LoadURLOptions, type WebContents, type WebContentsViewConstructorOptions } from 'electron'
 import { EventEmitter } from 'node:events'
 import { join } from 'node:path'
 import type { BrowserHistory } from './browser-history-store.js'
@@ -42,9 +42,6 @@ const CAPTURE_SETTLE_MS = 250
 // (persist:browser), so a login in one tab applies to all.
 export class BrowserService extends EventEmitter {
   private tabs: (BrowserTab | ImageTab | FileTab)[] = []
-  // Native popup windows intentionally stay outside the visible tab strip, but CDP still needs
-  // a stable application-owned id to address their WebContents directly.
-  private readonly nativePopups = new Map<string, { contents: WebContents; openerTabId: string }>()
   private activeId: string | null = null
   private disposed = false
   private bounds: BrowserBounds = { x: 0, y: 0, width: 1, height: 1 }
@@ -104,15 +101,23 @@ export class BrowserService extends EventEmitter {
     return tab
   }
 
-  private createTab(activate: boolean, index?: number, id?: string): BrowserTab {
-    let tab!: BrowserTab
-    tab = new BrowserTab(
+  private createTab(activate: boolean, index?: number, id?: string, popupOptions?: WebContentsViewConstructorOptions): BrowserTab {
+    const tab = new BrowserTab(
       this.history,
       (request) => { this.openTab(request.url, request.activate, request.options) },
       PARTITION,
-      (contents) => this.registerNativePopup(tab.id, contents),
+      (options, request) => {
+        const child = this.createTab(request.activate, undefined, undefined, options)
+        // Chromium navigates adopted children itself. Background-tab opens may not supply
+        // WebContents; only that deferred case needs an explicit initial navigation.
+        if (!options.webContents) {
+          void child.start(request.url, request.options).catch((error: unknown) => this.emit('error', error))
+        }
+        return child.view.webContents
+      },
       this.pageBackgrounds,
-      id
+      id,
+      popupOptions
     )
     this.observers.watchTab(tab.id, tab.view.webContents)
     this.registerTab(tab, index)
@@ -413,28 +418,10 @@ export class BrowserService extends EventEmitter {
     return this.tabInfos()
   }
 
-  /** Browser-owned CDP roots, including native popup windows that never appear in the tab strip. */
+  /** Every page-requested window is a regular tab and uses the same tool access. */
   cdpTargetList(): CdpBrowserTarget[] {
     const tabs = this.tabInfos().filter((tab) => !tab.image && !tab.file).map((tab) => ({ ...tab, kind: 'tab' as const }))
-    const popups: CdpBrowserTarget[] = []
-    for (const [id, popup] of this.nativePopups) {
-      if (popup.contents.isDestroyed()) {
-        this.nativePopups.delete(id)
-        continue
-      }
-      popups.push({
-        id,
-        pos: 0,
-        title: popup.contents.getTitle() || 'Popup',
-        url: popup.contents.getURL() || 'about:blank',
-        favicon: null,
-        isLoading: popup.contents.isLoading(),
-        active: false,
-        kind: 'popup',
-        openerTabId: popup.openerTabId
-      })
-    }
-    return [...tabs, ...popups]
+    return tabs
   }
 
   /** The session every tab shares; what the model's session-level tools operate on. */
@@ -442,14 +429,11 @@ export class BrowserService extends EventEmitter {
     return this.partitionSession
   }
 
-  /** The app-owned id (tab or popup) behind a WebContents id; null for session-only traffic. */
+  /** The tab id behind a WebContents id; null for session-only traffic. */
   tabIdForContents(webContentsId: number | undefined): string | null {
     if (webContentsId === undefined) return null
     const tab = this.tabs.find((candidate) => candidate instanceof BrowserTab && candidate.view.webContents.id === webContentsId)
     if (tab) return tab.id
-    for (const [id, popup] of this.nativePopups) {
-      if (popup.contents.id === webContentsId) return id
-    }
     return null
   }
 
@@ -467,8 +451,6 @@ export class BrowserService extends EventEmitter {
 
   /** Live WebContents of a tab (the active one when omitted); null if unknown or destroyed. */
   contentsOf(tabId?: string): WebContents | null {
-    const popup = tabId ? this.nativePopups.get(tabId)?.contents : null
-    if (popup && !popup.isDestroyed()) return popup
     const tab = tabId ? this.tabs.find((candidate) => candidate.id === tabId) ?? null : this.active
     if (tab instanceof ImageTab) throw new Error('This is an image viewer tab. Use a web tab for browser page tools.')
     if (tab instanceof FileTab) throw new Error('This is a file viewer tab. Use a web tab for browser page tools.')
@@ -505,13 +487,6 @@ export class BrowserService extends EventEmitter {
 
   private prepareTabForTool(tab: BrowserTab): void {
     prepareTabSurfaceForTool(tab, this.activeId, this.bounds, browserSurfaceVisibility(this.bounds))
-  }
-
-  private registerNativePopup(openerTabId: string, contents: WebContents): void {
-    const id = `popup-${contents.id}`
-    this.nativePopups.set(id, { contents, openerTabId })
-    this.observers.watchTab(id, contents)
-    contents.once('destroyed', () => { this.nativePopups.delete(id) })
   }
 
   /** Navigate a targeted tab, the active tab by default, or a new active tab. */

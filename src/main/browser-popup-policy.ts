@@ -1,9 +1,7 @@
-import type { HandlerDetails, LoadURLOptions, WindowOpenHandlerResponse } from 'electron'
+import type { HandlerDetails, LoadURLOptions, WebContents, WebContentsViewConstructorOptions, WindowOpenHandlerResponse } from 'electron'
 
-// Ordinary destinations belong in CodeApp's tab strip. Opener-dependent OAuth and explicit
-// utility windows retain a real Chromium child because Electron 43 hangs window.open when its
-// createWindow callback returns a WebContentsView or BrowserView WebContents. Featureless
-// about:blank children start hidden until their first real URL reveals which path they need.
+// Adopt Chromium's actual child WebContents, rather than canceling and loading its URL in a
+// different renderer. The original WindowProxy, opener, POST and blank-window writes survive.
 
 export type PopupTabRequest = {
   url: string
@@ -11,28 +9,9 @@ export type PopupTabRequest = {
   options?: LoadURLOptions
 }
 
-export type PopupDecision =
-  | { kind: 'tab'; response: WindowOpenHandlerResponse; tab: PopupTabRequest }
-  | { kind: 'native-child'; response: WindowOpenHandlerResponse; deferred: boolean }
+export type CreatePopupTab = (options: WebContentsViewConstructorOptions, request: PopupTabRequest) => WebContents
 
 type PopupDetails = Pick<HandlerDetails, 'url' | 'features' | 'disposition' | 'referrer' | 'postBody'>
-
-const AUTH_PATH = /\/(?:oauth2?|authorize|login|signin|sign-in|sso|consent)(?:[/?#]|$)/i
-const AUTH_HOST = /(?:^|\.)(?:accounts?|auth|login|oauth|sso)(?:\.|$)/i
-const UTILITY_FEATURE = /(?:^|,)(?:popup|width|height|left|top|screenx|screeny)=?/i
-
-export function isOAuthDestination(rawUrl: string): boolean {
-  try {
-    const url = new URL(rawUrl)
-    return AUTH_HOST.test(url.hostname) || AUTH_PATH.test(url.pathname)
-  } catch {
-    return false
-  }
-}
-
-function hasUtilityWindowFeatures(features: string): boolean {
-  return UTILITY_FEATURE.test(features.replace(/\s+/g, ''))
-}
 
 function tabLoadOptions(details: PopupDetails): LoadURLOptions | undefined {
   const options: LoadURLOptions = {}
@@ -49,39 +28,32 @@ function tabLoadOptions(details: PopupDetails): LoadURLOptions | undefined {
 
 export function decideWindowOpen(
   details: PopupDetails,
-  partition: string
-): PopupDecision {
-  const deferred = details.url === 'about:blank' && !hasUtilityWindowFeatures(details.features)
-  const nativeChild = deferred || isOAuthDestination(details.url) || hasUtilityWindowFeatures(details.features)
-  if (!nativeChild) {
-    return {
-      kind: 'tab',
-      response: { action: 'deny' },
-      tab: {
-        url: details.url,
-        activate: details.disposition !== 'background-tab',
-        options: tabLoadOptions(details)
-      }
-    }
-  }
+  partition: string,
+  createPopupTab?: CreatePopupTab
+): WindowOpenHandlerResponse {
+  // Public research workers have no tab host and must never create windows.
+  if (!createPopupTab) return { action: 'deny' }
   return {
-    kind: 'native-child',
-    deferred,
-    response: {
-      action: 'allow',
-      outlivesOpener: false,
-      overrideBrowserWindowOptions: {
-        autoHideMenuBar: true,
-        backgroundColor: '#ffffff',
-        ...(deferred ? { show: false } : {}),
-        webPreferences: {
-          contextIsolation: true,
-          nodeIntegration: false,
-          sandbox: true,
-          partition,
-          backgroundThrottling: true
-        }
+    action: 'allow',
+    outlivesOpener: true,
+    overrideBrowserWindowOptions: {
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        partition,
+        backgroundThrottling: true,
+        autoplayPolicy: 'document-user-activation-required',
+        enableWebSQL: false,
+        safeDialogs: true
       }
-    }
+    },
+    // Electron passes webContents at runtime although BrowserWindowConstructorOptions omits
+    // it in its type. WebContentsView accepts it through its documented adoption option.
+    createWindow: (options) => createPopupTab(options as WebContentsViewConstructorOptions, {
+      url: details.url,
+      activate: details.disposition !== 'background-tab',
+      options: tabLoadOptions(details)
+    })
   }
 }

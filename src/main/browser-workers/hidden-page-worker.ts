@@ -9,10 +9,10 @@ export const RESEARCH_PARTITION = 'research-public'
 /**
  * A page worker is an ordinary BrowserTab that no window ever shows: same permission policy
  * and popup handling, but on the public research session, outside the tab strip, recording no
- * history. Popups it would open are dropped, and native child windows are closed on creation.
+ * history. Page-requested windows are denied before any child is created.
  */
 export function createHiddenPageWorker(): RenderedWorker {
-  const tab = new BrowserTab(EPHEMERAL_BROWSER_HISTORY, () => {}, RESEARCH_PARTITION, (popup) => popup.close())
+  const tab = new BrowserTab(EPHEMERAL_BROWSER_HISTORY, () => {}, RESEARCH_PARTITION)
   const live = (): WebContents | null => {
     const contents = tab.view.webContents as WebContents | undefined
     return contents && !contents.isDestroyed() ? contents : null

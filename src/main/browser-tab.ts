@@ -1,4 +1,4 @@
-import { WebContentsView, session, type LoadURLOptions, type WebContents } from 'electron'
+import { WebContentsView, session, type LoadURLOptions, type WebContents, type WebContentsViewConstructorOptions } from 'electron'
 import { EventEmitter } from 'node:events'
 import type { BrowserHistory } from './browser-history-store.js'
 import type { BrowserBounds, BrowserState } from '../shared/types.js'
@@ -8,7 +8,7 @@ import { waitForUsableLoad } from './browser-navigation-wait.js'
 import { selectFavicon } from './browser-favicon.js'
 import { EMBEDDED_BROWSER_SCROLLBAR_CSS } from './browser-page-style.js'
 import { installTabZoom } from './browser-tab-zoom.js'
-import type { PopupTabRequest } from './browser-popup-policy.js'
+import type { CreatePopupTab, PopupTabRequest } from './browser-popup-policy.js'
 import { installPopupBridge } from './browser-popup-bridge.js'
 import { installContentsPermissionPolicy } from './browser-permissions.js'
 import { showBrowserContextMenu } from './browser-context-menu.js'
@@ -90,12 +90,13 @@ export class BrowserTab extends EventEmitter {
     private readonly history: BrowserHistory,
     private readonly openLinkInNewTab: (request: PopupTabRequest) => void,
     readonly partition: string = PARTITION,
-    private readonly registerNativePopup: (contents: WebContents) => void = () => {},
+    private readonly createPopupTab?: CreatePopupTab,
     // Shared across the window's tabs: a page's canvas colour belongs to the site, not to
     // whichever view happened to load it first.
     private readonly pageBackgrounds: PageBackgroundMemory = new PageBackgroundMemory(),
     // A persisted id to restore under; a fresh tab takes the next counter value.
-    id?: string
+    id?: string,
+    popupOptions?: WebContentsViewConstructorOptions
   ) {
     super()
     if (id) reserveTabId(id)
@@ -103,7 +104,9 @@ export class BrowserTab extends EventEmitter {
     // Node throws on unhandled 'error'; the service subscribes, but keep a no-op fallback.
     this.on('error', () => {})
     this.view = new WebContentsView({
+      webContents: popupOptions?.webContents,
       webPreferences: {
+        ...popupOptions?.webPreferences,
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
@@ -538,7 +541,7 @@ export class BrowserTab extends EventEmitter {
         }
       })
     })
-    installPopupBridge(contents, this.partition, this.openLinkInNewTab, this.registerNativePopup)
+    installPopupBridge(contents, this.partition, this.createPopupTab)
   }
 
   // Electron nulls WebContentsView.webContents once the contents are destroyed, despite the
