@@ -19,7 +19,13 @@ import type { TraceScope } from '../trace/trace-log.js'
 
 export type CursorSessionDeps = {
   cwd: string
-  mcpServers: () => AcpMcpServer[]
+  /**
+   * The ClosedAI tool endpoints for this pane. Async because the agent only ever learns about
+   * them at `session/new` / `session/load`: a session opened before the bridge was listening gets
+   * an empty list and stays toolless for its whole life, so resolving them has to be able to
+   * start the bridge rather than report whatever it happens to have.
+   */
+  mcpServers: () => Promise<readonly AcpMcpServer[]>
   /** The ACP model id to select on a fresh session, or null for the agent's own default. */
   modelId: () => string | null
   apply: (op: TranscriptOp) => void
@@ -48,6 +54,14 @@ export class CursorSession {
   private opening: Promise<CursorAcpClient> | null = null
   /** The last setup the agent reported, reused while its session stays open on this process. */
   private setup: AcpSessionSetup | null = null
+  /**
+   * The tool endpoints the live session was opened with. Verified live against cursor-agent on
+   * 2026-09-21: the agent connects the servers it is given at `session/new` and at `session/load`
+   * (both produce an MCP `initialize` against the endpoint), and never asks again. So a session
+   * opened with a different list — an empty one, or one from a bridge that has since restarted on
+   * another port — has to be reopened, not reused.
+   */
+  private attachedServers: string | null = null
   /** Send closedai.instructions on the next turn; cleared after one delivery until the thread changes. */
   private instructionsPending = true
   /** Set only while `replay` is collecting another session's history off the same process. */
@@ -138,6 +152,7 @@ export class CursorSession {
     this.opening = null
     this.loadedSessionId = null
     this.setup = null
+    this.attachedServers = null
     if (this.activeTurnId) {
       this.endTurn(this.stopping
         ? { status: 'interrupted' }
@@ -212,9 +227,11 @@ export class CursorSession {
     const items = new Map<string, ChatTranscriptItem>()
     const translator = new CursorTurnTranslator({ turnId: null, seed: sessionId, cwd })
     this.replaying = { sessionId, translator, items }
+    const mcpServers = await this.deps.mcpServers()
     try {
-      const setup = await client.loadSession(sessionId, cwd, this.deps.mcpServers())
+      const setup = await client.loadSession(sessionId, cwd, mcpServers)
       this.loadedSessionId = sessionId
+      this.attachedServers = serverSignature(mcpServers)
       this.setup = setup
       for (const op of translator.finish()) if (op.type === 'item') items.set(op.item.id, op.item)
     } finally {
@@ -247,19 +264,26 @@ export class CursorSession {
    * rather than failing the turn.
    */
   private async ensureSession(client: CursorAcpClient): Promise<AcpSessionSetup> {
-    const mcpServers = this.deps.mcpServers()
-    // Already open on this process — a replay loaded it, or the last turn did. Loading again
-    // costs a round trip and tells the agent nothing it does not know.
-    if (this.sessionId && this.sessionId === this.loadedSessionId && this.setup) return this.setup
+    const mcpServers = await this.deps.mcpServers()
+    const attaching = serverSignature(mcpServers)
+    // Already open on this process with the tools it would be given now — a replay loaded it, or
+    // the last turn did. Loading again costs a round trip and tells the agent nothing it does not
+    // know. A session holding a different list is reopened instead: that is the only way it can
+    // learn about endpoints it was not given when it opened.
+    if (this.sessionId && this.sessionId === this.loadedSessionId && this.setup && this.attachedServers === attaching) {
+      return this.setup
+    }
     if (this.sessionId && client.capabilities?.loadSession) {
       const loaded = await client.loadSession(this.sessionId, this.deps.cwd, mcpServers).catch(() => null)
       if (loaded) {
         this.loadedSessionId = loaded.sessionId
+        this.attachedServers = attaching
         return this.adoptSetup(loaded)
       }
     }
     const created = await client.newSession(this.deps.cwd, mcpServers)
     this.loadedSessionId = created.sessionId
+    this.attachedServers = attaching
     const model = this.deps.modelId()
     if (model && model !== created.currentModelId) {
       await client.setModel(created.sessionId, model).catch((error: unknown) => {
@@ -302,6 +326,7 @@ export class CursorSession {
     this.client = null
     this.loadedSessionId = null
     this.setup = null
+    this.attachedServers = null
     this.clearIdleTimer()
     if (!this.activeTurnId) return
     this.endTurn(this.stopping
@@ -327,4 +352,9 @@ export class CursorSession {
   private clearIdleTimer(): void {
     this.idleGuard.clear()
   }
+}
+
+/** Identity of a tool endpoint set: same names on same URLs means the agent needs no new attach. */
+function serverSignature(servers: readonly AcpMcpServer[]): string {
+  return servers.map((server) => `${server.name}@${server.url}`).sort().join('|')
 }

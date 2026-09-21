@@ -375,7 +375,14 @@ export class CursorChatService extends EventEmitter {
   private createSession(): CursorSession {
     return new CursorSession({
       cwd: this.cwd,
-      mcpServers: () => this.bridge.servers(this.bridgeKey),
+      // The bridge is started here rather than at the call sites that open sessions: a session is
+      // told about the ClosedAI tools exactly once, when it opens, so a pane that warmed or
+      // replayed its session before the listener existed would otherwise run every later turn
+      // against an agent that was never given them.
+      mcpServers: async () => {
+        await this.bridge.start()
+        return this.bridge.servers(this.bridgeKey)
+      },
       modelId: () => cursorAcpModelId(this.modelState.selectedModel),
       apply: (op) => this.applyOp(op),
       onTurn: (turnId) => this.setTurn(turnId),
