@@ -102,10 +102,16 @@ export class BrowserCoordination {
     if (this.defaults.get(paneId) === id) this.defaults.delete(paneId)
   }
 
-  snapshot(paneId?: string | null): { defaultTabId: string | null; assignments: Array<{ tabId: string; paneId: string }> } {
+  snapshot(paneId?: string | null): {
+    defaultTabId: string | null; assignmentCount: number; omittedAssignments: number
+    assignments: Array<{ tabId: string; paneId: string }>
+  } {
     this.prune()
-    return { defaultTabId: paneId ? this.defaults.get(paneId) ?? null : null,
-      assignments: [...this.owners].map(([tabId, owner]) => ({ tabId, paneId: owner })) }
+    const defaultTabId = paneId ? this.defaults.get(paneId) ?? null : null
+    const rank = ([id, owner]: [string, string]) => (id === defaultTabId ? 2 : owner === paneId ? 1 : 0)
+    const entries = [...this.owners].sort((a, b) => rank(b) - rank(a))
+    return { defaultTabId, assignmentCount: entries.length, omittedAssignments: Math.max(0, entries.length - 32),
+      assignments: entries.slice(0, 32).map(([tabId, owner]) => ({ tabId, paneId: owner })) }
   }
 
   private checkOwner(tabId: string, paneId: string): void {

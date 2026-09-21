@@ -78,6 +78,19 @@ test('a missing model caller cannot fall back to the selected chat', () => {
   assert.deepEqual(policy.prepare(request, request.arguments, { source: 'system' }), request.arguments)
 })
 
+test('assignment discovery is bounded and keeps the caller default first', () => {
+  const { tabs, policy } = harness()
+  for (let index = 0; index < 40; index++) {
+    const id = `tab-${index}`
+    tabs.push({ id, active: false })
+    policy.claim(id, 'a')
+  }
+  const snapshot = policy.snapshot('a')
+  assert.equal(snapshot.assignments.length, 32)
+  assert.equal(snapshot.omittedAssignments, 8)
+  assert.equal(snapshot.assignments[0].tabId, snapshot.defaultTabId)
+})
+
 test('bulk close preflights every affected tab and shared session mutations refuse peer assignments', () => {
   const { prepare } = harness()
   prepare('a', { action: 'read_page', tab_id: 'user' })

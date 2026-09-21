@@ -114,8 +114,7 @@ export class UiCaptureAccess implements UiCaptureHost {
         error: error instanceof Error ? error.message : String(error)
       }
     } finally {
-      restoreThrottling?.()
-      release()
+      try { restoreThrottling?.() } finally { release() }
     }
   }
 
