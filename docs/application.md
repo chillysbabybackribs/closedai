@@ -295,8 +295,10 @@ Each tile header shows conversation tabs and a **+** button for **New chat tab**
 tile's active chat model, adds a tab, and selects it while retaining the previous tabs and the
 other tiles and divider sizes. Tab creation waits for the renderer's workspace snapshot to
 catch up with the new chat before reconciling tabs; menu focus restoration cannot interrupt it.
-The tab's full surface, including its title, activity icon, and padding, is the drag target;
-there is no separate chat drag grip. The overlaid close button keeps its own click action; its
+The tab's full surface, including its title, activity icon, and padding, drags that conversation
+(tab split, stack, or join). A 36 × 38 pixel grip at the left of the tile header (matching the
+browser tab strip) drags the whole pane with every tab in it; compact equal-width tabs leave no
+empty header space, so the grip is the reliable whole-tile target. The overlaid close button keeps its own click action; its
 hit area is a 24 × tab-height strip around the existing 11 px icon, without a larger hover chip.
 Click a tab to return to its conversation; arrow keys and Home/End
 also switch tabs. Tab strips scroll horizontally when full. Mounted drafts and attachments survive
@@ -318,7 +320,7 @@ tab; sibling conversations stay in place. Drop a tab onto another chat header to
 The highlighted region previews the split or tab destination. These moves preserve mounted drafts,
 attachments, and transcripts and persist with the project's layout.
 
-The centered 36 × 34 pixel grip at the top left of the browser tab strip moves the whole shared browser. Drop it at a
+The 36 × 34 pixel grip at the top left of the browser tab strip moves the whole shared browser. Drop it at a
 chat's top or bottom edge to stack it above or below that chat, or at a side edge to dock beside
 it. During a browser drag, highlighted strips at the workspace's far left and right place the
 browser in a full-height column beside all chats. Moving the browser preserves its tabs and

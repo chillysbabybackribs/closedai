@@ -116,6 +116,8 @@ test('ChatCanvas renders tabbed pane with single tile, persistent header, and hi
   // Both tab buttons rendered in the header
   assert.match(html, /data-ui="layout\.tab" data-ui-key="tab-1"/)
   assert.match(html, /data-ui="layout\.tab" data-ui-key="tab-2"/)
+  assert.match(html, /class="chat-layout-drag"[^>]*data-ui="layout\.pane-drag" data-ui-key="tab-1"[^>]*draggable="true"/)
+  assert.match(html, /Drag to move whole pane/)
   // Tab 1 is active, Tab 2 is inactive
   assert.match(html, /id="chat-tab-tab-1"[^>]*aria-selected="true"/)
   assert.match(html, /id="chat-tab-tab-2"[^>]*aria-selected="false"/)

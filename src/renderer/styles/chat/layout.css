@@ -147,15 +147,18 @@
 }
 .chat-layout-tile[hidden] { display: none; }
 .chat-layout-header { flex: 0 0 38px; padding: 0 4px 0 0; }
-.chat-layout-drag {
+/* Dedicated pane grip: tab drags move one conversation; compact tab strips leave no empty header. */
+.chat-layout-header > button.chat-layout-drag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 28px;
+  flex: 0 0 36px;
   align-self: stretch;
+  height: auto;
   padding: 0;
   border: 0;
   border-radius: 0;
+  border-right: 1px solid var(--hairline);
   background: transparent;
   color: var(--chrome-fg);
   cursor: grab;
@@ -167,15 +170,15 @@
   height: 20px;
   background-image: radial-gradient(circle, currentColor 1px, transparent 1.5px);
   background-size: 5px 5px;
-  opacity: 0.55;
+  opacity: 0.7;
   transition: opacity 120ms ease;
 }
-.chat-layout-drag:hover { color: var(--chrome-fg-strong); background: var(--surface-highlight); }
-.chat-layout-drag:hover .chat-layout-drag-dots,
-.chat-layout-drag:active .chat-layout-drag-dots { opacity: 1; }
-.chat-layout-drag:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -2px; }
-.chat-layout-drag:active { cursor: grabbing; }
-.chat-layout-drag:disabled { opacity: 0.3; cursor: default; }
+.chat-layout-header > button.chat-layout-drag:hover { color: var(--chrome-fg-strong); background: var(--surface-highlight); }
+.chat-layout-header > button.chat-layout-drag:hover .chat-layout-drag-dots,
+.chat-layout-header > button.chat-layout-drag:active .chat-layout-drag-dots { opacity: 1; }
+.chat-layout-header > button.chat-layout-drag:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -2px; }
+.chat-layout-header > button.chat-layout-drag:active { cursor: grabbing; }
+.chat-layout-header > button.chat-layout-drag:disabled { opacity: 0.3; cursor: default; }
 /* Selection is carried by the active tab's surface and label weight, never by a header
    fill: a lighter header bar read as a second user bubble stacked above the transcript. */
 .chat-layout-tile[data-selected='true'] > .chat-layout-header { color: var(--chrome-fg-strong); }
@@ -194,6 +197,14 @@
   transition: background-color 120ms ease, color 120ms ease;
 }
 .chat-layout-tab:only-child { max-width: 300px; }
+/* Equal-width tabs when a tile is narrow so the pane grip stays the only whole-tile drag target. */
+@container chat-tile (max-width: 720px) {
+  .chat-layout-tabs:has(.chat-layout-tab + .chat-layout-tab) .chat-layout-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+  }
+}
 .chat-layout-tab:not([data-active='true']) { color: var(--chrome-fg); }
 .chat-layout-tab:not([data-active='true']):hover { color: var(--chrome-fg-strong); background: var(--surface-highlight); }
 .chat-layout-tab[data-active='true'] { color: var(--chrome-fg-strong); background: var(--tab-active-surface); }

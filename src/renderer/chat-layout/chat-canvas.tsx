@@ -238,7 +238,7 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
               >
                 <button type="button" className="chat-layout-drag" data-ui="layout.pane-drag" data-ui-key={activeId}
                   draggable={!busy} disabled={busy} aria-label="Drag to move chat pane"
-                  title="Drag to move pane"
+                  title="Drag to move whole pane · Tab drags move one conversation"
                   onDragStart={(event) => {
                     event.dataTransfer.setData(CHAT_DRAG_TYPE, activeId)
                     event.dataTransfer.effectAllowed = 'move'
