@@ -16,8 +16,18 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
     throw new Error('Unavailable in the browser UI preview')
   }
   const idleSubscription = () => () => {}
-  const library: LibrarySnapshot = { settings: { topics: [], enabled: false, lookbackDays: 7 },
-    refreshing: false, lastRefresh: null, papers: [], total: 0, dismissed: 0 }
+  const samplePaper = (id: string, title: string, topic: string, daysAgo: number): LibrarySnapshot['papers'][number] => ({
+    id, title, topics: [topic], url: `https://alphaxiv.org/abs/${id}`, sha256: id.padEnd(64, '0'),
+    abstract: `Preview abstract for ${title}. Two paragraphs of discovery text stand in for the retrieved abstract so the row, its panel, and the open action can be exercised without a network call.`,
+    abstractTruncated: false,
+    publishedAt: new Date(Date.now() - daysAgo * 86_400_000).toISOString(),
+    retrievedAt: new Date(Date.now() - 3_600_000).toISOString()
+  })
+  const library: LibrarySnapshot = { settings: { topics: ['Coding agent harness design'], enabled: true, lookbackDays: 30 },
+    refreshing: false, lastRefresh: null, dismissed: 0, total: 2, papers: [
+      samplePaper('2609.20804', 'An Empirical Study of Harness Design for Coding Agents', 'Coding agent harness design', 4),
+      samplePaper('2609.19877', 'JustMem: Just-Enough Memory Access for Long-Term Conversations', 'Coding agent harness design', 6)
+    ] }
   let tabs: BrowserTabInfo[] = [{ id: 'preview-tab-1', pos: 1, title: 'Sample browser tab',
     url: 'about:blank', favicon: null, isLoading: false, active: true }]
   let tabSequence = 1
