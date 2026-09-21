@@ -183,7 +183,9 @@ test('thrown tool errors obey the same context budget', async () => {
   assert.ok(result.content[0].text.length <= MAX_RESULT_TEXT_CHARS)
 })
 
-test('a timed-out tool releases its resource lock even when its run promise never settles', async () => {
+test('a timed-out mutation retains its lock until the underlying operation actually settles', async () => {
+  let finish!: (result: ReturnType<typeof textResult>) => void
+  const pending = new Promise<ReturnType<typeof textResult>>(resolve => { finish = resolve })
   const browser: ToolNamespace = {
     name: 'browser_cdp',
     description: 'Browser automation',
@@ -197,7 +199,7 @@ test('a timed-out tool releases its resource lock even when its run promise neve
         required: ['action', 'tab_id']
       },
       run: async (input) => input.hang
-        ? await new Promise(() => {})
+        ? await pending
         : textResult('recovered')
     }]
   }
@@ -210,7 +212,16 @@ test('a timed-out tool releases its resource lock even when its run promise neve
   const timedOut = await registry.call(request(true), { ...context, paneId: 'pane-a', callId: 'hang' })
   assert.equal(timedOut.errorKind, 'timeout')
   const retry = await registry.call(request(false), { ...context, paneId: 'pane-b', callId: 'retry' })
-  assert.deepEqual(retry, textResult('recovered'))
+  assert.equal(retry.isError, true)
+  assert.match(JSON.stringify(retry), /busy/)
+  const independent = await registry.call({ ...request(false), arguments: { ...request(false).arguments, tab_id: 'tab-2' } },
+    { ...context, paneId: 'pane-b', callId: 'independent' })
+  assert.deepEqual(independent, textResult('recovered'))
+  finish(textResult('late completion'))
+  await pending
+  await new Promise(resolve => setImmediate(resolve))
+  const after = await registry.call(request(false), { ...context, paneId: 'pane-b', callId: 'after' })
+  assert.deepEqual(after, textResult('recovered'))
 })
 
 test('a target-closed failure releases its browser-tab resource lock', async () => {

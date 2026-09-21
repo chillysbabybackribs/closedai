@@ -1,9 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState, type JSX, type RefObject } from 'react'
-import { Search, Trash2, X } from 'lucide-react'
+import { LoaderCircle, MessageSquare, Search, Trash2, X } from 'lucide-react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { HistoryController } from './history-controller.js'
 import { formatChatTime } from './history-format.js'
-import { searchChats, segmentTitle, stepHighlight, type ChatSearchHit } from './history-search.js'
+import { chatSearchView, segmentTitle, stepHighlight, type ChatSearchHit } from './history-search.js'
 
 export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   chats: ChatRowSummary[]
@@ -19,13 +19,15 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   const actionRef = useRef(false)
   const resultsRef = useRef<HTMLDivElement>(null)
   const listId = useId()
-  const hits = useMemo(() => searchChats(chats, query), [chats, query])
+  const view = useMemo(() => chatSearchView(chats, query, controller.reviewQueue),
+    [chats, query, controller.reviewQueue])
+  const hits = useMemo(() => view.sections.flatMap(section => section.hits), [view])
   const cursor = Math.min(highlight, Math.max(0, hits.length - 1))
   const optionId = (index: number): string => `${listId}-${index}`
 
   useEffect(() => {
     resultsRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
-  }, [cursor, focused, query])
+  }, [cursor, focused, query, hits])
 
   const open = async (hit: ChatSearchHit | undefined): Promise<void> => {
     if (!hit || actionRef.current) return
@@ -66,6 +68,13 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
 
   return <div className="header-chat-search" onBlur={event => {
     if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false)
+  }} onKeyDown={event => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      setFocused(false)
+      inputRef.current?.blur()
+    }
   }}>
     <div className="header-chat-search-field">
       <Search size={13} aria-hidden="true" />
@@ -76,6 +85,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
         autoComplete="off" spellCheck={false} data-ui="titlebar.chat-search"
         onChange={event => { setQuery(event.target.value); setHighlight(0); setFocused(true) }}
         onFocus={() => { setFocused(true); controller.refreshChats() }}
+        onClick={() => setFocused(true)}
         onKeyDown={event => {
           if (event.nativeEvent.isComposing) return
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -85,13 +95,19 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
           } else if (event.key === 'Enter') {
             event.preventDefault()
             if (focused) void open(hits[cursor])
-          } else if (event.key === 'Escape') {
-            event.preventDefault()
-            event.stopPropagation()
-            setFocused(false)
-            inputRef.current?.blur()
           }
         }} />
+      {(view.runningCount > 0 || view.unreadCount > 0) && <div className="header-chat-search-counts"
+        role="status" aria-label={`${view.runningCount} running chats, ${view.unreadCount} unread completions`}>
+        {view.runningCount > 0 && <span className="header-chat-search-count" data-status="running"
+          title={`${view.runningCount} running chats`} aria-hidden="true">
+          <LoaderCircle size={12} className="header-chat-search-spinner" />{view.runningCount}
+        </span>}
+        {view.unreadCount > 0 && <span className="header-chat-search-count" data-status="completed"
+          title={`${view.unreadCount} unread completions`} aria-hidden="true">
+          <span className="header-chat-search-dot" />{view.unreadCount}
+        </span>}
+      </div>}
       {query && <button type="button" className="header-chat-search-clear" aria-label="Clear chat search"
         data-ui="titlebar.chat-search-clear" onMouseDown={event => event.preventDefault()}
         onClick={() => { setQuery(''); setHighlight(0); inputRef.current?.focus() }}>
@@ -99,23 +115,39 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
       </button>}
     </div>
     {focused && <div className="header-chat-search-popup">
-      <div className="header-chat-search-caption">{query.trim() ? 'Matching chats' : 'Recent chats'}</div>
       <div ref={resultsRef} id={listId} role="grid" aria-label="Chat history suggestions" aria-busy={busy}>
-        {hits.map((hit, index) => <div key={hit.row.paneId} id={optionId(index)} role="row"
+        {view.sections.map(section => <div role="rowgroup" key={section.label}
+          className="header-chat-search-section" aria-label={section.label}>
+          <div role="row">
+            <div role="columnheader" aria-colspan={2} className="header-chat-search-caption">
+              {section.label}<span>{section.hits.length}</span>
+            </div>
+          </div>
+          {section.hits.map(hit => {
+            const index = hits.indexOf(hit)
+            const status = hit.status === 'running' ? 'Running' : hit.status === 'completed'
+              ? `Finished ${formatChatTime(hit.completedAt!).toLowerCase()}` : formatChatTime(hit.row.updatedAt)
+            return <div key={hit.row.paneId} id={optionId(index)} role="row"
           aria-selected={index === cursor} className="header-chat-search-row"
           onMouseEnter={() => setHighlight(index)}>
           <div role="gridcell" className="header-chat-search-main">
             <button type="button" tabIndex={-1}
-              aria-label={`${hit.row.title} — ${hit.row.cwd}${hit.row.running ? ' — Running' : ''}`}
+              aria-label={`${hit.row.title} — ${hit.row.cwd} — ${status}${hit.status === 'completed' ? ' — Unread' : ''}`}
               className="header-chat-search-result" data-ui="titlebar.chat-search-result"
               data-ui-key={hit.row.paneId} disabled={busy} title={hit.row.cwd}
               onMouseDown={event => event.preventDefault()} onClick={() => { void open(hit) }}>
-              <span className="header-chat-search-title">
-                {segmentTitle(hit.row.title, hit.titleRanges).map((segment, position) => segment.matched
-                  ? <mark key={position}>{segment.text}</mark> : <span key={position}>{segment.text}</span>)}
+              <span className="header-chat-search-symbol" data-status={hit.status} aria-hidden="true">
+                {hit.status === 'running' ? <LoaderCircle size={14} className="header-chat-search-spinner" />
+                  : hit.status === 'completed' ? <span className="header-chat-search-dot" /> : <MessageSquare size={14} />}
               </span>
-              <span className="header-chat-search-meta">
-                {hit.folder ? `${hit.folder} · ` : ''}{hit.row.running ? 'Running' : formatChatTime(hit.row.updatedAt)}
+              <span className="header-chat-search-copy">
+                <span className="header-chat-search-title">
+                  {segmentTitle(hit.row.title, hit.titleRanges).map((segment, position) => segment.matched
+                    ? <mark key={position}>{segment.text}</mark> : <span key={position}>{segment.text}</span>)}
+                </span>
+                <span className="header-chat-search-meta">
+                  {hit.folder ? `${hit.folder} · ` : ''}{status}
+                </span>
               </span>
             </button>
           </div>
@@ -129,11 +161,18 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
               <Trash2 size={14} aria-hidden="true" />
             </button>
           </div>
+        </div>
+          })}
         </div>)}
       </div>
       {!hits.length && <p className="header-chat-search-empty" role="status">
         {query.trim() ? 'No matching chats' : 'No previous chats'}
       </p>}
+      <div className="header-chat-search-footer" aria-hidden="true">
+        <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+        <span><kbd>↵</kbd> Open</span>
+        <span><kbd>esc</kbd> Close</span>
+      </div>
     </div>}
     {controller.error && <div className="header-chat-search-error" role="alert">{controller.error}</div>}
   </div>

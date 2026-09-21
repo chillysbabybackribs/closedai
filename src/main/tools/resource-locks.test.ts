@@ -20,15 +20,26 @@ test('exclusive surface conflicts fail immediately and release after the call', 
   assert.equal(typeof retry, 'function')
 })
 
-test('read-only and unrelated tab operations never acquire a shared lock', () => {
+test('different tabs allow parallel reads but foreground input shares a lock', () => {
   const locks = new ToolResourceLocks()
-  const read = { namespace: 'embedded_browser', tool: 'page', arguments: { action: 'read_page' } }
-  assert.equal(typeof locks.tryAcquire(read, read.arguments, 'pane-a', 'read-a'), 'function')
-  assert.equal(typeof locks.tryAcquire(read, read.arguments, 'pane-b', 'read-b'), 'function')
+  const read = { namespace: 'embedded_browser', tool: 'page', arguments: { action: 'read_page', tab_id: '1' } }
+  const first = locks.tryAcquire(read, read.arguments, 'pane-a', 'read-a')
+  const second = locks.tryAcquire(read, { ...read.arguments, tab_id: '2' }, 'pane-b', 'read-b')
+  assert.equal(typeof first, 'function')
+  assert.equal(typeof second, 'function')
+  assert.equal(typeof locks.tryAcquire(read, read.arguments, 'pane-b', 'same-tab'), 'string')
+  if (typeof first === 'function') first()
+  if (typeof second === 'function') second()
   const clickA = { namespace: 'browser_cdp', tool: 'page', arguments: { action: 'click', tab_id: '1' } }
   const clickB = { namespace: 'browser_cdp', tool: 'page', arguments: { action: 'click', tab_id: '2' } }
   assert.equal(typeof locks.tryAcquire(clickA, clickA.arguments, 'pane-a', 'click-a'), 'function')
-  assert.equal(typeof locks.tryAcquire(clickB, clickB.arguments, 'pane-b', 'click-b'), 'function')
+  assert.equal(typeof locks.tryAcquire(clickB, clickB.arguments, 'pane-b', 'click-b'), 'string')
+})
+
+test('call ids from different provider panes cannot bypass a held lock', () => {
+  const locks = new ToolResourceLocks()
+  assert.equal(typeof locks.tryAcquire(navigation, navigation.arguments, 'pane-a', 'same-id'), 'function')
+  assert.equal(typeof locks.tryAcquire(navigation, navigation.arguments, 'pane-b', 'same-id'), 'string')
 })
 
 test('raw CDP commands lock their explicit tab and conflict with active-tab work', () => {

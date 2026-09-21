@@ -266,11 +266,13 @@ async function runSequential(
         continue
       }
     } else {
+      const resolvedCall = result.resolvedTabId
+        ? { ...call, arguments: { ...call.arguments, tab_id: result.resolvedTabId } } : call
       // A successful release settles what the plan armed; nothing is left to compensate.
       for (let index = armed.length - 1; index >= 0; index -= 1) {
-        if (releases(call, armed[index]!)) armed.splice(index, 1)
+        if (releases(resolvedCall, armed[index]!)) armed.splice(index, 1)
       }
-      const compensation = compensationFor(call)
+      const compensation = compensationFor(resolvedCall)
       if (compensation) armed.push(compensation)
     }
   }

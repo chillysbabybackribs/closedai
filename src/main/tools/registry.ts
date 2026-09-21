@@ -209,7 +209,10 @@ export class ToolRegistry {
           ? failureResult(`${label}: cancelled because its parent call ended`)
           : definition.run(input as JsonObject, { ...toolContext, signal: controller.signal })
       )
-      return await Promise.race([running, timeout, cancelled])
+      const result = await Promise.race([running, timeout, cancelled])
+      const resolvedTabId = (input as JsonObject).tab_id
+      return context.source === 'batch' && this.browserCoordination && typeof resolvedTabId === 'string'
+        ? { ...result, resolvedTabId } : result
     } catch (error) {
       return failureResult(`${label}: ${error instanceof Error ? error.message : String(error)}`)
     } finally {

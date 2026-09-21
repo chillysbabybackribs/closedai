@@ -12,6 +12,8 @@ export type ToolContent =
 
 export type ToolResult = {
   content: ToolContent[]
+  /** Internal resolved target for batch compensation; adapters deliver content only. */
+  resolvedTabId?: string
   /** True when the call failed; the model sees the content as the failure reason. */
   isError?: boolean
   /**
