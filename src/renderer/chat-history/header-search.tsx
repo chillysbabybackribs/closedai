@@ -131,13 +131,9 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
       {(view.runningCount > 0 || view.unreadCount > 0) && <div className="header-chat-search-counts"
         role="status" aria-label={`${view.runningCount} running chats, ${view.unreadCount} unread completions`}>
         {view.runningCount > 0 && <span className="header-chat-search-count" data-status="running"
-          title={`${view.runningCount} running chats`} aria-hidden="true">
-          <LoaderCircle size={12} className="header-chat-search-spinner" />{view.runningCount}
-        </span>}
+          title={`${view.runningCount} running chats`} aria-hidden="true">{view.runningCount}</span>}
         {view.unreadCount > 0 && <span className="header-chat-search-count" data-status="completed"
-          title={`${view.unreadCount} unread completions`} aria-hidden="true">
-          <span className="header-chat-search-dot" />{view.unreadCount}
-        </span>}
+          title={`${view.unreadCount} unread completions`} aria-hidden="true">{view.unreadCount}</span>}
       </div>}
       {query && <button type="button" className="header-chat-search-clear" aria-label="Clear chat search"
         data-ui="titlebar.chat-search-clear" onMouseDown={event => event.preventDefault()}
