@@ -104,7 +104,7 @@ export class BrowserTab extends EventEmitter {
     // Node throws on unhandled 'error'; the service subscribes, but keep a no-op fallback.
     this.on('error', () => {})
     this.view = new WebContentsView({
-      webContents: popupOptions?.webContents,
+      ...(popupOptions?.webContents ? { webContents: popupOptions.webContents } : {}),
       webPreferences: {
         ...popupOptions?.webPreferences,
         contextIsolation: true,
