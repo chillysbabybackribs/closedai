@@ -9,7 +9,10 @@ import {
   formatTokens,
   groupSwitches,
   groupTools,
+  plural,
   presetSwitches,
+  repairDraft,
+  suggestions,
   toolSwitches,
   type ToolPreset
 } from './tools-model.js'
@@ -17,6 +20,8 @@ import {
 export type ToolsModalProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Hands the selected chat a repair request for a tool; the pane owns its composer. */
+  onSendToChat: (text: string) => void
 }
 
 const PRESETS: Array<{ id: ToolPreset; label: string }> = [
@@ -30,13 +35,16 @@ const PRESETS: Array<{ id: ToolPreset; label: string }> = [
  * switch per group and per tool, and an overview that drops down under a clicked row. The
  * header carries the one number the switches change: what the enabled set costs every turn.
  */
-export function ToolsModal({ open, onOpenChange }: ToolsModalProps): JSX.Element {
+export function ToolsModal({ open, onOpenChange, onSendToChat }: ToolsModalProps): JSX.Element {
   const tools = useToolsController(open)
   const [openId, setOpenId] = useState<string | null>(null)
+  // One clock per open so every "ago" in the dialog agrees; the dialog is short-lived.
+  const now = useMemo(() => Date.now(), [open]) // eslint-disable-line react-hooks/exhaustive-deps
   const groups = useMemo(
-    () => tools.manifest ? groupTools(tools.manifest, tools.telemetry) : [],
-    [tools.manifest, tools.telemetry]
+    () => tools.manifest ? groupTools(tools.manifest, tools.telemetry, now) : [],
+    [tools.manifest, tools.telemetry, now]
   )
+  const suggested = useMemo(() => suggestions(groups), [groups])
   const total = groups.reduce((sum, group) => sum + group.rows.length, 0)
   const on = groups.reduce((sum, group) => sum + group.on, 0)
   const preset = tools.manifest ? detectPreset(tools.manifest) : 'custom'
@@ -57,6 +65,19 @@ export function ToolsModal({ open, onOpenChange }: ToolsModalProps): JSX.Element
         {tools.error && <p className="tools-modal-error" role="alert">{tools.error}</p>}
 
         <div className="tools-modal-list">
+          {suggested.rows.length > 0 ? (
+            <div className="tools-suggestions" role="status">
+              <span>
+                <b>{plural(suggested.rows.length, 'suggestion')}.</b>{' '}
+                {suggested.rows.map((row) => row.tool.label).join(', ')} {suggested.rows.length === 1 ? 'has' : 'have'} not been used in weeks
+                and cost{suggested.rows.length === 1 ? 's' : ''} {suggested.costTokens} tokens of every turn.
+              </span>
+              <button type="button" className="tools-suggestions-apply" data-ui="tools.suggestions-apply"
+                onClick={() => void tools.setEnabledMany(suggested.rows.flatMap((row) => toolSwitches(row.tool, false)))}>
+                Turn {suggested.rows.length === 1 ? 'it' : 'all'} off
+              </button>
+            </div>
+          ) : null}
           {groups.map((group) => (
             <section key={group.group.id} className="tools-group" aria-labelledby={`tools-group-${group.group.id}`}>
               <div className="tools-group-head">
@@ -83,8 +104,11 @@ export function ToolsModal({ open, onOpenChange }: ToolsModalProps): JSX.Element
                     row={row}
                     effect={group.group.effect}
                     open={openId === row.tool.id}
+                    now={now}
+                    since={tools.telemetry?.since ?? null}
                     onOpenChange={(next) => setOpenId(next ? row.tool.id : null)}
                     onToggle={(enabled) => void tools.setEnabledMany(toolSwitches(row.tool, enabled))}
+                    onRepair={() => onSendToChat(repairDraft(row, now))}
                   />
                 ))}
               </ul>

@@ -722,10 +722,21 @@ starts or resumes a thread.
 
 ## Telemetry
 
-The registry reports an aggregate-only event after every call (`registry.subscribe`): tool id,
-optional action name, and whether it succeeded. `ToolTelemetry` stores only per-tool and
-per-action run/error counters in `<userData>/tool-telemetry.json`, so counts survive restarts
-without retaining arguments, results, error messages, timing, or conversation identifiers.
+The registry reports one event after every call (`registry.subscribe`): tool id, optional
+action name, whether it succeeded, when, and for a failure the first line of what the model was
+told, cut to 240 characters (never for a sensitive result). `ToolTelemetry` stores per-tool and
+per-action run/error counters with last-call and last-failure timestamps, when counting began,
+and the newest three failure notes per tool in `<userData>/tool-telemetry.json` (version 2;
+version 1 counters are read as-is and start their timestamps at the next launch). Arguments,
+results, durations, and conversation identifiers are never retained.
+
+The dialog turns this into hints. A row's overview shows last use and the failure notes. A tool
+that is on, not deferred, costs at least 120 tokens, and has not been called for two weeks (with
+counting older than that) is flagged "suggested off" with a one-click switch, and a banner at the
+top of the list turns every suggested tool off at once. "Send to chat for repair" puts the tool
+id, its human name, the counters, and the failure notes into the selected chat's composer as a
+draft (`injectComposerDraft`), so a chat with the repository open can go straight to
+`src/main/tools/` and start from the real failure text. Nothing is sent until the user does.
 Persistence uses one writer: bursts share the next snapshot instead of queuing one atomic
 write per call. Updates received during a write trigger a subsequent snapshot, and clearing
 counts waits for pending writes to drain.

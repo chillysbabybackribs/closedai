@@ -162,7 +162,7 @@ async function readLegacy(filePath: string): Promise<ToolTelemetrySnapshot | nul
 
 function normalizeSnapshot(value: unknown): ToolTelemetrySnapshot {
   if (!value || typeof value !== 'object') throw new Error('invalid telemetry file')
-  const persisted = value as Partial<PersistedTelemetry>
+  const persisted = value as Omit<Partial<PersistedTelemetry>, 'version'> & { version?: number }
   // Version 1 files carry counters only; they read as version 2 with no timestamps or notes.
   if ((persisted.version !== 1 && persisted.version !== TELEMETRY_VERSION) || !Array.isArray(persisted.stats)) {
     throw new Error('unsupported telemetry file')
@@ -194,8 +194,9 @@ function normalizeSnapshot(value: unknown): ToolTelemetrySnapshot {
     ? persisted.errors.flatMap((entry) => {
         const note = entry as Partial<ToolErrorNote> | null
         if (!note || typeof note.toolId !== 'string' || typeof note.message !== 'string' || !timestamp(note.at)) return []
-        const kind = note.kind === 'timeout' || note.kind === 'misuse' ? note.kind : 'error'
-        return [{ toolId: note.toolId, action: typeof note.action === 'string' ? note.action : null, at: note.at!, kind, message: note.message }]
+        const kind: ToolErrorNote['kind'] = note.kind === 'timeout' || note.kind === 'misuse' ? note.kind : 'error'
+        const parsed: ToolErrorNote = { toolId: note.toolId, action: typeof note.action === 'string' ? note.action : null, at: note.at!, kind, message: note.message }
+        return [parsed]
       })
     : []
   return { stats, totalCalls, since: timestamp(persisted.since), errors }

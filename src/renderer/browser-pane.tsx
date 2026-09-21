@@ -1,12 +1,13 @@
 import type { JSX, ReactNode } from 'react'
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Download, FileCode, FileImage, Globe2, Loader2, Lock, Plus, RefreshCw, Search, X } from 'lucide-react'
 import { ImageViewer } from './image-viewer/image-viewer.js'
 import { FileViewer } from './file-viewer/file-viewer.js'
 import { BrowserSiteIcon } from './browser-site-icon.js'
 import type { BrowserController } from './browser-controller.js'
 import type { BrowserTabInfo } from '../shared/types.js'
-import { tabIndexForKey } from './browser-tab-navigation.js'
+import { opensContextMenu, tabIndexForKey, tabPanelId } from './browser-tab-navigation.js'
+import { errorMessage } from './error-message.js'
 import { useBrowserDownloadsController, type BrowserDownloadsController } from './browser-downloads-controller.js'
 import { BrowserDownloadsShelf } from './browser-downloads-shelf.js'
 import { BrowserNavigationError } from './browser-navigation-error.js'
@@ -21,11 +22,29 @@ export const BrowserPane = memo(function BrowserPane({
   dragHandle?: ReactNode
 }): JSX.Element {
   const downloads = useBrowserDownloadsController()
+  // One slot for a rejected tab or navigation command; it shares the tab strip's grid row.
+  const [notice, setNotice] = useState<{ text: string } | null>(null)
+  const report = useCallback((reason: unknown) => setNotice({ text: errorMessage(reason) }), [])
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice(null), 8000)
+    return () => window.clearTimeout(timer)
+  }, [notice])
   return (
     <section className="browser-pane" aria-label="Browser" data-ui-surface="browser">
       <div className={`browser-shell ${downloads.isOpen && !controller.browser.image && !controller.browser.file ? 'has-downloads' : ''} ${controller.browser.image ? 'has-image-viewer' : ''} ${controller.browser.file ? 'has-file-viewer' : ''}`}>
-        <BrowserTabs controller={controller} dragHandle={dragHandle} />
-        {!controller.browser.image && !controller.browser.file && <BrowserToolbar controller={controller} downloads={downloads} />}
+        <div className="browser-tabstrip-host">
+          <BrowserTabs controller={controller} dragHandle={dragHandle} onError={report} />
+          {notice ? (
+            <div className="browser-chrome-notice" role="alert">
+              <span>{notice.text}</span>
+              <button type="button" data-ui="browser.notice-dismiss" aria-label="Dismiss" title="Dismiss" onClick={() => setNotice(null)}>
+                <X size={12} strokeWidth={2} aria-hidden="true" />
+              </button>
+            </div>
+          ) : null}
+        </div>
+        {!controller.browser.image && !controller.browser.file && <BrowserToolbar controller={controller} downloads={downloads} onError={report} />}
         {downloads.isOpen && !controller.browser.image && !controller.browser.file ? <BrowserDownloadsShelf controller={downloads} /> : null}
         <div className={`browser-frame ${controller.browser.navigationError ? 'has-navigation-error' : ''}`}>
           <div
@@ -46,8 +65,8 @@ export const BrowserPane = memo(function BrowserPane({
           {controller.browser.navigationError ? (
             <BrowserNavigationError
               error={controller.browser.navigationError}
-              onRetry={() => { void window.closedai.browser.navigate(controller.browser.navigationError?.url ?? controller.browser.url).catch(() => {}) }}
-              onReturn={() => { void window.closedai.browser.navigate(controller.browser.navigationError?.previousUrl ?? controller.browser.url).catch(() => {}) }}
+              onRetry={() => { void window.closedai.browser.navigate(controller.browser.navigationError?.url ?? controller.browser.url).catch(report) }}
+              onReturn={() => { void window.closedai.browser.navigate(controller.browser.navigationError?.previousUrl ?? controller.browser.url).catch(report) }}
             />
           ) : null}
         </div>
@@ -56,14 +75,19 @@ export const BrowserPane = memo(function BrowserPane({
   )
 })
 
-function BrowserTabs({ controller, dragHandle }: { controller: BrowserController; dragHandle?: ReactNode }): JSX.Element {
+function BrowserTabs({ controller, dragHandle, onError }: {
+  controller: BrowserController
+  dragHandle?: ReactNode
+  onError: (reason: unknown) => void
+}): JSX.Element {
   const tabRefs = useRef(new Map<string, HTMLButtonElement>())
   const [menuTarget, setMenuTarget] = useState<BrowserTabMenuTarget | null>(null)
   const [renaming, setRenaming] = useState<{ id: string; title: string } | null>(null)
+  const { browser } = window.closedai
 
   function selectTab(id: string): void {
     tabRefs.current.get(id)?.focus()
-    if (!controller.tabs.find((tab) => tab.id === id)?.active) void window.closedai.browser.selectTab(id)
+    if (!controller.tabs.find((tab) => tab.id === id)?.active) void browser.selectTab(id).catch(onError)
   }
 
   function beginRename(tab: BrowserTabInfo): void {
@@ -77,7 +101,7 @@ function BrowserTabs({ controller, dragHandle }: { controller: BrowserController
         <div
           key={tab.id}
           className={`browser-tab ${tab.active ? 'is-active' : ''}`}
-          onAuxClick={(event) => { if (event.button === 1) void window.closedai.browser.closeTab(tab.id) }}
+          onAuxClick={(event) => { if (event.button === 1) void browser.closeTab(tab.id).catch(onError) }}
           onContextMenu={(event) => {
             event.preventDefault()
             setMenuTarget({ tab, index, x: event.clientX, y: event.clientY })
@@ -91,7 +115,7 @@ function BrowserTabs({ controller, dragHandle }: { controller: BrowserController
               onCancel={() => setRenaming(null)}
               onCommit={(title) => {
                 setRenaming(null)
-                void window.closedai.browser.renameTab(tab.id, title)
+                void browser.renameTab(tab.id, title).catch(onError)
               }}
             />
           ) : (
@@ -103,7 +127,7 @@ function BrowserTabs({ controller, dragHandle }: { controller: BrowserController
               id={`browser-tab-${tab.id}`}
               type="button"
               role="tab"
-              aria-controls={tab.image ? `image-page-${tab.id}` : tab.file ? `file-page-${tab.id}` : 'browser-page'}
+              aria-controls={tabPanelId(tab)}
               aria-selected={tab.active}
               tabIndex={tab.active ? 0 : -1}
               className="browser-tab-select"
@@ -113,6 +137,12 @@ function BrowserTabs({ controller, dragHandle }: { controller: BrowserController
               aria-label={`Tab ${tab.pos}: ${tab.title || tab.url}`}
               onClick={() => selectTab(tab.id)}
               onKeyDown={(event) => {
+                if (opensContextMenu(event)) {
+                  event.preventDefault()
+                  const rect = event.currentTarget.getBoundingClientRect()
+                  setMenuTarget({ tab, index, x: rect.left, y: rect.bottom })
+                  return
+                }
                 const nextIndex = tabIndexForKey(event.key, index, controller.tabs.length)
                 if (nextIndex === null) return
                 event.preventDefault()
@@ -121,7 +151,7 @@ function BrowserTabs({ controller, dragHandle }: { controller: BrowserController
             >
               <span className="browser-tab-pos" aria-hidden="true">{tab.pos}</span>
               <TabIcon tab={tab} />
-              <span className="browser-tab-title">{tab.title || 'New Tab'}</span>
+              <span className="browser-tab-title">{tab.title || 'New tab'}</span>
             </button>
           )}
           <button
@@ -133,14 +163,14 @@ function BrowserTabs({ controller, dragHandle }: { controller: BrowserController
             title={`Close tab ${tab.pos}`}
             onClick={(event) => {
               event.stopPropagation()
-              void window.closedai.browser.closeTab(tab.id)
+              void browser.closeTab(tab.id).catch(onError)
             }}
           >
             <X size={14} strokeWidth={2} />
           </button>
         </div>
       ))}
-      <button type="button" className="browser-tab-new" data-ui="browser.tab-new" aria-label="New tab" title="New tab" onClick={() => void window.closedai.browser.newTab()}>
+      <button type="button" className="browser-tab-new" data-ui="browser.tab-new" aria-label="New tab" title="New tab" onClick={() => { void browser.newTab().catch(onError) }}>
         <Plus size={16} strokeWidth={2} />
       </button>
       {menuTarget ? (
@@ -148,6 +178,7 @@ function BrowserTabs({ controller, dragHandle }: { controller: BrowserController
           target={menuTarget}
           tabCount={controller.tabs.length}
           onRename={beginRename}
+          onError={onError}
           onClose={() => setMenuTarget(null)}
         />
       ) : null}
@@ -169,21 +200,23 @@ function TabIcon({ tab }: { tab: BrowserTabInfo }): JSX.Element {
 
 function BrowserToolbar({
   controller,
-  downloads
+  downloads,
+  onError
 }: {
   controller: BrowserController
   downloads: BrowserDownloadsController
+  onError: (reason: unknown) => void
 }): JSX.Element {
   const { browser, blur, focus, ghost, handleOmniboxChange, handleOmniboxKeyDown, identity, location, navigate, omniboxRef } = controller
   return (
     <form className="browser-toolbar" onSubmit={navigate}>
-      <button type="button" className="browser-nav-button" disabled={!browser.canGoBack} onClick={() => { void window.closedai.browser.back().catch(() => {}) }} title="Back" aria-label="Back" data-ui="browser.back">
+      <button type="button" className="browser-nav-button" disabled={!browser.canGoBack} onClick={() => { void window.closedai.browser.back().catch(onError) }} title="Back" aria-label="Back" data-ui="browser.back">
         <ArrowLeft size={16} />
       </button>
-      <button type="button" className="browser-nav-button" disabled={!browser.canGoForward} onClick={() => { void window.closedai.browser.forward().catch(() => {}) }} title="Forward" aria-label="Forward" data-ui="browser.forward">
+      <button type="button" className="browser-nav-button" disabled={!browser.canGoForward} onClick={() => { void window.closedai.browser.forward().catch(onError) }} title="Forward" aria-label="Forward" data-ui="browser.forward">
         <ArrowRight size={16} />
       </button>
-      <button type="button" className="browser-nav-button" onClick={() => { void window.closedai.browser.reload().catch(() => {}) }} title="Reload" aria-label="Reload" data-ui="browser.reload">
+      <button type="button" className="browser-nav-button" onClick={() => { void window.closedai.browser.reload().catch(onError) }} title="Reload" aria-label="Reload" data-ui="browser.reload">
         {browser.isLoading ? <Loader2 className="spin" size={16} /> : <RefreshCw size={16} />}
       </button>
       <div className="omnibox-field">
@@ -238,7 +271,7 @@ function BrowserToolbar({
                     data-ui-key={row.url}
                     aria-label={`Remove ${row.title || row.completion} from history`}
                     onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => { void controller.removeHistory(row.url).catch(() => {}) }}
+                    onClick={() => { void controller.removeHistory(row.url).catch(onError) }}
                   ><X size={14} /></button>
                 ) : null}
               </div>

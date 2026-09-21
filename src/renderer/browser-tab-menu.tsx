@@ -1,9 +1,10 @@
-import type { JSX } from 'react'
+import type { JSX, KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Copy, Edit3, PanelRightOpen, RefreshCw, X } from 'lucide-react'
 import type { BrowserTabInfo } from '../shared/types.js'
 import { placeRowMenu, type MenuPlacement } from './menu-position.js'
+import { menuIndexForKey, tabPanelId } from './browser-tab-navigation.js'
 
 export type BrowserTabMenuTarget = {
   tab: BrowserTabInfo
@@ -14,16 +15,19 @@ export type BrowserTabMenuTarget = {
 
 const TAB_MENU_WIDTH = 214
 const TAB_MENU_MAX_HEIGHT = 304
+const ITEMS = '[role="menuitem"]:not(:disabled)'
 
 export function BrowserTabMenu({
   target,
   tabCount,
   onRename,
+  onError,
   onClose
 }: {
   target: BrowserTabMenuTarget
   tabCount: number
   onRename: (tab: BrowserTabInfo) => void
+  onError: (reason: unknown) => void
   onClose: () => void
 }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
@@ -45,14 +49,30 @@ export function BrowserTabMenu({
     return () => window.removeEventListener('resize', measure)
   }, [target.x, target.y])
 
+  // The first row takes focus once the menu is placed (a visibility-hidden menu cannot be focused).
+  const focusedOnce = useRef(false)
+  useEffect(() => {
+    if (!placement || focusedOnce.current) return
+    focusedOnce.current = true
+    ref.current?.querySelector<HTMLButtonElement>(ITEMS)?.focus()
+  }, [placement])
+
+  // Closing by keyboard or after a row hands focus back to the tab; a pointer elsewhere keeps its own target.
+  const close = (restoreFocus: boolean): void => {
+    onClose()
+    if (restoreFocus) document.getElementById(`browser-tab-${target.tab.id}`)?.focus()
+  }
+  const closeRef = useRef(close)
+  closeRef.current = close
+
   useEffect(() => {
     const closeOnPointerDown = (event: PointerEvent): void => {
-      if (!ref.current?.contains(event.target as Node)) onClose()
+      if (!ref.current?.contains(event.target as Node)) closeRef.current(false)
     }
     const closeOnKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return
       event.preventDefault()
-      onClose()
+      closeRef.current(true)
     }
     document.addEventListener('pointerdown', closeOnPointerDown)
     document.addEventListener('keydown', closeOnKeyDown)
@@ -60,20 +80,31 @@ export function BrowserTabMenu({
       document.removeEventListener('pointerdown', closeOnPointerDown)
       document.removeEventListener('keydown', closeOnKeyDown)
     }
-  }, [onClose])
+  }, [])
+
+  const rove = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
+    const items = [...(ref.current?.querySelectorAll<HTMLButtonElement>(ITEMS) ?? [])]
+    const next = menuIndexForKey(event.key, Math.max(0, items.indexOf(document.activeElement as HTMLButtonElement)), items.length)
+    if (next === null) return
+    event.preventDefault()
+    items[next]!.focus()
+  }
 
   const run = (action: () => void): void => {
-    onClose()
+    close(true)
     action()
   }
+  const call = (operation: () => Promise<unknown>) => () => run(() => { void operation().catch(onError) })
+  const { browser } = window.closedai
 
   return createPortal(
     <div
       ref={ref}
       className="browser-tab-menu"
       role="menu"
-      aria-label={`Actions for ${target.tab.title || 'New Tab'}`}
+      aria-label={`Actions for ${target.tab.title || 'New tab'}`}
       data-ui="browser.tab-menu"
+      onKeyDown={rove}
       style={
         placement
           ? { left: placement.left, top: placement.top, maxHeight: placement.maxHeight }
@@ -84,19 +115,19 @@ export function BrowserTabMenu({
         icon={<PanelRightOpen size={13} />}
         label="New tab to the right"
         item="new-right"
-        onClick={() => run(() => { void window.closedai.browser.newTabToRight(target.tab.id) })}
+        onClick={call(() => browser.newTabToRight(target.tab.id))}
       />
       <BrowserTabMenuItem
         icon={<RefreshCw size={13} />}
         label="Reload"
         item="reload"
-        onClick={() => run(() => { void window.closedai.browser.reloadTab(target.tab.id) })}
+        onClick={call(() => browser.reloadTab(target.tab.id))}
       />
       <BrowserTabMenuItem
         icon={<Copy size={13} />}
         label="Duplicate"
         item="duplicate"
-        onClick={() => run(() => { void window.closedai.browser.duplicateTab(target.tab.id) })}
+        onClick={call(() => browser.duplicateTab(target.tab.id))}
       />
       <BrowserTabMenuItem
         icon={<Edit3 size={13} />}
@@ -108,20 +139,20 @@ export function BrowserTabMenu({
         icon={<X size={13} />}
         label="Close"
         item="close"
-        onClick={() => run(() => { void window.closedai.browser.closeTab(target.tab.id) })}
+        onClick={call(() => browser.closeTab(target.tab.id))}
       />
       <div className="browser-tab-menu-separator" role="separator" />
       <BrowserTabMenuItem
         label="Close other tabs"
         item="close-others"
         disabled={tabCount <= 1}
-        onClick={() => run(() => { void window.closedai.browser.closeOtherTabs(target.tab.id) })}
+        onClick={call(() => browser.closeOtherTabs(target.tab.id))}
       />
       <BrowserTabMenuItem
         label="Close tabs to the right"
         item="close-right"
         disabled={!hasTabsToRight}
-        onClick={() => run(() => { void window.closedai.browser.closeTabsToRight(target.tab.id) })}
+        onClick={call(() => browser.closeTabsToRight(target.tab.id))}
       />
     </div>,
     document.body
@@ -145,6 +176,7 @@ function BrowserTabMenuItem({
     <button
       type="button"
       role="menuitem"
+      tabIndex={-1}
       className="browser-tab-menu-item"
       data-ui="browser.tab-menu-item"
       data-ui-key={item}
@@ -183,7 +215,7 @@ export function BrowserTabRename({
     <form
       className="browser-tab-rename"
       role="tab"
-      aria-controls="browser-page"
+      aria-controls={tabPanelId(tab)}
       aria-selected={tab.active}
       onSubmit={(event) => {
         event.preventDefault()

@@ -36,6 +36,37 @@
 
 .tools-modal-empty { margin: 8px 20px; color: var(--muted-foreground); font-size: 12px; }
 
+/* ---- Suggestions -------------------------------------------------------- */
+
+.tools-suggestions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 20px 2px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: rgb(255 255 255 / 3%);
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.tools-suggestions b { color: var(--foreground); font-weight: 500; }
+
+.tools-suggestions-apply {
+  flex: none;
+  margin-left: auto;
+  padding: 3px 9px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 6px;
+  color: var(--foreground);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.tools-suggestions-apply:hover { background: var(--surface-control-hover); }
+
 /* ---- Group -------------------------------------------------------------- */
 
 .tools-group { padding: 10px 20px 4px; }
@@ -183,6 +214,21 @@
 .tool-overview-facts dd { margin: 0; color: var(--muted-foreground); }
 .tool-overview-facts dd[data-tone='bad'] { color: var(--destructive); }
 .tool-overview-facts dd[data-tone='warn'] { color: var(--warning, #c58b45); }
+
+.tool-overview-errors {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11.5px;
+}
+
+.tool-overview-errors li { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px; }
+.tool-overview-error-meta { color: var(--chrome-control-quiet); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tool-overview-error-text { color: var(--destructive); overflow-wrap: anywhere; }
+.tool-overview-errors li[data-kind='misuse'] .tool-overview-error-text,
+.tool-overview-errors li[data-kind='timeout'] .tool-overview-error-text { color: var(--warning, #c58b45); }
 
 .tool-overview-model {
   max-height: 96px;

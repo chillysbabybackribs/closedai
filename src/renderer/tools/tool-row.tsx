@@ -2,7 +2,7 @@ import { useState, type JSX } from 'react'
 import { ChevronRight } from 'lucide-react'
 
 import type { ToolInfo } from '../../shared/tools.js'
-import { plural, type ToolRowModel } from './tools-model.js'
+import { plural, relativeTime, unusedFor, type ToolRowModel } from './tools-model.js'
 
 /** A three-state switch drawn the same for a row and for a group; groups can be mixed. */
 export function ToolSwitch({
@@ -39,12 +39,16 @@ export type ToolRowProps = {
   row: ToolRowModel
   effect: string
   open: boolean
+  now: number
+  since: number | null
   onOpenChange: (open: boolean) => void
   onToggle: (enabled: boolean) => void
+  /** Puts a repair request for this tool into the selected chat's composer. */
+  onRepair: () => void
 }
 
 /** One line: name and switch. Click the name to drop down the tool's overview. */
-export function ToolRow({ row, effect, open, onOpenChange, onToggle }: ToolRowProps): JSX.Element {
+export function ToolRow({ row, effect, open, now, since, onOpenChange, onToggle, onRepair }: ToolRowProps): JSX.Element {
   const { tool } = row
   return (
     <li className="tool-row" data-enabled={tool.enabled} data-open={open}>
@@ -70,13 +74,15 @@ export function ToolRow({ row, effect, open, onOpenChange, onToggle }: ToolRowPr
           onToggle={() => onToggle(!tool.enabled)}
         />
       </div>
-      {open ? <ToolOverview row={row} effect={effect} /> : null}
+      {open ? <ToolOverview row={row} effect={effect} now={now} since={since} onToggle={onToggle} onRepair={onRepair} /> : null}
     </li>
   )
 }
 
-function ToolOverview({ row, effect }: { row: ToolRowModel; effect: string }): JSX.Element {
-  const { tool, stat } = row
+function ToolOverview({ row, effect, now, since, onToggle, onRepair }: {
+  row: ToolRowModel; effect: string; now: number; since: number | null; onToggle: (enabled: boolean) => void; onRepair: () => void
+}): JSX.Element {
+  const { tool, stat, errors } = row
   const [schemaOpen, setSchemaOpen] = useState(false)
   const verbs = tool.actions.map((action) => action.name).join(', ')
   return (
@@ -97,14 +103,40 @@ function ToolOverview({ row, effect }: { row: ToolRowModel; effect: string }): J
           {tool.actions.length > 0 ? ` · ${plural(tool.actions.length, 'verb')}` : ''}
           {tool.timeoutMs ? ` · ${Math.round(tool.timeoutMs / 1000)} s timeout` : ''}
         </dd>
+        <dt>Last used</dt>
+        <dd data-tone={row.suggestOff ? 'warn' : undefined}>
+          {stat?.lastCalledAt ? relativeTime(stat.lastCalledAt, now) : since ? `never in ${unusedFor(null, since, now)} of counting` : 'never'}
+          {row.suggestOff ? ` · suggested off: ${tool.costTokens} tokens of every turn for nothing` : ''}
+        </dd>
         <dt>Runs</dt>
-        <dd data-tone={row.flag ?? undefined}>{usageLine(stat)}</dd>
+        <dd data-tone={row.flag === 'bad' ? 'bad' : undefined}>{usageLine(stat)}</dd>
       </dl>
+      {errors.length > 0 ? (
+        <ul className="tool-overview-errors" aria-label="Recent failures">
+          {errors.map((note) => (
+            <li key={`${note.at}-${note.kind}`} data-kind={note.kind}>
+              <span className="tool-overview-error-meta">{relativeTime(note.at, now)} · {note.kind}{note.action ? ` · ${note.action}` : ''}</span>
+              <span className="tool-overview-error-text">{note.message}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <blockquote className="tool-overview-model">
         <span className="tool-overview-model-label">What the model reads</span>
         {tool.description}
       </blockquote>
       <div className="tool-overview-actions">
+        {row.suggestOff ? (
+          <button type="button" className="tool-overview-action" data-ui="tools.suggest-off" data-ui-key={tool.id}
+            onClick={() => onToggle(false)}>
+            Turn off
+          </button>
+        ) : null}
+        {errors.length > 0 ? (
+          <button type="button" className="tool-overview-action" data-ui="tools.repair" data-ui-key={tool.id} onClick={onRepair}>
+            Send to chat for repair
+          </button>
+        ) : null}
         <button type="button" className="tool-overview-action" data-ui="tools.schema" data-ui-key={tool.id}
           aria-expanded={schemaOpen} onClick={() => setSchemaOpen((value) => !value)}>
           {schemaOpen ? 'Hide schema' : 'Show schema'}
