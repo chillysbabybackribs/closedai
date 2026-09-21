@@ -112,9 +112,11 @@ send({kind:'changed',value:call(5)});
   assert.equal(await waitLine('value '), 'value 12')
   checks.push(`stuck agent bounded (${stuckResult.state}); target remains responsive`)
 
-  const gone = service.run('native-live-check', 'target-exit', { targetId: identity.id, durationMs: 500, source: 'send({ready:true})' }, new AbortController().signal)
+  const gone = service.run('native-live-check', 'target-exit', { targetId: identity.id, durationMs: 1_000, source: 'send({ready:true})' }, new AbortController().signal)
   await delay(200)
-  target.stdin.end('exit\n')
+  const targetExit = new Promise(resolve => target.once('exit', resolve))
+  target.kill('SIGKILL')
+  await targetExit
   const exited = await gone
   assert.equal(exited.state, 'failed')
   checks.push('target exit reported as failure')

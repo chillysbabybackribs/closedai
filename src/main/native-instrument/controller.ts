@@ -64,6 +64,12 @@ export async function runProbe(request: ProbeRequest, signal: AbortSignal): Prom
       } catch (error) { result.cleanup.session = `unconfirmed: ${String(error).slice(0, 300)}` }
     }
   }
+  if (result.state === 'completed') {
+    try { await verifyTarget(request.targetId) } catch (error) {
+      result.state = 'failed'
+      result.error = `Target exited or changed during the experiment: ${String(error).slice(0, 500)}`
+    }
+  }
   if (Object.values(result.cleanup).some(value => value.startsWith('unconfirmed'))) result.state = 'unknown'
   return Object.assign(result, {
     elapsedMs: Math.round(performance.now() - started), received: events.received,
