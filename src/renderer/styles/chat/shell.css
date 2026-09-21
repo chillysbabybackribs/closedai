@@ -305,6 +305,103 @@
   gap: 12px;
 }
 
+/* Credential approval cards (credential-approval-card.tsx): an agent's request to read a saved
+   secret, above the composer of the chat that asked. Only with Settings → Security → approvals
+   on; off by default, so the stack is normally empty and renders nothing. */
+.chat-approval-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 var(--composer-inset, 16px) 8px;
+}
+
+.chat-approval-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--tab-accent, var(--link-ink, #7aa2f7)) 45%, var(--border, #2a2a2c));
+  border-radius: 8px;
+  background: var(--card, #1c1c1c);
+  color: var(--muted-foreground, #8c8c8e);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.chat-approval-heading {
+  margin: 0;
+  color: var(--foreground, #ececee);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chat-approval-subject {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  margin: 0;
+}
+
+.chat-approval-subject strong {
+  color: var(--foreground, #ececee);
+  font-weight: 600;
+}
+
+.chat-approval-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat-approval-fields li {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--foreground, #ececee) 8%, transparent);
+  color: var(--foreground, #ececee);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11.5px;
+}
+
+.chat-approval-reason {
+  margin: 0;
+  color: var(--muted-foreground, #8c8c8e);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.chat-approval-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.chat-approval-button {
+  padding: 4px 12px;
+  border: 1px solid var(--border, #2a2a2c);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--foreground, #ececee) 6%, transparent);
+  color: var(--foreground, #ececee);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.chat-approval-button:hover {
+  background: color-mix(in srgb, var(--foreground, #ececee) 12%, transparent);
+}
+
+.chat-approval-button:focus-visible {
+  outline: 2px solid var(--focus-ink, var(--link-ink, #7aa2f7));
+  outline-offset: 1px;
+}
+
+.chat-approval-button[data-ui='chat.credential-allow'] {
+  border-color: color-mix(in srgb, var(--ok-ink, #3fb950) 50%, var(--border, #2a2a2c));
+}
+
 /* Shell-level notices (App.tsx, app-startup.tsx, app-error-boundary.tsx): the workspace area
    before the first snapshot, the render-failure panel, and a refused shortcut. */
 .shell-startup {

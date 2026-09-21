@@ -46,6 +46,8 @@ export type CredentialVaultState = {
   /** Why an entry could not be removed, keyed by id; the card shows it when it comes back. */
   removeErrors: Record<string, string>
   reveal: (id: string, fieldId: string) => Promise<string>
+  /** Allow or refuse agent reads of one entry; the list takes the vault's returned summary. */
+  setAgentAccess: (id: string, allowed: boolean) => Promise<void>
 }
 
 export function useCredentialVault(open: boolean): CredentialVaultState {
@@ -149,9 +151,14 @@ export function useCredentialVault(open: boolean): CredentialVaultState {
 
   const reveal = useCallback((id: string, fieldId: string) => requireApi().reveal(id, fieldId), [])
 
+  const setAgentAccess = useCallback(async (id: string, allowed: boolean) => {
+    const updated = await requireApi().setAgentAccess(id, allowed)
+    setCredentials((current) => current.map((credential) => credential.id === updated.id ? updated : credential))
+  }, [])
+
   return {
     credentials, status, loading, error, migrated, refresh, save,
-    remove, undoRemove, pendingRemovals, removeErrors, reveal
+    remove, undoRemove, pendingRemovals, removeErrors, reveal, setAgentAccess
   }
 }
 

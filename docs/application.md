@@ -860,6 +860,9 @@ never holds more plaintext than the user asked to see. `Remove` hides the card a
 `Removed <name>. Undo` row for six seconds; the vault is only asked to forget the entry when that
 window elapses or the Credentials panel closes, and a removal the vault refuses brings the card
 back with the reason on it.
+Each card carries an `Agents can use this` switch bound to the entry's `agentAccess`; turning it
+off makes the `credential_vault` tools refuse that entry, and a refused change shows its reason in
+the card's error slot.
 `Create credential` replaces the list in place with one editor. Pasting a service URL selects the
 service that claims that host, names the entry after it, and fills any URL field it has; a host no
 catalog service claims becomes a Custom entry named after the domain, wearing that site's own icon
@@ -883,6 +886,24 @@ exercise the round trip outside Electron. When no OS keychain is available the v
 but says so — the create form warns before saving and the saved row carries an `Unencrypted`
 badge — rather than silently degrading. A decrypt that fails against a changed keyring raises
 instead of returning ciphertext as if it were the secret.
+
+## Settings → Security
+
+`File ▸ Settings ▸ Security` holds the user's manual choices from `src/shared/security.ts`; every
+default is the unrestricted behavior the app has always had, so a user who never opens the tab sees
+no prompt or block. Three groups: **Credentials** — `Ask me before an agent reads a credential`
+(`credentialsRequireApproval`) and `Only save secrets when the OS keychain is available`
+(`secretsRequireKeychain`); **Browser** — a segmented Allow / Ask / Block control for camera,
+microphone, screen, and location requests (`webPermissions`) and `Use signed-in sites from Chrome`
+(`importBrowserCookies`) with an `Import now` button that runs `security.importCookies()` and
+reports `Imported N cookies from <browser>` or `No supported browser found` inline; **Agents** —
+a plain statement that agents run unrestricted, with no control. The panel
+(`src/renderer/settings/security-panel.tsx`) drives a pure controller
+(`security-settings.ts`) that loads on tab open, applies each change optimistically, and rolls the
+touched keys back with the vault's reason in the footer when the main process refuses the write.
+The switches are Radix switches (`role="switch"`, `aria-checked`, labelled by `for`), the
+segmented control is a Radix radio group with arrow-key movement, and every control carries a
+`security.*` id from `src/shared/ui-controls.ts`.
 
 ## Known boundaries from this source review
 

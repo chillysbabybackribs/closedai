@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { Tabs } from 'radix-ui'
-import { KeyRound, Type } from 'lucide-react'
+import { KeyRound, ShieldCheck, Type } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -9,13 +9,15 @@ import {
 } from '../../components/ui/dialog.js'
 import { AppearancePanel } from './appearance-panel.js'
 import { CredentialVaultPanel } from './credential-vault-panel.js'
+import { SecurityPanel } from './security-panel.js'
 import type { AppearanceSettings } from './appearance-settings.js'
 
-export type SettingsTab = 'appearance' | 'credentials'
+export type SettingsTab = 'appearance' | 'credentials' | 'security'
 
 const TABS: Array<{ id: SettingsTab; label: string; description: string; icon: JSX.Element }> = [
   { id: 'appearance', label: 'Appearance', description: 'Adjust chat readability without changing the browser pane.', icon: <Type size={18} /> },
-  { id: 'credentials', label: 'Credentials', description: 'API keys and logins the app and its agents can use, encrypted by your OS keychain.', icon: <KeyRound size={18} /> }
+  { id: 'credentials', label: 'Credentials', description: 'API keys and logins the app and its agents can use, encrypted by your OS keychain.', icon: <KeyRound size={18} /> },
+  { id: 'security', label: 'Security', description: 'Manual choices about credentials and the browser. Defaults keep the app unrestricted.', icon: <ShieldCheck size={18} /> }
 ]
 
 export type SettingsDialogProps = {
@@ -60,6 +62,9 @@ export function SettingsDialog({
           </Tabs.Content>
           <Tabs.Content value="credentials" className="settings-tab-content">
             <CredentialVaultPanel active={open && tab === 'credentials'} />
+          </Tabs.Content>
+          <Tabs.Content value="security" className="settings-tab-content">
+            <SecurityPanel active={open && tab === 'security'} />
           </Tabs.Content>
         </Tabs.Root>
       </DialogContent>

@@ -21,6 +21,10 @@
 // reports gpu_compositing=disabled_software and webgl=enabled_readback, so UI compositing
 // stays on the CPU; the sanitized default gets full hardware compositing + WebGL on the
 // GPU that actually drives the display.
+//
+// The Chromium sandbox is on by default. CLOSEDAI_NO_SANDBOX=1 is the one machine-specific
+// opt-out (a kernel that forbids unprivileged user namespaces with a non-SUID chrome-sandbox
+// helper); only then is Electron's own ELECTRON_DISABLE_SANDBOX exported, and only to this child.
 import { spawn } from 'node:child_process'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -44,6 +48,14 @@ export function sanitizeGpuEnv(env = process.env) {
   return { env: next, removed }
 }
 
+/** Electron's sandbox variable follows the app's own opt-out and is never set otherwise. */
+export function sandboxEnv(env = process.env) {
+  const next = { ...env }
+  delete next.ELECTRON_DISABLE_SANDBOX
+  if (env.CLOSEDAI_NO_SANDBOX === '1') next.ELECTRON_DISABLE_SANDBOX = '1'
+  return next
+}
+
 export function reportSanitizedGpuEnv(removed, stream = process.stderr) {
   if (removed.length === 0) return
   stream.write(
@@ -58,7 +70,7 @@ if (isMain) {
   const binExtension = process.platform === 'win32' ? '.cmd' : ''
   const { env: gpuEnv, removed } = sanitizeGpuEnv()
   reportSanitizedGpuEnv(removed)
-  const env = { ...gpuEnv }
+  const env = sandboxEnv(gpuEnv)
   for (const name of HOST_ELECTRON_VARS) delete env[name]
   const child = spawn(join(repoRoot, 'node_modules', '.bin', `electron-vite${binExtension}`), process.argv.slice(2), {
     cwd: repoRoot,

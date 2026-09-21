@@ -1,9 +1,10 @@
 import type { ChatSnapshot, ChatTranscriptItem } from '../../shared/chat.js'
 import type { ChatRowSummary, ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
+import type { CredentialApprovalRequest, WebPermissionRequest } from '../../shared/security.js'
 import { initialChatState } from '../chat-state.js'
 import { withBrowser, type SavedChatLayout } from '../chat-layout/layout-tree.js'
 
-export const SCENARIOS = ['conversation', 'empty', 'streaming', 'settings', 'split', 'unavailable'] as const
+export const SCENARIOS = ['conversation', 'empty', 'streaming', 'settings', 'split', 'unavailable', 'security'] as const
 
 /** The first-run message main sends when the selected provider's executable is missing. */
 export const UNAVAILABLE_MESSAGE =
@@ -83,8 +84,39 @@ export function sampleWorkspace(scenario: Scenario): ChatWorkspaceSnapshot {
     preferences: { chatSeamlessRotation: true } }
 }
 
+/**
+ * Pending security prompts for the `security` scenario, both kinds at once so the chat card and
+ * the browser bar can be seen together: two credential approvals for the selected chat (one
+ * with an orphaned pane id that falls through to the selected pane), one for the second chat, and
+ * one permission request per active preview tab. Every other scenario has none, matching the
+ * off-by-default settings. The preview bridge publishes these through
+ * `security.onCredentialApprovals` / `browser.onPermissionRequests` and removes an entry on
+ * `resolveCredentialApproval` / `resolvePermission`.
+ */
+export function sampleSecurityRequests(scenario: Scenario): { credentials: CredentialApprovalRequest[]; permissions: WebPermissionRequest[] } {
+  if (scenario !== 'security') return { credentials: [], permissions: [] }
+  const at = 1_790_000_000_000
+  return {
+    credentials: [
+      { id: 'preview-approval-1', paneId: 'preview-chat-1', credentialId: 'preview-cred-1',
+        credentialLabel: 'GitHub deploy key', serviceName: 'github.com', fieldIds: ['token'],
+        reason: 'Push the release branch and open the pull request you asked for.', requestedAt: at },
+      { id: 'preview-approval-2', paneId: null, credentialId: 'preview-cred-2',
+        credentialLabel: 'Postgres staging', serviceName: 'db.staging.example', fieldIds: ['username', 'password'],
+        reason: 'Run the migration dry-run against staging.', requestedAt: at + 1000 },
+      { id: 'preview-approval-3', paneId: 'preview-chat-2', credentialId: 'preview-cred-3',
+        credentialLabel: 'Slack bot', serviceName: 'slack.com', fieldIds: ['bot-token'],
+        reason: 'Post the summary to #releases.', requestedAt: at + 2000 }
+    ],
+    permissions: [
+      { id: 'preview-permission-1', tabId: 'preview-tab-1', origin: 'https://meet.example', permission: 'media', requestedAt: at },
+      { id: 'preview-permission-2', tabId: 'preview-tab-1', origin: 'https://maps.example', permission: 'geolocation', requestedAt: at + 1000 }
+    ]
+  }
+}
+
 export function sampleLayout(scenario: Scenario): SavedChatLayout {
-  return { browserVisible: scenario === 'split', tree: withBrowser(scenario === 'split'
+  return { browserVisible: scenario === 'split' || scenario === 'security', tree: withBrowser(scenario === 'split'
     ? { kind: 'split', id: 'preview-split', axis: 'vertical', ratio: 0.5,
         first: { kind: 'pane', id: 'preview-chat-1' }, second: { kind: 'pane', id: 'preview-chat-2' } }
     : { kind: 'pane', id: 'preview-chat-1', tabs: ['preview-chat-1', 'preview-chat-2'] }) }

@@ -17,6 +17,10 @@ npm run dev                # electron-vite development build with hot reload
 npm run build && npm run preview
 ```
 
+The Chromium sandbox is on by default; on a machine that cannot start it (unprivileged user
+namespaces restricted and no SUID `chrome-sandbox` helper), run with `CLOSEDAI_NO_SANDBOX=1` as a
+machine-specific opt-out rather than changing a script.
+
 For frontend work without restarting Electron, `npm run dev:web` starts or reuses the browser
 UI preview and prints direct links to populated, empty, streaming, settings, and split-pane
 states. It uses the actual renderer with sample data. See [UI preview](docs/ui-preview.md) for

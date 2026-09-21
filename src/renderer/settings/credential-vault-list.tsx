@@ -1,5 +1,6 @@
 import { useState, type JSX } from 'react'
 import { Check, CheckCircle2, Copy, Eye, EyeOff, Lock, Plus, ShieldAlert, Trash2 } from 'lucide-react'
+import { Switch } from '../../components/ui/switch.js'
 import { credentialDomain, credentialService, type CredentialSummary } from '../../shared/credentials.js'
 import { errorMessage } from '../error-message.js'
 import { CREDENTIAL_SERVICE_LOGOS, RemoteServiceLogo } from './credential-service-logos.js'
@@ -19,6 +20,8 @@ export type CredentialVaultListProps = {
   pendingRemovals: PendingRemoval[]
   removeErrors: Record<string, string>
   reveal: (id: string, fieldId: string) => Promise<string>
+  /** Allow or refuse agent reads of one entry; rejects with the vault's reason. */
+  onAgentAccess: (id: string, allowed: boolean) => Promise<void>
 }
 
 /**
@@ -38,7 +41,8 @@ export function CredentialVaultList({
   onUndoRemove,
   pendingRemovals,
   removeErrors,
-  reveal
+  reveal,
+  onAgentAccess
 }: CredentialVaultListProps): JSX.Element {
   const hidden = new Set(pendingRemovals.map((entry) => entry.id))
   return (
@@ -96,6 +100,7 @@ export function CredentialVaultList({
               removeError={removeErrors[credential.id] ?? null}
               onRemove={onRemove}
               reveal={reveal}
+              onAgentAccess={onAgentAccess}
             />
           ))}
 
@@ -118,9 +123,10 @@ type CredentialCardProps = {
   removeError: string | null
   onRemove: (id: string) => void
   reveal: (id: string, fieldId: string) => Promise<string>
+  onAgentAccess: (id: string, allowed: boolean) => Promise<void>
 }
 
-function CredentialCard({ credential, removeError, onRemove, reveal }: CredentialCardProps): JSX.Element {
+function CredentialCard({ credential, removeError, onRemove, reveal, onAgentAccess }: CredentialCardProps): JSX.Element {
   const [revealed, setRevealed] = useState<Record<string, string>>({})
   const [copied, setCopied] = useState<string | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
@@ -157,6 +163,16 @@ function CredentialCard({ credential, removeError, onRemove, reveal }: Credentia
       setFailure(errorMessage(cause, 'The secret could not be copied.'))
     }
   }
+
+  const setAgentAccess = async (allowed: boolean): Promise<void> => {
+    try {
+      await onAgentAccess(credential.id, allowed)
+      setFailure(null)
+    } catch (cause) {
+      setFailure(errorMessage(cause, 'Agent access could not be changed.'))
+    }
+  }
+  const accessId = `credential-agent-access-${credential.id}`
 
   return (
     <div className="credential-frame group" data-encrypted={credential.encrypted}>
@@ -215,6 +231,17 @@ function CredentialCard({ credential, removeError, onRemove, reveal }: Credentia
                 </div>
               )
             })}
+          </div>
+
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <label htmlFor={accessId} className="text-muted-foreground">Agents can use this</label>
+            <Switch
+              id={accessId}
+              checked={credential.agentAccess}
+              onCheckedChange={(allowed) => void setAgentAccess(allowed)}
+              data-ui="credentials.agent-access"
+              data-ui-key={credential.id}
+            />
           </div>
 
           {failure ? <p className="text-xs text-destructive" role="alert">{failure}</p> : null}

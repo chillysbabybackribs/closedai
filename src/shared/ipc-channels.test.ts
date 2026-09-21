@@ -43,6 +43,7 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'browser:renameTab',
     'browser:selectTab',
     'browser:capture',
+    'browser:resolvePermission',
     'browserDownloads:list',
     'browserDownloads:pause',
     'browserDownloads:resume',
@@ -86,6 +87,11 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'credentials:reveal',
     'credentials:remove',
     'credentials:rename',
+    'credentials:setAgentAccess',
+    'security:get',
+    'security:set',
+    'security:importCookies',
+    'security:resolveCredentialApproval',
     'tools:manifest',
     'tools:telemetry',
     'tools:clearTelemetry',
@@ -103,8 +109,10 @@ test('IPC event constants cover the typed event registry', () => {
   const typed: IpcEventChannel[] = [
     'browser:state',
     'browser:tabs',
+    'browser:permissionRequests',
     'browserDownloads:changed',
     'chat:event',
+    'security:credentialApprovals',
     'tools:event',
     'trace:event'
   ]

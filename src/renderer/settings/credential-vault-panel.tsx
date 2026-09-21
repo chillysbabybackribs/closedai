@@ -37,6 +37,7 @@ export function CredentialVaultPanel({ active }: CredentialVaultPanelProps): JSX
           pendingRemovals={vault.pendingRemovals}
           removeErrors={vault.removeErrors}
           reveal={vault.reveal}
+          onAgentAccess={vault.setAgentAccess}
         />
       ) : (
         <CredentialCreateForm

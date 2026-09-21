@@ -8,11 +8,11 @@
   "private": true,
   "scripts": {
     "predev": "npm run hygiene",
-    "dev": "ELECTRON_DISABLE_SANDBOX=1 node scripts/launch-electron-vite.mjs dev",
+    "dev": "node scripts/launch-electron-vite.mjs dev",
     "dev:web": "node scripts/ui-preview.mjs",
     "prebuild": "npm run hygiene",
     "build": "tsc --noEmit && electron-vite build",
-    "preview": "ELECTRON_DISABLE_SANDBOX=1 node scripts/launch-electron-vite.mjs preview",
+    "preview": "node scripts/launch-electron-vite.mjs preview",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs --test \"src/**/*.test.ts\" \"src/**/*.test.tsx\"",
     "closure": "node scripts/closure-gate.mjs",

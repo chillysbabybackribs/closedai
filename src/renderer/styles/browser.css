@@ -1,4 +1,5 @@
 @import "./browser/chrome.css";
+@import "./browser/permission-bar.css";
 @import "./browser/navigation-error.css";
 @import "./browser/automation.css";
 @import "./browser/suggestions.css";

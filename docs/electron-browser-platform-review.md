@@ -13,9 +13,12 @@ model integration, use [Application](application.md) and [Model context](model-c
 
 ## 0. Owner decisions (2026-09-01) — these override the recommendations below
 
-- **Sandbox: keep appv1's behaviour exactly.** `--no-sandbox` is appended on Linux
-  (`chromium-startup-policy.ts` ported verbatim) and `ELECTRON_DISABLE_SANDBOX=1` stays in the dev
-  launcher. §3.1 is recorded as the documented risk, not as a task. `app.enableSandbox()` is NOT called.
+- **Sandbox: on by default (revised 2026-09-21).** The original decision kept appv1's
+  `--no-sandbox` on Linux and `ELECTRON_DISABLE_SANDBOX=1` in the launch scripts. Both defaults are
+  gone: `chromium-startup-policy.ts` appends `no-sandbox` only when `CLOSEDAI_NO_SANDBOX=1`, and
+  `scripts/launch-electron-vite.mjs` exports `ELECTRON_DISABLE_SANDBOX=1` only in that same case.
+  The switch is machine-specific (see §3.1 for the one measured machine that needs it), never a
+  script default. `app.enableSandbox()` is still NOT called.
 - **Permissions: no gate anywhere.** `setPermissionRequestHandler` → `callback(true)`,
   `setPermissionCheckHandler` → `true`, `setDevicePermissionHandler` → `true`,
   `setDisplayMediaRequestHandler` grants the requested screen/audio via `desktopCapturer`, and the
@@ -60,8 +63,13 @@ warm start for sandboxed windows.
 
 ## 3. Findings that change the build (ordered by severity)
 
-### 3.1 CRITICAL — appv1 runs Chromium with `--no-sandbox` on Linux
-`chromium-startup-policy.ts` appends `no-sandbox`; `dev:app` sets `ELECTRON_DISABLE_SANDBOX=1`.
+### 3.1 CRITICAL — appv1 ran Chromium with `--no-sandbox` on Linux
+Status 2026-09-21: the sandbox is on by default. `chromium-startup-policy.ts` appends `no-sandbox`
+and the launcher exports `ELECTRON_DISABLE_SANDBOX=1` only when `CLOSEDAI_NO_SANDBOX=1` is set for
+that machine. The rest of this section records why appv1 had the switch and what a machine that
+still needs the opt-out must fix to drop it.
+
+Before: `chromium-startup-policy.ts` appended `no-sandbox`; `dev:app` set `ELECTRON_DISABLE_SANDBOX=1`.
 Docs: "disables the sandbox for all processes (including utility processes)… only use this flag
 for testing purposes, and **never** in production." Process-sandboxing guide: the sandbox is the
 key mechanism for rendering untrusted content.
@@ -229,7 +237,7 @@ database that Chromium uses to store cookies stores the values in plaintext" —
 | Area | Status | Current checkout |
 |---|---|---|
 | Electron 44 scaffold | **Implemented** | `electron@^44` and Electron Vite are configured. There is not yet a packaging target or `.deb` pipeline. |
-| Sandbox owner decision (§0/§3.1) | **Implemented as accepted risk** | Linux appends `no-sandbox`; the launch scripts set `ELECTRON_DISABLE_SANDBOX=1`. The chrome window also has `sandbox: false`; tab preferences request `sandbox: true`, but the process-wide switch remains authoritative. |
+| Sandbox owner decision (§0/§3.1) | **Sandbox on by default (2026-09-21)** | `no-sandbox` and `ELECTRON_DISABLE_SANDBOX=1` are appended only under `CLOSEDAI_NO_SANDBOX=1`, a per-machine opt-out. The chrome window still has `sandbox: false`; tab preferences request `sandbox: true`. `app.enableSandbox()` is not called. |
 | Allow-all permissions (§0/§3.2) | **Implemented as accepted risk** | Permission request/check/device/display handlers allow access, and device-selection events choose the first candidate. There is no per-origin permission store or prompt. |
 | Popup adoption (§3.3) | **Implemented** | Ordinary page windows become tabs, background disposition stays unselected, POST data is preserved, and OAuth/utility-window cases retain a native opener bridge. Native popup WebContents are also registered as app-owned CDP roots outside the tab strip. |
 | Session restoration (§3.4) | **Partial** | Tab order, active tab, URL, title, and multi-entry back/forward stacks persist (via `navigationHistory.getAllEntries()` / `restore`), capped at 24 tabs and 50 entries per stack. Older session files without stacks still load by URL only. |

@@ -12,6 +12,9 @@ import { useBrowserDownloadsController, type BrowserDownloadsController } from '
 import { BrowserDownloadsShelf } from './browser-downloads-shelf.js'
 import { BrowserNavigationError } from './browser-navigation-error.js'
 import { BrowserTabMenu, BrowserTabRename, type BrowserTabMenuTarget } from './browser-tab-menu.js'
+import { securityRequests } from './security-requests.js'
+import { useWebPermissionRequests } from './use-security-requests.js'
+import { WebPermissionBar } from './web-permission-bar.js'
 
 // Memoized: the pane stays mounted, and its native-view host ref and ResizeObserver must
 // survive re-renders of the shell around it.
@@ -30,6 +33,12 @@ export const BrowserPane = memo(function BrowserPane({
     const timer = window.setTimeout(() => setNotice(null), 8000)
     return () => window.clearTimeout(timer)
   }, [notice])
+  // Page permission requests (Settings → Security → web permissions: Ask; off by default), for
+  // the active tab only. A rejected answer lands in the same notice slot as a rejected command.
+  const permissions = useWebPermissionRequests(controller.tabs.find((tab) => tab.active)?.id ?? null)
+  const decidePermission = useCallback((id: string, decision: 'allow' | 'deny') => {
+    securityRequests().permissions.resolve(id, decision).catch(report)
+  }, [report])
   return (
     <section className="browser-pane" aria-label="Browser" data-ui-surface="browser">
       <div className={`browser-shell ${downloads.isOpen && !controller.browser.image && !controller.browser.file ? 'has-downloads' : ''} ${controller.browser.image ? 'has-image-viewer' : ''} ${controller.browser.file ? 'has-file-viewer' : ''}`}>
@@ -43,6 +52,7 @@ export const BrowserPane = memo(function BrowserPane({
               </button>
             </div>
           ) : null}
+          <WebPermissionBar requests={permissions} onDecide={decidePermission} />
         </div>
         {!controller.browser.image && !controller.browser.file && <BrowserToolbar controller={controller} downloads={downloads} onError={report} />}
         {downloads.isOpen && !controller.browser.image && !controller.browser.file ? <BrowserDownloadsShelf controller={downloads} /> : null}

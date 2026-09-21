@@ -62,8 +62,10 @@ const api: ClosedaiApi = {
     renameTab: (id: string, title: string | null) => invoke(IPC.invoke.browser.renameTab, id, title),
     selectTab: (id: string) => invoke(IPC.invoke.browser.selectTab, id),
     capture: () => invoke(IPC.invoke.browser.capture),
+    resolvePermission: (id, decision) => invoke(IPC.invoke.browser.resolvePermission, id, decision),
     onState: (listener) => subscribe(IPC.event.browserState, listener),
-    onTabs: (listener) => subscribe(IPC.event.browserTabs, listener)
+    onTabs: (listener) => subscribe(IPC.event.browserTabs, listener),
+    onPermissionRequests: (listener) => subscribe(IPC.event.browserPermissionRequests, listener)
   },
   browserDownloads: {
     list: () => invoke(IPC.invoke.browserDownloads.list),
@@ -109,7 +111,15 @@ const api: ClosedaiApi = {
     save: (draft) => invoke(IPC.invoke.credentials.save, draft),
     reveal: (id: string, fieldId: string) => invoke(IPC.invoke.credentials.reveal, id, fieldId),
     remove: (id: string) => invoke(IPC.invoke.credentials.remove, id),
-    rename: (id: string, label: string) => invoke(IPC.invoke.credentials.rename, id, label)
+    rename: (id: string, label: string) => invoke(IPC.invoke.credentials.rename, id, label),
+    setAgentAccess: (id, allowed) => invoke(IPC.invoke.credentials.setAgentAccess, id, allowed)
+  },
+  security: {
+    get: () => invoke(IPC.invoke.security.get),
+    set: (patch) => invoke(IPC.invoke.security.set, patch),
+    importCookies: () => invoke(IPC.invoke.security.importCookies),
+    resolveCredentialApproval: (id, decision) => invoke(IPC.invoke.security.resolveCredentialApproval, id, decision),
+    onCredentialApprovals: (listener) => subscribe(IPC.event.securityCredentialApprovals, listener)
   },
   tools: {
     manifest: () => invoke(IPC.invoke.tools.manifest),

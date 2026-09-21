@@ -6,6 +6,9 @@ import type { ProviderAvailability } from './provider-availability.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot } from './trace.js'
+import type {
+  BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
+} from './security.js'
 
 export type Unsubscribe = () => void
 
@@ -50,8 +53,12 @@ export type ClosedaiApi = {
     selectTab: (id: string) => Promise<void>
     /** Still of the active tab, used to freeze the page under a DOM overlay. */
     capture: () => Promise<BrowserShot | null>
+    /** Answer a page's permission request shown in the browser chrome while the policy is `ask`. */
+    resolvePermission: (id: string, decision: SecurityDecision) => Promise<void>
     onState: (listener: (state: BrowserState) => void) => Unsubscribe
     onTabs: (listener: (tabs: BrowserTabInfo[]) => void) => Unsubscribe
+    /** The full pending list, sent whenever it changes; empty when nothing is waiting. */
+    onPermissionRequests: (listener: (pending: WebPermissionRequest[]) => void) => Unsubscribe
   }
   browserDownloads: {
     list: () => Promise<BrowserDownload[]>
@@ -116,6 +123,19 @@ export type ClosedaiApi = {
     reveal: (id: string, fieldId: string) => Promise<string>
     remove: (id: string) => Promise<void>
     rename: (id: string, label: string) => Promise<CredentialSummary>
+    /** Whether agents may read this entry; persisted, on by default. */
+    setAgentAccess: (id: string, allowed: boolean) => Promise<CredentialSummary>
+  }
+  /** Settings → Security. Every default is the historical behavior; see `src/shared/security.ts`. */
+  security: {
+    get: () => Promise<SecuritySettings>
+    set: (patch: Partial<SecuritySettings>) => Promise<SecuritySettings>
+    /** Run the default-browser cookie import now, regardless of the first-launch latch. */
+    importCookies: () => Promise<BrowserCookieImportResult>
+    /** Answer an agent's credential read shown as a card in its chat while approval is required. */
+    resolveCredentialApproval: (id: string, decision: SecurityDecision) => Promise<void>
+    /** The full pending list, sent whenever it changes; empty when nothing is waiting. */
+    onCredentialApprovals: (listener: (pending: CredentialApprovalRequest[]) => void) => Unsubscribe
   }
   tools: {
     manifest: () => Promise<ToolManifest>

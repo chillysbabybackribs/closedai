@@ -7,6 +7,9 @@ import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from
 import type { TraceEvent, TraceSnapshot } from './trace.js'
 import type { LibrarySettings, LibrarySnapshot } from './research-library.js'
 import type { ProviderAvailability } from './provider-availability.js'
+import type {
+  BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
+} from './security.js'
 
 /** Invoke channels the preload bridge exposes on `window.closedai`. */
 export type IpcInvokeChannels = {
@@ -48,6 +51,7 @@ export type IpcInvokeChannels = {
   'browser:renameTab': { args: [string, string | null]; result: void }
   'browser:selectTab': { args: [string]; result: void }
   'browser:capture': { args: []; result: BrowserShot | null }
+  'browser:resolvePermission': { args: [string, SecurityDecision]; result: void }
   'browserDownloads:list': { args: []; result: BrowserDownload[] }
   'browserDownloads:pause': { args: [string]; result: void }
   'browserDownloads:resume': { args: [string]; result: void }
@@ -85,6 +89,11 @@ export type IpcInvokeChannels = {
   'credentials:reveal': { args: [string, string]; result: string }
   'credentials:remove': { args: [string]; result: void }
   'credentials:rename': { args: [string, string]; result: CredentialSummary }
+  'credentials:setAgentAccess': { args: [string, boolean]; result: CredentialSummary }
+  'security:get': { args: []; result: SecuritySettings }
+  'security:set': { args: [Partial<SecuritySettings>]; result: SecuritySettings }
+  'security:importCookies': { args: []; result: BrowserCookieImportResult }
+  'security:resolveCredentialApproval': { args: [string, SecurityDecision]; result: void }
   'tools:manifest': { args: []; result: ToolManifest }
   'tools:telemetry': { args: []; result: ToolTelemetrySnapshot }
   'tools:clearTelemetry': { args: []; result: void }
@@ -101,8 +110,10 @@ export type IpcInvokeChannel = keyof IpcInvokeChannels
 export type IpcEventChannels = {
   'browser:state': BrowserState
   'browser:tabs': BrowserTabInfo[]
+  'browser:permissionRequests': WebPermissionRequest[]
   'browserDownloads:changed': BrowserDownload[]
   'chat:event': ChatWorkspaceEvent
+  'security:credentialApprovals': CredentialApprovalRequest[]
   'tools:event': ToolsEvent
   'trace:event': TraceEvent
 }
@@ -150,7 +161,8 @@ export const IPC = {
       reloadTab: 'browser:reloadTab',
       renameTab: 'browser:renameTab',
       selectTab: 'browser:selectTab',
-      capture: 'browser:capture'
+      capture: 'browser:capture',
+      resolvePermission: 'browser:resolvePermission'
     },
     browserDownloads: {
       list: 'browserDownloads:list',
@@ -193,7 +205,14 @@ export const IPC = {
       save: 'credentials:save',
       reveal: 'credentials:reveal',
       remove: 'credentials:remove',
-      rename: 'credentials:rename'
+      rename: 'credentials:rename',
+      setAgentAccess: 'credentials:setAgentAccess'
+    },
+    security: {
+      get: 'security:get',
+      set: 'security:set',
+      importCookies: 'security:importCookies',
+      resolveCredentialApproval: 'security:resolveCredentialApproval'
     },
     tools: {
       manifest: 'tools:manifest',
@@ -211,8 +230,10 @@ export const IPC = {
   event: {
     browserState: 'browser:state',
     browserTabs: 'browser:tabs',
+    browserPermissionRequests: 'browser:permissionRequests',
     browserDownloadsChanged: 'browserDownloads:changed',
     chatEvent: 'chat:event',
+    securityCredentialApprovals: 'security:credentialApprovals',
     toolsEvent: 'tools:event',
     traceEvent: 'trace:event'
   }

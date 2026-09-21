@@ -18,10 +18,13 @@ import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { injectComposerDraft } from './composer-drafts.js'
 import { ContextInspectorModal } from './context-inspector-modal.js'
+import { CredentialApprovalCards } from './credential-approval-card.js'
 import { errorMessage } from './error-message.js'
 import type { ModelMenuHandle } from './model-menu.js'
+import { securityRequests } from './security-requests.js'
 import { ToolsModal } from './tools/tools-modal.js'
 import { TraceModal } from './trace/trace-modal.js'
+import { useCredentialApprovals } from './use-security-requests.js'
 
 /** Pane-scoped dialogs the shell's Agent and Developer menus can open on the selected pane. */
 export type ChatPaneDialog = 'tools' | 'trace' | 'context'
@@ -35,6 +38,7 @@ export const ChatPane = memo(function ChatPane({
   onHistoryOpenChange,
   dialog: controlledDialog,
   onDialogChange,
+  selected = true,
   onNewChat,
   archiveChat
 }: {
@@ -90,6 +94,16 @@ export const ChatPane = memo(function ChatPane({
   // What the pane itself could not do, shown above the composer until the next attempt.
   const [notice, setNotice] = useState('')
   const canCompact = manualCompact && ready && !running && state.items.some((item) => item.type === 'user')
+  // Credential approvals (Settings → Security, off by default): this agent's requests, plus in the
+  // selected pane any request without an open pane. Empty until the user turns the option on.
+  const openPaneIds = chat.chats.filter((row) => row.attached).map((row) => row.paneId)
+  const approvals = useCredentialApprovals(chat.selectedPaneId, selected, openPaneIds)
+
+  function decideCredential(id: string, decision: 'allow' | 'deny'): void {
+    setNotice('')
+    securityRequests().credentials.resolve(id, decision)
+      .catch((error: unknown) => setNotice(errorMessage(error, 'Could not answer the credential request')))
+  }
 
   async function compactConversation(): Promise<void> {
     setNotice('')
@@ -174,6 +188,7 @@ export const ChatPane = memo(function ChatPane({
           <ConnectionBanner provider={state.provider} state={state.connection.state} message={state.connection.message}
             onLogin={chat.loginWithChatGPT} onChooseModel={openModelMenu} />
         )}
+        <CredentialApprovalCards requests={approvals} onDecide={decideCredential} />
         {notice && (
           <div className="chat-pane-notice" role="alert">
             <span>{notice}</span>
