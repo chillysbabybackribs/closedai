@@ -17,9 +17,11 @@ npm run dev                # electron-vite development build with hot reload
 npm run build && npm run preview
 ```
 
-The Chromium sandbox is on by default; on a machine that cannot start it (unprivileged user
-namespaces restricted and no SUID `chrome-sandbox` helper), run with `CLOSEDAI_NO_SANDBOX=1` as a
-machine-specific opt-out rather than changing a script.
+The Chromium sandbox is on by default. When running from this checkout on a kernel that restricts
+unprivileged user namespaces, the npm-installed `chrome-sandbox` helper is not SUID, so the
+launcher detects that case, starts without the sandbox, and prints the one-time `chown`/`chmod`
+fix. `CLOSEDAI_NO_SANDBOX=1` forces the opt-out on any machine. Packaged builds install the helper
+correctly and are unaffected.
 
 For frontend work without restarting Electron, `npm run dev:web` starts or reuses the browser
 UI preview and prints direct links to populated, empty, streaming, settings, and split-pane

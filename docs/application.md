@@ -931,7 +931,7 @@ reports that backend as unavailable so the badge and each entry's `encrypted` fl
 setting. With `credentialsRequireApproval` on, each `read` first posts a `CredentialApprovalRequest`
 (pane, credential, field ids, the model's stated reason) through `security:credentialApprovals`; the
 tool waits for `security.resolveCredentialApproval`, refuses on deny, and an unanswered card is denied
-after 120 s (the tool's own timeout is longer, and an interrupted turn withdraws the card). With
+after 120 s; the tool's own timeout is longer, and a call the registry aborts withdraws its card. With
 `secretsRequireKeychain` on, `CredentialVault.save` refuses a draft with a secret field whenever
 encryption is unavailable instead of storing it plainly. `importBrowserCookies` gates only the launch
 import; `security.importCookies` runs the same import on demand regardless of the latch and returns

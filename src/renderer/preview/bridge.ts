@@ -5,7 +5,7 @@ import type { ProviderAvailability } from '../../shared/provider-availability.js
 import type { CredentialSummary } from '../../shared/credentials.js'
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, type SecuritySettings } from '../../shared/security.js'
 import { createPreviewChat } from './chat.js'
-import type { Scenario } from './fixtures.js'
+import { sampleSecurityRequests, type Scenario } from './fixtures.js'
 import { createToolsFixture } from './tools-fixture.js'
 
 /** Compile-time complete: additions to the real bridge must be considered here too. */
@@ -78,6 +78,15 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
   // Settings → Security: the preview holds the defaults in memory and reports the native-only import.
   let security: SecuritySettings = { ...DEFAULT_SECURITY_SETTINGS }
   const credentials: CredentialSummary[] = []
+  // Opt-in prompt surfaces: only the `security` scenario seeds pending requests; a decision drops
+  // the request and republishes, as main does once the user answers.
+  const pending = sampleSecurityRequests(scenario)
+  const approvalListeners = new Set<(items: typeof pending.credentials) => void>()
+  const permissionListeners = new Set<(items: typeof pending.permissions) => void>()
+  const publishSecurity = () => {
+    approvalListeners.forEach((listener) => listener(structuredClone(pending.credentials)))
+    permissionListeners.forEach((listener) => listener(structuredClone(pending.permissions)))
+  }
   const api: ClosedaiApi = {
     chat: { ...chat.api, providerAvailability: async () => structuredClone(providerAvailability) },
     window: { minimize: native, maximize: native, toggleFullscreen: native, close: native, toggleDevTools: native },
@@ -106,10 +115,13 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
         if (tab) { tab.customTitle = title; tab.title = title || 'Sample browser tab'; publishBrowser() }
       },
       capture: async () => null,
-      resolvePermission: async () => {},
+      resolvePermission: async (id) => { pending.permissions = pending.permissions.filter((entry) => entry.id !== id); publishSecurity() },
       onState: (listener) => { stateListeners.add(listener); return () => { stateListeners.delete(listener) } },
       onTabs: (listener) => { tabListeners.add(listener); return () => { tabListeners.delete(listener) } },
-      onPermissionRequests: idleSubscription
+      onPermissionRequests: (listener) => {
+        permissionListeners.add(listener); listener(structuredClone(pending.permissions))
+        return () => { permissionListeners.delete(listener) }
+      }
     },
     browserDownloads: { list: async () => [], pause: native, resume: native, cancel: native,
       reveal: native, clear: native, onChanged: idleSubscription },
@@ -126,7 +138,11 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
     security: { get: async () => ({ ...security }),
       set: async (patch) => { security = normalizeSecuritySettings({ ...security, ...patch }); return { ...security } },
       importCookies: async () => { await native(); return { source: null, imported: 0, failed: 0, skipped: 0 } },
-      resolveCredentialApproval: async () => {}, onCredentialApprovals: idleSubscription },
+      resolveCredentialApproval: async (id) => { pending.credentials = pending.credentials.filter((entry) => entry.id !== id); publishSecurity() },
+      onCredentialApprovals: (listener) => {
+        approvalListeners.add(listener); listener(structuredClone(pending.credentials))
+        return () => { approvalListeners.delete(listener) }
+      } },
     researchLibrary: { snapshot: async () => structuredClone(library),
       progress: async () => ({ refreshing: false, lastRefresh: null }),
       configure: async (settings) => { library.settings = settings; return structuredClone(library) },

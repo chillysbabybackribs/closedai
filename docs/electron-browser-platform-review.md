@@ -65,8 +65,10 @@ warm start for sandboxed windows.
 
 ### 3.1 CRITICAL — appv1 ran Chromium with `--no-sandbox` on Linux
 Status 2026-09-21: the sandbox is on by default. `chromium-startup-policy.ts` appends `no-sandbox`
-and the launcher exports `ELECTRON_DISABLE_SANDBOX=1` only when `CLOSEDAI_NO_SANDBOX=1` is set for
-that machine. The rest of this section records why appv1 had the switch and what a machine that
+and the launcher exports `ELECTRON_DISABLE_SANDBOX=1` only when `CLOSEDAI_NO_SANDBOX=1` is set or
+when it detects the checkout condition itself (`apparmor_restrict_unprivileged_userns=1` with a
+non-SUID `node_modules/electron/dist/chrome-sandbox`), printing the one-time fix. Packaged builds
+are never affected. The rest of this section records why appv1 had the switch and what a machine that
 still needs the opt-out must fix to drop it.
 
 Before: `chromium-startup-policy.ts` appended `no-sandbox`; `dev:app` set `ELECTRON_DISABLE_SANDBOX=1`.
