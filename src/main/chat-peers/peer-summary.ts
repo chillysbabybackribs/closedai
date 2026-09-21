@@ -86,7 +86,9 @@ export class PeerSummaryCache {
       const runningBg = this.activeBackgroundTasks.values().next().value
       const isRunning = this.turnActive || this.activeBackgroundTasks.size > 0
       const activity = this.turnActive ? summary.activity : (runningBg ? (runningBg.background?.progress || runningBg.label || 'Background task') : summary.activity)
-      summary = { ...summary, running: isRunning, activity }
+      summary = { ...summary, running: isRunning, activity, ...(event.turnId ? { paused: false } : {}) }
+    } else if (event.type === 'paused') {
+      summary = { ...summary, paused: event.turnId !== null }
     } else if (event.type === 'item' && peerReadable(event.item)) {
       const item = event.item
       const isNew = !this.ids.has(item.id)

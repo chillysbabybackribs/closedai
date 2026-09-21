@@ -12,7 +12,7 @@ export type ChatSearchHit = {
 const DEFAULT_LIMIT = 8
 
 export type ChatActivityHit = ChatSearchHit & {
-  status: 'running' | 'completed' | 'history'
+  status: 'running' | 'paused' | 'completed' | 'history'
   completedAt: number | null
 }
 
@@ -32,7 +32,7 @@ export function chatSearchView(rows: ChatRowSummary[], query: string, reviews: C
     const unread = review?.viewedAt === null
     return {
       ...hit,
-      status: hit.row.running ? 'running' : unread ? 'completed' : 'history',
+      status: hit.row.running ? 'running' : hit.row.paused ? 'paused' : unread ? 'completed' : 'history',
       completedAt: unread ? review.queuedAt : null
     }
   }
@@ -44,6 +44,7 @@ export function chatSearchView(rows: ChatRowSummary[], query: string, reviews: C
     ? [{ label: 'Matching chats', hits: searchChats(rows, query).map(withActivity) }]
     : [
         { label: 'Running', hits: running },
+        { label: 'Paused', hits: recent.filter(hit => hit.status === 'paused') },
         { label: 'Recently completed', hits: completed },
         { label: 'History', hits: recent.filter(hit => hit.status === 'history').slice(0, DEFAULT_LIMIT) }
       ]

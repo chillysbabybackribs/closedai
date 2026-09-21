@@ -8,12 +8,14 @@ export function createPreviewChat(scenario: Scenario, report: (message: string) 
   const listeners = new Set<(event: ChatWorkspaceEvent) => void>()
   const timers = new Map<string, ReturnType<typeof setInterval>>()
   let sequence = 2
+  let started = false
   const publish = () => {
     state.selected = state.panes![state.selectedPaneId]!
     state.chats = state.chats.map((row) => {
       const chat = state.panes![row.paneId]!
       return { ...row, title: chat.threadName ?? 'New chat', modelId: chat.selectedModel,
-        running: !!chat.activeTurnId, activity: chat.activeTurnId ? 'Writing a sample response' : null }
+        running: !!chat.activeTurnId, paused: !!chat.pausedTurnId,
+        activity: chat.activeTurnId ? 'Writing a sample response' : null }
     })
     for (const listener of listeners) listener({ type: 'workspace', snapshot: structuredClone(state) })
   }
@@ -92,6 +94,6 @@ export function createPreviewChat(scenario: Scenario, report: (message: string) 
     retryChatTitle: native, compactConversation: native, chooseProject: native, selectProject: native, clearProject: native,
     onEvent: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } }
   }
-  return { api, start: () => { if (scenario === 'streaming') stream(state.selectedPaneId) },
+  return { api, start: () => { if (!started && scenario === 'streaming') stream(state.selectedPaneId); started = true },
     dispose: () => { timers.forEach(clearInterval); timers.clear(); listeners.clear() } }
 }

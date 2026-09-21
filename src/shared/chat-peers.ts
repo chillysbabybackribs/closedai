@@ -27,6 +27,8 @@ export type ChatPeerSummary = {
   title: string
   preview: string
   running: boolean
+  /** Explicit provider pause state; absent for saved chats without a live runtime. */
+  paused?: boolean
   activity: string | null
   updatedAt: number
 }

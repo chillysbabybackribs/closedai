@@ -1,5 +1,6 @@
 import { startTransition, useCallback, useEffect, useMemo, useReducer, type Dispatch } from 'react'
 import type { ChatAttachment, ChatSnapshot } from '../shared/chat.js'
+import { CHAT_RESUME_PROMPT } from '../shared/chat.js'
 import type { ChatContinuationSource, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../shared/chat-peers.js'
 import { coalesceChatWorkspaceEvents, initialChatRendererState, reduceChatRendererEvent, type ChatWorkspaceAction } from './chat-state.js'
 
@@ -14,6 +15,7 @@ export type ChatController = {
   interrupt: () => Promise<void>
   /** Stop one pane's turn by id, so a drawer row can stop a background chat, not the open one. */
   interruptPane: (paneId: string) => Promise<void>
+  resumePane: (paneId: string) => Promise<void>
   selectModel: (modelId: string) => Promise<void>
   selectReasoningEffort: (effort: string) => Promise<void>
   /** Re-read the provider's subscription usage, e.g. when the usage card opens. */
@@ -86,6 +88,8 @@ export function usePaneChatController(
     window.closedai.chat.send(paneId, text, attachments), [paneId])
   const interrupt = useCallback(() => window.closedai.chat.interrupt(paneId), [paneId])
   const interruptPane = useCallback((targetPaneId: string) => window.closedai.chat.interrupt(targetPaneId), [])
+  const resumePane = useCallback((targetPaneId: string) =>
+    window.closedai.chat.send(targetPaneId, CHAT_RESUME_PROMPT, []), [])
   const selectModel = useCallback((modelId: string) => window.closedai.chat.selectModel(paneId, modelId), [paneId])
   const selectReasoningEffort = useCallback((effort: string) =>
     window.closedai.chat.selectReasoningEffort(paneId, effort), [paneId])
@@ -130,6 +134,7 @@ export function usePaneChatController(
     send,
     interrupt,
     interruptPane,
+    resumePane,
     selectModel,
     selectReasoningEffort,
     refreshPlanUsage,
@@ -150,7 +155,7 @@ export function usePaneChatController(
     trimMountedHistory
   }), [
     state, workspace.workspace, workspace.preferences, workspace.chats, paneId,
-    send, interrupt, interruptPane, selectModel, selectReasoningEffort, refreshPlanUsage, loginWithChatGPT,
+    send, interrupt, interruptPane, resumePane, selectModel, selectReasoningEffort, refreshPlanUsage, loginWithChatGPT,
     listChats, newThread, continueInNewThread, continueFromChat, openChat,
     archiveChat, setChatPinned, renameChat, retryChatTitle, compactConversation, selectPane, closePeer, loadEarlier, trimMountedHistory
   ])

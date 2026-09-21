@@ -23,14 +23,14 @@ const ERROR_VISIBLE_MS = 8000
  */
 export function reviewTransitions(
   priorRunning: ReadonlyMap<string, boolean>,
-  chats: readonly Pick<ChatRowSummary, 'paneId' | 'running'>[]
+  chats: readonly Pick<ChatRowSummary, 'paneId' | 'running' | 'paused'>[]
 ): { finished: string[]; runningAgain: string[]; nextRunning: Map<string, boolean> } {
   const finished: string[] = []
   const runningAgain: string[] = []
   const nextRunning = new Map<string, boolean>()
   for (const chat of chats) {
     nextRunning.set(chat.paneId, chat.running)
-    if (chat.running) runningAgain.push(chat.paneId)
+    if (chat.running || chat.paused) runningAgain.push(chat.paneId)
     else if (priorRunning.get(chat.paneId) === true) finished.push(chat.paneId)
   }
   return { finished, runningAgain, nextRunning }
@@ -117,7 +117,8 @@ export function useHistoryController(chat: ChatController) {
     chat.newThread().catch(reportError)
   }, [chat, reportError])
 
-  return { reviewQueue, openRow, deleteRow: chat.archiveChat, newChat, refreshChats, error, reportError }
+  return { reviewQueue, openRow, deleteRow: chat.archiveChat, pauseRow: chat.interruptPane,
+    resumeRow: chat.resumePane, newChat, refreshChats, error, reportError }
 }
 
 export type HistoryController = ReturnType<typeof useHistoryController>
