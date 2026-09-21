@@ -1,0 +1,27 @@
+<!doctype html><html><head><title>History activity preview</title></head><body>
+<div id="root"></div>
+<script type="module">
+import React, { useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { HeaderChatSearch } from './chat-history/header-search.tsx';
+import './styles.css';
+window.check = { opened: [], deleted: [], confirmations: 0 };
+window.confirm = () => { window.check.confirmations++; return false; };
+function Preview() {
+  const inputRef = useRef(null);
+  const [error, setError] = useState(null);
+  const [reviewQueue, setReviews] = useState({ '2': { queuedAt: Date.now()-180000, viewedAt: null }, '3': { queuedAt: Date.now()-720000, viewedAt: null } });
+  const [chats, setChats] = useState(['Refine chat history navigation', 'Investigate browser memory usage', 'Add one-click chat deletion', 'Polish the model picker', 'Replace the agent sidebar with search', 'Plan the portfolio homepage', 'Review browser tab shortcuts'].map((title, i) => ({
+    paneId: String(i), title, threadId: String(i), cwd: '/projects/closedai', updatedAt: Date.now()-i*60000,
+    running: i<2, preview: '', attached: false
+  })));
+  return React.createElement(HeaderChatSearch, { chats, inputRef, controller: {
+    error, reviewQueue, reportError: e => setError(e.message), refreshChats() {},
+    openRow: async id => { window.check.opened.push(id); setReviews(q=>q[id] ? {...q,[id]:{...q[id],viewedAt:Date.now()}} : q); },
+    deleteRow: async id => { window.check.deleted.push(id); if(window.failDelete) throw Error('Deletion failed'); setChats(rows=>rows.filter(r=>r.paneId!==id)); }
+  }});
+}
+createRoot(document.getElementById('root')).render(React.createElement(Preview));
+</script>
+<style>body { background: var(--background); } .header-chat-search { top:20px; width:440px; max-width:calc(100% - 32px); }</style>
+</body></html>
