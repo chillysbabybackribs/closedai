@@ -12,7 +12,12 @@ Free access is not a selection requirement. Compare total task cost rather than 
 The first delivery implements the shared task/evidence guidance, source-only research requests,
 discovery terminology, Brave source boosting/Goggles/date ranges/independent relevance and context
 controls, cache/date provenance, bounded candidate admission with reserved reads, and content-free
-research timing. Focused tests cover these contracts and an isolated Electron fixture verifies
+research timing. A follow-up slice (same date) fixed index-age presentation after a live probe
+showed official living docs labeled with a years-old relative age: Brave results now prefer the
+ISO index-reported date, carry Brave's `fetched_content_timestamp` as a distinct `content_fetched`
+observation, and the shared instructions direct models to treat a technology's official
+documentation as primary evidence and boost its canonical domain with `preferred_domains`
+(model-supplied, never hardcoded). Focused tests cover these contracts and an isolated Electron fixture verifies
 source-tab presentation while research continues. Existing prompt limits are unchanged.
 
 Live scholarly discovery/citation traversal, PDF extraction, older-library retrieval, paid-provider

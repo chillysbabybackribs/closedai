@@ -263,7 +263,10 @@ deep add Exa as the third index.
 
 Brave discovery uses its `/res/v1/llm/context` endpoint rather than human-oriented Web Search.
 The adapter returns extracted grounding chunks as normalized snippets and uses source metadata for
-page age. Quick, balanced, and deep requests consider 10, 20, and 50 candidates with 2,048,
+page age, preferring the ISO form of the index-reported age over relative strings, and records
+Brave's `fetched_content_timestamp` as a separate `content_fetched` date: the index's content-crawl
+time, which shows how current the extract is without asserting a publication date. A living docs
+page can carry an old index age beside a recent crawl. Quick, balanced, and deep requests consider 10, 20, and 50 candidates with 2,048,
 8,192, and 16,384-token context budgets respectively; the requested result count remains the
 maximum number of returned URLs. Relevance defaults to strict for quick, balanced for both balanced
 and deep; broader discovery does not automatically relax relevance. `relevance` and `context_tokens`
@@ -280,7 +283,8 @@ truncating constraints. `live: true` adds Brave's best-effort no-cache header.
 Query results expose `observedAt` and per-result discovery timestamps/cache status. Reusing a cached
 query preserves its observation time. `live` bypasses the app cache; it does not establish that an
 upstream index or source is current. Source dates retain their provenance: provider-reported ages
-are `index_reported`; explicit HTML publication/modification metadata and HTTP Last-Modified are
+are `index_reported`; the index's own content-crawl time is `content_fetched`; explicit HTML
+publication/modification metadata and HTTP Last-Modified are
 separate observations. Unknown/ambiguous dates remain unknown. Collected sources preserve their
 requested URL separately from the resolved URL. Date assertions remain untrusted source data.
 

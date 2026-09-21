@@ -261,7 +261,11 @@ Operation keys prevent committed retries from reexecuting CDP commands; interrup
 operations remain uncertain and refuse automatic reexecution. See [artifacts](investigation-artifacts.md).
 
 The shared routing instructions use `search.query` for a lookup, `search.run` for overlapping
-queries/source collection, and `search.read` for incremental evidence. For a PDF already open
+queries/source collection, and `search.read` for incremental evidence. For work centered on a
+specific technology or product, they name that technology's current official documentation as
+primary evidence and direct the model to boost its canonical domain with `preferred_domains`
+(the model supplies the domain; no domain list is hardcoded), and they state that an old index
+age on a living docs page is not staleness — `content_fetched` dates show crawl currency. For a PDF already open
 in the browser, shared guidance instead directs the model to select its tab and use
 `embedded_browser.page read_page` with one-based `pdf_page`. This uses Chromium's native
 PDF text. An empty result may be a scan; page text does not establish image coverage or layout
