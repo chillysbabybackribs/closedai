@@ -388,7 +388,7 @@
 /* Focus is a ring hugging the border, not a halo blurred outside it: the field
    stays exactly the same size and shape, and the state reads instantly. */
 .omnibox:focus {
-  border-color: rgb(176 190 230 / 30%);
+  border-color: rgb(255 255 255 / 26%);
   background: var(--surface-card);
   box-shadow: 0 0 0 2px var(--focus-halo);
 }

@@ -43,9 +43,9 @@
 /* Antigravity accent: the card design's signature blue, used for the focused composer
    ring, the empty-state icon, and the running-process spinner. */
 :root {
-  --antigravity-blue: #86adff;
-  --antigravity-blue-hover: #a3c1ff;
-  --antigravity-blue-glow: rgb(134 173 255 / 24%);
+  --antigravity-blue: #8ab4f8;
+  --antigravity-blue-hover: #a5c5fa;
+  --antigravity-blue-glow: rgb(138 180 248 / 22%);
   /* Composer and user-card fills sit one step up the surface ladder. */
   --codex-desktop-composer-background: var(--surface-raised);
   --antigravity-card-bg: var(--surface-raised);
@@ -125,65 +125,65 @@
      recessed frame; chrome is the tab rail on top of a card; card is the content surface
      you read on; raised is anything that sits on a card (toolbar, bubble, popover).
      Adjacent steps stay >= 8 luminance points apart so each reads as its own plane. */
-  /* Cool graphite rather than neutral grey: a low-chroma blue-violet undertone keeps the
-     dark planes from reading as flat charcoal, and the inks stay pure so text pops. */
-  --chassis: #0b0c11;
-  --chassis-well: #08090d;
-  --surface-chrome: #14161d;
-  --surface-card: #1c1f28;
-  --surface-raised: #262a35;
-  --surface-control: #2b303c;
-  --surface-control-hover: #353b49;
-  --hairline: rgb(176 190 230 / 10%);
-  --hairline-strong: rgb(176 190 230 / 17%);
+  /* Neutral graphite. The card stays at the original reading value so transcript ink
+     keeps its contrast; depth comes from a deeper chassis under it, not a lighter card. */
+  --chassis: #0d0d0e;
+  --chassis-well: #09090a;
+  --surface-chrome: #141415;
+  --surface-card: #1a1a1b;
+  --surface-raised: #232325;
+  --surface-control: #28282a;
+  --surface-control-hover: #303033;
+  --hairline: rgb(255 255 255 / 8%);
+  --hairline-strong: rgb(255 255 255 / 14%);
   --titlebar-surface: var(--chassis);
-  --chrome-fg: #a4aab8;
-  --chrome-fg-strong: #f2f4f9;
+  --chrome-fg: #a1a1a5;
+  --chrome-fg-strong: #f1f1f3;
   /* Chrome icon/control ink — measured from Cursor + Antigravity dark_modern
      activityBar/icon tokens (idle #868686, active #D7D7D7 / #CCCCCC). Cleaner
      and quieter than near-white glyphs; selected dock still uses --cwd-ink. */
-  --chrome-control-fg: #8f95a5;
-  --chrome-control-muted: #767d8d;
-  --chrome-control-quiet: #606675;
-  --chrome-control-strong: #f0f2f8;
-  --chrome-control-selected: #e9ecf4;
-  --chrome-control-hover: rgb(190 202 240 / 8%);
-  --chrome-control-active: rgb(190 202 240 / 13%);
-  --chrome-control-divider: rgb(176 190 230 / 13%);
-  --chrome-control-edge: rgb(176 190 230 / 10%);
+  --chrome-control-fg: #8c8c8e;
+  --chrome-control-muted: #727274;
+  --chrome-control-quiet: #5c5c5e;
+  --chrome-control-strong: #f0f0f2;
+  --chrome-control-selected: #e8e8ea;
+  --chrome-control-hover: rgb(255 255 255 / 7%);
+  --chrome-control-active: rgb(255 255 255 / 11%);
+  --chrome-control-divider: rgb(255 255 255 / 11%);
+  --chrome-control-edge: rgb(255 255 255 / 8%);
   /* Lucide stroke upgraded to 1.75 for crisp, high-DPI rendering across shell chrome. */
   --chrome-icon-stroke: 1.75;
-  --surface-highlight: rgb(200 212 245 / 4%);
+  --surface-highlight: rgb(255 255 255 / 3.5%);
   /* Card edge and cast for tiles floating on the chassis. */
-  --tile-edge: rgb(176 190 230 / 12%);
+  --tile-edge: rgb(255 255 255 / 9%);
   --tile-shadow:
-    inset 0 1px 0 rgb(200 212 245 / 4%),
+    inset 0 1px 0 rgb(255 255 255 / 3.5%),
     0 1px 2px rgb(0 0 0 / 50%),
     0 8px 24px rgb(0 0 0 / 34%);
-  --focus-ink: #b7bdcd;
-  --focus-halo: rgb(134 173 255 / 28%);
+  --focus-ink: #adadb0;
+  --focus-halo: rgb(255 255 255 / 18%);
   /* The hues the transcript chrome spends: search match highlight and inline source links.
      Success ink marks a finished background-task chip. */
   --tab-accent: var(--antigravity-blue);
   --tab-active-surface: var(--surface-card);
   --link-ink: var(--antigravity-blue);
-  --ok-ink: #5fd18e;
-  --live-signal: #f0f2f8;
+  --ok-ink: #65b98a;
+  --live-signal: #ececee;
 
   /* The one hue the shell chrome spends: "this is armed and will interrupt".
      Owned here rather than by the composer because the stop button is no longer
      its only user — the browser's element picker reads as the same live mode. */
-  --stop-ink: #ff7e7e;
-  --stop-ink-hover: #ff9d9d;
+  --stop-ink: #ff8f8f;
+  --stop-ink-hover: #ffaaaa;
 
   /* Working-folder labels in the chat header and composer. Slate blue like
      Cursor's path/link ink — distinct from neutral chrome without reading as a
      bright accent. Verified live on graphite; AA (~7:1 at #7eb0e0). */
-  --cwd-ink: #8ab5f2;
+  --cwd-ink: #7eb0e0;
   /* Inline path/file chips: slate ink only — wrapper stays neutral grey like
      Cursor's file-mention pill (no blue wash on the chrome). */
-  --path-chip-bg: rgb(190 202 240 / 9%);
-  --path-chip-border: rgb(176 190 230 / 14%);
+  --path-chip-bg: rgb(255 255 255 / 8%);
+  --path-chip-border: rgb(255 255 255 / 12%);
 
   /* Transcript ink is intentionally separate from shell chrome. Assistant
      responses read like technical documents, and the document structure is
@@ -192,45 +192,45 @@
      Body copy is deliberately not near-white — at the transcript's 22px scale
      a light body makes headings invisible, which is what made the answer read
      as one undifferentiated slab. */
-  --transcript-copy: #b4b9c7;
+  --transcript-copy: #aeaeb3;
   --transcript-heading: #ffffff;
-  --transcript-strong: #f6f7fb;
-  --transcript-secondary: #979db0;
+  --transcript-strong: #f6f6f7;
+  --transcript-secondary: #93939a;
   /* Quiet process ink: Thought / Explored / tool-call labels. Kept a touch
      cool: at mid-grey on this chassis a perfectly neutral value renders warm
      once greyscale AA thins the stems, which read the labels as dull yellow. */
-  --transcript-activity: #a2a8ba;
-  --transcript-activity-hover: #dde0ea;
+  --transcript-activity: #9d9da4;
+  --transcript-activity-hover: #d8d8dc;
 
   /* Semantic shadcn tokens stay on the same neutral material ramp. */
   --background: var(--surface-card);
-  --foreground: #eff1f7;
+  --foreground: #eeeef0;
   --card: var(--surface-card);
-  --card-foreground: #eff1f7;
+  --card-foreground: #eeeef0;
   --popover: var(--surface-raised);
-  --popover-foreground: #eff1f7;
-  --primary: #eceef5;
-  --primary-foreground: #14161d;
+  --popover-foreground: #eeeef0;
+  --primary: #e8e8ea;
+  --primary-foreground: #141415;
   --secondary: var(--surface-control);
-  --secondary-foreground: #ebeef5;
+  --secondary-foreground: #eaeaec;
   --muted: var(--surface-control);
-  --muted-foreground: #9ca2b2;
+  --muted-foreground: #98989c;
   --accent: var(--surface-control-hover);
-  --accent-foreground: #f3f5fa;
-  --destructive: #e38d8d;
-  --border: rgb(176 190 230 / 11%);
-  --input: rgb(176 190 230 / 15%);
-  --ring: #8b91a3;
+  --accent-foreground: #f2f2f3;
+  --destructive: #d28b8b;
+  --border: rgb(255 255 255 / 9%);
+  --input: rgb(255 255 255 / 12%);
+  --ring: #7c7c7f;
   --radius: 0.5rem;
 
   /* Code and diff surfaces stay deliberately neutral. Syntax and change
      semantics can carry color; the material itself should never read blue. */
-  --code-canvas: #0f1016;
-  --code-surface: #14161d;
-  --code-header: #121319;
-  --code-border: rgb(176 190 230 / 10%);
-  --code-text: #d5d8e2;
-  --code-muted: #7d8394;
+  --code-canvas: #0f0f10;
+  --code-surface: #141415;
+  --code-header: #121213;
+  --code-border: rgb(255 255 255 / 9%);
+  --code-text: #d3d3d5;
+  --code-muted: #7a7a7d;
 
   /* Film-grain tile at ~2.5% alpha; reads as material, not pattern. Applied
      to chassis surfaces only — never the chat reading surface.
