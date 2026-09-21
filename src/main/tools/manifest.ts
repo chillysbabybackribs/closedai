@@ -1,16 +1,24 @@
 import type { ToolFieldInfo, ToolInfo, ToolManifest } from '../../shared/tools.js'
+import { READ_ONLY_TOOL_IDS, TOOL_GROUPS, catalogEntry, deferredStubTokens, estimateToolTokens } from './catalog.js'
 import type { ToolRegistry } from './registry.js'
 import type { JsonObject, ToolDefinition } from './tool.js'
 
-/** The registry, flattened for the Tools modal: exactly what the model is told, as data. */
+/** The registry, flattened for the Tools dialog: exactly what the model is told, as data. */
 export function toolManifest(registry: ToolRegistry, providers: string[]): ToolManifest {
+  const namespaces = registry.namespaces.map((namespace) => ({
+    name: namespace.name,
+    description: namespace.description,
+    tools: namespace.tools.map((tool) => toolInfo(namespace.name, tool, (id) => registry.isEnabled(id)))
+  }))
+  const advertisedTokens = namespaces.flatMap((namespace) => namespace.tools)
+    .filter((tool) => tool.enabled)
+    .reduce((sum, tool) => sum + tool.costTokens, 0)
   return {
     providers,
-    namespaces: registry.namespaces.map((namespace) => ({
-      name: namespace.name,
-      description: namespace.description,
-      tools: namespace.tools.map((tool) => toolInfo(namespace.name, tool, (id) => registry.isEnabled(id)))
-    }))
+    namespaces,
+    groups: [...TOOL_GROUPS],
+    advertisedTokens,
+    readOnlyIds: [...READ_ONLY_TOOL_IDS]
   }
 }
 
@@ -20,11 +28,17 @@ function toolInfo(namespace: string, tool: ToolDefinition, actionEnabled: (id: s
   const enabled = tool.actions?.length
     ? tool.actions.some((action) => actionEnabled(`${toolId}.${action.name}`))
     : actionEnabled(toolId)
+  const entry = catalogEntry(toolId)
   return {
-    id: `${namespace}.${tool.name}`,
+    id: toolId,
     namespace,
     name: tool.name,
     description: tool.description,
+    label: entry.label,
+    summary: entry.summary,
+    offEffect: entry.offEffect,
+    group: entry.group,
+    costTokens: tool.deferLoading ? deferredStubTokens(namespace, tool) : estimateToolTokens(namespace, tool),
     deferLoading: tool.deferLoading === true,
     enabled,
     timeoutMs: tool.timeoutMs ?? null,

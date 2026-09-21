@@ -466,6 +466,9 @@ function registerIpc(): void {
     onEnabledChanged: async (toolId, enabled, disabledIds) => {
       await settings?.set({ disabledTools: disabledIds })
       sendToMainWindow(IPC.event.toolsEvent, { type: 'enabled', toolId, enabled } satisfies ToolsEvent)
+    },
+    onEnabledManyChanged: async (disabledIds) => {
+      await settings?.set({ disabledTools: disabledIds })
     }
   })
 }

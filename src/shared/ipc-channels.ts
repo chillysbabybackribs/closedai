@@ -3,7 +3,7 @@ import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, Browser
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
-import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
+import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot } from './trace.js'
 import type { LibrarySettings, LibrarySnapshot } from './research-library.js'
 
@@ -87,6 +87,7 @@ export type IpcInvokeChannels = {
   'tools:telemetry': { args: []; result: ToolTelemetrySnapshot }
   'tools:clearTelemetry': { args: []; result: void }
   'tools:setEnabled': { args: [string, boolean]; result: void }
+  'tools:setEnabledMany': { args: [ToolSwitch[]]; result: void }
   'trace:setActive': { args: [boolean]; result: void }
   'trace:snapshot': { args: []; result: TraceSnapshot }
   'trace:clear': { args: []; result: void }
@@ -195,7 +196,8 @@ export const IPC = {
       manifest: 'tools:manifest',
       telemetry: 'tools:telemetry',
       clearTelemetry: 'tools:clearTelemetry',
-      setEnabled: 'tools:setEnabled'
+      setEnabled: 'tools:setEnabled',
+      setEnabledMany: 'tools:setEnabledMany'
     },
     trace: {
       setActive: 'trace:setActive',

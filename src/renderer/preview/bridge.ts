@@ -91,9 +91,9 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
       configure: async (settings) => { library.settings = settings; return structuredClone(library) },
       refresh: async () => { await native(); return structuredClone(library) }, cancel: native,
       dismiss: async () => structuredClone(library), restore: async () => structuredClone(library) },
-    tools: { manifest: async () => ({ namespaces: [], providers: [] }),
+    tools: { manifest: async () => ({ namespaces: [], providers: [], groups: [], advertisedTokens: 0, readOnlyIds: [] }),
       telemetry: async () => ({ stats: [], totalCalls: 0 }), clearTelemetry: native,
-      setEnabled: native, onEvent: idleSubscription },
+      setEnabled: native, setEnabledMany: native, onEvent: idleSubscription },
     trace: { setActive: async () => {}, snapshot: async () => ({ entries: [], dropped: 0, capacity: 0 }),
       clear: native, onEvent: idleSubscription }
   }

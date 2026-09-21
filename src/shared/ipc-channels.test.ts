@@ -22,6 +22,7 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'window:close',
     'window:toggleFullscreen',
     'window:toggleDevTools',
+    'tools:setEnabledMany',
     'browser:setBounds',
     'browser:navigate',
     'browser:back',

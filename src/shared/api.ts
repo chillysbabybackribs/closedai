@@ -120,6 +120,8 @@ export type ClosedaiApi = {
     clearTelemetry: () => Promise<void>
     /** Persisted. Takes effect for calls immediately and for advertising on the next thread. */
     setEnabled: (toolId: string, enabled: boolean) => Promise<void>
+    /** Many switches, one persisted write; the caller refreshes the manifest afterwards. */
+    setEnabledMany: (switches: import('./tools.js').ToolSwitch[]) => Promise<void>
     onEvent: (listener: (event: ToolsEvent) => void) => Unsubscribe
   }
   /** The live turn trace: in-memory, every pane, cleared at restart or on request. */

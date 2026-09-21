@@ -21,6 +21,22 @@ export type ToolActionInfo = {
   enabled: boolean
 }
 
+/**
+ * What switching a tool on lets the model do to the user. Groups in the Tools dialog are effects,
+ * not namespaces, because the switch decision is a trust decision.
+ */
+export type ToolEffect = 'reads-web' | 'acts-in-browser' | 'controls-app' | 'reads-secrets' | 'runs-native'
+
+export type ToolGroupInfo = {
+  id: ToolEffect
+  /** Group heading, for a person: "Read the web". */
+  label: string
+  /** The effect in two or three words: "Reads only", "Acts as you". */
+  effect: string
+  /** One sentence under the heading. */
+  summary: string
+}
+
 export type ToolInfo = {
   /** `namespace.tool`; stable key for telemetry. */
   id: string
@@ -28,6 +44,18 @@ export type ToolInfo = {
   name: string
   /** Exactly the description the model sees. */
   description: string
+  /** Human name for the row: "Browse a page". */
+  label: string
+  /** One line for a person, not the model. */
+  summary: string
+  /** What changes when the switch is off. */
+  offEffect: string
+  group: ToolEffect
+  /**
+   * Estimated tokens the tool's advertised name, description, and schema add to every turn
+   * (characters / 4). A deferred tool costs only its name until the model loads it.
+   */
+  costTokens: number
   deferLoading: boolean
   /** Off: not advertised to providers on new threads, and calls are refused. */
   enabled: boolean
@@ -49,7 +77,16 @@ export type ToolManifest = {
   namespaces: ToolNamespaceInfo[]
   /** Providers the registry is currently advertised to. */
   providers: string[]
+  /** Effect groups in display order. */
+  groups: ToolGroupInfo[]
+  /** Estimated tokens the enabled set adds to every turn; deferred tools count their name only. */
+  advertisedTokens: number
+  /** Tool ids the Read-only preset keeps on: they observe and never act for the user. */
+  readOnlyIds: string[]
 }
+
+/** One switch change; a batch of these is one persisted write and one refresh. */
+export type ToolSwitch = { id: string; enabled: boolean }
 
 /** Aggregate-only call event. No arguments, results, messages, or conversation ids cross IPC. */
 export type ToolCallEvent = {

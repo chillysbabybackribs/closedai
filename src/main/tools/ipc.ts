@@ -1,5 +1,6 @@
 import type { IpcMain } from 'electron'
 import { IPC } from '../../shared/ipc-channels.js'
+import type { ToolSwitch } from '../../shared/tools.js'
 import { toolManifest } from './manifest.js'
 import type { ToolRegistry } from './registry.js'
 import type { ToolTelemetry } from './telemetry.js'
@@ -11,6 +12,8 @@ export type ToolsIpcDeps = {
   providers: () => string[]
   /** Persist the disabled ids and tell the renderer. */
   onEnabledChanged: (toolId: string, enabled: boolean, disabledIds: string[]) => Promise<void>
+  /** Persist after a bulk change; the renderer refreshes the manifest itself. */
+  onEnabledManyChanged: (disabledIds: string[]) => Promise<void>
 }
 
 export function registerToolsIpc(ipcMain: IpcMain, deps: ToolsIpcDeps): void {
@@ -33,5 +36,14 @@ export function registerToolsIpc(ipcMain: IpcMain, deps: ToolsIpcDeps): void {
     if (typeof toolId !== 'string' || typeof enabled !== 'boolean') throw new Error('Invalid tool toggle')
     const disabledIds = registry.setEnabled(toolId, enabled)
     await deps.onEnabledChanged(toolId, enabled, disabledIds)
+  })
+  ipcMain.handle(IPC.invoke.tools.setEnabledMany, async (_event, switches: unknown) => {
+    const registry = deps.registry()
+    if (!registry) throw new Error('Tools are not available')
+    if (!Array.isArray(switches) || !switches.every((entry) =>
+      entry && typeof entry === 'object' && typeof entry.id === 'string' && typeof entry.enabled === 'boolean')) {
+      throw new Error('Invalid tool switches')
+    }
+    await deps.onEnabledManyChanged(registry.setEnabledMany(switches as ToolSwitch[]))
   })
 }

@@ -89,6 +89,17 @@ export class ToolRegistry {
     return this.disabledIds()
   }
 
+  /** Apply many switches at once; one persisted write follows. Unknown ids are ignored. */
+  setEnabledMany(switches: ReadonlyArray<{ id: string; enabled: boolean }>): string[] {
+    const known = new Set(this.switchableIds())
+    for (const { id, enabled } of switches) {
+      if (!known.has(id)) continue
+      if (enabled) this.disabled.delete(id)
+      else this.disabled.add(id)
+    }
+    return this.disabledIds()
+  }
+
   disabledIds(): string[] {
     return [...this.disabled].sort()
   }

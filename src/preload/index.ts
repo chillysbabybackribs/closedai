@@ -115,6 +115,7 @@ const api: ClosedaiApi = {
     telemetry: () => invoke(IPC.invoke.tools.telemetry),
     clearTelemetry: () => invoke(IPC.invoke.tools.clearTelemetry),
     setEnabled: (toolId: string, enabled: boolean) => invoke(IPC.invoke.tools.setEnabled, toolId, enabled),
+    setEnabledMany: (switches) => invoke(IPC.invoke.tools.setEnabledMany, switches),
     onEvent: (listener) => subscribe(IPC.event.toolsEvent, listener)
   },
   trace: {
