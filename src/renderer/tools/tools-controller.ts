@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { ToolCallEvent, ToolManifest, ToolTelemetrySnapshot } from '../../shared/tools.js'
+import type { ToolCallEvent, ToolManifest, ToolSwitch, ToolTelemetrySnapshot } from '../../shared/tools.js'
 
 export type ToolsController = {
   manifest: ToolManifest | null
@@ -8,6 +8,8 @@ export type ToolsController = {
   refresh: () => Promise<void>
   clearTelemetry: () => Promise<void>
   setEnabled: (toolId: string, enabled: boolean) => Promise<void>
+  /** One row, one group, or a preset: applied optimistically, persisted once, then re-read. */
+  setEnabledMany: (switches: ToolSwitch[]) => Promise<void>
 }
 
 /** Loads the manifest and telemetry while `active`, and keeps telemetry live via push events. */
@@ -68,7 +70,20 @@ export function useToolsController(active: boolean): ToolsController {
     }
   }, [refresh])
 
-  return { manifest, telemetry, error, refresh, clearTelemetry, setEnabled }
+  const setEnabledMany = useCallback(async (switches: ToolSwitch[]) => {
+    setManifest((current) => current
+      ? switches.reduce((next, { id, enabled }) => withEnabled(next, id, enabled), current)
+      : current)
+    try {
+      await window.closedai.tools.setEnabledMany(switches)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught))
+    }
+    // Bulk changes emit no per-id events; the manifest's cost total comes back from this read.
+    await refresh()
+  }, [refresh])
+
+  return { manifest, telemetry, error, refresh, clearTelemetry, setEnabled, setEnabledMany }
 }
 
 /** Apply a switch to a plain tool (`ns.tool`) or one action (`ns.tool.action`). */
