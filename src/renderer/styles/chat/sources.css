@@ -1,4 +1,4 @@
-/* Inline sources read as links: link ink with a soft rule that firms up on hover. */
+/* Inline sources read as links through their link ink and hover colour. */
 .prompt-markdown .prompt-source-trigger {
   display: inline-flex;
   align-items: center;
@@ -9,13 +9,8 @@
   font-size: inherit;
   line-height: 1;
   text-decoration: none;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 35%, transparent);
   vertical-align: -3px;
-  transition: color 120ms var(--ease-chrome), border-color 120ms var(--ease-chrome);
-}
-
-.prompt-markdown .prompt-source-trigger:hover {
-  border-bottom-color: currentColor;
+  transition: color 120ms var(--ease-chrome);
 }
 
 /* The favicon fallback when the icon service is unreachable: a quiet glyph, never a broken image. */
