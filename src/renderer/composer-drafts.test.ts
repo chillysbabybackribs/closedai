@@ -64,7 +64,6 @@ test('ComposerCompactRow renders compact model and controls', () => {
       null,
       createElement(ComposerCompactRow, {
         running: false,
-        activeTurnId: null,
         modelMenu: createElement('span', { className: 'test-model-menu' }, 'GPT-4o'),
         attachmentPicker: createElement('span', { className: 'test-attachment-picker' }),
         provider: 'codex',

@@ -5,12 +5,11 @@ import { Button } from '../components/ui/button.js'
 import { PromptInputAction, PromptInputTextarea } from '../components/ui/prompt-input.js'
 import type { ChatProvider } from '../shared/chat.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
-import { TurnActivityIndicator } from './task-activity.js'
 
 export type ComposerCompactRowProps = {
   running: boolean
-  activeTurnId: string | null
-  /** The model picker, rendered where the full view would show it; the row supplies the slot. */
+  /** The model picker, shown in every state; the working timer lives on the project rail above,
+   *  exactly where the full view keeps it, so the pill never swaps its controls mid-turn. */
   modelMenu: ReactNode
   /** The + upload button and its file input, shared with the full view. */
   attachmentPicker: ReactNode
@@ -30,7 +29,6 @@ export type ComposerCompactRowProps = {
 
 export function ComposerCompactRow({
   running,
-  activeTurnId,
   modelMenu,
   attachmentPicker,
   provider,
@@ -48,13 +46,7 @@ export function ComposerCompactRow({
 }: ComposerCompactRowProps): JSX.Element {
   return (
     <div className="prompt-composer-compact-row">
-      {running ? (
-        <div className="prompt-composer-compact-status">
-          <TurnActivityIndicator activeTurnId={activeTurnId} />
-        </div>
-      ) : (
-        <div className="prompt-composer-compact-model">{modelMenu}</div>
-      )}
+      <div className="prompt-composer-compact-model">{modelMenu}</div>
       <PromptInputTextarea
         aria-label="Message Codex"
         data-ui="composer.input"

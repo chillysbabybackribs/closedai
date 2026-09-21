@@ -216,7 +216,6 @@ export function Composer({
         {isCompact ? (
           <ComposerCompactRow
             running={running}
-            activeTurnId={activeTurnId}
             modelMenu={
               <ModelMenu
                 enabled={enabled && !running}
