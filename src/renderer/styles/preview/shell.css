@@ -4,7 +4,6 @@
 }
 
 .preview-toolbar {
-  --preview-hmr-check: verified;
   flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
