@@ -1,3 +1,5 @@
+import { errorMessage } from '../error-message.js'
+
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
@@ -16,12 +18,7 @@ export function formatChatTime(timestampMs: number, now = Date.now()): string {
 
 /** A history action failure: the message itself, without Electron's IPC prefix. */
 export function historyErrorMessage(error: unknown): string {
-  const text = (error instanceof Error ? error.message : String(error))
-    .replace(/^Error invoking remote method '[^']*': /, '')
-    .replace(/^\w*Error: /, '')
-    .trim()
-  const message = text || 'Something went wrong'
-  return message.length > 140 ? `${message.slice(0, 139).trimEnd()}…` : message
+  return errorMessage(error)
 }
 
 export function basename(path: string): string {

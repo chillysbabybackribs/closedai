@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createPreviewChat } from './chat.js'
 import { createPreviewBridge } from './bridge.js'
-import { parseScenario } from './fixtures.js'
+import { parseScenario, sampleChat } from './fixtures.js'
 import { createPreviewStorage } from './storage.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 
@@ -43,7 +43,8 @@ test('streaming starts once, emits progress, and stops on pause or disposal', as
   try {
     preview.start()
     preview.start()
-    assert.equal((await preview.api.snapshot()).selected.items.length, 4)
+    // The fixture transcript plus exactly one streamed answer, however many sample items exist.
+    assert.equal((await preview.api.snapshot()).selected.items.length, sampleChat('x').items.length + 1)
     context.mock.timers.tick(420)
     const running = (await preview.api.snapshot()).selected
     assert.ok(running.activeTurnId)
