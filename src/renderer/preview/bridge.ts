@@ -4,7 +4,7 @@ import type { LibrarySnapshot } from '../../shared/research-library.js'
 import type { ProviderAvailability } from '../../shared/provider-availability.js'
 import { createPreviewChat } from './chat.js'
 import type { Scenario } from './fixtures.js'
-import { sampleToolManifest, sampleToolTelemetry } from './tools-fixture.js'
+import { createToolsFixture } from './tools-fixture.js'
 
 /** Compile-time complete: additions to the real bridge must be considered here too. */
 export function createPreviewBridge(scenario: Scenario, report: (message: string) => void,
@@ -51,10 +51,11 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
     if (!tabs.some((tab) => tab.active)) tabs[0]!.active = true
     publishBrowser()
   }
-  // Onboarding fixture: Codex present, the external CLIs absent, Claude bundled.
+  // Onboarding fixture: Codex and the external CLIs absent, Claude bundled; matches the
+  // `unavailable` scenario's missing-Codex message.
   const providerAvailability: ProviderAvailability[] = [
-    { provider: 'codex', installed: true, path: '/usr/local/bin/codex',
-      hint: 'Codex is installed. Sign in with ChatGPT from a Codex chat when prompted.' },
+    { provider: 'codex', installed: false, path: null,
+      hint: 'Codex is not installed. Install the Codex CLI and sign in from the app, or choose another model.' },
     { provider: 'claude', installed: true, path: null,
       hint: 'Claude Code is bundled with the app. Sign in from a Claude chat when prompted.' },
     { provider: 'antigravity', installed: false, path: null,
@@ -104,9 +105,7 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
       configure: async (settings) => { library.settings = settings; return structuredClone(library) },
       refresh: async () => { await native(); return structuredClone(library) }, cancel: native,
       dismiss: async () => structuredClone(library), restore: async () => structuredClone(library) },
-    tools: { manifest: async () => sampleToolManifest(),
-      telemetry: async () => sampleToolTelemetry(), clearTelemetry: native,
-      setEnabled: native, setEnabledMany: native, onEvent: idleSubscription },
+    tools: createToolsFixture(),
     trace: { setActive: async () => {}, snapshot: async () => ({ entries: [], dropped: 0, capacity: 0 }),
       clear: native, onEvent: idleSubscription }
   }

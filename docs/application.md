@@ -562,7 +562,10 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   guidance (`chat-connection.tsx`): the empty pane's heading is “Sign in to <Provider>”,
   “<Provider> is unavailable”, or “Starting <Provider>…” by connection state over main's message
   (install steps, sign-in path, or failure), with Sign in with ChatGPT for a signed-out Codex pane
-  and a “Choose model” hint that opens the model menu for every blocked state; once a transcript
+  and a “Choose model” hint that opens the model menu for every blocked state. A blocked empty
+  pane also reads `chat.providerAvailability()` once and lists each provider as Installed or Not
+  installed, so a missing CLI on first run does not hide the providers that would work; a failed
+  read leaves the message-only state. Once a transcript
   exists the same guidance is a strip above the composer instead of replacing the messages.
   Failed pause, model, and effort changes appear in the composer's alert row; a failed compaction
   or refused shell shortcut appears as a dismissible notice. The model menu lists Inspect context

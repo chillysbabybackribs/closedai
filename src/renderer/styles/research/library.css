@@ -120,29 +120,6 @@
   gap: 6px;
 }
 
-.research-library-paper {
-  display: grid;
-  gap: 8px;
-  padding: 16px 0;
-  border-top: 1px solid var(--border);
-}
+.research-library-rows { margin: 4px 0 0; padding: 0; list-style: none; }
 
-.research-library-dialog .research-library-paper-title {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  text-align: left;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.research-library-paper summary {
-  cursor: pointer;
-  width: fit-content;
-}
-
-.research-library-abstract {
-  margin: 8px 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
+.research-library-abstract { max-height: 220px; }

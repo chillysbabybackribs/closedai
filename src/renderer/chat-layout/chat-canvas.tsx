@@ -13,7 +13,7 @@ import { browserDropAt, browserDropPreview, sameBrowserDrop, type BrowserDrop } 
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
@@ -30,6 +30,8 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
   onSelectTab: (id: string) => void
   onCloseTab: (id: string) => void
   onNewChat: (id: string) => void
+  /** The tools preset; the header names it while it is Read-only. */
+  toolsPreset?: 'full' | 'read-only' | 'custom' | null
   onRenameChat?: (id: string) => void
   onTogglePin?: (id: string, pinned: boolean) => void
   onPauseTab?: (id: string) => void
@@ -251,6 +253,8 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
                 <ChatTabs ids={tabs} activeId={activeId} busy={busy} canClose={tabs.length > 1 || chatCount > 1}
                   title={title} activity={activity} onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab}
                   onDrag={(tab) => setDragging({ id: tab, singleTab: true })} />
+                {toolsPreset === 'read-only' && <span className="chat-layout-preset" data-ui="layout.tools-preset"
+                  title="Tools are in Read-only: the model can look but not act. Change it in Agent → Tools & capabilities.">Read-only</span>}
                 <button type="button" className="chat-layout-new-chat"
                   data-ui="layout.new-chat" data-ui-key={activeId} disabled={busy}
                   title="New chat tab" aria-label="New chat tab"

@@ -20,6 +20,7 @@ import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-w
 import type { ChatPaneDialog } from './chat-pane.js'
 import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SettingsDialog, type SettingsTab } from './settings/settings-dialog.js'
+import { useToolsPreset } from './tools/use-tools-preset.js'
 import { ResearchLibraryDialog } from './research/library-dialog.js'
 import { BrowserGlobeIcon } from './browser-globe-icon.js'
 import {
@@ -46,6 +47,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const dialogsRef = useRef({ settingsOpen, researchOpen, renamingChat, paneDialog })
   dialogsRef.current = { settingsOpen, researchOpen, renamingChat, paneDialog }
   const workspaceRef = useRef<ChatLayoutHandle>(null)
+  const toolsPreset = useToolsPreset()
   const [browserVisible, setBrowserVisible] = useState(false)
   // A shortcut or menu action main refused; shown under the title bar until dismissed.
   const [shellError, setShellError] = useState<string | null>(null)
@@ -223,6 +225,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           onHistoryOpenChange={setHistoryOpen}
           dialog={paneDialog}
           onDialogChange={setPaneDialog}
+          toolsPreset={toolsPreset}
           onRenameChat={(id, title) => setRenamingChat({ id, title })}
           archiveChat={history.deleteRow}
         />}

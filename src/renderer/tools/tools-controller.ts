@@ -47,6 +47,10 @@ export function useToolsController(active: boolean): ToolsController {
         setManifest((current) => current ? withEnabled(current, event.toolId, event.enabled) : current)
         return
       }
+      if (event.type === 'changed') {
+        void refresh()
+        return
+      }
       setTelemetry((current) => current ? applyRecord(current, event.record) : current)
     })
     return () => {

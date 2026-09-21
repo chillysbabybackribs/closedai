@@ -144,3 +144,5 @@ export type ToolsEvent =
   | { type: 'call'; record: ToolCallEvent }
   | { type: 'cleared' }
   | { type: 'enabled'; toolId: string; enabled: boolean }
+  /** Many switches changed at once; readers re-read the manifest. */
+  | { type: 'changed' }

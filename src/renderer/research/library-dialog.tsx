@@ -1,6 +1,7 @@
 import { useState, type JSX } from 'react'
 import { BookOpen, RefreshCw } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog.js'
+import { DisclosureRow } from '../../components/ui/disclosure-row.js'
 import type { LibrarySnapshot } from '../../shared/research-library.js'
 import { useResearchLibrary } from './library-controller.js'
 
@@ -22,6 +23,7 @@ export function ResearchLibraryDialog({ open, onOpenChange }: {
   const library = useResearchLibrary(open)
   const [filter, setFilter] = useState('')
   const [limit, setLimit] = useState(20)
+  const [openId, setOpenId] = useState<string | null>(null)
   const snapshot = library.snapshot
   const refreshing = snapshot?.refreshing ?? false
   const locked = library.busy || refreshing
@@ -109,19 +111,26 @@ export function ResearchLibraryDialog({ open, onOpenChange }: {
               {!papers.length && <p className="research-library-muted">
                 {snapshot.total ? 'No saved papers match this filter.' : 'No papers in the selected publication window yet.'}
               </p>}
-              {papers.slice(0, limit).map((paper) => <article className="research-library-paper" key={paper.id}>
-                <button type="button" data-ui="research.paper-open" data-ui-key={paper.id}
-                  className="research-library-paper-title" onClick={() => library.openPaper(paper.url)}>{paper.title}</button>
-                <p className="research-library-muted">Published {date(paper.publishedAt)} · Retrieved {date(paper.retrievedAt)} · alphaXiv</p>
-                <p className="research-library-muted">{paper.topics.join(' · ')}</p>
-                <details>
-                  <summary data-ui="research.paper-details" data-ui-key={paper.id}>Abstract</summary>
-                  <p className="research-library-abstract">{paper.abstract || 'No abstract available.'}</p>
-                  <p className="research-library-muted">{paper.abstractTruncated ? 'Abstract shortened. ' : ''}Discovery evidence; findings have not been verified.</p>
-                </details>
-                <button type="button" data-ui="research.paper-dismiss" data-ui-key={paper.id}
-                  disabled={locked} onClick={() => { void library.dismiss(paper.id) }}>Dismiss</button>
-              </article>)}
+              <ul className="research-library-rows">
+                {papers.slice(0, limit).map((paper) => (
+                  <DisclosureRow key={paper.id} id={paper.id} control="research.paper-details" label={paper.title}
+                    note={date(paper.publishedAt)} open={openId === paper.id}
+                    onOpenChange={(next) => setOpenId(next ? paper.id : null)}
+                    trailing={<button type="button" className="disclosure-row-action" data-ui="research.paper-dismiss" data-ui-key={paper.id}
+                      disabled={locked} onClick={() => { void library.dismiss(paper.id) }}>Dismiss</button>}>
+                    <div className="disclosure-panel-id">alphaXiv {paper.id}<span> · retrieved {date(paper.retrievedAt)}{paper.topics.length ? ` · ${paper.topics.join(' · ')}` : ''}</span></div>
+                    <blockquote className="disclosure-panel-quote research-library-abstract">
+                      <span className="disclosure-panel-quote-label">Abstract</span>
+                      {paper.abstract || 'No abstract available.'}
+                    </blockquote>
+                    <p className="research-library-muted">{paper.abstractTruncated ? 'Abstract shortened. ' : ''}Discovery evidence; findings have not been verified.</p>
+                    <div className="disclosure-panel-actions">
+                      <button type="button" className="disclosure-panel-action" data-ui="research.paper-open" data-ui-key={paper.id}
+                        onClick={() => library.openPaper(paper.url)}>Open paper</button>
+                    </div>
+                  </DisclosureRow>
+                ))}
+              </ul>
               {papers.length > limit && <button type="button" data-ui="research.more" onClick={() => setLimit(limit + 20)}>
                 Show more ({papers.length - limit} remaining)
               </button>}

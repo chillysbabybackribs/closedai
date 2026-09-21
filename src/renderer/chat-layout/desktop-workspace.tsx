@@ -22,7 +22,7 @@ export type ChatLayoutHandle = {
   openLayoutPresets: () => void
 }
 
-export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onRenameChat, onBrowserVisibilityChange, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, toolsPreset = null, onRenameChat, onBrowserVisibilityChange, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
   reviewQueue: ChatReviewQueue
   appearance: AppearanceSettings
@@ -30,6 +30,8 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   onHistoryOpenChange: (open: boolean) => void
   dialog: ChatPaneDialog | null
   onDialogChange: (dialog: ChatPaneDialog | null) => void
+  /** Shown in every pane header while the registry is in Read-only; null until known. */
+  toolsPreset?: 'full' | 'read-only' | 'custom' | null
   onRenameChat?: (id: string, title: string) => void
   onBrowserVisibilityChange: (visible: boolean) => void
   archiveChat?: (chatId: string) => Promise<void>
@@ -74,7 +76,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
     {layout.error && <div className="chat-layout-error" role="alert">{layout.error}</div>}
     <ChatLayoutActions.Provider value={actions}>
     <ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
-        notice={layout.notice}
+        notice={layout.notice} toolsPreset={toolsPreset}
         browserRevealVersion={browserRevealVersion}
         onDragActive={setDragging}
         browserVisible={layout.browserVisible}

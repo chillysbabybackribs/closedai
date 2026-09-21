@@ -1,4 +1,4 @@
-import type { ToolManifest, ToolTelemetrySnapshot } from '../../shared/tools.js'
+import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from '../../shared/tools.js'
 
 const GROUPS: ToolManifest['groups'] = [
   { id: 'reads-web', label: 'Read the web', effect: 'Reads only', summary: 'Open pages, search, and read sources. Nothing is changed on any site.' },
@@ -46,6 +46,45 @@ export function sampleToolManifest(): ToolManifest {
     namespaces: [...byNamespace].map(([name, entries]) => ({ name, description: `${name} namespace`, tools: entries })),
     advertisedTokens: tools.filter((tool) => tool.enabled).reduce((sum, tool) => sum + tool.costTokens, 0),
     readOnlyIds: ['embedded_browser.page', 'search.query', 'search.library', 'closedai_app.state', 'closedai_ui.capture']
+  }
+}
+
+/** A registry the preview can switch: toggles apply in memory and fire the same events. */
+export function createToolsFixture(): {
+  manifest: () => Promise<ToolManifest>
+  telemetry: () => Promise<ToolTelemetrySnapshot>
+  setEnabled: (id: string, enabled: boolean) => Promise<void>
+  setEnabledMany: (switches: ToolSwitch[]) => Promise<void>
+  clearTelemetry: () => Promise<void>
+  onEvent: (listener: (event: ToolsEvent) => void) => () => void
+} {
+  let manifest = sampleToolManifest()
+  let telemetry = sampleToolTelemetry()
+  const listeners = new Set<(event: ToolsEvent) => void>()
+  const emit = (event: ToolsEvent): void => { for (const listener of listeners) listener(event) }
+  const apply = (switches: ToolSwitch[]): void => {
+    const wanted = new Map(switches.map((entry) => [entry.id, entry.enabled]))
+    manifest = {
+      ...manifest,
+      namespaces: manifest.namespaces.map((namespace) => ({
+        ...namespace,
+        tools: namespace.tools.map((tool) => {
+          const actions = tool.actions.map((action) => ({ ...action, enabled: wanted.get(action.id) ?? action.enabled }))
+          const enabled = actions.length ? actions.some((action) => action.enabled) : (wanted.get(tool.id) ?? tool.enabled)
+          return { ...tool, actions, enabled }
+        })
+      }))
+    }
+    manifest.advertisedTokens = manifest.namespaces.flatMap((namespace) => namespace.tools)
+      .filter((tool) => tool.enabled).reduce((sum, tool) => sum + tool.costTokens, 0)
+  }
+  return {
+    manifest: async () => manifest,
+    telemetry: async () => telemetry,
+    setEnabled: async (id, enabled) => { apply([{ id, enabled }]); emit({ type: 'enabled', toolId: id, enabled }) },
+    setEnabledMany: async (switches) => { apply(switches); emit({ type: 'changed' }) },
+    clearTelemetry: async () => { telemetry = { ...telemetry, stats: [], errors: [], totalCalls: 0, since: Date.now() }; emit({ type: 'cleared' }) },
+    onEvent: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } }
   }
 }
 

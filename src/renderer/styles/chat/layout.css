@@ -147,6 +147,15 @@
 }
 .chat-layout-tile[hidden] { display: none; }
 .chat-layout-header { flex: 0 0 38px; padding: 0 4px 0 0; }
+/* The preset name sits before the tab actions, quiet text: a chat that cannot act says so. */
+.chat-layout-preset {
+  flex: none;
+  padding: 0 6px;
+  color: var(--ok-ink);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: default;
+}
 /* Dedicated pane grip: tab drags move one conversation; compact tab strips leave no empty header. */
 .chat-layout-header > button.chat-layout-drag {
   display: inline-flex;
