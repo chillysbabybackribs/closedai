@@ -2,6 +2,25 @@ import type { ToolCallRequest } from '../registry.js'
 import type { JsonObject, ToolContext } from '../tool.js'
 
 type Tab = { id: string; active: boolean }
+
+/**
+ * Verbs that only observe a page, by `namespace.tool` and action. Any chat may run these against
+ * any tab, and running one never claims a tab or moves the caller's default: looking at a page is
+ * not taking it over, and a chat asked "what is on screen?" should not end up owning the page the
+ * user was reading. Everything absent from this list — changing a page, where it points, what the
+ * window shows, or the tab strip — still needs the assignment.
+ *
+ * `script evaluate` and `script fetch` are deliberately absent: both run in the page and can act
+ * (evaluate is arbitrary JavaScript, fetch borrows the tab's origin and session for a write).
+ */
+const OBSERVING: Record<string, readonly string[]> = {
+  'embedded_browser.page': ['read_page', 'wait_for'],
+  'embedded_browser.script': ['query', 'extract', 'console'],
+  'closedai_ui.capture': ['browser_page'],
+  'browser_cdp.page': ['inspect_page'],
+  'browser_cdp.profile': ['metrics'],
+  'browser_cdp.protocol': ['capabilities', 'targets', 'events', 'requests', 'body']
+}
 export type BrowserCoordinationHost = {
   tabs(): readonly Tab[]
   create(): string
@@ -64,6 +83,9 @@ export class BrowserCoordination {
     if (!id || !this.host.tabs().some(tab => tab.id === id)) {
       throw new Error('This chat’s browser tab is closed or unavailable. Pass an open tab_id or navigate with new_tab: true; the selected tab was not used.')
     }
+    // Reading any tab is allowed and claims nothing; selecting one only changes what the window
+    // shows. Both leave the page to whoever is working in it.
+    if (this.observes(request, action, input, tabCommand)) return { ...input, tab_id: id }
     if (tabCommand && ['close_others', 'close_right'].includes(String(input.op))) {
       const tabs = this.host.tabs()
       const affected = input.op === 'close_others' ? tabs.filter(tab => tab.id !== id)
@@ -114,10 +136,16 @@ export class BrowserCoordination {
       assignments: entries.slice(0, 32).map(([tabId, owner]) => ({ tabId, paneId: owner })) }
   }
 
+  /** Whether this call only looks at the tab, so it needs no assignment and takes none. */
+  private observes(request: ToolCallRequest, action: string, input: JsonObject, tabCommand: boolean): boolean {
+    if (tabCommand) return input.op === 'select'
+    return OBSERVING[`${request.namespace}.${request.tool}`]?.includes(action) === true
+  }
+
   private checkOwner(tabId: string, paneId: string): void {
     const owner = this.owners.get(tabId)
     if (owner && owner !== paneId) {
-      throw new Error(`Browser tab ${tabId} is assigned to chat ${owner}. Use your own tab or navigate with new_tab: true. Its owner can release it with browser_tab op: release.`)
+      throw new Error(`Browser tab ${tabId} is assigned to chat ${owner}. You can still read it (read_page, wait_for, query, extract, console, capture) and select it; to act in a page, use your own tab or navigate with new_tab: true. Its owner can release it with browser_tab op: release.`)
     }
   }
 
