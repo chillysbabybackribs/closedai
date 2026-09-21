@@ -719,15 +719,15 @@ complete.
 
 The dialog groups tools by effect rather than namespace, because a switch is a trust decision:
 Read the web (reads only), Act in the browser (acts as you), Control ClosedAI, Your secrets, This
-machine. Each group is a section with one switch (dimmed when partly off), its count and cost,
-and a card grid: one shadcn Card per tool (`src/components/ui/card.tsx`) with the name and switch
-in the header, the person-facing summary, a status line (cost, or the error, refused-call, or
-suggestion note with a red or amber dot), and a Details disclosure that opens the card to full
-width: technical id and verbs, summary and off effect, effect, cost, last use, runs, recent
-failure notes, the exact text the model reads, and the advertised schema. The footer offers
-presets: Full turns everything
-on; Read-only keeps `READ_ONLY_TOOL_IDS` (the reads-only group plus app state, screenshots, and
-chat reading) and turns the rest off; Custom is the detected state of any other combination.
+machine. A left rail lists those groups with on/total counts, token cost, a relative cost bar, and
+a failing count when any enabled tool in the group has errors. Selecting a group fills the pane:
+summary and master switch in the head, then one ledger row per tool (switch, name, summary, cost,
+status dot). Clicking a row opens its overview inline: technical id and verbs, summary and off
+effect, effect, cost, last use, runs, recent failure notes, the exact text the model reads, and
+the advertised schema. Presets (Full, Read-only, Custom) sit under the rail; the footer resets
+telemetry counts. Full turns everything on; Read-only keeps `READ_ONLY_TOOL_IDS` (the reads-only
+group plus app state, screenshots, and chat reading) and turns the rest off; Custom is the
+detected state of any other combination.
 
 Switches are persisted enable/disable state. A disabled plain tool is not advertised to
 providers and calls are refused. Switching a row off disables every verb of an action tool; the

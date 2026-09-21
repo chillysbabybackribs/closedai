@@ -1,20 +1,18 @@
 import { useState, type JSX } from 'react'
-import { ChevronDown } from 'lucide-react'
 
 import { Button } from '../../components/ui/button.js'
-import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../components/ui/card.js'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../components/ui/collapsible.js'
+import { Collapsible, CollapsibleContent } from '../../components/ui/collapsible.js'
 import { Switch } from '../../components/ui/switch.js'
 import { cn } from '../../lib/utils.js'
 import type { ToolInfo } from '../../shared/tools.js'
-import { plural, relativeTime, unusedFor, type ToolRowModel } from './tools-model.js'
+import { formatTokens, plural, relativeTime, unusedFor, type ToolRowModel } from './tools-model.js'
 
 const TONE_TEXT = {
   bad: 'text-destructive',
   warn: 'text-[color:var(--warning,#c58b45)]'
 } as const
 
-export type ToolCardProps = {
+export type ToolRowProps = {
   row: ToolRowModel
   effect: string
   open: boolean
@@ -22,63 +20,52 @@ export type ToolCardProps = {
   since: number | null
   onOpenChange: (open: boolean) => void
   onToggle: (enabled: boolean) => void
-  /** Puts a repair request for this tool into the selected chat's composer. */
   onRepair: () => void
 }
 
-/**
- * One tool as a card: name and switch in the header, the person-facing summary beneath, one
- * status line, and a Details disclosure that opens the full overview. An open card takes the
- * whole grid row so the overview has room to read.
- */
-export function ToolCard({ row, effect, open, now, since, onOpenChange, onToggle, onRepair }: ToolCardProps): JSX.Element {
+/** One tool as a ledger row: switch, name, summary, cost, status dot; click opens the overview inline. */
+export function ToolRow({ row, effect, open, now, since, onOpenChange, onToggle, onRepair }: ToolRowProps): JSX.Element {
   const { tool } = row
   return (
-    <Card
-      data-enabled={tool.enabled}
-      data-tool={tool.id}
-      data-state={open ? 'open' : 'closed'}
-      className={cn(
-        'gap-3 py-4 transition-[opacity,box-shadow]',
-        open && 'col-span-full ring-1 ring-ring/40',
-        !tool.enabled && 'opacity-60'
-      )}
-    >
-      <CardHeader className="gap-1 px-4">
-        <CardTitle className="flex items-center gap-2 text-[13.5px]">
-          <span className="truncate">{tool.label}</span>
-          {row.flag ? <span aria-hidden="true" className={cn('size-1.5 shrink-0 rounded-full', row.flag === 'bad' ? 'bg-destructive' : 'bg-[color:var(--warning,#c58b45)]')} /> : null}
-        </CardTitle>
-        <CardDescription className="text-xs leading-relaxed">{tool.summary || tool.offEffect}</CardDescription>
-        <CardAction>
-          <Switch
-            checked={tool.enabled}
-            onCheckedChange={onToggle}
-            aria-label={`${tool.enabled ? 'Turn off' : 'Turn on'} ${tool.label}`}
-            data-ui="tools.toggle"
-            data-ui-key={tool.id}
-          />
-        </CardAction>
-      </CardHeader>
-      <Collapsible open={open} onOpenChange={onOpenChange} className="contents">
-        <CardFooter className="mt-auto items-center justify-between gap-3 px-4">
-          <span className={cn('truncate text-xs text-muted-foreground', row.flag && TONE_TEXT[row.flag])}>
-            {row.note || `${tool.costTokens} tokens / turn`}
-          </span>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground" data-ui="tools.row" data-ui-key={tool.id}>
-              Details
-              <ChevronDown className={cn('transition-transform', open && 'rotate-180')} aria-hidden="true" />
-            </Button>
-          </CollapsibleTrigger>
-        </CardFooter>
-        <CollapsibleContent>
-          <CardContent className="border-t px-4 pt-4">
-            <ToolDetails row={row} effect={effect} now={now} since={since} onToggle={onToggle} onRepair={onRepair} />
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
+    <Collapsible open={open} onOpenChange={onOpenChange} className="tools-tool-row">
+      <div
+        role="button"
+        tabIndex={0}
+        data-enabled={tool.enabled}
+        data-tool={tool.id}
+        data-state={open ? 'open' : 'closed'}
+        data-ui="tools.row"
+        data-ui-key={tool.id}
+        className={cn('tools-row', open && 'tools-row-open', !tool.enabled && 'tools-row-off')}
+        onClick={() => onOpenChange(!open)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onOpenChange(!open)
+          }
+        }}
+      >
+        <Switch
+          checked={tool.enabled}
+          onCheckedChange={onToggle}
+          aria-label={`${tool.enabled ? 'Turn off' : 'Turn on'} ${tool.label}`}
+          data-ui="tools.toggle"
+          data-ui-key={tool.id}
+          onClick={(event) => event.stopPropagation()}
+        />
+        <span className="tools-row-name">{tool.label}</span>
+        <span className="tools-row-summary">{tool.summary || tool.offEffect}</span>
+        <span className="tools-row-cost">{tool.enabled ? formatTokens(tool.costTokens) : '—'}</span>
+        <span
+          aria-hidden={!row.flag}
+          className={cn('tools-row-dot', row.flag === 'bad' && 'tools-row-dot-bad', row.flag === 'warn' && 'tools-row-dot-warn')}
+          title={row.note || undefined}
+        />
+      </div>
+      <CollapsibleContent className="tools-row-detail">
+        <ToolDetails row={row} effect={effect} now={now} since={since} onToggle={onToggle} onRepair={onRepair} />
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
@@ -98,15 +85,15 @@ function ToolDetails({ row, effect, now, since, onToggle, onRepair }: {
     ].filter(Boolean).join(' · '), null],
     ['Last used', (stat?.lastCalledAt ? relativeTime(stat.lastCalledAt, now) : since ? `never in ${unusedFor(null, since, now)} of counting` : 'never')
       + (row.suggestOff ? ` · suggested off: ${tool.costTokens} tokens of every turn for nothing` : ''), row.suggestOff ? 'warn' : null],
-    ['Runs', usageLine(stat), row.flag === 'bad' ? 'bad' : null]
+    ['Runs', usageLine(stat, row), row.flag === 'bad' ? 'bad' : null]
   ]
   return (
-    <div className="grid gap-4 text-[13px] md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+    <div className="tools-detail-grid">
       <div className="min-w-0">
         <div className="font-mono text-xs text-muted-foreground">
           {tool.id}{verbs ? <span className="text-muted-foreground/60"> · {verbs}</span> : null}
         </div>
-        <p className="mt-2 leading-relaxed">
+        <p className="mt-2 text-[13px] leading-relaxed">
           {tool.summary ? `${tool.summary} ` : ''}
           <span className="text-muted-foreground">Off: {tool.offEffect}</span>
         </p>
@@ -140,16 +127,17 @@ function ToolDetails({ row, effect, now, since, onToggle, onRepair }: {
           </Button>
         </div>
       </div>
-      <blockquote className="max-h-56 min-w-0 overflow-y-auto whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
+      <blockquote className="tools-detail-model max-h-56 min-w-0 overflow-y-auto whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
         <span className="mb-1 block text-[10.5px] tracking-wider text-muted-foreground/70 uppercase">What the model reads</span>
         {tool.description}
       </blockquote>
-      {schemaOpen ? <div className="md:col-span-2"><ToolSchema tool={tool} /></div> : null}
+      {schemaOpen ? <div className="tools-detail-schema"><ToolSchema tool={tool} /></div> : null}
     </div>
   )
 }
 
-function usageLine(stat: ToolRowModel['stat']): string {
+function usageLine(stat: ToolRowModel['stat'], row: ToolRowModel): string {
+  if (row.note && row.flag === 'bad') return row.note
   if (!stat || stat.calls === 0) return 'No runs recorded'
   const parts = [plural(stat.calls, 'run')]
   const errors = stat.failures - stat.misuses
