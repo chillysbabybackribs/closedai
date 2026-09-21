@@ -325,6 +325,25 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   another timer, including the final chunk when a task completes. Code highlighting remains
   throttled to 250 ms and limited to 20,000 characters, but pending highlights show the current
   plain code rather than an older highlighted version.
+- Displayed assistant text is paced (`components/ui/paced-text.ts`): the painted prefix trails the
+  received text by a bounded catch-up window (~180 ms) that always drains fully, so single-token,
+  sentence-burst, and whole-message chunk cadences (Antigravity can deliver a step's text only on
+  its DONE half) paint as one typewriter, and a streaming message that mounts with bulk text —
+  a pane becoming visible mid-turn — sweeps in instead of popping. Settled items, replaced text
+  (a repair that does not extend the shown prefix), and reduced-motion sessions render in full
+  immediately; a turn whose item never settles still finishes because the drain does not depend
+  on the settle event. While text is revealing, the trailing markdown block's unfinished inline
+  syntax — `**bold`, inline code, `~~strike~~`, half-typed links and images — is closed or held
+  back before lexing (`components/ui/markdown-stream.ts`); settled text renders exactly as written.
+- Sending a prompt anchors it at the top of the transcript viewport
+  (`MessageScrollerProvider` `anchorPrompts`, `chat-pane.tsx`): a trailing spacer holds the
+  position before the response exists, the reply streams in below without moving the viewport, and
+  the beginning of a long answer stays readable instead of scrolling away. Scrolling releases the
+  anchor without collapsing its spacer (removing it mid-gesture clamps scrollTop and teleports the
+  reader); reaching the bottom resumes follow-to-bottom for the rest of the turn, and the next
+  prompt re-anchors. Opening a chat still mounts scrolled to the end, and revealing earlier
+  history still preserves the reading position. Native `overflow-anchor` is disabled on the chat
+  viewport because the scroller owns every correction.
 - The renderer initially receives the latest turn. "View previous messages" reveals one earlier
   turn at a time and keeps at most three turns mounted; scrolling back to the bottom trims
   prepended history from renderer state. Older pages fetch by stable item id; stale responses
