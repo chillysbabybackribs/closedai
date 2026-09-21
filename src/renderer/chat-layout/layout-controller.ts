@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
 import { addTab, moveTab, pruneTabs, removeTab, selectTab, tabIds, tabOwner } from './layout-tabs.js'
+import { removalNotice } from './layout-copy.js'
 
 /** The component owning this hook is keyed by project directory. */
 export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
@@ -28,9 +29,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   }, [notice])
   const reportRemoval = useCallback((ids: string[], label: string) => {
     const rows = latestSnapshot.current.chats.filter((row) => ids.includes(row.paneId))
-    const detail = rows.some((row) => row.running) ? 'Tasks continue in the background'
-      : rows.some((row) => row.paused) ? 'Tasks remain paused' : ''
-    setNotice({ text: detail ? `${label} · ${detail}` : label })
+    setNotice({ text: removalNotice(label, rows) })
   }, [])
   const [busy, setBusy] = useState(false)
   const [selectionToConfirm, setSelectionToConfirm] = useState<string | null>(null)

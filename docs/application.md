@@ -354,12 +354,13 @@ Composers start fully expanded and stay expanded while running or inactive. The 
 choice is one app-wide preference stored in renderer local storage: it applies to every open
 and new chat at once and survives typing, sending, turns, pane changes, and restarts. A collapsed
 composer accepts and sends drafts on its single line; its attachment chips and the project rail
-(folder icon and name) sit above the pill instead of inside it. Right-clicking
+(folder icon and name) sit above the pill instead of inside it, and the model picker
+(`composer.model`) sits at the pill's left edge with the same menu as the full view. Right-clicking
 any tile header or tab opens a context menu with **Maximize tile** (`layout.maximize`), **Split right**
 (`layout.split-right`), **Split below** (`layout.split-below`), **New chat** (`layout.new-chat`), and
 **Close tab** / **Hide pane** (`layout.pane-hide`). Double-clicking a tile header also toggles
-maximize mode. Close/hide tooltips explain that these actions do not stop tasks; tab-close
-tooltips name running or paused state when available. Successful closes and hides show a
+maximize mode. Close/hide tooltips explain that these actions do not stop tasks and name
+running or paused state when available. Successful closes and hides show a
 4.5-second status message over the focused chat, noting continuing or paused tasks when present.
 The message takes no layout space and adds no controls. In maximized/solo mode, the tile expands to 100% canvas dimensions while background
 tiles and the browser remain mounted and hidden with active agent tasks running undisturbed.

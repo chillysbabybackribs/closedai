@@ -6,6 +6,7 @@ import { ChatTabs } from './chat-tabs.js'
 import { LayoutDivider } from './layout-divider.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import type { TabActivity } from './tab-activity.js'
+import { paneHideHint, tabCloseHint } from './layout-copy.js'
 import { browserDropAt, browserDropPreview, sameBrowserDrop, type BrowserDrop } from './browser-drop.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
@@ -167,6 +168,8 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
         const isThisTileSolo = soloTile ? (soloTile.id === activeId || soloTile.tabs.includes(activeId)) : false
         const tileRect = isThisTileSolo ? soloRect : rect
         const tileKey = activeId === BROWSER_PANE_ID ? BROWSER_PANE_ID : (tabs[0] ?? activeId)
+        const hideHint = paneHideHint(tabs.map((id) => activity?.(id)?.state))
+        const closeOrHideHint = tabs.length > 1 ? tabCloseHint(activity?.(activeId)?.state) : hideHint
         return <section key={tileKey}
           className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID ? undefined : activeId}
           data-solo={isThisTileSolo ? 'true' : undefined}
@@ -247,7 +250,7 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
                   <Plus size={14} aria-hidden="true" />
                 </button>
                 <button data-ui="layout.pane-hide" data-ui-key={activeId} disabled={busy || chatCount < 2}
-                  title="Hide pane · Does not stop tasks" aria-label="Hide chat pane · Does not stop tasks" onClick={() => {
+                  title={`Hide pane · ${hideHint}`} aria-label={`Hide chat pane · ${hideHint}`} onClick={() => {
                     if (soloTile) setSoloPaneId(null)
                     onHide(activeId)
                   }}>
@@ -324,7 +327,7 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
                   </div>
                 </ContextMenu.Item>
                 <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.pane-hide" data-ui-key={activeId}
-                  title={`${tabs.length > 1 ? 'Close tab' : 'Hide pane'} · Does not stop tasks`}
+                  title={`${tabs.length > 1 ? 'Close tab' : 'Hide pane'} · ${closeOrHideHint}`}
                   disabled={busy || (chatCount < 2 && tabs.length < 2)}
                   onSelect={() => {
                     if (soloTile) setSoloPaneId(null)

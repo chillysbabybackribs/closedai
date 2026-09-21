@@ -127,3 +127,38 @@ test('ChatCanvas renders tabbed pane with single tile, persistent header, and hi
   assert.doesNotMatch(html, /id="chat-panel-tab-1"[^>]*hidden/)
   assert.match(html, /id="chat-panel-tab-2"[^>]*hidden/)
 })
+
+test('ChatCanvas names running close/hide actions and overlays a status notice', () => {
+  const tabbedTree: ChatLayout = {
+    kind: 'pane',
+    id: 'tab-1',
+    tabs: ['tab-1', 'tab-2']
+  }
+  const html = renderToStaticMarkup(createElement(ChatCanvas, {
+    tree: tabbedTree,
+    selectedId: 'tab-1',
+    busy: false,
+    notice: 'Tab closed · Tasks continue in the background',
+    browserVisible: false,
+    renderBrowser: createElement('div', { id: 'browser-content' }, 'Browser'),
+    onDragActive: () => {},
+    title: (id) => `Chat ${id}`,
+    activity: (id) => id === 'tab-2'
+      ? { state: 'working', label: 'Working' }
+      : { state: 'idle', label: 'Ready' },
+    renderPane: (id) => createElement('div', { id: `content-${id}` }, `Content ${id}`),
+    onSelect: () => {},
+    onSelectTab: () => {},
+    onCloseTab: () => {},
+    onNewChat: () => {},
+    onDock: () => {},
+    onHide: () => {},
+    onResize: () => {}
+  }))
+
+  assert.match(html, /title="Close tab · Task keeps running"/)
+  assert.match(html, /aria-label="Close tab: Chat tab-2 · Task keeps running"/)
+  assert.match(html, /title="Close tab · Does not stop tasks"/)
+  assert.match(html, /title="Hide pane · Tasks keep running"/)
+  assert.match(html, /class="chat-layout-notice"[^>]*>Tab closed · Tasks continue in the background/)
+})

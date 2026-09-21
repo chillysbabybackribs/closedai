@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { CircleAlert, LoaderCircle, Pause, X } from 'lucide-react'
 import type { TabActivity } from './tab-activity.js'
+import { tabCloseHint } from './layout-copy.js'
 import { CHAT_DRAG_TYPE } from './layout-tree.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 
@@ -35,8 +36,7 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, onSel
   return <div ref={list} className="chat-layout-tabs" role="tablist" aria-label="Chat conversations">
     {ids.map((id, index) => {
       const status = activity?.(id)
-      const closeHint = status?.state === 'working' ? 'Task keeps running'
-        : status?.state === 'paused' ? 'Task stays paused' : 'Does not stop tasks'
+      const closeHint = tabCloseHint(status?.state)
       return <div key={id} className="chat-layout-tab" data-active={id === activeId} data-status={status?.state} role="presentation">
       <button type="button" role="tab" data-ui="layout.tab" data-ui-key={id}
         id={`chat-tab-${id}`} aria-controls={`chat-panel-${id}`} aria-selected={id === activeId}
