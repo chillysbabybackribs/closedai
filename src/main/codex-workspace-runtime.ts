@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events'
+import { CODEX_BINARY_ENV } from './provider-binary.js'
 
 import type { ChatModel } from '../shared/chat.js'
 import type { AppSettingsAccess } from './app-settings-store.js'
@@ -93,6 +94,18 @@ export class CodexRuntimeSession extends EventEmitter {
   }
 }
 
+export type CodexRuntimeOptions = {
+  executable?: string
+  transport?: CodexRuntimeTransport
+  /** The app version announced in the `initialize` handshake; the Electron app passes its own. */
+  clientVersion?: string
+}
+
+/** The `codex` binary: an explicit override, else whatever PATH resolves. */
+export function codexExecutable(env: NodeJS.ProcessEnv = process.env): string {
+  return env[CODEX_BINARY_ENV]?.trim() || 'codex'
+}
+
 /**
  * One Codex app-server per workspace. Panes keep independent thread/transcript state and receive
  * only events whose thread or turn they own; account-level events are shared by every active pane.
@@ -107,14 +120,14 @@ export class CodexWorkspaceRuntime {
   constructor(
     readonly cwd: string,
     settings: AppSettingsAccess,
-    executable = process.env.CLOSEDAI_CODEX_PATH?.trim() || 'codex',
-    transport?: CodexRuntimeTransport
+    options: CodexRuntimeOptions = {}
   ) {
-    this.transport = transport ?? new AppServerClient(
-      executable,
+    this.transport = options.transport ?? new AppServerClient(
+      options.executable ?? codexExecutable(),
       cwd,
       () => appServerConfigArgs(settings.get()),
-      (_direction, message) => this.scopeFor(message)
+      (_direction, message) => this.scopeFor(message),
+      options.clientVersion
     )
     this.transport.on('notification', (notification: AppServerNotification) => this.route('notification', notification))
     this.transport.on('request', (request: AppServerRequest) => this.route('request', request))

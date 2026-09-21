@@ -25,6 +25,7 @@ import type { AcpSessionSetup } from './cursor-acp.js'
 import { CursorArchive } from './cursor-archive.js'
 import type { CursorToolBridge } from './cursor-mcp.js'
 import { isCursorAuthFailure, parseCursorAccountEmail, parseCursorPlan, readCursorAbout } from './cursor-cli.js'
+import { isMissingExecutable, missingProviderMessage } from '../provider-binary.js'
 import { cursorSessionIdOf, cursorThreadId } from './cursor-ids.js'
 import { buildCursorPrompt } from './cursor-input.js'
 import { cursorSystemInstructions } from './cursor-instructions.js'
@@ -323,9 +324,11 @@ export class CursorChatService extends EventEmitter {
       void this.refreshPlanUsage()
     } catch (error) {
       const message = messageOf(error)
-      this.setConnection(isCursorAuthFailure(message)
-        ? { state: 'signed-out', message: SIGN_IN_MESSAGE }
-        : { state: 'unavailable', message: `Cursor is unavailable: ${message}` })
+      this.setConnection(isMissingExecutable(error)
+        ? { state: 'unavailable', message: missingProviderMessage('cursor') }
+        : isCursorAuthFailure(message)
+          ? { state: 'signed-out', message: SIGN_IN_MESSAGE }
+          : { state: 'unavailable', message: `Cursor is unavailable: ${message}` })
     }
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }

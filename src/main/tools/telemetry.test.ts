@@ -84,11 +84,15 @@ test('opening aggregate telemetry migrates counters and removes the text-bearing
     ].join('\n'))
 
     const telemetry = await ToolTelemetry.open(file, legacy)
-    assert.deepEqual(telemetry.snapshot(), {
+    // Legacy lines carry no timestamps, so migrated counters have none and counting starts now.
+    const { since, errors, ...migrated } = telemetry.snapshot()
+    assert.ok(since !== null && since <= Date.now())
+    assert.deepEqual(errors, [])
+    assert.deepEqual(migrated, {
       totalCalls: 2,
       stats: [
-        { toolId: 'ns.tool', action: null, calls: 2, failures: 1, timeouts: 0, misuses: 0 },
-        { toolId: 'ns.tool', action: 'type', calls: 2, failures: 1, timeouts: 0, misuses: 0 }
+        { toolId: 'ns.tool', action: null, calls: 2, failures: 1, timeouts: 0, misuses: 0, lastCalledAt: null, lastFailedAt: null },
+        { toolId: 'ns.tool', action: 'type', calls: 2, failures: 1, timeouts: 0, misuses: 0, lastCalledAt: null, lastFailedAt: null }
       ]
     })
     const contents = await readFile(file, 'utf8')

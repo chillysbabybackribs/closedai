@@ -301,7 +301,10 @@ browser tab strip) drags the whole pane with every tab in it; compact equal-widt
 empty header space, so the grip is the reliable whole-tile target. The overlaid close button keeps its own click action; its
 hit area is a 24 × tab-height strip around the existing 11 px icon, without a larger hover chip.
 Click a tab to return to its conversation; arrow keys and Home/End
-also switch tabs. Tab strips scroll horizontally when full. Mounted drafts and attachments survive
+also switch tabs, and Delete closes the focused tab. Only the active tab's close button is in the
+tab order. Tab strips scroll horizontally when full: narrow tiles keep a 72 px floor per tab so the
+strip overflows instead of collapsing labels, a wheel over the strip pans it, and selecting a tab
+scrolls it into view. Mounted drafts and attachments survive
 switching tabs. Each tab's close button removes it from the layout without deleting its history
 or stopping a running turn. Closing the active tab selects a neighbor; closing the last tab in a
 tile removes that tile when another tile remains. The workspace always keeps at least one tab.
@@ -370,7 +373,14 @@ composer accepts and sends drafts on its single line; its attachment chips and t
 any tile header or tab opens a context menu with **Workspace layout…** (`layout.presets`), **Rename…**,
 optional **Pin chat**, pause/resume when the tab’s task is running or paused, and separate **Close tab**
 (`layout.tab-close`, Ctrl/Cmd+W) and **Hide pane** (`layout.pane-hide`) rows with subtitles when tasks
-continue. Ctrl/Cmd+W uses that same close or hide path for the focused chat. Double-clicking a tile
+continue. With another tile open, **Move tab to next pane** / **Move tab to previous pane**
+(`layout.tab-move`, item `next` or `previous`) move the active conversation into the neighbouring
+tile's strip in reading order, the keyboard route for a tab drag; an emptied tile collapses as it
+does after a drag. Ctrl/Cmd+W uses that same close or hide path for the focused chat.
+A rejected layout operation shows its reason above the canvas, cleared by the next successful
+operation or after 8 s. Adding a tab waits for main to confirm the selection; if no confirmation
+arrives within 5 s the controls are released, the layout is reconciled against the current
+workspace snapshot, and the same line reports it. Double-clicking a tile
 header toggles maximize mode. Close/hide tooltips explain that
 these actions do not stop tasks and name running or paused state when available. Successful closes
 and hides show a 4.5-second status message over the focused chat, noting continuing or paused tasks
@@ -595,7 +605,11 @@ history entry, not cookies or site data. `browser-omnibox.ts` owns the renderer 
 `browser-history-store.ts` owns matching and persistence.
 
 Right-clicking a browser tab opens tab actions for opening a new tab to its right, reloading,
-duplicating, renaming, closing, closing other tabs, and closing tabs to the right. Custom tab
+duplicating, renaming, closing, closing other tabs, and closing tabs to the right. The menu also
+opens from the ContextMenu key or Shift+F10 on a focused tab; its first row takes focus, Up/Down
+and Home/End move between rows, and Escape or a chosen row returns focus to the tab. A tab or
+navigation command the main process rejects shows its reason on one line under the tab strip,
+dismissed by its button (`browser.notice-dismiss`) or after 8 s. Custom tab
 names are tab-strip labels stored separately from the page title and are persisted with the tab
 session.
 

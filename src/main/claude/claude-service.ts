@@ -319,9 +319,11 @@ export class ClaudeChatService extends EventEmitter {
     } catch (error) {
       forgetClaudeCatalog(this.cwd)
       const message = messageOf(error)
-      this.setConnection(/log ?in|authenticat|not signed|credential/i.test(message)
-        ? { state: 'signed-out', message: SIGN_IN_MESSAGE }
-        : { state: 'unavailable', message: `Claude Code is unavailable: ${message}` })
+      this.setConnection(isMissingExecutable(error)
+        ? { state: 'unavailable', message: missingProviderMessage('claude') }
+        : /log ?in|authenticat|not signed|credential/i.test(message)
+          ? { state: 'signed-out', message: SIGN_IN_MESSAGE }
+          : { state: 'unavailable', message: `Claude Code is unavailable: ${message}` })
       await this.session?.retire()
     }
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })

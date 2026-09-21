@@ -103,14 +103,18 @@ export class StdioJsonRpcClient extends EventEmitter {
         child.off('error', onError)
         resolve()
       }
-      const onError = (error: Error): void => {
+      const onError = (error: NodeJS.ErrnoException): void => {
         child.off('spawn', onSpawn)
         if (this.child === child) {
           this.child = null
           this.lines?.close()
           this.lines = null
         }
-        reject(new Error(`Could not start ${executable}: ${error.message}`))
+        // The code (ENOENT for a missing binary) travels with the message so a lane can show an
+        // install sentence instead of `spawn codex ENOENT` (provider-binary.ts).
+        const failure: NodeJS.ErrnoException = new Error(`Could not start ${executable}: ${error.message}`)
+        failure.code = error.code
+        reject(failure)
       }
       child.once('spawn', onSpawn)
       child.once('error', onError)

@@ -369,9 +369,11 @@ export class AntigravityChatService extends EventEmitter {
       void this.refreshPlanUsage()
     } catch (error) {
       const message = messageOf(error)
-      this.setConnection(isAntigravityAuthFailure(message)
-        ? { state: 'signed-out', message: SIGN_IN_MESSAGE }
-        : { state: 'unavailable', message: `Antigravity is unavailable: ${message}` })
+      this.setConnection(isMissingExecutable(error)
+        ? { state: 'unavailable', message: missingProviderMessage('antigravity') }
+        : isAntigravityAuthFailure(message)
+          ? { state: 'signed-out', message: SIGN_IN_MESSAGE }
+          : { state: 'unavailable', message: `Antigravity is unavailable: ${message}` })
     }
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }

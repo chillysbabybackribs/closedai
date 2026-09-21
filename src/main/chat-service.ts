@@ -47,6 +47,7 @@ import { shrinkPastedImages } from './chat-attachment-images.js'
 import type { ScreenshotStore } from './tools/capture/screenshot-store.js'
 import { traceLog } from './trace/trace-log.js'
 import { CodexWorkspaceRuntime, type CodexRuntimeSession } from './codex-workspace-runtime.js'
+import { MISSING_BINARY_RETRY_MS, isMissingExecutable, missingProviderMessage } from './provider-binary.js'
 
 /** One pane's Codex state, backed by the workspace's shared app-server runtime. */
 export class ChatService extends EventEmitter {
@@ -349,8 +350,11 @@ export class ChatService extends EventEmitter {
       void this.refreshPlanUsage()
       this.restartAttempt = 0
     } catch (error) {
-      this.setConnection({ state: 'unavailable', message: messageOf(error) })
-      this.scheduleRestart()
+      // A missing binary is an onboarding state, not a fault: say what to install and re-probe
+      // slowly, so the loop still recovers once `codex` appears without hammering every 15 s.
+      const missing = isMissingExecutable(error)
+      this.setConnection({ state: 'unavailable', message: missing ? missingProviderMessage('codex') : messageOf(error) })
+      this.scheduleRestart(missing ? MISSING_BINARY_RETRY_MS : null)
     }
   }
 
@@ -621,9 +625,9 @@ export class ChatService extends EventEmitter {
     this.scheduleRestart()
   }
 
-  private scheduleRestart(): void {
+  private scheduleRestart(fixedDelay: number | null = null): void {
     if (this.stopping || this.restartTimer) return
-    const delay = Math.min(1_000 * 2 ** this.restartAttempt, 15_000)
+    const delay = fixedDelay ?? Math.min(1_000 * 2 ** this.restartAttempt, 15_000)
     this.restartAttempt += 1
     this.restartTimer = setTimeout(() => {
       this.restartTimer = null
