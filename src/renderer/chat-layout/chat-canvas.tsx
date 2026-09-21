@@ -3,6 +3,7 @@ import { ContextMenu } from 'radix-ui'
 import { Columns2, Maximize2, MessageSquarePlus, Minimize2, Pencil, Plus, Rows2, Sparkles, X } from 'lucide-react'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { ChatTabs } from './chat-tabs.js'
+import { LayoutDivider } from './layout-divider.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import type { TabActivity } from './tab-activity.js'
 import { browserDropAt, browserDropPreview, sameBrowserDrop, type BrowserDrop } from './browser-drop.js'
@@ -45,25 +46,6 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
       tab.focus()
     }
   }, [tree])
-  const resize = useRef<{ id: string; pointerId: number; start: number; ratio: number; length: number; axis: string; min: number; max: number } | null>(null)
-  useEffect(() => {
-    // Follow the gesture even when Chromium delivers its next move over a sibling tile.
-    const move = (event: PointerEvent): void => {
-      const active = resize.current
-      if (!active || event.pointerId !== active.pointerId) return
-      const delta = (active.axis === 'horizontal' ? event.clientX : event.clientY) - active.start
-      onResize(active.id, Math.max(active.min, Math.min(active.max, active.ratio + delta / active.length)))
-    }
-    const end = (): void => { resize.current = null }
-    window.addEventListener('pointermove', move, true)
-    window.addEventListener('pointerup', end, true)
-    window.addEventListener('pointercancel', end, true)
-    return () => {
-      window.removeEventListener('pointermove', move, true)
-      window.removeEventListener('pointerup', end, true)
-      window.removeEventListener('pointercancel', end, true)
-    }
-  }, [onResize])
   useEffect(() => {
     const host = viewport.current!
     const observer = new ResizeObserver(() => setSize({ width: host.clientWidth, height: host.clientHeight }))
@@ -377,30 +359,8 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
             <br /><small>Esc to cancel</small></span>}
         </div>)}
       </>}
-      {!soloTile && geometry.dividers.map((divider) => <div key={divider.id} className="chat-layout-divider"
-        style={position(divider.rect)} data-axis={divider.axis} role="separator" tabIndex={0}
-        data-ui="layout.divider" data-ui-key={divider.id}
-        aria-label="Resize chat panes" aria-orientation={divider.axis === 'horizontal' ? 'vertical' : 'horizontal'}
-        aria-valuenow={Math.round(divider.ratio * 100)} aria-valuemin={Math.round(divider.min * 100)} aria-valuemax={Math.round(divider.max * 100)}
-        onDoubleClick={() => onResize(divider.id, 0.5)}
-        onKeyDown={(event) => {
-          const keys = divider.axis === 'horizontal' ? ['ArrowLeft', 'ArrowRight'] : ['ArrowUp', 'ArrowDown']
-          if (!keys.includes(event.key)) return
-          event.preventDefault()
-          const ratio = divider.ratio + (event.key === keys[0] ? -0.05 : 0.05)
-          onResize(divider.id, Math.max(divider.min, Math.min(divider.max, ratio)))
-        }}
-        onPointerDown={(event) => {
-          if (event.button !== 0) return
-          event.preventDefault()
-          event.currentTarget.setPointerCapture(event.pointerId)
-          resize.current = { id: divider.id, pointerId: event.pointerId, start: divider.axis === 'horizontal' ? event.clientX : event.clientY,
-            ratio: divider.ratio, length: (divider.axis === 'horizontal' ? divider.parent.width : divider.parent.height) - 5,
-            axis: divider.axis, min: divider.min, max: divider.max }
-        }}
-        onPointerUp={() => { resize.current = null }}
-        onLostPointerCapture={() => { resize.current = null }}
-      />)}
+      {!soloTile && geometry.dividers.map((divider) => <LayoutDivider key={divider.id}
+        divider={divider} onResize={onResize} />)}
     </div>
   </div>
 }

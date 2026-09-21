@@ -167,11 +167,37 @@
 }
 .chat-layout-content .chat-pane { width: 100%; min-width: 0; max-width: none; }
 
-.chat-layout-divider { position: absolute; z-index: 3; background: var(--chassis); touch-action: none; }
-.chat-layout-divider[data-axis='horizontal'] { cursor: col-resize; border-inline: 1px solid var(--hairline); }
-.chat-layout-divider[data-axis='vertical'] { cursor: row-resize; border-block: 1px solid var(--hairline); }
+.chat-layout-divider {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  background: var(--chassis);
+  touch-action: none;
+  user-select: none;
+}
+.chat-layout-divider[data-axis='horizontal'] { cursor: col-resize; }
+.chat-layout-divider[data-axis='vertical'] { cursor: row-resize; }
+.chat-layout-divider::before,
+.chat-layout-divider::after { content: ''; position: absolute; pointer-events: none; border-radius: 3px; }
+.chat-layout-divider::before { background: var(--hairline); }
+.chat-layout-divider::after { background: var(--chrome-fg); }
+.chat-layout-divider[data-axis='horizontal']::before { width: 1px; height: 100%; }
+.chat-layout-divider[data-axis='vertical']::before { height: 1px; width: 100%; }
+.chat-layout-divider[data-axis='horizontal']::after { width: 3px; height: 32px; }
+.chat-layout-divider[data-axis='vertical']::after { height: 3px; width: 32px; }
 .chat-layout-divider:hover,
-.chat-layout-divider:focus-visible { background: var(--focus-ink); outline: none; }
+.chat-layout-divider:focus-visible,
+.chat-layout-divider[data-resizing='true'] { background: color-mix(in srgb, var(--focus-ink) 18%, var(--chassis)); }
+.chat-layout-divider:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -1px; }
+.chat-layout-divider:hover::after,
+.chat-layout-divider:focus-visible::after,
+.chat-layout-divider[data-resizing='true']::after { background: var(--focus-ink); }
+body[data-layout-resize] * { user-select: none !important; }
+body[data-layout-resize='horizontal'],
+body[data-layout-resize='horizontal'] * { cursor: col-resize !important; }
+body[data-layout-resize='vertical'],
+body[data-layout-resize='vertical'] * { cursor: row-resize !important; }
 
 .chat-layout-drop {
   position: absolute;

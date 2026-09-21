@@ -48,7 +48,7 @@ export const UI_CONTROLS = {
   'layout.pane-hide': 'Remove a tile from the layout without stopping its chat; item is the chat id',
   'layout.maximize': 'Context menu or double-click: maximize the chat tile to occupy the full canvas; item is the active chat id',
   'layout.restore': 'Context menu or Escape key: restore the split grid from maximized tile mode; item is the active chat id',
-  'layout.divider': 'Resize adjacent chat or browser tiles with a drag or arrow keys; item is the split id',
+  'layout.divider': 'Resize adjacent chat or browser tiles by dragging the gutter or using arrow keys (Shift for fine control); double-click balances, Escape cancels a drag; item is the split id',
 
 
   'chat.rename-dialog': 'Dialog for renaming a chat conversation',

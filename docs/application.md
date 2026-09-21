@@ -329,8 +329,11 @@ File → New chat and continuation select a chat in the focused
 tab; the split buttons explicitly add another tile. Moving a visible tile carries its tab group;
 dragging a tab to a tile edge splits that conversation out of its group.
 
-Dividers resize horizontal and vertical splits independently; arrow keys resize a focused chat
-divider and double-click resets it to equal proportions. Nested splits support columns, rows,
+Dividers reserve a 14 px grab area between panes, with a center grip and hover, focus, and active
+feedback. This area stays outside native browser bounds. They resize horizontal and vertical
+splits independently; arrow keys resize a focused divider by 5% (Shift: 1%), and double-click
+balances it within pane minimums. Escape during a drag restores its starting proportions;
+pointer cancellation, lost capture, and window blur release the gesture. Nested splits support columns, rows,
 and quadrants, up to 32 visible chats. A tile has a 300 × 280 px minimum; the chat area scrolls
 when a small window cannot fit the chosen arrangement. Every layout uses the smaller expanded
 composer: a flat project/activity rail, less empty input space, tighter gutters and 30 px controls.

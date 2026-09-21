@@ -76,13 +76,13 @@ test('the browser survives chat pruning but cannot occur inside a conversation t
 test('columns remain full height and can split into four quadrants', () => {
   let tree: ChatLayout = { kind: 'pane', id: 'a' }
   tree = dockPane(tree, 'b', 'a', 'right', 'ab')
-  let geometry = layoutGeometry(tree, 1005, 805)
+  let geometry = layoutGeometry(tree, 1014, 814)
   assert.deepEqual(geometry.panes.map((pane) => pane.rect), [
-    { x: 0, y: 0, width: 500, height: 805 }, { x: 505, y: 0, width: 500, height: 805 }
+    { x: 0, y: 0, width: 500, height: 814 }, { x: 514, y: 0, width: 500, height: 814 }
   ])
   tree = dockPane(tree, 'c', 'a', 'bottom', 'ac')
   tree = dockPane(tree, 'd', 'b', 'bottom', 'bd')
-  geometry = layoutGeometry(tree, 1005, 805)
+  geometry = layoutGeometry(tree, 1014, 814)
   assert.equal(geometry.panes.length, 4)
   assert.ok(geometry.panes.every((pane) => pane.rect.width === 500 && pane.rect.height === 400))
 })
