@@ -151,12 +151,12 @@ function App(): JSX.Element {
           onCloseWindow={() => { void window.closedai.window.close() }}
           onOpenPaneDialog={setPaneDialog}
         />
-        <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef} />
+        <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef}
+          onOpened={() => setHistoryOpen(false)} />
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
       <div className="workspace" data-mode="chat">
-
         {chat.selectedPaneId && <DesktopWorkspace
           key={chat.workspace?.cwd ?? chat.state.cwd}
           ref={workspaceRef}

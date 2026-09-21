@@ -72,9 +72,9 @@ export type IpcInvokeChannels = {
   'chat:renameChat': { args: [string, string | null]; result: void }
   'chat:retryChatTitle': { args: [string]; result: void }
   'chat:compactConversation': { args: [ChatPaneId]; result: void }
-  'chat:chooseProject': { args: []; result: void }
-  'chat:selectProject': { args: [string]; result: void }
-  'chat:clearProject': { args: []; result: void }
+  'chat:chooseProject': { args: [ChatPaneId]; result: void }
+  'chat:selectProject': { args: [ChatPaneId, string]; result: void }
+  'chat:clearProject': { args: [ChatPaneId]; result: void }
   'credentials:status': { args: []; result: CredentialVaultStatus }
   'credentials:list': { args: []; result: CredentialSummary[] }
   'credentials:save': { args: [CredentialDraft]; result: CredentialSummary }

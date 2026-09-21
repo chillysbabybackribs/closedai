@@ -29,6 +29,7 @@ import { PeerLifecycle, type ChatPeerFactory, type PeerEntry } from './peer-life
 import { listReadablePeers, readReadablePeer, type ReadablePeerHost } from './peer-readable.js'
 import { openChatsPatch } from './peer-settings.js'
 import { schedulePaneWarm } from './provider-warm.js'
+import { PeerProjectChanges, projectConversationPatch } from './peer-project.js'
 
 export type { ChatPeerFactory } from './peer-lifecycle.js'
 
@@ -73,6 +74,7 @@ export interface ChatWorkspaceSurface {
   archiveThread(threadId: string): Promise<void>
   compactConversation(paneId: ChatPaneId): Promise<void>
   selectProject(projectPath: string | null): Promise<void>
+  selectChatProject(paneId: ChatPaneId, projectPath: string | null): Promise<void>
   beginLogin(): Promise<string | null>
   on(event: 'event', listener: (event: ChatWorkspaceEvent) => void): unknown
 }
@@ -88,6 +90,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   private readonly lifecycle: PeerLifecycle
   private readonly parking: PeerIdleParking
   private readonly catalog: PeerChatCatalog
+  private readonly projectChanges: PeerProjectChanges
   /** Tail of each pane's operation chain, so callers on one pane cannot interleave. */
   private readonly paneOperations = new Map<ChatPaneId, Promise<void>>()
   private readonly chatsEmit = new PeerEmitThrottle(() => this.emitChats())
@@ -105,6 +108,26 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.memory = new ChatMemory(store, (paneId) => this.lifecycle.get(paneId)?.surface ?? null)
     this.parking = new PeerIdleParking((paneId) => this.lifecycle.get(paneId), () => this.selectedPaneId, idleParkMs)
     this.lifecycle = new PeerLifecycle(store, settings, createSurface, this.parking, (entry, event) => this.onPaneEvent(entry, event), cancelPaneWork)
+    this.projectChanges = new PeerProjectChanges({
+      record: (id) => { this.lifecycle.require(id); return store.require(id) },
+      idle: (id) => Boolean(this.lifecycle.get(id)) && !this.lifecycle.isRunning(id)
+        && !this.lifecycle.require(id).surface.snapshot({ limit: 0 }).pausedTurnId,
+      apply: (id, selection) => this.withAwake(id, async (surface) => {
+        if (this.lifecycle.isRunning(id) || surface.snapshot({ limit: 0 }).pausedTurnId) {
+          throw new Error('The chat started working before its directory could change; choose the folder again')
+        }
+        const source = surface.snapshot()
+        this.lifecycle.relocate(id, projectConversationPatch(store.require(id), source, selection), source)
+        this.catalog.invalidate()
+        await this.persistOpenChats()
+        this.emitWorkspace()
+        this.wakeLater(id, 'start chat in its new directory')
+      }),
+      changed: () => this.emitChats(),
+      failed: (id, error) => this.emit('event', { type: 'pane', paneId: id, event: { type: 'item',
+        item: { type: 'notice', id: `project-change-${Date.now()}`, turnId: null, tone: 'error',
+          text: `Could not change this chat’s directory: ${String(error)}` } } } satisfies ChatWorkspaceEvent)
+    })
     this.projectSwitch = new DeferredProjectSwitch({
       cwd: () => this.workspace().cwd,
       source: (id, full) => this.lifecycle.get(id)?.surface.snapshot(full ? undefined : { limit: 0 }) ?? null,
@@ -112,7 +135,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       idle: () => this.paneOperations.size === 0 && [...this.lifecycle.peers.values()]
         .every((entry) => entry.busy === 0 && !this.lifecycle.isRunning(entry.chatId) && !entry.surface.snapshot({ limit: 0 }).pausedTurnId),
       switchProject: (path) => this.selectProject(path, true),
-      create: (model, effort, continuation) => this.newChat(model, effort, continuation),
+      create: (model, effort, continuation) => this.newChat(model, effort, continuation, this.workspace()),
       send: (id, text) => this.withAwake(id, async (surface) => {
         if (surface.snapshot({ limit: 0 }).cwd !== this.workspace().cwd) throw new Error('Provider working directory verification failed')
         await surface.send(text, [])
@@ -187,6 +210,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   stop(): void {
+    this.projectChanges.stop()
     this.projectSwitch.stop()
     // A turn that ended just before quit has a `chats` update waiting; deliver it so the row moves.
     this.chatsEmit.flush()
@@ -197,6 +221,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   async send(paneId: ChatPaneId, text: string, attachments: ChatAttachment[]): Promise<void> {
     this.projectSwitch.assertAvailable()
+    await this.projectChanges.flush(paneId)
     this.projectSwitch.cancel('A new message superseded the queued continuation', paneId)
     const entry = this.lifecycle.require(paneId)
     const cancelTiming = text.trim() || attachments.length
@@ -220,13 +245,6 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   async selectPane(paneId: ChatPaneId): Promise<void> {
     this.projectSwitch.assertAvailable()
     this.lifecycle.require(paneId)
-    const record = this.store.require(paneId)
-    if (record.cwd !== this.workspace().cwd) {
-      await this.selectProject(record.projectPath)
-      // The switch restores that directory's open chats and trims idle panes, which can include
-      // this one; re-open it rather than select a pane the lifecycle no longer holds.
-      if (!this.lifecycle.get(paneId)) { await this.openChat(paneId); return }
-    }
     if (paneId === this.selectedPaneId) return
     const previousPaneId = this.selectedPaneId
     this.selectedPaneId = paneId
@@ -252,13 +270,13 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       throw new Error('Choose up to 32 visible chats')
     }
     const records = [...new Set(paneIds)].map((id) => this.store.get(id))
-    if (records.some((record) => !record || record.archived || record.cwd !== cwd)) {
-      throw new Error('A visible chat is no longer available in this project')
+    if (records.some((record) => !record || record.archived)) {
+      throw new Error('A visible chat is no longer available')
     }
     if (!Array.isArray(retainedTabIds) || retainedTabIds.some((id) => {
       const record = typeof id === 'string' ? this.store.get(id) : null
-      return !record || record.archived || record.cwd !== cwd
-    })) throw new Error('A chat tab is no longer available in this project')
+      return !record || record.archived
+    })) throw new Error('A chat tab is no longer available')
     const revision = ++this.visibilityRevision
     this.visiblePaneIds = new Set(paneIds)
     // Retain empty tabs without waking them or subscribing to their token stream.
@@ -320,9 +338,10 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
    * Create a chat, attach it, and select it. The workspace event goes out before any write so
    * the pane paints at once; settings and the LRU trim follow, and the wake last.
    */
-  private async newChat(modelId: string | null, reasoningEffort: string | null, continuation: ChatContinuation | null): Promise<ChatPaneId> {
+  private async newChat(modelId: string | null, reasoningEffort: string | null, continuation: ChatContinuation | null,
+    selection: ChatWorkspaceSelection = this.store.require(this.selectedPaneId)): Promise<ChatPaneId> {
     const previousPaneId = this.selectedPaneId
-    const { cwd, projectPath } = this.workspace()
+    const { cwd, projectPath } = selection
     const record = this.store.create({ cwd, projectPath, provider: chatProviderOfId(modelId), modelId, reasoningEffort, continuation })
     this.lifecycle.attach(record)
     this.selectedPaneId = record.id
@@ -337,11 +356,12 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   async closePeer(paneId: ChatPaneId): Promise<void> {
     this.projectSwitch.assertAvailable()
+    this.projectChanges.cancel(paneId)
     this.projectSwitch.cancel('The requesting chat was closed', paneId)
     if (!this.lifecycle.get(paneId)) return
     const closing = this.lifecycle.require(paneId).surface.snapshot({ limit: 0 })
     if (!this.lifecycle.discardIfBlank(paneId)) this.lifecycle.detach(paneId)
-    const localIds = this.lifecycle.ids().filter((id) => this.store.require(id).cwd === this.workspace().cwd)
+    const localIds = this.lifecycle.ids()
     if (localIds.length === 0) {
       // Closing the last chat opens an empty one; it keeps the model the workspace was on
       // rather than dropping back to the first provider's default.
@@ -375,7 +395,6 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.projectSwitch.assertAvailable()
     const record = this.store.get(chatId)
     if (!record || record.archived) throw new Error('That chat is no longer available')
-    if (record.cwd !== this.workspace().cwd) await this.selectProject(record.projectPath)
     if (this.lifecycle.get(chatId)) {
       await this.selectPane(chatId)
       return chatId
@@ -460,6 +479,12 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   compactConversation(paneId: ChatPaneId): Promise<void> {
     return this.withAwake(paneId, (surface) => surface.compactConversation())
+  }
+
+  selectChatProject(paneId: ChatPaneId, projectPath: string | null): Promise<void> {
+    this.projectSwitch.assertAvailable()
+    this.projectSwitch.cancel('A folder was selected for the requesting chat', paneId)
+    return this.projectChanges.request(paneId, projectPath)
   }
 
   /** Select a directory without changing the working directory or lifetime of existing chats. */
@@ -614,6 +639,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     }
     if (running) this.parking.cancel(entry)
     else this.parking.schedule(paneId)
+    this.projectChanges.observe(paneId)
   }
 
   /**
@@ -653,7 +679,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
       .filter((record) => this.lifecycle.get(record.id) || record.pinnedAt !== null || !chatRecordIsBlank(record))
       .map((record) =>
-      rowSummary(record, this.lifecycle.get(record.id)?.display.current ?? null))
+      ({ ...rowSummary(record, this.lifecycle.get(record.id)?.display.current ?? null),
+        pendingProject: this.projectChanges.selection(record.id) }))
   }
 
   private emitWorkspace(): void {

@@ -1,39 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { basename, formatChatTime, formatLiveActivity, formatMessageCount } from './history-format.ts'
-
-test('formatLiveActivity extracts filenames from tool activities and paths', () => {
-  assert.equal(
-    formatLiveActivity('Read file', '/home/dp/Desktop/closedai/src/main/browser-network/network-rules.ts'),
-    'Read network-rules.ts'
-  )
-  assert.equal(
-    formatLiveActivity('Edit file', '/home/dp/Desktop/closedai/src/main/chat-peers/peer-manager.ts'),
-    'Edit peer-manager.ts'
-  )
-  assert.equal(
-    formatLiveActivity('List directory', '/home/dp/Desktop/closedai/src/main/chat-context'),
-    'List chat-context'
-  )
-})
-
-test('formatLiveActivity cleans command snippets', () => {
-  assert.equal(
-    formatLiveActivity('Run command', 'npm run hygiene'),
-    'Run npm run hygiene'
-  )
-  assert.equal(
-    formatLiveActivity('Run command', '/bin/bash -lc "npm test"'),
-    'Run npm test'
-  )
-})
-
-test('formatLiveActivity falls back cleanly when details are missing or plain', () => {
-  assert.equal(formatLiveActivity(null), 'Running')
-  assert.equal(formatLiveActivity(undefined), 'Running')
-  assert.equal(formatLiveActivity('Thinking'), 'Thinking')
-  assert.equal(formatLiveActivity('Searching', 'query text'), 'Searching')
-})
+import { basename, formatChatTime, historyErrorMessage } from './history-format.ts'
 
 test('basename extracts trailing filename or directory', () => {
   assert.equal(basename('/a/b/c.ts'), 'c.ts')
@@ -48,8 +15,7 @@ test('formatChatTime formats relative intervals', () => {
   assert.equal(formatChatTime(0), '')
 })
 
-test('formatMessageCount handles counts and plurals', () => {
-  assert.equal(formatMessageCount(0), '')
-  assert.equal(formatMessageCount(1), '1 message')
-  assert.equal(formatMessageCount(5), '5 messages')
+test('history failures retain actionable text without Electron transport prefixes', () => {
+  assert.equal(historyErrorMessage(new Error("Error invoking remote method 'chat:open': Error: Missing thread")), 'Missing thread')
+  assert.equal(historyErrorMessage('x'.repeat(200)).length, 140)
 })

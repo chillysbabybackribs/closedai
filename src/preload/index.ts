@@ -95,9 +95,9 @@ const api: ClosedaiApi = {
     renameChat: (chatId, title) => invoke(IPC.invoke.chat.renameChat, chatId, title),
     retryChatTitle: (chatId) => invoke(IPC.invoke.chat.retryChatTitle, chatId),
     compactConversation: (paneId) => invoke(IPC.invoke.chat.compactConversation, paneId),
-    chooseProject: () => invoke(IPC.invoke.chat.chooseProject),
-    selectProject: (projectPath) => invoke(IPC.invoke.chat.selectProject, projectPath),
-    clearProject: () => invoke(IPC.invoke.chat.clearProject),
+    chooseProject: (paneId) => invoke(IPC.invoke.chat.chooseProject, paneId),
+    selectProject: (paneId, projectPath) => invoke(IPC.invoke.chat.selectProject, paneId, projectPath),
+    clearProject: (paneId) => invoke(IPC.invoke.chat.clearProject, paneId),
     onEvent: (listener) => subscribe(IPC.event.chatEvent, listener)
   },
   credentials: {

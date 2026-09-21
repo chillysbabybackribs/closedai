@@ -45,18 +45,18 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
     requireService().retryChatTitle(chatId)
   )
   ipcMain.handle(IPC.invoke.chat.compactConversation, (_event, paneId: string) => requireService().compactConversation(paneId))
-  ipcMain.handle(IPC.invoke.chat.chooseProject, async () => {
+  ipcMain.handle(IPC.invoke.chat.chooseProject, async (_event, paneId: string) => {
     const result = await dialog.showOpenDialog({
       title: 'Choose a project folder',
       properties: ['openDirectory', 'createDirectory']
     })
-    if (!result.canceled && result.filePaths[0]) await requireService().selectProject(resolve(result.filePaths[0]))
+    if (!result.canceled && result.filePaths[0]) await requireService().selectChatProject(paneId, resolve(result.filePaths[0]))
   })
-  ipcMain.handle(IPC.invoke.chat.selectProject, (_event, projectPath: string) => {
+  ipcMain.handle(IPC.invoke.chat.selectProject, (_event, paneId: string, projectPath: string) => {
     if (!projectPath.trim()) throw new Error('Choose a project folder')
-    return requireService().selectProject(resolve(projectPath))
+    return requireService().selectChatProject(paneId, resolve(projectPath))
   })
-  ipcMain.handle(IPC.invoke.chat.clearProject, () => requireService().selectProject(null))
+  ipcMain.handle(IPC.invoke.chat.clearProject, (_event, paneId: string) => requireService().selectChatProject(paneId, null))
   ipcMain.handle(IPC.invoke.chat.login, async () => {
     const authUrl = await requireService().beginLogin()
     if (authUrl) await shell.openExternal(authUrl)

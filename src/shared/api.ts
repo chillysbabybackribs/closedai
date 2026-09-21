@@ -92,12 +92,12 @@ export type ClosedaiApi = {
     retryChatTitle: (chatId: string) => Promise<void>
     /** Re-seed provider-side context from a bounded summary when the active provider supports it. */
     compactConversation: (paneId: ChatPaneId) => Promise<void>
-    /** Choose a project directory and restore its saved panes, or create its first chat. */
-    chooseProject: () => Promise<void>
-    /** Switch directly to a project already stored in the recent-project list. */
-    selectProject: (projectPath: string) => Promise<void>
-    /** Switch to the non-project home workspace, restoring its saved panes when available. */
-    clearProject: () => Promise<void>
+    /** Choose a directory for this chat, applying after its current work finishes. */
+    chooseProject: (paneId: ChatPaneId) => Promise<void>
+    /** Change only this chat's directory, preserving the workspace layout. */
+    selectProject: (paneId: ChatPaneId, projectPath: string) => Promise<void>
+    /** Use the home directory for this chat. */
+    clearProject: (paneId: ChatPaneId) => Promise<void>
     onEvent: (listener: (event: ChatWorkspaceEvent) => void) => Unsubscribe
   }
   /** OS-keychain-backed credential store. Secrets cross the bridge one field at a time, on request. */

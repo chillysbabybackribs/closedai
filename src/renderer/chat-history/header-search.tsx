@@ -5,10 +5,11 @@ import type { HistoryController } from './history-controller.js'
 import { formatChatTime } from './history-format.js'
 import { searchChats, segmentTitle, stepHighlight, type ChatSearchHit } from './history-search.js'
 
-export function HeaderChatSearch({ chats, controller, inputRef }: {
+export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   chats: ChatRowSummary[]
   controller: HistoryController
   inputRef: RefObject<HTMLInputElement | null>
+  onOpened?: () => void
 }): JSX.Element {
   const [query, setQuery] = useState('')
   const [highlight, setHighlight] = useState(0)
@@ -29,6 +30,7 @@ export function HeaderChatSearch({ chats, controller, inputRef }: {
     setOpening(true)
     try {
       await controller.openRow(hit.row.paneId)
+      onOpened?.()
       setQuery('')
       setHighlight(0)
       setFocused(false)
