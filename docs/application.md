@@ -297,13 +297,20 @@ tab; sibling conversations stay in place. Drop a tab onto another chat header to
 The highlighted region previews the split or tab destination. These moves preserve mounted drafts,
 attachments, and transcripts and persist with the project's layout.
 
-The grip at the left of the browser tab strip moves the whole shared browser. Drop it at a
+The centered 36 × 34 pixel grip at the top left of the browser tab strip moves the whole shared browser. Drop it at a
 chat's top or bottom edge to stack it above or below that chat, or at a side edge to dock beside
 it. During a browser drag, highlighted strips at the workspace's far left and right place the
 browser in a full-height column beside all chats. Moving the browser preserves its tabs and
 the selected chat; its position uses the same saved layout and resizable dividers.
 The drag shield leaves the browser tab strip exposed and passes pointer events through to the
 layout; the native page is occluded separately so it cannot intercept the gesture.
+Browser drags preview the resulting layout, including the space reclaimed from the browser's old
+slot and minimum pane sizes. A solid outline and release label mark the browser's final bounds;
+dashed outlines show the remaining chats. Targets stay fixed during the gesture, with a small
+dead band between directions to avoid flickering. The 32-pixel workspace edge targets start below
+the tab strip and carry full-height column labels. Escape cancels; dropping over the browser,
+a divider, or outside the workspace leaves the layout unchanged. Preview transitions respect
+reduced-motion preferences.
 
 Drag empty chat header space onto another tile's left, right, top, or bottom edge to move the whole pane. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its
