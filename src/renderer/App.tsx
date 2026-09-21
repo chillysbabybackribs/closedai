@@ -13,12 +13,11 @@ import {
   type ChatZoomCommand
 } from './chat-zoom.js'
 import { appShortcutForKey, targetRunningPaneId } from './app-shortcuts.js'
-import { TitlebarMenu } from './titlebar-menu.js'
+import { TitlebarMenu, type MenuAction } from './titlebar-menu.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
 import type { ChatPaneDialog } from './chat-pane.js'
 import { ChatRenameDialog } from './chat-rename-dialog.js'
-import { AppearanceSettingsDialog } from './settings/appearance-settings-dialog.js'
-import { CredentialVaultModal } from './settings/credential-vault-modal.js'
+import { SettingsDialog, type SettingsTab } from './settings/settings-dialog.js'
 import { ResearchLibraryDialog } from './research/library-dialog.js'
 import { BrowserGlobeIcon } from './browser-globe-icon.js'
 import {
@@ -38,12 +37,12 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const focusSearch = useCallback(() => { searchRef.current?.focus(); searchRef.current?.select() }, [])
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const [settingsOpen, setSettingsOpen] = useState(initialSettingsOpen)
-  const [credentialsOpen, setCredentialsOpen] = useState(false)
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>('appearance')
   const [researchOpen, setResearchOpen] = useState(false)
   const [renamingChat, setRenamingChat] = useState<{ id: string; title: string } | null>(null)
   const [paneDialog, setPaneDialog] = useState<ChatPaneDialog | null>(null)
-  const dialogsRef = useRef({ settingsOpen, credentialsOpen, researchOpen, renamingChat, paneDialog })
-  dialogsRef.current = { settingsOpen, credentialsOpen, researchOpen, renamingChat, paneDialog }
+  const dialogsRef = useRef({ settingsOpen, researchOpen, renamingChat, paneDialog })
+  dialogsRef.current = { settingsOpen, researchOpen, renamingChat, paneDialog }
   const workspaceRef = useRef<ChatLayoutHandle>(null)
   const [browserVisible, setBrowserVisible] = useState(false)
   // The File menu retains the history management panel; Ctrl+H focuses header search.
@@ -76,6 +75,15 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       if (shortcut === 'settings') {
         event.preventDefault()
         setSettingsOpen(true)
+      } else if (shortcut === 'tools' || shortcut === 'context' || shortcut === 'trace') {
+        event.preventDefault()
+        if (chatRef.current.selectedPaneId) setPaneDialog(shortcut)
+      } else if (shortcut === 'reload') {
+        event.preventDefault()
+        window.location.reload()
+      } else if (shortcut === 'toggle-devtools') {
+        event.preventDefault()
+        void window.closedai.window.toggleDevTools()
       } else if (shortcut === 'history') {
         event.preventDefault()
         focusSearch()
@@ -93,7 +101,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         void window.closedai.window.toggleFullscreen()
       } else if (shortcut === 'pause-task') {
         const dialogs = dialogsRef.current
-        const hasOpenModal = dialogs.settingsOpen || dialogs.credentialsOpen || dialogs.researchOpen ||
+        const hasOpenModal = dialogs.settingsOpen || dialogs.researchOpen ||
           Boolean(dialogs.renamingChat) || Boolean(dialogs.paneDialog)
         const hasOverlay = hasOpenModal || Boolean(document.querySelector(
           '[role="dialog"], [role="menu"], [data-radix-menu-content], [data-radix-popper-content-wrapper], .radix-dropdown-menu-content'
@@ -137,25 +145,44 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     }
   }, [])
 
+  const selectedRow = chat.chats.find((row) => row.paneId === chat.selectedPaneId)
+  const ready = chat.state.connection.state === 'ready'
+  const running = chat.state.activeTurnId !== null
+  // Compaction is a manual step only where the provider does not rotate seamlessly; elsewhere
+  // the row stays visible but disabled so the menu reads the same in every chat.
+  const compactEnabled = chat.state.provider === 'antigravity' && chat.preferences?.chatSeamlessRotation !== true
+    && ready && !running && chat.state.items.some((item) => item.type === 'user')
+  const menuAction = useCallback((action: Exclude<MenuAction, 'search-chats'>): void => {
+    switch (action) {
+      case 'new-chat': history.newChat(); break
+      case 'settings': setSettingsTab('appearance'); setSettingsOpen(true); break
+      case 'research': setResearchOpen(true); break
+      case 'history': toggleHistory(); break
+      case 'toggle-browser': workspaceRef.current?.toggleBrowser(); break
+      case 'layout': workspaceRef.current?.openLayoutPresets(); break
+      case 'toggle-fullscreen': void window.closedai.window.toggleFullscreen(); break
+      case 'close-tab': void workspaceRef.current?.closeFocused(); break
+      case 'close-window': void window.closedai.window.close(); break
+      case 'tools': case 'trace': case 'context': setPaneDialog(action); break
+      case 'compact': void chatRef.current.compactConversation(); break
+      case 'stop-turn': void chatRef.current.interrupt(); break
+      case 'reload': window.location.reload(); break
+      case 'devtools': void window.closedai.window.toggleDevTools(); break
+    }
+  }, [history.newChat, toggleHistory])
+
   return (
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
         <TitlebarMenu
           chatZoom={appearance.chatZoom}
           historyOpen={historyOpen}
+          selectedChatTitle={selectedRow?.title ?? null}
+          compactEnabled={compactEnabled}
+          stopEnabled={running}
           onChatZoomChange={changeChatZoom}
-          onNewChat={history.newChat}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onOpenCredentials={() => setCredentialsOpen(true)}
-          onOpenResearch={() => setResearchOpen(true)}
-          onToggleHistory={toggleHistory}
+          onAction={menuAction}
           onSearchChats={focusSearch}
-          onToggleBrowser={() => workspaceRef.current?.toggleBrowser()}
-          onOpenLayout={() => workspaceRef.current?.openLayoutPresets()}
-          onToggleFullscreen={() => { void window.closedai.window.toggleFullscreen() }}
-          onCloseTab={() => { void workspaceRef.current?.closeFocused() }}
-          onCloseWindow={() => { void window.closedai.window.close() }}
-          onOpenPaneDialog={setPaneDialog}
         />
         <div className="titlebar-search-tools">
           <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef}
@@ -196,15 +223,13 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           await chat.sidebar.renameChat(id, title)
         }}
       />
-      <AppearanceSettingsDialog
+      <SettingsDialog
         open={settingsOpen}
-        {...appearance}
+        tab={settingsTab}
+        onTabChange={setSettingsTab}
         onOpenChange={setSettingsOpen}
-        onChange={updateAppearance}
-      />
-      <CredentialVaultModal
-        open={credentialsOpen}
-        onOpenChange={setCredentialsOpen}
+        appearance={appearance}
+        onAppearanceChange={updateAppearance}
       />
       <ResearchLibraryDialog open={researchOpen} onOpenChange={setResearchOpen} />
     </div>

@@ -98,6 +98,24 @@
   font-variant-numeric: tabular-nums;
 }
 
+.titlebar-menu-heading {
+  padding: 6px 10px 2px;
+  color: var(--chrome-control-quiet);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
+.titlebar-menu-heading-name {
+  color: var(--chrome-control-muted);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 .titlebar-menu-separator {
   height: 1px;
   margin: 4px 6px;

@@ -21,8 +21,8 @@ import { ContextInspectorModal } from './context-inspector-modal.js'
 import { ToolsModal } from './tools/tools-modal.js'
 import { TraceModal } from './trace/trace-modal.js'
 
-/** Pane-scoped dialogs the shell's Tools menu can open on the selected pane. */
-export type ChatPaneDialog = 'tools' | 'trace'
+/** Pane-scoped dialogs the shell's Agent and Developer menus can open on the selected pane. */
+export type ChatPaneDialog = 'tools' | 'trace' | 'context'
 
 export const ChatPane = memo(function ChatPane({
   controller,
@@ -43,7 +43,7 @@ export const ChatPane = memo(function ChatPane({
   /** Supplied by the shell so the title bar menu and Ctrl+H reach this panel. */
   historyOpen?: boolean
   onHistoryOpenChange?: (open: boolean) => void
-  /** The Tools menu opens these on the selected pane. */
+  /** The Agent and Developer menus open these on the selected pane. */
   dialog?: ChatPaneDialog | null
   onDialogChange?: (dialog: ChatPaneDialog | null) => void
   selected?: boolean
@@ -69,7 +69,8 @@ export const ChatPane = memo(function ChatPane({
   const [ownDialog, setOwnDialog] = useState<ChatPaneDialog | null>(null)
   const dialog = controlledDialog === undefined ? ownDialog : controlledDialog
   const setDialog = onDialogChange ?? setOwnDialog
-  const [contextOpen, setContextOpen] = useState(false)
+  const contextOpen = dialog === 'context'
+  const setContextOpen = (open: boolean): void => setDialog(open ? 'context' : null)
   const hasMessages = state.items.length > 0
   // 'starting' is the step on the way to ready, not a failure. Treating it as one made every new
   // chat flash the connection guidance and drop the composer to the bottom for the frames before
