@@ -13,6 +13,7 @@ import {
   type ToolResult
 } from './tool.js'
 import { ToolResourceLocks } from './resource-locks.js'
+import type { BrowserCoordination } from './browser/coordination.js'
 
 export type ToolCallRequest = {
   namespace: string | null
@@ -51,6 +52,7 @@ export class ToolRegistry {
   private readonly listeners = new Set<ToolCallListener>()
   private readonly observers = new Set<ToolCallObserver>()
   private readonly disabled = new Set<string>()
+  browserCoordination?: BrowserCoordination
 
   constructor(namespaces: ToolNamespace[], private readonly resourceLocks = new ToolResourceLocks()) {
     assertWellFormed(namespaces)
@@ -157,7 +159,7 @@ export class ToolRegistry {
     if (!definition) return usageResult(this.unknownToolMessage(label, request))
     const owner = this.namespaces.find((entry) => entry.tools.includes(definition))
     const toolId = owner ? `${owner.name}.${definition.name}` : label
-    const input = request.arguments ?? {}
+    let input = request.arguments ?? {}
     const verb = definition.actions?.length && input && typeof input === 'object' && typeof (input as JsonObject).action === 'string'
       ? String((input as JsonObject).action)
       : null
@@ -173,7 +175,15 @@ export class ToolRegistry {
     if (problems.length) return usageResult(`${label}: invalid arguments — ${problems.join('; ')}`)
     if (context.parentSignal?.aborted) return failureResult(`${label}: cancelled because its parent call ended`)
 
-    const lock = this.resourceLocks.tryAcquire(request, input as JsonObject, context.paneId ?? null, context.callId)
+    // Resolve the caller's target before locking; null namespace must not bypass coordination.
+    const resolvedRequest = { ...request, namespace: owner?.name ?? request.namespace }
+    try {
+      input = this.browserCoordination?.prepare(resolvedRequest, input as JsonObject, context) ?? input
+    } catch (error) {
+      return failureResult(`${label}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+
+    const lock = this.resourceLocks.tryAcquire(resolvedRequest, input as JsonObject, context.paneId ?? null, context.callId)
     if (typeof lock === 'string') return failureResult(`${label}: conflict — ${lock}`)
     const controller = new AbortController()
     const timeoutMs = definition.timeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS
@@ -191,22 +201,24 @@ export class ToolRegistry {
       cancel(failureResult(`${label}: cancelled because its parent call ended`))
     }
     context.parentSignal?.addEventListener('abort', cancelFromParent, { once: true })
+    let running: Promise<ToolResult> | undefined
     try {
       const { parentSignal: _parentSignal, ...toolContext } = context
-      const run = Promise.resolve().then(() =>
+      running = Promise.resolve().then(() =>
         controller.signal.aborted
           ? failureResult(`${label}: cancelled because its parent call ended`)
           : definition.run(input as JsonObject, { ...toolContext, signal: controller.signal })
       )
-      return await Promise.race([run, timeout, cancelled])
+      return await Promise.race([running, timeout, cancelled])
     } catch (error) {
       return failureResult(`${label}: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
       if (timer) clearTimeout(timer)
       context.parentSignal?.removeEventListener('abort', cancelFromParent)
-      // A timed-out tool may ignore its abort signal and never settle. Its public call has
-      // ended, so retaining the resource lock would permanently strand that target.
-      lock()
+      // Cancellation does not prove the underlying mutation stopped. Keep its target locked
+      // until it settles, even if the caller has already received a timeout.
+      if (running) void running.then(lock, lock)
+      else lock()
     }
   }
 
