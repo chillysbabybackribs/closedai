@@ -144,6 +144,8 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
 
   return <div className="chat-layout-viewport" ref={viewport}>
     <div className="chat-layout-canvas" style={{ minWidth: minimum.width, minHeight: minimum.height }}
+      // The shell's Escape handler leaves a drag in progress to the cancel listener above.
+      data-layout-drag={dragging ? 'true' : undefined}
       onDragOverCapture={(event) => {
         if (dragging?.id !== BROWSER_PANE_ID) return
         event.stopPropagation()

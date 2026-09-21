@@ -1,4 +1,4 @@
-import type { ChatEvent, ChatHistoryPage, ChatProvider, ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
+import type { ChatConnection, ChatEvent, ChatHistoryPage, ChatProvider, ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
 import { CHAT_TURN_PAGE_SIZE } from '../shared/chat.js'
 import { tailTurnSlice } from '../shared/chat-turn-page.js'
 import { sanitizeThreadTitle, summarizeUserMessage } from '../shared/chat-display.js'
@@ -6,10 +6,15 @@ import type { ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../shared/chat-p
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import { activityPhase } from '../shared/chat.js'
 
+/**
+ * The pane before its first snapshot. Which provider it will run is main's decision (the persisted
+ * model preference lives there), so the seed names none: the shell shows a neutral startup notice
+ * until the snapshot arrives, and the first connection event sets the real provider.
+ */
 export function initialChatState(): ChatSnapshot {
   return {
     provider: 'codex',
-    connection: { state: 'starting', message: 'Starting Codex…' },
+    connection: { state: 'starting', message: 'Starting…' },
     account: null,
     models: [],
     selectedModel: null,
@@ -35,6 +40,9 @@ export type ChatWorkspaceAction = ChatWorkspaceEvent | {
   type: 'historyPage'; paneId: string; threadId: string | null; beforeItemId: string; page: ChatHistoryPage
 } | {
   type: 'trimMountedHistory'; paneId: string; threadId: string | null
+} | {
+  /** The first snapshot request's fate, before any pane exists to carry a connection event. */
+  type: 'startup'; connection: ChatConnection
 }
 
 export type ChatRendererState = { workspace: ChatWorkspaceSnapshot; sidebar: ChatSnapshot }
@@ -57,6 +65,10 @@ export function reduceChatWorkspaceEvent(
   state: ChatWorkspaceSnapshot,
   event: ChatWorkspaceAction
 ): ChatWorkspaceSnapshot {
+  if (event.type === 'startup') {
+    if (state.selectedPaneId) return state
+    return { ...state, selected: { ...state.selected, connection: event.connection } }
+  }
   if (event.type === 'trimMountedHistory') {
     const pane = state.panes?.[event.paneId] ?? (event.paneId === state.selectedPaneId ? state.selected : undefined)
     if (!pane || pane.threadId !== event.threadId) return state

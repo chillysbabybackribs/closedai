@@ -312,3 +312,17 @@ test('a paused turn offers Resume until the next turn starts', () => {
   assert.equal(ended.pausedTurnId, 't1')
   assert.equal(reduceChatEvent(ended, { type: 'turn', turnId: 't2' }).pausedTurnId, null)
 })
+
+test('the startup notice seeds no provider name and yields to the first snapshot', () => {
+  const seed = initialChatWorkspaceState()
+  assert.equal(seed.selected.connection.message, 'Starting…')
+  const failed = reduceChatWorkspaceEvent(seed, { type: 'startup', connection: { state: 'error', message: 'No answer' } })
+  assert.deepEqual(failed.selected.connection, { state: 'error', message: 'No answer' })
+  assert.equal(failed.selectedPaneId, '')
+  const snapshot = { ...initialChatWorkspaceState(), selectedPaneId: 'pane-a', selected: initialChatState(),
+    panes: { 'pane-a': initialChatState() } }
+  const started = reduceChatWorkspaceEvent(failed, { type: 'workspace', snapshot })
+  assert.equal(started.selected.connection.state, 'starting')
+  // Once a pane exists, its own connection events own the state; a late startup notice is ignored.
+  assert.equal(reduceChatWorkspaceEvent(started, { type: 'startup', connection: { state: 'error', message: 'late' } }), started)
+})

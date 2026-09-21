@@ -1,8 +1,9 @@
-import { startTransition, useCallback, useEffect, useMemo, useReducer, type Dispatch } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useReducer, useState, type Dispatch } from 'react'
 import type { ChatAttachment, ChatSnapshot } from '../shared/chat.js'
 import { CHAT_RESUME_PROMPT } from '../shared/chat.js'
 import type { ChatContinuationSource, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../shared/chat-peers.js'
 import { coalesceChatWorkspaceEvents, initialChatRendererState, reduceChatRendererEvent, type ChatWorkspaceAction } from './chat-state.js'
+import { errorMessage } from './error-message.js'
 
 export type ChatController = {
   state: ChatSnapshot
@@ -42,6 +43,8 @@ export type ChatController = {
 
 export function useChatController(enabled = true) {
   const [{ workspace, sidebar: sidebarState }, dispatch] = useReducer(reduceChatRendererEvent, undefined, initialChatRendererState)
+  // Bumped by Retry after the first snapshot failed; the effect below re-requests it.
+  const [startupAttempt, setStartupAttempt] = useState(0)
 
   useEffect(() => {
     if (!enabled) return
@@ -65,17 +68,26 @@ export function useChatController(enabled = true) {
       frame ??= window.requestAnimationFrame(flush)
     }
     const unsubscribe = window.closedai.chat.onEvent(enqueue)
-    void window.closedai.chat.snapshot().then((snapshot) => enqueue({ type: 'workspace', snapshot }))
+    if (startupAttempt > 0) dispatch({ type: 'startup', connection: { state: 'starting', message: 'Starting…' } })
+    // A snapshot that never answers would leave the shell blank; a rejection becomes the
+    // startup notice the shell renders in place of the workspace, with Retry.
+    window.closedai.chat.snapshot().then((snapshot) => enqueue({ type: 'workspace', snapshot }), (error: unknown) => {
+      if (!active) return
+      dispatch({ type: 'startup', connection: {
+        state: 'error', message: errorMessage(error, 'The chat service did not answer')
+      } })
+    })
     return () => {
       active = false
       if (frame !== null) window.cancelAnimationFrame(frame)
       unsubscribe()
     }
-  }, [enabled])
+  }, [enabled, startupAttempt])
 
+  const retryStartup = useCallback(() => setStartupAttempt((attempt) => attempt + 1), [])
   const selected = usePaneChatController(workspace, workspace.selectedPaneId, workspace.selected, dispatch)
   const sidebar = usePaneChatController(workspace, workspace.selectedPaneId, sidebarState, dispatch)
-  return { ...selected, sidebar, snapshot: workspace, dispatch }
+  return { ...selected, sidebar, snapshot: workspace, dispatch, retryStartup }
 }
 
 /** Bind every action to the tile's identity, independently of current keyboard focus. */
