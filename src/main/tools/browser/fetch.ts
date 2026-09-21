@@ -1,7 +1,7 @@
 import type { ToolAction } from '../action-tool.js'
 import { jsonResult } from '../json-result.js'
-import { stringArg, type JsonObject } from '../tool.js'
-import { tabIdField, urlField } from './fields.js'
+import { numberArg, stringArg, type JsonObject } from '../tool.js'
+import { DEFAULT_MAX_CHARS, maxCharsField, tabIdField, urlField } from './fields.js'
 import { missingTabResult, requireBrowser, type BrowserHostProvider } from './host.js'
 import type { PageFetchRequest } from '../../browser-page-fetch.js'
 
@@ -58,7 +58,8 @@ export function fetchAction(browser: BrowserHostProvider): ToolAction {
         method: methodField,
         headers: headersField,
         body: bodyField,
-        tab_id: tabIdField
+        tab_id: tabIdField,
+        max_chars: maxCharsField
       },
       required: ['url'],
       additionalProperties: false
@@ -67,10 +68,15 @@ export function fetchAction(browser: BrowserHostProvider): ToolAction {
     async run(input) {
       const url = stringArg(input, 'url')!
       const tabId = stringArg(input, 'tab_id')
+      const maxChars = numberArg(input, 'max_chars', DEFAULT_MAX_CHARS)
       const host = requireBrowser(browser)
       const response = await host.fetchPage(tabId, requestFrom(input, url))
       if (!response) return missingTabResult(host, tabId)
       const { json, isJson } = parseBody(response.text, response.contentType)
+      // A parsed JSON body is returned whole so the caller can read it as data; extract is the
+      // projecting verb. Text is bounded here so the tool, not the generic serializer, decides
+      // where it stops and says so.
+      const textTruncated = !isJson && response.text.length > maxChars
       return jsonResult({
         url: response.url,
         status: response.status,
@@ -78,7 +84,12 @@ export function fetchAction(browser: BrowserHostProvider): ToolAction {
         contentType: response.contentType,
         bodyLength: response.bodyLength,
         ...(response.truncated ? { bodyTruncatedAtCeiling: true } : {}),
-        ...(isJson ? { json } : { text: response.text })
+        ...(isJson
+          ? { json }
+          : {
+              text: textTruncated ? response.text.slice(0, maxChars) : response.text,
+              ...(textTruncated ? { textTruncated: true, hint: 'Raise max_chars, or use extract with a path and fields.' } : {})
+            })
       })
     }
   }

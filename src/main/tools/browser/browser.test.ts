@@ -197,6 +197,16 @@ test('fetch calls from inside the tab and parses a JSON response', async () => {
   assert.equal(payload.json.data.items.length, 2)
 })
 
+test('fetch bounds a text body at max_chars and says so', async () => {
+  const html = '<p>' + 'x'.repeat(500) + '</p>'
+  const { scriptCall } = jsonHarness([], { contentType: 'text/html', text: html, bodyLength: html.length })
+  const result = await scriptCall({ action: 'fetch', url: '/page', max_chars: 200 })
+  const payload = JSON.parse(textOf(result)) as { text: string; textTruncated?: boolean; bodyLength: number }
+  assert.equal(payload.text.length, 200)
+  assert.equal(payload.textTruncated, true)
+  assert.equal(payload.bodyLength, html.length)
+})
+
 test('fetch reports a missing tab rather than pretending the request ran', async () => {
   const { scriptCall } = harness()
   const result = await scriptCall({ action: 'fetch', url: '/api', tab_id: 'missing' })
