@@ -20,6 +20,7 @@ import { settleFrames } from './browser-frame-settle.js'
 import { PageBackgroundMemory } from './browser-page-background.js'
 import { activateTabSurface, prepareTabSurfaceForTool } from './browser-tab-activation.js'
 import type { CdpBrowserTarget } from './cdp/browser-cdp-access.js'
+import { HiddenCaptureSurfaces } from './browser-capture-surface.js'
 
 type BrowserServiceOptions = {
   initialUrl?: string
@@ -53,6 +54,7 @@ export class BrowserService extends EventEmitter {
   private readonly pageBackgrounds = new PageBackgroundMemory()
   private readonly partitionSession: Electron.Session
   private readonly persistentSessionCookies: PersistentSessionCookies
+  private readonly captureSurfaces: HiddenCaptureSurfaces
   // What the app records about every tab without a debugger: network traffic and rules on
   // the session, console output per tab. Exposed to the model tools through the access classes.
   readonly observers = new BrowserObservers((webContentsId) => this.tabIdForContents(webContentsId))
@@ -72,6 +74,7 @@ export class BrowserService extends EventEmitter {
     options: BrowserServiceOptions = {}
   ) {
     super()
+    this.captureSurfaces = new HiddenCaptureSurfaces(window)
     this.on('error', () => {})
     this.partitionSession = session.fromPartition(PARTITION)
     this.configureSession(this.partitionSession)
@@ -489,14 +492,18 @@ export class BrowserService extends EventEmitter {
     const tab = this.tabs.find((candidate) => candidate.id === tabId)
     if (!(tab instanceof BrowserTab)) return null
     const release = this.rendering.pin(tabId)
+    const hiddenRelease = !browserSurfaceVisibility(this.bounds).pageVisible || !(this.active instanceof BrowserTab)
+      ? this.captureSurfaces.acquire(tab, this.bounds) : undefined
     this.prepareTabForTool(tab)
     return () => {
+      hiddenRelease?.()
       release()
       if (this.tabs.includes(tab)) this.prepareTabForTool(tab)
     }
   }
 
   private prepareTabForTool(tab: BrowserTab): void {
+    if (this.captureSurfaces.has(tab.id)) return
     if (this.rendering.describe(tab.id).pins > 0 &&
         (tab.id !== this.activeId || !browserSurfaceVisibility(this.bounds).pageVisible)) {
       // A never-shown view has no usable frame sink. Initialize it underneath the opaque
@@ -591,6 +598,7 @@ export class BrowserService extends EventEmitter {
     this.disposed = true
     this.persistentSessionCookies.dispose()
     this.rendering.dispose()
+    this.captureSurfaces.dispose()
     for (const tab of this.tabs) {
       try {
         if (tab instanceof BrowserTab) this.window.contentView.removeChildView(tab.view)
