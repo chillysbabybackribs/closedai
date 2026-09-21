@@ -487,12 +487,24 @@ export class BrowserService extends EventEmitter {
   leaseTabRendering(tabId: string): (() => void) | null {
     const tab = this.tabs.find((candidate) => candidate.id === tabId)
     if (!(tab instanceof BrowserTab)) return null
+    const release = this.rendering.pin(tabId)
     this.prepareTabForTool(tab)
-    return this.rendering.pin(tabId)
+    return () => {
+      release()
+      if (this.tabs.includes(tab)) this.prepareTabForTool(tab)
+    }
   }
 
   private prepareTabForTool(tab: BrowserTab): void {
+    if (this.rendering.describe(tab.id).pins > 0 &&
+        (tab.id !== this.activeId || !browserSurfaceVisibility(this.bounds).pageVisible)) {
+      // A never-shown view has no usable frame sink. Render a capture lease outside the
+      // window, preserving the selected tab and giving Chromium a full-sized live surface.
+      tab.applyBounds({ ...this.bounds, occluded: true }, false)
+      return
+    }
     prepareTabSurfaceForTool(tab, this.activeId, this.bounds, browserSurfaceVisibility(this.bounds))
+    if (!browserSurfaceVisibility(this.bounds).paneVisible && tab.id !== this.activeId) tab.park(this.bounds)
   }
 
   /** Navigate a targeted tab, the active tab by default, or a new active tab. */

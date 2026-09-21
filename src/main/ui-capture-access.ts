@@ -64,16 +64,7 @@ export class UiCaptureAccess implements UiCaptureHost {
         // The coherence interval opens after readiness: from here until the pixels are read.
         const startedAt = Date.now()
         const readMutations = await observeDomMutations(contents)
-        const grab = async () => {
-          try {
-            return await contents.capturePage(undefined, { stayHidden: true, stayAwake: true })
-          } catch (error) {
-            // A never-selected background tab may not have a Viz surface yet. Electron's
-            // native capturer can request frames without selecting or displaying that tab.
-            if (!(error instanceof Error) || !error.message.includes('UnknownVizError')) throw error
-            return contents.capturePage(undefined, { stayHidden: false, stayAwake: true })
-          }
-        }
+        const grab = () => contents.capturePage(undefined, { stayHidden: false, stayAwake: true })
         let frame: CaptureFrame
         let image: NativeImage
         if (await documentHidden(contents)) {

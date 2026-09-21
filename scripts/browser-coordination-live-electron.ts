@@ -34,13 +34,16 @@ async function verify() {
   assert.ok(address && typeof address !== 'string')
   const base = `http://127.0.0.1:${address.port}`
   const window = new BrowserWindow({ show: true, width: 800, height: 600 })
-  const browser = new BrowserService(window, EPHEMERAL_BROWSER_HISTORY, { initialUrl: 'about:blank' })
+  await new Promise(resolve => setTimeout(resolve, 300))
+  const browser = new BrowserService(window, EPHEMERAL_BROWSER_HISTORY, { initialUrl: `${base}/user` })
   browser.setBounds({ x: 0, y: 0, width: 800, height: 600, visible: true })
   const foreground = browser.tabList().find(tab => tab.active)!.id
   const coordination = new BrowserCoordination({ tabs: () => browser.tabList(),
     create: () => browser.openNewTab('about:blank', false), paneExists: pane => ['a', 'b'].includes(pane) })
   browser.on('popup', (opener, child) => coordination.inherit(opener, child))
   const page = new BrowserPageAccess(() => browser)
+  await page.waitFor(foreground, { until: 'load', timeoutMs: 5000 })
+  await browser.contentsOf(foreground)!.executeJavaScript('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))')
   const cdp = new BrowserCdpAccess(() => browser)
   const capture = new UiCaptureAccess(() => window, () => browser)
   const commands = new AppCommandAccess({ browser: () => browser, chat: () => null,
