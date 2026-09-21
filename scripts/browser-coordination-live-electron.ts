@@ -68,6 +68,11 @@ async function verify() {
     const reads = await Promise.all(['a', 'b'].map(pane => call(pane, 'embedded_browser', 'page', { action: 'read_page' })))
     assert.match(text(ok(reads[0])), /Alpha/)
     assert.match(text(ok(reads[1])), /Beta/)
+    for (const id of [a, b]) {
+      console.log('capture probe', id, await browser.contentsOf(id)!.executeJavaScript('({width:innerWidth,height:innerHeight,visibility:document.visibilityState})'))
+      const probe = await cdp.command(id, 'Page.captureScreenshot', { format: 'png', captureBeyondViewport: true }) as { result: { data: string } }
+      console.log('CDP image', nativeImage.createFromBuffer(Buffer.from(probe.result.data, 'base64')).getSize())
+    }
     const captures = await Promise.all(['a', 'b'].map(pane => call(pane, 'closedai_ui', 'capture', { action: 'browser_page' })))
     for (const [index, result] of captures.entries()) {
       ok(result)
