@@ -345,8 +345,9 @@ Tiles at most 680 px wide or 640 px tall also tighten transcript spacing, and na
 condense model details. Single-tab headers use the
 available width for the title; the focused tile has the accent tab indicator.
 Composers start fully expanded and stay expanded while running or inactive. The chevron
-(`composer.compact-toggle`) is the only control that collapses or expands the composer; that
-choice survives typing, sending, turn, and pane-selection changes while mounted. A collapsed
+(`composer.compact-toggle`) is the only control that collapses or expands the composer. The
+choice is one app-wide preference stored in renderer local storage: it applies to every open
+and new chat at once and survives typing, sending, turns, pane changes, and restarts. A collapsed
 composer accepts and sends drafts on its single line; its attachment chips and the project rail
 (folder icon and name) sit above the pill instead of inside it. Right-clicking
 any tile header or tab opens a context menu with **Maximize tile** (`layout.maximize`), **Split right**

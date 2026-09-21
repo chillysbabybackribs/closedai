@@ -13,6 +13,7 @@ import type { ChatAttachment, ChatContextUsage, ChatModel, ChatPlanUsage, ChatPr
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
 import { ComposerCompactRow } from './composer-compact-row.js'
+import { useComposerLayout } from './composer-layout.js'
 import { useComposerDraft } from './composer-drafts.js'
 import { ModelMenu } from './model-menu.js'
 import { ProjectMenu } from './project-menu.js'
@@ -80,11 +81,10 @@ export function Composer({
   const { input, setInput, attachments, setAttachments, clearDraft } = useComposerDraft(paneId)
   const [attachmentError, setAttachmentError] = useState('')
   const [sending, setSending] = useState(false)
-  const [manualExpanded, setManualExpanded] = useState(true)
-
-  // Only the chevron changes modes: typing, focusing, and sending all stay in the mode
-  // the user chose, so a collapsed composer keeps its one-line footprint across turns.
-  const isCompact = !manualExpanded
+  // Only the chevron changes modes: typing, focusing, and sending all stay in the mode the user
+  // chose, so a collapsed composer keeps its one-line footprint across turns, new chats, and restarts.
+  const [layout, setLayout] = useComposerLayout()
+  const isCompact = layout === 'compact'
   const formRef = useRef<HTMLFormElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const focusAfterSendRef = useRef(false)
@@ -195,7 +195,7 @@ export function Composer({
             data-ui="composer.compact-toggle"
             onClick={(event) => {
               event.stopPropagation()
-              setManualExpanded(false)
+              setLayout('compact')
             }}
           >
             <ChevronDown size={15} aria-hidden="true" />
@@ -227,7 +227,7 @@ export function Composer({
             onBlur={() => { textareaFocusedRef.current = false }}
             onStop={onStop}
             onResume={resume}
-            onExpand={() => setManualExpanded(true)}
+            onExpand={() => setLayout('full')}
           />
         ) : (
           <div className="prompt-composer-body">

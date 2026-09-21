@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import { Composer, type ComposerProps } from './composer.tsx'
+import { resetComposerLayoutCache, setComposerLayout } from './composer-layout.ts'
 
 const baseProps: ComposerProps = {
   enabled: true,
@@ -88,4 +89,19 @@ test('composer hides context info and standalone UI from default resting view', 
   assert.doesNotMatch(html, /model-menu-trigger-context/)
   // Standalone context meter button is hidden from composer view
   assert.doesNotMatch(html, /class="context-meter"/)
+})
+
+test('a persisted compact choice renders the pill for a fresh composer', () => {
+  setComposerLayout('compact')
+  try {
+    const html = renderToStaticMarkup(createElement(Composer, { ...baseProps }))
+    assert.match(html, /prompt-composer is-compact/)
+    assert.match(html, /prompt-composer-compact-row/)
+    assert.match(html, /aria-label="Expand composer"/)
+    // The project rail stays visible above the pill.
+    assert.match(html, /data-ui="composer\.project"/)
+  } finally {
+    setComposerLayout('full')
+    resetComposerLayoutCache()
+  }
 })
