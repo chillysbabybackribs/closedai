@@ -26,6 +26,7 @@
 // opt-out (a kernel that forbids unprivileged user namespaces with a non-SUID chrome-sandbox
 // helper); only then is Electron's own ELECTRON_DISABLE_SANDBOX exported, and only to this child.
 import { spawn } from 'node:child_process'
+import { readFileSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -48,11 +49,42 @@ export function sanitizeGpuEnv(env = process.env) {
   return { env: next, removed }
 }
 
-/** Electron's sandbox variable follows the app's own opt-out and is never set otherwise. */
-export function sandboxEnv(env = process.env) {
+/**
+ * A checkout launch that would abort before app code runs: the kernel forbids unprivileged
+ * user namespaces and the npm-installed chrome-sandbox helper is not root-owned SUID (it never is
+ * after `npm install`). A packaged build installs the helper correctly, so this only concerns
+ * running from the repository. Returns the reason, or null when the sandbox can start.
+ */
+export function sandboxBlockedReason(repoRoot, { platform = process.platform, statSync, readFileSync } = {}) {
+  if (platform !== 'linux') return null
+  try {
+    const restricted = readFileSync('/proc/sys/kernel/apparmor_restrict_unprivileged_userns', 'utf8').trim() === '1'
+    if (!restricted) return null
+    const helper = statSync(join(repoRoot, 'node_modules', 'electron', 'dist', 'chrome-sandbox'))
+    const suidRoot = helper.uid === 0 && (helper.mode & 0o4000) !== 0
+    return suidRoot ? null : 'this kernel restricts unprivileged user namespaces and node_modules/electron/dist/chrome-sandbox is not root-owned SUID'
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Electron's sandbox variable follows the app's own opt-out (CLOSEDAI_NO_SANDBOX=1), or the
+ * detected checkout condition above, and is never set otherwise.
+ */
+export function sandboxEnv(env = process.env, blockedReason = null, stream = process.stderr) {
   const next = { ...env }
   delete next.ELECTRON_DISABLE_SANDBOX
-  if (env.CLOSEDAI_NO_SANDBOX === '1') next.ELECTRON_DISABLE_SANDBOX = '1'
+  if (env.CLOSEDAI_NO_SANDBOX === '1') {
+    next.ELECTRON_DISABLE_SANDBOX = '1'
+  } else if (blockedReason) {
+    next.ELECTRON_DISABLE_SANDBOX = '1'
+    stream.write(
+      `[launch] running this checkout without the Chromium sandbox: ${blockedReason}.\n` +
+      '[launch] one-time fix: sudo chown root:root node_modules/electron/dist/chrome-sandbox && ' +
+      'sudo chmod 4755 node_modules/electron/dist/chrome-sandbox (repeat after reinstalling electron)\n'
+    )
+  }
   return next
 }
 
@@ -70,7 +102,7 @@ if (isMain) {
   const binExtension = process.platform === 'win32' ? '.cmd' : ''
   const { env: gpuEnv, removed } = sanitizeGpuEnv()
   reportSanitizedGpuEnv(removed)
-  const env = sandboxEnv(gpuEnv)
+  const env = sandboxEnv(gpuEnv, sandboxBlockedReason(repoRoot, { statSync, readFileSync }))
   for (const name of HOST_ELECTRON_VARS) delete env[name]
   const child = spawn(join(repoRoot, 'node_modules', '.bin', `electron-vite${binExtension}`), process.argv.slice(2), {
     cwd: repoRoot,
