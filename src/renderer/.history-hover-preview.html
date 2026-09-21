@@ -1,0 +1,15 @@
+<!doctype html><html><head><title>History hover check</title></head><body>
+<div id="root"></div>
+<script type="module">
+import React, { useRef } from 'react';
+import { createRoot } from 'react-dom/client';
+import { HeaderChatSearch } from './chat-history/header-search.tsx';
+import './styles.css';
+window.check={refreshes:0,opened:[],deleted:[]};
+const controller={reviewQueue:{},error:null,reportError:console.error,refreshChats:()=>window.check.refreshes++,openRow:async id=>window.check.opened.push(id),deleteRow:async id=>window.check.deleted.push(id)};
+const chats=[{paneId:'sample',threadId:'sample',title:'Hover test chat',cwd:'/projects/closedai',updatedAt:Date.now(),running:false,preview:''}];
+function Preview(){const inputRef=useRef(null);return React.createElement(HeaderChatSearch,{chats,controller,inputRef});}
+createRoot(document.getElementById('root')).render(React.createElement(Preview));
+</script>
+<style>body{background:var(--background)}.header-chat-search{top:40px;width:340px;max-width:calc(100% - 32px)}</style>
+</body></html>

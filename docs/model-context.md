@@ -104,6 +104,13 @@ control ids through `closedai_app.ui`. The chat section defaults to the calling 
 model, thread, and `cwd`), falling back to selection only when there is no caller. `pane_id` explicitly
 overrides that target. Workspace state separately identifies caller and selection. Other panes and
 previous conversations are readable through `peer_chats`.
+Browser coordination is enforced in the shared tool registry, before target locking, for all
+provider lanes. Tool descriptions explain caller-relative tab defaults, background creation,
+assignment conflicts, and explicit release. The common instructions distinguish assignment from
+UI selection, direct models to inspect `state.browser.coordination`, and disclose the shared login
+session and human/provider-native input boundary. Assignments last across turns; they are not a
+claim of account isolation. Search-created tabs use the same assignments without stealing focus.
+
 Renderer chat/composer control ids target the focused tile; use `layout.pane-drag` with a chat id
 to focus another tile before exercising its controls. The UI state includes visible pane ids and
 browser visibility. Browser pages use the CDP tools described in [Tools](tools.md) and [CDP](cdp-tool-foundation.md).

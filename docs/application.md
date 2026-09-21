@@ -42,6 +42,31 @@ selected. Hiding a tile only removes it from the layout. Detaching a pane stops 
 the record and unread state under the same identity. The embedded browser belongs to the application and is shared across
 panes and project switches.
 
+Model browser tools assign tabs to the calling chat, independently of directory and UI selection.
+The first untargeted navigation creates a background tab; inspection can claim an unassigned
+visible tab. Later omitted targets use that chat's last assigned tab. Explicit targeting claims
+an unassigned tab, but refuses another attached chat's tab, including for reads and captures.
+Assignments protect the intervals between calls and survive turn completion and focus changes.
+`closedai_app.state` exposes `browser.coordination` (the caller's default and tab assignments).
+`browser_tab release` relinquishes a tab without closing it; detaching the chat or restarting
+also releases assignments. A closed default produces an error until a new or explicit target is
+chosen. Bulk tab close commands preflight all affected tabs before closing any.
+
+Independent tabs can navigate, extract, and capture concurrently. Foreground input and tab-strip
+commands take a shared browser lock; conflicting calls fail busy. A timed-out operation keeps its
+lock until its underlying work settles. Raw Input commands use the same foregrounding path as
+semantic input. New model tabs and research source tabs preserve browser selection; popups inherit
+their opener's assignment and a background opener cannot activate its popup. Session-wide cookie,
+network-rule, raw Target mutations, and renderer input are refused while another chat holds tabs.
+This coordinates app-owned tools, not human input or provider-native browser tools. Website account
+state and cookies are still shared; it is not isolation between separate browser profiles.
+
+The isolated `xvfb-run -a node scripts/browser-coordination-live-check.mjs` check exercises actual
+Electron tabs, parallel navigation and extraction, background screenshot pixels, foreground input
+exclusion, popup ownership, bulk-close preflight, release, and closed-target recovery without
+touching the user's profile. Background surfaces receive a usable viewport before attachment;
+capture leases can render underneath the opaque active browser surface without selecting the tab.
+
 `ChatHub` routes to Codex, Claude Code, Antigravity, or Cursor. Codex model/thread ids are
 unprefixed; Claude ids use `claude:`, Antigravity ids use `agy:`, and Cursor ids use `cursor:`. Picking another provider's model keeps the
 pane in its conversation: the destination leaves whatever chat it last had open, starts a fresh
@@ -711,11 +736,11 @@ instead of returning ciphertext as if it were the secret.
 Parallel research now has an initial model-facing implementation: `search.run` starts several
 queries and begins static source collection as each provider responds; `search.read` retrieves
 incremental results and retained excerpts. Both search tools default to live presentation, opening
-a browser tab with an actual source as soon as an eligible URL arrives, while other providers and
+a background browser tab assigned to the calling chat with an actual source as soon as an eligible URL arrives, while other providers and
 reads continue. Discovery stays in the search APIs; search-engine results pages never serve as
 the research presentation. Subsequent searches in the same pane/thread/turn reuse that tab.
 Models receive its id for inspecting source pages while research continues. Explicit background
-mode opts out. Source fetching is unauthenticated; the visible tab uses the
+mode opts out. Source fetching is unauthenticated; the source tab uses the
 normal browser session. A source whose static body is a JavaScript shell is rendered once in a
 hidden page worker (`src/main/browser-workers/`, at most three, on the public research session,
 never shown or listed in the tab strip) and reported as `rendered_text`. Runs are tied to the
