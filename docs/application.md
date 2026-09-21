@@ -448,10 +448,17 @@ duplicating, renaming, closing, closing other tabs, and closing tabs to the righ
 names are tab-strip labels stored separately from the page title and are persisted with the tab
 session.
 
-Ordinary popups become tabs; OAuth/utility windows can retain a native opener bridge. Native
-popups are registered as `popup-<webContents id>` CDP roots with an opener id and do not appear
-in the tab strip. Raw CDP can address a known popup root; semantic page input currently requires
-a visible regular tab.
+All page-requested windows become regular browser tabs, including OAuth/login windows, sized
+utility popups, and `about:blank` children. Electron's `createWindow` callback hands the original
+child WebContents to a WebContentsView, preserving native opener/postMessage behavior, named
+window reuse, blank-document writes, redirects and form POSTs. Background-tab dispositions stay
+unselected; Chromium-deferred children without supplied WebContents receive one explicit initial
+navigation. Tabs fill the browser pane rather than using a site's popup dimensions, remain open
+when their opener tab closes, and support the usual capture, input and CDP tools. Page-initiated
+`window.close()` removes the tab. Public research workers deny popup creation entirely.
+The isolated regression check is `xvfb-run -a node scripts/popup-tabs-live-check.mjs` on Linux;
+it exercises the real BrowserService and Chromium without the user's profile. Verified on Electron
+44.1.1; this replaces the former Electron 43 native-window workaround.
 
 The page view fills every compositor gap — between a navigation committing and the new
 document's first paint, and whenever a hidden view is shown again — with one flat base colour.

@@ -102,6 +102,8 @@ previous conversations are readable through `peer_chats`.
 Renderer chat/composer control ids target the focused tile; use `layout.pane-drag` with a chat id
 to focus another tile before exercising its controls. The UI state includes visible pane ids and
 browser visibility. Browser pages use the CDP tools described in [Tools](tools.md) and [CDP](cdp-tool-foundation.md).
+Shared guidance also states that page-requested popups, including login windows, open as regular
+browser tabs with native opener behavior; they use the same tab ids, capture and input tools.
 Chats can dock on either side of the shared browser via `layout.browser-dock`; the browser's
 position and visibility are saved per directory with the chat layout.
 Press `layout.new-chat` (the header `+`) to add a conversation tab (`layout.split-right` and

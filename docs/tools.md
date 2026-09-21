@@ -126,6 +126,10 @@ keeps its tabs, but semantic page input still requires a visible page.
 
 ### Application facts, browser targets, and batching
 
+Page-requested windows, including login and sized popups, are regular browser tabs. Discover
+them through `closedai_app.state` and use their tab ids with the normal page, capture and CDP
+tools. The browser preserves Chromium's opener relationship while adopting the page into a tab.
+
 `embedded_browser.page read_page` reads a PDF already loaded in Chromium's built-in viewer
 using native PDF accessibility text. `pdf_page` is one-based and defaults to 1; `max_chars`
 bounds that page's text. Select the PDF tab first: hidden PDF views may not construct their
