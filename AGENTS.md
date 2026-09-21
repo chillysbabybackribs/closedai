@@ -56,6 +56,10 @@ The byte caps and layer-boundary rules live in `scripts/hygiene-gate.mjs`; sourc
 
 ## Verification and Testing
 
+- For browser UI testing, use `npm run dev:web` and the returned URL; reuse its running server
+  while editing. Follow `docs/ui-preview.md` for sample states, browser readiness/capture, and
+  cleanup. This exercises the real renderer with fixtures; native/backend changes need Electron.
+
 - Verify with `npm run typecheck` and only the test file that exercises the edited code: `node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs --test "src/path/to/target.test.ts"`.
 - Run `npm run hygiene` when changing file lengths or structure.
 - Full gates (`npm test`, `npm run check`) are for releases or an explicit request; a routine edit does not earn one.
