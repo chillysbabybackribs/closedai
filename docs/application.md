@@ -367,6 +367,9 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 
 ## Chat surface
 
+- The window header is 44 px tall, with 14 px menu/search text, a 34 px search field,
+  a 24 px browser globe, and enlarged window buttons. The shell reserves the header's
+  natural height so the workspace begins directly below its divider.
 - Header search reads chat records across directories, attached or detached, including child chats.
   It matches titles; project names provide context. Opening a result calls `openChat` and selects
   an existing tab or replaces the focused tab. Archived chats are excluded by the store.

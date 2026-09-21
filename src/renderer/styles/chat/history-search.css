@@ -8,9 +8,9 @@
 .header-chat-search-field {
   display: flex;
   align-items: center;
-  gap: 7px;
-  height: 26px;
-  padding: 0 8px;
+  gap: 9px;
+  height: 34px;
+  padding: 0 10px;
   border: 1px solid var(--hairline-strong);
   border-radius: 6px;
   background: var(--surface-card);
@@ -30,7 +30,7 @@
   outline: none;
   background: transparent;
   color: var(--chrome-fg-strong);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .header-chat-search-field input::placeholder { color: var(--chrome-fg); }
@@ -44,7 +44,7 @@
   border-left: 1px solid var(--hairline-strong);
   flex-shrink: 0;
 }
-.header-chat-search-count { display: flex; align-items: center; font-size: 10px; font-variant-numeric: tabular-nums; }
+.header-chat-search-count { display: flex; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
 .header-chat-search [data-status='running'] { color: var(--tab-accent); }
 .header-chat-search [data-status='paused'] { color: #dba74b; }
 .header-chat-search [data-status='completed'] { color: #65b98a; }
@@ -58,8 +58,8 @@
 .header-chat-search-clear {
   display: grid;
   place-items: center;
-  flex: 0 0 18px;
-  height: 20px;
+  flex: 0 0 24px;
+  height: 26px;
   padding: 0;
   border: 0;
   border-radius: 3px;

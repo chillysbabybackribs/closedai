@@ -2,7 +2,7 @@
 
 .shell {
   display: grid;
-  grid-template-rows: 34px 1px minmax(0, 1fr);
+  grid-template-rows: auto 1px minmax(0, 1fr);
   width: 100vw;
   height: 100vh;
   overflow: hidden;

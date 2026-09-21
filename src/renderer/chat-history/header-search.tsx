@@ -108,7 +108,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
     }
   }}>
     <div className="header-chat-search-field">
-      <Search size={13} aria-hidden="true" />
+      <Search size={17} aria-hidden="true" />
       <input ref={inputRef} type="text" value={query} placeholder="Search chats"
         aria-label="Search previous chat titles" role="combobox" aria-autocomplete="list" aria-haspopup="grid"
         aria-expanded={expanded} aria-controls={expanded ? listId : undefined}
@@ -138,7 +138,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
       {query && <button type="button" className="header-chat-search-clear" aria-label="Clear chat search"
         data-ui="titlebar.chat-search-clear" onMouseDown={event => event.preventDefault()}
         onClick={() => { setQuery(''); setHighlight(0); inputRef.current?.focus() }}>
-        <X size={12} aria-hidden="true" />
+        <X size={16} aria-hidden="true" />
       </button>}
     </div>
     {expanded && <div className="header-chat-search-popup">

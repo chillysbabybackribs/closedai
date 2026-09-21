@@ -160,7 +160,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             aria-pressed={browserVisible} aria-label={browserVisible ? 'Hide browser' : 'Show browser'}
             title={browserVisible ? 'Hide browser' : 'Show browser'}
             onClick={() => workspaceRef.current?.toggleBrowser()}>
-            <BrowserGlobeIcon size={16} />
+            <BrowserGlobeIcon size={24} />
           </button>
         </div>
         <AppWindowControls />
