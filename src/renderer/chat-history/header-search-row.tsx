@@ -35,6 +35,18 @@ export function HeaderChatSearchRow({
   const place = chatSearchPlace(hit)
   const label = chatSearchMeta(hit, formatChatTime)
   const turnControl = row.running ? 'pause' : row.paused ? 'resume' : null
+  const turnButton = {
+    className: 'header-chat-search-turn',
+    'data-ui-key': row.paneId,
+    'aria-label': `${row.running ? 'Pause' : 'Resume'} “${row.title}”`,
+    title: row.running ? 'Pause chat' : 'Resume chat',
+    disabled: busy,
+    onMouseDown: swallowFocus,
+    onClick: onToggleTurn,
+    children: changingTurn
+      ? <LoaderCircle size={14} className="header-chat-search-spinner" aria-hidden="true" />
+      : row.running ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />
+  }
 
   return <div id={id} role="row" aria-selected={selected} className="header-chat-search-row"
     data-status={status} onMouseEnter={onHover}>
@@ -61,15 +73,8 @@ export function HeaderChatSearchRow({
       </button>
     </div>
     <div role="gridcell" className="header-chat-search-actions">
-      {turnControl && <button type="button" className="header-chat-search-turn"
-        data-ui={turnControl === 'pause' ? 'titlebar.chat-search-pause' : 'titlebar.chat-search-resume'}
-        data-ui-key={row.paneId}
-        aria-label={`${row.running ? 'Pause' : 'Resume'} “${row.title}”`}
-        title={row.running ? 'Pause chat' : 'Resume chat'} disabled={busy}
-        onMouseDown={swallowFocus} onClick={onToggleTurn}>
-        {changingTurn ? <LoaderCircle size={14} className="header-chat-search-spinner" aria-hidden="true" />
-          : row.running ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
-      </button>}
+      {turnControl === 'pause' && <button type="button" {...turnButton} data-ui="titlebar.chat-search-pause" />}
+      {turnControl === 'resume' && <button type="button" {...turnButton} data-ui="titlebar.chat-search-resume" />}
       <button type="button" className="header-chat-search-delete"
         data-ui="titlebar.chat-search-delete" data-ui-key={row.paneId}
         aria-label={`Delete “${row.title}”`}

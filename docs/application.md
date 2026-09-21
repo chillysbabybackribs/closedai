@@ -264,15 +264,19 @@ Hovering over it opens a dropdown that stays open across the field, the gap, and
 leaving the component hides it, even while the input retains focus. Hovering does not steal keyboard
 focus. Focusing, clicking, typing, or using arrow keys also opens it for keyboard and touch access.
 The dropdown groups chats into Running, Paused, Recently completed (unread), Open (still attached),
-and Closed (detached). Open and Closed each show up to eight chats, newest last turn first, and
-closed rows say Closed in the subtitle. Empty groups are omitted and each chat appears once. The
-closed input shows no count badges.
+and Closed (detached). Open and Closed each show up to eight chats, newest last turn first. Rows are
+single lines in a command-palette surface wider than the input: a live-state glyph (or the provider's
+mark when idle), the title, the project folder as a dim description, and the last-activity time on
+the right; a search result also carries an Open/Closed tag since no group implies it. Empty groups
+are omitted and each chat appears once. The closed input shows no count badges; at rest it shows
+the Ctrl+H shortcut.
 Activity groups include all matching chats in the scrollable
 dropdown; unread completions use the persisted review queue and move into History when opened.
 Typing shows one list of up to eight ranked, case-insensitive title matches across all groups, with
-matched characters highlighted, activity indicators, and project/time labels. Arrow keys select, Enter or click opens,
-and Escape dismisses. Each result has a trash button that removes the chat from history in one
-click without confirmation, using the existing provider/app archival path. Running chats cannot
+matched characters highlighted. Arrow keys select, Enter or click opens, and Escape dismisses; the
+footer lists those keys and the result count. Each result has a trash button, shown for the selected
+or hovered row, that removes the chat from history in one click without confirmation, using the
+existing provider/app archival path. Running chats cannot
 be deleted; pending actions disable the buttons and failures appear below the search. The dropdown
 stays open after deletion. Ctrl+H and File → Search chats focus it. File → Manage chat history retains
 the full history management panel. New chats use the tab + button or File → New chat (Ctrl+N).
