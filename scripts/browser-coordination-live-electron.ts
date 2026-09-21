@@ -74,41 +74,21 @@ async function verify() {
     const reads = await Promise.all(['a', 'b'].map(pane => call(pane, 'embedded_browser', 'page', { action: 'read_page' })))
     assert.match(text(ok(reads[0])), /Alpha/)
     assert.match(text(ok(reads[1])), /Beta/)
-    // The unselected chat's page is hidden, where Chromium runs timers at ~1 Hz with no animation
-    // frames. Under tool control it must still get real cycles (browser-tab-cadence.ts).
+    // The chat tab that is not selected is a hidden page, which Chromium runs at ~1 Hz with no
+    // animation frames: measured here, four 50 ms timers took 3682 ms and rAF never ran. Under
+    // tool control it has to get real cycles instead (browser-tab-cadence.ts).
     const hidden = active() === a ? b : a
     assert.equal(await browser.contentsOf(hidden)!.executeJavaScript('document.visibilityState'), 'hidden')
-    assert.equal(browser.contentsOf(hidden)!.getBackgroundThrottling(), false, 'a driven page is not throttled')
-    const reapplied = browser.contentsOf(hidden)!
-    reapplied.setBackgroundThrottling(false)
-    const afterReapply = await reapplied.executeJavaScript(`(async () => {
-      const t0 = performance.now()
-      for (let i = 0; i < 4; i++) await new Promise(r => setTimeout(r, 50))
-      let raf = 0
-      await new Promise(res => { const loop = () => { raf++; requestAnimationFrame(loop) }; requestAnimationFrame(loop); setTimeout(res, 600) })
-      return { timers: Math.round(performance.now() - t0), raf }
-    })()`)
-    const probe = `(async () => {
-      const t0 = performance.now()
-      for (let i = 0; i < 4; i++) await new Promise(r => setTimeout(r, 50))
-      const timers = Math.round(performance.now() - t0)
-      let raf = 0
-      await new Promise(res => { const loop = () => { raf++; requestAnimationFrame(loop) }; requestAnimationFrame(loop); setTimeout(res, 600) })
-      return { timers, raf }
-    })()`
-    const cold = browser.openNewTab(`${base}/cold`, false)
-    const coldContents = browser.contentsOf(cold)!
-    await page.waitFor(cold, { until: 'load', timeoutMs: 5000 })
-    coldContents.setBackgroundThrottling(true)
-    console.error('COLD throttled      ' + JSON.stringify(await coldContents.executeJavaScript(probe)))
-    coldContents.setBackgroundThrottling(false)
-    console.error('COLD unthrottled    ' + JSON.stringify(await coldContents.executeJavaScript(probe)))
-    browser.selectTab(cold)
-    await new Promise(resolve => setTimeout(resolve, 300))
-    console.error('COLD selected       ' + JSON.stringify(await coldContents.executeJavaScript(probe)))
-    browser.closeTab(cold)
-    console.error('CADENCE hidden=' + JSON.stringify(cadence) + ' activeControl=' + control)
-    assert.ok(cadence.timers < 5000, `four 50 ms timers in a hidden driven page: ${cadence.timers} ms`)
+    assert.equal(browser.contentsOf(hidden)!.getBackgroundThrottling(), false, 'a driven page keeps its cycles')
+    const cadence = await browser.contentsOf(hidden)!.executeJavaScript(`(async () => {
+      const started = performance.now()
+      for (let tick = 0; tick < 4; tick++) await new Promise(resolve => setTimeout(resolve, 50))
+      let frames = 0
+      await new Promise(resolve => { const loop = () => { frames++; requestAnimationFrame(loop) }
+        requestAnimationFrame(loop); setTimeout(resolve, 500) })
+      return { timers: Math.round(performance.now() - started), frames }
+    })()`) as { timers: number; frames: number }
+    assert.ok(cadence.timers < 1_500, `four 50 ms timers in a hidden driven page: ${cadence.timers} ms`)
     assert.ok(cadence.frames > 5, `animation frames in a hidden driven page: ${cadence.frames}`)
     const captures = await Promise.all(['a', 'b'].map(pane => call(pane, 'closedai_ui', 'capture', { action: 'browser_page' })))
     for (const [index, result] of captures.entries()) {

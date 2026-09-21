@@ -24,17 +24,28 @@ test('a touched tab runs unthrottled and returns to Chromium’s default after t
   assert.deepEqual(policy.describe('tab-1'), { unthrottled: false, holds: 0, inGrace: false })
 })
 
-test('a burst of calls is one exemption and the grace runs from the last of them', async () => {
+test('a burst of calls keeps the exemption and the grace runs from the last of them', async () => {
   const { policy, log } = harness()
   policy.touch('tab-1')
   await settle(GRACE_MS / 2)
   policy.touch('tab-1')
   await settle(GRACE_MS / 2)
 
-  // The second touch pushed the restore out; a single toggle covered both calls.
-  assert.deepEqual(log, ['tab-1:false'])
+  // The second touch pushed the restore out; the page was never handed back mid-burst.
+  assert.deepEqual(log, ['tab-1:false', 'tab-1:false'])
   await settle()
-  assert.deepEqual(log, ['tab-1:false', 'tab-1:true'])
+  assert.deepEqual(log.filter((entry) => entry.endsWith('true')), ['tab-1:true'])
+})
+
+test('reassert re-arms every exempt tab, for surfaces Electron hid after the fact', () => {
+  const { policy, log } = harness()
+  policy.hold('tab-1')
+  policy.touch('tab-2')
+  log.length = 0
+
+  policy.reassert()
+
+  assert.deepEqual(log, ['tab-1:false', 'tab-2:false'])
 })
 
 test('a hold outlives the grace window and only its release starts one', async () => {
@@ -59,11 +70,11 @@ test('nested holds restore once, when the last one releases', async () => {
 
   inner()
   await settle()
-  assert.deepEqual(log, ['tab-1:false'])
+  assert.deepEqual(log, ['tab-1:false', 'tab-1:false'], 'the inner release left the hold standing')
 
   outer()
   await settle()
-  assert.deepEqual(log, ['tab-1:false', 'tab-1:true'])
+  assert.deepEqual(log.filter((entry) => entry.endsWith('true')), ['tab-1:true'])
 })
 
 test('a touch during a hold does not schedule a restore behind the hold', async () => {
@@ -73,11 +84,11 @@ test('a touch during a hold does not schedule a restore behind the hold', async 
   policy.touch('tab-1')
   await settle()
 
-  assert.deepEqual(log, ['tab-1:false'])
+  assert.equal(log.some((entry) => entry.endsWith('true')), false)
   assert.deepEqual(policy.describe('tab-1'), { unthrottled: true, holds: 1, inGrace: false })
   release()
   await settle()
-  assert.deepEqual(log, ['tab-1:false', 'tab-1:true'])
+  assert.deepEqual(log.filter((entry) => entry.endsWith('true')), ['tab-1:true'])
 })
 
 test('a closed tab is forgotten without touching its destroyed WebContents', async () => {

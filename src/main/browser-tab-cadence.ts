@@ -76,6 +76,16 @@ export class TabCadencePolicy {
     this.startGrace(tabId)
   }
 
+  /**
+   * Re-apply the exemption to every tab that holds one. Electron arms it on the widget that
+   * exists when it is set, so anything that hides or replaces a surface — a tab losing the
+   * front, a navigation swapping the main frame — has to reassert it for a page still under
+   * tool control. Re-applying is one cheap IPC call, so this never tries to be clever.
+   */
+  reassert(): void {
+    for (const tabId of this.unthrottled) this.adapter.setThrottled(tabId, false)
+  }
+
   /** The tab is gone: drop its timers without touching a destroyed WebContents. */
   forget(tabId: string): void {
     this.clearGrace(tabId)
@@ -100,8 +110,8 @@ export class TabCadencePolicy {
   }
 
   private apply(tabId: string): void {
-    if (this.unthrottled.has(tabId)) return
     this.unthrottled.add(tabId)
+    // Always re-apply rather than skipping a tab that is already exempt: see reassert().
     this.adapter.setThrottled(tabId, false)
   }
 

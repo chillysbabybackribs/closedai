@@ -374,6 +374,9 @@ export class BrowserService extends EventEmitter {
       // already-present view to the top on re-add).
       () => this.attachTabView(next.id)
     )
+    // The tab that just lost the front is hidden now; a page still under tool control has to be
+    // told again that it keeps its cycles (browser-tab-cadence.ts).
+    this.cadence.reassert()
     this.emit('state', next.getState())
     this.emitTabs()
   }
