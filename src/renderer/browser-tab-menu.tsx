@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Copy, Edit3, PanelRightOpen, RefreshCw, X } from 'lucide-react'
 import type { BrowserTabInfo } from '../shared/types.js'
-import { placeRowMenu, type MenuPlacement } from './side-drawer/drawer-row-position.js'
+import { placeRowMenu, type MenuPlacement } from './menu-position.js'
 
 export type BrowserTabMenuTarget = {
   tab: BrowserTabInfo

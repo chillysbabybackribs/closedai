@@ -17,10 +17,10 @@ const validJavaScript = (expression: string): void => {
 }
 
 test('control listing and ui state are bounded renderer expressions over data-ui ids', () => {
-  const listing = controlsExpression({ surface: 'side-drawer', query: 'row', maxControls: 20 })
+  const listing = controlsExpression({ surface: 'shell', query: 'row', maxControls: 20 })
   validJavaScript(listing)
   assert.match(listing, /querySelectorAll\('\[data-ui\]'\)/)
-  assert.match(listing, /"surface":"side-drawer"/)
+  assert.match(listing, /"surface":"shell"/)
   assert.match(listing, /"maxControls":20/)
   assert.doesNotMatch(listing, /innerText\s*\|\|\s*document/)
   const state = uiStateExpression()
@@ -29,7 +29,7 @@ test('control listing and ui state are bounded renderer expressions over data-ui
 })
 
 test('targets become attribute selectors and action expressions stay valid', () => {
-  assert.equal(targetSelector({ control: 'drawer.row', item: 'r1' }), '[data-ui="drawer.row"][data-ui-key="r1"]')
+  assert.equal(targetSelector({ control: 'titlebar.chat-search-result', item: 'r1' }), '[data-ui="titlebar.chat-search-result"][data-ui-key="r1"]')
   assert.equal(targetSelector({ selector: '.x' }), '.x')
   assert.equal(targetSelector({}), '')
   for (const expression of [
@@ -103,9 +103,9 @@ test('control resolution names the failure: not rendered, disabled, or ambiguous
     fakeElement({ attributes: { 'data-ui-key': 'b' }, innerText: 'Beta chat' })
   ]
   await withDom(rows, () =>
-    assert.rejects(run(targetClickExpression({ control: 'drawer.row' })), /matches 2 elements.*Items: a: Alpha chat \| b: Beta chat/))
+    assert.rejects(run(targetClickExpression({ control: 'titlebar.chat-search-result' })), /matches 2 elements.*Items: a: Alpha chat \| b: Beta chat/))
   await withDom(rows, () =>
-    assert.rejects(run(targetClickExpression({ control: 'drawer.row', match: 'gamma' })), /No visible drawer\.row matches "gamma"/))
+    assert.rejects(run(targetClickExpression({ control: 'titlebar.chat-search-result', match: 'gamma' })), /No visible drawer\.row matches "gamma"/))
 })
 
 test('control resolution diagnoses elements belonging to unselected panes', async () => {

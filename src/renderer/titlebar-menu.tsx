@@ -8,7 +8,7 @@ import {
 } from './chat-zoom.js'
 
 /** One menu's worth of rows. `null` is a separator. */
-type MenuAction = 'new-chat' | 'history' | 'settings' | 'close-window' | 'toggle-drawer' |
+type MenuAction = 'new-chat' | 'history' | 'settings' | 'close-window' | 'search-chats' |
   'toggle-browser' | 'toggle-fullscreen' | 'credentials' | 'tools' | 'trace' | 'research'
 
 type MenuRow = ({
@@ -29,7 +29,8 @@ const MENUS: Menu[] = [
     label: 'File',
     rows: [
       { label: 'New chat', shortcut: 'Ctrl+N', action: 'new-chat' },
-      { label: 'Open chat history', shortcut: 'Ctrl+H', action: 'history' },
+      { label: 'Search chats', shortcut: 'Ctrl+H', action: 'search-chats' },
+      { label: 'Manage chat history', action: 'history' },
       null,
       { label: 'Settings', shortcut: 'Ctrl+,', action: 'settings' },
       null,
@@ -63,14 +64,13 @@ const MENUS: Menu[] = [
 export type TitlebarMenuProps = {
   chatZoom: number
   historyOpen: boolean
-  drawerCollapsed: boolean
   onChatZoomChange: (command: ChatZoomCommand) => void
   onNewChat: () => void
   onOpenSettings: () => void
   onOpenCredentials: () => void
   onOpenResearch: () => void
   onToggleHistory: () => void
-  onToggleDrawer: () => void
+  onSearchChats: () => void
   onToggleBrowser: () => void
   onToggleFullscreen: () => void
   onCloseWindow: () => void
@@ -82,14 +82,13 @@ export type TitlebarMenuProps = {
 export const TitlebarMenu = memo(function TitlebarMenu({
   chatZoom,
   historyOpen,
-  drawerCollapsed,
   onChatZoomChange,
   onNewChat,
   onOpenSettings,
   onOpenCredentials,
   onOpenResearch,
   onToggleHistory,
-  onToggleDrawer,
+  onSearchChats,
   onToggleBrowser,
   onToggleFullscreen,
   onCloseWindow,
@@ -125,7 +124,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                         if (row.action === 'credentials') onOpenCredentials()
                         if (row.action === 'research') onOpenResearch()
                         if (row.action === 'history') onToggleHistory()
-                        if (row.action === 'toggle-drawer') onToggleDrawer()
+                        if (row.action === 'toggle-drawer') onSearchChats()
                         if (row.action === 'toggle-browser') onToggleBrowser()
                         if (row.action === 'toggle-fullscreen') onToggleFullscreen()
                         if (row.action === 'close-window') onCloseWindow()

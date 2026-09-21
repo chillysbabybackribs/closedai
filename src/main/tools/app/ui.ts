@@ -12,7 +12,7 @@ import { UI_SURFACES } from '../../../shared/ui-controls.js'
 import { requireHost, type AppUiHost, type AppUiTarget, type AppWaitCondition } from './host.js'
 
 const targetFields: Record<string, JsonObject> = {
-  control: { type: 'string', minLength: 1, maxLength: 80, description: 'Manifest control id, for example composer.stop or drawer.row.' },
+  control: { type: 'string', minLength: 1, maxLength: 80, description: 'Manifest control id, for example composer.stop or titlebar.chat-search-result.' },
   item: { type: 'string', minLength: 1, maxLength: 200, description: 'The item value from controls when the control repeats (row id, tab id, model id).' },
   match: { type: 'string', minLength: 1, maxLength: 200, description: 'Case-insensitive substring of the control name, when the item is unknown.' },
   selector: { type: 'string', minLength: 1, maxLength: 1_000, description: 'Raw CSS selector; only when no manifest control fits.' }

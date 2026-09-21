@@ -4,9 +4,8 @@ import '@fontsource-variable/inter/wght-italic.css'
 import '@fontsource-variable/geist-mono/wght.css'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { SideDrawer } from './side-drawer/side-drawer.js'
-import { DrawerToggle } from './side-drawer/drawer-toggle.js'
-import { useDrawerController } from './side-drawer/drawer-controller.js'
+import { HeaderChatSearch } from './chat-history/header-search.js'
+import { useHistoryController } from './chat-history/history-controller.js'
 import { AppWindowControls } from './app-window-controls.js'
 import { useChatController } from './chat-controller.js'
 import {
@@ -34,7 +33,9 @@ function App(): JSX.Element {
   const chat = useChatController()
   const chatRef = useRef(chat)
   chatRef.current = chat
-  const drawer = useDrawerController(chat.sidebar)
+  const history = useHistoryController(chat.sidebar)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const focusSearch = useCallback(() => { searchRef.current?.focus(); searchRef.current?.select() }, [])
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [credentialsOpen, setCredentialsOpen] = useState(false)
@@ -44,10 +45,6 @@ function App(): JSX.Element {
   const dialogsRef = useRef({ settingsOpen, credentialsOpen, researchOpen, renamingChat, paneDialog })
   dialogsRef.current = { settingsOpen, credentialsOpen, researchOpen, renamingChat, paneDialog }
   const workspaceRef = useRef<ChatLayoutHandle>(null)
-  const splitSidebarChat = useCallback((chatId: string, edge: 'right' | 'bottom'): Promise<void> => {
-    if (!workspaceRef.current) return Promise.reject(new Error('The workspace is still loading'))
-    return workspaceRef.current.splitChat(chatId, edge)
-  }, [])
   // Owned here because the title bar menu and Ctrl+H reach the panel that lives in the chat pane.
   const [historyOpen, setHistoryOpen] = useState(false)
   const toggleHistory = useCallback(() => setHistoryOpen((open) => !open), [])
@@ -80,10 +77,10 @@ function App(): JSX.Element {
         setSettingsOpen(true)
       } else if (shortcut === 'history') {
         event.preventDefault()
-        toggleHistory()
+        focusSearch()
       } else if (shortcut === 'new-chat') {
         event.preventDefault()
-        drawer.newChat()
+        history.newChat()
       } else if (shortcut === 'close-window') {
         event.preventDefault()
         void window.closedai.window.close()
@@ -100,7 +97,7 @@ function App(): JSX.Element {
         if (hasOverlay) return
 
         const active = document.activeElement as HTMLElement | null
-        if (active?.getAttribute('data-ui') === 'drawer.search' || active?.classList.contains('browser-omnibox-input')) {
+        if (active?.getAttribute('data-ui') === 'titlebar.chat-search' || active?.classList.contains('browser-omnibox-input')) {
           return
         }
 
@@ -122,7 +119,7 @@ function App(): JSX.Element {
     }
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [changeChatZoom, drawer.newChat, toggleHistory])
+  }, [changeChatZoom, history.newChat, focusSearch])
 
   // Syntax grammars cost the same whenever they are compiled; paid here they are off every
   // chat switch, because the first transcript that holds a code block already finds them ready.
@@ -139,46 +136,39 @@ function App(): JSX.Element {
   return (
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
-        <DrawerToggle controller={drawer} />
         <TitlebarMenu
           chatZoom={appearance.chatZoom}
           historyOpen={historyOpen}
-          drawerCollapsed={drawer.isCollapsed}
           onChatZoomChange={changeChatZoom}
-          onNewChat={drawer.newChat}
+          onNewChat={history.newChat}
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenCredentials={() => setCredentialsOpen(true)}
           onOpenResearch={() => setResearchOpen(true)}
           onToggleHistory={toggleHistory}
-          onToggleDrawer={drawer.toggleCollapsed}
+          onSearchChats={focusSearch}
           onToggleBrowser={() => workspaceRef.current?.toggleBrowser()}
           onToggleFullscreen={() => { void window.closedai.window.toggleFullscreen() }}
           onCloseWindow={() => { void window.closedai.window.close() }}
           onOpenPaneDialog={setPaneDialog}
         />
+        <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef} />
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
-      <div className="workspace" data-mode="chat" data-agents={drawer.isCollapsed ? 'closed' : 'open'}>
-        <SideDrawer
-          controller={drawer}
-          chat={chat.sidebar}
-          onSplitChat={splitSidebarChat}
-          onRenameChat={(id, title) => setRenamingChat({ id, title })}
-          onRetryChatTitle={(id) => { void chat.sidebar.retryChatTitle(id).catch(drawer.reportError) }}
-        />
+      <div className="workspace" data-mode="chat">
+
         {chat.selectedPaneId && <DesktopWorkspace
           key={chat.workspace?.cwd ?? chat.state.cwd}
           ref={workspaceRef}
           chat={chat}
-          reviewQueue={drawer.reviewQueue}
+          reviewQueue={history.reviewQueue}
           appearance={appearance}
           historyOpen={historyOpen}
           onHistoryOpenChange={setHistoryOpen}
           dialog={paneDialog}
           onDialogChange={setPaneDialog}
           onRenameChat={(id, title) => setRenamingChat({ id, title })}
-          onRetryChatTitle={(id) => { void chat.sidebar.retryChatTitle(id).catch(drawer.reportError) }}
+          onRetryChatTitle={(id) => { void chat.sidebar.retryChatTitle(id).catch(history.reportError) }}
         />}
       </div>
       <ChatRenameDialog

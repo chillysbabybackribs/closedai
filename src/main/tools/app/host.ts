@@ -47,7 +47,7 @@ export type AppControlsResult = {
 
 export type AppUiState = {
   layout?: { visiblePaneIds: string[]; browserVisible: boolean }
-  drawerOpen: boolean
+  chatSearchOpen: boolean
   historyOpen: boolean
   downloadsOpen: boolean
   dialogs: string[]

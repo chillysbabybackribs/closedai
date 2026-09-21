@@ -20,7 +20,9 @@ export const UI_CONTROLS = {
   'file.copy-path': 'Copy the local file preview path',
   'file.copy-content': 'Copy the local file preview text',
   'file.reveal': 'Reveal the previewed local file in the system file manager',
-  'titlebar.drawer-toggle': 'Open or close the side drawer',
+  'titlebar.chat-search': 'Search saved chat titles across projects with autocomplete',
+  'titlebar.chat-search-clear': 'Clear chat title search',
+  'titlebar.chat-search-result': 'Open a chat history suggestion; item is the chat id',
   'titlebar.menu': 'Application menu tab; item is file, edit, view, or help',
   'titlebar.menu-item': 'Application menu row; item is the slugged label, for example new-chat',
   'window.minimize': 'Minimize the window',
@@ -42,27 +44,6 @@ export const UI_CONTROLS = {
   'layout.restore': 'Context menu or Escape key: restore the split grid from maximized tile mode; item is the active chat id',
   'layout.divider': 'Resize adjacent chat or browser tiles with a drag or arrow keys; item is the split id',
 
-  'drawer.new-agent': 'Start a new agent chat pane',
-  'drawer.directory': 'Expand or collapse a directory section without changing projects; item is its full directory path',
-  'drawer.directory-history': 'Expand or collapse chat history within a directory section; item is its full directory path',
-  'drawer.search': 'Search previous chats (combobox)',
-  'drawer.search-clear': 'Clear the drawer search',
-  'drawer.search-result': 'Drawer search hit; item is the row id',
-  'drawer.row': 'Open a pinned, running, review-queue, or history chat; item is the row id',
-  'drawer.row-twisty': 'Show or hide the sub-agents of a row; item is the row id',
-  'drawer.row-settled': 'Show or hide settled sub-agents; item is the row id',
-  'drawer.row-stop': 'Stop a running agent row; item is the row id',
-  'drawer.row-close': 'Close an open pane row, keeping its thread in History; item is the row id',
-  'drawer.row-delete': 'Ask to delete a history row; item is the row id',
-  'drawer.row-delete-confirm': 'Confirm deleting a row; item is the row id',
-  'drawer.row-delete-cancel': 'Cancel deleting a row; item is the row id',
-  'drawer.row-menu': 'Context menu of a drawer row (pin/unpin, split right/below, or continue in a new chat)',
-  'drawer.row-split-right': 'Open or move this sidebar chat to the right of the focused pane; item is the chat id',
-  'drawer.row-split-below': 'Open or move this sidebar chat below the focused pane; item is the chat id',
-  'drawer.row-pin': 'Pin or unpin the chat in the row context menu; item is the chat id',
-  'drawer.row-rename': 'Rename the chat in the row context menu; item is the chat id',
-  'drawer.row-retry-title': 'Retry auto-title generation for the chat in the row context menu; item is the chat id',
-  'drawer.row-menu-item': 'Fork the row into a new chat; item is current or a model id',
 
   'chat.rename-dialog': 'Dialog for renaming a chat conversation',
   'chat.rename-input': 'Input for custom chat title',
@@ -171,7 +152,7 @@ export const UI_CONTROLS = {
 
 export type UiControlId = keyof typeof UI_CONTROLS
 
-export const UI_SURFACES = ['shell', 'side-drawer', 'chat', 'browser', 'browser-downloads', 'overlay'] as const
+export const UI_SURFACES = ['shell', 'chat', 'browser', 'browser-downloads', 'overlay'] as const
 
 export type UiSurface = (typeof UI_SURFACES)[number]
 

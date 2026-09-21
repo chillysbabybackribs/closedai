@@ -34,7 +34,7 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
     },
     {
       action: 'new_chat',
-      description: 'Open a new agent chat pane (what the New Agent button does) and select it. Returns its pane id.',
+      description: 'Create and select a new chat (the File menu’s New chat action). Returns its pane id.',
       inputSchema: objectSchema({}),
       run: async () => {
         const host = requireHost(app, 'app commands')

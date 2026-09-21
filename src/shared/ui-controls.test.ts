@@ -40,6 +40,6 @@ test('every manifest id is rendered somewhere', () => {
 test('families are derived from ids', () => {
   const families = uiControlFamilies()
   assert.ok(families.includes('composer'))
-  assert.ok(families.includes('drawer'))
+  assert.ok(families.includes('titlebar'))
   assert.ok(families.every((family) => !family.includes('.')))
 })

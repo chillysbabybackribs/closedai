@@ -50,7 +50,7 @@ export function controlsExpression(filter: AppControlFilter): string {
   })()`
 }
 
-/** Renderer-only facts the main process cannot know: open overlays, drawer, composer, focus. */
+/** Renderer-only facts the main process cannot know: open overlays, chat search, composer, focus. */
 export function uiStateExpression(): string {
   return `(() => {
     ${helpers()}
@@ -62,7 +62,7 @@ export function uiStateExpression(): string {
     const active = document.activeElement;
     const focused = active && active.closest ? active.closest('[data-ui]') : null;
     return {
-      drawerOpen: Boolean(document.querySelector('[data-ui-surface="side-drawer"]')),
+      chatSearchOpen: byId('titlebar.chat-search')?.getAttribute('aria-expanded') === 'true',
       layout: {
         visiblePaneIds: Array.from(document.querySelectorAll('[data-pane-id]')).map((element) => element.getAttribute('data-pane-id')),
         browserVisible: document.querySelector('[data-ui="layout.browser-toggle"]')?.getAttribute('aria-pressed') !== 'false'

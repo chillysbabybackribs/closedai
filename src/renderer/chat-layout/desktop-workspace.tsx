@@ -9,7 +9,7 @@ import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import { ChatCanvas } from './chat-canvas.js'
 import { useChatLayout } from './layout-controller.js'
 import { tabActivity } from './tab-activity.js'
-import type { DrawerReviewQueue } from '../side-drawer/drawer-review-queue.js'
+import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 
 export type ChatLayoutHandle = {
   splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
@@ -18,7 +18,7 @@ export type ChatLayoutHandle = {
 
 export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onRenameChat, onRetryChatTitle, ref }: {
   chat: ReturnType<typeof useChatController>
-  reviewQueue: DrawerReviewQueue
+  reviewQueue: ChatReviewQueue
   appearance: AppearanceSettings
   historyOpen: boolean
   onHistoryOpenChange: (open: boolean) => void
