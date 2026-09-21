@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
-import { BROWSER_PANE_ID, withBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
+import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
 import { addTab, moveTab, pruneTabs, removeTab, selectTab, tabIds, tabOwner } from './layout-tabs.js'
 
 /** The component owning this hook is keyed by project directory. */
@@ -75,7 +75,12 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
 
   // A null edge adds a tab in the target tile without adding a split.
   const dock = useCallback(async (id: string | null, target: string, edge: DockEdge | null, singleTab = false): Promise<void> => {
-    if (pending.current || id === BROWSER_PANE_ID || (target === BROWSER_PANE_ID && (!id || !edge))) return
+    if (pending.current) return
+    if (id === BROWSER_PANE_ID) {
+      if (edge) setLayout((value) => ({ ...value, tree: dockBrowser(value.tree, target, edge, crypto.randomUUID()) }))
+      return
+    }
+    if (target === WORKSPACE_DOCK_ID || (target === BROWSER_PANE_ID && (!id || !edge))) return
     pending.current = true
     setBusy(true)
     setError('')

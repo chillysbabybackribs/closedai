@@ -1,4 +1,5 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Dispatch, type Ref } from 'react'
+import { GripVertical } from 'lucide-react'
 import { BrowserPane } from '../browser-pane.js'
 import { useBrowserController } from '../browser-controller.js'
 import { ChatPane, type ChatPaneDialog } from '../chat-pane.js'
@@ -8,6 +9,7 @@ import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import { ChatCanvas } from './chat-canvas.js'
 import { useChatLayout } from './layout-controller.js'
+import { BROWSER_PANE_ID, CHAT_DRAG_TYPE } from './layout-tree.js'
 import { tabActivity } from './tab-activity.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 
@@ -72,7 +74,13 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
           onDialogChange={onDialogChange} onNewChat={() => { void layout.newChat(id) }} />}
       renderBrowser={<div className="workspace-right" data-mode="browser" data-with-browser={layout.browserVisible ? 'yes' : 'no'}>
         <div className={`workspace-surface workspace-surface-browser${layout.browserVisible ? '' : ' is-collapsed'}`}>
-          <BrowserPane controller={browser} />
+          <BrowserPane controller={browser} dragHandle={<button type="button"
+            className="browser-layout-drag" data-ui="layout.browser-drag" draggable={!layout.busy} disabled={layout.busy}
+            aria-label="Move browser" title="Drag above or beside a chat; drop at the workspace edge for a full-height column"
+            onDragStart={(event) => {
+              event.dataTransfer.setData(CHAT_DRAG_TYPE, BROWSER_PANE_ID)
+              event.dataTransfer.effectAllowed = 'move'
+            }}><GripVertical size={13} aria-hidden="true" /></button>} />
         </div>
       </div>}
     />

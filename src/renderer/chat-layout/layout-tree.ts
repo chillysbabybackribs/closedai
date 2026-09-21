@@ -7,6 +7,7 @@ export type Rect = { x: number; y: number; width: number; height: number }
 export const CHAT_DRAG_TYPE = 'application/x-closedai-chat'
 // Reserved layout leaf: never sent to chat services or included in conversation tabs.
 export const BROWSER_PANE_ID = 'closedai:shared-browser'
+export const WORKSPACE_DOCK_ID = 'closedai:workspace-edge'
 
 export function withBrowser(tree: ChatLayout): ChatLayout {
   if (layoutIds(tree).includes(BROWSER_PANE_ID)) return tree
@@ -38,7 +39,7 @@ export function replacePane(tree: ChatLayout, target: string, id: string): ChatL
 /** Moving an existing pane removes its old slot first, collapsing any empty split. */
 export function dockPane(tree: ChatLayout | null, id: string, target: string, edge: DockEdge, splitId: string): ChatLayout {
   if (!tree) return { kind: 'pane', id }
-  if (id === BROWSER_PANE_ID || id === target || !layoutIds(tree).includes(target)) return tree
+  if (id === target || !layoutIds(tree).includes(target)) return tree
   const source = (node: ChatLayout): ChatLayout | null => node.kind === 'pane'
     ? node.id === id ? node : null : source(node.first) ?? source(node.second)
   const moved = source(tree)
@@ -53,6 +54,19 @@ export function dockPane(tree: ChatLayout | null, id: string, target: string, ed
       first: before ? added : node, second: before ? node : added }
   }
   return insert(pruned)
+}
+
+/** The browser moves without selecting or opening a conversation. */
+export function dockBrowser(tree: ChatLayout, target: string, edge: DockEdge, splitId: string): ChatLayout {
+  if (!layoutIds(tree).includes(BROWSER_PANE_ID)) return tree
+  if (target !== WORKSPACE_DOCK_ID) return dockPane(tree, BROWSER_PANE_ID, target, edge, splitId)
+  const chats = removePane(tree, BROWSER_PANE_ID)
+  if (!chats) return tree
+  const browser: ChatLayout = { kind: 'pane', id: BROWSER_PANE_ID }
+  const before = edge === 'left' || edge === 'top'
+  return { kind: 'split', id: splitId, ratio: 0.5,
+    axis: edge === 'left' || edge === 'right' ? 'horizontal' : 'vertical',
+    first: before ? browser : chats, second: before ? chats : browser }
 }
 
 export function resizeSplit(tree: ChatLayout, id: string, ratio: number): ChatLayout {

@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
 import { memo, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Download, FileCode, FileImage, Globe2, Loader2, Lock, Plus, RefreshCw, Search, X } from 'lucide-react'
 import { ImageViewer } from './image-viewer/image-viewer.js'
@@ -15,15 +15,16 @@ import { BrowserTabMenu, BrowserTabRename, type BrowserTabMenuTarget } from './b
 // Memoized: the pane stays mounted, and its native-view host ref and ResizeObserver must
 // survive re-renders of the shell around it.
 export const BrowserPane = memo(function BrowserPane({
-  controller
+  controller, dragHandle
 }: {
   controller: BrowserController
+  dragHandle?: ReactNode
 }): JSX.Element {
   const downloads = useBrowserDownloadsController()
   return (
     <section className="browser-pane" aria-label="Browser" data-ui-surface="browser">
       <div className={`browser-shell ${downloads.isOpen && !controller.browser.image && !controller.browser.file ? 'has-downloads' : ''} ${controller.browser.image ? 'has-image-viewer' : ''} ${controller.browser.file ? 'has-file-viewer' : ''}`}>
-        <BrowserTabs controller={controller} />
+        <BrowserTabs controller={controller} dragHandle={dragHandle} />
         {!controller.browser.image && !controller.browser.file && <BrowserToolbar controller={controller} downloads={downloads} />}
         {downloads.isOpen && !controller.browser.image && !controller.browser.file ? <BrowserDownloadsShelf controller={downloads} /> : null}
         <div className={`browser-frame ${controller.browser.navigationError ? 'has-navigation-error' : ''}`}>
@@ -55,7 +56,7 @@ export const BrowserPane = memo(function BrowserPane({
   )
 })
 
-function BrowserTabs({ controller }: { controller: BrowserController }): JSX.Element {
+function BrowserTabs({ controller, dragHandle }: { controller: BrowserController; dragHandle?: ReactNode }): JSX.Element {
   const tabRefs = useRef(new Map<string, HTMLButtonElement>())
   const [menuTarget, setMenuTarget] = useState<BrowserTabMenuTarget | null>(null)
   const [renaming, setRenaming] = useState<{ id: string; title: string } | null>(null)
@@ -71,6 +72,7 @@ function BrowserTabs({ controller }: { controller: BrowserController }): JSX.Ele
 
   return (
     <div className="browser-tabstrip" role="tablist" aria-label="Browser tabs">
+      {dragHandle}
       {controller.tabs.map((tab, index) => (
         <div
           key={tab.id}

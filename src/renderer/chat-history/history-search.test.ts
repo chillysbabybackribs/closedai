@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
-import { searchChats, segmentTitle, stepHighlight } from './history-search.js'
+import { chatSearchView, searchChats, segmentTitle, stepHighlight } from './history-search.js'
 
 function chat(paneId: string, title: string, updatedAt = 100, cwd = '/projects/app'): ChatRowSummary {
   return {
@@ -47,4 +47,54 @@ test('highlight segments preserve the complete title and keyboard navigation wra
   assert.equal(stepHighlight(2, 1, 3), 0)
   assert.equal(stepHighlight(0, -1, 3), 2)
   assert.equal(stepHighlight(0, 1, 0), 0)
+})
+
+test('activity groups are exclusive and precede recent history without hiding older running chats', () => {
+  const rows = [
+    ...Array.from({ length: 12 }, (_, i) => chat(`history-${i}`, 'History', 1000 + i)),
+    { ...chat('running', 'Active task', 1), running: true },
+    chat('finished', 'Finished task', 2), chat('newly-finished', 'Another finish', 1),
+    chat('viewed', 'Already read', 2000)
+  ]
+  const view = chatSearchView(rows, '', {
+    running: { queuedAt: 1, viewedAt: null },
+    finished: { queuedAt: 50, viewedAt: null },
+    'newly-finished': { queuedAt: 100, viewedAt: null },
+    viewed: { queuedAt: 100, viewedAt: 101 },
+    deleted: { queuedAt: 100, viewedAt: null }
+  })
+  assert.deepEqual(view.sections.map(section => section.label), ['Running', 'Recently completed', 'History'])
+  assert.deepEqual(view.sections[0]!.hits.map(hit => hit.row.paneId), ['running'])
+  assert.deepEqual(view.sections[1]!.hits.map(hit => hit.row.paneId), ['newly-finished', 'finished'])
+  assert.equal(view.sections[2]!.hits.length, 8)
+  assert.equal(view.sections[2]!.hits[0]!.row.paneId, 'viewed')
+  const ids = view.sections.flatMap(section => section.hits.map(hit => hit.row.paneId))
+  assert.equal(new Set(ids).size, ids.length)
+  assert.equal(view.runningCount, 1)
+  assert.equal(view.unreadCount, 2)
+})
+
+test('search flattens activity into title-ranked results and keeps global activity counts', () => {
+  const rows = [chat('history', 'Browser', 1),
+    { ...chat('running', 'Investigate browser memory', 100), running: true },
+    chat('finished', 'Finished task', 200)]
+  const reviews = { finished: { queuedAt: 200, viewedAt: null } }
+  const view = chatSearchView(rows, 'browser', reviews)
+  assert.deepEqual(view.sections.map(section => section.label), ['Matching chats'])
+  assert.deepEqual(view.sections[0]!.hits.map(hit => [hit.row.paneId, hit.status]),
+    [['history', 'history'], ['running', 'running']])
+  assert.equal(view.runningCount, 1)
+  assert.equal(view.unreadCount, 1)
+  assert.deepEqual(chatSearchView(rows, 'zzzzz', reviews).sections, [])
+  assert.equal(chatSearchView(rows, 'zzzzz', reviews).unreadCount, 1)
+})
+
+test('opening a completion moves it into history and empty sections disappear', () => {
+  const rows = [chat('finished', 'Finished task')]
+  assert.deepEqual(chatSearchView(rows, '', { finished: { queuedAt: 1, viewedAt: null } })
+    .sections.map(section => section.label), ['Recently completed'])
+  const viewed = chatSearchView(rows, '', { finished: { queuedAt: 1, viewedAt: 2 } })
+  assert.deepEqual(viewed.sections.map(section => section.label), ['History'])
+  assert.equal(viewed.unreadCount, 0)
+  assert.deepEqual(chatSearchView([], '', {}).sections, [])
 })

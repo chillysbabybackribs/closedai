@@ -1,5 +1,6 @@
 import { basename } from './history-format.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
+import type { ChatReviewQueue } from './review-queue.js'
 
 export type ChatSearchHit = {
   row: ChatRowSummary
@@ -9,6 +10,49 @@ export type ChatSearchHit = {
 }
 
 const DEFAULT_LIMIT = 8
+
+export type ChatActivityHit = ChatSearchHit & {
+  status: 'running' | 'completed' | 'history'
+  completedAt: number | null
+}
+
+export type ChatSearchSection = {
+  label: string
+  hits: ChatActivityHit[]
+}
+
+/** Activity is never displaced by newer history; title queries retain their relevance ranking. */
+export function chatSearchView(rows: ChatRowSummary[], query: string, reviews: ChatReviewQueue): {
+  sections: ChatSearchSection[]
+  runningCount: number
+  unreadCount: number
+} {
+  const withActivity = (hit: ChatSearchHit): ChatActivityHit => {
+    const review = reviews[hit.row.paneId]
+    const unread = review?.viewedAt === null
+    return {
+      ...hit,
+      status: hit.row.running ? 'running' : unread ? 'completed' : 'history',
+      completedAt: unread ? review.queuedAt : null
+    }
+  }
+  const recent = searchChats(rows, '', rows.length).map(withActivity)
+  const running = recent.filter(hit => hit.status === 'running')
+  const completed = recent.filter(hit => hit.status === 'completed')
+    .sort((a, b) => b.completedAt! - a.completedAt! || a.row.paneId.localeCompare(b.row.paneId))
+  const sections = query.trim()
+    ? [{ label: 'Matching chats', hits: searchChats(rows, query).map(withActivity) }]
+    : [
+        { label: 'Running', hits: running },
+        { label: 'Recently completed', hits: completed },
+        { label: 'History', hits: recent.filter(hit => hit.status === 'history').slice(0, DEFAULT_LIMIT) }
+      ]
+  return {
+    sections: sections.filter(section => section.hits.length > 0),
+    runningCount: running.length,
+    unreadCount: completed.length
+  }
+}
 
 export function searchChats(
   rows: ChatRowSummary[],
