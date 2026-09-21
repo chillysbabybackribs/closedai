@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ContextMenu } from 'radix-ui'
-import { Columns2, Maximize2, MessageSquarePlus, Minimize2, Monitor, PanelRightClose, Pencil, Plus, Rows2, Sparkles, X } from 'lucide-react'
+import { Columns2, Maximize2, MessageSquarePlus, Minimize2, Pencil, Plus, Rows2, Sparkles, X } from 'lucide-react'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { ChatTabs } from './chat-tabs.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
@@ -9,7 +9,7 @@ import { browserDropAt, browserDropPreview, sameBrowserDrop, type BrowserDrop } 
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserRevealVersion, onToggleBrowser, renderBrowser, onDragActive, title, activity, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onRetryChatTitle, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onRetryChatTitle, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
@@ -17,7 +17,6 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
   browserRevealVersion?: number
   renderBrowser: ReactNode
   onDragActive: (active: boolean) => void
-  onToggleBrowser: () => void
   title: (id: string) => string
   activity?: (id: string) => TabActivity
   renderPane: (id: string) => ReactNode
@@ -259,15 +258,6 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
                   title="New chat tab" aria-label="New chat tab"
                   onClick={() => onNewChat(activeId)}>
                   <Plus size={14} aria-hidden="true" />
-                </button>
-                <button type="button" data-ui="layout.browser-toggle" data-ui-key={activeId}
-                  aria-pressed={browserVisible} onClick={() => {
-                    if (soloTile) setSoloPaneId(null)
-                    onToggleBrowser()
-                  }}
-                  aria-label={browserVisible ? 'Hide browser' : 'Show browser'}
-                  title={browserVisible ? 'Hide browser' : 'Show browser'}>
-                  {browserVisible ? <PanelRightClose size={14} aria-hidden="true" /> : <Monitor size={14} aria-hidden="true" />}
                 </button>
                 <button data-ui="layout.pane-hide" data-ui-key={activeId} disabled={busy || chatCount < 2}
                   title="Hide this pane; its chat keeps running" aria-label="Hide chat pane" onClick={() => {

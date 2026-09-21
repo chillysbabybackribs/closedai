@@ -18,7 +18,7 @@ export type ChatLayoutHandle = {
   toggleBrowser: () => void
 }
 
-export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onRenameChat, onRetryChatTitle, ref }: {
+export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onRenameChat, onRetryChatTitle, onBrowserVisibilityChange, ref }: {
   chat: ReturnType<typeof useChatController>
   reviewQueue: ChatReviewQueue
   appearance: AppearanceSettings
@@ -28,9 +28,11 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   onDialogChange: (dialog: ChatPaneDialog | null) => void
   onRenameChat?: (id: string, title: string) => void
   onRetryChatTitle?: (id: string) => void
+  onBrowserVisibilityChange: (visible: boolean) => void
   ref?: Ref<ChatLayoutHandle>
 }) {
   const layout = useChatLayout(chat.snapshot)
+  useEffect(() => onBrowserVisibilityChange(layout.browserVisible), [layout.browserVisible, onBrowserVisibilityChange])
   const browserDragHandle = useMemo(() => <button type="button"
     className="browser-layout-drag" data-ui="layout.browser-drag" draggable={!layout.busy} disabled={layout.busy}
     aria-label="Move browser" title="Drag above or beside a chat; drop at the workspace edge for a full-height column"
@@ -38,14 +40,17 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
       event.dataTransfer.setData(CHAT_DRAG_TYPE, BROWSER_PANE_ID)
       event.dataTransfer.effectAllowed = 'move'
     }}><GripVertical size={18} aria-hidden="true" /></button>, [layout.busy])
-  useImperativeHandle(ref, () => ({
-    splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),
-    toggleBrowser: layout.toggleBrowser
-  }), [layout.dock, layout.toggleBrowser, chat.selectedPaneId])
   const [dragging, setDragging] = useState(false)
   const browser = useBrowserController(JSON.stringify([layout.browserVisible, layout.tree]), layout.browserVisible, dragging)
   const imageTabId = browser.browser.image?.tabId
   const [browserRevealVersion, setBrowserRevealVersion] = useState(0)
+  useImperativeHandle(ref, () => ({
+    splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),
+    toggleBrowser: () => {
+      layout.toggleBrowser()
+      setBrowserRevealVersion((value) => value + 1)
+    }
+  }), [layout.dock, layout.toggleBrowser, chat.selectedPaneId])
   useEffect(() => window.closedai.browser.onState((state) => {
     if (state.image || state.url.startsWith('file:')) {
       layout.showBrowser()
@@ -64,7 +69,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
     <ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
         browserRevealVersion={browserRevealVersion}
         onDragActive={setDragging}
-        browserVisible={layout.browserVisible} onToggleBrowser={layout.toggleBrowser}
+        browserVisible={layout.browserVisible}
         title={(id) => chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat'}
         activity={(id) => tabActivity(chat.chats.find((row) => row.paneId === id),
           chat.snapshot.panes?.[id] ?? (id === chat.selectedPaneId ? chat.snapshot.selected : undefined), reviewQueue[id])}

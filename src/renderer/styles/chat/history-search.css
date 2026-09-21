@@ -1,10 +1,7 @@
 .header-chat-search {
-  position: absolute;
-  top: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: clamp(160px, 32vw, 440px);
-  max-width: calc(100% - 280px);
+  position: relative;
+  flex: 1;
+  min-width: 0;
   -webkit-app-region: no-drag;
 }
 

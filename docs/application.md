@@ -266,7 +266,7 @@ Two full-height chats can
 sit on either side of the browser. The browser starts on the right; drag a conversation tab,
 or empty chat header space onto the browser's left or right half to dock it on that side.
 During a chat drag, the native browser view is temporarily covered so the drop targets can receive
-the gesture. A toggle in each chat header hides/restores the browser in its saved position without
+the gesture. A globe button beside Search chats in the top title bar hides/restores the browser in its saved position without
 closing tabs. Chat headers offer **New chat to the right**, **New chat below**, and **Hide chat pane**.
 Hiding a tile neither detaches its runtime nor stops its turn; the model command `close_chat`
 still detaches and stops it.

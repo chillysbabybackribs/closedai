@@ -3,6 +3,7 @@ import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/inter/wght-italic.css'
 import '@fontsource-variable/geist-mono/wght.css'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Globe } from 'lucide-react'
 import { HeaderChatSearch } from './chat-history/header-search.js'
 import { useHistoryController } from './chat-history/history-controller.js'
 import { AppWindowControls } from './app-window-controls.js'
@@ -44,6 +45,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const dialogsRef = useRef({ settingsOpen, credentialsOpen, researchOpen, renamingChat, paneDialog })
   dialogsRef.current = { settingsOpen, credentialsOpen, researchOpen, renamingChat, paneDialog }
   const workspaceRef = useRef<ChatLayoutHandle>(null)
+  const [browserVisible, setBrowserVisible] = useState(false)
   // The File menu retains the history management panel; Ctrl+H focuses header search.
   const [historyOpen, setHistoryOpen] = useState(false)
   const toggleHistory = useCallback(() => setHistoryOpen((open) => !open), [])
@@ -150,8 +152,17 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           onCloseWindow={() => { void window.closedai.window.close() }}
           onOpenPaneDialog={setPaneDialog}
         />
-        <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef}
-          onOpened={() => setHistoryOpen(false)} />
+        <div className="titlebar-search-tools">
+          <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef}
+            onOpened={() => setHistoryOpen(false)} />
+          <button type="button" className={`titlebar-icon-button titlebar-browser-toggle${browserVisible ? ' is-selected' : ''}`}
+            data-ui="layout.browser-toggle" disabled={!chat.selectedPaneId}
+            aria-pressed={browserVisible} aria-label={browserVisible ? 'Hide browser' : 'Show browser'}
+            title={browserVisible ? 'Hide browser' : 'Show browser'}
+            onClick={() => workspaceRef.current?.toggleBrowser()}>
+            <Globe size={16} aria-hidden="true" />
+          </button>
+        </div>
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
@@ -159,6 +170,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         {chat.selectedPaneId && <DesktopWorkspace
           key={chat.workspace?.cwd ?? chat.state.cwd}
           ref={workspaceRef}
+          onBrowserVisibilityChange={setBrowserVisible}
           chat={chat}
           reviewQueue={history.reviewQueue}
           appearance={appearance}
