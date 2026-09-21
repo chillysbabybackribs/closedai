@@ -171,7 +171,7 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
         event.preventDefault()
         event.stopPropagation()
         const target = resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
-        if (!busy && target) onDock(BROWSER_PANE_ID, target.target, target.edge)
+        if (!busy && dragging?.id === BROWSER_PANE_ID && target) onDock(BROWSER_PANE_ID, target.target, target.edge)
         dropTarget.current = null
         setDragging(null)
         setDrop(null)

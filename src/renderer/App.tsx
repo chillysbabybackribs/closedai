@@ -2,8 +2,7 @@ import type { JSX } from 'react'
 import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/inter/wght-italic.css'
 import '@fontsource-variable/geist-mono/wght.css'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { createRoot } from 'react-dom/client'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { HeaderChatSearch } from './chat-history/header-search.js'
 import { useHistoryController } from './chat-history/history-controller.js'
 import { AppWindowControls } from './app-window-controls.js'
@@ -29,7 +28,7 @@ import {
 } from './settings/appearance-settings.js'
 import './styles.css'
 
-function App(): JSX.Element {
+export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boolean }): JSX.Element {
   const chat = useChatController()
   const chatRef = useRef(chat)
   chatRef.current = chat
@@ -37,7 +36,7 @@ function App(): JSX.Element {
   const searchRef = useRef<HTMLInputElement>(null)
   const focusSearch = useCallback(() => { searchRef.current?.focus(); searchRef.current?.select() }, [])
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(initialSettingsOpen)
   const [credentialsOpen, setCredentialsOpen] = useState(false)
   const [researchOpen, setResearchOpen] = useState(false)
   const [renamingChat, setRenamingChat] = useState<{ id: string; title: string } | null>(null)
@@ -194,15 +193,3 @@ function App(): JSX.Element {
     </div>
   )
 }
-
-// A file dropped anywhere outside the composer would otherwise navigate this window to it —
-// Chromium's default — which replaces the entire app UI and cannot be undone short of a reload.
-for (const type of ['dragover', 'drop']) {
-  window.addEventListener(type, (event) => event.preventDefault())
-}
-
-createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-)
