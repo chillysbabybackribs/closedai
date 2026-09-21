@@ -1,5 +1,9 @@
 # Application guide
 
+Chat renders Markdown, but does not interpret the Visualize skill's inline content-reference
+markers or provide its `Tweak`/`window.openai` host runtime. HTML comparisons can be served locally
+and viewed in the embedded browser; local HTML file links instead open a text preview.
+
 Source review: 2026-09-13, including the current uncommitted changes. This describes implemented
 behavior, not a new live UI or provider verification. Protocol measurements retain their dates
 in the provider guides.

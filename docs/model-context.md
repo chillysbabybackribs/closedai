@@ -10,6 +10,11 @@ Source review: 2026-09-13. Common product facts, provider-specific rules, runtim
 repository documentation have separate owners. Editing a Markdown guide alone does not change
 every running model's prompt.
 
+Shared application guidance explicitly overrides the Visualize skill's delivery format:
+ClosedAI has no inline visualization-marker renderer or `Tweak`/`window.openai` host runtime.
+Models should serve standalone HTML locally, verify it in the embedded browser, and share
+the HTTP link. Absolute HTML file links open a source preview, not an executable page.
+
 Shared application guidance now routes authorized native-process experiments to
 `native_instrument`, distinguishes discovery from injection, describes custom probe effects,
 and requires operation-receipt reconciliation after uncertainty. It marks native output as
