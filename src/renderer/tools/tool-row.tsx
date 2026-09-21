@@ -1,6 +1,6 @@
 import { useState, type JSX } from 'react'
-import { ChevronRight } from 'lucide-react'
 
+import { DisclosureRow } from '../../components/ui/disclosure-row.js'
 import type { ToolInfo } from '../../shared/tools.js'
 import { plural, relativeTime, unusedFor, type ToolRowModel } from './tools-model.js'
 
@@ -51,21 +51,17 @@ export type ToolRowProps = {
 export function ToolRow({ row, effect, open, now, since, onOpenChange, onToggle, onRepair }: ToolRowProps): JSX.Element {
   const { tool } = row
   return (
-    <li className="tool-row" data-enabled={tool.enabled} data-open={open}>
-      <div className="tool-row-line">
-        <button
-          type="button"
-          className="tool-row-open"
-          aria-expanded={open}
-          data-ui="tools.row"
-          data-ui-key={tool.id}
-          onClick={() => onOpenChange(!open)}
-        >
-          <ChevronRight size={13} className="tool-row-chevron" aria-hidden="true" />
-          <span className="tool-row-name">{tool.label}</span>
-          {row.flag ? <span className="tool-row-flag" data-tone={row.flag} aria-hidden="true" /> : null}
-        </button>
-        {row.note ? <span className="tool-row-note" data-tone={row.flag ?? undefined}>{row.note}</span> : null}
+    <DisclosureRow
+      id={tool.id}
+      control="tools.row"
+      label={tool.label}
+      flag={row.flag}
+      note={row.note}
+      noteTone={row.flag}
+      muted={!tool.enabled}
+      open={open}
+      onOpenChange={onOpenChange}
+      trailing={
         <ToolSwitch
           state={tool.enabled ? 'on' : 'off'}
           label={`${tool.enabled ? 'Turn off' : 'Turn on'} ${tool.label}`}
@@ -73,9 +69,10 @@ export function ToolRow({ row, effect, open, now, since, onOpenChange, onToggle,
           item={tool.id}
           onToggle={() => onToggle(!tool.enabled)}
         />
-      </div>
-      {open ? <ToolOverview row={row} effect={effect} now={now} since={since} onToggle={onToggle} onRepair={onRepair} /> : null}
-    </li>
+      }
+    >
+      <ToolOverview row={row} effect={effect} now={now} since={since} onToggle={onToggle} onRepair={onRepair} />
+    </DisclosureRow>
   )
 }
 
@@ -86,15 +83,15 @@ function ToolOverview({ row, effect, now, since, onToggle, onRepair }: {
   const [schemaOpen, setSchemaOpen] = useState(false)
   const verbs = tool.actions.map((action) => action.name).join(', ')
   return (
-    <div className="tool-overview">
-      <div className="tool-overview-id">
-        {tool.id}{verbs ? <span className="tool-overview-verbs"> · {verbs}</span> : null}
+    <>
+      <div className="disclosure-panel-id">
+        {tool.id}{verbs ? <span> · {verbs}</span> : null}
       </div>
-      <p className="tool-overview-summary">
+      <p className="disclosure-panel-text">
         {tool.summary ? `${tool.summary} ` : ''}
-        <span className="tool-overview-off">Off: {tool.offEffect}</span>
+        <span>Off: {tool.offEffect}</span>
       </p>
-      <dl className="tool-overview-facts">
+      <dl className="disclosure-panel-facts">
         <dt>Effect</dt><dd>{effect}</dd>
         <dt>Cost</dt>
         <dd>
@@ -121,29 +118,29 @@ function ToolOverview({ row, effect, now, since, onToggle, onRepair }: {
           ))}
         </ul>
       ) : null}
-      <blockquote className="tool-overview-model">
-        <span className="tool-overview-model-label">What the model reads</span>
+      <blockquote className="disclosure-panel-quote">
+        <span className="disclosure-panel-quote-label">What the model reads</span>
         {tool.description}
       </blockquote>
-      <div className="tool-overview-actions">
+      <div className="disclosure-panel-actions">
         {row.suggestOff ? (
-          <button type="button" className="tool-overview-action" data-ui="tools.suggest-off" data-ui-key={tool.id}
+          <button type="button" className="disclosure-panel-action" data-ui="tools.suggest-off" data-ui-key={tool.id}
             onClick={() => onToggle(false)}>
             Turn off
           </button>
         ) : null}
         {errors.length > 0 ? (
-          <button type="button" className="tool-overview-action" data-ui="tools.repair" data-ui-key={tool.id} onClick={onRepair}>
+          <button type="button" className="disclosure-panel-action" data-ui="tools.repair" data-ui-key={tool.id} onClick={onRepair}>
             Send to chat for repair
           </button>
         ) : null}
-        <button type="button" className="tool-overview-action" data-ui="tools.schema" data-ui-key={tool.id}
+        <button type="button" className="disclosure-panel-action" data-ui="tools.schema" data-ui-key={tool.id}
           aria-expanded={schemaOpen} onClick={() => setSchemaOpen((value) => !value)}>
           {schemaOpen ? 'Hide schema' : 'Show schema'}
         </button>
       </div>
       {schemaOpen ? <ToolSchema tool={tool} /> : null}
-    </div>
+    </>
   )
 }
 

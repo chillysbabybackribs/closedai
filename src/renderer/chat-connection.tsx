@@ -1,9 +1,27 @@
-import type { JSX } from 'react'
+import { useEffect, useState, type JSX } from 'react'
 import { LogIn } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import type { ChatConnectionState, ChatProvider } from '../shared/chat.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
+import type { ProviderAvailability } from '../shared/provider-availability.js'
+
+/**
+ * Which providers this machine can start, read once per blocked pane. Null until known; a
+ * failed read stays null so the empty state falls back to main's message alone.
+ */
+export function useProviderAvailability(enabled: boolean): ProviderAvailability[] | null {
+  const [availability, setAvailability] = useState<ProviderAvailability[] | null>(null)
+  useEffect(() => {
+    if (!enabled) return
+    let live = true
+    window.closedai.chat.providerAvailability()
+      .then((entries) => { if (live) setAvailability(entries) })
+      .catch(() => { /* keep the message-only empty state */ })
+    return () => { live = false }
+  }, [enabled])
+  return availability
+}
 
 /** The empty pane's heading: what stands between the user and a first message. */
 export function connectionHeading(provider: ChatProvider, state: ChatConnectionState): string {
@@ -35,12 +53,31 @@ type ConnectionGuidanceProps = {
   onChooseModel: () => void
 }
 
+/** What each provider needs on this machine, so a first run does not stop at one missing CLI. */
+function ProviderList({ entries, current }: { entries: ProviderAvailability[]; current: ChatProvider }): JSX.Element {
+  return (
+    <ul className="chat-provider-list" aria-label="Providers on this machine">
+      {entries.map((entry) => (
+        <li key={entry.provider} data-installed={entry.installed} aria-current={entry.provider === current ? 'true' : undefined}>
+          <span className="chat-provider-name">{CHAT_PROVIDER_LABELS[entry.provider]}</span>
+          <span className="chat-provider-status">{entry.installed ? 'Installed' : 'Not installed'}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 /** The centered guidance an empty pane shows while its provider cannot take a message. */
-export function EmptyState({ provider, state, message, onLogin, onChooseModel }: ConnectionGuidanceProps): JSX.Element {
+export function EmptyState({
+  provider, state, message, onLogin, onChooseModel, availability = null
+}: ConnectionGuidanceProps & { availability?: ProviderAvailability[] | null }): JSX.Element {
   return (
     <div className="prompt-chat-empty chat-empty">
       <h2>{connectionHeading(provider, state)}</h2>
       <p>{message}</p>
+      {offersModelSwitch(state) && availability && availability.length > 0 && (
+        <ProviderList entries={availability} current={provider} />
+      )}
       {offersSignIn(provider, state) && (
         <Button type="button" variant="secondary" data-ui="chat.sign-in" onClick={() => void onLogin()}>
           <LogIn className="size-4" aria-hidden="true" />

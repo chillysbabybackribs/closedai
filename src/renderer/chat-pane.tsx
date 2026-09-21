@@ -10,7 +10,7 @@ import {
 } from '../components/ui/message-scroller.js'
 import { CHAT_RESUME_PROMPT } from '../shared/chat.js'
 import type { ChatAttachment } from '../shared/chat.js'
-import { ConnectionBanner, EmptyState } from './chat-connection.js'
+import { ConnectionBanner, EmptyState, useProviderAvailability } from './chat-connection.js'
 import { useChatController, type ChatController } from './chat-controller.js'
 import { ChatHistory } from './chat-history.js'
 import { ChatTranscript } from './chat-transcript.js'
@@ -78,6 +78,7 @@ export const ChatPane = memo(function ChatPane({
   // the pane's provider came up, so only a settled failure replaces the centered empty layout.
   const connecting = state.connection.state === 'starting'
   const blocked = !ready && !connecting
+  const availability = useProviderAvailability(blocked && !hasMessages)
   // The composer is usable while the provider comes up: the picker lists the cached catalog, a
   // pick is a settings write, and a send waits for the provider itself. Locking it out until the
   // process was ready made every launch and every provider switch a pause the user could feel.
@@ -151,7 +152,7 @@ export const ChatPane = memo(function ChatPane({
         ) : (
           <TranscriptScroller paneId={chat.selectedPaneId}>
             {!hasMessages && blocked ? (
-              <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message}
+              <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} availability={availability}
                 onLogin={chat.loginWithChatGPT} onChooseModel={openModelMenu} />
             ) : hasMessages ? (
               <ChatTranscript items={state.items} activeTurnId={state.activeTurnId}

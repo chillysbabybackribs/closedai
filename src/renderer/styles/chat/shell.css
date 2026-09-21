@@ -213,6 +213,39 @@
 
 /* Connection guidance (chat-connection.tsx): the empty pane's hint under the heading, and the
    strip above the composer once a transcript exists. Both share the same link-styled action. */
+.chat-provider-list {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  gap: 4px 20px;
+  max-width: 320px;
+  margin: 16px auto 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.chat-provider-list li {
+  display: contents;
+}
+
+.chat-provider-name {
+  text-align: left;
+}
+
+.chat-provider-list li[aria-current="true"] .chat-provider-name {
+  color: var(--foreground, #ececee);
+}
+
+.chat-provider-status {
+  text-align: right;
+}
+
+.chat-provider-list li[data-installed="true"] .chat-provider-status {
+  color: var(--ok-ink, #8fd39a);
+}
+
 .chat-empty-hint {
   display: flex;
   flex-wrap: wrap;

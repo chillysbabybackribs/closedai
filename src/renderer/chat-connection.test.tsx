@@ -55,3 +55,21 @@ test('the banner carries the same guidance above a transcript', () => {
   assert.match(html, /data-ui="chat\.sign-in"/)
   assert.match(html, />Choose model</)
 })
+
+test('a blocked empty pane lists which providers this machine can start', () => {
+  const html = renderToStaticMarkup(createElement(EmptyState, {
+    provider: 'codex', state: 'unavailable', message: 'Codex is not installed.', onLogin: login, onChooseModel: noop,
+    availability: [
+      { provider: 'codex', installed: false, path: null, hint: 'Install Codex.' },
+      { provider: 'claude', installed: true, path: null, hint: 'Bundled.' }
+    ]
+  }))
+  assert.match(html, /Providers on this machine/)
+  assert.match(html, /aria-current="true"[^>]*>.*?Codex.*?Not installed/)
+  assert.match(html, /Claude Code.*?Installed/)
+  const ready = renderToStaticMarkup(createElement(EmptyState, {
+    provider: 'codex', state: 'starting', message: 'Starting…', onLogin: login, onChooseModel: noop,
+    availability: [{ provider: 'codex', installed: true, path: null, hint: '' }]
+  }))
+  assert.doesNotMatch(ready, /Providers on this machine/)
+})

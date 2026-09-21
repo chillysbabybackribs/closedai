@@ -3,7 +3,11 @@ import type { ChatRowSummary, ChatWorkspaceSnapshot } from '../../shared/chat-pe
 import { initialChatState } from '../chat-state.js'
 import { withBrowser, type SavedChatLayout } from '../chat-layout/layout-tree.js'
 
-export const SCENARIOS = ['conversation', 'empty', 'streaming', 'settings', 'split'] as const
+export const SCENARIOS = ['conversation', 'empty', 'streaming', 'settings', 'split', 'unavailable'] as const
+
+/** The first-run message main sends when the selected provider's executable is missing. */
+export const UNAVAILABLE_MESSAGE =
+  'Codex is not installed. Install the Codex CLI and sign in from the app, or choose another model.'
 export type Scenario = typeof SCENARIOS[number]
 export const PREVIEW_CWD = '/preview/closedai'
 
@@ -61,7 +65,8 @@ function sampleClosed(id: string, title: string, endedAt: number, cwd: string): 
 }
 
 export function sampleWorkspace(scenario: Scenario): ChatWorkspaceSnapshot {
-  const first = sampleChat('preview-chat-1', scenario === 'empty')
+  const first = sampleChat('preview-chat-1', scenario === 'empty' || scenario === 'unavailable')
+  if (scenario === 'unavailable') first.connection = { state: 'unavailable', message: UNAVAILABLE_MESSAGE }
   const second = sampleChat('preview-chat-2')
   second.threadName = 'Composer review'
   const panes = { 'preview-chat-1': first, 'preview-chat-2': second }
