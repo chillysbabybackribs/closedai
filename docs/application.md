@@ -38,8 +38,8 @@ attached chat has a pane, and **the pane id is the chat id**. Each attached chat
 `ChatHub`, provider settings (`PeerSettings`, a projection of the record), and conversation state;
 multiple panes can be displayed together in a resizable chat layout. Selection identifies the focused
 chat independently of visibility. A background pane can continue its turn while another pane is
-selected. Hiding a tile only removes it from the layout. Detaching a pane stops its runtime and keeps the record, so the drawer row and its review
-state never change identity. Running drawer rows surface live tool activity (e.g. active file reads, edits, or commands) in place of generic status text. The embedded browser belongs to the application and is shared across
+selected. Hiding a tile only removes it from the layout. Detaching a pane stops its runtime and keeps
+the record and unread state under the same identity. The embedded browser belongs to the application and is shared across
 panes and project switches.
 
 `ChatHub` routes to Codex, Claude Code, Antigravity, or Cursor. Codex model/thread ids are
@@ -96,7 +96,7 @@ The project menu below the composer offers a directory picker, recent projects, 
 in a project” (uses the home directory). Manual project selection keeps existing chats and running
 turns alive in their original directories. `index.ts` saves the departing project's open chat ids
 and restores the destination's, including selection; conversation ids live on the records. Opening
-a sidebar chat from another directory selects that directory automatically. A directory without
+a history search result from another directory selects that directory automatically. A directory without
 saved open chats receives a fresh chat. This is directory selection; it does not create a Git branch
 or worktree. Layouts remain per directory; splitting chats across directories is not supported.
 
@@ -149,19 +149,19 @@ isolated temporary working directory; it does not add turns to the conversation.
 built-in tools and MCP; Codex disables shell, browsing, apps, image tools, delegation, and hooks,
 ignores user config, and uses a read-only sandbox; Antigravity runs in low-effort print mode; Cursor runs in ask print mode. These requests consume provider usage.
 
-The saved app-generated title wins in the sidebar, tabs, and history, survives provider refreshes,
+The saved app-generated title wins in search results, tabs, and history, survives provider refreshes,
 session changes and relaunches, and does not change the chat's activity time. Naming is attempted
 once per chat; failures keep the provider name or first-message fallback. Stale results after a
 thread/model change, archival, or detach are discarded. Existing chats become eligible on a later
 completed turn; startup does not bulk-generate names. Manual rename and
-auto-title retry controls are available via row and tab context menus and the chat rename dialog;
+auto-title retry controls are available via tab context menus and the chat rename dialog;
 manual titles set `titleSource: 'manual'` and are preserved until cleared or reset. Fallback labels
 strip `<closedai_context>` blocks and clip the first nonempty user-message line.
 
 Startup, new chat, and opening a chat trim attached panes toward eight, least recently active
 first. The selected and visible panes, active turns, operations in flight, and undelivered continuation
 digests are protected, so this is not a hard concurrency limit. Detaching keeps the record and
-its provider thread; the chat reopens from the drawer under the same id. A blank new chat (no
+its provider thread; the chat reopens from history search under the same id. A blank new chat (no
 thread, no messages, no continuation, no open or wake in flight) may be discarded when the user leaves
 it, but a chat still visible in the layout is retained.
 
@@ -210,13 +210,18 @@ a guarantee that every model retrieves or phrases its response identically.
 
 ## Workspace layout
 
-The sidebar is independent of the shared chat/browser layout. Two full-height chats can
+The workspace has no sidebar. A centered title-bar input searches saved chat titles across projects.
+Clicking it shows up to eight recent chats; typing shows ranked, case-insensitive title matches with
+matched characters highlighted and project/time labels. Arrow keys select, Enter or click opens,
+and Escape dismisses. Ctrl+H and File → Search chats focus it. File → Manage chat history retains
+the full history management panel. New chats use the tab + button or File → New chat (Ctrl+N).
+Two full-height chats can
 sit on either side of the browser. The browser starts on the right; drag a conversation tab,
-chat header grip, or sidebar chat onto the browser's left or right half to dock it on that side.
+or chat header grip onto the browser's left or right half to dock it on that side.
 During a chat drag, the native browser view is temporarily covered so the drop targets can receive
-the gesture. A toggle in each chat header hides/restores the browser in its saved position without closing tabs. The sidebar keeps
-its existing toggle. Chat headers offer **New chat to the right**, **New chat below**, and **Hide
-chat pane**. Hiding a tile neither detaches its runtime nor stops its turn; closing a drawer row
+the gesture. A toggle in each chat header hides/restores the browser in its saved position without
+closing tabs. Chat headers offer **New chat to the right**, **New chat below**, and **Hide chat pane**.
+Hiding a tile neither detaches its runtime nor stops its turn; the model command `close_chat`
 still detaches and stops it.
 
 Each tile header shows conversation tabs and a **+** button for **New chat tab**. It uses that
@@ -232,7 +237,7 @@ Hidden tabs can be parked or detached by normal runtime trimming and are reattac
 
 Chat tabs show a compact continuously rotating blue spinner while working, an amber pause icon when paused,
 and a red alert icon for reported errors. A background completion replaces the spinner with a solid
-green unread dot in the same position, using the sidebar's existing review queue; opening the chat clears that dot.
+green unread dot in the same position, using the persisted completion review queue; opening the chat clears that dot.
 The tab's accessible name carries the same status as text; there is no hover preview. Reduced-motion
 settings replace animation with a static spinner. Paused state is explicit; the UI does not
 infer a request for user input from message text.
@@ -243,20 +248,17 @@ tab; sibling conversations stay in place. Drop a tab onto another chat header to
 The highlighted region previews the split or tab destination. These moves preserve mounted drafts,
 attachments, and transcripts and persist with the project's layout.
 
-Drag a chat header grip or sidebar chat row onto another tile's left, right, top, or bottom edge. A
+Drag a chat header grip onto another tile's left, right, top, or bottom edge. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its
-mounted composer, draft, attachments, and transcript scroller survive the move. Existing chats
-are added by dragging their sidebar rows onto a tile edge or right-clicking a row and choosing
-**Split right** (vertical divider) or **Split below** (horizontal divider). These actions open that
-chat alongside the focused pane, moving its tile if already visible; they are disabled for the
-focused chat itself to avoid displaying the same conversation twice. New chats are added using the split
-controls in each chat's title header. There is no separate layout toolbar or add-chat dropdown.
-A normal sidebar click selects an existing tab wherever it lives, or replaces the focused tab,
+mounted composer, draft, attachments, and transcript scroller survive the move. Open an existing chat
+through header search, then drag its tab to a tile edge to place it alongside another chat. New chats
+can also be added using the split controls in each chat header.
+Opening a header search result selects an existing tab wherever it lives, or replaces the focused tab,
 leaving the other tabs and tiles in place. The composer’s + button opens and selects a new chat tab
 in its tile, preserving the original chat, draft, attachments, and any running turn.
-New Agent and continuation select a chat in the focused
+File → New chat and continuation select a chat in the focused
 tab; the split buttons explicitly add another tile. Moving a visible tile carries its tab group;
-dragging a hidden tab's sidebar row to a tile edge splits that conversation out of its group.
+dragging a tab to a tile edge splits that conversation out of its group.
 
 Dividers resize horizontal and vertical splits independently; arrow keys resize a focused chat
 divider and double-click resets it to equal proportions. Nested splits support columns, rows,
@@ -293,27 +295,13 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 
 ## Chat surface
 
-- The sidebar shows chat records across directories in stable, alphabetically ordered directory
-  sections. Headers show the folder name, active-directory marker, and running count; expanding a
-  section shows its full path, Pinned, Current, Recently completed, and independently collapsible
-  History. Directory and history folds persist across navigation and relaunch. Search spans all
-  directory sections. The `chats` event carries one
-  `ChatRowSummary` per record (attached or not) plus `running`, and every row is keyed by chat id.
-  Right-click a row and choose Pin or Unpin. Pinned chats occupy a section above Current within their directory, newest
-  pin first, and stay there through running, completion, pane closure, project switches, and relaunch.
-  They appear once; a pinned child chat is lifted out of its parent's group. Unpinning restores
-  normal activity placement. Pinning preserves activity timestamps and completion review marks,
-  and an explicitly pinned blank chat is retained. The Pinned section is hidden when empty.
-  Placement does not depend on selection. Current holds only unpinned running chats, newest created first
-  (not by streaming activity, so rows do not reshuffle per token). Every finished turn moves
-  immediately to Recently completed, whether or not the pane was selected; opening it marks it
-  reviewed without moving it. A new turn returns it to Current, while a reviewed chat with no new
-  activity moves to History after ten minutes. Unreviewed completions never expire, and the queue
-  is pruned against the store's chat ids, not attached panes, so a completion survives detaching
-  and relaunch. History is ordered by last activity. Clicking any row calls `openChat`; the layout focuses its tile if already visible,
-  otherwise it replaces the focused tile. Closing an attached row keeps the chat in History (or Pinned); deleting a detached
-  row archives it. Failures from opening, new chat, stop, archive, search, or the background
-  catalog refresh show in the drawer footer for eight seconds instead of being swallowed.
+- Header search reads chat records across directories, attached or detached, including child chats.
+  It matches titles; project names provide context. Opening a result calls `openChat` and selects
+  an existing tab or replaces the focused tab. Archived chats are excluded by the store.
+  Running results show a status label. Tab completion indicators retain their persisted review
+  marks; opening the chat clears its unread mark. The old directory/pin/review sections, New Agent
+  button, drawer toggle, and sidebar row menus are removed. Saved records and pin metadata remain.
+  History, new-chat, and title-action failures appear below the header search for eight seconds.
   `listChats` answers from the store at once, then reconciles the providers' thread catalogs in
   the background (adopting threads the store has not seen, cached five seconds, invalidated on turn
   end, archive, open, and project switch; a scan that lands after a project switch is dropped).
@@ -323,7 +311,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   and cap previews at 240 characters. The selected and visible panes' events cross chat IPC; main-process
   transcripts and trace observers still receive every pane's events. Registering visible panes
   delivers bounded snapshots before subsequent deltas, with actions and history pages routed by
-  pane id. Focus changes preserve earlier pages already loaded in other visible panes. The sidebar uses a separate snapshot
+  pane id. Focus changes preserve earlier pages already loaded in other visible panes. History activity uses a separate snapshot
   that stays stable during text/output deltas, keeping its row calculations out of the token stream.
 - Adjacent text/output deltas for a visible pane are coalesced for up to 8 ms before chat IPC;
   every other event flushes the pending delta first, preserving transcript and turn ordering.
@@ -386,7 +374,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   older history does not acquire invented timestamps.
 - The project rail contains the working timer and project menu; Tool configuration, Turn trace,
   and Credential Vault live in the title bar's Tools menu. File owns chat creation, history,
-  settings, and closing the window; View owns drawer/browser visibility, chat zoom, and fullscreen.
+  settings, and closing the window; View owns browser visibility, chat zoom, and fullscreen.
   Send, pause,
   and resume controls live in the composer. Pause ends the provider turn — no protocol can suspend
   a generation and restart the same one — but every lane keeps the partial answer and the
@@ -582,7 +570,7 @@ instrumentation.
 | Session network record, interception rules, console capture, session fetch and cookies | `src/main/browser-network/`, `src/main/browser-network-access.ts` |
 | Stored API keys and logins, OS-keychain encryption | `src/main/credential-vault.ts`, `src/shared/credentials.ts`, `src/renderer/settings/credential-*` |
 | Typed IPC contract and narrow preload | `src/shared/api.ts`, `src/preload/index.ts` |
-| Chat/project/sidebar orchestration | `src/renderer/chat-pane.tsx`, `src/renderer/project-menu.tsx`, `src/renderer/side-drawer/` |
+| Chat/project/history orchestration | `src/renderer/chat-pane.tsx`, `src/renderer/project-menu.tsx`, `src/renderer/chat-history/` |
 | Transcript steps, background work, response actions | `src/renderer/transcript-rows.ts`, `src/renderer/activity-steps.ts`, `src/renderer/background-tasks.tsx`, `src/renderer/message-actions.tsx` |
 | Reusable presentation and scrolling | `src/components/ui/`; backend access stays outside this layer |
 
@@ -625,7 +613,7 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 | `tool-telemetry.json` | Aggregate run/error/timeout counters; no arguments or conversation text |
 | `credential-vault.json` | Saved credentials: service id, entry label, timestamps, and one record per field. Secret fields are `safeStorage` ciphertext (base64); hosts, usernames and URLs stay readable so the list renders without decrypting. Written atomically at 0600. Entries the earlier localStorage vault held are moved here on first open and the localStorage copy is cleared only after every entry lands |
 | `antigravity/profile/`, `antigravity/attachments/`, `antigravity/transcripts/` | Generated agent plugin, materialized image attachments, and app-recorded transcripts; the CLI retains its own conversation store |
-| Renderer localStorage | Appearance, model-picker usage, drawer state/review queue (including review time), message timestamps |
+| Renderer localStorage | Appearance, model-picker usage, completion review queue (including review time; legacy storage key retained), message timestamps |
 | In-memory trace | At most 4,000 entries and 24,000,000 detail characters, 48,000 characters per detail before its truncation marker; cleared on restart |
 
 Legacy top-level `chatThreadId`, `chatClaudeSessionId`, `chatAntigravityConversationId`, model,
@@ -726,7 +714,7 @@ There is no dedicated research activity panel, and workers cannot be handed to t
 [Tools](tools.md#parallel-research-runs) for exact limits and the
 [design proposal](parallel-web-research-2026-09-04.md) for the remaining work.
 
-- Provider threads the store has never seen appear in the drawer only after the background
+- Provider threads the store has never seen appear in history search only after the background
   reconciliation adopts them, so a chat created in a provider's own CLI can lag one refresh.
 - Background tasks (such as subagents, background terminal commands, and long-running tools)
   are tracked across providers; outer pane idle parking, project switching, and pane trimming

@@ -45,7 +45,7 @@ function App(): JSX.Element {
   const dialogsRef = useRef({ settingsOpen, credentialsOpen, researchOpen, renamingChat, paneDialog })
   dialogsRef.current = { settingsOpen, credentialsOpen, researchOpen, renamingChat, paneDialog }
   const workspaceRef = useRef<ChatLayoutHandle>(null)
-  // Owned here because the title bar menu and Ctrl+H reach the panel that lives in the chat pane.
+  // The File menu retains the history management panel; Ctrl+H focuses header search.
   const [historyOpen, setHistoryOpen] = useState(false)
   const toggleHistory = useCallback(() => setHistoryOpen((open) => !open), [])
   const updateAppearance = useCallback((patch: Partial<AppearanceSettings>): void => {
