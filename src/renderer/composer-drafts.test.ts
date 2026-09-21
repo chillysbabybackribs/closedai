@@ -65,7 +65,7 @@ test('ComposerCompactRow renders compact model and controls', () => {
       createElement(ComposerCompactRow, {
         running: false,
         activeTurnId: null,
-        selectedModel: 'gpt-4o',
+        selectedModelLabel: 'GPT-4o',
         provider: 'codex',
         placeholder: 'Ask anything',
         enabled: true,
@@ -85,5 +85,5 @@ test('ComposerCompactRow renders compact model and controls', () => {
   assert.match(html, /prompt-composer-compact-row/)
   assert.match(html, /data-ui="composer\.input"/)
   assert.match(html, /data-ui="composer\.compact-toggle"/)
-  assert.match(html, /gpt-4o/)
+  assert.match(html, /GPT-4o/)
 })
