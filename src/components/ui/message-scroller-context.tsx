@@ -79,6 +79,7 @@ export function MessageScrollerProvider({
   const anchoredRef = useRef<HTMLElement | null>(null)
   const handledAnchorRef = useRef<HTMLElement | null>(null)
   const lastScrollTopRef = useRef(0)
+  const userScrollingRef = useRef(false)
   const prependRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null)
   const scrollTargetRef = useRef<ScrollPosition | null>(null)
   const frameRef = useRef<number | null>(null)
@@ -96,7 +97,7 @@ export function MessageScrollerProvider({
   const syncFromViewport = useCallback(() => {
     if (!viewport) return
     const metrics = viewportMetrics(viewport)
-    const direction = metrics.scrollTop < lastScrollTopRef.current ? 'up' : 'down'
+    const delta = metrics.scrollTop - lastScrollTopRef.current
     lastScrollTopRef.current = metrics.scrollTop
     const edges = scrollEdges(metrics, EDGE_THRESHOLD)
     if (!anchoredRef.current) {
@@ -104,14 +105,20 @@ export function MessageScrollerProvider({
     }
     if (!edges.end && scrollTargetRef.current === 'end') scrollTargetRef.current = null
     if (!edges.start && scrollTargetRef.current === 'start') scrollTargetRef.current = null
-    setState((previous) => (
-      previous.direction === direction &&
-      previous.edges.start === edges.start &&
-      previous.edges.end === edges.end &&
-      !previous.pending
-        ? previous
-        : { direction, edges, pending: false }
-    ))
+    const userScrolling = userScrollingRef.current
+    setState((previous) => {
+      // Layout notifications with no movement must not erase the user's scroll direction.
+      const direction = !userScrolling ? 'down'
+        : delta < 0 ? 'up' : delta > 0 ? 'down' : previous.direction
+      return (
+        previous.direction === direction &&
+        previous.edges.start === edges.start &&
+        previous.edges.end === edges.end &&
+        !previous.pending
+          ? previous
+          : { direction, edges, pending: false }
+      )
+    })
   }, [autoScroll, viewport])
 
   const scheduleSync = useCallback(() => {
@@ -124,6 +131,7 @@ export function MessageScrollerProvider({
 
   const scrollToStart = useCallback((behavior: ScrollBehavior = 'smooth') => {
     if (!viewport) return
+    userScrollingRef.current = false
     anchoredRef.current = null
     setSpacerHeight(0)
     followingRef.current = false
@@ -134,6 +142,7 @@ export function MessageScrollerProvider({
 
   const scrollToEnd = useCallback((behavior: ScrollBehavior = 'smooth') => {
     if (!viewport) return
+    userScrollingRef.current = false
     anchoredRef.current = null
     setSpacerHeight(0)
     followingRef.current = autoScroll
@@ -144,6 +153,7 @@ export function MessageScrollerProvider({
 
   const anchorToElement = useCallback((element: HTMLElement) => {
     if (!viewport || !content || !content.contains(element)) return false
+    userScrollingRef.current = false
     const viewportRect = viewport.getBoundingClientRect()
     const anchorRect = element.getBoundingClientRect()
     const anchorTop = viewport.scrollTop + anchorRect.top - viewportRect.top
@@ -166,6 +176,7 @@ export function MessageScrollerProvider({
 
   const prepareForPrepend = useCallback(() => {
     if (!viewport) return
+    userScrollingRef.current = false
     anchoredRef.current = null
     setSpacerHeight(0)
     prependRef.current = { scrollHeight: viewport.scrollHeight, scrollTop: viewport.scrollTop }
@@ -174,6 +185,10 @@ export function MessageScrollerProvider({
   }, [setSpacerHeight, viewport])
 
   const userScrollIntent = useCallback((direction?: 'start' | 'end') => {
+    userScrollingRef.current = true
+    if (direction) {
+      setState((previous) => ({ ...previous, direction: direction === 'start' ? 'up' : 'down' }))
+    }
     if (direction === 'end' && !anchoredRef.current) return
     // Release the anchor but keep its spacer: collapsing it shrinks scrollHeight, the browser
     // clamps scrollTop, and the reader is teleported mid-gesture. The next end or anchor pass
@@ -185,6 +200,7 @@ export function MessageScrollerProvider({
 
   useLayoutEffect(() => {
     if (!viewport || !content) return
+    userScrollingRef.current = false
     const lastAnchor = findLastScrollAnchor(content, spacer)
     handledAnchorRef.current = lastAnchor
     if (defaultScrollPosition === 'last-anchor' && lastAnchor) {
@@ -217,12 +233,14 @@ export function MessageScrollerProvider({
       })
       handledAnchorRef.current = lastAnchor
       if (action === 'preserve' && prepended) {
+        userScrollingRef.current = false
         prependRef.current = null
         viewport.scrollTop = preservedScrollTop(prepended, viewport.scrollHeight)
       } else if (action === 'anchor') {
         const target = lastAnchor ?? anchoredRef.current
         if (target) anchorToElement(target)
       } else if (action === 'end') {
+        userScrollingRef.current = false
         anchoredRef.current = null
         setSpacerHeight(0)
         followingRef.current = autoScroll

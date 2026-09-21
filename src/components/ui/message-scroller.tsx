@@ -128,7 +128,9 @@ function MessageScrollerButton({
   ...props
 }: ScrollerButtonProps): JSX.Element {
   const { scrollToEnd, scrollToStart, state } = useScrollerContext()
-  const active = direction === 'start' ? state.edges.start : state.edges.end
+  const active = direction === 'start'
+    ? state.edges.start && state.direction === 'up'
+    : state.edges.end
   return (
     <Button
       type="button"

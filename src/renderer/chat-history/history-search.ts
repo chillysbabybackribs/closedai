@@ -1,8 +1,8 @@
-import { basename } from './drawer-format.js'
-import type { DrawerRowModel } from './drawer-types.js'
+import { basename } from './history-format.js'
+import type { ChatRowSummary } from '../../shared/chat-peers.js'
 
 export type ChatSearchHit = {
-  row: DrawerRowModel
+  row: ChatRowSummary
   titleRanges: Array<[number, number]>
   folder: string | null
   score: number
@@ -11,22 +11,26 @@ export type ChatSearchHit = {
 const DEFAULT_LIMIT = 8
 
 export function searchChats(
-  rows: DrawerRowModel[],
+  rows: ChatRowSummary[],
   query: string,
   limit: number = DEFAULT_LIMIT
 ): ChatSearchHit[] {
   const trimmed = query.trim()
-  if (trimmed === '') return []
+  if (trimmed === '') return rows
+    .filter(row => row.threadId || row.preview || row.running)
+    .slice()
+    .sort((a, b) => b.updatedAt - a.updatedAt || a.paneId.localeCompare(b.paneId))
+    .slice(0, Math.max(0, limit))
+    .map(row => ({ row, titleRanges: [], folder: basename(row.cwd), score: 0 }))
 
   const hits: ChatSearchHit[] = []
   for (const row of rows) {
-    if (row.title.trim() === '' && !row.cwd) continue
+    if (row.title.trim() === '') continue
     const folder = row.cwd === null ? null : basename(row.cwd)
     const titleMatch = matchSubsequence(row.title, trimmed)
-    const folderMatch = folder === null ? null : matchSubsequence(folder, trimmed)
-    if (titleMatch === null && folderMatch === null) continue
+    if (titleMatch === null) continue
 
-    const score = titleMatch !== null ? titleMatch.score : folderMatch!.score - 1000
+    const score = titleMatch.score
     hits.push({ row, titleRanges: titleMatch?.ranges ?? [], folder, score })
   }
 
@@ -34,7 +38,7 @@ export function searchChats(
     (left, right) =>
       right.score - left.score ||
       right.row.updatedAt - left.row.updatedAt ||
-      left.row.id.localeCompare(right.row.id)
+      left.row.paneId.localeCompare(right.row.paneId)
   )
   return hits.slice(0, Math.max(0, limit))
 }

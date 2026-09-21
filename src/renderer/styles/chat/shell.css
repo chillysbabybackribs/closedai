@@ -54,9 +54,7 @@
 }
 
 .chat-scroll-root[data-scrollable~="start"][data-scrollable~="end"][data-scroll-dir="up"]
-  [data-slot="message-scroller-button"][data-direction="end"],
-.chat-scroll-root[data-scrollable~="start"][data-scrollable~="end"][data-scroll-dir="down"]
-  [data-slot="message-scroller-button"][data-direction="start"] {
+  [data-slot="message-scroller-button"][data-direction="end"] {
   opacity: 0;
   scale: 0.95;
   pointer-events: none;

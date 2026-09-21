@@ -354,6 +354,9 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   never move the viewport. Opening a chat still mounts scrolled to the end, and revealing earlier
   history still preserves the reading position. Native `overflow-anchor` is disabled on the chat
   viewport because the scroller owns every correction.
+  The scroll-to-first-message button stays hidden until the user scrolls upward, and hides
+  when they scroll downward or reach the top. Opening a chat and automatic positioning do not
+  reveal it.
 - The renderer initially receives the latest turn. "View previous messages" reveals one earlier
   turn at a time and keeps at most three turns mounted; scrolling back to the bottom trims
   prepended history from renderer state. Older pages fetch by stable item id; stale responses
