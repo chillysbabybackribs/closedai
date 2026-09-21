@@ -369,7 +369,7 @@ any tile header or tab opens a context menu with **Workspace layout…** (`layou
 optional **Pin chat**, pause/resume when the tab’s task is running or paused, and separate **Close tab**
 (`layout.tab-close`, Ctrl/Cmd+W) and **Hide pane** (`layout.pane-hide`) rows with subtitles when tasks
 continue. Ctrl/Cmd+W uses that same close or hide path for the focused chat. Double-clicking a tile
-header toggles maximize mode (`layout.maximize` / `layout.restore`). Close/hide tooltips explain that
+header toggles maximize mode. Close/hide tooltips explain that
 these actions do not stop tasks and name running or paused state when available. Successful closes
 and hides show a 4.5-second status message over the focused chat, noting continuing or paused tasks
 when present. The message takes no layout space and adds no controls. In maximized/solo mode, the

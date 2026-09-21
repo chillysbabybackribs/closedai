@@ -47,8 +47,6 @@ export const UI_CONTROLS = {
   'layout.pause-tab': 'Tab context menu: pause the running task in this chat without opening it; item is the chat id',
   'layout.resume-tab': 'Tab context menu: resume a paused task in this chat; item is the chat id',
   'layout.pane-hide': 'Tab context menu or header control: remove this tile from the layout without stopping its chat; item is the chat id',
-  'layout.maximize': 'Double-click a tile header: expand this pane to full height; item is the active chat id',
-  'layout.restore': 'Escape or double-click a maximized tile header: restore the previous split layout; item is the active chat id',
   'layout.presets': 'Header context-menu row (also View → Workspace layout): open the workspace layout dialog; item is the chat id',
   'layout.presets-dialog': 'Workspace layout dialog: pick a starting arrangement that saves like any hand-built layout',
   'layout.preset-browser-centre': 'Layout dialog option: browser in the centre with two stacked chats on each side',
