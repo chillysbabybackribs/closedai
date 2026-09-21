@@ -21,8 +21,8 @@ Source review: 2026-09-04; the behavior below follows the current implementation
   capture, the recorder) and then resumes them, directives or not. Session detach clears stored
   session ids and child outcomes; a later attachment retries discovery and reapplies directives as
   children reattach. Discovered targets need not all have sessions.
-- Native popup windows are addressable by app-owned `popup-<webContents id>` roots even though
-  they are absent from the regular tab strip.
+- Page-requested popups (including login and sized windows) are adopted into regular browser
+  tabs and are addressable by the same `tab-` ids as other pages.
 - DOM node ids, runtime object ids, execution contexts, frames, requests, and target sessions
   must be treated as navigation-sensitive handles.
 
@@ -111,7 +111,7 @@ snapshot; a later inspection replaces it, and navigation destroys its execution 
 Inspection alone can read a background tab without selecting it. All input verbs, including
 both scroll forms, currently pass through `BrowserCdpAccess.realInput`: it foregrounds a regular
 tab, waits for frames after switching, and returns `activatedTab: true` when selection changed.
-An obscured/hidden browser page or a native popup root cannot use this semantic input path.
+An obscured/hidden browser page cannot use this semantic input path until revealed.
 Click, type, press-key, and overlay-dismiss actions require `fallback_reason`; scroll does not,
 because it is commonly needed for inspection rather than committing a UI action.
 

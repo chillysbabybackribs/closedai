@@ -49,7 +49,7 @@ async function check() {
   const browser = new BrowserService(window, EPHEMERAL_BROWSER_HISTORY, { initialUrl: 'about:blank' })
   const errors: unknown[] = []
   browser.on('error', (error) => errors.push(error))
-  const evalPage = <T>(contents: WebContents, code: string): Promise<T> => contents.executeJavaScript(code, true)
+  const evalPage = <T>(contents: Pick<WebContents, 'executeJavaScript'>, code: string): Promise<T> => contents.executeJavaScript(code, true)
   try {
     await browser.setBounds({ x: 0, y: 0, width: 1000, height: 750, visible: true })
     await browser.navigate(`${origin}/parent`)
@@ -100,6 +100,12 @@ async function check() {
     await until(() => evalPage(parent, `messages.filter(m=>m==='login-complete').length===2`), 'cross-origin postMessage')
     assert.equal(await evalPage(cross.contents, '!!opener'), true)
 
+    const isolated = await childAfter(() => evalPage(parent,
+      `window.open('/isolated','isolated','noopener,noreferrer,width=400')===null`), '/isolated')
+    assert.equal(await evalPage(isolated.contents, 'opener===null'), true, 'explicit opener isolation survives')
+    assert.equal(requests.find((request) => request.url === '/isolated')?.referrer, undefined)
+    browser.closeTab(isolated.id)
+
     const nested = await childAfter(() => evalPage(login.contents,
       `window.nested=window.open('/nested','nested','width=350'); true`), '/nested')
     assert.equal(await evalPage(nested.contents, 'opener.location.pathname'), '/callback')
@@ -139,7 +145,7 @@ async function check() {
     console.log(JSON.stringify({ passed: true, electron: process.versions.electron,
       checks: ['login-redirect', 'same-and-cross-origin-opener', 'postMessage', 'pane-size', 'tab-input',
         'capture', 'blank-document-write', 'blank-retarget', 'named-reuse', 'nested-popup', 'window-close',
-        'form-post-once', 'referrer', 'background-tab', 'worker-denial', 'outlives-opener', 'no-native-windows'] }))
+        'form-post-once', 'referrer', 'noopener-noreferrer', 'background-tab', 'worker-denial', 'outlives-opener', 'no-native-windows'] }))
   } finally {
     browser.dispose()
     window.destroy()
