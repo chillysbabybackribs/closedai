@@ -302,6 +302,8 @@ chat's top or bottom edge to stack it above or below that chat, or at a side edg
 it. During a browser drag, highlighted strips at the workspace's far left and right place the
 browser in a full-height column beside all chats. Moving the browser preserves its tabs and
 the selected chat; its position uses the same saved layout and resizable dividers.
+The drag shield leaves the browser tab strip exposed and passes pointer events through to the
+layout; the native page is occluded separately so it cannot intercept the gesture.
 
 Drag empty chat header space onto another tile's left, right, top, or bottom edge to move the whole pane. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its

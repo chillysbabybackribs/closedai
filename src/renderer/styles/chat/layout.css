@@ -78,7 +78,11 @@
   color: var(--chrome-fg);
   background: var(--surface-chrome);
   font-size: 12px;
+  /* The native page is occluded separately. Keep the drag source hit-testable:
+     covering it during dragstart makes Chromium immediately cancel the gesture. */
+  pointer-events: none;
 }
+.chat-layout-browser-frame:has(.chat-layout-browser-shield) .browser-tabstrip { position: relative; z-index: 5; }
 .chat-layout-canvas { position: relative; width: 100%; height: 100%; }
 /* Geometry supplies both dimensions, so descendants can adapt to short rows as well as columns. */
 .chat-layout-tile { position: absolute; display: flex; flex-direction: column; overflow: hidden; container: chat-tile / size; }
