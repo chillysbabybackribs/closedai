@@ -154,7 +154,7 @@ export class PeerLifecycle {
     return entry
   }
 
-  /** Stop the chat's runtime and forget its pane; the record stays. */
+  /** Rebuild one idle pane while retaining its identity and the old runtime until construction succeeds. */
   relocate(chatId: ChatPaneId, patch: ChatRecordPatch, source: ChatSnapshot): void {
     const previous = this.require(chatId)
     const record = this.store.require(chatId)

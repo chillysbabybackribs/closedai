@@ -29,7 +29,7 @@ import { PeerLifecycle, type ChatPeerFactory, type PeerEntry } from './peer-life
 import { listReadablePeers, readReadablePeer, type ReadablePeerHost } from './peer-readable.js'
 import { openChatsPatch } from './peer-settings.js'
 import { schedulePaneWarm } from './provider-warm.js'
-import { PeerProjectChanges, projectConversationPatch } from './peer-project.js'
+import { PeerProjectChanges, projectConversationPatch, rememberChatProjects } from './peer-project.js'
 import type { ChatWorkspaceSelection, ChatWorkspaceSelector, ChatWorkspaceSurface } from './peer-workspace.js'
 
 export type { ChatPeerFactory } from './peer-lifecycle.js'
@@ -74,7 +74,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
           throw new Error('The chat started working before its directory could change; choose the folder again')
         }
         const source = surface.snapshot()
-        this.lifecycle.relocate(id, projectConversationPatch(store.require(id), source, selection), source)
+        const record = store.require(id)
+        await rememberChatProjects(settings, record, selection)
+        this.lifecycle.relocate(id, projectConversationPatch(record, source, selection), source)
         this.catalog.invalidate()
         await this.persistOpenChats()
         this.emitWorkspace()

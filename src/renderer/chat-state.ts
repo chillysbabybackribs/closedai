@@ -140,7 +140,7 @@ export function reduceChatEvent(state: ChatSnapshot, event: ChatEvent): ChatSnap
     case 'title':
       return { ...state, displayTitle: event.title }
     case 'replace':
-      return event.snapshot
+      return preserveMountedHistory(state, event.snapshot)
     case 'connection':
       return {
         ...state,
