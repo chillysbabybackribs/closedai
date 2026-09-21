@@ -1,4 +1,4 @@
-import { BROWSER_PANE_ID, dockPane, type ChatLayout, type DockEdge } from './layout-tree.js'
+import { BROWSER_PANE_ID, dockPane, paneIds, type ChatLayout, type DockEdge } from './layout-tree.js'
 
 export const CHAT_TAB_DRAG_TYPE = 'application/x-closedai-chat-tab'
 
@@ -62,4 +62,14 @@ export function removeTab(tree: ChatLayout | null, id: string): ChatLayout | nul
 export function pruneTabs(tree: ChatLayout | null, available: Set<string>): ChatLayout | null {
   for (const id of tabIds(tree)) if (!available.has(id)) tree = removeTab(tree, id)
   return tree
+}
+
+/** Same choice as the tab × / context menu: close a sibling tab, hide a spare tile, or keep the last chat. */
+export function focusedCloseAction(tree: ChatLayout, id: string): 'close-tab' | 'hide-pane' | null {
+  if (id === BROWSER_PANE_ID) return null
+  const owner = tabOwner(tree, id)
+  if (!owner) return null
+  const tabs = tabIds(tree).filter((tab) => tabOwner(tree, tab) === owner)
+  if (tabs.length > 1) return 'close-tab'
+  return paneIds(tree).length > 1 ? 'hide-pane' : null
 }

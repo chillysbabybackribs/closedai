@@ -15,6 +15,7 @@ import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 export type ChatLayoutHandle = {
   splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
   toggleBrowser: () => void
+  closeFocused: () => Promise<void>
 }
 
 export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onRenameChat, onRetryChatTitle, onBrowserVisibilityChange, ref }: {
@@ -48,8 +49,9 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
     toggleBrowser: () => {
       layout.toggleBrowser()
       setBrowserRevealVersion((value) => value + 1)
-    }
-  }), [layout.dock, layout.toggleBrowser, chat.selectedPaneId])
+    },
+    closeFocused: () => layout.closeFocused()
+  }), [layout.dock, layout.toggleBrowser, layout.closeFocused, chat.selectedPaneId])
   useEffect(() => window.closedai.browser.onState((state) => {
     if (state.image || state.url.startsWith('file:')) {
       layout.showBrowser()

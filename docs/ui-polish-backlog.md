@@ -23,6 +23,8 @@ are candidates, not instructions to implement them all. Tackle one agreed item a
   larger hover chip or extra chrome.
 - [x] Search chats idle dropdown separates open tabs from closed chats. Closed rows say Closed
   and sort by last turn; open rows stay in their own group.
+- [x] Ctrl+W closes the focused chat tab or hides its tile without stopping the task; the last
+  remaining chat stays. Ctrl+Shift+W and the window chrome still close the window.
 
 ## Candidates awaiting selection
 
@@ -30,7 +32,7 @@ are candidates, not instructions to implement them all. Tackle one agreed item a
 | --- | --- |
 | Composer actions | Clarify or consolidate new-chat and attachment actions. |
 | History | Return-to-conversation action; evaluate consolidation with the full history panel. |
-| Close/hide/archive | Revisit archive recovery and Ctrl+W (currently closes the window). |
+| Close/hide/archive | Revisit archive recovery. |
 | Layout | Make existing split/maximize actions discoverable; consider consolidation or presets. |
 | Visual hierarchy | Clarify the focused chat and secondary text with restrained contrast. |
 | Empty chat | Assess whether optional first-use guidance earns its space. |

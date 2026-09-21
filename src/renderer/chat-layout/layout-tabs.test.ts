@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { dockPane, layoutGeometry, paneIds, readLayout, resizeSplit, saveLayout, withBrowser, type ChatLayout } from './layout-tree.ts'
-import { addTab, moveTab, pruneTabs, removeTab, selectTab, tabIds } from './layout-tabs.ts'
+import { addTab, focusedCloseAction, moveTab, pruneTabs, removeTab, selectTab, tabIds } from './layout-tabs.ts'
 
 const split = (): ChatLayout => resizeSplit(dockPane({ kind: 'pane', id: 'a' }, 'b', 'a', 'right', 'split'), 'split', 0.6)
 
@@ -81,6 +81,14 @@ test('closing tabs selects a neighbor, pruning archives preserves siblings, movi
   tree = removeTab(tree, 'b')!
   assert.equal(tree.kind, 'pane')
   assert.equal(removeTab(tree, 'a'), null)
+})
+
+test('focused close matches the tab control: sibling, spare tile, or last chat', () => {
+  const tabs: ChatLayout = { kind: 'pane', id: 'a', tabs: ['a', 'b'] }
+  assert.equal(focusedCloseAction(tabs, 'b'), 'close-tab')
+  assert.equal(focusedCloseAction(split(), 'a'), 'hide-pane')
+  assert.equal(focusedCloseAction({ kind: 'pane', id: 'a' }, 'a'), null)
+  assert.equal(focusedCloseAction(tabs, 'missing'), null)
 })
 
 test('tab order and active selection survive project-scoped persistence and invalid tabs are rejected', () => {

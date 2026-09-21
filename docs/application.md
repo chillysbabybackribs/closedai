@@ -361,7 +361,8 @@ composer accepts and sends drafts on its single line; its attachment chips and t
 (`composer.model`) sits at the pill's left edge with the same menu as the full view. Right-clicking
 any tile header or tab opens a context menu with **Maximize tile** (`layout.maximize`), **Split right**
 (`layout.split-right`), **Split below** (`layout.split-below`), **New chat** (`layout.new-chat`), and
-**Close tab** / **Hide pane** (`layout.pane-hide`). Double-clicking a tile header also toggles
+**Close tab** / **Hide pane** (`layout.pane-hide`). Ctrl/Cmd+W uses that same close or hide
+path for the focused chat. Double-clicking a tile header also toggles
 maximize mode. Close/hide tooltips explain that these actions do not stop tasks and name
 running or paused state when available. Successful closes and hides show a
 4.5-second status message over the focused chat, noting continuing or paused tasks when present.
@@ -505,9 +506,10 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   offering one-click conversation compaction or fresh chat branching. Appearance settings separate message and composer font sizes
   (defaults 14 and 15 px, range 13–22) from chat zoom.
 - Ctrl/Cmd+, opens settings, Ctrl/Cmd+H opens chat history, Ctrl/Cmd+N creates a chat,
-  Ctrl/Cmd+W closes the window, F11 toggles fullscreen, and Escape pauses a running task (when no
-  modal overlay or special input is active). Browser and chat zoom have separate
-  controls; these shell shortcuts are handled in `renderer/app-shortcuts.ts`.
+  Ctrl/Cmd+W closes the focused chat tab or hides its tile (same path as the ×; the last
+  remaining chat stays), Ctrl/Cmd+Shift+W closes the window, F11 toggles fullscreen, and Escape
+  pauses a running task (when no modal overlay or special input is active). Browser and chat zoom
+  have separate controls; these shell shortcuts are handled in `renderer/app-shortcuts.ts`.
 - Every http(s) URL a response references is clickable and opens in the app browser through
   `browser.openTab`, rendered as a favicon source chip with a hover preview. `components/ui/markdown.tsx`
   runs `remarkBareUrls` (`markdown-links.ts`) after remark-gfm so scheme-less hosts such as

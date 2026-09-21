@@ -82,6 +82,9 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       } else if (shortcut === 'new-chat') {
         event.preventDefault()
         history.newChat()
+      } else if (shortcut === 'close-tab') {
+        event.preventDefault()
+        void workspaceRef.current?.closeFocused()
       } else if (shortcut === 'close-window') {
         event.preventDefault()
         void window.closedai.window.close()
@@ -149,6 +152,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           onSearchChats={focusSearch}
           onToggleBrowser={() => workspaceRef.current?.toggleBrowser()}
           onToggleFullscreen={() => { void window.closedai.window.toggleFullscreen() }}
+          onCloseTab={() => { void workspaceRef.current?.closeFocused() }}
           onCloseWindow={() => { void window.closedai.window.close() }}
           onOpenPaneDialog={setPaneDialog}
         />

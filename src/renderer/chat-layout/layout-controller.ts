@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
-import { addTab, moveTab, pruneTabs, removeTab, selectTab, tabIds, tabOwner } from './layout-tabs.js'
+import { addTab, focusedCloseAction, moveTab, pruneTabs, removeTab, selectTab, tabIds, tabOwner } from './layout-tabs.js'
 import { removalNotice } from './layout-copy.js'
 
 /** The component owning this hook is keyed by project directory. */
@@ -186,7 +186,16 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   const resize = useCallback((id: string, ratio: number) => {
     setLayout((value) => ({ ...value, tree: resizeSplit(value.tree, id, ratio) }))
   }, [])
+  const closeFocused = useCallback(async (): Promise<void> => {
+    const id = selected.current
+    const action = focusedCloseAction(current.current.tree, id)
+    if (action === 'close-tab') await closeTab(id)
+    else if (action === 'hide-pane') {
+      const owner = tabOwner(current.current.tree, id)
+      if (owner) await hide(owner)
+    }
+  }, [closeTab, hide])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
-  return { ...layout, error, notice: notice?.text ?? '', busy, dock, newChat, focusPane, activateTab, closeTab, hide, resize, toggleBrowser, showBrowser }
+  return { ...layout, error, notice: notice?.text ?? '', busy, dock, newChat, focusPane, activateTab, closeTab, hide, closeFocused, resize, toggleBrowser, showBrowser }
 }

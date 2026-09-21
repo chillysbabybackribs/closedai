@@ -1,4 +1,4 @@
-export type AppShortcut = 'settings' | 'history' | 'new-chat' | 'close-window' | 'toggle-fullscreen' | 'pause-task'
+export type AppShortcut = 'settings' | 'history' | 'new-chat' | 'close-tab' | 'close-window' | 'toggle-fullscreen' | 'pause-task'
 
 /**
  * Window-level chords the shell owns, matched the same way for every platform key modifier.
@@ -11,11 +11,12 @@ export function appShortcutForKey(
     if (event.key === 'F11') return 'toggle-fullscreen'
     if (event.key === 'Escape') return 'pause-task'
   }
-  if (event.altKey || event.shiftKey || (!event.ctrlKey && !event.metaKey)) return null
+  if (event.altKey || (!event.ctrlKey && !event.metaKey)) return null
+  if (event.key.toLowerCase() === 'w') return event.shiftKey ? 'close-window' : 'close-tab'
+  if (event.shiftKey) return null
   if (event.key === ',') return 'settings'
   if (event.key.toLowerCase() === 'h') return 'history'
   if (event.key.toLowerCase() === 'n') return 'new-chat'
-  if (event.key.toLowerCase() === 'w') return 'close-window'
   return null
 }
 

@@ -8,7 +8,7 @@ import {
 } from './chat-zoom.js'
 
 /** One menu's worth of rows. `null` is a separator. */
-type MenuAction = 'new-chat' | 'history' | 'settings' | 'close-window' | 'search-chats' |
+type MenuAction = 'new-chat' | 'history' | 'settings' | 'close-tab' | 'close-window' | 'search-chats' |
   'toggle-browser' | 'toggle-fullscreen' | 'credentials' | 'tools' | 'trace' | 'research'
 
 type MenuRow = ({
@@ -34,7 +34,8 @@ const MENUS: Menu[] = [
       null,
       { label: 'Settings', shortcut: 'Ctrl+,', action: 'settings' },
       null,
-      { label: 'Close window', shortcut: 'Ctrl+W', action: 'close-window' }
+      { label: 'Close tab', shortcut: 'Ctrl+W', action: 'close-tab' },
+      { label: 'Close window', shortcut: 'Ctrl+Shift+W', action: 'close-window' }
     ]
   },
   {
@@ -72,6 +73,7 @@ export type TitlebarMenuProps = {
   onSearchChats: () => void
   onToggleBrowser: () => void
   onToggleFullscreen: () => void
+  onCloseTab: () => void
   onCloseWindow: () => void
   /** Tools and turn trace dialogs belong to the selected chat pane. */
   onOpenPaneDialog: (dialog: 'tools' | 'trace') => void
@@ -90,6 +92,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
   onSearchChats,
   onToggleBrowser,
   onToggleFullscreen,
+  onCloseTab,
   onCloseWindow,
   onOpenPaneDialog
 }: TitlebarMenuProps): JSX.Element {
@@ -133,6 +136,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                         if (row.action === 'search-chats') searchOnClose.current = true
                         if (row.action === 'toggle-browser') onToggleBrowser()
                         if (row.action === 'toggle-fullscreen') onToggleFullscreen()
+                        if (row.action === 'close-tab') onCloseTab()
                         if (row.action === 'close-window') onCloseWindow()
                         if (row.action === 'tools' || row.action === 'trace') onOpenPaneDialog(row.action)
                       }}
