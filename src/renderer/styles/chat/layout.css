@@ -302,7 +302,7 @@ body[data-layout-resize='vertical'] * { cursor: row-resize !important; }
 }
 
 .chat-layout-tile[data-solo='true'] > .chat-layout-header {
-  border-bottom-color: var(--focus-ink);
+  box-shadow: inset 0 -1px 0 var(--focus-ink);
 }
 
 /* Chat rename dialog */
