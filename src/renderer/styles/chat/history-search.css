@@ -30,6 +30,7 @@
    field. `field-sizing: content` lets the resting input shrink to its placeholder,
    which is what makes the flex row centre the pair with no measured offsets. */
 .header-chat-search-field {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -52,8 +53,7 @@
   border-color: color-mix(in srgb, var(--chrome-fg-strong) 22%, transparent);
 }
 
-.header-chat-search-field:focus-within,
-.header-chat-search[data-expanded='true'] .header-chat-search-field:focus-within {
+.header-chat-search-field:focus-within {
   background: color-mix(in srgb, var(--chrome-fg-strong) 5%, var(--titlebar-surface));
   border-color: var(--focus-ink);
   box-shadow: 0 0 0 1px var(--focus-halo), inset 0 1px 0 rgb(255 255 255 / 3%);
@@ -99,12 +99,16 @@
 
 .header-chat-search-field:focus-within input::placeholder { opacity: 0.45; }
 
-/* Shortcut chips: present at rest, gone once the field is live so the input owns the width. */
+/* Shortcut chips: docked right of the centred hint at rest, gone once the field is
+   live so the input owns the width. Absolute so they never pull the hint off centre. */
 .header-chat-search-hint {
+  position: absolute;
+  top: 50%;
+  right: 6px;
   display: flex;
   gap: 2px;
-  margin-left: auto;
   opacity: 0.75;
+  transform: translateY(-50%);
 }
 
 .header-chat-search-field:focus-within .header-chat-search-hint { display: none; }
