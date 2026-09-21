@@ -14,6 +14,7 @@ export async function runProbe(request: ProbeRequest, signal: AbortSignal): Prom
   signal.addEventListener('abort', cancel, { once: true })
   let session: frida.Session | undefined
   let script: frida.Script | undefined
+  let manager: frida.DeviceManager | undefined
   const result: ProbeResult = {
     state: 'completed', targetId: request.targetId,
     sourceHash: createHash('sha256').update(request.source).digest('hex'), fridaVersion: FRIDA_VERSION,
@@ -23,7 +24,10 @@ export async function runProbe(request: ProbeRequest, signal: AbortSignal): Prom
   try {
     signal.throwIfAborted()
     const target = await verifyTarget(request.targetId)
-    session = await frida.attach(target.pid, {}, pending)
+    manager = new frida.DeviceManager()
+    result.cleanup.deviceManager = 'pending'
+    const device = await manager.getDeviceByType(frida.DeviceType.Local, 0, pending)
+    session = await device.attach(target.pid, {}, pending)
     result.cleanup.session = 'pending'
     await verifyTarget(request.targetId)
     session.detached.connect(reason => {
@@ -65,6 +69,12 @@ export async function runProbe(request: ProbeRequest, signal: AbortSignal): Prom
         if (!session.isDetached()) await session.detach(frida.Cancellable.withTimeout(1_000))
         result.cleanup.session = 'detached'
       } catch (error) { result.cleanup.session = `unconfirmed: ${String(error).slice(0, 300)}` }
+    }
+    if (manager) {
+      try {
+        await manager.close(frida.Cancellable.withTimeout(1_000))
+        result.cleanup.deviceManager = 'closed'
+      } catch (error) { result.cleanup.deviceManager = `unconfirmed: ${String(error).slice(0, 300)}` }
     }
   }
   if (result.state === 'completed') {

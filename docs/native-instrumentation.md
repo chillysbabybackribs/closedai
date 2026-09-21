@@ -42,15 +42,15 @@ has not been qualified; the current checkout build is the tested deployment.
 
 ## Bounds and cleanup
 
-Collection lasts 0–10 seconds after script loading. The helper has an independent 15-second
+Collection lasts 0–10 seconds after script loading. The helper has an independent 14-second
 abort deadline and exits after 18 seconds. Main also kills an unresponsive helper after
-19 seconds, or after a 2.5-second cancellation grace. Tool timeout is 22 seconds. Turn
+19 seconds, or after a 4-second cancellation grace. Tool timeout is 22 seconds. Turn
 replacement, cancellation, window disposal and app quit release owned operations; loss of
 the parent IPC channel cancels the helper. No session, gated child or suspended target is
 intentionally kept between calls. Existing targets are never killed by the controller.
 
 Cleanup first attempts script interruption after cancellation, then uses fresh cancellation
-budgets for script unload and session detach. Results report
+budgets for script unload, session detach and device-manager shutdown. Results report
 each cleanup outcome. If the helper disappears without a result, the receipt is `unknown`,
 with unconfirmed cleanup; the system does not silently retry. Detaching cannot reverse
 native writes, I/O or decisions already made by the target, and process separation cannot

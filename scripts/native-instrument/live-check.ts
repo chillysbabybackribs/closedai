@@ -54,6 +54,13 @@ try {
   assert.equal(inspect.cleanup.session, 'detached')
   assert(inspect.events.some((event: { message: { payload?: { kind: string } } }) => event.message.payload?.kind === 'module'))
   checks.push('process discovery, module/thread inspection, detach')
+  for (let cycle = 0; cycle < 10; cycle++) {
+    const repeated = await call('inspect', { target_id: identity.id, operation_key: `reattach-${cycle}`, module_query: 'fixture' })
+    assert.equal(repeated.cleanup.deviceManager, 'closed')
+    target.stdin.write('5\n')
+    assert.equal(await waitLine('value '), 'value 12')
+  }
+  checks.push('ten consecutive attach/inspect/detach cycles with device-manager shutdown')
 
   const args = { target_id: identity.id, operation_key: 'hook', duration_ms: 100, source: `
 const address = Process.mainModule.enumerateSymbols().find(s => s.name === 'fixture_add').address;

@@ -29,7 +29,7 @@ export class NativeControllerClient {
       }
       const cancel = () => {
         send({ type: 'cancel' })
-        cancellationKill ??= setTimeout(() => child.kill('SIGKILL'), 2_500)
+        cancellationKill ??= setTimeout(() => child.kill('SIGKILL'), 4_000)
       }
       signal.addEventListener('abort', cancel, { once: true })
       if (signal.aborted) cancel()
@@ -57,7 +57,7 @@ export class NativeControllerClient {
     this.disposed = true
     for (const child of this.children) {
       if (child.connected) child.send({ type: 'cancel' }, () => {})
-      const timer = setTimeout(() => { if (this.children.has(child)) child.kill('SIGKILL') }, 2_500)
+      const timer = setTimeout(() => { if (this.children.has(child)) child.kill('SIGKILL') }, 4_000)
       timer.unref()
     }
   }

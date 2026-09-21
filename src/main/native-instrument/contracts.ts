@@ -21,7 +21,7 @@ export type ProbeResult = {
   received: number
   dropped: number
   truncated: number
-  cleanup: { script: string; session: string }
+  cleanup: { script: string; session: string; deviceManager?: string }
   error?: string
 }
 export type ControllerMessage = { type: 'run'; request: ProbeRequest } | { type: 'cancel' }

@@ -4,7 +4,7 @@ import { CONTROLLER_DEADLINE_MS, MAX_DURATION_MS, type ControllerMessage } from 
 const abort = new AbortController()
 let running = false
 // Independent deadline also applies if main vanishes or stops responding.
-setTimeout(() => abort.abort(new Error('Controller lease expired')), CONTROLLER_DEADLINE_MS - 3_000)
+setTimeout(() => abort.abort(new Error('Controller lease expired')), CONTROLLER_DEADLINE_MS - 4_000)
 setTimeout(() => process.exit(2), CONTROLLER_DEADLINE_MS)
 process.on('disconnect', () => abort.abort(new Error('Controller owner disconnected')))
 process.on('SIGTERM', () => abort.abort(new Error('Controller stopped')))
