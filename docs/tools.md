@@ -226,10 +226,11 @@ Per-tab locks cover page reads, scripts, captures, and CDP work. Foreground sema
 tab-strip commands, session operations, and raw cross-target commands share a browser-wide lock.
 Different tab reads/captures can overlap; input calls that would fight for focus fail busy.
 Locks survive cancellation/timeout until the underlying operation actually settles. Session-wide
-cookie writes, mutating session fetches, network-rule changes, renderer input, and raw Target
+cookie writes, mutating session fetches, global network-rule changes, renderer input, and raw Target
 mutations refuse while another chat has assigned tabs. Use addressed app tab commands instead of
 raw cross-target commands during parallel work. Human input and provider-native tools are outside
 these locks, and page scripts/site actions still share cookies and remote account state.
+An explicitly tab-scoped network rule can be added to the caller's own tab during parallel work.
 
 ### Parallel research runs
 

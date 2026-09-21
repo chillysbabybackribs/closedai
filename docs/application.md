@@ -57,7 +57,7 @@ commands take a shared browser lock; conflicting calls fail busy. A timed-out op
 lock until its underlying work settles. Raw Input commands use the same foregrounding path as
 semantic input. New model tabs and research source tabs preserve browser selection; popups inherit
 their opener's assignment and a background opener cannot activate its popup. Session-wide cookie,
-network-rule, raw Target mutations, and renderer input are refused while another chat holds tabs.
+global network-rule, raw Target mutations, and renderer input are refused while another chat holds tabs.
 This coordinates app-owned tools, not human input or provider-native browser tools. Website account
 state and cookies are still shared; it is not isolation between separate browser profiles.
 

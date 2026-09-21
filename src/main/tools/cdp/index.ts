@@ -48,13 +48,13 @@ function actions(cdp: CdpHostProvider, artifacts?: ArtifactService): ToolAction[
   return [
     {
       action: 'capabilities',
-      description: 'Return Browser.getVersion and the domains supported by the selected tab target.',
+      description: 'Return Browser.getVersion and the domains supported by this chat’s targeted tab.',
       inputSchema: objectSchema({ tab_id: tabIdField }),
       run: async (input) => jsonResult(await requireCdp(cdp).capabilities(tabIdFrom(input)))
     },
     {
       action: 'targets',
-      description: 'Return the selected tab target, Chromium’s discovered targets, and a live inventory with child session ids.',
+      description: 'Return this chat’s targeted tab, Chromium’s discovered targets, and a live inventory with child session ids.',
       inputSchema: objectSchema({ tab_id: tabIdField }),
       run: async (input) => jsonResult(await requireCdp(cdp).targets(tabIdFrom(input)))
     },

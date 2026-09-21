@@ -4,7 +4,7 @@ import type { BrowserBounds } from '../shared/types.js'
 
 /** Native capture host for a collapsed/covered browser, never mapped to the user's display. */
 export class HiddenCaptureSurfaces {
-  private readonly leases = new Map<string, { host: BrowserWindow; count: number; tab: BrowserTab }>()
+  private readonly leases = new Map<string, { host: BrowserWindow; count: number }>()
 
   constructor(private readonly home: BrowserWindow) {}
 
@@ -15,7 +15,7 @@ export class HiddenCaptureSurfaces {
     if (!entry) {
       const host = new BrowserWindow({ show: false, width: bounds.width, height: bounds.height,
         webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } })
-      entry = { host, count: 0, tab }
+      entry = { host, count: 0 }
       this.leases.set(tab.id, entry)
       try {
         // Initialize geometry before reparenting: attaching an offscreen/1px widget first
