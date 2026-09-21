@@ -4,6 +4,7 @@ import { DropdownMenu } from 'radix-ui'
 import { Check, Folder, Plus, X } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
+import { errorMessage } from './error-message.js'
 import { TurnActivityIndicator } from './task-activity.js'
 
 type ProjectMenuProps = {
@@ -33,7 +34,7 @@ export function ProjectMenu({
   const [error, setError] = useState('')
   async function choose(action: () => Promise<void>): Promise<void> {
     setError('')
-    try { await action() } catch (reason) { setError(String(reason)) }
+    try { await action() } catch (reason) { setError(errorMessage(reason)) }
   }
 
   return (

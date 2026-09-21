@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Download, FolderOpen, Minus, Plus, Scan } from 'lucide-react'
 import type { ImageTabContent } from '../../shared/local-files.js'
+import { errorMessage } from '../error-message.js'
 
 export function ImageViewer({ id, active }: { id: string; active: boolean }) {
   const [content, setContent] = useState<ImageTabContent | null>(null)
@@ -26,7 +27,7 @@ export function ImageViewer({ id, active }: { id: string; active: boolean }) {
     let live = true
     void window.closedai.localFiles.image(id).then((image) => {
       if (live) setContent(image)
-    }).catch((cause: unknown) => { if (live) setError(String(cause)) })
+    }).catch((cause: unknown) => { if (live) setError(errorMessage(cause, 'This image could not be opened.')) })
     return () => { live = false }
   }, [id])
 
@@ -74,7 +75,7 @@ export function ImageViewer({ id, active }: { id: string; active: boolean }) {
       {content?.src.startsWith('data:') && <a data-ui="image.download" href={content.src} download={content.name}
         aria-label="Download image" title="Download image"><Download size={16} /></a>}
       {content?.path && <button type="button" data-ui="image.reveal" title="Show in folder" aria-label="Show in folder"
-        onClick={() => { void window.closedai.localFiles.revealImage(id).catch((cause: unknown) => setError(String(cause))) }}>
+        onClick={() => { void window.closedai.localFiles.revealImage(id).catch((cause: unknown) => setError(errorMessage(cause))) }}>
         <FolderOpen size={16} /></button>}
     </div>
     <div ref={stage} className="image-viewer-stage" tabIndex={0} data-ui="image.canvas"
