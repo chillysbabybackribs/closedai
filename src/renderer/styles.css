@@ -120,12 +120,12 @@
 
   /* Neutral shell surface ramp. Chat overrides this locally with near-black surfaces
      in styles/chat/shell.css to distinguish its canvas from browser chrome. */
-  /* The lighter chassis (gutters, dividers) frames the darker shells;
-     chrome is the tab rail on top of a card; card is the content surface
-     you read on; raised is anything that sits on a card (toolbar, bubble, popover).
+  /* The chassis (title bar, gutters, dividers) is the darkest plane, the recessed frame
+     the tile cards float on; chrome is the tab rail on top of a card; card is the content
+     surface you read on; raised is anything that sits on a card (toolbar, bubble, popover).
      Raised controls provide contrast against their surrounding surface. */
-  --chassis: #242424;
-  --chassis-well: #09090a;
+  --chassis: #070708;
+  --chassis-well: #050506;
   --surface-chrome: #141415;
   --surface-card: #1a1a1b;
   --surface-raised: #232325;
@@ -133,7 +133,7 @@
   --surface-control-hover: #303033;
   --hairline: rgb(255 255 255 / 8%);
   --hairline-strong: rgb(255 255 255 / 14%);
-  --titlebar-surface: #181819;
+  --titlebar-surface: var(--chassis);
   --chrome-fg: #a1a1a5;
   --chrome-fg-strong: #f1f1f3;
   /* Chrome icon/control ink — measured from Cursor + Antigravity dark_modern
