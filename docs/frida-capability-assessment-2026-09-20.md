@@ -145,6 +145,10 @@ The host compiler can bundle TypeScript agents and their dependencies. Frida 17.
 language-server API, useful for future probe editing, but unnecessary for the first backend.
 See [C API][capi] and [release notes][release18].
 
+The generated [PackageManager API][packages] also supports searching and installing agent npm
+dependencies for the compiler. This is package installation, not merely inspection. An eventual
+probe library should retain dependency versions and source identity alongside its compiled agent.
+
 ### Deployment modes and their prerequisites
 
 | Mode | How it reaches the target | What to establish first |
@@ -191,6 +195,14 @@ debugging policy. Kernel access and userspace attachment deserve separate capabi
 
 ### Tools built on Frida, and capabilities that need more work
 
+- **[Luma][luma] is the official Frida GUI.** Its site currently advertises version 1.2.3,
+  persistent projects, a live REPL, editable hooks, instruction captures with register values,
+  capture comparisons, and memory/disassembly views using radare2. It also describes Hook Packs,
+  package/compiler integration, CodeShare browsing, and collaborative sessions. These are
+  documented features, not features exercised in this review. Inspecting a captured execution
+  in its UI should not be confused with rewinding the live process. Luma is a useful learning
+  and workflow reference before we build a comparable interface; it is not required to use
+  the Frida SDK from ClosedAI.
 - `frida`, `frida-ps`, and `frida-ls-devices` support interactive exploration and discovery.
   [frida-trace][trace] generates editable function handlers and supports several selection
   methods. [frida-discover][discover] helps identify internal functions. These are useful
@@ -275,6 +287,12 @@ ancestor. Therefore, same user ownership and a correct PID do not prove the help
 Validate the chosen process relationship or an explicitly scoped permission mechanism; launching
 an owned fixture from the controller is the simplest first test. Do not infer that direct SDK
 loading, a utility process, or the existing Chromium flags settle this question.
+
+Frida 17.11 also added an alternative Linux injection path for an already-occupied ptrace slot,
+and 17.18 documents kernel-assisted injection when its module is present. Neither release
+establishes that an ordinary unprivileged sibling controller can ignore this host's access
+policy. Detect the actual available path; do not equate a ptrace-free path with permission-free
+access or make broad policy changes to hide an attachment failure.
 
 Prefer a private IPC transport to the controller and structured SDK results. Remote server,
 Gadget, and Barebone support can share the control model while retaining different prerequisites.
@@ -422,6 +440,8 @@ The validation sequence determines how much of the suite can be offered reliably
 [trace]: https://frida.re/docs/frida-trace/
 [discover]: https://frida.re/docs/frida-discover/
 [nodebinding]: https://github.com/frida/frida-node
+[luma]: https://luma.frida.re/
+[packages]: https://frida.re/docs/frida-core/class.PackageManager.html
 [kmod]: https://github.com/frida/frida-core/blob/main/src/barebone/agent/linux/README.md
 [afl]: https://github.com/AFLplusplus/AFLplusplus/blob/stable/frida_mode/README.md
 [libafl]: https://aflplus.plus/libafl-book/advanced_features/frida.html
