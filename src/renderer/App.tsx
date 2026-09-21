@@ -20,7 +20,7 @@ import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { AppearanceSettingsDialog } from './settings/appearance-settings-dialog.js'
 import { CredentialVaultModal } from './settings/credential-vault-modal.js'
 import { ResearchLibraryDialog } from './research/library-dialog.js'
-import { BrowserGlobeIcon } from './browser-globe-icon'
+import { BrowserGlobeIcon } from './browser-globe-icon.js'
 import {
   normalizeAppearanceSettings,
   persistAppearanceSettings,
