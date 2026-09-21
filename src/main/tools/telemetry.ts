@@ -1,19 +1,28 @@
 import { EventEmitter } from 'node:events'
 import { readFile, unlink } from 'node:fs/promises'
-import type { ToolCallEvent, ToolStats, ToolTelemetrySnapshot } from '../../shared/tools.js'
+import type { ToolCallEvent, ToolErrorNote, ToolStats, ToolTelemetrySnapshot } from '../../shared/tools.js'
 import { writeAtomic } from '../atomic-write.js'
 
-const TELEMETRY_VERSION = 1
+const TELEMETRY_VERSION = 2
+/** Failure notes kept per tool; enough to see a pattern, not a log. */
+export const ERROR_NOTES_PER_TOOL = 3
 
 type PersistedTelemetry = {
   version: typeof TELEMETRY_VERSION
+  since: number | null
   totalCalls: number
   stats: ToolStats[]
+  errors: ToolErrorNote[]
 }
 
-/** Aggregate tool run/error counters. No per-call content or identifiers are retained. */
+/**
+ * Aggregate tool run/error counters, last-use timestamps, and the last few failure messages per
+ * tool. No arguments, results, or conversation identifiers are retained.
+ */
 export class ToolTelemetry extends EventEmitter {
   private readonly stats = new Map<string, ToolStats>()
+  private errors: ToolErrorNote[] = []
+  private since: number | null = null
   private totalCalls = 0
   private writes: Promise<void> = Promise.resolve()
   private writing = false
@@ -22,6 +31,9 @@ export class ToolTelemetry extends EventEmitter {
   private constructor(private readonly filePath: string | null, snapshot?: ToolTelemetrySnapshot) {
     super()
     this.totalCalls = snapshot?.totalCalls ?? 0
+    // Counters from before timestamps existed cannot say when "unused" started, so it starts now.
+    this.since = snapshot?.since ?? Date.now()
+    this.errors = [...(snapshot?.errors ?? [])]
     for (const stat of snapshot?.stats ?? []) this.stats.set(keyOf(stat.toolId, stat.action), { ...stat })
   }
 
@@ -49,6 +61,8 @@ export class ToolTelemetry extends EventEmitter {
     this.totalCalls += 1
     this.bump(record.toolId, null, record)
     if (record.action) this.bump(record.toolId, record.action, record)
+    const note = errorNote(record)
+    if (note) this.errors = addErrorNote(this.errors, note)
     this.emit('record', record)
     this.enqueuePersist()
   }
@@ -56,13 +70,17 @@ export class ToolTelemetry extends EventEmitter {
   snapshot(): ToolTelemetrySnapshot {
     return {
       stats: [...this.stats.values()].sort(compareStats),
-      totalCalls: this.totalCalls
+      totalCalls: this.totalCalls,
+      since: this.since,
+      errors: [...this.errors]
     }
   }
 
   async clear(): Promise<void> {
     this.stats.clear()
+    this.errors = []
     this.totalCalls = 0
+    this.since = Date.now()
     this.emit('cleared')
     this.enqueuePersist()
     await this.writes
@@ -99,8 +117,10 @@ export class ToolTelemetry extends EventEmitter {
     if (!this.filePath) return Promise.resolve()
     const persisted: PersistedTelemetry = {
       version: TELEMETRY_VERSION,
+      since: this.since,
       totalCalls: this.totalCalls,
-      stats: [...this.stats.values()].sort(compareStats)
+      stats: [...this.stats.values()].sort(compareStats),
+      errors: this.errors
     }
     return writeAtomic(this.filePath, `${JSON.stringify(persisted, null, 2)}\n`)
   }
@@ -133,7 +153,7 @@ async function readLegacy(filePath: string): Promise<ToolTelemetrySnapshot | nul
         // A corrupt line should not hide valid counters around it.
       }
     }
-    return { stats: [...stats.values()], totalCalls }
+    return { stats: [...stats.values()], totalCalls, since: null, errors: [] }
   } catch (error) {
     if (codeOf(error) !== 'ENOENT') console.warn('[tools] legacy telemetry unreadable, starting empty:', messageOf(error))
     return null
@@ -143,7 +163,10 @@ async function readLegacy(filePath: string): Promise<ToolTelemetrySnapshot | nul
 function normalizeSnapshot(value: unknown): ToolTelemetrySnapshot {
   if (!value || typeof value !== 'object') throw new Error('invalid telemetry file')
   const persisted = value as Partial<PersistedTelemetry>
-  if (persisted.version !== TELEMETRY_VERSION || !Array.isArray(persisted.stats)) throw new Error('unsupported telemetry file')
+  // Version 1 files carry counters only; they read as version 2 with no timestamps or notes.
+  if ((persisted.version !== 1 && persisted.version !== TELEMETRY_VERSION) || !Array.isArray(persisted.stats)) {
+    throw new Error('unsupported telemetry file')
+  }
   const stats = persisted.stats.flatMap((entry) => {
     if (!entry || typeof entry !== 'object') return []
     const stat = entry as Partial<ToolStats>
@@ -159,13 +182,45 @@ function normalizeSnapshot(value: unknown): ToolTelemetrySnapshot {
       calls: stat.calls!,
       failures,
       timeouts: Math.min(timeouts, stat.calls!),
-      misuses: Math.min(misuses, failures)
+      misuses: Math.min(misuses, failures),
+      lastCalledAt: timestamp(stat.lastCalledAt),
+      lastFailedAt: timestamp(stat.lastFailedAt)
     }]
   })
   const totalCalls = Number.isInteger(persisted.totalCalls) && persisted.totalCalls! >= 0
     ? persisted.totalCalls!
     : stats.filter((stat) => stat.action === null).reduce((sum, stat) => sum + stat.calls, 0)
-  return { stats, totalCalls }
+  const errors = Array.isArray(persisted.errors)
+    ? persisted.errors.flatMap((entry) => {
+        const note = entry as Partial<ToolErrorNote> | null
+        if (!note || typeof note.toolId !== 'string' || typeof note.message !== 'string' || !timestamp(note.at)) return []
+        const kind = note.kind === 'timeout' || note.kind === 'misuse' ? note.kind : 'error'
+        return [{ toolId: note.toolId, action: typeof note.action === 'string' ? note.action : null, at: note.at!, kind, message: note.message }]
+      })
+    : []
+  return { stats, totalCalls, since: timestamp(persisted.since), errors }
+}
+
+function timestamp(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null
+}
+
+function errorNote(record: ToolCallEvent): ToolErrorNote | null {
+  if (record.ok || !record.message) return null
+  return {
+    toolId: record.toolId,
+    action: record.action,
+    at: record.at,
+    kind: record.timedOut ? 'timeout' : record.misuse ? 'misuse' : 'error',
+    message: record.message
+  }
+}
+
+/** Newest first, at most ERROR_NOTES_PER_TOOL per tool. */
+export function addErrorNote(notes: ToolErrorNote[], note: ToolErrorNote): ToolErrorNote[] {
+  const kept = notes.filter((entry) => entry.toolId === note.toolId).slice(0, ERROR_NOTES_PER_TOOL - 1)
+  const others = notes.filter((entry) => entry.toolId !== note.toolId)
+  return [note, ...kept, ...others]
 }
 
 function legacyRecord(value: unknown): ToolCallEvent | null {
@@ -177,7 +232,9 @@ function legacyRecord(value: unknown): ToolCallEvent | null {
     action: typeof record.action === 'string' ? record.action : null,
     ok: record.ok,
     timedOut: false,
-    misuse: false
+    misuse: false,
+    at: 0,
+    message: null
   }
 }
 
@@ -185,17 +242,21 @@ function bumpMap(
   stats: Map<string, ToolStats>,
   toolId: string,
   action: string | null,
-  record: Pick<ToolCallEvent, 'ok' | 'timedOut' | 'misuse'>
+  record: Pick<ToolCallEvent, 'ok' | 'timedOut' | 'misuse' | 'at'>
 ): void {
   const key = keyOf(toolId, action)
-  const current = stats.get(key) ?? { toolId, action, calls: 0, failures: 0, timeouts: 0, misuses: 0 }
+  const current = stats.get(key)
+    ?? { toolId, action, calls: 0, failures: 0, timeouts: 0, misuses: 0, lastCalledAt: null, lastFailedAt: null }
   const failed = !record.ok && !record.timedOut
+  const at = record.at > 0 ? record.at : null
   stats.set(key, {
     ...current,
     calls: current.calls + 1,
     failures: current.failures + (failed ? 1 : 0),
     timeouts: current.timeouts + (record.timedOut ? 1 : 0),
-    misuses: current.misuses + (failed && record.misuse ? 1 : 0)
+    misuses: current.misuses + (failed && record.misuse ? 1 : 0),
+    lastCalledAt: at ?? current.lastCalledAt,
+    lastFailedAt: record.ok ? current.lastFailedAt : (at ?? current.lastFailedAt)
   })
 }
 

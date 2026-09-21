@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { dockPane, layoutGeometry, paneIds, readLayout, resizeSplit, saveLayout, withBrowser, type ChatLayout } from './layout-tree.ts'
-import { addTab, focusedCloseAction, moveTab, pruneTabs, removeTab, selectTab, tabIds } from './layout-tabs.ts'
+import { addTab, focusedCloseAction, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds } from './layout-tabs.ts'
 
 const split = (): ChatLayout => resizeSplit(dockPane({ kind: 'pane', id: 'a' }, 'b', 'a', 'right', 'split'), 'split', 0.6)
 
@@ -104,4 +104,31 @@ test('tab order and active selection survive project-scoped persistence and inva
     { kind: 'pane', id: 'a', tabs: ['a', 1] },
     { kind: 'split', id: 's', ratio: 0.5, axis: 'horizontal', first: { kind: 'pane', id: 'a', tabs: ['a', 'b'] }, second: { kind: 'pane', id: 'b' } }
   ]) assert.equal(readLayout({ getItem: () => JSON.stringify({ tree: invalid, browserVisible: true }) }, '/project').tree, null)
+})
+
+test('neighborTile walks tiles in reading order from any tab and wraps', () => {
+  // Tiles read d (active over a), b, c; an inactive tab resolves through its tile.
+  const tree = addTab(dockPane(split(), 'c', 'b', 'bottom', 'lower'), 'a', 'd')
+  assert.equal(neighborTile(tree, 'a', 'next'), 'b')
+  assert.equal(neighborTile(tree, 'd', 'next'), 'b')
+  assert.equal(neighborTile(tree, 'b', 'next'), 'c')
+  assert.equal(neighborTile(tree, 'c', 'next'), 'd')
+  assert.equal(neighborTile(tree, 'a', 'previous'), 'c')
+  assert.equal(neighborTile(tree, 'b', 'previous'), 'd')
+})
+
+test('neighborTile is null for a lone tile, the browser, or an unknown tab', () => {
+  assert.equal(neighborTile(addTab({ kind: 'pane', id: 'a' }, 'a', 'b'), 'a', 'next'), null)
+  assert.equal(neighborTile(withBrowser({ kind: 'pane', id: 'a' }), 'a', 'next'), null)
+  assert.equal(neighborTile(split(), 'zzz', 'next'), null)
+})
+
+test('moving a tab to the neighbouring tile joins its strip and collapses an emptied tile', () => {
+  const tree = addTab(split(), 'a', 'c')
+  const moved = moveTab(tree, 'c', neighborTile(tree, 'c', 'next')!, null, 'x')
+  assert.deepEqual(paneIds(moved).sort(), ['a', 'c'])
+  assert.equal(tabIds(moved).length, 3)
+  const lone = moveTab(split(), 'a', neighborTile(split(), 'a', 'next')!, null, 'x')
+  assert.equal(lone.kind, 'pane')
+  assert.deepEqual(tabIds(lone), ['b', 'a'])
 })

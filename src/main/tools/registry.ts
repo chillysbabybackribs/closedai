@@ -271,12 +271,25 @@ export class ToolRegistry {
       action,
       ok: !result.isError,
       timedOut: result.errorKind === 'timeout',
-      misuse: result.errorKind === 'usage'
+      misuse: result.errorKind === 'usage',
+      at: Date.now(),
+      message: result.isError && !result.sensitive ? failureMessage(result) : null
     }
     for (const listener of this.listeners) {
       try { listener(record) } catch { /* telemetry must never break a call */ }
     }
   }
+}
+
+export const FAILURE_MESSAGE_CHARS = 240
+
+/** The first line of a failed result, bounded, for telemetry's per-tool error notes. */
+function failureMessage(result: ToolResult): string | null {
+  const text = result.content.find((item) => item.type === 'text')
+  if (!text || text.type !== 'text') return null
+  const line = text.text.split('\n').find((entry) => entry.trim().length > 0)?.trim() ?? ''
+  if (!line) return null
+  return line.length > FAILURE_MESSAGE_CHARS ? `${line.slice(0, FAILURE_MESSAGE_CHARS - 1)}…` : line
 }
 
 /** Share one text budget across a result, preserving small blocks and separate image content. */

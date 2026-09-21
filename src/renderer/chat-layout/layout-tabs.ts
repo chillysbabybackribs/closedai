@@ -2,6 +2,17 @@ import { BROWSER_PANE_ID, dockPane, paneIds, type ChatLayout, type DockEdge } fr
 
 export const CHAT_TAB_DRAG_TYPE = 'application/x-closedai-chat-tab'
 
+export type TileDirection = 'next' | 'previous'
+
+/** The tile after or before the one owning `id` in reading order, wrapping; null with one tile. */
+export function neighborTile(tree: ChatLayout, id: string, direction: TileDirection): string | null {
+  const owner = tabOwner(tree, id)
+  const tiles = paneIds(tree)
+  if (!owner || tiles.length < 2) return null
+  const index = tiles.indexOf(owner)
+  return tiles[(index + (direction === 'next' ? 1 : tiles.length - 1)) % tiles.length]!
+}
+
 /** Move one conversation, preserving sibling tabs even when the source is active. */
 export function moveTab(tree: ChatLayout, id: string, target: string, edge: DockEdge | null, splitId: string): ChatLayout {
   const destination = tabOwner(tree, target)

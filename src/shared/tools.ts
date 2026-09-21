@@ -97,6 +97,14 @@ export type ToolCallEvent = {
   timedOut: boolean
   /** The app refused the call before the tool ran: wrong name, wrong arguments, broken rule. */
   misuse: boolean
+  /** When the call finished, ms since epoch. */
+  at: number
+  /**
+   * For a failed call, the first line of what the model was told, cut to a short bound. Never
+   * arguments, never a successful result, never a sensitive result. This is what "Send to chat
+   * for repair" carries, so the fix can start from the actual failure text.
+   */
+  message: string | null
 }
 
 export type ToolStats = {
@@ -109,12 +117,27 @@ export type ToolStats = {
   timeouts: number
   /** Calls refused as misuse, a subset of `failures`: what the tool's directions failed to prevent. */
   misuses: number
+  /** Most recent call, ms since epoch; null before timestamps were recorded. */
+  lastCalledAt: number | null
+  lastFailedAt: number | null
+}
+
+export type ToolErrorNote = {
+  toolId: string
+  action: string | null
+  at: number
+  kind: 'error' | 'timeout' | 'misuse'
+  message: string
 }
 
 export type ToolTelemetrySnapshot = {
   stats: ToolStats[]
   /** Total tool invocations represented by the aggregate counters. */
   totalCalls: number
+  /** When timestamps began, ms since epoch; "unused" is only meaningful relative to this. */
+  since: number | null
+  /** The last few failure messages per tool, newest first. */
+  errors: ToolErrorNote[]
 }
 
 export type ToolsEvent =
