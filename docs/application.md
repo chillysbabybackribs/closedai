@@ -51,6 +51,24 @@ selected. Hiding a tile only removes it from the layout. Detaching a pane stops 
 the record and unread state under the same identity. The embedded browser belongs to the application and is shared across
 panes and project switches.
 
+Onboarding and missing binaries. A provider whose executable is absent is an onboarding state,
+not a fault: the lane sets its connection to `unavailable` with one install sentence
+(`src/main/provider-binary.ts`, e.g. "Codex is not installed. Install the Codex CLI and sign in
+from the app, or choose another model.") instead of the raw `spawn codex ENOENT`. The Codex
+restart loop then re-probes every 60 s rather than every 15 s and recovers on its own once the
+binary appears; Claude, Antigravity, and Cursor map the same condition to their own sentence. A
+first-run screen reads `window.closedai.chat.providerAvailability()` (`ProviderAvailability[]`
+from `src/shared/provider-availability.ts`: provider, installed, resolved path, hint) before any
+chat starts a provider; resolution follows each lane's spawn order (env override, the installer's
+`~/.local/bin`, then PATH; Claude is the bundled SDK and always present).
+
+Launch resilience. A bootstrap failure is shown in a native error box and ends the app; an
+uncaught exception or unhandled rejection after the window exists is logged with a `[main]`
+prefix and survived (`src/main/app-crash-guard.ts`). The app shell reloads once when its renderer
+is lost for a non-clean reason and reports a second loss within a minute instead of looping
+(`src/main/main-window-recovery.ts`). `before-quit` bounds its flush at 5 s and quits regardless
+(`src/main/app-quit.ts`); the MCP HTTP bridges drop open connections before closing their listener.
+
 Model browser tools assign tabs to the calling chat, independently of directory and UI selection.
 The first untargeted navigation creates a background tab; inspection can claim an unassigned
 visible tab. Later omitted targets use that chat's last assigned tab. Explicit targeting claims
@@ -730,6 +748,8 @@ instrumentation.
 | Concern | Source of truth |
 |---|---|
 | Bootstrap, service composition, project persistence | `src/main/index.ts`, `src/main/app-settings-store.ts` |
+| Launch fault handling, renderer-loss recovery, bounded quit | `src/main/app-crash-guard.ts`, `src/main/main-window-recovery.ts`, `src/main/app-quit.ts` |
+| Provider install detection and missing-binary messages | `src/main/provider-availability.ts`, `src/main/provider-binary.ts`, `src/shared/provider-availability.ts` |
 | Chat records and persistence, settings migration | `src/main/chat-store/`, `src/shared/chat-store.ts` |
 | Attach/detach lifecycle, summaries, per-chat settings, idle parking, catalog reconciliation | `src/main/chat-peers/` |
 | Per-workspace provider model catalog cache | `src/main/chat-context/provider-catalog-cache.ts` |
