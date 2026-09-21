@@ -82,13 +82,14 @@ export function Composer({
   const [sending, setSending] = useState(false)
   const [manualExpanded, setManualExpanded] = useState(true)
 
-  const hasDraft = input.trim().length > 0 || attachments.length > 0
-  const isCompact = !hasDraft && !manualExpanded
+  // Only the chevron changes modes: typing, focusing, and sending all stay in the mode
+  // the user chose, so a collapsed composer keeps its one-line footprint across turns.
+  const isCompact = !manualExpanded
   const formRef = useRef<HTMLFormElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const focusAfterSendRef = useRef(false)
-  // Compact and full mode render different textareas. Typing the first character leaves compact
-  // mode, which unmounts the focused one; carry focus across so the rest of the word is not lost.
+  // Compact and full mode render different textareas. Toggling unmounts the focused one; carry
+  // focus across so the caret is not lost.
   const textareaFocusedRef = useRef(false)
   useEffect(() => {
     if (textareaFocusedRef.current) formRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus()
@@ -200,9 +201,6 @@ export function Composer({
         disabled={!enabled || sending}
         maxHeight={isCompact ? 28 : 'var(--composer-max-height, min(36vh, 240px))'}
         className={`prompt-composer-input${isCompact ? ' is-compact' : ''}`}
-        onClick={() => {
-          if (isCompact && !running) setManualExpanded(true)
-        }}
       >
         {isCompact ? (
           <ComposerCompactRow
@@ -216,10 +214,7 @@ export function Composer({
             paused={paused}
             canSend={canSend}
             onPaste={pasteFiles}
-            onFocus={() => {
-              textareaFocusedRef.current = true
-              if (!running) setManualExpanded(true)
-            }}
+            onFocus={() => { textareaFocusedRef.current = true }}
             onBlur={() => { textareaFocusedRef.current = false }}
             onStop={onStop}
             onResume={resume}
