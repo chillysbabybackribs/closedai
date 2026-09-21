@@ -185,8 +185,18 @@ function TranscriptScroller({
   paneId: string
   children: JSX.Element
 }): JSX.Element {
+  // A sent prompt anchors at the viewport top and the response streams in below it, so the
+  // beginning of a long answer never scrolls out of view mid-turn. Scrolling releases the anchor,
+  // reaching the bottom resumes follow-to-bottom (autoScroll), and opening a chat still mounts at
+  // the end. The peek keeps a sliver of the previous turn visible above the anchored prompt.
   return (
-    <MessageScrollerProvider key={JSON.stringify([paneId, threadId])} autoScroll defaultScrollPosition="end">
+    <MessageScrollerProvider
+      key={JSON.stringify([paneId, threadId])}
+      autoScroll
+      anchorPrompts
+      defaultScrollPosition="end"
+      scrollPreviousItemPeek={12}
+    >
       <MessageScroller className="chat-scroll-root prompt-chat-scroll">
         <MessageScrollerViewport className="chat-scroll">
           <MessageScrollerContent className="chat-scroll-content gap-0">

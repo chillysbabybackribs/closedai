@@ -50,11 +50,18 @@ export function useScrollerContext(): ScrollerContextValue {
 }
 
 export function MessageScrollerProvider({
+  anchorPrompts = false,
   autoScroll = false,
   children,
   defaultScrollPosition = 'end',
   scrollPreviousItemPeek = 0
 }: {
+  /**
+   * Anchor each newly appended scroll-anchor row (a sent prompt) at the viewport top and stop
+   * following, so a long response streams below without pushing its beginning out of view.
+   * Unlike `defaultScrollPosition: 'last-anchor'` this does not change where the scroller mounts.
+   */
+  anchorPrompts?: boolean
   autoScroll?: boolean
   children: ReactNode
   defaultScrollPosition?: ScrollPosition
@@ -168,11 +175,13 @@ export function MessageScrollerProvider({
 
   const userScrollIntent = useCallback((direction?: 'start' | 'end') => {
     if (direction === 'end' && !anchoredRef.current) return
+    // Release the anchor but keep its spacer: collapsing it shrinks scrollHeight, the browser
+    // clamps scrollTop, and the reader is teleported mid-gesture. The next end or anchor pass
+    // resizes it, and follow mode resumes when the reader reaches the bottom.
     anchoredRef.current = null
-    setSpacerHeight(0)
     followingRef.current = false
     scrollTargetRef.current = null
-  }, [setSpacerHeight])
+  }, [])
 
   useLayoutEffect(() => {
     if (!viewport || !content) return
@@ -195,7 +204,7 @@ export function MessageScrollerProvider({
       const action = resizeScrollAction({
         prepending: Boolean(prepended),
         newAnchor: Boolean(lastAnchor && lastAnchor !== handledAnchorRef.current),
-        anchorMode: defaultScrollPosition === 'last-anchor',
+        anchorMode: anchorPrompts || defaultScrollPosition === 'last-anchor',
         anchored: Boolean(anchoredRef.current),
         following: followingRef.current,
         autoScroll
@@ -237,7 +246,7 @@ export function MessageScrollerProvider({
       observer.disconnect()
       mutations.disconnect()
     }
-  }, [anchorToElement, autoScroll, content, defaultScrollPosition, scheduleSync, setSpacerHeight, spacer, viewport])
+  }, [anchorPrompts, anchorToElement, autoScroll, content, defaultScrollPosition, scheduleSync, setSpacerHeight, spacer, viewport])
 
   useEffect(() => () => {
     if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current)
