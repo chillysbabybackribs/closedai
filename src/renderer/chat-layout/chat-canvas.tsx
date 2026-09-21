@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { ContextMenu, DropdownMenu } from 'radix-ui'
+import { ContextMenu } from 'radix-ui'
 import { Columns2, GripVertical, Maximize2, MessageSquarePlus, Minimize2, Monitor, PanelRightClose, Pencil, Plus, Rows2, Sparkles, X } from 'lucide-react'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { ChatTabs } from './chat-tabs.js'
@@ -202,37 +202,12 @@ export function ChatCanvas({ tree, selectedId, busy, browserVisible, browserReve
                 <ChatTabs ids={tabs} activeId={activeId} busy={busy} canClose={tabs.length > 1 || chatCount > 1}
                   title={title} activity={activity} onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab}
                   onDrag={(tab) => setDragging({ id: tab, singleTab: true })} />
-                <DropdownMenu.Root>
-                  <DropdownMenu.Trigger asChild>
-                    <button type="button" className="chat-layout-new-chat"
-                      data-ui="layout.new-chat-menu" data-ui-key={activeId} disabled={busy}
-                      title="New chat" aria-label="New chat">
-                      <Plus size={14} aria-hidden="true" />
-                    </button>
-                  </DropdownMenu.Trigger>
-                  <DropdownMenu.Portal>
-                    <DropdownMenu.Content className="titlebar-menu-content chat-layout-new-chat-menu" align="end" sideOffset={4} loop>
-                      <DropdownMenu.Item className="titlebar-menu-item" data-ui="layout.new-chat" data-ui-key={activeId}
-                        onSelect={() => onNewChat(activeId)}>
-                        <MessageSquarePlus size={14} aria-hidden="true" /><span>New chat tab</span>
-                      </DropdownMenu.Item>
-                      <DropdownMenu.Item className="titlebar-menu-item" data-ui="layout.split-right" data-ui-key={activeId}
-                        onSelect={() => {
-                          if (soloTile) setSoloPaneId(null)
-                          onDock(null, activeId, 'right')
-                        }}>
-                        <Columns2 size={14} aria-hidden="true" /><span>New chat right</span>
-                      </DropdownMenu.Item>
-                      <DropdownMenu.Item className="titlebar-menu-item" data-ui="layout.split-below" data-ui-key={activeId}
-                        onSelect={() => {
-                          if (soloTile) setSoloPaneId(null)
-                          onDock(null, activeId, 'bottom')
-                        }}>
-                        <Rows2 size={14} aria-hidden="true" /><span>New chat bottom</span>
-                      </DropdownMenu.Item>
-                    </DropdownMenu.Content>
-                  </DropdownMenu.Portal>
-                </DropdownMenu.Root>
+                <button type="button" className="chat-layout-new-chat"
+                  data-ui="layout.new-chat" data-ui-key={activeId} disabled={busy}
+                  title="New chat tab" aria-label="New chat tab"
+                  onClick={() => onNewChat(activeId)}>
+                  <Plus size={14} aria-hidden="true" />
+                </button>
                 <button type="button" data-ui="layout.browser-toggle" data-ui-key={activeId}
                   aria-pressed={browserVisible} onClick={() => {
                     if (soloTile) setSoloPaneId(null)
