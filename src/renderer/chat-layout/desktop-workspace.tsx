@@ -18,7 +18,7 @@ export type ChatLayoutHandle = {
   closeFocused: () => Promise<void>
 }
 
-export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onRenameChat, onRetryChatTitle, onBrowserVisibilityChange, ref }: {
+export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onRenameChat, onRetryChatTitle, onBrowserVisibilityChange, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
   reviewQueue: ChatReviewQueue
   appearance: AppearanceSettings
@@ -29,6 +29,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   onRenameChat?: (id: string, title: string) => void
   onRetryChatTitle?: (id: string) => void
   onBrowserVisibilityChange: (visible: boolean) => void
+  archiveChat?: (chatId: string) => Promise<void>
   ref?: Ref<ChatLayoutHandle>
 }) {
   const layout = useChatLayout(chat.snapshot)
@@ -85,7 +86,8 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         renderPane={(id) => <WorkspaceChat paneId={id} snapshot={chat.snapshot} dispatch={chat.dispatch}
           appearance={appearance} historyOpen={historyOpen && chat.selectedPaneId === id}
           onHistoryOpenChange={onHistoryOpenChange} dialog={chat.selectedPaneId === id ? dialog : null}
-          onDialogChange={onDialogChange} onNewChat={() => { void layout.newChat(id) }} />}
+          onDialogChange={onDialogChange} archiveChat={archiveChat}
+          onNewChat={() => { void layout.newChat(id) }} />}
       renderBrowser={<div className="workspace-right" data-mode="browser" data-with-browser={layout.browserVisible ? 'yes' : 'no'}>
         <div className={`workspace-surface workspace-surface-browser${layout.browserVisible ? '' : ' is-collapsed'}`}>
           <BrowserPane controller={browser} dragHandle={browserDragHandle} />
@@ -95,7 +97,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   </div>
 }
 
-function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onNewChat }: {
+function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onNewChat, archiveChat }: {
   paneId: string
   snapshot: ChatWorkspaceSnapshot
   dispatch: Dispatch<ChatWorkspaceAction>
@@ -105,6 +107,7 @@ function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, on
   dialog: ChatPaneDialog | null
   onDialogChange: (dialog: ChatPaneDialog | null) => void
   onNewChat: () => void
+  archiveChat?: (chatId: string) => Promise<void>
 }) {
   const retained = useRef(initialChatState())
   const state = snapshot.panes?.[paneId] ?? (snapshot.selectedPaneId === paneId ? snapshot.selected : retained.current)
@@ -113,5 +116,6 @@ function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, on
   const isSelected = snapshot.selectedPaneId === paneId
   return <ChatPane controller={controller} zoom={appearance.chatZoom} fontSize={appearance.chatFontSize}
     composerFontSize={appearance.composerFontSize} historyOpen={historyOpen} onHistoryOpenChange={onHistoryOpenChange}
-    dialog={dialog} onDialogChange={onDialogChange} selected={isSelected} onNewChat={onNewChat} />
+    dialog={dialog} onDialogChange={onDialogChange} selected={isSelected} onNewChat={onNewChat}
+    archiveChat={archiveChat} />
 }

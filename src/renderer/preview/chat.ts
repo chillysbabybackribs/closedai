@@ -53,6 +53,7 @@ export function createPreviewChat(scenario: Scenario, report: (message: string) 
     await select(id)
     return id
   }
+  const archived = new Map<string, (typeof state.chats)[number]>()
   const close = async (id: string) => {
     pane(id)
     stop(id)
@@ -60,6 +61,22 @@ export function createPreviewChat(scenario: Scenario, report: (message: string) 
     delete state.panes![id]
     if (!state.chats.length) await create()
     else { if (state.selectedPaneId === id) state.selectedPaneId = state.chats[0]!.paneId; publish() }
+  }
+  const archiveChat = async (id: string) => {
+    const row = state.chats.find((entry) => entry.paneId === id)
+    if (row) archived.set(id, { ...row, attached: false })
+    if (state.panes?.[id]) await close(id)
+    else {
+      state.chats = state.chats.filter((entry) => entry.paneId !== id)
+      publish()
+    }
+  }
+  const unarchiveChat = async (id: string) => {
+    const row = archived.get(id)
+    if (!row) return
+    archived.delete(id)
+    if (!state.chats.some((entry) => entry.paneId === id)) state.chats.push(row)
+    publish()
   }
   const native = async () => { report('This action requires real Electron; it is unavailable in the UI preview.') }
   const api: ClosedaiApi['chat'] = {
@@ -96,7 +113,7 @@ export function createPreviewChat(scenario: Scenario, report: (message: string) 
       }
       await select(id)
       return id
-    }, archiveChat: close,
+    }, archiveChat, unarchiveChat,
     setChatPinned: async (id, pinned) => {
       const row = state.chats.find((entry) => entry.paneId === id)
       if (row) row.pinnedAt = pinned ? Date.now() : null

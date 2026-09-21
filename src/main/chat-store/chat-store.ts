@@ -146,6 +146,12 @@ export class ChatStore extends EventEmitter {
     this.update(id, { archived: true })
   }
 
+  /** Restore a chat hidden by `archive` before its provider thread is committed. */
+  unarchive(id: string): void {
+    if (!this.chats.has(id)) return
+    this.update(id, { archived: false })
+  }
+
   /** Forget a chat that never became one: no thread, no title, no continuation. */
   remove(id: string): void {
     if (this.chats.delete(id)) this.changed([id])

@@ -154,7 +154,8 @@
    Wider than the pill and centred beneath it, like a quick-open widget under a
    command center. Padding lives on the list so the rounded frame clips the scroll. */
 .header-chat-search-popup,
-.header-chat-search-error {
+.header-chat-search-error,
+.header-chat-search-undo {
   position: absolute;
   top: calc(100% + 6px);
   left: 50%;
@@ -180,15 +181,8 @@
   to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 
-/* Bridge the visual gap so moving from the field into its popup never leaves the component. */
-.header-chat-search-popup::before {
-  content: '';
-  position: absolute;
-  top: -8px;
-  left: 0;
-  right: 0;
-  height: 8px;
-}
+/* The gap between field and popup is bridged by pointer geometry in header-search.tsx, not by
+   an invisible pseudo-element: the popup clips its overflow for the rounded frame. */
 
 .header-chat-search-list {
   max-height: min(520px, calc(100vh - 120px));
@@ -406,7 +400,42 @@
 .header-chat-search-count { margin-left: auto; font-variant-numeric: tabular-nums; }
 
 .header-chat-search-error { z-index: 1; padding: 10px 12px; font-size: 12px; color: var(--stop-ink); }
-.header-chat-search-popup ~ .header-chat-search-error { position: relative; top: auto; margin-top: 8px; }
+.header-chat-search-popup ~ .header-chat-search-error,
+.header-chat-search-popup ~ .header-chat-search-undo { position: relative; top: auto; margin-top: 8px; }
+.header-chat-search-error ~ .header-chat-search-undo { margin-top: 8px; }
+
+.header-chat-search-undo {
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px 9px 12px;
+  font-size: 12px;
+  color: var(--search-ink);
+  pointer-events: auto;
+}
+
+.header-chat-search-undo span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-chat-search-undo button {
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--search-kbd-edge);
+  border-radius: 5px;
+  background: var(--search-fill);
+  color: var(--search-ink);
+  font: 500 12px/1 var(--font-sans);
+}
+
+.header-chat-search-undo button:hover { background: var(--search-fill-hover); }
+.header-chat-search-undo button:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: 1px; }
 
 @media (prefers-reduced-motion: reduce) {
   .header-chat-search-popup { animation: none; }

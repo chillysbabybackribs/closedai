@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Grid layout option — mockups</title>
+<style>
+  :root {
+    --chrome: #121213;
+    --canvas: #19191b;
+    --card: #232325;
+    --raised: #2c2c2e;
+    --hair: rgb(255 255 255 / 8%);
+    --hair-strong: rgb(255 255 255 / 14%);
+    --fg: #9c9ca0;
+    --fg-strong: #eceef0;
+    --accent: #8ab4f8;
+    --ok: #65b98a;
+    --warn: #d9a441;
+    --bad: #d96a5c;
+    font-family: Inter, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    color: var(--fg-strong);
+  }
+  body { margin: 0; padding: 20px 24px 60px; background: #0c0c0d; max-width: 2200px; }
+  h1 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+  .sub { color: var(--fg); font-size: 12.5px; margin: 0 0 26px; max-width: 900px; line-height: 1.5; }
+  h2 { margin: 34px 0 10px; font-size: 12px; font-weight: 600; color: var(--fg); letter-spacing: 0.04em; text-transform: uppercase; }
+  .note { color: var(--fg); font-size: 12px; margin: 0 0 12px; max-width: 900px; line-height: 1.5; }
+  .row { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+  .frame { border: 1px solid var(--hair-strong); border-radius: 8px; overflow: hidden; background: var(--canvas); }
+  .label { display: flex; justify-content: space-between; gap: 10px; padding: 9px 12px; color: var(--fg); font-size: 12px; background: #0c0c0d; border-bottom: 1px solid var(--hair); }
+  .label b { color: var(--fg-strong); font-weight: 600; }
+  .label .fit { font-weight: 600; }
+  .fit.ok { color: var(--ok); } .fit.warn { color: var(--warn); } .fit.bad { color: var(--bad); }
+
+  /* ---------- scaled workspace ---------- */
+  .ws { position: relative; background: var(--chrome); }
+  .ws .tile, .ws .browser { position: absolute; box-sizing: border-box; background: var(--canvas); border: 1px solid var(--hair-strong); border-radius: 3px; overflow: hidden; }
+  .ws .tile.sel { border-color: var(--accent); }
+  .ws .tile .hd { height: 9%; min-height: 8px; background: #1f1f21; border-bottom: 1px solid var(--hair); display: flex; align-items: center; padding-left: 4%; }
+  .ws .tile .hd i { display: block; height: 55%; width: 34%; background: var(--raised); border-radius: 2px 2px 0 0; box-shadow: inset 0 -1px var(--accent); }
+  .ws .tile .ln { height: 3%; margin: 5% 6% 0; background: var(--raised); border-radius: 2px; }
+  .ws .tile .ln.s { width: 55%; }
+  .ws .tile .cp { position: absolute; left: 5%; right: 5%; bottom: 5%; height: 13%; border: 1px solid var(--hair-strong); border-radius: 4px; background: #1d1d1f; }
+  .ws .tile .sz { position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; color: var(--fg-strong); text-shadow: 0 0 6px #000, 0 0 2px #000; font-variant-numeric: tabular-nums; }
+  .ws .tile.narrow .sz { color: var(--warn); }
+  .ws .tile.toonarrow .sz { color: var(--bad); }
+  .ws .browser { background: #161617; }
+  .ws .browser .hd { height: 7%; background: #1f1f21; border-bottom: 1px solid var(--hair); }
+  .ws .browser .ab { height: 5%; margin: 2% 3%; background: var(--raised); border-radius: 3px; }
+  .ws .browser .sz { position: absolute; inset: 0; display: grid; place-items: center; color: var(--fg); font-size: 11px; }
+
+  /* ---------- menus ---------- */
+  .menubar { display: flex; align-items: center; height: 30px; padding: 0 6px; background: var(--chrome); font-size: 12px; color: var(--fg-strong); gap: 2px; }
+  .menubar span { padding: 4px 8px; border-radius: 4px; }
+  .menubar span.on { background: var(--raised); }
+  .menuwrap { position: relative; height: 330px; background: var(--canvas); }
+  .menu { position: absolute; background: #1e1e20; border: 1px solid var(--hair-strong); border-radius: 6px; padding: 4px 0; min-width: 230px; box-shadow: 0 8px 28px rgb(0 0 0 / 55%); font-size: 12.5px; }
+  .menu .it { display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 28px; position: relative; color: var(--fg-strong); white-space: nowrap; }
+  .menu .it.hl { background: var(--raised); }
+  .menu .it.dim { color: var(--fg); }
+  .menu .it .k { margin-left: auto; color: var(--fg); font-size: 11.5px; padding-left: 26px; }
+  .menu .it .chk { position: absolute; left: 10px; color: var(--accent); }
+  .menu .it .arr { margin-left: auto; color: var(--fg); padding-left: 26px; }
+  .menu .it .tag { font-size: 10.5px; padding: 1px 6px; border-radius: 8px; background: rgb(255 255 255 / 6%); color: var(--fg); }
+  .menu .it .tag.ok { color: var(--ok); } .menu .it .tag.warn { color: var(--warn); }
+  .menu hr { border: 0; border-top: 1px solid var(--hair); margin: 4px 0; }
+  .menu .hdr { padding: 4px 12px 2px; font-size: 10.5px; color: var(--fg); text-transform: uppercase; letter-spacing: 0.05em; }
+  .ctxhead { display: flex; align-items: center; height: 34px; background: var(--chrome); border-bottom: 1px solid var(--hair); padding: 0 8px; font-size: 11.5px; color: var(--fg); gap: 8px; }
+  .ctxhead .tab { padding: 0 12px; height: 34px; display: flex; align-items: center; color: var(--fg-strong); box-shadow: inset 0 -2px var(--accent); background: var(--canvas); }
+  .legend { display: flex; gap: 18px; font-size: 12px; color: var(--fg); margin: 8px 0 0; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+</style>
+</head>
+<body>
+<h1>Grid layout option</h1>
+<p class="sub">Proposal: keep the current customisable layout as the default ("Custom"), and add a <b>View → Layout</b> option that
+arranges the visible chats into a balanced grid chosen for the canvas size, plus a "New chat grid" submenu that creates 4/6/8/10 chats
+and arranges them. Every workspace below is rendered to scale from the real numbers: 14 px dividers, 300 × 280 px hard minimum, and a
+440 px "comfortable" chat width. Tile labels show the resulting size in px.</p>
+<div class="legend"><span><i style="background:var(--ok)"></i>≥ 440 px wide (comfortable)</span><span><i style="background:var(--warn)"></i>300–440 px (fits, tight)</span><span><i style="background:var(--bad)"></i>&lt; 300 px (not offered)</span></div>
+
+<h2>1 · Where it lives</h2>
+<div class="row">
+  <div class="frame">
+    <div class="label"><span><b>View menu</b> — Layout submenu; Custom stays the default and is what you have now</span></div>
+    <div class="menubar"><span>File</span><span class="on">View</span><span>Tools</span></div>
+    <div class="menuwrap">
+      <div class="menu" style="left:34px;top:0">
+        <div class="it dim">Toggle browser <span class="k">Ctrl+Shift+B</span></div>
+        <div class="it dim">Maximize tile <span class="k">Ctrl+Shift+M</span></div>
+        <hr>
+        <div class="it hl">Layout <span class="arr">▸</span></div>
+        <hr>
+        <div class="it dim">Zoom in <span class="k">Ctrl+=</span></div>
+        <div class="it dim">Zoom out <span class="k">Ctrl+-</span></div>
+      </div>
+      <div class="menu" style="left:266px;top:66px">
+        <div class="it"><span class="chk">✓</span>Custom <span class="tag">saved per project</span></div>
+        <div class="it">Arrange chats in grid <span class="k">Ctrl+Shift+G</span></div>
+        <div class="it">Balance all dividers</div>
+        <hr>
+        <div class="hdr">New chat grid · 1920 × 1048, browser docked</div>
+        <div class="it">2 × 2 &nbsp;·&nbsp; 4 chats <span class="tag ok" style="margin-left:auto">fits</span></div>
+        <div class="it">3 × 2 &nbsp;·&nbsp; 6 chats <span class="tag warn" style="margin-left:auto">tight</span></div>
+        <div class="it dim">4 × 2 &nbsp;·&nbsp; 8 chats <span class="tag warn" style="margin-left:auto">hide browser</span></div>
+        <div class="it dim">4 × 3 &nbsp;·&nbsp; 10 chats <span class="tag warn" style="margin-left:auto">hide browser</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="frame">
+    <div class="label"><span><b>Tile header context menu</b> — same command next to the existing split/maximize entries</span></div>
+    <div class="ctxhead"><span class="tab">Configurable multi-chat …</span><span>+</span></div>
+    <div class="menuwrap" style="height:296px">
+      <div class="menu" style="left:120px;top:6px">
+        <div class="it">Maximize tile</div>
+        <div class="it">Split right</div>
+        <div class="it">Split below</div>
+        <div class="it">New chat</div>
+        <hr>
+        <div class="it hl">Arrange chats in grid <span class="k">Ctrl+Shift+G</span></div>
+        <div class="it">Balance all dividers</div>
+        <hr>
+        <div class="it">Hide pane <span class="k">Ctrl+W</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>2 · Your screen (1920 × 1048), browser docked right at its current 40 %</h2>
+<p class="note">"Arrange chats in grid" with 4, 6, 8, and 10 visible chats. The browser keeps its side and width; only the chat subtree is rebuilt.
+Column/row counts are chosen by the same function for every case (largest comfortable tile, then fewest empty cells).</p>
+<div class="row" id="docked"></div>
+
+<h2>3 · Same screen, browser hidden (globe button)</h2>
+<p class="note">The chat subtree reflows into the full canvas. Nothing about the browser's saved position changes; showing it again puts it back at 40 %.</p>
+<div class="row" id="hidden"></div>
+
+<h2>4 · Six chats across screen sizes</h2>
+<p class="note">Same command, same six chats. Frames are scaled to the same width so the relative tile size is visible. This is why fixed
+presets are the wrong shape: 6 chats is a 3 × 2 grid on your screen but a 2 × 3 stack on a portrait/tall canvas, and comfortable on 1440p/4K only.</p>
+<div class="row" id="sizes"></div>
+
+<h2>5 · First-open default when a project has no saved layout</h2>
+<p class="note">Today: always one chat + browser. Proposed: pick by window width. This only applies before you've arranged anything, so it never touches a saved layout.</p>
+<div class="row" id="defaults"></div>
+
+<script>
+const DIV = 14, MIN_W = 300, MIN_H = 280, GOOD_W = 440, GOOD_H = 420, TITLEBAR = 34;
+
+// Choose columns/rows for n chats in a w×h chat canvas. Returns null when nothing fits the hard minimum.
+function chooseGrid(n, w, h) {
+  let best = null;
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols);
+    const tw = (w - (cols - 1) * DIV) / cols;
+    const th = (h - (rows - 1) * DIV) / rows;
+    if (tw < MIN_W || th < MIN_H) continue;
+    const comfort = Math.min(tw / GOOD_W, 1) * Math.min(th / GOOD_H, 1);
+    const empty = cols * rows - n;
+    const cand = { cols, rows, tw, th, comfort, empty };
+    if (!best || cand.comfort > best.comfort + 1e-6 || (Math.abs(cand.comfort - best.comfort) < 1e-6 && cand.empty < best.empty)) best = cand;
+  }
+  return best;
+}
+
+function fitClass(tw) { return tw >= GOOD_W ? 'ok' : tw >= MIN_W ? 'warn' : 'bad'; }
+
+// Render a scaled workspace. browserRatio 0 hides the browser.
+function workspace(opts) {
+  const { n, W, H, browserRatio = 0.4, frameW = 560, title, sel = 0 } = opts;
+  const canvasH = H - TITLEBAR;
+  const s = frameW / W;
+  const bw = browserRatio ? Math.round(W * browserRatio) : 0;
+  const cw = browserRatio ? W - bw - DIV : W;
+  const g = chooseGrid(n, cw, canvasH);
+  const frame = document.createElement('div'); frame.className = 'frame';
+  const label = document.createElement('div'); label.className = 'label';
+  const fitTxt = !g ? 'does not fit' : `${g.cols} × ${g.rows} · ${Math.round(g.tw)} × ${Math.round(g.th)} px tiles`;
+  label.innerHTML = `<span><b>${title}</b></span><span class="fit ${g ? fitClass(g.tw) : 'bad'}">${fitTxt}</span>`;
+  frame.appendChild(label);
+  const ws = document.createElement('div'); ws.className = 'ws';
+  ws.style.width = frameW + 'px'; ws.style.height = Math.round(canvasH * s) + 'px';
+  if (g) {
+    // last row may be short: distribute its tiles across the full width
+    for (let i = 0; i < n; i++) {
+      const r = Math.floor(i / g.cols), c = i % g.cols;
+      const inLast = r === g.rows - 1, lastCount = n - (g.rows - 1) * g.cols;
+      const rowCols = inLast ? lastCount : g.cols;
+      const tw = (cw - (rowCols - 1) * DIV) / rowCols;
+      const x = c * (tw + DIV), y = r * (g.th + DIV);
+      const t = document.createElement('div');
+      t.className = 'tile ' + (tw >= GOOD_W ? '' : tw >= MIN_W ? 'narrow' : 'toonarrow') + (i === sel ? ' sel' : '');
+      t.style.left = x * s + 'px'; t.style.top = y * s + 'px';
+      t.style.width = tw * s + 'px'; t.style.height = g.th * s + 'px';
+      t.innerHTML = `<div class="hd"><i></i></div><div class="ln"></div><div class="ln s"></div><div class="cp"></div><div class="sz">${Math.round(tw)} × ${Math.round(g.th)}</div>`;
+      ws.appendChild(t);
+    }
+  } else {
+    ws.innerHTML = `<div class="tile toonarrow" style="left:0;top:0;width:${cw*s}px;height:${canvasH*s}px"><div class="sz">${n} chats need more than ${cw} × ${canvasH}</div></div>`;
+  }
+  if (bw) {
+    const b = document.createElement('div'); b.className = 'browser';
+    b.style.left = (cw + DIV) * s + 'px'; b.style.top = 0; b.style.width = bw * s + 'px'; b.style.height = canvasH * s + 'px';
+    b.innerHTML = `<div class="hd"></div><div class="ab"></div><div class="sz">browser · ${bw} px</div>`;
+    ws.appendChild(b);
+  }
+  frame.appendChild(ws);
+  return frame;
+}
+
+const docked = document.getElementById('docked');
+for (const n of [4, 6, 8, 10]) docked.appendChild(workspace({ n, W: 1920, H: 1048, title: `${n} chats + browser` }));
+
+const hidden = document.getElementById('hidden');
+for (const n of [4, 6, 8, 10]) hidden.appendChild(workspace({ n, W: 1920, H: 1048, browserRatio: 0, title: `${n} chats, browser hidden` }));
+
+const sizes = document.getElementById('sizes');
+sizes.appendChild(workspace({ n: 6, W: 1920, H: 1048, title: '1080p laptop/monitor · 1920 × 1048' }));
+sizes.appendChild(workspace({ n: 6, W: 2560, H: 1400, title: '1440p · 2560 × 1400' }));
+sizes.appendChild(workspace({ n: 6, W: 3440, H: 1400, title: 'Ultrawide · 3440 × 1400' }));
+sizes.appendChild(workspace({ n: 6, W: 3840, H: 2120, title: '4K at 100 % · 3840 × 2120' }));
+
+const defaults = document.getElementById('defaults');
+defaults.appendChild(workspace({ n: 1, W: 1366, H: 748, title: '< 1400 px · 1 chat + browser (today’s default)' }));
+defaults.appendChild(workspace({ n: 2, W: 1920, H: 1048, title: '1400–2200 px · 2 chats + browser' }));
+defaults.appendChild(workspace({ n: 3, W: 2560, H: 1400, title: '≥ 2200 px · 3 chats + browser' }));
+defaults.appendChild(workspace({ n: 4, W: 3840, H: 2120, title: '4K · 2 × 2 + browser' }));
+</script>
+</body>
+</html>

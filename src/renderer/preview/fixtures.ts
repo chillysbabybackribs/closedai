@@ -16,8 +16,19 @@ export function parseScenario(value: string | null): Scenario {
 export function sampleChat(id: string, empty = false): ChatSnapshot {
   const items: ChatTranscriptItem[] = empty ? [] : [
     { type: 'user', id: `${id}-user`, turnId: 'sample-turn', text: 'Help me review the workspace layout and summarize the changes.' },
-    { type: 'tool', id: `${id}-tool`, turnId: 'sample-turn', label: 'Read layout files',
-      detail: 'Sample activity for UI development', status: 'completed', output: 'Found the chat and browser layout components.' },
+    {
+      type: 'fileChange', id: `${id}-edit`, turnId: 'sample-turn', status: 'completed',
+      changes: [{
+        path: '/preview/closedai/src/renderer/chat-pane.tsx', kind: 'update',
+        diff: '--- a/chat-pane.tsx\n+++ b/chat-pane.tsx\n@@ -1 +1 @@\n-old\n+new\n'
+      }]
+    },
+    {
+      type: 'tool', id: `${id}-read`, turnId: 'sample-turn',
+      label: 'Read src/renderer/titlebar-menu.tsx (79 - 103)',
+      detail: '/preview/closedai/src/renderer/titlebar-menu.tsx', status: 'completed',
+      output: 'Found the chat and browser layout components.'
+    },
     { type: 'assistant', id: `${id}-answer`, turnId: 'sample-turn', phase: 'final_answer', streaming: false,
       text: 'The workspace keeps conversations and the browser together.\n\n- Drag a tab to rearrange your chats.\n- Resize adjacent panes with the divider.\n- Open settings to adjust text size.\n\n| Area | Status |\n| --- | --- |\n| Chat layout | Ready for review |\n| Composer | Ready for review |\n\nThis is sample content for the browser UI preview.' }
   ]

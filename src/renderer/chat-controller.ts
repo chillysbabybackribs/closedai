@@ -29,6 +29,7 @@ export type ChatController = {
   /** Show a chat by id. Main decides whether it replaces a blank selected chat or opens beside it. */
   openChat: (chatId: string) => Promise<void>
   archiveChat: (chatId: string) => Promise<void>
+  unarchiveChat: (chatId: string) => Promise<void>
   setChatPinned: (chatId: string, pinned: boolean) => Promise<void>
   renameChat: (chatId: string, title: string | null) => Promise<void>
   retryChatTitle: (chatId: string) => Promise<void>
@@ -105,6 +106,7 @@ export function usePaneChatController(
   ), [continueFromChat, paneId, state.threadId, state.selectedModel])
   const openChat = useCallback((chatId: string) => window.closedai.chat.openChat(chatId).then(() => undefined), [])
   const archiveChat = useCallback((chatId: string) => window.closedai.chat.archiveChat(chatId), [])
+  const unarchiveChat = useCallback((chatId: string) => window.closedai.chat.unarchiveChat(chatId), [])
   const setChatPinned = useCallback((chatId: string, pinned: boolean) => window.closedai.chat.setChatPinned(chatId, pinned), [])
   const renameChat = useCallback((chatId: string, title: string | null) => window.closedai.chat.renameChat(chatId, title), [])
   const retryChatTitle = useCallback((chatId: string) => window.closedai.chat.retryChatTitle(chatId), [])
@@ -145,6 +147,7 @@ export function usePaneChatController(
     continueFromChat,
     openChat,
     archiveChat,
+    unarchiveChat,
     setChatPinned,
     renameChat,
     retryChatTitle,
@@ -157,6 +160,6 @@ export function usePaneChatController(
     state, workspace.workspace, workspace.preferences, workspace.chats, paneId,
     send, interrupt, interruptPane, resumePane, selectModel, selectReasoningEffort, refreshPlanUsage, loginWithChatGPT,
     listChats, newThread, continueInNewThread, continueFromChat, openChat,
-    archiveChat, setChatPinned, renameChat, retryChatTitle, compactConversation, selectPane, closePeer, loadEarlier, trimMountedHistory
+    archiveChat, unarchiveChat, setChatPinned, renameChat, retryChatTitle, compactConversation, selectPane, closePeer, loadEarlier, trimMountedHistory
   ])
 }

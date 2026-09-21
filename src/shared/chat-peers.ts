@@ -2,6 +2,9 @@ import type { ChatProvider, ChatSnapshot, ChatTranscriptItem } from './chat.js'
 
 export type ChatPaneId = string
 
+/** How long trash/archive stays reversible before the provider thread is archived. */
+export const ARCHIVE_UNDO_MS = 8000
+
 export type ProjectSwitchRequest = {
   paneId: string
   threadId: string

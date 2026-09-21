@@ -26,7 +26,8 @@ export const UI_CONTROLS = {
   'titlebar.chat-search-result': 'Open a chat history suggestion; item is the chat id',
   'titlebar.chat-search-pause': 'Pause a running chat without opening it; item is the chat id',
   'titlebar.chat-search-resume': 'Resume a paused chat without opening it; item is the chat id',
-  'titlebar.chat-search-delete': 'Delete a chat from history immediately without confirmation; item is the chat id',
+  'titlebar.chat-search-delete': 'Delete a chat from history immediately without confirmation; a brief Undo can restore it; item is the chat id',
+  'titlebar.chat-search-undo': 'Restore the chat that was just archived, before the provider thread is archived',
   'titlebar.menu': 'Application menu tab; item is file, edit, view, or help',
   'titlebar.menu-item': 'Application menu row; item is the slugged label, for example new-chat',
   'window.minimize': 'Minimize the window',
@@ -65,7 +66,7 @@ export const UI_CONTROLS = {
   'chat.show-earlier': 'View or load one earlier user/model turn in the current chat',
   'chat.history-search': 'Filter the chat history list',
   'chat.history-open': 'Open a thread from history; item is the thread id',
-  'chat.history-archive': 'Archive a thread from history; item is the thread id',
+  'chat.history-archive': 'Archive a thread from history immediately; a brief Undo under Search chats can restore it; item is the thread id',
   'chat.history-retry': 'Retry loading chat history',
   'chat.sign-in': 'Sign in with ChatGPT when the pane is signed out',
 

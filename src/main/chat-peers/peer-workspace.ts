@@ -35,8 +35,10 @@ export interface ChatWorkspaceSurface {
   /** Show a chat: select it if attached, else attach it, replacing the selected chat only when that one is blank. */
   openChat(chatId: string): Promise<ChatPaneId>
   openThread(paneId: ChatPaneId, threadId: string): Promise<void>
-  /** Hide a chat: archive its provider thread if it has one, keep the record as archived, detach its pane. */
+  /** Hide a chat now; its provider thread is archived after a short undo window. */
   archiveChat(chatId: string): Promise<void>
+  /** Restore a chat whose provider archive has not committed yet. */
+  unarchiveChat(chatId: string): Promise<void>
   setChatPinned(chatId: string, pinned: boolean): Promise<void>
   renameChat(chatId: string, title: string | null): Promise<void>
   retryChatTitle(chatId: string): Promise<void>

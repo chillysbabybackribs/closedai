@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ChatRowSummary } from '../../shared/chat-peers.js'
+import { ARCHIVE_UNDO_MS, type ChatRowSummary } from '../../shared/chat-peers.js'
 import type { ChatController } from '../chat-controller.js'
 import { historyErrorMessage } from './history-format.js'
 import {
@@ -16,6 +16,15 @@ import {
 
 /** How long a history action failure stays visible in the header. */
 const ERROR_VISIBLE_MS = 8000
+
+export type ArchiveUndo = { id: string; title: string; attached: boolean }
+
+export function archiveUndoFromRow(
+  row: Pick<ChatRowSummary, 'paneId' | 'title' | 'attached'> | undefined,
+  fallbackId: string
+): ArchiveUndo {
+  return { id: row?.paneId ?? fallbackId, title: row?.title.trim() || 'Chat', attached: Boolean(row?.attached) }
+}
 
 /**
  * Which chats finished a turn and which are running, from one `chats` update to the next. Every
@@ -41,6 +50,7 @@ export function useHistoryController(chat: ChatController) {
     readChatReviewQueue(window.localStorage)
   )
   const [error, setError] = useState<string | null>(null)
+  const [archiveUndo, setArchiveUndo] = useState<ArchiveUndo | null>(null)
   const priorRunningRef = useRef<Map<string, boolean>>(new Map())
 
   // Failures used to be swallowed (`.catch(() => {})`) or reach only the console, so a click that
@@ -51,6 +61,12 @@ export function useHistoryController(chat: ChatController) {
     const timer = window.setTimeout(() => setError(null), ERROR_VISIBLE_MS)
     return () => window.clearTimeout(timer)
   }, [error])
+
+  useEffect(() => {
+    if (!archiveUndo) return
+    const timer = window.setTimeout(() => setArchiveUndo(null), ARCHIVE_UNDO_MS)
+    return () => window.clearTimeout(timer)
+  }, [archiveUndo])
 
   // Rows come from the workspace's `chats`; this asks the main process to reconcile the provider
   // catalogs behind them (adopting threads the store has not seen). Keyed on listChats (stable,
@@ -117,7 +133,21 @@ export function useHistoryController(chat: ChatController) {
     chat.newThread().catch(reportError)
   }, [chat, reportError])
 
-  return { reviewQueue, openRow, deleteRow: chat.archiveChat, pauseRow: chat.interruptPane,
+  const deleteRow = useCallback(async (chatId: string) => {
+    const undo = archiveUndoFromRow(chat.chats.find((row) => row.paneId === chatId), chatId)
+    await chat.archiveChat(chatId)
+    setArchiveUndo(undo)
+  }, [chat])
+
+  const undoArchive = useCallback(async () => {
+    if (!archiveUndo) return
+    const { id, attached } = archiveUndo
+    setArchiveUndo(null)
+    await chat.unarchiveChat(id)
+    if (attached) await chat.openChat(id)
+  }, [archiveUndo, chat])
+
+  return { reviewQueue, openRow, deleteRow, undoArchive, archiveUndo, pauseRow: chat.interruptPane,
     resumeRow: chat.resumePane, newChat, refreshChats, error, reportError }
 }
 

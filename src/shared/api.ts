@@ -83,8 +83,10 @@ export type ClosedaiApi = {
     continueInNewPeer: (source: ChatContinuationSource, modelId: string | null) => Promise<ChatPaneId>
     /** Show a chat by its stable id. Main selects it if attached, else attaches it — replacing the selected chat only when that one is blank. */
     openChat: (chatId: string) => Promise<ChatPaneId>
-    /** Hide a chat from the workspace: its provider thread is archived and its pane, if any, closed. */
+    /** Hide a chat from the workspace immediately; its provider thread is archived after a short undo window. */
     archiveChat: (chatId: string) => Promise<void>
+    /** Restore a chat whose provider archive has not committed yet. */
+    unarchiveChat: (chatId: string) => Promise<void>
     setChatPinned: (chatId: string, pinned: boolean) => Promise<void>
     /** Rename a chat with a manual title, or pass null/empty to revert to the default/generated title. */
     renameChat: (chatId: string, title: string | null) => Promise<void>

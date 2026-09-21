@@ -35,7 +35,11 @@ test('create, update, archive: the thread id follows the provider and ids never 
   store.archive(record.id)
   assert.deepEqual(store.list('/w'), [])
   assert.equal(store.get(record.id)?.archived, true)
-  assert.equal(changes.length, 5)
+  store.unarchive(record.id)
+  assert.equal(store.get(record.id)?.archived, false)
+  assert.equal(store.list('/w').length, 1)
+  store.archive(record.id)
+  assert.equal(changes.length, 7)
   assert.throws(() => store.update('missing', {}), /Unknown chat/)
 })
 

@@ -68,6 +68,7 @@ export type IpcInvokeChannels = {
   'chat:continueInNewPeer': { args: [ChatContinuationSource, string | null]; result: ChatPaneId }
   'chat:openChat': { args: [string]; result: ChatPaneId }
   'chat:archiveChat': { args: [string]; result: void }
+  'chat:unarchiveChat': { args: [string]; result: void }
   'chat:setChatPinned': { args: [string, boolean]; result: void }
   'chat:renameChat': { args: [string, string | null]; result: void }
   'chat:retryChatTitle': { args: [string]; result: void }
@@ -171,6 +172,7 @@ export const IPC = {
       continueInNewPeer: 'chat:continueInNewPeer',
       openChat: 'chat:openChat',
       archiveChat: 'chat:archiveChat',
+      unarchiveChat: 'chat:unarchiveChat',
       setChatPinned: 'chat:setChatPinned',
       renameChat: 'chat:renameChat',
       retryChatTitle: 'chat:retryChatTitle',

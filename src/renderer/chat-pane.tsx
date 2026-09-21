@@ -33,7 +33,8 @@ export const ChatPane = memo(function ChatPane({
   onHistoryOpenChange,
   dialog: controlledDialog,
   onDialogChange,
-  onNewChat
+  onNewChat,
+  archiveChat
 }: {
   controller?: ChatController
   zoom?: number
@@ -47,6 +48,7 @@ export const ChatPane = memo(function ChatPane({
   onDialogChange?: (dialog: ChatPaneDialog | null) => void
   selected?: boolean
   onNewChat: () => void
+  archiveChat?: (chatId: string) => Promise<void>
 }): JSX.Element {
   const internalChat = useChatController(!controller)
   const chat = controller ?? internalChat
@@ -125,7 +127,7 @@ export const ChatPane = memo(function ChatPane({
             busy={running}
             listChats={chat.listChats}
             openChat={chat.openChat}
-            archiveChat={chat.archiveChat}
+            archiveChat={archiveChat ?? chat.archiveChat}
             onClose={() => setHistoryOpen(false)}
           />
         ) : (

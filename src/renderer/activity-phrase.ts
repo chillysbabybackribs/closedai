@@ -89,11 +89,76 @@ const TOOL_PHRASES: Record<string, Phrased> = {
   'type in app': { running: 'Typing in app', completed: 'Typed in app' },
   'scroll page': { running: 'Scrolling page', completed: 'Scrolled page' },
   'press key': { running: 'Pressing key', completed: 'Pressed key' },
-  'tool call': { running: 'Using a tool', completed: 'Used a tool' }
+  'tool call': { running: 'Using a tool', completed: 'Used a tool' },
+  'read file': {
+    running: 'Reading file',
+    completed: 'Read file',
+    multiRunning: (count) => `Reading ${count} files`,
+    multiCompleted: (count) => `Read ${count} files`
+  },
+  'edit file': {
+    running: 'Editing file',
+    completed: 'Edited file',
+    multiRunning: (count) => `Editing ${count} files`,
+    multiCompleted: (count) => `Edited ${count} files`
+  },
+  'write file': {
+    running: 'Writing file',
+    completed: 'Wrote file',
+    multiRunning: (count) => `Writing ${count} files`,
+    multiCompleted: (count) => `Wrote ${count} files`
+  }
+}
+
+const FILE_TOOL = /^(read|edit|write|view)\s+(.+?)(?:\s+\(\d+\s*[–-]\s*\d+\))?\s*$/i
+
+const FILE_TOOL_VERBS = {
+  read: { running: 'Reading', completed: 'Read' },
+  view: { running: 'Reading', completed: 'Read' },
+  edit: { running: 'Editing', completed: 'Edited' },
+  write: { running: 'Writing', completed: 'Wrote' }
+} as const
+
+export function fileName(path: string): string {
+  return path.split(/[\\/]/).filter(Boolean).at(-1) ?? path
+}
+
+export function looksLikeFilePath(value: string): boolean {
+  const trimmed = value.trim()
+  if (!trimmed || trimmed.startsWith('{') || /^https?:\/\//i.test(trimmed)) return false
+  return /[/\\]/.test(trimmed) || /\.\w{1,12}$/.test(trimmed)
+}
+
+/** Collapse a provider title that embeds a path ("Read src/foo.ts (1 - 20)") to a stable kind. */
+export function compactToolLabel(label: string): string {
+  const match = FILE_TOOL.exec(label.trim())
+  if (!match || !looksLikeFilePath(match[2]!)) return label
+  const verb = match[1]!.toLowerCase()
+  if (verb === 'read' || verb === 'view') return 'Read file'
+  if (verb === 'edit') return 'Edit file'
+  if (verb === 'write') return 'Write file'
+  return label
+}
+
+/** Path a file tool should name on its expanded step, from the title or the stored detail. */
+export function fileToolSubject(label: string, detail = ''): { verb: keyof typeof FILE_TOOL_VERBS; path: string } | null {
+  const match = FILE_TOOL.exec(label.trim())
+  if (!match) return null
+  const verb = match[1]!.toLowerCase()
+  if (!(verb in FILE_TOOL_VERBS)) return null
+  const fromLabel = looksLikeFilePath(match[2]!) ? match[2]!.trim() : null
+  const fromDetail = looksLikeFilePath(detail) ? detail.trim() : null
+  const path = fromLabel ?? fromDetail
+  if (!path) return null
+  return { verb: verb as keyof typeof FILE_TOOL_VERBS, path }
+}
+
+export function fileToolVerb(verb: keyof typeof FILE_TOOL_VERBS, running = false): string {
+  return running ? FILE_TOOL_VERBS[verb].running : FILE_TOOL_VERBS[verb].completed
 }
 
 export function toolPhrase(label: string, count = 1, running = false): string {
-  const key = label.trim().toLowerCase()
+  const key = compactToolLabel(label).trim().toLowerCase()
   const phrased = TOOL_PHRASES[key]
   if (phrased) {
     if (count > 1) {
@@ -287,10 +352,6 @@ function unquote(value: string): string {
     return value.slice(1, -1)
   }
   return value
-}
-
-function fileName(path: string): string {
-  return path.split(/[\\/]/).filter(Boolean).at(-1) ?? path
 }
 
 function truncate(value: string, max: number): string {

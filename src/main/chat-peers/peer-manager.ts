@@ -30,6 +30,7 @@ import { listReadablePeers, readReadablePeer, type ReadablePeerHost } from './pe
 import { openChatsPatch } from './peer-settings.js'
 import { schedulePaneWarm } from './provider-warm.js'
 import { PeerProjectChanges, projectConversationPatch, rememberChatProjects } from './peer-project.js'
+import { PeerArchives } from './peer-archive.js'
 import type { ChatWorkspaceSelection, ChatWorkspaceSelector, ChatWorkspaceSurface } from './peer-workspace.js'
 
 export type { ChatPeerFactory } from './peer-lifecycle.js'
@@ -51,6 +52,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   /** Tail of each pane's operation chain, so callers on one pane cannot interleave. */
   private readonly paneOperations = new Map<ChatPaneId, Promise<void>>()
   private readonly chatsEmit = new PeerEmitThrottle(() => this.emitChats())
+  private readonly archives: PeerArchives
 
   constructor(
     private readonly settings: AppSettingsAccess,
@@ -110,6 +112,19 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       }
     })
     this.catalog = new PeerChatCatalog(store, () => this.workspace(), (fn) => this.withAwake(this.selectedPaneId, fn))
+    this.archives = new PeerArchives({
+      assertAvailable: () => this.projectSwitch.assertAvailable(),
+      cancelSwitch: (reason, chatId) => { this.projectSwitch.cancel(reason, chatId) },
+      store,
+      attached: (chatId) => this.lifecycle.get(chatId) !== undefined,
+      attach: (record) => this.lifecycle.attach(record),
+      detach: (chatId) => this.lifecycle.detach(chatId),
+      withAwake: (chatId, fn) => this.withAwake(chatId, fn),
+      closePeer: (chatId) => this.closePeer(chatId, { keepRecord: true }),
+      forgetTranscript: (chatId) => this.transcripts.forget(chatId),
+      invalidateCatalog: () => this.catalog.invalidate(),
+      emitChats: () => this.emitChats()
+    })
     const saved = settings.get()
     this.selectedPaneId = this.lifecycle.restoreOpenChats(saved.chatOpenIds, saved.chatSelectedPaneId, null, null, this.workspace())
     if (saved.chatSelectedPaneId !== this.selectedPaneId || saved.chatOpenIds.join() !== this.lifecycle.ids().join()) {
@@ -170,6 +185,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   stop(): void {
+    this.archives.stop()
     this.projectChanges.stop()
     this.projectSwitch.stop()
     // A turn that ended just before quit has a `chats` update waiting; deliver it so the row moves.
@@ -314,13 +330,14 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     return record.id
   }
 
-  async closePeer(paneId: ChatPaneId): Promise<void> {
+  async closePeer(paneId: ChatPaneId, options?: { keepRecord?: boolean }): Promise<void> {
     this.projectSwitch.assertAvailable()
     this.projectChanges.cancel(paneId)
     this.projectSwitch.cancel('The requesting chat was closed', paneId)
     if (!this.lifecycle.get(paneId)) return
     const closing = this.lifecycle.require(paneId).surface.snapshot({ limit: 0 })
-    if (!this.lifecycle.discardIfBlank(paneId)) this.lifecycle.detach(paneId)
+    if (options?.keepRecord) this.lifecycle.detach(paneId)
+    else if (!this.lifecycle.discardIfBlank(paneId)) this.lifecycle.detach(paneId)
     const localIds = this.lifecycle.ids()
     if (localIds.length === 0) {
       // Closing the last chat opens an empty one; it keeps the model the workspace was on
@@ -407,31 +424,21 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async archiveChat(chatId: string): Promise<void> {
-    this.projectSwitch.assertAvailable()
-    this.projectSwitch.cancel('The requesting chat was archived', chatId)
-    const record = this.store.get(chatId)
-    if (!record) return
-    const attached = this.lifecycle.get(chatId) !== undefined
-    if (record.threadId) {
-      const threadId = record.threadId
-      if (!attached) this.lifecycle.attach(record)
-      try {
-        await this.withAwake(chatId, (surface) => surface.archiveThread(threadId))
-      } finally {
-        if (!attached) this.lifecycle.detach(chatId)
-      }
-    }
-    this.store.archive(chatId)
-    this.transcripts.forget(chatId)
-    if (attached) await this.closePeer(chatId)
-    // The drawer refreshes right after this; it must not be handed the list with the row still in it.
-    this.catalog.invalidate()
-    this.emitChats()
+    return this.archives.archive(chatId)
+  }
+
+  async unarchiveChat(chatId: string): Promise<void> {
+    return this.archives.unarchive(chatId)
+  }
+
+  /** Tests and the undo window expiry use this to finish a deferred provider archive. */
+  flushPendingArchives(): Promise<void> {
+    return this.archives.flush()
   }
 
   async archiveThread(threadId: string): Promise<void> {
     const record = this.store.findByThreadId(threadId)
-    if (record) return this.archiveChat(record.id)
+    if (record) return this.archives.commit(record.id)
     await this.withAwake(this.selectedPaneId, (surface) => surface.archiveThread(threadId))
     this.catalog.invalidate()
     this.emitChats()

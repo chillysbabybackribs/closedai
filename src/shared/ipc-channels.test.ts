@@ -69,6 +69,7 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'chat:continueInNewPeer',
     'chat:openChat',
     'chat:archiveChat',
+    'chat:unarchiveChat',
     'chat:setChatPinned',
     'chat:renameChat',
     'chat:retryChatTitle',

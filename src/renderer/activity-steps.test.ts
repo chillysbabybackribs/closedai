@@ -53,12 +53,32 @@ test('a file change reports its line delta and exposes the diff', () => {
   const [step] = activitySteps([item], 0)
   assert.equal(step?.kind, 'fileChange')
   assert.equal(step?.verb, 'Edited')
-  assert.equal(step?.label, 'src/x.ts')
+  assert.equal(step?.label, 'x.ts')
+  assert.equal(step?.title, 'src/x.ts')
   assert.deepEqual(step?.meta, ['+2 −1'])
   assert.equal(step?.body?.heading, 'Edit')
   assert.equal(step?.body?.invocation, null)
   assert.deepEqual(step?.body?.diffs.map((entry) => entry.path), ['src/x.ts'])
   assert.deepEqual(diffCounts([{ diff }]), { added: 2, removed: 1 })
+})
+
+test('a file-bearing tool step names the file, not the path', () => {
+  const item: ActivityItem = {
+    type: 'tool', id: 't1', turnId: 't', label: 'Read src/renderer/titlebar-menu.tsx (79 - 103)',
+    detail: '/home/dp/Desktop/closedai/src/renderer/titlebar-menu.tsx', status: 'inProgress'
+  }
+  const [step] = activitySteps([item], 0)
+  assert.equal(step?.verb, 'Reading')
+  assert.equal(step?.label, 'titlebar-menu.tsx')
+  assert.equal(step?.title, '/home/dp/Desktop/closedai/src/renderer/titlebar-menu.tsx')
+})
+
+test('a Claude-style read keeps the file name from its detail path', () => {
+  const item: ActivityItem = { type: 'tool', id: 't1', turnId: 't', label: 'Read file', detail: '/w/x.ts', status: 'completed' }
+  const [step] = activitySteps([item], 0)
+  assert.equal(step?.verb, 'Read')
+  assert.equal(step?.label, 'x.ts')
+  assert.equal(step?.title, '/w/x.ts')
 })
 
 test('an unphrased tool label falls back to a plain verb instead of splitting the label', () => {

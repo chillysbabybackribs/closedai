@@ -66,6 +66,22 @@ test('streaming starts once, emits progress, and stops on pause or disposal', as
   } finally { preview.dispose() }
 })
 
+test('archived preview chats can be restored before they are forgotten', async () => {
+  const preview = createPreviewChat('conversation', () => {})
+  try {
+    const before = await preview.api.snapshot()
+    const id = before.selectedPaneId
+    const title = before.selected.threadName
+    await preview.api.archiveChat(id)
+    assert.equal((await preview.api.snapshot()).chats.some((row) => row.paneId === id), false)
+    await preview.api.unarchiveChat(id)
+    const restored = await preview.api.snapshot()
+    assert.ok(restored.chats.some((row) => row.paneId === id && row.title === title))
+    await preview.api.openChat(id)
+    assert.equal((await preview.api.snapshot()).selectedPaneId, id)
+  } finally { preview.dispose() }
+})
+
 test('new and closed chats preserve a valid selected pane', async () => {
   const preview = createPreviewChat('empty', () => {})
   try {

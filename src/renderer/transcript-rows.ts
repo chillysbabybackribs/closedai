@@ -1,5 +1,7 @@
 import { activityPhase, type ActivityPhase, type ChatTranscriptItem } from '../shared/chat.js'
-import { commandKind, commandPhrase, firstStage, readFiles, tokenize, toolPhrase, unwrapShell } from './activity-phrase.js'
+import {
+  commandKind, commandPhrase, compactToolLabel, fileName, firstStage, readFiles, tokenize, toolPhrase, unwrapShell
+} from './activity-phrase.js'
 
 export type ActivityItem = Extract<ChatTranscriptItem, { type: 'command' | 'fileChange' | 'tool' }>
 export type ReasoningItem = Extract<ChatTranscriptItem, { type: 'plan' | 'reasoning' }>
@@ -153,7 +155,10 @@ export function activityHeadline(items: ActivityItem[], running = false): string
     return counted(running ? 'Editing' : 'Edited', files, 'file', 'files')
   }
   const first = items[0]!
-  if (first.type === 'tool' && items.every((item) => item.type === 'tool' && item.label === first.label)) {
+  if (
+    first.type === 'tool'
+    && items.every((item) => item.type === 'tool' && compactToolLabel(item.label) === compactToolLabel(first.label))
+  ) {
     return toolPhrase(first.label, items.length, running)
   }
   return mixedHeadline(items, running)
@@ -176,7 +181,7 @@ function mixedHeadline(items: ActivityItem[], running = false): string {
 
   const tools = items.filter((item) => item.type === 'tool')
   if (tools.length > 0) {
-    const labels = new Set(tools.map((t) => t.label))
+    const labels = new Set(tools.map((item) => compactToolLabel(item.label)))
     if (labels.size === 1) {
       parts.push(toolPhrase(tools[0]!.label, tools.length, running))
     } else {
@@ -244,10 +249,6 @@ export function activityState(items: ActivityItem[]): ActivityPhase {
 
 export function itemPhase(item: ActivityItem): ActivityPhase {
   return activityPhase(item.status, item.type === 'command' ? item.exitCode : null)
-}
-
-function fileName(path: string): string {
-  return path.split(/[\\/]/).filter(Boolean).at(-1) ?? path
 }
 
 function counted(verb: string, count: number, one: string, many: string): string {

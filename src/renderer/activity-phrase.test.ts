@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { commandKind, commandPhrase, toolPhrase } from './activity-phrase.ts'
+import { commandKind, commandPhrase, compactToolLabel, toolPhrase } from './activity-phrase.ts'
 
 test('read commands name the file instead of dumping sed', () => {
   assert.equal(commandPhrase("bash -lc 'sed -n 1,240p src/main/tools/manifest.ts'"), 'Read manifest.ts')
@@ -59,6 +59,17 @@ test('tool phrases support dynamic running and completed states', () => {
   assert.equal(toolPhrase('Press app key'), 'Pressed app key')
   assert.equal(toolPhrase('Web search', 1, true), 'Searching the web')
   assert.equal(toolPhrase('Web search', 2, true), 'Searching the web 2 times')
+})
+
+test('file-bearing tool titles drop the path in the compacted phrase', () => {
+  assert.equal(compactToolLabel('Read src/renderer/titlebar-menu.tsx (79 - 103)'), 'Read file')
+  assert.equal(toolPhrase('Read src/renderer/titlebar-menu.tsx (79 - 103)'), 'Read file')
+  assert.equal(toolPhrase('Read /home/dp/Desktop/closedai/src/foo.ts', 1, true), 'Reading file')
+  assert.equal(toolPhrase('Read src/a.ts', 3), 'Read 3 files')
+  assert.equal(toolPhrase('Read file'), 'Read file')
+  assert.equal(toolPhrase('Read file', 1, true), 'Reading file')
+  assert.equal(toolPhrase('Read layout files'), 'Read layout files')
+  assert.equal(toolPhrase('Edit src/renderer/composer.tsx'), 'Edited file')
 })
 
 test('semicolons and newlines end a stage, so the last command names the phrase', () => {

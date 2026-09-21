@@ -37,6 +37,7 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   )
   ipcMain.handle(IPC.invoke.chat.openChat, (_event, chatId: string) => requireService().openChat(chatId))
   ipcMain.handle(IPC.invoke.chat.archiveChat, (_event, chatId: string) => requireService().archiveChat(chatId))
+  ipcMain.handle(IPC.invoke.chat.unarchiveChat, (_event, chatId: string) => requireService().unarchiveChat(chatId))
   ipcMain.handle(IPC.invoke.chat.setChatPinned, (_event, chatId: string, pinned: boolean) => requireService().setChatPinned(chatId, pinned))
   ipcMain.handle(IPC.invoke.chat.renameChat, (_event, chatId: string, title: string | null) =>
     requireService().renameChat(chatId, title)

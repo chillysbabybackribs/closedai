@@ -1,5 +1,5 @@
 import type { ActivityPhase } from '../shared/chat.js'
-import { toolPhrase, unwrapShell } from './activity-phrase.js'
+import { fileName, fileToolSubject, fileToolVerb, toolPhrase, unwrapShell } from './activity-phrase.js'
 import { activityTitle, itemPhase, type ActivityItem } from './transcript-rows.js'
 
 // The step model behind an opened activity row: one entry per command, file change, or
@@ -25,7 +25,7 @@ export type ActivityStep = {
   phase: ActivityPhase
   /** Leading verb: Ran, Edited, Searched. */
   verb: string
-  /** What follows the verb on the same line: the raw command, the paths, or the tool's subject. */
+  /** What follows the verb on the same line: the raw command, the file name, or the tool's subject. */
   label: string
   /** The untruncated label for hover, or null when the label is already whole. */
   title: string | null
@@ -138,7 +138,16 @@ export function diffCounts(diffs: { diff: string }[]): { added: number; removed:
  */
 function stepLine(item: ActivityItem, live: boolean): { verb: string; label: string; title: string | null } {
   if (item.type === 'command') return withTitle(live ? 'Running' : 'Ran', unwrapShell(item.command))
-  if (item.type === 'fileChange') return withTitle(live ? 'Editing' : 'Edited', item.changes.map((change) => change.path).join(', '))
+  if (item.type === 'fileChange') {
+    const names = item.changes.map((change) => fileName(change.path)).join(', ')
+    const raw = item.changes.map((change) => change.path).join(', ')
+    return withTitle(live ? 'Editing' : 'Edited', names, raw)
+  }
+  const file = fileToolSubject(item.label, item.detail)
+  if (file) {
+    const name = fileName(file.path)
+    return withTitle(live ? fileToolVerb(file.verb, true) : fileToolVerb(file.verb, false), name, file.path)
+  }
   // A tool label with no phrase of its own ("closedai_ui · capture") has no verb to lift out.
   if (toolPhrase(item.label, 1, true) === toolPhrase(item.label, 1, false)) {
     return { verb: live ? 'Using' : 'Used', label: item.label, title: null }
@@ -149,10 +158,11 @@ function stepLine(item: ActivityItem, live: boolean): { verb: string; label: str
   return { verb: phrase.slice(0, space), label: phrase.slice(space + 1), title: null }
 }
 
-function withTitle(verb: string, raw: string): { verb: string; label: string; title: string | null } {
+function withTitle(verb: string, raw: string, hover = raw): { verb: string; label: string; title: string | null } {
   const flat = raw.replace(/\s+/g, ' ').trim()
   const label = oneLine(flat) ?? ''
-  return { verb, label, title: label === flat ? null : flat }
+  const full = hover.replace(/\s+/g, ' ').trim()
+  return { verb, label, title: label === full ? null : full }
 }
 
 function stepMeta(item: ActivityItem, phase: ActivityPhase, now: number): string[] {

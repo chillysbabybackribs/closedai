@@ -275,11 +275,13 @@ dropdown; unread completions use the persisted review queue and move into Histor
 Typing shows one list of up to eight ranked, case-insensitive title matches across all groups, with
 matched characters highlighted. Arrow keys select, Enter or click opens, and Escape dismisses; the
 footer lists those keys and the result count. Each result has a trash button, shown for the selected
-or hovered row, that removes the chat from history in one click without confirmation, using the
-existing provider/app archival path. Running chats cannot
+or hovered row, that removes the chat from history in one click without confirmation. The chat
+hides immediately; a brief Undo under Search chats restores it before the provider thread is
+archived. Running chats cannot
 be deleted; pending actions disable the buttons and failures appear below the search. The dropdown
-stays open after deletion. Ctrl+H and File → Search chats focus it. File → Manage chat history retains
-the full history management panel. New chats use the tab + button or File → New chat (Ctrl+N).
+stays open after deletion. Archive in the history panel uses the same undo. Ctrl+H and File →
+Search chats focus it. File → Manage chat history retains the full history management panel.
+New chats use the tab + button or File → New chat (Ctrl+N).
 Two full-height chats can
 sit on either side of the browser. The browser starts on the right; drag a conversation tab,
 or empty chat header space onto the browser's left or right half to dock it on that side.
@@ -478,7 +480,9 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   divider requires; that is also why the models are a column inside the panel rather than a
   flyout beside it.
 - Tool activity is grouped into expandable step lists with arguments, output, status, and timing
-  when available. File modifications display interactive diff viewers supporting unified and
+  when available. Collapsed headlines use short phrases and file names, not full paths or line
+  ranges; expanded steps keep the file name on the line and the full path on hover and in the
+  invocation. File modifications display interactive diff viewers supporting unified and
   side-by-side split modes, collapsible hunks with expand/collapse all, individual hunk copying,
   and proportional addition/deletion statistics. Provider-native background tasks have a separate
   transcript group; there is no separate status strip above the composer. A turn ending does not prove that all background tasks

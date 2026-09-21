@@ -91,6 +91,7 @@ const api: ClosedaiApi = {
     continueInNewPeer: (source, modelId) => invoke(IPC.invoke.chat.continueInNewPeer, source, modelId),
     openChat: (chatId) => invoke(IPC.invoke.chat.openChat, chatId),
     archiveChat: (chatId) => invoke(IPC.invoke.chat.archiveChat, chatId),
+    unarchiveChat: (chatId) => invoke(IPC.invoke.chat.unarchiveChat, chatId),
     setChatPinned: (chatId, pinned) => invoke(IPC.invoke.chat.setChatPinned, chatId, pinned),
     renameChat: (chatId, title) => invoke(IPC.invoke.chat.renameChat, chatId, title),
     retryChatTitle: (chatId) => invoke(IPC.invoke.chat.retryChatTitle, chatId),

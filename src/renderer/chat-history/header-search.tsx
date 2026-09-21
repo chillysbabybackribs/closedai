@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState, type JSX, type RefObject }
 import { MessageSquareDashed, Search, SearchX, X } from 'lucide-react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { HistoryController } from './history-controller.js'
+import { pointerKeepsSearchOpen } from './header-search-hover.js'
 import { HeaderChatSearchRow } from './header-search-row.js'
 import { chatSearchView, stepHighlight, type ChatSearchHit } from './history-search.js'
 
@@ -19,6 +20,8 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   const [changingTurn, setChangingTurn] = useState<string | null>(null)
   const actionRef = useRef(false)
   const hoveredRef = useRef(false)
+  const fieldRef = useRef<HTMLDivElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
   const listId = useId()
   const view = useMemo(() => chatSearchView(chats, query, controller.reviewQueue),
@@ -35,6 +38,31 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   useEffect(() => {
     if (expanded) refreshChats()
   }, [expanded, refreshChats])
+
+  // Hover keeps the popup open by geometry, not by DOM boundary events: the popup is wider than
+  // the field, and in Electron a native browser view can cover part of it until the freeze still
+  // lands, so the renderer may see a leave while the pointer is still inside the popup's box.
+  // Only an inside-to-outside transition closes; a popup opened by focus with the pointer resting
+  // elsewhere stays open until the pointer has actually visited it.
+  useEffect(() => {
+    if (!expanded) return
+    const track = (event: PointerEvent): void => {
+      if (event.pointerType === 'touch' || !fieldRef.current) return
+      const inside = pointerKeepsSearchOpen({ x: event.clientX, y: event.clientY },
+        fieldRef.current.getBoundingClientRect(), popupRef.current?.getBoundingClientRect() ?? null)
+      if (inside) hoveredRef.current = true
+      else if (hoveredRef.current) {
+        hoveredRef.current = false
+        setExpanded(false)
+      }
+    }
+    window.addEventListener('pointermove', track, { passive: true })
+    document.documentElement.addEventListener('pointerleave', track)
+    return () => {
+      window.removeEventListener('pointermove', track)
+      document.documentElement.removeEventListener('pointerleave', track)
+    }
+  }, [expanded])
 
   const open = async (hit: ChatSearchHit | undefined): Promise<void> => {
     if (!hit || actionRef.current) return
@@ -94,10 +122,6 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
     if (event.pointerType === 'touch') return
     hoveredRef.current = true
     setExpanded(true)
-  }} onPointerLeave={event => {
-    if (event.pointerType === 'touch') return
-    hoveredRef.current = false
-    setExpanded(false)
   }} onBlur={event => {
     if (!hoveredRef.current && !event.currentTarget.contains(event.relatedTarget)) setExpanded(false)
   }} onKeyDown={event => {
@@ -108,7 +132,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
       inputRef.current?.blur()
     }
   }}>
-    <div className="header-chat-search-field">
+    <div ref={fieldRef} className="header-chat-search-field">
       <Search size={15} aria-hidden="true" />
       <input ref={inputRef} type="text" value={query} placeholder="Search chats"
         aria-label="Search previous chat titles" role="combobox" aria-autocomplete="list" aria-haspopup="grid"
@@ -137,7 +161,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
         </button>
         : <span className="header-chat-search-hint" aria-hidden="true"><kbd>Ctrl</kbd><kbd>H</kbd></span>}
     </div>
-    {expanded && <div className="header-chat-search-popup">
+    {expanded && <div ref={popupRef} className="header-chat-search-popup">
       <div ref={resultsRef} id={listId} role="grid" aria-label="Chat history suggestions" aria-busy={busy}
         className="header-chat-search-list">
         {view.sections.map(section => <div role="rowgroup" key={section.label}
@@ -173,5 +197,12 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
       </div>
     </div>}
     {controller.error && <div className="header-chat-search-error" role="alert">{controller.error}</div>}
+    {controller.archiveUndo && <div className="header-chat-search-undo" role="status">
+      <span>Archived “{controller.archiveUndo.title}”</span>
+      <button type="button" data-ui="titlebar.chat-search-undo"
+        onClick={() => { void controller.undoArchive().catch(controller.reportError) }}>
+        Undo
+      </button>
+    </div>}
   </div>
 }

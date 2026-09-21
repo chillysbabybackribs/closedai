@@ -25,6 +25,8 @@ are candidates, not instructions to implement them all. Tackle one agreed item a
   and sort by last turn; open rows stay in their own group.
 - [x] Ctrl+W closes the focused chat tab or hides its tile without stopping the task; the last
   remaining chat stays. Ctrl+Shift+W and the window chrome still close the window.
+- [x] Archive recovery: trash and history Archive stay one-click with no confirm dialog. A brief
+  Undo restores the chat before the provider thread is archived. No Archived browser.
 
 ## Candidates awaiting selection
 
@@ -32,7 +34,7 @@ are candidates, not instructions to implement them all. Tackle one agreed item a
 | --- | --- |
 | Composer actions | Clarify or consolidate new-chat and attachment actions. |
 | History | Return-to-conversation action; evaluate consolidation with the full history panel. |
-| Close/hide/archive | Revisit archive recovery. |
+| Close/hide/archive | Done: short Undo after trash/archive; no confirm dialog. |
 | Layout | Make existing split/maximize actions discoverable; consider consolidation or presets. |
 | Visual hierarchy | Clarify the focused chat and secondary text with restrained contrast. |
 | Empty chat | Assess whether optional first-use guidance earns its space. |
@@ -49,7 +51,7 @@ are candidates, not instructions to implement them all. Tackle one agreed item a
 | Downloads | Verify populated progress, cancellation, and error/retry states before changing the panel. |
 | Command palette | Evaluate as a way to consolidate existing actions. |
 | Conversation outputs | Evaluate a compact way to recover generated files, images, and links. |
-| Recovery | Consider reopen-closed-tab, layout restoration, and supported archive undo. |
+| Recovery | Consider reopen-closed-tab and layout restoration. Archive undo shipped. |
 
 ## Review coverage still needed
 

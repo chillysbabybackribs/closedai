@@ -225,6 +225,33 @@ test('background tasks group at their first occurrence and replace linked launch
   assert.equal(rows[0]?.kind === 'background' && rows[0].items.length, 2)
 })
 
+test('file-bearing tool titles collapse to a short phrase in mixed headlines', () => {
+  const items = [
+    {
+      type: 'fileChange', id: 'f1', turnId: 't1', status: 'completed',
+      changes: [
+        { path: '/home/dp/Desktop/closedai/src/a.ts', kind: 'update', diff: '+a' },
+        { path: '/home/dp/Desktop/closedai/src/b.ts', kind: 'update', diff: '+b' }
+      ]
+    },
+    {
+      type: 'tool', id: 'r1', turnId: 't1', label: 'Read src/renderer/titlebar-menu.tsx (79 - 103)',
+      detail: '/home/dp/Desktop/closedai/src/renderer/titlebar-menu.tsx', status: 'inProgress'
+    }
+  ] as Extract<ChatTranscriptItem, { type: 'fileChange' | 'tool' }>[]
+  assert.equal(activityHeadline(items, true), 'Editing 2 files, Reading file')
+  assert.doesNotMatch(activityHeadline(items, true), /src\/renderer|home\/dp/)
+})
+
+test('reads of different files still count as one compacted action', () => {
+  const items = [
+    { type: 'tool', id: 'r1', turnId: 't1', label: 'Read src/a.ts', detail: 'src/a.ts', status: 'completed' },
+    { type: 'tool', id: 'r2', turnId: 't1', label: 'Read src/b.ts (1 - 20)', detail: 'src/b.ts', status: 'completed' }
+  ] as Extract<ChatTranscriptItem, { type: 'tool' }>[]
+  assert.equal(activityHeadline(items), 'Read 2 files')
+  assert.equal(activityHeadline(items, true), 'Reading 2 files')
+})
+
 test('a lone command inside a mixed row still describes itself', () => {
   const rows = transcriptRows([
     command('c1', 't1', 'bash -lc "cd /repo; rg -c activity-card out/*.css"'),
