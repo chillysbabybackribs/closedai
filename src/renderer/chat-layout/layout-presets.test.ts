@@ -2,12 +2,12 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { BROWSER_PANE_ID, layoutGeometry, paneIds, readLayout, withBrowser, type ChatLayout } from './layout-tree.ts'
 import { addTab, tabIds } from './layout-tabs.ts'
-import { GRID_CHAT_CAP, assignGroups, browserCentreLayout, chooseGrid, clampGridCount, gridCapacity, gridLayout } from './layout-presets.ts'
+import { GRID_CHAT_CAP, assignGroups, browserCentreLayout, chooseGrid, clampGridCount, gridCapacity, gridLayout, singleGroup } from './layout-presets.ts'
 
 const HD = { width: 1920, height: 1014 }
 const QHD = { width: 2560, height: 1400 }
 const ids = (): (() => string) => { let n = 0; return () => `split-${n++}` }
-const groups = (count: number): string[][] => Array.from({ length: count }, (_, i) => [`c${i}`])
+const groups = (count: number) => Array.from({ length: count }, (_, i) => singleGroup(`c${i}`))
 
 test('grid choice prefers comfortable tiles, then squarer ones, and rejects what cannot fit', () => {
   assert.deepEqual(pick(chooseGrid(4, HD)), [2, 2])
@@ -34,7 +34,7 @@ test('grid tiles are equal within a row, rows are equal, and a short last row sp
     const tree = gridLayout(groups(count), HD, ids())
     const geometry = layoutGeometry(tree, HD.width, HD.height)
     const grid = chooseGrid(count, HD)!
-    assert.deepEqual(paneIds(tree), groups(count).flat())
+    assert.deepEqual(paneIds(tree), groups(count).map((group) => group.active))
     const rows = [...new Set(geometry.panes.map((pane) => Math.round(pane.rect.y)))]
     assert.equal(rows.length, grid.rows)
     for (const y of rows) {
@@ -74,12 +74,13 @@ test('groups keep their tabs in tile order, overflow merges into the last slot, 
   const tree: ChatLayout = withBrowser({ kind: 'split', id: 's', axis: 'horizontal', ratio: 0.5,
     first: left, second: { kind: 'split', id: 't', axis: 'vertical', ratio: 0.5,
       first: { kind: 'pane', id: 'b' }, second: { kind: 'pane', id: 'c', tabs: ['c0', 'c'] } } })
-  assert.deepEqual(assignGroups(tree, 4), { groups: [['a', 'a2'], ['b'], ['c', 'c0']], missing: 1 })
-  assert.deepEqual(assignGroups(tree, 2), { groups: [['a', 'a2'], ['b', 'c0', 'c']], missing: 0 })
+  assert.deepEqual(assignGroups(tree, 4), { groups: [{ active: 'a2', tabs: ['a', 'a2'] }, singleGroup('b'), { active: 'c', tabs: ['c0', 'c'] }], missing: 1 })
+  assert.deepEqual(assignGroups(tree, 2), { groups: [{ active: 'a2', tabs: ['a', 'a2'] }, { active: 'b', tabs: ['b', 'c0', 'c'] }], missing: 0 })
   assert.deepEqual(assignGroups(null, 2), { groups: [], missing: 2 })
   const merged = gridLayout(assignGroups(tree, 2).groups, HD, ids())
-  assert.deepEqual(paneIds(merged), ['a', 'b'])
+  assert.deepEqual(paneIds(merged), ['a2', 'b'])
   assert.deepEqual(tabIds(merged), ['a', 'a2', 'b', 'c0', 'c'])
+  assert.deepEqual(readLayout({ getItem: () => JSON.stringify({ tree: merged, browserVisible: false }) }, '/a').tree, merged)
 })
 
 function pick(grid: ReturnType<typeof chooseGrid>): [number, number] | null {

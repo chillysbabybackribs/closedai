@@ -3,6 +3,8 @@ import { BROWSER_PANE_ID, DIVIDER_SIZE, type ChatLayout } from './layout-tree.js
 export type LayoutPreset = { kind: 'browser-centre' } | { kind: 'grid'; count: number }
 export type CanvasSize = { width: number; height: number }
 export type Grid = { cols: number; rows: number; tileWidth: number; tileHeight: number }
+/** One tile's conversations in strip order, with its active tab. */
+export type TileGroup = { active: string; tabs: string[] }
 
 /** Hard tile minimums match `minimumSize`; the comfortable size is where a chat stops feeling cramped. */
 const MIN_TILE = { width: 300, height: 280 }
@@ -45,21 +47,23 @@ export function clampGridCount(count: number, size: CanvasSize): number {
 }
 
 /** Each visible tile keeps its tab group; groups beyond `slots` merge into the last kept group. */
-export function assignGroups(tree: ChatLayout | null, slots: number): { groups: string[][]; missing: number } {
-  const groups: string[][] = []
+export function assignGroups(tree: ChatLayout | null, slots: number): { groups: TileGroup[]; missing: number } {
+  const groups: TileGroup[] = []
   const visit = (node: ChatLayout): void => {
     if (node.kind === 'split') { visit(node.first); visit(node.second); return }
     if (node.id === BROWSER_PANE_ID) return
     const tabs = node.tabs ?? [node.id]
-    if (groups.length < slots) groups.push([node.id, ...tabs.filter((tab) => tab !== node.id)])
-    else groups[groups.length - 1]!.push(...tabs)
+    if (groups.length < slots) groups.push({ active: node.id, tabs: [...tabs] })
+    else groups[groups.length - 1]!.tabs.push(...tabs)
   }
   if (tree) visit(tree)
   return { groups, missing: Math.max(0, slots - groups.length) }
 }
 
-const pane = (group: string[]): ChatLayout => group.length > 1
-  ? { kind: 'pane', id: group[0]!, tabs: group } : { kind: 'pane', id: group[0]! }
+export const singleGroup = (id: string): TileGroup => ({ active: id, tabs: [id] })
+
+const pane = (group: TileGroup): ChatLayout => group.tabs.length > 1
+  ? { kind: 'pane', id: group.active, tabs: group.tabs } : { kind: 'pane', id: group.active }
 
 /** Equal tiles along one axis, with ratios that account for the dividers between them. */
 function strip(nodes: ChatLayout[], axis: 'horizontal' | 'vertical', extent: number, newId: () => string): ChatLayout {
@@ -73,7 +77,7 @@ function strip(nodes: ChatLayout[], axis: 'horizontal' | 'vertical', extent: num
 const clampRatio = (ratio: number): number => Math.max(0.05, Math.min(0.95, Number.isFinite(ratio) ? ratio : 0.5))
 
 /** Rows of equal tiles; a short last row spreads its tiles across the full width. Browser excluded. */
-export function gridLayout(groups: string[][], size: CanvasSize, newId: () => string): ChatLayout {
+export function gridLayout(groups: TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
   const grid = chooseGrid(groups.length, size) ?? { cols: Math.ceil(Math.sqrt(groups.length)), rows: 0, tileWidth: 0, tileHeight: 0 }
   const rows: ChatLayout[] = []
   for (let start = 0; start < groups.length; start += grid.cols) {
@@ -83,7 +87,7 @@ export function gridLayout(groups: string[][], size: CanvasSize, newId: () => st
 }
 
 /** Browser column in the middle, two stacked chats on each side; expects exactly four groups. */
-export function browserCentreLayout(groups: string[][], size: CanvasSize, newId: () => string): ChatLayout {
+export function browserCentreLayout(groups: TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
   const [a, b, c, d] = groups.map(pane) as [ChatLayout, ChatLayout, ChatLayout, ChatLayout]
   const browserWidth = Math.round(size.width * BROWSER_CENTRE_RATIO)
   const columnWidth = (size.width - browserWidth - 2 * DIVIDER_SIZE) / 2
@@ -96,7 +100,7 @@ export function browserCentreLayout(groups: string[][], size: CanvasSize, newId:
 }
 
 /** The tree a preset produces for the given groups, before any chats are created. */
-export function presetLayout(preset: LayoutPreset, groups: string[][], size: CanvasSize, newId: () => string): ChatLayout {
+export function presetLayout(preset: LayoutPreset, groups: TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
   return preset.kind === 'grid' ? gridLayout(groups, size, newId) : browserCentreLayout(groups, size, newId)
 }
 

@@ -3,6 +3,7 @@ import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
 import { addTab, focusedCloseAction, moveTab, pruneTabs, removeTab, selectTab, tabIds, tabOwner } from './layout-tabs.js'
 import { removalNotice } from './layout-copy.js'
+import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
 
 /** The component owning this hook is keyed by project directory. */
 export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
@@ -195,7 +196,40 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       if (owner) await hide(owner)
     }
   }, [closeTab, hide])
+  // A preset is a starting arrangement: open tiles keep their tab groups, missing slots get new
+  // chats, and the result is saved like any hand-built tree, so every drag and resize still applies.
+  const arrange = useCallback(async (preset: LayoutPreset, size: CanvasSize): Promise<void> => {
+    if (pending.current) return
+    pending.current = true
+    setBusy(true)
+    setError('')
+    try {
+      const { groups, missing } = assignGroups(current.current.tree, presetSlots(preset))
+      let created: string | null = null
+      for (let index = 0; index < missing; index++) {
+        created = await window.closedai.chat.newPeer()
+        groups.push(singleGroup(created))
+      }
+      let tree = presetLayout(preset, groups, size, () => crypto.randomUUID())
+      // A merged tile keeps the selected chat active rather than parking it behind a sibling tab.
+      if (!created && tabOwner(tree, selected.current) && !paneIds(tree).includes(selected.current)) {
+        tree = selectTab(tree, paneIds(tree)[0]!, selected.current)
+      }
+      setLayout({ tree: withBrowser(tree), browserVisible: preset.kind === 'browser-centre' })
+      if (created) {
+        selected.current = created
+        setSelectionToConfirm(created)
+      } else {
+        pending.current = false
+        setBusy(false)
+      }
+    } catch (reason) {
+      setError(String(reason))
+      pending.current = false
+      setBusy(false)
+    }
+  }, [])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
-  return { ...layout, error, notice: notice?.text ?? '', busy, dock, newChat, focusPane, activateTab, closeTab, hide, closeFocused, resize, toggleBrowser, showBrowser }
+  return { ...layout, error, notice: notice?.text ?? '', busy, dock, newChat, focusPane, activateTab, closeTab, hide, closeFocused, resize, arrange, toggleBrowser, showBrowser }
 }
