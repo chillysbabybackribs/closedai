@@ -61,9 +61,9 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, onSel
           onSelect(ids[next]!)
         }}>
         {status && status.state !== 'idle' && <span className="chat-tab-indicator" aria-hidden="true">
-          {status.state === 'working' ? <LoaderCircle className="chat-tab-spinner" size={12} />
-            : status.state === 'paused' ? <Pause size={12} />
-              : status.state === 'failed' ? <CircleAlert size={12} />
+          {status.state === 'working' ? <LoaderCircle className="chat-tab-spinner" size={16} />
+            : status.state === 'paused' ? <Pause size={16} />
+              : status.state === 'failed' ? <CircleAlert size={16} />
                 : <i className="chat-tab-unread" />}
         </span>}
         <span>{title(id)}</span></button>
