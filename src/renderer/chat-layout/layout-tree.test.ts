@@ -106,6 +106,19 @@ test('divider ratios respect readable pane minimums even in a narrow viewport', 
   assert.ok(narrow.panes.every((pane) => pane.rect.width >= 300 && pane.rect.height >= 280))
 })
 
+test('the full divider target stays outside every pane including native browser bounds', () => {
+  const chats = dockPane({ kind: 'pane', id: 'a' }, 'b', 'a', 'bottom', 'chats')
+  const geometry = layoutGeometry(withBrowser(chats), 1440, 1000)
+  for (const { rect, axis } of geometry.dividers) {
+    assert.equal(axis === 'horizontal' ? rect.width : rect.height, 14)
+    for (const { rect: pane } of geometry.panes) {
+      const overlaps = rect.x < pane.x + pane.width && rect.x + rect.width > pane.x
+        && rect.y < pane.y + pane.height && rect.y + rect.height > pane.y
+      assert.equal(overlaps, false)
+    }
+  }
+})
+
 test('layout persistence is project-scoped and browser visibility is independent', () => {
   const values = new Map<string, string>()
   const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value) } }

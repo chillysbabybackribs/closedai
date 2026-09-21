@@ -41,11 +41,11 @@ test('self, divider gaps and outside the canvas clear the browser destination', 
 test('preview includes the space reclaimed from the old browser column', () => {
   const preview = browserDropPreview(tree, { target: 'a', edge: 'top' }, 1600, 900)
   assert.deepEqual(preview.panes.find((pane) => pane.id === BROWSER_PANE_ID)!.rect,
-    { x: 0, y: 0, width: 797.5, height: 447.5 })
+    { x: 0, y: 0, width: 793, height: 443 })
   assert.deepEqual(preview.panes.find((pane) => pane.id === 'a')!.rect,
-    { x: 0, y: 452.5, width: 797.5, height: 447.5 })
+    { x: 0, y: 457, width: 793, height: 443 })
   assert.equal(preview.panes.find((pane) => pane.id === 'b')!.rect.height, 900)
-  assert.equal(panes[0]!.rect.width < 797.5, true, 'hovered tile was smaller than the final browser')
+  assert.equal(panes[0]!.rect.width < 793, true, 'hovered tile was smaller than the final browser')
 })
 
 test('preview applies minimum sizes in narrow and short workspaces', () => {
@@ -53,6 +53,6 @@ test('preview applies minimum sizes in narrow and short workspaces', () => {
   const browser = preview.panes.find((pane) => pane.id === BROWSER_PANE_ID)!.rect
   assert.equal(browser.width, 384)
   assert.equal(browser.height, 280)
-  assert.equal(browser.y, 285)
-  assert.deepEqual(preview.minimum, { width: 689, height: 565 })
+  assert.equal(browser.y, 294)
+  assert.deepEqual(preview.minimum, { width: 698, height: 574 })
 })
