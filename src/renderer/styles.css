@@ -133,7 +133,7 @@
   --surface-control-hover: #303033;
   --hairline: rgb(255 255 255 / 8%);
   --hairline-strong: rgb(255 255 255 / 14%);
-  --titlebar-surface: var(--chassis);
+  --titlebar-surface: #181819;
   --chrome-fg: #a1a1a5;
   --chrome-fg-strong: #f1f1f3;
   /* Chrome icon/control ink — measured from Cursor + Antigravity dark_modern
