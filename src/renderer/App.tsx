@@ -151,6 +151,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           onToggleHistory={toggleHistory}
           onSearchChats={focusSearch}
           onToggleBrowser={() => workspaceRef.current?.toggleBrowser()}
+          onOpenLayout={() => workspaceRef.current?.openLayoutPresets()}
           onToggleFullscreen={() => { void window.closedai.window.toggleFullscreen() }}
           onCloseTab={() => { void workspaceRef.current?.closeFocused() }}
           onCloseWindow={() => { void window.closedai.window.close() }}

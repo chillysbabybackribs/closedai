@@ -9,7 +9,7 @@ import {
 
 /** One menu's worth of rows. `null` is a separator. */
 type MenuAction = 'new-chat' | 'history' | 'settings' | 'close-tab' | 'close-window' | 'search-chats' |
-  'toggle-browser' | 'toggle-fullscreen' | 'credentials' | 'tools' | 'trace' | 'research'
+  'toggle-browser' | 'layout' | 'toggle-fullscreen' | 'credentials' | 'tools' | 'trace' | 'research'
 
 type MenuRow = ({
   label: string
@@ -42,6 +42,7 @@ const MENUS: Menu[] = [
     label: 'View',
     rows: [
       { label: 'Toggle browser pane', action: 'toggle-browser' },
+      { label: 'Workspace layout…', action: 'layout' },
       null,
       { label: 'Zoom in', shortcut: 'Ctrl+=', command: 'in' },
       { label: 'Zoom out', shortcut: 'Ctrl+-', command: 'out' },
@@ -72,6 +73,7 @@ export type TitlebarMenuProps = {
   onToggleHistory: () => void
   onSearchChats: () => void
   onToggleBrowser: () => void
+  onOpenLayout: () => void
   onToggleFullscreen: () => void
   onCloseTab: () => void
   onCloseWindow: () => void
@@ -91,6 +93,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
   onToggleHistory,
   onSearchChats,
   onToggleBrowser,
+  onOpenLayout,
   onToggleFullscreen,
   onCloseTab,
   onCloseWindow,
@@ -121,7 +124,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                       key={row.label}
                       className="titlebar-menu-item"
                       data-ui="titlebar.menu-item"
-                      data-ui-key={row.label.toLowerCase().replace(/\s+/g, '-')}
+                      data-ui-key={row.label.toLowerCase().replace(/…/g, '').replace(/\s+/g, '-')}
                       disabled={row.command ? zoomCommandIsDisabled(row.command, chatZoom) : false}
                       onSelect={() => {
                         if (row.command) {
@@ -135,6 +138,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                         if (row.action === 'history') onToggleHistory()
                         if (row.action === 'search-chats') searchOnClose.current = true
                         if (row.action === 'toggle-browser') onToggleBrowser()
+                        if (row.action === 'layout') onOpenLayout()
                         if (row.action === 'toggle-fullscreen') onToggleFullscreen()
                         if (row.action === 'close-tab') onCloseTab()
                         if (row.action === 'close-window') onCloseWindow()

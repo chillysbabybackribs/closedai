@@ -24,7 +24,7 @@ export function activityAt(row: ChatRowSummary): number {
 export function chatSearchWhen(hit: ChatActivityHit, formatTime: (ms: number) => string): string {
   return hit.status === 'completed' && hit.completedAt != null
     ? `Finished ${formatTime(hit.completedAt).toLowerCase()}`
-    : hit.status === 'running' ? 'Running'
+    : hit.status === 'running' ? ''
       : hit.status === 'paused' ? 'Paused'
         : formatTime(activityAt(hit.row))
 }

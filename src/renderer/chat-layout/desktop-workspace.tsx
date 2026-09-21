@@ -8,7 +8,9 @@ import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import { ChatCanvas } from './chat-canvas.js'
 import { useChatLayout } from './layout-controller.js'
-import { BROWSER_PANE_ID, CHAT_DRAG_TYPE } from './layout-tree.js'
+import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, paneIds } from './layout-tree.js'
+import { LayoutPresetsDialog } from './layout-presets-dialog.js'
+import type { CanvasSize } from './layout-presets.js'
 import { tabActivity } from './tab-activity.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 
@@ -16,6 +18,7 @@ export type ChatLayoutHandle = {
   splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
   toggleBrowser: () => void
   closeFocused: () => Promise<void>
+  openLayoutPresets: () => void
 }
 
 export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onRenameChat, onRetryChatTitle, onBrowserVisibilityChange, archiveChat, ref }: {
@@ -45,13 +48,16 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   const browser = useBrowserController(JSON.stringify([layout.browserVisible, layout.tree]), layout.browserVisible, dragging)
   const imageTabId = browser.browser.image?.tabId
   const [browserRevealVersion, setBrowserRevealVersion] = useState(0)
+  const [presetsOpen, setPresetsOpen] = useState(false)
+  const canvasSize = useRef<CanvasSize>({ width: 0, height: 0 })
   useImperativeHandle(ref, () => ({
     splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),
     toggleBrowser: () => {
       layout.toggleBrowser()
       setBrowserRevealVersion((value) => value + 1)
     },
-    closeFocused: () => layout.closeFocused()
+    closeFocused: () => layout.closeFocused(),
+    openLayoutPresets: () => setPresetsOpen(true)
   }), [layout.dock, layout.toggleBrowser, layout.closeFocused, chat.selectedPaneId])
   useEffect(() => window.closedai.browser.onState((state) => {
     if (state.image || state.url.startsWith('file:')) {
@@ -91,6 +97,8 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         onTogglePin={(id, pinned) => { void chat.sidebar.setChatPinned(id, pinned).catch(() => {}) }}
         onPauseTab={(id) => { void chat.interruptPane(id) }}
         onResumeTab={(id) => { void chat.resumePane(id) }}
+        onOpenPresets={() => setPresetsOpen(true)}
+        onSizeChange={(size) => { canvasSize.current = size }}
         onHide={(id) => { void layout.hide(id) }} onResize={layout.resize}
         renderPane={(id) => <WorkspaceChat paneId={id} snapshot={chat.snapshot} dispatch={chat.dispatch}
           appearance={appearance} historyOpen={historyOpen && chat.selectedPaneId === id}
@@ -103,6 +111,12 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         </div>
       </div>}
     />
+    <LayoutPresetsDialog open={presetsOpen} size={canvasSize.current} tileCount={paneIds(layout.tree).length}
+      onClose={() => setPresetsOpen(false)}
+      onApply={(preset) => {
+        setBrowserRevealVersion((value) => value + 1)
+        void layout.arrange(preset, canvasSize.current)
+      }} />
   </div>
 }
 

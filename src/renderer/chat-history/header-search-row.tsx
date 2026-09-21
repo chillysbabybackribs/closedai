@@ -68,7 +68,7 @@ export function HeaderChatSearchRow({
         {hit.folder && <span className="header-chat-search-folder">{hit.folder}</span>}
         <span className="header-chat-search-meta">
           {searching && place && <span className="header-chat-search-place">{place}</span>}
-          <span className="header-chat-search-when">{when}</span>
+          {when && <span className="header-chat-search-when">{when}</span>}
         </span>
       </button>
     </div>

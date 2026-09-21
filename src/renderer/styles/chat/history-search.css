@@ -382,6 +382,11 @@
 
 .header-chat-search-delete:hover:not(:disabled) { background: var(--search-fill-hover); color: var(--stop-ink); }
 .header-chat-search-turn:hover:not(:disabled) { background: var(--search-fill-hover); color: var(--tab-accent); }
+.header-chat-search-turn[data-ui='titlebar.chat-search-pause'] { color: #dba74b; }
+.header-chat-search-turn[data-ui='titlebar.chat-search-pause']:hover:not(:disabled) {
+  background: rgb(219 167 75 / 14%);
+  color: #e8bc6a;
+}
 .header-chat-search-delete:focus-visible,
 .header-chat-search-turn:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: 1px; }
 .header-chat-search-delete:disabled,

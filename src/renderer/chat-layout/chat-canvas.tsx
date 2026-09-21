@@ -13,7 +13,7 @@ import { browserDropAt, browserDropPreview, sameBrowserDrop, type BrowserDrop } 
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, chatRow, canRegenerateTitle, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onRetryChatTitle, onTogglePin, onPauseTab, onResumeTab, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, chatRow, canRegenerateTitle, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onRetryChatTitle, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
@@ -36,6 +36,9 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
   onTogglePin?: (id: string, pinned: boolean) => void
   onPauseTab?: (id: string) => void
   onResumeTab?: (id: string) => void
+  onOpenPresets?: () => void
+  /** Tile canvas content box, for arranging presets against the real space. */
+  onSizeChange?: (size: { width: number; height: number }) => void
   onDock: (id: string | null, target: string, edge: DockEdge | null, singleTab?: boolean) => void
   onHide: (id: string) => void
   onResize: (id: string, ratio: number) => void
@@ -55,12 +58,16 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
       tab.focus()
     }
   }, [tree])
+  const sizeListener = useRef(onSizeChange)
+  sizeListener.current = onSizeChange
   useEffect(() => {
     const host = viewport.current!
     // Content box: the viewport's padding is the gutter around the tiles, not tile space.
     const observer = new ResizeObserver((entries) => {
       const box = entries[0]?.contentRect
-      setSize(box ? { width: Math.floor(box.width), height: Math.floor(box.height) } : { width: host.clientWidth, height: host.clientHeight })
+      const next = box ? { width: Math.floor(box.width), height: Math.floor(box.height) } : { width: host.clientWidth, height: host.clientHeight }
+      setSize(next)
+      sizeListener.current?.(next)
     })
     observer.observe(host)
     return () => observer.disconnect()
@@ -275,6 +282,7 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
               onMaximize={() => setSoloPaneId(activeId)}
               onSplitRight={() => { if (soloTile) setSoloPaneId(null); onDock(null, activeId, 'right') }}
               onSplitBelow={() => { if (soloTile) setSoloPaneId(null); onDock(null, activeId, 'bottom') }}
+              onOpenPresets={onOpenPresets ? () => { if (soloTile) setSoloPaneId(null); onOpenPresets() } : undefined}
               onRename={onRenameChat ? () => onRenameChat(activeId) : undefined}
               onRetryTitle={onRetryChatTitle ? () => onRetryChatTitle(activeId) : undefined}
               onTogglePin={onTogglePin ? () => onTogglePin(activeId, row?.pinnedAt == null) : undefined}

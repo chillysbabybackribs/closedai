@@ -52,6 +52,15 @@ export const UI_CONTROLS = {
   'layout.pane-hide': 'Tab context menu or header control: remove this tile from the layout without stopping its chat; item is the chat id',
   'layout.maximize': 'Tab context menu or double-click: expand this pane to full height; item is the active chat id',
   'layout.restore': 'Tab context menu or Escape: restore the previous split layout; item is the active chat id',
+  'layout.presets': 'Header context-menu row (also View → Workspace layout): open the workspace layout dialog; item is the chat id',
+  'layout.presets-dialog': 'Workspace layout dialog: pick a starting arrangement that saves like any hand-built layout',
+  'layout.preset-browser-centre': 'Layout dialog option: browser in the centre with two stacked chats on each side',
+  'layout.preset-grid': 'Layout dialog option: browser hidden, chats in a balanced grid sized for the window',
+  'layout.preset-grid-count': 'Layout dialog number input: how many chats the grid option arranges, clamped to what the window fits (at most 12)',
+  'layout.preset-grid-decrement': 'Layout dialog: one fewer chat in the grid option',
+  'layout.preset-grid-increment': 'Layout dialog: one more chat in the grid option',
+  'layout.preset-apply': 'Layout dialog: apply the selected arrangement; open tiles keep their tabs, missing slots get new chats',
+  'layout.preset-cancel': 'Layout dialog: close without changing the layout',
   'layout.divider': 'Resize adjacent chat or browser tiles by dragging the gutter or using arrow keys (Shift for fine control); double-click balances, Escape cancels a drag; item is the split id',
 
 

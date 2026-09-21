@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { ContextMenu } from 'radix-ui'
 import {
-  Maximize2, Minimize2, PanelBottom, PanelLeftClose, PanelRight, Pause, Pencil, Pin, PinOff, Play,
+  LayoutGrid, Maximize2, Minimize2, PanelBottom, PanelLeftClose, PanelRight, Pause, Pencil, Pin, PinOff, Play,
   Sparkles, X
 } from 'lucide-react'
 import type { TabActivity } from './tab-activity.js'
@@ -10,7 +10,7 @@ const ICON = 16
 
 export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, isTileSolo, canMaximize,
   hideHint, closeHint, tabActivity, pinned, canRegenerateTitle, onRestore, onMaximize, onSplitRight,
-  onSplitBelow, onRename, onRetryTitle, onTogglePin, onPause, onResume, onCloseTab, onHide
+  onSplitBelow, onOpenPresets, onRename, onRetryTitle, onTogglePin, onPause, onResume, onCloseTab, onHide
 }: {
   activeId: string
   tabs: string[]
@@ -27,6 +27,7 @@ export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, isTileS
   onMaximize: () => void
   onSplitRight: () => void
   onSplitBelow: () => void
+  onOpenPresets?: () => void
   onRename?: () => void
   onRetryTitle?: () => void
   onTogglePin?: () => void
@@ -40,7 +41,7 @@ export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, isTileS
       isTileSolo={isTileSolo} canMaximize={canMaximize} hideHint={hideHint} closeHint={closeHint}
       tabActivity={tabActivity} pinned={pinned} canRegenerateTitle={canRegenerateTitle}
       onRestore={onRestore} onMaximize={onMaximize} onSplitRight={onSplitRight} onSplitBelow={onSplitBelow}
-      onRename={onRename} onRetryTitle={onRetryTitle} onTogglePin={onTogglePin} onPause={onPause}
+      onOpenPresets={onOpenPresets} onRename={onRename} onRetryTitle={onRetryTitle} onTogglePin={onTogglePin} onPause={onPause}
       onResume={onResume} onCloseTab={onCloseTab} onHide={onHide} />
   </ContextMenu.Portal>
 }
@@ -48,8 +49,8 @@ export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, isTileS
 /** Menu body (also mounted in tests without Radix portal). */
 export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayoutContextMenu>[0]): ReactNode {
   const { activeId, tabs, chatCount, busy, isTileSolo, canMaximize, hideHint, closeHint, tabActivity,
-    pinned, canRegenerateTitle, onRestore, onMaximize, onSplitRight, onSplitBelow, onRename, onRetryTitle,
-    onTogglePin, onPause, onResume, onCloseTab, onHide } = props
+    pinned, canRegenerateTitle, onRestore, onMaximize, onSplitRight, onSplitBelow, onOpenPresets, onRename,
+    onRetryTitle, onTogglePin, onPause, onResume, onCloseTab, onHide } = props
   const canHidePane = chatCount >= 2
   const canCloseTab = tabs.length > 1
   const turnControl = tabActivity?.state === 'working' ? 'pause'
@@ -68,6 +69,10 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
       icon={<PanelRight size={ICON} aria-hidden="true" />} onSelect={onSplitRight} />
     <LayoutMenuRow data-ui="layout.split-below" data-ui-key={activeId} label="Chat below…"
       icon={<PanelBottom size={ICON} aria-hidden="true" />} onSelect={onSplitBelow} />
+    {onOpenPresets && (
+      <LayoutMenuRow data-ui="layout.presets" data-ui-key={activeId} label="Workspace layout…"
+        icon={<LayoutGrid size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onOpenPresets} />
+    )}
     <ContextMenu.Separator className="titlebar-menu-separator" />
     {onRename && (
       <LayoutMenuRow data-ui="layout.rename" data-ui-key={activeId} label="Rename…"
