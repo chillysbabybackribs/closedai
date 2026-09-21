@@ -133,6 +133,22 @@
   .chat-list .r.drift .s { color: var(--warn); }
   .notice { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid rgb(217 164 65 / 40%); background: rgb(217 164 65 / 8%); border-radius: 8px; font-size: 12px; margin: 0 0 12px; }
   .notice .btn { margin-left: auto; padding: 3px 10px; border: 1px solid var(--hair-strong); border-radius: 6px; font-size: 12px; color: var(--fg-strong); white-space: nowrap; }
+
+  /* ---------- simple card grid ---------- */
+  .grid-modal { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 820px; height: 500px; background: var(--card); border: 1px solid var(--hair-strong); border-radius: 10px; box-shadow: 0 18px 60px rgb(0 0 0 / 60%); display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; }
+  .grid-modal .mh { padding: 12px 16px 10px; }
+  .grid-modal .search { width: 200px; margin: 0 0 0 auto; }
+  .grid-modal .x { margin-left: 0; }
+  .cards { overflow: auto; padding: 12px 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-content: start; }
+  .gh { grid-column: 1 / -1; font-family: var(--mono); font-size: 11px; color: var(--fg-quiet); margin: 6px 0 -4px; }
+  .gh:first-child { margin-top: 0; }
+  .card { position: relative; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 10px 12px; border: 1px solid var(--hair); border-radius: 8px; background: var(--canvas); min-height: 58px; }
+  .card .n { font-size: 13px; font-weight: 500; color: var(--fg-strong); }
+  .card .d { grid-column: 1 / -1; color: var(--fg); font-size: 11.5px; line-height: 1.4; }
+  .card.off { opacity: .55; }
+  .card.hover { border-color: var(--hair-strong); background: var(--raised); }
+  .tip { position: absolute; left: 0; top: calc(100% + 6px); width: 280px; padding: 9px 11px; background: #2a2a2d; border: 1px solid var(--hair-strong); border-radius: 7px; box-shadow: 0 10px 30px rgb(0 0 0 / 55%); font-size: 11.5px; line-height: 1.45; color: var(--fg-strong); z-index: 5; }
+  .tip .k { font-family: var(--mono); font-size: 10.5px; color: var(--fg); display: block; margin-bottom: 4px; }
 </style>
 </head>
 <body>
@@ -193,7 +209,7 @@
   </div>
 </div>
 
-<h2>2 · Tools &amp; capabilities — namespace browser</h2>
+<h2>2 · Tools &amp; capabilities — one card per tool</h2>
 <div class="stage">
   <div class="bg">
     <div class="titlebar"><span>File</span><span>View</span><span style="color:var(--fg-strong)">Agent</span><span>Developer</span></div>
@@ -202,100 +218,21 @@
     <div class="tile" style="left:744px;top:42px;width:208px;height:510px"><div class="hd"></div></div>
   </div>
   <div class="scrim"></div>
-  <div class="modal">
+  <div class="grid-modal">
     <div class="mh">
       <div>
         <div class="t">Tools &amp; capabilities</div>
-        <div class="d">86 of 89 on</div>
+        <div class="d">27 of 31 on</div>
       </div>
+      <div class="search">⌕&nbsp; Filter</div>
       <div class="x">×</div>
     </div>
-    <div class="mb">
-      <div class="nav">
-        <div class="search">⌕&nbsp; Search tools, verbs, fields…</div>
-        <div class="ns-list">
-          <div class="ns"><span class="sw on"></span><span class="n">browser_cdp</span><span class="c">5 · 5</span></div>
-          <div class="ns"><span class="sw on"></span><span class="n">closedai_app</span><span class="c">3 · 3</span></div>
-          <div class="ns"><span class="sw on"></span><span class="n">closedai_ui</span><span class="c">1 · 1</span></div>
-          <div class="ns"><span class="sw on"></span><span class="n">credential_vault</span><span class="c">2 · 2</span></div>
-          <div class="ns sel"><span class="sw mixed"></span><span class="n">embedded_browser</span><span class="c part">4 · 5</span></div>
-          <div class="ns"><span class="sw on"></span><span class="n">investigation</span><span class="c">2 · 2</span></div>
-          <div class="ns off"><span class="sw"></span><span class="n">native_instrument</span><span class="c">0 · 3</span></div>
-          <div class="ns"><span class="sw on"></span><span class="n">peer_chats</span><span class="c">4 · 4</span></div>
-          <div class="ns"><span class="sw on"></span><span class="n">search</span><span class="c">5 · 5</span></div>
-          <div class="ns"><span class="sw on"></span><span class="n">tool_batch</span><span class="c">1 · 1</span></div>
-        </div>
-      </div>
-      <div class="main">
-        <div class="nsh"><b>embedded_browser</b><span>4 of 5 tools on · 212 runs · 3 errors</span></div>
-        <p class="nsd">The embedded web browser shown next to this chat, its network traffic, and its signed-in session.</p>
-
-        <div class="tool">
-          <div class="th"><span class="sw sm on"></span><span class="n"><i>embedded_browser.</i>page</span><span class="meta"><span>131 runs</span><span class="bad">2 errors</span><span>0 timeouts</span></span></div>
-          <div class="desc">Inspect the embedded browser page the user can see. navigate, read_page, and wait_for return plain text. read_page also reads a visible native PDF by pdf_page.</div>
-          <div class="verbs">
-            <span class="verb"><span class="sw sm on"></span>navigate <span class="cnt">58</span></span>
-            <span class="verb"><span class="sw sm on"></span>read_page <span class="cnt">61</span></span>
-            <span class="verb"><span class="sw sm on"></span>wait_for <span class="cnt">12</span></span>
-          </div>
-          <div class="more"><span>Show schema</span> · timeout 15 s</div>
-        </div>
-
-        <div class="tool">
-          <div class="th"><span class="sw sm on"></span><span class="n"><i>embedded_browser.</i>script</span><span class="meta"><span>64 runs</span><span>0 errors</span><span class="warn">1 timeout</span></span></div>
-          <div class="desc">Run page-side work in the assigned tab: fetch, extract, query, evaluate, and console.</div>
-          <div class="verbs">
-            <span class="verb"><span class="sw sm on"></span>fetch <span class="cnt">20</span></span>
-            <span class="verb"><span class="sw sm on"></span>extract <span class="cnt">31</span></span>
-            <span class="verb"><span class="sw sm on"></span>query <span class="cnt">9</span></span>
-            <span class="verb off"><span class="sw sm"></span>evaluate <span class="cnt">0</span></span>
-            <span class="verb"><span class="sw sm on"></span>console <span class="cnt">4</span></span>
-          </div>
-          <div class="more"><span>Show schema</span> · timeout 30 s</div>
-        </div>
-
-        <div class="tool">
-          <div class="th"><span class="sw sm on"></span><span class="n"><i>embedded_browser.</i>network</span><span class="meta"><span>17 runs</span><span>1 error</span><span>0 timeouts</span></span></div>
-          <div class="desc">Request logs for the assigned tab, filtered by URL, method, status, or resource type.</div>
-          <div class="more"><span>Show schema</span> · plain tool · timeout 10 s</div>
-        </div>
-
-        <div class="tool" style="opacity:.6">
-          <div class="th"><span class="sw sm"></span><span class="n"><i>embedded_browser.</i>network_replay</span><span class="meta"><span>0 runs</span></span></div>
-          <div class="desc">Reissue a captured request with edited headers or body. <b style="color:var(--warn);font-weight:500">Off</b> — refused immediately; dropped from new chats.</div>
-        </div>
-      </div>
-    </div>
+    <div class="cards"><div class="gh">embedded_browser</div><div class="card"><span class="n">Browse a page</span><span class="sw on"></span><span class="d">Open a URL in the browser pane and read what is on it.</span></div><div class="card hover"><span class="n">Run page scripts</span><span class="sw on"></span><span class="d">Fetch, extract, or evaluate JavaScript inside the open page.</span><div class="tip"><span class="k">embedded_browser.script</span>Runs in the tab the chat is assigned, so it sees the same cookies and login as you. Off: the model can still read pages but cannot execute code in them.</div></div><div class="card"><span class="n">Network log</span><span class="sw on"></span><span class="d">See the requests a page made and what came back.</span></div><div class="card off"><span class="n">Replay a request</span><span class="sw "></span><span class="d">Send a captured request again, with edits.</span></div><div class="card"><span class="n">Signed-in session</span><span class="sw on"></span><span class="d">Call site APIs using your existing login.</span></div><div class="gh">closedai_app</div><div class="card"><span class="n">App state</span><span class="sw on"></span><span class="d">Read which chats, tabs, and models are open.</span></div><div class="card"><span class="n">App commands</span><span class="sw on"></span><span class="d">Open chats, switch models, manage browser tabs.</span></div><div class="card"><span class="n">Click the app</span><span class="sw on"></span><span class="d">Press real buttons in ClosedAI when nothing else works.</span></div><div class="gh">search</div><div class="card"><span class="n">Web search</span><span class="sw on"></span><span class="d">Look things up across several search providers.</span></div><div class="card"><span class="n">Research runs</span><span class="sw on"></span><span class="d">Read many sources in parallel and keep notes.</span></div><div class="card"><span class="n">Read a source</span><span class="sw on"></span><span class="d">Open one page or PDF and extract its text.</span></div><div class="card"><span class="n">Paper library</span><span class="sw on"></span><span class="d">Search the saved research papers.</span></div><div class="gh">native_instrument</div><div class="card off"><span class="n">List processes</span><span class="sw "></span><span class="d">See local processes the model may inspect.</span></div><div class="card off"><span class="n">Inspect a process</span><span class="sw "></span><span class="d">Attach to a native process and read its state.</span></div><div class="card off"><span class="n">Custom probes</span><span class="sw "></span><span class="d">Inject code into a local process. Can crash it.</span></div></div>
     <div class="mf">
-      <span>Off refuses calls now; open chats keep their list until the next thread.</span>
-      <span class="spacer"></span>
-      <span class="btn">Reset counts</span>
+      <span>Off takes effect immediately. Open chats keep their tool list until the next thread.</span>
     </div>
   </div>
 </div>
-<p class="caption"><b>Header is title + count + close.</b> Search lives in the namespace column. One switch per namespace (mixed when partly off), one per tool, one per verb chip. Counters stay on the tool row; the schema is a link, collapsed by default. No provider or chat segments up top.</p>
-
-<h2>3 · Same dialog when the selected chat has drifted from the registry</h2>
-<div class="stage" style="height:200px">
-  <div class="bg"><div class="titlebar"><span>File</span><span>View</span><span style="color:var(--fg-strong)">Agent</span><span>Developer</span></div></div>
-  <div class="scrim"></div>
-  <div class="modal" style="height:150px;top:40px;transform:translate(-50%,0);grid-template-rows:auto 1fr auto">
-    <div class="mh">
-      <div>
-        <div class="t">Tools &amp; capabilities</div>
-        <div class="d">86 of 89 on</div>
-      </div>
-      <div class="x">×</div>
-    </div>
-    <div class="main" style="padding:8px 16px;color:var(--fg-quiet);font-size:12px">…namespaces and tools as above…</div>
-    <div class="mf">
-      <span class="pill"><span class="dot warn"></span>"Redesigning Tools…" still has 4 tools you switched off</span>
-      <span class="spacer"></span>
-      <span class="btn">New thread with current tools</span>
-      <span class="btn">Reset counts</span>
-    </div>
-  </div>
-</div>
-<p class="caption"><b>Drift is a footer line, not a view.</b> It appears only when the selected pane's advertised set no longer matches the switches, and offers the one action that resolves it. When nothing has drifted the footer is the single sentence from section 2.</p>
+<p class="caption"><b>One card per tool.</b> A plain-English name, a one-line description written for a person (not the model's schema text), and a switch. Hovering a card shows the technical id and a longer explanation of what "off" changes. Namespaces are just small section labels in the grid. Action tools (page, script, …) are one card each; their verbs are not exposed.</p>
 </body>
 </html>
