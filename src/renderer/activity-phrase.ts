@@ -148,7 +148,7 @@ export function fileToolSubject(label: string, detail = ''): { verb: keyof typeo
   if (!(verb in FILE_TOOL_VERBS)) return null
   const fromLabel = looksLikeFilePath(match[2]!) ? match[2]!.trim() : null
   const fromDetail = looksLikeFilePath(detail) ? detail.trim() : null
-  const path = fromLabel ?? fromDetail
+  const path = fromDetail ?? fromLabel
   if (!path) return null
   return { verb: verb as keyof typeof FILE_TOOL_VERBS, path }
 }
