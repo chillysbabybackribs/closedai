@@ -1,0 +1,31 @@
+<!doctype html><html><head><title>Chat history delete check</title></head><body>
+<div id="root"></div>
+<script type="module">
+import React, { useRef, useState } from '/@fs/home/dp/Desktop/closedai/node_modules/.vite/deps/react.js';
+import { createRoot } from '/@fs/home/dp/Desktop/closedai/node_modules/.vite/deps/react-dom_client.js';
+import { HeaderChatSearch } from './chat-history/header-search.tsx';
+import './styles/chat/history-search.css';
+window.check = { deleted: [], opened: [], confirmations: 0 };
+window.confirm = () => { window.check.confirmations++; return false; };
+function Preview() {
+  const inputRef = useRef(null);
+  const [error, setError] = useState(null);
+  const [chats, setChats] = useState(['First chat', 'Second chat', 'Running chat'].map((title, i) => ({
+    paneId: String(i), title, threadId: String(i), cwd: '/projects/demo', updatedAt: Date.now() - i * 1000,
+    running: i === 2, preview: '', attached: false
+  })));
+  return React.createElement(HeaderChatSearch, { chats, inputRef, controller: {
+    error, reportError: e => setError(e.message), refreshChats() {},
+    openRow: async id => window.check.opened.push(id),
+    deleteRow: async id => {
+      window.check.deleted.push(id);
+      await new Promise(resolve => { window.finishDelete = resolve; });
+      if (window.failDelete) throw new Error('Deletion failed');
+      setChats(rows => rows.filter(row => row.paneId !== id));
+    }
+  }});
+}
+createRoot(document.getElementById('root')).render(React.createElement(Preview));
+</script>
+<style>body { background: #171717; color: #eee; font-family: sans-serif; --popover: #222; --popover-foreground: #eee; --chrome-fg: #aaa; --chrome-fg-strong: #eee; --chrome-control-active: #333; --chrome-control-hover: #444; --surface-card: #222; --hairline-strong: #555; --stop-ink: #f77; --focus-ink: #aaf; } button { color: inherit; cursor: pointer; }</style>
+</body></html>

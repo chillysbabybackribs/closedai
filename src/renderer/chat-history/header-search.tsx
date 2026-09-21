@@ -105,19 +105,19 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
           aria-selected={index === cursor} className="header-chat-search-row"
           onMouseEnter={() => setHighlight(index)}>
           <div role="gridcell" className="header-chat-search-main">
-          <button type="button" tabIndex={-1}
-          aria-label={`${hit.row.title} — ${hit.row.cwd}${hit.row.running ? ' — Running' : ''}`}
-          className="header-chat-search-result" data-ui="titlebar.chat-search-result"
-          data-ui-key={hit.row.paneId} disabled={busy} title={hit.row.cwd}
-          onMouseDown={event => event.preventDefault()} onClick={() => { void open(hit) }}>
-          <span className="header-chat-search-title">
-            {segmentTitle(hit.row.title, hit.titleRanges).map((segment, position) => segment.matched
-              ? <mark key={position}>{segment.text}</mark> : <span key={position}>{segment.text}</span>)}
-          </span>
-          <span className="header-chat-search-meta">
-            {hit.folder ? `${hit.folder} · ` : ''}{hit.row.running ? 'Running' : formatChatTime(hit.row.updatedAt)}
-          </span>
-          </button>
+            <button type="button" tabIndex={-1}
+              aria-label={`${hit.row.title} — ${hit.row.cwd}${hit.row.running ? ' — Running' : ''}`}
+              className="header-chat-search-result" data-ui="titlebar.chat-search-result"
+              data-ui-key={hit.row.paneId} disabled={busy} title={hit.row.cwd}
+              onMouseDown={event => event.preventDefault()} onClick={() => { void open(hit) }}>
+              <span className="header-chat-search-title">
+                {segmentTitle(hit.row.title, hit.titleRanges).map((segment, position) => segment.matched
+                  ? <mark key={position}>{segment.text}</mark> : <span key={position}>{segment.text}</span>)}
+              </span>
+              <span className="header-chat-search-meta">
+                {hit.folder ? `${hit.folder} · ` : ''}{hit.row.running ? 'Running' : formatChatTime(hit.row.updatedAt)}
+              </span>
+            </button>
           </div>
           <div role="gridcell">
             <button type="button" className="header-chat-search-delete"
