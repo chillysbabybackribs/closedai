@@ -83,7 +83,7 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, onSel
       {canClose && <button type="button" className="chat-layout-tab-close" data-ui="layout.tab-close" data-ui-key={id}
         // Inactive tabs keep their close out of the tab order; Delete on the focused tab closes it.
         tabIndex={id === activeId ? 0 : -1}
-        disabled={busy} aria-label={`Close tab: ${title(id)} · ${closeHint}${id === activeId ? ' · Delete' : ''}`} title={`Close tab · ${closeHint}`}
+        disabled={busy} aria-label={`Close tab: ${title(id)} · ${closeHint}`} title={`Close tab · ${closeHint}`}
         onClick={() => onClose(id)}><X size={11} aria-hidden="true" /></button>}
     </div>})}
   </div>
