@@ -19,7 +19,7 @@ import {
   scrollEdges,
   type ScrollEdges
 } from './message-scroller-state.js'
-import { findLastScrollAnchor, viewportMetrics } from './message-scroller-dom.js'
+import { findLastScrollAnchor, isTrailingContent, viewportMetrics } from './message-scroller-dom.js'
 
 const EDGE_THRESHOLD = 24
 
@@ -201,9 +201,15 @@ export function MessageScrollerProvider({
     const syncAfterResize = (): void => {
       const lastAnchor = findLastScrollAnchor(content, spacer)
       const prepended = prependRef.current
+      // A new anchor element only counts as a sent prompt while it is the newest row. Replays,
+      // wakes, and re-keyed transcripts re-materialize the last prompt with its response already
+      // below it; moving the viewport for those would yank a reader mid-transcript.
+      const newAnchor = Boolean(
+        lastAnchor && lastAnchor !== handledAnchorRef.current && isTrailingContent(lastAnchor, spacer)
+      )
       const action = resizeScrollAction({
         prepending: Boolean(prepended),
-        newAnchor: Boolean(lastAnchor && lastAnchor !== handledAnchorRef.current),
+        newAnchor,
         anchorMode: anchorPrompts || defaultScrollPosition === 'last-anchor',
         anchored: Boolean(anchoredRef.current),
         following: followingRef.current,

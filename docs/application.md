@@ -341,7 +341,9 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   the beginning of a long answer stays readable instead of scrolling away. Scrolling releases the
   anchor without collapsing its spacer (removing it mid-gesture clamps scrollTop and teleports the
   reader); reaching the bottom resumes follow-to-bottom for the rest of the turn, and the next
-  prompt re-anchors. Opening a chat still mounts scrolled to the end, and revealing earlier
+  prompt re-anchors. A prompt only counts as newly sent while it is the newest transcript row, so
+  provider replays and pane wakes that re-materialize the last prompt with its response below it
+  never move the viewport. Opening a chat still mounts scrolled to the end, and revealing earlier
   history still preserves the reading position. Native `overflow-anchor` is disabled on the chat
   viewport because the scroller owns every correction.
 - The renderer initially receives the latest turn. "View previous messages" reveals one earlier
