@@ -31,8 +31,9 @@ test('a burst of calls keeps the exemption and the grace runs from the last of t
   policy.touch('tab-1')
   await settle(GRACE_MS / 2)
 
-  // The second touch pushed the restore out; the page was never handed back mid-burst.
-  assert.deepEqual(log, ['tab-1:false', 'tab-1:false'])
+  // The second touch pushed the restore out; one toggle covers the burst, and a tab that is
+  // already exempt is not told again (that call shows a hidden widget; see reassert()).
+  assert.deepEqual(log, ['tab-1:false'])
   await settle()
   assert.deepEqual(log.filter((entry) => entry.endsWith('true')), ['tab-1:true'])
 })
@@ -70,7 +71,7 @@ test('nested holds restore once, when the last one releases', async () => {
 
   inner()
   await settle()
-  assert.deepEqual(log, ['tab-1:false', 'tab-1:false'], 'the inner release left the hold standing')
+  assert.deepEqual(log, ['tab-1:false'], 'the inner release left the hold standing')
 
   outer()
   await settle()

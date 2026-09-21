@@ -77,10 +77,14 @@ export class TabCadencePolicy {
   }
 
   /**
-   * Re-apply the exemption to every tab that holds one. Electron arms it on the widget that
-   * exists when it is set, so anything that hides or replaces a surface — a tab losing the
-   * front, a navigation swapping the main frame — has to reassert it for a page still under
-   * tool control. Re-applying is one cheap IPC call, so this never tries to be clever.
+   * Re-apply the exemption to every tab that holds one, because Electron arms it on the widget
+   * that exists when it is set: a tab that has just been hidden needs to be told again, or its
+   * page goes back to ~1 Hz with no frames while a tool is still working in it.
+   *
+   * Only surface changes call this. Re-applying on every touch instead was measurably worse:
+   * the call shows a hidden widget, and doing that underneath a tab parked in the offscreen
+   * capture window left `capturePage` with "Current display surface not available for capture"
+   * (reproduced in scripts/browser-coordination-live-check.mjs).
    */
   reassert(): void {
     for (const tabId of this.unthrottled) this.adapter.setThrottled(tabId, false)
@@ -110,8 +114,8 @@ export class TabCadencePolicy {
   }
 
   private apply(tabId: string): void {
+    if (this.unthrottled.has(tabId)) return
     this.unthrottled.add(tabId)
-    // Always re-apply rather than skipping a tab that is already exempt: see reassert().
     this.adapter.setThrottled(tabId, false)
   }
 
