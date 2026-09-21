@@ -1,7 +1,9 @@
 import { useState, type JSX } from 'react'
 import { Check, CheckCircle2, Copy, Eye, EyeOff, Lock, Plus, ShieldAlert, Trash2 } from 'lucide-react'
 import { credentialDomain, credentialService, type CredentialSummary } from '../../shared/credentials.js'
+import { errorMessage } from '../error-message.js'
 import { CREDENTIAL_SERVICE_LOGOS, RemoteServiceLogo } from './credential-service-logos.js'
+import type { PendingRemoval } from './credential-vault-store.js'
 
 export type CredentialVaultListProps = {
   credentials: CredentialSummary[]
@@ -11,7 +13,11 @@ export type CredentialVaultListProps = {
   encryptionAvailable: boolean
   backend: string
   onAdd: () => void
-  onRemove: (id: string) => Promise<void>
+  /** Hides the card and starts the undo window; the vault removes it when that elapses. */
+  onRemove: (id: string) => void
+  onUndoRemove: (id: string) => void
+  pendingRemovals: PendingRemoval[]
+  removeErrors: Record<string, string>
   reveal: (id: string, fieldId: string) => Promise<string>
 }
 
@@ -29,8 +35,12 @@ export function CredentialVaultList({
   backend,
   onAdd,
   onRemove,
+  onUndoRemove,
+  pendingRemovals,
+  removeErrors,
   reveal
 }: CredentialVaultListProps): JSX.Element {
+  const hidden = new Set(pendingRemovals.map((entry) => entry.id))
   return (
     <div className="credential-list-content flex min-h-0 flex-1 flex-col gap-3">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -58,10 +68,35 @@ export function CredentialVaultList({
         <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</p>
       ) : null}
 
+      {pendingRemovals.map((entry) => (
+        <p
+          key={entry.id}
+          role="status"
+          className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground"
+        >
+          <span>
+            {entry.committing ? 'Removing ' : 'Removed '}
+            <strong className="font-medium text-foreground">{entry.label}</strong>
+            {entry.committing ? '…' : '.'}
+          </span>
+          {entry.committing ? null : (
+            <button type="button" className="font-medium text-primary hover:underline" onClick={() => onUndoRemove(entry.id)}>
+              Undo
+            </button>
+          )}
+        </p>
+      ))}
+
       <div className="credential-grid-scroll min-h-0 flex-1 overflow-y-auto">
         <div className="credential-grid">
-          {credentials.map((credential) => (
-            <CredentialCard key={credential.id} credential={credential} onRemove={onRemove} reveal={reveal} />
+          {credentials.filter((credential) => !hidden.has(credential.id)).map((credential) => (
+            <CredentialCard
+              key={credential.id}
+              credential={credential}
+              removeError={removeErrors[credential.id] ?? null}
+              onRemove={onRemove}
+              reveal={reveal}
+            />
           ))}
 
           <button type="button" className="credential-add-tile" data-ui="credentials.add" onClick={onAdd}>
@@ -79,11 +114,13 @@ export function CredentialVaultList({
 
 type CredentialCardProps = {
   credential: CredentialSummary
-  onRemove: (id: string) => Promise<void>
+  /** Why the last removal of this entry failed, once it has come back to the grid. */
+  removeError: string | null
+  onRemove: (id: string) => void
   reveal: (id: string, fieldId: string) => Promise<string>
 }
 
-function CredentialCard({ credential, onRemove, reveal }: CredentialCardProps): JSX.Element {
+function CredentialCard({ credential, removeError, onRemove, reveal }: CredentialCardProps): JSX.Element {
   const [revealed, setRevealed] = useState<Record<string, string>>({})
   const [copied, setCopied] = useState<string | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
@@ -106,7 +143,7 @@ function CredentialCard({ credential, onRemove, reveal }: CredentialCardProps): 
       setRevealed((current) => ({ ...current, [fieldId]: value }))
       setFailure(null)
     } catch (cause) {
-      setFailure(cause instanceof Error ? cause.message : String(cause))
+      setFailure(errorMessage(cause, 'The secret could not be read.'))
     }
   }
 
@@ -117,7 +154,7 @@ function CredentialCard({ credential, onRemove, reveal }: CredentialCardProps): 
       setFailure(null)
       setTimeout(() => setCopied(null), 2000)
     } catch (cause) {
-      setFailure(cause instanceof Error ? cause.message : String(cause))
+      setFailure(errorMessage(cause, 'The secret could not be copied.'))
     }
   }
 
@@ -126,6 +163,7 @@ function CredentialCard({ credential, onRemove, reveal }: CredentialCardProps): 
       <div className="credential-panel">
         <span
           className="credential-state-dot"
+          role="img"
           title={credential.encrypted ? 'Encrypted by the OS keychain' : 'Stored unencrypted'}
           aria-label={credential.encrypted ? 'Encrypted' : 'Unencrypted'}
         >
@@ -179,7 +217,8 @@ function CredentialCard({ credential, onRemove, reveal }: CredentialCardProps): 
             })}
           </div>
 
-          {failure ? <p className="text-xs text-destructive">{failure}</p> : null}
+          {failure ? <p className="text-xs text-destructive" role="alert">{failure}</p> : null}
+          {removeError ? <p className="text-xs text-destructive" role="alert">{removeError}</p> : null}
 
           <div className="credential-card-actions">
             <button
@@ -187,7 +226,7 @@ function CredentialCard({ credential, onRemove, reveal }: CredentialCardProps): 
               className="credential-card-remove"
               data-ui="credentials.delete"
               data-ui-key={credential.id}
-              onClick={() => void onRemove(credential.id)}
+              onClick={() => onRemove(credential.id)}
             >
               <Trash2 className="size-3.5" />
               Remove

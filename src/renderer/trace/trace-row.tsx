@@ -2,6 +2,7 @@ import type { JSX } from 'react'
 import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 
+import { CHAT_PROVIDER_LABELS } from '../../shared/chat-providers.js'
 import type { TraceEntry } from '../../shared/trace.js'
 
 export type TraceRowProps = {
@@ -26,7 +27,7 @@ export function TraceRow({ entry, turnStartedAt }: TraceRowProps): JSX.Element {
         </span>
         <span className="trace-row-summary">{entry.summary}</span>
         {entry.durationMs !== undefined && <span className="trace-row-duration">{duration(entry.durationMs)}</span>}
-        {entry.provider && <span className="trace-row-provider">{entry.provider}</span>}
+        {entry.provider && <span className="trace-row-provider">{CHAT_PROVIDER_LABELS[entry.provider]}</span>}
       </button>
       {open && (
         <pre className="trace-row-detail">

@@ -1,7 +1,8 @@
 import type { JSX } from 'react'
+import { useState } from 'react'
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog.js'
-import type { ChatContextUsage, ChatTurnContextReport } from '../shared/chat.js'
+import type { ChatContextUsage, ChatTurnContextAddition, ChatTurnContextAttachment, ChatTurnContextReport } from '../shared/chat.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import type { ChatMemoryCheckpoint } from '../shared/chat-memory.js'
 import {
@@ -15,6 +16,16 @@ import {
   ContextBudgetSection,
   ContextPressureBadge
 } from './context-budget-view.js'
+
+const ATTACHMENT_KIND_LABELS: Record<ChatTurnContextAttachment['kind'], string> = {
+  file: 'File',
+  image: 'Image'
+}
+
+const ADDITION_KIND_LABELS: Record<ChatTurnContextAddition['kind'], string> = {
+  application: 'Added by ClosedAI',
+  untrusted: 'Untrusted content'
+}
 
 export type ContextInspectorModalProps = {
   open: boolean
@@ -121,7 +132,7 @@ export function ContextReport({
         <section className="context-inspector-section">
           <SectionHeading title="Working memory" meta="No checkpoint saved" />
           <p className="context-inspector-empty">
-            No working notes saved for this chat yet. Multi-step agents record goals, progress, and decisions with peer_chats.checkpoint.
+            No working notes saved for this chat yet. Agents on multi-step work record their goal, progress, and decisions here as they go.
           </p>
         </section>
       )}
@@ -141,7 +152,7 @@ export function ContextReport({
               <ul className="context-inspector-attachments">
                 {report.attachments.map((attachment, index) => (
                   <li key={`${attachment.name}-${index}`}>
-                    <div><strong>{attachment.name}</strong><span>{attachment.kind}</span></div>
+                    <div><strong>{attachment.name}</strong><span>{ATTACHMENT_KIND_LABELS[attachment.kind]}</span></div>
                     <p>{attachment.delivery}</p>
                     {attachment.path && <code>{attachment.path}</code>}
                   </li>
@@ -156,7 +167,7 @@ export function ContextReport({
               <details className="context-inspector-addition" key={addition.name}>
                 <summary>
                   <span>{addition.name}</span>
-                  <small>{addition.kind} · {formatNumber(addition.characters)} chars · ≈{formatNumber(addition.estimatedTokens)} tokens</small>
+                  <small>{ADDITION_KIND_LABELS[addition.kind]} · {formatNumber(addition.characters)} chars · ≈{formatNumber(addition.estimatedTokens)} tokens</small>
                 </summary>
                 <pre className="context-inspector-value">{addition.value}</pre>
               </details>
@@ -271,25 +282,31 @@ function CheckpointSection({ checkpoint }: { checkpoint: ChatMemoryCheckpoint })
           <div className="checkpoint-files">
             <h4 className="checkpoint-subheading">Relevant files ({state.files.length})</h4>
             <div className="checkpoint-file-tags">
-              {state.files.map((file, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  className="checkpoint-file-tag"
-                  title={`Open ${file}`}
-                  onClick={() => {
-                    const href = file.startsWith('file://') ? file : `file://${file.startsWith('/') ? '' : '/'}${file}`
-                    void window.closedai.localFiles.open(href)
-                  }}
-                >
-                  <code>{file}</code>
-                </button>
-              ))}
+              {state.files.map((file, i) => <CheckpointFileTag key={i} file={file} />)}
             </div>
           </div>
         )}
       </div>
     </section>
+  )
+}
+
+/** One relevant-file chip; a path that no longer opens says so on the chip instead of doing nothing. */
+function CheckpointFileTag({ file }: { file: string }): JSX.Element {
+  const [missing, setMissing] = useState(false)
+  const href = file.startsWith('file://') ? file : `file://${file.startsWith('/') ? '' : '/'}${file}`
+  return (
+    <button
+      type="button"
+      className={`checkpoint-file-tag${missing ? ' checkpoint-file-tag-missing' : ''}`}
+      title={missing ? `${file} could not be opened` : `Open ${file}`}
+      onClick={() => {
+        window.closedai.localFiles.open(href).then(() => setMissing(false), () => setMissing(true))
+      }}
+    >
+      <code>{file}</code>
+      {missing && <span className="checkpoint-file-missing" role="status">File not found</span>}
+    </button>
   )
 }
 

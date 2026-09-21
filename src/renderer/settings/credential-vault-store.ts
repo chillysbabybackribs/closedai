@@ -10,6 +10,16 @@ import { errorMessage } from '../error-message.js'
 
 const LEGACY_KEY = 'closedai-credentials'
 
+/** How long a removed entry stays recoverable before the vault is asked to forget it. */
+export const REMOVE_UNDO_MS = 6000
+
+export type PendingRemoval = {
+  id: string
+  label: string
+  /** True once the vault call is in flight; Undo is no longer offered. */
+  committing: boolean
+}
+
 type LegacyCredential = {
   id?: string
   name?: string
@@ -28,7 +38,13 @@ export type CredentialVaultState = {
   migrated: number
   refresh: () => Promise<void>
   save: (draft: CredentialDraft) => Promise<CredentialSummary>
-  remove: (id: string) => Promise<void>
+  /** Hide the entry now; the vault forgets it after REMOVE_UNDO_MS or when the panel closes. */
+  remove: (id: string) => void
+  /** Bring a hidden entry back before its removal is committed. */
+  undoRemove: (id: string) => void
+  pendingRemovals: PendingRemoval[]
+  /** Why an entry could not be removed, keyed by id; the card shows it when it comes back. */
+  removeErrors: Record<string, string>
   reveal: (id: string, fieldId: string) => Promise<string>
 }
 
@@ -38,6 +54,11 @@ export function useCredentialVault(open: boolean): CredentialVaultState {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [migrated, setMigrated] = useState(0)
+  const [pendingRemovals, setPendingRemovals] = useState<PendingRemoval[]>([])
+  const [removeErrors, setRemoveErrors] = useState<Record<string, string>>({})
+  const removeTimers = useRef(new Map<string, number>())
+  const credentialsRef = useRef(credentials)
+  credentialsRef.current = credentials
 
   const refresh = useCallback(async () => {
     const api = window.closedai?.credentials
@@ -65,8 +86,9 @@ export function useCredentialVault(open: boolean): CredentialVaultState {
     if (!open) return
     const current = ++openEpoch.current
     setError(null)
+    setRemoveErrors({})
     void (async () => {
-      const moved = await migrateLegacyCredentials()
+      const moved = await migrateLegacyCredentialsOnce()
       if (current !== openEpoch.current) return
       setMigrated(moved)
       await refresh()
@@ -84,21 +106,63 @@ export function useCredentialVault(open: boolean): CredentialVaultState {
     [refresh]
   )
 
-  const remove = useCallback(
-    async (id: string) => {
-      try {
-        await requireApi().remove(id)
-      } catch (cause) {
-        throw new Error(errorMessage(cause, 'The credential could not be removed.'))
-      }
+  const commitRemove = useCallback(async (id: string) => {
+    removeTimers.current.delete(id)
+    setPendingRemovals((current) => current.map((entry) => entry.id === id ? { ...entry, committing: true } : entry))
+    try {
+      await requireApi().remove(id)
       await refresh()
-    },
-    [refresh]
-  )
+    } catch (cause) {
+      setRemoveErrors((current) => ({ ...current, [id]: errorMessage(cause, 'The credential could not be removed.') }))
+    } finally {
+      setPendingRemovals((current) => current.filter((entry) => entry.id !== id))
+    }
+  }, [refresh])
+
+  const remove = useCallback((id: string) => {
+    if (removeTimers.current.has(id)) return
+    const label = credentialsRef.current.find((credential) => credential.id === id)?.label ?? 'credential'
+    setRemoveErrors(({ [id]: _cleared, ...rest }) => rest)
+    setPendingRemovals((current) => [...current, { id, label, committing: false }])
+    removeTimers.current.set(id, window.setTimeout(() => { void commitRemove(id) }, REMOVE_UNDO_MS))
+  }, [commitRemove])
+
+  const undoRemove = useCallback((id: string) => {
+    const timer = removeTimers.current.get(id)
+    if (timer === undefined) return
+    window.clearTimeout(timer)
+    removeTimers.current.delete(id)
+    setPendingRemovals((current) => current.filter((entry) => entry.id !== id))
+  }, [])
+
+  // Closing the panel (or unmounting it) is the end of the undo window: commit what is pending.
+  const flushRemovals = useCallback(() => {
+    for (const [id, timer] of removeTimers.current) {
+      window.clearTimeout(timer)
+      void commitRemove(id)
+    }
+  }, [commitRemove])
+  useEffect(() => {
+    if (!open) flushRemovals()
+  }, [open, flushRemovals])
+  useEffect(() => flushRemovals, [flushRemovals])
 
   const reveal = useCallback((id: string, fieldId: string) => requireApi().reveal(id, fieldId), [])
 
-  return { credentials, status, loading, error, migrated, refresh, save, remove, reveal }
+  return {
+    credentials, status, loading, error, migrated, refresh, save,
+    remove, undoRemove, pendingRemovals, removeErrors, reveal
+  }
+}
+
+/**
+ * One migration at a time: a close/reopen while the import is still writing shares the same
+ * run instead of starting a second one that would re-save every legacy entry.
+ */
+let migration: Promise<number> | null = null
+function migrateLegacyCredentialsOnce(): Promise<number> {
+  migration ??= migrateLegacyCredentials().finally(() => { migration = null })
+  return migration
 }
 
 function requireApi(): NonNullable<Window['closedai']>['credentials'] {

@@ -197,6 +197,17 @@
   overflow-wrap: anywhere;
 }
 
+.checkpoint-file-tag-missing {
+  border-color: color-mix(in srgb, var(--destructive) 45%, var(--border));
+}
+
+.checkpoint-file-missing {
+  margin-left: 6px;
+  color: var(--destructive);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
 .context-inspector-footer { flex: none; padding: 10px 20px 12px; border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 10.5px; line-height: 1.45; }
 
 /* Pressure badge */

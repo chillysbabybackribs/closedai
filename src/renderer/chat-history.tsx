@@ -4,6 +4,7 @@ import { Archive, Search } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import { Loader } from '../components/ui/loader.js'
+import { errorMessage } from './error-message.js'
 import type { ChatRowSummary } from '../shared/chat-peers.js'
 
 export type ChatHistoryProps = {
@@ -41,7 +42,7 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
     setLoad({ status: 'loading' })
     listChats()
       .then((threads) => { if (active) setLoad({ status: 'ready', threads }) })
-      .catch((error: unknown) => { if (active) setLoad({ status: 'error', message: messageOf(error) }) })
+      .catch((error: unknown) => { if (active) setLoad({ status: 'error', message: errorMessage(error) }) })
     return () => { active = false }
   }, [listChats, reloadKey, chats])
 
@@ -63,7 +64,7 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
       onClose()
     } catch (error) {
       // The transcript is hidden behind this panel, so the reason has to show here.
-      setActionError(`Could not open that chat: ${messageOf(error)}`)
+      setActionError(`Could not open that chat: ${errorMessage(error)}`)
     } finally {
       setPendingId(null)
     }
@@ -81,7 +82,7 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
           : current)
       }
     } catch (error) {
-      setActionError(`Could not archive that chat: ${messageOf(error)}`)
+      setActionError(`Could not archive that chat: ${errorMessage(error)}`)
     } finally {
       setPendingId(null)
     }
@@ -184,10 +185,4 @@ export function formatRelativeTime(timestampMs: number, now = Date.now()): strin
   const date = new Date(timestampMs)
   const sameYear = date.getFullYear() === new Date(now).getFullYear()
   return date.toLocaleDateString(undefined, sameYear ? { month: 'short', day: 'numeric' } : { year: 'numeric', month: 'short', day: 'numeric' })
-}
-
-function messageOf(error: unknown): string {
-  const text = error instanceof Error ? error.message : String(error)
-  // Electron prefixes errors thrown by ipcMain.handle with the channel name; not useful to a reader.
-  return text.replace(/^Error invoking remote method '[^']*': /, '').replace(/^\w*Error: /, '')
 }

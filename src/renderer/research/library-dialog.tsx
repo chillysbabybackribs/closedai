@@ -1,7 +1,16 @@
 import { useState, type JSX } from 'react'
 import { BookOpen, RefreshCw } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog.js'
+import type { LibrarySnapshot } from '../../shared/research-library.js'
 import { useResearchLibrary } from './library-controller.js'
+
+const REFRESH_STATE_LABELS: Record<NonNullable<LibrarySnapshot['lastRefresh']>['state'], string> = {
+  completed: 'Completed',
+  partial: 'Partly completed',
+  failed: 'Failed',
+  cancelled: 'Stopped',
+  timed_out: 'Timed out'
+}
 
 function date(value: string): string {
   return new Date(value).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
@@ -34,6 +43,11 @@ export function ResearchLibraryDialog({ open, onOpenChange }: {
         </header>
         <div className="research-library-body">
           {library.error && <p className="research-library-error" role="alert">{library.error}</p>}
+          {!snapshot && library.error && (
+            <div className="research-library-actions">
+              <button type="button" onClick={library.retryLoad}>Try again</button>
+            </div>
+          )}
           {!snapshot && !library.error && <p role="status">Loading library…</p>}
           {snapshot && <>
             <section className="research-library-settings" aria-label="Research topics">
@@ -81,7 +95,7 @@ export function ResearchLibraryDialog({ open, onOpenChange }: {
               </div>
               <p className="research-library-muted" role="status">
                 {refreshing ? 'Checking your topics. Closing this window keeps the update running.' : last
-                  ? `Last update ${date(last.finishedAt)} · ${last.state} · ${last.added} added`
+                  ? `Last update ${date(last.finishedAt)} · ${REFRESH_STATE_LABELS[last.state]} · ${last.added} added`
                   : 'Choose your topics and update to collect your first papers.'}
               </p>
               {last?.errors.map((error, index) => <p className="research-library-error" key={`${error.topic}-${index}`}>

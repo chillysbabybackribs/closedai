@@ -428,6 +428,18 @@ body[data-layout-resize='vertical'] * { cursor: row-resize !important; }
   border-color: var(--focus-ink, #3b82f6);
 }
 
+.chat-rename-input[aria-invalid='true'] {
+  border-color: var(--destructive, #ef4444);
+}
+
+.chat-rename-error {
+  margin: -6px 0 0;
+  color: var(--destructive, #ef4444);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .chat-rename-actions {
   display: flex;
   align-items: center;

@@ -33,6 +33,9 @@ export function CredentialVaultPanel({ active }: CredentialVaultPanelProps): JSX
           backend={vault.status?.backend ?? 'the OS keychain'}
           onAdd={() => setView('create')}
           onRemove={vault.remove}
+          onUndoRemove={vault.undoRemove}
+          pendingRemovals={vault.pendingRemovals}
+          removeErrors={vault.removeErrors}
           reveal={vault.reveal}
         />
       ) : (

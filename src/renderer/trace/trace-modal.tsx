@@ -61,7 +61,7 @@ export function TraceModal({ open, onOpenChange, paneId }: TraceModalProps): JSX
           <span className="trace-modal-filter-spacer" />
           <label className="trace-modal-filter">
             <input type="checkbox" data-ui="trace.filter" data-ui-key="all-panes" checked={trace.allPanes} onChange={(event) => trace.setAllPanes(event.target.checked)} />
-            <span>All panes</span>
+            <span>All chats</span>
           </label>
         </div>
 
@@ -69,7 +69,7 @@ export function TraceModal({ open, onOpenChange, paneId }: TraceModalProps): JSX
 
         <div className="trace-modal-list">
           {trace.groups.map((group) => <TraceTurn key={`${group.turnId ?? 'between'}-${group.entries[0]!.seq}`} group={group} />)}
-          {trace.groups.length === 0 && (
+          {trace.loaded && trace.groups.length === 0 && (
             <p className="trace-modal-empty">
               {trace.total === 0 ? 'Nothing traced yet. Send a message and the turn appears here as it runs.' : 'Nothing matches the current filters.'}
             </p>

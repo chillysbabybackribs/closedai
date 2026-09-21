@@ -11,6 +11,7 @@ import {
   type CredentialServiceId,
   type CredentialSummary
 } from '../../shared/credentials.js'
+import { errorMessage } from '../error-message.js'
 import { CredentialFieldRow } from './credential-field-row.js'
 import { CREDENTIAL_SERVICE_LOGOS, RemoteServiceLogo } from './credential-service-logos.js'
 import { CredentialServicePicker } from './credential-service-picker.js'
@@ -90,7 +91,7 @@ export function CredentialCreateForm({
       )
       onSaved(await save({ serviceId, label: label.trim(), values: kept }))
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      setError(errorMessage(cause, 'The credential could not be saved.'))
     } finally {
       setSaving(false)
     }
@@ -222,7 +223,7 @@ export function CredentialCreateForm({
           <span />
         )}
         <div className="flex min-w-0 items-center gap-3">
-          {error ? <p className="truncate text-xs text-destructive">{error}</p> : null}
+          {error ? <p className="min-w-0 text-xs text-destructive [overflow-wrap:anywhere]" role="alert">{error}</p> : null}
           <Button type="button" variant="outline" size="sm" data-ui="credentials.cancel" onClick={onCancel}>
             Cancel
           </Button>
