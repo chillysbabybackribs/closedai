@@ -27,7 +27,7 @@ export async function runProbe(request: ProbeRequest, signal: AbortSignal): Prom
     result.cleanup.session = 'pending'
     await verifyTarget(request.targetId)
     session.detached.connect(reason => {
-      if (reason !== 'application-requested') {
+      if (reason !== 'application-requested' && result.state === 'completed') {
         result.state = 'failed'
         result.error = `Target session detached: ${reason}`
       }
@@ -38,7 +38,7 @@ export async function runProbe(request: ProbeRequest, signal: AbortSignal): Prom
     script.logHandler = (level, text) => events.add({ type: 'log', level, text })
     script.message.connect((message, data) => {
       events.add(message, data)
-      if (message.type === 'error') {
+      if (message.type === 'error' && result.state === 'completed') {
         result.state = 'failed'
         result.error = 'The agent reported an error; inspect retained events'
       }
@@ -53,6 +53,9 @@ export async function runProbe(request: ProbeRequest, signal: AbortSignal): Prom
     // Fresh cancellation budgets: the operation's cancellation must not cancel its cleanup.
     if (script) {
       try {
+        if (signal.aborted && !script.isDestroyed) {
+          await script.interrupt(frida.Cancellable.withTimeout(500)).catch(() => {})
+        }
         if (!script.isDestroyed) await script.unload(frida.Cancellable.withTimeout(1_000))
         result.cleanup.script = 'unloaded-or-destroyed'
       } catch (error) { result.cleanup.script = `unconfirmed: ${String(error).slice(0, 300)}` }

@@ -49,7 +49,8 @@ replacement, cancellation, window disposal and app quit release owned operations
 the parent IPC channel cancels the helper. No session, gated child or suspended target is
 intentionally kept between calls. Existing targets are never killed by the controller.
 
-Cleanup uses fresh cancellation budgets for script unload and session detach. Results report
+Cleanup first attempts script interruption after cancellation, then uses fresh cancellation
+budgets for script unload and session detach. Results report
 each cleanup outcome. If the helper disappears without a result, the receipt is `unknown`,
 with unconfirmed cleanup; the system does not silently retry. Detaching cannot reverse
 native writes, I/O or decisions already made by the target, and process separation cannot

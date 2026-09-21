@@ -18,6 +18,7 @@ const directory = await mkdtemp(join(tmpdir(), 'closedai-native-check-'))
 const binary = join(directory, 'fixture')
 execFileSync('cc', ['-O0', '-g', '-rdynamic', fileURLToPath(new URL('./fixture.c', import.meta.url)), '-o', binary])
 const target = spawn(binary, [], { stdio: ['pipe', 'pipe', 'inherit'] })
+const targetExit = new Promise(resolve => target.once('exit', resolve))
 const lines: string[] = []
 const reader = createInterface({ input: target.stdout })
 reader.on('line', line => lines.push(line))
@@ -112,9 +113,18 @@ send({kind:'changed',value:call(5)});
   assert.equal(await waitLine('value '), 'value 12')
   checks.push(`stuck agent bounded (${stuckResult.state}); target remains responsive`)
 
+  const leaseStarted = performance.now()
+  const lease = await service.run('native-live-check', 'lease', {
+    targetId: identity.id, durationMs: 0, source: 'while(true) {}'
+  }, new AbortController().signal)
+  assert(['cancelled', 'unknown'].includes(lease.state))
+  assert(performance.now() - leaseStarted < 20_000)
+  target.stdin.write('5\n')
+  assert.equal(await waitLine('value '), 'value 12')
+  checks.push(`independent controller deadline enforced (${lease.state})`)
+
   const gone = service.run('native-live-check', 'target-exit', { targetId: identity.id, durationMs: 1_000, source: 'send({ready:true})' }, new AbortController().signal)
   await delay(200)
-  const targetExit = new Promise(resolve => target.once('exit', resolve))
   target.kill('SIGKILL')
   await targetExit
   const exited = await gone
@@ -124,9 +134,9 @@ send({kind:'changed',value:call(5)});
 } finally {
   service.dispose()
   reader.close()
-  if (target.exitCode === null) {
+  if (target.exitCode === null && target.signalCode === null) {
     target.kill('SIGKILL')
-    await new Promise(resolve => target.once('exit', resolve))
   }
+  await targetExit
   await rm(directory, { recursive: true, force: true })
 }

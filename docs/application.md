@@ -7,7 +7,7 @@ in the provider guides.
 ## Native instrumentation
 
 The initial local Linux backend offers process discovery, finite native inspection and custom
-Frida probes through a separate controller. Each experiment unloads/detaches before returning;
+Frida probes through a separate controller. Each experiment attempts unload/detach before returning;
 receipts, cancellation and event budgets belong to the main-process service. Custom probes can
 modify or crash the target. Browser semantics remain in the browser/CDP services. See
 [implemented contracts and validation](native-instrumentation.md).
