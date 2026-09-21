@@ -365,9 +365,11 @@ and new chat at once and survives typing, sending, turns, pane changes, and rest
 composer accepts and sends drafts on its single line; its attachment chips and the project rail
 (folder icon and name) sit above the pill instead of inside it, and the model picker
 (`composer.model`) sits at the pill's left edge with the same menu as the full view. Right-clicking
-any tile header or tab opens a context menu with **Maximize tile** (`layout.maximize`), **Split right**
-(`layout.split-right`), **Split below** (`layout.split-below`), **New chat** (`layout.new-chat`), and
-**Close tab** / **Hide pane** (`layout.pane-hide`). Ctrl/Cmd+W uses that same close or hide
+any tile header or tab opens a context menu with **Full height** / **Restore layout**
+(`layout.maximize` / `layout.restore`), **Chat beside…** / **Chat below…** (`layout.split-right` /
+`layout.split-below`), **Rename…**, optional **Pin chat**, **Regenerate title…**, pause/resume when
+the tab’s task is running or paused, and separate **Close tab** (`layout.tab-close`, Ctrl/Cmd+W) and
+**Hide pane** (`layout.pane-hide`) rows with subtitles when tasks continue. Ctrl/Cmd+W uses that same close or hide
 path for the focused chat. Double-clicking a tile header also toggles
 maximize mode. Close/hide tooltips explain that these actions do not stop tasks and name
 running or paused state when available. Successful closes and hides show a

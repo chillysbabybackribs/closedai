@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ContextMenu } from 'radix-ui'
-import { Columns2, Maximize2, MessageSquarePlus, Minimize2, Pencil, Plus, Rows2, Sparkles, X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
+import type { ChatRowSummary } from '../../shared/chat-peers.js'
+import { ChatLayoutContextMenu } from './layout-context-menu.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { ChatTabs } from './chat-tabs.js'
 import { LayoutDivider } from './layout-divider.js'
@@ -11,7 +13,7 @@ import { browserDropAt, browserDropPreview, sameBrowserDrop, type BrowserDrop } 
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onRetryChatTitle, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, chatRow, canRegenerateTitle, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onRetryChatTitle, onTogglePin, onPauseTab, onResumeTab, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
@@ -22,6 +24,8 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
   onDragActive: (active: boolean) => void
   title: (id: string) => string
   activity?: (id: string) => TabActivity
+  chatRow?: (id: string) => ChatRowSummary | undefined
+  canRegenerateTitle?: (id: string) => boolean
   renderPane: (id: string) => ReactNode
   onSelect: (id: string) => void
   onSelectTab: (id: string) => void
@@ -29,6 +33,9 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
   onNewChat: (id: string) => void
   onRenameChat?: (id: string) => void
   onRetryChatTitle?: (id: string) => void
+  onTogglePin?: (id: string, pinned: boolean) => void
+  onPauseTab?: (id: string) => void
+  onResumeTab?: (id: string) => void
   onDock: (id: string | null, target: string, edge: DockEdge | null, singleTab?: boolean) => void
   onHide: (id: string) => void
   onResize: (id: string, ratio: number) => void
@@ -169,7 +176,9 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
         const tileRect = isThisTileSolo ? soloRect : rect
         const tileKey = activeId === BROWSER_PANE_ID ? BROWSER_PANE_ID : (tabs[0] ?? activeId)
         const hideHint = paneHideHint(tabs.map((id) => activity?.(id)?.state))
-        const closeOrHideHint = tabs.length > 1 ? tabCloseHint(activity?.(activeId)?.state) : hideHint
+        const closeHint = tabCloseHint(activity?.(activeId)?.state)
+        const row = chatRow?.(activeId)
+        const regenerate = canRegenerateTitle?.(activeId) ?? false
         return <section key={tileKey}
           className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID ? undefined : activeId}
           data-solo={isThisTileSolo ? 'true' : undefined}
@@ -258,89 +267,21 @@ export function ChatCanvas({ tree, selectedId, busy, notice, browserVisible, bro
                 </button>
               </header>
             </ContextMenu.Trigger>
-            <ContextMenu.Portal>
-              <ContextMenu.Content className="titlebar-menu-content chat-layout-context-menu" loop>
-                {isThisTileSolo ? (
-                  <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.restore" data-ui-key={activeId}
-                    onSelect={() => setSoloPaneId(null)}>
-                    <div className="chat-layout-menu-item-left">
-                      <Minimize2 size={14} aria-hidden="true" />
-                      <span>Restore split grid</span>
-                    </div>
-                    <span className="titlebar-menu-shortcut">Esc</span>
-                  </ContextMenu.Item>
-                ) : (
-                  <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.maximize" data-ui-key={activeId}
-                    disabled={!canMaximize}
-                    onSelect={() => setSoloPaneId(activeId)}>
-                    <div className="chat-layout-menu-item-left">
-                      <Maximize2 size={14} aria-hidden="true" />
-                      <span>Maximize tile</span>
-                    </div>
-                  </ContextMenu.Item>
-                )}
-                <ContextMenu.Separator className="titlebar-menu-separator" />
-                <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.split-right" data-ui-key={activeId}
-                  onSelect={() => {
-                    if (soloTile) setSoloPaneId(null)
-                    onDock(null, activeId, 'right')
-                  }}>
-                  <div className="chat-layout-menu-item-left">
-                    <Columns2 size={14} aria-hidden="true" />
-                    <span>Split right</span>
-                  </div>
-                </ContextMenu.Item>
-                <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.split-below" data-ui-key={activeId}
-                  onSelect={() => {
-                    if (soloTile) setSoloPaneId(null)
-                    onDock(null, activeId, 'bottom')
-                  }}>
-                  <div className="chat-layout-menu-item-left">
-                    <Rows2 size={14} aria-hidden="true" />
-                    <span>Split below</span>
-                  </div>
-                </ContextMenu.Item>
-                {onRenameChat && (
-                  <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.rename" data-ui-key={activeId}
-                    onSelect={() => onRenameChat(activeId)}>
-                    <div className="chat-layout-menu-item-left">
-                      <Pencil size={14} aria-hidden="true" />
-                      <span>Rename chat</span>
-                    </div>
-                  </ContextMenu.Item>
-                )}
-                {onRetryChatTitle && (
-                  <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.retry-title" data-ui-key={activeId}
-                    onSelect={() => onRetryChatTitle(activeId)}>
-                    <div className="chat-layout-menu-item-left">
-                      <Sparkles size={14} aria-hidden="true" />
-                      <span>Generate title</span>
-                    </div>
-                  </ContextMenu.Item>
-                )}
-                <ContextMenu.Separator className="titlebar-menu-separator" />
-                <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.new-chat" data-ui-key={activeId}
-                  onSelect={() => onNewChat(activeId)}>
-                  <div className="chat-layout-menu-item-left">
-                    <MessageSquarePlus size={14} aria-hidden="true" />
-                    <span>New chat</span>
-                  </div>
-                </ContextMenu.Item>
-                <ContextMenu.Item className="titlebar-menu-item" data-ui="layout.pane-hide" data-ui-key={activeId}
-                  title={`${tabs.length > 1 ? 'Close tab' : 'Hide pane'} · ${closeOrHideHint}`}
-                  disabled={busy || (chatCount < 2 && tabs.length < 2)}
-                  onSelect={() => {
-                    if (soloTile) setSoloPaneId(null)
-                    if (tabs.length > 1) onCloseTab(activeId)
-                    else onHide(activeId)
-                  }}>
-                  <div className="chat-layout-menu-item-left">
-                    <X size={14} aria-hidden="true" />
-                    <span>{tabs.length > 1 ? 'Close tab' : 'Hide pane'}</span>
-                  </div>
-                </ContextMenu.Item>
-              </ContextMenu.Content>
-            </ContextMenu.Portal>
+            <ChatLayoutContextMenu activeId={activeId} tabs={tabs} chatCount={chatCount} busy={busy}
+              isTileSolo={isThisTileSolo} canMaximize={canMaximize}
+              hideHint={hideHint} closeHint={closeHint} tabActivity={activity?.(activeId)}
+              pinned={row?.pinnedAt != null} canRegenerateTitle={regenerate}
+              onRestore={() => setSoloPaneId(null)}
+              onMaximize={() => setSoloPaneId(activeId)}
+              onSplitRight={() => { if (soloTile) setSoloPaneId(null); onDock(null, activeId, 'right') }}
+              onSplitBelow={() => { if (soloTile) setSoloPaneId(null); onDock(null, activeId, 'bottom') }}
+              onRename={onRenameChat ? () => onRenameChat(activeId) : undefined}
+              onRetryTitle={onRetryChatTitle ? () => onRetryChatTitle(activeId) : undefined}
+              onTogglePin={onTogglePin ? () => onTogglePin(activeId, row?.pinnedAt == null) : undefined}
+              onPause={onPauseTab ? () => onPauseTab(activeId) : undefined}
+              onResume={onResumeTab ? () => onResumeTab(activeId) : undefined}
+              onCloseTab={() => { if (soloTile) setSoloPaneId(null); onCloseTab(activeId) }}
+              onHide={() => { if (soloTile) setSoloPaneId(null); onHide(activeId) }} />
           </ContextMenu.Root>}
           {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
           {activeId === BROWSER_PANE_ID ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">

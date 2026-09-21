@@ -82,6 +82,15 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         onNewChat={(id) => { onHistoryOpenChange(false); void layout.newChat(id) }}
         onRenameChat={onRenameChat ? (id) => onRenameChat(id, chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat') : undefined}
         onRetryChatTitle={onRetryChatTitle}
+        chatRow={(id) => chat.chats.find((row) => row.paneId === id)}
+        canRegenerateTitle={(id) => {
+          const row = chat.chats.find((entry) => entry.paneId === id)
+          const pane = chat.snapshot.panes?.[id] ?? (id === chat.selectedPaneId ? chat.snapshot.selected : undefined)
+          return Boolean(row?.threadId && pane?.items.some((item) => item.type === 'user'))
+        }}
+        onTogglePin={(id, pinned) => { void chat.sidebar.setChatPinned(id, pinned).catch(() => {}) }}
+        onPauseTab={(id) => { void chat.interruptPane(id) }}
+        onResumeTab={(id) => { void chat.resumePane(id) }}
         onHide={(id) => { void layout.hide(id) }} onResize={layout.resize}
         renderPane={(id) => <WorkspaceChat paneId={id} snapshot={chat.snapshot} dispatch={chat.dispatch}
           appearance={appearance} historyOpen={historyOpen && chat.selectedPaneId === id}

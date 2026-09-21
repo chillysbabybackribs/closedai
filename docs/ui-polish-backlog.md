@@ -35,7 +35,7 @@ are candidates, not instructions to implement them all. Tackle one agreed item a
 | Composer actions | Clarify or consolidate new-chat and attachment actions. |
 | History | Return-to-conversation action; evaluate consolidation with the full history panel. |
 | Close/hide/archive | Done: short Undo after trash/archive; no confirm dialog. |
-| Layout | Make existing split/maximize actions discoverable; consider consolidation or presets. |
+| Layout | Tab context menu copy/icons refreshed; consider header hide icon parity and layout presets. |
 | Visual hierarchy | Clarify the focused chat and secondary text with restrained contrast. |
 | Empty chat | Assess whether optional first-use guidance earns its space. |
 | Search | Clarify title-only scope; consider project filters or conversation-content search. |
