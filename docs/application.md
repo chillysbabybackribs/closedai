@@ -458,16 +458,18 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   Provider sessions and the main-process transcript remain complete for continuation,
   branching, and peer reads; this is display paging, not model compaction. Codex history replay
   emits one replacement instead of streaming old items again.
-- The model menu opens on the providers, one row each, naming the model in use where that
-  provider owns the selection. Choosing a row replaces the same panel with that provider's
-  models under a sticky header that returns to the list; the selected model's reasoning efforts
-  stay on the provider view's root, since they belong to the selection rather than to a
-  provider. Each provider view opens on that provider's top few models, ranked by locally
+- The model menu is two columns in one panel: providers on the left, one row each, naming the
+  model in use where that provider owns the selection, and the hovered provider's models on the
+  right. It opens on the selected model's provider; hovering, focusing, or selecting another
+  provider row switches the right column without closing anything. The selected model's
+  reasoning efforts sit under the provider list, since they belong to the selection rather than
+  to a provider. The models column opens on that provider's top few models, ranked by locally
   recorded picker use and always including the selected one, with the rest one row away; a
   single remaining model is shown rather than hidden. The panel is one fixed width, bounded by
   the chat pane it is given as a collision boundary, so the picker never reaches over the
   browser column and never triggers the freeze-and-still path that a DOM overlay across the
-  divider requires.
+  divider requires; that is also why the models are a column inside the panel rather than a
+  flyout beside it.
 - Tool activity is grouped into expandable step lists with arguments, output, status, and timing
   when available. File modifications display interactive diff viewers supporting unified and
   side-by-side split modes, collapsible hunks with expand/collapse all, individual hunk copying,
