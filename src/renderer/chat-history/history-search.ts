@@ -20,14 +20,21 @@ export function activityAt(row: ChatRowSummary): number {
   return row.lastTurnEndedAt ?? row.updatedAt
 }
 
-export function chatSearchMeta(hit: ChatActivityHit, formatTime: (ms: number) => string): string {
-  const when = hit.status === 'completed' && hit.completedAt != null
+/** The row's live state or, for idle chats, when it was last active. */
+export function chatSearchWhen(hit: ChatActivityHit, formatTime: (ms: number) => string): string {
+  return hit.status === 'completed' && hit.completedAt != null
     ? `Finished ${formatTime(hit.completedAt).toLowerCase()}`
     : hit.status === 'running' ? 'Running'
       : hit.status === 'paused' ? 'Paused'
         : formatTime(activityAt(hit.row))
-  const place = hit.status === 'closed' ? 'Closed' : hit.status === 'open' ? 'Open' : null
-  return [hit.folder, place, when].filter(Boolean).join(' · ')
+}
+
+export function chatSearchPlace(hit: ChatActivityHit): 'Open' | 'Closed' | null {
+  return hit.status === 'closed' ? 'Closed' : hit.status === 'open' ? 'Open' : null
+}
+
+export function chatSearchMeta(hit: ChatActivityHit, formatTime: (ms: number) => string): string {
+  return [hit.folder, chatSearchPlace(hit), chatSearchWhen(hit, formatTime)].filter(Boolean).join(' · ')
 }
 
 export type ChatSearchSection = {
