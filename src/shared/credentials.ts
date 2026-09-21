@@ -280,6 +280,8 @@ export type CredentialSummary = {
   updatedAt: number
   /** False when the OS keychain was unavailable and secrets fell back to plain storage. */
   encrypted: boolean
+  /** Whether agents may read this entry through `credential_vault.read`; on for every existing record. */
+  agentAccess: boolean
   fields: CredentialFieldSummary[]
 }
 
