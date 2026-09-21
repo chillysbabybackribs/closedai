@@ -1,5 +1,5 @@
 import type { PageFetchRequest, PageFetchResult } from '../../browser-page-fetch.js'
-import type { PageReadiness, PageReadyResult, PageText, PageReadOptions } from '../../browser-page-ready.js'
+import type { PageReadiness, PageReadyResult, PageReadOutcome, PageReadOptions } from '../../browser-page-ready.js'
 import type { PageEvaluateRequest, PageEvaluateResult, PageQueryRequest, PageQueryResult } from '../../browser-page-evaluate.js'
 import type { ConsoleFilter, ConsoleListing } from '../../browser-network/console-log.js'
 import type { BrowserTabInfo } from '../../../shared/types.js'
@@ -17,11 +17,13 @@ export type NavigateOutcome =
 export type BrowserToolHost = {
   listTabs(): BrowserTabInfo[]
   /**
-   * Active tab when `tabId` is omitted. Null when the tab does not exist or has no page.
+   * Active tab when `tabId` is omitted. Null only when the tab does not exist; a page that
+   * answered with no text returns the reason instead, so the caller never has to guess which
+   * of "bad selector", "no match", and "no page" it was.
    * `raw` returns the text unsliced (up to a hard ceiling) so the caller can bound it in a
    * way that suits the content — structurally when it is JSON, rather than cutting it blind.
    */
-  readPage(tabId: string | undefined, options: PageReadOptions, signal?: AbortSignal): Promise<PageText | null>
+  readPage(tabId: string | undefined, options: PageReadOptions, signal?: AbortSignal): Promise<PageReadOutcome | null>
   /** Fetch from inside the tab, inheriting its origin and session. Null when the tab is gone. */
   fetchPage(tabId: string | undefined, request: PageFetchRequest): Promise<PageFetchResult | null>
   navigate(url: string, options: { tabId?: string; newTab: boolean; ready: PageReadiness }): Promise<NavigateOutcome>

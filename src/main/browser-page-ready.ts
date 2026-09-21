@@ -32,6 +32,12 @@ export type PageReadyResult = {
   elapsedMs: number
   url: string
   title: string
+  /**
+   * The page rejected the selector itself. The wait stops at once rather than polling a
+   * condition that can never become true, and the caller must report bad syntax rather than
+   * claiming the element is absent.
+   */
+  selectorError?: string
 }
 
 export type PageText = {
@@ -50,12 +56,46 @@ export type PageText = {
 
 export type PageReadOptions = { selector?: string; maxChars: number; raw?: boolean; pdfPage?: number }
 
+/**
+ * Why a read produced no text. The page distinguishes these, so the tool reports the one that
+ * happened instead of collapsing them into "nothing matched": a selector the page rejected as
+ * invalid, a valid selector with no match, and a page that never answered at all.
+ */
+export type PageReadProblem = { problem: 'selector-invalid' | 'selector-missing' | 'unavailable'; detail?: string }
+
+/** Text, or the reason there is none. `null` is reserved for a page that no longer exists. */
+export type PageReadOutcome = PageText | PageReadProblem
+
+export function readProblemOf(outcome: PageReadOutcome | null): PageReadProblem | null {
+  return outcome && 'problem' in outcome ? outcome : null
+}
+
+export function pageTextOf(outcome: PageReadOutcome | null): PageText | null {
+  return outcome && !('problem' in outcome) ? outcome : null
+}
+
+/**
+ * The selectors models reach for first are Playwright's and jQuery's, which `querySelector`
+ * rejects outright. Naming the alternative costs one line and saves the retry loop.
+ */
+export const SELECTOR_ADVICE =
+  'Only standard CSS works here — :has-text(), :contains(), :visible, text= and XPath do not. ' +
+  'Match on text with embedded_browser.script query and text_contains.'
+
 export const IDLE_STABLE_MS = 200
 const POLL_MS = 75
 const PROBE_TIMEOUT_MS = 1_000
 const READ_TIMEOUT_MS = 3_000
 
-type Probe = { readyState: string; textLength: number; url: string; title: string; selector: boolean | null; text: boolean | null }
+type Probe = {
+  readyState: string
+  textLength: number
+  url: string
+  title: string
+  selector: boolean | null
+  text: boolean | null
+  selectorError?: string
+}
 
 async function runWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
   let timer: NodeJS.Timeout | undefined
@@ -82,6 +122,7 @@ export async function waitForPageReady(
   let lastChangeAt = started
   for (;;) {
     const probe = await runProbe(contents, readiness)
+    if (probe?.selectorError) return selectorErrorResult(probe, now() - started)
     if (probe) {
       last = probe
       if (probe.textLength !== lastLength) {
@@ -125,6 +166,7 @@ export async function probePageReady(
       title: ''
     }
   }
+  if (probe.selectorError) return selectorErrorResult(probe, 0)
   const conditionMet = conditionResult(probe)
   const reached = readinessReached(readiness.until, probe.readyState, 0)
   return {
@@ -151,18 +193,24 @@ const RAW_CEILING = 1_000_000
 export async function readPageText(
   contents: ScriptRunner,
   options: { selector?: string; maxChars: number; raw?: boolean }
-): Promise<PageText | null> {
+): Promise<PageReadOutcome | null> {
   if (contents.isDestroyed()) return null
   const script = `(() => {
     const selector = ${JSON.stringify(options.selector ?? '')};
-    const root = selector ? document.querySelector(selector) : document.body;
-    if (!root) return null;
+    let root = document.body;
+    if (selector) {
+      try { root = document.querySelector(selector); }
+      catch (error) { return { selectorError: String(error && error.message ? error.message : error) }; }
+    }
+    if (!root) return { selectorMissing: true };
     return { url: location.href, title: document.title, readyState: document.readyState, text: root.innerText || '' };
   })()`
   try {
     const raw = await runWithTimeout(contents.executeJavaScript(script, true), READ_TIMEOUT_MS)
     const record = recordOf(raw)
-    if (!record) return null
+    if (!record) return { problem: 'unavailable' }
+    if (typeof record.selectorError === 'string') return { problem: 'selector-invalid', detail: record.selectorError }
+    if (record.selectorMissing === true) return { problem: 'selector-missing' }
     const text = tidyText(stringOf(record.text))
     const limit = options.raw ? RAW_CEILING : options.maxChars
     const truncated = text.length > limit
@@ -174,7 +222,7 @@ export async function readPageText(
       truncated
     }
   } catch {
-    return null
+    return { problem: 'unavailable' }
   }
 }
 
@@ -182,6 +230,9 @@ export function describeReadiness(readiness: PageReadiness, result: PageReadyRes
   const seconds = (result.elapsedMs / 1000).toFixed(1)
   const state = result.readyState === 'complete' ? 'complete' : result.readyState === 'interactive' ? 'dom-ready' : result.readyState
   const parts: string[] = []
+  if (result.selectorError) {
+    return `The page rejected ${JSON.stringify(readiness.selector ?? '')} as a CSS selector, so the wait stopped without testing it: ${result.selectorError}\n${SELECTOR_ADVICE}`
+  }
   if (result.reached) {
     parts.push(`Ready: ${state}${readiness.until === 'idle' ? ' and idle' : ''} after ${seconds}s`)
   } else {
@@ -201,12 +252,22 @@ async function runProbe(contents: ScriptRunner, readiness: PageReadiness): Promi
     const needText = ${needText};
     const body = needText ? document.body : null;
     const text = body ? body.innerText || '' : '';
+    let matched = null;
+    if (selector) {
+      try { matched = Boolean(document.querySelector(selector)); }
+      catch (error) {
+        return {
+          selectorError: String(error && error.message ? error.message : error),
+          readyState: document.readyState, textLength: text.length, url: location.href, title: document.title
+        };
+      }
+    }
     return {
       readyState: document.readyState,
       textLength: text.length,
       url: location.href,
       title: document.title,
-      selector: selector ? Boolean(document.querySelector(selector)) : null,
+      selector: matched,
       text: needle ? text.includes(needle) : null
     };
   })()`
@@ -220,7 +281,8 @@ async function runProbe(contents: ScriptRunner, readiness: PageReadiness): Promi
       url: stringOf(record.url),
       title: stringOf(record.title),
       selector: typeof record.selector === 'boolean' ? record.selector : null,
-      text: typeof record.text === 'boolean' ? record.text : null
+      text: typeof record.text === 'boolean' ? record.text : null,
+      ...(typeof record.selectorError === 'string' ? { selectorError: record.selectorError } : {})
     }
   } catch {
     // The frame is navigating or tearing down; the next poll sees the new document.
@@ -232,6 +294,23 @@ function readinessReached(until: PageReadiness['until'], readyState: string, sta
   if (until === 'dom_ready') return readyState !== 'loading'
   if (until === 'load') return readyState === 'complete'
   return readyState === 'complete' && stableForMs >= IDLE_STABLE_MS
+}
+
+/**
+ * A selector the page cannot parse will never match, so the wait ends here. `conditionMet` stays
+ * false, but `selectorError` is what the caller reports: "not found" would be a claim about the
+ * page that was never actually tested.
+ */
+function selectorErrorResult(probe: Probe, elapsedMs: number): PageReadyResult {
+  return {
+    readyState: probe.readyState,
+    reached: false,
+    conditionMet: false,
+    elapsedMs,
+    url: probe.url,
+    title: probe.title,
+    selectorError: probe.selectorError
+  }
 }
 
 function conditionResult(probe: Probe): boolean | null {

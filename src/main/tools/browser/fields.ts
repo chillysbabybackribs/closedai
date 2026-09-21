@@ -17,7 +17,7 @@ export const tabIdField: JsonObject = {
 export const selectorField: JsonObject = {
   type: 'string',
   minLength: 1,
-  description: 'CSS selector in the main frame.'
+  description: 'Standard CSS selector in the main frame. Playwright/jQuery forms (:has-text, :contains, :visible, text=, XPath) are rejected by the page; match on text with script query and text_contains.'
 }
 
 export const maxCharsField: JsonObject = {
@@ -42,7 +42,7 @@ export const waitUntilField: JsonObject = {
 export const waitForSelectorField: JsonObject = {
   type: 'string',
   minLength: 1,
-  description: 'Also wait until this CSS selector matches an element.'
+  description: 'Also wait until this standard CSS selector matches an element. :has-text(), :contains(), :visible, text= and XPath are not CSS and fail immediately.'
 }
 
 export const waitForTextField: JsonObject = {
@@ -55,7 +55,7 @@ export const timeoutMsField: JsonObject = {
   type: 'integer',
   minimum: 1_000,
   maximum: MAX_WAIT_MS,
-  description: `Milliseconds to wait before giving up; default ${DEFAULT_WAIT_MS}. The result says whether the wait succeeded.`
+  description: `Milliseconds to wait before giving up; default ${DEFAULT_WAIT_MS}. The result says whether the wait succeeded, and an unmet wait comes back as an error naming what was still missing.`
 }
 
 export const readinessProperties: Record<string, JsonObject> = {

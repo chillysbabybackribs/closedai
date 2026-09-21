@@ -1,6 +1,6 @@
 import type { BrowserService } from './browser-service.js'
 import { fetchInPage, type PageFetchRequest, type PageFetchResult } from './browser-page-fetch.js'
-import { needsReadinessPoll, probePageReady, readPageText, waitForPageReady, type PageReadiness, type PageReadyResult, type PageText, type PageReadOptions } from './browser-page-ready.js'
+import { needsReadinessPoll, probePageReady, readPageText, waitForPageReady, type PageReadiness, type PageReadyResult, type PageReadOutcome, type PageReadOptions } from './browser-page-ready.js'
 import { readNativePdf } from './browser-pdf/native-reader.js'
 import { evaluateInPage, queryInPage, type PageEvaluateRequest, type PageEvaluateResult, type PageQueryRequest, type PageQueryResult } from './browser-page-evaluate.js'
 import type { ConsoleFilter, ConsoleListing } from './browser-network/console-log.js'
@@ -19,7 +19,7 @@ export class BrowserPageAccess implements BrowserToolHost {
     tabId: string | undefined,
     options: PageReadOptions,
     signal?: AbortSignal
-  ): Promise<PageText | null> {
+  ): Promise<PageReadOutcome | null> {
     const contents = this.browser()?.contentsOf(tabId)
     if (!contents) return null
     if (!options.selector) {

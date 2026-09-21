@@ -1,3 +1,4 @@
+import { pageTextOf } from '../../browser-page-ready.js'
 import type { ToolAction } from '../action-tool.js'
 import { jsonResult } from '../json-result.js'
 import { failureResult, numberArg, stringArg, type JsonObject } from '../tool.js'
@@ -86,7 +87,8 @@ async function readCurrentPage(
   host: ReturnType<typeof requireBrowser>,
   tabId: string | undefined
 ): Promise<ExtractSource | string | null> {
-  const page = await host.readPage(tabId, { maxChars: MAX_CHARS, raw: true })
+  // No selector here, so the only outcome worth distinguishing from text is "no page".
+  const page = pageTextOf(await host.readPage(tabId, { maxChars: MAX_CHARS, raw: true }))
   if (!page) return null
   const { json, isJson } = parseBody(page.text, null)
   if (!isJson) return `${page.url} is not a JSON document. Use read_page for rendered text, or pass a url to fetch an API.`

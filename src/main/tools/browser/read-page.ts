@@ -1,3 +1,4 @@
+import { pageTextOf, readProblemOf, SELECTOR_ADVICE } from '../../browser-page-ready.js'
 import type { ToolAction } from '../action-tool.js'
 import { failureResult, numberArg, stringArg, textResult, usageResult } from '../tool.js'
 import { truncateText } from '../truncate-json.js'
@@ -28,11 +29,19 @@ export function readPageAction(browser: BrowserHostProvider): ToolAction {
       const pdfPage = input.pdf_page === undefined ? undefined : numberArg(input, 'pdf_page', 1)
       if (selector && pdfPage !== undefined) return usageResult('Cannot combine selector and pdf_page; selectors apply only to HTML.')
       const host = requireBrowser(browser)
-      const page = await host.readPage(tabId, { selector, maxChars, raw: true, ...(pdfPage === undefined ? {} : { pdfPage }) }, context.signal)
-      if (!page) {
-        if (selector) return failureResult(`Nothing matches selector ${JSON.stringify(selector)}`)
-        return missingTabResult(host, tabId)
+      const outcome = await host.readPage(tabId, { selector, maxChars, raw: true, ...(pdfPage === undefined ? {} : { pdfPage }) }, context.signal)
+      if (!outcome) return missingTabResult(host, tabId)
+      // Each of these used to arrive as the same null and was reported as "nothing matches",
+      // which is a claim about the page that only one of them supports.
+      const problem = readProblemOf(outcome)
+      if (problem?.problem === 'selector-invalid') {
+        return usageResult(`The page rejected ${JSON.stringify(selector)} as a CSS selector: ${problem.detail}\n${SELECTOR_ADVICE}`)
       }
+      if (problem?.problem === 'selector-missing') {
+        return failureResult(`Nothing matches selector ${JSON.stringify(selector)}. The selector is valid, so the element is absent or not rendered yet; wait_for it, or omit selector to read the whole page.`)
+      }
+      if (problem) return failureResult('The page did not answer the read. It may be navigating, or still loading; call wait_for and read again.')
+      const page = pageTextOf(outcome)!
       const header = `Title: ${page.title || 'Untitled'}\nURL: ${page.url}\nLoad state: ${page.readyState}`
       if (page.pdf) {
         const pdf = page.pdf

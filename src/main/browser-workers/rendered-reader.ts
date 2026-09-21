@@ -1,5 +1,5 @@
 import type { WebContents } from 'electron'
-import { readPageText, waitForPageReady, type PageText, type ScriptRunner } from '../browser-page-ready.js'
+import { pageTextOf, readPageText, waitForPageReady, type PageText, type ScriptRunner } from '../browser-page-ready.js'
 import type { BrowserWorkerPool, Worker } from './worker-pool.js'
 
 export type RenderedWorker = Worker & { contents(): (ScriptRunner & Pick<WebContents, 'stop'>) | null }
@@ -36,7 +36,7 @@ export async function readRenderedPage(
       signal.throwIfAborted()
       await waitForPageReady(contents(), { until: 'idle', timeoutMs: SETTLE_TIMEOUT_MS })
       signal.throwIfAborted()
-      const page = await readPageText(contents(), { maxChars: maxChars === 0 ? Number.MAX_SAFE_INTEGER : maxChars })
+      const page = pageTextOf(await readPageText(contents(), { maxChars: maxChars === 0 ? Number.MAX_SAFE_INTEGER : maxChars }))
       if (!page) throw new Error('The rendered page did not answer')
       return page
     } finally {
