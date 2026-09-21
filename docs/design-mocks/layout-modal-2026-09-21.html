@@ -92,7 +92,7 @@ keep dragging/resizing afterwards.</p>
 <div class="stage" id="stageC"></div>
 
 <script>
-const W = 1920, H = 1014, DIV = 14, MIN_W = 300, MIN_H = 280, GOOD_W = 440, GOOD_H = 600, ASPECT = 0.8, REALISTIC_CAP = 12;
+const W = 1920, H = 1014, DIV = 14, MIN_W = 300, MIN_H = 280, GOOD_W = 440, GOOD_H = 480, REALISTIC_CAP = 12;
 
 function chooseGrid(n, w, h) {
   let best = null;
@@ -101,7 +101,7 @@ function chooseGrid(n, w, h) {
     const tw = (w - (cols - 1) * DIV) / cols, th = (h - (rows - 1) * DIV) / rows;
     if (tw < MIN_W || th < MIN_H) continue;
     const comfort = Math.min(tw / GOOD_W, 1) * Math.min(th / GOOD_H, 1);
-    const empty = cols * rows - n, aspectGap = Math.abs(tw / th - ASPECT);
+    const empty = cols * rows - n, aspectGap = Math.abs(Math.log(tw / th)); // squarer tiles win ties
     const cand = { cols, rows, tw, th, comfort, empty, aspectGap };
     if (!best || cand.comfort > best.comfort + 1e-6
       || (Math.abs(cand.comfort - best.comfort) < 1e-6 && (cand.empty < best.empty || (cand.empty === best.empty && cand.aspectGap < best.aspectGap)))) best = cand;
