@@ -22,10 +22,11 @@ function PresetWireframe({ preset, size }: { preset: LayoutPreset; size: CanvasS
     left: `${(rect.x / extent.width) * 100}%`, top: `${(rect.y / extent.height) * 100}%`,
     width: `${(rect.width / extent.width) * 100}%`, height: `${(rect.height / extent.height) * 100}%`
   })
+  let slot = 0
   return <div className="layout-preset-wire" style={{ aspectRatio: `${extent.width} / ${extent.height}` }} aria-hidden="true">
     {panes.map((pane) => pane.id === BROWSER_PANE_ID
-      ? <div key={pane.id} className="layout-preset-wire-browser" style={percent(pane.rect)}><span>browser</span></div>
-      : <div key={pane.id} className="layout-preset-wire-chat" style={percent(pane.rect)} />)}
+      ? <div key={pane.id} className="layout-preset-wire-browser" style={percent(pane.rect)}><span>Browser</span></div>
+      : <div key={pane.id} className="layout-preset-wire-chat" style={percent(pane.rect)}><span>{++slot}</span></div>)}
   </div>
 }
 
@@ -61,14 +62,24 @@ function LayoutPresetsForm({ canvas, tileCount, onClose, onApply }: PresetFormPr
   }
   const centreHint = tileHint(canvas, { kind: 'browser-centre' })
   const gridHint = tileHint(canvas, { kind: 'grid', count: gridCount })
-  return <>
+  const apply = (): void => { onApply(preset); onClose() }
+  return <div className="layout-preset-form" onKeyDown={(event) => {
+    const typing = (event.target as HTMLElement).tagName === 'INPUT'
+    if (event.key === 'Enter' && !typing) { event.preventDefault(); apply() }
+    if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !typing) {
+      event.preventDefault()
+      const next = kind === 'grid' ? 'browser-centre' : 'grid'
+      setKind(next)
+      ;(event.currentTarget.querySelector(`[data-ui="layout.preset-${next}"]`) as HTMLElement | null)?.focus()
+    }
+  }}>
     <div className="layout-preset-options" role="radiogroup" aria-label="Layout">
       <div className="layout-preset-card" data-selected={kind === 'browser-centre'}>
         <button type="button" role="radio" aria-checked={kind === 'browser-centre'} className="layout-preset-choice"
           data-ui="layout.preset-browser-centre" onClick={() => setKind('browser-centre')}>
           <span className="layout-preset-title"><span className="layout-preset-radio" aria-hidden="true" />Browser centre</span>
           <PresetWireframe preset={{ kind: 'browser-centre' }} size={canvas} />
-          <span className="layout-preset-text">Browser in the middle with two stacked chats on each side.</span>
+          <span className="layout-preset-text">The browser in the middle, two stacked chats on each side.</span>
         </button>
         <div className="layout-preset-row">
           <span className={`layout-preset-hint${centreHint.tight ? ' is-tight' : ''}`}>{centreHint.text}</span>
@@ -79,7 +90,7 @@ function LayoutPresetsForm({ canvas, tileCount, onClose, onApply }: PresetFormPr
           data-ui="layout.preset-grid" onClick={() => setKind('grid')}>
           <span className="layout-preset-title"><span className="layout-preset-radio" aria-hidden="true" />Chats only</span>
           <PresetWireframe preset={{ kind: 'grid', count: gridCount }} size={canvas} />
-          <span className="layout-preset-text">Browser hidden; the globe button brings it back. Chats in a balanced grid for this window.</span>
+          <span className="layout-preset-text">Chats in a balanced grid for this window. The browser is hidden; the globe button brings it back.</span>
         </button>
         <div className="layout-preset-row">
           <label className="layout-preset-count" htmlFor="layout-preset-count">Chats</label>
@@ -94,7 +105,7 @@ function LayoutPresetsForm({ canvas, tileCount, onClose, onApply }: PresetFormPr
             <button type="button" data-ui="layout.preset-grid-increment" aria-label="More chats"
               disabled={gridCount >= capacity} onClick={() => commitCount(gridCount + 1)}>+</button>
           </span>
-          <span className={`layout-preset-hint${gridHint.tight ? ' is-tight' : ''}`}>{gridHint.text} · up to {capacity} here</span>
+          <span className={`layout-preset-hint${gridHint.tight ? ' is-tight' : ''}`}>{gridHint.text} · up to {capacity} on this window</span>
         </div>
       </div>
     </div>
@@ -102,11 +113,12 @@ function LayoutPresetsForm({ canvas, tileCount, onClose, onApply }: PresetFormPr
       <span className="layout-preset-note">{slotNote(presetSlots(preset), tileCount)}</span>
       <span className="layout-preset-actions">
         <button type="button" className="layout-preset-btn" data-ui="layout.preset-cancel" onClick={onClose}>Cancel</button>
-        <button type="button" className="layout-preset-btn is-primary" data-ui="layout.preset-apply"
-          onClick={() => { onApply(preset); onClose() }}>Apply</button>
+        <button type="button" className="layout-preset-btn is-primary" data-ui="layout.preset-apply" onClick={apply}>
+          Apply layout
+        </button>
       </span>
     </div>
-  </>
+  </div>
 }
 
 export function LayoutPresetsDialog({ open, size, tileCount, onClose, onApply }: {
@@ -120,7 +132,10 @@ export function LayoutPresetsDialog({ open, size, tileCount, onClose, onApply }:
   const canvas = size.width > 0 && size.height > 0 ? size : FALLBACK_CANVAS
   return <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
     <DialogContent className="layout-presets-dialog" data-ui="layout.presets-dialog">
-      <DialogTitle>Workspace layout</DialogTitle>
+      <div className="layout-preset-heading">
+        <DialogTitle>Workspace layout</DialogTitle>
+        <span className="layout-preset-canvas">{canvas.width} × {canvas.height} px canvas</span>
+      </div>
       <DialogDescription>
         A starting arrangement for this project. It saves like any layout, so drag, resize, split and hide still work afterwards.
       </DialogDescription>
