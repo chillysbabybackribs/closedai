@@ -215,7 +215,7 @@ export function Composer({
           <ComposerCompactRow
             running={running}
             activeTurnId={activeTurnId}
-            selectedModel={selectedModel}
+            selectedModelLabel={models.find((model) => model.id === selectedModel)?.displayName ?? null}
             provider={provider}
             placeholder={placeholder}
             enabled={enabled}

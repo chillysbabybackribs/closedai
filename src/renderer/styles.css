@@ -118,15 +118,12 @@
   --tracking-tight: -0.014em;
   --tracking-display: -0.022em;
 
-  /* Monochrome surface ramp. One material system for the shell: recessed
-     chassis (divider, browser gutter) → chrome cards → the chat
-     canvas, which stays the lightest large surface. */
+  /* Neutral shell surface ramp. Chat overrides this locally with deeper graphite
+     in styles/chat/shell.css to distinguish its canvas from browser chrome. */
   /* Depth ladder, darkest to lightest: chassis (gutters, dividers) is the
      recessed frame; chrome is the tab rail on top of a card; card is the content surface
      you read on; raised is anything that sits on a card (toolbar, bubble, popover).
-     Adjacent steps stay >= 8 luminance points apart so each reads as its own plane. */
-  /* Neutral graphite. The card stays at the original reading value so transcript ink
-     keeps its contrast; depth comes from a deeper chassis under it, not a lighter card. */
+     Raised controls provide contrast against their surrounding surface. */
   --chassis: #0d0d0e;
   --chassis-well: #09090a;
   --surface-chrome: #141415;

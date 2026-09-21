@@ -10,7 +10,8 @@ import { TurnActivityIndicator } from './task-activity.js'
 export type ComposerCompactRowProps = {
   running: boolean
   activeTurnId: string | null
-  selectedModel: string | null
+  /** Display name of the selected model; the raw id carries provider prefixes and [1m] suffixes. */
+  selectedModelLabel: string | null
   provider: ChatProvider
   placeholder?: string
   enabled: boolean
@@ -28,7 +29,7 @@ export type ComposerCompactRowProps = {
 export function ComposerCompactRow({
   running,
   activeTurnId,
-  selectedModel,
+  selectedModelLabel,
   provider,
   placeholder,
   enabled,
@@ -50,7 +51,7 @@ export function ComposerCompactRow({
         </div>
       ) : (
         <div className="prompt-composer-compact-model">
-          <span>{selectedModel ? selectedModel.replace(/^(agy:|claude:)/, '') : CHAT_PROVIDER_LABELS[provider]}</span>
+          <span>{selectedModelLabel ?? CHAT_PROVIDER_LABELS[provider]}</span>
         </div>
       )}
       <PromptInputTextarea
