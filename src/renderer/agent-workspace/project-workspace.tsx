@@ -18,7 +18,10 @@ import {
 } from '../preview/project-files.js'
 import { ProjectIntake, type Message } from '../preview/project-intake.js'
 import { duration } from '../preview/project-time.js'
+import { emptyDirectionRecord, type DirectionRecord } from '../../shared/project/direction.js'
+import type { ProjectPeersSnapshot } from '../../shared/project-peers.js'
 import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
+import { sendAndWaitForPaneTurn } from './wait-pane-turn.js'
 import { hydrateFromSnapshot, shouldHydrateFromSnapshot, type PersistedProjectHydration } from './hydrate-project-snapshot.js'
 import type { ProjectCanvasFixture } from '../preview/project-canvas-fixture.js'
 import { amendTree, applyEvent, buildDispatchPlan, layoutTree, rootNode, type TreeNode } from '../preview/project-tree.js'
@@ -37,7 +40,10 @@ export type ProjectWorkspaceProps = {
   canvasFixture?: ProjectCanvasFixture | null
   /** Durable state from main; hydrates once when the workspace would otherwise start empty. */
   persistedSnapshot?: ProjectSnapshot | null
+  /** Background intake/coordinator chats from main; enables live models when embedded. */
+  projectPeers?: ProjectPeersSnapshot | null
 }
+const INTAKE_START_READY = /start building/i
 const MAP: Location = { kind: 'map' }
 // Prototype pacing: an absence this long offers a catch-up on return; the clock re-renders
 // relative times on this cadence.
@@ -75,7 +81,27 @@ function initialHydration(canvasFixture: ProjectCanvasFixture | null, persistedS
   return null
 }
 
-export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout, composerBridge = null, canvasFixture = null, persistedSnapshot = null }: ProjectWorkspaceProps) {
+function liveIntakeReady(messages: Message[]): boolean {
+  const last = [...messages].reverse().find((message) => message.role === 'coordinator')
+  return last ? INTAKE_START_READY.test(last.text) : false
+}
+
+function directionFromIntake(messages: Message[]): DirectionRecord {
+  const users = messages.filter((message) => message.role === 'user').map((message) => message.text)
+  const summary = [...messages].reverse().find((message) => message.role === 'coordinator')?.text ?? ''
+  const base = emptyDirectionRecord()
+  return {
+    ...base,
+    idea: users[0]?.trim() || clip(summary, 240) || 'Project direction from intake',
+    user: users[1]?.trim() || null,
+    journey: users[2]?.trim() || null,
+    boundaries: users[3]?.trim() || null,
+    refinements: summary ? [`Intake coordinator summary: ${clip(summary, 360)}`] : []
+  }
+}
+
+export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout, composerBridge = null, canvasFixture = null, persistedSnapshot = null, projectPeers = null }: ProjectWorkspaceProps) {
+  const liveModels = Boolean(embedded && projectPeers && !canvasFixture)
   const fixtureHydration = useMemo(() => initialHydration(canvasFixture, null), [canvasFixture])
   const persistedApplied = useRef(false)
   const [skipSimulatedDispatch, setSkipSimulatedDispatch] = useState(() => fixtureHydration?.skipSimulatedDispatch ?? false)
@@ -103,13 +129,15 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
   const nextId = useRef(1)
   const scrollRef = useRef<HTMLDivElement>(null)
   const shellRef = useRef<HTMLElement>(null)
+  const streamItemToMessageId = useRef(new Map<string, number>())
+  const pendingCoordinatorReply = useRef('')
 
   const bridgeModels = composerBridge?.models ?? MODELS
   const bridgeModelId = composerBridge?.selectedModel ?? selectedModel
   const selectedModelEntry = bridgeModels.find((model) => model.id === bridgeModelId) ?? bridgeModels[0] ?? MODELS[0]!
   const provider = (composerBridge?.provider ?? selectedModelEntry.provider) as ChatProvider
-  const record = discovery.record
-  const ready = discovery.asking === null && isDirectionReady(record)
+  const record = liveModels && phase === 'intake' ? directionFromIntake(messages) : discovery.record
+  const ready = liveModels ? liveIntakeReady(messages) : discovery.asking === null && isDirectionReady(record)
   const layout = useMemo(() => layoutTree(tree), [tree])
   const progress = useMemo(() => closureProgress(tree, record), [tree, record])
   const files = useMemo(() => deriveFiles({ record, messages, nodes: tree, journal, edits, confirmedAt, reports, progress, proposal, acceptedAt }),
@@ -134,6 +162,44 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, sending])
+
+  useEffect(() => {
+    if (!liveModels || !projectPeers) return
+    const { intakePaneId, coordinatorPaneId } = projectPeers
+    const upsertAssistant = (paneId: string, itemId: string, text: string, appended?: boolean) => {
+      if (phase === 'intake' && paneId === intakePaneId) {
+        setMessages((current) => {
+          const existingId = streamItemToMessageId.current.get(itemId)
+          if (existingId != null) {
+            return current.map((message) => message.id === existingId ? { ...message, text } : message)
+          }
+          if (!appended && !text.trim()) return current
+          const id = nextId.current++
+          streamItemToMessageId.current.set(itemId, id)
+          return [...current, { id, at: Date.now(), role: 'coordinator', text }]
+        })
+        return
+      }
+      if (phase === 'canvas' && paneId === coordinatorPaneId) pendingCoordinatorReply.current = text
+    }
+    return window.closedai.chat.onEvent((event) => {
+      if (event.type !== 'pane') return
+      const { paneId: eventPaneId, event: paneEvent } = event
+      if (eventPaneId !== intakePaneId && eventPaneId !== coordinatorPaneId) return
+      if (paneEvent.type === 'item' && paneEvent.item.type === 'assistant') {
+        upsertAssistant(eventPaneId, paneEvent.item.id, paneEvent.item.text, paneEvent.appended)
+      }
+      if (paneEvent.type === 'itemDelta' && paneEvent.field === 'text') {
+        const messageId = streamItemToMessageId.current.get(paneEvent.itemId)
+        if (phase === 'intake' && eventPaneId === intakePaneId && messageId != null) {
+          setMessages((current) => current.map((message) =>
+            message.id === messageId ? { ...message, text: message.text + paneEvent.delta } : message))
+        } else if (phase === 'canvas' && eventPaneId === coordinatorPaneId) {
+          pendingCoordinatorReply.current += paneEvent.delta
+        }
+      }
+    })
+  }, [liveModels, projectPeers, phase])
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), CLOCK_MS)
@@ -245,10 +311,12 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
 
   function start(): void {
     const at = Date.now()
-    const root = rootNode(record, at)
+    const buildRecord = liveModels ? directionFromIntake(messages) : record
+    if (liveModels) setDiscovery((current) => ({ ...current, record: buildRecord, asking: null }))
+    const root = rootNode(buildRecord, at)
     const opening = [{ id: nextId.current++, at, text: 'Direction confirmed. Working from the record; only the next useful moves are planned.' }]
-    const initial = deriveFiles({ record, messages, nodes: [root], journal: opening, edits: {}, confirmedAt: at,
-      reports: [], progress: closureProgress([root], record), proposal: null, acceptedAt: null })
+    const initial = deriveFiles({ record: buildRecord, messages, nodes: [root], journal: opening, edits: {}, confirmedAt: at,
+      reports: [], progress: closureProgress([root], buildRecord), proposal: null, acceptedAt: null })
     setTree([root])
     setJournal(opening)
     setSeenFiles(Object.fromEntries(initial.map((file) => [file.path, file.content])))
@@ -322,11 +390,18 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
     const clean = text.trim()
     if (!clean) return
     setSending(true)
+    try {
     if (phase === 'canvas') {
+      if (liveModels && projectPeers) {
+        pendingCoordinatorReply.current = ''
+        await sendAndWaitForPaneTurn(projectPeers.coordinatorPaneId, clean)
+        const reply = pendingCoordinatorReply.current.trim()
+        if (reply) note(`Coordinator: ${clip(reply, 220)}`)
+      } else {
       await wait(260)
+      }
       if (acceptedAt) {
         reopen(clean)
-        setSending(false)
         return
       }
       const gap = location.kind === 'proposal' && proposal
@@ -336,15 +411,27 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
       setTree(nodes)
       note(location.kind === 'file' ? `${ripple} (from ${location.path})` : ripple)
       if (gap) navigate(MAP)
-      setSending(false)
       return
     }
     setMessages((current) => [...current, { id: nextId.current++, at: Date.now(), role: 'user', text: clean }])
+    if (liveModels && projectPeers) {
+      streamItemToMessageId.current.clear()
+      await sendAndWaitForPaneTurn(projectPeers.intakePaneId, clean)
+      return
+    }
     const { state, reply } = advanceDiscovery(discovery, clean)
     await wait(420)
     setDiscovery(state)
     setMessages((current) => [...current, { id: nextId.current++, at: Date.now(), role: 'coordinator', text: reply }])
-    setSending(false)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      setMessages((current) => [...current, {
+        id: nextId.current++, at: Date.now(), role: 'coordinator',
+        text: `Could not reach the project model: ${message}`
+      }])
+    } finally {
+      setSending(false)
+    }
   }
 
   const canvasNote = acceptedAt ? 'Complete. New direction reopens the project as an amendment.'
@@ -455,7 +542,7 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
             />
           </div>
           <span className="project-provider-note"><AppWindow size={12} aria-hidden="true" />
-            {phase === 'canvas' ? canvasNote : '4 providers available to the coordinator'}
+            {phase === 'canvas' ? canvasNote : liveModels ? `${selectedModelEntry.displayName} · intake coordinator` : '4 providers available to the coordinator'}
           </span>
         </footer>
       </section>

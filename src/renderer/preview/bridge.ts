@@ -166,6 +166,7 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
       clear: native, onEvent: idleSubscription },
     project: {
       snapshot: async (projectPath: string) => projectSnapshot(projectPath),
+      ensurePeers: async () => { throw new Error('Project peers are not available in preview') },
       onEvent: (listener) => {
         projectListeners.add(listener)
         return () => { projectListeners.delete(listener) }
