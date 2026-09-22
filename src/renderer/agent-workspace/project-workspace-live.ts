@@ -8,6 +8,30 @@ import { sendAndWaitForPaneTurn } from './wait-pane-turn.js'
 
 const INTAKE_START_READY = /start building/i
 
+export function upsertProjectAssistantMessage(options: {
+  itemId: string
+  text: string
+  appended?: boolean
+  itemIds: Map<string, number>
+  nextId: MutableRefObject<number>
+  setMessages: Dispatch<SetStateAction<Message[]>>
+}): void {
+  const { itemId, text, appended, itemIds, nextId, setMessages } = options
+  const existingId = itemIds.get(itemId)
+  if (existingId != null) {
+    setMessages((current) => current.map((message) =>
+      message.id === existingId ? { ...message, text } : message))
+    return
+  }
+  if (!appended && !text.trim()) return
+  // Keep ref mutations outside the state updater: React Strict Mode may invoke an updater twice.
+  const id = nextId.current++
+  itemIds.set(itemId, id)
+  setMessages((current) => current.some((message) => message.id === id)
+    ? current.map((message) => message.id === id ? { ...message, text } : message)
+    : [...current, { id, at: Date.now(), role: 'coordinator', text }])
+}
+
 export function liveIntakeReady(messages: Message[]): boolean {
   const last = [...messages].reverse().find((message) => message.role === 'coordinator')
   return last ? INTAKE_START_READY.test(last.text) : false
@@ -43,15 +67,13 @@ export function useProjectPeerChatEvents(options: {
     const { intakePaneId, coordinatorPaneId } = projectPeers
     const upsertAssistant = (paneId: string, itemId: string, text: string, appended?: boolean) => {
       if (phase === 'intake' && paneId === intakePaneId) {
-        setMessages((current) => {
-          const existingId = streamItemToMessageId.current.get(itemId)
-          if (existingId != null) {
-            return current.map((message) => message.id === existingId ? { ...message, text } : message)
-          }
-          if (!appended && !text.trim()) return current
-          const id = nextId.current++
-          streamItemToMessageId.current.set(itemId, id)
-          return [...current, { id, at: Date.now(), role: 'coordinator', text }]
+        upsertProjectAssistantMessage({
+          itemId,
+          text,
+          appended,
+          itemIds: streamItemToMessageId.current,
+          nextId,
+          setMessages
         })
         return
       }
