@@ -56,7 +56,11 @@ export const UI_CONTROLS = {
   'window.close': 'Close the window',
 
   'layout.browser-toggle': 'Globe button beside Search chats in the top title bar: show or hide the shared browser in its saved position; no item required',
+  'layout.agent-toggle': 'Compass button beside the browser toggle: show or hide the agent workspace pane in its saved position',
   'layout.browser-dock': 'Drop a chat tab or pane on the left or right half to place it beside the browser',
+  'layout.agent-dock': 'Agent workspace tile in the chat layout canvas',
+  'layout.agent-drag': 'Drag handle on the agent workspace to stack or dock it beside a chat',
+  'layout.agent-full-view': 'Expand the agent workspace to solo full view within the layout canvas',
   'layout.browser-drag': 'Drag the shared browser by its tab-strip grip to a chat edge to stack or dock it',
   'layout.workspace-dock': 'Browser-drag drop target at the workspace edge for a full-height column; item is left or right',
   'layout.pane-drag': 'Chat pane header grip: drag to move the whole tile; item is the active chat id',

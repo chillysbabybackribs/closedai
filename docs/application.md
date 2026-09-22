@@ -323,6 +323,16 @@ the tab strip and carry full-height column labels. Escape cancels; dropping over
 a divider, or outside the workspace leaves the layout unchanged. Preview transitions respect
 reduced-motion preferences.
 
+The **agent workspace** is a third reserved pane (`closedai:agent-workspace`), toggled from the compass
+button beside the browser control or **View → Toggle agent workspace**. The first open inserts it as a
+left column (~38% width); hiding it keeps the pane mounted and its layout slot saved, like the browser.
+The pane hosts the multi-agent project shell prototype (intent map, shared file tree, catch-up, completion
+flow) with a compact composer locked to that tile. Full view uses the same solo-tile maximize gesture as
+chat panes (`layout.agent-full-view` or double-click where supported). Project direction still runs in the
+prototype until backend project IPC exists; the composer reuses the selected chat's model catalog and
+project path as a bridge. Drag the agent workspace grip to stack or dock beside chats the same way as the
+browser, without selecting a conversation when you focus inside the pane.
+
 Drag empty chat header space onto another tile's left, right, top, or bottom edge to move the whole pane. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its
 mounted composer, draft, attachments, and transcript scroller survive the move. Open an existing chat

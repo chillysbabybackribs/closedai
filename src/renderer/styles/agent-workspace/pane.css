@@ -1,0 +1,63 @@
+.agent-workspace-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  background: var(--surface-base);
+}
+
+.agent-workspace-layout-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 4px 6px 0;
+}
+
+.agent-workspace-drag {
+  flex-shrink: 0;
+}
+
+.agent-workspace-solo {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--chrome-fg-muted);
+  cursor: pointer;
+}
+
+.agent-workspace-solo:hover,
+.agent-workspace-solo[aria-pressed="true"] {
+  background: var(--surface-raised);
+  color: var(--chrome-fg-strong);
+}
+
+.chat-layout-agent-frame {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.chat-layout-agent-frame > .agent-workspace-pane {
+  flex: 1;
+}
+
+.agent-workspace-pane .project-shell {
+  flex: 1;
+  min-height: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.agent-workspace-pane .project-shell::before {
+  display: none;
+}

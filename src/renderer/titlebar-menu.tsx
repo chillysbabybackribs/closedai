@@ -10,7 +10,7 @@ import {
 /** Everything a menu row can do besides zoom. */
 export type MenuAction =
   | 'new-chat' | 'history' | 'settings' | 'close-tab' | 'close-window' | 'search-chats'
-  | 'toggle-browser' | 'layout' | 'toggle-fullscreen'
+  | 'toggle-browser' | 'toggle-agent' | 'layout' | 'toggle-fullscreen'
   | 'tools' | 'research' | 'context' | 'compact' | 'stop-turn'
   | 'trace' | 'reload' | 'devtools'
 
@@ -56,6 +56,7 @@ const MENUS: Menu[] = [
     label: 'View',
     rows: [
       { key: 'toggle-browser-pane', label: 'Toggle browser pane', action: 'toggle-browser' },
+      { key: 'toggle-agent-pane', label: 'Toggle agent workspace', action: 'toggle-agent' },
       { key: 'workspace-layout', label: 'Workspace layout…', action: 'layout' },
       SEP,
       { key: 'zoom-in', label: 'Zoom in', shortcut: 'Ctrl+=', command: 'in' },

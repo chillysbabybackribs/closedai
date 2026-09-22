@@ -29,7 +29,7 @@ export function withAgent(tree: ChatLayout): ChatLayout {
     first: { kind: 'pane', id: AGENT_WORKSPACE_PANE_ID }, second: tree }
 }
 
-function layoutIds(tree: ChatLayout | null): string[] {
+export function layoutIds(tree: ChatLayout | null): string[] {
   return !tree ? [] : tree.kind === 'pane' ? [tree.id] : [...layoutIds(tree.first), ...layoutIds(tree.second)]
 }
 
@@ -94,6 +94,18 @@ export function dockBrowser(tree: ChatLayout, target: string, edge: DockEdge, sp
   return { kind: 'split', id: splitId, ratio: 0.5,
     axis: edge === 'left' || edge === 'right' ? 'horizontal' : 'vertical',
     first: before ? browser : chats, second: before ? chats : browser }
+}
+
+export function dockAgent(tree: ChatLayout, target: string, edge: DockEdge, splitId: string): ChatLayout {
+  if (!layoutIds(tree).includes(AGENT_WORKSPACE_PANE_ID)) return tree
+  if (target !== WORKSPACE_DOCK_ID) return dockPane(tree, AGENT_WORKSPACE_PANE_ID, target, edge, splitId)
+  const chats = removePane(tree, AGENT_WORKSPACE_PANE_ID)
+  if (!chats) return tree
+  const agent: ChatLayout = { kind: 'pane', id: AGENT_WORKSPACE_PANE_ID }
+  const before = edge === 'left' || edge === 'top'
+  return { kind: 'split', id: splitId, ratio: 0.5,
+    axis: edge === 'left' || edge === 'right' ? 'horizontal' : 'vertical',
+    first: before ? agent : chats, second: before ? chats : agent }
 }
 
 export function resizeSplit(tree: ChatLayout, id: string, ratio: number): ChatLayout {

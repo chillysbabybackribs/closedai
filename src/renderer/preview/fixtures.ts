@@ -128,7 +128,7 @@ export function sampleSecurityRequests(scenario: Scenario): { credentials: Crede
 }
 
 export function sampleLayout(scenario: Scenario): SavedChatLayout {
-  return { browserVisible: scenario === 'split' || scenario === 'security', tree: withBrowser(scenario === 'split'
+  return { browserVisible: scenario === 'split' || scenario === 'security', agentVisible: false, tree: withBrowser(scenario === 'split'
     ? { kind: 'split', id: 'preview-split', axis: 'vertical', ratio: 0.5,
         first: { kind: 'pane', id: 'preview-chat-1' }, second: { kind: 'pane', id: 'preview-chat-2' } }
     : { kind: 'pane', id: 'preview-chat-1', tabs: ['preview-chat-1', 'preview-chat-2'] }) }

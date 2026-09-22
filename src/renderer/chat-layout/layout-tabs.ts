@@ -1,4 +1,4 @@
-import { AGENT_WORKSPACE_PANE_ID, BROWSER_PANE_ID, dockPane, isReservedPaneId, paneIds, type ChatLayout, type DockEdge } from './layout-tree.js'
+import { dockPane, isReservedPaneId, paneIds, type ChatLayout, type DockEdge } from './layout-tree.js'
 
 export const CHAT_TAB_DRAG_TYPE = 'application/x-closedai-chat-tab'
 

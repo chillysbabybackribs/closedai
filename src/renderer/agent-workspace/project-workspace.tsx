@@ -1,25 +1,36 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AppWindow, Compass, Gem, History, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { AppWindow, Compass, History, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 
 import type { ChatModel, ChatProvider } from '../../shared/chat.js'
-import { Composer } from '../composer.js'
+import { Composer, type ComposerProps } from '../composer.js'
+import type { ComposerLayout } from '../composer-layout.js'
 import { injectComposerDraft } from '../composer-drafts.js'
-import { ProjectCanvas } from './project-canvas.js'
-import { buildCatchUp, countSince, reportLines } from './project-catchup.js'
-import { CatchUpDetail, ProposalDetail } from './project-catchup-view.js'
-import { canPropose, closureProgress, type AcknowledgedReport, type Proposal } from './project-closure.js'
-import { Breadcrumbs, FileDetail, NodeDetail } from './project-detail.js'
-import { advanceDiscovery, clip, createDiscovery, isDirectionReady, type DiscoveryState } from './project-discovery.js'
-import { ProjectFileTree } from './project-file-tree.js'
+import { ProjectCanvas } from '../preview/project-canvas.js'
+import { buildCatchUp, countSince, reportLines } from '../preview/project-catchup.js'
+import { CatchUpDetail, ProposalDetail } from '../preview/project-catchup-view.js'
+import { canPropose, closureProgress, type AcknowledgedReport, type Proposal } from '../preview/project-closure.js'
+import { Breadcrumbs, FileDetail, NodeDetail } from '../preview/project-detail.js'
+import { advanceDiscovery, clip, createDiscovery, isDirectionReady, type DiscoveryState } from '../preview/project-discovery.js'
+import { ProjectFileTree } from '../preview/project-file-tree.js'
 import {
   breadcrumbs, deriveFiles, fileAt, filesForNode, folderTree, servesLine, targetNodeId,
   type FileEdit, type JournalLine, type Location
-} from './project-files.js'
-import { ProjectIntake, type Message } from './project-intake.js'
-import { duration } from './project-time.js'
-import { amendTree, applyEvent, buildDispatchPlan, layoutTree, rootNode, type TreeNode } from './project-tree.js'
+} from '../preview/project-files.js'
+import { ProjectIntake, type Message } from '../preview/project-intake.js'
+import { duration } from '../preview/project-time.js'
+import { amendTree, applyEvent, buildDispatchPlan, layoutTree, rootNode, type TreeNode } from '../preview/project-tree.js'
 
-const ROOT_PANE_ID = 'preview-project-root'
+export type ProjectWorkspaceComposerBridge = Pick<ComposerProps,
+  'models' | 'selectedModel' | 'selectedReasoningEffort' | 'contextUsage' | 'provider' | 'planUsage'
+  | 'onRefreshPlanUsage' | 'onModelChange' | 'onReasoningEffortChange' | 'cwd' | 'projectPath' | 'projectPending'
+  | 'recentProjects' | 'onChooseProject' | 'onSelectProject' | 'onClearProject' | 'activeTurnId'>
+
+export type ProjectWorkspaceProps = {
+  paneId: string
+  embedded?: boolean
+  fixedComposerLayout?: ComposerLayout
+  composerBridge?: ProjectWorkspaceComposerBridge | null
+}
 const MAP: Location = { kind: 'map' }
 // Prototype pacing: an absence this long offers a catch-up on return; the clock re-renders
 // relative times on this cadence.
@@ -40,7 +51,7 @@ const MODELS: ChatModel[] = [
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
 const nodeSignature = (node: TreeNode) => `${node.state}|${node.summary}`
 
-export function ProjectShellPreview() {
+export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout, composerBridge = null }: ProjectWorkspaceProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [discovery, setDiscovery] = useState<DiscoveryState>(createDiscovery)
   const [selectedModel, setSelectedModel] = useState(MODELS[0]!.id)
@@ -66,8 +77,10 @@ export function ProjectShellPreview() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const shellRef = useRef<HTMLElement>(null)
 
-  const selectedModelEntry = MODELS.find((model) => model.id === selectedModel) ?? MODELS[0]!
-  const provider = selectedModelEntry.provider as ChatProvider
+  const bridgeModels = composerBridge?.models ?? MODELS
+  const bridgeModelId = composerBridge?.selectedModel ?? selectedModel
+  const selectedModelEntry = bridgeModels.find((model) => model.id === bridgeModelId) ?? bridgeModels[0] ?? MODELS[0]!
+  const provider = (composerBridge?.provider ?? selectedModelEntry.provider) as ChatProvider
   const record = discovery.record
   const ready = discovery.asking === null && isDirectionReady(record)
   const layout = useMemo(() => layoutTree(tree), [tree])
@@ -167,7 +180,7 @@ export function ProjectShellPreview() {
   }
 
   function chooseSuggestion(prompt: string): void {
-    injectComposerDraft(ROOT_PANE_ID, prompt)
+    injectComposerDraft(paneId, prompt)
     requestAnimationFrame(() => shellRef.current?.querySelector<HTMLTextAreaElement>('[data-ui="composer.input"]')?.focus())
   }
 
@@ -284,18 +297,13 @@ export function ProjectShellPreview() {
     : location.kind === 'proposal' ? 'Name the gap…'
     : targetNode ? `Add direction to “${targetNode.title}”…` : 'Add direction, a constraint, or a question…'
 
-  return <div className="project-preview-app">
-    <header className="project-preview-appbar" aria-label="ClosedAI preview chrome">
-      <div className="project-preview-brand"><Gem size={16} aria-hidden="true" /> ClosedAI</div>
-      <nav aria-label="Application menus"><span>File</span><span>View</span><span>Agent</span><span>Developer</span></nav>
-      <div className="project-preview-search">Search chats <kbd>Ctrl H</kbd></div>
-      <div className="project-preview-window-controls" aria-hidden="true"><span>—</span><span>□</span><span>×</span></div>
-    </header>
+  const shellAttrs = embedded
+    ? { 'data-agent-workspace': true as const }
+    : { 'data-preview-project-shell': true as const }
 
-    <main className="project-preview-workspace">
-      <section className="project-shell" ref={shellRef} data-preview-project-shell aria-label="Project">
+  return <section className="project-shell" ref={shellRef} {...shellAttrs} aria-label="Project">
         <header className="project-shell-header">
-          <span className="project-shell-grip" aria-hidden="true">⠿</span>
+          {!embedded && <span className="project-shell-grip" aria-hidden="true">⠿</span>}
           {phase === 'canvas' && <button type="button" className="project-shell-tree-toggle"
             data-ui="preview.project-tree-toggle" aria-pressed={treeOpen}
             aria-label={treeOpen ? 'Hide project files' : 'Show project files'} onClick={() => setTreeOpen((open) => !open)}>
@@ -361,28 +369,30 @@ export function ProjectShellPreview() {
               enabled={!sending}
               running={false}
               placeholder={placeholder}
-              models={MODELS}
-              selectedModel={selectedModel}
-              selectedReasoningEffort={selectedModelEntry.defaultReasoningEffort}
-              contextUsage={null}
+              models={bridgeModels}
+              selectedModel={bridgeModelId}
+              selectedReasoningEffort={composerBridge?.selectedReasoningEffort ?? selectedModelEntry.defaultReasoningEffort}
+              contextUsage={composerBridge?.contextUsage ?? null}
               provider={provider}
-              planUsage={null}
-              onRefreshPlanUsage={async () => {}}
-              onModelChange={async (modelId) => setSelectedModel(modelId)}
-              onReasoningEffortChange={async () => {}}
+              planUsage={composerBridge?.planUsage ?? null}
+              onRefreshPlanUsage={composerBridge?.onRefreshPlanUsage ?? (async () => {})}
+              onModelChange={composerBridge?.onModelChange ?? (async (modelId) => setSelectedModel(modelId))}
+              onReasoningEffortChange={composerBridge?.onReasoningEffortChange ?? (async () => {})}
               onSend={async (text) => send(text)}
               onStop={async () => {}}
               paused={false}
               onResume={async () => {}}
               onInspectContext={() => {}}
-              cwd="/preview/closedai"
-              projectPath="/preview/closedai"
-              recentProjects={[]}
-              onChooseProject={async () => {}}
-              onSelectProject={async () => {}}
-              onClearProject={async () => {}}
-              activeTurnId={null}
-              paneId={ROOT_PANE_ID}
+              cwd={composerBridge?.cwd ?? '/preview/closedai'}
+              projectPath={composerBridge?.projectPath ?? '/preview/closedai'}
+              projectPending={composerBridge?.projectPending}
+              recentProjects={composerBridge?.recentProjects ?? []}
+              onChooseProject={composerBridge?.onChooseProject ?? (async () => {})}
+              onSelectProject={composerBridge?.onSelectProject ?? (async () => {})}
+              onClearProject={composerBridge?.onClearProject ?? (async () => {})}
+              activeTurnId={composerBridge?.activeTurnId ?? null}
+              paneId={paneId}
+              fixedLayout={fixedComposerLayout}
             />
           </div>
           <span className="project-provider-note"><AppWindow size={12} aria-hidden="true" />
@@ -390,6 +400,4 @@ export function ProjectShellPreview() {
           </span>
         </footer>
       </section>
-    </main>
-  </div>
 }

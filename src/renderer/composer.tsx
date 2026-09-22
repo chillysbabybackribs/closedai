@@ -13,7 +13,7 @@ import type { ChatAttachment, ChatContextUsage, ChatModel, ChatPlanUsage, ChatPr
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
 import { ComposerCompactRow } from './composer-compact-row.js'
-import { useComposerLayout } from './composer-layout.js'
+import { useComposerLayout, type ComposerLayout } from './composer-layout.js'
 import { useComposerDraft } from './composer-drafts.js'
 import { errorMessage } from './error-message.js'
 import { ContextMeter } from './context-meter.js'
@@ -56,6 +56,8 @@ export type ComposerProps = {
   onCompactConversation?: () => Promise<void>
   compactConversationEnabled?: boolean
   paneId?: string | null
+  /** Keeps this composer in one layout regardless of the global preference (e.g. agent pane). */
+  fixedLayout?: ComposerLayout
   /** Lets the pane's connection guidance open the model picker. */
   modelMenuRef?: Ref<ModelMenuHandle>
 }
@@ -80,7 +82,7 @@ export function Composer({
   onInspectContext,
   cwd, projectPath, projectPending, recentProjects,
   onChooseProject, onSelectProject, onClearProject,
-  activeTurnId, onCompactConversation, compactConversationEnabled = false, paneId, modelMenuRef
+  activeTurnId, onCompactConversation, compactConversationEnabled = false, paneId, fixedLayout, modelMenuRef
 }: ComposerProps): JSX.Element {
   const { input, setInput, attachments, setAttachments, clearDraft } = useComposerDraft(paneId)
   // One alert row for whatever the composer's own controls could not do: attach, pause, pick.
@@ -89,8 +91,11 @@ export function Composer({
   const [sending, setSending] = useState(false)
   // Only the chevron changes modes: typing, focusing, and sending all stay in the mode the user
   // chose, so a collapsed composer keeps its one-line footprint across turns, new chats, and restarts.
-  const [layout, setLayout] = useComposerLayout()
+  const [preferredLayout, setPreferredLayout] = useComposerLayout()
+  const layout = fixedLayout ?? preferredLayout
   const isCompact = layout === 'compact'
+  const setLayout = fixedLayout ? () => {} : setPreferredLayout
+  const layoutLocked = fixedLayout !== undefined
   const inputPlaceholder = running
     ? 'Esc to pause'
     : placeholder ?? (enabled ? 'Enter to send · Shift+Enter for newline' : `${providerLabel} is unavailable`)
@@ -203,7 +208,7 @@ export function Composer({
         onSelectProject={onSelectProject}
         onClearProject={onClearProject}
         activeTurnId={activeTurnId}
-        trailing={isCompact ? undefined : (
+        trailing={isCompact || layoutLocked ? undefined : (
           <Button
             type="button"
             variant="ghost"
@@ -266,7 +271,7 @@ export function Composer({
             onBlur={() => { textareaFocusedRef.current = false }}
             onStop={stop}
             onResume={resume}
-            onExpand={() => setLayout('full')}
+            onExpand={() => { if (!layoutLocked) setLayout('full') }}
           />
         ) : (
           <div className="prompt-composer-body">

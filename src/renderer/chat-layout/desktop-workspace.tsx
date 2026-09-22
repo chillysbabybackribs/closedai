@@ -9,6 +9,7 @@ import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import { ChatCanvas } from './chat-canvas.js'
 import { ChatLayoutActions } from './layout-context-menu.js'
 import { useChatLayout } from './layout-controller.js'
+import { AgentWorkspacePane } from '../agent-workspace/agent-workspace-pane.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, paneIds } from './layout-tree.js'
 import { LayoutPresetsDialog } from './layout-presets-dialog.js'
 import type { CanvasSize } from './layout-presets.js'
@@ -18,11 +19,12 @@ import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 export type ChatLayoutHandle = {
   splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
   toggleBrowser: () => void
+  toggleAgent: () => void
   closeFocused: () => Promise<void>
   openLayoutPresets: () => void
 }
 
-export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, toolsPreset = null, onRenameChat, onBrowserVisibilityChange, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, toolsPreset = null, onRenameChat, onBrowserVisibilityChange, onAgentVisibilityChange, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
   reviewQueue: ChatReviewQueue
   appearance: AppearanceSettings
@@ -34,11 +36,13 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   toolsPreset?: 'full' | 'read-only' | 'custom' | null
   onRenameChat?: (id: string, title: string) => void
   onBrowserVisibilityChange: (visible: boolean) => void
+  onAgentVisibilityChange: (visible: boolean) => void
   archiveChat?: (chatId: string) => Promise<void>
   ref?: Ref<ChatLayoutHandle>
 }) {
   const layout = useChatLayout(chat.snapshot)
   useEffect(() => onBrowserVisibilityChange(layout.browserVisible), [layout.browserVisible, onBrowserVisibilityChange])
+  useEffect(() => onAgentVisibilityChange(layout.agentVisible), [layout.agentVisible, onAgentVisibilityChange])
   const browserDragHandle = useMemo(() => <button type="button"
     className="browser-layout-drag" data-ui="layout.browser-drag" draggable={!layout.busy} disabled={layout.busy}
     aria-label="Move browser" title="Drag above or beside a chat; drop at the workspace edge for a full-height column"
@@ -58,9 +62,10 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
       layout.toggleBrowser()
       setBrowserRevealVersion((value) => value + 1)
     },
+    toggleAgent: () => layout.toggleAgent(),
     closeFocused: () => layout.closeFocused(),
     openLayoutPresets: () => setPresetsOpen(true)
-  }), [layout.dock, layout.toggleBrowser, layout.closeFocused, chat.selectedPaneId])
+  }), [layout.dock, layout.toggleBrowser, layout.toggleAgent, layout.closeFocused, chat.selectedPaneId])
   useEffect(() => window.closedai.browser.onState((state) => {
     if (state.image || state.url.startsWith('file:')) {
       layout.showBrowser()
@@ -80,6 +85,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         browserRevealVersion={browserRevealVersion}
         onDragActive={setDragging}
         browserVisible={layout.browserVisible}
+        agentVisible={layout.agentVisible}
         title={(id) => chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat'}
         activity={(id) => tabActivity(chat.chats.find((row) => row.paneId === id),
           chat.snapshot.panes?.[id] ?? (id === chat.selectedPaneId ? chat.snapshot.selected : undefined), reviewQueue[id])}
@@ -110,6 +116,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
           <BrowserPane controller={browser} dragHandle={browserDragHandle} />
         </div>
       </div>}
+      renderAgent={(controls) => <AgentWorkspacePane controls={controls} busy={layout.busy} chat={chat} />}
     />
     </ChatLayoutActions.Provider>
     <LayoutPresetsDialog open={presetsOpen} size={canvasSize.current} tileCount={paneIds(layout.tree).length}
