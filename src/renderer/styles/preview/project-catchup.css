@@ -148,3 +148,95 @@
   color: #69696e;
   font-size: 11px;
 }
+
+/* Completion gates, shown identically in every report and the proposal */
+
+.project-gates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.project-gates button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 999px;
+  background: transparent;
+  color: #77777c;
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.project-gates li[data-met="true"] button {
+  border-color: rgb(115 170 128 / 35%);
+  background: rgb(115 170 128 / 8%);
+  color: #9dcaa6;
+}
+
+.project-gates button:hover {
+  color: #e6e6e9;
+}
+
+/* Proposal */
+
+.project-shell-proposal {
+  margin-left: 6px;
+  padding: 3px 9px;
+  border: 1px solid rgb(115 170 128 / 40%);
+  border-radius: 6px;
+  background: rgb(115 170 128 / 12%);
+  color: #b8e0bf;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.project-shell-proposal:hover,
+.project-shell-proposal[aria-pressed="true"] {
+  background: rgb(115 170 128 / 20%);
+}
+
+.project-shell-kind[data-complete="true"] {
+  border-color: rgb(115 170 128 / 40%);
+  color: #9dcaa6;
+}
+
+.project-detail-edit.is-accept {
+  border-color: rgb(115 170 128 / 45%);
+  background: rgb(115 170 128 / 14%);
+  color: #d5efd9;
+}
+
+.project-walk {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  color: #c9c9ce;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.project-inline-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #a99eff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.project-tree-node.is-proposal {
+  border-color: rgb(115 170 128 / 40%);
+  background: rgb(115 170 128 / 8%);
+}
