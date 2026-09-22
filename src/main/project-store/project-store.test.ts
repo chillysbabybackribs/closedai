@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -29,6 +29,19 @@ test('project store persists under .closedai/project.json', async () => {
     assert.equal(parsed?.direction.idea, 'Build it')
     const reopened = await ProjectStore.open(dir)
     assert.equal(reopened.snapshot().phase, 'building')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('project store keeps its directory out of version control', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'closedai-project-store-'))
+  try {
+    await ProjectStore.open(dir)
+    assert.equal(await readFile(join(dir, '.closedai', '.gitignore'), 'utf8'), '*\n')
+    await writeFile(join(dir, '.closedai', '.gitignore'), 'project.json\n')
+    await ProjectStore.open(dir)
+    assert.equal(await readFile(join(dir, '.closedai', '.gitignore'), 'utf8'), 'project.json\n')
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

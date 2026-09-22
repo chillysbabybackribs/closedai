@@ -334,7 +334,8 @@ flow) with a compact composer backed by a dedicated, detached chat session. It i
 the selected chat: changing the selected chat cannot change, send, pause, stop, or resume the agent chat.
 The agent chat uses the same provider pipeline and composer as every other chat; its coordinator behavior
 is prompt guidance only. Durable project state lives in **`<project>/.closedai/project.json`** (phase,
-direction record, tree, journal); the agent workspace hydrates from disk when that file contains work.
+direction record, tree, journal); the store writes a `.gitignore` beside it so the directory stays out of
+the project's version control, and the agent workspace hydrates from disk when that file contains work.
 Full view uses the same solo-tile maximize gesture as chat panes (`layout.agent-full-view` or double-click
 where supported). Drag the agent workspace grip to stack or dock beside chats the same way as the browser,
 without selecting a conversation when you focus inside the pane. The restart control (`layout.agent-restart`)

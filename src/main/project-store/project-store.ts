@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 
 import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
@@ -10,6 +10,16 @@ import { createDefaultProjectStoreFile } from '../../shared/project/store-file.j
 import { normalizeProjectStoreFile } from './normalize.js'
 
 const WRITE_DELAY_MS = 150
+
+// The store lives inside the user's project, so it keeps itself out of their version control
+// the way other tool-state directories do. Written once; a file the user edited is left alone.
+async function ensureSelfIgnored(directory: string): Promise<void> {
+  try {
+    await writeFile(join(directory, '.gitignore'), '*\n', { flag: 'wx' })
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+  }
+}
 
 export type ProjectStoreChange = { projectPath: string; snapshot: ProjectSnapshot }
 
@@ -28,8 +38,10 @@ export class ProjectStore extends EventEmitter {
 
   static async open(projectPath: string): Promise<ProjectStore> {
     const resolved = resolve(projectPath)
-    const filePath = join(resolved, '.closedai', 'project.json')
-    await mkdir(join(resolved, '.closedai'), { recursive: true })
+    const directory = join(resolved, '.closedai')
+    const filePath = join(directory, 'project.json')
+    await mkdir(directory, { recursive: true })
+    await ensureSelfIgnored(directory)
     const parsed = await readStoreFile(filePath, '[project-store]', (text) => JSON.parse(text) as unknown)
     const normalized = parsed ? normalizeProjectStoreFile(parsed) : null
     const data = normalized ?? createDefaultProjectStoreFile()
