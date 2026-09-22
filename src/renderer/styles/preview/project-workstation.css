@@ -1,5 +1,5 @@
-/* Project-shell prototype: intake clarity rail and the post-start workstation (tree left,
-   coordinator right). Canvas nodes and edges live in project-canvas.css. */
+/* Project-shell prototype: intake clarity rail and the post-start workstation grid (project
+   files left, stage right). Canvas nodes and edges live in project-canvas.css. */
 
 .project-intake {
   display: grid;
@@ -119,11 +119,23 @@
   line-height: 1.4;
 }
 
-/* Post-start workstation */
+/* Post-start workstation: project files left, stage (map or opened detail) right. The tree,
+   breadcrumbs, and detail pages live in project-files.css. */
 
 .project-workstation {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 292px;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.project-workstation[data-tree-open="true"] {
+  grid-template-columns: 228px minmax(0, 1fr);
+}
+
+.project-stage {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
 }
@@ -134,99 +146,21 @@
   min-height: 0;
 }
 
-.project-side {
+.project-shell-tree-toggle {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  min-height: 0;
-  overflow: auto;
-  border-left: 1px solid var(--hairline, rgb(255 255 255 / 8%));
-  background: #161617;
-  scrollbar-width: thin;
-  scrollbar-color: #36363a transparent;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #77777c;
+  cursor: pointer;
 }
 
-.project-side .project-node-inspector {
-  margin: 12px 12px 0;
-  padding: 12px 13px;
-  border: 1px solid rgb(157 140 255 / 18%);
-  border-radius: 9px;
-  background: rgb(157 140 255 / 5%);
-}
-
-.project-side .project-node-inspector p {
-  margin: 8px 0 0;
-  color: #a4a4a9;
-  font-size: 11.5px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
-
-.project-feed {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  min-height: 0;
-  padding: 12px 12px 10px;
-}
-
-.project-feed header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-  color: #a99eff;
-  font-size: 11px;
-  font-weight: 590;
-}
-
-.project-feed header span {
-  margin-left: auto;
-  color: #5f5f64;
-  font-size: 9.5px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.project-feed ol {
-  display: grid;
-  align-content: start;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.project-feed li {
-  position: relative;
-  padding-left: 13px;
-  color: #7c7c81;
-  font-size: 11px;
-  line-height: 1.45;
-  animation: project-feed-in 260ms var(--ease-chrome, ease-out) both;
-}
-
-.project-feed li::before {
-  position: absolute;
-  top: 6px;
-  left: 0;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #4d4d52;
-  content: "";
-}
-
-.project-feed li:last-child {
+.project-shell-tree-toggle:hover {
+  background: rgb(255 255 255 / 6%);
   color: #d5d5d9;
-}
-
-.project-feed li:last-child::before {
-  background: #9d8cff;
-  box-shadow: 0 0 0 3px rgb(157 140 255 / 14%);
-}
-
-@keyframes project-feed-in {
-  from { opacity: 0; transform: translateY(3px); }
 }
 
 @media (max-width: 860px) {
@@ -239,19 +173,8 @@
     order: -1;
   }
 
-  .project-workstation {
+  .project-workstation[data-tree-open="true"] {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) 180px;
-  }
-
-  .project-side {
-    border-top: 1px solid var(--hairline, rgb(255 255 255 / 8%));
-    border-left: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .project-feed li {
-    animation: none;
+    grid-template-rows: 180px minmax(0, 1fr);
   }
 }
