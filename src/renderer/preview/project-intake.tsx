@@ -1,8 +1,9 @@
 import { Boxes, Check, Compass, FlaskConical, RefreshCw, Sparkles } from 'lucide-react'
 
 import { clarityItems, clip, type DirectionRecord } from './project-discovery.js'
+import { absolute } from './project-time.js'
 
-export type Message = { id: number; role: 'user' | 'coordinator'; text: string }
+export type Message = { id: number; at: number; role: 'user' | 'coordinator'; text: string }
 
 const SUGGESTIONS = [
   {
@@ -71,6 +72,7 @@ export function ProjectIntake(props: {
       {messages.map((message) => <article key={message.id} className={`project-message is-${message.role}`}>
         <div className="project-message-author">
           {message.role === 'user' ? 'You' : <><Compass size={13} aria-hidden="true" /> Root coordinator</>}
+          <time dateTime={new Date(message.at).toISOString()}>{absolute(message.at, Date.now())}</time>
         </div>
         <MessageText id={message.id} text={message.text} />
       </article>)}
