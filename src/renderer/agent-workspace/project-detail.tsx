@@ -5,6 +5,7 @@ import { Markdown } from '../../components/ui/markdown.js'
 import type { Crumb, Location, ProjectFile } from './project-files.js'
 import { stamp } from './project-time.js'
 import type { TreeNode } from './project-tree.js'
+import { WorkerPanel } from './project-worker.js'
 
 const STATE_WORDS: Record<TreeNode['state'], string> = {
   anchored: 'anchored', active: 'in progress', queued: 'queued', complete: 'complete',
@@ -52,6 +53,8 @@ export function NodeDetail(props: {
     </header>
     {node.kind !== 'root' && <p className="project-detail-serves"><b>Serves</b> {serves}</p>}
     <div className="project-detail-body"><Markdown>{node.detail}</Markdown></div>
+    {node.paths?.length ? <p className="project-detail-paths"><b>Owns</b> {node.paths.join(', ')}</p> : null}
+    {node.assignment && <WorkerPanel assignment={node.assignment} live={node.state === 'active'} now={now} />}
     {node.links && node.links.length > 0 && <section className="project-detail-section">
       <h2>Evidence</h2>
       <ul className="project-detail-links">
