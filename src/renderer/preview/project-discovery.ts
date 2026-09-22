@@ -159,12 +159,12 @@ export function advanceDiscovery(state: DiscoveryState, message: string): { stat
     }
     case 'user':
       updated.user = text
-      reply = `Primary user: ${clip(text, 100)}.\n\n${QUESTIONS.journey}`
+      reply = `Primary user: ${clip(text, 100)}\n\n${QUESTIONS.journey}`
       break
     case 'journey': {
       updated.journey = text
       updated.evidence.push(...RESEARCH.journey)
-      reply = `Central journey: ${clip(text, 120)}. I checked how comparable tools model that; ${RESEARCH.journey[0]?.label} is recorded as evidence.\n\n${QUESTIONS.boundaries}`
+      reply = `Central journey: ${clip(text, 120)}\n\nI checked how comparable tools model that step; ${RESEARCH.journey[0]?.label} is recorded as evidence.\n\n${QUESTIONS.boundaries}`
       break
     }
     case 'boundaries':

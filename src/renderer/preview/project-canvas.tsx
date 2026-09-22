@@ -44,13 +44,15 @@ export function ProjectCanvas(props: {
   const touched = useRef(false)
   const drag = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number; moved: boolean } | null>(null)
 
-  const centred = (scale: number): View => {
+  /** Root at top centre, zoomed out just enough for the whole width to fit the pane. */
+  const centred = (): View => {
     const width = pane.current?.clientWidth ?? 0
+    const scale = clampScale(Math.min(DEFAULT_SCALE, (width - 2 * TOP_INSET) / layout.width))
     return { x: (width - layout.width * scale) / 2, y: TOP_INSET, scale }
   }
 
   useLayoutEffect(() => {
-    if (!touched.current) setView((current) => centred(current.scale))
+    if (!touched.current) setView(centred())
     // eslint-disable-next-line react-hooks/exhaustive-deps -- follow the root while the tree widens
   }, [layout.width])
 
@@ -78,7 +80,7 @@ export function ProjectCanvas(props: {
 
   function recenter(): void {
     touched.current = false
-    setView(centred(DEFAULT_SCALE))
+    setView(centred())
   }
 
   function pointerDown(event: PointerEvent<HTMLDivElement>): void {
