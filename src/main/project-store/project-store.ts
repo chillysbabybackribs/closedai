@@ -6,7 +6,8 @@ import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
 import type { ProjectStoreFile } from '../../shared/project/store-file.js'
 import { writeAtomic } from '../atomic-write.js'
 import { readStoreFile } from '../store-recovery.js'
-import { createDefaultProjectStoreFile, normalizeProjectStoreFile } from './normalize.js'
+import { createDefaultProjectStoreFile } from '../../shared/project/store-file.js'
+import { normalizeProjectStoreFile } from './normalize.js'
 
 const WRITE_DELAY_MS = 150
 

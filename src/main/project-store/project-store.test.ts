@@ -5,7 +5,8 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 
 import { defaultHiveConfig } from '../../shared/project/coordinator.js'
-import { createDefaultProjectStoreFile, normalizeProjectStoreFile } from './normalize.ts'
+import { createDefaultProjectStoreFile } from '../../shared/project/store-file.ts'
+import { normalizeProjectStoreFile } from './normalize.ts'
 import { ProjectStore } from './project-store.ts'
 
 test('normalize rejects unknown versions and accepts a minimal v1 file', () => {

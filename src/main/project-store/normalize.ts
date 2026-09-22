@@ -1,6 +1,5 @@
 import { CHAT_PROVIDERS } from '../../shared/chat-providers.js'
-import { defaultHiveConfig, type CoordinatorBinding, type HiveConfig } from '../../shared/project/coordinator.js'
-import { emptyDirectionRecord } from '../../shared/project/direction.js'
+import { type CoordinatorBinding, type HiveConfig } from '../../shared/project/coordinator.js'
 import { PROJECT_STORE_VERSION, type ProjectStoreFile } from '../../shared/project/store-file.js'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -91,28 +90,14 @@ function parseHive(raw: unknown): HiveConfig | null {
     version: 1,
     workers: {
       maxConcurrent: typeof workers.maxConcurrent === 'number' ? workers.maxConcurrent : 4,
-      defaultProvider: defaultProvider === 'auto' || (typeof defaultProvider === 'string' && CHAT_PROVIDERS.includes(defaultProvider as HiveConfig['workers']['defaultProvider']))
-        ? defaultProvider as HiveConfig['workers']['defaultProvider']
-        : 'auto',
+      defaultProvider: defaultProvider === 'auto'
+        ? 'auto'
+        : typeof defaultProvider === 'string' && CHAT_PROVIDERS.includes(defaultProvider as typeof CHAT_PROVIDERS[number])
+          ? defaultProvider as typeof CHAT_PROVIDERS[number]
+          : 'auto',
       roles
     },
     dispatch: { mode: 'rolling', replanAfterAmendment: dispatch.replanAfterAmendment !== false }
   }
 }
 
-export function createDefaultProjectStoreFile(now = Date.now()): ProjectStoreFile {
-  return {
-    version: PROJECT_STORE_VERSION,
-    updatedAt: now,
-    phase: 'intake',
-    direction: emptyDirectionRecord(),
-    discoveryAsking: 'idea',
-    coordinator: null,
-    hive: defaultHiveConfig(),
-    startedAt: null,
-    acceptedAt: null,
-    caughtUpAt: 0,
-    tree: [],
-    journal: []
-  }
-}
