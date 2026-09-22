@@ -71,6 +71,13 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
     if (imageTabId) layout.showBrowser()
   }, [imageTabId, layout.showBrowser])
   const select = (id: string): void => { void layout.focusPane(id) }
+  // One path for both entry points: the tab header's continue action and the message action under
+  // the latest completed response.
+  const continueChat = (id: string): Promise<void> => {
+    onHistoryOpenChange(false)
+    const row = chat.chats.find((entry) => entry.paneId === id)
+    return layout.continueChat(id, row?.threadId ?? null, row?.modelId ?? null)
+  }
   const actions = useMemo(() => ({ moveTab: layout.moveTabToTile }), [layout.moveTabToTile])
   return <div className="chat-desktop-workspace">
     {layout.error && <div className="chat-layout-error" role="alert">{layout.error}</div>}
@@ -90,11 +97,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         onRenameChat={onRenameChat ? (id) => onRenameChat(id, chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat') : undefined}
         chatRow={(id) => chat.chats.find((row) => row.paneId === id)}
         onTogglePin={(id, pinned) => { void chat.sidebar.setChatPinned(id, pinned).catch(() => {}) }}
-        onContinueChat={(id) => {
-          onHistoryOpenChange(false)
-          const row = chat.chats.find((entry) => entry.paneId === id)
-          void layout.continueChat(id, row?.threadId ?? null, row?.modelId ?? null)
-        }}
+        onContinueChat={(id) => { void continueChat(id) }}
         onPauseTab={(id) => { void chat.interruptPane(id) }}
         onResumeTab={(id) => { void chat.resumePane(id) }}
         onOpenPresets={() => setPresetsOpen(true)}
@@ -104,6 +107,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
           appearance={appearance} historyOpen={historyOpen && chat.selectedPaneId === id}
           onHistoryOpenChange={onHistoryOpenChange} dialog={chat.selectedPaneId === id ? dialog : null}
           onDialogChange={onDialogChange} archiveChat={archiveChat}
+          onContinueInNewChat={() => continueChat(id)}
           onNewChat={() => { void layout.newChat(id) }} />}
       renderBrowser={<div className="workspace-right" data-mode="browser" data-with-browser={layout.browserVisible ? 'yes' : 'no'}>
         <div className={`workspace-surface workspace-surface-browser${layout.browserVisible ? '' : ' is-collapsed'}`}>
@@ -121,7 +125,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   </div>
 }
 
-function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onNewChat, archiveChat }: {
+function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onNewChat, onContinueInNewChat, archiveChat }: {
   paneId: string
   snapshot: ChatWorkspaceSnapshot
   dispatch: Dispatch<ChatWorkspaceAction>
@@ -131,6 +135,8 @@ function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, on
   dialog: ChatPaneDialog | null
   onDialogChange: (dialog: ChatPaneDialog | null) => void
   onNewChat: () => void
+  /** Digest-seeded continuation for the message action under the latest completed response. */
+  onContinueInNewChat?: () => Promise<void>
   archiveChat?: (chatId: string) => Promise<void>
 }) {
   const retained = useRef(initialChatState())
@@ -141,5 +147,5 @@ function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, on
   return <ChatPane controller={controller} zoom={appearance.chatZoom} fontSize={appearance.chatFontSize}
     composerFontSize={appearance.composerFontSize} historyOpen={historyOpen} onHistoryOpenChange={onHistoryOpenChange}
     dialog={dialog} onDialogChange={onDialogChange} selected={isSelected} onNewChat={onNewChat}
-    archiveChat={archiveChat} />
+    onContinueInNewChat={onContinueInNewChat} archiveChat={archiveChat} />
 }
