@@ -18,6 +18,7 @@ import {
 } from '../preview/project-files.js'
 import { ProjectIntake, type Message } from '../preview/project-intake.js'
 import { duration } from '../preview/project-time.js'
+import type { ProjectCanvasFixture } from '../preview/project-canvas-fixture.js'
 import { amendTree, applyEvent, buildDispatchPlan, layoutTree, rootNode, type TreeNode } from '../preview/project-tree.js'
 
 export type ProjectWorkspaceComposerBridge = Pick<ComposerProps,
@@ -30,6 +31,8 @@ export type ProjectWorkspaceProps = {
   embedded?: boolean
   fixedComposerLayout?: ComposerLayout
   composerBridge?: ProjectWorkspaceComposerBridge | null
+  /** Preview and tests: skip intake and simulated dispatch timers when canvas is pre-seeded. */
+  canvasFixture?: ProjectCanvasFixture | null
 }
 const MAP: Location = { kind: 'map' }
 // Prototype pacing: an absence this long offers a catch-up on return; the clock re-renders
@@ -51,19 +54,20 @@ const MODELS: ChatModel[] = [
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
 const nodeSignature = (node: TreeNode) => `${node.state}|${node.summary}`
 
-export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout, composerBridge = null }: ProjectWorkspaceProps) {
+export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout, composerBridge = null, canvasFixture = null }: ProjectWorkspaceProps) {
+  const seeded = canvasFixture !== null
   const [messages, setMessages] = useState<Message[]>([])
-  const [discovery, setDiscovery] = useState<DiscoveryState>(createDiscovery)
+  const [discovery, setDiscovery] = useState<DiscoveryState>(() => canvasFixture?.discovery ?? createDiscovery())
   const [selectedModel, setSelectedModel] = useState(MODELS[0]!.id)
-  const [phase, setPhase] = useState<'intake' | 'canvas'>('intake')
-  const [tree, setTree] = useState<TreeNode[]>([])
-  const [journal, setJournal] = useState<JournalLine[]>([])
+  const [phase, setPhase] = useState<'intake' | 'canvas'>(() => (canvasFixture ? 'canvas' : 'intake'))
+  const [tree, setTree] = useState<TreeNode[]>(() => canvasFixture?.tree ?? [])
+  const [journal, setJournal] = useState<JournalLine[]>(() => canvasFixture?.journal ?? [])
   const [edits, setEdits] = useState<Record<string, FileEdit>>({})
   const [location, setLocation] = useState<Location>(MAP)
   const [treeOpen, setTreeOpen] = useState(true)
   const [now, setNow] = useState(() => Date.now())
-  const [confirmedAt, setConfirmedAt] = useState(0)
-  const [caughtUpAt, setCaughtUpAt] = useState(0)
+  const [confirmedAt, setConfirmedAt] = useState(() => canvasFixture?.confirmedAt ?? 0)
+  const [caughtUpAt, setCaughtUpAt] = useState(() => canvasFixture?.caughtUpAt ?? 0)
   const [awayFor, setAwayFor] = useState(0)
   const [reports, setReports] = useState<AcknowledgedReport[]>([])
   const [proposal, setProposal] = useState<Proposal | null>(null)
@@ -134,6 +138,17 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
 
   // Looking at the map, or at a file, is what marks it seen.
   useEffect(() => {
+    if (!canvasFixture) return
+    const initial = deriveFiles({
+      record: canvasFixture.discovery.record, messages: [], nodes: canvasFixture.tree, journal: canvasFixture.journal,
+      edits: {}, confirmedAt: canvasFixture.confirmedAt, reports: [], progress: closureProgress(canvasFixture.tree, canvasFixture.discovery.record),
+      proposal: null, acceptedAt: null
+    })
+    setSeenFiles(Object.fromEntries(initial.map((file) => [file.path, file.content])))
+    setSeenNodes(Object.fromEntries(canvasFixture.tree.map((node) => [node.id, nodeSignature(node)])))
+  }, [canvasFixture])
+
+  useEffect(() => {
     if (location.kind === 'map') setSeenNodes(Object.fromEntries(tree.map((node) => [node.id, nodeSignature(node)])))
   }, [location, tree])
   useEffect(() => {
@@ -162,7 +177,7 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
   // Once building starts, the simulated root coordinator dispatches work on a timeline. The
   // record is fixed after Start, so the plan is derived once per build.
   useEffect(() => {
-    if (phase !== 'canvas') return
+    if (phase !== 'canvas' || seeded) return
     const timers: number[] = []
     let at = 0
     for (const event of buildDispatchPlan(record)) {
@@ -173,7 +188,7 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
       }, at))
     }
     return () => timers.forEach((timer) => window.clearTimeout(timer))
-  }, [phase, record])
+  }, [phase, record, seeded])
 
   function note(text: string): void {
     setJournal((current) => [...current, { id: nextId.current++, at: Date.now(), text }])

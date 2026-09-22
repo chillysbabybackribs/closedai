@@ -1,24 +1,11 @@
 // Prototype-only tree model for the Project shell preview: a vertical tree that grows from the
 // root coordinator as it dispatches work, a tidy layout for it, and a simulated dispatch plan
 // derived from the confirmed direction record.
-import { clip, describeRecord, type DirectionRecord, type EvidenceItem } from './project-discovery.js'
+import type { DirectionRecord } from '../../shared/project/direction.js'
+import type { TreeKind, TreeNode, TreeState } from '../../shared/project/tree.js'
+import { clip, describeRecord } from './project-discovery.js'
 
-export type TreeKind = 'root' | 'scope' | 'task' | 'research' | 'amendment' | 'proposal'
-export type TreeState = 'anchored' | 'active' | 'queued' | 'complete' | 'provisional' | 'confirmed'
-
-export type TreeNode = {
-  id: string
-  parent?: string
-  kind: TreeKind
-  state: TreeState
-  title: string
-  summary: string
-  detail: string
-  links?: EvidenceItem[]
-  /** Epoch ms. Every node records when it appeared and when it last changed. */
-  createdAt: number
-  updatedAt: number
-}
+export type { TreeKind, TreeNode, TreeState }
 
 export type PlacedNode = TreeNode & { x: number; y: number; depth: number }
 export type TreeLayout = { nodes: PlacedNode[]; width: number; height: number }

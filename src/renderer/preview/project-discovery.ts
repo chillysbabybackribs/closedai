@@ -2,20 +2,14 @@
 // fills a direction record one question at a time and refuses vague answers, so "Start
 // building" is gated by what the record actually contains rather than by a reply count.
 
-export type ClaritySlot = 'idea' | 'user' | 'journey' | 'boundaries'
+import {
+  emptyDirectionRecord,
+  type ClaritySlot,
+  type DirectionRecord,
+  type EvidenceItem
+} from '../../shared/project/direction.js'
 
-export type EvidenceItem = { id: string; label: string; url: string; informs: string }
-
-export type DirectionRecord = {
-  /** The user's original words. Never rewritten; later steering lands in refinements. */
-  idea: string
-  user: string | null
-  journey: string | null
-  boundaries: string | null
-  evidence: EvidenceItem[]
-  unknowns: string[]
-  refinements: string[]
-}
+export type { ClaritySlot, DirectionRecord, EvidenceItem }
 
 export type DiscoveryState = { record: DirectionRecord; asking: ClaritySlot | null }
 
@@ -73,10 +67,7 @@ const RESEARCH: Record<'idea' | 'journey', EvidenceItem[]> = {
 const VAGUE = /^(anyone|everyone|everybody|all users|people|users|idk|not sure|whatever|dunno)\b/i
 
 export function createDiscovery(): DiscoveryState {
-  return {
-    record: { idea: '', user: null, journey: null, boundaries: null, evidence: [], unknowns: [], refinements: [] },
-    asking: 'idea'
-  }
+  return { record: emptyDirectionRecord(), asking: 'idea' }
 }
 
 export function clip(text: string, max: number): string {

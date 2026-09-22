@@ -2,9 +2,9 @@ import type { ChatSnapshot, ChatTranscriptItem } from '../../shared/chat.js'
 import type { ChatRowSummary, ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import type { CredentialApprovalRequest, WebPermissionRequest } from '../../shared/security.js'
 import { initialChatState } from '../chat-state.js'
-import { withBrowser, type SavedChatLayout } from '../chat-layout/layout-tree.js'
+import { withAgent, withBrowser, type SavedChatLayout } from '../chat-layout/layout-tree.js'
 
-export const SCENARIOS = ['conversation', 'empty', 'streaming', 'settings', 'split', 'unavailable', 'security', 'project'] as const
+export const SCENARIOS = ['conversation', 'empty', 'streaming', 'settings', 'split', 'unavailable', 'security', 'project', 'agent'] as const
 
 /** The first-run message main sends when the selected provider's executable is missing. */
 export const UNAVAILABLE_MESSAGE =
@@ -128,8 +128,12 @@ export function sampleSecurityRequests(scenario: Scenario): { credentials: Crede
 }
 
 export function sampleLayout(scenario: Scenario): SavedChatLayout {
-  return { browserVisible: scenario === 'split' || scenario === 'security', agentVisible: false, tree: withBrowser(scenario === 'split'
-    ? { kind: 'split', id: 'preview-split', axis: 'vertical', ratio: 0.5,
-        first: { kind: 'pane', id: 'preview-chat-1' }, second: { kind: 'pane', id: 'preview-chat-2' } }
-    : { kind: 'pane', id: 'preview-chat-1', tabs: ['preview-chat-1', 'preview-chat-2'] }) }
+  const chatTree = scenario === 'split'
+    ? { kind: 'split' as const, id: 'preview-split', axis: 'vertical' as const, ratio: 0.5,
+        first: { kind: 'pane' as const, id: 'preview-chat-1' }, second: { kind: 'pane' as const, id: 'preview-chat-2' } }
+    : { kind: 'pane' as const, id: 'preview-chat-1', tabs: ['preview-chat-1', 'preview-chat-2'] }
+  if (scenario === 'agent') {
+    return { browserVisible: false, agentVisible: true, tree: withAgent(chatTree) }
+  }
+  return { browserVisible: scenario === 'split' || scenario === 'security', agentVisible: false, tree: withBrowser(chatTree) }
 }

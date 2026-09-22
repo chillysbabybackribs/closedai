@@ -19,8 +19,10 @@ if (window.closedai) throw new Error('The UI preview must not replace a real Ele
 // so other model tabs cannot alter a scenario between seeding it and React mounting it.
 const storageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage')!
 Object.defineProperty(window, 'localStorage', { configurable: true, value: createPreviewStorage() })
-const scenario = parseScenario(new URLSearchParams(location.search).get('scenario'))
-document.title = `ClosedAI UI preview — ${scenario}`
+const search = new URLSearchParams(location.search)
+const scenario = parseScenario(search.get('scenario'))
+const projectCanvasPhase = scenario === 'project' && search.get('phase') === 'canvas'
+document.title = `ClosedAI UI preview — ${scenario}${projectCanvasPhase ? ' (canvas)' : ''}`
 document.documentElement.dataset.previewState = 'loading'
 saveLayout(localStorage, PREVIEW_CWD, sampleLayout(scenario))
 
@@ -67,10 +69,12 @@ function Preview() {
     const ready = () => {
       const count = [...document.querySelectorAll('[data-ui="composer.input"]')]
         .filter((element) => element.getBoundingClientRect().width > 0).length
-      const expected = scenario === 'split' ? 2 : 1
+      const expected = scenario === 'split' || scenario === 'agent' ? 2 : 1
       const projectReady = scenario === 'project' && document.querySelector('[data-preview-project-shell]')
+      const agentReady = scenario === 'agent' && document.querySelector('[data-agent-workspace]')
       const appReady = scenario !== 'project' && document.querySelector('[data-ui-key="preview-chat-1"]')
         && (scenario !== 'settings' || document.querySelector('[role="dialog"]'))
+        && (scenario !== 'agent' || agentReady)
       if (!errors.length && count === expected && (projectReady || appReady)) {
         document.documentElement.dataset.previewState = 'ready'
         observer.disconnect()
@@ -83,7 +87,9 @@ function Preview() {
   }, [])
   return <>
     <AppErrorBoundary fallback={previewFallback} onError={(error) => recordError(error.message)}>
-      {scenario === 'project' ? <ProjectShellPreview /> : <App initialSettingsOpen={scenario === 'settings'} />}
+      {scenario === 'project'
+        ? <ProjectShellPreview canvasPhase={projectCanvasPhase} />
+        : <App initialSettingsOpen={scenario === 'settings'} />}
     </AppErrorBoundary>
     {message && <aside className="preview-notice" aria-label="UI preview notice">
       <span role="status">{message}</span>
