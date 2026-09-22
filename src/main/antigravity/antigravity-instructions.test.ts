@@ -13,7 +13,14 @@ test('file links are satisfied from known paths, anchored only by lines actually
 test('the checkout uses native file tools without an injected map', () => {
   const text = antigravityAgentInstructions(WORKSPACE_INDEX_ROOT)
   assert.doesNotMatch(text, /Repository map \(generated|closedai_workspace|do not re-verify/)
-  assert.match(text, /native file search and editing tools are available/)
+  assert.match(text, /[Nn]ative file search and editing tools are available/)
+})
+
+test('the web belongs to the app tools, with no native web path offered', () => {
+  const text = antigravityAgentInstructions('/w')
+  assert.match(text, /mcp_search_query for discovery/)
+  assert.match(text, /No native web or browser tool is granted/)
+  assert.doesNotMatch(text, /Native browser tools use a separate browser/)
 })
 
 test('instructions include the shared objective enhancement without a forced procedural search', () => {

@@ -195,7 +195,7 @@ internal Chromium adapter's limits and lifecycle.
 Research work belongs to the originating
 turn and is cancelled at its end, so models must retrieve needed evidence before finishing.
 Both search paths now default to live presentation and reuse one retained tab per pane/thread/turn.
-Discovery must use the search APIs, never Google or other search-engine pages in the browser.
+Discovery must use the search APIs, never Google or other search-engine pages in the browser. That is now enforced where the model acts, not only asked for in prose: `embedded_browser.page navigate` refuses free text and engine results URLs and names `search.query` in the error, and the Antigravity lane no longer grants agy's native `search_web`/`read_url_content`, so no lane has a second, invisible web path.
 The assigned tab opens in the background on an actual source URL as results arrive, preserving UI
 selection; until then, presentation reports
 `waiting_for_source`. Finishing without an eligible URL reports `no_source` and opens no tab.

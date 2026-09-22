@@ -932,7 +932,7 @@ queries and begins static source collection as each provider responds; `search.r
 incremental results and retained excerpts. Both search tools default to live presentation, opening
 a background browser tab assigned to the calling chat with an actual source as soon as an eligible URL arrives, while other providers and
 reads continue. Discovery stays in the search APIs; search-engine results pages never serve as
-the research presentation. Subsequent searches in the same pane/thread/turn reuse that tab.
+the research presentation, and the model-facing `navigate` refuses to open one. Subsequent searches in the same pane/thread/turn reuse that tab.
 Models receive its id for inspecting source pages while research continues. Explicit background
 mode opts out. Source fetching is unauthenticated; the source tab uses the
 normal browser session. A source whose static body is a JavaScript shell is rendered once in a
