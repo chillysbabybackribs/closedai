@@ -35,9 +35,11 @@ function zoomAt(view: View, nextScale: number, px: number, py: number): View {
 export function ProjectCanvas(props: {
   layout: TreeLayout
   selectedId: string | null
+  /** Nodes that changed while the user was away from the map; they pulse until looked at. */
+  changedIds?: ReadonlySet<string>
   onSelect: (id: string | null) => void
 }) {
-  const { layout, selectedId, onSelect } = props
+  const { layout, selectedId, changedIds, onSelect } = props
   const pane = useRef<HTMLDivElement>(null)
   const [view, setView] = useState<View>({ x: 0, y: TOP_INSET, scale: DEFAULT_SCALE })
   // Once the user pans or zooms, the canvas stops following the growing tree.
@@ -137,6 +139,7 @@ export function ProjectCanvas(props: {
         style={{ left: node.x, top: node.y, width: NODE_WIDTH, minHeight: NODE_HEIGHT }}
         data-state={node.state}
         data-selected={selectedId === node.id || undefined}
+        data-changed={changedIds?.has(node.id) || undefined}
         data-ui="preview.project-node"
         data-ui-key={node.id}
         onClick={() => onSelect(selectedId === node.id ? null : node.id)}>
