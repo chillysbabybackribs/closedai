@@ -5,7 +5,7 @@
 
 export const UI_CONTROLS = {
   'agent.project-suggestion': 'Agent workspace: put a suggested starting direction into the composer; item is the suggestion title',
-  'agent.project-start': 'Agent workspace: start the simulated build once the direction record is complete; the tree then grows from the root coordinator',
+  'agent.project-start': 'Agent workspace: start the build once the direction record is complete; binds the coordinator and hands the project to the run loop, which plans, opens workers, and keeps dispatching',
   'agent.project-node': 'Agent workspace: open a root, scope, task, research, or amendment node as a full-stage detail page and aim direction at it; item is the node id',
   'agent.project-source': 'Agent workspace: open evidence attached to the opened node; item is the source URL',
   'agent.project-tree-toggle': 'Agent workspace: show or hide the project file tree beside the stage',

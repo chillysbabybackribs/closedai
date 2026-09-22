@@ -14,10 +14,12 @@ export const MAX_MUTATIONS = 32
 export const MAX_TREE_EVENTS = 64
 
 const KINDS: readonly TreeKind[] = ['root', 'scope', 'task', 'research', 'amendment', 'proposal']
-const STATES: readonly TreeState[] = ['anchored', 'active', 'queued', 'complete', 'provisional', 'confirmed']
+const STATES: readonly TreeState[] = ['anchored', 'active', 'queued', 'complete', 'provisional', 'confirmed', 'blocked']
 const PHASES: readonly ProjectPhase[] = ['intake', 'confirm', 'building', 'closing', 'complete']
 const SLOTS: readonly ClaritySlot[] = ['idea', 'user', 'journey', 'boundaries']
-const LIMITS = { id: 80, title: 120, summary: 200, detail: 4000, note: 1000, text: 1000 } as const
+const LIMITS = { id: 80, title: 120, summary: 200, detail: 4000, note: 1000, text: 1000, path: 400 } as const
+/** Paths one task may claim. Past this the claim stops being a scope and starts being the repo. */
+const MAX_PATHS = 24
 
 type Record_ = Record<string, unknown>
 const isRecord = (value: unknown): value is Record_ => typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -78,6 +80,8 @@ function parseMutation(raw: unknown, path: string, problems: Problems): ProjectM
       problems.add(`${path}.type`, '"reset" is the restart control\'s verb; a model never blanks a project'); return null
     case 'coordinator':
       problems.add(`${path}.type`, '"coordinator" is written by the workspace pane, not through this tool'); return null
+    case 'dispatch':
+      problems.add(`${path}.type`, '"dispatch" is the pause control\'s verb; the run loop and the user own it'); return null
     default:
       problems.add(`${path}.type`, 'must be one of tree, journal, phase, caughtUp, start, direction'); return null
   }
@@ -96,14 +100,22 @@ function parseTreeEvent(raw: unknown, path: string, problems: Problems): Project
     if (state !== undefined && !STATES.includes(state as TreeState)) { problems.add(`${path}.update.state`, `must be one of ${STATES.join(', ')}`); return null }
     const summary = str(raw.update, 'summary', `${path}.update`, problems, LIMITS.summary)
     const detail = str(raw.update, 'detail', `${path}.update`, problems, LIMITS.detail)
+    const paths = raw.update.paths === undefined ? undefined : parsePaths(raw.update.paths, `${path}.update.paths`, problems)
     if (!id) return null
-    if (state === undefined && summary === undefined && detail === undefined) { problems.add(`${path}.update`, 'must change state, summary, or detail'); return null }
-    return { update: { id, state: state as TreeState | undefined, summary, detail } }
+    if (state === undefined && summary === undefined && detail === undefined && paths === undefined) {
+      problems.add(`${path}.update`, 'must change state, summary, detail, or paths'); return null
+    }
+    return { update: { id, state: state as TreeState | undefined, summary, detail, ...(paths ? { paths } : {}) } }
   }
   if ('remove' in raw) {
     if (!isRecord(raw.remove)) { problems.add(`${path}.remove`, 'must be an object with id'); return null }
     const id = str(raw.remove, 'id', `${path}.remove`, problems, LIMITS.id, true)
     return id ? { remove: { id } } : null
+  }
+  if ('assign' in raw) {
+    // Which worker holds a task is the run loop's to know; a model saying it would make the
+    // workspace show a pane that nothing is running.
+    problems.add(`${path}.assign`, 'is written by the run loop, not through this tool'); return null
   }
   if ('replace' in raw) {
     // Whole-tree replacement drops every node another chat wrote in between; models add and update.
@@ -125,12 +137,30 @@ function parseNode(raw: unknown, path: string, problems: Problems): PlannedNode 
   if (!KINDS.includes(kind as TreeKind)) problems.add(`${path}.kind`, `must be one of ${KINDS.join(', ')}`)
   if (!STATES.includes(state as TreeState)) problems.add(`${path}.state`, `must be one of ${STATES.join(', ')}`)
   const links = raw.links === undefined ? undefined : parseEvidence(raw.links, `${path}.links`, problems)
+  const paths = raw.paths === undefined ? undefined : parsePaths(raw.paths, `${path}.paths`, problems)
   if (kind !== 'root' && !parent) problems.add(`${path}.parent`, 'is required for every node but the root')
   if (!id || !title || problems.list.length) return null
   const node: PlannedNode = { id, kind: kind as TreeKind, state: state as TreeState, title, summary, detail }
   if (parent) node.parent = parent
   if (links) node.links = links
+  if (paths?.length) node.paths = paths
   return node
+}
+
+/** Repo-relative paths a task claims, so the run loop can keep two workers out of one file. */
+function parsePaths(raw: unknown, path: string, problems: Problems): string[] | null {
+  if (!Array.isArray(raw)) { problems.add(path, 'must be an array of repo-relative paths'); return null }
+  if (raw.length > MAX_PATHS) { problems.add(path, `must have at most ${MAX_PATHS} entries`); return null }
+  const paths: string[] = []
+  raw.forEach((entry, index) => {
+    const at = `${path}[${index}]`
+    if (typeof entry !== 'string') { problems.add(at, 'must be a string'); return }
+    const trimmed = entry.trim()
+    if (!trimmed) { problems.add(at, 'must not be empty'); return }
+    if (trimmed.length > LIMITS.path) { problems.add(at, `must be at most ${LIMITS.path} characters`); return }
+    paths.push(trimmed)
+  })
+  return problems.list.length ? null : paths
 }
 
 function parseDirection(raw: unknown, path: string, problems: Problems): DirectionRecord | null {
@@ -186,6 +216,9 @@ export function nodeSummary(node: TreeNode, detailChars: number): Record<string,
   return {
     id: node.id, ...(node.parent ? { parent: node.parent } : {}), kind: node.kind, state: node.state,
     title: node.title, summary: node.summary, ...(detail ? { detail } : {}),
+    ...(node.paths?.length ? { paths: node.paths } : {}),
+    // Enough for a coordinator to see a task is really running without reading the worker.
+    ...(node.assignment ? { worker: { running: node.state === 'active', attempts: node.assignment.attempts, activity: node.assignment.activity } } : {}),
     ...(node.links?.length ? { links: node.links } : {}), updatedAt: node.updatedAt
   }
 }

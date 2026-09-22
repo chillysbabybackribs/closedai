@@ -59,10 +59,12 @@ export function projectTools(host: () => ProjectToolHost | null, projectPathFor:
         name: 'mutate',
         description:
           'Write to the project store; the workspace pane updates as soon as the call returns. Pass an array of mutations, applied in order as one change. ' +
-          'Shapes: { type: "tree", events: [...], note? } where each event is { add: node } (node: id, parent, kind task|scope|research, state queued|active|complete, title, summary, detail, links?), ' +
-          '{ update: { id, state?, summary?, detail? } }, or { remove: { id } }; { type: "journal", text } for a plain-words line the user reads; ' +
+          'Shapes: { type: "tree", events: [...], note? } where each event is { add: node } (node: id, parent, kind task|scope|research, state queued|active|complete|blocked, title, summary, detail, paths?, links?), ' +
+          '{ update: { id, state?, summary?, detail?, paths? } }, or { remove: { id } }; { type: "journal", text } for a plain-words line the user reads; ' +
           '{ type: "phase", phase: building|closing|complete, note? }; { type: "caughtUp", note? }. ' +
-          'Every node but the root needs a parent id, usually "root". Use add and update, never whole-tree replacement; reset and coordinator are refused. ' +
+          'A task\'s "paths" are the repo-relative files or folders it will touch: the run loop starts queued tasks in parallel and holds back only those whose paths overlap something already running. ' +
+          'Queue tasks and let the loop dispatch them — opening chats or messaging workers yourself runs the work twice. State "blocked" means a task stopped and needs a coordinator to rewrite, split, or drop it. ' +
+          'Every node but the root needs a parent id, usually "root". Use add and update, never whole-tree replacement; reset, coordinator, dispatch, and assign are refused. ' +
           `At most ${MAX_MUTATIONS} mutations and ${MAX_TREE_EVENTS} events per tree mutation. Returns the resulting phase and tree.`,
         inputSchema: { type: 'object', additionalProperties: false, required: ['mutations'], properties: {
           project_path: PROJECT_PATH_FIELD,
