@@ -18,8 +18,10 @@ export function Breadcrumbs({ crumbs, onNavigate }: { crumbs: Crumb[]; onNavigat
         {index > 0 && <ChevronRight size={11} aria-hidden="true" />}
         {last
           ? <strong aria-current="page">{crumb.label}</strong>
-          : <button type="button" data-ui="preview.project-crumb" data-ui-key={String(index)}
-            onClick={() => onNavigate(crumb.location)}>{crumb.label}</button>}
+          : crumb.location
+            ? <button type="button" data-ui="preview.project-crumb" data-ui-key={String(index)}
+              onClick={() => onNavigate(crumb.location!)}>{crumb.label}</button>
+            : <em>{crumb.label}</em>}
       </span>
     })}
   </nav>

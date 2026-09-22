@@ -155,6 +155,12 @@
   color: #e6e6e9;
 }
 
+.project-crumbs em {
+  padding: 3px 5px;
+  color: #77777c;
+  font-style: normal;
+}
+
 .project-crumbs strong {
   padding: 3px 5px;
   color: #e6e6e9;

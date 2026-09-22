@@ -32,7 +32,7 @@ test('files are derived from the record, transcript, map, and journal, with edit
   assert.ok(paths.includes('request.md') && paths.includes('direction/record.md') && paths.includes('direction/transcript.md'))
   assert.ok(paths.includes('journal/log.md') && paths.includes('research/discovery-sources.md'))
   assert.ok(paths.some((path) => /^scopes\/[^/]+\/plan\.md$/.test(path)), 'each scope gets a plan')
-  assert.ok(paths.some((path) => /^scopes\/[^/]+\/tasks\/[^/]+\/notes\.md$/.test(path)), 'each task gets worker notes')
+  assert.ok(paths.some((path) => /^scopes\/[^/]+\/(?!plan\.md)[^/]+\.md$/.test(path)), 'each task gets worker notes beside the plan')
   assert.equal(new Set(paths).size, paths.length, 'paths are unique')
 
   const request = files.find((file) => file.path === 'request.md')!
@@ -55,7 +55,8 @@ test('the folder tree nests by path and every file belongs to a map node', () =>
   assert.ok(scopes.folders.length >= 2)
   const journey = scopes.folders.find((folder) => folder.name === 'journey')!
   assert.equal(journey.path, 'scopes/journey')
-  assert.ok(journey.folders.find((folder) => folder.name === 'tasks'))
+  assert.equal(journey.folders.length, 0, 'task notes sit flat beside the scope plan')
+  assert.ok(journey.files.length >= 2)
   const ids = new Set(nodes.map((node) => node.id))
   for (const file of files) assert.ok(ids.has(file.nodeId), `${file.path} points at a real node`)
 })
@@ -69,9 +70,9 @@ test('breadcrumbs trace nodes to the root and files to their folders; direction 
   assert.equal(nodeCrumbs.at(-1)!.label, task.title)
   assert.equal(nodeCrumbs.length, 4, 'Map › root › scope › task')
 
-  const notes = `scopes/journey/tasks/${task.id}/notes.md`
+  const notes = `scopes/journey/${task.id}.md`
   const fileCrumbs = breadcrumbs({ kind: 'file', path: notes }, nodes, files)
-  assert.deepEqual(fileCrumbs.map((crumb) => crumb.label), ['Files', 'scopes', 'journey', 'tasks', task.id, task.title])
+  assert.deepEqual(fileCrumbs.map((crumb) => crumb.label), ['Files', 'scopes', 'journey', task.title])
   assert.equal(targetNodeId({ kind: 'file', path: notes }, files), task.id)
   assert.equal(targetNodeId({ kind: 'file', path: 'direction/record.md' }, files), 'root')
   assert.equal(targetNodeId({ kind: 'map' }, files), null)

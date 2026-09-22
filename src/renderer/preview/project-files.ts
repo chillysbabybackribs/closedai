@@ -29,7 +29,8 @@ export type Location =
   | { kind: 'node'; id: string }
   | { kind: 'file'; path: string }
 
-export type Crumb = { label: string; location: Location }
+/** A crumb without a location is a folder segment: it names the place but is not a page. */
+export type Crumb = { label: string; location?: Location }
 
 export const slug = (text: string): string =>
   text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'item'
@@ -61,8 +62,8 @@ function nodePath(node: TreeNode, nodes: TreeNode[]): string | null {
   const parent = node.parent ? nodes.find((entry) => entry.id === node.parent) : null
   switch (node.kind) {
     case 'scope': return `scopes/${node.id}/plan.md`
-    case 'task': return `scopes/${parent?.id ?? 'unscoped'}/tasks/${node.id}/notes.md`
-    case 'research': return `research/${node.id}/findings.md`
+    case 'task': return `scopes/${parent?.id ?? 'unscoped'}/${node.id}.md`
+    case 'research': return `research/${node.id}.md`
     case 'amendment': return `direction/amendments/${node.id}.md`
     default: return null
   }
@@ -163,9 +164,7 @@ export function breadcrumbs(location: Location, nodes: TreeNode[], files: Projec
   const file = fileAt(files, location.path)
   const parts = location.path.split('/')
   const crumbs: Crumb[] = [{ label: 'Files', location: { kind: 'map' } }]
-  parts.slice(0, -1).forEach((part, index) => {
-    crumbs.push({ label: part, location: { kind: 'file', path: parts.slice(0, index + 1).join('/') } })
-  })
+  for (const part of parts.slice(0, -1)) crumbs.push({ label: part })
   crumbs.push({ label: file?.title ?? parts.at(-1) ?? location.path, location })
   return crumbs
 }
