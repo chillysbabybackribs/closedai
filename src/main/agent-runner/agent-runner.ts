@@ -47,8 +47,10 @@ type ProjectRun = {
   timer: NodeJS.Timeout | null
   running: boolean
   again: boolean
-  /** Tree and journal shape at the last coordinator turn, so the loop never asks twice for nothing. */
+  /** Tree shape the coordinator has already been shown, so the loop never asks twice for nothing. */
   askedSignature: string | null
+  /** A coordinator turn was seen running; when it ends, it has read the store as it now stands. */
+  coordinatorTurn: boolean
   /** Said once per project, so a missing coordinator does not fill the journal. */
   warnedNoCoordinator: boolean
 }
@@ -122,7 +124,7 @@ export class AgentRunner {
   private ensure(projectPath: string): ProjectRun {
     let run = this.runs.get(projectPath)
     if (!run) {
-      run = { timer: null, running: false, again: false, askedSignature: null, warnedNoCoordinator: false }
+      run = { timer: null, running: false, again: false, askedSignature: null, coordinatorTurn: false, warnedNoCoordinator: false }
       this.runs.set(projectPath, run)
     }
     return run
@@ -274,14 +276,18 @@ export class AgentRunner {
       if (plan.coordinator) await this.reportNoCoordinator(projectPath, store, run)
       return
     }
-    // A turn the user started counts: the coordinator has seen the store as it stands.
-    const pane = chat.paneState(coordinatorPaneId)
-    if (pane.running) return
-    if (!plan.coordinator) {
+    // Any coordinator turn counts, including one the user started: when it ends, the coordinator
+    // has read the store as it now stands, so the loop has nothing to tell it.
+    if (chat.paneState(coordinatorPaneId).running) {
+      run.coordinatorTurn = true
+      return
+    }
+    if (run.coordinatorTurn) {
+      run.coordinatorTurn = false
       run.askedSignature = signature
       return
     }
-    if (run.askedSignature === signature) return
+    if (!plan.coordinator || run.askedSignature === signature) return
     run.askedSignature = signature
     await chat.send(coordinatorPaneId, coordinatorBrief(plan.coordinator, snapshot))
   }
@@ -296,8 +302,11 @@ export class AgentRunner {
   }
 }
 
-/** What the coordinator would be planning against: every node's state, plus how much has happened. */
+/**
+ * What the coordinator would be planning against. Journal lines are deliberately not in it: a
+ * coordinator writes one every turn, and counting them would make every reply a reason to ask
+ * again. Only a node appearing, disappearing, or changing state is new information.
+ */
 function planSignature(snapshot: ProjectSnapshot): string {
-  const nodes = snapshot.tree.map((node: TreeNode) => `${node.id}:${node.state}`).join(',')
-  return `${snapshot.phase}|${nodes}|${snapshot.journal.length}`
+  return `${snapshot.phase}|${snapshot.tree.map((node: TreeNode) => `${node.id}:${node.state}`).join(',')}`
 }

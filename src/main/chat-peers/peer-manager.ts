@@ -189,6 +189,18 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     return this.lifecycle.get(paneId)?.surface.snapshot() ?? null
   }
 
+  /**
+   * Whether a chat is alive and what it is doing, without waking it. The agent workspace's run
+   * loop reads this to tell a worker that is still on its task from one that stopped, so it
+   * answers for a chat whose pane has been detached as well: the record is what it followed.
+   */
+  paneActivity(paneId: ChatPaneId): { exists: boolean; running: boolean; activity: string | null } {
+    const entry = this.lifecycle.get(paneId)
+    if (!entry) return { exists: this.store.get(paneId) !== undefined, running: false, activity: null }
+    const summary = entry.display.current
+    return { exists: true, running: summary.running, activity: summary.activity }
+  }
+
   readonly modelSettings = { selectedHub: (): ReturnType<typeof hubForSelectedPane> => hubForSelectedPane(this.lifecycle, this.selectedPaneId),
     refresh: (): void => { refreshPaneModelPickers(this.lifecycle) } }
 
@@ -331,16 +343,19 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
     return this.newChat(current.selectedModel, current.selectedReasoningEffort, null)
   }
+  // The run loop opens workers whether or not their coordinator is on screen, so a parked or
+  // detached parent falls back to the model its record remembers rather than failing.
   async newWorkerPeer(parentPaneId: ChatPaneId): Promise<ChatPaneId> {
     this.projectSwitch.assertAvailable()
     const parent = this.store.require(parentPaneId)
-    const current = this.lifecycle.require(parentPaneId).surface.snapshot({ limit: 0 })
+    const current = this.lifecycle.get(parentPaneId)?.surface.snapshot({ limit: 0 })
+    const modelId = current?.selectedModel ?? parent.modelId
     const record = this.store.create({
       cwd: parent.cwd,
       projectPath: parent.projectPath,
-      provider: chatProviderOfId(current.selectedModel),
-      modelId: current.selectedModel,
-      reasoningEffort: current.selectedReasoningEffort,
+      provider: chatProviderOfId(modelId),
+      modelId,
+      reasoningEffort: current?.selectedReasoningEffort ?? parent.reasoningEffort,
       parentChatId: parentPaneId,
       agentWorker: true
     })

@@ -16,6 +16,8 @@ import { AgentWorkspaceSurface } from './agent-workspace-surface.js'
 import { maintainBrowserCache, scheduleBrowserCacheMaintenance } from './browser-cache-maintenance.js'
 import { importDefaultBrowserCookies } from './browser-cookie-import.js'
 import { CodexWorkspaceRuntime } from './codex-workspace-runtime.js'
+import { AgentRunner } from './agent-runner/agent-runner.js'
+import { runnerChat, runnerStore } from './agent-runner/runner-hosts.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { ChatStore } from './chat-store/chat-store.js'
 import { ChatTranscriptCache } from './chat-store/chat-transcript-cache.js'
@@ -88,6 +90,7 @@ let projectHub: ProjectHub | null = null
 let chatTranscripts: ChatTranscriptCache | null = null
 let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
+let agentRunner: AgentRunner | null = null
 let credentialVault: CredentialVault | null = null
 let securitySettings: SecuritySettingsStore | null = null
 // Pending user decisions (credential reads, page permissions); empty unless Settings → Security asks for them.
@@ -322,6 +325,14 @@ async function main(): Promise<void> {
   })
   openMainWindow(mainWindowHost())
   void chatService.start()
+  // The agent workspace's hive: it dispatches queued tasks to worker chats and keeps going as
+  // each one lands, so a build continues whether or not anyone is watching the workspace.
+  agentRunner = new AgentRunner({
+    store: () => (projectHub ? runnerStore(projectHub) : null),
+    chat: () => (chatService ? runnerChat(chatService) : null),
+    warn: (message) => console.warn(message)
+  })
+  agentRunner.start()
   stopBrowserCacheMaintenance = scheduleBrowserCacheMaintenance(userData())
   const liveVerifyMode = process.env.CLOSEDAI_LIVE_VERIFY?.trim() || liveVerifyFromArgv()
   if (liveVerifyMode) requestLiveVerify(liveVerifyHandle, app, liveVerifyMode, true)
@@ -395,6 +406,8 @@ app.on('before-quit', (event) => {
   nativeInstrument?.dispose()
   stopBrowserCacheMaintenance?.()
   stopBrowserCacheMaintenance = null
+  agentRunner?.stop()
+  agentRunner = null
   chatService?.stop()
   for (const runtime of codexRuntimes.values()) runtime.stop()
   codexRuntimes.clear()

@@ -34,6 +34,11 @@ export class ProjectHub extends EventEmitter {
         store.on('change', (change) => {
           this.emit('event', { type: 'snapshot', projectPath: change.projectPath, snapshot: change.snapshot } satisfies ProjectWorkspaceEvent)
         })
+        // Opening a store is news too: after a relaunch nothing has mutated yet, and the agent
+        // workspace's run loop would otherwise never learn that a project is mid-build.
+        queueMicrotask(() => {
+          this.emit('event', { type: 'snapshot', projectPath: resolved, snapshot: store.snapshot() } satisfies ProjectWorkspaceEvent)
+        })
         return store
       })
       this.stores.set(resolved, pending)
