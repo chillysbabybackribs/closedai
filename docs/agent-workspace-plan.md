@@ -1,8 +1,8 @@
 # Agent workspace: development plan
 
 Status: working plan, 2026-09-22. This is the one document a pane reads before touching the agent
-workspace. It records what is real today, what the next slices are, and how parallel panes stay out
-of each other's way. Update it when a slice lands. The
+workspace. It records what is real today, what v1 must do and what v2 may add, and how parallel
+panes stay out of each other's way. Update it when a piece lands. The
 [blueprint](adaptive-multi-agent-development-blueprint.md) is the target shape; this plan is the path.
 
 ## Why this document exists
@@ -163,59 +163,25 @@ first question so the question rests on what already exists. The coordinator nev
 visible browser and never touches files during intake. Slice B keeps this voice; it changes only
 who writes the record.
 
-### Slice B: the coordinator owns the record
+### v1 pipeline — landed 2026-09-22
 
-Goal: the direction record is what the model decided, with its evidence.
-
-- Add a `closedai_project` tool namespace under `src/main/tools/` with read (`snapshot`, with
-  projection) and write verbs (`update_direction`, `set_phase`, `add_node`, `update_node`,
-  `journal`). Same shared contract for every provider lane; adapters only translate.
-- Extend `agent-workspace-instructions.ts`: after each pillar is clarified, record it with the
-  tool; attach evidence URLs from search; write unknowns as it finds them; do not narrate a record
-  it did not write.
-- Bind the coordinator thread into `coordinator` on first turn so a restart can tell whether the
-  record belongs to the current chat.
-- Delete `syncDiscoveryWithItems` and the fixture `RESEARCH` evidence from the live path.
-
-Verification: run intake in the app with one provider; the record in `project.json` matches what
-the model said, and the tool calls are visible in the transcript. Provider attach probe confirms the
-namespace reaches each lane.
-
-### Slice C: real dispatch and claims
-
-Goal: two chats read and update the same project state; this is the blueprint's foundational
-interaction.
-
-- "Start building" asks the coordinator to write the first scopes and tasks as tree nodes with
-  `touches` and `local_success`. Extend `TreeNode` with `owner`, `leaseUntil`, and `evidence`
-  rather than inventing a second task type.
-- Add `claim_task` and `complete_task` verbs to the tool. Claims are atomic in the hub (one
-  writer per store) and carry a lease.
-- Workers are detached chats the app starts from `HiveConfig.workers`, each with worker guidance
-  that says: read the snapshot, claim one ready task, work, record evidence, release or complete.
-- The canvas shows nodes changing because a chat wrote them. The journal is the event log the
-  blueprint describes; the file view stays a projection.
-
-Verification: one coordinator and one worker on a scratch project; the worker claims a task the
-coordinator wrote, finishes it, and the pane shows it without any renderer-side timer.
-
-### Slice D: catch-up and closure from real data
-
-Goal: the report, acknowledgement, proposal, and acceptance path runs on store data.
-
-- `buildCatchUp`, `closureProgress`, and `canPropose` already take nodes and a record. Feed them the
-  snapshot. Move `reports`, `proposal`, and `acceptedAt` into the store so acknowledgement survives
-  a restart.
-- The completion proposal comes from the coordinator through the tool, not a 900 ms timer.
+See "v1: one functional pipeline" above for what it is made of. Verification done: typecheck;
+6 new tests in `src/main/tools/project/project.test.ts` (path resolution, a coordinator plan
+followed by a worker completion on one in-memory store, batch refusal with per-fault paths, parser
+defaults and rejections, registry names); prompt, catalog, schema-import, registry, and view tests
+still green; hygiene; production build. Not yet done: the owner's real run against the pass
+condition above. The former slices B (coordinator-written record), C (claims and app-spawned
+workers), and D (store-backed closure) are folded into the v2 candidate list, each waiting for the
+failure that would justify it.
 
 ## Working rules for parallel panes
 
 - **One pane per slice.** Before starting, read this file and `git log --since=1.day -- src/renderer/agent-workspace src/main/project-store src/shared/project`.
   If another pane touched those paths in the last hour, coordinate through the user first.
-- **Ownership by path.** Slice A: `src/main/project-store/`, `src/main/project-ipc.ts`, preload
-  `project.*`, `src/renderer/agent-workspace/`. Slice B: `src/main/tools/project/`,
-  `src/main/chat-context/agent-workspace-instructions.ts`. Slice C touches all of them, so it waits
-  for A and B to land.
+- **Ownership by path.** Store and pane: `src/main/project-store/`, `src/main/project-ipc.ts`,
+  preload `project.*`, `src/renderer/agent-workspace/`. Model side: `src/main/tools/project/`,
+  `src/main/chat-context/agent-workspace-instructions.ts`. A v2 item that touches both sides is
+  one pane's job, not two.
 - **The running app does not hot-reload.** The user runs `npm run preview` from `out/`. A renderer
   change is visible only after `npm run build && npm run preview`. Say so in the report instead of
   claiming a visual check you did not do.
@@ -228,17 +194,15 @@ Goal: the report, acknowledgement, proposal, and acceptance path runs on store d
 - **Do not raise caps or add exceptions** to work around a large file. Shrink a component by
   moving state or logic out, not by extracting a child that takes forty props.
 
-## Decisions that belong to the owner
+## Decisions the owner has made
 
-1. **Store format.** Keep the JSON store as the source and generate Markdown views later if humans
-   need them, or move to the blueprint's Markdown-and-Git layout now. Recommendation: keep JSON.
-   The shape exists, is normalized, and is already ignored by git. Markdown is a projection.
-2. **Workers in slice C.** App-spawned detached chats from `HiveConfig`, or existing user-opened
-   panes that opt in. Recommendation: app-spawned, because leases and recovery need the app to
-   know who is alive. Existing panes can join later through the same tool.
-3. **Coordinator scope now.** Keep the coordinator prompt to intake plus record-writing (slice B),
-   or extend it to planning in the same slice. Recommendation: intake plus record-writing first;
-   planning arrives with slice C where it has real workers to plan for.
+1. **Store format (2026-09-22).** JSON store as the source; Markdown is a projection.
+2. **Build order (2026-09-22).** One functional v1 pipeline from basic moving parts, then v2
+   optimize and tune. Infrastructure is added when a real run shows it is missing, not before.
+3. **Workers (2026-09-22, v1).** Ordinary chats the coordinator opens by prompt. App-spawned
+   workers from `HiveConfig` are a v2 candidate if the prompt path proves too loose.
+4. **Coordinator scope (2026-09-22, v1).** Intake plus planning and dispatch. Writing the direction
+   record itself is a v2 candidate.
 
 ## Out of scope for this phase
 
