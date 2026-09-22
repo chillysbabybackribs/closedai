@@ -350,14 +350,21 @@ async function runParallel(registry: ToolRegistry, calls: BatchCall[], context: 
   })
 }
 
-/** Group parallel batch calls by the same resource lock key; reads stay independent. */
+/**
+ * Group parallel batch calls by resource lock key. Reads stay independent. If any call uses the
+ * active tab / tab strip (no tab_id), serialize every browser-scoped lane in that batch so the
+ * active target cannot change mid-plan.
+ */
 function parallelGroups(calls: BatchCall[]): BatchCall[][] {
+  const scopes = calls.map(batchResourceKey)
+  const stripBarrier = scopes.includes('browser:strip')
   const grouped = new Map<string, BatchCall[]>()
-  calls.forEach((call) => {
-    const scope = batchResourceKey(call) ?? `independent:${call.index}`
-    const group = grouped.get(scope)
+  calls.forEach((call, index) => {
+    const scope = scopes[index]
+    const key = scope?.startsWith('browser:') && stripBarrier ? 'browser:strip' : scope ?? `independent:${call.index}`
+    const group = grouped.get(key)
     if (group) group.push(call)
-    else grouped.set(scope, [call])
+    else grouped.set(key, [call])
   })
   return [...grouped.values()]
 }

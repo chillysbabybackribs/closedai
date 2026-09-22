@@ -87,7 +87,10 @@ export function browserResourceLockKey(request: ToolCallRequest, input: JsonObje
 }
 
 export function browserResourceLocksConflict(left: string, right: string): boolean {
-  return left === right
+  if (left === right) return true
+  if (left === 'browser:strip' && right.startsWith('browser:tab:')) return true
+  if (right === 'browser:strip' && left.startsWith('browser:tab:')) return true
+  return false
 }
 
 export function describeBrowserResource(key: string): string {
