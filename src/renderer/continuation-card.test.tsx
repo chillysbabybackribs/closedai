@@ -14,7 +14,7 @@ test('the card names its source and offers to open it and to show the digest', (
   assert.match(html, /data-ui="chat\.continuation-digest"[^>]*aria-expanded="false"/)
   assert.match(html, /Show what the new chat receives/)
   // Collapsed by default: the digest is model-facing text the user can inspect, not the pane's content.
-  assert.doesNotMatch(html, /chat-continuation-digest"/)
+  assert.doesNotMatch(html, /<pre/)
 })
 
 test('a source that no longer exists leaves only the title and digest', () => {
