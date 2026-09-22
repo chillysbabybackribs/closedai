@@ -32,7 +32,7 @@ test('each adapter includes each shared contract once, within the existing promp
     assert.match(value, /check what the platform and existing ClosedAI tools already provide/)
     assert.match(value, /Choose your approach/)
     assert.match(value, /Treat diagnoses and proposed methods as hypotheses/)
-    assert.match(value, /No mandatory search or library lookup/)
+    assert.match(value, /search\.library is optional/)
     // Official-docs sourcing is operationalized, not just aspirational: the boost knob is named.
     assert.match(value, /boost it with preferred_domains/)
     assert.match(value, /old index age is not staleness/)
