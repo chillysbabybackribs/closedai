@@ -151,7 +151,7 @@ export class ClaudeChatService extends EventEmitter {
       const context = mergeProjectRoleContext(this.paneId, {
         ...this.turnAdditionalContext(text),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
-      })
+      }) ?? {}
       const turn = await buildClaudeUserMessage(text, shrunk, context && Object.keys(context).length ? context : undefined, session.sessionId)
       if (!turn) return
       if (this.session !== session || (sessionId && session.sessionId !== sessionId) || this.activeTurnId) throw new Error('Claude conversation changed while preparing the turn')

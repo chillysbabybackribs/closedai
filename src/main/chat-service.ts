@@ -204,7 +204,7 @@ export class ChatService extends EventEmitter {
       const additionalContext = mergeProjectRoleContext(this.paneId, {
         ...this.turnAdditionalContext(prompt),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
-      })
+      }) ?? {}
       if (this.threadId !== threadId || this.activeTurnId || this.stopping) throw new Error('Codex conversation changed while preparing the turn')
       const response = await this.client.request<{ turn?: unknown }>('turn/start', {
         threadId,

@@ -335,8 +335,10 @@ flow) with a compact composer locked to that tile. Full view uses the same solo-
 chat panes (`layout.agent-full-view` or double-click where supported). Durable project state lives in **`<project>/.closedai/project.json`** (phase, direction record, coordinator
 binding, hive config, tree, journal). The renderer loads it through `window.closedai.project.snapshot`
 and `project.onEvent`; the agent workspace hydrates from disk when that file contains work beyond empty
-intake. Composer-driven turns still run the prototype simulation until coordinator IPC replaces them; the
-composer reuses the selected chat's model catalog and project path as a bridge. Drag the agent workspace grip to stack or dock beside chats the same way as the
+intake. When the workspace is embedded in Electron, main ensures two pinned background chats per project
+(intake and coordinator) via `project.ensurePeers`; intake discovery and canvas steering call those peers
+with role-specific application instructions while the intent map and dispatch timeline remain prototype
+simulation. The composer reuses the selected chat's model catalog and project path as a bridge. Drag the agent workspace grip to stack or dock beside chats the same way as the
 browser, without selecting a conversation when you focus inside the pane.
 
 Drag empty chat header space onto another tile's left, right, top, or bottom edge to move the whole pane. A

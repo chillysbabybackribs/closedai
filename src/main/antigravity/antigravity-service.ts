@@ -150,7 +150,7 @@ export class AntigravityChatService extends EventEmitter {
         ...this.turnAdditionalContext(text),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {}),
         ...(pendingCompaction ? compactedAdditionalContext(pendingCompaction) : {})
-      })
+      }) ?? {}
       const turn = await buildAntigravityPrompt(text, shrunk, context && Object.keys(context).length ? context : undefined, this.stateDir)
       if (!turn) return
       await this.bridge.start()
