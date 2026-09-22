@@ -45,6 +45,7 @@ import { createArtifactRuntime } from './investigations/artifact-runtime.js'
 import type { ArtifactStore } from './investigations/artifact-store.js'
 import type { ResearchService } from './tools/search/research/service.js'
 import { peerChatTools } from './tools/peer-chats/index.js'
+import { projectTools } from './tools/project/index.js'
 import { NativeControllerClient } from './native-instrument/client.js'
 import { NativeInstrumentService } from './native-instrument/service.js'
 import { nativeInstrumentTools } from './tools/native-instrument/index.js'
@@ -244,6 +245,12 @@ async function main(): Promise<void> {
     captureTools(() => captureAccess, screenshots),
     research.namespace,
     peerChatTools(() => chatService),
+    // A chat writes into the project it runs in: the agent workspace's coordinator and the worker
+    // chats it opens share one store by path, so their plans and results meet on the canvas.
+    projectTools(() => projectHub, (paneId) => {
+      const record = chatStore?.get(paneId)
+      return record ? record.projectPath ?? record.cwd : null
+    }),
     // Lazy self-reference: the batch dispatches into the registry it is registered in.
     batchTools(() => toolRegistry!, { maxCalls: settings.get().toolBatchMaxCalls })
   ])

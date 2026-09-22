@@ -358,15 +358,24 @@ guidance via `agent-workspace-instructions.ts`, and the project store. The works
 building, journal lines, tree amendments, catch-up, accept, reopen) is a `ProjectMutation` sent over
 `project:mutate` and applied by the shared reducer in `src/shared/project/mutations.ts`. The same
 reducer runs in memory for the canvas fixture and tests, so both paths produce identical state.
-Quit and relaunch restores the phase, record, tree, and journal. What is still **prototype**: the
-direction record is read off the coordinator transcript by message position (`syncDiscoveryWithItems`)
-rather than written by the model; nothing dispatches work, so the canvas after Start shows only the
-root node until the user adds direction; acknowledged reports and the open completion proposal are
-local React state; and the fixture dispatch script (`buildDispatchPlan`) exists only for previews and
-tests. Validate in **Electron** (`npm run preview` or `npm run dev`). Treat docs that describe full
-multi-agent orchestration as the target shape until coordination lands. The ordered slices, path
-ownership, and pane rules for closing that gap are in `docs/agent-workspace-plan.md`; read it before
-editing anything under `src/renderer/agent-workspace/`, `src/main/project-store/`, or `src/shared/project/`.
+Quit and relaunch restores the phase, record, tree, and journal. **v1 pipeline (2026-09-22):** models
+read and write the same store through the `closedai_project` tool (`snapshot`, `mutate`; see
+`docs/tools.md`), resolved to the calling chat's project. Pressing Start writes the `start` mutation
+and then sends the coordinator chat a kickoff message; the coordinator's building-phase guidance in
+`agent-workspace-instructions.ts` has it read the snapshot, write the first tasks as tree nodes, open
+an ordinary chat with `closedai_app.command new_chat`, and hand it one task by `send_message`. The
+worker is a normal chat in the same project and records its own completion with `closedai_project.mutate`,
+so the canvas shows nodes changing because a chat wrote them. There is no dispatch engine, claim, or
+lease; one task at a time is the whole v1 contract. What is still **prototype**: the direction record is
+read off the coordinator transcript by message position (`syncDiscoveryWithItems`) rather than written
+by the model; a user message during building is also turned into an amendment node by the pane itself
+(`amendTree`, a whole-tree `replace`); acknowledged reports and the open completion proposal are local
+React state; and the fixture dispatch script (`buildDispatchPlan`) exists only for previews and tests.
+Validate in **Electron** (`npm run preview` or `npm run dev`). Treat docs that describe full
+multi-agent orchestration as the target shape until coordination lands. The v1/v2 plan, path
+ownership, and pane rules are in `docs/agent-workspace-plan.md`; read it before editing anything
+under `src/renderer/agent-workspace/`, `src/main/project-store/`, `src/main/tools/project/`, or
+`src/shared/project/`.
 
 Drag empty chat header space onto another tile's left, right, top, or bottom edge to move the whole pane. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its

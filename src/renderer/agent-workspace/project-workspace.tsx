@@ -58,6 +58,8 @@ export type ProjectWorkspaceProps = {
 }
 const MAP = PROJECT_WORKSPACE_MAP
 const START_NOTE = 'Direction confirmed. Working from the record; only the next useful moves are planned.'
+/** What the coordinator chat hears when Start is pressed; its building-phase guidance takes it from here. */
+const START_MESSAGE = 'The user pressed Start building. The direction record is confirmed and the project store is now in the building phase. Read closedai_project.snapshot, write the first tasks, and dispatch the first one to a worker chat.'
 
 export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout, composerBridge = null, chatAppearance, canvasFixture = null, projectPath = null }: ProjectWorkspaceProps) {
   const { file, mutate } = useProjectState(projectPath, canvasFixture)
@@ -150,7 +152,10 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
 
   function start(): void {
     const at = Date.now()
+    // The store is in the building phase before the coordinator reads it, so its first snapshot
+    // already shows the root node.
     void mutate({ type: 'start', root: rootNode(record, at), note: START_NOTE })
+      .then(() => composerBridge?.onSend?.(START_MESSAGE))
     setNow(at)
     lastInteraction.current = at
     setLocation(MAP)
