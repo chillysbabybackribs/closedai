@@ -48,32 +48,74 @@ Verified in source on 2026-09-22.
 | Workspace renders the store file; live source over IPC, in-memory source for fixtures and tests | Live (slice A) | `use-project-state.ts`, `project-view.ts` |
 | Start building, journal, amendments, catch-up, accept, reopen persist and survive a relaunch | Live (slice A) | `project-workspace.tsx` issues mutations only |
 | Restart control, `closedai_ui.capture` `agent_workspace` | Live | `layout.agent-restart`, `src/main/tools/capture/agent-workspace.ts` |
-| Direction record filled from the transcript | Prototype | `syncDiscoveryWithItems` maps user message N to pillar N and invents unknowns and evidence; now persisted through `direction` mutations so Start is reachable in the live pane |
-| Canvas after "Start building" | Empty | Only the root node; nothing dispatches work until slice C. `buildDispatchPlan` is fixture-only |
-| Acknowledged reports, open completion proposal | Prototype | Local React state and a 900 ms proposal timer; slice D |
-| Any model tool that reads or writes project state | Missing | `src/main/tools/browser/project.ts` is JSON projection, unrelated |
-| Worker chats, claims, leases | Missing | `HiveConfig` is defined but nothing consumes it |
+| Model tool over the store: `closedai_project` `snapshot` and `mutate` | Live (v1) | `src/main/tools/project/`; resolves the calling chat's project, or `project_path` |
+| Start sends the coordinator a kickoff message; coordinator plans tasks into the store | Live (v1) | `project-workspace.tsx` `start`, building-phase paragraphs in `agent-workspace-instructions.ts` |
+| Worker chats | Live (v1), by prompt | Ordinary chats the coordinator opens with `closedai_app.command new_chat` and briefs with `send_message`; they record completion with `closedai_project.mutate` |
+| Direction record filled from the transcript | Prototype | `syncDiscoveryWithItems` maps user message N to pillar N and invents unknowns and evidence; persisted through `direction` mutations so Start is reachable |
+| User direction during building | Prototype | The pane turns it into an amendment node itself (`amendTree`, whole-tree replace) and also forwards it to the coordinator |
+| Acknowledged reports, open completion proposal | Prototype | Local React state and a 900 ms proposal timer |
+| Claims, leases, dispatch engine, `HiveConfig` consumer | Not built | Deliberately; see v2 |
 
-The consequence: the store is now the source of truth for everything the pane shows, but the record
-in it is still a positional guess and nothing fills the tree. That is what slices B and C are for.
+The consequence: one real run is now possible end to end. Whether it works is the next thing to
+find out, and that finding decides what v2 contains.
 
-## Target for this phase
+## v1: one functional pipeline
 
-Blueprint stage 1, "durable peer coordination", scoped to what the pane already shows:
+Decided by the owner 2026-09-22, replacing the layer-by-layer slices B, C, and D that were here
+before: build one working pipeline out of basic moving parts first, then optimize and tune. The
+earlier order built infrastructure (store, then tool namespace, then claims) and never produced the
+thing the owner wanted to see, which is an idea going in and real work coming out. Every remaining
+piece is pulled by a failure observed in a real run, not by the blueprint.
 
-- The store is the shared state. The pane is a view of it, never a second source of truth.
-- The coordinator model, not a regex over the transcript, fills the direction record.
-- "Start building" produces real tree tasks written by the coordinator. Worker chats claim them,
-  work, and record results through the same store.
-- Everything on the canvas is a projection of store events. Timers and fixture data exist only in
-  tests.
+The v1 pass condition, checked by the owner in the running app:
 
-Stages 2 to 6 (background execution, adaptive coordinators, branches, observers, command surface)
-are out of scope until stage 1 runs end to end on a real project.
+1. Type an idea into the agent workspace and answer four questions.
+2. Press Start building.
+3. The coordinator writes one to three tasks under the root and the canvas shows them.
+4. A new chat pane opens, receives one task, and does it in the project directory.
+5. That chat marks the task complete through the tool, and the canvas and journal show it without
+   anyone touching the pane.
 
-## Slices, in order
+What v1 is made of, all landed 2026-09-22:
 
-Each slice is shippable alone, verified in the Electron app, and owned by one pane at a time.
+- `closedai_project.snapshot` and `closedai_project.mutate` in `src/main/tools/project/`. `mutate`
+  carries the same `ProjectMutation[]` the pane sends; `mutation-parser.ts` turns untrusted JSON
+  into typed mutations or a list of problems, refuses the whole batch on any problem, and never
+  accepts `reset`, `coordinator`, or whole-tree `replace` from a model. The project is resolved from
+  the caller's chat record (`projectPath ?? cwd`) unless `project_path` is passed, which is how a
+  worker briefed by the coordinator writes into the right store.
+- Start writes the `start` mutation, then sends the coordinator chat a kickoff message through the
+  composer bridge (`START_MESSAGE` in `project-workspace.tsx`).
+- Three building-phase paragraphs in `agent-workspace-instructions.ts`: read the snapshot, plan one
+  to three small tasks, open a worker with `closedai_app.command new_chat`, brief it with
+  `send_message` (`await_turn` false) including the project path and the completion instruction,
+  mark the task active, never do the work itself, reply in three sentences.
+- Workers are ordinary chats with every tool. Nothing distinguishes them but the message they got.
+
+Known limits, accepted for v1: `new_chat` inherits the selected pane's project, not the
+coordinator's, so the owner keeps the workspace on the same project as the selected chat; the
+pane's own amendment writer can race a coordinator write in the same second; nothing stops the
+coordinator from dispatching a second task before the first completes except its instructions.
+
+## v2: optimize and tune
+
+Only after a v1 run has been observed. Candidates, each tied to the failure that would justify it:
+
+- **Coordinator writes the record** (`direction` mutation during intake, delete
+  `syncDiscoveryWithItems`) if the positional mapping records wrong answers in practice.
+- **Claims and leases** (`owner`, `leaseUntil` on `TreeNode`, atomic claim in the hub) if two
+  workers ever touch one task, or a worker dies holding one.
+- **Store-backed reports and proposal** (slice D as previously written) if the local state loses
+  something the owner cared about across a relaunch.
+- **Pane amendment through the coordinator** instead of `amendTree`'s replace if a user message
+  clobbers a coordinator write.
+- **App-spawned workers from `HiveConfig`** if the prompt-driven `new_chat` path proves too loose
+  to steer, or the owner wants worker models chosen per role.
+- **Coordinator binding** if a restart needs to tell whose record it is looking at.
+
+## Landed slices
+
+Kept for the record; each entry says what it changed and how it was verified.
 
 ### Slice A: write path — landed 2026-09-22
 
