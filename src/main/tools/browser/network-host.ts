@@ -3,6 +3,11 @@ import type { NetworkRule, NetworkRuleInput } from '../../browser-network/networ
 import type { CookieFilter, CookieInput, CookieRecord } from '../../browser-network/session-cookies.js'
 import type { SessionFetchRequest, SessionFetchResult } from '../../browser-network/session-fetch.js'
 
+export type NetworkReplayGuard = {
+  urlContains?: string
+  method?: string
+}
+
 export type NetworkBodyResult = {
   id: string
   url: string
@@ -25,7 +30,7 @@ export type NetworkBodyResult = {
 export type NetworkToolHost = {
   requests(filter: NetworkListFilter): NetworkListing
   waitFor(wait: NetworkWait): Promise<NetworkWaitResult>
-  replay(id: string): Promise<NetworkBodyResult>
+  replay(id: string, guard?: NetworkReplayGuard): Promise<NetworkBodyResult>
   rules(): NetworkRule[]
   addRule(input: NetworkRuleInput): NetworkRule
   removeRule(id: string): boolean

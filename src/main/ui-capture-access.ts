@@ -58,6 +58,7 @@ export class UiCaptureAccess implements UiCaptureHost {
       const contents = service.contentsOf(tab.id)
       if (!contents) return null
       const throttled = contents.getBackgroundThrottling()
+      if (process.env.CLOSEDAI_CADENCE_DEBUG) console.error(`[capture] tab=${tab.id} wasThrottled=${throttled}`)
       contents.setBackgroundThrottling(false)
       restoreThrottling = () => { if (!contents.isDestroyed()) contents.setBackgroundThrottling(throttled) }
       return await withCaptureDocument(contents, async () => {

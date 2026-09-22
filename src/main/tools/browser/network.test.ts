@@ -12,7 +12,7 @@ function harness() {
   const host: NetworkToolHost = {
     requests: (filter) => (calls.push(['requests', filter]), { matched: 1, returned: 1, oldestCursor: 1, nextCursor: 7, tipCursor: 8, requests: [] }),
     waitFor: async (wait) => (calls.push(['wait', wait]), { matched: false, elapsedMs: wait.timeoutMs, timedOut: true }),
-    replay: async (id) => (calls.push(['replay', id]), { id, url: 'https://a.test/api', method: 'GET', status: 200, source: 'replay', contentType: 'application/json', text: '{}', base64: null, byteLength: 2, truncated: false }),
+    replay: async (id, guard) => (calls.push(['replay', id, guard]), { id, url: 'https://a.test/api', method: 'GET', status: 200, source: 'replay', contentType: 'application/json', text: '{}', base64: null, byteLength: 2, truncated: false }),
     rules: () => [],
     addRule: (input) => (calls.push(['addRule', input]), { id: 'rule-1', action: input.action, urlPattern: input.urlPattern, tabId: input.tabId ?? null, redirectUrl: input.redirectUrl ?? null, headers: input.headers ?? null, note: input.note ?? null, hits: 0 }),
     removeRule: (id) => id === 'rule-1',
@@ -60,9 +60,15 @@ test('legacy body reads cannot send requests; explicit replay routes separately'
   const { calls, call, registry } = harness()
   assert.equal((await call({ action: 'body', request_id: '12' })).isError, true)
   assert.deepEqual(calls, [])
-  const result = await registry.call({ namespace: 'embedded_browser', tool: 'network_replay', arguments: { request_id: '12' } }, { threadId: null, turnId: null, callId: 'r' })
+  const result = await registry.call({
+    namespace: 'embedded_browser',
+    tool: 'network_replay',
+    arguments: { request_id: '12', url_contains: '/api', method: 'POST' }
+  }, { threadId: null, turnId: null, callId: 'r' })
   assert.equal(payload(result).source, 'replay')
-  assert.deepEqual(calls, [['replay', '12']])
+  assert.deepEqual(calls, [['replay', '12', { urlContains: '/api', method: 'POST' }]])
+  const missingGuard = await registry.call({ namespace: 'embedded_browser', tool: 'network_replay', arguments: { request_id: '12' } }, { threadId: null, turnId: null, callId: 'r2' })
+  assert.equal(missingGuard.isError, true)
 })
 
 test('rules and clear route to the host', async () => {

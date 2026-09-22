@@ -3,7 +3,7 @@ import type { NetworkListFilter, NetworkListing, NetworkRecord, NetworkWait, Net
 import type { NetworkRule, NetworkRuleInput } from './browser-network/network-rules.js'
 import { listCookies, removeCookie, setCookie, type CookieFilter, type CookieInput, type CookieRecord } from './browser-network/session-cookies.js'
 import { fetchWithSession, replayableHeaders, type SessionFetchRequest, type SessionFetchResult } from './browser-network/session-fetch.js'
-import type { NetworkBodyResult, NetworkToolHost, SessionToolHost } from './tools/browser/index.js'
+import type { NetworkBodyResult, NetworkReplayGuard, NetworkToolHost, SessionToolHost } from './tools/browser/index.js'
 
 /**
  * NetworkToolHost and SessionToolHost over the live BrowserService: the session's request log
@@ -39,11 +39,12 @@ export class BrowserNetworkAccess implements NetworkToolHost, SessionToolHost {
     return this.service().observers.network.clear(tabId)
   }
 
-  async replay(id: string): Promise<NetworkBodyResult> {
+  async replay(id: string, guard: NetworkReplayGuard = {}): Promise<NetworkBodyResult> {
     const service = this.service()
     const record = service.observers.network.get(id)
     if (!record) throw new Error(`No recorded request with id ${id}; ids come from requests or wait`)
     if (record.state === 'blocked') throw new Error(`Request ${id} was blocked by rule ${record.ruleId ?? '?'}; it has no body`)
+    assertReplayGuard(record, guard)
     return this.replayBody(service, record)
   }
 
@@ -103,5 +104,20 @@ export class BrowserNetworkAccess implements NetworkToolHost, SessionToolHost {
       truncated: response.truncated,
       note: 'Explicit new request using the current session and recorded method, headers and post data; this is not the historical response and may repeat server-side effects.'
     }
+  }
+}
+
+function assertReplayGuard(record: NetworkRecord, guard: NetworkReplayGuard): void {
+  if (guard.urlContains && !record.url.toLowerCase().includes(guard.urlContains.toLowerCase())) {
+    throw new Error(
+      `Request ${record.id} is ${record.method} ${record.url}, which does not match url_contains ${JSON.stringify(guard.urlContains)}. ` +
+      'Pass the id from requests/wait for the URL you mean, or fix url_contains.'
+    )
+  }
+  if (guard.method && record.method.toUpperCase() !== guard.method.toUpperCase()) {
+    throw new Error(
+      `Request ${record.id} is ${record.method} ${record.url}, which does not match method ${JSON.stringify(guard.method)}. ` +
+      'Pass the id from requests/wait for the method you mean, or fix method.'
+    )
   }
 }

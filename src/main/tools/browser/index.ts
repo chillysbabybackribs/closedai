@@ -14,7 +14,7 @@ import { sessionTool } from './session.js'
 import { waitForAction } from './wait-for.js'
 
 export type { BrowserHostProvider, BrowserToolHost, NavigateOutcome } from './host.js'
-export type { NetworkBodyResult, NetworkHostProvider, NetworkToolHost, SessionHostProvider, SessionToolHost } from './network-host.js'
+export type { NetworkBodyResult, NetworkHostProvider, NetworkReplayGuard, NetworkToolHost, SessionHostProvider, SessionToolHost } from './network-host.js'
 
 /**
  * Namespace `embedded_browser`: the browser the user is looking at, and the session the app

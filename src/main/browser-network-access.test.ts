@@ -26,6 +26,26 @@ test('explicit replay uses only the selected record and labels a new response', 
   assert.match(result.note!, /not the historical response/)
 })
 
+test('replay guard rejects a mismatched id before sending', async () => {
+  const network = new NetworkLog()
+  network.begin({ id: 'x', tabId: 'tab-1', url: 'https://accounts.google.com/RotateCookies', method: 'POST', resourceType: 'fetch' })
+  const browser = { observers: { network }, session: { fetch: async () => assert.fail('Unexpected request') } } as unknown as BrowserService
+  const access = new BrowserNetworkAccess(() => browser)
+  await assert.rejects(
+    access.replay('x', { urlContains: '/post', method: 'POST' }),
+    /does not match url_contains/
+  )
+  await assert.rejects(access.replay('x', { urlContains: 'RotateCookies', method: 'GET' }), /does not match method/)
+  network.complete('x', { status: 200, fromCache: false })
+  const calls: unknown[] = []
+  const sending = {
+    observers: { network },
+    session: { fetch: async (...args: unknown[]) => { calls.push(args); return new Response('ok') } }
+  } as unknown as BrowserService
+  await new BrowserNetworkAccess(() => sending).replay('x', { urlContains: 'RotateCookies', method: 'POST' })
+  assert.equal(calls.length, 1)
+})
+
 test('replay rejects missing and incomplete records without sending requests', async () => {
   const network = new NetworkLog()
   const browser = { observers: { network }, session: { fetch: async () => assert.fail('Unexpected request') } } as unknown as BrowserService

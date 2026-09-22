@@ -38,6 +38,7 @@ export function webContentsCadence(find: (tabId: string) => ThrottleableContents
   return {
     setThrottled: (tabId, throttled) => {
       const contents = find(tabId)
+      if (process.env.CLOSEDAI_CADENCE_DEBUG) console.error(`[cadence] ${tabId} throttled=${throttled} target=${!!contents}`)
       if (contents && !contents.isDestroyed()) contents.setBackgroundThrottling(throttled)
     }
   }

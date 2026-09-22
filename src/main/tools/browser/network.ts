@@ -119,10 +119,19 @@ export function networkReplayTool(network: NetworkHostProvider): ToolDefinition 
       'Explicitly resend a request from embedded_browser.network requests/wait using its recorded method, ' +
       'headers and post data on the current signed-in session. This can repeat server-side effects, ' +
       'including POST mutations. Returns the NEW response with source replay, never historical evidence. ' +
-      'For captured-only reads use browser_cdp.protocol requests/body. Binary/file uploads cannot be replayed.',
-    inputSchema: objectSchema({ request_id: requestIdField }, ['request_id']),
+      'Pass url_contains (and method when needed) from the listing you used to pick request_id so a stale or wrong id ' +
+      'cannot replay a different endpoint. For captured-only reads use browser_cdp.protocol requests/body. ' +
+      'Binary/file uploads cannot be replayed.',
+    inputSchema: objectSchema({
+      request_id: requestIdField,
+      url_contains: urlContainsField,
+      method: methodField
+    }, ['request_id', 'url_contains']),
     timeoutMs: BODY_TIMEOUT_MS,
-    run: async (input) => jsonResult(await requireNetwork(network).replay(stringArg(input, 'request_id')!))
+    run: async (input) => jsonResult(await requireNetwork(network).replay(stringArg(input, 'request_id')!, {
+      urlContains: stringArg(input, 'url_contains'),
+      method: stringArg(input, 'method')
+    }))
   }
 }
 
