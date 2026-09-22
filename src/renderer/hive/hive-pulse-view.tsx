@@ -46,18 +46,12 @@ export function HivePulseView({ runTitle, onCancel, onReady }: HivePulseViewProp
           <p className="hive-pulse__status">{current.label}</p>
           <p className="hive-pulse__title">{runTitle}</p>
         </div>
-        <div className="hive-pulse__progress" aria-label={`Run preparation ${moment + 1} of ${MOMENTS.length}`}>
-          {MOMENTS.map((_, index) => (
-            <span key={index} data-active={index <= moment} />
-          ))}
-        </div>
         {current.ready && (
           <Button type="button" size="sm" data-ui="hive.pulse-open" onClick={onReady}>
             Open run
           </Button>
         )}
       </div>
-      <p className="hive-pulse__footnote">The full workspace appears when there is something useful to show.</p>
     </main>
   )
 }

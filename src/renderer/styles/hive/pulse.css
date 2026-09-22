@@ -101,30 +101,8 @@
   white-space: nowrap;
 }
 
-.hive-pulse__progress {
-  display: flex;
-  gap: 6px;
-  margin: 18px 0 22px;
-}
-
-.hive-pulse__progress span {
-  width: 22px;
-  height: 2px;
-  border-radius: 999px;
-  background: var(--border);
-  transition: background 300ms ease;
-}
-
-.hive-pulse__progress span[data-active="true"] {
-  background: var(--antigravity-blue, #8ab4f8);
-}
-
-.hive-pulse__footnote {
-  position: absolute;
-  bottom: 20px;
-  margin: 0;
-  color: var(--muted-foreground);
-  font-size: 11px;
+.hive-pulse__copy + button {
+  margin-top: 18px;
 }
 
 @keyframes hive-pulse-breathe {
