@@ -4,6 +4,7 @@ import type { useChatController } from '../chat-controller.js'
 import type { AgentSoloControls } from '../chat-layout/chat-canvas.js'
 import { AGENT_WORKSPACE_PANE_ID, CHAT_DRAG_TYPE } from '../chat-layout/layout-tree.js'
 import { ProjectWorkspace, type ProjectWorkspaceComposerBridge } from './project-workspace.js'
+import { useProjectPeers } from './use-project-peers.js'
 import { useProjectSnapshot } from './use-project-snapshot.js'
 
 export function AgentWorkspacePane({ controls, busy, chat }: {
@@ -26,6 +27,14 @@ export function AgentWorkspacePane({ controls, busy, chat }: {
   ].map((entry) => [entry.projectPath, entry])).values()].filter((entry) => entry.projectPath !== project.projectPath)
   const persistedPath = project.projectPath ?? project.cwd
   const persistedSnapshot = useProjectSnapshot(persistedPath)
+  const bridgeModelId = bridgeState?.selectedModel ?? null
+  const bridgeEffort = bridgeState?.selectedReasoningEffort ?? null
+  const projectPeers = useProjectPeers({
+    projectPath: persistedPath,
+    modelId: bridgeModelId,
+    reasoningEffort: bridgeEffort,
+    enabled: Boolean(persistedPath && bridgePaneId && bridgeState)
+  })
   const bridge: ProjectWorkspaceComposerBridge | null = bridgePaneId && bridgeState ? {
     models: bridgeState.models,
     selectedModel: bridgeState.selectedModel,
@@ -65,6 +74,6 @@ export function AgentWorkspacePane({ controls, busy, chat }: {
       </button>
     </div>
     <ProjectWorkspace paneId={AGENT_WORKSPACE_PANE_ID} embedded fixedComposerLayout="compact" composerBridge={bridge}
-      persistedSnapshot={persistedSnapshot} />
+      persistedSnapshot={persistedSnapshot} projectPeers={projectPeers} />
   </div>
 }

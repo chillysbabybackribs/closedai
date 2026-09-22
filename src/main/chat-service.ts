@@ -23,6 +23,7 @@ import { messageOf, normalizeAccount, nullableString, recordOf } from './chat-no
 import { listWorkspaceThreads, startChatGptLogin } from './chat-requests.js'
 import { routeChatNotification } from './chat-notification-router.js'
 import { ChatTranscript } from './chat-transcript.js'
+import { mergeProjectRoleContext } from './chat-context/project-turn-context.js'
 import {
   buildTurnAdditionalContext,
   type ActiveBrowserContext
@@ -200,10 +201,10 @@ export class ChatService extends EventEmitter {
       if (this.activeTurnId) throw new Error('A Codex turn is already running')
       const threadId = await this.ensureThread(clientUserMessageId)
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
-      const additionalContext = {
+      const additionalContext = mergeProjectRoleContext(this.paneId, {
         ...this.turnAdditionalContext(prompt),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
-      }
+      })
       if (this.threadId !== threadId || this.activeTurnId || this.stopping) throw new Error('Codex conversation changed while preparing the turn')
       const response = await this.client.request<{ turn?: unknown }>('turn/start', {
         threadId,

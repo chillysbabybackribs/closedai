@@ -12,6 +12,7 @@ import type {
 } from './security.js'
 import type { ProjectSnapshot } from './project/snapshot.js'
 import type { ProjectWorkspaceEvent } from './project/events.js'
+import type { ProjectPeersSnapshot } from './project-peers.js'
 
 export type Unsubscribe = () => void
 
@@ -167,6 +168,7 @@ export type ClosedaiApi = {
   /** Durable multi-agent project state for the agent workspace (`.closedai/project.json`). */
   project: {
     snapshot: (projectPath: string) => Promise<ProjectSnapshot>
+    ensurePeers: (projectPath: string, modelId: string | null, reasoningEffort: string | null) => Promise<ProjectPeersSnapshot>
     onEvent: (listener: (event: ProjectWorkspaceEvent) => void) => Unsubscribe
   }
 }

@@ -23,6 +23,7 @@ import {
   handoffAdditionalContext,
   type ThreadHandoffSource
 } from '../chat-context/thread-handoff.js'
+import { mergeProjectRoleContext } from '../chat-context/project-turn-context.js'
 import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { ChatModelState } from '../chat-model-state.js'
@@ -147,11 +148,11 @@ export class ClaudeChatService extends EventEmitter {
       if (this.activeTurnId) throw new Error('A Claude turn is already running')
       const sessionId = session.sessionId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
-      const context = {
+      const context = mergeProjectRoleContext(this.paneId, {
         ...this.turnAdditionalContext(text),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
-      }
-      const turn = await buildClaudeUserMessage(text, shrunk, Object.keys(context).length ? context : undefined, session.sessionId)
+      })
+      const turn = await buildClaudeUserMessage(text, shrunk, context && Object.keys(context).length ? context : undefined, session.sessionId)
       if (!turn) return
       if (this.session !== session || (sessionId && session.sessionId !== sessionId) || this.activeTurnId) throw new Error('Claude conversation changed while preparing the turn')
       session.send(turn.message)

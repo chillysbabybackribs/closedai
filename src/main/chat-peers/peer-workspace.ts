@@ -1,6 +1,7 @@
 import type { ChatAttachment, ChatHistoryPage, ChatHistoryWindow, ChatThreadSummary } from '../../shared/chat.js'
 import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import type { DeferredProjectSwitch } from './deferred-project-switch.js'
+import type { ProjectPeersSnapshot } from '../../shared/project-peers.js'
 
 export type ChatWorkspaceSelection = {
   cwd: string
@@ -18,6 +19,7 @@ export interface ChatWorkspaceSurface {
   readHistoryPage(paneId: ChatPaneId, threadId: string | null, beforeItemId: string): Promise<ChatHistoryPage>
   start(): Promise<void>
   stop(): void
+  ensureProjectPeers(projectPath: string, modelId: string | null, reasoningEffort: string | null): ProjectPeersSnapshot
   send(paneId: ChatPaneId, text: string, attachments: ChatAttachment[]): Promise<void>
   interrupt(paneId: ChatPaneId): Promise<void>
   selectPane(paneId: ChatPaneId): Promise<void>

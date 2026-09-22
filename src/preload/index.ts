@@ -143,6 +143,8 @@ const api: ClosedaiApi = {
   },
   project: {
     snapshot: (projectPath: string) => invoke(IPC.invoke.project.snapshot, projectPath),
+    ensurePeers: (projectPath: string, modelId: string | null, reasoningEffort: string | null) =>
+      invoke(IPC.invoke.project.ensurePeers, projectPath, modelId, reasoningEffort),
     onEvent: (listener) => subscribe(IPC.event.projectEvent, listener)
   }
 }

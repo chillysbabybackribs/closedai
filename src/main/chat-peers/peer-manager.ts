@@ -34,6 +34,9 @@ import { PeerProjectChanges, projectConversationPatch, rememberChatProjects } fr
 import { PeerArchives } from './peer-archive.js'
 import type { ChatWorkspaceSelection, ChatWorkspaceSelector, ChatWorkspaceSurface } from './peer-workspace.js'
 import type { BrowserAssignmentIdleRelease } from '../tools/browser/assignment-idle-release.js'
+import { isProjectPeerChatId } from '../../shared/project-peer-ids.js'
+import type { ProjectPeersSnapshot } from '../../shared/project-peers.js'
+import { ensureProjectPeers as ensureProjectPeerRecords } from '../project-peers/ensure-project-peers.js'
 
 export type { ChatPeerFactory } from './peer-lifecycle.js'
 
@@ -53,6 +56,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   private readonly projectChanges: PeerProjectChanges
   /** Tail of each pane's operation chain, so callers on one pane cannot interleave. */
   private readonly paneOperations = new Map<ChatPaneId, Promise<void>>()
+  private readonly backgroundProjectPeers = new Set<ChatPaneId>()
   private readonly chatsEmit = new PeerEmitThrottle(() => this.emitChats())
   private readonly archives: PeerArchives
 
@@ -202,6 +206,20 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.lifecycle.detachAll()
   }
 
+  ensureProjectPeers(projectPath: string, modelId: string | null, reasoningEffort: string | null): ProjectPeersSnapshot {
+    this.projectSwitch.assertAvailable()
+    const { cwd } = this.store.require(this.selectedPaneId)
+    return ensureProjectPeerRecords({
+      store: this.store,
+      lifecycle: this.lifecycle,
+      projectPath,
+      cwd,
+      modelId,
+      reasoningEffort,
+      backgroundPeers: this.backgroundProjectPeers
+    })
+  }
+
   async send(paneId: ChatPaneId, text: string, attachments: ChatAttachment[]): Promise<void> {
     this.projectSwitch.assertAvailable()
     await this.projectChanges.flush(paneId)
@@ -233,7 +251,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.selectedPaneId = paneId
     // A blank chat the user clicked away from never became one; keep it and the drawer fills
     // with "New chat" rows. One mid-open (busy) is not blank, it is about to hold a thread.
-    if (this.lifecycle.peers.size > 1 && !this.visiblePaneIds.has(previousPaneId) && !this.retainedTabIds.has(previousPaneId)) this.lifecycle.discardIfBlank(previousPaneId)
+    if (this.lifecycle.peers.size > 1 && !this.visiblePaneIds.has(previousPaneId) && !this.retainedTabIds.has(previousPaneId) && !isProjectPeerChatId(previousPaneId)) this.lifecycle.discardIfBlank(previousPaneId)
     this.parking.schedule(previousPaneId)
     // Paint the destination from the view it already holds — the live snapshot when its runtime
     // is up, the saved one when it is parked — before waking it. Waking replays the thread from
@@ -391,7 +409,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // The chat's last known messages, model, and context reading paint now; the provider's
     // replay lands behind them rather than in front of an empty pane.
     await this.transcripts.load(chatId)
-    if (this.lifecycle.peers.size > 1 && !this.visiblePaneIds.has(previousPaneId) && !this.retainedTabIds.has(previousPaneId)) this.lifecycle.discardIfBlank(previousPaneId)
+    if (this.lifecycle.peers.size > 1 && !this.visiblePaneIds.has(previousPaneId) && !this.retainedTabIds.has(previousPaneId) && !isProjectPeerChatId(previousPaneId)) this.lifecycle.discardIfBlank(previousPaneId)
     this.parking.schedule(previousPaneId)
     this.lifecycle.parkExcessIdle(chatId)
     this.emitWorkspace()
@@ -529,7 +547,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // idle; detaching that pane in the meantime would cancel the switch as "source changed".
     const pending = this.projectSwitch.state()
     const switching = pending && (pending.status === 'pending' || pending.status === 'switching') ? [pending.paneId] : []
-    const detached = this.lifecycle.trim([this.selectedPaneId, ...this.visiblePaneIds, ...switching])
+    const detached = this.lifecycle.trim([this.selectedPaneId, ...this.visiblePaneIds, ...switching, ...this.backgroundProjectPeers])
     if (detached.length === 0) return
     this.chatsEmit.schedule()
     await this.persistOpenChats()
@@ -560,7 +578,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
    */
   private wakeLater(paneId: ChatPaneId, what: string): void {
     void this.wake(paneId).then(async () => {
-      if (paneId !== this.selectedPaneId && !this.visiblePaneIds.has(paneId) && !this.retainedTabIds.has(paneId) && this.lifecycle.peers.size > 1 && this.lifecycle.discardIfBlank(paneId)) {
+      if (paneId !== this.selectedPaneId && !this.visiblePaneIds.has(paneId) && !this.retainedTabIds.has(paneId) && !isProjectPeerChatId(paneId) && this.lifecycle.peers.size > 1 && this.lifecycle.discardIfBlank(paneId)) {
         await this.persistOpenChats()
       }
     }).catch((error: unknown) => {
