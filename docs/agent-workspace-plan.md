@@ -13,6 +13,25 @@ have, and nobody had written down which parts of the pane were live and which we
 prototype. Work was redone, dropped, and re-added. The fix is not more caution; it is a shared,
 current statement of state and scope.
 
+## How this is being built
+
+The owner's intent, stated 2026-09-22: build a little at a time, enough to test and modify, and do
+not build any piece the way the finished product would have it. Later phases will change what
+earlier pieces need, so a piece built "correctly" now is likely to be rebuilt anyway.
+
+What that means for a pane working here:
+
+- **The blueprint is direction, not a spec.** Do not implement a blueprint section because it is
+  written down. Implement the smallest thing that lets the owner try the next step in the app.
+- **Prototype paths are allowed** when they are labeled as such in code and docs, sit behind a
+  fixture or flag, and never pretend to be runtime behavior on the live path.
+- **Prefer the crude version that runs** over the designed version that does not. A plain patch
+  verb the owner can exercise today beats an event-sourced store that lands next week.
+- **Do not add structure for a phase that has not arrived.** No leases before there are two
+  writers, no observers before there are tasks, no branch isolation before there is dispatch.
+- **Each slice ends with the owner trying it** in the running Electron app. If they cannot, the
+  slice is not done.
+
 ## What is real today
 
 Verified in source on 2026-09-22.
