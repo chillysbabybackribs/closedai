@@ -13,6 +13,18 @@ const user = (id: string, text: string, turnId = id): ChatTranscriptItem => ({ t
 const answer = (id: string, turnId: string, text: string, phase: 'commentary' | 'final_answer' | null = 'final_answer'): ChatTranscriptItem =>
   ({ type: 'assistant', id, turnId, text, phase, streaming: false })
 
+test('handoff titles and user lines omit closedai_context markup', () => {
+  const items: ChatTranscriptItem[] = [
+    user('u1', '<closedai_context name="closedai.instructions" kind="application">\nrules\n</closedai_context>\nMove menu item', 't1'),
+    answer('a1', 't1', 'Done.')
+  ]
+  const digest = buildThreadHandoff(items, '<closedai_context name="x">')!
+  assert.equal(digest.title, 'Move menu item')
+  assert.match(digest.text, /Handoff from the previous chat "Move menu item"\./)
+  assert.match(digest.text, /User: Move menu item\nAssistant: Done\./)
+  assert.doesNotMatch(digest.text, /closedai_context|<\/?closedai/)
+})
+
 test('the digest keeps requests, one answer per turn, and changed files, and drops tool noise', () => {
   const items: ChatTranscriptItem[] = [
     user('u1', 'Make the header sticky', 't1'),

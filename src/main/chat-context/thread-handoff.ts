@@ -2,6 +2,7 @@ import type { ChatProvider, ChatTranscriptItem } from '../../shared/chat.js'
 import type { AdditionalContext } from './turn-context.js'
 import type { ChatMemoryCheckpoint } from '../../shared/chat-memory.js'
 import type { ChatContinuation } from '../../shared/types.js'
+import { handoffSourceTitle, stripContextBlocks } from '../../shared/chat-display.js'
 import { normalizeMemoryCheckpoint } from './memory-checkpoint.js'
 
 // "Continue in new chat": a fresh thread starts with a short digest of the one it replaces
@@ -54,7 +55,8 @@ export function buildThreadHandoff(
   const framing = options?.framing ?? 'handoff'
   const entries = conversationEntries(items)
   if (entries.length === 0) return null
-  const title = clip(threadName ?? entries[0]!.text.split('\n')[0] ?? '', 120)
+  const firstUser = entries.find((entry) => entry.speaker === 'User')?.text ?? ''
+  const title = clip(handoffSourceTitle(threadName, firstUser), 120)
   const header = framing === 'compaction'
     ? [
       'This conversation was compacted to reduce provider-side context.',
@@ -140,7 +142,7 @@ function conversationEntries(items: ChatTranscriptItem[]): HandoffEntry[] {
   for (const item of items) {
     if (item.type === 'user') {
       const attachments = item.attachments?.map((attachment) => attachment.name) ?? []
-      const text = [item.text.trim(), attachments.length ? `[attached: ${attachments.join(', ')}]` : '']
+      const text = [stripContextBlocks(item.text.trim()), attachments.length ? `[attached: ${attachments.join(', ')}]` : '']
         .filter(Boolean).join(' ')
       if (text) entries.push({ speaker: 'User', text })
       continue

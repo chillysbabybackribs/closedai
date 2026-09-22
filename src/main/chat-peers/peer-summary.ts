@@ -1,5 +1,5 @@
 import { activityPhase, type ChatEvent, type ChatSnapshot, type ChatTranscriptItem } from '../../shared/chat.js'
-import { sanitizeThreadTitle, stripContextBlocks, summarizeUserMessage } from '../../shared/chat-display.js'
+import { handoffSourceTitle, sanitizeThreadTitle, stripContextBlocks, summarizeUserMessage } from '../../shared/chat-display.js'
 import type { ChatPeerSummary, PeerChatReadOptions, PeerChatReadResult } from '../../shared/chat-peers.js'
 import { PEER_READ_MAX_CHARS } from '../../shared/chat-peers.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
@@ -167,7 +167,7 @@ function titleFromParts(threadName: string | null, firstUserText: string | null,
   if (record.title && (record.titleSource === 'generated' || record.titleSource === 'manual')) return formatTitle(record.title)
   const saved = record.threadId || record.continuation ? sanitizeThreadTitle(record.title) : null
   const title = sanitizeThreadTitle(threadName) || firstUserText?.trim() || saved ||
-    (record.continuation ? `Continuing: ${record.continuation.sourceTitle}` : PLACEHOLDER_TITLE)
+    (record.continuation ? `Continuing: ${handoffSourceTitle(record.continuation.sourceTitle)}` : PLACEHOLDER_TITLE)
   return formatTitle(title)
 }
 

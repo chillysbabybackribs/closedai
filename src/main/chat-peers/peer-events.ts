@@ -4,6 +4,7 @@ import { tailTurnSlice } from '../../shared/chat-turn-page.js'
 import type { ChatPeerSummary, ChatRowSummary, ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { CachedChatView } from '../chat-store/chat-transcript-cache.js'
+import { handoffSourceTitle } from '../../shared/chat-display.js'
 import { summaryForRecord } from './peer-summary.js'
 
 // What the workspace tells the renderer about its chats, and how often. Streaming emits one chat
@@ -197,7 +198,13 @@ export function rowSummary(record: ChatRecord, live: ChatPeerSummary | null): Ch
 /** Lineage for the empty pane's transition card; `sourceCwd` marks a directory move within one chat. */
 function continuedFrom(continuation: ChatRecord['continuation']): Pick<ChatRowSummary, 'continuedFrom'> | null {
   if (!continuation || continuation.sourceCwd) return null
-  return { continuedFrom: { paneId: continuation.sourcePaneId, title: continuation.sourceTitle, handoff: continuation.handoff } }
+  return {
+    continuedFrom: {
+      paneId: continuation.sourcePaneId,
+      title: handoffSourceTitle(continuation.sourceTitle),
+      handoff: continuation.handoff
+    }
+  }
 }
 
 /**

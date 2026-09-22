@@ -2,6 +2,7 @@ import { useState, type JSX } from 'react'
 import { ChevronDown, ChevronRight, MessageSquareShare } from 'lucide-react'
 
 import type { ChatRowSummary } from '../shared/chat-peers.js'
+import { handoffDigestForDisplay, handoffSourceTitle } from '../shared/chat-display.js'
 
 export type ContinuationSource = NonNullable<ChatRowSummary['continuedFrom']>
 
@@ -18,11 +19,12 @@ export function ContinuationCard({ source, canOpenSource, onOpenSource }: {
   onOpenSource: () => void
 }): JSX.Element {
   const [showDigest, setShowDigest] = useState(false)
+  const sourceLabel = handoffSourceTitle(source.title)
   return (
     <section className="chat-continuation-card" aria-labelledby="chat-continuation-heading">
       <header className="chat-continuation-header">
         <MessageSquareShare size={16} aria-hidden="true" />
-        <h2 id="chat-continuation-heading">Continuing from “{source.title}”</h2>
+        <h2 id="chat-continuation-heading">Continuing from “{sourceLabel}”</h2>
       </header>
       <p>
         Your first message here carries a digest of that conversation: what was asked, what was
@@ -45,7 +47,7 @@ export function ContinuationCard({ source, canOpenSource, onOpenSource }: {
         )}
       </div>
       {showDigest && source.handoff && (
-        <pre id="chat-continuation-digest" className="chat-continuation-digest" tabIndex={0}>{source.handoff}</pre>
+        <pre id="chat-continuation-digest" className="chat-continuation-digest" tabIndex={0}>{handoffDigestForDisplay(source.handoff)}</pre>
       )}
     </section>
   )
