@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AppWindow, Boxes, Compass, FlaskConical, Gem, RefreshCw, Sparkles } from 'lucide-react'
+import { AppWindow, Compass, Gem } from 'lucide-react'
 
 import type { ChatModel, ChatProvider } from '../../shared/chat.js'
 import { Composer } from '../composer.js'
 import { injectComposerDraft } from '../composer-drafts.js'
 import { ProjectCanvas } from './project-canvas.js'
+import { advanceDiscovery, clip, createDiscovery, isDirectionReady, type DiscoveryState } from './project-discovery.js'
+import { ProjectIntake, type Message } from './project-intake.js'
+import { ProjectSide, type FeedLine } from './project-side.js'
+import { amendTree, applyEvent, buildDispatchPlan, layoutTree, rootNode, type TreeNode } from './project-tree.js'
 
 const ROOT_PANE_ID = 'preview-project-root'
 
@@ -51,95 +55,83 @@ const MODELS: ChatModel[] = [
   }
 ]
 
-const SUGGESTIONS = [
-  {
-    title: 'Build a new product',
-    detail: 'Start with an idea and let the application take shape through working iterations.',
-    prompt: 'I want to build a new product. Help me turn the rough idea into a working application that we can keep shaping as it develops.',
-    icon: Sparkles
-  },
-  {
-    title: 'Evolve this codebase',
-    detail: 'Understand what exists, then improve it without freezing the destination too early.',
-    prompt: 'I want to evolve this existing codebase. First understand how it works, then begin improving it while keeping the direction open to what we learn.',
-    icon: RefreshCw
-  },
-  {
-    title: 'Research and prototype',
-    detail: 'Investigate the space, test promising directions, and build something concrete.',
-    prompt: 'Research this product space and build a working prototype. Use what we discover to continuously refine the direction.',
-    icon: FlaskConical
-  },
-  {
-    title: 'Modernize a system',
-    detail: 'Repair, simplify, and migrate an application while preserving useful behavior.',
-    prompt: 'Help me modernize this system. Preserve what is valuable, find the real constraints, and improve it in safe working increments.',
-    icon: Boxes
-  }
-] as const
-
-type Message = { id: number; role: 'user' | 'coordinator'; text: string }
-
-function coordinatorReply(message: string, completedReplies: number): string {
-  const summary = message.replace(/\s+/g, ' ').trim()
-  const clipped = summary.length > 210 ? `${summary.slice(0, 207)}…` : summary
-  if (completedReplies === 0) {
-    return `I understand the initial direction as: ${clipped}\n\nBefore I build, I need to sharpen the outcome. Who is the primary user, and what is the one thing they must be able to accomplish in their first useful session?`
-  }
-  if (completedReplies === 1) {
-    return 'That clarifies the user and central journey. I’m comparing the idea against adjacent products and common workflow failures now.\n\nWhat must this product not become, and which constraints or qualities are non-negotiable?'
-  }
-  return 'The direction is coherent enough to begin. I have a clear primary user, central outcome, experience boundary, and quality constraints. I’ve separated confirmed choices from assumptions so discovery can continue without silently changing the original idea.'
-}
+const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
 
 export function ProjectShellPreview() {
   const [messages, setMessages] = useState<Message[]>([])
+  const [discovery, setDiscovery] = useState<DiscoveryState>(createDiscovery)
   const [selectedModel, setSelectedModel] = useState(MODELS[0]!.id)
   const [phase, setPhase] = useState<'intake' | 'canvas'>('intake')
-  const [amendment, setAmendment] = useState<string | null>(null)
+  const [tree, setTree] = useState<TreeNode[]>([])
+  const [feed, setFeed] = useState<FeedLine[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
-  const nextMessageId = useRef(1)
+  const nextId = useRef(1)
   const scrollRef = useRef<HTMLDivElement>(null)
   const shellRef = useRef<HTMLElement>(null)
-  const selected = MODELS.find((model) => model.id === selectedModel) ?? MODELS[0]!
-  const provider = selected.provider as ChatProvider
-  const hasConversation = messages.length > 0
-  const completedReplies = messages.filter((message) => message.role === 'coordinator').length
-  const canStart = completedReplies >= 3 && !sending
-  const originalIdea = messages.find((message) => message.role === 'user')?.text ?? ''
 
-  const providerSummary = useMemo(() => '4 providers available to the coordinator', [])
+  const selectedModelEntry = MODELS.find((model) => model.id === selectedModel) ?? MODELS[0]!
+  const provider = selectedModelEntry.provider as ChatProvider
+  const record = discovery.record
+  const ready = discovery.asking === null && isDirectionReady(record)
+  const layout = useMemo(() => layoutTree(tree), [tree])
+  const selectedNode = tree.find((node) => node.id === selectedId) ?? null
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, sending])
+
+  // Once building starts, the simulated root coordinator dispatches work on a timeline. The
+  // record is fixed after Start, so the plan is derived once per build.
+  useEffect(() => {
+    if (phase !== 'canvas') return
+    const timers: number[] = []
+    let at = 0
+    for (const event of buildDispatchPlan(record)) {
+      at += event.delay
+      timers.push(window.setTimeout(() => {
+        setTree((current) => applyEvent(current, event))
+        setFeed((current) => [...current, { id: nextId.current++, text: event.note }])
+      }, at))
+    }
+    return () => timers.forEach((timer) => window.clearTimeout(timer))
+  }, [phase, record])
 
   function chooseSuggestion(prompt: string): void {
     injectComposerDraft(ROOT_PANE_ID, prompt)
     requestAnimationFrame(() => shellRef.current?.querySelector<HTMLTextAreaElement>('[data-ui="composer.input"]')?.focus())
   }
 
+  function start(): void {
+    setTree([rootNode(record)])
+    setFeed([{ id: nextId.current++, text: 'Direction confirmed. Working from the record; only the next useful moves are planned.' }])
+    setSelectedId(null)
+    setPhase('canvas')
+  }
+
   async function send(text: string): Promise<void> {
     const clean = text.trim()
     if (!clean) return
+    setSending(true)
     if (phase === 'canvas') {
-      setSending(true)
-      await new Promise((resolve) => window.setTimeout(resolve, 260))
-      setAmendment(clean)
+      await wait(260)
+      const { note } = amendTree(tree, clean, selectedId)
+      setTree((current) => amendTree(current, clean, selectedId).nodes)
+      setFeed((current) => [...current, { id: nextId.current++, text: note }])
       setSending(false)
       return
     }
-    const user: Message = { id: nextMessageId.current++, role: 'user', text: clean }
-    setMessages((current) => [...current, user])
-    setSending(true)
-    await new Promise((resolve) => window.setTimeout(resolve, 420))
-    setMessages((current) => [...current, {
-      id: nextMessageId.current++,
-      role: 'coordinator',
-      text: coordinatorReply(clean, current.filter((message) => message.role === 'coordinator').length)
-    }])
+    setMessages((current) => [...current, { id: nextId.current++, role: 'user', text: clean }])
+    const { state, reply } = advanceDiscovery(discovery, clean)
+    await wait(420)
+    setDiscovery(state)
+    setMessages((current) => [...current, { id: nextId.current++, role: 'coordinator', text: reply }])
     setSending(false)
   }
+
+  const canvasNote = selectedNode
+    ? `Direction applies to “${selectedNode.title}”`
+    : 'Direction applies to the whole project unless a node is selected'
 
   return <div className="project-preview-app">
     <header className="project-preview-appbar" aria-label="ClosedAI preview chrome">
@@ -150,67 +142,40 @@ export function ProjectShellPreview() {
     </header>
 
     <main className="project-preview-workspace">
-      <section className="project-shell" ref={shellRef} data-preview-project-shell aria-label="New project">
+      <section className="project-shell" ref={shellRef} data-preview-project-shell aria-label="Project">
         <header className="project-shell-header">
           <span className="project-shell-grip" aria-hidden="true">⠿</span>
           <span className="project-shell-mark"><Compass size={15} aria-hidden="true" /></span>
-          <strong>{phase === 'canvas' ? 'Project direction' : 'New project'}</strong>
+          <strong>{phase === 'canvas' ? clip(record.idea, 56) : 'New project'}</strong>
           <span className="project-shell-kind">{phase === 'canvas' ? 'Building' : 'Project shell'}</span>
         </header>
 
         {phase === 'canvas'
-          ? <ProjectCanvas originalIdea={originalIdea} amendment={amendment} />
-          : <div className={`project-shell-body${hasConversation ? ' has-conversation' : ''}`} ref={scrollRef}>
-          {!hasConversation && <>
-            <div className="project-shell-intro">
-              <span className="project-shell-intro-mark"><Compass size={21} aria-hidden="true" /></span>
-              <h1>What should we build?</h1>
-              <p>Start rough. You can steer the project as it grows.</p>
+          ? <div className="project-workstation">
+            <div className="project-tree-pane">
+              <ProjectCanvas layout={layout} selectedId={selectedId} onSelect={setSelectedId} />
             </div>
-            <div className="project-suggestion-grid" aria-label="Starting suggestions">
-              {SUGGESTIONS.map(({ title, detail, prompt, icon: Icon }) =>
-                <button key={title} type="button" className="project-suggestion-card"
-                  data-ui="preview.project-suggestion" data-ui-key={title}
-                  onClick={() => chooseSuggestion(prompt)}>
-                  <span className="project-suggestion-icon"><Icon size={16} aria-hidden="true" /></span>
-                  <span><strong>{title}</strong><small>{detail}</small></span>
-                </button>)}
-            </div>
-          </>}
-
-          {hasConversation && <div className="project-conversation">
-            {messages.map((message) => <article key={message.id} className={`project-message is-${message.role}`}>
-              <div className="project-message-author">
-                {message.role === 'user' ? 'You' : <><Compass size={13} aria-hidden="true" /> Root coordinator</>}
-              </div>
-              {message.text.split('\n').map((line, index) => line
-                ? <p key={`${message.id}-${index}`}>{line}</p>
-                : <span key={`${message.id}-${index}`} className="project-message-break" />)}
-            </article>)}
-            {sending && <div className="project-coordinator-thinking" role="status">
-              <span /><span /><span /> Understanding the direction
-            </div>}
-            {canStart && <div className="project-start-row">
-              <div><strong>Direction confirmed</strong><span>Continue refining, or begin with this understanding.</span></div>
-              <button type="button" data-ui="preview.project-start" onClick={() => setPhase('canvas')}>
-                Start building
-              </button>
-            </div>}
+            <ProjectSide selected={selectedNode} feed={feed} />
+          </div>
+          : <div className={`project-shell-body${messages.length ? ' has-conversation' : ''}`} ref={scrollRef}>
+            <ProjectIntake messages={messages} sending={sending} record={record} ready={ready}
+              onSuggestion={chooseSuggestion} onStart={start} />
           </div>}
-        </div>}
 
         <footer className="project-shell-footer">
-          {phase === 'intake' && !hasConversation && <p className="project-shell-help">
-            Describe what you want to exist and anything you already care about. It does not need to be complete.
+          {phase === 'intake' && !messages.length && <p className="project-shell-help">
+            Describe what you want to exist and anything you already care about. The coordinator asks for the rest.
           </p>}
           <div className="composer project-shell-composer">
             <Composer
               enabled={!sending}
               running={false}
-              placeholder={phase === 'canvas' ? 'Add direction, a constraint, or a question…' : 'Describe what you want to create…'}
+              placeholder={phase === 'canvas'
+                ? (selectedNode ? `Add direction to “${selectedNode.title}”…` : 'Add direction, a constraint, or a question…')
+                : 'Describe what you want to create…'}
               models={MODELS}
               selectedModel={selectedModel}
-              selectedReasoningEffort={selected.defaultReasoningEffort}
+              selectedReasoningEffort={selectedModelEntry.defaultReasoningEffort}
               contextUsage={null}
               provider={provider}
               planUsage={null}
@@ -233,7 +198,7 @@ export function ProjectShellPreview() {
             />
           </div>
           <span className="project-provider-note"><AppWindow size={12} aria-hidden="true" />
-            {phase === 'canvas' ? 'Direction applies to the project unless a branch is selected' : providerSummary}
+            {phase === 'canvas' ? canvasNote : '4 providers available to the coordinator'}
           </span>
         </footer>
       </section>

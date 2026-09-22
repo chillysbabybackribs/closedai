@@ -64,7 +64,8 @@ test('a replayed session reuses its returned setup without another load before t
   const { session: thread } = session({ onSetup: (setup) => catalogs.push(setup.sessionId) })
   thread.adoptSaved('history')
   const loads: string[] = []
-  const setup = { sessionId: 'history', models: [], modes: [], currentModelId: 'model', currentModeId: null }
+  const setup = { sessionId: 'history', models: [], modes: [], currentModelId: 'model', currentModeId: null,
+    modelConfigId: 'model', modeConfigId: 'mode' }
   Object.assign(thread, { client: {
     connected: true,
     capabilities: { loadSession: true },
@@ -90,7 +91,8 @@ test('history replay uses the source project without changing the active session
     connected: true, capabilities: { loadSession: true },
     async loadSession(id: string, cwd: string) {
       loads.push({ id, cwd })
-      return { sessionId: id, models: [], modes: [], currentModelId: null, currentModeId: null }
+      return { sessionId: id, models: [], modes: [], currentModelId: null, currentModeId: null,
+        modelConfigId: null, modeConfigId: null }
     }
   } })
   await thread.replay('older', '/other-project')
@@ -114,7 +116,8 @@ test('concurrent history reads serialize the shared collector and a failed read 
         started()
         await new Promise((_resolve, reject) => { rejectFirst = reject })
       }
-      return { sessionId: id, models: [], modes: [], currentModelId: null, currentModeId: null }
+      return { sessionId: id, models: [], modes: [], currentModelId: null, currentModeId: null,
+        modelConfigId: null, modeConfigId: null }
     }
   } })
   const first = thread.replay('first')
@@ -126,4 +129,28 @@ test('concurrent history reads serialize the shared collector and a failed read 
   await failure
   assert.deepEqual(await second, [])
   assert.deepEqual(loads, ['first', 'second'])
+})
+
+test('a live model change uses the advertised stable config option', async () => {
+  const { session: thread } = session()
+  thread.adoptSaved('active')
+  const calls: Array<{ sessionId: string; configId: string; value: string }> = []
+  Object.assign(thread, {
+    client: {
+      connected: true,
+      async setConfigOption(sessionId: string, configId: string, value: string) {
+        calls.push({ sessionId, configId, value })
+      }
+    },
+    setup: {
+      sessionId: 'active', models: [], modes: [], currentModelId: 'old', currentModeId: null,
+      modelConfigId: 'model', modeConfigId: 'mode'
+    }
+  })
+
+  await thread.selectModel('claude-opus-5[effort=high]')
+
+  assert.deepEqual(calls, [{
+    sessionId: 'active', configId: 'model', value: 'claude-opus-5[effort=high]'
+  }])
 })

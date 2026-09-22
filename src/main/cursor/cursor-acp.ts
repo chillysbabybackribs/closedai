@@ -9,7 +9,7 @@ import { cursorAcpArgs, cursorBinary } from './cursor-cli.js'
 // 2026-09-03.
 //
 // We drive: initialize, session/new, session/load, session/list, session/prompt, session/cancel,
-// session/set_model, session/set_mode. The agent drives back: session/update (the whole
+// and session/set_config_option. The agent drives back: session/update (the whole
 // transcript stream), session/request_permission, and fs/read_text_file + fs/write_text_file.
 //
 // Two decisions this file makes:
@@ -29,6 +29,8 @@ export type AcpSessionSetup = {
   modes: AcpMode[]
   currentModelId: string | null
   currentModeId: string | null
+  modelConfigId: string | null
+  modeConfigId: string | null
 }
 
 export type AcpCapabilities = {
@@ -139,8 +141,8 @@ export class CursorAcpClient extends StdioJsonRpcClient {
     await this.request('session/set_model', { sessionId, modelId })
   }
 
-  async setMode(sessionId: string, modeId: string): Promise<void> {
-    await this.request('session/set_mode', { sessionId, modeId })
+  async setConfigOption(sessionId: string, configId: string, value: string): Promise<void> {
+    await this.request('session/set_config_option', { sessionId, configId, value })
   }
 
   private async setup(method: string, params: Record<string, unknown>): Promise<AcpSessionSetup> {
@@ -152,7 +154,9 @@ export class CursorAcpClient extends StdioJsonRpcClient {
       models: readModels(models?.availableModels),
       modes: readModes(modes?.availableModes),
       currentModelId: typeof models?.currentModelId === 'string' ? models.currentModelId : null,
-      currentModeId: typeof modes?.currentModeId === 'string' ? modes.currentModeId : null
+      currentModeId: typeof modes?.currentModeId === 'string' ? modes.currentModeId : null,
+      modelConfigId: readConfigId(result?.configOptions, 'model'),
+      modeConfigId: readConfigId(result?.configOptions, 'mode')
     }
   }
 
@@ -246,6 +250,17 @@ function readModes(value: unknown): AcpMode[] {
       ...(typeof record?.description === 'string' ? { description: record.description } : {})
     }]
   })
+}
+
+function readConfigId(value: unknown, category: string): string | null {
+  if (!Array.isArray(value)) return null
+  for (const entry of value) {
+    const option = asRecord(entry)
+    if (option?.category !== category) continue
+    if (typeof option.id === 'string') return option.id
+    if (typeof option.configId === 'string') return option.configId
+  }
+  return null
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

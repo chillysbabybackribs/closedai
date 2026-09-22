@@ -14,8 +14,8 @@ import type { TraceScope } from '../trace/trace-log.js'
 // Unlike the `agy` adapter, the process is not per conversation and the protocol has a real
 // interrupt: `session/cancel` ends the turn and leaves the session usable, and `session/load`
 // reopens a session the agent still holds. So an idle chat closes the process and the next turn
-// reopens the same session in a fresh one — and a model change is an in-session
-// `session/set_model`, not a respawn.
+// reopens the same session in a fresh one — and a model change is an in-session config update,
+// not a respawn.
 
 export type CursorSessionDeps = {
   cwd: string
@@ -141,7 +141,10 @@ export class CursorSession {
   /** Select a model on the live session; a session opened later picks it up at `session/new`. */
   async selectModel(acpModelId: string): Promise<void> {
     if (!this.client?.connected || !this.sessionId) return
-    await this.client.setModel(this.sessionId, acpModelId)
+    const modelConfigId = this.setup?.modelConfigId
+    if (modelConfigId) await this.client.setConfigOption(this.sessionId, modelConfigId, acpModelId)
+    else await this.client.setModel(this.sessionId, acpModelId)
+    if (this.setup) this.setup = { ...this.setup, currentModelId: acpModelId }
   }
 
   /** Close the live process but keep the session id, so the next turn reloads it. */
@@ -286,7 +289,12 @@ export class CursorSession {
     this.attachedServers = attaching
     const model = this.deps.modelId()
     if (model && model !== created.currentModelId) {
-      await client.setModel(created.sessionId, model).catch((error: unknown) => {
+      const selecting = created.modelConfigId
+        ? client.setConfigOption(created.sessionId, created.modelConfigId, model)
+        : client.setModel(created.sessionId, model)
+      await selecting.then(() => {
+        created.currentModelId = model
+      }).catch((error: unknown) => {
         console.warn('[Cursor ACP] could not select the model:', error instanceof Error ? error.message : error)
       })
     }

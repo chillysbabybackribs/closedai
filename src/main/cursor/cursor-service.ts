@@ -189,21 +189,25 @@ export class CursorChatService extends EventEmitter {
   async selectModel(modelId: string): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before changing models')
     const preference = this.modelState.preferenceForModel(modelId)
-    await this.settings.set({ chatModelId: modelId, chatReasoningEffort: preference.effort })
-    this.modelState.apply(preference)
-    // The pick shows first; the round trip to the live session follows it.
-    this.emitEvent({ type: 'model', selectedModel: modelId, selectedReasoningEffort: preference.effort })
     const acpModelId = cursorAcpModelId(modelId)
     // ACP changes the model on the live session, so an open chat keeps its history.
     if (acpModelId) {
-      await this.session?.selectModel(acpModelId).catch((error: unknown) => {
+      try {
+        await this.session?.selectModel(acpModelId)
+      } catch (error) {
         this.addNotice(`Cursor did not accept that model: ${messageOf(error)}`, 'error')
-      })
+        throw error
+      }
     }
+    // Commit the preference only after a live session accepts it; a rejected selection must not
+    // leave the composer claiming a model the session is not using.
+    await this.settings.set({ chatModelId: modelId, chatReasoningEffort: preference.effort })
+    this.modelState.apply(preference)
+    this.emitEvent({ type: 'model', selectedModel: modelId, selectedReasoningEffort: preference.effort })
   }
 
   /**
-   * Cursor bakes the effort into the model id the agent accepts — `session/set_model` rejects
+   * Cursor bakes the effort into the model id the agent accepts — its model config rejects
    * every bracket override — so the catalog offers no effort options and this cannot be reached
    * from the picker. It stays to satisfy the provider contract.
    */
