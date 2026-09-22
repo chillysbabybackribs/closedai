@@ -177,6 +177,24 @@ export function targetNodeId(location: Location, files: ProjectFile[]): string |
   return fileAt(files, location.path)?.nodeId ?? 'root'
 }
 
+/** The line of intent a node exists to advance; the trace every branch must be able to show. */
+export function servesLine(node: TreeNode, nodes: TreeNode[], record: DirectionRecord): string {
+  switch (node.kind) {
+    case 'root': return record.idea
+    case 'amendment': return 'Your steering, recorded so the original words stay intact.'
+    case 'research': return record.unknowns.find((unknown) => unknown === node.detail)
+      ? `Resolving an open unknown before it can bias the build: ${clip(node.detail, 90)}`
+      : 'Evidence behind the direction record.'
+    case 'scope':
+    case 'task': {
+      const scope = node.kind === 'task' ? nodes.find((entry) => entry.id === node.parent) : node
+      if (scope?.id === 'journey') return `The first useful session: ${clip(record.journey ?? '', 110)}`
+      if (scope?.id === 'quality') return `The boundaries: ${clip(record.boundaries ?? '', 110)}`
+      return `What should exist: ${clip(record.idea, 110)}`
+    }
+  }
+}
+
 export const sameLocation = (a: Location, b: Location): boolean =>
   a.kind === b.kind && (a.kind === 'map' || (a.kind === 'node' && b.kind === 'node' && a.id === b.id)
     || (a.kind === 'file' && b.kind === 'file' && a.path === b.path))
