@@ -20,6 +20,7 @@ engineering contract for contributors.
 
 Maintenance: [Docs and tool-telemetry auditor spec](agent-workspace/docs-telemetry-auditor-spec.md)
 defines inputs and report sections for report-only doc/tool drift checks (no automatic edits).
+Run **`npm run audit:docs`** to write a timestamped report under [docs/reports/](reports/).
 
 ## Prompt and tool token ownership
 

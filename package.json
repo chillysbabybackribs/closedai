@@ -18,6 +18,7 @@
     "hygiene": "node scripts/hygiene-gate.mjs",
     "map": "node scripts/repo-tree.mjs --write",
     "map:check": "node scripts/repo-tree.mjs --check",
+    "audit:docs": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs scripts/docs-telemetry-audit.ts",
     "browser:live": "node scripts/browser-live-check.mjs",
     "poker-autopilot": "node scripts/poker-autopilot.mjs",
     "search:pipeline": "node scripts/search-pipeline-live-check.mjs",

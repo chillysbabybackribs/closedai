@@ -191,13 +191,11 @@ commits.
 8. Do not modify `docs/application.md`, `docs/tools.md`, `docs/model-context.md`, or
    `application-instructions.ts` as part of the audit command.
 
-## Verification of the auditor implementation (later task)
+## Verification of the auditor implementation
 
-When `task-audit-v1` lands:
-
-- `npm run typecheck` for touched scripts.
+- `npm run audit:docs` — writes a timestamped report under [docs/reports/](../reports/).
+- `npm run typecheck` for `scripts/docs-telemetry-audit.ts`.
 - Trial report contains at least three concrete findings drawn from real registry + telemetry data.
-- Report path and invoke command documented in the report header or README.
 
 ## Out of scope
 
