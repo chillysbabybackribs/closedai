@@ -2,9 +2,6 @@ import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from '../App.js'
 import { AppErrorBoundary, watchUnhandledRejections } from '../app-error-boundary.js'
-import { HiveWorkstationPreview } from '../hive/hive-workstation-preview.js'
-import '@fontsource-variable/inter/wght.css'
-import '../styles.css'
 import { saveLayout } from '../chat-layout/layout-tree.js'
 import { createPreviewBridge } from './bridge.js'
 import { parseScenario, PREVIEW_CWD, sampleLayout } from './fixtures.js'
@@ -62,13 +59,6 @@ function Preview() {
     // App effects subscribe before streaming starts; cleanup also covers StrictMode's replay.
     bridge.start()
     const ready = () => {
-      if (scenario === 'hive') {
-        if (!errors.length && document.querySelector('[data-preview-surface^="hive-"]')) {
-          document.documentElement.dataset.previewState = 'ready'
-          observer.disconnect()
-        }
-        return
-      }
       const count = [...document.querySelectorAll('[data-ui="composer.input"]')]
         .filter((element) => element.getBoundingClientRect().width > 0).length
       const expected = scenario === 'split' ? 2 : 1
@@ -85,9 +75,7 @@ function Preview() {
   }, [])
   return <>
     <AppErrorBoundary fallback={previewFallback} onError={(error) => recordError(error.message)}>
-      {scenario === 'hive'
-        ? <HiveWorkstationPreview />
-        : <App initialSettingsOpen={scenario === 'settings'} />}
+      <App initialSettingsOpen={scenario === 'settings'} />
     </AppErrorBoundary>
     {message && <aside className="preview-notice" aria-label="UI preview notice">
       <span role="status">{message}</span>
