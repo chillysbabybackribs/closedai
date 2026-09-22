@@ -57,8 +57,7 @@ The byte caps and layer-boundary rules live in `scripts/hygiene-gate.mjs`; sourc
 ## Verification and Testing
 
 - For renderer UI work, run the real Electron app (`npm run build && npm run preview`, or
-  `npm run dev` for hot reload). Agent workstation code lives under
-  `src/renderer/agent-workspace/`; do not add a second browser-only entry or duplicate bridge.
+  `npm run dev` for hot reload). Do not add a second browser-only entry or duplicate bridge.
 
 - Verify with `npm run typecheck` and only the test file that exercises the edited code: `node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs --test "src/path/to/target.test.ts"`.
 - Run `npm run hygiene` when changing file lengths or structure.

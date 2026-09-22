@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { ClosedaiApi } from '../shared/api.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels, type IpcInvokeChannel, type IpcInvokeChannels } from '../shared/ipc-channels.js'
-import type { AgentWorkspaceBounds, BrowserBounds } from '../shared/types.js'
+import type { BrowserBounds } from '../shared/types.js'
 
 function invoke<C extends IpcInvokeChannel>(
   channel: C,
@@ -40,9 +40,6 @@ const api: ClosedaiApi = {
     toggleFullscreen: () => invoke(IPC.invoke.window.toggleFullscreen),
     close: () => invoke(IPC.invoke.window.close),
     toggleDevTools: () => invoke(IPC.invoke.window.toggleDevTools)
-  },
-  agentWorkspace: {
-    setBounds: (bounds: AgentWorkspaceBounds) => invoke(IPC.invoke.agentWorkspace.setBounds, bounds)
   },
   browser: {
     setBounds: (bounds: BrowserBounds) => invoke(IPC.invoke.browser.setBounds, bounds),
@@ -93,7 +90,6 @@ const api: ClosedaiApi = {
     loginWithChatGPT: () => invoke(IPC.invoke.chat.login),
     listChats: () => invoke(IPC.invoke.chat.listChats),
     newPeer: () => invoke(IPC.invoke.chat.newPeer),
-    newDetachedPeer: () => invoke(IPC.invoke.chat.newDetachedPeer),
     closePeer: (paneId) => invoke(IPC.invoke.chat.closePeer, paneId),
     continueInNewPeer: (source, modelId) => invoke(IPC.invoke.chat.continueInNewPeer, source, modelId),
     openChat: (chatId) => invoke(IPC.invoke.chat.openChat, chatId),
@@ -144,12 +140,6 @@ const api: ClosedaiApi = {
     snapshot: () => invoke(IPC.invoke.trace.snapshot),
     clear: () => invoke(IPC.invoke.trace.clear),
     onEvent: (listener) => subscribe(IPC.event.traceEvent, listener)
-  },
-  project: {
-    snapshot: (projectPath: string) => invoke(IPC.invoke.project.snapshot, projectPath),
-    mutate: (projectPath, mutations) => invoke(IPC.invoke.project.mutate, projectPath, mutations),
-    workerLog: (chatId: string, limit: number) => invoke(IPC.invoke.project.workerLog, chatId, limit),
-    onEvent: (listener) => subscribe(IPC.event.projectEvent, listener)
   }
 }
 

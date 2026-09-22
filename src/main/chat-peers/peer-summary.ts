@@ -132,7 +132,7 @@ export function summaryForRecord(paneId: string, record: ChatRecord): ChatPeerSu
   return {
     paneId,
     parentPaneId: record.parentChatId,
-    kind: record.agentWorker ? 'subagent' : 'peer',
+    kind: 'peer',
     provider: record.provider,
     modelId: record.modelId,
     threadId: record.threadId,
@@ -191,7 +191,7 @@ export function summaryOf(
   return {
     paneId,
     parentPaneId: record.parentChatId,
-    kind: record.agentWorker ? 'subagent' : 'peer',
+    kind: 'peer',
     provider: snapshot.provider,
     modelId: snapshot.selectedModel ?? record.modelId,
     threadId: snapshot.threadId ?? record.threadId,

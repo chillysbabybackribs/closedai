@@ -1,5 +1,5 @@
 import type { BrowserHistoryMatch } from './browser-history.js'
-import type { AgentWorkspaceBounds, BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
+import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type {
   ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot, PeerChatReadResult
@@ -12,10 +12,6 @@ import type { TraceEvent, TraceSnapshot } from './trace.js'
 import type {
   BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
 } from './security.js'
-import type { ProjectSnapshot } from './project/snapshot.js'
-import type { ProjectWorkspaceEvent } from './project/events.js'
-import type { ProjectMutation } from './project/mutations.js'
-
 export type Unsubscribe = () => void
 
 /** The contextBridge surface the renderer sees as `window.closedai`. */
@@ -36,10 +32,6 @@ export type ClosedaiApi = {
     close: () => Promise<void>
     /** Developer menu: open or close DevTools for the app window itself, not a browser tab. */
     toggleDevTools: () => Promise<void>
-  }
-  agentWorkspace: {
-    /** Report the agent workspace pane's current on-screen rect, for readiness-gated capture. */
-    setBounds: (bounds: AgentWorkspaceBounds) => Promise<void>
   }
   browser: {
     setBounds: (bounds: BrowserBounds) => Promise<void>
@@ -97,8 +89,6 @@ export type ClosedaiApi = {
     listChats: () => Promise<ChatRowSummary[]>
     /** Clear the pane; the next message starts a fresh app-server thread. */
     newPeer: () => Promise<ChatPaneId>
-    /** Create and attach an ordinary chat without changing the selected chat. */
-    newDetachedPeer: () => Promise<ChatPaneId>
     /** Retire an open peer pane from the active workspace shelf back to history. */
     closePeer: (paneId: ChatPaneId) => Promise<void>
     /** Create a new pane whose first message carries a compact digest of the exact source chat. */
@@ -172,14 +162,5 @@ export type ClosedaiApi = {
     snapshot: () => Promise<TraceSnapshot>
     clear: () => Promise<void>
     onEvent: (listener: (event: TraceEvent) => void) => Unsubscribe
-  }
-  /** Durable multi-agent project state for the agent workspace (`.closedai/project.json`). */
-  project: {
-    snapshot: (projectPath: string) => Promise<ProjectSnapshot>
-    /** Apply mutations in order as one change; resolves with the resulting snapshot. */
-    mutate: (projectPath: string, mutations: ProjectMutation[]) => Promise<ProjectSnapshot>
-    /** The tail of one worker chat's transcript, for the task node it is running. */
-    workerLog: (chatId: string, limit: number) => Promise<PeerChatReadResult | null>
-    onEvent: (listener: (event: ProjectWorkspaceEvent) => void) => Unsubscribe
   }
 }

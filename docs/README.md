@@ -18,9 +18,7 @@ These are the sources AGENTS.md treats as authoritative for implemented behavior
 Root [README.md](../README.md) covers install/run and points here. [AGENTS.md](../AGENTS.md) is the
 engineering contract for contributors.
 
-Maintenance: [Docs and tool-telemetry auditor spec](agent-workspace/docs-telemetry-auditor-spec.md)
-defines inputs and report sections for report-only doc/tool drift checks (no automatic edits).
-Run **`npm run audit:docs`** to write a timestamped report under [docs/reports/](reports/).
+Run **`npm run audit:docs`** to write a timestamped report under [docs/reports/](reports/) (report-only doc/tool drift checks; no automatic edits).
 
 ## Prompt and tool token ownership
 
@@ -45,7 +43,6 @@ guides when behavior diverges.
 | Document | Typical use |
 |---|---|
 | [Adaptive multi-agent development blueprint](adaptive-multi-agent-development-blueprint.md) | User-guided, continuously evolving multi-agent development proposal |
-| [Agent workspace plan](agent-workspace-plan.md) | Live vs prototype inventory, the v1 pipeline pass condition, v2 candidates, and pane rules for the agent workspace; read before editing it |
 | [parallel-web-research-2026-09-04.md](parallel-web-research-2026-09-04.md) | Parallel search design history |
 | [model-harness-audit-2026-09-04.md](model-harness-audit-2026-09-04.md), [model-latency-audit-2026-09-04.md](model-latency-audit-2026-09-04.md) | Harness/latency measurements |
 | [trace-research.md](trace-research.md), [codex-desktop-recon.md](codex-desktop-recon.md) | Provider/trace recon |

@@ -14,17 +14,6 @@ export type BrowserBounds = {
   occluded?: boolean
 }
 
-/** The agent workspace pane's current on-screen rect, reported by the renderer so the capture
- * tool can crop to just that pane. It is plain DOM (unlike the browser's native view), so there
- * is no occlusion case to track: `visible` alone says whether it is painted right now. */
-export type AgentWorkspaceBounds = {
-  x: number
-  y: number
-  width: number
-  height: number
-  visible: boolean
-}
-
 export type BrowserNavigationError = {
   /** The main-frame URL Chromium failed to load. */
   url: string
@@ -172,8 +161,6 @@ export type AppSettings = {
   chatContinuation: ChatContinuation | null
   /** Selected-pane projection of `ChatRecord.sessionRotations`. */
   chatSessionRotations?: import('./session-rotation.js').ChatSessionRotation[]
-  /** Whether the chat is hosted inside the agent workspace layout pane. */
-  chatAgentWorkspace?: boolean
   /** Chat ids attached as panes in the active workspace; their records live in the chat store. */
   chatOpenIds: string[]
   /**

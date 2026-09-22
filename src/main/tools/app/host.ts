@@ -128,7 +128,6 @@ export type AppCommandHost = {
   state(sections: readonly AppStateSection[], paneId: string | undefined, callerPaneId: string | null): Record<string, unknown>
   selectedPaneId(): string
   newChat(): Promise<{ paneId: string }>
-  newWorkerChat(parentPaneId: string): Promise<{ paneId: string }>
   queueProjectSwitch(request: ProjectSwitchRequest, signal: AbortSignal): Promise<ProjectSwitchStatus>
   cancelProjectSwitch(paneId: string): ProjectSwitchStatus | null
   sendMessage(request: AppSendRequest): Promise<AppSendResult>
@@ -149,7 +148,6 @@ export type AppChatWorkspace = {
   snapshot(): ChatWorkspaceSnapshot
   paneSnapshot(paneId: string): ChatSnapshot | null
   newPeer(): Promise<string>
-  newWorkerPeer(parentPaneId: string): Promise<string>
   send(paneId: string, text: string, attachments: ChatAttachment[]): Promise<void>
   interrupt(paneId: string): Promise<void>
   selectPane(paneId: string): Promise<void>

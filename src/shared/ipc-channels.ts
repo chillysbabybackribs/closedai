@@ -35,7 +35,6 @@ export type IpcInvokeChannels = {
   'window:close': { args: []; result: void }
   'window:toggleDevTools': { args: []; result: void }
   'browser:setBounds': { args: [BrowserBounds]; result: void }
-  'agentWorkspace:setBounds': { args: [AgentWorkspaceBounds]; result: void }
   'browser:navigate': { args: [string]; result: void }
   'browser:back': { args: []; result: void }
   'browser:forward': { args: []; result: void }
@@ -74,7 +73,6 @@ export type IpcInvokeChannels = {
   'chat:login': { args: []; result: void }
   'chat:listChats': { args: []; result: ChatRowSummary[] }
   'chat:newPeer': { args: []; result: ChatPaneId }
-  'chat:newDetachedPeer': { args: []; result: ChatPaneId }
   'chat:closePeer': { args: [ChatPaneId]; result: void }
   'chat:continueInNewPeer': { args: [ChatContinuationSource, string | null]; result: ChatPaneId }
   'chat:openChat': { args: [string]; result: ChatPaneId }
@@ -110,9 +108,6 @@ export type IpcInvokeChannels = {
   'trace:setActive': { args: [boolean]; result: void }
   'trace:snapshot': { args: []; result: TraceSnapshot }
   'trace:clear': { args: []; result: void }
-  'project:snapshot': { args: [string]; result: ProjectSnapshot }
-  'project:mutate': { args: [string, ProjectMutation[]]; result: ProjectSnapshot }
-  'project:workerLog': { args: [string, number]; result: PeerChatReadResult | null }
 }
 
 export type IpcInvokeChannel = keyof IpcInvokeChannels
@@ -128,7 +123,6 @@ export type IpcEventChannels = {
   'tools:event': ToolsEvent
   'models:event': ModelsEvent
   'trace:event': TraceEvent
-  'project:event': ProjectWorkspaceEvent
 }
 
 export type IpcEventChannel = keyof IpcEventChannels
@@ -153,9 +147,6 @@ export const IPC = {
       toggleFullscreen: 'window:toggleFullscreen',
       close: 'window:close',
       toggleDevTools: 'window:toggleDevTools'
-    },
-    agentWorkspace: {
-      setBounds: 'agentWorkspace:setBounds'
     },
     browser: {
       setBounds: 'browser:setBounds',
@@ -201,7 +192,6 @@ export const IPC = {
       login: 'chat:login',
       listChats: 'chat:listChats',
       newPeer: 'chat:newPeer',
-      newDetachedPeer: 'chat:newDetachedPeer',
       closePeer: 'chat:closePeer',
       continueInNewPeer: 'chat:continueInNewPeer',
       openChat: 'chat:openChat',
@@ -247,11 +237,6 @@ export const IPC = {
       setActive: 'trace:setActive',
       snapshot: 'trace:snapshot',
       clear: 'trace:clear'
-    },
-    project: {
-      snapshot: 'project:snapshot',
-      mutate: 'project:mutate',
-      workerLog: 'project:workerLog'
     }
   },
   event: {
@@ -263,8 +248,7 @@ export const IPC = {
     securityCredentialApprovals: 'security:credentialApprovals',
     toolsEvent: 'tools:event',
     modelsEvent: 'models:event',
-    traceEvent: 'trace:event',
-    projectEvent: 'project:event'
+    traceEvent: 'trace:event'
   }
 } as const satisfies {
   invoke: Record<string, Record<string, IpcInvokeChannel>>

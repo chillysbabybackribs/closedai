@@ -43,7 +43,7 @@ const forbiddenPaths = /(claude|codex|cursor|antigravity|agent|mcp|tool-|plugin|
 // (docs/cursor.md), plus the transcript memory the `peer_chats` recall and checkpoint tools read.
 // Everything else that smells like agent/provider/tool code is still rejected.
 const sanctionedPaths =
-  /^src\/(main|renderer)\/tools\/|^src\/main\/(claude|antigravity|cursor|investigations|project-store|native-instrument)\/|^src\/(main|renderer)\/agent-workspace\/|^src\/shared\/project\/|^src\/main\/chat-context\//
+  /^src\/(main|renderer)\/tools\/|^src\/main\/(claude|antigravity|cursor|investigations|native-instrument)\/|^src\/main\/chat-context\//
 // Cross-cutting runtime, vault, and artifact contracts used by the current application.
 const sanctionedFiles = new Set([
   'src/main/codex-workspace-runtime.ts', 'src/main/codex-model-context.ts',
@@ -58,9 +58,7 @@ const sanctionedFiles = new Set([
   'src/renderer/settings/credential-field-row.tsx',
   'src/renderer/settings/credential-vault-list.tsx',
   'src/renderer/settings/credential-vault-panel.tsx',
-  'src/renderer/credential-approval-card.tsx',
-  'src/main/agent-workspace-ipc.ts',
-  'src/main/agent-workspace-surface.ts'
+  'src/renderer/credential-approval-card.tsx'
 ])
 
 const importRe = /(?:import|export)\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g

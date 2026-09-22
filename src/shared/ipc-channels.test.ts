@@ -23,7 +23,6 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'window:toggleFullscreen',
     'window:toggleDevTools',
     'tools:setEnabledMany',
-    'agentWorkspace:setBounds',
     'browser:setBounds',
     'browser:navigate',
     'browser:back',
@@ -69,7 +68,6 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'chat:login',
     'chat:listChats',
     'chat:newPeer',
-    'chat:newDetachedPeer',
     'chat:closePeer',
     'chat:continueInNewPeer',
     'chat:openChat',
@@ -101,9 +99,6 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'trace:setActive',
     'trace:snapshot',
     'trace:clear',
-    'project:snapshot',
-    'project:mutate',
-    'project:workerLog',
     'models:manifest',
     'models:setEnabled',
     'models:setEnabledMany'
@@ -123,8 +118,7 @@ test('IPC event constants cover the typed event registry', () => {
     'security:credentialApprovals',
     'tools:event',
     'trace:event',
-    'models:event',
-    'project:event'
+    'models:event'
   ]
   assert.equal(channels.size, typed.length)
   for (const channel of typed) assert.ok(channels.has(channel), channel)

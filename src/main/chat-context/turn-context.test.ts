@@ -3,11 +3,9 @@ import test from 'node:test'
 import { closedAiDeveloperInstructions } from './developer-instructions.ts'
 import { resumeThreadParams, startThreadParams } from './thread-params.ts'
 import {
-  buildAgentWorkspaceContext,
   buildTurnAdditionalContext,
   mergeTurnAdditionalContext,
   needsActiveBrowserContext,
-  AGENT_WORKSPACE_CONTEXT_NAME,
   type ActiveBrowserContext
 } from './turn-context.ts'
 import { ToolRegistry } from '../tools/registry.ts'
@@ -91,24 +89,10 @@ test('a browser-relevant turn stays context-free when no active tab exists', () 
   assert.equal(buildTurnAdditionalContext('Read the current page', null), undefined)
 })
 
-test('agent workspace context is injected only when chat is in agent workspace', () => {
-  assert.equal(buildAgentWorkspaceContext(false), undefined)
-  const context = buildAgentWorkspaceContext(true)
-  assert.ok(context)
-  assert.equal(context[AGENT_WORKSPACE_CONTEXT_NAME]?.kind, 'application')
-  assert.match(context[AGENT_WORKSPACE_CONTEXT_NAME]?.value ?? '', /Agent Workspace/)
-  assert.match(context[AGENT_WORKSPACE_CONTEXT_NAME]?.value ?? '', /exactly one pillar per turn/)
-  assert.match(context[AGENT_WORKSPACE_CONTEXT_NAME]?.value ?? '', /exactly one question/)
-  assert.match(context[AGENT_WORKSPACE_CONTEXT_NAME]?.value ?? '', /search\.query \(presentation "background"/)
-  assert.match(context[AGENT_WORKSPACE_CONTEXT_NAME]?.value ?? '', /Never open, navigate, read, or capture the user's browser tabs/)
-})
-
 test('mergeTurnAdditionalContext merges independent contexts cleanly', () => {
   assert.equal(mergeTurnAdditionalContext(undefined, undefined), undefined)
-  const agent = buildAgentWorkspaceContext(true)
   const browser = buildTurnAdditionalContext('Read this page', activeTab)
-  const merged = mergeTurnAdditionalContext(browser, agent)
+  const merged = mergeTurnAdditionalContext(browser, undefined)
   assert.ok(merged)
   assert.ok(merged['closedai.browser.active-tab'])
-  assert.ok(merged[AGENT_WORKSPACE_CONTEXT_NAME])
 })

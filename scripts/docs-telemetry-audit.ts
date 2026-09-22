@@ -1,5 +1,5 @@
 /**
- * Report-only docs and tool-telemetry audit. See docs/agent-workspace/docs-telemetry-auditor-spec.md.
+ * Report-only docs and tool-telemetry audit (see docs/reports/README.md).
  *
  * Usage: npm run audit:docs [-- --telemetry=/path/to/tool-telemetry.json]
  */
@@ -19,7 +19,6 @@ import { credentialVaultTools } from '../src/main/tools/credential-vault/index.t
 import { createToolRegistry, type ToolRegistry } from '../src/main/tools/index.ts'
 import { nativeInstrumentTools } from '../src/main/tools/native-instrument/index.ts'
 import { peerChatTools } from '../src/main/tools/peer-chats/index.ts'
-import { projectTools } from '../src/main/tools/project/index.ts'
 import { searchTools } from '../src/main/tools/search/index.ts'
 import type { ResearchDependencies } from '../src/main/tools/search/research/service.ts'
 import type { ToolTelemetrySnapshot, ToolStats } from '../src/shared/tools.ts'
@@ -111,7 +110,6 @@ function buildRegistry(): ToolRegistry {
     captureTools(stubHost, stubHost as never),
     searchTools({ research: minimalResearch() }),
     peerChatTools(stubHost),
-    projectTools(stubHost, stubHost),
     batchTools(() => registry, { maxCalls: 16 })
   ])
   return registry
@@ -352,11 +350,9 @@ async function historicalDocFindings(): Promise<Finding[]> {
   const markdown = entries.filter((entry) => entry.isFile() && entry.name.endsWith('.md')).map((entry) => entry.name)
   const currentBasenames = new Set(CURRENT_GUIDES.map((file) => path.basename(file)))
   currentBasenames.add('README.md')
-  currentBasenames.add('agent-workspace-plan.md')
-
   const findings: Finding[] = []
   for (const name of markdown.sort()) {
-    if (currentBasenames.has(name) || name.startsWith('agent-workspace/')) continue
+    if (currentBasenames.has(name)) continue
     const isDated = /\d{4}-\d{2}-\d{2}/.test(name) ||
       /research|recon|audit|benchmark|backlog|blueprint|plan/i.test(name)
     findings.push({
@@ -405,7 +401,6 @@ function renderReport(ctx: AuditContext, findings: Finding[], reportPath: string
     '',
     'Command: `npm run audit:docs`',
     '',
-    'Spec: [docs-telemetry-auditor-spec.md](../agent-workspace/docs-telemetry-auditor-spec.md)',
     '',
     '## 1. Metadata',
     '',

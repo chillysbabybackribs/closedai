@@ -47,8 +47,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatCompactAtPercent: 80,
   chatCompactAtTokens: 40_000,
   chatMidTurnCompactTokens: 0,
-  chatSeamlessRotation: true,
-  chatAgentWorkspace: false
+  chatSeamlessRotation: true
 }
 
 const MAX_COMPACT_AT_PERCENT = 95

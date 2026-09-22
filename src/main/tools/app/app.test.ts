@@ -39,7 +39,6 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
     queueProjectSwitch: async (request) => { calls.push(['queueProjectSwitch', request]); return { ...request, status: 'pending' } },
     cancelProjectSwitch: (paneId) => { calls.push(['cancelProjectSwitch', paneId]); return null },
     newChat: async () => { calls.push(['newChat']); return { paneId: 'pane-new' } },
-    newWorkerChat: async (parentPaneId) => { calls.push(['newWorkerChat', parentPaneId]); return { paneId: 'pane-worker' } },
     sendMessage: async (request) => {
       calls.push(['sendMessage', { ...request, signal: request.signal.aborted }])
       return { paneId: request.paneId, turnStarted: true, turnCompleted: true, elapsedMs: 1200 }
@@ -118,13 +117,6 @@ test('send_message defaults to awaiting the turn and refuses the calling pane', 
   const selected = await call('command', { action: 'stop_agent' }, 'pane-selected')
   assert.equal(selected.isError, true)
   assert.equal(calls.length, 2)
-})
-
-test('new_chat background spawns a worker for the calling pane', async () => {
-  const { calls, call } = harness()
-  await call('command', { action: 'new_chat', background: true }, 'pane-coord')
-  const verbs = calls.filter((entry) => Array.isArray(entry) && entry[0] !== 'state')
-  assert.deepEqual(verbs, [['newWorkerChat', 'pane-coord']])
 })
 
 test('commands route to the host with the selected pane as the default target', async () => {

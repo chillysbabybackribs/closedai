@@ -323,69 +323,6 @@ the tab strip and carry full-height column labels. Escape cancels; dropping over
 a divider, or outside the workspace leaves the layout unchanged. Preview transitions respect
 reduced-motion preferences.
 
-The **agent workspace** is a third reserved pane (`closedai:agent-workspace`), toggled from the compass
-button beside the browser control or **View → Toggle agent workspace**. The first open inserts it as a
-left column (~38% width); hiding it keeps the pane mounted and its layout slot saved, like the browser.
-The pane hosts the multi-agent project workspace (intent map, shared file tree, catch-up, and completion
-flow) with a compact composer backed by a dedicated, detached chat session. It is not a second view of
-the selected chat: changing the selected chat cannot change, send, pause, stop, or resume the agent chat.
-The agent chat uses the same provider pipeline and composer as every other chat; its planning voice is
-prompt guidance, while dispatch belongs to the main-process run loop described below. Durable project state lives in **`<project>/.closedai/project.json`** (phase,
-direction record, tree, journal); the store writes a `.gitignore` beside it so the directory stays out of
-the project's version control, and the agent workspace hydrates from disk when that file contains work.
-Full view uses the same solo-tile maximize gesture as chat panes (`layout.agent-full-view` or double-click
-where supported). Drag the agent workspace grip to stack or dock beside chats the same way as the browser,
-without selecting a conversation when you focus inside the pane. The restart control (`layout.agent-restart`)
-resets the project store to a blank intake (a `reset` mutation; only the hive config survives), closes
-the backing coordinator chat, and detaches a fresh one, remounting the workspace back at the first
-intake view; the closed chat is not deleted, only detached, so it stays reachable from chat history like any
-closed chat. `closedai_ui.capture`'s `agent_workspace` action screenshots this pane alone, cropped from the
-composed window; it fails with guidance when the pane is not open. The pane is plain DOM (unlike the
-browser's native view), so the renderer reports its on-screen rect to the main process
-(`agentWorkspace:setBounds`, tracked in `AgentWorkspaceSurface`) whenever it changes, and the crop scales
-that rect against the window's current size — see `src/renderer/chat-layout/chat-canvas.tsx` and
-`src/main/ui-capture-access.ts`.
-
-**Implementation note (2026-09-22).** The agent workstation UI lives under
-`src/renderer/agent-workspace/`. The **live** pieces are: the reserved layout pane, the detached
-coordinator chat (same provider pipeline and `ChatTranscript` streaming as ordinary chats), prompt
-guidance via `agent-workspace-instructions.ts`, and the project store. The workspace renders
-`<project>/.closedai/project.json` and nothing else: `useProjectState` reads the snapshot over
-`project:snapshot` plus `project:event`, and every change the pane makes (direction record, Start
-building, journal lines, tree amendments, catch-up, accept, reopen) is a `ProjectMutation` sent over
-`project:mutate` and applied by the shared reducer in `src/shared/project/mutations.ts`. The same
-reducer runs in memory for the canvas fixture and tests, so both paths produce identical state.
-Quit and relaunch restores the phase, record, tree, and journal.
-
-**The run loop (`src/main/agent-runner/`).** Dispatch is owned by the main process, not by a
-coordinator's prompt. `AgentRunner` reacts to two signals — a project snapshot from `ProjectHub`
-(which now also emits when a store is opened, so a relaunch mid-build resumes) and a chat pane
-finishing a turn — and on either it asks the pure `planRun` what should be happening, then makes it
-true: open worker chats with `ChatPeerManager.newWorkerPeer` (off the tab strip, parented to the
-coordinator), hand each one a single task, and keep going as each lands. Pressing **Start building**
-binds the coordinator pane into `project.json` (`CoordinatorBinding.paneId`); that binding is what
-hands the project to the loop, so the pane itself no longer sends a kickoff message. Concurrency
-comes from `HiveConfig.workers.maxConcurrent`; two queued tasks whose `paths` overlap never run at
-once, and a task that declares no `paths` claims nothing. A worker whose turn ends without recording
-a result is nudged once and then the task becomes `blocked`, which is a state only a coordinator
-clears. The coordinator is asked to plan when there is nothing to run and only when the tree's shape
-has changed since it last saw it, so a reply that adds no tasks does not loop. The build badge in the
-workspace header is also the pause control (`agent.project-dispatch`, a `dispatch` mutation): pausing
-starts nothing new and leaves running work alone. A task node shows the worker carrying it — live
-activity plus a bounded read of its transcript over `project:workerLog` — so work stays inside the
-workspace instead of opening chat tabs. Models read and write the
-store through `closedai_project` (`snapshot`, `mutate`; see `docs/tools.md`); the tool refuses
-`assign` and `dispatch`, which the loop and the pause control own. What is still **prototype**: the direction record is
-read off the coordinator transcript by message position (`syncDiscoveryWithItems`) rather than written
-by the model; a user message during building is also turned into an amendment node by the pane itself
-(`amendTree`, a whole-tree `replace`); acknowledged reports and the open completion proposal are local
-React state; and the fixture dispatch script (`buildDispatchPlan`) exists only for previews and tests.
-Validate in **Electron** (`npm run preview` or `npm run dev`). `docs/agent-workspace-plan.md` is a
-dated proposal that predates the run loop and describes prompt-driven dispatch; where it disagrees
-with this section, this section is what the code does. Read before editing anything
-under `src/renderer/agent-workspace/`, `src/main/project-store/`, `src/main/tools/project/`, or
-`src/shared/project/`.
-
 Drag empty chat header space onto another tile's left, right, top, or bottom edge to move the whole pane. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its
 mounted composer, draft, attachments, and transcript scroller survive the move. Open an existing chat

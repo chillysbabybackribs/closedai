@@ -7,8 +7,8 @@ import {
   coherenceVerdict, documentHidden, HIDDEN_CATCH_UP_MS, HIDDEN_SETTLE_BUDGET_MS, HIDDEN_STABILITY_GAP_MS,
   observeDomMutations, type CaptureCoherence, type CaptureFrame
 } from './capture-coherence.js'
-import type { AgentWorkspaceCapture, BrowserPageCapture, CapturedImage, ImageCrop, UiCaptureHost } from './tools/capture/index.js'
-import type { AgentWorkspaceBounds, BrowserTabInfo } from '../shared/types.js'
+import type { BrowserPageCapture, CapturedImage, ImageCrop, UiCaptureHost } from './tools/capture/index.js'
+import type { BrowserTabInfo } from '../shared/types.js'
 
 const MAX_IMAGE_WIDTH = 1_920
 const MAX_IMAGE_HEIGHT = 1_440
@@ -23,7 +23,6 @@ export class UiCaptureAccess implements UiCaptureHost {
   constructor(
     private readonly window: () => BrowserWindow | null,
     private readonly browser: () => BrowserService | null,
-    private readonly agentWorkspaceBounds: () => AgentWorkspaceBounds | null = () => null,
     private readonly now: () => Date = () => new Date()
   ) {}
 
@@ -42,36 +41,6 @@ export class UiCaptureAccess implements UiCaptureHost {
     })
     const image = sources.find((source) => source.id === sourceId)?.thumbnail
     return image ? this.payload(image) : null
-  }
-
-  /**
-   * The agent workspace is plain DOM in the main window, not a native view, so there is no
-   * separate surface to grab: crop the composed window to the pane's last-reported rect. Bounds
-   * are in CSS px of the renderer's viewport, the same space as `window.getSize()`, so scaling
-   * both by the same window dimensions keeps the crop aligned regardless of DPI.
-   */
-  async captureAgentWorkspace(): Promise<AgentWorkspaceCapture | null> {
-    const window = this.window()
-    if (!window || window.isDestroyed() || !window.isVisible() || window.isMinimized()) return null
-    const bounds = this.agentWorkspaceBounds()
-    if (!bounds || !bounds.visible || bounds.width < 1 || bounds.height < 1) return { visible: false, image: null }
-    const full = await this.captureAppWindow()
-    if (!full) {
-      return { visible: false, image: null, error: 'The application window is unavailable or could not produce a composed frame' }
-    }
-    const [windowWidth, windowHeight] = window.getSize()
-    const scaleX = full.width / Math.max(1, windowWidth)
-    const scaleY = full.height / Math.max(1, windowHeight)
-    const x = Math.max(0, Math.min(full.width - 1, Math.round(bounds.x * scaleX)))
-    const y = Math.max(0, Math.min(full.height - 1, Math.round(bounds.y * scaleY)))
-    const crop: ImageCrop = {
-      x, y,
-      width: Math.max(1, Math.min(full.width - x, Math.round(bounds.width * scaleX))),
-      height: Math.max(1, Math.min(full.height - y, Math.round(bounds.height * scaleY)))
-    }
-    const image = await this.cropImage(full.dataUrl, crop, 1)
-    if (!image) return { visible: true, image: null, error: 'The agent workspace pane produced an empty region' }
-    return { visible: true, image }
   }
 
   async captureBrowserPage(tabId: string | undefined, ready: PageReadiness): Promise<BrowserPageCapture | null> {

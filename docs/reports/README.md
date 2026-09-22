@@ -10,6 +10,4 @@ Optional telemetry path (defaults to `~/.config/closedai/tool-telemetry.json`):
 npm run audit:docs -- --telemetry=/path/to/tool-telemetry.json
 ```
 
-Spec: [docs-telemetry-auditor-spec.md](../agent-workspace/docs-telemetry-auditor-spec.md)
-
 Each run writes `docs-telemetry-audit-<ISO-timestamp>.md` in this directory.

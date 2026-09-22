@@ -20,13 +20,6 @@ export type CapturedImage = {
   model: ModelImage
 }
 
-export type AgentWorkspaceCapture = {
-  /** False when the agent workspace pane is not currently open in the layout; no pixels exist for it. */
-  visible: boolean
-  image: CapturedImage | null
-  error?: string
-}
-
 export type BrowserPageCapture = {
   image: CapturedImage | null
   tabId: string
@@ -50,8 +43,6 @@ export type UiCaptureHost = {
   /** The open tabs, for naming them when a requested tab is not there. */
   listTabs(): BrowserTabInfo[]
   captureAppWindow(): Promise<CapturedImage | null>
-  /** Null only when the app window itself is unavailable; a closed pane reports `visible: false`. */
-  captureAgentWorkspace(): Promise<AgentWorkspaceCapture | null>
   captureBrowserPage(tabId: string | undefined, ready: PageReadiness): Promise<BrowserPageCapture | null>
   cropImage(dataUrl: string, crop: ImageCrop, zoom: number): Promise<CapturedImage | null>
 }

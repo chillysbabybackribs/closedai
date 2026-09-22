@@ -52,9 +52,7 @@ export function normalizeChatRecord(candidate: unknown): ChatRecord | null {
     continuation: normalizeContinuation(record.continuation),
     checkpoint: record.checkpoint === undefined ? null : normalizeMemoryCheckpoint(record.checkpoint),
     parentChatId: optionalString(record.parentChatId),
-    sessionRotations: normalizeSessionRotations(record.sessionRotations),
-    agentWorkspace: record.agentWorkspace === true,
-    agentWorker: record.agentWorker === true
+    sessionRotations: normalizeSessionRotations(record.sessionRotations)
   }
 }
 

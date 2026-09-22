@@ -34,18 +34,10 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
     },
     {
       action: 'new_chat',
-      description:
-        'Create a chat and return its pane id. Default: select it like File → New chat. With background true, spawn a headless build worker for the calling pane without changing the selected tab.',
-      inputSchema: objectSchema({
-        background: { type: 'boolean', description: 'When true, create a worker chat off the tab strip for the calling pane.' }
-      }),
-      run: async (input, context) => {
+      description: 'Create a chat and return its pane id; selects it like File → New chat.',
+      inputSchema: objectSchema({}),
+      run: async (_input, _context) => {
         const host = requireHost(app, 'app commands')
-        if (booleanArg(input, 'background', false)) {
-          if (!context.paneId) throw new Error('A calling chat is required for a background worker')
-          const created = await host.newWorkerChat(context.paneId)
-          return jsonResult({ ...created, ...host.state(['workspace'], created.paneId, context.paneId ?? null) })
-        }
         const created = await host.newChat()
         return jsonResult({ ...created, ...host.state(['workspace'], created.paneId, null) })
       }
