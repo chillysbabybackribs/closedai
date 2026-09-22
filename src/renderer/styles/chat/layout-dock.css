@@ -64,6 +64,13 @@
   pointer-events: none;
 }
 
+/* The dock already names the preset below the icon; the wireframe's own "Browser" /
+   slot-number labels only fit the larger dialog cards and clip at icon scale. */
+.layout-dock-btn .layout-preset-wire-chat span,
+.layout-dock-btn .layout-preset-wire-browser span {
+  display: none;
+}
+
 .layout-dock-label {
   font-size: 10.5px;
   font-weight: 550;
