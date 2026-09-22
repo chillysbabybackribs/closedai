@@ -63,6 +63,11 @@ test('any chat reads or selects a tab another chat is working in, and takes noth
   // None of that moved ownership, and b never acquired a default it did not ask for.
   assert.equal(policy.snapshot('a').defaultTabId, 'user')
   assert.equal(policy.snapshot('b').defaultTabId, null)
+  // Its owner reading it does keep pointing there, so the next action needs no tab_id.
+  prepare('a', { action: 'navigate', url: 'https://a.test', new_tab: true })
+  assert.notEqual(policy.snapshot('a').defaultTabId, 'user')
+  assert.equal(prepare('a', { action: 'read_page', tab_id: 'user' }).tab_id, 'user')
+  assert.equal(policy.snapshot('a').defaultTabId, 'user')
   assert.equal(policy.canUse('user', 'b'), false)
   // Acting in it still belongs to its owner, and the refusal says reading is available.
   assert.throws(() => prepare('b', { action: 'evaluate', expression: 'location.reload()', tab_id: 'user' }),

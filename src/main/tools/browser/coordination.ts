@@ -84,8 +84,13 @@ export class BrowserCoordination {
       throw new Error('This chat’s browser tab is closed or unavailable. Pass an open tab_id or navigate with new_tab: true; the selected tab was not used.')
     }
     // Reading any tab is allowed and claims nothing; selecting one only changes what the window
-    // shows. Both leave the page to whoever is working in it.
-    if (this.observes(request, action, input, tabCommand)) return { ...input, tab_id: id }
+    // shows. Both leave the page to whoever is working in it. Reading one this chat already owns
+    // does point its default there, so "read that tab, now act in it" stays one conversation:
+    // that moves nothing between chats, because the tab was already this one's.
+    if (this.observes(request, action, input, tabCommand)) {
+      if (this.owners.get(id) === pane) this.defaults.set(pane, id)
+      return { ...input, tab_id: id }
+    }
     if (tabCommand && ['close_others', 'close_right'].includes(String(input.op))) {
       const tabs = this.host.tabs()
       const affected = input.op === 'close_others' ? tabs.filter(tab => tab.id !== id)
