@@ -6,7 +6,7 @@ import { resumeThreadParams, startThreadParams, type ThreadResponse } from './ch
 import { nullableString, recordOf } from './chat-normalizers.js'
 import { messageOf } from './error-message.js'
 import { ChatTranscript } from './chat-transcript.js'
-import type { ContextCompactor, ContextUsage } from './chat-context/context-compaction.js'
+import type { ContextCompactor } from './chat-context/context-compaction.js'
 import type { SessionRotator } from './chat-context/session-rotation.js'
 import type { ChatModelState } from './chat-model-state.js'
 import { dynamicToolSpecs } from './tools/app-server-tools.js'
