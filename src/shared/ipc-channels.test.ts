@@ -102,6 +102,8 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'trace:snapshot',
     'trace:clear',
     'project:snapshot',
+    'project:mutate',
+    'project:workerLog',
     'models:manifest',
     'models:setEnabled',
     'models:setEnabledMany'
