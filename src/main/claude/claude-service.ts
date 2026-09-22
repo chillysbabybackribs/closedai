@@ -537,7 +537,7 @@ export class ClaudeChatService extends EventEmitter {
       snapshot: () => this.snapshot(),
       emitEvent: (event) => this.emitEvent(event),
       screenshots: this.screenshots,
-      readThreadPrefetch: (threadId) => { void this.readThread(threadId).catch(() => undefined) }
+      readThreadPrefetch: async (threadId) => { await this.readThread(threadId).catch(() => undefined) }
     }
   }
 }

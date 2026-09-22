@@ -1,4 +1,4 @@
-import { WebContentsView, session, type LoadURLOptions, type WebContents, type WebContentsViewConstructorOptions } from 'electron'
+import { WebContentsView, type LoadURLOptions, type WebContents, type WebContentsViewConstructorOptions } from 'electron'
 import { EventEmitter } from 'node:events'
 import type { BrowserHistory } from './browser-history-store.js'
 import type { BrowserBounds, BrowserState } from '../shared/types.js'
