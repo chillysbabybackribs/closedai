@@ -125,6 +125,7 @@ test('ensureCodexThread starts a fresh thread when the catalog drifts after resu
     }]
   }])
   const { host, requests, setThreadToolCatalog, getSaved } = await mockHost(t, tools)
+  host.transcript.replaceItems([{ type: 'user', id: 'user:u1', turnId: null, text: 'Investigate the page' }])
   host.transcript.addOptimisticUser('pending-user', 'New request', [])
   const stale = structuredClone(dynamicToolSpecs(tools))
   stale[0]!.tools[0]!.description = 'Stale'
