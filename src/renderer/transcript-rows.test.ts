@@ -296,3 +296,13 @@ test('mountedTurnWindowStart keeps only the newest three user turns', () => {
   assert.equal(clampVisibleStart(0, rows, 3), 2)
   assert.equal(clampVisibleStart(4, rows, 3), 4)
 })
+
+test('continuation notices are filtered out from transcript rows', () => {
+  const items: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u1', turnId: 't1', text: 'Hello' },
+    { type: 'notice', id: 'n1', turnId: null, tone: 'info', text: 'Continuing from “old chat”. A short summary...' },
+    { type: 'assistant', id: 'a1', turnId: 't1', text: 'Hi', phase: null, streaming: false }
+  ]
+  const rows = transcriptRows(items)
+  assert.deepEqual(rows.map((row) => row.kind === 'item' ? row.item.id : row.id), ['u1', 'a1'])
+})

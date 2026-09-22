@@ -258,7 +258,6 @@ export class CursorChatService extends EventEmitter {
       chatContinuation: continuationFromThreadHandoff(this.paneId, source)
     })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
-    this.addNotice(`Continuing from “${source.title}”. A short summary of that chat goes with your next message.`, 'info', null)
   }
 
   async openThread(threadId: string): Promise<void> {

@@ -184,6 +184,7 @@ function rowVisible(item: ChatTranscriptItem): boolean {
   if (isActivity(item)) return true
   if (item.type === 'assistant') return Boolean(item.text)
   if (item.type === 'user') return Boolean(item.text) || Boolean(item.attachments?.length)
+  if (item.type === 'notice' && item.tone === 'info' && item.text.startsWith('Continuing from')) return false
   return true
 }
 

@@ -229,6 +229,7 @@ const TranscriptItem = memo(function TranscriptItem({
     return <AssistantMessage item={item} actions={actions} showContinue={showContinue} />
   }
   if (item.type === 'notice') {
+    if (item.tone === 'info' && item.text.startsWith('Continuing from')) return null
     return (
       <Marker
         className="prompt-system-message w-fit"
