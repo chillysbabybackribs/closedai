@@ -20,6 +20,20 @@ These are the sources AGENTS.md treats as authoritative for implemented behavior
 Root [README.md](../README.md) covers install/run and points here. [AGENTS.md](../AGENTS.md) is the
 engineering contract for contributors.
 
+## Prompt and tool token ownership
+
+What models pay for every turn:
+
+| Cost | Owner | Maintainer rule |
+|---|---|---|
+| Shared product facts | `src/main/chat-context/application-instructions.ts` | One copy across lanes; do not restate in Markdown or per-tool prose |
+| Batching / XML trust | `src/main/chat-context/product-instructions.ts` | Lane adapters import slices; avoid duplicating in `tools.md` |
+| Tool schemas and descriptions | `src/main/tools/**` | Defaults and limits here; cross-link from guides instead of copying |
+| Human guides | `docs/application.md`, `docs/tools.md` | Behavior and contracts for people; trim overlap with prompt source |
+
+The Tools modal **advertised tokens** sum enabled tool descriptions (see `toolManifest`). Deferred
+tools (`deferLoading: true`) ship stubs until discovered — keep eager tool text minimal.
+
 ## Dated research and QA (evidence, not spec)
 
 Filenames with dates or titles marked "research", "recon", "audit", "benchmark", or "backlog"

@@ -20,4 +20,4 @@ export const DIRECT_CALL_TOOL_BATCHING_INSTRUCTION =
   'Batch independent reads when useful. Use native parallel calls for native tools, or tool_batch for ClosedAI tools; direct calls are fine. Inspect results before choosing dependent actions. Batch recorders, hooks, or emulation only with their use and release. Return needed evidence, not full intermediate dumps.'
 
 export const CODEX_EXEC_TOOL_BATCHING_INSTRUCTION =
-  'In exec, await tools directly; Promise.allSettled can group independent reads. Inspect every result before choosing dependent actions. Use try/finally to release recorders, hooks, or emulation. Emit needed evidence, not full intermediate dumps; do not nest tool_batch inside exec.'
+  'In exec, await tools directly; Promise.allSettled can group independent reads. Inspect results before choosing dependent actions. try/finally releases recorders, hooks, or emulation. Return needed evidence, not full dumps; do not nest tool_batch in exec.'

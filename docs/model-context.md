@@ -34,133 +34,36 @@ untrusted. Parameter limits remain owned by the tools; see [native instrumentati
 | Cursor adapter guidance | `src/main/cursor/cursor-instructions.ts`, `cursor-input.ts` | Once per ACP session, as a `closedai.instructions` application context block on the first turn; turn context and handoff on later turns |
 | Repository rules | `src/main/chat-context/workspace-rules.ts`, root `AGENTS.md`, applicable `CLAUDE.md` | Codex loads `AGENTS.md` natively; Claude and Antigravity receive the selected workspace root policy explicitly; Claude also loads project `CLAUDE.md` through the SDK |
 
-The common product facts are ordered as identity and objective, trust and authorization, choosing
-between tools, then workspace orientation (restructured 2026-09-20; about 5,200 characters). Every
-lane assembles the same way: the provider's one-line "who and where", the shared block, transport
-and trust mechanics, lane-specific overrides, engineering, and response style last. Parameter
-names and defaults are deliberately absent from the shared block; the tool descriptions the
-registry delivers own them, so a tool change cannot strand a stale fact in the prompt.
+The shared product block lives in `application-instructions.ts` (~7,150 characters as of
+2026-09-21). It is ordered as identity and objective, trust and authorization (including evidence
+claims), tool routing, then workspace orientation. Parameter names and defaults stay in tool
+descriptions so registry changes do not strand stale facts in the prompt. Every lane assembles:
+provider "who and where", the shared block, transport/trust mechanics (`product-instructions.ts`),
+lane overrides, `engineering-instructions.ts`, and `articulation-instructions.ts` last.
 
-The block opens with platform identity: ClosedAI is an Electron desktop app whose
-main process owns the browser pane as Chromium tabs on one shared signed-in session, beside chat
-panes routed to the four providers. The paragraph names what the platform already provides (PDF
-viewer, accessibility tree, DevTools protocol, downloads, printing, media) and asks models to check
-the platform and existing tools, with current official documentation, before building extraction,
-rendering, viewing, or capture. It was added on 2026-09-20 after a model built a PDF.js/OCR
-pipeline beside the native PDF viewer it had already screenshotted. The facts then define the
-model as the user's collaborator inside their OS and that browser, free to choose its approach and
-available tools for authorized work.
-Models should use their knowledge, reasoning, and reach to improve the user's starting approach
-and deliver a useful, accurate, finished result. More research, tool calls, or output alone do not
-establish higher quality; the block states this once, under "Research serves decisions", rather
-than repeating it per tool.
-The trust paragraph adds that a rotation, restart, or handoff is a point to re-check the approach
-against the platform and the objective, not a reason to continue the prior scope unexamined; the
-same 2026-09-20 case ran through four rotations that each inherited the earlier plan.
-This role has one shared owner; adapters supply transport and provider facts. Models recover the
-intended outcome and respect explicit constraints, while treating diagnoses and proposed methods
-as hypotheses when their accuracy affects the result. Evidence selection is task-dependent: local
-state, authoritative APIs, current documentation, original research, or firsthand experience reports.
-Current evidence is the starting point; older work remains useful when applicable or foundational,
-and software guidance must match the relevant version. Models may investigate a plausible better
-approach within the user's objective. Quality comes first, latency close behind, token cost third.
-Claude's explicit preset override permits this objective-bounded work without overriding user
-constraints. Evidence guidance distinguishes observations from hypotheses.
+Do not mirror the full block in Markdown — edit the TypeScript source and run
+`model-efficiency-instructions.test.ts` plus lane-specific instruction tests. Budget ceilings
+today: Codex developer text under 9,500 characters; Claude/Cursor under 10,000; Antigravity under
+10,500 (`model-efficiency-instructions.test.ts`).
 
-Independent retrieval and execution overlap; choices that depend on missing evidence wait. Research
-stops when important decisions are supported, material contradictions are resolved or disclosed,
-and further findings are unlikely to change the approach. Models read needed sources and cancel
-unnecessary pending work instead of waiting for every source. The task itself still requires a
-finished, verified result. Failed approaches are adapted; retries account for prior effects;
-authorization, cancellation, budgets, and trust boundaries remain binding. Search, library lookup,
-and checkpoints are not mandatory on every task. No evaluator or extra planning model call is added.
-Stripe Directory is used when explicitly requested or when its vendor discovery or purchase
-capabilities materially help. This explicitly overrides the `stripe-directory` skill's blanket
-software/service discovery trigger: a suitable option that can be verified directly does not need
-a supplementary directory lookup. Required payment, authorization, and safety steps still apply.
-The skill is a Codex plugin, so the rule lives in the Codex adapter (`developer-instructions.ts`),
-not in the shared block or the installed plugin cache; the other lanes do not carry it.
-This is provider-shared prompt guidance, not an enforced scheduler, automatic continuation mechanism,
-or guarantee of task completion. Instruction assembly tests verify delivery; behavioral effectiveness
-requires live task evaluation. Existing provider sessions need refreshed instructions before evaluating it.
+Lane-specific notes (not duplicated in the shared block):
 
-The deferred project-switch command is a specific runtime continuation mechanism, separate from
-that general guidance. `closedai_app.command project_switch` with `project_op: request` validates the
-calling pane/thread/turn and an existing absolute directory, then waits for all chats to be idle.
-The caller must end its turn after a pending receipt. The destination gets a new chat with the
-existing bounded, untrusted conversation handoff and frozen source lineage; a fixed continuation
-message asks it to finish only the previously authorized task and verify its working directory.
-Focus does not determine the source. The latest status is readable through app state, and
-`project_op: cancel` releases a pending request. Cancellation, source replacement, and shutdown do not
-start a continuation. Failures are exposed without automatic retries; completed describes
-switch-and-submit, not task completion. Pending state is in memory only.
-The app no
-longer adds a blanket restriction on delegation; applicable user and repository instructions still apply.
-The centered header search suggests saved chat titles across directories. With no query it groups
-running chats, paused chats, unread completions, open tabs, and closed chats. Hover opens the dropdown and leaving the field and results hides it; focus, typing,
-and arrow keys also open it. Row controls pause or resume a chat without opening it; paused chats
-remain discoverable in their own section. Opening a completion moves it into Open or Closed. Each composer's folder
-menu changes only that chat's directory, preserving the layout and other chats; a running chat
-queues its choice until its own work finishes. Visible chats can use different directories.
-The model's deferred project-switch command still waits for all chats to idle and creates a
-continuation. Stable chat ids, the shared browser and chat search, and the distinction between pane turns and provider
-background work provide orientation. App facts come from `closedai_app.state`,
-service operations from `closedai_app.command`, and real renderer interaction from manifest
-control ids through `closedai_app.ui`. The chat section defaults to the calling pane (including its
-model, thread, and `cwd`), falling back to selection only when there is no caller. `pane_id` explicitly
-overrides that target. Workspace state separately identifies caller and selection. Other panes and
-previous conversations are readable through `peer_chats`.
-Browser coordination is enforced in the shared tool registry, before target locking, for all
-provider lanes. Tool descriptions explain caller-relative tab defaults, background creation,
-assignment conflicts, and explicit release. The common instructions distinguish assignment from
-UI selection, direct models to inspect `state.browser.coordination`, and disclose the shared login
-session and human/provider-native input boundary. Assignments last across turns; they are not a
-claim of account isolation. Search-created tabs use the same assignments without stealing focus.
+- **Codex** — Stripe Directory narrowing, exec JSON parsing, capture URL handling, and poll/write_stdin
+  hints in `developer-instructions.ts`.
+- **Claude** — Preset scope override for objective-bounded work in `claude-instructions.ts`.
+- **Antigravity** — File-link anchor discipline in `antigravity-instructions.ts`.
+- **Cursor** — First-turn `closedai.instructions` block in `cursor-instructions.ts`.
 
-Renderer chat/composer control ids target the focused tile; use `layout.tab` with a chat id before
-exercising another tile's controls. UI facts include visible pane ids and browser visibility.
-Page-requested popups, including login windows, open as regular browser tabs with native opener
-behavior. Workspace layout, search, and splits are product behavior — see
-[Application guide — Workspace layout](application.md#workspace-layout). Browser and CDP tools are
-described in [Tools](tools.md) and [CDP](cdp-tool-foundation.md).
-The common routing policy prefers deterministic commands, page APIs, the session-owned
-`embedded_browser.network` and `session` tools, page `query`/`evaluate`/`console`, fetch/extract,
-and non-input CDP. Deeper runtime inspection, debugging, profiling, instrumentation, emulation
-and exact CDP response reads are task-driven capabilities, with no required recon workflow.
-CDP request listings retain repeated URLs and child session identities; child body reads pass
-that session id and never reissue the request. Session-log ids are not CDP ids. The legacy
-session-network body action is removed; `embedded_browser.network_replay` explicitly sends a
-new request and may repeat server-side effects. Instrumentation never wraps eval/Function;
-its observable wrappers report patch status and best-effort restoration.
-Real clicks, manual typing, key presses, and raw `Input.*` commands are recorded escape hatches:
-the call requires `fallback_reason` and belongs in one batch with inspection and post-action
-verification. For Codex the containing exec script is the batch; direct-call lanes use `tool_batch`.
-The tool runtime distinguishes those two dispatch sources and refuses unbatched real input from a
-direct-call provider even when it supplies a reason. Direct-call batches containing real input must
-be sequential and include a later read, wait, or capture assertion.
-Batching is optional for ordinary work. Independent reads can run together; models inspect their
-results before choosing dependent actions. Codex uses direct awaited calls and can group independent
-reads with `Promise.allSettled`; direct-call providers can use native parallel calls or `tool_batch`
-for ClosedAI tools. Temporary instrumentation must be paired with use and release; exec scripts use
-`try/finally`. The real-input verification requirement above still applies.
+Product behavior the prompt only summarizes (details elsewhere):
 
-The shared response style asks for direct answers, useful progress during longer work, and a final
-result with verification and unresolved limitations. Errors affecting the outcome must be disclosed.
-Routine history retrieval is used naturally without announcing it. Sources are explained when
-asked, and missing or conflicting context is disclosed when it affects the answer. There is no
-first-person phrase ban, output filter, or obligation to narrate every recovered tool error. This is
-prompt guidance, not a text filter or a guarantee of identical output across models.
+- **Workspace UI** — [Application guide — Workspace layout](application.md#workspace-layout).
+- **Browser coordination locks** — [Tools — Application facts](tools.md#application-facts-browser-targets-and-batching).
+- **project_switch** — Command schema in `closedai_app.command`; runtime flow in
+  [Application guide](application.md).
 
-The engineering contract steers every lane toward focused reads, provider-native structured
-edits, task-appropriate verification, and preservation of unrelated changes and Git stash/worktree state. Checks
-may be repeated after failures or subsequent edits; applicable repository rules control required gates. Claude uses
-`Read`/`Grep`/`Glob` and `Edit`; Antigravity uses `view_file`/`grep_search`/`find_by_name`
-and `replace_file_content`/`multi_replace_file_content`; Codex uses `rg` and `apply_patch`.
-
-File search, reading, and editing use each provider's native tools. ClosedAI does not register a
-workspace inspection tool, inject a repository map, intercept file reads, or track source hashes.
-The generated index remains a repository maintenance artifact, not model context. For live-app
-interaction, discover controls from runtime state and the control manifest.
+Routing policy in the shared block: prefer page/session/network tools and script `query`/`evaluate`
+before CDP dumps; `fallback_reason` plus verification for real input; batching optional for reads.
+File search and edits use provider-native tools; no workspace map injection.
 
 ## Per-turn context and trust
 

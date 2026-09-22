@@ -42,7 +42,7 @@ export const waitUntilField: JsonObject = {
 export const waitForSelectorField: JsonObject = {
   type: 'string',
   minLength: 1,
-  description: 'Also wait until this standard CSS selector matches an element. :has-text(), :contains(), :visible, text= and XPath are not CSS and fail immediately.'
+  description: 'Also wait until this CSS selector matches. Non-CSS forms fail immediately; see selector on read_page/navigate.'
 }
 
 export const waitForTextField: JsonObject = {
