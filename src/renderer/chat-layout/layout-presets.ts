@@ -103,7 +103,7 @@ export function browserCentreLayout(groups: TileGroup[], size: CanvasSize, newId
 }
 
 /** A single chat beside the browser; expects exactly one group. */
-export function browserSideLayout(groups: TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
+export function browserSideLayout(groups: TileGroup[], newId: () => string): ChatLayout {
   const [a] = groups.map(pane) as [ChatLayout]
   return { kind: 'split', id: newId(), axis: 'horizontal', ratio: clampRatio(BROWSER_SIDE_RATIO),
     first: a, second: { kind: 'pane', id: BROWSER_PANE_ID } }
@@ -112,7 +112,7 @@ export function browserSideLayout(groups: TileGroup[], size: CanvasSize, newId: 
 /** The tree a preset produces for the given groups, before any chats are created. */
 export function presetLayout(preset: LayoutPreset, groups: TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
   if (preset.kind === 'grid') return gridLayout(groups, size, newId)
-  if (preset.kind === 'browser-side') return browserSideLayout(groups, size, newId)
+  if (preset.kind === 'browser-side') return browserSideLayout(groups, newId)
   return browserCentreLayout(groups, size, newId)
 }
 

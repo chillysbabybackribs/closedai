@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { BROWSER_PANE_ID, layoutGeometry, paneIds, readLayout, withBrowser, type ChatLayout } from './layout-tree.ts'
 import { addTab, tabIds } from './layout-tabs.ts'
-import { GRID_CHAT_CAP, assignGroups, browserCentreLayout, chooseGrid, clampGridCount, gridCapacity, gridLayout, singleGroup } from './layout-presets.ts'
+import { GRID_CHAT_CAP, assignGroups, browserCentreLayout, browserSideLayout, chooseGrid, clampGridCount, gridCapacity, gridLayout, singleGroup } from './layout-presets.ts'
 
 const HD = { width: 1920, height: 1014 }
 const QHD = { width: 2560, height: 1400 }
@@ -66,6 +66,18 @@ test('browser centre puts the browser between two stacked columns of equal chats
   assert.ok(Math.abs(rect('c0').width - rect('c2').width) <= 1)
   assert.ok(Math.abs(rect('c0').height - rect('c1').height) <= 1)
   assert.ok(Math.abs(rect(BROWSER_PANE_ID).width - HD.width * 0.42) <= 1)
+  assert.deepEqual(readLayout({ getItem: () => JSON.stringify({ tree, browserVisible: true }) }, '/a').tree, tree)
+})
+
+test('browser side puts one chat beside the full-height browser', () => {
+  const tree = browserSideLayout(groups(1), ids())
+  const geometry = layoutGeometry(tree, HD.width, HD.height)
+  const rect = (id: string) => geometry.panes.find((pane) => pane.id === id)!.rect
+  assert.deepEqual(paneIds(tree), ['c0'])
+  assert.deepEqual(withBrowser(tree), tree)
+  assert.equal(rect('c0').height, HD.height)
+  assert.equal(rect(BROWSER_PANE_ID).height, HD.height)
+  assert.ok(rect('c0').x + rect('c0').width < rect(BROWSER_PANE_ID).x)
   assert.deepEqual(readLayout({ getItem: () => JSON.stringify({ tree, browserVisible: true }) }, '/a').tree, tree)
 })
 
