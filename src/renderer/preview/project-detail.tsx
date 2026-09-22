@@ -3,6 +3,7 @@ import { ChevronRight, ExternalLink, LockKeyhole, Pencil } from 'lucide-react'
 
 import { Markdown } from '../../components/ui/markdown.js'
 import type { Crumb, Location, ProjectFile } from './project-files.js'
+import { stamp } from './project-time.js'
 import type { TreeNode } from './project-tree.js'
 
 const STATE_WORDS: Record<TreeNode['state'], string> = {
@@ -33,9 +34,10 @@ export function NodeDetail(props: {
   nodes: TreeNode[]
   files: ProjectFile[]
   serves: string
+  now: number
   onNavigate: (location: Location) => void
 }) {
-  const { node, nodes, files, serves, onNavigate } = props
+  const { node, nodes, files, serves, now, onNavigate } = props
   const children = nodes.filter((child) => child.parent === node.id && child.kind !== 'amendment')
   const amendments = nodes.filter((child) => child.parent === node.id && child.kind === 'amendment')
   return <article className="project-detail">
@@ -43,6 +45,10 @@ export function NodeDetail(props: {
       <span className="project-detail-kind">{node.kind}</span>
       <h1>{node.kind === 'root' && <LockKeyhole size={15} aria-hidden="true" />}{node.title}</h1>
       <span className="project-detail-state" data-state={node.state}>{STATE_WORDS[node.state]}</span>
+      <p className="project-detail-stamps">
+        <time dateTime={new Date(node.createdAt).toISOString()}>Opened {stamp(node.createdAt, now)}</time>
+        {node.updatedAt !== node.createdAt && <time dateTime={new Date(node.updatedAt).toISOString()}>Updated {stamp(node.updatedAt, now)}</time>}
+      </p>
     </header>
     {node.kind !== 'root' && <p className="project-detail-serves"><b>Serves</b> {serves}</p>}
     <div className="project-detail-body"><Markdown>{node.detail}</Markdown></div>
@@ -93,7 +99,7 @@ export function NodeDetail(props: {
 }
 
 /** A project file opened into the canvas, readable and, unless it is history, editable in place. */
-export function FileDetail({ file, onSave }: { file: ProjectFile; onSave: (path: string, content: string) => void }) {
+export function FileDetail({ file, now, onSave }: { file: ProjectFile; now: number; onSave: (path: string, content: string) => void }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(file.content)
   useEffect(() => { setEditing(false); setDraft(file.content) }, [file.path, file.content])
@@ -114,6 +120,9 @@ export function FileDetail({ file, onSave }: { file: ProjectFile; onSave: (path:
             <Pencil size={12} aria-hidden="true" /> Edit
           </button>)
         : <span className="project-detail-state" data-state="anchored"><LockKeyhole size={11} aria-hidden="true" /> history</span>}
+      <p className="project-detail-stamps">
+        <time dateTime={new Date(file.updatedAt).toISOString()}>Updated {stamp(file.updatedAt, now)}</time>
+      </p>
     </header>
     {editing
       ? <textarea className="project-file-editor" data-ui="preview.project-file-editor" value={draft}

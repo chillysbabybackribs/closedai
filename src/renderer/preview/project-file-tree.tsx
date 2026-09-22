@@ -2,14 +2,16 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight, FileText, FolderClosed, FolderOpen } from 'lucide-react'
 
 import type { ProjectFile, ProjectFolder } from './project-files.js'
+import { absolute, relative } from './project-time.js'
 
 export function ProjectFileTree(props: {
   root: ProjectFolder
   openPath: string | null
   changed: ReadonlySet<string>
+  now: number
   onOpen: (path: string) => void
 }) {
-  const { root, openPath, changed, onOpen } = props
+  const { root, openPath, changed, now, onOpen } = props
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
   const toggle = (path: string) => setCollapsed((current) => {
     const next = new Set(current)
@@ -24,9 +26,11 @@ export function ProjectFileTree(props: {
       <button type="button" className="project-file" style={{ paddingLeft: 10 + depth * 14 }}
         data-ui="preview.project-file" data-ui-key={file.path}
         data-open={openPath === file.path || undefined} data-changed={changed.has(file.path) || undefined}
-        data-owner={file.owner} title={file.path} onClick={() => onOpen(file.path)}>
+        data-owner={file.owner} data-root={depth === 0 || undefined} title={`${file.path} · ${absolute(file.updatedAt, now)}`}
+        onClick={() => onOpen(file.path)}>
         <FileText size={12} aria-hidden="true" />
         <span>{file.title}</span>
+        <time dateTime={new Date(file.updatedAt).toISOString()}>{relative(file.updatedAt, now)}</time>
       </button>
     </li>
 
@@ -54,10 +58,10 @@ export function ProjectFileTree(props: {
       <span>{countFiles(root)} files</span>
     </header>
     <ul>
-      {root.folders.map((folder) => renderFolder(folder, 0))}
       {root.files.map((file) => renderFile(file, 0))}
+      {root.folders.map((folder) => renderFolder(folder, 1))}
     </ul>
-    <footer>Shared state. The orchestrator owns structure; workers write notes; you can edit anything.</footer>
+    <footer>Shared state beneath the original request. The orchestrator owns structure; workers write notes; you can edit anything.</footer>
   </nav>
 }
 

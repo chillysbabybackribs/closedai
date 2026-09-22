@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 'react'
 import { LocateFixed, LockKeyhole, Minus, Plus } from 'lucide-react'
 
+import { relative } from './project-time.js'
 import { NODE_HEIGHT, NODE_WIDTH, type PlacedNode, type TreeLayout } from './project-tree.js'
 
 type View = { x: number; y: number; scale: number }
@@ -37,9 +38,10 @@ export function ProjectCanvas(props: {
   selectedId: string | null
   /** Nodes that changed while the user was away from the map; they pulse until looked at. */
   changedIds?: ReadonlySet<string>
+  now: number
   onSelect: (id: string | null) => void
 }) {
-  const { layout, selectedId, changedIds, onSelect } = props
+  const { layout, selectedId, changedIds, now, onSelect } = props
   const pane = useRef<HTMLDivElement>(null)
   const [view, setView] = useState<View>({ x: 0, y: TOP_INSET, scale: DEFAULT_SCALE })
   // Once the user pans or zooms, the canvas stops following the growing tree.
@@ -146,6 +148,7 @@ export function ProjectCanvas(props: {
         <span className="project-tree-node-heading">
           {node.kind === 'root' && <LockKeyhole size={12} aria-hidden="true" />}
           <strong>{node.title}</strong>
+          <time dateTime={new Date(node.updatedAt).toISOString()}>{relative(node.updatedAt, now)}</time>
         </span>
         <small>{node.summary}</small>
       </button>)}
