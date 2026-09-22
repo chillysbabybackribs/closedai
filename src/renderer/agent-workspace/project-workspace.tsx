@@ -335,18 +335,18 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
     <header className="project-shell-header">
           {!embedded && <span className="project-shell-grip" aria-hidden="true">⠿</span>}
           {phase === 'canvas' && <button type="button" className="project-shell-tree-toggle"
-            data-ui="preview.project-tree-toggle" aria-pressed={treeOpen}
+            data-ui="agent.project-tree-toggle" aria-pressed={treeOpen}
             aria-label={treeOpen ? 'Hide project files' : 'Show project files'} onClick={() => setTreeOpen((open) => !open)}>
             {treeOpen ? <PanelLeftClose size={14} aria-hidden="true" /> : <PanelLeftOpen size={14} aria-hidden="true" />}
           </button>}
           <span className="project-shell-mark"><Compass size={15} aria-hidden="true" /></span>
           <strong>{phase === 'canvas' ? clip(record.idea, 56) : 'New project'}</strong>
-          {phase === 'canvas' && <button type="button" className="project-shell-catchup" data-ui="preview.project-catchup"
+          {phase === 'canvas' && <button type="button" className="project-shell-catchup" data-ui="agent.project-catchup"
             data-pending={pending > 0 || undefined} aria-pressed={location.kind === 'catchup'}
             title="What changed since you last caught up" onClick={() => navigate({ kind: 'catchup' })}>
             <History size={13} aria-hidden="true" /> Catch up{pending > 0 && <b>{pending}</b>}
           </button>}
-          {proposal && phase === 'canvas' && !acceptedAt && <button type="button" className="project-shell-proposal" data-ui="preview.project-proposal"
+          {proposal && phase === 'canvas' && !acceptedAt && <button type="button" className="project-shell-proposal" data-ui="agent.project-proposal"
             aria-pressed={location.kind === 'proposal'} onClick={() => navigate({ kind: 'proposal' })}>Completion proposed</button>}
           <span className="project-shell-kind" data-complete={acceptedAt ? 'true' : undefined}>
             {phase !== 'canvas' ? 'Project shell' : acceptedAt ? 'Complete' : proposal ? 'Closing' : 'Building'}
@@ -361,8 +361,8 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
               <Breadcrumbs crumbs={crumbs} onNavigate={navigate} />
               {awayFor > 0 && pending > 0 && location.kind !== 'catchup' && <div className="project-away" role="status">
                 <span>You were away {duration(awayFor)}; {pending} {pending === 1 ? 'thing' : 'things'} changed.</span>
-                <button type="button" data-ui="preview.project-catchup" onClick={() => navigate({ kind: 'catchup' })}>Catch up</button>
-                <button type="button" data-ui="preview.project-away-dismiss" onClick={() => setAwayFor(0)} aria-label="Dismiss">×</button>
+                <button type="button" data-ui="agent.project-catchup" onClick={() => navigate({ kind: 'catchup' })}>Catch up</button>
+                <button type="button" data-ui="agent.project-away-dismiss" onClick={() => setAwayFor(0)} aria-label="Dismiss">×</button>
               </div>}
               {location.kind === 'map' && <div className="project-tree-pane">
                 <ProjectCanvas layout={layout} selectedId={null} changedIds={changedNodes}

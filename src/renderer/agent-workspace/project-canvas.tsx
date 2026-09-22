@@ -140,7 +140,7 @@ export function ProjectCanvas(props: {
         data-state={node.state}
         data-selected={selectedId === node.id || undefined}
         data-changed={changedIds?.has(node.id) || undefined}
-        data-ui="preview.project-node"
+        data-ui="agent.project-node"
         data-ui-key={node.id}
         onClick={() => onSelect(selectedId === node.id ? null : node.id)}>
         <span className="project-tree-node-heading">
@@ -152,12 +152,12 @@ export function ProjectCanvas(props: {
     </div>
 
     <div className="project-canvas-controls" aria-label="Canvas controls">
-      <button type="button" aria-label="Zoom out" data-ui="preview.project-canvas-zoom" data-ui-key="out"
+      <button type="button" aria-label="Zoom out" data-ui="agent.project-canvas-zoom" data-ui-key="out"
         onClick={() => zoomBy(-0.12)}><Minus size={14} /></button>
       <span>{Math.round(view.scale * 100)}%</span>
-      <button type="button" aria-label="Zoom in" data-ui="preview.project-canvas-zoom" data-ui-key="in"
+      <button type="button" aria-label="Zoom in" data-ui="agent.project-canvas-zoom" data-ui-key="in"
         onClick={() => zoomBy(0.12)}><Plus size={14} /></button>
-      <button type="button" aria-label="Recenter on the root coordinator" data-ui="preview.project-canvas-reset"
+      <button type="button" aria-label="Recenter on the root coordinator" data-ui="agent.project-canvas-reset"
         onClick={recenter}><LocateFixed size={14} /></button>
     </div>
   </div>

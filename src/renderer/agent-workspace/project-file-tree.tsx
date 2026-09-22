@@ -24,7 +24,7 @@ export function ProjectFileTree(props: {
   const renderFile = (file: ProjectFile, depth: number) =>
     <li key={file.path}>
       <button type="button" className="project-file" style={{ paddingLeft: 10 + depth * 14 }}
-        data-ui="preview.project-file" data-ui-key={file.path}
+        data-ui="agent.project-file" data-ui-key={file.path}
         data-open={openPath === file.path || undefined} data-changed={changed.has(file.path) || undefined}
         data-owner={file.owner} data-root={depth === 0 || undefined} title={`${file.path} · ${absolute(file.updatedAt, now)}`}
         onClick={() => onOpen(file.path)}>
@@ -37,7 +37,7 @@ export function ProjectFileTree(props: {
     const isCollapsed = collapsed.has(folder.path)
     return <li key={folder.path}>
       <button type="button" className="project-folder" style={{ paddingLeft: 10 + depth * 14 }}
-        data-ui="preview.project-folder" data-ui-key={folder.path}
+        data-ui="agent.project-folder" data-ui-key={folder.path}
         data-changed={(isCollapsed && folderChanged(folder)) || undefined}
         aria-expanded={!isCollapsed} onClick={() => toggle(folder.path)}>
         {isCollapsed ? <ChevronRight size={11} aria-hidden="true" /> : <ChevronDown size={11} aria-hidden="true" />}

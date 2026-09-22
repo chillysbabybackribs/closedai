@@ -99,7 +99,7 @@ export function ProjectIntake(props: {
       <div className="project-suggestion-grid" aria-label="Starting suggestions">
         {SUGGESTIONS.map(({ title, detail, prompt, icon: Icon }) =>
           <button key={title} type="button" className="project-suggestion-card"
-            data-ui="preview.project-suggestion" data-ui-key={title}
+            data-ui="agent.project-suggestion" data-ui-key={title}
             onClick={() => onSuggestion(prompt)}>
             <span className="project-suggestion-icon"><Icon size={16} aria-hidden="true" /></span>
             <span><strong>{title}</strong><small>{detail}</small></span>
@@ -130,7 +130,7 @@ export function ProjectIntake(props: {
       </div>}
       {showDirectionRecord && ready && !busy && <div className="project-start-row">
         <div><strong>Direction record complete</strong><span>Correct anything above, or begin with this understanding.</span></div>
-        <button type="button" data-ui="preview.project-start" onClick={onStart}>Start building</button>
+        <button type="button" data-ui="agent.project-start" onClick={onStart}>Start building</button>
       </div>}
     </div>
 

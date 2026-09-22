@@ -10,7 +10,7 @@ import { absolute, duration, relative } from './project-time.js'
 export function GateStrip({ progress, onNavigate }: { progress: Progress; onNavigate: (location: Location) => void }) {
   return <ol className="project-gates" aria-label={`Completion progress: ${progress.met} of ${progress.total} gates`}>
     {progress.gates.map((gate) => <li key={gate.id} data-met={gate.met || undefined}>
-      <button type="button" data-ui="preview.project-gate" data-ui-key={gate.id} title={gate.evidence}
+      <button type="button" data-ui="agent.project-gate" data-ui-key={gate.id} title={gate.evidence}
         onClick={() => gate.nodeId && onNavigate({ kind: 'node', id: gate.nodeId })}>
         {gate.met ? <CheckCircle2 size={12} aria-hidden="true" /> : <Circle size={12} aria-hidden="true" />}
         {gate.label}
@@ -31,7 +31,7 @@ export function CatchUpDetail(props: {
     <header className="project-detail-heading">
       <span className="project-detail-kind">Progress report · since {absolute(report.since, report.now)}</span>
       <h1>{report.total ? `${report.total} ${report.total === 1 ? 'change' : 'changes'} in ${away}` : `Quiet for ${away}`}</h1>
-      <button type="button" className="project-detail-edit" data-ui="preview.project-caught-up" onClick={onCaughtUp}>
+      <button type="button" className="project-detail-edit" data-ui="agent.project-caught-up" onClick={onCaughtUp}>
         <Check size={12} aria-hidden="true" /> Caught up
       </button>
       <p className="project-detail-stamps">
@@ -45,7 +45,7 @@ export function CatchUpDetail(props: {
       <h2>{section.title}<span>{section.items.length + section.more}</span></h2>
       <ol>
         {section.items.map((item, index) => <li key={`${section.tone}-${index}`}>
-          <button type="button" data-ui="preview.project-catchup-item" data-ui-key={`${section.tone}-${index}`}
+          <button type="button" data-ui="agent.project-catchup-item" data-ui-key={`${section.tone}-${index}`}
             onClick={() => onNavigate(item.location)}>
             <time dateTime={new Date(item.at).toISOString()} title={absolute(item.at, report.now)}>{relative(item.at, report.now)}</time>
             <span>{item.text}</span>
@@ -77,7 +77,7 @@ export function ProposalDetail(props: {
       <h1>{acceptedAt ? 'Complete' : 'Completion proposed'}</h1>
       {acceptedAt
         ? <span className="project-detail-state" data-state="complete">accepted {relative(acceptedAt, now)}</span>
-        : <button type="button" className="project-detail-edit is-accept" data-ui="preview.project-accept" onClick={onAccept}>
+        : <button type="button" className="project-detail-edit is-accept" data-ui="agent.project-accept" onClick={onAccept}>
           <Check size={12} aria-hidden="true" /> Accept
         </button>}
       <p className="project-detail-stamps">
@@ -98,7 +98,7 @@ export function ProposalDetail(props: {
       <h2>Traceable record</h2>
       <ul className="project-detail-list">
         {reports.map((report, position) => <li key={report.id}>
-          <button type="button" data-ui="preview.project-file" data-ui-key={`reports/${String(position + 1).padStart(2, '0')}-progress.md`}
+          <button type="button" data-ui="agent.project-file" data-ui-key={`reports/${String(position + 1).padStart(2, '0')}-progress.md`}
             onClick={() => onNavigate({ kind: 'file', path: `reports/${String(position + 1).padStart(2, '0')}-progress.md` })}>
             <strong>Report {position + 1} · {report.progress.met}/{report.progress.total} gates</strong>
             <small>{report.changes} changes · acknowledged {absolute(report.at, now)}</small>
@@ -110,7 +110,7 @@ export function ProposalDetail(props: {
       <b>Or</b> name the gap in the composer below; it becomes an amendment and this proposal is withdrawn.
     </p>}
     {acceptedAt && <p className="project-detail-serves">
-      <b>Handoff</b> <button type="button" className="project-inline-link" data-ui="preview.project-file" data-ui-key="handoff.md"
+      <b>Handoff</b> <button type="button" className="project-inline-link" data-ui="agent.project-file" data-ui-key="handoff.md"
         onClick={() => onNavigate({ kind: 'file', path: 'handoff.md' })}>handoff.md <ExternalLink size={10} aria-hidden="true" /></button>
     </p>}
   </article>

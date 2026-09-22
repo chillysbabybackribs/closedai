@@ -20,7 +20,7 @@ export function Breadcrumbs({ crumbs, onNavigate }: { crumbs: Crumb[]; onNavigat
         {last
           ? <strong aria-current="page">{crumb.label}</strong>
           : crumb.location
-            ? <button type="button" data-ui="preview.project-crumb" data-ui-key={String(index)}
+            ? <button type="button" data-ui="agent.project-crumb" data-ui-key={String(index)}
               onClick={() => onNavigate(crumb.location!)}>{crumb.label}</button>
             : <em>{crumb.label}</em>}
       </span>
@@ -56,7 +56,7 @@ export function NodeDetail(props: {
       <h2>Evidence</h2>
       <ul className="project-detail-links">
         {node.links.map((link) => <li key={link.url}>
-          <a href={link.url} target="_blank" rel="noreferrer" data-ui="preview.project-source" data-ui-key={link.url}>
+          <a href={link.url} target="_blank" rel="noreferrer" data-ui="agent.project-source" data-ui-key={link.url}>
             {link.label}<ExternalLink size={11} aria-hidden="true" />
           </a>
           <small>{link.informs}</small>
@@ -67,7 +67,7 @@ export function NodeDetail(props: {
       <h2>Amendments</h2>
       <ul className="project-detail-list">
         {amendments.map((amendment) => <li key={amendment.id}>
-          <button type="button" data-ui="preview.project-node" data-ui-key={amendment.id}
+          <button type="button" data-ui="agent.project-node" data-ui-key={amendment.id}
             onClick={() => onNavigate({ kind: 'node', id: amendment.id })}>{amendment.summary}</button>
         </li>)}
       </ul>
@@ -76,7 +76,7 @@ export function NodeDetail(props: {
       <h2>Beneath this</h2>
       <ul className="project-detail-list">
         {children.map((child) => <li key={child.id}>
-          <button type="button" data-ui="preview.project-node" data-ui-key={child.id}
+          <button type="button" data-ui="agent.project-node" data-ui-key={child.id}
             onClick={() => onNavigate({ kind: 'node', id: child.id })}>
             <span className="project-detail-dot" data-state={child.state} aria-hidden="true" />
             <strong>{child.title}</strong><small>{child.summary}</small>
@@ -88,7 +88,7 @@ export function NodeDetail(props: {
       <h2>Files</h2>
       <ul className="project-detail-list">
         {files.map((file) => <li key={file.path}>
-          <button type="button" data-ui="preview.project-file" data-ui-key={file.path}
+          <button type="button" data-ui="agent.project-file" data-ui-key={file.path}
             onClick={() => onNavigate({ kind: 'file', path: file.path })}>
             <strong>{file.title}</strong><small>{file.path}</small>
           </button>
@@ -112,11 +112,11 @@ export function FileDetail({ file, now, onSave }: { file: ProjectFile; now: numb
       {file.editable
         ? (editing
           ? <span className="project-detail-actions">
-            <button type="button" data-ui="preview.project-file-cancel" onClick={() => { setDraft(file.content); setEditing(false) }}>Cancel</button>
-            <button type="button" className="is-primary" data-ui="preview.project-file-save" disabled={!dirty}
+            <button type="button" data-ui="agent.project-file-cancel" onClick={() => { setDraft(file.content); setEditing(false) }}>Cancel</button>
+            <button type="button" className="is-primary" data-ui="agent.project-file-save" disabled={!dirty}
               onClick={() => { onSave(file.path, draft); setEditing(false) }}>Save</button>
           </span>
-          : <button type="button" className="project-detail-edit" data-ui="preview.project-file-edit" onClick={() => setEditing(true)}>
+          : <button type="button" className="project-detail-edit" data-ui="agent.project-file-edit" onClick={() => setEditing(true)}>
             <Pencil size={12} aria-hidden="true" /> Edit
           </button>)
         : <span className="project-detail-state" data-state="anchored"><LockKeyhole size={11} aria-hidden="true" /> history</span>}
@@ -125,7 +125,7 @@ export function FileDetail({ file, now, onSave }: { file: ProjectFile; now: numb
       </p>
     </header>
     {editing
-      ? <textarea className="project-file-editor" data-ui="preview.project-file-editor" value={draft}
+      ? <textarea className="project-file-editor" data-ui="agent.project-file-editor" value={draft}
         onChange={(event) => setDraft(event.target.value)} spellCheck={false} />
       : <div className="project-detail-body"><Markdown>{file.content}</Markdown></div>}
   </article>
