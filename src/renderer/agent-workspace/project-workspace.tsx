@@ -6,21 +6,21 @@ import type { ComposerLayout } from '../composer-layout.js'
 import { injectComposerDraft } from '../composer-drafts.js'
 import { buildCatchUp, countSince, reportLines } from './project-catchup.js'
 import { closureProgress, type AcknowledgedReport, type Proposal } from './project-closure.js'
-import { advanceDiscovery, clip, createDiscovery, isDirectionReady, syncDiscoveryWithItems, type DiscoveryState } from './project-discovery.js'
+import { advanceDiscovery, clip, isDirectionReady, syncDiscoveryWithItems } from './project-discovery.js'
 import {
   breadcrumbs, deriveFiles, fileAt, folderTree, targetNodeId,
-  type FileEdit, type JournalLine, type Location
+  type FileEdit, type Location
 } from './project-files.js'
 import { transcriptItemsToMessages, type Message } from './project-intake.js'
-import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
 import type { ProjectCanvasFixture } from './project-canvas-fixture.js'
-import { amendTree, layoutTree, rootNode, type TreeNode } from './project-tree.js'
+import { amendTree, layoutTree, rootNode } from './project-tree.js'
+import { projectView } from './project-view.js'
+import { useProjectState } from './use-project-state.js'
 import { projectNodeSignature, useProjectWorkspaceEffects } from './use-project-workspace-effects.js'
 import {
   PROJECT_WORKSPACE_CLOCK_MS,
   PROJECT_WORKSPACE_MAP,
   PROJECT_WORKSPACE_MODELS,
-  projectWorkspaceInitialHydration,
   projectWorkspaceWait
 } from './project-workspace-fixture.js'
 import { ProjectWorkspaceShellChrome } from './project-workspace-shell-chrome.js'
@@ -51,33 +51,27 @@ export type ProjectWorkspaceProps = {
   composerBridge?: ProjectWorkspaceComposerBridge | null
   /** Match ordinary chat panes: zoom and message/composer font sizes from Appearance settings. */
   chatAppearance?: ProjectWorkspaceChatAppearance
-  /** Preview and tests: skip intake and simulated dispatch timers when canvas is pre-seeded. */
+  /** Preview and tests: a pre-built canvas held in memory instead of a project on disk. */
   canvasFixture?: ProjectCanvasFixture | null
-  /** Durable state from main; hydrates once when the workspace would otherwise start empty. */
-  persistedSnapshot?: ProjectSnapshot | null
+  /** Project whose `.closedai/project.json` this workspace reads and writes; omit for in-memory state. */
+  projectPath?: string | null
 }
 const MAP = PROJECT_WORKSPACE_MAP
+const START_NOTE = 'Direction confirmed. Working from the record; only the next useful moves are planned.'
 
-export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout, composerBridge = null, chatAppearance, canvasFixture = null, persistedSnapshot = null }: ProjectWorkspaceProps) {
-  const fixtureHydration = useMemo(() => projectWorkspaceInitialHydration(canvasFixture, null), [canvasFixture])
-  const persistedApplied = useRef(false)
-  const [skipSimulatedDispatch, setSkipSimulatedDispatch] = useState(() => fixtureHydration?.skipSimulatedDispatch ?? false)
+export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout, composerBridge = null, chatAppearance, canvasFixture = null, projectPath = null }: ProjectWorkspaceProps) {
+  const { file, mutate } = useProjectState(projectPath, canvasFixture)
+  const { discovery, phase, tree, journal, confirmedAt, caughtUpAt, acceptedAt } = useMemo(() => projectView(file), [file])
   const [messages, setMessages] = useState<Message[]>([])
-  const [discovery, setDiscovery] = useState<DiscoveryState>(() => fixtureHydration?.discovery ?? createDiscovery())
   const [selectedModel, setSelectedModel] = useState(PROJECT_WORKSPACE_MODELS[0]!.id)
-  const [phase, setPhase] = useState<'intake' | 'canvas'>(() => (fixtureHydration?.phase ?? 'intake'))
-  const [tree, setTree] = useState<TreeNode[]>(() => fixtureHydration?.tree ?? [])
-  const [journal, setJournal] = useState<JournalLine[]>(() => fixtureHydration?.journal ?? [])
   const [edits, setEdits] = useState<Record<string, FileEdit>>({})
   const [location, setLocation] = useState<Location>(MAP)
   const [treeOpen, setTreeOpen] = useState(true)
   const [now, setNow] = useState(() => Date.now())
-  const [confirmedAt, setConfirmedAt] = useState(() => fixtureHydration?.confirmedAt ?? 0)
-  const [caughtUpAt, setCaughtUpAt] = useState(() => fixtureHydration?.caughtUpAt ?? 0)
   const [awayFor, setAwayFor] = useState(0)
+  // Reports and the open proposal are still local: slice D moves them into the store.
   const [reports, setReports] = useState<AcknowledgedReport[]>([])
   const [proposal, setProposal] = useState<Proposal | null>(null)
-  const [acceptedAt, setAcceptedAt] = useState<number | null>(() => fixtureHydration?.acceptedAt ?? null)
   const lastInteraction = useRef(Date.now())
   // What the user last saw, so growth while they were elsewhere is visible when they return.
   const [seenFiles, setSeenFiles] = useState<Record<string, string>>({})
@@ -119,10 +113,15 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
     .filter((node) => location.kind !== 'map' && node.id in seenNodes && seenNodes[node.id] !== projectNodeSignature(node))
     .map((node) => node.id)), [tree, seenNodes, location])
 
+  // Prototype intake: the direction record is read off the live transcript by position until the
+  // coordinator writes it itself (slice B). Writes only when the reading changes, so it settles.
   useEffect(() => {
-    if (embedded || !composerBridge?.items || composerBridge.items.length === 0) return
-    setDiscovery((current) => syncDiscoveryWithItems(current, composerBridge.items!))
-  }, [composerBridge?.items, embedded])
+    const items = composerBridge?.items
+    if (phase !== 'intake' || !items?.length) return
+    const next = syncDiscoveryWithItems(discovery, items)
+    if (next.asking === discovery.asking && JSON.stringify(next.record) === JSON.stringify(discovery.record)) return
+    void mutate({ type: 'direction', direction: next.record, asking: next.asking })
+  }, [composerBridge?.items, discovery, phase, mutate])
 
   const liveTranscript = composerBridge != null
   useEffect(() => {
@@ -136,14 +135,12 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
   }, [])
 
   function note(text: string): void {
-    setJournal((current) => [...current, { id: nextId.current++, at: Date.now(), text }])
+    void mutate({ type: 'journal', text })
   }
 
   useProjectWorkspaceEffects({
-    phase, shellRef, lastInteraction, setAwayFor, canvasFixture, persistedApplied, persistedSnapshot,
-    setDiscovery, setPhase, setTree, setJournal, setConfirmedAt, setCaughtUpAt, setAcceptedAt, setSkipSimulatedDispatch,
-    setSeenFiles, setSeenNodes, fixtureHydration, location, tree, openFile, proposal, acceptedAt, progress, reports,
-    setProposal, record, skipSimulatedDispatch, note
+    phase, shellRef, lastInteraction, setAwayFor, setSeenFiles, setSeenNodes, location, tree, files, openFile,
+    proposal, acceptedAt, progress, reports, setProposal, mutate
   })
 
   function chooseSuggestion(prompt: string): void {
@@ -153,19 +150,10 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
 
   function start(): void {
     const at = Date.now()
-    const root = rootNode(record, at)
-    const opening = [{ id: nextId.current++, at, text: 'Direction confirmed. Working from the record; only the next useful moves are planned.' }]
-    const initial = deriveFiles({ record, messages: activeMessages, nodes: [root], journal: opening, edits: {}, confirmedAt: at,
-      reports: [], progress: closureProgress([root], record), proposal: null, acceptedAt: null })
-    setTree([root])
-    setJournal(opening)
-    setSeenFiles(Object.fromEntries(initial.map((file) => [file.path, file.content])))
-    setConfirmedAt(at)
-    setCaughtUpAt(at)
+    void mutate({ type: 'start', root: rootNode(record, at), note: START_NOTE })
     setNow(at)
     lastInteraction.current = at
     setLocation(MAP)
-    setPhase('canvas')
   }
 
   function navigate(next: Location): void {
@@ -178,48 +166,41 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
     const at = Date.now()
     if (report) {
       setReports((current) => [...current, { id: nextId.current++, since: report.since, at, changes: report.total, progress: report.progress, lines: reportLines(report) }])
-      note(`Progress report ${reports.length + 1} acknowledged by you: ${report.progress.met} of ${report.progress.total} gates, ${report.total} changes.`)
+      void mutate({ type: 'caughtUp', note: `Progress report ${reports.length + 1} acknowledged by you: ${report.progress.met} of ${report.progress.total} gates, ${report.total} changes.` })
+    } else {
+      void mutate({ type: 'caughtUp' })
     }
-    setCaughtUpAt(at)
     setAwayFor(0)
     navigate(MAP)
   }
 
   function accept(): void {
-    const at = Date.now()
-    setAcceptedAt(at)
     setProposal(null)
-    setTree((current) => current.map((node) => node.id === 'proposal' ? { ...node, state: 'complete', summary: 'Accepted', updatedAt: at } : node))
-    note('Completion accepted by you. Handoff written; the tree is now the project’s history. You can reopen it with new direction any time.')
+    void mutate([
+      { type: 'tree', events: [{ update: { id: 'proposal', state: 'complete', summary: 'Accepted' } }] },
+      { type: 'phase', phase: 'complete', note: 'Completion accepted by you. Handoff written; the tree is now the project’s history. You can reopen it with new direction any time.' }
+    ])
     navigate({ kind: 'file', path: 'handoff.md' })
   }
 
   /** Post-completion direction: clear Complete, record an amendment, reset catch-up from now. */
   function reopen(clean: string): void {
-    const at = Date.now()
-    const aim = targetId ?? 'root'
-    const { nodes, note: ripple } = amendTree(tree, clean, aim, at)
-    setAcceptedAt(null)
+    const { nodes, note: ripple } = amendTree(tree, clean, targetId ?? 'root', Date.now())
     setProposal(null)
-    setCaughtUpAt(at)
     setAwayFor(0)
-    setTree(nodes)
-    note(`Project reopened: ${ripple} Handoff and prior reports stay on file; acknowledge progress again before the next completion proposal.`)
+    void mutate([
+      { type: 'tree', events: [{ replace: nodes }] },
+      { type: 'phase', phase: 'building', note: `Project reopened: ${ripple} Handoff and prior reports stay on file; acknowledge progress again before the next completion proposal.` }
+    ])
     navigate(MAP)
-  }
-
-  function withdrawProposal(reason: string): void {
-    setProposal(null)
-    setTree((current) => current.filter((node) => node.id !== 'proposal'))
-    note(`Proposal withdrawn: you named a gap — ${clip(reason, 80)}`)
   }
 
   function saveFile(path: string, content: string): void {
     const at = Date.now()
     setEdits((current) => ({ ...current, [path]: { content, at } }))
     if (path === 'direction/record.md') {
-      setTree((current) => amendTree(current, 'Direction record edited directly. Scopes re-plan against the new wording on their next move.', 'root', at).nodes)
-      note('You edited direction/record.md. Recorded as an amendment; every scope re-reads the record before its next dispatch.')
+      const { nodes } = amendTree(tree, 'Direction record edited directly. Scopes re-plan against the new wording on their next move.', 'root', at)
+      void mutate({ type: 'tree', events: [{ replace: nodes }], note: 'You edited direction/record.md. Recorded as an amendment; every scope re-reads the record before its next dispatch.' })
     } else {
       const owner = fileAt(files, path)?.owner ?? 'orchestrator'
       note(`You edited ${path}. The orchestrator re-read it${owner === 'worker' ? ' and will brief the worker' : ''}.`)
@@ -243,9 +224,11 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
       const gap = location.kind === 'proposal' && proposal
       const base = gap ? tree.filter((node) => node.id !== 'proposal') : tree
       const { nodes, note: ripple } = amendTree(base, clean, gap ? 'root' : targetId, Date.now())
-      if (gap) withdrawProposal(clean)
-      setTree(nodes)
-      note(location.kind === 'file' ? `${ripple} (from ${location.path})` : ripple)
+      if (gap) setProposal(null)
+      void mutate([
+        ...(gap ? [{ type: 'tree' as const, events: [{ remove: { id: 'proposal' } }], note: `Proposal withdrawn: you named a gap — ${clip(clean, 80)}` }] : []),
+        { type: 'tree', events: [{ replace: nodes }], note: location.kind === 'file' ? `${ripple} (from ${location.path})` : ripple }
+      ])
       if (gap) navigate(MAP)
       setSending(false)
       return
@@ -258,10 +241,11 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
       }
       return
     }
+    // Standalone preview: a scripted coordinator stands in for the live chat.
     setMessages((current) => [...current, { id: nextId.current++, at: Date.now(), role: 'user', text: clean }])
     const { state, reply } = advanceDiscovery(discovery, clean)
     await projectWorkspaceWait(420)
-    setDiscovery(state)
+    void mutate({ type: 'direction', direction: state.record, asking: state.asking })
     setMessages((current) => [...current, { id: nextId.current++, at: Date.now(), role: 'coordinator', text: reply }])
     setSending(false)
   }
