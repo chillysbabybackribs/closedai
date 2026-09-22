@@ -14,11 +14,9 @@ import { AppSettingsStore } from './app-settings-store.js'
 import { BrowserDownloadService } from './browser-download-service.js'
 import { AgentWorkspaceSurface } from './agent-workspace-surface.js'
 import { maintainBrowserCache, scheduleBrowserCacheMaintenance } from './browser-cache-maintenance.js'
-import { importBrowserCookiesNow, importDefaultBrowserCookies, type CookieImportDeps } from './browser-cookie-import.js'
-import { PARTITION } from './browser-url.js'
+import { importDefaultBrowserCookies } from './browser-cookie-import.js'
 import { CodexWorkspaceRuntime } from './codex-workspace-runtime.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
-import { rendererChatBatcher, rendererChatForwarder } from './chat-peers/peer-events.js'
 import { ChatStore } from './chat-store/chat-store.js'
 import { ChatTranscriptCache } from './chat-store/chat-transcript-cache.js'
 import { migrateChatPeersIntoStore } from './chat-store/chat-store-migration.js'
@@ -59,12 +57,12 @@ import { SecuritySettingsStore } from './security-settings-store.js'
 import { CredentialApprovalBroker } from './security-approvals.js'
 import { BrowserPermissionBroker } from './browser-permission-broker.js'
 import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
-import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
+import type { IpcEventChannel, IpcEventChannels } from '../shared/ipc-channels.js'
 import { liveVerifyFromArgv, requestLiveVerify, type LiveVerifyHandle } from './app-live-verify.js'
 import { createChatWorkspaceSelector } from './main-workspace-selector.js'
 import { createPaneChatHub } from './main-pane-chat-hub.js'
 import { mainCookieImportDeps, registerMainProcessIpc } from './main-ipc-registration.js'
-import { disposeMainWindowServices, openMainWindow } from './main-window-setup.js'
+import { openMainWindow, type MainWindowHost } from './main-window-setup.js'
 
 // Chromium switches must land before `ready`. Owner decision: the Linux sandbox flags stay
 // exactly as appv1 has them (docs/electron-browser-platform-review.md §0).
@@ -110,12 +108,12 @@ let appAutomationAccess: AppAutomationAccess | null = null
 let appCommandAccess: AppCommandAccess | null = null
 let stopBrowserCacheMaintenance: (() => void) | null = null
 let quitting = false
-const liveVerify: LiveVerifyHandle = {
+const liveVerifyHandle: LiveVerifyHandle = {
   requested: false,
   pending: null,
   toolRegistry: null,
   researchService: null,
-  userDataPath: () => userData()
+  userDataPath: () => app.getPath('userData')
 }
 
 // The BrowserWindow reference can outlive its WebContents during Electron shutdown. Keep all
@@ -133,7 +131,7 @@ if (!claimProfileInstance(app, { profile: userData(), checkout: app.getAppPath()
 } else {
   app.on('second-instance', (_event, argv) => {
     const mode = argv.map(String).find((arg) => arg.startsWith('--live-verify='))?.slice('--live-verify='.length).trim()
-    if (mode) requestLiveVerify(liveVerify, app, mode, false)
+    if (mode) requestLiveVerify(liveVerifyHandle, app, mode, false)
   })
   // A bootstrap failure is shown and ends the app; a later stray fault is logged and survived.
   const crashHost = { app, process, showErrorBox: dialog.showErrorBox, hasWindow: () => mainWindow !== null }
@@ -171,55 +169,16 @@ async function main(): Promise<void> {
       : savedSettings.chatProjectPath
   // Pane records that settings used to hold become chat records once; ids are preserved.
   await migrateChatPeersIntoStore(settings, chatStore, { cwd: chatWorkspace, projectPath })
-  const workspaceSelector = {
-    current: () => ({
-      cwd: chatWorkspace,
-      projectPath,
-      recentProjects: [...settings!.get().chatWorkspaces]
-        .reverse()
-        .filter((workspace) => workspace.projectPath && !sameChatWorkspace(workspace, { cwd: chatWorkspace, projectPath }))
-        .map((workspace) => ({ cwd: workspace.cwd, projectPath: workspace.projectPath! }))
-    }),
-    select: async (
-      nextProjectPath: string | null,
-      preference: { modelId: string | null; reasoningEffort: string | null }
-    ): Promise<void> => {
-      const current = settings!.get()
-      const previous = {
-        cwd: chatWorkspace,
-        projectPath,
-        openIds: current.chatOpenIds,
-        peers: [],
-        selectedPaneId: current.chatSelectedPaneId
-      }
-      const nextCwd = nextProjectPath ?? app.getPath('home')
-      const saved = current.chatWorkspaces.filter((workspace) => !sameChatWorkspace(workspace, previous))
-      const destination = saved.find((workspace) =>
-        workspace.cwd === nextCwd && workspace.projectPath === nextProjectPath
-      )
-      const destinationOpenIds = (destination?.openIds ?? []).filter((id) => chatStore!.has(id))
-      const destinationSelected = destination?.selectedPaneId && destinationOpenIds.includes(destination.selectedPaneId)
-        ? destination.selectedPaneId
-        : destinationOpenIds[0] ?? null
-      const destinationChat = destinationSelected ? chatStore!.get(destinationSelected) ?? null : null
-      await settings!.set({
-        chatWorkspaces: [...saved, previous],
-        chatWorkspacePath: nextCwd,
-        chatProjectPath: nextProjectPath,
-        chatOpenIds: destinationOpenIds,
-        chatSelectedPaneId: destinationSelected,
-        chatThreadId: destinationChat?.codexThreadId ?? null,
-        chatClaudeSessionId: destinationChat?.claudeSessionId ?? null,
-        chatAntigravityConversationId: destinationChat?.antigravityConversationId ?? null,
-        chatCursorSessionId: destinationChat?.cursorSessionId ?? null,
-        chatModelId: destinationChat?.modelId ?? preference.modelId,
-        chatReasoningEffort: destinationChat?.reasoningEffort ?? preference.reasoningEffort,
-        chatContinuation: destinationChat?.continuation ?? null
-      })
+  const workspaceSelector = createChatWorkspaceSelector({
+    app,
+    settings: settings!,
+    chatStore: chatStore!,
+    getWorkspace: () => ({ cwd: chatWorkspace, projectPath }),
+    setWorkspace: (cwd, nextProjectPath) => {
+      chatWorkspace = cwd
       projectPath = nextProjectPath
-      chatWorkspace = nextCwd
     }
-  }
+  })
   // Tools resolve the browser lazily: it is created with the window, after the chat service.
   const browserCoordination = new BrowserCoordination({
     tabs: () => browserService?.tabList() ?? [],
@@ -253,7 +212,7 @@ async function main(): Promise<void> {
     libraryPath: join(userData(), 'research-library.json'),
     root: join(userData(), 'research-runs'), browser: () => browserService,
     // The verifier's synthetic pane owns research only in a process that was asked to verify.
-    peers: () => liveVerifyRequested
+    peers: () => liveVerifyHandle.requested
       ? ({
           paneSnapshot: () => ({ threadId: 'live-verify-thread', activeTurnId: 'live-verify-turn' })
         } as unknown as ChatPeerManager)
@@ -321,32 +280,22 @@ async function main(): Promise<void> {
   providerCatalogs = catalogCache
   // What each chat last looked like, so opening one paints before its provider has replayed it.
   chatTranscripts = new ChatTranscriptCache(join(userData(), 'chat-transcripts'))
-  chatService = new ChatPeerManager(settings, chatStore, (peerSettings, record) => {
-    const catalogs = catalogCache.forWorkspace(record.cwd)
-    let codexRuntime = codexRuntimes.get(record.cwd)
-    if (!codexRuntime) {
-      codexRuntime = new CodexWorkspaceRuntime(record.cwd, settings!, { clientVersion: app.getVersion() })
-      codexRuntimes.set(record.cwd, codexRuntime)
-    }
-    return new ChatHub({
-    codex: new ChatService(
-      record.cwd, peerSettings, toolRegistry!, activeBrowserContext, screenshots, codexRuntime, peerSettings.paneId
-    ),
-    claude: new ClaudeChatService(
-      record.cwd, peerSettings, toolRegistry!, activeBrowserContext, screenshots, peerSettings.paneId
-    ),
-    antigravity: new AntigravityChatService(
-      record.cwd, peerSettings, antigravityBridge!, antigravityStateDir, activeBrowserContext, screenshots, peerSettings.paneId, catalogs
-    ),
-    cursor: new CursorChatService(
-      record.cwd, peerSettings, cursorBridge!, cursorStateDir, activeBrowserContext, screenshots, peerSettings.paneId, catalogs
-    )
-  }, record.modelId, peerSettings, {
-    provider: record.provider,
-    catalogs,
-    checkpoint: () => chatStore!.get(peerSettings.paneId)?.checkpoint ?? null
-  })
-  }, undefined, workspaceSelector, chatTranscripts, (paneId) => {
+  chatService = new ChatPeerManager(settings, chatStore, (peerSettings, record) => createPaneChatHub({
+    app,
+    settings: settings!,
+    chatStore: chatStore!,
+    codexRuntimes,
+    toolRegistry: toolRegistry!,
+    screenshots,
+    activeBrowserContext,
+    antigravityBridge: antigravityBridge!,
+    antigravityStateDir,
+    cursorBridge: cursorBridge!,
+    cursorStateDir,
+    peerSettings,
+    record,
+    catalogs: catalogCache.forWorkspace(record.cwd)
+  }), undefined, workspaceSelector, chatTranscripts, (paneId) => {
     const snapshot = chatService?.paneSnapshot(paneId)
     researchService?.cancelPane(paneId, snapshot?.threadId, snapshot?.activeTurnId)
   }, browserAssignmentIdle)
@@ -355,19 +304,21 @@ async function main(): Promise<void> {
     const snapshot = chatService?.paneSnapshot(event.paneId)
     researchService?.reconcile(event.paneId, snapshot?.threadId ?? null, snapshot?.activeTurnId ?? null)
   })
-  registerIpc()
+  liveVerifyHandle.toolRegistry = toolRegistry
+  liveVerifyHandle.researchService = researchService
+  registerMainProcessIpc(mainIpcRegistration())
   // The one-shot cookie import runs before the first tab loads, so a restored or home page
   // arrives already signed in rather than racing the import.
-  await importDefaultBrowserCookies(cookieImportDeps())
+  await importDefaultBrowserCookies(mainCookieImportDeps(mainIpcRegistration()))
   // Measure and prune before the first tab paints so a bloated cache does not slow restore.
   void maintainBrowserCache(userData()).catch((error: unknown) => {
     console.warn('[browser-cache] startup maintenance failed', error)
   })
-  createWindow()
+  openMainWindow(mainWindowHost())
   void chatService.start()
   stopBrowserCacheMaintenance = scheduleBrowserCacheMaintenance(userData())
-  const liveVerify = process.env.CLOSEDAI_LIVE_VERIFY?.trim() || liveVerifyFromArgv()
-  if (liveVerify) requestLiveVerify(liveVerify, true)
+  const liveVerifyMode = process.env.CLOSEDAI_LIVE_VERIFY?.trim() || liveVerifyFromArgv()
+  if (liveVerifyMode) requestLiveVerify(liveVerifyHandle, app, liveVerifyMode, true)
 }
 
 /** Null for Electron's default userData; a short stable hash for any other profile. */
@@ -378,146 +329,53 @@ function profileKeyFor(userDataDir: string): string | null {
   return hash.toString(36)
 }
 
-function sameChatWorkspace(
-  left: { cwd: string; projectPath: string | null },
-  right: { cwd: string; projectPath: string | null }
-): boolean {
-  return left.cwd === right.cwd && left.projectPath === right.projectPath
-}
-
-function createWindow(): void {
-  const window = createMainWindow({ openLinkInNewTab: (url) => browserService?.openNewTab(url, false) })
-  mainWindow = window
-  // Reopen the tabs the last run ended with. The session was read from disk above, so the
-  // strip is rebuilt inside the constructor with no async gap the renderer could observe.
-  browserService = new BrowserService(window, browserHistory!, {
-    restore: browserTabSession?.restored() ?? undefined,
-    permissions: { policy: () => securitySettings!.get().webPermissions, ask: (request) => permissionRequests.ask(request) }
-  })
-  browserService.on('popup', (opener: string, child: string) => toolRegistry?.browserCoordination?.inherit(opener, child))
-  wireBrowserEvents(browserService)
-  // Attached to the partition session rather than a tab: a download outlives the tab that
-  // started it. Files land in the OS downloads folder like Chrome.
-  browserDownloads = new BrowserDownloadService({ workspaceRoot: () => app.getPath('downloads') })
-  browserDownloads.install(session.fromPartition(PARTITION))
-  browserDownloads.on('changed', (downloads: BrowserDownload[]) =>
-    sendToMainWindow(IPC.event.browserDownloadsChanged, downloads)
-  )
-  const batchChat = rendererChatBatcher(
-    (event) => sendToMainWindow(IPC.event.chatEvent, event),
-    traceChatIpcMetrics
-  )
-  const forwardChat = rendererChatForwarder(
-    chatService?.snapshot({ limit: 0 }).selectedPaneId ?? '', batchChat)
-  chatService?.on('event', (event: ChatWorkspaceEvent) => {
-    traceChatEvent(event)
-    forwardChat(event)
-  })
-  traceLog.on('event', (event: TraceEvent) => sendToMainWindow(IPC.event.traceEvent, event))
-  projectHub?.on('event', (event) => sendToMainWindow(IPC.event.projectEvent, event))
-  const sendToolsEvent = (event: ToolsEvent): void => { sendToMainWindow(IPC.event.toolsEvent, event) }
-  toolTelemetry?.on('record', (record) => sendToolsEvent({ type: 'call', record }))
-  toolTelemetry?.on('cleared', () => sendToolsEvent({ type: 'cleared' }))
-
-  if (process.env.ELECTRON_RENDERER_URL) {
-    void window.loadURL(process.env.ELECTRON_RENDERER_URL)
-  } else {
-    void window.loadFile(join(import.meta.dirname, '../renderer/index.html'))
-  }
-  window.on('closed', disposeWindowServices)
-}
-
-function wireBrowserEvents(service: BrowserService): void {
-  service.on('state', (state: BrowserState) => sendToMainWindow(IPC.event.browserState, state))
-  service.on('tabs', (tabs: BrowserTabInfo[]) => {
-    sendToMainWindow(IPC.event.browserTabs, tabs)
-    // Persist the strip on every change rather than only at quit: a crash never reaches a
-    // quit hook, and the point is that the tabs come back regardless of how the app died.
-    browserTabSession?.save(service.persistTabs())
-  })
-  service.on('error', (error: unknown) => {
-    console.warn('[browser]', error instanceof Error ? error.message : error)
-  })
-}
-
-function registerIpc(): void {
-  registerResearchLibraryIpc(ipcMain, () => researchLibrary)
-  registerWindowIpc(ipcMain, () => mainWindow)
-  registerBrowserCoreIpc(ipcMain, () => browserService)
-  registerAgentWorkspaceIpc(ipcMain, () => agentWorkspaceSurface)
-  registerBrowserDownloadsIpc(ipcMain, () => browserDownloads)
-  registerLocalFilesIpc(ipcMain, () => browserService)
-  registerChatIpc(ipcMain, () => chatService)
-  registerProjectIpc(ipcMain, () => projectHub)
-  registerTraceIpc(ipcMain, traceLog)
-  registerCredentialVaultIpc(ipcMain, () => credentialVault)
-  registerSecurityIpc(ipcMain, {
-    settings: () => securitySettings, vault: () => credentialVault, credentialApprovals, permissions: permissionRequests,
-    importCookies: () => importBrowserCookiesNow(cookieImportDeps()), send: sendToMainWindow
-  })
-  registerToolsIpc(ipcMain, {
-    registry: () => toolRegistry,
-    telemetry: () => toolTelemetry,
-    providers: () => [...CHAT_PROVIDERS],
-    onEnabledChanged: async (toolId, enabled, disabledIds) => {
-      await settings?.set({ disabledTools: disabledIds })
-      sendToMainWindow(IPC.event.toolsEvent, { type: 'enabled', toolId, enabled } satisfies ToolsEvent)
-    },
-    onEnabledManyChanged: async (disabledIds) => {
-      await settings?.set({ disabledTools: disabledIds })
-      sendToMainWindow(IPC.event.toolsEvent, { type: 'changed' } satisfies ToolsEvent)
-    }
-  })
-  registerModelsIpc(ipcMain, {
-    settings: () => settings,
-    providerAvailability: () => detectProviderAvailability(),
-    providers: () => {
-      const hub = chatService?.modelSettings.selectedHub()
-      const cwd = chatService?.snapshot().workspace?.cwd ?? settings?.get().chatWorkspacePath
-      if (!hub || !cwd || !providerCatalogs) return []
-      const catalogs = providerCatalogs.forWorkspace(cwd)
-      return providerSourcesFromHub(
-        (provider) => {
-          const snapshot = hub.providerSnapshot(provider)
-          return { provider, connection: snapshot.connection, models: snapshot.models }
-        },
-        (provider) => catalogs.read(provider)?.models
-      )
-    },
-    onDisabledChanged: async (modelId, enabled, disabledIds) => {
-      await settings?.set({ disabledModels: disabledIds })
-      chatService?.modelSettings.refresh()
-      sendToMainWindow(IPC.event.modelsEvent, { type: 'enabled', modelId, enabled } satisfies ModelsEvent)
-    },
-    onDisabledManyChanged: async (disabledIds) => {
-      await settings?.set({ disabledModels: disabledIds })
-      chatService?.modelSettings.refresh()
-      sendToMainWindow(IPC.event.modelsEvent, { type: 'changed' } satisfies ModelsEvent)
-    }
-  })
-}
-
-// The launch import (browser-cookie-import.ts) and the Settings → Security "Import now" share
-// the latch, the switch, and the persist:browser session.
-function cookieImportDeps(): CookieImportDeps {
+function mainIpcRegistration() {
   return {
-    latch: settings!,
-    enabled: () => securitySettings!.get().importBrowserCookies,
-    target: () => session.fromPartition(PARTITION)
+    ipcMain,
+    sendToMainWindow,
+    researchLibrary: () => researchLibrary,
+    mainWindow: () => mainWindow,
+    browserService: () => browserService,
+    agentWorkspaceSurface: () => agentWorkspaceSurface,
+    browserDownloads: () => browserDownloads,
+    chatService: () => chatService,
+    projectHub: () => projectHub,
+    credentialVault: () => credentialVault,
+    securitySettings: () => securitySettings,
+    settings: () => settings,
+    providerCatalogs: () => providerCatalogs,
+    toolRegistry: () => toolRegistry,
+    toolTelemetry: () => toolTelemetry,
+    credentialApprovals,
+    permissionRequests
   }
 }
 
-function disposeWindowServices(): void {
-  nativeInstrument?.dispose()
-  disposeResearch?.()
-  researchLibrary?.dispose()
-  browserSessionFlush = browserService?.flushSessionData() ?? null
-  appAutomationAccess?.dispose()
-  cdpAccess?.dispose()
-  cdpAccess = null
-  browserService?.dispose()
-  browserService = null
-  mainWindow = null
+function mainWindowHost(): MainWindowHost {
+  return {
+    downloadsRoot: () => app.getPath('downloads'),
+    sendToMainWindow,
+    browserHistory: browserHistory!,
+    browserTabSession,
+    securitySettings: securitySettings!,
+    permissionRequests,
+    chatService,
+    projectHub,
+    toolRegistry,
+    toolTelemetry,
+    setMainWindow: (window) => { mainWindow = window },
+    setBrowserService: (service) => { browserService = service },
+    setBrowserDownloads: (service) => { browserDownloads = service },
+    setBrowserSessionFlush: (flush) => { browserSessionFlush = flush },
+    getBrowserService: () => browserService,
+    getMainWindow: () => mainWindow,
+    nativeInstrument,
+    disposeResearch,
+    researchLibrary,
+    appAutomationAccess,
+    cdpAccess,
+    setCdpAccess: (access) => { cdpAccess = access }
+  }
 }
 
 app.on('window-all-closed', () => {

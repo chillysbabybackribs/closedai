@@ -361,7 +361,9 @@ by local React state and timed prototype effects unless restored from disk. The 
 rail beside intake (full-viewport project preview only) uses a heuristic transcript mapper; it is
 hidden in the integrated agent workspace column so live intake stays a normal chat until durable
 project sync lands. Treat docs that describe full multi-agent orchestration as the target
-shape until persistence and main-process coordination land.
+shape until persistence and main-process coordination land. The ordered slices, path ownership,
+and pane rules for closing that gap are in `docs/agent-workspace-plan.md`; read it before editing
+anything under `src/renderer/agent-workspace/`, `src/main/project-store/`, or `src/shared/project/`.
 
 Drag empty chat header space onto another tile's left, right, top, or bottom edge to move the whole pane. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its

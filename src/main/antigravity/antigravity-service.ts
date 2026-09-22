@@ -469,6 +469,11 @@ export class AntigravityChatService extends EventEmitter {
     void this.refreshThreadName(conversationId)
   }
 
+  /** Test and turn-end seam; implementation lives in antigravity-turn-recovery.ts. */
+  private retryOnAuthFailure(turnId: string, error: string): boolean {
+    return retryAntigravityOnAuthFailure(this.turnRecoveryHost(), turnId, error)
+  }
+
   /** The CLI titles a conversation shortly after its first turn; pick that up for the header. */
   private async refreshThreadName(conversationId: string): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 2_000))

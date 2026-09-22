@@ -54,10 +54,11 @@ export async function detachAntigravityThread(host: AntigravityThreadHost): Prom
 
 export async function rotateAntigravityProviderSession(host: AntigravityThreadHost): Promise<void> {
   const usage = host.contextUsage()
+  const conversationId = host.session()?.conversationId ?? null
   await applyProviderRotation(host.settings, {
     paneId: host.paneId,
     provider: 'antigravity',
-    threadId: host.session()?.conversationId ? antigravityThreadId(host.session()!.conversationId) : null,
+    threadId: conversationId ? antigravityThreadId(conversationId) : null,
     threadName: host.threadName(),
     items: host.transcript.snapshot()
   }, async () => {
