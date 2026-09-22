@@ -79,9 +79,9 @@ export function browserResourceLockKey(request: ToolCallRequest, input: JsonObje
           return 'browser:session'
         }
       }
+      return tabKey(input) ?? 'browser:strip'
     }
     if (['profile', 'instrument', 'emulate'].includes(tool)) return tabKey(input) ?? 'browser:strip'
-    return tabKey(input)
   }
   return null
 }
