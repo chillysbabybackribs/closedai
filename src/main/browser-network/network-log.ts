@@ -55,7 +55,10 @@ export type NetworkListing = {
   matched: number
   returned: number
   oldestCursor: number
+  /** Cursor of the last returned row; pass to after_cursor to page forward through matched rows. */
   nextCursor: number
+  /** Highest cursor in the log right now; pass to network.wait after_cursor before acting so only new traffic matches. */
+  tipCursor: number
   requests: Array<NetworkRecord | NetworkSummary>
 }
 
@@ -69,10 +72,12 @@ export type NetworkWait = {
   method?: string
   afterCursor: number
   timeoutMs: number
+  /** When false, the matched request omits headers and post data like requests listings. Default true. */
+  includeHeaders?: boolean
 }
 
 export type NetworkWaitResult =
-  | { matched: true; elapsedMs: number; request: NetworkRecord }
+  | { matched: true; elapsedMs: number; request: NetworkRecord | NetworkSummary }
   | { matched: false; elapsedMs: number; timedOut: true }
 
 type Waiter = { wait: NetworkWait; resolve: (record: NetworkRecord) => void }
@@ -194,12 +199,14 @@ export class NetworkLog {
     const page = filter.afterCursor === undefined
       ? kept.slice(Math.max(0, kept.length - filter.limit))
       : kept.slice(0, filter.limit)
+    const tipCursor = Math.max(0, this.nextCursor - 1)
     return {
       matched: kept.length,
       returned: page.length,
       oldestCursor,
-      nextCursor: page.length ? page[page.length - 1].cursor : (filter.afterCursor ?? this.nextCursor - 1),
-      requests: page.map((record) => filter.includeHeaders ? { ...record } : summarize(record))
+      nextCursor: page.length ? page[page.length - 1].cursor : (filter.afterCursor ?? tipCursor),
+      tipCursor,
+      requests: page.map((record) => presentRecord(record, filter.includeHeaders ?? false))
     }
   }
 
@@ -226,14 +233,24 @@ export class NetworkLog {
     const already = this.records.find((record) =>
       record.cursor > wait.afterCursor && record.state !== 'pending' && matches(record, waitFilter(wait))
     )
-    if (already) return Promise.resolve({ matched: true, elapsedMs: 0, request: { ...already } })
+    if (already) {
+      return Promise.resolve({
+        matched: true,
+        elapsedMs: 0,
+        request: presentRecord(already, wait.includeHeaders ?? true)
+      })
+    }
     return new Promise((resolve) => {
       const waiter: Waiter = {
         wait,
         resolve: (record) => {
           clearTimeout(timer)
           this.waiters.delete(waiter)
-          resolve({ matched: true, elapsedMs: this.now() - started, request: { ...record } })
+          resolve({
+            matched: true,
+            elapsedMs: this.now() - started,
+            request: presentRecord(record, wait.includeHeaders ?? true)
+          })
         }
       }
       const timer = setTimeout(() => {
@@ -269,9 +286,13 @@ function matches(record: NetworkRecord, filter: NetworkListFilter): boolean {
   return true
 }
 
-function summarize(record: NetworkRecord): NetworkSummary {
+export function summarize(record: NetworkRecord): NetworkSummary {
   const { requestHeaders: _request, responseHeaders: _response, postData, ...rest } = record
   return { ...rest, hasPostData: postData !== null && postData.byteLength > 0 }
+}
+
+export function presentRecord(record: NetworkRecord, includeHeaders: boolean): NetworkRecord | NetworkSummary {
+  return includeHeaders ? { ...record } : summarize(record)
 }
 
 function boundHeaders(headers: NetworkHeaders): NetworkHeaders {

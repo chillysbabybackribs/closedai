@@ -72,17 +72,23 @@ export function decodeBytes(bytes: Buffer): { text: string | null } {
   return { text: printable ? text : null }
 }
 
-/** Hop-by-hop and session-managed headers that must not be replayed verbatim. */
+/** Hop-by-hop, session-managed, and browser-context headers that must not be replayed verbatim. */
 const NON_REPLAYABLE_HEADERS = new Set([
-  'content-length', 'host', 'cookie', 'connection', 'accept-encoding', 'transfer-encoding', 'upgrade', 'keep-alive', 'proxy-authorization'
+  'content-length', 'host', 'cookie', 'connection', 'accept-encoding', 'transfer-encoding', 'upgrade', 'keep-alive', 'proxy-authorization',
+  'referer', 'origin', 'priority'
 ])
+
+function isNonReplayableHeader(name: string): boolean {
+  const lower = name.toLowerCase()
+  if (NON_REPLAYABLE_HEADERS.has(lower) || lower.startsWith(':')) return true
+  return lower.startsWith('sec-fetch-') || lower.startsWith('sec-ch-')
+}
 
 /** Request headers safe to send again from the session; cookies are supplied by the session itself. */
 export function replayableHeaders(headers: Record<string, string> | null): Record<string, string> {
   const kept: Record<string, string> = {}
   for (const [name, value] of Object.entries(headers ?? {})) {
-    const lower = name.toLowerCase()
-    if (NON_REPLAYABLE_HEADERS.has(lower) || lower.startsWith(':')) continue
+    if (isNonReplayableHeader(name)) continue
     kept[name] = value
   }
   return kept

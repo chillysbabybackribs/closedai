@@ -74,6 +74,9 @@ export class BrowserService extends EventEmitter {
   // A hidden tab runs at ~1 Hz with no animation frames; a page under tool control needs real
   // cycles to finish loading itself. See browser-tab-cadence.ts for the measurement.
   private readonly cadence = new TabCadencePolicy(webContentsCadence((tabId) => {
+    // A tab parked in the offscreen capture window owns its own throttling until the capture
+    // returns it; see browser-tab-cadence.ts for what re-arming underneath one costs.
+    if (this.captureSurfaces.has(tabId)) return null
     const tab = this.tabs.find((candidate) => candidate.id === tabId)
     return tab instanceof BrowserTab ? tab.view.webContents : null
   }))

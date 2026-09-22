@@ -75,12 +75,21 @@ export class BrowserNetworkAccess implements NetworkToolHost, SessionToolHost {
       throw new Error(`Request ${record.id} has an incomplete, binary or file upload body, which cannot be replayed`)
     }
     const browserSession = service.session
-    const response = await fetchWithSession((url, init) => browserSession.fetch(url, init), {
-      url: record.url,
-      method: record.method,
-      headers: replayableHeaders(record.requestHeaders),
-      body: record.postData?.text ?? undefined
-    })
+    let response: Awaited<ReturnType<typeof fetchWithSession>>
+    try {
+      response = await fetchWithSession((url, init) => browserSession.fetch(url, init), {
+        url: record.url,
+        method: record.method,
+        headers: replayableHeaders(record.requestHeaders),
+        body: record.postData?.text ?? undefined
+      })
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      throw new Error(
+        `Replay of request ${record.id} (${record.method} ${record.url}) failed: ${detail}. ` +
+        'Use the requests[].id from the listing, not cursor or tipCursor.'
+      )
+    }
     return {
       id: record.id,
       url: record.url,

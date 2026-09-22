@@ -50,3 +50,15 @@ test('replayableHeaders drops hop-by-hop and session-managed headers', () => {
   assert.deepEqual(replayableHeaders({ cookie: 'a=b', 'Content-Length': '3', accept: '*/*', ':authority': 'x', 'x-csrf': 't' }), { accept: '*/*', 'x-csrf': 't' })
   assert.deepEqual(replayableHeaders(null), {})
 })
+
+test('replayableHeaders drops browser-context headers that break session replay', () => {
+  assert.deepEqual(replayableHeaders({
+    accept: '*/*',
+    referer: 'https://a.test/',
+    origin: 'https://a.test',
+    priority: 'u=1, i',
+    'sec-fetch-site': 'same-origin',
+    'sec-fetch-mode': 'cors',
+    'sec-ch-ua': '"Chromium";v="152"'
+  }), { accept: '*/*' })
+})

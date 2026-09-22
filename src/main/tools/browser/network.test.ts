@@ -10,7 +10,7 @@ const page = {} as BrowserToolHost
 function harness() {
   const calls: unknown[] = []
   const host: NetworkToolHost = {
-    requests: (filter) => (calls.push(['requests', filter]), { matched: 1, returned: 1, oldestCursor: 1, nextCursor: 7, requests: [] }),
+    requests: (filter) => (calls.push(['requests', filter]), { matched: 1, returned: 1, oldestCursor: 1, nextCursor: 7, tipCursor: 8, requests: [] }),
     waitFor: async (wait) => (calls.push(['wait', wait]), { matched: false, elapsedMs: wait.timeoutMs, timedOut: true }),
     replay: async (id) => (calls.push(['replay', id]), { id, url: 'https://a.test/api', method: 'GET', status: 200, source: 'replay', contentType: 'application/json', text: '{}', base64: null, byteLength: 2, truncated: false }),
     rules: () => [],
@@ -48,7 +48,9 @@ test('wait requires url_contains, passes the cursor, and returns a timeout as da
   const { calls, call } = harness()
   const result = await call({ action: 'wait', url_contains: '/search', after_cursor: 9, timeout_ms: 250 })
   assert.equal(result.isError, undefined)
-  assert.deepEqual(calls[0], ['wait', { tabId: undefined, url: '/search', method: undefined, afterCursor: 9, timeoutMs: 250 }])
+  assert.deepEqual(calls[0], ['wait', { tabId: undefined, url: '/search', method: undefined, afterCursor: 9, includeHeaders: true, timeoutMs: 250 }])
+  await call({ action: 'wait', url_contains: '/x', include_headers: false })
+  assert.deepEqual(calls[1], ['wait', { tabId: undefined, url: '/x', method: undefined, afterCursor: 0, includeHeaders: false, timeoutMs: 5000 }])
   assert.deepEqual(payload(result), { matched: false, elapsedMs: 250, timedOut: true })
   const missing = await call({ action: 'wait' })
   assert.equal(missing.isError, true)

@@ -62,9 +62,22 @@ test('after_cursor reads incrementally and nextCursor continues the walk', () =>
   seed(log, '2', 'https://a.test/2')
   const first = log.list({ afterCursor: 0, limit: 1 })
   assert.deepEqual(first.requests.map((record) => record.id), ['1'])
+  assert.equal(first.tipCursor, 2)
   const second = log.list({ afterCursor: first.nextCursor, limit: 10 })
   assert.deepEqual(second.requests.map((record) => record.id), ['2'])
   assert.equal(log.list({ afterCursor: second.nextCursor, limit: 10 }).returned, 0)
+})
+
+test('waitFor can omit headers on the matched request', async () => {
+  const log = new NetworkLog()
+  seed(log, '1', 'https://a.test/api')
+  log.requestHeaders('1', { accept: 'application/json' })
+  log.complete('1', { status: 200, fromCache: false })
+  const verbose = await log.waitFor({ url: '/api', afterCursor: 0, timeoutMs: 100 })
+  assert.equal(verbose.matched && 'requestHeaders' in verbose.request, true)
+  const terse = await log.waitFor({ url: '/api', afterCursor: 0, timeoutMs: 100, includeHeaders: false })
+  assert.equal(terse.matched && 'requestHeaders' in terse.request, false)
+  assert.equal(terse.matched && 'hasPostData' in terse.request && terse.request.hasPostData, false)
 })
 
 test('evicts the oldest records past capacity and clears per tab', () => {

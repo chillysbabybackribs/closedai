@@ -24,7 +24,13 @@ export type TabCadenceAdapter = {
   setThrottled(tabId: string, throttled: boolean): void
 }
 
-/** The slice of WebContents this needs; a closed tab resolves to null and is left alone. */
+/**
+ * The slice of WebContents this needs. A tab resolves to null when it must be left alone — it is
+ * closed, or something else owns its surface: Electron arms the exemption by showing the widget,
+ * and doing that to a tab parked in the offscreen capture window leaves `capturePage` with
+ * "Current display surface not available for capture" (reproduced by
+ * scripts/browser-coordination-live-check.mjs).
+ */
 export type ThrottleableContents = { isDestroyed(): boolean; setBackgroundThrottling(allowed: boolean): void }
 
 /** Adapter over live tabs. Only the runtime call restores animation frames to a hidden view. */
@@ -79,12 +85,9 @@ export class TabCadencePolicy {
   /**
    * Re-apply the exemption to every tab that holds one, because Electron arms it on the widget
    * that exists when it is set: a tab that has just been hidden needs to be told again, or its
-   * page goes back to ~1 Hz with no frames while a tool is still working in it.
-   *
-   * Only surface changes call this. Re-applying on every touch instead was measurably worse:
-   * the call shows a hidden widget, and doing that underneath a tab parked in the offscreen
-   * capture window left `capturePage` with "Current display surface not available for capture"
-   * (reproduced in scripts/browser-coordination-live-check.mjs).
+   * page goes back to ~1 Hz with no frames while a tool is still working in it. Hiding happens
+   * from more places than tab activation (surface parking during tool access, capture leases),
+   * which is why `apply` re-arms on every touch as well as here.
    */
   reassert(): void {
     for (const tabId of this.unthrottled) this.adapter.setThrottled(tabId, false)
@@ -114,8 +117,8 @@ export class TabCadencePolicy {
   }
 
   private apply(tabId: string): void {
-    if (this.unthrottled.has(tabId)) return
     this.unthrottled.add(tabId)
+    // Always re-apply rather than skipping a tab that already holds the exemption: see reassert().
     this.adapter.setThrottled(tabId, false)
   }
 

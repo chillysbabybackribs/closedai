@@ -22,10 +22,19 @@ const methodField: JsonObject = { type: 'string', minLength: 1, description: 'HT
 const afterCursorField: JsonObject = {
   type: 'integer',
   minimum: 0,
-  description: 'Only requests recorded after this cursor. Use the nextCursor of a previous listing, or take it before acting so a wait sees only what the action caused.'
+  description:
+    'Only requests recorded after this cursor. For network.wait, use tipCursor from a requests listing taken immediately before acting; for paging matched rows, use nextCursor from the prior page.'
 }
-const requestIdField: JsonObject = { type: 'string', minLength: 1, description: 'The id of a request from requests or wait.' }
+const requestIdField: JsonObject = {
+  type: 'string',
+  minLength: 1,
+  description: 'The requests[].id or wait request.id value from the network log — not requests[].cursor, not tipCursor, and not nextCursor.'
+}
 const ruleIdField: JsonObject = { type: 'string', minLength: 1, description: 'A rule id from rules or add_rule.' }
+const includeHeadersField: JsonObject = {
+  type: 'boolean',
+  description: 'Include request and response headers and post data on returned request rows.'
+}
 
 export function networkTool(network: NetworkHostProvider): ToolDefinition {
   return defineActionTool({
@@ -48,7 +57,8 @@ function requestsAction(network: NetworkHostProvider): ToolAction {
     description:
       'List recorded requests, most recent last. Filter by tab, URL substring, resource type (xhr, fetch, ' +
       'document, script, image…), method, status, or state (pending, completed, failed, blocked). ' +
-      'Headers and post data are omitted unless include_headers is true; matched reports the total before max_requests.',
+      'Headers and post data are omitted unless include_headers is true; matched reports the total before max_requests. ' +
+      'tipCursor is the log high-water mark for network.wait after_cursor before you act; nextCursor pages matched rows.',
     inputSchema: objectSchema({
       tab_id: tabIdField,
       url_contains: urlContainsField,
@@ -57,7 +67,7 @@ function requestsAction(network: NetworkHostProvider): ToolAction {
       status: { type: 'integer', minimum: 100, maximum: 599, description: 'Exact HTTP status.' },
       state: { type: 'string', enum: ['pending', 'completed', 'failed', 'blocked'], description: 'Request state.' },
       after_cursor: afterCursorField,
-      include_headers: { type: 'boolean', description: 'Include request and response headers and post data. Default false.' },
+      include_headers: includeHeadersField,
       max_requests: { type: 'integer', minimum: 1, maximum: MAX_LIMIT, description: `Maximum requests returned; default ${DEFAULT_LIMIT}.` }
     }),
     run: async (input) => jsonResult(requireNetwork(network).requests({
@@ -79,13 +89,14 @@ function waitAction(network: NetworkHostProvider): ToolAction {
     action: 'wait',
     description:
       'Wait until a request matching url_contains (and optionally method and tab) finishes, then return ' +
-      'it with headers. Pass the after_cursor you read before acting so a request the page made earlier ' +
-      'cannot satisfy the wait. Times out with matched false rather than failing.',
+      'it (headers included by default). Pass after_cursor from the tipCursor of a requests listing taken ' +
+      'immediately before the action so earlier traffic cannot satisfy the wait. Times out with matched false rather than failing.',
     inputSchema: objectSchema({
       tab_id: tabIdField,
       url_contains: urlContainsField,
       method: methodField,
       after_cursor: afterCursorField,
+      include_headers: includeHeadersField,
       timeout_ms: { type: 'integer', minimum: 100, maximum: MAX_WAIT_MS, description: `Milliseconds to wait; default ${DEFAULT_WAIT_MS}.` }
     }, ['url_contains']),
     timeoutMs: MAX_WAIT_MS + 5_000,
@@ -94,6 +105,7 @@ function waitAction(network: NetworkHostProvider): ToolAction {
       url: stringArg(input, 'url_contains'),
       method: stringArg(input, 'method'),
       afterCursor: numberArg(input, 'after_cursor', 0),
+      includeHeaders: booleanArg(input, 'include_headers', true),
       timeoutMs: numberArg(input, 'timeout_ms', DEFAULT_WAIT_MS)
     }))
   }
