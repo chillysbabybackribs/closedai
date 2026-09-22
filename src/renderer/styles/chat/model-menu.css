@@ -265,14 +265,14 @@
 
 /* ---- Context meter --------------------------------------------------------
    How full the model's window is, parked under the composer (bottom-right) so the
-   model picker stays a plain name. Ring + number at rest; token counts unfold on
-   hover in the usage card. */
+   model picker stays a plain name. The ring (and a compact in-ring percent once
+   usage exists) is the whole control; token counts unfold on hover in the usage card. */
 .context-meter {
   --context-meter-ink: var(--muted-foreground, #959598);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 7px 3px 5px;
+  gap: 0;
+  padding: 3px 5px;
   border: 0;
   background: transparent;
   border-radius: 999px;
@@ -319,8 +319,12 @@
   transition: stroke-dasharray 260ms var(--ease-chrome);
 }
 
-.context-meter-value {
-  font-weight: 500;
+.context-meter-glyph {
+  fill: currentColor;
+  font-size: 4.25px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
 }
 
 /* ---- Usage card -----------------------------------------------------------

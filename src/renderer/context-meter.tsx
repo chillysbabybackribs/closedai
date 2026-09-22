@@ -16,6 +16,52 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 /** Past this a reading is worth dating, so a parked provider's numbers are not read as live. */
 const STALE_MS = 5 * 60 * 1000
 
+function contextMeterInnerLabel(percent: number): string {
+  const rounded = Math.min(100, Math.max(0, Math.round(percent)))
+  return rounded >= 100 ? '100' : String(rounded)
+}
+
+function ContextMeterRing({
+  percent,
+  level,
+  size = 14,
+  innerLabel = false,
+  className = 'context-meter-ring'
+}: {
+  percent: number
+  level?: 'cool' | 'warm' | 'hot'
+  size?: number
+  /** Compact percent inside the ring for the resting composer control. */
+  innerLabel?: boolean
+  className?: string
+}): JSX.Element {
+  const clamped = Math.min(100, Math.max(0, percent))
+  return (
+    <svg
+      className={className}
+      data-level={level}
+      viewBox="0 0 14 14"
+      width={size}
+      height={size}
+      aria-hidden="true"
+    >
+      <circle className="context-meter-track" cx="7" cy="7" r={RADIUS} />
+      <circle
+        className="context-meter-fill"
+        cx="7"
+        cy="7"
+        r={RADIUS}
+        strokeDasharray={`${(CIRCUMFERENCE * clamped) / 100} ${CIRCUMFERENCE}`}
+      />
+      {innerLabel ? (
+        <text className="context-meter-glyph" x="7" y="7.35" textAnchor="middle" dominantBaseline="middle">
+          {contextMeterInnerLabel(clamped)}
+        </text>
+      ) : null}
+    </svg>
+  )
+}
+
 export type ContextMeterProps = {
   usage: ChatContextUsage | null
   provider: ChatProvider
@@ -33,10 +79,9 @@ export type ContextMeterProps = {
   children?: ReactNode
 }
 
-/** How full the model's window is, revealed on hover over the selected model or context trigger.
- *  Silent until the first response reports usage, and self-explaining once it is warm: the
- *  ring carries the proportion, the label the number, and the card the token counts plus the
- *  subscription windows the turn is spending. */
+/** How full the model's window is, revealed on hover over the context ring under the composer.
+ *  Silent until the first response reports usage, then the ring fills and a compact percent sits
+ *  inside it; the card carries token counts plus the subscription windows the turn is spending. */
 export function ContextMeter({
   usage,
   provider,
@@ -104,17 +149,7 @@ export function ContextMeter({
             data-level={level}
             aria-label={detail}
           >
-            <svg className="context-meter-ring" viewBox="0 0 14 14" width="14" height="14" aria-hidden="true">
-              <circle className="context-meter-track" cx="7" cy="7" r={RADIUS} />
-              <circle
-                className="context-meter-fill"
-                cx="7"
-                cy="7"
-                r={RADIUS}
-                strokeDasharray={`${(CIRCUMFERENCE * percent) / 100} ${CIRCUMFERENCE}`}
-              />
-            </svg>
-            <span className="context-meter-value">{usage ? `${percent}%` : 'Context'}</span>
+            <ContextMeterRing percent={percent} level={level} innerLabel={usage !== null} />
           </button>
         )}
       </HoverCardTrigger>
@@ -162,23 +197,7 @@ function UsageCardBody({
       <div className="usage-row">
         <div className="usage-row-line">
           <span className="usage-row-label">
-            <svg
-              className="context-meter-ring"
-              data-level={level}
-              viewBox="0 0 14 14"
-              width="13"
-              height="13"
-              aria-hidden="true"
-            >
-              <circle className="context-meter-track" cx="7" cy="7" r={RADIUS} />
-              <circle
-                className="context-meter-fill"
-                cx="7"
-                cy="7"
-                r={RADIUS}
-                strokeDasharray={`${(CIRCUMFERENCE * percent) / 100} ${CIRCUMFERENCE}`}
-              />
-            </svg>
+            <ContextMeterRing percent={percent} level={level} size={13} />
             Context
           </span>
           <span className="usage-row-aside">{contextAside}</span>

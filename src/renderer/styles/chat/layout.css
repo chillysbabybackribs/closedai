@@ -355,8 +355,7 @@ body[data-layout-resize='vertical'] * { cursor: row-resize !important; }
   .chat-layout-content .prompt-model-controls { flex: 1; gap: 3px; }
   .chat-layout-content .model-menu-trigger { min-width: 0; padding-inline: 3px; gap: 3px; }
   .chat-layout-content .model-menu-trigger-context,
-  .chat-layout-content .model-menu-trigger-effort,
-  .chat-layout-content .context-meter-value { display: none; }
+  .chat-layout-content .model-menu-trigger-effort { display: none; }
   .chat-layout-content .context-meter { flex-shrink: 0; padding-inline: 3px; }
   .chat-layout-content .prompt-composer-tool { width: 28px; min-width: 28px; padding-inline: 4px; }
   .chat-layout-content .prompt-composer-resume,
