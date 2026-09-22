@@ -30,7 +30,7 @@ const ack = (id: number, at: number, nodes: TreeNode[], rec: ReturnType<typeof r
   ({ id, since: at - 60_000, at, changes: 4, progress: closureProgress(nodes, rec), lines: ['Finished: something'] })
 
 test('gates are proven against the record and only all met at the end of the build', () => {
-  const early = run(13)
+  const early = run(14)
   const progress = closureProgress(early.nodes, early.rec)
   assert.equal(progress.total, 5)
   assert.equal(progress.met, 1, 'boundaries hold; nothing else is proven yet')

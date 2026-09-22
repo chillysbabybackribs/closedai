@@ -39,7 +39,11 @@ test('the dispatch plan grows a tree from the root using the confirmed record', 
   let nodes = [rootNode(record, 1_000)]
   assert.equal(nodes[0]!.links?.length, 3, 'root carries discovery evidence')
   let at = 1_000
-  for (const event of buildDispatchPlan(record)) nodes = applyEvent(nodes, event, at += event.delay)
+  let mid: TreeNode[] = []
+  for (const [index, event] of buildDispatchPlan(record).entries()) {
+    nodes = applyEvent(nodes, event, at += event.delay)
+    if (index === 12) mid = nodes
+  }
   const shell = nodes.find((node) => node.id === 'shell')!
   assert.ok(shell.updatedAt > shell.createdAt, 'an update stamps updatedAt after createdAt')
   const ids = new Set(nodes.map((node) => node.id))
@@ -50,10 +54,10 @@ test('the dispatch plan grows a tree from the root using the confirmed record', 
   assert.equal(nodes.find((node) => node.id === 'evidence')?.links?.length, 3)
   assert.match(nodes.find((node) => node.id === 'journey')!.detail, /link it to one claim/)
 
-  const amended = amendTree(nodes, 'Favor keyboard-first capture.', 'journey', at + 5_000)
+  const amended = amendTree(mid, 'Favor keyboard-first capture.', 'journey', at + 5_000)
   const amendment = amended.nodes.find((node) => node.kind === 'amendment')
   assert.equal(amendment?.parent, 'journey')
   assert.match(amended.note, /2 continuing · 1 adapting next/)
-  assert.equal(amended.nodes.find((node) => node.id === 'root')?.detail, nodes[0]!.detail, 'root record untouched')
+  assert.equal(amended.nodes.find((node) => node.id === 'root')?.detail, mid[0]!.detail, 'root record untouched')
   assert.equal(amended.nodes.find((node) => node.id === 'journey')?.updatedAt, at + 5_000, 'target is stamped as changed')
 })

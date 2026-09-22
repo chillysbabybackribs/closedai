@@ -175,7 +175,8 @@ export function ProjectShellPreview() {
     const at = Date.now()
     const root = rootNode(record, at)
     const opening = [{ id: nextId.current++, at, text: 'Direction confirmed. Working from the record; only the next useful moves are planned.' }]
-    const initial = deriveFiles({ record, messages, nodes: [root], journal: opening, edits: {}, confirmedAt: at })
+    const initial = deriveFiles({ record, messages, nodes: [root], journal: opening, edits: {}, confirmedAt: at,
+      reports: [], progress: closureProgress([root], record), proposal: null, acceptedAt: null })
     setTree([root])
     setJournal(opening)
     setSeenFiles(Object.fromEntries(initial.map((file) => [file.path, file.content])))
