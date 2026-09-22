@@ -128,7 +128,7 @@ export function ProjectIntake(props: {
       {!transcript && sending && <div className="project-coordinator-thinking" role="status">
         <span /><span /><span /> Understanding the direction
       </div>}
-      {showDirectionRecord && ready && !busy && <div className="project-start-row">
+      {ready && !busy && <div className="project-start-row">
         <div><strong>Direction record complete</strong><span>Correct anything above, or begin with this understanding.</span></div>
         <button type="button" data-ui="agent.project-start" onClick={onStart}>Start building</button>
       </div>}

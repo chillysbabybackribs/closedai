@@ -1,13 +1,9 @@
-import { useEffect, type Dispatch, type RefObject, type SetStateAction } from 'react'
+import { useEffect, useRef, type Dispatch, type RefObject, type SetStateAction } from 'react'
 
 import { canPropose, closureProgress, type AcknowledgedReport, type Proposal } from './project-closure.js'
-import type { DirectionRecord } from '../../shared/project/direction.js'
-import type { DiscoveryState } from './project-discovery.js'
-import { deriveFiles, type JournalLine, type Location } from './project-files.js'
-import { applyEvent, buildDispatchPlan, type TreeNode } from './project-tree.js'
-import type { ProjectCanvasFixture } from './project-canvas-fixture.js'
-import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
-import { hydrateFromSnapshot, shouldHydrateFromSnapshot } from './hydrate-project-snapshot.js'
+import type { ProjectFile, Location } from './project-files.js'
+import type { TreeNode } from './project-tree.js'
+import type { ProjectMutate } from './use-project-state.js'
 
 const AWAY_AFTER_MS = 30_000
 
@@ -18,37 +14,22 @@ export function useProjectWorkspaceEffects(options: {
   shellRef: RefObject<HTMLElement | null>
   lastInteraction: RefObject<number>
   setAwayFor: (gap: number) => void
-  canvasFixture: ProjectCanvasFixture | null
-  persistedApplied: RefObject<boolean>
-  persistedSnapshot: ProjectSnapshot | null | undefined
-  setDiscovery: (value: DiscoveryState) => void
-  setPhase: (value: 'intake' | 'canvas') => void
-  setTree: Dispatch<SetStateAction<TreeNode[]>>
-  setJournal: Dispatch<SetStateAction<JournalLine[]>>
-  setConfirmedAt: (value: number) => void
-  setCaughtUpAt: (value: number) => void
-  setAcceptedAt: (value: number | null) => void
-  setSkipSimulatedDispatch: (value: boolean) => void
   setSeenFiles: Dispatch<SetStateAction<Record<string, string>>>
   setSeenNodes: Dispatch<SetStateAction<Record<string, string>>>
-  fixtureHydration: ReturnType<typeof hydrateFromSnapshot> | null
   location: Location
   tree: TreeNode[]
+  files: ProjectFile[]
   openFile: { path: string; content: string } | null
   proposal: Proposal | null
   acceptedAt: number | null
   progress: ReturnType<typeof closureProgress>
   reports: AcknowledgedReport[]
   setProposal: Dispatch<SetStateAction<Proposal | null>>
-  record: DirectionRecord
-  skipSimulatedDispatch: boolean
-  note: (text: string) => void
+  mutate: ProjectMutate
 }): void {
   const {
-    phase, shellRef, lastInteraction, setAwayFor, canvasFixture, persistedApplied, persistedSnapshot,
-    setDiscovery, setPhase, setTree, setJournal, setConfirmedAt, setCaughtUpAt, setAcceptedAt,
-    setSkipSimulatedDispatch, setSeenFiles, setSeenNodes, fixtureHydration, location, tree, openFile,
-    proposal, acceptedAt, progress, reports, setProposal, record, skipSimulatedDispatch, note
+    phase, shellRef, lastInteraction, setAwayFor, setSeenFiles, setSeenNodes, location, tree, files, openFile,
+    proposal, acceptedAt, progress, reports, setProposal, mutate
   } = options
 
   useEffect(() => {
@@ -69,37 +50,15 @@ export function useProjectWorkspaceEffects(options: {
     }
   }, [phase, shellRef, lastInteraction, setAwayFor])
 
+  // What the user has seen is baselined once when the canvas first shows, so growth after that
+  // is what gets flagged as changed, whether the canvas came from disk, a fixture, or Start.
+  const seeded = useRef(false)
   useEffect(() => {
-    if (canvasFixture || persistedApplied.current || !persistedSnapshot || !shouldHydrateFromSnapshot(persistedSnapshot)) return
-    persistedApplied.current = true
-    const hydration = hydrateFromSnapshot(persistedSnapshot)
-    setDiscovery(hydration.discovery)
-    setPhase(hydration.phase)
-    setTree(hydration.tree)
-    setJournal(hydration.journal)
-    setConfirmedAt(hydration.confirmedAt)
-    setCaughtUpAt(hydration.caughtUpAt)
-    setAcceptedAt(hydration.acceptedAt)
-    setSkipSimulatedDispatch(hydration.skipSimulatedDispatch)
-    const initial = deriveFiles({
-      record: hydration.discovery.record, messages: [], nodes: hydration.tree, journal: hydration.journal,
-      edits: {}, confirmedAt: hydration.confirmedAt, reports: [], progress: closureProgress(hydration.tree, hydration.discovery.record),
-      proposal: null, acceptedAt: hydration.acceptedAt
-    })
-    setSeenFiles(Object.fromEntries(initial.map((file) => [file.path, file.content])))
-    setSeenNodes(Object.fromEntries(hydration.tree.map((node) => [node.id, projectNodeSignature(node)])))
-  }, [canvasFixture, persistedSnapshot, persistedApplied, setDiscovery, setPhase, setTree, setJournal, setConfirmedAt, setCaughtUpAt, setAcceptedAt, setSkipSimulatedDispatch, setSeenFiles, setSeenNodes])
-
-  useEffect(() => {
-    if (!fixtureHydration) return
-    const initial = deriveFiles({
-      record: fixtureHydration.discovery.record, messages: [], nodes: fixtureHydration.tree, journal: fixtureHydration.journal,
-      edits: {}, confirmedAt: fixtureHydration.confirmedAt, reports: [], progress: closureProgress(fixtureHydration.tree, fixtureHydration.discovery.record),
-      proposal: null, acceptedAt: fixtureHydration.acceptedAt
-    })
-    setSeenFiles(Object.fromEntries(initial.map((file) => [file.path, file.content])))
-    setSeenNodes(Object.fromEntries(fixtureHydration.tree.map((node) => [node.id, projectNodeSignature(node)])))
-  }, [fixtureHydration, setSeenFiles, setSeenNodes])
+    if (phase !== 'canvas' || seeded.current || tree.length === 0) return
+    seeded.current = true
+    setSeenFiles(Object.fromEntries(files.map((file) => [file.path, file.content])))
+    setSeenNodes(Object.fromEntries(tree.map((node) => [node.id, projectNodeSignature(node)])))
+  }, [phase, tree, files, setSeenFiles, setSeenNodes])
 
   useEffect(() => {
     if (location.kind === 'map') setSeenNodes(Object.fromEntries(tree.map((node) => [node.id, projectNodeSignature(node)])))
@@ -109,34 +68,26 @@ export function useProjectWorkspaceEffects(options: {
     if (openFile) setSeenFiles((current) => ({ ...current, [openFile.path]: openFile.content }))
   }, [openFile, setSeenFiles])
 
+  // Prototype closure: once every gate is met and acknowledged, the workspace itself proposes
+  // completion. Slice D moves this to the coordinator; until then it is the only timer left.
   useEffect(() => {
     if (phase !== 'canvas' || proposal || acceptedAt) return
     const licensing = canPropose({ progress, reports, nodes: tree })
     if (!licensing) return
     const at = Date.now()
+    const index = reports.indexOf(licensing) + 1
     const timer = window.setTimeout(() => {
       setProposal({ at, reportId: licensing.id })
-      setTree((current) => [...current, {
-        id: 'proposal', parent: 'root', kind: 'proposal', state: 'provisional', title: 'Completion proposed',
-        summary: `Rests on report ${reports.indexOf(licensing) + 1}`, createdAt: at, updatedAt: at,
-        detail: `Every gate is met and you acknowledged that state in report ${reports.indexOf(licensing) + 1}. Walk the acceptance, then accept or name the gap.`
-      }])
-      note(`Completion proposed. Every gate met; rests on progress report ${reports.indexOf(licensing) + 1}, which you acknowledged.`)
+      void mutate({
+        type: 'tree',
+        events: [{ add: {
+          id: 'proposal', parent: 'root', kind: 'proposal', state: 'provisional', title: 'Completion proposed',
+          summary: `Rests on report ${index}`,
+          detail: `Every gate is met and you acknowledged that state in report ${index}. Walk the acceptance, then accept or name the gap.`
+        } }],
+        note: `Completion proposed. Every gate met; rests on progress report ${index}, which you acknowledged.`
+      })
     }, 900)
     return () => window.clearTimeout(timer)
-  }, [phase, proposal, acceptedAt, progress, reports, tree, setProposal, setTree, note])
-
-  useEffect(() => {
-    if (phase !== 'canvas' || skipSimulatedDispatch) return
-    const timers: number[] = []
-    let at = 0
-    for (const event of buildDispatchPlan(record)) {
-      at += event.delay
-      timers.push(window.setTimeout(() => {
-        setTree((current) => applyEvent(current, event, Date.now()))
-        note(event.note)
-      }, at))
-    }
-    return () => timers.forEach((timer) => window.clearTimeout(timer))
-  }, [phase, record, skipSimulatedDispatch, setTree, note])
+  }, [phase, proposal, acceptedAt, progress, reports, tree, setProposal, mutate])
 }

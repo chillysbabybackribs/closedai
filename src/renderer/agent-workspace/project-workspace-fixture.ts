@@ -1,11 +1,9 @@
 import type { ChatModel } from '../../shared/chat.js'
-import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
-import type { ProjectCanvasFixture } from './project-canvas-fixture.js'
-import { hydrateFromSnapshot, shouldHydrateFromSnapshot, type PersistedProjectHydration } from './hydrate-project-snapshot.js'
 
 export const PROJECT_WORKSPACE_MAP = { kind: 'map' as const }
 export const PROJECT_WORKSPACE_CLOCK_MS = 15_000
 
+/** Standalone preview only; the live pane takes its models from the coordinator chat. */
 export const PROJECT_WORKSPACE_MODELS: ChatModel[] = [
   { id: 'gpt-5.6', provider: 'codex', displayName: 'GPT-5.6', description: 'OpenAI through Codex', contextWindow: 400_000,
     defaultReasoningEffort: 'high', supportedReasoningEfforts: [{ reasoningEffort: 'high', description: 'Deep reasoning' }], isDefault: true },
@@ -18,23 +16,3 @@ export const PROJECT_WORKSPACE_MODELS: ChatModel[] = [
 ]
 
 export const projectWorkspaceWait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
-
-export function projectWorkspaceInitialHydration(
-  canvasFixture: ProjectCanvasFixture | null,
-  persistedSnapshot: ProjectSnapshot | null | undefined
-): PersistedProjectHydration | null {
-  if (canvasFixture) {
-    return {
-      discovery: canvasFixture.discovery,
-      phase: 'canvas',
-      tree: canvasFixture.tree,
-      journal: canvasFixture.journal,
-      confirmedAt: canvasFixture.confirmedAt,
-      caughtUpAt: canvasFixture.caughtUpAt,
-      acceptedAt: null,
-      skipSimulatedDispatch: true
-    }
-  }
-  if (persistedSnapshot && shouldHydrateFromSnapshot(persistedSnapshot)) return hydrateFromSnapshot(persistedSnapshot)
-  return null
-}

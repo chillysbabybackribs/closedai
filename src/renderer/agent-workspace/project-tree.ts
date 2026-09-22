@@ -1,11 +1,12 @@
-// Prototype-only tree model for the Project shell preview: a vertical tree that grows from the
-// root coordinator as it dispatches work, a tidy layout for it, and a simulated dispatch plan
-// derived from the confirmed direction record.
+// Tree layout for the intent map, the root node a confirmed direction produces, and user
+// amendments. `buildDispatchPlan` is a prototype-only script that fills the canvas fixture for
+// previews and tests; the live workspace never runs it, real nodes arrive through the store.
 import type { DirectionRecord } from '../../shared/project/direction.js'
+import { applyTreeEvent, type PlannedNode, type ProjectTreeEvent } from '../../shared/project/mutations.js'
 import type { TreeKind, TreeNode, TreeState } from '../../shared/project/tree.js'
 import { clip, describeRecord } from './project-discovery.js'
 
-export type { TreeKind, TreeNode, TreeState }
+export type { PlannedNode, TreeKind, TreeNode, TreeState }
 
 export type PlacedNode = TreeNode & { x: number; y: number; depth: number }
 export type TreeLayout = { nodes: PlacedNode[]; width: number; height: number }
@@ -70,13 +71,8 @@ export function layoutTree(nodes: TreeNode[]): TreeLayout {
   }
 }
 
-/** A node as the dispatch plan describes it; timestamps are stamped when the event lands. */
-export type PlannedNode = Omit<TreeNode, 'createdAt' | 'updatedAt'>
-
-export type DispatchEvent = { delay: number; note: string } & (
-  | { add: PlannedNode }
-  | { update: { id: string; state: TreeState; summary?: string } }
-)
+/** One step of the fixture script: a tree event plus how long after the previous step it lands. */
+export type DispatchEvent = { delay: number; note: string } & Extract<ProjectTreeEvent, { add: unknown } | { update: unknown }>
 
 export function rootNode(record: DirectionRecord, at: number): TreeNode {
   return {
@@ -139,12 +135,7 @@ export function buildDispatchPlan(record: DirectionRecord): DispatchEvent[] {
 }
 
 export function applyEvent(nodes: TreeNode[], event: DispatchEvent, at: number): TreeNode[] {
-  if ('add' in event) {
-    return nodes.some((node) => node.id === event.add.id) ? nodes : [...nodes, { ...event.add, createdAt: at, updatedAt: at }]
-  }
-  return nodes.map((node) => node.id === event.update.id
-    ? { ...node, state: event.update.state, summary: event.update.summary ?? node.summary, updatedAt: at }
-    : node)
+  return applyTreeEvent(nodes, event, at)
 }
 
 function subtreeIds(nodes: TreeNode[], rootId: string): Set<string> {

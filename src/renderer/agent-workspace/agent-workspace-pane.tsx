@@ -7,7 +7,6 @@ import type { AgentSoloControls } from '../chat-layout/chat-canvas.js'
 import { AGENT_WORKSPACE_PANE_ID, CHAT_DRAG_TYPE } from '../chat-layout/layout-tree.js'
 import { chatRunning } from '../chat-state.js'
 import { ProjectWorkspace, type ProjectWorkspaceComposerBridge } from './project-workspace.js'
-import { useProjectSnapshot } from './use-project-snapshot.js'
 
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
 
@@ -66,7 +65,6 @@ export function AgentWorkspacePane({ controls, busy, chat, appearance }: {
     ...chat.chats.filter((row) => row.projectPath).map((row) => ({ cwd: row.cwd, projectPath: row.projectPath! }))
   ].map((entry) => [entry.projectPath, entry])).values()].filter((entry) => entry.projectPath !== project.projectPath)
   const persistedPath = project.projectPath ?? project.cwd
-  const persistedSnapshot = useProjectSnapshot(persistedPath)
 
   const bridge: ProjectWorkspaceComposerBridge | null = bridgePaneId && bridgeState ? {
     items: bridgeState.items,
@@ -131,7 +129,7 @@ export function AgentWorkspacePane({ controls, busy, chat, appearance }: {
             fontSize: appearance.chatFontSize,
             composerFontSize: appearance.composerFontSize
           }}
-          persistedSnapshot={persistedSnapshot}
+          projectPath={persistedPath}
         />
       : <div className="agent-workspace-loading">Starting agent workspace…</div>}
   </div>
