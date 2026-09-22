@@ -1,7 +1,6 @@
-import type { JSX, ReactNode } from 'react'
+import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
 
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '../components/ui/hover-card.js'
 import type { ChatContextUsage, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 
@@ -16,35 +15,26 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 /** Past this a reading is worth dating, so a parked provider's numbers are not read as live. */
 const STALE_MS = 5 * 60 * 1000
 
-function contextMeterInnerLabel(percent: number): string {
-  const rounded = Math.min(100, Math.max(0, Math.round(percent)))
-  return rounded >= 100 ? '100' : String(rounded)
+export type ContextLevel = 'cool' | 'warm' | 'hot'
+
+export function contextLevel(percent: number): ContextLevel {
+  return percent >= HOT_PERCENT ? 'hot' : percent >= WARM_PERCENT ? 'warm' : 'cool'
 }
 
-function ContextMeterRing({
+export function ContextMeterRing({
   percent,
   level,
   size = 14,
-  innerLabel = false,
   className = 'context-meter-ring'
 }: {
   percent: number
-  level?: 'cool' | 'warm' | 'hot'
+  level?: ContextLevel
   size?: number
-  /** Compact percent inside the ring for the resting composer control. */
-  innerLabel?: boolean
   className?: string
 }): JSX.Element {
   const clamped = Math.min(100, Math.max(0, percent))
   return (
-    <svg
-      className={className}
-      data-level={level}
-      viewBox="0 0 14 14"
-      width={size}
-      height={size}
-      aria-hidden="true"
-    >
+    <svg className={className} data-level={level} viewBox="0 0 14 14" width={size} height={size} aria-hidden="true">
       <circle className="context-meter-track" cx="7" cy="7" r={RADIUS} />
       <circle
         className="context-meter-fill"
@@ -53,142 +43,45 @@ function ContextMeterRing({
         r={RADIUS}
         strokeDasharray={`${(CIRCUMFERENCE * clamped) / 100} ${CIRCUMFERENCE}`}
       />
-      {innerLabel ? (
-        <text className="context-meter-glyph" x="7" y="7.35" textAnchor="middle" dominantBaseline="middle">
-          {contextMeterInnerLabel(clamped)}
-        </text>
-      ) : null}
     </svg>
   )
 }
 
-export type ContextMeterProps = {
+export type ContextUsageProps = {
   usage: ChatContextUsage | null
   provider: ChatProvider
   /** The account's plan windows, cached between readings; null until one lands. */
   planUsage: ChatPlanUsage | null
-  /** Asked for a fresh reading each time the card opens, including mid-turn. */
-  onRefreshPlanUsage: () => Promise<void>
   /** Re-seed provider-side context when the active provider supports it. */
   onCompact?: () => Promise<void>
   compactEnabled?: boolean
   modelName?: string | null
   modelContext?: string | null
   modelDescription?: string | null
-  disabled?: boolean
-  children?: ReactNode
 }
 
-/** How full the model's window is, revealed on hover over the context ring under the composer.
- *  Silent until the first response reports usage, then the ring fills and a compact percent sits
- *  inside it; the card carries token counts plus the subscription windows the turn is spending. */
-export function ContextMeter({
-  usage,
-  provider,
-  planUsage,
-  onRefreshPlanUsage,
-  onCompact,
-  compactEnabled = false,
-  modelName,
-  modelContext,
-  modelDescription,
-  disabled = false,
-  children
-}: ContextMeterProps): JSX.Element {
-  const [open, setOpen] = useState(false)
-  const percent = Math.min(100, Math.max(0, usage?.percent ?? 0))
-  const level = percent >= HOT_PERCENT ? 'hot' : percent >= WARM_PERCENT ? 'warm' : 'cool'
-  const detail = usage
-    ? `Context — ${percent}% full, ${formatTokens(usage.usedTokens)} of ${formatTokens(usage.contextWindow)} tokens`
-    : 'Context and plan usage'
-
-  const content = (
-    <HoverCardContent
-      className="usage-card"
-      align={children ? 'start' : 'end'}
-      side="top"
-      sideOffset={8}
-      data-ui="composer.usage-card"
-      data-level={level}
-    >
-      <UsageCardBody
-        provider={provider}
-        usage={usage}
-        planUsage={planUsage}
-        modelName={modelName}
-        modelContext={modelContext}
-        modelDescription={modelDescription}
-        level={level}
-        percent={percent}
-        onCompact={onCompact}
-        compactEnabled={compactEnabled}
-      />
-    </HoverCardContent>
-  )
-
-  return (
-    <HoverCard
-      open={disabled ? false : open}
-      openDelay={120}
-      closeDelay={80}
-      onOpenChange={(next) => {
-        // Ignore while disabled: Radix still runs its hover-delay timer against a controlled
-        // `false`, and an uncontrolled `undefined` would resume from that stale internal state
-        // the instant the dropdown closes, popping the card open with no real hover to earn it.
-        if (disabled) return
-        setOpen(next)
-        if (next) void onRefreshPlanUsage()
-      }}
-    >
-      <HoverCardTrigger asChild>
-        {children ?? (
-          <button
-            type="button"
-            className="context-meter"
-            data-ui="composer.context"
-            data-level={level}
-            aria-label={detail}
-          >
-            <ContextMeterRing percent={percent} level={level} innerLabel={usage !== null} />
-          </button>
-        )}
-      </HoverCardTrigger>
-      {content}
-    </HoverCard>
-  )
-}
-
-function UsageCardBody({
+/** How full the model's window is, with the subscription windows the turn is spending. Lives in
+ *  the composer's setup panel; silent about tokens until the first response reports usage. */
+export function ContextUsage({
   provider,
   usage,
   planUsage,
   modelName,
   modelContext,
   modelDescription,
-  level,
-  percent,
   onCompact,
-  compactEnabled
-}: {
-  provider: ChatProvider
-  usage: ChatContextUsage | null
-  planUsage: ChatPlanUsage | null
-  modelName?: string | null
-  modelContext?: string | null
-  modelDescription?: string | null
-  level: 'cool' | 'warm' | 'hot'
-  percent: number
-  onCompact?: () => Promise<void>
-  compactEnabled?: boolean
-}): JSX.Element {
+  compactEnabled = false
+}: ContextUsageProps): JSX.Element {
   const now = useNow(planUsage !== null)
+  const percent = Math.min(100, Math.max(0, usage?.percent ?? 0))
+  const level = contextLevel(percent)
   const stale = planUsage && planUsage.updatedAt > 0 && now - planUsage.updatedAt > STALE_MS
   const contextAside = usage
     ? `${formatTokens(usage.usedTokens)}/${formatTokens(usage.contextWindow)}`
     : (modelContext ? `—/${modelContext}` : '—')
 
   return (
-    <>
+    <div className="usage-card" data-level={level} data-ui="composer.usage">
       <p className="usage-card-title">
         {modelName ?? CHAT_PROVIDER_LABELS[provider]}
         {modelContext ? ` · ${modelContext}` : ''}
@@ -203,11 +96,7 @@ function UsageCardBody({
           <span className="usage-row-aside">{contextAside}</span>
         </div>
         <div className="usage-row-track" role="presentation">
-          <div
-            className="usage-row-fill"
-            data-level={level}
-            style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
-          />
+          <div className="usage-row-fill" data-level={level} style={{ width: `${percent}%` }} />
         </div>
       </div>
       {planUsage?.windows.map((window) => (
@@ -218,8 +107,8 @@ function UsageCardBody({
           aside={`${window.percent}%${window.resetsAt ? ` · ${resetNote(window.resetsAt, now)}` : ''}`}
         />
       ))}
-      <div className="usage-card-actions">
-        {onCompact && (
+      {onCompact && (
+        <div className="usage-card-actions">
           <button
             type="button"
             className="usage-card-action"
@@ -229,13 +118,13 @@ function UsageCardBody({
           >
             Compact conversation
           </button>
-        )}
-      </div>
+        </div>
+      )}
       {modelDescription && <p className="usage-card-note">{modelDescription}</p>}
       {planUsage?.unavailable && <p className="usage-card-note">{planUsage.unavailable}</p>}
       {planUsage?.note && <p className="usage-card-note">{planUsage.note}</p>}
       {stale && <p className="usage-card-note">Read {ageNote(now - planUsage.updatedAt)}</p>}
-    </>
+    </div>
   )
 }
 
@@ -253,7 +142,7 @@ function UsageRow({ label, percent, aside }: { label: string; percent: number; a
   )
 }
 
-/** A minute-resolution clock, running only while the card is showing a reading to date. */
+/** A minute-resolution clock, running only while the panel is showing a reading to date. */
 function useNow(active: boolean): number {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
