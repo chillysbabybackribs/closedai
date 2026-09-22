@@ -1,26 +1,15 @@
 import type { ClipboardEvent, DragEvent, FormEvent, JSX, Ref } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, Pause, Play } from 'lucide-react'
+import { ArrowUp, Play, Square } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
-import { TooltipProvider } from '../components/ui/tooltip.js'
-import {
-  PromptInput,
-  PromptInputAction,
-  PromptInputActions,
-  PromptInputTextarea
-} from '../components/ui/prompt-input.js'
+import { PromptInput, PromptInputAction, PromptInputTextarea } from '../components/ui/prompt-input.js'
 import type { ChatAttachment, ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
-import { ComposerCompactRow } from './composer-compact-row.js'
-import { useComposerLayout, type ComposerLayout } from './composer-layout.js'
+import { ComposerSetupMenu, type ComposerSetupHandle } from './composer-setup-menu.js'
 import { useComposerDraft } from './composer-drafts.js'
 import { errorMessage } from './error-message.js'
-import { ContextMeter } from './context-meter.js'
-import { ModelMenu, type ModelMenuHandle } from './model-menu.js'
-import { modelTriggerLabel } from './model-menu-state.js'
-import { ProjectMenu } from './project-menu.js'
 
 export type ComposerProps = {
   enabled: boolean
@@ -32,9 +21,9 @@ export type ComposerProps = {
   selectedReasoningEffort: string | null
   /** How full the model's window was after the latest response; null before the first one. */
   contextUsage: ChatContextUsage | null
-  /** Which provider's plan the usage card names. */
+  /** Which provider's plan the usage section names. */
   provider: ChatProvider
-  /** The account's subscription windows, shown beside the context window on hover. */
+  /** The account's subscription windows, shown beside the context window in the setup panel. */
   planUsage: ChatPlanUsage | null
   onRefreshPlanUsage: () => Promise<void>
   onModelChange: (modelId: string) => Promise<void>
@@ -51,17 +40,18 @@ export type ComposerProps = {
   onChooseProject: () => Promise<void>
   onSelectProject: (projectPath: string) => Promise<void>
   onClearProject: () => Promise<void>
-  /** Turn in flight, if any; shown as the working timer on the project rail. */
-  activeTurnId: string | null
   onCompactConversation?: () => Promise<void>
   compactConversationEnabled?: boolean
   paneId?: string | null
-  /** Keeps this composer in one layout regardless of the global preference (e.g. agent pane). */
-  fixedLayout?: ComposerLayout
-  /** Lets the pane's connection guidance open the model picker. */
-  modelMenuRef?: Ref<ModelMenuHandle>
+  /** Lets the pane's connection guidance open the setup panel on its model list. */
+  setupMenuRef?: Ref<ComposerSetupHandle>
 }
 
+/**
+ * One line: attach, the text, a trigger naming the model and folder, and one action button that
+ * is Send, Pause while a turn runs, or Resume after a pause. Everything else about the turn —
+ * model, effort, folder, context usage — lives in the setup panel behind the trigger.
+ */
 export function Composer({
   enabled,
   running,
@@ -81,35 +71,23 @@ export function Composer({
   onResume,
   cwd, projectPath, projectPending, recentProjects,
   onChooseProject, onSelectProject, onClearProject,
-  activeTurnId, onCompactConversation, compactConversationEnabled = false, paneId, fixedLayout, modelMenuRef
+  onCompactConversation, compactConversationEnabled = false, paneId, setupMenuRef
 }: ComposerProps): JSX.Element {
   const { input, setInput, attachments, setAttachments, clearDraft } = useComposerDraft(paneId)
   // One alert row for whatever the composer's own controls could not do: attach, pause, pick.
   const [composerError, setComposerError] = useState('')
   const providerLabel = CHAT_PROVIDER_LABELS[provider]
   const [sending, setSending] = useState(false)
-  // Only the chevron changes modes: typing, focusing, and sending all stay in the mode the user
-  // chose, so a collapsed composer keeps its one-line footprint across turns, new chats, and restarts.
-  const [preferredLayout, setPreferredLayout] = useComposerLayout()
-  const layout = fixedLayout ?? preferredLayout
-  const isCompact = layout === 'compact'
-  const setLayout = fixedLayout ? () => {} : setPreferredLayout
-  const layoutLocked = fixedLayout !== undefined
+  // Blank while a turn runs: the pause button is the affordance then, and a hint would compete.
   const inputPlaceholder = running
     ? ''
-    : placeholder ?? (enabled ? 'Enter to send · Shift+Enter for newline' : `${providerLabel} is unavailable`)
+    : placeholder ?? (enabled
+      ? (paused ? 'Resume, or send something new' : `Message ${providerLabel}`)
+      : `${providerLabel} is unavailable`)
   const formRef = useRef<HTMLFormElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const focusAfterSendRef = useRef(false)
-  // Compact and full mode render different textareas. Toggling unmounts the focused one; carry
-  // focus across so the caret is not lost.
-  const textareaFocusedRef = useRef(false)
-  useEffect(() => {
-    if (textareaFocusedRef.current) formRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus()
-  }, [isCompact])
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !sending && enabled && !running
-  const selectedChatModel = models.find((model) => model.id === selectedModel)
-  const modelLabel = modelTriggerLabel(models, selectedModel, selectedReasoningEffort)
 
   useEffect(() => {
     if (sending || !focusAfterSendRef.current) return
@@ -178,187 +156,120 @@ export function Composer({
     if (event.dataTransfer.files.length) void addFiles(event.dataTransfer.files)
   }
 
-  const modelMenu = (
-    <ModelMenu
-      ref={modelMenuRef}
-      enabled={enabled && !running}
-      models={models}
-      selectedModel={selectedModel}
-      selectedReasoningEffort={selectedReasoningEffort}
-      onModelChange={onModelChange}
-      onReasoningEffortChange={onReasoningEffortChange}
-      onError={setComposerError}
-    />
-  )
-
-  const attachmentPicker = (
-    <AttachmentPicker
-      disabled={!enabled || running || sending}
-      inputRef={fileInputRef}
-      onChange={(event) => {
-        if (event.target.files) void addFiles(event.target.files)
-        event.target.value = ''
-      }}
-    />
+  const action = running ? (
+    <PromptInputAction tooltip={`Pause ${providerLabel} (Esc)`} disabled={false}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="composer-action composer-stop"
+        aria-label={`Pause ${providerLabel} (Esc)`}
+        data-ui="composer.stop"
+        onClick={() => void stop()}
+      >
+        <Square size={12} fill="currentColor" aria-hidden="true" />
+      </Button>
+    </PromptInputAction>
+  ) : paused ? (
+    <PromptInputAction tooltip={`Resume where ${providerLabel} paused`}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="composer-action composer-resume"
+        aria-label={`Resume where ${providerLabel} paused`}
+        data-ui="composer.resume"
+        disabled={!enabled || sending}
+        onClick={() => void resume()}
+      >
+        <Play size={13} fill="currentColor" aria-hidden="true" />
+      </Button>
+    </PromptInputAction>
+  ) : (
+    <PromptInputAction tooltip="Send (Enter)">
+      <Button
+        type="submit"
+        size="icon"
+        className="composer-action composer-send"
+        aria-label={`Send to ${providerLabel} (Enter)`}
+        data-ui="composer.send"
+        disabled={!canSend}
+      >
+        <ArrowUp size={16} strokeWidth={2.5} aria-hidden="true" />
+      </Button>
+    </PromptInputAction>
   )
 
   return (
     <form
       ref={formRef}
-      className={`prompt-composer${isCompact ? ' is-compact' : ''}`}
+      className="composer"
       onSubmit={(event) => void submit(event)}
       onDragOver={(event) => event.preventDefault()}
       onDrop={dropFiles}
     >
-      {/* Collapsed, the pill has no room for chips, so attachments sit above it beside the
-          project rail; the rail itself stays in both modes because it says where the turn runs. */}
-      {isCompact && (
-        <div className="prompt-composer-compact-attachments">
-          <AttachmentChips
-            attachments={attachments}
-            onRemove={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
-          />
-          {composerError && <div className="prompt-attachment-error" role="alert">{composerError}</div>}
-        </div>
-      )}
-      <ProjectMenu
-        cwd={cwd}
-        projectPath={projectPath}
-        pending={projectPending}
-        recentProjects={recentProjects}
-        disabled={sending}
-        onChooseProject={onChooseProject}
-        onSelectProject={onSelectProject}
-        onClearProject={onClearProject}
-        activeTurnId={activeTurnId}
-        trailing={isCompact || layoutLocked ? undefined : (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="prompt-composer-toggle-compact rounded-full"
-            aria-label="Collapse composer"
-            title="Collapse composer"
-            data-ui="composer.compact-toggle"
-            onClick={(event) => {
-              event.stopPropagation()
-              setLayout('compact')
-            }}
-          >
-            <ChevronDown size={15} aria-hidden="true" />
-          </Button>
-        )}
-      />
       <PromptInput
         value={input}
         onValueChange={setInput}
         onSubmit={() => void submit()}
         isLoading={running || sending}
         disabled={!enabled || sending}
-        maxHeight={isCompact ? 28 : 'var(--composer-max-height, min(36vh, 240px))'}
-        className={`prompt-composer-input${isCompact ? ' is-compact' : ''}`}
+        maxHeight="var(--composer-max-height, min(36vh, 240px))"
+        className="composer-card"
       >
-        {isCompact ? (
-          <ComposerCompactRow
-            running={running}
-            provider={provider}
-            placeholder={inputPlaceholder}
-            enabled={enabled}
-            sending={sending}
-            paused={paused}
-            canSend={canSend}
-            onPaste={pasteFiles}
-            onFocus={() => { textareaFocusedRef.current = true }}
-            onBlur={() => { textareaFocusedRef.current = false }}
-            onStop={stop}
-            onResume={resume}
-            onExpand={() => { if (!layoutLocked) setLayout('full') }}
+        {attachments.length > 0 && (
+          <AttachmentChips
+            attachments={attachments}
+            onRemove={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
           />
-        ) : (
-          <div className="prompt-composer-body">
-            <div className="prompt-composer-column">
-              <AttachmentChips
-                attachments={attachments}
-                onRemove={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
-              />
-              <PromptInputTextarea
-                aria-label={`Message ${providerLabel}`}
-                data-ui="composer.input"
-                data-can-send={canSend || undefined}
-                placeholder={inputPlaceholder}
-                spellCheck={false}
-                className="prompt-composer-textarea"
-                onPaste={pasteFiles}
-                onFocus={() => { textareaFocusedRef.current = true }}
-                onBlur={() => { textareaFocusedRef.current = false }}
-              />
-
-              {composerError && <div className="prompt-attachment-error" role="alert">{composerError}</div>}
-
-              {!running && paused ? (
-                <PromptInputActions className="prompt-composer-actions">
-                  <div className="prompt-composer-actions-end">
-                    <PromptInputAction tooltip={`Resume where ${providerLabel} paused`}>
-                      <Button
-                        type="button"
-                        size="icon"
-                        className="prompt-composer-resume rounded-full"
-                        aria-label={`Resume where ${providerLabel} paused`}
-                        data-ui="composer.resume"
-                        disabled={!enabled || sending}
-                        onClick={() => void resume()}
-                      >
-                        <Play size={15} fill="currentColor" aria-hidden="true" />
-                      </Button>
-                    </PromptInputAction>
-                  </div>
-                </PromptInputActions>
-              ) : null}
-            </div>
-
-            {/* Enter is the only way to send; the pause control sits in its own column so it
-                centres on the card's full height rather than the action row. */}
-            {running ? (
-              <div className="prompt-composer-primary">
-                <PromptInputAction tooltip={`Pause ${providerLabel} (Esc)`} disabled={false}>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="prompt-composer-stop rounded-full"
-                    aria-label={`Pause ${providerLabel} (Esc)`}
-                    data-ui="composer.stop"
-                    onClick={() => void stop()}
-                  >
-                    <Pause size={24} strokeWidth={2.25} aria-hidden="true" />
-                  </Button>
-                </PromptInputAction>
-              </div>
-            ) : null}
-          </div>
         )}
-      </PromptInput>
-      <TooltipProvider>
-        <div className="prompt-composer-footer">
-          <div className="prompt-composer-footer-start">
-            <div className="prompt-model-controls">{modelMenu}</div>
-          </div>
-          <div className="prompt-composer-footer-end">
-            {attachmentPicker}
-            <ContextMeter
-              usage={contextUsage}
-              provider={selectedChatModel?.provider ?? provider}
-              planUsage={planUsage}
-              modelName={modelLabel.name}
-              modelContext={modelLabel.context}
-              modelDescription={modelLabel.description}
-              onRefreshPlanUsage={onRefreshPlanUsage}
-              onCompact={onCompactConversation}
-              compactEnabled={compactConversationEnabled}
-            />
-          </div>
+        <div className="composer-row">
+          <AttachmentPicker
+            disabled={!enabled || running || sending}
+            inputRef={fileInputRef}
+            onChange={(event) => {
+              if (event.target.files) void addFiles(event.target.files)
+              event.target.value = ''
+            }}
+          />
+          <PromptInputTextarea
+            aria-label={`Message ${providerLabel}`}
+            data-ui="composer.input"
+            data-can-send={canSend || undefined}
+            placeholder={inputPlaceholder}
+            spellCheck={false}
+            rows={1}
+            className="composer-textarea"
+            onPaste={pasteFiles}
+          />
+          <ComposerSetupMenu
+            ref={setupMenuRef}
+            modelsEnabled={enabled && !running}
+            busy={sending}
+            models={models}
+            selectedModel={selectedModel}
+            selectedReasoningEffort={selectedReasoningEffort}
+            onModelChange={onModelChange}
+            onReasoningEffortChange={onReasoningEffortChange}
+            onError={setComposerError}
+            cwd={cwd}
+            projectPath={projectPath}
+            projectPending={projectPending}
+            recentProjects={recentProjects}
+            onChooseProject={onChooseProject}
+            onSelectProject={onSelectProject}
+            onClearProject={onClearProject}
+            contextUsage={contextUsage}
+            provider={provider}
+            planUsage={planUsage}
+            onRefreshPlanUsage={onRefreshPlanUsage}
+            onCompact={onCompactConversation}
+            compactEnabled={compactConversationEnabled}
+          />
+          {action}
         </div>
-      </TooltipProvider>
+      </PromptInput>
+      {composerError && <div className="prompt-attachment-error" role="alert">{composerError}</div>}
     </form>
   )
 }
