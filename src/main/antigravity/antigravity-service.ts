@@ -3,7 +3,7 @@ import type {
   ChatAccount, ChatAttachment, ChatConnection, ChatEvent, ChatHistoryWindow, ChatPlanUsage,
   ChatSnapshot, ChatThreadContent, ChatThreadSummary, ChatTurnContextReport
 } from '../../shared/chat.js'
-import { applyProviderRotation, type RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
+import type { RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
 import { describeUsage, type ContextUsage } from '../chat-context/context-compaction.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import {
@@ -20,7 +20,6 @@ import {
 } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { buildCompactionSeed, compactedAdditionalContext } from '../chat-context/provider-compaction.js'
-import { antigravityPlanUsage, planUsageUnavailable } from '../chat-context/plan-usage.js'
 import { PROVIDER_CATALOG_TTL_MS, type WorkspaceCatalogs } from '../chat-context/provider-catalog-cache.js'
 import { buildChatInput } from '../chat-input.js'
 import { ChatModelState } from '../chat-model-state.js'
@@ -40,34 +39,36 @@ import {
   parseAntigravityModelList,
   type AntigravityCliModel
 } from './antigravity-models.js'
-import { ensureAntigravityProfile, recordUndeclarableTools, undeclarableToolsFrom, type AntigravityProfile } from './antigravity-profile.js'
+import { ensureAntigravityProfile, type AntigravityProfile } from './antigravity-profile.js'
 import { AntigravitySession } from './antigravity-session.js'
 import { applyTranscriptOp, handleProviderTurnEnd, type TranscriptOp, type TurnEnd } from '../chat-transcript-ops.js'
+import {
+  ANTIGRAVITY_PLAN_USAGE_UNAVAILABLE,
+  ANTIGRAVITY_QUOTA_REUSE_MS,
+  cachedAntigravityPlanUsage,
+  readAntigravityPlanUsage
+} from './antigravity-quota.js'
+import {
+  detachAntigravityThread,
+  resumeAntigravityConversation,
+  resumePersistedAntigravityConversation,
+  rotateAntigravityProviderSession,
+  type AntigravityThreadHost
+} from './antigravity-thread-lifecycle.js'
+import {
+  retryAntigravityOnAuthFailure,
+  retryAntigravityWithoutUndeclaredTools,
+  type AntigravityTurnRecoveryHost
+} from './antigravity-turn-recovery.js'
+
+export { ANTIGRAVITY_QUOTA_REUSE_MS, forgetAntigravityQuota } from './antigravity-quota.js'
 
 // The Antigravity provider, mirroring ChatService's surface so the hub can route to any of the
 // three. Everything model-facing is Google's `agy` CLI on the user's subscription: the process
 // per thread, the catalog (`agy models`), and the conversation store that backs the history.
 // Tools reach the CLI through the shared HTTP MCP bridge (antigravity-mcp.ts).
 
-/** Fallback reading when the CLI does not report subscription usage or fails. */
-const ANTIGRAVITY_PLAN_USAGE_UNAVAILABLE = planUsageUnavailable('The agy CLI does not report subscription usage.', 0)
-
 const SIGN_IN_MESSAGE = 'Sign in to Antigravity: run `agy` in a terminal, complete the Google login, then choose an Antigravity model again.'
-
-/**
- * How long a quota reading serves every pane before any of them asks the CLI again. `/quota` is
- * a two-second `agy` process; with one per new chat, one per hover and one per turn end, quota
- * reads were most of what Antigravity spent on a chat that had not said anything yet. Hover and
- * turn end still request a reading; they only spawn when the shared one is older than this.
- */
-export const ANTIGRAVITY_QUOTA_REUSE_MS = 60_000
-
-let lastQuotaReading: { at: number; usage: ChatPlanUsage } | null = null
-
-/** Test seam: forget the shared quota reading. */
-export function forgetAntigravityQuota(): void {
-  lastQuotaReading = null
-}
 
 export class AntigravityChatService extends EventEmitter {
   private session: AntigravitySession | null = null
@@ -188,28 +189,17 @@ export class AntigravityChatService extends EventEmitter {
    */
   async refreshPlanUsage(reuseWithinMs = ANTIGRAVITY_QUOTA_REUSE_MS): Promise<void> {
     if (this.connection.state !== 'ready') return
-    if (lastQuotaReading && Date.now() - lastQuotaReading.at < reuseWithinMs) {
-      this.setPlanUsage(lastQuotaReading.usage)
+    const reading = await readAntigravityPlanUsage(reuseWithinMs)
+    if (reading === 'reuse') {
+      const cached = cachedAntigravityPlanUsage()
+      if (cached) this.setPlanUsage(cached)
       return
     }
-    try {
-      const result = await runAntigravityCommand(['-p', '/quota', '--output-format', 'json'])
-      if (!result.ok) {
-        if (!this.planUsage) this.setPlanUsage(ANTIGRAVITY_PLAN_USAGE_UNAVAILABLE)
-        return
-      }
-      const parsed = JSON.parse(result.stdout) as unknown
-      const usage = antigravityPlanUsage(parsed)
-      if (usage) {
-        lastQuotaReading = { at: Date.now(), usage }
-        this.setPlanUsage(usage)
-      } else if (!this.planUsage) {
-        this.setPlanUsage(ANTIGRAVITY_PLAN_USAGE_UNAVAILABLE)
-      }
-    } catch (error) {
-      console.warn('[antigravity] could not read plan usage:', messageOf(error))
+    if (reading === 'unchanged') {
       if (!this.planUsage) this.setPlanUsage(ANTIGRAVITY_PLAN_USAGE_UNAVAILABLE)
+      return
     }
+    this.setPlanUsage(reading)
   }
 
   private setPlanUsage(usage: ChatPlanUsage | null): void {
@@ -328,7 +318,7 @@ export class AntigravityChatService extends EventEmitter {
   async compactConversation(): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
     if (this.settings.get().chatSeamlessRotation) {
-      await this.rotateProviderSession()
+      await rotateAntigravityProviderSession(this.threadHost())
       return
     }
     const seed = buildCompactionSeed(this.transcript.snapshot(), this.threadName)
@@ -368,7 +358,7 @@ export class AntigravityChatService extends EventEmitter {
       this.catalogs?.remember('antigravity', this.modelState.models, cliModels)
       this.profile = await ensureAntigravityProfile(this.stateDir, { cwd: this.cwd })
       this.session ??= this.createSession()
-      await this.resumePersistedConversation()
+      await resumePersistedAntigravityConversation(this.threadHost())
       this.account = { type: 'google', email: null, planType: null }
       this.setConnection({ state: 'ready', message: 'Antigravity is ready' })
       if (warm) await this.bridge.start()
@@ -406,57 +396,12 @@ export class AntigravityChatService extends EventEmitter {
     })
   }
 
-  private async resumePersistedConversation(): Promise<void> {
-    const persisted = this.settings.get().chatAntigravityConversationId
-    if (!persisted || this.session!.conversationId) return
-    try {
-      await this.resumeConversation(persisted)
-    } catch (error) {
-      console.warn('[antigravity] could not resume saved conversation:', messageOf(error))
-      await this.detachThread()
-    }
-  }
-
   private async resumeConversation(conversationId: string): Promise<void> {
-    this.contextUsage = null
-    const items = await this.history.loadTranscript(conversationId)
-    await this.session!.adopt(conversationId)
-    this.transcript.replaceItems(items ?? [])
-    this.threadName = await this.history.threadName(conversationId).catch(() => null)
-    await this.settings.set({ chatAntigravityConversationId: conversationId, chatContinuation: null })
-    this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
-    if (!items) this.addNotice('Earlier messages of this chat were not recorded by ClosedAI; the conversation continues from where Antigravity left it.', 'info', null)
+    await resumeAntigravityConversation(this.threadHost(), conversationId)
   }
 
   private async detachThread(): Promise<void> {
-    const previous = this.session?.conversationId ?? null
-    await this.session?.reset()
-    if (previous) this.bridge.unbind(previous)
-    this.transcript.clear()
-    this.threadName = null
-    this.activeTurnId = null
-    this.turnContext = null
-    this.contextUsage = null
-    await this.settings.set({ chatAntigravityConversationId: null })
-  }
-
-  private async rotateProviderSession(): Promise<void> {
-    const usage = this.contextUsage
-    await applyProviderRotation(this.settings, {
-      paneId: this.paneId,
-      provider: 'antigravity',
-      threadId: this.session?.conversationId ? antigravityThreadId(this.session.conversationId) : null,
-      threadName: this.threadName,
-      items: this.transcript.snapshot()
-    }, async () => {
-      const previous = this.session?.conversationId ?? null
-      if (!this.session) this.session = this.createSession()
-      else await this.session.reset()
-      if (previous) this.bridge.unbind(previous)
-      this.contextUsage = null
-      await this.settings.set({ chatAntigravityConversationId: null })
-      this.emitEvent({ type: 'thread', threadId: null, threadName: this.threadName })
-    }, usage)
+    await detachAntigravityThread(this.threadHost())
   }
 
   private async ensureReady(): Promise<void> {
@@ -505,8 +450,8 @@ export class AntigravityChatService extends EventEmitter {
   }
 
   private onTurnEnd(turnId: string, end: TurnEnd): void {
-    if (end.status === 'failed' && this.retryWithoutUndeclaredTools(turnId, end.error ?? '')) return
-    if (end.status === 'failed' && this.retryOnAuthFailure(turnId, end.error ?? '')) return
+    if (end.status === 'failed' && retryAntigravityWithoutUndeclaredTools(this.turnRecoveryHost(), turnId, end.error ?? '')) return
+    if (end.status === 'failed' && retryAntigravityOnAuthFailure(this.turnRecoveryHost(), turnId, end.error ?? '')) return
     handleProviderTurnEnd(turnId, end, {
       addNotice: (text, tone, id) => this.addNotice(text, tone, id),
       setPaused: (id) => this.setPaused(id)
@@ -522,69 +467,6 @@ export class AntigravityChatService extends EventEmitter {
     void Promise.all([this.history.saveTranscript(conversationId, items), this.history.recordThread(conversationId, this.cwd, items)])
       .catch((error: unknown) => { console.warn('[antigravity] could not record the conversation:', messageOf(error)) })
     void this.refreshThreadName(conversationId)
-  }
-
-  /**
-   * The CLI's OAuth access token expires after 60 minutes. In long agentic tasks, agy's background
-   * refresher updates the system keyring, but its active in-memory client fails on the next call
-   * with 401 UNAUTHENTICATED. Retiring the dead process and continuing on a fresh process
-   * seamlessly recovers the turn when the refreshed token is valid.
-   *
-   * One retry per user turn: `authRetrying` stays set until the next `send`, so a resumed turn
-   * that fails the same way is reported instead of spawning processes in a loop.
-   */
-  private retryOnAuthFailure(turnId: string, error: string): boolean {
-    if (!isAntigravityAuthFailure(error) || this.authRetrying) return false
-    const session = this.session
-    if (!session || !session.conversationId) return false
-    this.authRetrying = true
-    void (async () => {
-      try {
-        await session.retire()
-        const check = await runAntigravityCommand(['models'])
-        if (!check.ok) {
-          this.setConnection({ state: 'signed-out', message: SIGN_IN_MESSAGE })
-          this.addNotice('Antigravity session expired. Please sign in via terminal `agy` and retry.', 'error', turnId)
-          this.persistTurn()
-          return
-        }
-        this.addNotice('Antigravity credentials refreshed; continuing turn…', 'info', turnId)
-        if (this.session !== session || this.activeTurnId) throw new Error('Antigravity conversation changed while retrying after auth refresh')
-        session.send('The stream was interrupted due to a credential refresh. Please continue the task you were working on.')
-      } catch (retryError) {
-        this.addNotice(messageOf(retryError), 'error', turnId)
-        this.persistTurn()
-      }
-    })()
-    return true
-  }
-
-  /**
-   * The CLI self-updates and its executor rejects a custom agent that declares a tool its build
-   * no longer registers, failing the turn before the model runs. Drop the named grants from the
-   * profile and replay the turn once on a fresh process; a name already excluded means the
-   * rewrite did not help, so that failure is shown as-is.
-   */
-  private retryWithoutUndeclaredTools(turnId: string, error: string): boolean {
-    const rejected = undeclarableToolsFrom(error)
-    const content = this.lastTurnContent
-    const session = this.session
-    if (rejected.length === 0 || !content || !session) return false
-    void (async () => {
-      try {
-        const added = await recordUndeclarableTools(this.stateDir, rejected)
-        if (added.length === 0) throw new Error(error)
-        this.addNotice(`Antigravity no longer declares ${added.join(', ')}; retrying without`, 'info', turnId)
-        await session.retire()
-        this.profile = await ensureAntigravityProfile(this.stateDir, { cwd: this.cwd })
-        if (this.session !== session || this.activeTurnId) throw new Error('Antigravity conversation changed while retrying the turn')
-        session.send(content)
-      } catch (retryError) {
-        this.addNotice(messageOf(retryError), 'error', turnId)
-        this.persistTurn()
-      }
-    })()
-    return true
   }
 
   /** The CLI titles a conversation shortly after its first turn; pick that up for the header. */
@@ -647,5 +529,44 @@ export class AntigravityChatService extends EventEmitter {
     const contextWindow = model?.contextWindow ?? antigravityContextWindow(this.modelState.selectedModel)
     this.contextUsage = { usedTokens: usage.inputTokens, contextWindow }
     this.emitEvent({ type: 'context', usage: describeUsage(this.contextUsage) })
+  }
+
+  private threadHost(): AntigravityThreadHost {
+    return {
+      settings: this.settings,
+      paneId: this.paneId,
+      history: this.history,
+      cwd: this.cwd,
+      bridge: this.bridge,
+      transcript: this.transcript,
+      session: () => this.session,
+      setSession: (session) => { this.session = session },
+      createSession: () => this.createSession(),
+      threadName: () => this.threadName,
+      setThreadName: (name) => { this.threadName = name },
+      contextUsage: () => this.contextUsage,
+      setContextUsage: (usage) => { this.contextUsage = usage },
+      setActiveTurnId: (id) => { this.activeTurnId = id },
+      setTurnContext: () => { this.turnContext = null },
+      snapshot: () => this.snapshot(),
+      emitEvent: (event) => this.emitEvent(event),
+      addNotice: (text, tone, turnId) => this.addNotice(text, tone, turnId)
+    }
+  }
+
+  private turnRecoveryHost(): AntigravityTurnRecoveryHost {
+    return {
+      cwd: this.cwd,
+      stateDir: this.stateDir,
+      session: () => this.session,
+      activeTurnId: () => this.activeTurnId,
+      authRetrying: () => this.authRetrying,
+      setAuthRetrying: (value) => { this.authRetrying = value },
+      lastTurnContent: () => this.lastTurnContent,
+      setProfile: (profile) => { this.profile = profile },
+      setConnection: (connection) => this.setConnection(connection),
+      addNotice: (text, tone, turnId) => this.addNotice(text, tone, turnId),
+      persistTurn: () => this.persistTurn()
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, safeStorage, session } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, safeStorage } from 'electron'
 import { mkdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { configureChromiumStartup } from './chromium-startup-policy.js'
@@ -7,23 +7,16 @@ import { claimProfileInstance } from './app-single-instance.js'
 import { installCrashGuard, runBootstrap } from './app-crash-guard.js'
 import { QUIT_SETTLE_TIMEOUT_MS, settleWithin } from './app-quit.js'
 import { browserUserAgentFallback } from './browser-identity.js'
-import { createMainWindow } from './main-window.js'
 import { BrowserService } from './browser-service.js'
 import { BrowserHistoryStore } from './browser-history-store.js'
 import { BrowserTabSessionStore } from './browser-tab-session-store.js'
 import { AppSettingsStore } from './app-settings-store.js'
 import { BrowserDownloadService } from './browser-download-service.js'
-import { registerBrowserCoreIpc } from './browser-core-ipc.js'
 import { AgentWorkspaceSurface } from './agent-workspace-surface.js'
-import { registerAgentWorkspaceIpc } from './agent-workspace-ipc.js'
-import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
-import { registerLocalFilesIpc } from './local-files/ipc.js'
 import { maintainBrowserCache, scheduleBrowserCacheMaintenance } from './browser-cache-maintenance.js'
 import { importBrowserCookiesNow, importDefaultBrowserCookies, type CookieImportDeps } from './browser-cookie-import.js'
 import { PARTITION } from './browser-url.js'
-import { ChatService } from './chat-service.js'
 import { CodexWorkspaceRuntime } from './codex-workspace-runtime.js'
-import { ChatHub } from './chat-hub.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { rendererChatBatcher, rendererChatForwarder } from './chat-peers/peer-events.js'
 import { ChatStore } from './chat-store/chat-store.js'
@@ -31,9 +24,6 @@ import { ChatTranscriptCache } from './chat-store/chat-transcript-cache.js'
 import { migrateChatPeersIntoStore } from './chat-store/chat-store-migration.js'
 import { ProviderCatalogCache } from './chat-context/provider-catalog-cache.js'
 import { stopAllProcessGroups } from './process-tree.js'
-import { ClaudeChatService } from './claude/claude-service.js'
-import { AntigravityChatService } from './antigravity/antigravity-service.js'
-import { CursorChatService } from './cursor/cursor-service.js'
 import { CursorToolBridge } from './cursor/cursor-mcp.js'
 import { AntigravityToolBridge } from './antigravity/antigravity-mcp.js'
 import { BrowserPageAccess } from './browser-page-access.js'
@@ -53,7 +43,6 @@ import { credentialVaultTools } from './tools/credential-vault/index.js'
 import { batchTools } from './tools/batch/index.js'
 import { createResearchRuntime } from './research-runtime.js'
 import type { ResearchLibrary } from './research-library/service.js'
-import { registerResearchLibraryIpc } from './research-library/ipc.js'
 import { createArtifactRuntime } from './investigations/artifact-runtime.js'
 import type { ArtifactStore } from './investigations/artifact-store.js'
 import type { ResearchService } from './tools/search/research/service.js'
@@ -62,30 +51,20 @@ import { NativeControllerClient } from './native-instrument/client.js'
 import { NativeInstrumentService } from './native-instrument/service.js'
 import { nativeInstrumentTools } from './tools/native-instrument/index.js'
 import { ToolTelemetry } from './tools/telemetry.js'
-import { registerToolsIpc } from './tools/ipc.js'
-import { providerSourcesFromHub, registerModelsIpc } from './model-settings/ipc.js'
-import type { ModelsEvent } from '../shared/model-settings.js'
-import { registerTraceIpc } from './trace/ipc.js'
-import { traceLog } from './trace/trace-log.js'
-import { traceChatEvent, traceChatIpcMetrics, traceToolCalls } from './trace/taps.js'
-import type { TraceEvent } from '../shared/trace.js'
-import type { ToolsEvent } from '../shared/tools.js'
-import { detectProviderAvailability } from './provider-availability.js'
-import { registerChatIpc } from './chat-ipc.js'
-import { registerProjectIpc } from './project-ipc.js'
+import { traceToolCalls } from './trace/taps.js'
 import { ProjectHub } from './project-store/project-hub.js'
-import { registerWindowIpc } from './window-ipc.js'
 import { CredentialVault } from './credential-vault.js'
-import { registerCredentialVaultIpc } from './credential-vault-ipc.js'
 import { safeStorageEncryption } from './safe-storage-encryption.js'
 import { SecuritySettingsStore } from './security-settings-store.js'
 import { CredentialApprovalBroker } from './security-approvals.js'
 import { BrowserPermissionBroker } from './browser-permission-broker.js'
-import { registerSecurityIpc } from './security-ipc.js'
 import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
-import { CHAT_PROVIDERS } from '../shared/chat-providers.js'
-import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../shared/types.js'
+import { liveVerifyFromArgv, requestLiveVerify, type LiveVerifyHandle } from './app-live-verify.js'
+import { createChatWorkspaceSelector } from './main-workspace-selector.js'
+import { createPaneChatHub } from './main-pane-chat-hub.js'
+import { mainCookieImportDeps, registerMainProcessIpc } from './main-ipc-registration.js'
+import { disposeMainWindowServices, openMainWindow } from './main-window-setup.js'
 
 // Chromium switches must land before `ready`. Owner decision: the Linux sandbox flags stay
 // exactly as appv1 has them (docs/electron-browser-platform-review.md §0).
@@ -131,34 +110,12 @@ let appAutomationAccess: AppAutomationAccess | null = null
 let appCommandAccess: AppCommandAccess | null = null
 let stopBrowserCacheMaintenance: (() => void) | null = null
 let quitting = false
-let pendingLiveVerify: { mode: string; quitAfter: boolean } | null = null
-/** Set once any route (env, argv, second instance) asks for verification; never cleared. */
-let liveVerifyRequested = false
-
-function liveVerifyFromArgv(): string | undefined {
-  return process.argv.find((arg) => arg.startsWith('--live-verify='))?.slice('--live-verify='.length).trim()
-}
-
-function requestLiveVerify(mode: string, quitAfter: boolean): void {
-  liveVerifyRequested = true
-  pendingLiveVerify = { mode, quitAfter }
-  void runPendingLiveVerify()
-}
-
-async function runPendingLiveVerify(): Promise<void> {
-  const pending = pendingLiveVerify
-  if (!pending || !toolRegistry) return
-  pendingLiveVerify = null
-  try {
-    const { runLiveVerify } = await import('./live-verify/search-pipeline.js')
-    const result = await runLiveVerify(pending.mode, toolRegistry, researchService, userData())
-    console.log(`[live-verify:${pending.mode}]`, JSON.stringify(result))
-  } catch (error) {
-    console.error(`[live-verify:${pending.mode}]`, error)
-    if (pending.quitAfter) process.exitCode = 1
-  } finally {
-    if (pending.quitAfter) app.quit()
-  }
+const liveVerify: LiveVerifyHandle = {
+  requested: false,
+  pending: null,
+  toolRegistry: null,
+  researchService: null,
+  userDataPath: () => userData()
 }
 
 // The BrowserWindow reference can outlive its WebContents during Electron shutdown. Keep all
@@ -176,7 +133,7 @@ if (!claimProfileInstance(app, { profile: userData(), checkout: app.getAppPath()
 } else {
   app.on('second-instance', (_event, argv) => {
     const mode = argv.map(String).find((arg) => arg.startsWith('--live-verify='))?.slice('--live-verify='.length).trim()
-    if (mode) requestLiveVerify(mode, false)
+    if (mode) requestLiveVerify(liveVerify, app, mode, false)
   })
   // A bootstrap failure is shown and ends the app; a later stray fault is logged and survived.
   const crashHost = { app, process, showErrorBox: dialog.showErrorBox, hasWindow: () => mainWindow !== null }
