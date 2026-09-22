@@ -22,6 +22,7 @@ import { listReadablePeers, readReadablePeer, type ReadablePeerHost } from './pe
 import { openChatsPatch } from './peer-settings.js'
 import { schedulePaneWarm } from './provider-warm.js'
 import type { PeerChatCatalog } from './peer-chat-catalog.js'
+import type { DeferredProjectSwitch } from './deferred-project-switch.js'
 import { isPinnedChat } from './peer-detached.js'
 import { PeerProjectChanges } from './peer-project.js'
 import type { ChatWorkspaceSelection, ChatWorkspaceSelector } from './peer-workspace.js'

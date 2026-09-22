@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 
-import type { ChatProvider } from '../../shared/chat.js'
+import type { ChatProvider, ChatTranscriptItem } from '../../shared/chat.js'
 import type { ComposerProps } from '../composer.js'
 import type { ComposerLayout } from '../composer-layout.js'
 import { injectComposerDraft } from '../composer-drafts.js'
