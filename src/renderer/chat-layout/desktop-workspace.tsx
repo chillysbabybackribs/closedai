@@ -11,7 +11,7 @@ import { ChatLayoutActions } from './layout-context-menu.js'
 import { useChatLayout } from './layout-controller.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, paneIds } from './layout-tree.js'
 import { LayoutPresetsDialog } from './layout-presets-dialog.js'
-import type { CanvasSize } from './layout-presets.js'
+import type { CanvasSize, LayoutPreset } from './layout-presets.js'
 import { tabActivity } from './tab-activity.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 
@@ -20,6 +20,7 @@ export type ChatLayoutHandle = {
   toggleBrowser: () => void
   closeFocused: () => Promise<void>
   openLayoutPresets: () => void
+  applyPreset: (preset: LayoutPreset) => void
 }
 
 export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, toolsPreset = null, onRenameChat, onBrowserVisibilityChange, archiveChat, ref }: {
@@ -59,8 +60,12 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
       setBrowserRevealVersion((value) => value + 1)
     },
     closeFocused: () => layout.closeFocused(),
-    openLayoutPresets: () => setPresetsOpen(true)
-  }), [layout.dock, layout.toggleBrowser, layout.closeFocused, chat.selectedPaneId])
+    openLayoutPresets: () => setPresetsOpen(true),
+    applyPreset: (preset) => {
+      setBrowserRevealVersion((value) => value + 1)
+      void layout.arrange(preset, canvasSize.current)
+    }
+  }), [layout.dock, layout.toggleBrowser, layout.closeFocused, layout.arrange, chat.selectedPaneId])
   useEffect(() => window.closedai.browser.onState((state) => {
     if (state.image || state.url.startsWith('file:')) {
       layout.showBrowser()

@@ -1,6 +1,6 @@
 import { BROWSER_PANE_ID, DIVIDER_SIZE, type ChatLayout } from './layout-tree.js'
 
-export type LayoutPreset = { kind: 'browser-centre' } | { kind: 'grid'; count: number }
+export type LayoutPreset = { kind: 'browser-centre' } | { kind: 'grid'; count: number } | { kind: 'browser-side' }
 export type CanvasSize = { width: number; height: number }
 export type Grid = { cols: number; rows: number; tileWidth: number; tileHeight: number }
 /** One tile's conversations in strip order, with its active tab. */
@@ -12,7 +12,10 @@ export const COMFORTABLE_TILE = { width: 440, height: 480 }
 /** More empty chats than this is never a useful starting point, whatever the screen fits. */
 export const GRID_CHAT_CAP = 12
 export const BROWSER_CENTRE_SLOTS = 4
+export const BROWSER_SIDE_SLOTS = 1
 const BROWSER_CENTRE_RATIO = 0.42
+// Same split the browser toggle opens on a single chat, so the preset feels like the toggle's own arrangement.
+const BROWSER_SIDE_RATIO = 0.6
 
 /**
  * Columns and rows for `count` chats: the largest comfortable tile wins, then the fewest empty
@@ -99,9 +102,19 @@ export function browserCentreLayout(groups: TileGroup[], size: CanvasSize, newId
     first: column(a, b), second: right }
 }
 
-/** The tree a preset produces for the given groups, before any chats are created. */
-export function presetLayout(preset: LayoutPreset, groups: TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
-  return preset.kind === 'grid' ? gridLayout(groups, size, newId) : browserCentreLayout(groups, size, newId)
+/** A single chat beside the browser; expects exactly one group. */
+export function browserSideLayout(groups: TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
+  const [a] = groups.map(pane) as [ChatLayout]
+  return { kind: 'split', id: newId(), axis: 'horizontal', ratio: clampRatio(BROWSER_SIDE_RATIO),
+    first: a, second: { kind: 'pane', id: BROWSER_PANE_ID } }
 }
 
-export const presetSlots = (preset: LayoutPreset): number => preset.kind === 'grid' ? preset.count : BROWSER_CENTRE_SLOTS
+/** The tree a preset produces for the given groups, before any chats are created. */
+export function presetLayout(preset: LayoutPreset, groups: TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
+  if (preset.kind === 'grid') return gridLayout(groups, size, newId)
+  if (preset.kind === 'browser-side') return browserSideLayout(groups, size, newId)
+  return browserCentreLayout(groups, size, newId)
+}
+
+export const presetSlots = (preset: LayoutPreset): number =>
+  preset.kind === 'grid' ? preset.count : preset.kind === 'browser-side' ? BROWSER_SIDE_SLOTS : BROWSER_CENTRE_SLOTS

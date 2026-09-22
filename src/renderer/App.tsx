@@ -17,6 +17,7 @@ import { AppStartup } from './app-startup.js'
 import { errorMessage } from './error-message.js'
 import { TitlebarMenu, type MenuAction } from './titlebar-menu.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
+import { LayoutDock } from './chat-layout/layout-dock.js'
 import type { ChatPaneDialog } from './chat-pane.js'
 import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SettingsDialog, type SettingsTab } from './settings/settings-dialog.js'
@@ -227,6 +228,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           archiveChat={history.deleteRow}
         />}
       </div>
+      {chat.selectedPaneId && <LayoutDock onApply={(preset) => workspaceRef.current?.applyPreset(preset)} />}
       <ChatRenameDialog
         open={Boolean(renamingChat)}
         chatId={renamingChat?.id ?? ''}

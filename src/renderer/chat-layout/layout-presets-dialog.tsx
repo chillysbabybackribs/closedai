@@ -14,7 +14,7 @@ const previewTree = (preset: LayoutPreset, size: CanvasSize) => {
 }
 
 /** Preset previews are the preset's own tree laid out at the canvas' aspect ratio. */
-function PresetWireframe({ preset, size }: { preset: LayoutPreset; size: CanvasSize }): JSX.Element {
+export function PresetWireframe({ preset, size }: { preset: LayoutPreset; size: CanvasSize }): JSX.Element {
   const { panes, minimum } = layoutGeometry(previewTree(preset, size), size.width, size.height)
   // Geometry grows to the tile minimums on a small canvas, exactly as the scrolling workspace does.
   const extent = { width: Math.max(size.width, minimum.width), height: Math.max(size.height, minimum.height) }

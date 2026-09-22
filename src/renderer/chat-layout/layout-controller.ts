@@ -279,7 +279,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       if (!created && tabOwner(tree, selected.current) && !paneIds(tree).includes(selected.current)) {
         tree = selectTab(tree, paneIds(tree)[0]!, selected.current)
       }
-      setLayout({ tree: withBrowser(tree), browserVisible: preset.kind === 'browser-centre' })
+      setLayout({ tree: withBrowser(tree), browserVisible: preset.kind !== 'grid' })
       if (created) {
         selected.current = created
         setSelectionToConfirm(created)
