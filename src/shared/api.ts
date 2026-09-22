@@ -1,7 +1,9 @@
 import type { BrowserHistoryMatch } from './browser-history.js'
 import type { AgentWorkspaceBounds, BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
-import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
+import type {
+  ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot, PeerChatReadResult
+} from './chat-peers.js'
 import type { ProviderAvailability } from './provider-availability.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.js'
@@ -176,6 +178,8 @@ export type ClosedaiApi = {
     snapshot: (projectPath: string) => Promise<ProjectSnapshot>
     /** Apply mutations in order as one change; resolves with the resulting snapshot. */
     mutate: (projectPath: string, mutations: ProjectMutation[]) => Promise<ProjectSnapshot>
+    /** The tail of one worker chat's transcript, for the task node it is running. */
+    workerLog: (chatId: string, limit: number) => Promise<PeerChatReadResult | null>
     onEvent: (listener: (event: ProjectWorkspaceEvent) => void) => Unsubscribe
   }
 }

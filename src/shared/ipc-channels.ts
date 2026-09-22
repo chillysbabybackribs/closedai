@@ -1,7 +1,9 @@
 import type { BrowserHistoryMatch } from './browser-history.js'
 import type { AgentWorkspaceBounds, BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
-import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
+import type {
+  ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot, PeerChatReadResult
+} from './chat-peers.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.js'
 import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
@@ -113,6 +115,7 @@ export type IpcInvokeChannels = {
   'trace:clear': { args: []; result: void }
   'project:snapshot': { args: [string]; result: ProjectSnapshot }
   'project:mutate': { args: [string, ProjectMutation[]]; result: ProjectSnapshot }
+  'project:workerLog': { args: [string, number]; result: PeerChatReadResult | null }
 }
 
 export type IpcInvokeChannel = keyof IpcInvokeChannels
@@ -250,7 +253,8 @@ export const IPC = {
     },
     project: {
       snapshot: 'project:snapshot',
-      mutate: 'project:mutate'
+      mutate: 'project:mutate',
+      workerLog: 'project:workerLog'
     }
   },
   event: {

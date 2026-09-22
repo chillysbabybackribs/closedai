@@ -73,7 +73,7 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
   registerBrowserDownloadsIpc(reg.ipcMain, reg.browserDownloads)
   registerLocalFilesIpc(reg.ipcMain, reg.browserService)
   registerChatIpc(reg.ipcMain, reg.chatService)
-  registerProjectIpc(reg.ipcMain, reg.projectHub)
+  registerProjectIpc(reg.ipcMain, reg.projectHub, reg.chatService)
   registerTraceIpc(reg.ipcMain, traceLog)
   registerCredentialVaultIpc(reg.ipcMain, reg.credentialVault)
   registerSecurityIpc(reg.ipcMain, {
