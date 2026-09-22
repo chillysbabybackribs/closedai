@@ -241,7 +241,6 @@ async function main(): Promise<void> {
     appTools(() => appCommandAccess, () => appAutomationAccess),
     browserTools(() => pageAccess, () => networkAccess, () => networkAccess),
     cdpTools(() => cdpAccess, artifacts.service),
-    artifacts.namespace,
     captureTools(() => captureAccess, screenshots),
     research.namespace,
     peerChatTools(() => chatService),

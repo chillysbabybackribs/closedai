@@ -32,7 +32,7 @@ export function cdpTools(cdp: CdpHostProvider, artifacts?: ArtifactService): Too
           'and events after enabling a domain. IDs may expire after navigation; pass child sessionId as session_id. ' +
           'Raw Input.* requires fallback_reason and batched inspection/verification. Use closedai_ui.capture for images. ' +
           'Returns JSON text; JSON.parse in exec. command retain=true archives the full JSON response before output truncation ' +
-          'and returns a durable receipt for investigation.read/manage; requires explicit tab_id, operation_key and label. ' +
+          'and returns a durable receipt; requires explicit tab_id, operation_key and label. ' +
           'Without retention oversized results carry _closedai_truncated.',
         actions: actions(cdp, artifacts)
       }),
