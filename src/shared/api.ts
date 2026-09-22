@@ -4,6 +4,7 @@ import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
 import type { ProviderAvailability } from './provider-availability.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
+import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot } from './trace.js'
 import type {
@@ -146,6 +147,13 @@ export type ClosedaiApi = {
     /** Many switches, one persisted write; the caller refreshes the manifest afterwards. */
     setEnabledMany: (switches: import('./tools.js').ToolSwitch[]) => Promise<void>
     onEvent: (listener: (event: ToolsEvent) => void) => Unsubscribe
+  }
+  /** Settings → Models: which catalog entries appear in the composer picker per connected provider. */
+  models: {
+    manifest: () => Promise<ModelManifest>
+    setEnabled: (modelId: string, enabled: boolean) => Promise<void>
+    setEnabledMany: (switches: ModelSwitch[]) => Promise<void>
+    onEvent: (listener: (event: ModelsEvent) => void) => Unsubscribe
   }
   /** The live turn trace: in-memory, every pane, cleared at restart or on request. */
   trace: {

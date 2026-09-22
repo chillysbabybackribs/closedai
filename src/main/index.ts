@@ -61,11 +61,14 @@ import { NativeInstrumentService } from './native-instrument/service.js'
 import { nativeInstrumentTools } from './tools/native-instrument/index.js'
 import { ToolTelemetry } from './tools/telemetry.js'
 import { registerToolsIpc } from './tools/ipc.js'
+import { providerSourcesFromHub, registerModelsIpc } from './model-settings/ipc.js'
+import type { ModelsEvent } from '../shared/model-settings.js'
 import { registerTraceIpc } from './trace/ipc.js'
 import { traceLog } from './trace/trace-log.js'
 import { traceChatEvent, traceChatIpcMetrics, traceToolCalls } from './trace/taps.js'
 import type { TraceEvent } from '../shared/trace.js'
 import type { ToolsEvent } from '../shared/tools.js'
+import { detectProviderAvailability } from './provider-availability.js'
 import { registerChatIpc } from './chat-ipc.js'
 import { registerWindowIpc } from './window-ipc.js'
 import { CredentialVault } from './credential-vault.js'
@@ -495,6 +498,33 @@ function registerIpc(): void {
     onEnabledManyChanged: async (disabledIds) => {
       await settings?.set({ disabledTools: disabledIds })
       sendToMainWindow(IPC.event.toolsEvent, { type: 'changed' } satisfies ToolsEvent)
+    }
+  })
+  registerModelsIpc(ipcMain, {
+    settings: () => settings,
+    providerAvailability: () => detectProviderAvailability(),
+    providers: () => {
+      const hub = chatService?.modelSettings.selectedHub()
+      const cwd = chatService?.snapshot().workspace?.cwd ?? settings?.get().chatWorkspacePath
+      if (!hub || !cwd || !providerCatalogs) return []
+      const catalogs = providerCatalogs.forWorkspace(cwd)
+      return providerSourcesFromHub(
+        (provider) => {
+          const snapshot = hub.providerSnapshot(provider)
+          return { provider, connection: snapshot.connection, models: snapshot.models }
+        },
+        (provider) => catalogs.read(provider)?.models
+      )
+    },
+    onDisabledChanged: async (modelId, enabled, disabledIds) => {
+      await settings?.set({ disabledModels: disabledIds })
+      chatService?.modelSettings.refresh()
+      sendToMainWindow(IPC.event.modelsEvent, { type: 'enabled', modelId, enabled } satisfies ModelsEvent)
+    },
+    onDisabledManyChanged: async (disabledIds) => {
+      await settings?.set({ disabledModels: disabledIds })
+      chatService?.modelSettings.refresh()
+      sendToMainWindow(IPC.event.modelsEvent, { type: 'changed' } satisfies ModelsEvent)
     }
   })
 }

@@ -129,6 +129,12 @@ const api: ClosedaiApi = {
     setEnabledMany: (switches) => invoke(IPC.invoke.tools.setEnabledMany, switches),
     onEvent: (listener) => subscribe(IPC.event.toolsEvent, listener)
   },
+  models: {
+    manifest: () => invoke(IPC.invoke.models.manifest),
+    setEnabled: (modelId: string, enabled: boolean) => invoke(IPC.invoke.models.setEnabled, modelId, enabled),
+    setEnabledMany: (switches) => invoke(IPC.invoke.models.setEnabledMany, switches),
+    onEvent: (listener) => subscribe(IPC.event.modelsEvent, listener)
+  },
   trace: {
     setActive: (active: boolean) => invoke(IPC.invoke.trace.setActive, active),
     snapshot: () => invoke(IPC.invoke.trace.snapshot),

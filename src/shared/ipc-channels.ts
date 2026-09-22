@@ -3,6 +3,7 @@ import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, Browser
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
+import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.js'
 import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot } from './trace.js'
 import type { LibrarySettings, LibrarySnapshot } from './research-library.js'
@@ -99,6 +100,9 @@ export type IpcInvokeChannels = {
   'tools:clearTelemetry': { args: []; result: void }
   'tools:setEnabled': { args: [string, boolean]; result: void }
   'tools:setEnabledMany': { args: [ToolSwitch[]]; result: void }
+  'models:manifest': { args: []; result: ModelManifest }
+  'models:setEnabled': { args: [string, boolean]; result: void }
+  'models:setEnabledMany': { args: [ModelSwitch[]]; result: void }
   'trace:setActive': { args: [boolean]; result: void }
   'trace:snapshot': { args: []; result: TraceSnapshot }
   'trace:clear': { args: []; result: void }
@@ -115,6 +119,7 @@ export type IpcEventChannels = {
   'chat:event': ChatWorkspaceEvent
   'security:credentialApprovals': CredentialApprovalRequest[]
   'tools:event': ToolsEvent
+  'models:event': ModelsEvent
   'trace:event': TraceEvent
 }
 
@@ -221,6 +226,11 @@ export const IPC = {
       setEnabled: 'tools:setEnabled',
       setEnabledMany: 'tools:setEnabledMany'
     },
+    models: {
+      manifest: 'models:manifest',
+      setEnabled: 'models:setEnabled',
+      setEnabledMany: 'models:setEnabledMany'
+    },
     trace: {
       setActive: 'trace:setActive',
       snapshot: 'trace:snapshot',
@@ -235,6 +245,7 @@ export const IPC = {
     chatEvent: 'chat:event',
     securityCredentialApprovals: 'security:credentialApprovals',
     toolsEvent: 'tools:event',
+    modelsEvent: 'models:event',
     traceEvent: 'trace:event'
   }
 } as const satisfies {

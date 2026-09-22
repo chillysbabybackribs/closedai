@@ -37,6 +37,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatPeers: [],
   chatSelectedPaneId: null,
   disabledTools: [],
+  disabledModels: [],
   toolBatchMaxCalls: DEFAULT_BATCH_MAX_CALLS,
   // Default token rotation threshold drops accumulated tool dumps during idle time.
   chatCompactAtPercent: 80,
@@ -94,6 +95,9 @@ function normalize(parsed: unknown): AppSettings {
     chatSelectedPaneId,
     disabledTools: Array.isArray(record.disabledTools)
       ? [...new Set(record.disabledTools.filter((id): id is string => typeof id === 'string' && id.length > 0))]
+      : [],
+    disabledModels: Array.isArray(record.disabledModels)
+      ? [...new Set(record.disabledModels.filter((id): id is string => typeof id === 'string' && id.length > 0))]
       : [],
     toolBatchMaxCalls: normalizeBatchMaxCalls(record.toolBatchMaxCalls),
     chatCompactAtPercent: typeof record.chatCompactAtPercent === 'number' && Number.isFinite(record.chatCompactAtPercent)

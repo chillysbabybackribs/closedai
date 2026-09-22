@@ -498,7 +498,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 - Completed assistant responses offer copy and branching. Timestamps appear when recorded;
   older history does not acquire invented timestamps.
 - The project rail contains the working timer and project menu. The title bar has four menus.
-  File owns chat creation, history, Settings (Appearance and Credentials tabs), and closing the
+  File owns chat creation, history, Settings (Appearance, Models, Credentials, and Security tabs), and closing the
   window; View owns browser visibility, layout, chat zoom, and fullscreen; Agent owns what the
   model is given (Tools & capabilities, Research library) and a "Selected chat" section naming
   the pane its rows act on (Context inspector, Compact context, Stop turn; rows that do not apply

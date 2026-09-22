@@ -41,6 +41,7 @@
 @import "./styles/settings/appearance.css";
 @import "./styles/settings/credentials.css";
 @import "./styles/settings/security.css";
+@import "./styles/settings/models.css";
 @import "./styles/research/library.css";
 @source "../components";
 

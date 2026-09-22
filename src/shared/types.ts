@@ -169,6 +169,8 @@ export type AppSettings = {
   chatSelectedPaneId: string | null
   /** `namespace.tool` ids the user switched off in the Tools modal. */
   disabledTools: string[]
+  /** Model ids the user hid from the composer picker in Settings → Models. */
+  disabledModels: string[]
   /** Maximum inner calls accepted by one tool_batch.run invocation. Applied at startup. */
   toolBatchMaxCalls: number
   /**

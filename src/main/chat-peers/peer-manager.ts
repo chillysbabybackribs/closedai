@@ -16,6 +16,7 @@ import { chatRecordIsBlank } from '../../shared/chat-store.js'
 import type { ChatContinuation } from '../../shared/types.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
+import { refreshModelPicker as refreshPaneModelPickers, selectedHub as hubForSelectedPane } from './peer-model-settings.js'
 import { continuePeer } from './peer-continuation.js'
 import { DeferredProjectSwitch } from './deferred-project-switch.js'
 import { ChatMemory } from '../chat-context/chat-memory.js'
@@ -172,6 +173,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   paneSnapshot(paneId: ChatPaneId): ChatSnapshot | null {
     return this.lifecycle.get(paneId)?.surface.snapshot() ?? null
   }
+
+  readonly modelSettings = { selectedHub: (): ReturnType<typeof hubForSelectedPane> => hubForSelectedPane(this.lifecycle, this.selectedPaneId),
+    refresh: (): void => { refreshPaneModelPickers(this.lifecycle) } }
 
   async start(): Promise<void> {
     // The chat the user left is on screen before any provider runs: its saved view paints now,

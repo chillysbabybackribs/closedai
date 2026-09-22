@@ -10,6 +10,7 @@ import type {
   ChatTranscriptItem
 } from '../shared/chat.js'
 import { CHAT_PROVIDERS, CHAT_PROVIDER_LABELS, chatProviderOfId } from '../shared/chat-providers.js'
+import { filterPickerModels } from '../shared/model-settings.js'
 import type { ChatHistoryWindow } from '../shared/chat.js'
 import type { AppSettingsAccess } from './app-settings-store.js'
 import type { WorkspaceCatalogs } from './chat-context/provider-catalog-cache.js'
@@ -129,6 +130,24 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   get activeProvider(): ChatProvider {
     return this.active
+  }
+
+  providerSnapshot(provider: ChatProvider): ChatSnapshot {
+    return this.providers[provider].snapshot({ limit: 0 })
+  }
+
+  /** Re-merge catalogs and push an updated model list to the pane after Settings → Models changes. */
+  refreshModelPicker(): void {
+    const active = this.paneView(this.current().snapshot({ limit: 0 }))
+    this.emitEvent({
+      type: 'connection',
+      provider: this.active,
+      connection: active.connection,
+      account: active.account,
+      models: this.models(),
+      selectedModel: active.selectedModel,
+      selectedReasoningEffort: active.selectedReasoningEffort
+    })
   }
 
   restoreConversation(source: ChatSnapshot): void {
@@ -554,10 +573,13 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   /** Each provider's own catalog when it has loaded one, else the workspace's last reading of it. */
   private models(): ChatSnapshot['models'] {
-    return CHAT_PROVIDERS.flatMap((name) => {
+    const merged = CHAT_PROVIDERS.flatMap((name) => {
       const own = this.providers[name].snapshot({ limit: 0 }).models
       return own.length > 0 ? own : this.catalogs?.read(name)?.models ?? []
     })
+    const selected = this.current().snapshot({ limit: 0 }).selectedModel
+    const keepVisible = selected ? [selected] : []
+    return filterPickerModels(merged, this.settings.get().disabledModels, keepVisible)
   }
 
   private onProviderEvent(source: ChatProvider, event: ChatEvent): void {

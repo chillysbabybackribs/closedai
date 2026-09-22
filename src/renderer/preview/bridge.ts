@@ -6,6 +6,7 @@ import type { CredentialSummary } from '../../shared/credentials.js'
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, type SecuritySettings } from '../../shared/security.js'
 import { createPreviewChat } from './chat.js'
 import { sampleSecurityRequests, type Scenario } from './fixtures.js'
+import { createModelsFixture } from './models-fixture.js'
 import { createToolsFixture } from './tools-fixture.js'
 
 /** Compile-time complete: additions to the real bridge must be considered here too. */
@@ -149,6 +150,7 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
       refresh: async () => { await native(); return structuredClone(library) }, cancel: native,
       dismiss: async () => structuredClone(library), restore: async () => structuredClone(library) },
     tools: createToolsFixture(),
+    models: createModelsFixture(),
     trace: { setActive: async () => {}, snapshot: async () => ({ entries: [], dropped: 0, capacity: 0 }),
       clear: native, onEvent: idleSubscription }
   }

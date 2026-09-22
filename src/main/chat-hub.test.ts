@@ -510,3 +510,11 @@ test('a pane names its saved model while the provider is still starting', () => 
   assert.equal(hub.snapshot().selectedModel, 'claude:sonnet')
   assert.equal(hub.snapshot().selectedReasoningEffort, 'medium')
 })
+
+test('disabledModels hide catalog entries from the picker except the pane selection', async () => {
+  const { hub, settings } = build('gpt-5.6-sol')
+  settings.saved.disabledModels = ['gpt-5.6-sol', 'claude:opus']
+  const ids = hub.snapshot().models.map((entry) => entry.id)
+  assert.ok(ids.includes('gpt-5.6-sol'), 'the active model stays visible while selected')
+  assert.ok(!ids.includes('claude:opus'))
+})
