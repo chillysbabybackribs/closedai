@@ -293,5 +293,5 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   }, [cwd, clearError, fail, release])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
-  return { ...layout, error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, focusPane, activateTab, moveTabToTile, closeTab, hide, closeFocused, resize, arrange, toggleBrowser, showBrowser }
+  return { ...layout, error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane, activateTab, moveTabToTile, closeTab, hide, closeFocused, resize, arrange, toggleBrowser, showBrowser }
 }

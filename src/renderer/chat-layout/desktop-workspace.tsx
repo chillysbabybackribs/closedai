@@ -90,6 +90,11 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         onRenameChat={onRenameChat ? (id) => onRenameChat(id, chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat') : undefined}
         chatRow={(id) => chat.chats.find((row) => row.paneId === id)}
         onTogglePin={(id, pinned) => { void chat.sidebar.setChatPinned(id, pinned).catch(() => {}) }}
+        onContinueChat={(id) => {
+          onHistoryOpenChange(false)
+          const row = chat.chats.find((entry) => entry.paneId === id)
+          void layout.continueChat(id, row?.threadId ?? null, row?.modelId ?? null)
+        }}
         onPauseTab={(id) => { void chat.interruptPane(id) }}
         onResumeTab={(id) => { void chat.resumePane(id) }}
         onOpenPresets={() => setPresetsOpen(true)}
