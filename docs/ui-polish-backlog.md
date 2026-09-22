@@ -57,5 +57,5 @@ are candidates, not instructions to implement them all. Tackle one agreed item a
 
 The initial review visually inspected the live workspace and Appearance, and exercised other
 main surfaces through preview controls. Populated diffs, file/image viewers, attachment errors,
-context inspector, native failures, and systematic accessibility checks remain to be reviewed.
+native failures and systematic accessibility checks remain to be reviewed.
 The preview's no-keychain warning is fixture state, not proof of the real machine's security state.

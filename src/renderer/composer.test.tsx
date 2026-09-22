@@ -22,7 +22,6 @@ const baseProps: ComposerProps = {
   onStop: async () => {},
   paused: false,
   onResume: async () => {},
-  onInspectContext: () => {},
   cwd: '/workspace',
   projectPath: '/workspace',
   recentProjects: [],

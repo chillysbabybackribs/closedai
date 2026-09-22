@@ -120,7 +120,7 @@ Compaction and rotation seeds keep their own preambles without them.
 Legacy working checkpoints may still exist on a chat record from earlier builds. They are
 model-authored notes (goal, constraints, decisions, progress, next steps, file references),
 not verified facts, and are not written by current tools. When present, they can appear in
-recall excerpts and the Context Inspector.
+recall excerpts when applicable.
 
 Continuation and provider switching copy an applicable legacy checkpoint into the handoff when
 its thread and recorded boundary match the selected source prefix. They retain the frozen source

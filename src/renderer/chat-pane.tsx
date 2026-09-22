@@ -17,7 +17,6 @@ import { chatRunning } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { injectComposerDraft } from './composer-drafts.js'
-import { ContextInspectorModal } from './context-inspector-modal.js'
 import { CredentialApprovalCards } from './credential-approval-card.js'
 import { errorMessage } from './error-message.js'
 import type { ModelMenuHandle } from './model-menu.js'
@@ -26,8 +25,8 @@ import { ToolsModal } from './tools/tools-modal.js'
 import { TraceModal } from './trace/trace-modal.js'
 import { useCredentialApprovals } from './use-security-requests.js'
 
-/** Pane-scoped dialogs the shell's Agent and Developer menus can open on the selected pane. */
-export type ChatPaneDialog = 'tools' | 'trace' | 'context'
+/** Pane-scoped dialogs the shell's Agent and Developer menus can open on the selected chat pane. */
+export type ChatPaneDialog = 'tools' | 'trace'
 
 export const ChatPane = memo(function ChatPane({
   controller,
@@ -78,8 +77,6 @@ export const ChatPane = memo(function ChatPane({
   const [ownDialog, setOwnDialog] = useState<ChatPaneDialog | null>(null)
   const dialog = controlledDialog === undefined ? ownDialog : controlledDialog
   const setDialog = onDialogChange ?? setOwnDialog
-  const contextOpen = dialog === 'context'
-  const setContextOpen = (open: boolean): void => setDialog(open ? 'context' : null)
   const hasMessages = state.items.length > 0
   // 'starting' is the step on the way to ready, not a failure. Treating it as one made every new
   // chat flash the connection guidance and drop the composer to the bottom for the frames before
@@ -123,11 +120,6 @@ export const ChatPane = memo(function ChatPane({
     await chat.send(text, attachments)
   }
 
-  function startNewChat(): void {
-    setHistoryOpen(false)
-    onNewChat()
-  }
-
   return (
     <aside
       className={`chat-pane prompt-chat${centerComposer ? ' prompt-chat-composer-centered' : ''}`}
@@ -148,16 +140,6 @@ export const ChatPane = memo(function ChatPane({
         <ToolsModal open={dialog === 'tools'} onOpenChange={(open) => setDialog(open ? 'tools' : null)}
           onSendToChat={(text) => { injectComposerDraft(chat.selectedPaneId, text); setDialog(null) }} />
         <TraceModal open={dialog === 'trace'} onOpenChange={(open) => setDialog(open ? 'trace' : null)} paneId={chat.selectedPaneId} />
-        <ContextInspectorModal
-          open={contextOpen}
-          onOpenChange={setContextOpen}
-          report={state.turnContext}
-          usage={state.contextUsage}
-          checkpoint={state.checkpoint ?? null}
-          onCompact={manualCompact ? () => { void compactConversation(); setContextOpen(false); } : undefined}
-          compactEnabled={canCompact}
-          onNewChat={() => { startNewChat(); setContextOpen(false); }}
-        />
         {historyOpen ? (
           <ChatHistory
             activeChatId={chat.selectedPaneId}
@@ -219,7 +201,6 @@ export const ChatPane = memo(function ChatPane({
           onStop={chat.interrupt}
           paused={state.pausedTurnId !== null}
           onResume={() => sendMessage(CHAT_RESUME_PROMPT, [])}
-          onInspectContext={() => setContextOpen(true)}
           cwd={project.cwd}
           projectPath={project.projectPath}
           projectPending={Boolean(record?.pendingProject)}

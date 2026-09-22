@@ -28,7 +28,6 @@ export type ClaudeThreadHost = {
   contextUsage: () => ContextUsage | null
   setContextUsage: (usage: ContextUsage | null) => void
   setActiveTurnId: (id: string | null) => void
-  setTurnContext: (context: null) => void
   ensureConnected: () => Promise<void>
   snapshot: () => ChatSnapshot
   emitEvent: (event: ChatEvent) => void
@@ -99,7 +98,6 @@ export async function detachClaudeThread(host: ClaudeThreadHost, session: Claude
   host.setContextUsage(null)
   host.rotator.reset()
   host.setActiveTurnId(null)
-  host.setTurnContext(null)
   await host.settings.set({ chatClaudeSessionId: null })
 }
 

@@ -12,7 +12,6 @@ test('ContextMeter renders children as hover trigger and omits standalone button
     planUsage: null,
     modelName: 'Gemini 3.8 Flash',
     modelContext: '1M',
-    onInspect: () => {},
     onRefreshPlanUsage: async () => {},
     children: createElement('span', { className: 'selected-model' }, 'Gemini 3.8 Flash')
   }))
@@ -26,7 +25,6 @@ test('ContextMeter fallback renders standalone button when children omitted', ()
     usage: { usedTokens: 50_000, contextWindow: 1_000_000, percent: 5 },
     provider: 'antigravity',
     planUsage: null,
-    onInspect: () => {},
     onRefreshPlanUsage: async () => {}
   }))
   assert.match(html, /class="context-meter"/)

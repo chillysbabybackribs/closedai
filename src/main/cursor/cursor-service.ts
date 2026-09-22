@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import type {
   ChatAccount, ChatAttachment, ChatConnection, ChatEvent, ChatHistoryWindow, ChatPlanUsage,
-  ChatSnapshot, ChatThreadContent, ChatThreadSummary, ChatTurnContextReport
+  ChatSnapshot, ChatThreadContent, ChatThreadSummary
 } from '../../shared/chat.js'
 import type { RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
 import {
@@ -24,7 +24,6 @@ import {
   type ActiveBrowserContext,
   type AdditionalContext
 } from '../chat-context/turn-context.js'
-import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { reasoningEffortForModel } from '../chat-model-catalog.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { buildChatInput } from '../chat-input.js'
@@ -61,7 +60,6 @@ export class CursorChatService extends EventEmitter {
   private threadName: string | null = null
   private activeTurnId: string | null = null
   private pausedTurnId: string | null = null
-  private turnContext: ChatTurnContextReport | null = null
   private planUsage: ChatPlanUsage | null = null
   private readonly transcript: ChatTranscript
   private startPromise: Promise<void> | null = null
@@ -109,7 +107,6 @@ export class CursorChatService extends EventEmitter {
       pausedTurnId: this.pausedTurnId,
       contextUsage: null,
       planUsage: this.planUsage,
-      turnContext: this.turnContext,
       items: page?.items ?? this.transcript.snapshot(),
       ...(page ? { history: { hasEarlier: page.hasEarlier, backgroundTasks: page.backgroundTasks } } : {})
     }
@@ -157,14 +154,6 @@ export class CursorChatService extends EventEmitter {
       await this.bridge.start()
       if (this.session !== session || (sessionId && session.sessionId !== sessionId) || this.activeTurnId) throw new Error('Cursor conversation changed while preparing the turn')
       await session.send(turn.blocks)
-      this.setTurnContext(buildTurnContextReport({
-        provider: 'cursor',
-        model: this.modelState.selectedModel,
-        threadId: session.sessionId ? cursorThreadId(session.sessionId) : null,
-        prompt: turn.prompt,
-        attachments: turn.summaries,
-        additionalContext: Object.keys(context).length ? context : undefined
-      }))
       await this.clearDeliveredHandoff()
     } catch (error) {
       this.addNotice(messageOf(error), 'error')
@@ -555,11 +544,6 @@ export class CursorChatService extends EventEmitter {
     this.emitEvent({ type: 'paused', turnId })
   }
 
-  private setTurnContext(report: ChatTurnContextReport): void {
-    this.turnContext = report
-    this.emitEvent({ type: 'turnContext', report })
-  }
-
   private emitEvent(event: ChatEvent): void {
     this.emit('event', event)
   }
@@ -573,7 +557,6 @@ export class CursorChatService extends EventEmitter {
       threadName: () => this.threadName,
       setThreadName: (name) => { this.threadName = name },
       setActiveTurnId: (id) => { this.activeTurnId = id },
-      setTurnContext: () => { this.turnContext = null },
       transcriptEmpty: () => this.transcript.isEmpty,
       activeTurnId: () => this.activeTurnId,
       snapshot: () => this.snapshot(),

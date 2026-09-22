@@ -73,7 +73,6 @@ export class ClaudeChatService extends EventEmitter {
   private pausedTurnId: string | null = null
   private contextUsage: ContextUsage | null = null
   private planUsage: ChatPlanUsage | null = null
-  private turnContext: ChatTurnContextReport | null = null
   private readonly transcript: ChatTranscript
   private readonly rotator: SessionRotator
   private startPromise: Promise<void> | null = null
@@ -122,7 +121,6 @@ export class ClaudeChatService extends EventEmitter {
       pausedTurnId: this.pausedTurnId,
       contextUsage: describeUsage(this.contextUsage),
       planUsage: this.planUsage,
-      turnContext: this.turnContext,
       items: page?.items ?? this.transcript.snapshot(),
       ...(page ? { history: { hasEarlier: page.hasEarlier, backgroundTasks: page.backgroundTasks } } : {})
     }
@@ -163,14 +161,6 @@ export class ClaudeChatService extends EventEmitter {
       if (!turn) return
       if (this.session !== session || (sessionId && session.sessionId !== sessionId) || this.activeTurnId) throw new Error('Claude conversation changed while preparing the turn')
       session.send(turn.message)
-      this.setTurnContext(buildTurnContextReport({
-        provider: 'claude',
-        model: this.modelState.selectedModel,
-        threadId: session.sessionId ? claudeThreadId(session.sessionId) : null,
-        prompt: turn.prompt,
-        attachments: turn.summaries,
-        additionalContext: Object.keys(context).length ? context : undefined
-      }))
       await this.clearDeliveredHandoff()
     } catch (error) {
       this.addNotice(messageOf(error), 'error')
@@ -503,11 +493,6 @@ export class ClaudeChatService extends EventEmitter {
     this.emitEvent({ type: 'paused', turnId })
   }
 
-  private setTurnContext(report: ChatTurnContextReport): void {
-    this.turnContext = report
-    this.emitEvent({ type: 'turnContext', report })
-  }
-
   private threadHost(): ClaudeThreadHost {
     return {
       cwd: this.cwd,
@@ -525,7 +510,6 @@ export class ClaudeChatService extends EventEmitter {
       contextUsage: () => this.contextUsage,
       setContextUsage: (usage) => { this.contextUsage = usage },
       setActiveTurnId: (id) => { this.activeTurnId = id },
-      setTurnContext: () => { this.turnContext = null },
       ensureConnected: () => this.ensureConnected(),
       snapshot: () => this.snapshot(),
       emitEvent: (event) => this.emitEvent(event),

@@ -37,7 +37,6 @@ export type ChatServiceThreadHost = {
   setThreadName(name: string | null): void
   setThreadToolCatalog(catalog: unknown): void
   setActiveTurnId(id: string | null): void
-  setTurnContext(context: null): void
 }
 
 export function rememberThreadCache(host: ChatServiceThreadHost, threadId: string, content: ChatThreadContent): void {
@@ -72,7 +71,6 @@ export function detachThreadState(host: ChatServiceThreadHost): void {
   host.compactor.reset()
   host.rotator.reset()
   host.setActiveTurnId(null)
-  host.setTurnContext(null)
 }
 
 export async function resumeCodexThread(host: ChatServiceThreadHost, threadId: string): Promise<void> {
