@@ -261,7 +261,8 @@ async function main(): Promise<void> {
       // the model is driving, and Chromium gives the selected tab full cycles to load with.
       return browserService.openNewTab('about:blank', true)
     },
-    paneExists: paneId => !!chatService?.paneSnapshot(paneId)
+    paneExists: paneId => !!chatService?.paneSnapshot(paneId),
+    paneRunning: paneId => chatService?.snapshot().chats.find(row => row.paneId === paneId)?.running ?? false
   })
   const pageAccess = new BrowserPageAccess(() => browserService)
   cdpAccess = new BrowserCdpAccess(() => browserService)

@@ -126,19 +126,19 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
     {
       action: 'browser_tab',
       description:
-        'Browser tabs assigned to this chat: new, new_right, select, close, close_others, close_right, duplicate, rename, back, forward, reload, release. New tabs open selected. Defaults target this chat’s tab, independent of selection. release gives up this chat’s assignment without closing the tab. select works on any tab; other chats’ assigned tabs are protected from the rest. Returns browser state and assignments.',
+        'Browser tabs assigned to this chat: new, new_right, select, close, close_others, close_right, duplicate, rename, back, forward, reload, claim, release, release_all. New tabs open selected. Defaults target this chat’s tab, independent of selection. claim reserves a tab for this chat before acting; release drops one assignment; release_all drops every assignment for this chat without closing tabs. select works on any tab; other chats’ assigned tabs are protected from the rest. Idle assignments (owner not running) do not block session-wide tools. Returns browser state and assignments.',
       inputSchema: objectSchema({
         op: {
           type: 'string',
           enum: [
             'new', 'new_right', 'select', 'close', 'close_others', 'close_right',
-            'duplicate', 'back', 'forward', 'reload', 'rename', 'release'
+            'duplicate', 'back', 'forward', 'reload', 'rename', 'claim', 'release', 'release_all'
           ]
         },
         tab_id: {
           type: 'string',
           minLength: 1,
-          description: 'Required for select, close, close_others, close_right, duplicate, rename, and new_right.'
+          description: 'Required for select, close, close_others, close_right, duplicate, rename, new_right, and claim.'
         },
         url: { type: 'string', minLength: 1, maxLength: 2_000, description: 'Optional URL or query for new.' },
         tab_title: { type: 'string', maxLength: 300, description: 'Custom title for rename; empty clears the custom title.' }

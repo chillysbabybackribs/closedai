@@ -80,10 +80,13 @@ is what another chat's assignment refuses (`evaluate` and page `fetch` count as 
 tab the chat already owns does point its default there, so "read that tab, then act in it" needs no
 `tab_id`; later omitted targets use that chat's last assigned tab.
 Assignments protect the intervals between calls and survive turn completion and focus changes.
-`closedai_app.state` exposes `browser.coordination` (the caller's default and tab assignments).
-`browser_tab release` relinquishes a tab without closing it; detaching the chat or restarting
-also releases assignments. A closed default produces an error until a new or explicit target is
-chosen. Bulk tab close commands preflight all affected tabs before closing any.
+`closedai_app.state` exposes `browser.coordination` (the caller's default, tab assignments, and
+whether each owner pane is running). `browser_tab claim` reserves a tab; `release` drops one;
+`release_all` drops every assignment for the calling chat without closing tabs. Detaching the chat
+or restarting also releases assignments. Idle assignments keep per-tab act protection but do not
+block session-wide tools while the owner is not running. A closed default produces an error until a
+new or explicit target is chosen. Bulk tab close commands preflight all affected tabs before closing
+any.
 
 Independent tabs can navigate, extract, and capture concurrently. Foreground input and tab-strip
 commands take a shared browser lock; conflicting calls fail busy. A timed-out operation keeps its

@@ -25,6 +25,8 @@ export type BrowserCoordinationHost = {
   tabs(): readonly Tab[]
   create(): string
   paneExists(paneId: string): boolean
+  /** Whether the pane is running a turn or live background work; idle assignments stay on tabs but do not block session-wide tools. */
+  paneRunning(paneId: string): boolean
 }
 
 /** App-session assignments survive turns and focus changes, but never a detached chat. */
@@ -69,7 +71,7 @@ export class BrowserCoordination {
     if (!tabCommand && !pageTool && !capture && namespace !== 'browser_cdp') return input
     if (namespace === 'browser_cdp' && tool === 'protocol') this.checkProtocol(input, pane)
     if (tabCommand && input.op === 'new') return input
-    if (tabCommand && input.op === 'release') return input
+    if (tabCommand && ['release', 'release_all', 'claim'].includes(String(input.op))) return input
     if (pageTool && tool === 'page' && action === 'navigate') {
       if (input.new_tab === true && input.tab_id) throw new Error('navigate cannot combine tab_id with new_tab')
       if (input.new_tab === true || (!input.tab_id && !this.defaults.has(pane))) {
@@ -129,16 +131,31 @@ export class BrowserCoordination {
     if (this.defaults.get(paneId) === id) this.defaults.delete(paneId)
   }
 
+  /** Drop every tab assignment for one chat without closing tabs. */
+  releaseAll(paneId: string): number {
+    this.prune()
+    let released = 0
+    for (const [tabId, owner] of [...this.owners.entries()]) {
+      if (owner !== paneId) continue
+      this.owners.delete(tabId)
+      released++
+    }
+    this.defaults.delete(paneId)
+    return released
+  }
+
   snapshot(paneId?: string | null): {
     defaultTabId: string | null; assignmentCount: number; omittedAssignments: number
-    assignments: Array<{ tabId: string; paneId: string }>
+    assignments: Array<{ tabId: string; paneId: string; paneRunning: boolean }>
   } {
     this.prune()
     const defaultTabId = paneId ? this.defaults.get(paneId) ?? null : null
     const rank = ([id, owner]: [string, string]) => (id === defaultTabId ? 2 : owner === paneId ? 1 : 0)
     const entries = [...this.owners].sort((a, b) => rank(b) - rank(a))
     return { defaultTabId, assignmentCount: entries.length, omittedAssignments: Math.max(0, entries.length - 32),
-      assignments: entries.slice(0, 32).map(([tabId, owner]) => ({ tabId, paneId: owner })) }
+      assignments: entries.slice(0, 32).map(([tabId, owner]) => ({
+        tabId, paneId: owner, paneRunning: this.host.paneRunning(owner)
+      })) }
   }
 
   /** Whether this call only looks at the tab, so it needs no assignment and takes none. */
@@ -155,8 +172,9 @@ export class BrowserCoordination {
   }
 
   private exclusiveSession(pane: string): void {
-    if ([...this.owners.values()].some(owner => owner !== pane)) {
-      throw new Error('Shared browser session or app-wide input is in use by another chat. Use tab-scoped browser tools; session-wide changes require other chats to release their tabs.')
+    const blocker = [...this.owners.values()].find(owner => owner !== pane && this.host.paneRunning(owner))
+    if (blocker) {
+      throw new Error('Shared browser session or app-wide input is in use by another chat that is still running. Use tab-scoped browser tools, wait for that chat to finish, or ask it to release its tabs with browser_tab release or release_all.')
     }
   }
 

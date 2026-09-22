@@ -175,6 +175,18 @@ export class AppCommandAccess implements AppCommandHost {
         if (!paneId) throw new Error('Releasing a tab requires a calling chat')
         this.deps.browserCoordination?.release(request.tabId, paneId)
         break
+      case 'release_all':
+        if (!paneId) throw new Error('Releasing tab assignments requires a calling chat')
+        return {
+          releasedCount: this.deps.browserCoordination?.releaseAll(paneId) ?? 0,
+          ...projectBrowser(browser),
+          coordination: this.deps.browserCoordination?.snapshot(paneId)
+        }
+      case 'claim':
+        if (!paneId) throw new Error('Claiming a tab requires a calling chat')
+        if (!request.tabId) throw new Error('browser_tab claim needs tab_id')
+        this.deps.browserCoordination?.claim(requireTab(), paneId)
+        break
     }
     const created = browser.tabList().filter(tab => !previous.has(tab.id))
     if (paneId) for (const tab of created) this.deps.browserCoordination?.claim(tab.id, paneId)

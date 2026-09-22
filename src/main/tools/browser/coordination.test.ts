@@ -5,17 +5,18 @@ import { ToolRegistry } from '../registry.js'
 import { textResult, type JsonObject } from '../tool.js'
 import { batchTools } from '../batch/index.js'
 
-function harness() {
+function harness(running = new Set<string>()) {
   const tabs = [{ id: 'user', active: true }, { id: 'other', active: false }]
   const panes = new Set(['a', 'b'])
   const policy = new BrowserCoordination({
     tabs: () => tabs,
     paneExists: pane => panes.has(pane),
+    paneRunning: pane => running.has(pane),
     create: () => { const id = `new-${tabs.length}`; tabs.push({ id, active: false }); return id }
   })
   const prepare = (pane: string, input: JsonObject, namespace = 'embedded_browser', tool = 'page') =>
     policy.prepare({ namespace, tool, arguments: input }, input, { paneId: pane })
-  return { tabs, panes, policy, prepare }
+  return { tabs, panes, running, policy, prepare }
 }
 
 test('two chats navigate independently and keep their targets when UI selection changes', () => {
@@ -144,11 +145,33 @@ test('bulk close preflights every affected tab and shared session mutations refu
   for (const op of ['close_others', 'close_right']) {
     assert.throws(() => prepare('a', { action: 'browser_tab', op, tab_id: 'user' }, 'closedai_app', 'command'), /assigned to chat b/)
   }
-  assert.throws(() => prepare('a', { action: 'set_cookie' }, 'embedded_browser', 'session'), /Shared browser session/)
-  assert.throws(() => prepare('a', { action: 'target', operation: 'close', target_id: 'other-root' }, 'browser_cdp', 'protocol'), /Shared browser session/)
-  assert.throws(() => prepare('a', { action: 'command', method: 'Target.closeTarget' }, 'browser_cdp', 'protocol'), /Shared browser session/)
-  assert.throws(() => prepare('a', { action: 'click' }, 'closedai_app', 'ui'), /Shared browser session/)
   assert.equal(prepare('a', { action: 'fetch', method: 'GET' }, 'embedded_browser', 'session').method, 'GET')
+  assert.equal(prepare('a', { action: 'click' }, 'closedai_app', 'ui').action, 'click')
+})
+
+test('idle peer tab assignments do not block session-wide tools; running peers still do', () => {
+  const { prepare, running } = harness()
+  prepare('a', { action: 'evaluate', expression: '1', tab_id: 'user' })
+  prepare('b', { action: 'evaluate', expression: '1', tab_id: 'other' })
+  assert.equal(prepare('a', { action: 'click' }, 'closedai_app', 'ui').action, 'click')
+  running.add('b')
+  assert.throws(() => prepare('a', { action: 'set_cookie' }, 'embedded_browser', 'session'), /still running/)
+  assert.throws(() => prepare('a', { action: 'click' }, 'closedai_app', 'ui'), /still running/)
+})
+
+test('claim, release, and release_all manage assignments without closing tabs', () => {
+  const { prepare, policy } = harness()
+  assert.doesNotThrow(() => prepare('a', { action: 'browser_tab', op: 'claim', tab_id: 'user' }, 'closedai_app', 'command'))
+  policy.claim('user', 'a')
+  assert.equal(policy.canUse('user', 'a'), true)
+  assert.equal(policy.canUse('user', 'b'), false)
+  policy.release('user', 'a')
+  policy.claim('user', 'b')
+  prepare('b', { action: 'evaluate', expression: '1', tab_id: 'other' })
+  assert.equal(policy.snapshot('b').assignmentCount, 2)
+  assert.equal(policy.releaseAll('b'), 2)
+  assert.equal(policy.snapshot('b').assignmentCount, 0)
+  assert.equal(policy.canUse('user', 'a'), true)
 })
 
 test('registry resolves bare tool names and defaults before cross-chat locks', async () => {

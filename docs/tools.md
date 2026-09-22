@@ -237,19 +237,23 @@ The first untargeted navigation creates a tab and selects it. Observing verbs (`
 `wait_for`, `query`, `extract`, `console`, `capture browser_page`, CDP `inspect_page`, `metrics`,
 `events`, `requests`, `body`, and `browser_tab select`) read any tab and claim none; reading one the
 chat already owns still points its default there, and later omitted targets use that default. Acting in a page — navigation, `evaluate`, page `fetch`, input,
-tab-strip changes — claims an unassigned tab and is refused on another chat's tab. A closed default fails without falling back. `browser_tab release`
-relinquishes an assignment without closing the page; detaching the chat and app restart also release
-assignments. `state.browser.coordination` reports defaults and owners. Bulk closes preflight all
-affected tabs. Search tabs and page popups participate in the same assignments.
+tab-strip changes — claims an unassigned tab and is refused on another chat's tab. `browser_tab claim`
+reserves a tab before acting; `release` drops one assignment; `release_all` drops every assignment
+for the calling chat without closing tabs. A closed default fails without falling back. Detaching the
+chat and app restart also release assignments. `state.browser.coordination` reports defaults,
+owners, and `paneRunning` per assignment. Bulk closes preflight all affected tabs. Search tabs and
+page popups participate in the same assignments.
 
 Per-tab locks cover page reads, scripts, captures, and CDP work. Foreground semantic and raw input,
 tab-strip commands, session operations, and raw cross-target commands share a browser-wide lock.
 Different tab reads/captures can overlap; input calls that would fight for focus fail busy.
 Locks survive cancellation/timeout until the underlying operation actually settles. Session-wide
 cookie writes, mutating session fetches, global network-rule changes, renderer input, and raw Target
-mutations refuse while another chat has assigned tabs. Use addressed app tab commands instead of
-raw cross-target commands during parallel work. Human input and provider-native tools are outside
-these locks, and page scripts/site actions still share cookies and remote account state.
+mutations refuse while another chat that is **still running** has assigned tabs. Idle assignments
+(visible tabs a finished chat forgot to release) keep per-tab act protection but no longer block
+session-wide tools. Use addressed app tab commands instead of raw cross-target commands during
+parallel active work. Human input and provider-native tools are outside these locks, and page
+scripts/site actions still share cookies and remote account state.
 An explicitly tab-scoped network rule can be added to the caller's own tab during parallel work.
 
 ### Parallel research runs

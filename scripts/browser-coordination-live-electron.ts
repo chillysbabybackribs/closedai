@@ -46,7 +46,8 @@ async function verify() {
   browser.setBounds({ x: 0, y: 0, width: 800, height: 600, visible: true })
   const foreground = browser.tabList().find(tab => tab.active)!.id
   const coordination = new BrowserCoordination({ tabs: () => browser.tabList(),
-    create: () => browser.openNewTab('about:blank', true), paneExists: pane => ['a', 'b'].includes(pane) })
+    create: () => browser.openNewTab('about:blank', true), paneExists: pane => ['a', 'b'].includes(pane),
+    paneRunning: () => false })
   browser.on('popup', (opener, child) => coordination.inherit(opener, child))
   const page = new BrowserPageAccess(() => browser)
   await page.waitFor(foreground, { until: 'load', timeoutMs: 5000 })

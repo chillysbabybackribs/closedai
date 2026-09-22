@@ -117,6 +117,8 @@ export type AppBrowserTabRequest = {
     | 'reload'
     | 'rename'
     | 'release'
+    | 'release_all'
+    | 'claim'
   tabId?: string
   url?: string
   title?: string | null
