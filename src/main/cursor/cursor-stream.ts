@@ -1,4 +1,5 @@
 import type { ChatTranscriptItem } from '../../shared/chat.js'
+import { displayUserMessageText } from '../../shared/chat-display.js'
 import type { TranscriptOp, TurnEnd } from '../chat-transcript-ops.js'
 import { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
 import { promoteCaptureToScreenshot } from '../tool-transcript-shared.js'
@@ -226,7 +227,7 @@ export class CursorTurnTranslator {
 
   private textItem(open: OpenText, streaming: boolean): ChatTranscriptItem {
     const { turnId } = this.options
-    if (open.kind === 'user') return { type: 'user', id: open.id, turnId, text: open.text }
+    if (open.kind === 'user') return { type: 'user', id: open.id, turnId, text: displayUserMessageText(open.text) }
     if (open.kind === 'reasoning') {
       return { type: 'reasoning', id: open.id, turnId, text: open.text, streaming }
     }

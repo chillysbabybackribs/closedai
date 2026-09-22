@@ -68,11 +68,13 @@ result cap; it is not converted to an image or placed in `ScreenshotStore`, and 
 can be truncated. Use `closedai_ui.capture` for a budgeted image with a retained display copy.
 
 With explicit `retain: true`, `tab_id`, `operation_key` and `label`, `command` instead retains
-the full host response JSON before text truncation and returns a durable artifact receipt.
-Use `investigation.read` for byte pages or JSON-pointer projections, and `investigation.manage`
-for export/delete. Retention does not qualify screenshot freshness or convert base64 into an
-image channel. A committed same-key retry returns the receipt without sending CDP again;
-an interrupted reservation refuses reexecution. See [durable artifacts](investigation-artifacts.md).
+the full host response JSON before text truncation and returns a compact artifact receipt from
+the worker-backed SQLite store under `investigation-artifacts/`. There is no separate model-facing
+read, list, export, or delete tool: the receipt and operation-key semantics are the durable
+surface. Retention does not qualify screenshot freshness or convert base64 into an image channel.
+A committed same-key retry returns the receipt without sending CDP again; an interrupted
+reservation refuses reexecution. Scope is the caller's chat id and project directory. See
+[Tools](tools.md) for registry limits and `src/main/investigations/` for storage contracts.
 
 ### `events`
 

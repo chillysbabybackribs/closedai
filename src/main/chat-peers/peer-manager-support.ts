@@ -99,6 +99,7 @@ export function peerManagerWakeLater(host: PeerManagerSupportHost, paneId: ChatP
       && !host.visiblePaneIds().has(paneId)
       && !host.retainedTabIds().has(paneId)
       && !isPinnedChat(host.store, paneId)
+      && !host.store.get(paneId)?.agentWorker
       && host.lifecycle.peers.size > 1
       && host.lifecycle.discardIfBlank(paneId)) {
       await peerManagerPersistOpenChats(host)

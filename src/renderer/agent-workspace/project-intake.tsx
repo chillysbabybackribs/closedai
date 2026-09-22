@@ -1,6 +1,7 @@
 import { Boxes, Check, Compass, FlaskConical, RefreshCw, Sparkles } from 'lucide-react'
 
 import type { ChatTranscriptItem } from '../../shared/chat.js'
+import { displayUserMessageText } from '../../shared/chat-display.js'
 import { AgentWorkspaceTranscript } from '../agent-workspace/agent-workspace-transcript.js'
 import { clarityItems, clip, type DirectionRecord } from './project-discovery.js'
 
@@ -19,7 +20,7 @@ export function transcriptItemsToMessages(items: ChatTranscriptItem[]): Message[
           id: item.id,
           at: Date.now(),
           role: 'user',
-          text: item.text
+          text: displayUserMessageText(item.text)
         })
       }
     } else if (item.type === 'assistant') {
@@ -129,7 +130,7 @@ export function ProjectIntake(props: {
         <span /><span /><span /> Understanding the direction
       </div>}
       {ready && !busy && <div className="project-start-row">
-        <div><strong>Direction record complete</strong><span>Correct anything above, or begin with this understanding.</span></div>
+        <p>Start when this reads right, or correct anything above.</p>
         <button type="button" data-ui="agent.project-start" onClick={onStart}>Start building</button>
       </div>}
     </div>

@@ -50,6 +50,8 @@ export type ChatRecord = {
   sessionRotations: ChatSessionRotation[]
   /** True when the chat is created for and mounted in the agent workspace pane. */
   agentWorkspace?: boolean
+  /** Headless build worker spawned by the agent workspace coordinator; not shown as a main tab. */
+  agentWorker?: boolean
 }
 
 export type ChatRecordSeed = Pick<ChatRecord, 'cwd' | 'projectPath' | 'provider' | 'modelId' | 'reasoningEffort'> &

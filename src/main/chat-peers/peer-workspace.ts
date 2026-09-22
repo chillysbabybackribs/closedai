@@ -30,6 +30,7 @@ export interface ChatWorkspaceSurface {
   /** Every thread the providers and the store know, reconciled first; for tools that search by title. */
   listThreads(): Promise<ChatThreadSummary[]>
   newPeer(): Promise<ChatPaneId>
+  newWorkerPeer(parentPaneId: ChatPaneId): Promise<ChatPaneId>
   newDetachedPeer(): Promise<ChatPaneId>
   closePeer(paneId: ChatPaneId): Promise<void>
   continueInNewPeer(source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId>

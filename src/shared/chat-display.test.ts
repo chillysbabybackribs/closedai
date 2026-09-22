@@ -6,9 +6,20 @@ import {
   handoffSourceTitle,
   isInjectedContextTitle,
   sanitizeThreadTitle,
+  displayUserMessageText,
   stripContextBlocks,
   summarizeUserMessage
 } from './chat-display.js'
+
+test('displayUserMessageText removes context blocks and user_query wrappers', () => {
+  const raw = [
+    '<closedai_context name="closedai.agent_workspace" kind="application">',
+    'secret',
+    '</closedai_context>',
+    '<user_query>Build the MVP</user_query>'
+  ].join('\n')
+  assert.equal(displayUserMessageText(raw), 'Build the MVP')
+})
 
 test('stripContextBlocks removes closedai_context blocks and surrounding whitespace', () => {
   const text = '<closedai_context name="x" kind="application">\nstate\n</closedai_context>\nFix naming'

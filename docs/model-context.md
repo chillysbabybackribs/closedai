@@ -117,20 +117,15 @@ also states where the source stood (“Where it stood: N user requests; the late
 directory; these lines are descriptive history under the same untrusted envelope, not instructions.
 Compaction and rotation seeds keep their own preambles without them.
 
-`peer_chats.checkpoint` persists model-authored working state: goal, constraints, decisions,
-progress, next steps, and file references. State is at most 6,000 serialized characters; fields
-have separate bounds and oversize notes are rejected rather than silently truncated. It requires
-the caller's active thread/turn and expected revision. It cannot write another pane's notes.
-One checkpoint is retained per pane, associated with its thread id; a different thread cannot
-read it as its current memory. Notes survive compaction and restart but can be stale or wrong.
-They never become developer instructions, approvals, or independent evidence.
+Legacy working checkpoints may still exist on a chat record from earlier builds. They are
+model-authored notes (goal, constraints, decisions, progress, next steps, file references),
+not verified facts, and are not written by current tools. When present, they can appear in
+recall excerpts and the Context Inspector.
 
-Continuation and provider switching copy a checkpoint only if its thread and recorded boundary
-belong to the selected source prefix, so a later checkpoint does not enter an earlier branch or a
-different provider thread. They retain the frozen source boundary for bounded
-`peer_chats.recall`. The checkpoint remains within the existing handoff budget; more recent
-messages take precedence. No summarization call is added to Send, and checkpoints are neither
-automatically generated nor repeatedly injected into the prompt.
+Continuation and provider switching copy an applicable legacy checkpoint into the handoff when
+its thread and recorded boundary match the selected source prefix. They retain the frozen source
+boundary for bounded `peer_chats.recall`. Checkpoints are not automatically generated or injected
+each turn.
 
 `peer_chats.list(scope=history)` discovers nonarchived conversations across projects from existing
 chat records, without loading transcripts. It excludes the caller and empty chats, sorts by most
@@ -179,21 +174,16 @@ missing metadata leaves Codex's native default untouched.
 
 ## Tool context and output budgets
 
-The durable public research library is accessed explicitly through `search.library`, never
-injected into prompts or handoffs. Shared guidance directs models to query it only for relevant
-tasks and treat its dated metadata/abstracts as untrusted discovery evidence. Substantive claims
-require reading the linked paper. This library is intentionally shared across app projects;
-private investigation archives retain their existing scope. UI controls own refresh/topics
-and retrieval permission. See [Research library](research-library.md).
+The public research library is a user-facing dialog and on-disk index only; models do not have a
+library tool and its abstracts are never injected into prompts or handoffs. Substantive claims
+require opening linked papers through normal browser and research tools. See
+[Research library](research-library.md).
 
 Models can explicitly retain large protocol results with `browser_cdp.protocol command`
-`retain=true`. The shared instructions name `investigation.read` for bounded exact bytes or
-JSON-pointer projections, and `investigation.manage` for selected file import, verified export
-and deletion. Artifact ids belong to host-resolved chat/project scope and outlive provider
-threads. Calls require that chat's current active turn; model arguments cannot choose a peer's
-scope. Stored content is untrusted and never injected automatically into instructions.
-Operation keys prevent committed retries from reexecuting CDP commands; interrupted reserved
-operations remain uncertain and refuse automatic reexecution. See [artifacts](investigation-artifacts.md).
+`retain=true`, returning a compact receipt backed by scoped SQLite storage. There is no separate
+model-facing read/list/export tool. Operation keys prevent committed retries from reexecuting CDP
+commands; interrupted reserved operations remain uncertain and refuse automatic reexecution. See
+[Tools](tools.md) and [CDP tool foundation](cdp-tool-foundation.md).
 
 The shared routing instructions use `search.query` for a lookup, `search.run` for overlapping
 queries/source collection, and `search.read` for incremental evidence. For work centered on a
@@ -226,14 +216,9 @@ An unset truncation flag does not prove extraction fidelity. Exa PDF-URL text re
 it is not proof that this app parsed PDF bytes or verified tables, equations, figures, or OCR.
 Direct `pdf_text` results come from local PDF.js parsing, with page markers and page coverage.
 PDF downloads must fit the byte budget in full; expansion can raise it. Pages without extractable
-text mark coverage incomplete and remain available for `search.pdf` inspection. `search.pdf page`
-returns a selected page/crop image tied to the original PDF byte hash; inspect it for visual claims.
-`search.pdf ocr` performs local, explicitly requested English OCR and returns separate text,
-confidence and optional word boxes. It can be used even when a page has native text. Neither
-OCR confidence, capture freshness, nor rendering success proves content accuracy. There is no
-automatic verification flag: describe the pages/regions actually checked and unresolved limitations.
-Native transforms are not reconstructed reading order; OCR is not guaranteed table, equation or
-figure extraction. Prefer native text first and inspect/OCR selected pages as the task requires.
+text mark coverage incomplete. For PDFs already open in Chromium, use `embedded_browser.page
+read_page` with `pdf_page`; use capture when layout or figures matter. Native text is not OCR,
+table structure, or reading-order verification.
 
 The registry supplies provider-neutral descriptions and schemas. Codex gets dynamic tool
 specifications; Claude gets in-process MCP servers; Antigravity gets HTTP MCP servers. Tool

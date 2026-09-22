@@ -56,31 +56,18 @@ papers already evicted need another refresh. Saved papers outside the current pu
 window are excluded at read time. Retrieval older than seven days is marked stale; this is
 a freshness hint, not an automatic refresh or a judgment that a paper's claims are obsolete.
 
-The provider-neutral `search.library` tool has three read-only actions:
-
-- `status`: settings, availability, counts, and the last refresh report without paper content.
-- `search`: local word matching over titles and abstracts, weighting titles more strongly.
-  Requires at least two query words to match (one for a one-word query). Returns five results
-  by default, at most ten, each with a 400-character excerpt and dates.
-- `read`: one current, undismissed saved abstract by id, including provenance and hash.
-
-Search is lexical, not semantic; discovery at alphaXiv is semantic. A saved-library miss does
-not establish that relevant research does not exist. Search/read fail when agent retrieval is
-disabled. Status remains available to explain that setting. The Tools tool switches also
-apply normally. Mutations are available through the user-facing IPC/UI, not this read tool.
-
-Every result labels the scope, source, and untrusted abstract-level evidence. No library
-content is injected on Send, at startup, or during session rotation. Models are directed to
-use it only for relevant tasks and to read linked papers before relying on methods/claims.
-There is no model-generated summary, automatic recommendation, experiment winner, or promoted
-application policy in this release.
+Models do not have a dedicated library tool. The **Disable agent retrieval** switch and the
+dialog itself are the only model-adjacent controls; nothing from the index is injected on Send,
+at startup, or during session rotation. For substantive claims, models use public web research
+(`search.query`, `search.run`) and open linked papers in the browser rather than relying on
+stored abstracts alone.
 
 ## Ownership and verification
 
 Shared contracts live in `src/shared/research-library.ts`; the main-process provider, store,
 service, and IPC handlers live in `src/main/research-library/`. The existing research runtime
-owns its public session and shutdown. `src/main/tools/search/library.ts` exposes bounded reads;
-`src/renderer/research/` owns the dialog/controller and `styles/research/` its styles.
+owns its public session and shutdown. `src/renderer/research/` owns the dialog/controller and
+`styles/research/` its styles.
 
 Focused tests exercise parsing/transport limits, cancellation, partial failure, concurrent
 refreshes, persistence, deduplication, dismissal/disable behavior, relevance/date filtering,

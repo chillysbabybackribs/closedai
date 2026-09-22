@@ -131,8 +131,8 @@ export class PeerSummaryCache {
 export function summaryForRecord(paneId: string, record: ChatRecord): ChatPeerSummary {
   return {
     paneId,
-    parentPaneId: null,
-    kind: 'peer',
+    parentPaneId: record.parentChatId,
+    kind: record.agentWorker ? 'subagent' : 'peer',
     provider: record.provider,
     modelId: record.modelId,
     threadId: record.threadId,
@@ -190,8 +190,8 @@ export function summaryOf(
     : activeBg ? (activeBg.background?.progress || activeBg.label || 'Background task') : activityFromItem(latest)
   return {
     paneId,
-    parentPaneId: null,
-    kind: 'peer',
+    parentPaneId: record.parentChatId,
+    kind: record.agentWorker ? 'subagent' : 'peer',
     provider: snapshot.provider,
     modelId: snapshot.selectedModel ?? record.modelId,
     threadId: snapshot.threadId ?? record.threadId,

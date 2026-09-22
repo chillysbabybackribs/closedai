@@ -10,6 +10,16 @@ export function stripContextBlocks(text: string): string {
   return out.trim()
 }
 
+const USER_QUERY_RE = /<user_query>\s*([\s\S]*?)\s*<\/user_query>/gi
+
+/** User-visible transcript text: strip app context and provider turn wrappers. */
+export function displayUserMessageText(text: string): string {
+  let out = stripContextBlocks(text)
+  out = out.replace(USER_QUERY_RE, (_, body: string) => body.trim())
+  out = out.replace(/<user_query>\s*/gi, '').replace(/<\/user_query>\s*/gi, '')
+  return out.trim()
+}
+
 /** True when a title is really injected markup, not a human-readable name. */
 export function isInjectedContextTitle(title: string): boolean {
   const trimmed = title.trim()
@@ -21,7 +31,7 @@ export function isInjectedContextTitle(title: string): boolean {
  * non-empty line, and clips to max. Returns empty when nothing remains.
  */
 export function summarizeUserMessage(text: string, max = 60): string {
-  const line = stripContextBlocks(text)
+  const line = displayUserMessageText(text)
     .split('\n')
     .map((part) => part.trim())
     .find(Boolean) ?? ''

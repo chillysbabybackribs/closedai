@@ -80,6 +80,19 @@ test('a tool still running when the turn ends is closed as failed', () => {
   assert.equal(closed[0]?.type === 'tool' && closed[0].status, 'failed')
 })
 
+test('user replay chunks drop injected closedai_context before display', () => {
+  const instance = translator(null)
+  const ops = apply(instance, [{
+    sessionUpdate: 'user_message_chunk',
+    content: {
+      type: 'text',
+      text: '<closedai_context name="closedai.agent_workspace" kind="application">\nrules\n</closedai_context>\nhello'
+    }
+  }])
+  const item = [...ops, ...instance.finish()].flatMap((op) => (op.type === 'item' ? [op.item] : [])).find((entry) => entry.type === 'user')
+  assert.equal(item?.type === 'user' && item.text, 'hello')
+})
+
 test('a replay turns user chunks into user items with no turn of their own', () => {
   const instance = translator(null)
   const ops = apply(instance, [

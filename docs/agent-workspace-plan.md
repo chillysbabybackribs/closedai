@@ -50,7 +50,7 @@ Verified in source on 2026-09-22.
 | Restart control, `closedai_ui.capture` `agent_workspace` | Live | `layout.agent-restart`, `src/main/tools/capture/agent-workspace.ts` |
 | Model tool over the store: `closedai_project` `snapshot` and `mutate` | Live (v1) | `src/main/tools/project/`; resolves the calling chat's project, or `project_path` |
 | Start sends the coordinator a kickoff message; coordinator plans tasks into the store | Live (v1) | `project-workspace.tsx` `start`, building-phase paragraphs in `agent-workspace-instructions.ts` |
-| Worker chats | Live (v1), by prompt | Ordinary chats the coordinator opens with `closedai_app.command new_chat` and briefs with `send_message`; they record completion with `closedai_project.mutate` |
+| Worker chats | Live (v1), by prompt | Background chats the coordinator opens with `closedai_app.command new_chat` (`background: true`) and briefs with `send_message`; they stay off the tab strip and record completion with `closedai_project.mutate` |
 | Direction record filled from the transcript | Prototype | `syncDiscoveryWithItems` maps user message N to pillar N and invents unknowns and evidence; persisted through `direction` mutations so Start is reachable |
 | User direction during building | Prototype | The pane turns it into an amendment node itself (`amendTree`, whole-tree replace) and also forwards it to the coordinator |
 | Acknowledged reports, open completion proposal | Prototype | Local React state and a 900 ms proposal timer |
@@ -87,7 +87,7 @@ What v1 is made of, all landed 2026-09-22:
 - Start writes the `start` mutation, then sends the coordinator chat a kickoff message through the
   composer bridge (`START_MESSAGE` in `project-workspace.tsx`).
 - Three building-phase paragraphs in `agent-workspace-instructions.ts`: read the snapshot, plan one
-  to three small tasks, open a worker with `closedai_app.command new_chat`, brief it with
+  to three small tasks, open a worker with `closedai_app.command new_chat` (`background: true`), brief it with
   `send_message` (`await_turn` false) including the project path and the completion instruction,
   mark the task active, never do the work itself, reply in three sentences.
 - Workers are ordinary chats with every tool. Nothing distinguishes them but the message they got.

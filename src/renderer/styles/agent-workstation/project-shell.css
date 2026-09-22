@@ -348,30 +348,19 @@
 .project-start-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  margin-top: 18px;
-  padding: 12px 13px;
-  border: 1px solid rgb(157 140 255 / 20%);
-  border-radius: 9px;
-  background: rgb(157 140 255 / 6%);
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 0 2px;
 }
 
-.project-start-row > div {
-  display: grid;
+.project-start-row > p {
+  flex: 1;
   min-width: 0;
-}
-
-.project-start-row strong {
-  color: #e6e3f7;
-  font-size: 12.5px;
-  font-weight: 580;
-}
-
-.project-start-row span {
-  margin-top: 3px;
+  margin: 0;
   color: #85818f;
-  font-size: 11.5px;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .project-start-row button {

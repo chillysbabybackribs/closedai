@@ -219,13 +219,10 @@ the handoff is not rendered as synthetic transcript content. Drawer rows carry l
 within one chat is not reported as a continuation.
 See `chat-context/thread-handoff.ts` and `chat-peers/peer-continuation.ts`.
 
-Models can save a structured working checkpoint with `peer_chats.checkpoint`: goal, constraints,
-decisions, progress, next steps, and file references. One checkpoint per chat is stored with its
-thread id, revision, and transcript boundary on the chat record; it is usable only for that
-thread. State is capped at 6,000 serialized characters and oversized saves are rejected. Writes
-require the caller's active turn and matching expected revision. These are model-authored notes,
-not verified facts or authorization. They are not automatically regenerated or injected each turn;
-active checkpoints are surfaced visually in the Context Inspector dialog with goals, progress, decisions, and files.
+A chat record may still carry a legacy **working checkpoint** (goal, constraints, decisions,
+progress, next steps, and file references) from earlier builds. There is no model-facing
+checkpoint tool anymore; new checkpoints are not written. When present, checkpoints are
+read-only in the Context Inspector and are model-authored notes, not verified facts.
 
 A continuation or provider switch copies an applicable checkpoint into its existing
 ≤12k-character handoff, alongside recent conversation. It freezes the source's last item id, and
@@ -363,7 +360,7 @@ read and write the same store through the `closedai_project` tool (`snapshot`, `
 `docs/tools.md`), resolved to the calling chat's project. Pressing Start writes the `start` mutation
 and then sends the coordinator chat a kickoff message; the coordinator's building-phase guidance in
 `agent-workspace-instructions.ts` has it read the snapshot, write the first tasks as tree nodes, open
-an ordinary chat with `closedai_app.command new_chat`, and hand it one task by `send_message`. The
+a background worker with `closedai_app.command new_chat` (`background: true`, off the main tab strip), and hand it one task by `send_message`. The
 worker is a normal chat in the same project and records its own completion with `closedai_project.mutate`,
 so the canvas shows nodes changing because a chat wrote them. There is no dispatch engine, claim, or
 lease; one task at a time is the whole v1 contract. What is still **prototype**: the direction record is
@@ -816,7 +813,7 @@ instrumentation.
 | Claude / Antigravity / Cursor sessions and translation | `src/main/claude/`, `src/main/antigravity/`, `src/main/cursor/` |
 | Model instructions, trust and handoff | `src/main/chat-context/`, provider `*-instructions.ts` files |
 | Provider-neutral tool definitions and execution | `src/main/tools/` |
-| Durable artifacts, worker storage, retention and retrieval | `src/main/investigations/`, `src/main/tools/investigation/`, `src/shared/investigation-artifacts.ts` |
+| CDP retain receipts, worker storage | `src/main/investigations/`, `src/shared/investigation-artifacts.ts`, `browser_cdp.protocol` retain |
 | Deterministic app commands and renderer control access | `src/main/app-commands.ts`, `src/main/app-automation-*.ts`, `src/shared/ui-controls.ts` |
 | Browser, history, popups, CDP sessions and input | `src/main/browser-*.ts`, `src/main/cdp/` |
 | Session network record, interception rules, console capture, session fetch and cookies | `src/main/browser-network/`, `src/main/browser-network-access.ts` |
@@ -838,17 +835,17 @@ Agent → **Research library** provides a manually refreshed, app-shared public 
 Users choose topics and a publication window, update from alphaXiv without model calls, dismiss
 papers, and control agent retrieval. If the library cannot be read when the dialog opens, the
 reason is shown with a `Try again` control that re-runs the load. The bounded index persists in `research-library.json`;
-`search.library` retrieves metadata/abstracts only when requested, without automatic context
-injection. See [Research library](research-library.md) for limits, trust, and failure behavior.
+models have no library tool and nothing from the index is injected automatically. See
+[Research library](research-library.md) for limits, trust, and failure behavior.
 
-Selected protocol results and files can be retained through the
-[durable artifact tools](investigation-artifacts.md). The private
-`investigation-artifacts/artifacts.sqlite` database stores bytes, metadata and operation
-receipts in a worker. Artifacts belong to the caller's stable chat id and project directory,
-survive navigation/model changes/restart, and are not removed by pane parking or hiding.
-Retention is explicit; normal tool results are not automatically archived. Export and deletion
-are available through the same tools. Archiving a chat disables its artifact access but keeps
-its retained data; there is no archive-chat cascade or cross-chat sharing in this increment.
+Selected protocol results can be retained through `browser_cdp.protocol command` with
+`retain: true`, `tab_id`, `operation_key`, and `label`. The private
+`investigation-artifacts/artifacts.sqlite` database stores bytes, metadata, and operation
+receipts in a worker. Retained data belongs to the caller's stable chat id and project
+directory, survives navigation/model changes/restart, and is not removed by pane parking or
+hiding. Retention is explicit; normal tool results are not automatically archived. There is
+no model-facing list/read/export/delete surface beyond the compact receipt and same-key retry
+semantics. See [Tools](tools.md) and [CDP tool foundation](cdp-tool-foundation.md).
 
 File operations use native provider tools. No custom workspace inspection tool, generated map
 injection, native-read interception, or automatic source-version check runs around a turn.
@@ -1007,13 +1004,9 @@ returning `pdf_text`, page markers, and page coverage. PDFs require a complete d
 byte budget; larger files can use expansion. Pages without text are flagged; documents without
 native text retain their bytes for inspection. Expansion atomically publishes matching bytes/text
 and reports a separate original-PDF hash. Exa expansion remains an alternative provider extraction path.
-`search.pdf page` renders a selected page/crop from the retained PDF for model visual inspection;
-`search.pdf ocr` performs explicit local English OCR with bundled language data. OCR is cached by
-revision/settings and stays separate from native extraction. Both are cancellable, bounded page
-operations; native geometry and OCR word boxes are available in pageable excerpts. There is no
-automatic document-wide verification or guarantee of reading order, table, equation, figure, or
-OCR accuracy. Models must inspect the relevant images and report the actual scope of their checks.
-There is no dedicated research activity panel, and workers cannot be handed to the user yet. See
+For visual PDF checks, models select the tab and use `embedded_browser.page read_page` with
+`pdf_page`, or capture the viewer when layout matters. There is no dedicated research activity
+panel, and workers cannot be handed to the user yet. See
 [Tools](tools.md#parallel-research-runs) for exact limits and the
 [design proposal](parallel-web-research-2026-09-04.md) for the remaining work.
 

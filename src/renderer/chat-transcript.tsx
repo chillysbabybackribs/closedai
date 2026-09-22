@@ -16,6 +16,7 @@ import {
 } from '../components/ui/message-scroller.js'
 import { usePacedText } from '../components/ui/paced-text.js'
 import type { ChatTranscriptItem } from '../shared/chat.js'
+import { displayUserMessageText } from '../shared/chat-display.js'
 import { ActivitySteps } from './activity-step-list.js'
 import { errorMessage } from './error-message.js'
 import { MessageActions, type MessageActionContext } from './message-actions.js'
@@ -209,13 +210,14 @@ const TranscriptItem = memo(function TranscriptItem({
   showContinue?: boolean
 }): JSX.Element | null {
   if (item.type === 'user') {
+    const text = item.text ? displayUserMessageText(item.text) : ''
     return (
       <Message className="message message-user prompt-message prompt-message-user">
         <MessageContent>
           {item.attachments?.length ? <TranscriptAttachments attachments={item.attachments} /> : null}
-          {item.text ? (
+          {text ? (
             <Bubble variant="secondary">
-              <BubbleContent className="prompt-message-user-content">{item.text}</BubbleContent>
+              <BubbleContent className="prompt-message-user-content">{text}</BubbleContent>
             </Bubble>
           ) : null}
         </MessageContent>

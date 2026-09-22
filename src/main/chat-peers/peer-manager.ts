@@ -331,6 +331,27 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
     return this.newChat(current.selectedModel, current.selectedReasoningEffort, null)
   }
+  async newWorkerPeer(parentPaneId: ChatPaneId): Promise<ChatPaneId> {
+    this.projectSwitch.assertAvailable()
+    const parent = this.store.require(parentPaneId)
+    const current = this.lifecycle.require(parentPaneId).surface.snapshot({ limit: 0 })
+    const record = this.store.create({
+      cwd: parent.cwd,
+      projectPath: parent.projectPath,
+      provider: chatProviderOfId(current.selectedModel),
+      modelId: current.selectedModel,
+      reasoningEffort: current.selectedReasoningEffort,
+      parentChatId: parentPaneId,
+      agentWorker: true
+    })
+    this.lifecycle.attach(record)
+    this.lifecycle.parkExcessIdle(record.id)
+    this.emitChats()
+    await this.persistOpenChats()
+    await this.trimAttached()
+    this.wakeLater(record.id, 'start the build worker')
+    return record.id
+  }
   async newDetachedPeer(): Promise<ChatPaneId> {
     return createDetachedPeer({
       assertAvailable: () => this.projectSwitch.assertAvailable(),

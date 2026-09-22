@@ -77,6 +77,10 @@ export class AppCommandAccess implements AppCommandHost {
     return { paneId: await this.chat().newPeer() }
   }
 
+  async newWorkerChat(parentPaneId: string): Promise<{ paneId: string }> {
+    return { paneId: await this.chat().newWorkerPeer(parentPaneId) }
+  }
+
   queueProjectSwitch(request: ProjectSwitchRequest, signal: AbortSignal): Promise<ProjectSwitchStatus> {
     return this.chat().projectSwitch.request(request, signal)
   }
