@@ -371,8 +371,13 @@ function parallelGroups(calls: BatchCall[]): BatchCall[][] {
 
 function batchResourceKey(call: BatchCall): string | null {
   const request = { namespace: call.namespace, tool: call.tool, arguments: call.arguments }
-  if (isBrowserObservingCall(request, call.arguments)) return null
-  return resourceKey(request, call.arguments)
+  const exclusive = resourceKey(request, call.arguments)
+  if (exclusive) return exclusive
+  const tab = typeof call.arguments.tab_id === 'string' && call.arguments.tab_id.length > 0
+    ? call.arguments.tab_id
+    : null
+  if (tab && isBrowserObservingCall(request, call.arguments)) return `browser:tab:${tab}`
+  return null
 }
 
 /** Separate call blocks let the registry's aggregate budget preserve short failures and ids. */
