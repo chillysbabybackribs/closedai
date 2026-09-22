@@ -108,7 +108,13 @@ function areas(files) {
     // A small directory is cheaper to name outright than to leave as a count the reader
     // then has to go look up; this is what turns "styles/trace/" into "styles/trace/modal.css".
     const listed = names.length <= 2 ? names.slice().sort() : []
-    return { directory, files: names.length, prefixes: prefixes.map(([prefix, count]) => [`${prefix}-*`, count]), listed }
+    const dominantPrefixes = prefixes.map(([prefix, count]) => [`${prefix}-*`, count])
+    return {
+      directory,
+      files: names.length,
+      ...(dominantPrefixes.length > 0 ? { prefixes: dominantPrefixes } : {}),
+      ...(listed.length > 0 ? { listed } : {})
+    }
   })
 }
 
