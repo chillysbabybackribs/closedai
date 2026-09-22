@@ -88,7 +88,10 @@
   flex: none;
 }
 
-.agent-workspace-pane .project-shell.project-shell-embedded .project-shell-body {
+/* Both middle rows of the shell (intake body, building workstation) must grow in the flex column;
+   the non-embedded shell gets this from its grid row. */
+.agent-workspace-pane .project-shell.project-shell-embedded .project-shell-body,
+.agent-workspace-pane .project-shell.project-shell-embedded .project-workstation {
   flex: 1 1 auto;
   min-height: 0;
 }

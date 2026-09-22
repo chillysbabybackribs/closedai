@@ -95,9 +95,16 @@ What landed:
 - Store file shape unchanged; version 1 files read as before.
 
 Verification done: typecheck, 31 tests across `src/shared/project`, `src/main/project-store`, and
-`src/renderer/agent-workspace`, hygiene, and a production build. Owner check still to do: answer
-intake in the running app, press Start, quit, relaunch, reopen the pane, and see the same record,
-root node, and journal.
+`src/renderer/agent-workspace`, hygiene, and a production build.
+
+Tried in the running app on 2026-09-22 (Cursor coordinator, `closedai` checkout as the project):
+four intake answers each landed in `project.json` as the next pillar; Start wrote `phase: building`,
+the root node, and the start note; a building-phase message became `amendment-1` plus a journal
+line; hiding and re-showing the pane rehydrated all of it from the store. Found and fixed the same
+day: the building layout filled only the top half of the embedded pane because
+`.project-workstation` had no flex rule in the embedded flex column (`pane.css`). Still to do by the
+owner: quit, relaunch, reopen the pane, and see the same record, root node, amendment, and journal.
+Known and expected: `coordinator` stays `null` and evidence is fixture text until slice B.
 
 ### Slice B: the coordinator owns the record
 
