@@ -55,7 +55,7 @@ preserve the current document's state; navigation/reload resets it.
 | `split` | Two stacked chats beside the browser chrome and labeled native-surface placeholder |
 | `unavailable` | Empty chat whose provider executable is missing: first-run guidance, provider availability list, and the disabled composer |
 | `security` | Populated conversation beside the browser chrome with the opt-in security prompts pending: credential approval cards above the composer and web permission bars under the tab strip (both off by default in the real app) |
-| `project` | Disposable Project-shell prototype with a multi-turn clarity gate and a pannable, zoomable intent tree for confirmed direction, research evidence, amendments, and active work |
+| `project` | Disposable Project-shell prototype. Intake fills a direction record (what, who, first session, boundaries, evidence) one question at a time and refuses vague answers; Start unlocks only when the record is complete. After Start, a vertical tree grows on the left from the root coordinator as it dispatches simulated scopes and tasks, with the coordinator feed and node inspector on the right; composer direction attaches as an amendment under the selected node |
 
 Sending a message streams a local canned response. Pausing, creating/selecting/renaming/closing
 sample chats, model effort selection, layout changes, and appearance settings exercise real

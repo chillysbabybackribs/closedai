@@ -646,6 +646,11 @@ required for the user to redirect it.
 
 ## Incremental implementation path
 
+The Project shell is the entry point rather than the last stage: the discovery conversation and
+its direction record are where the shared-state model gets defined, so the UI prototype under
+`src/renderer/preview/project-*.tsx` is being built first to discover that model. The stages
+below describe the runtime that grows behind it.
+
 ### Stage 1: durable peer coordination
 
 - Shared goal, current-state, and task documents.
