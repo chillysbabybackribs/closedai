@@ -1,0 +1,150 @@
+/* Project-shell prototype: the away banner, the header catch-up button, and the catch-up
+   report page that fills the stage. */
+
+.project-away {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid rgb(157 140 255 / 18%);
+  background: rgb(157 140 255 / 7%);
+  color: #cfc8ff;
+  font-size: 11.5px;
+}
+
+.project-away button {
+  padding: 3px 9px;
+  border: 1px solid rgb(157 140 255 / 40%);
+  border-radius: 5px;
+  background: rgb(157 140 255 / 14%);
+  color: #ece8ff;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.project-away button:last-child {
+  margin-left: auto;
+  padding: 2px 7px;
+  border-color: transparent;
+  background: transparent;
+  color: #8d8d92;
+}
+
+.project-shell-catchup {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  padding: 3px 9px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 6px;
+  background: transparent;
+  color: #9a9a9f;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.project-shell-catchup:hover,
+.project-shell-catchup[aria-pressed="true"] {
+  background: rgb(255 255 255 / 6%);
+  color: #e6e6e9;
+}
+
+.project-shell-catchup[data-pending="true"] {
+  border-color: rgb(157 140 255 / 34%);
+  color: #cfc8ff;
+}
+
+.project-shell-catchup b {
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: rgb(157 140 255 / 22%);
+  color: #ece8ff;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.project-catchup-section {
+  margin-top: 20px;
+}
+
+.project-catchup-section h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 6px;
+  color: #cfcfd3;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.project-catchup-section h2 span {
+  color: #5f5f64;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.project-catchup-section[data-tone="attention"] h2 {
+  color: #e0c48a;
+}
+
+.project-catchup-section[data-tone="direction"] h2 {
+  color: #cfc8ff;
+}
+
+.project-catchup-section[data-tone="done"] h2 {
+  color: #9dcaa6;
+}
+
+.project-catchup-section ol {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.project-catchup-section li button {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #d5d5d9;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-catchup-section li button:hover {
+  background: rgb(255 255 255 / 5%);
+}
+
+.project-catchup-section time {
+  color: #69696e;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.project-catchup-section[data-tone="attention"] li button {
+  border-left: 2px solid rgb(224 196 138 / 60%);
+  border-radius: 0 6px 6px 0;
+}
+
+.project-catchup-more {
+  padding: 4px 8px 0 82px;
+  color: #69696e;
+  font-size: 11px;
+}
