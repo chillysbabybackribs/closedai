@@ -22,7 +22,7 @@ import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
 import { hydrateFromSnapshot, shouldHydrateFromSnapshot, type PersistedProjectHydration } from './hydrate-project-snapshot.js'
 import type { ProjectCanvasFixture } from './project-canvas-fixture.js'
 import { amendTree, layoutTree, rootNode, type TreeNode } from './project-tree.js'
-import { projectNodeSignature, useProjectWorkspacePrototypeEffects } from './use-project-workspace-prototype.js'
+import { projectNodeSignature, useProjectWorkspaceEffects } from './use-project-workspace-effects.js'
 
 export type ProjectWorkspaceComposerBridge = Pick<ComposerProps,
   'models' | 'selectedModel' | 'selectedReasoningEffort' | 'contextUsage' | 'provider' | 'planUsage'
@@ -169,7 +169,7 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
     setJournal((current) => [...current, { id: nextId.current++, at: Date.now(), text }])
   }
 
-  useProjectWorkspacePrototypeEffects({
+  useProjectWorkspaceEffects({
     phase, shellRef, lastInteraction, setAwayFor, canvasFixture, persistedApplied, persistedSnapshot,
     setDiscovery, setPhase, setTree, setJournal, setConfirmedAt, setCaughtUpAt, setAcceptedAt, setSkipSimulatedDispatch,
     setSeenFiles, setSeenNodes, fixtureHydration, location, tree, openFile, proposal, acceptedAt, progress, reports,

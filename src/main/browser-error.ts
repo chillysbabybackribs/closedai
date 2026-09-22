@@ -11,6 +11,8 @@
 // Nothing here dispatches CDP or touches Electron; it is pure classification so it can be
 // unit-tested in isolation and reused by every browser code path.
 
+import { messageOf } from './error-message.js'
+
 export type BrowserErrorCategory =
   | 'invalid-input' // caller passed a missing/malformed argument (no CDP was attempted)
   // A WELL-FORMED target that resolved to nothing — a name/selector that matched no
@@ -102,16 +104,6 @@ const CRASH_REASONS: ReadonlySet<string> = new Set([
 
 export function isRendererGoneReason(reason: string): boolean {
   return CRASH_REASONS.has(reason)
-}
-
-function messageOf(error: unknown): string {
-  if (error instanceof Error) return error.message
-  if (typeof error === 'string') return error
-  try {
-    return JSON.stringify(error)
-  } catch {
-    return String(error)
-  }
 }
 
 // Ordered classification rules. First match wins, so more-specific phrasings precede

@@ -13,7 +13,7 @@ const AWAY_AFTER_MS = 30_000
 
 export const projectNodeSignature = (node: TreeNode) => `${node.state}|${node.summary}`
 
-export function useProjectWorkspacePrototypeEffects(options: {
+export function useProjectWorkspaceEffects(options: {
   phase: 'intake' | 'canvas'
   shellRef: RefObject<HTMLElement | null>
   lastInteraction: RefObject<number>

@@ -157,9 +157,7 @@ export function cloneItem(item: ChatTranscriptItem): ChatTranscriptItem {
   return { ...item }
 }
 
-export function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
+export { messageOf } from './error-message.js'
 
 function normalizeFileChanges(value: unknown): ChatFileChange[] {
   if (!Array.isArray(value)) return []

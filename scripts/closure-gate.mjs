@@ -9,9 +9,15 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // Keep these aligned with the Electron/web Vite configs and src/renderer/index.html.
 // The artifact worker is launched by URL rather than a module import.
+// Keep aligned with electron.vite.config.ts main.build.rollupOptions.input.
 const entries = [
-  'src/main/index.ts', 'src/main/investigations/artifact-worker.ts',
-  'src/preload/index.ts', 'src/renderer/main.tsx'
+  'src/main/index.ts',
+  'src/main/investigations/artifact-worker.ts',
+  'src/main/native-instrument/worker.ts',
+  'src/main/tools/search/research/pdf/pdf-worker.ts',
+  'src/main/tools/search/research/pdf/page-worker.ts',
+  'src/preload/index.ts',
+  'src/renderer/main.tsx'
 ]
 const allowedPackages = new Set([
   'electron', 'react', 'react-dom', 'lucide-react', 'clsx', 'tailwind-merge',
@@ -22,7 +28,11 @@ const allowedPackages = new Set([
   // zod, which its in-process MCP tool helper takes tool schemas in.
   '@anthropic-ai/claude-agent-sdk', 'zod',
   // The Antigravity provider serves the tool registry to the `agy` CLI over MCP (docs/antigravity.md).
-  '@modelcontextprotocol/sdk'
+  '@modelcontextprotocol/sdk',
+  // PDF research workers (electron-vite secondary entries).
+  '@napi-rs/canvas', 'pdfjs-dist', 'tesseract.js',
+  // Native instrumentation controller worker.
+  'frida'
 ])
 // `tor-` is anchored to a path-segment or word boundary: unanchored it also matches the tail of
 // "inspector-modal", which rejected a sanctioned UI file for containing the letters t-o-r.
@@ -33,7 +43,7 @@ const forbiddenPaths = /(claude|codex|cursor|antigravity|agent|mcp|tool-|plugin|
 // (docs/cursor.md), plus the transcript memory the `peer_chats` recall and checkpoint tools read.
 // Everything else that smells like agent/provider/tool code is still rejected.
 const sanctionedPaths =
-  /^src\/(main|renderer)\/tools\/|^src\/main\/(claude|antigravity|cursor|investigations)\/|^src\/main\/chat-context\/memory-/
+  /^src\/(main|renderer)\/tools\/|^src\/main\/(claude|antigravity|cursor|investigations|project-store|native-instrument)\/|^src\/(main|renderer)\/agent-workspace\/|^src\/shared\/project\/|^src\/main\/chat-context\//
 // Cross-cutting runtime, vault, and artifact contracts used by the current application.
 const sanctionedFiles = new Set([
   'src/main/codex-workspace-runtime.ts', 'src/main/codex-model-context.ts',
@@ -46,7 +56,11 @@ const sanctionedFiles = new Set([
   'src/renderer/settings/credential-service-picker.tsx',
   'src/renderer/settings/credential-service-logos.tsx',
   'src/renderer/settings/credential-field-row.tsx',
-  'src/renderer/settings/credential-vault-list.tsx'
+  'src/renderer/settings/credential-vault-list.tsx',
+  'src/renderer/settings/credential-vault-panel.tsx',
+  'src/renderer/credential-approval-card.tsx',
+  'src/main/agent-workspace-ipc.ts',
+  'src/main/agent-workspace-surface.ts'
 ])
 
 const importRe = /(?:import|export)\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g
@@ -80,7 +94,7 @@ while (stack.length) {
     // A stylesheet's `@import` of a package (tailwindcss, a font face) is a bundler concern,
     // not part of the module closure this gate polices.
     if (isStyle) continue
-    if (spec.startsWith('.') || spec.startsWith('node:')) continue
+    if (spec.startsWith('.') || spec.startsWith('node:') || spec.startsWith('chrome:')) continue
     if (/\.css$/.test(spec)) continue
     const pkg = spec.split('/').slice(0, spec.startsWith('@') ? 2 : 1).join('/')
     packages.add(pkg)

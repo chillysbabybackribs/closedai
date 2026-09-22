@@ -10,6 +10,7 @@ import type {
 } from './types.js'
 import { abortable, RequestBudget } from './request-budget.js'
 import { controlProviders } from './request-options.js'
+import { messageOf } from '../../error-message.js'
 
 export type SearchUpdate = { output: ProviderSearchResult } | { error: { provider: SearchProvider; message: string } }
 export type SearchObserver = (update: SearchUpdate) => void
@@ -269,6 +270,3 @@ export function canonicalUrl(value: string): string {
   }
 }
 
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}

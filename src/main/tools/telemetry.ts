@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events'
 import { readFile, unlink } from 'node:fs/promises'
 import type { ToolCallEvent, ToolErrorNote, ToolStats, ToolTelemetrySnapshot } from '../../shared/tools.js'
 import { writeAtomic } from '../atomic-write.js'
+import { messageOf } from '../error-message.js'
 
 const TELEMETRY_VERSION = 2
 /** Failure notes kept per tool; enough to see a pattern, not a log. */
@@ -271,10 +272,6 @@ function compareStats(left: ToolStats, right: ToolStats): number {
 
 function codeOf(error: unknown): string {
   return error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }
 
 async function removeLegacy(filePath?: string): Promise<void> {
