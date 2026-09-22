@@ -9,8 +9,9 @@ verification. Protocol measurements retain their dates in the provider guides. P
 model-facing routing live in [Model context](model-context.md); registry contracts live in
 [Tools](tools.md).
 
-Renderer and agent-workstation UI changes are verified in Electron (`npm run dev`). There is no
-separate browser-only renderer entry or fixture bridge.
+Renderer and agent-workstation UI changes are verified in Electron (`npm run build &&
+npm run preview`, or `npm run dev` for hot reload). There is no separate browser-only renderer
+entry or fixture bridge.
 
 ## Native instrumentation
 
@@ -352,7 +353,7 @@ gates). The **live** pieces today are: the reserved layout pane, the detached co
 (same provider pipeline and `ChatTranscript` streaming as ordinary chats), prompt guidance via
 `agent-workspace-instructions.ts`, and **read-only** hydration from
 `<project>/.closedai/project.json` when that file already contains work. Validate agent-pane
-layout, empty-state landing, and live intake in **Electron** only.
+layout, empty-state landing, and live intake in **Electron** (`npm run preview` or `npm run dev`).
 The renderer does not yet write discovery, tree, or journal changes back through `project:` IPC
 (only `project:snapshot` exists), and canvas-phase progress after “Start building” is still driven
 by local React state and timed prototype effects unless restored from disk. The direction-record
