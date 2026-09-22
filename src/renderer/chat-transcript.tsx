@@ -55,6 +55,13 @@ export const ChatTranscript = memo(function ChatTranscript({
     () => turnActionMessageIds(items, activeTurnId, actions?.running || Boolean(activeTurnId)),
     [items, activeTurnId, actions?.running]
   )
+  const latestActionId = useMemo(() => {
+    let latest: string | null = null
+    for (const item of items) {
+      if (actionMessageIds.has(item.id)) latest = item.id
+    }
+    return latest
+  }, [items, actionMessageIds])
   const rows = useMemo(() => transcriptRows(items), [items])
   const tailStart = useMemo(() => lastTurnRowStart(rows), [rows])
   const [visibleAnchor, setVisibleAnchor] = useState(() => transcriptRowKey(rows[tailStart]))
@@ -147,7 +154,8 @@ export const ChatTranscript = memo(function ChatTranscript({
             scrollAnchor={row.item.type === 'user'}
             className={row.item.type === 'user' ? 'chat-turn-user' : undefined}
           >
-            <TranscriptItem item={row.item} actions={actionMessageIds.has(row.item.id) ? actions : undefined} />
+            <TranscriptItem item={row.item} actions={actionMessageIds.has(row.item.id) ? actions : undefined}
+              showContinue={row.item.id === latestActionId} />
           </MessageScrollerItem>
         )
       })}
@@ -193,10 +201,12 @@ function sameGroup<T extends { items: readonly unknown[] }>(previous: T, next: T
 
 const TranscriptItem = memo(function TranscriptItem({
   item,
-  actions
+  actions,
+  showContinue
 }: {
   actions?: MessageActionContext
   item: StandaloneItem
+  showContinue?: boolean
 }): JSX.Element | null {
   if (item.type === 'user') {
     return (
@@ -214,7 +224,7 @@ const TranscriptItem = memo(function TranscriptItem({
   }
   if (item.type === 'assistant') {
     if (!item.text) return null
-    return <AssistantMessage item={item} actions={actions} />
+    return <AssistantMessage item={item} actions={actions} showContinue={showContinue} />
   }
   if (item.type === 'notice') {
     return (
@@ -276,7 +286,11 @@ const ToolActivity = memo(function ToolActivity({
   )
 }, (prev, next) => sameGroup(prev, next) && prev.isRunning === next.isRunning)
 
-const AssistantMessage = memo(function AssistantMessage({ item, actions }: { item: Extract<ChatTranscriptItem, { type: 'assistant' }>; actions?: MessageActionContext }): JSX.Element | null {
+const AssistantMessage = memo(function AssistantMessage({ item, actions, showContinue }: {
+  item: Extract<ChatTranscriptItem, { type: 'assistant' }>
+  actions?: MessageActionContext
+  showContinue?: boolean
+}): JSX.Element | null {
   // The displayed text trails what has streamed in by a bounded catch-up window, so one-token,
   // sentence-burst, and whole-message chunk cadences all paint as the same typewriter. Settled
   // items render in full immediately; the drain also finishes turns that never settle their item.
@@ -291,7 +305,8 @@ const AssistantMessage = memo(function AssistantMessage({ item, actions }: { ite
             <Markdown streaming={streaming}>{text}</Markdown>
           </BubbleContent>
         </Bubble>
-        {actions ? <MessageActions key={actions.threadKey + item.id} item={item} context={actions} /> : null}
+        {actions ? <MessageActions key={actions.threadKey + item.id} item={item} context={actions}
+          showContinue={showContinue} /> : null}
       </MessageContent>
     </Message>
   )

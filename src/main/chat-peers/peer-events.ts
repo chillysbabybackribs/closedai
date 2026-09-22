@@ -202,7 +202,9 @@ function continuedFrom(continuation: ChatRecord['continuation']): Pick<ChatRowSu
     continuedFrom: {
       paneId: continuation.sourcePaneId,
       title: handoffSourceTitle(continuation.sourceTitle),
-      handoff: continuation.handoff
+      handoff: continuation.handoff,
+      previewUser: continuation.previewUser ?? null,
+      previewAssistant: continuation.previewAssistant ?? null
     }
   }
 }

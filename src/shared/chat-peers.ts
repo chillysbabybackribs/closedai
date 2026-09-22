@@ -54,7 +54,13 @@ export type ChatRowSummary = ChatPeerSummary & {
    * is present only until the first message delivers it, so an empty continued pane can show what
    * it is about to carry; a directory change within one chat is not a continuation.
    */
-  continuedFrom?: { paneId: string | null; title: string; handoff: string | null }
+  continuedFrom?: {
+    paneId: string | null
+    title: string
+    handoff: string | null
+    previewUser?: string | null
+    previewAssistant?: string | null
+  }
   createdAt: number
   lastTurnEndedAt: number | null
 }

@@ -56,6 +56,8 @@ test('the new chat opens in the source chat’s directory and its digest says wh
   assert.equal(made!.continuation.sourceThroughItemId, 'u2')
   assert.match(made!.continuation.handoff ?? '', /Working directory there: \/repos\/parser/)
   assert.match(made!.continuation.handoff ?? '', /2 user requests; the latest request had no completed answer/)
+  assert.equal(made!.continuation.previewUser, 'Now add tests')
+  assert.equal(made!.continuation.previewAssistant, null)
 })
 
 test('a detached source is digested from its record and thread without a live snapshot', async () => {

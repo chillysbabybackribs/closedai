@@ -6,12 +6,24 @@ import {
   buildThreadHandoff,
   continuationFromThreadHandoff,
   handoffAdditionalContext,
+  handoffPreviewExchange,
   THREAD_HANDOFF_CONTEXT
 } from './thread-handoff.ts'
 
 const user = (id: string, text: string, turnId = id): ChatTranscriptItem => ({ type: 'user', id, turnId, text })
 const answer = (id: string, turnId: string, text: string, phase: 'commentary' | 'final_answer' | null = 'final_answer'): ChatTranscriptItem =>
   ({ type: 'assistant', id, turnId, text, phase, streaming: false })
+
+test('handoffPreviewExchange keeps the last user and answer for the continued pane preview', () => {
+  const items: ChatTranscriptItem[] = [
+    user('u1', 'First task', 't1'),
+    answer('a1', 't1', 'Done one.'),
+    user('u2', 'Second task', 't2'),
+    answer('a2', 't2', 'Done two.')
+  ]
+  assert.deepEqual(handoffPreviewExchange(items), { user: 'Second task', assistant: 'Done two.' })
+  assert.deepEqual(handoffPreviewExchange([user('u1', 'Only ask', 't1')]), { user: 'Only ask', assistant: null })
+})
 
 test('handoff titles and user lines omit closedai_context markup', () => {
   const items: ChatTranscriptItem[] = [

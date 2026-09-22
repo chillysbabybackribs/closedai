@@ -242,7 +242,9 @@ export function normalizeContinuation(value: unknown): ChatContinuation | null {
     handoff: optionalString(record.handoff),
     createdAt: record.createdAt,
     ...(record.sourceThroughItemId !== undefined ? { sourceThroughItemId: optionalString(record.sourceThroughItemId) } : {}),
-    ...(record.checkpoint !== undefined ? { checkpoint: normalizeMemoryCheckpoint(record.checkpoint) } : {})
+    ...(record.checkpoint !== undefined ? { checkpoint: normalizeMemoryCheckpoint(record.checkpoint) } : {}),
+    ...(record.previewUser !== undefined ? { previewUser: optionalString(record.previewUser) } : {}),
+    ...(record.previewAssistant !== undefined ? { previewAssistant: optionalString(record.previewAssistant) } : {})
   }
 }
 

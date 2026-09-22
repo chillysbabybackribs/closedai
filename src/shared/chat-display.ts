@@ -1,3 +1,5 @@
+import type { ChatTranscriptItem } from './chat.js'
+
 const CONTEXT_BLOCK_RE = /<closedai_context\b[^>]*>[\s\S]*?<\/closedai_context>\s*/g
 
 /** Remove ClosedAI instruction and attachment context blocks from a user message. */
@@ -71,6 +73,22 @@ export function handoffSourceTitle(title: string | null | undefined, fallbackUse
   if (saved) return saved.length > 120 ? summarizeUserMessage(saved, 120) : saved
   const fromUser = fallbackUserText ? summarizeUserMessage(fallbackUserText, 120) : ''
   return fromUser || 'Previous chat'
+}
+
+/** Synthetic transcript tail for an empty continued chat (preview only; not sent until the user messages). */
+export function continuationPreviewItems(previewUser: string | null | undefined, previewAssistant: string | null | undefined): ChatTranscriptItem[] {
+  const turnId = 'continuation-preview'
+  const items: ChatTranscriptItem[] = []
+  const user = previewUser?.trim()
+  if (user) items.push({ type: 'user', id: 'continuation-preview-user', turnId, text: user })
+  const assistant = previewAssistant?.trim()
+  if (assistant) {
+    items.push({
+      type: 'assistant', id: 'continuation-preview-assistant', turnId, text: assistant,
+      phase: 'final_answer', streaming: false
+    })
+  }
+  return items
 }
 
 /** First line for thread previews (slightly longer than drawer titles). */

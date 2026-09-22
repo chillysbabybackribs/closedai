@@ -191,3 +191,18 @@ function clip(text: string, max: number): string {
   const flat = text.replace(/\s+/g, ' ').trim()
   return flat.length > max ? `${flat.slice(0, max - 1).trimEnd()}…` : flat
 }
+
+/** Last user line and optional answer for the continued-chat preview before the first send. */
+export function handoffPreviewExchange(items: ChatTranscriptItem[]): { user: string; assistant: string | null } | null {
+  const entries = conversationEntries(items)
+  if (entries.length === 0) return null
+  const last = entries.at(-1)!
+  if (last.speaker === 'Assistant') {
+    const userEntry = entries.at(-2)
+    const user = userEntry?.speaker === 'User' ? clip(userEntry.text, MAX_ENTRY_CHARS) : ''
+    const assistant = clip(last.text, MAX_ENTRY_CHARS)
+    return user || assistant ? { user, assistant } : null
+  }
+  const user = clip(last.text, MAX_ENTRY_CHARS)
+  return user ? { user, assistant: null } : null
+}

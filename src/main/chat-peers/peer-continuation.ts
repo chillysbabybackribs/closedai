@@ -3,7 +3,7 @@ import type { ChatContinuationSource, ChatPaneId } from '../../shared/chat-peers
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { ChatContinuation } from '../../shared/types.js'
 import { chatProviderOfId } from '../../shared/chat-providers.js'
-import { buildThreadHandoff } from '../chat-context/thread-handoff.js'
+import { buildThreadHandoff, handoffPreviewExchange } from '../chat-context/thread-handoff.js'
 
 export type ContinuationHost = {
   current(): ChatSnapshot
@@ -60,6 +60,7 @@ export async function continuePeer(host: ContinuationHost, source: ChatContinuat
   const cwd = sourceSnapshot?.cwd ?? sourceRecord?.cwd ?? null
   const handoff = buildThreadHandoff(items, threadName, checkpoint, { cwd })
   if (!handoff) throw new Error('There is no conversation to continue yet')
+  const preview = handoffPreviewExchange(items)
   const targetModel = modelId ?? sourceSnapshot?.selectedModel ?? current.selectedModel
   const targetEffort = targetModel === sourceSnapshot?.selectedModel
     ? sourceSnapshot?.selectedReasoningEffort ?? null
@@ -72,6 +73,8 @@ export async function continuePeer(host: ContinuationHost, source: ChatContinuat
     sourceThroughItemId: items.at(-1)?.id ?? null,
     checkpoint,
     handoff: handoff.text,
+    previewUser: preview?.user ?? null,
+    previewAssistant: preview?.assistant ?? null,
     createdAt: Date.now()
   }
   return host.create(targetModel, targetEffort, continuation,

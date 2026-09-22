@@ -1,7 +1,7 @@
 import type { ClosedaiApi } from '../../shared/api.js'
 import type { ChatSnapshot } from '../../shared/chat.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
-import { sampleChat, sampleHandoff, sampleRow, sampleWorkspace, type Scenario } from './fixtures.js'
+import { sampleChat, sampleContinuationPreview, sampleHandoff, sampleRow, sampleWorkspace, type Scenario } from './fixtures.js'
 
 export function createPreviewChat(scenario: Scenario, report: (message: string) => void) {
   const state = sampleWorkspace(scenario)
@@ -109,7 +109,11 @@ export function createPreviewChat(scenario: Scenario, report: (message: string) 
       const title = from?.threadName ?? 'Saved chat'
       const id = await create()
       const row = state.chats.find((entry) => entry.paneId === id)!
-      row.continuedFrom = { paneId: source.paneId, title, handoff: sampleHandoff(title, from?.items ?? []) }
+      const preview = sampleContinuationPreview(from?.items ?? [])
+      row.continuedFrom = {
+        paneId: source.paneId, title, handoff: sampleHandoff(title, from?.items ?? []),
+        previewUser: preview.previewUser, previewAssistant: preview.previewAssistant
+      }
       pane(id).threadName = `Continuing: ${title}`
       publish()
       return id

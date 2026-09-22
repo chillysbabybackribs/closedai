@@ -20,7 +20,7 @@ const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, wi
 
 export type AgentSoloControls = { toggleSolo: () => void; solo: boolean }
 
-export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, agentVisible, browserRevealVersion, renderBrowser, renderAgent, onDragActive, title, activity, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, agentVisible, browserRevealVersion, renderBrowser, renderAgent, onDragActive, title, activity, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
@@ -43,8 +43,6 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
   toolsPreset?: 'full' | 'read-only' | 'custom' | null
   onRenameChat?: (id: string) => void
   onTogglePin?: (id: string, pinned: boolean) => void
-  /** Continue this conversation in a new tab of the same tile, seeded with its digest. */
-  onContinueChat?: (id: string) => void
   onPauseTab?: (id: string) => void
   onResumeTab?: (id: string) => void
   onOpenPresets?: () => void
@@ -289,7 +287,6 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
               onOpenPresets={onOpenPresets ? () => { if (soloTile) setSoloPaneId(null); onOpenPresets() } : undefined}
               onRename={onRenameChat ? () => onRenameChat(activeId) : undefined}
               onTogglePin={onTogglePin ? () => onTogglePin(activeId, row?.pinnedAt == null) : undefined}
-              onContinue={onContinueChat ? () => { if (soloTile) setSoloPaneId(null); onContinueChat(activeId) } : undefined}
               onPause={onPauseTab ? () => onPauseTab(activeId) : undefined}
               onResume={onResumeTab ? () => onResumeTab(activeId) : undefined}
               onCloseTab={() => { if (soloTile) setSoloPaneId(null); onCloseTab(activeId) }}

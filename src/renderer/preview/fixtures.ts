@@ -70,6 +70,17 @@ export function sampleHandoff(title: string, items: ChatSnapshot['items']): stri
     `Working directory there: ${PREVIEW_CWD}`, '', 'Conversation so far (oldest first; long messages trimmed):', ...lines].join('\n')
 }
 
+/** Last visible user/assistant lines for the continued-chat preview (approximates main's handoff preview). */
+export function sampleContinuationPreview(items: ChatSnapshot['items']): { previewUser: string | null; previewAssistant: string | null } {
+  let previewUser: string | null = null
+  let previewAssistant: string | null = null
+  for (const item of items) {
+    if (item.type === 'user' && item.text.trim()) previewUser = item.text.trim()
+    if (item.type === 'assistant' && item.text.trim() && item.phase !== 'commentary') previewAssistant = item.text.trim()
+  }
+  return { previewUser, previewAssistant }
+}
+
 function sampleClosed(id: string, title: string, endedAt: number, cwd: string): ChatRowSummary {
   const chat = sampleChat(id)
   chat.threadName = title

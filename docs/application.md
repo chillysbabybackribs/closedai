@@ -201,18 +201,22 @@ selects an attached chat, or attaches a detached one and resumes from its thread
 minting a new id. Main retains existing attached chats unless a departed chat is blank and no
 longer visible. The renderer decides which tile displays a selected chat, as described below.
 
-Continuation creates a new pane with a local transcript digest, delivered once on its next
-message. Branching from a completed response limits that digest to the chosen response; it
+Continuation creates a new chat tab in the source tile with a local transcript digest, delivered once on its
+next message. **Continue in new chat** (`chat.message-continue`) sits on the latest completed response
+next to **Branch**; it is disabled while that chat's turn is actively running (`activeTurnId` set).
+**Branch** (`chat.message-branch`) starts a new chat whose digest and `peer_chats.recall` boundary end at
+that specific assistant message; **Continue** carries the full conversation through its current end.
+Pausing a turn clears the active run (`activeTurnId`) and sets `pausedTurnId`, so Continue and Branch become
+available while **Resume** remains on the source chat — pausing is not the same as a running turn, which
+main refuses to digest. Branching from a completed response limits that digest to the chosen response; it
 does not clone the provider's full session. User/assistant text is included, while tools,
 reasoning, and images stay in the original chat. The digest opens with a "Where it stood" line
 (how many requests, and whether the latest one was answered or cut off) and the source's
 working directory; a continued chat also opens in that directory, not the focused chat's, when
-the source has a record. From the tab context menu, the new chat opens as a tab in the source's
-own tile. Until its first message is sent, the empty pane shows a continuation card naming the
-source, with **Open previous chat** (`chat.continuation-source`) and a collapsed
-**Show what the new chat receives** (`chat.continuation-digest`) that quotes the digest as the
-model will read it; the card is content, so the composer sits at the bottom rather than centred.
-Drawer rows carry that lineage as `continuedFrom` (source id and title, plus the digest only
+the source has a record. Until its first message is sent, the new pane shows the last user message
+and answer (truncated like the digest) as a read-only preview, with the composer ready for the next
+request; **Open previous chat** (`chat.continuation-source`) switches to the source tab when it still
+exists. Drawer rows carry lineage as `continuedFrom` (source id and title, plus the digest only
 while undelivered); a directory change within one chat is not reported as a continuation.
 See `chat-context/thread-handoff.ts` and `chat-peers/peer-continuation.ts`.
 
@@ -367,9 +371,8 @@ and new chat at once and survives typing, sending, turns, pane changes, and rest
 composer accepts and sends drafts on its single line; its attachment chips and the project rail
 (folder icon and name) sit above the pill instead of inside it, and the model picker
 (`composer.model`) sits at the pill's left edge with the same menu as the full view. Right-clicking
-any tile header or tab opens a context menu led by **Close tab** (`layout.tab-close`, Ctrl/Cmd+W) and
-**Continue in new chat** (`layout.continue`; disabled with a "Pause or stop the task first" subtitle
-while the tab's task runs), then **Hide pane** (`layout.pane-hide`) and, with another tile open,
+any tile header or tab opens a context menu led by **Close tab** (`layout.tab-close`, Ctrl/Cmd+W),
+then **Hide pane** (`layout.pane-hide`) and, with another tile open,
 **Move tab to next pane** / **Move tab to previous pane**
 (`layout.tab-move`, item `next` or `previous`) move the active conversation into the neighbouring
 tile's strip in reading order, the keyboard route for a tab drag; an emptied tile collapses as it

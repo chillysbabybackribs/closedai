@@ -91,6 +91,9 @@ export type ChatContinuation = {
   sourceTitle: string
   /** Cleared after the destination's first turn is accepted; lineage remains. */
   handoff: string | null
+  /** Renderer preview of the last exchange until the handoff is delivered. */
+  previewUser?: string | null
+  previewAssistant?: string | null
   createdAt: number
   /** Snapshot boundary: source recall must not expose later messages, including after a branch. */
   sourceThroughItemId?: string | null
