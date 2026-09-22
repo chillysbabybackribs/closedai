@@ -106,6 +106,17 @@ day: the building layout filled only the top half of the embedded pane because
 owner: quit, relaunch, reopen the pane, and see the same record, root node, amendment, and journal.
 Known and expected: `coordinator` stays `null` and evidence is fixture text until slice B.
 
+### Intake voice — landed 2026-09-22
+
+Owner direction after the first live intake: the coordinator was writing spec essays with tables and
+five sub-questions per pillar. A non-technical person and a senior engineer must get the same
+experience: type an idea, answer a few short questions that clearly matter, press Start. The prompt
+in `agent-workspace-instructions.ts` now says one pillar and one question per turn, at most five
+plain sentences, no code formatting or lists, and one headless `search.query` lookup before the
+first question so the question rests on what already exists. The coordinator never drives the
+visible browser and never touches files during intake. Slice B keeps this voice; it changes only
+who writes the record.
+
 ### Slice B: the coordinator owns the record
 
 Goal: the direction record is what the model decided, with its evidence.
