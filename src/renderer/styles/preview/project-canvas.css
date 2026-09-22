@@ -187,6 +187,14 @@
   min-width: 0;
 }
 
+.project-tree-node time {
+  flex: none;
+  margin-left: auto;
+  color: #55555a;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
 .project-tree-node strong {
   overflow: hidden;
   font-size: 12px;
