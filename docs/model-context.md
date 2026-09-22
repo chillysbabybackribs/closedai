@@ -108,7 +108,11 @@ text and may contain model-authored checkpoint notes. Treat these as history, no
 authorization or verified completion; re-read files for exact state. The digest is limited to
 12,000 characters, with entries clipped to 1,500, its title to 120, and the changed-path list to
 1,800 characters (at most 30 paths). Attachments contribute names, not image bytes. Assistant
-entries use the provider-neutral label “Assistant”.
+entries use the provider-neutral label “Assistant”. A continuation or branch handoff also states
+where the source stood (“Where it stood: N user requests; the latest request was answered” or
+“…had no completed answer when the chat was continued”) and, when known, the source's working
+directory; these lines are descriptive history under the same untrusted envelope, not instructions.
+Compaction and rotation seeds keep their own preambles without them.
 
 `peer_chats.checkpoint` persists model-authored working state: goal, constraints, decisions,
 progress, next steps, and file references. State is at most 6,000 serialized characters; fields

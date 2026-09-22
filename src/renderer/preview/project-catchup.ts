@@ -85,10 +85,12 @@ export function countSince(nodes: TreeNode[], since: number): number {
   return nodes.filter((entry) => entry.updatedAt > since).length
 }
 
-/** One line per item, for the acknowledged report document. */
+/** The report body as markdown lines, one heading per section, for the acknowledged document. */
 export function reportLines(report: CatchUpReport): string[] {
   return report.sections.flatMap((section) => [
-    ...section.items.map((item) => `${section.title}: ${item.text}`),
-    ...(section.more ? [`${section.title}: and ${section.more} more`] : [])
+    `**${section.title}**`,
+    ...section.items.map((item) => `- ${item.text}`),
+    ...(section.more ? [`- and ${section.more} more`] : []),
+    ''
   ])
 }

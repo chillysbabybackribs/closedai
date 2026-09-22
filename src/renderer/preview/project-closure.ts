@@ -29,6 +29,9 @@ export type Proposal = { at: number; reportId: number }
 
 const done = (node: TreeNode | undefined) => node?.state === 'complete' || node?.state === 'confirmed'
 
+/** Record answers arrive as sentences; drop the closing stop so they can sit inside another. */
+export const bare = (text: string | null, fallback: string): string => (text ?? fallback).trim().replace(/[.!]+$/, '')
+
 export function closureProgress(nodes: TreeNode[], record: DirectionRecord): Progress {
   const byId = (id: string) => nodes.find((node) => node.id === id)
   const research = nodes.filter((node) => node.kind === 'research')
@@ -78,7 +81,7 @@ export function reportMarkdown(report: AcknowledgedReport, index: number): strin
     `## Completion progress · ${progress.met} of ${progress.total} gates`,
     ...progress.gates.map((gate) => `- [${gate.met ? 'x' : ' '}] ${gate.label} — ${gate.evidence}`), '',
     `## Changes · ${report.changes}`,
-    ...(report.lines.length ? report.lines.map((line) => `- ${line}`) : ['- Nothing changed in this window.'])
+    ...(report.lines.length ? report.lines : ['Nothing changed in this window.'])
   ].join('\n')
 }
 
@@ -92,9 +95,9 @@ export function proposalMarkdown(proposal: Proposal, reports: AcknowledgedReport
     '## Traceable record', `- ${reports.length} progress report${reports.length === 1 ? '' : 's'} acknowledged`,
     ...reports.map((report, index) => `- Report ${index + 1} · ${documentStamp(report.at)} · ${report.progress.met}/${report.progress.total} gates · ${report.changes} changes`), '',
     '## Acceptance walk',
-    `1. Open the application as ${record.user ?? 'the primary user'}.`,
-    `2. ${record.journey ?? 'Complete the first useful session.'}`,
-    `3. Confirm it stayed within: ${record.boundaries ?? 'the stated boundaries'}.`, '',
+    `1. Open the application as ${bare(record.user, 'the primary user')}.`,
+    `2. ${bare(record.journey, 'Complete the first useful session')}.`,
+    `3. Confirm it stayed within: ${bare(record.boundaries, 'the stated boundaries')}.`, '',
     'Accept, or name the gap; a named gap becomes an amendment and the proposal is withdrawn.'
   ].join('\n')
 }
@@ -106,7 +109,7 @@ export function handoffMarkdown(input: { record: DirectionRecord; acceptedAt: nu
   return [
     '# Handoff', '',
     `Accepted by the user ${documentStamp(acceptedAt)} after ${reports.length} acknowledged progress report${reports.length === 1 ? '' : 's'}.`, '',
-    '## What exists', record.idea, '', `For ${record.user ?? 'the primary user'}: ${record.journey ?? ''}`, '',
+    '## What exists', record.idea, '', `For ${bare(record.user, 'the primary user')}: ${bare(record.journey, '')}.`, '',
     '## Deliberately left out', record.boundaries ?? '', '',
     '## Gates at acceptance', ...progress.gates.map((gate) => `- [${gate.met ? 'x' : ' '}] ${gate.label} — ${gate.evidence}`), '',
     '## Where to look',

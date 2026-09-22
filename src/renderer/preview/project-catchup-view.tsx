@@ -1,7 +1,7 @@
 import { Check, CheckCircle2, Circle, ExternalLink } from 'lucide-react'
 
 import type { CatchUpReport } from './project-catchup.js'
-import type { AcknowledgedReport, Progress, Proposal } from './project-closure.js'
+import { bare, type AcknowledgedReport, type Progress, type Proposal } from './project-closure.js'
 import type { DirectionRecord } from './project-discovery.js'
 import type { Location } from './project-files.js'
 import { absolute, duration, relative } from './project-time.js'
@@ -89,9 +89,9 @@ export function ProposalDetail(props: {
     <section className="project-detail-section">
       <h2>Acceptance walk</h2>
       <ol className="project-walk">
-        <li>Open the application as {record.user ?? 'the primary user'}.</li>
-        <li>{record.journey ?? 'Complete the first useful session.'}</li>
-        <li>Confirm it stayed within: {record.boundaries ?? 'the stated boundaries'}.</li>
+        <li>Open the application as {bare(record.user, 'the primary user')}.</li>
+        <li>{bare(record.journey, 'Complete the first useful session')}.</li>
+        <li>Confirm it stayed within: {bare(record.boundaries, 'the stated boundaries')}.</li>
       </ol>
     </section>
     <section className="project-detail-section">

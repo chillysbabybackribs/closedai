@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { canPropose, closureProgress, handoffMarkdown, proposalMarkdown, reportMarkdown, type AcknowledgedReport } from './project-closure.ts'
 import { advanceDiscovery, createDiscovery } from './project-discovery.ts'
-import { deriveFiles } from './project-files.ts'
+import { deriveFiles, folderTree } from './project-files.ts'
 import { amendTree, applyEvent, buildDispatchPlan, rootNode, type TreeNode } from './project-tree.ts'
 
 const T0 = Date.UTC(2026, 8, 22, 4, 0, 0)
@@ -27,7 +27,7 @@ function run(events = Number.POSITIVE_INFINITY) {
 }
 
 const ack = (id: number, at: number, nodes: TreeNode[], rec: ReturnType<typeof record>): AcknowledgedReport =>
-  ({ id, since: at - 60_000, at, changes: 4, progress: closureProgress(nodes, rec), lines: ['Finished: something'] })
+  ({ id, since: at - 60_000, at, changes: 4, progress: closureProgress(nodes, rec), lines: ['**Finished**', '- Runnable shell — verified', ''] })
 
 test('gates are proven against the record and only all met at the end of the build', () => {
   const early = run(14)
@@ -78,4 +78,6 @@ test('reports, the proposal, and the handoff are dated documents in the tree', (
   assert.ok(paths.includes('reports/01-progress.md') && paths.includes('direction/proposal.md') && paths.includes('handoff.md'))
   assert.equal(files.find((file) => file.path === 'reports/01-progress.md')!.editable, false, 'acknowledged reports are history')
   assert.equal(files.find((file) => file.path === 'handoff.md')!.updatedAt, clock + 3_000)
+  assert.deepEqual(folderTree(files).files.map((file) => file.path), ['request.md', 'handoff.md'], 'the request still leads; the handoff sits beside it')
+  assert.equal(folderTree(files).folders[1]!.name, 'reports', 'reports ladder directly beneath direction')
 })

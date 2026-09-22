@@ -119,7 +119,7 @@ directory picker, recent projects, and “Don’t work in a project” (uses the
 The chat keeps its identity, messages, draft, and scroll position; other tabs, split panes, and the
 browser stay in place. Chats from different directories can share the layout, and focusing a chat
 or opening a history search result does not switch the workspace. New chats inherit the focused
-chat's directory. Open chat ids are restored across directories after relaunch.
+chat's directory; a continued chat inherits its source chat's. Open chat ids are restored across directories after relaunch.
 
 A folder selected during a turn is labeled “queued” and applies after that chat's foreground and
 background work finishes; paused work also waits. Other chats can keep running. The latest queued
@@ -204,7 +204,17 @@ longer visible. The renderer decides which tile displays a selected chat, as des
 Continuation creates a new pane with a local transcript digest, delivered once on its next
 message. Branching from a completed response limits that digest to the chosen response; it
 does not clone the provider's full session. User/assistant text is included, while tools,
-reasoning, and images stay in the original chat. See `chat-context/thread-handoff.ts`.
+reasoning, and images stay in the original chat. The digest opens with a "Where it stood" line
+(how many requests, and whether the latest one was answered or cut off) and the source's
+working directory; a continued chat also opens in that directory, not the focused chat's, when
+the source has a record. From the tab context menu, the new chat opens as a tab in the source's
+own tile. Until its first message is sent, the empty pane shows a continuation card naming the
+source, with **Open previous chat** (`chat.continuation-source`) and a collapsed
+**Show what the new chat receives** (`chat.continuation-digest`) that quotes the digest as the
+model will read it; the card is content, so the composer sits at the bottom rather than centred.
+Drawer rows carry that lineage as `continuedFrom` (source id and title, plus the digest only
+while undelivered); a directory change within one chat is not reported as a continuation.
+See `chat-context/thread-handoff.ts` and `chat-peers/peer-continuation.ts`.
 
 Models can save a structured working checkpoint with `peer_chats.checkpoint`: goal, constraints,
 decisions, progress, next steps, and file references. One checkpoint per chat is stored with its
@@ -346,7 +356,8 @@ composer accepts and sends drafts on its single line; its attachment chips and t
 (folder icon and name) sit above the pill instead of inside it, and the model picker
 (`composer.model`) sits at the pill's left edge with the same menu as the full view. Right-clicking
 any tile header or tab opens a context menu with **Workspace layout…** (`layout.presets`), **Rename…**,
-optional **Pin chat**, pause/resume when the tab’s task is running or paused, and separate **Close tab**
+optional **Pin chat**, **Continue in new chat** (`layout.continue`; disabled with a "Pause or stop the
+task first" subtitle while the tab's task runs), pause/resume when the tab’s task is running or paused, and separate **Close tab**
 (`layout.tab-close`, Ctrl/Cmd+W) and **Hide pane** (`layout.pane-hide`) rows with subtitles when tasks
 continue. With another tile open, **Move tab to next pane** / **Move tab to previous pane**
 (`layout.tab-move`, item `next` or `previous`) move the active conversation into the neighbouring

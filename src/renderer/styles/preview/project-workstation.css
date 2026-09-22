@@ -134,9 +134,20 @@
 }
 
 .project-stage {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
+}
+
+.project-stage > .project-crumbs,
+.project-stage > .project-away {
+  flex: none;
+}
+
+.project-stage > .project-tree-pane,
+.project-stage > .project-detail-pane {
+  flex: 1 1 auto;
   min-height: 0;
 }
 

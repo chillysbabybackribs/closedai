@@ -171,7 +171,8 @@ export function folderTree(files: ProjectFile[]): ProjectFolder {
   const rank = (path: string) => {
     const [head] = path.split('/')
     const index = FOLDER_ORDER.indexOf(head!)
-    return path.includes('/') ? (index === -1 ? FOLDER_ORDER.length : index) + 1 : 0
+    if (!path.includes('/')) return path === 'request.md' ? 0 : 1 // request first, then handoff
+    return (index === -1 ? FOLDER_ORDER.length : index) + 2
   }
   const key = (file: ProjectFile) => `${rank(file.path)}:${file.path.replace(/plan\.md$/, ' plan.md')}`
   for (const file of [...files].sort((a, b) => key(a).localeCompare(key(b)))) {
