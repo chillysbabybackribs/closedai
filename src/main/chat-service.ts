@@ -67,6 +67,15 @@ export class ChatService extends EventEmitter {
   private readonly compactor: ContextCompactor
   private readonly rotator: SessionRotator
   private startPromise: Promise<void> | null = null
+  /**
+   * Full reads of threads other than the live one: `readThread` asks the app-server to replay a
+   * whole thread, and rotation prefetches its own source on every rotation, so an unbounded chat
+   * re-paid that round trip on every hover and every rotation. The live thread is never served
+   * from here — it can grow between calls — and an entry is dropped the moment its thread becomes
+   * live, so a later read after it goes inactive again asks fresh rather than serving pre-live state.
+   */
+  private readonly threadCache = new Map<string, ChatThreadContent>()
+  private static readonly THREAD_CACHE_LIMIT = 8
   private resumePromise: Promise<void> | null = null
   private restartTimer: NodeJS.Timeout | null = null
   private restartAttempt = 0
@@ -263,13 +272,28 @@ export class ChatService extends EventEmitter {
   }
 
   async readThread(threadId: string): Promise<ChatThreadContent> {
+    const live = threadId === this.threadId
+    if (!live) {
+      const cached = this.threadCache.get(threadId)
+      if (cached) return cached
+    }
     await this.ensureConnected()
     const response = await this.client.request<ThreadResponse>('thread/read', { threadId, includeTurns: true })
     const thread = recordOf(response.thread)
     if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')
     const replay = new ChatTranscript(this.cwd, () => null, () => undefined)
     replay.replaceFromThread(thread)
-    return { threadId: thread.id, threadName: nullableString(thread.name), items: replay.snapshot() }
+    const content: ChatThreadContent = { threadId: thread.id, threadName: nullableString(thread.name), items: replay.snapshot() }
+    if (!live && thread.id !== this.threadId) this.rememberThread(thread.id, content)
+    return content
+  }
+
+  private rememberThread(threadId: string, content: ChatThreadContent): void {
+    this.threadCache.delete(threadId)
+    this.threadCache.set(threadId, content)
+    if (this.threadCache.size <= ChatService.THREAD_CACHE_LIMIT) return
+    const oldest = this.threadCache.keys().next().value
+    if (oldest !== undefined) this.threadCache.delete(oldest)
   }
 
   /** Clear the pane. The next `send` lazily starts a fresh app-server thread. */
@@ -406,6 +430,9 @@ export class ChatService extends EventEmitter {
 
   /** Load a thread's history from the app-server and make it the active one. */
   private async resumeThread(threadId: string): Promise<void> {
+    // This thread is about to become live and can grow from here; a cached read from before
+    // would go stale the moment it does, so drop it rather than let a later readThread serve it.
+    this.threadCache.delete(threadId)
     const response = await this.client.request<ThreadResponse>(
       'thread/resume',
       resumeThreadParams(threadId, this.cwd, this.tools, this.selectedThreadModelSettings())
