@@ -103,7 +103,8 @@ export function deriveFiles(input: {
     const path = nodePath(node, nodes)
     if (!path) continue
     const owner: FileOwner = node.kind === 'task' ? 'worker' : node.kind === 'amendment' ? 'user' : 'orchestrator'
-    files.push({ path, title: node.title, owner, editable: true, nodeId: node.id, content: nodeMarkdown(node) })
+    const title = node.kind === 'scope' ? 'Plan' : node.title
+    files.push({ path, title, owner, editable: true, nodeId: node.id, content: nodeMarkdown(node) })
   }
   const decided = nodes.filter((node) => node.kind === 'research' && node.state === 'confirmed')
   if (decided.length) {
