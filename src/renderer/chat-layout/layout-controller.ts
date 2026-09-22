@@ -118,8 +118,10 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     } catch (reason) { fail(reason) }
   }, [clearError, fail])
 
-  // A null edge adds a tab in the target tile without adding a split.
-  const dock = useCallback(async (id: string | null, target: string, edge: DockEdge | null, singleTab = false): Promise<void> => {
+  // A null edge adds a tab in the target tile without adding a split. Without an id a chat is
+  // created: a blank one, or whatever `create` makes (a continuation seeded from another chat).
+  const dock = useCallback(async (id: string | null, target: string, edge: DockEdge | null, singleTab = false,
+    create?: () => Promise<string>): Promise<void> => {
     if (pending.current) return
     if (id === BROWSER_PANE_ID) {
       if (edge) setLayout((value) => ({ ...value, tree: dockBrowser(value.tree, target, edge, crypto.randomUUID()) }))
@@ -137,7 +139,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
         throw new Error('The workspace already has 32 visible chats')
       }
       if (!id) await window.closedai.chat.selectPane(target)
-      const added = id ? await window.closedai.chat.openChat(id) : await window.closedai.chat.newPeer()
+      const added = id ? await window.closedai.chat.openChat(id) : create ? await create() : await window.closedai.chat.newPeer()
       selected.current = added
       setLayout((value) => {
         if (singleTab || (id && !edge)) return { ...value,
@@ -157,6 +159,14 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   }, [clearError, fail, release])
 
   const newChat = useCallback((target: string) => dock(null, target, null), [dock])
+
+  // "Continue in new chat": the digest-seeded chat opens as a tab in the source's own tile, so the
+  // old conversation stays one click away while the new one starts. Main's refusal (for example a
+  // turn still running) surfaces through the same error line as any other layout operation.
+  const continueChat = useCallback((sourceId: string, threadId: string | null, modelId: string | null) => {
+    const target = tabOwner(current.current.tree, sourceId) ?? sourceId
+    return dock(null, target, null, false, () => window.closedai.chat.continueInNewPeer({ paneId: sourceId, threadId }, modelId))
+  }, [dock])
 
   const activateTab = useCallback(async (id: string): Promise<void> => {
     if (pending.current) return

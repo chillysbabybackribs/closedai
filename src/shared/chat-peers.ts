@@ -49,6 +49,12 @@ export type ChatRowSummary = ChatPeerSummary & {
   projectPath?: string | null
   /** A directory chosen for this chat that is waiting for its running work to finish. */
   pendingProject?: { cwd: string; projectPath: string | null }
+  /**
+   * The chat this one continues ("Continue in new chat", a branch, or a project switch). The digest
+   * is present only until the first message delivers it, so an empty continued pane can show what
+   * it is about to carry; a directory change within one chat is not a continuation.
+   */
+  continuedFrom?: { paneId: string | null; title: string; handoff: string | null }
   createdAt: number
   lastTurnEndedAt: number | null
 }

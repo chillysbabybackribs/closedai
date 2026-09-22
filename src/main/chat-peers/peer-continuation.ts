@@ -11,7 +11,9 @@ export type ContinuationHost = {
   snapshot(paneId: string): Promise<ChatSnapshot>
   record(paneId: string): ChatRecord | undefined
   readThread(threadId: string): Promise<ChatThreadContent>
-  create(model: string | null, effort: string | null, continuation: ChatContinuation): Promise<string>
+  /** Without a selection the new chat takes the focused chat's directory. */
+  create(model: string | null, effort: string | null, continuation: ChatContinuation,
+    selection?: { cwd: string; projectPath: string | null }): Promise<string>
 }
 
 export async function continuePeer(host: ContinuationHost, source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId> {
@@ -49,10 +51,14 @@ export async function continuePeer(host: ContinuationHost, source: ChatContinuat
     }
     items = items.slice(0, index + 1)
   }
-  const savedCheckpoint = source.paneId ? host.record(source.paneId)?.checkpoint ?? null : null
+  const sourceRecord = source.paneId ? host.record(source.paneId) : undefined
+  const savedCheckpoint = sourceRecord?.checkpoint ?? null
   const checkpoint = savedCheckpoint?.threadId === sourceThreadId
     && items.some((item) => item.id === savedCheckpoint.throughItemId) ? savedCheckpoint : null
-  const handoff = buildThreadHandoff(items, threadName, checkpoint)
+  // The work continues where it was: the digest names the source directory and the new chat
+  // opens in it, rather than in whichever chat happened to hold focus.
+  const cwd = sourceSnapshot?.cwd ?? sourceRecord?.cwd ?? null
+  const handoff = buildThreadHandoff(items, threadName, checkpoint, { cwd })
   if (!handoff) throw new Error('There is no conversation to continue yet')
   const targetModel = modelId ?? sourceSnapshot?.selectedModel ?? current.selectedModel
   const targetEffort = targetModel === sourceSnapshot?.selectedModel
@@ -68,6 +74,7 @@ export async function continuePeer(host: ContinuationHost, source: ChatContinuat
     handoff: handoff.text,
     createdAt: Date.now()
   }
-  return host.create(targetModel, targetEffort, continuation)
+  return host.create(targetModel, targetEffort, continuation,
+    sourceRecord ? { cwd: sourceRecord.cwd, projectPath: sourceRecord.projectPath } : undefined)
 }
 

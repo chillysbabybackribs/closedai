@@ -8,6 +8,7 @@ const HOUR = 60 * MINUTE
 const clock = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
 const dated = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 const dateOnly = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+const full = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 
 const sameDay = (a: number, b: number): boolean => new Date(a).toDateString() === new Date(b).toDateString()
 
@@ -30,6 +31,11 @@ export function stamp(at: number, now: number): string {
   const rel = relative(at, now)
   const abs = absolute(at, now)
   return rel === abs ? abs : `${abs} · ${rel}`
+}
+
+/** Full date and time for written records, where "today" means nothing once the file is old. */
+export function documentStamp(at: number): string {
+  return full.format(at)
 }
 
 export function dayLabel(at: number): string {

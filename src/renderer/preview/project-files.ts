@@ -5,7 +5,7 @@
 // the map are two views of one state rather than two stores.
 import { clip, type DirectionRecord } from './project-discovery.js'
 import type { Message } from './project-intake.js'
-import { absolute } from './project-time.js'
+import { documentStamp } from './project-time.js'
 import type { TreeNode } from './project-tree.js'
 
 export type FileOwner = 'user' | 'orchestrator' | 'worker' | 'observer'
@@ -46,10 +46,10 @@ const STATE_WORDS: Record<TreeNode['state'], string> = {
   provisional: 'Working hypothesis', confirmed: 'Confirmed'
 }
 
-function recordMarkdown(record: DirectionRecord, confirmedAt: number, now: number): string {
+function recordMarkdown(record: DirectionRecord, confirmedAt: number): string {
   return [
     '# Direction record', '',
-    `Confirmed ${absolute(confirmedAt, now)}. Edit freely; the orchestrator sees every change and the map adapts.`, '',
+    `Confirmed ${documentStamp(confirmedAt)}. Edit freely; the orchestrator sees every change and the map adapts.`, '',
     `## What should exist`, record.idea, '',
     `## Who it is for`, record.user ?? '', '',
     `## First useful session`, record.journey ?? '', '',
@@ -58,9 +58,9 @@ function recordMarkdown(record: DirectionRecord, confirmedAt: number, now: numbe
   ].join('\n')
 }
 
-function transcriptMarkdown(messages: Message[], now: number): string {
+function transcriptMarkdown(messages: Message[]): string {
   return ['# Intake transcript', '', 'The conversation that produced the direction record, as it happened.', '',
-    ...messages.map((message) => `**${message.role === 'user' ? 'You' : 'Root coordinator'}** · ${absolute(message.at, now)}\n${message.text}\n`)
+    ...messages.map((message) => `**${message.role === 'user' ? 'You' : 'Root coordinator'}** · ${documentStamp(message.at)}\n${message.text}\n`)
   ].join('\n')
 }
 
@@ -75,13 +75,17 @@ function nodePath(node: TreeNode, nodes: TreeNode[]): string | null {
   }
 }
 
-function nodeMarkdown(node: TreeNode, now: number): string {
-  const lines = [`# ${node.title}`, '',
-    `State: ${STATE_WORDS[node.state]} · opened ${absolute(node.createdAt, now)} · updated ${absolute(node.updatedAt, now)}`, '', node.detail]
+function nodeMarkdown(node: TreeNode): string {
+  const lines = [`# ${node.title}`, '', `State: ${STATE_WORDS[node.state]}`, '', node.detail]
   if (node.links?.length) {
     lines.push('', '## Sources', ...node.links.map((link) => `- [${link.label}](${link.url}) — ${link.informs}`))
   }
-  if (node.kind === 'task') lines.push('', '## Worker notes', `- ${absolute(node.createdAt, now)} — Claimed.`, `- ${absolute(node.updatedAt, now)} — ${node.summary}.`)
+  if (node.kind === 'task') {
+    lines.push('', '## Worker log', `- ${documentStamp(node.createdAt)} — Claimed; read the record and the scope plan.`)
+    if (node.updatedAt !== node.createdAt) lines.push(`- ${documentStamp(node.updatedAt)} — ${node.summary}.`)
+  }
+  lines.push('', '## History', `- ${documentStamp(node.createdAt)} — Opened by the root coordinator.`)
+  if (node.updatedAt !== node.createdAt) lines.push(`- ${documentStamp(node.updatedAt)} — ${STATE_WORDS[node.state]}: ${node.summary}.`)
   return lines.join('\n')
 }
 
@@ -93,21 +97,20 @@ export function deriveFiles(input: {
   edits: Record<string, FileEdit>
   /** When Start confirmed the record; the birth time of every intake-derived file. */
   confirmedAt: number
-  now: number
 }): ProjectFile[] {
-  const { record, messages, nodes, journal, edits, confirmedAt, now } = input
+  const { record, messages, nodes, journal, edits, confirmedAt } = input
   const requestedAt = messages[0]?.at ?? confirmedAt
   const files: ProjectFile[] = [
     { path: 'request.md', title: 'Original request', owner: 'user', editable: false, nodeId: 'root', updatedAt: requestedAt,
-      content: `# Original request\n\nWritten ${absolute(requestedAt, now)}. Your words, kept as written; later steering lands in the record and its amendments.\n\n> ${record.idea}` },
+      content: `# Original request\n\nWritten ${documentStamp(requestedAt)}. Your words, kept as written; later steering lands in the record and its amendments.\n\n> ${record.idea}` },
     { path: 'direction/record.md', title: 'Direction record', owner: 'orchestrator', editable: true, nodeId: 'root', updatedAt: confirmedAt,
-      content: recordMarkdown(record, confirmedAt, now) },
+      content: recordMarkdown(record, confirmedAt) },
     { path: 'direction/transcript.md', title: 'Intake transcript', owner: 'user', editable: false, nodeId: 'root',
-      updatedAt: messages.at(-1)?.at ?? confirmedAt, content: transcriptMarkdown(messages, now) }
+      updatedAt: messages.at(-1)?.at ?? confirmedAt, content: transcriptMarkdown(messages) }
   ]
   if (record.evidence.length) {
     files.push({ path: 'research/discovery-sources.md', title: 'Discovery sources', owner: 'orchestrator', editable: true, nodeId: 'root',
-      updatedAt: confirmedAt, content: ['# Discovery sources', '', `Gathered while the direction was being clarified, before ${absolute(confirmedAt, now)}.`, '',
+      updatedAt: confirmedAt, content: ['# Discovery sources', '', `Gathered while the direction was being clarified; direction confirmed ${documentStamp(confirmedAt)}.`, '',
         ...record.evidence.map((item) => `- [${item.label}](${item.url}) — ${item.informs}`)].join('\n') })
   }
   for (const node of nodes) {
@@ -115,24 +118,24 @@ export function deriveFiles(input: {
     if (!path) continue
     const owner: FileOwner = node.kind === 'task' ? 'worker' : node.kind === 'amendment' ? 'user' : 'orchestrator'
     const title = node.kind === 'scope' ? 'Plan' : node.kind === 'amendment' ? clip(node.summary, 48) : node.title
-    files.push({ path, title, owner, editable: true, nodeId: node.id, updatedAt: node.updatedAt, content: nodeMarkdown(node, now) })
+    files.push({ path, title, owner, editable: true, nodeId: node.id, updatedAt: node.updatedAt, content: nodeMarkdown(node) })
   }
   const decided = nodes.filter((node) => node.kind === 'research' && node.state === 'confirmed')
   if (decided.length) {
     files.push({ path: 'decisions/log.md', title: 'Decisions', owner: 'orchestrator', editable: true, nodeId: 'root',
       updatedAt: Math.max(...decided.map((node) => node.updatedAt)),
-      content: ['# Decisions', '', ...decided.map((node) => `- ${absolute(node.updatedAt, now)} — **${node.title}** — ${clip(node.detail, 120)}`)].join('\n') })
+      content: ['# Decisions', '', ...decided.map((node) => `- ${documentStamp(node.updatedAt)} — **${node.title}** — ${clip(node.detail, 120)}`)].join('\n') })
   }
   if (journal.length) {
     files.push({ path: 'journal/log.md', title: 'Coordinator journal', owner: 'orchestrator', editable: false, nodeId: 'root',
       updatedAt: journal.at(-1)!.at,
-      content: ['# Coordinator journal', '', ...journal.map((line) => `- ${absolute(line.at, now)} — ${line.text}`)].join('\n') })
+      content: ['# Coordinator journal', '', ...journal.map((line) => `- ${documentStamp(line.at)} — ${line.text}`)].join('\n') })
   }
   const quality = nodes.filter((node) => node.parent === 'quality')
   if (quality.length) {
     files.push({ path: 'quality/report.md', title: 'Quality report', owner: 'observer', editable: true, nodeId: 'quality',
       updatedAt: Math.max(...quality.map((node) => node.updatedAt)),
-      content: ['# Quality report', '', ...quality.map((node) => `- ${absolute(node.updatedAt, now)} — ${node.title}: ${STATE_WORDS[node.state]} — ${node.summary}`)].join('\n') })
+      content: ['# Quality report', '', ...quality.map((node) => `- ${documentStamp(node.updatedAt)} — ${node.title}: ${STATE_WORDS[node.state]} — ${node.summary}`)].join('\n') })
   }
   return files.map((file) => {
     const edit = edits[file.path]

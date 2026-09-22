@@ -34,7 +34,7 @@ function build() {
 }
 
 const base = (input: ReturnType<typeof build>) =>
-  ({ record: input.record, messages: input.messages, nodes: input.nodes, journal: [], edits: {}, confirmedAt: input.confirmedAt, now: input.now })
+  ({ record: input.record, messages: input.messages, nodes: input.nodes, journal: [], edits: {}, confirmedAt: input.confirmedAt })
 
 test('files are derived from the record, transcript, map, and journal, with edits layered on top', () => {
   const built = build()
@@ -54,7 +54,11 @@ test('files are derived from the record, transcript, map, and journal, with edit
   assert.equal(files.find((file) => file.path === 'direction/transcript.md')!.content.match(/\*\*You\*\*/g)?.length, 4)
   for (const file of files) assert.ok(file.updatedAt > 0, `${file.path} carries a timestamp`)
   const shell = built.nodes.find((node) => node.id === 'shell')!
-  assert.equal(files.find((file) => file.path === 'scopes/foundation/shell.md')!.updatedAt, shell.updatedAt)
+  const shellFile = files.find((file) => file.path === 'scopes/foundation/shell.md')!
+  assert.equal(shellFile.updatedAt, shell.updatedAt)
+  assert.match(shellFile.content, /## Worker log\n- \w+ \d+, \d{4}, .* — Claimed/, 'worker notes are a dated running log')
+  assert.match(shellFile.content, /## History\n- .*Opened by the root coordinator\.\n- .*Complete: Verified/, 'every node file closes with a dated history')
+  assert.match(files.find((file) => file.path === 'direction/transcript.md')!.content, /\*\*You\*\* · \w+ \d+, \d{4}/)
 
   const editAt = built.now + MINUTE
   const edited = deriveFiles({ ...base(built), edits: { 'direction/record.md': { content: '# Direction record\n\nrewritten', at: editAt } } })

@@ -371,7 +371,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       snapshot: (id) => this.withAwake(id, async (surface) => surface.snapshot()),
       record: (id) => this.store.get(id) ?? undefined,
       readThread: (id) => this.withAwake(this.selectedPaneId, (surface) => surface.readThread(id)),
-      create: (model, effort, continuation) => this.newChat(model, effort, continuation)
+      create: (model, effort, continuation, selection) => this.newChat(model, effort, continuation, selection)
     }, source, modelId)
   }
 

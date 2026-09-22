@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { ContextMenu } from 'radix-ui'
-import { ArrowLeftToLine, ArrowRightToLine, LayoutGrid, PanelLeftClose, Pause, Pencil, Pin, PinOff, Play, X } from 'lucide-react'
+import { ArrowLeftToLine, ArrowRightToLine, LayoutGrid, MessageSquareShare, PanelLeftClose, Pause, Pencil, Pin, PinOff, Play, X } from 'lucide-react'
 import type { TabActivity } from './tab-activity.js'
 import type { TileDirection } from './layout-tabs.js'
 
@@ -10,7 +10,7 @@ const ICON = 16
 export const ChatLayoutActions = createContext<{ moveTab?: (id: string, direction: TileDirection) => void }>({})
 
 export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, hideHint, closeHint, tabActivity,
-  pinned, onOpenPresets, onRename, onTogglePin, onPause, onResume, onCloseTab, onHide
+  pinned, onOpenPresets, onRename, onTogglePin, onContinue, onPause, onResume, onCloseTab, onHide
 }: {
   activeId: string
   tabs: string[]
@@ -23,6 +23,8 @@ export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, hideHin
   onOpenPresets?: () => void
   onRename?: () => void
   onTogglePin?: () => void
+  /** "Continue in new chat": a fresh tab beside this one, seeded with a digest of this conversation. */
+  onContinue?: () => void
   onPause?: () => void
   onResume?: () => void
   onCloseTab: () => void
@@ -31,15 +33,15 @@ export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, hideHin
   return <ContextMenu.Portal>
     <ChatLayoutContextMenuContent activeId={activeId} tabs={tabs} chatCount={chatCount} busy={busy}
       hideHint={hideHint} closeHint={closeHint} tabActivity={tabActivity} pinned={pinned}
-      onOpenPresets={onOpenPresets} onRename={onRename} onTogglePin={onTogglePin} onPause={onPause}
-      onResume={onResume} onCloseTab={onCloseTab} onHide={onHide} />
+      onOpenPresets={onOpenPresets} onRename={onRename} onTogglePin={onTogglePin} onContinue={onContinue}
+      onPause={onPause} onResume={onResume} onCloseTab={onCloseTab} onHide={onHide} />
   </ContextMenu.Portal>
 }
 
 /** Menu body (also mounted in tests without Radix portal). */
 export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayoutContextMenu>[0]): ReactNode {
   const { activeId, tabs, chatCount, busy, hideHint, closeHint, tabActivity, pinned, onOpenPresets, onRename,
-    onTogglePin, onPause, onResume, onCloseTab, onHide } = props
+    onTogglePin, onContinue, onPause, onResume, onCloseTab, onHide } = props
   const { moveTab } = useContext(ChatLayoutActions)
   const canHidePane = chatCount >= 2
   const canCloseTab = tabs.length > 1
@@ -47,7 +49,9 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
   const canMoveTab = Boolean(moveTab) && chatCount >= 2
   const turnControl = tabActivity?.state === 'working' ? 'pause'
     : tabActivity?.state === 'paused' ? 'resume' : null
-  const hasChatActions = Boolean(onRename || onTogglePin || turnControl)
+  // Main refuses to digest a chat mid-turn, so the row says why instead of failing after the click.
+  const continueHint = turnControl === 'pause' ? 'Pause or stop the task first' : 'Fresh context, same task'
+  const hasChatActions = Boolean(onRename || onTogglePin || onContinue || turnControl)
   const hasCloseActions = canCloseTab || canHidePane || canMoveTab
   const hasFollowing = Boolean(onOpenPresets || hasChatActions)
 
@@ -81,6 +85,11 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
         <LayoutMenuRow data-ui="layout.pin" data-ui-key={activeId} label={pinned ? 'Unpin chat' : 'Pin chat'}
           icon={pinned ? <PinOff size={ICON} aria-hidden="true" /> : <Pin size={ICON} aria-hidden="true" />}
           onSelect={onTogglePin} />
+      )}
+      {onContinue && (
+        <LayoutMenuRow data-ui="layout.continue" data-ui-key={activeId} label="Continue in new chat" hint={continueHint}
+          icon={<MessageSquareShare size={ICON} aria-hidden="true" />} disabled={busy || turnControl === 'pause'}
+          onSelect={onContinue} />
       )}
       {turnControl === 'pause' && onPause && (
         <LayoutMenuRow data-ui="layout.pause-tab" data-ui-key={activeId} label="Pause task"

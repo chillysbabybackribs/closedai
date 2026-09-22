@@ -67,8 +67,8 @@ export function ProjectShellPreview() {
   const record = discovery.record
   const ready = discovery.asking === null && isDirectionReady(record)
   const layout = useMemo(() => layoutTree(tree), [tree])
-  const files = useMemo(() => deriveFiles({ record, messages, nodes: tree, journal, edits, confirmedAt, now }),
-    [record, messages, tree, journal, edits, confirmedAt, now])
+  const files = useMemo(() => deriveFiles({ record, messages, nodes: tree, journal, edits, confirmedAt }),
+    [record, messages, tree, journal, edits, confirmedAt])
   const pending = useMemo(() => countSince(tree, caughtUpAt), [tree, caughtUpAt])
   const report = useMemo(() => location.kind === 'catchup' ? buildCatchUp({ nodes: tree, files, since: caughtUpAt, now }) : null,
     [location, tree, files, caughtUpAt, now])
@@ -151,7 +151,7 @@ export function ProjectShellPreview() {
     const at = Date.now()
     const root = rootNode(record, at)
     const opening = [{ id: nextId.current++, at, text: 'Direction confirmed. Working from the record; only the next useful moves are planned.' }]
-    const initial = deriveFiles({ record, messages, nodes: [root], journal: opening, edits: {}, confirmedAt: at, now: at })
+    const initial = deriveFiles({ record, messages, nodes: [root], journal: opening, edits: {}, confirmedAt: at })
     setTree([root])
     setJournal(opening)
     setSeenFiles(Object.fromEntries(initial.map((file) => [file.path, file.content])))

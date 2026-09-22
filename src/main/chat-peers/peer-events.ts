@@ -188,9 +188,16 @@ export function rowSummary(record: ChatRecord, live: ChatPeerSummary | null): Ch
     pinnedAt: record.pinnedAt,
     cwd: record.cwd,
     projectPath: record.projectPath,
+    ...(continuedFrom(record.continuation) ?? {}),
     createdAt: record.createdAt,
     lastTurnEndedAt: record.lastTurnEndedAt
   }
+}
+
+/** Lineage for the empty pane's transition card; `sourceCwd` marks a directory move within one chat. */
+function continuedFrom(continuation: ChatRecord['continuation']): Pick<ChatRowSummary, 'continuedFrom'> | null {
+  if (!continuation || continuation.sourceCwd) return null
+  return { continuedFrom: { paneId: continuation.sourcePaneId, title: continuation.sourceTitle, handoff: continuation.handoff } }
 }
 
 /**
