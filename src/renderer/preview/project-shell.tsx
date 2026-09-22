@@ -4,6 +4,7 @@ import { AppWindow, Boxes, Compass, FlaskConical, Gem, RefreshCw, Sparkles } fro
 import type { ChatModel, ChatProvider } from '../../shared/chat.js'
 import { Composer } from '../composer.js'
 import { injectComposerDraft } from '../composer-drafts.js'
+import { ProjectCanvas } from './project-canvas.js'
 
 const ROOT_PANE_ID = 'preview-project-root'
 
@@ -79,19 +80,23 @@ const SUGGESTIONS = [
 
 type Message = { id: number; role: 'user' | 'coordinator'; text: string }
 
-function coordinatorReply(message: string, first: boolean): string {
-  if (!first) {
-    return 'I’ve added that to the starting direction. The project can keep revising its structure and priorities as the working application gives us better information.'
-  }
+function coordinatorReply(message: string, completedReplies: number): string {
   const summary = message.replace(/\s+/g, ' ').trim()
   const clipped = summary.length > 210 ? `${summary.slice(0, 207)}…` : summary
-  return `I understand the starting direction as: ${clipped}\n\nI’ll treat this as a goal to build toward, not a frozen specification. The first useful move is to establish a runnable foundation, explore the primary workflow, and let what we learn shape the next work.`
+  if (completedReplies === 0) {
+    return `I understand the initial direction as: ${clipped}\n\nBefore I build, I need to sharpen the outcome. Who is the primary user, and what is the one thing they must be able to accomplish in their first useful session?`
+  }
+  if (completedReplies === 1) {
+    return 'That clarifies the user and central journey. I’m comparing the idea against adjacent products and common workflow failures now.\n\nWhat must this product not become, and which constraints or qualities are non-negotiable?'
+  }
+  return 'The direction is coherent enough to begin. I have a clear primary user, central outcome, experience boundary, and quality constraints. I’ve separated confirmed choices from assumptions so discovery can continue without silently changing the original idea.'
 }
 
 export function ProjectShellPreview() {
   const [messages, setMessages] = useState<Message[]>([])
   const [selectedModel, setSelectedModel] = useState(MODELS[0]!.id)
-  const [handoffNotice, setHandoffNotice] = useState(false)
+  const [phase, setPhase] = useState<'intake' | 'canvas'>('intake')
+  const [amendment, setAmendment] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const nextMessageId = useRef(1)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -99,7 +104,9 @@ export function ProjectShellPreview() {
   const selected = MODELS.find((model) => model.id === selectedModel) ?? MODELS[0]!
   const provider = selected.provider as ChatProvider
   const hasConversation = messages.length > 0
-  const canStart = messages.some((message) => message.role === 'coordinator') && !sending
+  const completedReplies = messages.filter((message) => message.role === 'coordinator').length
+  const canStart = completedReplies >= 3 && !sending
+  const originalIdea = messages.find((message) => message.role === 'user')?.text ?? ''
 
   const providerSummary = useMemo(() => '4 providers available to the coordinator', [])
 
@@ -115,6 +122,13 @@ export function ProjectShellPreview() {
   async function send(text: string): Promise<void> {
     const clean = text.trim()
     if (!clean) return
+    if (phase === 'canvas') {
+      setSending(true)
+      await new Promise((resolve) => window.setTimeout(resolve, 260))
+      setAmendment(clean)
+      setSending(false)
+      return
+    }
     const user: Message = { id: nextMessageId.current++, role: 'user', text: clean }
     setMessages((current) => [...current, user])
     setSending(true)
@@ -122,7 +136,7 @@ export function ProjectShellPreview() {
     setMessages((current) => [...current, {
       id: nextMessageId.current++,
       role: 'coordinator',
-      text: coordinatorReply(clean, !current.some((message) => message.role === 'coordinator'))
+      text: coordinatorReply(clean, current.filter((message) => message.role === 'coordinator').length)
     }])
     setSending(false)
   }
@@ -140,11 +154,13 @@ export function ProjectShellPreview() {
         <header className="project-shell-header">
           <span className="project-shell-grip" aria-hidden="true">⠿</span>
           <span className="project-shell-mark"><Compass size={15} aria-hidden="true" /></span>
-          <strong>New project</strong>
-          <span className="project-shell-kind">Project shell</span>
+          <strong>{phase === 'canvas' ? 'Project direction' : 'New project'}</strong>
+          <span className="project-shell-kind">{phase === 'canvas' ? 'Building' : 'Project shell'}</span>
         </header>
 
-        <div className={`project-shell-body${hasConversation ? ' has-conversation' : ''}`} ref={scrollRef}>
+        {phase === 'canvas'
+          ? <ProjectCanvas originalIdea={originalIdea} amendment={amendment} />
+          : <div className={`project-shell-body${hasConversation ? ' has-conversation' : ''}`} ref={scrollRef}>
           {!hasConversation && <>
             <div className="project-shell-intro">
               <span className="project-shell-intro-mark"><Compass size={21} aria-hidden="true" /></span>
@@ -175,26 +191,23 @@ export function ProjectShellPreview() {
               <span /><span /><span /> Understanding the direction
             </div>}
             {canStart && <div className="project-start-row">
-              <div><strong>Ready when you are</strong><span>Continue refining, or begin the project from this direction.</span></div>
-              <button type="button" data-ui="preview.project-start" onClick={() => setHandoffNotice(true)}>
+              <div><strong>Direction confirmed</strong><span>Continue refining, or begin with this understanding.</span></div>
+              <button type="button" data-ui="preview.project-start" onClick={() => setPhase('canvas')}>
                 Start building
               </button>
             </div>}
-            {handoffNotice && <p className="project-handoff-notice" role="status">
-              This preview intentionally ends at the handoff. The running project view will be designed separately.
-            </p>}
           </div>}
-        </div>
+        </div>}
 
         <footer className="project-shell-footer">
-          {!hasConversation && <p className="project-shell-help">
+          {phase === 'intake' && !hasConversation && <p className="project-shell-help">
             Describe what you want to exist and anything you already care about. It does not need to be complete.
           </p>}
           <div className="composer project-shell-composer">
             <Composer
               enabled={!sending}
               running={false}
-              placeholder="Describe what you want to create…"
+              placeholder={phase === 'canvas' ? 'Add direction, a constraint, or a question…' : 'Describe what you want to create…'}
               models={MODELS}
               selectedModel={selectedModel}
               selectedReasoningEffort={selected.defaultReasoningEffort}
@@ -219,7 +232,9 @@ export function ProjectShellPreview() {
               paneId={ROOT_PANE_ID}
             />
           </div>
-          <span className="project-provider-note"><AppWindow size={12} aria-hidden="true" /> {providerSummary}</span>
+          <span className="project-provider-note"><AppWindow size={12} aria-hidden="true" />
+            {phase === 'canvas' ? 'Direction applies to the project unless a branch is selected' : providerSummary}
+          </span>
         </footer>
       </section>
     </main>

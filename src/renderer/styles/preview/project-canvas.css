@@ -1,0 +1,319 @@
+.project-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background-color: #171718;
+  background-image: radial-gradient(circle, rgb(255 255 255 / 7%) 0.7px, transparent 0.8px);
+  background-position: 0 0;
+  background-size: 22px 22px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.project-canvas:active {
+  cursor: grabbing;
+}
+
+.project-canvas::after {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 48% 48%, transparent 25%, rgb(10 10 11 / 20%) 100%);
+  content: "";
+  pointer-events: none;
+}
+
+.project-canvas-meta {
+  position: absolute;
+  z-index: 5;
+  top: 16px;
+  left: 18px;
+  display: grid;
+  gap: 2px;
+  padding: 7px 9px;
+  border: 1px solid rgb(255 255 255 / 6%);
+  border-radius: 7px;
+  background: rgb(22 22 23 / 80%);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
+.project-canvas-meta strong {
+  color: #d7d7da;
+  font-size: 11.5px;
+  font-weight: 580;
+}
+
+.project-canvas-meta span {
+  color: #68686d;
+  font-size: 10px;
+}
+
+.project-canvas-world {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  width: 1160px;
+  height: 690px;
+  transform-origin: 0 0;
+  transition: transform 80ms linear;
+}
+
+.project-tree-edges {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.project-tree-edges path {
+  fill: none;
+  stroke: rgb(255 255 255 / 13%);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.project-tree-edges path[data-active="true"] {
+  stroke: rgb(157 140 255 / 42%);
+  stroke-dasharray: 4 5;
+  animation: project-edge-flow 8s linear infinite;
+}
+
+@keyframes project-edge-flow {
+  to { stroke-dashoffset: -45; }
+}
+
+.project-tree-node {
+  position: absolute;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 8px 11px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgb(24 24 25 / 68%);
+  color: #dedee1;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 140ms var(--ease-chrome),
+    border-color 140ms var(--ease-chrome),
+    box-shadow 140ms var(--ease-chrome);
+}
+
+.project-tree-node::before {
+  position: absolute;
+  top: 50%;
+  left: -5px;
+  width: 7px;
+  height: 7px;
+  transform: translateY(-50%);
+  border: 1px solid #171718;
+  border-radius: 50%;
+  background: #5c5c61;
+  content: "";
+}
+
+.project-tree-node:hover,
+.project-tree-node[data-selected="true"] {
+  border-color: rgb(255 255 255 / 10%);
+  background: rgb(35 35 37 / 90%);
+}
+
+.project-tree-node[data-selected="true"] {
+  border-color: rgb(157 140 255 / 38%);
+  box-shadow: 0 0 0 2px rgb(157 140 255 / 7%);
+}
+
+.project-tree-node:focus-visible {
+  outline: 2px solid rgb(157 140 255 / 60%);
+  outline-offset: 2px;
+}
+
+.project-tree-node[data-state="active"]::before {
+  background: #9d8cff;
+  box-shadow: 0 0 0 4px rgb(157 140 255 / 12%);
+}
+
+.project-tree-node[data-state="confirmed"]::before,
+.project-tree-node[data-state="complete"]::before {
+  background: #73aa80;
+}
+
+.project-tree-node[data-state="provisional"]::before {
+  background: #b49a66;
+}
+
+.project-tree-node.is-origin {
+  border-color: rgb(157 140 255 / 22%);
+  background: rgb(157 140 255 / 7%);
+}
+
+.project-tree-node-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.project-tree-node strong {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 580;
+  letter-spacing: var(--tracking-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-tree-node small {
+  overflow: hidden;
+  color: #747479;
+  font-size: 10.5px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-tree-node.is-origin .project-tree-node-heading {
+  color: #b9aeff;
+}
+
+.project-node-inspector {
+  position: absolute;
+  z-index: 6;
+  top: 16px;
+  right: 18px;
+  width: min(300px, calc(100% - 36px));
+  padding: 13px 14px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 9px;
+  background: rgb(28 28 30 / 90%);
+  box-shadow: 0 16px 36px rgb(0 0 0 / 28%);
+  backdrop-filter: blur(14px);
+  cursor: default;
+}
+
+.project-node-inspector-heading {
+  display: grid;
+  gap: 5px;
+}
+
+.project-node-inspector-heading > span {
+  width: fit-content;
+  color: #827b9f;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.project-node-inspector-heading > span[data-state="active"] {
+  color: #a99eff;
+}
+
+.project-node-inspector-heading > span[data-state="confirmed"],
+.project-node-inspector-heading > span[data-state="complete"] {
+  color: #80b58b;
+}
+
+.project-node-inspector-heading strong {
+  color: #eeeeef;
+  font-size: 13px;
+  font-weight: 590;
+}
+
+.project-node-inspector p {
+  margin: 9px 0 0;
+  color: #a0a0a5;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.project-node-sources {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgb(255 255 255 / 7%);
+}
+
+.project-node-sources > span {
+  margin-bottom: 2px;
+  color: #69696e;
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.project-node-sources a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  color: #aaa4cb;
+  font-size: 10.5px;
+  text-decoration: none;
+}
+
+.project-node-sources a:hover {
+  color: #d1caff;
+}
+
+.project-canvas-controls {
+  position: absolute;
+  z-index: 7;
+  bottom: 13px;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 7px;
+  background: rgb(25 25 27 / 88%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
+  backdrop-filter: blur(10px);
+  cursor: default;
+}
+
+.project-canvas-controls button {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #88888d;
+  cursor: pointer;
+}
+
+.project-canvas-controls button:hover {
+  background: rgb(255 255 255 / 7%);
+  color: #d9d9dc;
+}
+
+.project-canvas-controls button:focus-visible {
+  outline: 1px solid #9d8cff;
+}
+
+.project-canvas-controls span {
+  width: 38px;
+  color: #6f6f74;
+  font-size: 9.5px;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-canvas-world,
+  .project-tree-node {
+    transition: none;
+  }
+
+  .project-tree-edges path[data-active="true"] {
+    animation: none;
+  }
+}

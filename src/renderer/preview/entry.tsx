@@ -7,6 +7,7 @@ import { createPreviewBridge } from './bridge.js'
 import { parseScenario, PREVIEW_CWD, sampleLayout } from './fixtures.js'
 import { ProjectShellPreview } from './project-shell.js'
 import { createPreviewStorage } from './storage.js'
+import '../styles/preview/project-canvas.css'
 import '../styles/preview/project-shell.css'
 import '../styles/preview/shell.css'
 
