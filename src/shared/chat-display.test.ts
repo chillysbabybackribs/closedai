@@ -31,7 +31,8 @@ test('continuationPreviewItems builds a read-only transcript tail', () => {
   const items = continuationPreviewItems('Ask me', 'Here is the answer')
   assert.equal(items.length, 2)
   assert.equal(items[0]?.type, 'user')
-  assert.equal(items[1]?.text, 'Here is the answer')
+  assert.equal(items[1]?.type, 'assistant')
+  assert.equal(items[1]?.type === 'assistant' ? items[1].text : '', 'Here is the answer')
 })
 
 test('handoffDigestForDisplay scrubs legacy stored digests for the card', () => {

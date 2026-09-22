@@ -106,7 +106,6 @@ export const UI_CONTROLS = {
   'chat.sign-in': 'Sign in with ChatGPT when the pane is signed out',
   'chat.choose-model': 'Open the model menu from an unavailable or signed-out empty state or connection banner',
   'chat.notice-dismiss': 'Dismiss the pane-level notice shown after a failed pane action',
-  'chat.continuation-source': 'Continuation card in an empty continued chat: open the chat it continues from',
   'chat.continuation-source': 'Continued chat hint: open the source chat tab when it still exists',
   'chat.credential-allow': 'Approval card (Settings → Security, off by default): let the agent read the requested credential fields; item is the request id',
   'chat.credential-deny': 'Approval card (Settings → Security, off by default): refuse the credential request; item is the request id',

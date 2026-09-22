@@ -87,11 +87,15 @@ test('a drawer row names the chat it continues while the digest is undelivered',
     sourceTitle: 'Parser work', handoff: 'Handoff from the previous chat "Parser work".', createdAt: 1
   }
   const pending = rowSummary(chatRecord('pane-b', 'gpt', { continuation: lineage }), null)
-  assert.deepEqual(pending.continuedFrom, { paneId: 'pane-a', title: 'Parser work', handoff: lineage.handoff })
+  assert.deepEqual(pending.continuedFrom, {
+    paneId: 'pane-a', title: 'Parser work', handoff: lineage.handoff, previewUser: null, previewAssistant: null
+  })
 
   // Delivered: the lineage stays on the row without the text the first message already carried.
   const delivered = rowSummary(chatRecord('pane-b', 'gpt', { continuation: { ...lineage, handoff: null } }), null)
-  assert.deepEqual(delivered.continuedFrom, { paneId: 'pane-a', title: 'Parser work', handoff: null })
+  assert.deepEqual(delivered.continuedFrom, {
+    paneId: 'pane-a', title: 'Parser work', handoff: null, previewUser: null, previewAssistant: null
+  })
 
   // A directory change within one chat re-seeds that chat; it is not a continuation of another.
   const moved = rowSummary(chatRecord('pane-b', 'gpt', { continuation: { ...lineage, sourceCwd: '/old' } }), null)
