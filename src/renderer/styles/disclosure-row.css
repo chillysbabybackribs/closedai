@@ -1,5 +1,5 @@
 /* Disclosure rows (components/ui/disclosure-row.tsx): one line that opens into a panel. Shared by
-   Tools & capabilities and the Research library so the app's lists read as one system. */
+   Tools & capabilities and similar settings lists so the app's lists read as one system. */
 
 .disclosure-row { margin: 0 -8px; list-style: none; }
 .disclosure-row[data-open='true'] { margin-bottom: 6px; }

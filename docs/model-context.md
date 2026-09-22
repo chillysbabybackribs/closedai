@@ -174,11 +174,6 @@ missing metadata leaves Codex's native default untouched.
 
 ## Tool context and output budgets
 
-The public research library is a user-facing dialog and on-disk index only; models do not have a
-library tool and its abstracts are never injected into prompts or handoffs. Substantive claims
-require opening linked papers through normal browser and research tools. See
-[Research library](research-library.md).
-
 Models can explicitly retain large protocol results with `browser_cdp.protocol command`
 `retain=true`, returning a compact receipt backed by scoped SQLite storage. There is no separate
 model-facing read/list/export tool. Operation keys prevent committed retries from reexecuting CDP

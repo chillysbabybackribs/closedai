@@ -86,7 +86,7 @@ test('user replay chunks drop injected closedai_context before display', () => {
     sessionUpdate: 'user_message_chunk',
     content: {
       type: 'text',
-      text: '<closedai_context name="closedai.agent_workspace" kind="application">\nrules\n</closedai_context>\nhello'
+      text: '<closedai_context name="closedai.instructions" kind="application">\nrules\n</closedai_context>\nhello'
     }
   }])
   const item = [...ops, ...instance.finish()].flatMap((op) => (op.type === 'item' ? [op.item] : [])).find((entry) => entry.type === 'user')

@@ -11,7 +11,7 @@ import {
 export type MenuAction =
   | 'new-chat' | 'history' | 'settings' | 'close-tab' | 'close-window' | 'search-chats'
   | 'toggle-browser' | 'layout' | 'toggle-fullscreen'
-  | 'tools' | 'research' | 'compact' | 'stop-turn'
+  | 'tools' | 'compact' | 'stop-turn'
   | 'trace' | 'reload' | 'devtools'
 
 /** A clickable row, a separator, or a section heading that names what the rows below act on. */
@@ -70,7 +70,6 @@ const MENUS: Menu[] = [
     label: 'Agent',
     rows: [
       { key: 'tools', label: 'Tools & capabilities…', shortcut: 'Ctrl+Shift+T', action: 'tools' },
-      { key: 'research-library', label: 'Research library…', action: 'research' },
       SEP,
       { kind: 'heading', label: 'Selected chat' },
       { key: 'compact-context', label: 'Compact context', action: 'compact' },

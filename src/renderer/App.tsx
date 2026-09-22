@@ -21,7 +21,6 @@ import type { ChatPaneDialog } from './chat-pane.js'
 import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SettingsDialog, type SettingsTab } from './settings/settings-dialog.js'
 import { useToolsPreset } from './tools/use-tools-preset.js'
-import { ResearchLibraryDialog } from './research/library-dialog.js'
 import { BrowserGlobeIcon } from './browser-globe-icon.js'
 import {
   normalizeAppearanceSettings,
@@ -41,11 +40,10 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const [settingsOpen, setSettingsOpen] = useState(initialSettingsOpen)
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('appearance')
-  const [researchOpen, setResearchOpen] = useState(false)
   const [renamingChat, setRenamingChat] = useState<{ id: string; title: string } | null>(null)
   const [paneDialog, setPaneDialog] = useState<ChatPaneDialog | null>(null)
-  const dialogsRef = useRef({ settingsOpen, researchOpen, renamingChat, paneDialog })
-  dialogsRef.current = { settingsOpen, researchOpen, renamingChat, paneDialog }
+  const dialogsRef = useRef({ settingsOpen, renamingChat, paneDialog })
+  dialogsRef.current = { settingsOpen, renamingChat, paneDialog }
   const workspaceRef = useRef<ChatLayoutHandle>(null)
   const toolsPreset = useToolsPreset()
   const [browserVisible, setBrowserVisible] = useState(false)
@@ -108,7 +106,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         window.closedai.window.toggleFullscreen().catch(report('Could not toggle fullscreen'))
       } else if (shortcut === 'pause-task') {
         const dialogs = dialogsRef.current
-        const hasOpenModal = dialogs.settingsOpen || dialogs.researchOpen ||
+        const hasOpenModal = dialogs.settingsOpen ||
           Boolean(dialogs.renamingChat) || Boolean(dialogs.paneDialog)
         const pauses = escapePausesTask({
           overlayOpen: hasOpenModal || Boolean(document.querySelector(
@@ -164,7 +162,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     switch (action) {
       case 'new-chat': history.newChat(); break
       case 'settings': setSettingsTab('appearance'); setSettingsOpen(true); break
-      case 'research': setResearchOpen(true); break
       case 'history': toggleHistory(); break
       case 'toggle-browser': workspaceRef.current?.toggleBrowser(); break
       case 'layout': workspaceRef.current?.openLayoutPresets(); break
@@ -247,7 +244,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         appearance={appearance}
         onAppearanceChange={updateAppearance}
       />
-      <ResearchLibraryDialog open={researchOpen} onOpenChange={setResearchOpen} />
     </div>
   )
 }

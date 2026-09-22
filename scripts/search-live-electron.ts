@@ -32,7 +32,6 @@ async function verify(profile: string): Promise<void> {
   const browser = new BrowserService(window, EPHEMERAL_BROWSER_HISTORY, { initialUrl: 'about:blank' })
   browser.setBounds({ x: 0, y: 0, width: 1000, height: 700, visible: true })
   const runtime = await createResearchRuntime({
-    libraryPath: join(profile, 'research-library.json'),
     root: join(profile, 'research-runs'), browser: () => browser, workspace: () => profile,
     peers: () => ({ paneSnapshot: () => ({ threadId: 'thread', activeTurnId: 'turn' }) }) as never
   })
@@ -117,8 +116,7 @@ async function verify(profile: string): Promise<void> {
     releaseSearch?.()
     releaseSlowProvider?.()
     queryService?.dispose()
-    runtime.service.dispose()
-    runtime.library.dispose()
+    runtime.dispose()
     browser.dispose()
     window.destroy()
     server.closeAllConnections()

@@ -326,8 +326,7 @@
 /* ---- Usage card -----------------------------------------------------------
    The token counts used to unfold inline on hover; they live in this card now,
    next to the subscription windows the turn is actually spending. Hover, not
-   click, because it has to be readable while a turn runs — clicking the meter
-   still opens the inspector.
+   click, because it has to be readable while a turn runs.
 
    Monochrome on purpose: the meter beside it already colours the one number
    worth colouring, and a card of amber bars read as an alarm rather than a

@@ -13,7 +13,7 @@ import {
 
 test('displayUserMessageText removes context blocks and user_query wrappers', () => {
   const raw = [
-    '<closedai_context name="closedai.agent_workspace" kind="application">',
+    '<closedai_context name="closedai.instructions" kind="application">',
     'secret',
     '</closedai_context>',
     '<user_query>Build the MVP</user_query>'

@@ -13,14 +13,12 @@ import { createPdfReader } from './tools/search/research/pdf/reader.js'
 import { createPdfInspector } from './tools/search/research/pdf/inspector.js'
 import { textLimit } from './tools/search/research/coverage.js'
 import { SearchBrowserTabs } from './tools/search/presentation.js'
-import { ResearchLibrary } from './research-library/service.js'
 import { traceLog } from './trace/trace-log.js'
 import type { BrowserCoordination } from './tools/browser/coordination.js'
 
 /** Electron/session ownership stays outside the provider-neutral search implementation. */
 export async function createResearchRuntime(options: {
   root: string
-  libraryPath: string
   browser(): BrowserService | null
   peers(): ChatPeerManager | null
   workspace(): string
@@ -35,7 +33,6 @@ export async function createResearchRuntime(options: {
     await rm(join(options.root, entry.name), { recursive: true, force: true })
   }
   const publicSession = session.fromPartition(RESEARCH_PARTITION)
-  const library = ResearchLibrary.create(options.libraryPath, (input, init) => publicSession.fetch(input as string, init))
   const store = new SourceStore(options.root, (input, init) => publicSession.fetch(input as string, init),
     createPdfReader(new URL('./pdf-worker.js', import.meta.url)))
   const inspectPdf = createPdfInspector(new URL('./pdf-page-worker.js', import.meta.url))
@@ -88,5 +85,5 @@ export async function createResearchRuntime(options: {
       }
     }
   })
-  return { namespace, service, library, dispose: () => { service.dispose(); workers.dispose() } }
+  return { namespace, service, dispose: () => { service.dispose(); workers.dispose() } }
 }

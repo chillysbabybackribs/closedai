@@ -46,7 +46,6 @@ are candidates, not instructions to implement them all. Tackle one agreed item a
 | Browser | Review tab overflow and browser-toggle discoverability at compact widths. |
 | Tool configuration | Ensure change-effect copy matches current provider behavior. |
 | Turn trace | Summarize outcomes before exposing detailed diagnostics. |
-| Research library | Consolidate initial empty-state copy and defer validation until interaction. |
 | Credential Vault | Make encryption wording conditional on actual keychain status; clarify entry naming. |
 | Downloads | Verify populated progress, cancellation, and error/retry states before changing the panel. |
 | Command palette | Evaluate as a way to consolidate existing actions. |

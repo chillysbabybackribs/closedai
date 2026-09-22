@@ -14,6 +14,7 @@ export type StoredScreenshot = {
   capturedAt: string
 }
 
+/** `agent_workspace` remains for screenshots stored before the feature was removed. */
 export type ScreenshotSurface = 'app_window' | 'agent_workspace' | 'browser_page' | 'crop'
 
 const DEFAULT_MAX_ENTRIES = 60

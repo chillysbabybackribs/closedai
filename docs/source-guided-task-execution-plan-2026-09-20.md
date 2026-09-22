@@ -54,7 +54,7 @@ memory, checkpoint, and handoff features remain useful and do not need replaceme
 | There are already bounded queues, cancellation, source hashes, output paging, and private investigation archives. | Extend these contracts rather than creating duplicate storage, workers, or an evidence database. |
 
 Primary owners: `src/main/chat-context/application-instructions.ts`, provider instruction builders,
-`src/main/tools/search/`, `src/main/research-library/`, `src/main/research-runtime.ts`, and
+`src/main/tools/search/`, `src/main/research-runtime.ts`, and
 `src/shared/web-research.ts`. The inspected checkout was clean before this plan was added.
 
 ## 1. Replace the task and sourcing guidance
