@@ -95,7 +95,7 @@ export function Composer({
   const setLayout = fixedLayout ? () => {} : setPreferredLayout
   const layoutLocked = fixedLayout !== undefined
   const inputPlaceholder = running
-    ? 'Esc to pause'
+    ? ''
     : placeholder ?? (enabled ? 'Enter to send · Shift+Enter for newline' : `${providerLabel} is unavailable`)
   const formRef = useRef<HTMLFormElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)

@@ -527,8 +527,8 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   on process startup; it has no hidden initialization turn. The composer has no send button:
   Enter submits and Shift+Enter inserts a newline; only the pause control appears while a turn
   runs (Escape also acts as a hotkey to pause the running task). An empty composer shows the muted
-  placeholder “Enter to send · Shift+Enter for newline” (just “Enter to send” when collapsed),
-  changing to “Esc to pause” during a running task. Typed drafts naturally hide the placeholder;
+  placeholder “Enter to send · Shift+Enter for newline” (just “Enter to send” when collapsed);
+  while a turn runs the placeholder is blank so the pause control carries that affordance. Typed drafts naturally hide the placeholder;
   connection/unavailable messages retain precedence while idle. The textarea label, the disabled
   placeholder, and the pause/resume tooltips name the pane's provider. Before the first snapshot
   the workspace area shows “Starting ClosedAI…”, or “Could not start” with the reason and Retry
