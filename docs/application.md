@@ -456,9 +456,14 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   throttled to 250 ms and limited to 20,000 characters, but pending highlights show the current
   plain code rather than an older highlighted version.
 - Displayed assistant text is paced (`components/ui/paced-text.ts`): the painted prefix trails the
-  received text by a bounded catch-up window (~180 ms) that always drains fully, so single-token,
-  sentence-burst, and whole-message chunk cadences (Antigravity can deliver a step's text only on
-  its DONE half) paint as one typewriter, and a streaming message that mounts with bulk text —
+  received text at a reveal rate that eases toward the arrival rate (over ~420 ms) rather than
+  tracking the momentary backlog, so single-token, sentence-burst, and whole-message chunk cadences
+  (Antigravity can deliver a step's text only on its DONE half) paint as one typewriter at a steady
+  speed — a rate proportional to the backlog instead surged on every chunk and crawled between them.
+  The lag it holds follows the tracked gap between chunks, clamped to 180–700 ms: about one chunk of
+  lag is what lets a steady rate span the gap between two of them without emptying and waiting, and
+  a backlog older than 700 ms drains whatever the rate has adapted to, so the reveal cannot fall
+  behind a fast stream or stall an interrupted one. A streaming message that mounts with bulk text —
   a pane becoming visible mid-turn — sweeps in instead of popping. Settled items, replaced text
   (a repair that does not extend the shown prefix), and reduced-motion sessions render in full
   immediately; a turn whose item never settles still finishes because the drain does not depend
