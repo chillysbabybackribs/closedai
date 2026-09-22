@@ -113,8 +113,10 @@ use the existing session handoff to start a fresh provider thread, preserving th
 conversation and source recall. This also applies to tool switches, independently of idle
 context rotation; unchanged catalogs keep their thread.
 
-The folder menu above each composer changes only that chat's working directory. It offers a
-directory picker, recent projects, and “Don’t work in a project” (uses the home directory).
+The Folder section of each composer's setup panel (`composer.setup`) changes only that chat's
+working directory. It offers a directory picker (`composer.project-new`), recent projects
+(`composer.project-recent`), and “Don’t work in a project” (`composer.project-clear`, uses the home
+directory); the trigger on the composer line names the current folder beside the model.
 The chat keeps its identity, messages, draft, and scroll position; other tabs, split panes, and the
 browser stay in place. Chats from different directories can share the layout, and focusing a chat
 or opening a history search result does not switch the workspace. New chats inherit the focused
@@ -156,7 +158,7 @@ it was taken from, so a new chat or a provider switch shows nothing stale. The l
 shows the current turn by default; **View previous messages** loads one earlier user/model turn at
 a time from the provider when needed. Such a pane wakes the provider first, since earlier messages
 come from the thread itself. The
-composer names the chat's saved model and effort while its provider is still starting, rather
+composer's setup trigger names the chat's saved model while its provider is still starting, rather
 than "Choose model". Unselected panes without an active
 turn are parked after five minutes, the selected pane after twenty, and at most two unselected
 idle panes stay awake: creating or opening a chat parks the least recently active beyond that at
@@ -342,20 +344,21 @@ splits independently; arrow keys resize a focused divider by 5% (Shift: 1%), and
 balances it within pane minimums. Escape during a drag restores its starting proportions;
 pointer cancellation, lost capture, and window blur release the gesture. Nested splits support columns, rows,
 and quadrants, up to 32 visible chats. A tile has a 300 × 280 px minimum; the chat area scrolls
-when a small window cannot fit the chosen arrangement. Every layout uses the smaller expanded
-composer: a flat project/activity rail, less empty input space, tighter gutters and 30 px controls.
-Drafts grow within a tile-relative height limit and then scroll, leaving room for the transcript.
-Tiles at most 680 px wide or 640 px tall also tighten transcript spacing, and narrow tiles
-condense model details. Single-tab headers use the
+when a small window cannot fit the chosen arrangement. Every layout uses the same one-line
+composer (42 px at rest, 30 px controls). Drafts grow upward within a tile-relative height limit and
+then scroll, leaving room for the transcript.
+Tiles at most 680 px wide or 640 px tall also tighten transcript spacing; under 460 px the setup
+trigger drops the folder name, and under 330 px the model name too, leaving the provider mark. Single-tab headers use the
 available width for the title; the focused tile has the accent tab indicator.
-Composers start fully expanded and stay expanded while running or inactive. The chevron
-(`composer.compact-toggle`) is the only control that collapses or expands the composer. The
-choice is one app-wide preference stored in renderer local storage: it applies to every open
-and new chat at once and survives typing, sending, turns, pane changes, and restarts. A collapsed
-composer accepts and sends drafts on its single line; its attachment chips and the project rail
-(folder icon and name) sit above the pill instead of inside it. Under the card or pill, the model
-picker (`composer.model`) is on the left and attach plus the context ring on the right—the same
-controls and menu as the full view. Right-clicking
+The composer is one line inside one card: attach (`composer.upload`) on the left, the text, then
+the setup trigger (`composer.setup`, provider mark, model name, and folder name) and the action
+button on the right. There is no collapsed mode and no separate rail or footer; pending attachment
+chips sit above the line inside the card. The setup trigger opens a single panel with four
+sections: Model (providers as groups, each on its most-used short list with a `composer.model-more`
+row for the rest), Effort (a segmented control, `composer.effort-item`), Folder, and Context (the
+context window, plan windows, and Compact conversation). Model and effort rows are disabled while a
+turn runs; the folder section stays usable because a change queues until the chat is idle. The
+trigger does not change while a turn runs: no spinner or elapsed clock. Right-clicking
 any tile header or tab opens a context menu led by **Close tab** (`layout.tab-close`, Ctrl/Cmd+W),
 then **Hide pane** (`layout.pane-hide`) and, with another tile open,
 **Move tab to next pane** / **Move tab to previous pane**
@@ -509,7 +512,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   completes, and Pause between turns retires the process, marking those tasks stopped.
 - Completed assistant responses offer copy and branching. Timestamps appear when recorded;
   older history does not acquire invented timestamps.
-- The project rail contains the working timer and project menu. The title bar has four menus.
+- There is no project rail: the folder lives in the composer's setup panel. The title bar has four menus.
   File owns chat creation, history, Settings (Appearance, Models, Credentials, and Security tabs), and closing the
   window; View owns browser visibility, layout, chat zoom, and fullscreen; Agent owns what the
   model is given (Tools & capabilities) and a "Selected chat" section naming
@@ -525,11 +528,13 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   the SDK's `interrupt`, Cursor the `session/cancel` **notification** (as a request cursor-agent
   ignores it and streams on), and Antigravity, which has no interrupt, kills its process and
   resumes the conversation id on the next turn. Antigravity sends the user's prompt directly
-  on process startup; it has no hidden initialization turn. The composer has no send button:
-  Enter submits and Shift+Enter inserts a newline; only the pause control appears while a turn
-  runs (Escape also acts as a hotkey to pause the running task). An empty composer shows the muted
-  placeholder “Enter to send · Shift+Enter for newline” (just “Enter to send” when collapsed);
-  while a turn runs the placeholder is blank so the pause control carries that affordance. Typed drafts naturally hide the placeholder;
+  on process startup; it has no hidden initialization turn. The composer's one action button is
+  Send (`composer.send`, accent-filled once there is text or an attachment; Enter also submits and
+  Shift+Enter inserts a newline), Pause (`composer.stop`) in the same slot while a turn runs
+  (Escape also acts as a hotkey to pause the running task), and Resume (`composer.resume`) after a
+  pause. An empty composer shows the muted placeholder “Message <Provider>”, “Resume, or send
+  something new” after a pause, and nothing while a turn runs so the pause button carries that
+  affordance. Typed drafts naturally hide the placeholder;
   connection/unavailable messages retain precedence while idle. The textarea label, the disabled
   placeholder, and the pause/resume tooltips name the pane's provider. Before the first snapshot
   the workspace area shows “Starting ClosedAI…”, or “Could not start” with the reason and Retry
@@ -537,14 +542,14 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   guidance (`chat-connection.tsx`): the empty pane's heading is “Sign in to <Provider>”,
   “<Provider> is unavailable”, or “Starting <Provider>…” by connection state over main's message
   (install steps, sign-in path, or failure), with Sign in with ChatGPT for a signed-out Codex pane
-  and a “Choose model” hint that opens the model menu for every blocked state. A blocked empty
+  and a “Choose model” hint that opens the setup panel for every blocked state. A blocked empty
   pane also reads `chat.providerAvailability()` once and lists each provider as Installed or Not
   installed, so a missing CLI on first run does not hide the providers that would work; a failed
   read leaves the message-only state. Once a transcript
   exists the same guidance is a strip above the composer instead of replacing the messages.
   Failed pause, model, and effort changes appear in the composer's alert row; a failed compaction
   or refused shell shortcut appears as a dismissible notice. Compact conversation is available from
-  the context meter hover card and Agent → Compact context when the provider supports manual
+  the setup panel's Context section (`composer.compact`) and Agent → Compact context when the provider supports manual
   compaction. The composer preserves unsubmitted drafts (text and pending attachments) per
   conversation pane across tab switching and unmounting, clearing them only on submission.
   Appearance settings separate message and composer font sizes

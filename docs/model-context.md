@@ -169,7 +169,7 @@ items or context tokens alone.
 ClosedAI starts and resumes Codex threads with the selected model's maximum active-context size
 using known native capacities (including GPT-6 Astra's 1,050,000 tokens) for model ids in the
 installed CLI's model cache, falling back to cache metadata for unknown models. That value is
-also reflected in the context meter under the composer. This is a runtime configuration limit, not extra prompt content;
+also reflected in the Context section of the composer's setup panel. This is a runtime configuration limit, not extra prompt content;
 missing metadata leaves Codex's native default untouched.
 
 ## Tool context and output budgets

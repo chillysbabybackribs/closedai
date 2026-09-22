@@ -24,7 +24,7 @@ test('ContextUsage reports tokens, colours the level, and offers compaction when
   const html = renderToStaticMarkup(createElement(ContextUsage, {
     usage: { usedTokens: 800_000, contextWindow: 1_000_000, percent: 80 },
     provider: 'codex',
-    planUsage: { plan: 'Pro', updatedAt: Date.now(), windows: [{ label: '5h', percent: 12, resetsAt: Date.now() + 90 * 60_000 }] },
+    planUsage: { plan: 'Pro', note: null, unavailable: null, updatedAt: Date.now(), windows: [{ label: '5h', percent: 12, resetsAt: Date.now() + 90 * 60_000 }] },
     onCompact: async () => {},
     compactEnabled: true
   }))
