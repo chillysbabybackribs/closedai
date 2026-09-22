@@ -1,6 +1,4 @@
 import { EventEmitter } from 'node:events'
-import { isDeepStrictEqual } from 'node:util'
-import { readThreadMetadata } from './chat-thread-origin.js'
 import type {
   ChatAccount,
   ChatAttachment,
@@ -14,12 +12,12 @@ import type {
   ChatThreadSummary,
   ChatTurnContextReport
 } from '../shared/chat.js'
-import { applyProviderRotation, type RotationSettingsAccess } from './chat-context/rotate-provider-session.js'
+import type { RotationSettingsAccess } from './chat-context/rotate-provider-session.js'
 import {
   type AppServerNotification
 } from './app-server-client.js'
 import { answerServerRequest } from './chat-approvals.js'
-import { messageOf, normalizeAccount, nullableString, recordOf } from './chat-normalizers.js'
+import { messageOf, normalizeAccount, recordOf } from './chat-normalizers.js'
 import { listWorkspaceThreads, startChatGptLogin } from './chat-requests.js'
 import { routeChatNotification } from './chat-notification-router.js'
 import { ChatTranscript } from './chat-transcript.js'
@@ -29,7 +27,17 @@ import {
   mergeTurnAdditionalContext,
   type ActiveBrowserContext
 } from './chat-context/turn-context.js'
-import { resumeThreadParams, startThreadParams, type ThreadResponse } from './chat-context/thread-params.js'
+import { resumeThreadParams } from './chat-context/thread-params.js'
+import {
+  detachThreadState,
+  ensureCodexThread,
+  readCachedThread,
+  resumeCodexThread,
+  resumePersistedCodexThread,
+  rotateCodexProviderSession,
+  threadModelSettings,
+  type ChatServiceThreadHost
+} from './chat-service-thread-lifecycle.js'
 import { ContextCompactor, describeUsage, type ContextUsage } from './chat-context/context-compaction.js'
 import { SessionRotator } from './chat-context/session-rotation.js'
 import { codexPlanUsage } from './chat-context/plan-usage.js'
@@ -40,7 +48,7 @@ import {
   type ThreadHandoffSource
 } from './chat-context/thread-handoff.js'
 import { buildTurnContextReport } from './chat-context/turn-inspector.js'
-import { AppServerToolCalls, dynamicToolSpecs } from './tools/app-server-tools.js'
+import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
 import { reasoningEffortForModel } from './chat-model-catalog.js'
 import { ChatModelState } from './chat-model-state.js'
@@ -77,7 +85,6 @@ export class ChatService extends EventEmitter {
    * live, so a later read after it goes inactive again asks fresh rather than serving pre-live state.
    */
   private readonly threadCache = new Map<string, ChatThreadContent>()
-  private static readonly THREAD_CACHE_LIMIT = 8
   private resumePromise: Promise<void> | null = null
   private restartTimer: NodeJS.Timeout | null = null
   private restartAttempt = 0
@@ -119,7 +126,7 @@ export class ChatService extends EventEmitter {
       thresholdTokens: () => this.settings.get().chatCompactAtTokens,
       threadId: () => this.threadId,
       turnActive: () => this.activeTurnId !== null,
-      rotate: () => this.rotateProviderSession()
+      rotate: () => rotateCodexProviderSession(this.threadHost())
     })
     this.client.on('notification', (notification: AppServerNotification) => this.onNotification(notification))
     this.client.on('request', (request) => {
@@ -250,7 +257,7 @@ export class ChatService extends EventEmitter {
           this.threadId,
           this.cwd,
           this.tools,
-          this.threadModelSettings(preference.model, preference.effort)
+          threadModelSettings(this.threadHost(), preference.model, preference.effort)
         ),
         excludeTurns: true
       })
@@ -274,35 +281,14 @@ export class ChatService extends EventEmitter {
   }
 
   async readThread(threadId: string): Promise<ChatThreadContent> {
-    const live = threadId === this.threadId
-    if (!live) {
-      const cached = this.threadCache.get(threadId)
-      if (cached) return cached
-    }
-    await this.ensureConnected()
-    const response = await this.client.request<ThreadResponse>('thread/read', { threadId, includeTurns: true })
-    const thread = recordOf(response.thread)
-    if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')
-    const replay = new ChatTranscript(this.cwd, () => null, () => undefined)
-    replay.replaceFromThread(thread)
-    const content: ChatThreadContent = { threadId: thread.id, threadName: nullableString(thread.name), items: replay.snapshot() }
-    if (!live && thread.id !== this.threadId) this.rememberThread(thread.id, content)
-    return content
-  }
-
-  private rememberThread(threadId: string, content: ChatThreadContent): void {
-    this.threadCache.delete(threadId)
-    this.threadCache.set(threadId, content)
-    if (this.threadCache.size <= ChatService.THREAD_CACHE_LIMIT) return
-    const oldest = this.threadCache.keys().next().value
-    if (oldest !== undefined) this.threadCache.delete(oldest)
+    return readCachedThread(this.threadHost(), threadId)
   }
 
   /** Clear the pane. The next `send` lazily starts a fresh app-server thread. */
   async newThread(): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before starting a new chat')
     if (!this.threadId && this.transcript.isEmpty && !this.settings.get().chatContinuation) return
-    this.detachThread()
+    detachThreadState(this.threadHost())
     await this.settings.set({ chatThreadId: null, chatContinuation: null })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }
@@ -315,7 +301,7 @@ export class ChatService extends EventEmitter {
     if (this.activeTurnId) throw new Error('Stop the current turn before continuing in a new chat')
     const source = from ?? this.ownHandoff()
     if (!source) throw new Error('There is no conversation to continue yet')
-    this.detachThread()
+    detachThreadState(this.threadHost())
     await this.settings.set({
       chatThreadId: null,
       chatContinuation: continuationFromThreadHandoff(this.paneId, source)
@@ -417,78 +403,12 @@ export class ChatService extends EventEmitter {
   }
 
   private async doResumePersistedThread(): Promise<void> {
-    if (this.threadId) return
-    const persisted = this.settings.get().chatThreadId
-    if (!persisted) return
-    try {
-      await this.resumeThread(persisted)
-    } catch (error) {
-      console.warn('[app-server] could not resume saved thread:', messageOf(error))
-      this.detachThread()
-      await this.settings.set({ chatThreadId: null })
-      this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
-    }
+    await resumePersistedCodexThread(this.threadHost())
   }
 
   /** Load a thread's history from the app-server and make it the active one. */
   private async resumeThread(threadId: string): Promise<void> {
-    // This thread is about to become live and can grow from here; a cached read from before
-    // would go stale the moment it does, so drop it rather than let a later readThread serve it.
-    this.threadCache.delete(threadId)
-    const response = await this.client.request<ThreadResponse>(
-      'thread/resume',
-      resumeThreadParams(threadId, this.cwd, this.tools, this.selectedThreadModelSettings())
-    )
-    const thread = recordOf(response.thread)
-    if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')
-    this.threadId = thread.id
-    this.threadName = nullableString(thread.name)
-    const metadata = typeof thread.path === 'string' ? await readThreadMetadata(thread.path) : null
-    this.threadToolCatalog = Array.isArray(metadata?.dynamic_tools) ? metadata.dynamic_tools : null
-    const saved = this.settings.get()
-    this.modelState.adoptResumed(
-      { model: saved.chatModelId, effort: saved.chatReasoningEffort },
-      { model: response.model, effort: response.reasoningEffort }
-    )
-    this.transcript.replaceFromThread(thread)
-    this.compactor.reset()
-    this.rotator.reset()
-    await this.settings.set({ chatThreadId: thread.id, chatContinuation: null })
-    this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
-  }
-
-  /** Forget the active thread and its transcript without touching persisted settings. */
-  private detachThread(): void {
-    this.threadId = null
-    this.threadName = null
-    this.transcript.clear()
-    this.compactor.reset()
-    this.rotator.reset()
-    this.activeTurnId = null
-    this.turnContext = null
-  }
-
-  /** Drop the provider thread while keeping the visible transcript; seed the next send. */
-  private async rotateProviderSession(excludeItemId?: string): Promise<void> {
-    try {
-      await applyProviderRotation(this.settings, {
-        paneId: this.paneId,
-        provider: 'codex',
-        threadId: this.threadId,
-        threadName: this.threadName,
-        items: this.transcript.snapshot().filter((item) => item.id !== excludeItemId)
-      }, async () => {
-        this.threadId = null
-        this.compactor.reset()
-        this.rotator.reset()
-        await this.settings.set({ chatThreadId: null })
-        this.emitEvent({ type: 'thread', threadId: null, threadName: this.threadName })
-      }, this.contextManager().current, {
-        prefetchSource: (threadId) => { void this.readThread(threadId).catch(() => undefined) }
-      })
-    } finally {
-      this.rotator.complete()
-    }
+    await resumeCodexThread(this.threadHost(), threadId)
   }
 
   private seamlessRotation(): boolean {
@@ -516,44 +436,38 @@ export class ChatService extends EventEmitter {
   }
 
   private async ensureThread(clientUserMessageId?: string): Promise<string> {
-    const catalog = dynamicToolSpecs(this.tools)
-    if (this.threadId && !isDeepStrictEqual(this.threadToolCatalog, catalog)) {
-      // Resume cannot replace dynamic tools. Keep the transcript and source recall while
-      // starting a provider thread with the current catalog, even when idle rotation is off.
-      await this.rotateProviderSession(clientUserMessageId ? `user:${clientUserMessageId}` : undefined)
-      if (this.threadId) {
-        // Empty conversations have no handoff to rotate; there is no history to summarize.
-        await this.settings.set({ chatThreadId: null })
-        this.threadId = null
-      }
+    return ensureCodexThread(this.threadHost(), clientUserMessageId)
+  }
+
+  private selectedThreadModelSettings(): ReturnType<typeof threadModelSettings> {
+    return threadModelSettings(this.threadHost(), this.modelState.selectedModel, this.modelState.selectedReasoningEffort)
+  }
+
+  private threadHost(): ChatServiceThreadHost {
+    return {
+      cwd: this.cwd,
+      client: this.client,
+      tools: this.tools,
+      settings: this.settings,
+      paneId: this.paneId,
+      threadId: this.threadId,
+      threadName: this.threadName,
+      threadToolCatalog: this.threadToolCatalog,
+      transcript: this.transcript,
+      compactor: this.compactor,
+      rotator: this.rotator,
+      modelState: this.modelState,
+      threadCache: this.threadCache,
+      ensureConnected: () => this.ensureConnected(),
+      contextManager: () => this.contextManager(),
+      snapshot: () => this.snapshot(),
+      emitEvent: (event) => this.emitEvent(event),
+      setThreadId: (id) => { this.threadId = id },
+      setThreadName: (name) => { this.threadName = name },
+      setThreadToolCatalog: (catalog) => { this.threadToolCatalog = catalog },
+      setActiveTurnId: (id) => { this.activeTurnId = id },
+      setTurnContext: () => { this.turnContext = null }
     }
-    if (this.threadId) return this.threadId
-    const response = await this.client.request<ThreadResponse>(
-      'thread/start',
-      startThreadParams(this.cwd, this.tools, this.selectedThreadModelSettings())
-    )
-    const thread = recordOf(response.thread)
-    if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')
-    this.threadId = thread.id
-    this.threadToolCatalog = catalog
-    this.threadName = nullableString(thread.name)
-    this.modelState.adopt(response.model)
-    await this.settings.set({ chatThreadId: thread.id })
-    this.emitEvent({ type: 'thread', threadId: thread.id, threadName: this.threadName })
-    return thread.id
-  }
-
-  private selectedThreadModelSettings(): ReturnType<ChatService['threadModelSettings']> {
-    return this.threadModelSettings(this.modelState.selectedModel, this.modelState.selectedReasoningEffort)
-  }
-
-  private threadModelSettings(model: string | null, effort: string | null): {
-    model: string | null
-    effort: string | null
-    contextWindow?: number
-  } {
-    const contextWindow = this.modelState.models.find((entry) => entry.id === model)?.contextWindow
-    return { model, effort, ...(contextWindow ? { contextWindow } : {}) }
   }
 
   /** Context is optional enrichment: stale UI state must never prevent a send. */
