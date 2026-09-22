@@ -105,6 +105,10 @@ day: the building layout filled only the top half of the embedded pane because
 `.project-workstation` had no flex rule in the embedded flex column (`pane.css`). Still to do by the
 owner: quit, relaunch, reopen the pane, and see the same record, root node, amendment, and journal.
 Known and expected: `coordinator` stays `null` and evidence is fixture text until slice B.
+Found after the owner's relaunch: the restart control only detached a new coordinator chat, so the
+pane rehydrated the building-phase file and there was no way back to intake. Fixed the same day
+with a `reset` mutation (blank file, hive config kept) that the restart control issues before
+closing the chat.
 
 ### Intake voice — landed 2026-09-22
 

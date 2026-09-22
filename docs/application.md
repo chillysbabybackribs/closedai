@@ -339,7 +339,8 @@ the project's version control, and the agent workspace hydrates from disk when t
 Full view uses the same solo-tile maximize gesture as chat panes (`layout.agent-full-view` or double-click
 where supported). Drag the agent workspace grip to stack or dock beside chats the same way as the browser,
 without selecting a conversation when you focus inside the pane. The restart control (`layout.agent-restart`)
-closes the backing coordinator chat and detaches a fresh one, remounting the workspace back at the first
+resets the project store to a blank intake (a `reset` mutation; only the hive config survives), closes
+the backing coordinator chat, and detaches a fresh one, remounting the workspace back at the first
 intake view; the closed chat is not deleted, only detached, so it stays reachable from chat history like any
 closed chat. `closedai_ui.capture`'s `agent_workspace` action screenshots this pane alone, cropped from the
 composed window; it fails with guidance when the pane is not open. The pane is plain DOM (unlike the

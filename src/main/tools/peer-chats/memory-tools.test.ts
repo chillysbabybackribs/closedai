@@ -21,11 +21,6 @@ function harness() {
         calls.push({ caller, request })
         return { threadId: caller.threadId!, checkpoint: null, matches: [], hasMore: false,
           nextBeforeItemId: null, throughItemId: null, trust: 'historical-data' }
-      },
-      save: async (caller, revision, input) => {
-        const normalized = validateMemoryState(input)
-        calls.push({ caller, revision, state: normalized })
-        return { version: 1, revision: revision + 1, threadId: caller.threadId!, throughItemId: 'u', createdAt: 1, state: normalized } satisfies ChatMemoryCheckpoint
       }
     }
   }))])
@@ -46,23 +41,6 @@ test('recall is scoped by trusted call context, with bounded query and paging ar
     assert.equal((await h.call('recall', args)).isError, true)
   }
   assert.equal(h.calls.length, 1)
-})
-
-test('checkpoint rejects malformed memory and responds with metadata rather than echoing the summary', async () => {
-  const h = harness()
-  const result = await h.call('checkpoint', { expected_revision: 0, state })
-  assert.equal(result.isError, undefined)
-  assert.equal(result.content[0]!.type, 'text')
-  if (result.content[0]!.type === 'text') {
-    assert.equal(JSON.parse(result.content[0]!.text).revision, 1)
-    assert.doesNotMatch(result.content[0]!.text, /Keep history/)
-  }
-  for (const args of [{ state }, { expected_revision: -1, state }, { expected_revision: 0, state: { ...state, constraints: Array(13).fill('x') } }]) {
-    assert.equal((await h.call('checkpoint', args)).isError, true)
-  }
-  const minimal = await h.call('checkpoint', { expected_revision: 0, state: { goal: 'Minimal goal' } })
-  assert.equal(minimal.isError, undefined)
-  assert.equal(h.calls.length, 2)
 })
 
 test('history discovery and targeted recall route through the existing namespace', async () => {

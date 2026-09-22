@@ -6,7 +6,7 @@ import type { CoordinatorBinding } from './coordinator.js'
 import type { ClaritySlot, DirectionRecord } from './direction.js'
 import type { ProjectJournalLine } from './journal.js'
 import type { ProjectPhase } from './record.js'
-import type { ProjectStoreFile } from './store-file.js'
+import { createDefaultProjectStoreFile, type ProjectStoreFile } from './store-file.js'
 import type { TreeNode, TreeState } from './tree.js'
 
 /** A node as a caller describes it; the store stamps timestamps when it lands. */
@@ -29,6 +29,8 @@ export type ProjectMutation =
   | { type: 'caughtUp'; note?: string }
   | { type: 'journal'; text: string }
   | { type: 'coordinator'; coordinator: CoordinatorBinding | null }
+  /** Back to a blank intake (the restart control): everything but the hive config is discarded. */
+  | { type: 'reset' }
 
 export function applyTreeEvent(nodes: TreeNode[], event: ProjectTreeEvent, at: number): TreeNode[] {
   if ('add' in event) {
@@ -83,6 +85,8 @@ export function applyProjectMutation(file: ProjectStoreFile, mutation: ProjectMu
       return withNote({ ...file, updatedAt: now }, mutation.text, now)
     case 'coordinator':
       return { ...file, coordinator: mutation.coordinator, updatedAt: now }
+    case 'reset':
+      return { ...createDefaultProjectStoreFile(now), hive: file.hive }
   }
 }
 

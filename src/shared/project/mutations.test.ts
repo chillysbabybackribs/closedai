@@ -64,3 +64,17 @@ test('direction and coordinator verbs write only their fields', () => {
   file = applyProjectMutation(file, { type: 'coordinator', coordinator: { provider: 'claude', modelId: 'm', reasoningEffort: null, threadId: 't' } }, 3)
   assert.equal(file.coordinator?.threadId, 't')
 })
+
+test('reset returns to a blank intake and keeps only the hive config', () => {
+  let file = createDefaultProjectStoreFile(1)
+  file = applyProjectMutations(file, [{ type: 'start', root, note: 'go' }, { type: 'journal', text: 'later' }], 5)
+  file = { ...file, hive: { ...file.hive, workers: { ...file.hive.workers, maxConcurrent: 9 } } }
+  const next = applyProjectMutation(file, { type: 'reset' }, 50)
+  assert.equal(next.phase, 'intake')
+  assert.equal(next.discoveryAsking, 'idea')
+  assert.equal(next.startedAt, null)
+  assert.equal(next.updatedAt, 50)
+  assert.deepEqual(next.tree, [])
+  assert.deepEqual(next.journal, [])
+  assert.equal(next.hive.workers.maxConcurrent, 9)
+})

@@ -24,6 +24,7 @@ export function credentialVaultTools(
 function listTool(getVault: () => CredentialVaultHost | null): ToolDefinition {
   return defineTool({
     name: 'list',
+    deferLoading: true,
     description:
       'List saved credential metadata and masked field previews. Use this before credential_vault.read to identify ' +
       'the credential id and exact field ids. This never decrypts secret fields.',
@@ -65,6 +66,7 @@ function listTool(getVault: () => CredentialVaultHost | null): ToolDefinition {
 function readTool(getVault: () => CredentialVaultHost | null, getPolicy: () => CredentialAccessPolicy | null): ToolDefinition {
   return defineTool({
     name: 'read',
+    deferLoading: true,
     description:
       'Decrypt selected fields from one saved credential for an operation the user requested. Call list first and request ' +
       'only the required field_ids. The result is sensitive: never print, quote, summarize, log, or write it to source or ' +

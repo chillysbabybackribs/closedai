@@ -2,7 +2,7 @@ import type { ChatMemory } from '../../chat-context/chat-memory.js'
 import type { ChatRecallRequest } from '../../../shared/chat-memory.js'
 import { defineTool, failureResult, numberArg, stringArg, textResult, usageResult, type ToolDefinition } from '../tool.js'
 
-export type PeerMemoryAccess = Pick<ChatMemory, 'save' | 'recall' | 'history'>
+export type PeerMemoryAccess = Pick<ChatMemory, 'recall' | 'history'>
 
 /** Item kinds recall can excerpt; screenshots and reasoning are never among them. */
 const RECALLABLE_ITEM_TYPES = ['user', 'assistant', 'plan', 'tool', 'command', 'fileChange']
@@ -40,34 +40,6 @@ export function memoryTools(getMemory: () => PeerMemoryAccess | null): ToolDefin
           beforeItemId: stringArg(input, 'before_item_id'), limit: numberArg(input, 'limit', 5)
         }
         return textResult(JSON.stringify(await memory.recall(context, request)))
-      }
-    }),
-    defineTool({
-      name: 'checkpoint',
-      deferLoading: true,
-      description: 'Save working notes for your current chat: objective (goal, required) and optional lists (constraints, decisions, progress, nextSteps, files). Distinguish facts from assumptions; omit secrets and private reasoning. Maximum 6,000 serialized state characters. expected_revision comes from recall(current), or 0 when absent. Replaces the previous checkpoint, without changing sessions or compacting. Notes persist through restart and can accompany a continuation; they may become stale.',
-      inputSchema: {
-        type: 'object', additionalProperties: false, required: ['expected_revision', 'state'],
-        properties: {
-          expected_revision: { type: 'integer', minimum: 0, maximum: Number.MAX_SAFE_INTEGER - 1 },
-          state: {
-            type: 'object', additionalProperties: false,
-            required: ['goal'],
-            properties: {
-              goal: { type: 'string', minLength: 1, maxLength: 1_000 },
-              ...Object.fromEntries(['constraints', 'decisions', 'progress', 'nextSteps', 'files'].map((key) => [key, {
-                type: 'array', maxItems: 12, items: { type: 'string', minLength: 1, maxLength: 400 }
-              }]))
-            }
-          }
-        }
-      },
-      run: async (input, context) => {
-        const memory = getMemory()
-        if (!memory) return failureResult('Chat memory is unavailable')
-        const checkpoint = await memory.save(context, numberArg(input, 'expected_revision', 0), input.state)
-        return textResult(JSON.stringify({ saved: true, revision: checkpoint.revision,
-          throughItemId: checkpoint.throughItemId, stateChars: JSON.stringify(checkpoint.state).length, trust: 'model-authored-notes' }))
       }
     })
   ]

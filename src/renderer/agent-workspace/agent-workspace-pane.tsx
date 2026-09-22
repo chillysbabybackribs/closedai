@@ -33,17 +33,6 @@ export function AgentWorkspacePane({ controls, busy, chat, appearance }: {
     }).finally(() => { creating.current = false })
   }, [agentPaneId, chat.chats, chat.newDetachedThread, chat.snapshot.panes])
 
-  // Close the coordinator chat backing this workspace and let the effect above stand up a
-  // fresh one; the pane below remounts on the new pane id, resetting discovery/tree/journal.
-  const restart = useCallback(() => {
-    if (restarting.current || !agentPaneId) return
-    restarting.current = true
-    const closing = agentPaneId
-    window.localStorage.removeItem('closedai.agentWorkspacePaneId')
-    setAgentPaneId(null)
-    void chat.closePeer(closing).finally(() => { restarting.current = false })
-  }, [agentPaneId, chat.closePeer])
-
   const bridgePaneId = agentPaneId
   const bridgeState = bridgePaneId
     ? (chat.snapshot.panes?.[bridgePaneId] ?? null)
@@ -65,6 +54,21 @@ export function AgentWorkspacePane({ controls, busy, chat, appearance }: {
     ...chat.chats.filter((row) => row.projectPath).map((row) => ({ cwd: row.cwd, projectPath: row.projectPath! }))
   ].map((entry) => [entry.projectPath, entry])).values()].filter((entry) => entry.projectPath !== project.projectPath)
   const persistedPath = project.projectPath ?? project.cwd
+
+  // Reset the project store to a blank intake, then close the coordinator chat backing this
+  // workspace and let the effect above stand up a fresh one; the pane below remounts on the new
+  // pane id and hydrates the reset file. The closed chat stays in history.
+  const restart = useCallback(() => {
+    if (restarting.current || !agentPaneId) return
+    restarting.current = true
+    const closing = agentPaneId
+    window.localStorage.removeItem('closedai.agentWorkspacePaneId')
+    setAgentPaneId(null)
+    void window.closedai.project.mutate(persistedPath, [{ type: 'reset' }])
+      .catch((error: unknown) => console.warn('[agent-workspace] project reset failed:', error))
+      .then(() => chat.closePeer(closing))
+      .finally(() => { restarting.current = false })
+  }, [agentPaneId, chat.closePeer, persistedPath])
 
   const bridge: ProjectWorkspaceComposerBridge | null = bridgePaneId && bridgeState ? {
     items: bridgeState.items,

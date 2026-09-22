@@ -19,7 +19,7 @@ export type PeerChatDirectory = {
 export function peerChatTools(getDirectory: () => PeerChatDirectory | null): ToolNamespace {
   return {
     name: 'peer_chats',
-    description: 'Discover open and previous conversations, retrieve bounded excerpts, and save optional working notes.',
+    description: 'Discover open and previous conversations and retrieve bounded excerpts.',
     tools: [
       defineTool({
         name: 'list',

@@ -28,11 +28,9 @@ export const TOOL_CATALOG: Readonly<Record<string, ToolCatalogEntry>> = {
   'search.query': { group: 'reads-web', label: 'Web search', summary: 'Look things up across several search providers.', offEffect: 'No public web lookups. Pages already open can still be read.' },
   'search.run': { group: 'reads-web', label: 'Research runs', summary: 'Read many sources in parallel and keep what was found.', offEffect: 'No parallel research; single searches and page reads still work.' },
   'search.read': { group: 'reads-web', label: 'Research results', summary: 'Read the sources and excerpts a research run collected.', offEffect: 'Research runs can start but their findings cannot be read back.' },
-  'search.pdf': { group: 'reads-web', label: 'Inspect a PDF', summary: 'Look at one page or crop of a retained PDF, with optional OCR.', offEffect: 'PDF pages are readable only as native text through the browser pane.' },
-  'search.library': { group: 'reads-web', label: 'Paper library', summary: 'Search the papers saved in the Research library.', offEffect: 'The model cannot search saved papers. The library itself is unchanged.' },
 
   'embedded_browser.script': { group: 'acts-in-browser', label: 'Run page scripts', summary: 'Fetch, extract, or evaluate JavaScript inside the open page.', offEffect: 'The model can still read pages but cannot execute code or same-origin requests in them.' },
-  'embedded_browser.session': { group: 'acts-in-browser', label: 'Signed-in requests', summary: 'Call a site\u2019s API or read and write cookies using your existing login.', offEffect: 'No requests or cookie changes with your session outside a page.' },
+  'embedded_browser.session': { group: 'acts-in-browser', label: 'Signed-in requests', summary: 'Call a site’s API or read and write cookies using your existing login.', offEffect: 'No requests or cookie changes with your session outside a page.' },
   'embedded_browser.network': { group: 'acts-in-browser', label: 'Network log and rules', summary: 'See the requests pages make, and block, redirect, or rewrite headers.', offEffect: 'No request log and no traffic rules. DevTools capture still records bodies.' },
   'embedded_browser.network_replay': { group: 'acts-in-browser', label: 'Replay a request', summary: 'Send a captured request again, with edits. Can repeat a mutation.', offEffect: 'Captured requests can be read but never re-sent.' },
   'browser_cdp.page': { group: 'acts-in-browser', label: 'DevTools page input', summary: 'Inspect a page semantically and, as a last resort, click and type through DevTools.', offEffect: 'No real input through the DevTools protocol. App controls and page scripts remain.' },
@@ -46,11 +44,8 @@ export const TOOL_CATALOG: Readonly<Record<string, ToolCatalogEntry>> = {
   'closedai_app.ui': { group: 'controls-app', label: 'Click the app', summary: 'List real controls and press them when no command can do the job.', offEffect: 'No real clicks or typing in ClosedAI itself.' },
   'closedai_ui.capture': { group: 'controls-app', label: 'Screenshots', summary: 'Capture the app window or a page for visual checks.', offEffect: 'No visual evidence; the model relies on text and structure only.' },
   'peer_chats.list': { group: 'controls-app', label: 'List other chats', summary: 'See which chats are open or in history and what they are doing.', offEffect: 'Other chats are invisible, so they cannot be read or messaged by id.' },
-  'peer_chats.read': { group: 'controls-app', label: 'Read another chat', summary: 'Page through another chat\u2019s transcript in bounded excerpts.', offEffect: 'Other chats can be listed but not read.' },
+  'peer_chats.read': { group: 'controls-app', label: 'Read another chat', summary: 'Page through another chat’s transcript in bounded excerpts.', offEffect: 'Other chats can be listed but not read.' },
   'peer_chats.recall': { group: 'controls-app', label: 'Recall past conversations', summary: 'Search earlier turns of this chat or a previous conversation.', offEffect: 'Nothing beyond the current context can be recalled after rotation.' },
-  'peer_chats.checkpoint': { group: 'controls-app', label: 'Working notes', summary: 'Keep structured notes that survive session rotation.', offEffect: 'No new notes are written; existing notes stay readable.' },
-  'investigation.read': { group: 'controls-app', label: 'Read kept evidence', summary: 'Read artifacts this chat retained: pages of bytes, provenance, JSON projections.', offEffect: 'Retained artifacts cannot be read back.' },
-  'investigation.manage': { group: 'controls-app', label: 'Manage kept evidence', summary: 'Import files as evidence, export artifacts to disk, delete them.', offEffect: 'No files are imported, exported, or deleted through evidence tools.' },
   'tool_batch.run': { group: 'controls-app', label: 'Batch tool calls', summary: 'Run several tools in one request, in order or in parallel.', offEffect: 'Every tool call is its own round trip; more passes per task.' },
 
   'credential_vault.list': { group: 'reads-secrets', label: 'List credentials', summary: 'Masked names and field ids only, never a secret value.', offEffect: 'The model cannot discover which credentials exist, so it cannot ask for one.' },
@@ -68,8 +63,7 @@ export const READ_ONLY_TOOL_IDS: readonly string[] = [
   'closedai_ui.capture',
   'peer_chats.list',
   'peer_chats.read',
-  'peer_chats.recall',
-  'investigation.read'
+  'peer_chats.recall'
 ]
 
 export function catalogEntry(id: string): ToolCatalogEntry {
