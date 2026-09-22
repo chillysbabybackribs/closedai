@@ -98,7 +98,11 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'tools:setEnabled',
     'trace:setActive',
     'trace:snapshot',
-    'trace:clear'
+    'trace:clear',
+    'project:snapshot',
+    'models:manifest',
+    'models:setEnabled',
+    'models:setEnabledMany'
   ]
   assert.equal(channels.size, typed.length)
   for (const channel of typed) assert.ok(channels.has(channel), channel)
@@ -114,7 +118,9 @@ test('IPC event constants cover the typed event registry', () => {
     'chat:event',
     'security:credentialApprovals',
     'tools:event',
-    'trace:event'
+    'trace:event',
+    'models:event',
+    'project:event'
   ]
   assert.equal(channels.size, typed.length)
   for (const channel of typed) assert.ok(channels.has(channel), channel)

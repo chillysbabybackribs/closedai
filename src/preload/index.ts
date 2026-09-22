@@ -140,6 +140,10 @@ const api: ClosedaiApi = {
     snapshot: () => invoke(IPC.invoke.trace.snapshot),
     clear: () => invoke(IPC.invoke.trace.clear),
     onEvent: (listener) => subscribe(IPC.event.traceEvent, listener)
+  },
+  project: {
+    snapshot: (projectPath: string) => invoke(IPC.invoke.project.snapshot, projectPath),
+    onEvent: (listener) => subscribe(IPC.event.projectEvent, listener)
   }
 }
 

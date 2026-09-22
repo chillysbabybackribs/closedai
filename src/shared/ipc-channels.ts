@@ -8,6 +8,8 @@ import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from
 import type { TraceEvent, TraceSnapshot } from './trace.js'
 import type { LibrarySettings, LibrarySnapshot } from './research-library.js'
 import type { ProviderAvailability } from './provider-availability.js'
+import type { ProjectSnapshot } from './project/snapshot.js'
+import type { ProjectWorkspaceEvent } from './project/events.js'
 import type {
   BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
 } from './security.js'
@@ -106,6 +108,7 @@ export type IpcInvokeChannels = {
   'trace:setActive': { args: [boolean]; result: void }
   'trace:snapshot': { args: []; result: TraceSnapshot }
   'trace:clear': { args: []; result: void }
+  'project:snapshot': { args: [string]; result: ProjectSnapshot }
 }
 
 export type IpcInvokeChannel = keyof IpcInvokeChannels
@@ -121,6 +124,7 @@ export type IpcEventChannels = {
   'tools:event': ToolsEvent
   'models:event': ModelsEvent
   'trace:event': TraceEvent
+  'project:event': ProjectWorkspaceEvent
 }
 
 export type IpcEventChannel = keyof IpcEventChannels
@@ -235,6 +239,9 @@ export const IPC = {
       setActive: 'trace:setActive',
       snapshot: 'trace:snapshot',
       clear: 'trace:clear'
+    },
+    project: {
+      snapshot: 'project:snapshot'
     }
   },
   event: {
@@ -246,7 +253,8 @@ export const IPC = {
     securityCredentialApprovals: 'security:credentialApprovals',
     toolsEvent: 'tools:event',
     modelsEvent: 'models:event',
-    traceEvent: 'trace:event'
+    traceEvent: 'trace:event',
+    projectEvent: 'project:event'
   }
 } as const satisfies {
   invoke: Record<string, Record<string, IpcInvokeChannel>>

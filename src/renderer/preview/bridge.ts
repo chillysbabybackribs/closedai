@@ -1,4 +1,6 @@
 import type { ClosedaiApi } from '../../shared/api.js'
+import { createDefaultProjectStoreFile } from '../../shared/project/store-file.js'
+import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
 import type { BrowserBounds, BrowserState, BrowserTabInfo } from '../../shared/types.js'
 import type { LibrarySnapshot } from '../../shared/research-library.js'
 import type { ProviderAvailability } from '../../shared/provider-availability.js'
@@ -84,6 +86,15 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
   const pending = sampleSecurityRequests(scenario)
   const approvalListeners = new Set<(items: typeof pending.credentials) => void>()
   const permissionListeners = new Set<(items: typeof pending.permissions) => void>()
+  const projectSnapshots = new Map<string, ProjectSnapshot>()
+  const projectListeners = new Set<(event: import('../../shared/project/events.js').ProjectWorkspaceEvent) => void>()
+  const projectSnapshot = (projectPath: string): ProjectSnapshot => {
+    const existing = projectSnapshots.get(projectPath)
+    if (existing) return structuredClone(existing)
+    const created = { projectPath, ...createDefaultProjectStoreFile() }
+    projectSnapshots.set(projectPath, created)
+    return structuredClone(created)
+  }
   const publishSecurity = () => {
     approvalListeners.forEach((listener) => listener(structuredClone(pending.credentials)))
     permissionListeners.forEach((listener) => listener(structuredClone(pending.permissions)))
@@ -152,7 +163,14 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
     tools: createToolsFixture(),
     models: createModelsFixture(),
     trace: { setActive: async () => {}, snapshot: async () => ({ entries: [], dropped: 0, capacity: 0 }),
-      clear: native, onEvent: idleSubscription }
+      clear: native, onEvent: idleSubscription },
+    project: {
+      snapshot: async (projectPath: string) => projectSnapshot(projectPath),
+      onEvent: (listener) => {
+        projectListeners.add(listener)
+        return () => { projectListeners.delete(listener) }
+      }
+    }
   }
-  return { api, start: chat.start, dispose: () => { chat.dispose(); stateListeners.clear(); tabListeners.clear() } }
+  return { api, start: chat.start, dispose: () => { chat.dispose(); stateListeners.clear(); tabListeners.clear(); projectListeners.clear() } }
 }

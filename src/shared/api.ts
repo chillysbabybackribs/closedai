@@ -10,6 +10,8 @@ import type { TraceEvent, TraceSnapshot } from './trace.js'
 import type {
   BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
 } from './security.js'
+import type { ProjectSnapshot } from './project/snapshot.js'
+import type { ProjectWorkspaceEvent } from './project/events.js'
 
 export type Unsubscribe = () => void
 
@@ -161,5 +163,10 @@ export type ClosedaiApi = {
     snapshot: () => Promise<TraceSnapshot>
     clear: () => Promise<void>
     onEvent: (listener: (event: TraceEvent) => void) => Unsubscribe
+  }
+  /** Durable multi-agent project state for the agent workspace (`.closedai/project.json`). */
+  project: {
+    snapshot: (projectPath: string) => Promise<ProjectSnapshot>
+    onEvent: (listener: (event: ProjectWorkspaceEvent) => void) => Unsubscribe
   }
 }

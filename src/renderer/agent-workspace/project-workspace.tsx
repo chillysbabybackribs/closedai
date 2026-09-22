@@ -18,6 +18,8 @@ import {
 } from '../preview/project-files.js'
 import { ProjectIntake, type Message } from '../preview/project-intake.js'
 import { duration } from '../preview/project-time.js'
+import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
+import { hydrateFromSnapshot, shouldHydrateFromSnapshot, type PersistedProjectHydration } from './hydrate-project-snapshot.js'
 import type { ProjectCanvasFixture } from '../preview/project-canvas-fixture.js'
 import { amendTree, applyEvent, buildDispatchPlan, layoutTree, rootNode, type TreeNode } from '../preview/project-tree.js'
 
@@ -33,6 +35,8 @@ export type ProjectWorkspaceProps = {
   composerBridge?: ProjectWorkspaceComposerBridge | null
   /** Preview and tests: skip intake and simulated dispatch timers when canvas is pre-seeded. */
   canvasFixture?: ProjectCanvasFixture | null
+  /** Durable state from main; hydrates once when the workspace would otherwise start empty. */
+  persistedSnapshot?: ProjectSnapshot | null
 }
 const MAP: Location = { kind: 'map' }
 // Prototype pacing: an absence this long offers a catch-up on return; the clock re-renders
@@ -54,24 +58,43 @@ const MODELS: ChatModel[] = [
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
 const nodeSignature = (node: TreeNode) => `${node.state}|${node.summary}`
 
-export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout, composerBridge = null, canvasFixture = null }: ProjectWorkspaceProps) {
-  const seeded = canvasFixture !== null
+function initialHydration(canvasFixture: ProjectCanvasFixture | null, persistedSnapshot: ProjectSnapshot | null | undefined): PersistedProjectHydration | null {
+  if (canvasFixture) {
+    return {
+      discovery: canvasFixture.discovery,
+      phase: 'canvas',
+      tree: canvasFixture.tree,
+      journal: canvasFixture.journal,
+      confirmedAt: canvasFixture.confirmedAt,
+      caughtUpAt: canvasFixture.caughtUpAt,
+      acceptedAt: null,
+      skipSimulatedDispatch: true
+    }
+  }
+  if (persistedSnapshot && shouldHydrateFromSnapshot(persistedSnapshot)) return hydrateFromSnapshot(persistedSnapshot)
+  return null
+}
+
+export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout, composerBridge = null, canvasFixture = null, persistedSnapshot = null }: ProjectWorkspaceProps) {
+  const fixtureHydration = useMemo(() => initialHydration(canvasFixture, null), [canvasFixture])
+  const persistedApplied = useRef(false)
+  const [skipSimulatedDispatch, setSkipSimulatedDispatch] = useState(() => fixtureHydration?.skipSimulatedDispatch ?? false)
   const [messages, setMessages] = useState<Message[]>([])
-  const [discovery, setDiscovery] = useState<DiscoveryState>(() => canvasFixture?.discovery ?? createDiscovery())
+  const [discovery, setDiscovery] = useState<DiscoveryState>(() => fixtureHydration?.discovery ?? createDiscovery())
   const [selectedModel, setSelectedModel] = useState(MODELS[0]!.id)
-  const [phase, setPhase] = useState<'intake' | 'canvas'>(() => (canvasFixture ? 'canvas' : 'intake'))
-  const [tree, setTree] = useState<TreeNode[]>(() => canvasFixture?.tree ?? [])
-  const [journal, setJournal] = useState<JournalLine[]>(() => canvasFixture?.journal ?? [])
+  const [phase, setPhase] = useState<'intake' | 'canvas'>(() => (fixtureHydration?.phase ?? 'intake'))
+  const [tree, setTree] = useState<TreeNode[]>(() => fixtureHydration?.tree ?? [])
+  const [journal, setJournal] = useState<JournalLine[]>(() => fixtureHydration?.journal ?? [])
   const [edits, setEdits] = useState<Record<string, FileEdit>>({})
   const [location, setLocation] = useState<Location>(MAP)
   const [treeOpen, setTreeOpen] = useState(true)
   const [now, setNow] = useState(() => Date.now())
-  const [confirmedAt, setConfirmedAt] = useState(() => canvasFixture?.confirmedAt ?? 0)
-  const [caughtUpAt, setCaughtUpAt] = useState(() => canvasFixture?.caughtUpAt ?? 0)
+  const [confirmedAt, setConfirmedAt] = useState(() => fixtureHydration?.confirmedAt ?? 0)
+  const [caughtUpAt, setCaughtUpAt] = useState(() => fixtureHydration?.caughtUpAt ?? 0)
   const [awayFor, setAwayFor] = useState(0)
   const [reports, setReports] = useState<AcknowledgedReport[]>([])
   const [proposal, setProposal] = useState<Proposal | null>(null)
-  const [acceptedAt, setAcceptedAt] = useState<number | null>(null)
+  const [acceptedAt, setAcceptedAt] = useState<number | null>(() => fixtureHydration?.acceptedAt ?? null)
   const lastInteraction = useRef(Date.now())
   // What the user last saw, so growth while they were elsewhere is visible when they return.
   const [seenFiles, setSeenFiles] = useState<Record<string, string>>({})
@@ -138,15 +161,36 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
 
   // Looking at the map, or at a file, is what marks it seen.
   useEffect(() => {
-    if (!canvasFixture) return
+    if (canvasFixture || persistedApplied.current || !persistedSnapshot || !shouldHydrateFromSnapshot(persistedSnapshot)) return
+    persistedApplied.current = true
+    const hydration = hydrateFromSnapshot(persistedSnapshot)
+    setDiscovery(hydration.discovery)
+    setPhase(hydration.phase)
+    setTree(hydration.tree)
+    setJournal(hydration.journal)
+    setConfirmedAt(hydration.confirmedAt)
+    setCaughtUpAt(hydration.caughtUpAt)
+    setAcceptedAt(hydration.acceptedAt)
+    setSkipSimulatedDispatch(hydration.skipSimulatedDispatch)
     const initial = deriveFiles({
-      record: canvasFixture.discovery.record, messages: [], nodes: canvasFixture.tree, journal: canvasFixture.journal,
-      edits: {}, confirmedAt: canvasFixture.confirmedAt, reports: [], progress: closureProgress(canvasFixture.tree, canvasFixture.discovery.record),
-      proposal: null, acceptedAt: null
+      record: hydration.discovery.record, messages: [], nodes: hydration.tree, journal: hydration.journal,
+      edits: {}, confirmedAt: hydration.confirmedAt, reports: [], progress: closureProgress(hydration.tree, hydration.discovery.record),
+      proposal: null, acceptedAt: hydration.acceptedAt
     })
     setSeenFiles(Object.fromEntries(initial.map((file) => [file.path, file.content])))
-    setSeenNodes(Object.fromEntries(canvasFixture.tree.map((node) => [node.id, nodeSignature(node)])))
-  }, [canvasFixture])
+    setSeenNodes(Object.fromEntries(hydration.tree.map((node) => [node.id, nodeSignature(node)])))
+  }, [canvasFixture, persistedSnapshot])
+
+  useEffect(() => {
+    if (!fixtureHydration) return
+    const initial = deriveFiles({
+      record: fixtureHydration.discovery.record, messages: [], nodes: fixtureHydration.tree, journal: fixtureHydration.journal,
+      edits: {}, confirmedAt: fixtureHydration.confirmedAt, reports: [], progress: closureProgress(fixtureHydration.tree, fixtureHydration.discovery.record),
+      proposal: null, acceptedAt: fixtureHydration.acceptedAt
+    })
+    setSeenFiles(Object.fromEntries(initial.map((file) => [file.path, file.content])))
+    setSeenNodes(Object.fromEntries(fixtureHydration.tree.map((node) => [node.id, nodeSignature(node)])))
+  }, [fixtureHydration])
 
   useEffect(() => {
     if (location.kind === 'map') setSeenNodes(Object.fromEntries(tree.map((node) => [node.id, nodeSignature(node)])))
@@ -177,7 +221,7 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
   // Once building starts, the simulated root coordinator dispatches work on a timeline. The
   // record is fixed after Start, so the plan is derived once per build.
   useEffect(() => {
-    if (phase !== 'canvas' || seeded) return
+    if (phase !== 'canvas' || skipSimulatedDispatch) return
     const timers: number[] = []
     let at = 0
     for (const event of buildDispatchPlan(record)) {
@@ -188,7 +232,7 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
       }, at))
     }
     return () => timers.forEach((timer) => window.clearTimeout(timer))
-  }, [phase, record, seeded])
+  }, [phase, record, skipSimulatedDispatch])
 
   function note(text: string): void {
     setJournal((current) => [...current, { id: nextId.current++, at: Date.now(), text }])

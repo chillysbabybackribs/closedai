@@ -70,6 +70,8 @@ import type { TraceEvent } from '../shared/trace.js'
 import type { ToolsEvent } from '../shared/tools.js'
 import { detectProviderAvailability } from './provider-availability.js'
 import { registerChatIpc } from './chat-ipc.js'
+import { registerProjectIpc } from './project-ipc.js'
+import { ProjectHub } from './project-store/project-hub.js'
 import { registerWindowIpc } from './window-ipc.js'
 import { CredentialVault } from './credential-vault.js'
 import { registerCredentialVaultIpc } from './credential-vault-ipc.js'
@@ -101,6 +103,7 @@ let browserHistory: BrowserHistoryStore | null = null
 let browserTabSession: BrowserTabSessionStore | null = null
 let settings: AppSettingsStore | null = null
 let chatStore: ChatStore | null = null
+let projectHub: ProjectHub | null = null
 let chatTranscripts: ChatTranscriptCache | null = null
 let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
@@ -188,6 +191,7 @@ async function main(): Promise<void> {
     ChatStore.open(join(userData(), 'chats.json')),
     SecuritySettingsStore.open(join(userData(), 'security-settings.json'))
   ])
+  projectHub = new ProjectHub()
   credentialVault = new CredentialVault(join(userData(), 'credential-vault.json'), safeStorageEncryption(safeStorage, process.platform), {
     secretsRequireKeychain: () => securitySettings!.get().secretsRequireKeychain
   })
@@ -449,6 +453,7 @@ function createWindow(): void {
     forwardChat(event)
   })
   traceLog.on('event', (event: TraceEvent) => sendToMainWindow(IPC.event.traceEvent, event))
+  projectHub?.on('event', (event) => sendToMainWindow(IPC.event.projectEvent, event))
   const sendToolsEvent = (event: ToolsEvent): void => { sendToMainWindow(IPC.event.toolsEvent, event) }
   toolTelemetry?.on('record', (record) => sendToolsEvent({ type: 'call', record }))
   toolTelemetry?.on('cleared', () => sendToolsEvent({ type: 'cleared' }))
@@ -481,6 +486,7 @@ function registerIpc(): void {
   registerBrowserDownloadsIpc(ipcMain, () => browserDownloads)
   registerLocalFilesIpc(ipcMain, () => browserService)
   registerChatIpc(ipcMain, () => chatService)
+  registerProjectIpc(ipcMain, () => projectHub)
   registerTraceIpc(ipcMain, traceLog)
   registerCredentialVaultIpc(ipcMain, () => credentialVault)
   registerSecurityIpc(ipcMain, {
@@ -573,6 +579,7 @@ app.on('before-quit', (event) => {
     browserTabSession?.close(),
     settings?.set({}),
     chatStore?.flush(),
+    projectHub?.flushAll(),
     chatTranscripts?.flush(),
     artifactStore?.close(),
     providerCatalogs?.flush(),
