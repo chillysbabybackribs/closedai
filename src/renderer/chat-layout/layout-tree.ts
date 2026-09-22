@@ -7,9 +7,14 @@ export type Rect = { x: number; y: number; width: number; height: number }
 // Reserve the entire grab target: native browser views paint above renderer overlays.
 export const DIVIDER_SIZE = 14
 export const CHAT_DRAG_TYPE = 'application/x-closedai-chat'
-// Reserved layout leaf: never sent to chat services or included in conversation tabs.
+// Reserved layout leaves: never sent to chat services or included in conversation tabs.
 export const BROWSER_PANE_ID = 'closedai:shared-browser'
+export const AGENT_WORKSPACE_PANE_ID = 'closedai:agent-workspace'
 export const WORKSPACE_DOCK_ID = 'closedai:workspace-edge'
+
+export function isReservedPaneId(id: string): boolean {
+  return id === BROWSER_PANE_ID || id === AGENT_WORKSPACE_PANE_ID
+}
 
 export function withBrowser(tree: ChatLayout): ChatLayout {
   if (layoutIds(tree).includes(BROWSER_PANE_ID)) return tree
@@ -17,12 +22,32 @@ export function withBrowser(tree: ChatLayout): ChatLayout {
     first: tree, second: { kind: 'pane', id: BROWSER_PANE_ID } }
 }
 
+/** Inserts the agent workspace as a left column when the user first opens it. */
+export function withAgent(tree: ChatLayout): ChatLayout {
+  if (layoutIds(tree).includes(AGENT_WORKSPACE_PANE_ID)) return tree
+  return { kind: 'split', id: 'closedai:agent-split', axis: 'horizontal', ratio: 0.38,
+    first: { kind: 'pane', id: AGENT_WORKSPACE_PANE_ID }, second: tree }
+}
+
 function layoutIds(tree: ChatLayout | null): string[] {
   return !tree ? [] : tree.kind === 'pane' ? [tree.id] : [...layoutIds(tree.first), ...layoutIds(tree.second)]
 }
 
 export function paneIds(tree: ChatLayout | null): string[] {
-  return layoutIds(tree).filter((id) => id !== BROWSER_PANE_ID)
+  return layoutIds(tree).filter((id) => !isReservedPaneId(id))
+}
+
+export function hiddenReservedPanes(tree: ChatLayout, browserVisible: boolean, agentVisible: boolean): string[] {
+  const hidden: string[] = []
+  if (layoutIds(tree).includes(BROWSER_PANE_ID) && !browserVisible) hidden.push(BROWSER_PANE_ID)
+  if (layoutIds(tree).includes(AGENT_WORKSPACE_PANE_ID) && !agentVisible) hidden.push(AGENT_WORKSPACE_PANE_ID)
+  return hidden
+}
+
+export function layoutForGeometry(tree: ChatLayout, browserVisible: boolean, agentVisible: boolean): ChatLayout {
+  let next = tree
+  for (const id of hiddenReservedPanes(tree, browserVisible, agentVisible)) next = removePane(next, id)!
+  return next
 }
 
 export function removePane(tree: ChatLayout | null, id: string): ChatLayout | null {
@@ -78,7 +103,11 @@ export function resizeSplit(tree: ChatLayout, id: string, ratio: number): ChatLa
 }
 
 export function minimumSize(tree: ChatLayout): { width: number; height: number } {
-  if (tree.kind === 'pane') return { width: tree.id === BROWSER_PANE_ID ? 384 : 300, height: 280 }
+  if (tree.kind === 'pane') {
+    if (tree.id === BROWSER_PANE_ID) return { width: 384, height: 280 }
+    if (tree.id === AGENT_WORKSPACE_PANE_ID) return { width: 420, height: 280 }
+    return { width: 300, height: 280 }
+  }
   const a = minimumSize(tree.first)
   const b = minimumSize(tree.second)
   return tree.axis === 'horizontal'
@@ -113,11 +142,11 @@ export function layoutGeometry(tree: ChatLayout, width: number, height: number) 
   return { panes, dividers, minimum }
 }
 
-export type SavedChatLayout = { tree: ChatLayout | null; browserVisible: boolean }
+export type SavedChatLayout = { tree: ChatLayout | null; browserVisible: boolean; agentVisible: boolean }
 const storageKey = (cwd: string): string => `closedai.chat-layout.v1:${cwd}`
 
 export function readLayout(storage: Pick<Storage, 'getItem'>, cwd: string): SavedChatLayout {
-  const fallback = { tree: null, browserVisible: true }
+  const fallback = { tree: null, browserVisible: true, agentVisible: false }
   try {
     const raw = JSON.parse(storage.getItem(storageKey(cwd)) ?? 'null') as SavedChatLayout | null
     const seen = new Set<string>()
@@ -127,11 +156,11 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, cwd: string): Save
       seen.add(node.id)
       if (seen.size > 65) return false
       if (node.kind === 'pane') {
-        if (node.id === BROWSER_PANE_ID) return node.tabs === undefined
+        if (isReservedPaneId(node.id)) return node.tabs === undefined
         const tabs = node.tabs ?? [node.id]
         if (!Array.isArray(tabs) || !tabs.includes(node.id) || !tabs.length) return false
         for (const id of tabs) {
-          if (typeof id !== 'string' || !id || id === BROWSER_PANE_ID || chats.has(id)) return false
+          if (typeof id !== 'string' || !id || isReservedPaneId(id) || chats.has(id)) return false
           chats.add(id)
         }
         return true
@@ -140,7 +169,8 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, cwd: string): Save
         && Number.isFinite(node.ratio) && node.ratio >= 0.05 && node.ratio <= 0.95
         && validate(node.first, depth + 1) && validate(node.second, depth + 1))
     }
-    return raw && (raw.tree === null || validate(raw.tree)) && typeof raw.browserVisible === 'boolean' ? raw : fallback
+    if (!raw || (raw.tree !== null && !validate(raw.tree)) || typeof raw.browserVisible !== 'boolean') return fallback
+    return { tree: raw.tree, browserVisible: raw.browserVisible, agentVisible: raw.agentVisible === true }
   } catch { return fallback }
 }
 

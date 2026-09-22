@@ -1,4 +1,4 @@
-import { BROWSER_PANE_ID, dockPane, paneIds, type ChatLayout, type DockEdge } from './layout-tree.js'
+import { AGENT_WORKSPACE_PANE_ID, BROWSER_PANE_ID, dockPane, isReservedPaneId, paneIds, type ChatLayout, type DockEdge } from './layout-tree.js'
 
 export const CHAT_TAB_DRAG_TYPE = 'application/x-closedai-chat-tab'
 
@@ -27,7 +27,7 @@ export function moveTab(tree: ChatLayout, id: string, target: string, edge: Dock
 }
 
 export function tabIds(tree: ChatLayout | null): string[] {
-  if (!tree || tree.id === BROWSER_PANE_ID) return []
+  if (!tree || isReservedPaneId(tree.id)) return []
   return tree.kind === 'pane' ? tree.tabs ?? [tree.id] : [...tabIds(tree.first), ...tabIds(tree.second)]
 }
 
@@ -77,7 +77,7 @@ export function pruneTabs(tree: ChatLayout | null, available: Set<string>): Chat
 
 /** Same choice as the tab × / context menu: close a sibling tab, hide a spare tile, or keep the last chat. */
 export function focusedCloseAction(tree: ChatLayout, id: string): 'close-tab' | 'hide-pane' | null {
-  if (id === BROWSER_PANE_ID) return null
+  if (isReservedPaneId(id)) return null
   const owner = tabOwner(tree, id)
   if (!owner) return null
   const tabs = tabIds(tree).filter((tab) => tabOwner(tree, tab) === owner)
