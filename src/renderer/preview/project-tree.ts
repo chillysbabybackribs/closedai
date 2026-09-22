@@ -15,6 +15,9 @@ export type TreeNode = {
   summary: string
   detail: string
   links?: EvidenceItem[]
+  /** Epoch ms. Every node records when it appeared and when it last changed. */
+  createdAt: number
+  updatedAt: number
 }
 
 export type PlacedNode = TreeNode & { x: number; y: number; depth: number }
@@ -80,21 +83,25 @@ export function layoutTree(nodes: TreeNode[]): TreeLayout {
   }
 }
 
+/** A node as the dispatch plan describes it; timestamps are stamped when the event lands. */
+export type PlannedNode = Omit<TreeNode, 'createdAt' | 'updatedAt'>
+
 export type DispatchEvent = { delay: number; note: string } & (
-  | { add: TreeNode }
+  | { add: PlannedNode }
   | { update: { id: string; state: TreeState; summary?: string } }
 )
 
-export function rootNode(record: DirectionRecord): TreeNode {
+export function rootNode(record: DirectionRecord, at: number): TreeNode {
   return {
     id: 'root', kind: 'root', state: 'anchored', title: 'Root coordinator',
-    summary: clip(record.idea, 46), detail: describeRecord(record), links: record.evidence
+    summary: clip(record.idea, 46), detail: describeRecord(record), links: record.evidence,
+    createdAt: at, updatedAt: at
   }
 }
 
-const scope = (id: string, title: string, summary: string, detail: string): TreeNode =>
+const scope = (id: string, title: string, summary: string, detail: string): PlannedNode =>
   ({ id, parent: 'root', kind: 'scope', state: 'active', title, summary, detail })
-const task = (id: string, parent: string, title: string, summary: string, state: TreeState, detail: string): TreeNode =>
+const task = (id: string, parent: string, title: string, summary: string, state: TreeState, detail: string): PlannedNode =>
   ({ id, parent, kind: 'task', state, title, summary, detail })
 
 /** The simulated root coordinator's first minutes: scopes open, work is dispatched, results land. */
@@ -134,10 +141,12 @@ export function buildDispatchPlan(record: DirectionRecord): DispatchEvent[] {
   ]
 }
 
-export function applyEvent(nodes: TreeNode[], event: DispatchEvent): TreeNode[] {
-  if ('add' in event) return nodes.some((node) => node.id === event.add.id) ? nodes : [...nodes, event.add]
+export function applyEvent(nodes: TreeNode[], event: DispatchEvent, at: number): TreeNode[] {
+  if ('add' in event) {
+    return nodes.some((node) => node.id === event.add.id) ? nodes : [...nodes, { ...event.add, createdAt: at, updatedAt: at }]
+  }
   return nodes.map((node) => node.id === event.update.id
-    ? { ...node, state: event.update.state, summary: event.update.summary ?? node.summary }
+    ? { ...node, state: event.update.state, summary: event.update.summary ?? node.summary, updatedAt: at }
     : node)
 }
 
@@ -154,7 +163,7 @@ function subtreeIds(nodes: TreeNode[], rootId: string): Set<string> {
 }
 
 /** Attach user direction under the selected node (or the root) and describe the ripple. */
-export function amendTree(nodes: TreeNode[], text: string, targetId: string | null): { nodes: TreeNode[]; note: string } {
+export function amendTree(nodes: TreeNode[], text: string, targetId: string | null, at: number): { nodes: TreeNode[]; note: string } {
   const target = nodes.find((node) => node.id === targetId) ?? nodes.find((node) => node.id === 'root')
   if (!target) return { nodes, note: 'No root to attach direction to.' }
   const affected = subtreeIds(nodes, target.id)
@@ -165,11 +174,13 @@ export function amendTree(nodes: TreeNode[], text: string, targetId: string | nu
   const amendment: TreeNode = {
     id: `amendment-${count}`, parent: target.id, kind: 'amendment', state: 'confirmed',
     title: 'Amendment', summary: clip(text, 44),
-    detail: `User direction, recorded as an amendment under “${target.title}” so the original words stay intact:\n\n${text}`
+    detail: `User direction, recorded as an amendment under “${target.title}” so the original words stay intact:\n\n${text}`,
+    createdAt: at, updatedAt: at
   }
   const where = target.id === 'root' ? 'the whole project' : `“${target.title}”`
+  // The target now carries direction it must re-read, so it counts as changed too.
   return {
-    nodes: [...nodes, amendment],
+    nodes: [...nodes.map((node) => node.id === target.id ? { ...node, updatedAt: at } : node), amendment],
     note: `Direction absorbed for ${where}: ${continuing} continuing · ${adapting} adapting next.`
   }
 }

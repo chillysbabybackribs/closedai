@@ -16,11 +16,11 @@ function confirmedRecord() {
 
 test('layout centres parents over children and keeps siblings apart', () => {
   const nodes: TreeNode[] = [
-    { id: 'r', kind: 'root', state: 'anchored', title: 'r', summary: '', detail: '' },
-    { id: 'a', parent: 'r', kind: 'scope', state: 'active', title: 'a', summary: '', detail: '' },
-    { id: 'b', parent: 'r', kind: 'scope', state: 'active', title: 'b', summary: '', detail: '' },
-    { id: 'a1', parent: 'a', kind: 'task', state: 'active', title: 'a1', summary: '', detail: '' },
-    { id: 'a2', parent: 'a', kind: 'task', state: 'active', title: 'a2', summary: '', detail: '' }
+    { id: 'r', kind: 'root', state: 'anchored', title: 'r', summary: '', detail: '', createdAt: 0, updatedAt: 0 },
+    { id: 'a', parent: 'r', kind: 'scope', state: 'active', title: 'a', summary: '', detail: '', createdAt: 0, updatedAt: 0 },
+    { id: 'b', parent: 'r', kind: 'scope', state: 'active', title: 'b', summary: '', detail: '', createdAt: 0, updatedAt: 0 },
+    { id: 'a1', parent: 'a', kind: 'task', state: 'active', title: 'a1', summary: '', detail: '', createdAt: 0, updatedAt: 0 },
+    { id: 'a2', parent: 'a', kind: 'task', state: 'active', title: 'a2', summary: '', detail: '', createdAt: 0, updatedAt: 0 }
   ]
   const layout = layoutTree(nodes)
   const at = (id: string) => layout.nodes.find((node) => node.id === id)!
@@ -36,9 +36,12 @@ test('layout centres parents over children and keeps siblings apart', () => {
 
 test('the dispatch plan grows a tree from the root using the confirmed record', () => {
   const record = confirmedRecord()
-  let nodes = [rootNode(record)]
+  let nodes = [rootNode(record, 1_000)]
   assert.equal(nodes[0]!.links?.length, 3, 'root carries discovery evidence')
-  for (const event of buildDispatchPlan(record)) nodes = applyEvent(nodes, event)
+  let at = 1_000
+  for (const event of buildDispatchPlan(record)) nodes = applyEvent(nodes, event, at += event.delay)
+  const shell = nodes.find((node) => node.id === 'shell')!
+  assert.ok(shell.updatedAt > shell.createdAt, 'an update stamps updatedAt after createdAt')
   const ids = new Set(nodes.map((node) => node.id))
   for (const node of nodes) if (node.parent) assert.ok(ids.has(node.parent), `${node.id} has a placed parent`)
   assert.equal(nodes.find((node) => node.id === 'shell')?.state, 'complete')
@@ -46,9 +49,10 @@ test('the dispatch plan grows a tree from the root using the confirmed record', 
   assert.equal(nodes.find((node) => node.id === 'evidence')?.links?.length, 3)
   assert.match(nodes.find((node) => node.id === 'journey')!.detail, /link it to one claim/)
 
-  const amended = amendTree(nodes, 'Favor keyboard-first capture.', 'journey')
+  const amended = amendTree(nodes, 'Favor keyboard-first capture.', 'journey', at + 5_000)
   const amendment = amended.nodes.find((node) => node.kind === 'amendment')
   assert.equal(amendment?.parent, 'journey')
   assert.match(amended.note, /2 continuing · 1 adapting next/)
   assert.equal(amended.nodes.find((node) => node.id === 'root')?.detail, nodes[0]!.detail, 'root record untouched')
+  assert.equal(amended.nodes.find((node) => node.id === 'journey')?.updatedAt, at + 5_000, 'target is stamped as changed')
 })
