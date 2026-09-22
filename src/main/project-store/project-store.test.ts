@@ -47,6 +47,31 @@ test('project store keeps its directory out of version control', async () => {
   }
 })
 
+test('mutate applies verbs as one change and persists them', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'closedai-project-store-'))
+  try {
+    const store = await ProjectStore.open(dir)
+    let events = 0
+    store.on('change', () => { events += 1 })
+    const snapshot = store.mutate([
+      { type: 'direction', direction: { ...store.snapshot().direction, idea: 'Build it' }, asking: 'user' },
+      { type: 'start', root: { id: 'root', kind: 'root', state: 'anchored', title: 'Root', summary: '', detail: '' }, note: 'Started.' },
+      { type: 'tree', events: [{ add: { id: 't1', parent: 'root', kind: 'task', state: 'queued', title: 'Task', summary: '', detail: '' } }], note: 'Queued.' }
+    ])
+    assert.equal(events, 1)
+    assert.equal(snapshot.phase, 'building')
+    assert.deepEqual(snapshot.tree.map((node) => node.id), ['root', 't1'])
+    assert.deepEqual(snapshot.journal.map((line) => line.text), ['Started.', 'Queued.'])
+    assert.equal(store.mutate([]).updatedAt, snapshot.updatedAt, 'an empty batch changes nothing')
+    await store.flush()
+    const reopened = await ProjectStore.open(dir)
+    assert.equal(reopened.snapshot().journal.length, 2)
+    assert.equal(reopened.snapshot().direction.idea, 'Build it')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('in-memory store does not write disk', async () => {
   const store = ProjectStore.inMemory('/tmp/x', createDefaultProjectStoreFile())
   store.patch({ hive: defaultHiveConfig() })

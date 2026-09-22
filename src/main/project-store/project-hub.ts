@@ -3,6 +3,7 @@ import { stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 import type { ProjectWorkspaceEvent } from '../../shared/project/events.js'
+import type { ProjectMutation } from '../../shared/project/mutations.js'
 import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
 import { ProjectStore } from './project-store.js'
 
@@ -12,6 +13,11 @@ export class ProjectHub extends EventEmitter {
   async snapshot(projectPath: string): Promise<ProjectSnapshot> {
     const store = await this.load(projectPath)
     return store.snapshot()
+  }
+
+  async mutate(projectPath: string, mutations: readonly ProjectMutation[]): Promise<ProjectSnapshot> {
+    const store = await this.load(projectPath)
+    return store.mutate(mutations)
   }
 
   async flushAll(): Promise<void> {

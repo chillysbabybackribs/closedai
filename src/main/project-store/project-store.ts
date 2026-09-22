@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 
+import { applyProjectMutations, type ProjectMutation } from '../../shared/project/mutations.js'
 import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
 import type { ProjectStoreFile } from '../../shared/project/store-file.js'
 import { writeAtomic } from '../atomic-write.js'
@@ -68,6 +69,15 @@ export class ProjectStore extends EventEmitter {
   patch(patch: Partial<ProjectStoreFile>): ProjectSnapshot {
     this.data = { ...this.data, ...patch, updatedAt: Date.now(), version: this.data.version }
     this.changed()
+    return this.snapshot()
+  }
+
+  /** Apply mutations in order as one change: one event, one write. */
+  mutate(mutations: readonly ProjectMutation[]): ProjectSnapshot {
+    if (mutations.length) {
+      this.data = applyProjectMutations(this.data, mutations, Date.now())
+      this.changed()
+    }
     return this.snapshot()
   }
 

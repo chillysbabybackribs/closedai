@@ -12,6 +12,7 @@ import type {
 } from './security.js'
 import type { ProjectSnapshot } from './project/snapshot.js'
 import type { ProjectWorkspaceEvent } from './project/events.js'
+import type { ProjectMutation } from './project/mutations.js'
 
 export type Unsubscribe = () => void
 
@@ -173,6 +174,8 @@ export type ClosedaiApi = {
   /** Durable multi-agent project state for the agent workspace (`.closedai/project.json`). */
   project: {
     snapshot: (projectPath: string) => Promise<ProjectSnapshot>
+    /** Apply mutations in order as one change; resolves with the resulting snapshot. */
+    mutate: (projectPath: string, mutations: ProjectMutation[]) => Promise<ProjectSnapshot>
     onEvent: (listener: (event: ProjectWorkspaceEvent) => void) => Unsubscribe
   }
 }

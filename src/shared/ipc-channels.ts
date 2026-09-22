@@ -10,6 +10,7 @@ import type { LibrarySettings, LibrarySnapshot } from './research-library.js'
 import type { ProviderAvailability } from './provider-availability.js'
 import type { ProjectSnapshot } from './project/snapshot.js'
 import type { ProjectWorkspaceEvent } from './project/events.js'
+import type { ProjectMutation } from './project/mutations.js'
 import type {
   BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
 } from './security.js'
@@ -111,6 +112,7 @@ export type IpcInvokeChannels = {
   'trace:snapshot': { args: []; result: TraceSnapshot }
   'trace:clear': { args: []; result: void }
   'project:snapshot': { args: [string]; result: ProjectSnapshot }
+  'project:mutate': { args: [string, ProjectMutation[]]; result: ProjectSnapshot }
 }
 
 export type IpcInvokeChannel = keyof IpcInvokeChannels
@@ -247,7 +249,8 @@ export const IPC = {
       clear: 'trace:clear'
     },
     project: {
-      snapshot: 'project:snapshot'
+      snapshot: 'project:snapshot',
+      mutate: 'project:mutate'
     }
   },
   event: {

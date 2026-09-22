@@ -147,6 +147,7 @@ const api: ClosedaiApi = {
   },
   project: {
     snapshot: (projectPath: string) => invoke(IPC.invoke.project.snapshot, projectPath),
+    mutate: (projectPath, mutations) => invoke(IPC.invoke.project.mutate, projectPath, mutations),
     onEvent: (listener) => subscribe(IPC.event.projectEvent, listener)
   }
 }
