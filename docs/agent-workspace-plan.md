@@ -44,18 +44,18 @@ Verified in source on 2026-09-22.
 | Durable store `<project>/.closedai/project.json`, atomic debounced writes, self-ignoring dir | Live | `src/main/project-store/` |
 | Store shape: phase, direction, coordinator binding, hive config, tree, journal | Defined | `src/shared/project/` |
 | Read path: `project:snapshot` invoke plus `project:event` snapshot push | Live | `src/main/project-ipc.ts`, `project-hub.ts`, preload `project.*` |
-| Hydration from disk when the file already holds work | Live, read-only | `hydrate-project-snapshot.ts`, `use-project-workspace-effects.ts` |
+| Write path: `project:mutate` carrying `ProjectMutation[]`, applied by the shared reducer | Live (slice A) | `src/shared/project/mutations.ts`, `project-store.ts` `mutate`, `project-ipc.ts` |
+| Workspace renders the store file; live source over IPC, in-memory source for fixtures and tests | Live (slice A) | `use-project-state.ts`, `project-view.ts` |
+| Start building, journal, amendments, catch-up, accept, reopen persist and survive a relaunch | Live (slice A) | `project-workspace.tsx` issues mutations only |
 | Restart control, `closedai_ui.capture` `agent_workspace` | Live | `layout.agent-restart`, `src/main/tools/capture/agent-workspace.ts` |
-| Direction record filled from the transcript | Prototype | `syncDiscoveryWithItems` maps user message N to pillar N and invents unknowns and evidence |
-| Canvas after "Start building" | Prototype | `buildDispatchPlan` fires a fixed 18-event script on timers; nothing runs |
-| Journal, catch-up, closure gates, completion proposal | Prototype | Computed from the simulated tree in local React state |
-| Any write from renderer to store | Missing | No `project:*` mutation channel exists |
+| Direction record filled from the transcript | Prototype | `syncDiscoveryWithItems` maps user message N to pillar N and invents unknowns and evidence; now persisted through `direction` mutations so Start is reachable in the live pane |
+| Canvas after "Start building" | Empty | Only the root node; nothing dispatches work until slice C. `buildDispatchPlan` is fixture-only |
+| Acknowledged reports, open completion proposal | Prototype | Local React state and a 900 ms proposal timer; slice D |
 | Any model tool that reads or writes project state | Missing | `src/main/tools/browser/project.ts` is JSON projection, unrelated |
 | Worker chats, claims, leases | Missing | `HiveConfig` is defined but nothing consumes it |
 
-The consequence: everything the user sees after intake is theatre, and the intake record itself is a
-guess. The store is the only durable thing, and nothing writes to it except the default file on first
-open.
+The consequence: the store is now the source of truth for everything the pane shows, but the record
+in it is still a positional guess and nothing fills the tree. That is what slices B and C are for.
 
 ## Target for this phase
 
@@ -75,23 +75,29 @@ are out of scope until stage 1 runs end to end on a real project.
 
 Each slice is shippable alone, verified in the Electron app, and owned by one pane at a time.
 
-### Slice A: write path
+### Slice A: write path — landed 2026-09-22
 
 Goal: what the user does in the pane survives a restart, and no state lives only in React.
 
-- Add `project:*` mutation invokes through `ProjectHub`: patch direction and `discoveryAsking`,
-  set phase and timestamps, apply a tree event (add or update node), append a journal line, set the
-  coordinator binding. Keep them as a small verb set on the hub, not one per field.
-- The renderer calls these instead of `setTree`, `setJournal`, `setPhase`, and `setDiscovery`, and
-  renders from the `project:event` snapshot. `hydrateFromSnapshot` becomes the only way state
-  enters the component.
-- Move `buildDispatchPlan` and the timers behind the canvas fixture so the live path never runs
-  them. Keep the fixture for tests and screenshots.
-- Bump the store version only if the file shape changes; `normalize.ts` must read version 1 files.
+What landed:
 
-Verification: answer intake in the running app, quit, relaunch, reopen the pane: same record and
-phase. Test in `project-store.test.ts` and a renderer test that the workspace issues mutations,
-not local state changes.
+- One invoke, `project:mutate(projectPath, ProjectMutation[])`, applied in order as one store
+  change and one disk write. Verbs: `direction`, `start`, `tree` (add, update, remove, replace
+  events), `phase`, `caughtUp`, `journal`, `coordinator`. Each may carry a journal `note`. The
+  reducer is `applyProjectMutations` in `src/shared/project/mutations.ts`; the store and the
+  renderer's in-memory source both call it.
+- `useProjectState(projectPath, fixture)` is the component's only state source. With a path it
+  mirrors the main-process store; without one it applies the same mutations in memory. The
+  component derives everything it shows through `projectView(file)`.
+- The dispatch timers and hydration effects are gone from the live path. `buildDispatchPlan` now
+  only fills the canvas fixture. The Start row shows in the embedded pane once the record is ready,
+  so the live pane can reach the canvas.
+- Store file shape unchanged; version 1 files read as before.
+
+Verification done: typecheck, 31 tests across `src/shared/project`, `src/main/project-store`, and
+`src/renderer/agent-workspace`, hygiene, and a production build. Owner check still to do: answer
+intake in the running app, press Start, quit, relaunch, reopen the pane, and see the same record,
+root node, and journal.
 
 ### Slice B: the coordinator owns the record
 
@@ -155,8 +161,8 @@ Goal: the report, acknowledgement, proposal, and acceptance path runs on store d
   Do not describe blueprint behavior as current.
 - **Update this file and `docs/application.md` in the same change** that lands a slice. Regenerate
   the workspace index when files are added or IPC ownership changes.
-- **Do not raise caps or add exceptions** to work around a large file. `project-workspace.tsx` is
-  at 442 of 450 lines; slice A should shrink it by moving state out, not split it mechanically.
+- **Do not raise caps or add exceptions** to work around a large file. Shrink a component by
+  moving state or logic out, not by extracting a child that takes forty props.
 
 ## Decisions that belong to the owner
 

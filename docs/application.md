@@ -349,21 +349,23 @@ that rect against the window's current size — see `src/renderer/chat-layout/ch
 `src/main/ui-capture-access.ts`.
 
 **Implementation note (2026-09-22).** The agent workstation UI lives under
-`src/renderer/agent-workspace/` (intake UI, simulated tree dispatch, catch-up, and completion
-gates). The **live** pieces today are: the reserved layout pane, the detached coordinator chat
-(same provider pipeline and `ChatTranscript` streaming as ordinary chats), prompt guidance via
-`agent-workspace-instructions.ts`, and **read-only** hydration from
-`<project>/.closedai/project.json` when that file already contains work. Validate agent-pane
-layout, empty-state landing, and live intake in **Electron** (`npm run preview` or `npm run dev`).
-The renderer does not yet write discovery, tree, or journal changes back through `project:` IPC
-(only `project:snapshot` exists), and canvas-phase progress after “Start building” is still driven
-by local React state and timed prototype effects unless restored from disk. The direction-record
-rail beside intake (full-viewport project preview only) uses a heuristic transcript mapper; it is
-hidden in the integrated agent workspace column so live intake stays a normal chat until durable
-project sync lands. Treat docs that describe full multi-agent orchestration as the target
-shape until persistence and main-process coordination land. The ordered slices, path ownership,
-and pane rules for closing that gap are in `docs/agent-workspace-plan.md`; read it before editing
-anything under `src/renderer/agent-workspace/`, `src/main/project-store/`, or `src/shared/project/`.
+`src/renderer/agent-workspace/`. The **live** pieces are: the reserved layout pane, the detached
+coordinator chat (same provider pipeline and `ChatTranscript` streaming as ordinary chats), prompt
+guidance via `agent-workspace-instructions.ts`, and the project store. The workspace renders
+`<project>/.closedai/project.json` and nothing else: `useProjectState` reads the snapshot over
+`project:snapshot` plus `project:event`, and every change the pane makes (direction record, Start
+building, journal lines, tree amendments, catch-up, accept, reopen) is a `ProjectMutation` sent over
+`project:mutate` and applied by the shared reducer in `src/shared/project/mutations.ts`. The same
+reducer runs in memory for the canvas fixture and tests, so both paths produce identical state.
+Quit and relaunch restores the phase, record, tree, and journal. What is still **prototype**: the
+direction record is read off the coordinator transcript by message position (`syncDiscoveryWithItems`)
+rather than written by the model; nothing dispatches work, so the canvas after Start shows only the
+root node until the user adds direction; acknowledged reports and the open completion proposal are
+local React state; and the fixture dispatch script (`buildDispatchPlan`) exists only for previews and
+tests. Validate in **Electron** (`npm run preview` or `npm run dev`). Treat docs that describe full
+multi-agent orchestration as the target shape until coordination lands. The ordered slices, path
+ownership, and pane rules for closing that gap are in `docs/agent-workspace-plan.md`; read it before
+editing anything under `src/renderer/agent-workspace/`, `src/main/project-store/`, or `src/shared/project/`.
 
 Drag empty chat header space onto another tile's left, right, top, or bottom edge to move the whole pane. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its
