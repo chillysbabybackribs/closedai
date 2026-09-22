@@ -34,7 +34,7 @@ untrusted. Parameter limits remain owned by the tools; see [native instrumentati
 | Cursor adapter guidance | `src/main/cursor/cursor-instructions.ts`, `cursor-input.ts` | Once per ACP session, as a `closedai.instructions` application context block on the first turn; turn context and handoff on later turns |
 | Repository rules | `src/main/chat-context/workspace-rules.ts`, root `AGENTS.md`, applicable `CLAUDE.md` | Codex loads `AGENTS.md` natively; Claude and Antigravity receive the selected workspace root policy explicitly; Claude also loads project `CLAUDE.md` through the SDK |
 
-The shared product block lives in `application-instructions.ts` (~7,150 characters as of
+The shared product block lives in `application-instructions.ts` (~7,800 characters as of
 2026-09-21). It is ordered as identity and objective, trust and authorization (including evidence
 claims), tool routing, then workspace orientation. Parameter names and defaults stay in tool
 descriptions so registry changes do not strand stale facts in the prompt. Every lane assembles:
@@ -63,6 +63,11 @@ Product behavior the prompt only summarizes (details elsewhere):
 
 Routing policy in the shared block: prefer page/session/network tools and script `query`/`evaluate`
 before CDP dumps; `fallback_reason` plus verification for real input; batching optional for reads.
+Verification is risk-proportional: use a direct check for low-risk reads, targeted checks around
+routine changes, and before/after checks for mutations or externally visible actions. Avoid repeated
+checks that cannot change the decision, and ask only for missing input that materially changes the
+result. Browser work prefers a fresh assigned tab, while a clearly relevant ambient read may reuse
+the current tab.
 File search and edits use provider-native tools; no workspace map injection.
 
 ## Per-turn context and trust

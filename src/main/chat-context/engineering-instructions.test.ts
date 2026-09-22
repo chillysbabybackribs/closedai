@@ -25,6 +25,9 @@ test('browser routing has a primary entry path and preserves real-input verifica
   assert.match(APPLICATION_INSTRUCTIONS, /Use embedded_browser\.page for navigation\/reading/)
   assert.match(APPLICATION_INSTRUCTIONS, /Use browser_cdp for debugging, profiling, instrumentation, emulation/)
   assert.match(APPLICATION_INSTRUCTIONS, /fallback_reason plus inspection and verification/)
+  assert.match(APPLICATION_INSTRUCTIONS, /risk-proportional workflow/)
+  assert.match(APPLICATION_INSTRUCTIONS, /Do not repeat checks whose result cannot change the decision/)
+  assert.match(APPLICATION_INSTRUCTIONS, /clearly relevant user-directed read/)
   assert.doesNotMatch(APPLICATION_INSTRUCTIONS, /batch every independent/)
 })
 
