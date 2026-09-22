@@ -296,7 +296,6 @@ export class ChatService extends EventEmitter {
       chatContinuation: continuationFromThreadHandoff(this.paneId, source)
     })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
-    this.addNotice(`Continuing from “${source.title}”. A short summary of that chat goes with your next message.`, 'info', null)
   }
 
   /** This thread as the digest its successor carries, or null when there is nothing to carry. */
