@@ -65,7 +65,7 @@ test('paused composer defaults to full mode with resume control', () => {
   assert.match(html, /data-ui="composer\.resume"/)
 })
 
-test('composer hides context info and standalone UI from default resting view', () => {
+test('composer shows model name on the trigger and context meter below the card', () => {
   const html = renderToStaticMarkup(createElement(Composer, {
     ...baseProps,
     models: [
@@ -87,8 +87,8 @@ test('composer hides context info and standalone UI from default resting view', 
   assert.match(html, /GPT-4o/)
   // Context info (128K) is hidden from the resting trigger text
   assert.doesNotMatch(html, /model-menu-trigger-context/)
-  // Standalone context meter button is hidden from composer view
-  assert.doesNotMatch(html, /class="context-meter"/)
+  assert.match(html, /class="context-meter"/)
+  assert.match(html, /prompt-composer-context/)
 })
 
 test('a persisted compact choice renders the pill for a fresh composer', () => {

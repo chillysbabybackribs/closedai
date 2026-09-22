@@ -99,7 +99,6 @@ export const UI_CONTROLS = {
   'composer.model': 'Open the model and reasoning-effort menu',
   'composer.model-provider': "Show a provider's models in the model menu's right column; item is the provider",
   'composer.model-item': 'Choose a model; item is the model id',
-  'composer.model-more': "Toggle a provider's model list between its top models and all of them; item is the provider",
   'composer.effort-item': 'Choose a reasoning effort; item is the effort',
   'composer.context': 'Open the context inspector',
   'composer.usage-card': 'Context window and plan usage, shown while the context meter is hovered',

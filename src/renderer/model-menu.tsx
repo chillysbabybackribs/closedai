@@ -1,13 +1,12 @@
 import { useCallback, useImperativeHandle, useRef, useState, type JSX, type Ref } from 'react'
 import { DropdownMenu } from 'radix-ui'
-import { Check, ChevronDown, ChevronRight, ChevronUp, MoreHorizontal } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight } from 'lucide-react'
 
-import type { ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
+import type { ChatModel, ChatProvider } from '../shared/chat.js'
 import { ProviderMark } from '../components/ui/provider-mark.js'
-import { ContextMeter } from './context-meter.js'
 import { errorMessage } from './error-message.js'
 import {
-  countModelUse, effortLabel, modelContextLabel, modelTriggerLabel, parseModelUsage, providerSections,
+  countModelUse, effortLabel, modelTriggerLabel, parseModelUsage, providerSections,
   type ModelUsage, type ProviderSection
 } from './model-menu-state.js'
 
@@ -22,13 +21,6 @@ export type ModelMenuProps = {
   models: ChatModel[]
   selectedModel: string | null
   selectedReasoningEffort: string | null
-  contextUsage?: ChatContextUsage | null
-  provider?: ChatProvider
-  planUsage?: ChatPlanUsage | null
-  onInspectContext?: () => void
-  onRefreshPlanUsage?: () => Promise<void>
-  onCompactConversation?: () => Promise<void>
-  compactConversationEnabled?: boolean
   onModelChange: (modelId: string) => Promise<void>
   onReasoningEffortChange: (effort: string) => Promise<void>
   /** Where a failed model or effort change is shown; the composer's alert row. */
@@ -36,18 +28,10 @@ export type ModelMenuProps = {
 }
 
 /**
- * One pill for model and effort. The menu opens on the providers — one row each, naming the
- * model in use where that provider owns the selection — and choosing a row replaces the panel
- * with that provider's models. Four backends' catalogues in one flat list had become a wall of
- * names; this way the first choice is "whose model", which is the one the pane actually turns
- * on. The selected model's effort levels stay on the root, since they belong to the selection
- * rather than to any provider.
- *
- * The provider's models used to fly out beside the root panel, which pushed the menu across the
- * chat/browser divider: Electron paints the browser's WebContentsView above the renderer, so
- * anything reaching over it costs a capture-and-freeze of the live page. One panel that swaps
- * its contents keeps the whole picker inside the chat column, and the chat pane is passed as the
- * collision boundary so Radix can neither widen nor shift it over the browser.
+ * One pill for model and effort. The menu opens on a short provider list — logo and name only —
+ * and hovering a row reveals that provider's full catalogue beside it inside the same popover.
+ * Context usage sits under the composer, not on this trigger. The chat pane is the collision
+ * boundary so the widened menu cannot reach over the native browser view.
  */
 export function ModelMenu({
   ref,
@@ -55,13 +39,6 @@ export function ModelMenu({
   models,
   selectedModel,
   selectedReasoningEffort,
-  contextUsage = null,
-  provider = 'codex',
-  planUsage = null,
-  onInspectContext = () => {},
-  onRefreshPlanUsage = async () => {},
-  onCompactConversation,
-  compactConversationEnabled = false,
   onModelChange,
   onReasoningEffortChange,
   onError = () => {}
@@ -95,24 +72,10 @@ export function ModelMenu({
         aria-label="Model and reasoning effort"
         data-ui="composer.model"
       >
-        <ContextMeter
-          usage={contextUsage}
-          provider={selected?.provider ?? provider}
-          planUsage={planUsage}
-          modelName={trigger.name}
-          modelContext={trigger.context}
-          modelDescription={trigger.description}
-          onInspect={onInspectContext}
-          onRefreshPlanUsage={onRefreshPlanUsage}
-          onCompact={onCompactConversation}
-          compactEnabled={compactConversationEnabled}
-          disabled={menuOpen}
-        >
-          <span className="model-menu-trigger-model">
-            {selected && <ProviderMark provider={selected.provider} className="model-menu-trigger-mark" />}
-            <span className="model-menu-trigger-name">{trigger.name}</span>
-          </span>
-        </ContextMeter>
+        <span className="model-menu-trigger-model">
+          {selected && <ProviderMark provider={selected.provider} className="model-menu-trigger-mark" />}
+          <span className="model-menu-trigger-name">{trigger.name}</span>
+        </span>
         {trigger.effort && <span className="model-menu-trigger-effort">{trigger.effort}</span>}
         <ChevronDown className="model-menu-trigger-caret" aria-hidden="true" />
       </DropdownMenu.Trigger>
@@ -134,9 +97,6 @@ export function ModelMenu({
             selectedReasoningEffort={selectedReasoningEffort}
             onChooseModel={chooseModel}
             onChooseEffort={chooseEffort}
-            onInspectContext={onInspectContext}
-            onCompactConversation={onCompactConversation}
-            compactConversationEnabled={compactConversationEnabled}
           />
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
@@ -151,113 +111,64 @@ type ModelMenuPanelProps = {
   selectedReasoningEffort: string | null
   onChooseModel: (modelId: string) => void
   onChooseEffort: (effort: string) => void
-  onInspectContext: () => void
-  onCompactConversation?: () => Promise<void>
-  compactConversationEnabled: boolean
 }
 
 /**
- * Two columns inside the one popover: providers on the left, the hovered provider's models on
- * the right, plus the selected model's effort levels under the providers. Hovering or focusing
- * a provider row switches the right column; nothing needs a click before a model is visible.
- * The context actions close the left column: the pill's hover card offers the same two, but a
- * hover card has no keyboard path, and the menu is where the keyboard already is.
- * A Radix Sub would fly out beside the panel and can reach over the native browser view, so
- * the models column is ordinary panel content that the collision boundary already contains.
- * Mounted with the open menu, so the hovered provider and its expanded state reset on close.
+ * A narrow provider list opens first; hovering or focusing a row reveals that provider's full
+ * catalogue in a second column inside the same popover. Keeping both columns in-panel avoids a
+ * Radix flyout that could reach over the native browser view. Effort levels for the selected
+ * model sit at the bottom of its provider's catalogue. Context usage lives under the composer.
  */
 function ModelMenuPanel({
-  models, usage, selectedModel, selectedReasoningEffort, onChooseModel, onChooseEffort,
-  onInspectContext, onCompactConversation, compactConversationEnabled
+  models, usage, selectedModel, selectedReasoningEffort, onChooseModel, onChooseEffort
 }: ModelMenuPanelProps): JSX.Element {
   const sections = providerSections(models, usage, selectedModel)
   const selected = models.find((model) => model.id === selectedModel)
-  const [view, setView] = useState<ChatProvider | null>(selected?.provider ?? sections[0]?.provider ?? null)
-  const [expanded, setExpanded] = useState(false)
-  const section = sections.find((entry) => entry.provider === view) ?? sections[0]
-  const efforts = selected?.supportedReasoningEfforts ?? []
-  const show = (provider: ChatProvider): void => {
-    if (provider === view) return
-    setExpanded(false)
-    setView(provider)
-  }
-  const listed = section ? (expanded ? section.all : section.featured) : []
+  const [view, setView] = useState<ChatProvider | null>(null)
+  const section = view ? sections.find((entry) => entry.provider === view) : undefined
+  const efforts = section && selected?.provider === section.provider ? selected.supportedReasoningEfforts : []
 
   return (
-    <div className="model-menu-panel model-menu-columns">
+    <div className={`model-menu-panel model-menu-columns${section ? ' model-menu-columns-open' : ''}`}>
       <div className="model-menu-column model-menu-providers" role="presentation">
         {sections.map((entry) => (
           <ProviderRow key={entry.provider} section={entry} selectedModel={selectedModel}
-            shown={entry.provider === section?.provider} onShow={() => show(entry.provider)} />
+            shown={entry.provider === section?.provider}
+            onShow={() => setView(entry.provider)} />
         ))}
-        {efforts.length > 0 && (
-          <>
-            <DropdownMenu.Separator className="model-menu-separator" />
-            <DropdownMenu.Label className="model-menu-label">Reasoning effort</DropdownMenu.Label>
-            <DropdownMenu.RadioGroup
-              value={selectedReasoningEffort ?? ''}
-              onValueChange={onChooseEffort}
-            >
-              {efforts.map((option) => (
-                <DropdownMenu.RadioItem key={option.reasoningEffort} value={option.reasoningEffort} className="model-menu-item model-menu-item-compact" textValue={option.reasoningEffort} data-ui="composer.effort-item" data-ui-key={option.reasoningEffort}>
-                  <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>
-                  <span className="model-menu-item-name">{effortLabel(option.reasoningEffort)}</span>
-                  {option.description && <span className="model-menu-item-detail">{option.description}</span>}
-                </DropdownMenu.RadioItem>
-              ))}
-            </DropdownMenu.RadioGroup>
-          </>
-        )}
-        <DropdownMenu.Separator className="model-menu-separator" />
-        <DropdownMenu.Label className="model-menu-label">Context</DropdownMenu.Label>
-        <DropdownMenu.Item className="model-menu-item model-menu-item-compact" textValue="Inspect context"
-          data-ui="composer.context" onSelect={onInspectContext}>
-          <span className="model-menu-item-name">Inspect context</span>
-        </DropdownMenu.Item>
-        {onCompactConversation && (
-          <DropdownMenu.Item className="model-menu-item model-menu-item-compact" textValue="Compact conversation"
-            data-ui="composer.compact" disabled={!compactConversationEnabled}
-            onSelect={() => { void onCompactConversation() }}>
-            <span className="model-menu-item-name">Compact conversation</span>
-          </DropdownMenu.Item>
-        )}
       </div>
       {section && (
         <div className="model-menu-column model-menu-models" role="presentation" data-provider={section.provider}>
           <DropdownMenu.Label className="model-menu-label">
             <ProviderMark provider={section.provider} className="model-menu-label-mark" />
             <span>{section.label}</span>
-            <span className="model-menu-label-count">{modelCountLabel(section.all.length)}</span>
           </DropdownMenu.Label>
           <DropdownMenu.RadioGroup value={selectedModel ?? ''} onValueChange={onChooseModel}>
-            {listed.map((model) => (
+            {section.all.map((model) => (
               <DropdownMenu.RadioItem key={model.id} value={model.id} className="model-menu-item" textValue={model.displayName} data-ui="composer.model-item" data-ui-key={model.id}>
                 <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>
-                <span className="model-menu-item-heading">
-                  <span className="model-menu-item-name">{model.displayName}</span>
-                  {modelContextLabel(model.contextWindow) && (
-                    <span className="model-menu-item-context">{modelContextLabel(model.contextWindow)}</span>
-                  )}
-                </span>
+                <span className="model-menu-item-name">{model.displayName}</span>
                 {model.description && <span className="model-menu-item-detail">{model.description}</span>}
               </DropdownMenu.RadioItem>
             ))}
           </DropdownMenu.RadioGroup>
-          {section.hiddenCount > 0 && (
-            <DropdownMenu.Item
-              className="model-menu-item model-menu-item-compact model-menu-more"
-              textValue={expanded ? 'Show fewer models' : 'Show all models'}
-              data-ui="composer.model-more"
-              data-ui-key={section.provider}
-              onSelect={(event) => { event.preventDefault(); setExpanded(!expanded) }}
-            >
-              {expanded
-                ? <ChevronUp className="model-menu-more-mark" aria-hidden="true" />
-                : <MoreHorizontal className="model-menu-more-mark" aria-hidden="true" />}
-              <span className="model-menu-item-name">
-                {expanded ? 'Show fewer models' : `Show ${section.hiddenCount} more models`}
-              </span>
-            </DropdownMenu.Item>
+          {efforts.length > 0 && (
+            <>
+              <DropdownMenu.Separator className="model-menu-separator" />
+              <DropdownMenu.Label className="model-menu-label">Reasoning effort</DropdownMenu.Label>
+              <DropdownMenu.RadioGroup
+                value={selectedReasoningEffort ?? ''}
+                onValueChange={onChooseEffort}
+              >
+                {efforts.map((option) => (
+                  <DropdownMenu.RadioItem key={option.reasoningEffort} value={option.reasoningEffort} className="model-menu-item model-menu-item-compact" textValue={option.reasoningEffort} data-ui="composer.effort-item" data-ui-key={option.reasoningEffort}>
+                    <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>
+                    <span className="model-menu-item-name">{effortLabel(option.reasoningEffort)}</span>
+                    {option.description && <span className="model-menu-item-detail">{option.description}</span>}
+                  </DropdownMenu.RadioItem>
+                ))}
+              </DropdownMenu.RadioGroup>
+            </>
           )}
         </div>
       )}
@@ -291,16 +202,9 @@ function ProviderRow({ section, selectedModel, shown, onShow }: {
     >
       <ProviderMark provider={section.provider} className="model-menu-label-mark" />
       <span className="model-menu-item-name">{section.label}</span>
-      <span className="model-menu-item-detail">
-        {active ? active.displayName : modelCountLabel(section.all.length)}
-      </span>
       <ChevronRight className="model-menu-provider-caret" aria-hidden="true" />
     </DropdownMenu.Item>
   )
-}
-
-function modelCountLabel(count: number): string {
-  return `${count} model${count === 1 ? '' : 's'}`
 }
 
 /** The picker's own memory of which models get chosen, kept in this window rather than settings. */

@@ -179,6 +179,14 @@
   background: transparent;
 }
 
+.prompt-composer-context {
+  display: flex;
+  justify-content: flex-end;
+  width: min(calc(var(--chat-column-width) + 64px), 100%);
+  margin: 4px auto 0;
+  padding: 0 2px;
+}
+
 /* Before the first message, center the composer. Absolute positioning also lets
    the empty scroller fill the pane, while the normal document-flow position takes
    over as soon as a transcript item appears. */

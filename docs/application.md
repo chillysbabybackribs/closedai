@@ -97,9 +97,9 @@ capacity; this takes precedence over the installed CLI's `models_cache.json`, wh
 despite the GPT-5.3-Codex model's 400K native window). Unknown models fall back to the cache maximum.
 New and resumed threads receive that model-specific maximum through `model_context_window`;
 changing models on an existing idle thread reapplies the matching override before saving the
-selection. The model picker shows the same maximum beside each Codex model. If neither a known
-capacity nor valid cache metadata is available, the model stays available without a context label
-and Codex keeps its own default. The live context meter can report a slightly smaller effective
+selection. If neither a known capacity nor valid cache metadata is available, the model stays
+available without a context label and Codex keeps its own default. The live context meter under
+the composer can report a slightly smaller effective
 window because Codex reserves headroom according to its model catalog.
 
 GPT-6 Astra (`gpt-6-astra`) is discovered through the same account-provided model catalog,

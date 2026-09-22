@@ -16,7 +16,9 @@ import { ComposerCompactRow } from './composer-compact-row.js'
 import { useComposerLayout } from './composer-layout.js'
 import { useComposerDraft } from './composer-drafts.js'
 import { errorMessage } from './error-message.js'
+import { ContextMeter } from './context-meter.js'
 import { ModelMenu, type ModelMenuHandle } from './model-menu.js'
+import { modelTriggerLabel } from './model-menu-state.js'
 import { ProjectMenu } from './project-menu.js'
 
 export type ComposerProps = {
@@ -102,6 +104,8 @@ export function Composer({
     if (textareaFocusedRef.current) formRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus()
   }, [isCompact])
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !sending && enabled && !running
+  const selectedChatModel = models.find((model) => model.id === selectedModel)
+  const modelLabel = modelTriggerLabel(models, selectedModel, selectedReasoningEffort)
 
   useEffect(() => {
     if (sending || !focusAfterSendRef.current) return
@@ -236,13 +240,6 @@ export function Composer({
                 models={models}
                 selectedModel={selectedModel}
                 selectedReasoningEffort={selectedReasoningEffort}
-                contextUsage={contextUsage}
-                provider={provider}
-                planUsage={planUsage}
-                onInspectContext={onInspectContext}
-                onRefreshPlanUsage={onRefreshPlanUsage}
-                onCompactConversation={onCompactConversation}
-                compactConversationEnabled={compactConversationEnabled}
                 onModelChange={onModelChange}
                 onReasoningEffortChange={onReasoningEffortChange}
                 onError={setComposerError}
@@ -310,13 +307,6 @@ export function Composer({
                       models={models}
                       selectedModel={selectedModel}
                       selectedReasoningEffort={selectedReasoningEffort}
-                      contextUsage={contextUsage}
-                      provider={provider}
-                      planUsage={planUsage}
-                      onInspectContext={onInspectContext}
-                      onRefreshPlanUsage={onRefreshPlanUsage}
-                      onCompactConversation={onCompactConversation}
-                      compactConversationEnabled={compactConversationEnabled}
                       onModelChange={onModelChange}
                       onReasoningEffortChange={onReasoningEffortChange}
                       onError={setComposerError}
@@ -366,6 +356,20 @@ export function Composer({
           </div>
         )}
       </PromptInput>
+      <div className="prompt-composer-context">
+        <ContextMeter
+          usage={contextUsage}
+          provider={selectedChatModel?.provider ?? provider}
+          planUsage={planUsage}
+          modelName={modelLabel.name}
+          modelContext={modelLabel.context}
+          modelDescription={modelLabel.description}
+          onInspect={onInspectContext}
+          onRefreshPlanUsage={onRefreshPlanUsage}
+          onCompact={onCompactConversation}
+          compactEnabled={compactConversationEnabled}
+        />
+      </div>
     </form>
   )
 }
