@@ -38,6 +38,47 @@ export function modelTriggerLabel(
   }
 }
 
+const MENU_DETAIL_MAX = 48
+
+/** One quiet line under a model name in the flyout: shorter than the full catalogue blurb. */
+export function modelMenuDetail(model: ChatModel): string | null {
+  let text = model.description.trim()
+  text = stripSubscriptionBlurb(text)
+  if (!text) {
+    const ctx = modelContextLabel(model.contextWindow)
+    return ctx ? `${ctx} context` : null
+  }
+  const ctx = modelContextLabel(model.contextWindow)
+  if (ctx && !detailMentionsContext(text, ctx)) text = `${text} · ${ctx}`
+  return truncateMenuDetail(text)
+}
+
+/** Effort rows get the same length cap without repeating the label. */
+export function effortMenuDetail(description: string): string | null {
+  const text = description.trim()
+  return text ? truncateMenuDetail(text) : null
+}
+
+function stripSubscriptionBlurb(text: string): string {
+  return text
+    .replace(/\s*[—–-]\s*on your [\w\s]+subscription\.?$/i, '')
+    .replace(/^on your [\w\s]+subscription\.?$/i, '')
+    .trim()
+}
+
+function detailMentionsContext(text: string, ctx: string): boolean {
+  const lower = text.toLowerCase()
+  return lower.includes(ctx.toLowerCase()) || /\d+\s*[km]\b/i.test(text) || lower.includes('context')
+}
+
+function truncateMenuDetail(text: string): string {
+  if (text.length <= MENU_DETAIL_MAX) return text
+  const cut = text.slice(0, MENU_DETAIL_MAX - 1)
+  const breakAt = Math.max(cut.lastIndexOf(' · '), cut.lastIndexOf(' '))
+  const head = breakAt > MENU_DETAIL_MAX * 0.45 ? cut.slice(0, breakAt) : cut
+  return `${head.trimEnd()}…`
+}
+
 /** Compact, stable context labels for both the resting trigger and catalog rows. */
 export function modelContextLabel(tokens: number | undefined): string | null {
   if (!tokens || !Number.isFinite(tokens) || tokens <= 0) return null

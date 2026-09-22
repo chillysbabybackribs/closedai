@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatModel } from '../shared/chat.js'
 import {
-  countModelUse, effortLabel, modelContextLabel, modelGroups, modelTriggerLabel, parseModelUsage, providerSections
+  countModelUse, effortLabel, effortMenuDetail, modelContextLabel, modelMenuDetail, modelGroups, modelTriggerLabel, parseModelUsage, providerSections
 } from './model-menu-state.js'
 
 function model(provider: ChatModel['provider'], id: string, displayName: string, efforts: string[] = [], isDefault = false, contextWindow?: number): ChatModel {
@@ -53,6 +53,28 @@ test('the trigger reads the model name with the effort as a suffix only when it 
 test('effort labels are title-cased', () => {
   assert.equal(effortLabel('medium'), 'Medium')
   assert.equal(effortLabel('x-high'), 'X High')
+})
+
+test('model menu detail strips subscription blurbs and caps length', () => {
+  assert.equal(
+    modelMenuDetail({
+      ...model('cursor', 'x', 'Grok', [], false, 256_000),
+      description: 'Thinking · high effort · 300k context — on your Cursor subscription'
+    }),
+    'Thinking · high effort · 300k context'
+  )
+  assert.equal(
+    modelMenuDetail({ ...model('cursor', 'y', 'Auto'), description: 'On your Cursor subscription' }),
+    null
+  )
+  assert.equal(
+    modelMenuDetail({ ...model('codex', 'z', 'Sol'), description: '', contextWindow: 128_000 }),
+    '128K context'
+  )
+  assert.equal(
+    effortMenuDetail('Deeper than high; best for long agentic work and multi-step planning'),
+    'Deeper than high; best for long agentic work…'
+  )
 })
 
 test('context labels stay compact at common model-window sizes', () => {

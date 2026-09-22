@@ -6,7 +6,7 @@ import type { ChatModel, ChatProvider } from '../shared/chat.js'
 import { ProviderMark } from '../components/ui/provider-mark.js'
 import { errorMessage } from './error-message.js'
 import {
-  countModelUse, effortLabel, modelTriggerLabel, parseModelUsage, providerSections,
+  countModelUse, effortLabel, effortMenuDetail, modelMenuDetail, modelTriggerLabel, parseModelUsage, providerSections,
   type ModelUsage, type ProviderSection
 } from './model-menu-state.js'
 
@@ -189,24 +189,32 @@ function ProviderModelsFlyout({
             <span>{section.label}</span>
           </DropdownMenu.Label>
           <DropdownMenu.RadioGroup value={selectedModel ?? ''} onValueChange={onChooseModel}>
-            {section.all.map((model) => (
-              <DropdownMenu.RadioItem key={model.id} value={model.id} className="model-menu-item model-menu-item-single" textValue={model.displayName} data-ui="composer.model-item" data-ui-key={model.id}>
+            {section.all.map((model) => {
+              const detail = modelMenuDetail(model)
+              return (
+              <DropdownMenu.RadioItem key={model.id} value={model.id} className={`model-menu-item${detail ? '' : ' model-menu-item-single'}`} textValue={detail ? `${model.displayName} ${detail}` : model.displayName} data-ui="composer.model-item" data-ui-key={model.id}>
                 <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>
                 <span className="model-menu-item-name">{model.displayName}</span>
+                {detail && <span className="model-menu-item-detail">{detail}</span>}
               </DropdownMenu.RadioItem>
-            ))}
+              )
+            })}
           </DropdownMenu.RadioGroup>
           {efforts.length > 0 && (
             <>
               <DropdownMenu.Separator className="model-menu-separator" />
               <DropdownMenu.Label className="model-menu-label">Reasoning effort</DropdownMenu.Label>
               <DropdownMenu.RadioGroup value={selectedReasoningEffort ?? ''} onValueChange={onChooseEffort}>
-                {efforts.map((option) => (
-                  <DropdownMenu.RadioItem key={option.reasoningEffort} value={option.reasoningEffort} className="model-menu-item model-menu-item-single" textValue={effortLabel(option.reasoningEffort)} data-ui="composer.effort-item" data-ui-key={option.reasoningEffort}>
+                {efforts.map((option) => {
+                  const detail = effortMenuDetail(option.description)
+                  return (
+                  <DropdownMenu.RadioItem key={option.reasoningEffort} value={option.reasoningEffort} className={`model-menu-item${detail ? '' : ' model-menu-item-single'}`} textValue={detail ? `${effortLabel(option.reasoningEffort)} ${detail}` : effortLabel(option.reasoningEffort)} data-ui="composer.effort-item" data-ui-key={option.reasoningEffort}>
                     <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>
                     <span className="model-menu-item-name">{effortLabel(option.reasoningEffort)}</span>
+                    {detail && <span className="model-menu-item-detail">{detail}</span>}
                   </DropdownMenu.RadioItem>
-                ))}
+                  )
+                })}
               </DropdownMenu.RadioGroup>
             </>
           )}
