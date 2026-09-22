@@ -2,277 +2,435 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Composer redesign — directions (2026-09-22)</title>
+<title>Composer redesign — three concepts (2026-09-22)</title>
 <style>
   :root {
-    --background: #181818;
-    --card-bg: #252526;
-    --band-bg: #1d1d1e;
-    --surface-control-hover: rgb(255 255 255 / 7%);
-    --border: rgb(255 255 255 / 9%);
-    --border-strong: rgb(255 255 255 / 14%);
-    --foreground: #eeeef0;
-    --ink-78: rgb(238 238 240 / 78%);
-    --ink-48: rgb(238 238 240 / 48%);
-    --muted-foreground: #98989c;
-    --placeholder: #727276;
+    --canvas: #181818;
+    --panel: #1d1d1e;
+    --card: #232325;
+    --raised: #2a2a2c;
+    --hair: rgb(255 255 255 / 8%);
+    --hair-strong: rgb(255 255 255 / 14%);
+    --fg: #ececee;
+    --fg-2: #b4b4b8;
+    --fg-3: #8a8a8f;
+    --fg-4: #5f5f64;
     --accent: #8ab4f8;
-    --pause: #dba74b;
-    --ring-track: rgb(255 255 255 / 14%);
-    --ring-fill: #7bbf96;
+    --accent-ink: #0c0f16;
+    --amber: #dba74b;
+    --ok: #7bbf96;
+    --warn: #e0a15a;
+    --mono: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
     font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 13px;
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0; padding: 28px; background: #0c0c0d; color: var(--foreground);
-    display: grid; gap: 26px; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); max-width: 1700px;
-  }
-  h1 { grid-column: 1 / -1; margin: 0 0 -8px; font-size: 15px; font-weight: 600; }
-  h1 span { color: var(--muted-foreground); font-weight: 400; }
-  h2 { grid-column: 1 / -1; margin: 14px 0 -6px; font-size: 12px; font-weight: 600; color: var(--muted-foreground); letter-spacing: .02em; text-transform: uppercase; }
-  .frame { border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; background: var(--background); }
-  .label { padding: 10px 16px; color: var(--muted-foreground); font-size: 12px; background: #131313; border-bottom: 1px solid var(--border); line-height: 1.5; }
-  .label b { color: var(--foreground); }
-  .pane { padding: 22px 18px 14px; }
-  .asst { color: #c9c9cd; font-size: 13px; line-height: 1.6; margin: 0 4px 22px; }
-  .asst em { color: var(--muted-foreground); font-style: normal; font-size: 11px; margin-left: 8px; }
+  body { margin: 0; padding: 28px; background: #0c0c0d; color: var(--fg); display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); max-width: 1720px; }
+  h1 { grid-column: 1 / -1; margin: 0 0 -6px; font-size: 15px; font-weight: 600; }
+  h1 span { color: var(--fg-3); font-weight: 400; }
+  h2 { grid-column: 1 / -1; margin: 16px 0 -6px; font-size: 12px; font-weight: 600; color: var(--fg-3); letter-spacing: .02em; text-transform: uppercase; }
+  .intro { grid-column: 1 / -1; color: var(--fg-2); font-size: 13px; line-height: 1.6; max-width: 1000px; margin: 0; }
+  .intro b { color: var(--fg); }
+  .frame { border: 1px solid var(--hair-strong); border-radius: 10px; overflow: hidden; background: var(--canvas); display: flex; flex-direction: column; }
+  .label { padding: 10px 16px; color: var(--fg-3); font-size: 12px; background: #131313; border-bottom: 1px solid var(--hair); line-height: 1.5; }
+  .label b { color: var(--fg); }
+  .pane { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; min-height: 180px; }
+  .asst { color: #c9c9cd; font-size: 13px; line-height: 1.6; margin: 18px 22px 20px; }
+  .asst em { color: var(--fg-3); font-style: normal; font-size: 11px; margin-left: 8px; }
 
   svg.i { width: 15px; height: 15px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  svg.i.chev { width: 14px; height: 14px; color: var(--ink-48); }
-  svg.i.plus { width: 19px; height: 19px; stroke-width: 2.6; color: #fff; }
+  .mark { width: 12px; height: 12px; border-radius: 50%; flex: none; background: radial-gradient(circle, #e0865a 0 35%, transparent 36%), conic-gradient(#e0865a 0 25%, transparent 0 50%, #e0865a 0 75%, transparent 0); }
+  .spin { width: 13px; height: 13px; border-radius: 50%; border: 2px solid rgb(138 180 248 / 25%); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 
-  /* ---- shared parts ---- */
-  .rail { display: flex; align-items: center; min-height: 30px; margin: 0 2px 4px; font-size: 12px; color: #a9a9ad; gap: 2px; }
-  .rail .sp { flex: 1; }
-  .timer { padding-left: 4px; font-size: 12px; color: #a9a9ad; }
-  .timer.on { color: #d8d8dc; background: linear-gradient(90deg, #a9a9ad 30%, #fff 50%, #a9a9ad 70%); -webkit-background-clip: text; color: transparent; }
-  .trig { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 6px; border-radius: 7px; color: var(--ink-78); font-size: 12.5px; font-weight: 500; white-space: nowrap; }
-  .trig:hover { background: var(--surface-control-hover); color: var(--foreground); }
-  .trig b { color: var(--ink-78); font-weight: 600; }
-  .trig .q { color: var(--ink-48); font-size: 11.5px; font-weight: 450; display: inline-flex; align-items: center; gap: 8px; }
-  .trig .q::before { content: ""; width: 1px; height: 12px; background: var(--border-strong); }
-  .trig.icon { padding: 0; width: 30px; justify-content: center; }
-  .mark { width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle, #e0865a 0 35%, transparent 36%), conic-gradient(#e0865a 0 25%, transparent 0 50%, #e0865a 0 75%, transparent 0); flex: none; }
-  .ring { width: 14px; height: 14px; flex: none; }
-  .ring circle { fill: none; stroke-width: 2.2; }
-  .ring .t { stroke: var(--ring-track); }
-  .ring .f { stroke: var(--ring-fill); stroke-dasharray: 9 33; transform: rotate(-90deg); transform-origin: 50% 50%; }
-  .pause { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--pause); }
-  .pause svg { width: 26px; height: 26px; stroke-width: 2.25; }
-  .resume { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: rgb(255 255 255 / 10%); border: 1px solid rgb(255 255 255 / 18%); color: #fff; }
-  .resume svg { width: 14px; height: 14px; fill: currentColor; }
+  /* ================= concept 1: prompt line ================= */
+  .p1 { position: relative; border-top: 1px solid var(--hair-strong); background: var(--panel); padding: 9px 12px 7px; overflow: hidden; }
+  .p1.running::before { content: ""; position: absolute; top: -1px; left: 0; width: 34%; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); animation: slide 1.6s linear infinite; }
+  .p1 .field { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; column-gap: 8px; align-items: start; }
+  .p1 .glyph { height: 22px; display: grid; place-items: center; font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--accent); }
+  .p1 .glyph.amber { color: var(--amber); }
+  .p1 .text { min-height: 22px; padding: 1px 0; font-size: 14px; line-height: 20px; color: #fff; font-weight: 450; }
+  .p1 .text.ph { color: var(--fg-4); }
+  .p1 .text.ph i { font-style: normal; color: var(--fg-3); }
+  .p1 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 1px 0 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 6px 0 4px; border: 1px solid var(--hair-strong); border-radius: 5px; background: var(--raised); color: var(--fg-2); font-size: 11.5px; }
+  .chip .th { width: 14px; height: 14px; border-radius: 3px; background: linear-gradient(135deg, #5b7fb3, #2c3f5c); }
+  .chip .doc { width: 14px; height: 14px; border-radius: 3px; background: var(--hair-strong); }
+  .chip .x { color: var(--fg-3); font-size: 12px; margin-left: 2px; }
+  .p1 .acts { display: flex; align-items: center; gap: 8px; height: 22px; }
+  .p1 .elapsed { font-family: var(--mono); font-size: 11.5px; color: var(--fg-3); font-variant-numeric: tabular-nums; }
+  .btn { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; border: 1px solid transparent; }
+  .btn svg { width: 15px; height: 15px; stroke-width: 2.4; }
+  .btn.send { background: var(--accent); color: var(--accent-ink); }
+  .btn.send.off { background: var(--raised); color: var(--fg-4); }
+  .btn.stop { background: transparent; border-color: var(--hair-strong); color: var(--fg); }
+  .btn.stop i { width: 9px; height: 9px; background: currentColor; border-radius: 1.5px; }
+  .btn.resume { background: transparent; border-color: rgb(219 167 75 / 45%); color: var(--amber); }
+  .btn.resume svg { fill: currentColor; stroke: none; width: 12px; }
+  .p1 .status { display: flex; align-items: center; gap: 14px; margin: 5px 0 0 26px; font-size: 11px; color: var(--fg-3); min-width: 0; }
+  .p1 .status .it { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .p1 .status .it:hover { color: var(--fg); }
+  .p1 .status .it.strong { color: var(--fg-2); }
+  .p1 .status .it.amber { color: var(--amber); }
+  .p1 .status .sp { flex: 1; }
+  .p1 .status .hint { color: var(--fg-4); }
+  .meter { display: inline-flex; gap: 2px; align-items: flex-end; height: 9px; }
+  .meter i { width: 3px; height: 9px; border-radius: 1px; background: var(--hair-strong); }
+  .meter i.on { background: var(--ok); }
+  .meter.warm i.on { background: var(--warn); }
+  .kbd { font-family: var(--mono); font-size: 10px; padding: 0 4px; border: 1px solid var(--hair-strong); border-radius: 3px; color: var(--fg-3); }
 
-  .card { border: 1px solid var(--border-strong); border-radius: 10px; background: var(--card-bg); box-shadow: 0 1px 3px rgb(0 0 0 / 14%); }
-  .card .in { display: flex; align-items: stretch; gap: 4px; padding: 6px; }
-  .card .col { flex: 1; min-width: 0; }
-  .ta { min-height: 38px; padding: 6px 8px; color: #fff; font-size: 15px; font-weight: 500; line-height: 1.55; }
-  .ta.ph { color: var(--placeholder); }
-  .side { display: flex; align-items: center; padding-right: 2px; }
-  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
-  .row .l, .row .r { display: flex; align-items: center; gap: 2px; min-width: 0; }
-  .row .l { flex: 1 1 auto; gap: 4px; }
-  .footer { margin: 4px 2px 0; }
+  /* centred first-message variant */
+  .p1.center { margin: 24px 40px; border: 1px solid var(--hair-strong); border-radius: 10px; }
+  .setup { margin: 0 40px 10px; text-align: left; color: var(--fg-3); font-size: 12px; }
+  .setup b { color: var(--fg-2); font-weight: 500; }
 
-  /* ---- reference: DeepSeek ---- */
-  .ds { border: 1px solid rgb(255 255 255 / 12%); border-radius: 14px; background: #141415; box-shadow: 0 2px 8px rgb(0 0 0 / 30%); }
-  .ds .in { border-radius: 13px 13px 12px 12px; background: #1b1b1c; padding: 14px 14px 10px; display: grid; gap: 8px; }
-  .ds .ph { color: #7b7b80; font-size: 15px; }
-  .ds .acts { display: flex; align-items: center; justify-content: space-between; }
-  .ds .stop { width: 34px; height: 34px; border-radius: 8px; background: #f1f1f1; display: grid; place-items: center; }
-  .ds .stop i { width: 11px; height: 11px; background: #111; border-radius: 2px; }
-  .ds .band { display: flex; gap: 22px; padding: 12px 18px; font-size: 14px; color: #dedee2; }
-  .ds .band span { display: inline-flex; align-items: center; gap: 8px; }
-  .ds .band svg { width: 14px; height: 14px; color: #8d8d92; }
+  /* ================= concept 2: identity card ================= */
+  .p2 { margin: 6px 16px 14px; border: 1px solid var(--hair-strong); border-radius: 12px; background: var(--card); overflow: hidden; position: relative; }
+  .p2 .head { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px 0 12px; border-bottom: 1px solid var(--hair); font-size: 12px; }
+  .p2 .head .id { display: inline-flex; align-items: center; gap: 7px; color: var(--fg-2); font-weight: 500; min-width: 0; }
+  .p2 .head .id b { color: var(--fg); font-weight: 600; }
+  .p2 .head .id .sep { color: var(--fg-4); }
+  .p2 .head .sp { flex: 1; }
+  .seg { display: inline-flex; height: 22px; border: 1px solid var(--hair-strong); border-radius: 6px; overflow: hidden; font-size: 10.5px; font-weight: 600; letter-spacing: .02em; }
+  .seg span { display: grid; place-items: center; padding: 0 7px; color: var(--fg-3); border-right: 1px solid var(--hair); }
+  .seg span:last-child { border-right: 0; }
+  .seg span.on { background: var(--raised); color: var(--fg); }
+  .p2 .body { display: flex; align-items: flex-end; gap: 8px; padding: 10px 10px 8px 12px; }
+  .p2 .text { flex: 1; min-height: 44px; font-size: 14px; line-height: 20px; color: #fff; font-weight: 450; }
+  .p2 .text.ph { color: var(--fg-4); }
+  .p2 .foot { display: flex; align-items: center; gap: 6px; padding: 0 8px 8px 8px; }
+  .p2 .foot .sp { flex: 1; }
+  .p2 .tool { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: var(--fg-3); }
+  .p2 .tool:hover { background: var(--raised); color: var(--fg); }
+  .p2 .foot .elapsed { font-family: var(--mono); font-size: 11.5px; color: var(--fg-3); margin-right: 4px; }
+  .p2 .edge { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--hair); }
+  .p2 .edge i { display: block; height: 100%; width: 34%; background: var(--ok); }
+  .p2 .edge.warm i { background: var(--warn); }
+  .p2.running .edge i { background: var(--accent); width: 34%; animation: slide 1.6s linear infinite; }
+  .p2 .head .state { display: inline-flex; align-items: center; gap: 7px; color: var(--fg-2); font-variant-numeric: tabular-nums; }
+  .p2 .head .state.amber { color: var(--amber); }
 
-  /* ---- A: banded card ---- */
-  .a .card { border-radius: 12px; overflow: hidden; }
-  .a .card .in { padding: 8px 8px 4px; }
-  .a .band { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 6px; background: var(--band-bg); border-top: 1px solid var(--border); }
-  .a .band .l, .a .band .r { display: flex; align-items: center; gap: 2px; min-width: 0; }
+  /* ================= concept 3: one line + one panel ================= */
+  .p3wrap { margin: 6px 16px 14px; position: relative; }
+  .p3 { display: flex; align-items: center; gap: 6px; height: 42px; padding: 0 6px 0 4px; border: 1px solid var(--hair-strong); border-radius: 12px; background: var(--card); }
+  .p3 .tool { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: var(--fg-3); }
+  .p3 .text { flex: 1; font-size: 14px; color: #fff; font-weight: 450; padding: 0 4px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .p3 .text.ph { color: var(--fg-4); }
+  .p3 .ctx { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 9px; border-radius: 8px; color: var(--fg-2); font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .p3 .ctx:hover { background: var(--raised); }
+  .p3 .ctx small { color: var(--fg-3); font-weight: 450; }
+  .p3 .btn { width: 30px; height: 30px; border-radius: 8px; }
+  .pop { position: absolute; left: 0; bottom: 52px; width: 340px; padding: 8px; border-radius: 12px; background: #2b2b2d; box-shadow: 0 14px 34px rgb(0 0 0 / 50%); font-size: 12.5px; }
+  .pop .sec { padding: 6px 8px 4px; font-size: 10.5px; font-weight: 600; color: var(--fg-3); letter-spacing: .04em; text-transform: uppercase; }
+  .pop .row { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 7px; color: var(--fg-2); }
+  .pop .row.on { background: rgb(255 255 255 / 8%); color: var(--fg); }
+  .pop .row .sp { flex: 1; }
+  .pop .row small { color: var(--fg-3); }
+  .pop hr { border: 0; border-top: 1px solid var(--hair); margin: 6px 4px; }
+  .pop .bar { height: 4px; border-radius: 2px; background: var(--hair-strong); margin: 4px 8px 6px; }
+  .pop .bar i { display: block; height: 100%; width: 34%; border-radius: 2px; background: var(--ok); }
+  .pop .cmd { font-family: var(--mono); color: var(--fg-3); font-size: 11px; }
 
-  /* ---- C: flat, single surface ---- */
-  .c .card .row { padding: 2px 4px 4px; }
-  .c .card .in { padding-bottom: 0; }
-
-  /* ---- compact ---- */
-  .pill { display: flex; align-items: center; gap: 6px; min-height: 38px; padding: 4px 6px 4px 8px; border: 1px solid var(--border-strong); border-radius: 20px; background: var(--card-bg); box-shadow: 0 1px 4px rgb(0 0 0 / 18%); }
-  .pill .ta { flex: 1; min-height: 24px; padding: 2px 6px; font-size: 13px; line-height: 20px; text-align: center; }
-  .pill .trig { height: 26px; }
-  .pill .trig.icon { width: 26px; }
-  .pill .pause { width: 28px; height: 28px; } .pill .pause svg { width: 17px; height: 17px; }
-
-  .note { grid-column: 1 / -1; color: var(--muted-foreground); font-size: 12.5px; line-height: 1.6; max-width: 980px; margin-top: -8px; }
-  .note b { color: var(--foreground); }
+  .note { grid-column: 1 / -1; color: var(--fg-2); font-size: 12.5px; line-height: 1.65; max-width: 1000px; margin: 0; }
+  .note b { color: var(--fg); }
+  .diag { margin: 0; padding: 12px 16px 14px; border-top: 1px solid var(--hair); background: #141414; color: var(--fg-2); font-size: 12px; line-height: 1.55; }
+  .diag li { margin: 2px 0; }
+  .diag ul { margin: 4px 0 0; padding-left: 18px; }
+  .narrow { width: 340px; }
 </style>
 </head>
 <body>
 
 <svg width="0" height="0" style="position:absolute">
-  <symbol id="chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
-  <symbol id="chevup" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
-  <symbol id="folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
-  <symbol id="plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
-  <symbol id="pausei" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
   <symbol id="play" viewBox="0 0 24 24"><path d="M6 3l14 9-14 9z"/></symbol>
-  <symbol id="gauge" viewBox="0 0 24 24"><path d="M12 14l4-4"/><circle cx="12" cy="14" r="8"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+  <symbol id="folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="clip" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
 </svg>
 
-<h1>Composer redesign <span>&middot; reference vs. current vs. three directions &middot; dark chassis theme &middot; 2026-09-22</span></h1>
+<h1>Composer redesign <span>&middot; three concepts, each drawn through idle, draft, running, paused &middot; 2026-09-22</span></h1>
 
-<h2>Reference and current</h2>
+<p class="intro">
+The brief is not "move the controls". It is: the composer has no primary action, it spends two permanent rows on setup that rarely changes, every control is the same 12&nbsp;px grey so nothing has hierarchy, and turn state is a colour on a floating icon. Each concept below fixes those four things a different way. <b>1</b> is an IDE/terminal prompt line docked to the pane. <b>2</b> is a card whose header is the chat's identity. <b>3</b> is a single line with one panel behind one trigger. The <b>send button is back</b> in all three: Enter still sends, but the state of the turn now lives in one button that turns into stop and resume.
+</p>
+
+<h2>Current, for the record</h2>
 
 <div class="frame">
-  <div class="label"><b>Reference &middot; DeepSeek V4 Pro</b> &middot; one card, two zones: text + actions on top, three <i>labelled</i> dropdowns (mode, model, thinking effort) in a darker band under it. Stop is a filled square on the right.</div>
+  <div class="label"><b>Current</b> &middot; three stacked rows, seven controls, no primary action</div>
+  <div class="pane" style="padding-bottom:10px">
+    <div style="display:flex;align-items:center;margin:0 14px 4px;font-size:12px;color:#a9a9ad"><span>Working for 5s</span><span style="flex:1"></span><svg class="i" style="color:#c8c8ca;width:15px"><use href="#folder"/></svg>&nbsp;closedai&nbsp;&nbsp;<svg class="i" style="color:#8c8c8e;width:14px"><use href="#chev"/></svg></div>
+    <div style="margin:0 12px;border:1px solid var(--hair-strong);border-radius:10px;background:#252526;height:52px;display:flex;align-items:center;justify-content:flex-end;padding-right:10px"><span style="color:#dba74b;font-size:22px;font-weight:700;letter-spacing:-2px">&#8214;</span></div>
+    <div style="display:flex;align-items:center;margin:6px 14px 0;font-size:12.5px;color:rgb(238 238 240 / 78%)"><span class="mark"></span>&nbsp;&nbsp;<b>Fable 5.1 (1M)</b>&nbsp;&nbsp;<span style="color:rgb(238 238 240 / 48%);font-size:11.5px">| High</span>&nbsp;<svg class="i" style="color:#8c8c8e;width:14px"><use href="#chev"/></svg><span style="flex:1"></span><b style="font-size:18px">+</b>&nbsp;&nbsp;&nbsp;<span style="width:14px;height:14px;border-radius:50%;border:2px solid var(--hair-strong);display:inline-block"></span></div>
+  </div>
+  <div class="diag">Why it fails
+    <ul>
+      <li>No send button; while running, an amber pause icon sits where the action should be. The state of the turn is a colour.</li>
+      <li>The project rail and the footer are permanent rows for choices made once per chat. The compact toggle exists to hide the cost.</li>
+      <li>Model, effort, folder, attach, context all render at one weight and one grey. Nothing is first.</li>
+      <li>The working timer is on the rail, away from the control that stops the work.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Concept 1 &middot; Prompt line &middot; docked, terminal-shaped (recommended)</h2>
+
+<div class="frame">
+  <div class="label"><b>1 &middot; idle</b> &middot; docked to the pane bottom with a hairline, no floating card. A prompt glyph, the text, one action button. Under it a status line where every word is the control: click <i>closedai</i> for the folder, <i>Fable 5.1</i> for the model, <i>high</i> for effort, the meter for context.</div>
   <div class="pane">
-    <div class="ds">
-      <div class="in">
-        <div class="ph">Ask anything...</div>
-        <div class="acts"><svg class="i plus" style="color:#c9c9cd"><use href="#plus"/></svg><div class="stop"><i></i></div></div>
+    <div class="asst">The background agent has been launched and is running now. I will report its result when the completion notification arrives. <em>6:59 PM</em></div>
+    <div class="p1">
+      <div class="field">
+        <div class="glyph">&#10095;</div>
+        <div class="text ph">Message, or drop files</div>
+        <div class="acts"><span class="btn send off"><svg class="i"><use href="#up"/></svg></span></div>
       </div>
-      <div class="band">
-        <span>Build <svg class="i"><use href="#chev"/></svg></span>
-        <span><b style="font-weight:600;color:#9a9aa0">G</b> DeepSeek V4 Pro <svg class="i"><use href="#chev"/></svg></span>
-        <span>Default <svg class="i"><use href="#chev"/></svg></span>
+      <div class="status">
+        <span class="it"><svg class="i" style="width:12px"><use href="#folder"/></svg>closedai</span>
+        <span class="it strong"><span class="mark"></span>Fable 5.1</span>
+        <span class="it">high</span>
+        <span class="it"><span class="meter"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span>34%</span>
+        <span class="sp"></span>
+        <span class="it hint"><svg class="i" style="width:12px"><use href="#clip"/></svg>attach</span>
       </div>
     </div>
   </div>
 </div>
 
 <div class="frame">
-  <div class="label"><b>Current &middot; ClosedAI</b> &middot; three stacked rows: project rail above the card, input card, footer below it. Effort is a qualifier inside the model pill (change it via the model flyout). Timer on the rail; amber pause in the card.</div>
+  <div class="label"><b>1 &middot; draft with attachments</b> &middot; chips sit inside the field above the text; the field grows with the text; the button fills accent as soon as there is something to send.</div>
   <div class="pane">
     <div class="asst">The background agent has been launched and is running now. <em>6:59 PM</em></div>
-    <div class="rail"><span class="timer on">Working for 5s</span><span class="sp"></span><span class="trig"><svg class="i"><use href="#folder"/></svg>closedai</span><span class="trig icon"><svg class="i chev"><use href="#chev"/></svg></span></div>
-    <div class="card"><div class="in"><div class="col"><div class="ta ph" style="color:transparent">&nbsp;</div></div><div class="side"><span class="pause"><svg class="i"><use href="#pausei"/></svg></span></div></div></div>
-    <div class="row footer">
-      <div class="l"><span class="trig"><span class="mark"></span><b>Fable 5.1 (1M)</b><span class="q">High</span><svg class="i chev"><use href="#chev"/></svg></span></div>
-      <div class="r"><span class="trig icon"><svg class="i plus"><use href="#plus"/></svg></span><span class="trig icon"><svg class="ring" viewBox="0 0 14 14"><circle class="t" cx="7" cy="7" r="5.25"/><circle class="f" cx="7" cy="7" r="5.25"/></svg></span></div>
-    </div>
-  </div>
-</div>
-
-<h2>Directions</h2>
-
-<div class="frame a">
-  <div class="label"><b>A &middot; Banded card</b> &middot; the DeepSeek structure translated: project, model, and effort become three labelled dropdowns in a darker band inside the card. The rail above and footer below dissolve. Attach and the context ring sit on the band's right, then the collapse chevron.</div>
-  <div class="pane">
-    <div class="asst">The background agent has been launched and is running now. <em>6:59 PM</em></div>
-    <div class="card">
-      <div class="in"><div class="col"><div class="ta ph">Enter to send &middot; Shift+Enter for newline</div></div></div>
-      <div class="band">
-        <div class="l">
-          <span class="trig"><svg class="i"><use href="#folder"/></svg>closedai<svg class="i chev"><use href="#chev"/></svg></span>
-          <span class="trig"><span class="mark"></span><b>Fable 5.1</b><svg class="i chev"><use href="#chev"/></svg></span>
-          <span class="trig">High<svg class="i chev"><use href="#chev"/></svg></span>
+    <div class="p1">
+      <div class="field">
+        <div class="glyph">&#10095;</div>
+        <div>
+          <div class="chips"><span class="chip"><span class="th"></span>composer.png<span class="x">&times;</span></span><span class="chip"><span class="doc"></span>notes.md<span class="x">&times;</span></span></div>
+          <div class="text">Compare this with the current composer and tell me what<br>the status line should show when the pane is 330 px wide</div>
         </div>
-        <div class="r"><span class="trig icon"><svg class="i plus"><use href="#plus"/></svg></span><span class="trig icon"><svg class="ring" viewBox="0 0 14 14"><circle class="t" cx="7" cy="7" r="5.25"/><circle class="f" cx="7" cy="7" r="5.25"/></svg></span><span class="trig icon"><svg class="i chev"><use href="#chev"/></svg></span></div>
+        <div class="acts"><span class="btn send"><svg class="i"><use href="#up"/></svg></span></div>
+      </div>
+      <div class="status">
+        <span class="it"><svg class="i" style="width:12px"><use href="#folder"/></svg>closedai</span>
+        <span class="it strong"><span class="mark"></span>Fable 5.1</span>
+        <span class="it">high</span>
+        <span class="it"><span class="meter"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span>34%</span>
+        <span class="sp"></span>
+        <span class="it hint">2 files</span>
       </div>
     </div>
   </div>
 </div>
 
 <div class="frame">
-  <div class="label"><b>B &middot; Split effort only</b> &middot; the smallest step: keep today's rail/card/footer, but pull effort out of the model flyout into its own dropdown beside the model. Nothing moves; one control gains a direct menu.</div>
+  <div class="label"><b>1 &middot; running</b> &middot; a sweep runs along the top edge, the glyph becomes the spinner, elapsed time sits beside the stop button. The field stays open: typing queues a follow-up. Escape still stops.</div>
   <div class="pane">
-    <div class="asst">The background agent has been launched and is running now. <em>6:59 PM</em></div>
-    <div class="rail"><span class="sp"></span><span class="trig"><svg class="i"><use href="#folder"/></svg>closedai</span><span class="trig icon"><svg class="i chev"><use href="#chev"/></svg></span></div>
-    <div class="card"><div class="in"><div class="col"><div class="ta ph">Enter to send &middot; Shift+Enter for newline</div></div></div></div>
-    <div class="row footer">
-      <div class="l"><span class="trig"><span class="mark"></span><b>Fable 5.1</b><span class="q">1M</span><svg class="i chev"><use href="#chev"/></svg></span><span class="trig">High<svg class="i chev"><use href="#chev"/></svg></span></div>
-      <div class="r"><span class="trig icon"><svg class="i plus"><use href="#plus"/></svg></span><span class="trig icon"><svg class="ring" viewBox="0 0 14 14"><circle class="t" cx="7" cy="7" r="5.25"/><circle class="f" cx="7" cy="7" r="5.25"/></svg></span></div>
-    </div>
-  </div>
-</div>
-
-<div class="frame c">
-  <div class="label"><b>C &middot; One flat surface</b> (recommended) &middot; same three dropdowns as A, but the row lives inside the card on the same paper, no second tone. Keeps the app's "flat rail keeps the composer light" rule while removing two of the three stacked rows.</div>
-  <div class="pane">
-    <div class="asst">The background agent has been launched and is running now. <em>6:59 PM</em></div>
-    <div class="card">
-      <div class="in"><div class="col"><div class="ta ph">Enter to send &middot; Shift+Enter for newline</div></div></div>
-      <div class="row">
-        <div class="l">
-          <span class="trig"><svg class="i"><use href="#folder"/></svg>closedai<svg class="i chev"><use href="#chev"/></svg></span>
-          <span class="trig"><span class="mark"></span><b>Fable 5.1</b><svg class="i chev"><use href="#chev"/></svg></span>
-          <span class="trig">High<svg class="i chev"><use href="#chev"/></svg></span>
-        </div>
-        <div class="r"><span class="trig icon"><svg class="i plus"><use href="#plus"/></svg></span><span class="trig icon"><svg class="ring" viewBox="0 0 14 14"><circle class="t" cx="7" cy="7" r="5.25"/><circle class="f" cx="7" cy="7" r="5.25"/></svg></span><span class="trig icon"><svg class="i chev"><use href="#chev"/></svg></span></div>
+    <div class="asst">Reading <span style="font-family:var(--mono);font-size:12px;color:var(--fg-2)">src/renderer/composer.tsx</span>&hellip;</div>
+    <div class="p1 running">
+      <div class="field">
+        <div class="glyph"><span class="spin"></span></div>
+        <div class="text ph">Type to queue a follow-up</div>
+        <div class="acts"><span class="elapsed">0:05</span><span class="btn stop"><i></i></span></div>
       </div>
-    </div>
-  </div>
-</div>
-
-<h2>Direction C through its states</h2>
-
-<div class="frame c">
-  <div class="label"><b>C &middot; running</b> &middot; the timer takes the row's first slot, where the folder was the anchor; pause stays the amber icon in the card's right column (Enter still sends, no send button).</div>
-  <div class="pane">
-    <div class="card">
-      <div class="in"><div class="col"><div class="ta ph" style="color:transparent">&nbsp;</div></div><div class="side"><span class="pause"><svg class="i"><use href="#pausei"/></svg></span></div></div>
-      <div class="row">
-        <div class="l">
-          <span class="timer on" style="padding:0 6px">Working for 5s</span>
-          <span class="trig"><svg class="i"><use href="#folder"/></svg>closedai<svg class="i chev"><use href="#chev"/></svg></span>
-          <span class="trig"><span class="mark"></span><b>Fable 5.1</b><svg class="i chev"><use href="#chev"/></svg></span>
-          <span class="trig">High<svg class="i chev"><use href="#chev"/></svg></span>
-        </div>
-        <div class="r"><span class="trig icon"><svg class="i plus"><use href="#plus"/></svg></span><span class="trig icon"><svg class="ring" viewBox="0 0 14 14"><circle class="t" cx="7" cy="7" r="5.25"/><circle class="f" cx="7" cy="7" r="5.25"/></svg></span><span class="trig icon"><svg class="i chev"><use href="#chev"/></svg></span></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="frame c">
-  <div class="label"><b>C &middot; paused</b> &middot; Resume replaces pause in the same slot; the row is unchanged so nothing jumps.</div>
-  <div class="pane">
-    <div class="card">
-      <div class="in"><div class="col"><div class="ta ph">Enter to send &middot; Shift+Enter for newline</div></div><div class="side"><span class="resume"><svg class="i"><use href="#play"/></svg></span></div></div>
-      <div class="row">
-        <div class="l">
-          <span class="trig"><svg class="i"><use href="#folder"/></svg>closedai<svg class="i chev"><use href="#chev"/></svg></span>
-          <span class="trig"><span class="mark"></span><b>Fable 5.1</b><svg class="i chev"><use href="#chev"/></svg></span>
-          <span class="trig">High<svg class="i chev"><use href="#chev"/></svg></span>
-        </div>
-        <div class="r"><span class="trig icon"><svg class="i plus"><use href="#plus"/></svg></span><span class="trig icon"><svg class="ring" viewBox="0 0 14 14"><circle class="t" cx="7" cy="7" r="5.25"/><circle class="f" cx="7" cy="7" r="5.25"/></svg></span><span class="trig icon"><svg class="i chev"><use href="#chev"/></svg></span></div>
+      <div class="status">
+        <span class="it"><svg class="i" style="width:12px"><use href="#folder"/></svg>closedai</span>
+        <span class="it strong"><span class="mark"></span>Fable 5.1</span>
+        <span class="it">high</span>
+        <span class="it"><span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span>41%</span>
+        <span class="sp"></span>
+        <span class="it hint"><span class="kbd">esc</span> stop</span>
       </div>
     </div>
   </div>
 </div>
 
 <div class="frame">
-  <div class="label"><b>C &middot; compact</b> &middot; one line instead of today's pill-plus-footer: the same dropdowns collapse to their marks (folder, provider mark, effort) inside the pill; the text hint stays centred.</div>
+  <div class="label"><b>1 &middot; paused</b> &middot; the glyph turns amber, the button is Resume in the same slot, and the status line says so in words. Typing a new message replaces the paused turn, as today.</div>
   <div class="pane">
-    <div class="pill">
-      <span class="trig icon" title="closedai"><svg class="i"><use href="#folder"/></svg></span>
-      <span class="trig icon" title="Fable 5.1"><span class="mark"></span></span>
-      <span class="trig" style="padding:0 5px;font-size:11.5px;color:var(--ink-48)">High</span>
-      <div class="ta ph">Enter to send &middot; Shift+Enter for newline</div>
-      <span class="trig icon"><svg class="i plus"><use href="#plus"/></svg></span>
-      <span class="trig icon"><svg class="ring" viewBox="0 0 14 14"><circle class="t" cx="7" cy="7" r="5.25"/><circle class="f" cx="7" cy="7" r="5.25"/></svg></span>
-      <span class="trig icon"><svg class="i chev"><use href="#chevup"/></svg></span>
+    <div class="asst">Reading <span style="font-family:var(--mono);font-size:12px;color:var(--fg-2)">src/renderer/composer.tsx</span>&hellip; <em>stopped after 1m 12s</em></div>
+    <div class="p1">
+      <div class="field">
+        <div class="glyph amber">&#10074;&#10074;</div>
+        <div class="text ph">Resume, or send something new</div>
+        <div class="acts"><span class="btn resume"><svg class="i"><use href="#play"/></svg></span></div>
+      </div>
+      <div class="status">
+        <span class="it amber">paused</span>
+        <span class="it"><svg class="i" style="width:12px"><use href="#folder"/></svg>closedai</span>
+        <span class="it strong"><span class="mark"></span>Fable 5.1</span>
+        <span class="it">high</span>
+        <span class="it"><span class="meter warm"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>78%</span>
+      </div>
     </div>
   </div>
 </div>
 
 <div class="frame">
-  <div class="label"><b>C &middot; narrow pane (&lt; 420 px)</b> &middot; labels drop before controls do: folder name and effort word go first, marks stay, the model name truncates last.</div>
-  <div class="pane" style="max-width:380px">
-    <div class="card">
-      <div class="in"><div class="col"><div class="ta ph">Enter to send &middot; Shift+Enter</div></div></div>
-      <div class="row" style="padding:2px 4px 4px">
-        <div class="l">
-          <span class="trig icon" title="closedai"><svg class="i"><use href="#folder"/></svg></span>
-          <span class="trig"><span class="mark"></span><b>Fable 5.1</b><svg class="i chev"><use href="#chev"/></svg></span>
-          <span class="trig icon" title="High"><svg class="i"><use href="#gauge"/></svg></span>
+  <div class="label"><b>1 &middot; first message</b> &middot; the empty pane centres the same line as a bordered block and states the setup as a sentence above it. There is no separate "choose model" hint.</div>
+  <div class="pane" style="justify-content:center;min-height:220px">
+    <div class="setup">Starts in <b>closedai</b> with <b>Fable 5.1</b> at <b>high</b> effort &middot; change any of these below</div>
+    <div class="p1 center" style="margin-top:0">
+      <div class="field">
+        <div class="glyph">&#10095;</div>
+        <div class="text ph">What should this chat do?</div>
+        <div class="acts"><span class="btn send off"><svg class="i"><use href="#up"/></svg></span></div>
+      </div>
+      <div class="status">
+        <span class="it"><svg class="i" style="width:12px"><use href="#folder"/></svg>closedai</span>
+        <span class="it strong"><span class="mark"></span>Fable 5.1</span>
+        <span class="it">high</span>
+        <span class="sp"></span>
+        <span class="it hint"><svg class="i" style="width:12px"><use href="#clip"/></svg>attach</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="frame">
+  <div class="label"><b>1 &middot; 340 px pane</b> &middot; the status line drops words from the right: the meter number goes, then the effort word, then the folder name. The model never goes. No compact mode: resting height is two lines.</div>
+  <div class="pane" style="align-items:flex-start">
+    <div class="narrow" style="border-right:1px solid var(--hair);align-self:stretch;display:flex;flex-direction:column;justify-content:flex-end">
+      <div class="asst" style="margin:18px 14px 16px">Launched and running now. <em>6:59 PM</em></div>
+      <div class="p1">
+        <div class="field">
+          <div class="glyph">&#10095;</div>
+          <div class="text ph">Message</div>
+          <div class="acts"><span class="btn send off"><svg class="i"><use href="#up"/></svg></span></div>
         </div>
-        <div class="r"><span class="trig icon"><svg class="i plus"><use href="#plus"/></svg></span><span class="trig icon"><svg class="ring" viewBox="0 0 14 14"><circle class="t" cx="7" cy="7" r="5.25"/><circle class="f" cx="7" cy="7" r="5.25"/></svg></span><span class="trig icon"><svg class="i chev"><use href="#chev"/></svg></span></div>
+        <div class="status" style="gap:10px">
+          <span class="it"><svg class="i" style="width:12px"><use href="#folder"/></svg>closedai</span>
+          <span class="it strong"><span class="mark"></span>Fable 5.1</span>
+          <span class="it">high</span>
+          <span class="it"><span class="meter"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>Concept 2 &middot; Identity card &middot; the header is the chat's identity</h2>
+
+<div class="frame">
+  <div class="label"><b>2 &middot; idle</b> &middot; a card whose header names the chat: folder and model as one phrase, effort as a segmented control, no dropdown chevrons. The context meter is the card's bottom edge. Attach sits in the footer with the send button.</div>
+  <div class="pane">
+    <div class="asst">The background agent has been launched and is running now. <em>6:59 PM</em></div>
+    <div class="p2">
+      <div class="head">
+        <span class="id"><svg class="i" style="width:13px;color:var(--fg-3)"><use href="#folder"/></svg>closedai<span class="sep">&rsaquo;</span><span class="mark"></span><b>Fable 5.1</b></span>
+        <span class="sp"></span>
+        <span class="seg"><span>LOW</span><span>MED</span><span class="on">HIGH</span><span>MAX</span></span>
+      </div>
+      <div class="body"><div class="text ph">Message Fable 5.1</div></div>
+      <div class="foot"><span class="tool"><svg class="i"><use href="#plus"/></svg></span><span class="sp"></span><span class="btn send off"><svg class="i"><use href="#up"/></svg></span></div>
+      <div class="edge"><i></i></div>
+    </div>
+  </div>
+</div>
+
+<div class="frame">
+  <div class="label"><b>2 &middot; running</b> &middot; the header's right side becomes the state: spinner and elapsed time replace the effort control until the turn ends; the bottom edge sweeps; the button is Stop.</div>
+  <div class="pane">
+    <div class="asst">Reading <span style="font-family:var(--mono);font-size:12px;color:var(--fg-2)">src/renderer/composer.tsx</span>&hellip;</div>
+    <div class="p2 running">
+      <div class="head">
+        <span class="id"><svg class="i" style="width:13px;color:var(--fg-3)"><use href="#folder"/></svg>closedai<span class="sep">&rsaquo;</span><span class="mark"></span><b>Fable 5.1</b></span>
+        <span class="sp"></span>
+        <span class="state"><span class="spin"></span>Working 0:05</span>
+      </div>
+      <div class="body"><div class="text ph">Type to queue a follow-up</div></div>
+      <div class="foot"><span class="tool"><svg class="i"><use href="#plus"/></svg></span><span class="sp"></span><span class="btn stop"><i></i></span></div>
+      <div class="edge"><i></i></div>
+    </div>
+  </div>
+</div>
+
+<div class="frame">
+  <div class="label"><b>2 &middot; paused</b> &middot; header state reads Paused in amber; the button is Resume; the edge shows how full the context is, now warm.</div>
+  <div class="pane">
+    <div class="asst">Reading <span style="font-family:var(--mono);font-size:12px;color:var(--fg-2)">src/renderer/composer.tsx</span>&hellip; <em>stopped after 1m 12s</em></div>
+    <div class="p2">
+      <div class="head">
+        <span class="id"><svg class="i" style="width:13px;color:var(--fg-3)"><use href="#folder"/></svg>closedai<span class="sep">&rsaquo;</span><span class="mark"></span><b>Fable 5.1</b></span>
+        <span class="sp"></span>
+        <span class="state amber">&#10074;&#10074;&nbsp; Paused at 1:12</span>
+      </div>
+      <div class="body"><div class="text ph">Resume, or send something new</div></div>
+      <div class="foot"><span class="tool"><svg class="i"><use href="#plus"/></svg></span><span class="sp"></span><span class="btn resume"><svg class="i"><use href="#play"/></svg></span></div>
+      <div class="edge warm"><i style="width:78%"></i></div>
+    </div>
+  </div>
+</div>
+
+<h2>Concept 3 &middot; One line, one panel &middot; most reductive</h2>
+
+<div class="frame">
+  <div class="label"><b>3 &middot; idle</b> &middot; a single 42 px line: attach, text, one trigger that names the model and folder, send. Everything else lives in the panel behind that trigger and behind slash commands.</div>
+  <div class="pane">
+    <div class="asst">The background agent has been launched and is running now. <em>6:59 PM</em></div>
+    <div class="p3wrap">
+      <div class="p3">
+        <span class="tool"><svg class="i"><use href="#plus"/></svg></span>
+        <div class="text ph">Message, or type / for commands</div>
+        <span class="ctx"><span class="mark"></span>Fable 5.1 <small>&middot; closedai</small></span>
+        <span class="btn send off"><svg class="i"><use href="#up"/></svg></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="frame">
+  <div class="label"><b>3 &middot; panel open</b> &middot; model, effort, folder, and context in one surface. Slash commands do the same from the keyboard: <span class="cmd">/model</span> <span class="cmd">/effort</span> <span class="cmd">/project</span> <span class="cmd">/compact</span>.</div>
+  <div class="pane" style="min-height:330px">
+    <div class="p3wrap">
+      <div class="pop">
+        <div class="sec">Model</div>
+        <div class="row on"><span class="mark"></span>Fable 5.1<span class="sp"></span><small>1M</small><svg class="i" style="width:13px"><use href="#check"/></svg></div>
+        <div class="row"><span class="mark" style="filter:grayscale(1)"></span>Opus 5<span class="sp"></span><small>1M</small></div>
+        <div class="row"><span style="width:12px;height:12px;border-radius:3px;background:#6f9c72"></span>GPT-5.4 Codex<span class="sp"></span><small>400k</small></div>
+        <hr>
+        <div class="sec">Effort</div>
+        <div class="row" style="padding-left:8px"><span class="seg"><span>LOW</span><span>MED</span><span class="on">HIGH</span><span>MAX</span></span></div>
+        <hr>
+        <div class="sec">Folder</div>
+        <div class="row on"><svg class="i" style="width:13px"><use href="#folder"/></svg>closedai<span class="sp"></span><small>~/Desktop/closedai</small></div>
+        <div class="row"><svg class="i" style="width:13px"><use href="#folder"/></svg>firecracker<span class="sp"></span><small>~/firecracker</small></div>
+        <hr>
+        <div class="sec">Context &middot; 34% of 1M</div>
+        <div class="bar"><i></i></div>
+        <div class="row"><span class="cmd">/compact</span>Summarise and reseed<span class="sp"></span><small>3 turns kept</small></div>
+      </div>
+      <div class="p3">
+        <span class="tool"><svg class="i"><use href="#plus"/></svg></span>
+        <div class="text ph">Message, or type / for commands</div>
+        <span class="ctx" style="background:var(--raised);color:var(--fg)"><span class="mark"></span>Fable 5.1 <small>&middot; closedai</small></span>
+        <span class="btn send off"><svg class="i"><use href="#up"/></svg></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="frame">
+  <div class="label"><b>3 &middot; running</b> &middot; the trigger shows the spinner and time, the button is Stop; the line never grows while a turn runs.</div>
+  <div class="pane">
+    <div class="asst">Reading <span style="font-family:var(--mono);font-size:12px;color:var(--fg-2)">src/renderer/composer.tsx</span>&hellip;</div>
+    <div class="p3wrap">
+      <div class="p3">
+        <span class="tool"><svg class="i"><use href="#plus"/></svg></span>
+        <div class="text ph">Type to queue a follow-up</div>
+        <span class="ctx"><span class="spin"></span>0:05 <small>&middot; Fable 5.1</small></span>
+        <span class="btn stop"><i></i></span>
       </div>
     </div>
   </div>
 </div>
 
 <p class="note">
-<b>What the reference gets right</b>: one bounded surface for the whole turn setup; every per-turn choice is a labelled dropdown, so effort is discoverable without opening the model list; the band reads "settings for this message" and the top zone reads "the message". <b>What does not transfer</b>: the "Build" mode has no counterpart here (the app's per-turn variable is <i>where</i>, the project folder, so that takes the first slot); the filled stop square would introduce a send/stop button the app deliberately does not have, so pause keeps its amber icon and Enter keeps sending. <b>Cost</b>: B is a model-menu change only. A and C move the project rail and footer into the card and split the effort radio group into its own dropdown; the compact row also folds into one line.
+<b>Recommendation: concept 1.</b> It matches the direction already chosen for the pane chrome (IDE underline tabs), it has the smallest resting height without a compact mode, the status line scales down by dropping words instead of hiding controls, and the state of the turn is in exactly one place: the prompt glyph and the button beside the text. Concept 2 is the strongest if the card material must stay. Concept 3 is the cleanest line but buries the folder, which matters more here than in a consumer chat app. <b>Behaviour changes in all three</b>: a send button exists (Enter still sends); pause and resume are the same button; the compact toggle is deleted; effort is a first-class control; the timer sits with the stop control.
 </p>
 
 </body>
