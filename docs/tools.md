@@ -235,8 +235,8 @@ read actions, so a scripted read of the page counts as the assertion.
 Assignments belong to stable chat ids and span turns; they are independent of project and UI focus.
 The first untargeted navigation creates a tab and selects it. Observing verbs (`read_page`,
 `wait_for`, `query`, `extract`, `console`, `capture browser_page`, CDP `inspect_page`, `metrics`,
-`events`, `requests`, `body`, and `browser_tab select`) read any tab and claim none; later omitted
-targets use the chat's default. Acting in a page — navigation, `evaluate`, page `fetch`, input,
+`events`, `requests`, `body`, and `browser_tab select`) read any tab and claim none; reading one the
+chat already owns still points its default there, and later omitted targets use that default. Acting in a page — navigation, `evaluate`, page `fetch`, input,
 tab-strip changes — claims an unassigned tab and is refused on another chat's tab. A closed default fails without falling back. `browser_tab release`
 relinquishes an assignment without closing the page; detaching the chat and app restart also release
 assignments. `state.browser.coordination` reports defaults and owners. Bulk closes preflight all

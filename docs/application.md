@@ -76,8 +76,9 @@ Observing verbs — `read_page`, `wait_for`, `query`, `extract`, `console`, `cap
 CDP `inspect_page`/`metrics`/`events`/`requests`/`body`, and `browser_tab select` — run against any
 tab, including another chat's, and claim nothing: looking at a page is not taking it over, so a chat
 asked what is on screen does not end up owning the user's page. Acting in a page claims the tab, and
-is what another chat's assignment refuses (`evaluate` and page `fetch` count as acting). Later
-omitted targets use that chat's last assigned tab.
+is what another chat's assignment refuses (`evaluate` and page `fetch` count as acting). Reading a
+tab the chat already owns does point its default there, so "read that tab, then act in it" needs no
+`tab_id`; later omitted targets use that chat's last assigned tab.
 Assignments protect the intervals between calls and survive turn completion and focus changes.
 `closedai_app.state` exposes `browser.coordination` (the caller's default and tab assignments).
 `browser_tab release` relinquishes a tab without closing it; detaching the chat or restarting
