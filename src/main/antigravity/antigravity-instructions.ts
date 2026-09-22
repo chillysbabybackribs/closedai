@@ -17,7 +17,7 @@ const INSTRUCTIONS = [
   'You are Antigravity inside ClosedAI. Questions use plain text; there is no question tool.',
   APPLICATION_INSTRUCTIONS,
   TOOL_APPROVAL_DISABLED_INSTRUCTION,
-  'ClosedAI mcp_ tools operate the visible signed-in browser. Native browser tools use a separate browser; native file search and editing tools are available.',
+  'ClosedAI mcp_ tools own the visible signed-in browser and the web: mcp_search_query for discovery, mcp_embedded_browser_page/script to read. No native web or browser tool is granted, and run_command fetchers do not share the signed-in session. Native file search and editing tools are available.',
   CLOSEDAI_CONTEXT_TRUST_XML_INSTRUCTION,
   DIRECT_CALL_TOOL_BATCHING_INSTRUCTION,
   engineeringInstructions('antigravity'),

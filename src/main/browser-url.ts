@@ -12,15 +12,57 @@ export const HOME_URL = 'https://www.google.com'
 // is the search param Google, Bing, and DuckDuckGo all accept.
 export const SEARCH_URL = 'https://www.google.com/search'
 
+const SCHEME = /^[a-zA-Z][a-zA-Z0-9+.-]*:/
+const BASE_RELATIVE = /^(?:\/|\?|#|\.\.?\/)/
+const BARE_HOST = /^[\w.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i
+
+/**
+ * How free-form navigation input resolves. `absolute` is scheme-qualified or a bare hostname,
+ * `relative` needs the current document as a base, and `search` is free text that only the
+ * omnibox may turn into a query — the model-facing navigate tool refuses it (navigate.ts),
+ * because discovery belongs to the search APIs.
+ */
+export type UrlInputKind = 'absolute' | 'relative' | 'search'
+
+export function urlInputKind(input: string): UrlInputKind {
+  const trimmed = input.trim()
+  if (!trimmed) return 'absolute'
+  if (SCHEME.test(trimmed) || BARE_HOST.test(trimmed)) return 'absolute'
+  return BASE_RELATIVE.test(trimmed) ? 'relative' : 'search'
+}
+
 export function normalizeUrl(input: string, baseUrl = HOME_URL): string {
   const trimmed = input.trim()
   if (!trimmed) return 'about:blank'
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return trimmed
-  if (/^(?:\/|\?|#|\.\.?\/)/.test(trimmed)) {
+  if (SCHEME.test(trimmed)) return trimmed
+  if (BASE_RELATIVE.test(trimmed)) {
     try { return new URL(trimmed, baseUrl).toString() } catch { /* fall through to search */ }
   }
-  if (/^[\w.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(trimmed)) return `https://${trimmed}`
+  if (BARE_HOST.test(trimmed)) return `https://${trimmed}`
   return `${SEARCH_URL}?q=${encodeURIComponent(trimmed)}`
+}
+
+/**
+ * Whether a URL names a search-engine discovery surface — a results page, a bare engine
+ * homepage with its search box, or a click/redirect wrapper — rather than a source document.
+ *
+ * Unparseable input is not a search-engine page: callers that need validity check it
+ * themselves (isResearchSourceUrl in tools/search/presentation.ts also rejects non-http
+ * schemes, embedded credentials, and overlong hrefs).
+ */
+export function isSearchEnginePageUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    const host = url.hostname.toLowerCase().replace(/\.$/, '')
+    const path = url.pathname.toLowerCase().replace(/\/+$/, '') || '/'
+    if (/^(?:(?:www|encrypted|images|news|scholar)\.)?google\.(?:com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$/.test(host)) {
+      return /^\/(?:$|search(?:\/|$)|webhp(?:\/|$)|url(?:\/|$)|imgres(?:\/|$)|aclk(?:\/|$)|sorry(?:\/|$))/.test(path)
+    }
+    if (/(^|\.)(?:bing\.com|duckduckgo\.com|search\.brave\.com|search\.yahoo\.com|yandex\.(?:com|ru))$/.test(host)) {
+      return /^\/(?:$|search(?:\/|$)|html(?:\/|$)|lite(?:\/|$))/.test(path)
+    }
+    return false
+  } catch { return false }
 }
 
 /**

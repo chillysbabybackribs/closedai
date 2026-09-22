@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { SEARCH_URL, normalizeUrl, isAbortedNavigation, sameDocumentUrl } from './browser-url.ts'
+import { SEARCH_URL, isSearchEnginePageUrl, normalizeUrl, urlInputKind, isAbortedNavigation, sameDocumentUrl } from './browser-url.ts'
 
 test('resolves relative browser links against the current page', () => {
   const base = 'https://example.com/account/settings?tab=profile'
@@ -13,6 +13,33 @@ test('keeps exact URLs and search fallback behavior', () => {
   assert.equal(normalizeUrl('https://example.com/deep/link'), 'https://example.com/deep/link')
   assert.equal(normalizeUrl('example.com/deep/link'), 'https://example.com/deep/link')
   assert.equal(normalizeUrl('latest browser news'), `${SEARCH_URL}?q=latest%20browser%20news`)
+})
+
+test('urlInputKind separates a URL from the free text only the omnibox may search', () => {
+  for (const input of ['https://example.com/x', 'file:///tmp/a.html', 'about:blank', 'example.com', 'localhost:5173/app']) {
+    assert.equal(urlInputKind(input), 'absolute', input)
+  }
+  for (const input of ['/dashboard', '../billing', '#security', '?tab=profile']) {
+    assert.equal(urlInputKind(input), 'relative', input)
+  }
+  for (const input of ['latest AI news', 'how to use rg', 'AI']) {
+    assert.equal(urlInputKind(input), 'search', input)
+  }
+})
+
+test('isSearchEnginePageUrl names discovery surfaces, not source documents', () => {
+  const engines = [
+    `${SEARCH_URL}?q=latest%20AI%20news`, 'https://www.google.com', 'https://google.com/',
+    'https://www.google.co.uk/search?q=test', 'https://news.google.com/search', 'https://google.com/webhp',
+    'https://www.google.com/url?q=https://example.com', 'https://google.com/imgres?imgurl=x',
+    'https://duckduckgo.com/?q=test', 'https://www.bing.com/search?q=test', 'https://search.brave.com/search?q=t'
+  ]
+  for (const url of engines) assert.equal(isSearchEnginePageUrl(url), true, url)
+  const sources = [
+    'https://example.com/report', 'https://example.com/search?q=widgets',
+    'https://developers.google.com/search/docs', 'https://blog.google/technology/ai', 'not a url'
+  ]
+  for (const url of sources) assert.equal(isSearchEnginePageUrl(url), false, url)
 })
 
 test('sameDocumentUrl: reload-free equality is generous on fragments, strict on paths and queries', () => {

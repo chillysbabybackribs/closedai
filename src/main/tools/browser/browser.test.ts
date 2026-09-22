@@ -112,13 +112,36 @@ test('navigate defaults to dom-ready readiness and reports the reached state', a
   assert.match(textOf(result), /Loaded: A\nURL: https:\/\/a.test\/\nTab: tab-1\nReady: complete after 0.8s/)
 })
 
+test('navigate refuses search text and search-engine pages, naming search.query instead', async () => {
+  const { calls, call } = harness()
+  const freeText = await call({ action: 'navigate', url: 'latest up to date information on AI' })
+  assert.equal(freeText.isError, true)
+  assert.match(textOf(freeText), /navigate needs a URL, not the search text/)
+  assert.match(textOf(freeText), /search\.query/)
+
+  const serp = await call({ action: 'navigate', url: 'https://www.google.com/search?q=latest%20AI' })
+  assert.equal(serp.isError, true)
+  assert.match(textOf(serp), /refuses the search-engine page/)
+
+  const home = await call({ action: 'navigate', url: 'https://www.google.com' })
+  assert.equal(home.isError, true)
+
+  // No tab was opened or navigated for any of them.
+  assert.equal(calls.length, 0)
+
+  // A source page from those results still navigates, including a site's own /search path.
+  const source = await call({ action: 'navigate', url: 'https://example.com/search?q=widgets' })
+  assert.equal(source.isError, undefined)
+  assert.equal(calls.length, 1)
+})
+
 test('navigate passes selector, text, timeout, and new_tab through and surfaces failures', async () => {
   const seen: unknown[] = []
   const { call } = harness({ navigate: async (url, options) => { seen.push([url, options]); return { ok: false, error: 'ERR_NAME_NOT_RESOLVED' } } })
-  const result = await call({ action: 'navigate', url: 'x', new_tab: true, wait_until: 'load', wait_for_selector: '#r', timeout_ms: 2_000 })
+  const result = await call({ action: 'navigate', url: 'x.test', new_tab: true, wait_until: 'load', wait_for_selector: '#r', timeout_ms: 2_000 })
   assert.equal(result.isError, true)
-  assert.match(textOf(result), /Navigation to x failed: ERR_NAME_NOT_RESOLVED/)
-  assert.deepEqual(seen[0], ['x', { tabId: undefined, newTab: true, ready: { until: 'load', selector: '#r', text: undefined, timeoutMs: 2_000 } }])
+  assert.match(textOf(result), /Navigation to x\.test failed: ERR_NAME_NOT_RESOLVED/)
+  assert.deepEqual(seen[0], ['x.test', { tabId: undefined, newTab: true, ready: { until: 'load', selector: '#r', text: undefined, timeoutMs: 2_000 } }])
 })
 
 test('navigate targets an explicit tab and rejects ambiguous new-tab requests', async () => {
@@ -143,7 +166,7 @@ test('navigate reports a missing explicit tab', async () => {
       ? { ok: false, error: 'No tab with id missing' }
       : { ok: true, tabId: 'tab-1', ready }
   })
-  const result = await call({ action: 'navigate', url: 'x', tab_id: 'missing' })
+  const result = await call({ action: 'navigate', url: 'x.test', tab_id: 'missing' })
   assert.equal(result.isError, true)
   assert.match(textOf(result), /No tab with id missing/)
 })

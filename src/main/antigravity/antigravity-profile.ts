@@ -21,11 +21,17 @@ import { antigravityAgentInstructions } from './antigravity-instructions.js'
 // registry`. The browser grant is therefore gone from the static list (the app's mcp_ browser
 // tools own the visible browser anyway), and any name a future build rejects is parsed from that
 // error, remembered under the state dir, and dropped from the next profile write.
+//
+// `search_web` and `read_url_content` left the grant on 2026-09-22 for the same reason, not a
+// registry error: they reach the web through agy's own hidden fetcher, so the work happens where
+// the user cannot see it and the result is not a tab anyone can inspect. search.query does
+// discovery and presents a source in the visible browser; embedded_browser page/script read it.
+// Two overlapping web paths also gave the model a reason to improvise its own search route.
 
 export const ANTIGRAVITY_AGENT_NAME = 'closedai'
 const PLUGIN_NAME = 'closedai'
 
-/** Native tools verified declarable on agy 1.2.7: files, shell, tasks, web research, and images. */
+/** Native tools verified declarable on agy 1.2.7: files, shell, tasks, and images. */
 export const ANTIGRAVITY_GRANTED_TOOLS = [
   'find_by_name',
   'grep_search',
@@ -37,8 +43,6 @@ export const ANTIGRAVITY_GRANTED_TOOLS = [
   'run_command',
   'manage_task',
   'notebook_edit',
-  'read_url_content',
-  'search_web',
   'generate_image'
 ] as const
 

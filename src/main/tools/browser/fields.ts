@@ -30,7 +30,7 @@ export const maxCharsField: JsonObject = {
 export const urlField: JsonObject = {
   type: 'string',
   minLength: 1,
-  description: 'Absolute URL, relative path, or search query (navigate only).'
+  description: 'Absolute URL or relative path. Not search text: navigate refuses free text and search-engine results pages — use search.query for discovery.'
 }
 
 export const waitUntilField: JsonObject = {

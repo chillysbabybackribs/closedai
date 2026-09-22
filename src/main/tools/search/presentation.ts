@@ -1,4 +1,5 @@
 import type { ResearchSnapshot } from '../../../shared/web-research.js'
+import { isSearchEnginePageUrl } from '../../browser-url.js'
 import type { ToolContext } from '../tool.js'
 
 export const SEARCH_PRESENTATION_FIELD = {
@@ -13,15 +14,7 @@ export function isResearchSourceUrl(value: string): boolean {
   try {
     const url = new URL(value)
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.href.length > 2048) return false
-    const host = url.hostname.toLowerCase().replace(/\.$/, '')
-    const path = url.pathname.toLowerCase().replace(/\/+$/, '') || '/'
-    if (/^(?:(?:www|encrypted|images|news|scholar)\.)?google\.(?:com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$/.test(host)) {
-      return !/^\/(?:$|search(?:\/|$)|webhp(?:\/|$)|url(?:\/|$)|imgres(?:\/|$)|aclk(?:\/|$)|sorry(?:\/|$))/.test(path)
-    }
-    if (/(^|\.)(?:bing\.com|duckduckgo\.com|search\.brave\.com|search\.yahoo\.com|yandex\.(?:com|ru))$/.test(host)) {
-      return !/^\/(?:$|search(?:\/|$)|html(?:\/|$)|lite(?:\/|$))/.test(path)
-    }
-    return true
+    return !isSearchEnginePageUrl(url.href)
   } catch { return false }
 }
 
