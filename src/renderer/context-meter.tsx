@@ -52,6 +52,7 @@ export function ContextMeter({
   disabled = false,
   children
 }: ContextMeterProps): JSX.Element {
+  const [open, setOpen] = useState(false)
   const percent = Math.min(100, Math.max(0, usage?.percent ?? 0))
   const level = percent >= HOT_PERCENT ? 'hot' : percent >= WARM_PERCENT ? 'warm' : 'cool'
   const detail = usage
@@ -85,10 +86,17 @@ export function ContextMeter({
 
   return (
     <HoverCard
-      open={disabled ? false : undefined}
+      open={disabled ? false : open}
       openDelay={120}
       closeDelay={80}
-      onOpenChange={(open) => { if (open) void onRefreshPlanUsage() }}
+      onOpenChange={(next) => {
+        // Ignore while disabled: Radix still runs its hover-delay timer against a controlled
+        // `false`, and an uncontrolled `undefined` would resume from that stale internal state
+        // the instant the dropdown closes, popping the card open with no real hover to earn it.
+        if (disabled) return
+        setOpen(next)
+        if (next) void onRefreshPlanUsage()
+      }}
     >
       <HoverCardTrigger asChild>
         {children ?? (
