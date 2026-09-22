@@ -32,10 +32,34 @@ test('the digest keeps requests, one answer per turn, and changed files, and dro
   assert.equal(digest.title, 'Header work')
   const handoff = digest.text
   assert.match(handoff, /^Handoff from the previous chat "Header work"\./)
+  assert.match(handoff, /Where it stood: 2 user requests; the latest request was answered\./)
+  assert.doesNotMatch(handoff, /Working directory there/)
   assert.match(handoff, /Files changed there: src\/header\.tsx/)
   assert.match(handoff, /User: Make the header sticky\nAssistant: Done: the header is sticky\.\nUser: Now match this \[attached: mock\.png\]\nAssistant: Working on it$/)
   assert.doesNotMatch(handoff, /thinking hard|lots of output|data:image|compacted/)
   assert.deepEqual(handoffAdditionalContext('digest'), { [THREAD_HANDOFF_CONTEXT]: { kind: 'untrusted', value: 'digest' } })
+})
+
+test('the overview names the source directory and a request that was cut off before its answer', () => {
+  const stopped = buildThreadHandoff([
+    user('u1', 'Refactor the parser'),
+    answer('a1', 'u1', 'Parser refactored.'),
+    user('u2', 'Now add tests')
+  ], null, null, { cwd: '/home/me/project' })!.text
+  assert.match(stopped, /Where it stood: 2 user requests; the latest request had no completed answer when the chat was continued \(its turn was stopped or unfinished\)\./)
+  assert.match(stopped, /Working directory there: \/home\/me\/project/)
+  // The overview sits in the header, before the checkpoint, changed files, and conversation.
+  assert.ok(stopped.indexOf('Where it stood') < stopped.indexOf('Conversation so far'))
+
+  const streaming = buildThreadHandoff([
+    user('u1', 'Refactor the parser'),
+    { type: 'assistant', id: 'a1', turnId: 'u1', text: 'Starting with', phase: null, streaming: true }
+  ], null)!.text
+  assert.match(streaming, /1 user request; the latest request had no completed answer/)
+
+  // Rotation and compaction seeds re-seed the same pane; they keep their own preambles.
+  const rotation = buildThreadHandoff([user('u1', 'Keep going')], null, null, { framing: 'rotation', cwd: '/w' })!.text
+  assert.doesNotMatch(rotation, /Where it stood|Working directory there/)
 })
 
 test('an empty or tool-only transcript has nothing to hand off', () => {
