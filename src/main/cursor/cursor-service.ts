@@ -4,7 +4,14 @@ import type {
   ChatAccount, ChatAttachment, ChatConnection, ChatEvent, ChatHistoryWindow, ChatPlanUsage,
   ChatSnapshot, ChatThreadContent, ChatThreadSummary, ChatTurnContextReport
 } from '../../shared/chat.js'
-import { applyProviderRotation, type RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
+import type { RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
+import {
+  detachCursorThread,
+  resumeCursorSession,
+  resumePersistedCursorSession,
+  rotateCursorProviderSession,
+  type CursorThreadHost
+} from './cursor-thread-lifecycle.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import {
   buildThreadHandoff,
@@ -284,7 +291,7 @@ export class CursorChatService extends EventEmitter {
   async compactConversation(): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
     if (!this.settings.get().chatSeamlessRotation) throw new Error('The active provider does not support compaction')
-    await this.rotateProviderSession()
+    await rotateCursorProviderSession(this.threadHost(), this.session)
   }
 
   async archiveThread(threadId: string): Promise<void> {
@@ -322,7 +329,7 @@ export class CursorChatService extends EventEmitter {
       this.session.adoptSaved(this.settings.get().chatCursorSessionId)
       // A saved-session replay also supplies the catalog. Load it first so an uncached
       // catalog does not cause an initial load whose history would be discarded.
-      if (warm) await this.resumePersistedSession()
+      if (warm) await resumePersistedCursorSession(this.threadHost(), this.session)
       if (!this.loadCachedCatalog()) {
         const setup = await this.session.warm()
         if (setup.models.length === 0) throw new Error('Cursor reported no available models')
@@ -431,48 +438,12 @@ export class CursorChatService extends EventEmitter {
    * session id: startup adopts that id before replay, and keying on it meant a
    * restarted pane silently skipped its history and answered from an empty session.
    */
-  private async resumePersistedSession(): Promise<void> {
-    const persisted = this.settings.get().chatCursorSessionId
-    if (!persisted || !this.transcript.isEmpty || this.activeTurnId) return
-    try {
-      await this.resumeSession(persisted)
-    } catch (error) {
-      console.warn('[cursor] could not resume the saved session:', messageOf(error))
-      await this.detachThread()
-    }
-  }
-
   private async resumeSession(sessionId: string): Promise<void> {
-    const items = await this.session!.replay(sessionId)
-    // The replay loaded the session on this process; keeping it is what the next turn needs.
-    this.session!.continueWith(sessionId)
-    this.transcript.replaceItems(items)
-    this.threadName = null
-    await this.settings.set({ chatCursorSessionId: sessionId, chatContinuation: null })
-    this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
+    await resumeCursorSession(this.threadHost(), this.session!, sessionId)
   }
 
   private async detachThread(): Promise<void> {
-    await this.session?.reset()
-    this.transcript.clear()
-    this.threadName = null
-    this.activeTurnId = null
-    this.turnContext = null
-    await this.settings.set({ chatCursorSessionId: null })
-  }
-
-  private async rotateProviderSession(): Promise<void> {
-    await applyProviderRotation(this.settings, {
-      paneId: this.paneId,
-      provider: 'cursor',
-      threadId: this.session?.sessionId ? cursorThreadId(this.session.sessionId) : null,
-      threadName: this.threadName,
-      items: this.transcript.snapshot()
-    }, async () => {
-      await this.session?.reset()
-      await this.settings.set({ chatCursorSessionId: null })
-      this.emitEvent({ type: 'thread', threadId: null, threadName: this.threadName })
-    }, null)
+    await detachCursorThread(this.threadHost(), this.session)
   }
 
   private async ensureReady(): Promise<void> {
@@ -596,5 +567,22 @@ export class CursorChatService extends EventEmitter {
 
   private emitEvent(event: ChatEvent): void {
     this.emit('event', event)
+  }
+
+  private threadHost(): CursorThreadHost {
+    return {
+      settings: this.settings,
+      paneId: this.paneId,
+      transcript: this.transcript,
+      session: () => this.session,
+      threadName: () => this.threadName,
+      setThreadName: (name) => { this.threadName = name },
+      setActiveTurnId: (id) => { this.activeTurnId = id },
+      setTurnContext: () => { this.turnContext = null },
+      transcriptEmpty: () => this.transcript.isEmpty,
+      activeTurnId: () => this.activeTurnId,
+      snapshot: () => this.snapshot(),
+      emitEvent: (event) => this.emitEvent(event)
+    }
   }
 }

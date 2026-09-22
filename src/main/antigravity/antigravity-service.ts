@@ -450,8 +450,8 @@ export class AntigravityChatService extends EventEmitter {
   }
 
   private onTurnEnd(turnId: string, end: TurnEnd): void {
-    if (end.status === 'failed' && retryAntigravityWithoutUndeclaredTools(this.turnRecoveryHost(), turnId, end.error ?? '')) return
-    if (end.status === 'failed' && retryAntigravityOnAuthFailure(this.turnRecoveryHost(), turnId, end.error ?? '')) return
+    if (end.status === 'failed' && this.retryWithoutUndeclaredTools(turnId, end.error ?? '')) return
+    if (end.status === 'failed' && this.retryOnAuthFailure(turnId, end.error ?? '')) return
     handleProviderTurnEnd(turnId, end, {
       addNotice: (text, tone, id) => this.addNotice(text, tone, id),
       setPaused: (id) => this.setPaused(id)
@@ -472,6 +472,10 @@ export class AntigravityChatService extends EventEmitter {
   /** Test and turn-end seam; implementation lives in antigravity-turn-recovery.ts. */
   private retryOnAuthFailure(turnId: string, error: string): boolean {
     return retryAntigravityOnAuthFailure(this.turnRecoveryHost(), turnId, error)
+  }
+
+  private retryWithoutUndeclaredTools(turnId: string, error: string): boolean {
+    return retryAntigravityWithoutUndeclaredTools(this.turnRecoveryHost(), turnId, error)
   }
 
   /** The CLI titles a conversation shortly after its first turn; pick that up for the header. */
