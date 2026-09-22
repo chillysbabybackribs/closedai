@@ -439,10 +439,6 @@ export class ChatService extends EventEmitter {
     return ensureCodexThread(this.threadHost(), clientUserMessageId)
   }
 
-  private selectedThreadModelSettings(): ReturnType<typeof threadModelSettings> {
-    return threadModelSettings(this.threadHost(), this.modelState.selectedModel, this.modelState.selectedReasoningEffort)
-  }
-
   private threadHost(): ChatServiceThreadHost {
     return {
       cwd: this.cwd,
@@ -450,9 +446,9 @@ export class ChatService extends EventEmitter {
       tools: this.tools,
       settings: this.settings,
       paneId: this.paneId,
-      threadId: this.threadId,
-      threadName: this.threadName,
-      threadToolCatalog: this.threadToolCatalog,
+      threadId: () => this.threadId,
+      threadName: () => this.threadName,
+      threadToolCatalog: () => this.threadToolCatalog,
       transcript: this.transcript,
       compactor: this.compactor,
       rotator: this.rotator,

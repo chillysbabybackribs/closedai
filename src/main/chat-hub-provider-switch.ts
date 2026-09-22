@@ -9,14 +9,14 @@ import type { ChatHubProviders, ChatProviderService } from './chat-hub.js'
 export type CarriedHistory = { provider: ChatProvider; threadName: string | null; items: ChatSnapshot['items'] }
 
 export type ChatHubSwitchHost = {
-  active: ChatProvider
+  active(): ChatProvider
   setActive(provider: ChatProvider): void
   dormant: Set<ChatProvider>
-  switching: Promise<void> | null
+  switching(): Promise<void> | null
   setSwitching(promise: Promise<void> | null): void
-  warmPromise: Promise<void> | null
+  warmPromise(): Promise<void> | null
   setWarmPromise(promise: Promise<void> | null): void
-  carriedHistory: CarriedHistory | null
+  carriedHistory(): CarriedHistory | null
   setCarriedHistory(history: CarriedHistory | null): void
   providers: ChatHubProviders
   settings: AppSettingsAccess
@@ -26,7 +26,6 @@ export type ChatHubSwitchHost = {
   cachedModel(modelId: string): ChatModel | null
   isReady(name: ChatProvider): boolean
   merge(snapshot: ChatSnapshot): ChatSnapshot
-  paneView(snapshot: ChatSnapshot): ChatSnapshot
   emitReplace(snapshot: ChatSnapshot): void
   emitEvent(event: import('../shared/chat.js').ChatEvent): void
 }
@@ -46,23 +45,26 @@ export async function rememberModelChoice(host: ChatHubSwitchHost, model: ChatMo
 }
 
 export function prefetchDormantProvider(host: ChatHubSwitchHost): void {
-  if (!host.dormant.has(host.active) || host.warmPromise) return
-  host.setWarmPromise(doStartIfDormant(host).finally(() => { host.setWarmPromise(null) }))
-  void host.warmPromise?.catch(() => undefined)
+  if (!host.dormant.has(host.active()) || host.warmPromise()) return
+  const warm = doStartIfDormant(host).finally(() => { host.setWarmPromise(null) })
+  host.setWarmPromise(warm)
+  void warm.catch(() => undefined)
 }
 
 export async function startIfDormant(host: ChatHubSwitchHost): Promise<void> {
-  if (host.warmPromise) {
-    await host.warmPromise.catch(() => undefined)
+  const warming = host.warmPromise()
+  if (warming) {
+    await warming.catch(() => undefined)
     return
   }
   await doStartIfDormant(host)
 }
 
 async function doStartIfDormant(host: ChatHubSwitchHost): Promise<void> {
-  if (!host.dormant.has(host.active)) return
-  const provider = host.providers[host.active]
-  if (!host.isReady(host.active)) await provider.start({ warm: true })
+  if (!host.dormant.has(host.active())) return
+  const active = host.active()
+  const provider = host.providers[active]
+  if (!host.isReady(active)) await provider.start({ warm: true })
   const saved = host.settings.get()
   const loaded = provider.snapshot({ limit: 0 })
   if (saved.chatModelId && loaded.selectedModel !== saved.chatModelId) {
@@ -70,7 +72,7 @@ async function doStartIfDormant(host: ChatHubSwitchHost): Promise<void> {
   } else if (saved.chatReasoningEffort && loaded.selectedReasoningEffort !== saved.chatReasoningEffort) {
     await provider.selectReasoningEffort(saved.chatReasoningEffort)
   }
-  host.dormant.delete(host.active)
+  host.dormant.delete(host.active())
 }
 
 export async function switchDormantProvider(
@@ -80,12 +82,12 @@ export async function switchDormantProvider(
   model: ChatModel
 ): Promise<void> {
   if (source.activeTurnId) throw new Error('Stop the current turn before switching models')
-  const previous = host.active
+  const previous = host.active()
   await rememberModelChoice(host, model)
   host.setActive(target)
   host.dormant.add(target)
   host.emitReplace(host.merge(preserveSourceHistory(host, source, host.current().snapshot({ limit: 0 }))))
-  host.setSwitching((async () => {
+  const switching = (async () => {
     try {
       await carryConversation(host, source, target)
       host.providers[previous].stop()
@@ -99,8 +101,9 @@ export async function switchDormantProvider(
     } finally {
       host.setSwitching(null)
     }
-  })())
-  await host.switching
+  })()
+  host.setSwitching(switching)
+  await switching
 }
 
 export async function switchToProvider(
@@ -111,11 +114,11 @@ export async function switchToProvider(
   optimistic: Partial<ChatSnapshot>
 ): Promise<void> {
   if (source.activeTurnId) throw new Error('Stop the current turn before switching models')
-  const previous = host.active
+  const previous = host.active()
   host.setActive(target)
   host.dormant.delete(target)
   host.emitReplace({ ...host.merge(preserveSourceHistory(host, source, host.current().snapshot({ limit: 0 }))), ...optimistic })
-  host.setSwitching((async () => {
+  const switching = (async () => {
     try {
       const targetState = host.providers[target].snapshot({ limit: 0 }).connection.state
       if (targetState !== 'ready' && targetState !== 'signed-out') await host.providers[target].start({ warm: true })
@@ -130,8 +133,9 @@ export async function switchToProvider(
     } finally {
       host.setSwitching(null)
     }
-  })())
-  await host.switching
+  })()
+  host.setSwitching(switching)
+  await switching
 }
 
 export async function carryConversation(host: ChatHubSwitchHost, source: ChatSnapshot, target: ChatProvider): Promise<void> {
@@ -157,7 +161,7 @@ export async function carryConversation(host: ChatHubSwitchHost, source: ChatSna
 }
 
 export function preserveSourceHistory(host: ChatHubSwitchHost, source: ChatSnapshot, target: ChatSnapshot): ChatSnapshot {
-  if (host.carriedHistory || source.activeTurnId || source.items.length === 0) return target
+  if (host.carriedHistory() || source.activeTurnId || source.items.length === 0) return target
   if (target.provider === source.provider || target.items.length > 0) return target
   return { ...target, threadName: target.threadName ?? source.threadName, items: source.items }
 }

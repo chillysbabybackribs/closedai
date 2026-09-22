@@ -21,9 +21,9 @@ export type ChatServiceThreadHost = {
   tools: ToolRegistry
   settings: RotationSettingsAccess
   paneId: string | null
-  threadId: string | null
-  threadName: string | null
-  threadToolCatalog: unknown
+  threadId(): string | null
+  threadName(): string | null
+  threadToolCatalog(): unknown
   transcript: ChatTranscript
   compactor: ContextCompactor
   rotator: SessionRotator
@@ -49,7 +49,7 @@ export function rememberThreadCache(host: ChatServiceThreadHost, threadId: strin
 }
 
 export async function readCachedThread(host: ChatServiceThreadHost, threadId: string): Promise<ChatThreadContent> {
-  const live = threadId === host.threadId
+  const live = threadId === host.threadId()
   if (!live) {
     const cached = host.threadCache.get(threadId)
     if (cached) return cached
@@ -61,7 +61,7 @@ export async function readCachedThread(host: ChatServiceThreadHost, threadId: st
   const replay = new ChatTranscript(host.cwd, () => null, () => undefined)
   replay.replaceFromThread(thread)
   const content: ChatThreadContent = { threadId: thread.id, threadName: nullableString(thread.name), items: replay.snapshot() }
-  if (!live && thread.id !== host.threadId) rememberThreadCache(host, thread.id, content)
+  if (!live && thread.id !== host.threadId()) rememberThreadCache(host, thread.id, content)
   return content
 }
 
@@ -100,7 +100,7 @@ export async function resumeCodexThread(host: ChatServiceThreadHost, threadId: s
 }
 
 export async function resumePersistedCodexThread(host: ChatServiceThreadHost): Promise<void> {
-  if (host.threadId) return
+  if (host.threadId()) return
   const persisted = host.settings.get().chatThreadId
   if (!persisted) return
   try {
@@ -118,15 +118,15 @@ export async function rotateCodexProviderSession(host: ChatServiceThreadHost, ex
     await applyProviderRotation(host.settings, {
       paneId: host.paneId,
       provider: 'codex',
-      threadId: host.threadId,
-      threadName: host.threadName,
+      threadId: host.threadId(),
+      threadName: host.threadName(),
       items: host.transcript.snapshot().filter((item) => item.id !== excludeItemId)
     }, async () => {
       host.setThreadId(null)
       host.compactor.reset()
       host.rotator.reset()
       await host.settings.set({ chatThreadId: null })
-      host.emitEvent({ type: 'thread', threadId: null, threadName: host.threadName })
+      host.emitEvent({ type: 'thread', threadId: null, threadName: host.threadName() })
     }, host.contextManager().current, {
       prefetchSource: (threadId) => { void readCachedThread(host, threadId).catch(() => undefined) }
     })
@@ -137,14 +137,15 @@ export async function rotateCodexProviderSession(host: ChatServiceThreadHost, ex
 
 export async function ensureCodexThread(host: ChatServiceThreadHost, clientUserMessageId?: string): Promise<string> {
   const catalog = dynamicToolSpecs(host.tools)
-  if (host.threadId && !isDeepStrictEqual(host.threadToolCatalog, catalog)) {
+  if (host.threadId() && !isDeepStrictEqual(host.threadToolCatalog(), catalog)) {
     await rotateCodexProviderSession(host, clientUserMessageId ? `user:${clientUserMessageId}` : undefined)
-    if (host.threadId) {
+    if (host.threadId()) {
       await host.settings.set({ chatThreadId: null })
       host.setThreadId(null)
     }
   }
-  if (host.threadId) return host.threadId
+  const existing = host.threadId()
+  if (existing) return existing
   const response = await host.client.request<ThreadResponse>(
     'thread/start',
     startThreadParams(host.cwd, host.tools, selectedThreadModelSettings(host))
@@ -156,7 +157,7 @@ export async function ensureCodexThread(host: ChatServiceThreadHost, clientUserM
   host.setThreadName(nullableString(thread.name))
   host.modelState.adopt(response.model)
   await host.settings.set({ chatThreadId: thread.id })
-  host.emitEvent({ type: 'thread', threadId: thread.id, threadName: host.threadName })
+  host.emitEvent({ type: 'thread', threadId: thread.id, threadName: host.threadName() })
   return thread.id
 }
 

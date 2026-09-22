@@ -428,14 +428,14 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   private switchHost(): ChatHubSwitchHost {
     return {
-      active: this.active,
+      active: () => this.active,
       setActive: (provider) => { this.active = provider },
       dormant: this.dormant,
-      switching: this.switching,
+      switching: () => this.switching,
       setSwitching: (promise) => { this.switching = promise },
-      warmPromise: this.warmPromise,
+      warmPromise: () => this.warmPromise,
       setWarmPromise: (promise) => { this.warmPromise = promise },
-      carriedHistory: this.carriedHistory,
+      carriedHistory: () => this.carriedHistory,
       setCarriedHistory: (history) => { this.carriedHistory = history },
       providers: this.providers,
       settings: this.settings,
@@ -445,7 +445,6 @@ export class ChatHub extends EventEmitter implements ChatSurface {
       cachedModel: (modelId) => this.cachedModel(modelId),
       isReady: (name) => this.isReady(name),
       merge: (snapshot) => this.merge(snapshot),
-      paneView: (snapshot) => this.paneView(snapshot),
       emitReplace: (snapshot) => { this.emitEvent({ type: 'replace', snapshot }) },
       emitEvent: (event) => this.emitEvent(event)
     }
