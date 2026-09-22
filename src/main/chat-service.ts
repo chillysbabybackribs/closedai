@@ -9,8 +9,7 @@ import type {
   ChatPlanUsage,
   ChatSnapshot,
   ChatThreadContent,
-  ChatThreadSummary,
-  ChatTurnContextReport
+  ChatThreadSummary
 } from '../shared/chat.js'
 import type { RotationSettingsAccess } from './chat-context/rotate-provider-session.js'
 import {
@@ -45,7 +44,6 @@ import {
   handoffAdditionalContext,
   type ThreadHandoffSource
 } from './chat-context/thread-handoff.js'
-import { buildTurnContextReport } from './chat-context/turn-inspector.js'
 import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
 import { reasoningEffortForModel } from './chat-model-catalog.js'
@@ -68,7 +66,6 @@ export class ChatService extends EventEmitter {
   private threadToolCatalog: unknown = null
   private activeTurnId: string | null = null
   private pausedTurnId: string | null = null
-  private turnContext: ChatTurnContextReport | null = null
   private planUsage: ChatPlanUsage | null = null
   private readonly transcript: ChatTranscript
   private readonly toolCalls: AppServerToolCalls
@@ -150,7 +147,6 @@ export class ChatService extends EventEmitter {
       pausedTurnId: this.pausedTurnId,
       contextUsage: describeUsage(this.contextManager().current),
       planUsage: this.planUsage,
-      turnContext: this.turnContext,
       items: page?.items ?? this.transcript.snapshot(),
       ...(page ? { history: { hasEarlier: page.hasEarlier, backgroundTasks: page.backgroundTasks } } : {})
     }
@@ -220,11 +216,6 @@ export class ChatService extends EventEmitter {
         ...(Object.keys(additionalContext).length ? { additionalContext } : {}),
         input
       })
-      this.turnContext = buildTurnContextReport({
-        provider: 'codex', model: this.modelState.selectedModel, threadId, prompt,
-        attachments: summaries, additionalContext
-      })
-      this.emitEvent({ type: 'turnContext', report: this.turnContext })
       await this.clearDeliveredHandoff()
       const turn = recordOf(response.turn)
       if (typeof turn?.id === 'string') this.setTurn(turn.id)
@@ -459,8 +450,7 @@ export class ChatService extends EventEmitter {
       setThreadId: (id) => { this.threadId = id },
       setThreadName: (name) => { this.threadName = name },
       setThreadToolCatalog: (catalog) => { this.threadToolCatalog = catalog },
-      setActiveTurnId: (id) => { this.activeTurnId = id },
-      setTurnContext: () => { this.turnContext = null }
+      setActiveTurnId: (id) => { this.activeTurnId = id }
     }
   }
 

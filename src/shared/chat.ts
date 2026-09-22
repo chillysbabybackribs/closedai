@@ -188,35 +188,6 @@ export type ChatPlanUsage = {
   updatedAt: number
 }
 
-export type ChatTurnContextAttachment = {
-  name: string
-  kind: 'file' | 'image'
-  delivery: string
-  /** Present for path-backed attachments; pasted image bytes are never copied into this report. */
-  path?: string
-}
-
-export type ChatTurnContextAddition = {
-  name: string
-  kind: 'application' | 'untrusted'
-  value: string
-  characters: number
-  estimatedTokens: number
-}
-
-/** What ClosedAI contributed to the latest provider turn, excluding provider-owned history. */
-export type ChatTurnContextReport = {
-  createdAt: number
-  provider: ChatProvider
-  model: string | null
-  threadId: string | null
-  message: { value: string; characters: number; estimatedTokens: number }
-  attachments: ChatTurnContextAttachment[]
-  additions: ChatTurnContextAddition[]
-  estimatedAddedTextTokens: number
-  retainedHistory: string
-}
-
 export const CHAT_HISTORY_PAGE_SIZE = 200
 /** Renderer and history paging load one user/model turn at a time. */
 export const CHAT_TURN_PAGE_SIZE = 1
@@ -255,8 +226,6 @@ export type ChatSnapshot = {
   contextUsage: ChatContextUsage | null
   /** The account's plan usage; null until the provider answers, and cached between readings. */
   planUsage: ChatPlanUsage | null
-  /** Latest turn submitted since this provider surface was opened. */
-  turnContext: ChatTurnContextReport | null
   items: ChatTranscriptItem[]
   /** Present on windowed renderer snapshots; provider history remains complete. */
   history?: { hasEarlier: boolean; title?: string; backgroundTasks?: ChatTranscriptItem[] }
@@ -284,7 +253,6 @@ export type ChatEvent =
   | { type: 'paused'; turnId: string | null }
   | { type: 'context'; usage: ChatContextUsage | null }
   | { type: 'planUsage'; usage: ChatPlanUsage | null }
-  | { type: 'turnContext'; report: ChatTurnContextReport }
   | { type: 'checkpoint'; checkpoint: import('./chat-memory.js').ChatMemoryCheckpoint | null }
   | { type: 'item'; item: ChatTranscriptItem; appended?: boolean }
   | { type: 'itemDelta'; itemId: string; field: 'text' | 'output'; delta: string }

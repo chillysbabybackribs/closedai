@@ -26,7 +26,6 @@ export function initialChatState(): ChatSnapshot {
     pausedTurnId: null,
     contextUsage: null,
     planUsage: null,
-    turnContext: null,
     items: [],
     checkpoint: null
   }
@@ -184,8 +183,6 @@ export function reduceChatEvent(state: ChatSnapshot, event: ChatEvent): ChatSnap
       return { ...state, contextUsage: event.usage }
     case 'planUsage':
       return { ...state, planUsage: event.usage }
-    case 'turnContext':
-      return { ...state, turnContext: event.report }
     case 'checkpoint':
       return { ...state, checkpoint: event.checkpoint }
     case 'item': {

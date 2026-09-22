@@ -9,8 +9,7 @@ import type {
   ChatPlanUsage,
   ChatSnapshot,
   ChatThreadContent,
-  ChatThreadSummary,
-  ChatTurnContextReport
+  ChatThreadSummary
 } from '../../shared/chat.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { describeUsage, type ContextUsage } from '../chat-context/context-compaction.js'
@@ -35,7 +34,6 @@ import {
   buildTurnAdditionalContext,
   type ActiveBrowserContext
 } from '../chat-context/turn-context.js'
-import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { ChatModelState } from '../chat-model-state.js'
 import { buildChatInput } from '../chat-input.js'
 import { messageOf } from '../chat-normalizers.js'
