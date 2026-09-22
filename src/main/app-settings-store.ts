@@ -36,7 +36,11 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatOpenIds: [],
   chatPeers: [],
   chatSelectedPaneId: null,
-  disabledTools: [],
+  disabledTools: [
+    'native_instrument.query',
+    'native_instrument.inspect',
+    'native_instrument.probe'
+  ],
   disabledModels: [],
   toolBatchMaxCalls: DEFAULT_BATCH_MAX_CALLS,
   // Default token rotation threshold drops accumulated tool dumps during idle time.
@@ -96,7 +100,7 @@ function normalize(parsed: unknown): AppSettings {
     chatSelectedPaneId,
     disabledTools: Array.isArray(record.disabledTools)
       ? [...new Set(record.disabledTools.filter((id): id is string => typeof id === 'string' && id.length > 0))]
-      : [],
+      : [...DEFAULT_APP_SETTINGS.disabledTools],
     disabledModels: Array.isArray(record.disabledModels)
       ? [...new Set(record.disabledModels.filter((id): id is string => typeof id === 'string' && id.length > 0))]
       : [],
