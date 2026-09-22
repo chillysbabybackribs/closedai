@@ -49,5 +49,6 @@ guides when behavior diverges.
 | [frida-capability-assessment-2026-09-20.md](frida-capability-assessment-2026-09-20.md) | Native instrumentation assessment |
 | [source-guided-task-execution-plan-2026-09-20.md](source-guided-task-execution-plan-2026-09-20.md) | Implementation plan |
 | [ui-polish-backlog.md](ui-polish-backlog.md), [../design-qa.md](../design-qa.md) | Visual QA backlog |
+| [design-mocks/](design-mocks/) | Dated static HTML layout and chrome explorations; not shipped product behavior |
 
 When a guide and a dated document disagree, trust the guide after verifying in source.
