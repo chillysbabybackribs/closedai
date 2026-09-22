@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { errorMessage } from '../error-message.js'
-import { AGENT_WORKSPACE_PANE_ID, BROWSER_PANE_ID, WORKSPACE_DOCK_ID, layoutIds, withAgent, withBrowser, dockAgent, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
+import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
 import { addTab, focusedCloseAction, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds, tabOwner, type TileDirection } from './layout-tabs.js'
 import { removalNotice } from './layout-copy.js'
 import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
@@ -127,13 +127,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       if (edge) setLayout((value) => ({ ...value, tree: dockBrowser(value.tree, target, edge, crypto.randomUUID()) }))
       return
     }
-    if (id === AGENT_WORKSPACE_PANE_ID) {
-      if (edge) setLayout((value) => ({ ...value, tree: dockAgent(value.tree, target, edge, crypto.randomUUID()) }))
-      return
-    }
-    if (target === WORKSPACE_DOCK_ID
-      || (target === BROWSER_PANE_ID && (!id || !edge))
-      || (target === AGENT_WORKSPACE_PANE_ID && (!id || !edge))) return
+    if (target === WORKSPACE_DOCK_ID || (target === BROWSER_PANE_ID && (!id || !edge))) return
     pending.current = true
     setBusy(true)
     clearError()
@@ -285,7 +279,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       if (!created && tabOwner(tree, selected.current) && !paneIds(tree).includes(selected.current)) {
         tree = selectTab(tree, paneIds(tree)[0]!, selected.current)
       }
-      setLayout((value) => ({ ...value, tree: withBrowser(tree), browserVisible: preset.kind === 'browser-centre' }))
+      setLayout({ tree: withBrowser(tree), browserVisible: preset.kind === 'browser-centre' })
       if (created) {
         selected.current = created
         setSelectionToConfirm(created)
@@ -299,17 +293,5 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   }, [cwd, clearError, fail, release])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
-  const ensureAgent = useCallback((value: typeof layout) => {
-    const tree = value.tree && layoutIds(value.tree).includes(AGENT_WORKSPACE_PANE_ID) ? value.tree : withAgent(value.tree!)
-    return tree === value.tree ? value : { ...value, tree }
-  }, [])
-  const toggleAgent = useCallback(() => setLayout((value) => {
-    const next = ensureAgent(value)
-    return { ...next, agentVisible: !next.agentVisible }
-  }), [ensureAgent])
-  const showAgent = useCallback(() => setLayout((value) => {
-    const next = ensureAgent(value)
-    return next.agentVisible ? next : { ...next, agentVisible: true }
-  }), [ensureAgent])
-  return { ...layout, error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane, activateTab, moveTabToTile, closeTab, hide, closeFocused, resize, arrange, toggleBrowser, showBrowser, toggleAgent, showAgent }
+  return { ...layout, error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane, activateTab, moveTabToTile, closeTab, hide, closeFocused, resize, arrange, toggleBrowser, showBrowser }
 }

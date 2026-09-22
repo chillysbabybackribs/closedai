@@ -95,8 +95,8 @@ test('tab order and active selection survive project-scoped persistence and inva
   const saved = new Map<string, string>()
   const storage = { getItem: (key: string) => saved.get(key) ?? null, setItem: (key: string, value: string) => { saved.set(key, value) } }
   const tree = selectTab(addTab(split(), 'a', 'c'), 'c', 'a')
-  saveLayout(storage, '/project', { tree, browserVisible: false, agentVisible: false })
-  assert.deepEqual(readLayout(storage, '/project'), { tree, browserVisible: false, agentVisible: false })
+  saveLayout(storage, '/project', { tree, browserVisible: false })
+  assert.deepEqual(readLayout(storage, '/project'), { tree, browserVisible: false })
   assert.equal(readLayout(storage, '/other').tree, null)
   for (const invalid of [
     { kind: 'pane', id: 'a', tabs: ['b'] },

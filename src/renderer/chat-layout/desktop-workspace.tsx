@@ -9,7 +9,6 @@ import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import { ChatCanvas } from './chat-canvas.js'
 import { ChatLayoutActions } from './layout-context-menu.js'
 import { useChatLayout } from './layout-controller.js'
-import { AgentWorkspacePane } from '../agent-workspace/agent-workspace-pane.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, paneIds } from './layout-tree.js'
 import { LayoutPresetsDialog } from './layout-presets-dialog.js'
 import type { CanvasSize } from './layout-presets.js'
@@ -19,12 +18,11 @@ import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 export type ChatLayoutHandle = {
   splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
   toggleBrowser: () => void
-  toggleAgent: () => void
   closeFocused: () => Promise<void>
   openLayoutPresets: () => void
 }
 
-export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, toolsPreset = null, onRenameChat, onBrowserVisibilityChange, onAgentVisibilityChange, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, toolsPreset = null, onRenameChat, onBrowserVisibilityChange, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
   reviewQueue: ChatReviewQueue
   appearance: AppearanceSettings
@@ -36,13 +34,11 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   toolsPreset?: 'full' | 'read-only' | 'custom' | null
   onRenameChat?: (id: string, title: string) => void
   onBrowserVisibilityChange: (visible: boolean) => void
-  onAgentVisibilityChange: (visible: boolean) => void
   archiveChat?: (chatId: string) => Promise<void>
   ref?: Ref<ChatLayoutHandle>
 }) {
   const layout = useChatLayout(chat.snapshot)
   useEffect(() => onBrowserVisibilityChange(layout.browserVisible), [layout.browserVisible, onBrowserVisibilityChange])
-  useEffect(() => onAgentVisibilityChange(layout.agentVisible), [layout.agentVisible, onAgentVisibilityChange])
   const browserDragHandle = useMemo(() => <button type="button"
     className="browser-layout-drag" data-ui="layout.browser-drag" draggable={!layout.busy} disabled={layout.busy}
     aria-label="Move browser" title="Drag above or beside a chat; drop at the workspace edge for a full-height column"
@@ -62,10 +58,9 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
       layout.toggleBrowser()
       setBrowserRevealVersion((value) => value + 1)
     },
-    toggleAgent: () => layout.toggleAgent(),
     closeFocused: () => layout.closeFocused(),
     openLayoutPresets: () => setPresetsOpen(true)
-  }), [layout.dock, layout.toggleBrowser, layout.toggleAgent, layout.closeFocused, chat.selectedPaneId])
+  }), [layout.dock, layout.toggleBrowser, layout.closeFocused, chat.selectedPaneId])
   useEffect(() => window.closedai.browser.onState((state) => {
     if (state.image || state.url.startsWith('file:')) {
       layout.showBrowser()
@@ -85,7 +80,6 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         browserRevealVersion={browserRevealVersion}
         onDragActive={setDragging}
         browserVisible={layout.browserVisible}
-        agentVisible={layout.agentVisible}
         title={(id) => chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat'}
         activity={(id) => tabActivity(chat.chats.find((row) => row.paneId === id),
           chat.snapshot.panes?.[id] ?? (id === chat.selectedPaneId ? chat.snapshot.selected : undefined), reviewQueue[id])}
@@ -96,29 +90,26 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         onRenameChat={onRenameChat ? (id) => onRenameChat(id, chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat') : undefined}
         chatRow={(id) => chat.chats.find((row) => row.paneId === id)}
         onTogglePin={(id, pinned) => { void chat.sidebar.setChatPinned(id, pinned).catch(() => {}) }}
+        onContinueChat={(id) => {
+          onHistoryOpenChange(false)
+          const row = chat.chats.find((entry) => entry.paneId === id)
+          void layout.continueChat(id, row?.threadId ?? null, row?.modelId ?? null)
+        }}
         onPauseTab={(id) => { void chat.interruptPane(id) }}
         onResumeTab={(id) => { void chat.resumePane(id) }}
         onOpenPresets={() => setPresetsOpen(true)}
         onSizeChange={(size) => { canvasSize.current = size }}
         onHide={(id) => { void layout.hide(id) }} onResize={layout.resize}
-        renderPane={(id) => {
-          const row = chat.chats.find((entry) => entry.paneId === id)
-          return <WorkspaceChat paneId={id} snapshot={chat.snapshot} dispatch={chat.dispatch}
-            appearance={appearance} historyOpen={historyOpen && chat.selectedPaneId === id}
-            onHistoryOpenChange={onHistoryOpenChange} dialog={chat.selectedPaneId === id ? dialog : null}
-            onDialogChange={onDialogChange} archiveChat={archiveChat}
-            onContinueInNewChat={() => {
-              onHistoryOpenChange(false)
-              return layout.continueChat(id, row?.threadId ?? null, row?.modelId ?? null)
-            }}
-            onNewChat={() => { void layout.newChat(id) }} />
-        }}
+        renderPane={(id) => <WorkspaceChat paneId={id} snapshot={chat.snapshot} dispatch={chat.dispatch}
+          appearance={appearance} historyOpen={historyOpen && chat.selectedPaneId === id}
+          onHistoryOpenChange={onHistoryOpenChange} dialog={chat.selectedPaneId === id ? dialog : null}
+          onDialogChange={onDialogChange} archiveChat={archiveChat}
+          onNewChat={() => { void layout.newChat(id) }} />}
       renderBrowser={<div className="workspace-right" data-mode="browser" data-with-browser={layout.browserVisible ? 'yes' : 'no'}>
         <div className={`workspace-surface workspace-surface-browser${layout.browserVisible ? '' : ' is-collapsed'}`}>
           <BrowserPane controller={browser} dragHandle={browserDragHandle} />
         </div>
       </div>}
-      renderAgent={(controls) => <AgentWorkspacePane controls={controls} busy={layout.busy} chat={chat} appearance={appearance} />}
     />
     </ChatLayoutActions.Provider>
     <LayoutPresetsDialog open={presetsOpen} size={canvasSize.current} tileCount={paneIds(layout.tree).length}
@@ -130,7 +121,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   </div>
 }
 
-function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onNewChat, onContinueInNewChat, archiveChat }: {
+function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onNewChat, archiveChat }: {
   paneId: string
   snapshot: ChatWorkspaceSnapshot
   dispatch: Dispatch<ChatWorkspaceAction>
@@ -140,7 +131,6 @@ function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, on
   dialog: ChatPaneDialog | null
   onDialogChange: (dialog: ChatPaneDialog | null) => void
   onNewChat: () => void
-  onContinueInNewChat?: () => Promise<void>
   archiveChat?: (chatId: string) => Promise<void>
 }) {
   const retained = useRef(initialChatState())
@@ -151,5 +141,5 @@ function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, on
   return <ChatPane controller={controller} zoom={appearance.chatZoom} fontSize={appearance.chatFontSize}
     composerFontSize={appearance.composerFontSize} historyOpen={historyOpen} onHistoryOpenChange={onHistoryOpenChange}
     dialog={dialog} onDialogChange={onDialogChange} selected={isSelected} onNewChat={onNewChat}
-    onContinueInNewChat={onContinueInNewChat} archiveChat={archiveChat} />
+    archiveChat={archiveChat} />
 }

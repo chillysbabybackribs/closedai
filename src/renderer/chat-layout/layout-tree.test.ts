@@ -52,7 +52,7 @@ test('a tab splits to the right of the browser while its sibling remains on the 
   assert.deepEqual(paneIds(removePane(tree, BROWSER_PANE_ID)), ['a', 'b'])
   assert.deepEqual(withBrowser(tree), tree)
   const restored = readLayout({ getItem: () => JSON.stringify({ tree, browserVisible: false }) }, '/a')
-  assert.deepEqual(restored, { tree, browserVisible: false, agentVisible: false })
+  assert.deepEqual(restored, { tree, browserVisible: false })
   assert.deepEqual(pruneTabs(tree, new Set(['a', 'b'])), tree)
 })
 
@@ -123,10 +123,10 @@ test('layout persistence is project-scoped and browser visibility is independent
   const values = new Map<string, string>()
   const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value) } }
   const tree = dockPane({ kind: 'pane', id: 'a' }, 'b', 'a', 'right', 'ab')
-  saveLayout(storage, '/project-a', { tree, browserVisible: false, agentVisible: true })
-  assert.deepEqual(readLayout(storage, '/project-a'), { tree, browserVisible: false, agentVisible: true })
-  assert.deepEqual(readLayout(storage, '/project-b'), { tree: null, browserVisible: true, agentVisible: false })
-  assert.deepEqual(readLayout({ getItem: () => '{bad' }, '/a'), { tree: null, browserVisible: true, agentVisible: false })
+  saveLayout(storage, '/project-a', { tree, browserVisible: false })
+  assert.deepEqual(readLayout(storage, '/project-a'), { tree, browserVisible: false })
+  assert.deepEqual(readLayout(storage, '/project-b'), { tree: null, browserVisible: true })
+  assert.deepEqual(readLayout({ getItem: () => '{bad' }, '/a'), { tree: null, browserVisible: true })
   const duplicate = { kind: 'split', id: 's', ratio: 0.5, axis: 'horizontal', first: { kind: 'pane', id: 'a' }, second: { kind: 'pane', id: 'a' } }
   assert.equal(readLayout({ getItem: () => JSON.stringify({ tree: duplicate, browserVisible: true }) }, '/a').tree, null)
 })

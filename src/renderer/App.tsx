@@ -23,7 +23,6 @@ import { SettingsDialog, type SettingsTab } from './settings/settings-dialog.js'
 import { useToolsPreset } from './tools/use-tools-preset.js'
 import { ResearchLibraryDialog } from './research/library-dialog.js'
 import { BrowserGlobeIcon } from './browser-globe-icon.js'
-import { Compass } from 'lucide-react'
 import {
   normalizeAppearanceSettings,
   persistAppearanceSettings,
@@ -50,7 +49,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const workspaceRef = useRef<ChatLayoutHandle>(null)
   const toolsPreset = useToolsPreset()
   const [browserVisible, setBrowserVisible] = useState(false)
-  const [agentVisible, setAgentVisible] = useState(false)
   // A shortcut or menu action main refused; shown under the title bar until dismissed.
   const [shellError, setShellError] = useState<string | null>(null)
   const report = useCallback((fallback: string) => (error: unknown) => setShellError(errorMessage(error, fallback)), [])
@@ -169,7 +167,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       case 'research': setResearchOpen(true); break
       case 'history': toggleHistory(); break
       case 'toggle-browser': workspaceRef.current?.toggleBrowser(); break
-      case 'toggle-agent': workspaceRef.current?.toggleAgent(); break
       case 'layout': workspaceRef.current?.openLayoutPresets(); break
       case 'toggle-fullscreen': window.closedai.window.toggleFullscreen().catch(report('Could not toggle fullscreen')); break
       case 'close-tab': workspaceRef.current?.closeFocused().catch(report('Could not close the chat')); break
@@ -205,13 +202,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             onClick={() => workspaceRef.current?.toggleBrowser()}>
             <BrowserGlobeIcon size={24} />
           </button>
-          <button type="button" className={`titlebar-icon-button titlebar-agent-toggle${agentVisible ? ' is-selected' : ''}`}
-            data-ui="layout.agent-toggle" disabled={!chat.selectedPaneId}
-            aria-pressed={agentVisible} aria-label={agentVisible ? 'Hide agent workspace' : 'Show agent workspace'}
-            title={agentVisible ? 'Hide agent workspace' : 'Show agent workspace'}
-            onClick={() => workspaceRef.current?.toggleAgent()}>
-            <Compass size={22} aria-hidden="true" />
-          </button>
         </div>
         <AppWindowControls />
       </header>
@@ -228,7 +218,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           key={chat.workspace?.cwd ?? chat.state.cwd}
           ref={workspaceRef}
           onBrowserVisibilityChange={setBrowserVisible}
-          onAgentVisibilityChange={setAgentVisible}
           chat={chat}
           reviewQueue={history.reviewQueue}
           appearance={appearance}

@@ -3,34 +3,24 @@ import { ContextMenu } from 'radix-ui'
 import { Plus, X } from 'lucide-react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { ChatLayoutContextMenu } from './layout-context-menu.js'
-import { AGENT_WORKSPACE_PANE_ID, BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, hiddenReservedPanes, layoutForGeometry, layoutGeometry, minimumSize, paneIds, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
+import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { ChatTabs } from './chat-tabs.js'
 import { LayoutDivider } from './layout-divider.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import type { TabActivity } from './tab-activity.js'
 import { paneHideHint, tabCloseHint } from './layout-copy.js'
 import { browserDropAt, browserDropPreview, sameBrowserDrop, type BrowserDrop } from './browser-drop.js'
-import { useNativeViewBounds } from '../native-view-bounds.js'
-
-
-const isBrowserPane = (id: string): boolean => id === BROWSER_PANE_ID
-const isAgentPane = (id: string): boolean => id === AGENT_WORKSPACE_PANE_ID
-const isReservedPane = (id: string): boolean => isBrowserPane(id) || isAgentPane(id)
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export type AgentSoloControls = { toggleSolo: () => void; solo: boolean }
-
-export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, agentVisible, browserRevealVersion, renderBrowser, renderAgent, onDragActive, title, activity, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
   notice?: string
   browserVisible: boolean
-  agentVisible: boolean
   browserRevealVersion?: number
   renderBrowser: ReactNode
-  renderAgent?: (controls: AgentSoloControls) => ReactNode
   onDragActive: (active: boolean) => void
   title: (id: string) => string
   activity?: (id: string) => TabActivity
@@ -44,6 +34,8 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
   toolsPreset?: 'full' | 'read-only' | 'custom' | null
   onRenameChat?: (id: string) => void
   onTogglePin?: (id: string, pinned: boolean) => void
+  /** Continue this conversation in a new tab of the same tile, seeded with its digest. */
+  onContinueChat?: (id: string) => void
   onPauseTab?: (id: string) => void
   onResumeTab?: (id: string) => void
   onOpenPresets?: () => void
@@ -105,36 +97,25 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
   }, [onDragActive])
   const [soloPaneId, setSoloPaneId] = useState<string | null>(null)
   useEffect(() => { setSoloPaneId(null) }, [browserRevealVersion])
-  const visibleTree = layoutForGeometry(tree, browserVisible, agentVisible)
+  const visibleTree = browserVisible ? tree : removePane(tree, BROWSER_PANE_ID)!
   const geometry = layoutGeometry(visibleTree, size.width, size.height)
   const minimum = minimumSize(visibleTree)
-  const zeroRect = { x: 0, y: 0, width: 0, height: 0 }
-  const tiles = [...geometry.panes]
-  for (const id of hiddenReservedPanes(tree, browserVisible, agentVisible)) {
-    if (!tiles.some((tile) => tile.id === id)) tiles.push({ id, tabs: [id], rect: zeroRect })
-  }
+  // Keep the browser host mounted while hidden, just as inactive conversation tabs are.
+  const tiles = browserVisible ? geometry.panes : [...geometry.panes,
+    { id: BROWSER_PANE_ID, tabs: [BROWSER_PANE_ID], rect: { x: 0, y: 0, width: 0, height: 0 } }]
   const chatCount = paneIds(tree).length
-  const canMaximize = chatCount > 1 || ((browserVisible || agentVisible) && chatCount >= 1)
+  const canMaximize = chatCount > 1 || (browserVisible && chatCount >= 1)
   const soloTile = soloPaneId
     ? geometry.panes.find((p) => p.id === soloPaneId || p.tabs.includes(soloPaneId))
     : null
 
-  // Plain DOM (unlike the native browser view), so a collapsed host already reports a zero
-  // rect on its own; the report just needs to reach the main process for capture to crop to it.
-  const agentBoundsRef = useNativeViewBounds(async (bounds) => {
-    await window.closedai.agentWorkspace.setBounds({
-      x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height,
-      visible: bounds.width > 1 && bounds.height > 1
-    })
-  }, JSON.stringify([agentVisible, soloPaneId, tree]), true)
-
   useEffect(() => {
     if (!soloPaneId) return
     const exists = geometry.panes.some((p) => p.id === soloPaneId || p.tabs.includes(soloPaneId))
-    if (!exists || (chatCount <= 1 && !browserVisible && !agentVisible)) {
+    if (!exists || (chatCount <= 1 && !browserVisible)) {
       setSoloPaneId(null)
     }
-  }, [soloPaneId, geometry.panes, chatCount, browserVisible, agentVisible])
+  }, [soloPaneId, geometry.panes, chatCount, browserVisible])
 
   useEffect(() => {
     if (!soloPaneId) return
@@ -203,17 +184,17 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
       {tiles.map(({ id: activeId, tabs, rect }) => {
         const isThisTileSolo = soloTile ? (soloTile.id === activeId || soloTile.tabs.includes(activeId)) : false
         const tileRect = isThisTileSolo ? soloRect : rect
-        const tileKey = isReservedPane(activeId) ? activeId : (tabs[0] ?? activeId)
+        const tileKey = activeId === BROWSER_PANE_ID ? BROWSER_PANE_ID : (tabs[0] ?? activeId)
         const hideHint = paneHideHint(tabs.map((id) => activity?.(id)?.state))
         const closeHint = tabCloseHint(activity?.(activeId)?.state)
         const row = chatRow?.(activeId)
         return <section key={tileKey}
-          className="chat-layout-tile" style={position(tileRect)} data-pane-id={isReservedPane(activeId) ? undefined : activeId}
+          className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID ? undefined : activeId}
           data-solo={isThisTileSolo ? 'true' : undefined}
-          hidden={soloTile ? !isThisTileSolo : ((isBrowserPane(activeId) && !browserVisible) || (isAgentPane(activeId) && !agentVisible))}
-          data-selected={activeId === selectedId || tabs.includes(selectedId)} aria-label={isBrowserPane(activeId) ? 'Browser' : isAgentPane(activeId) ? 'Agent workspace' : title(activeId)}
-          onFocusCapture={(event) => { if (!isReservedPane(activeId) && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
-          onPointerDownCapture={(event) => { if (!isReservedPane(activeId) && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
+          hidden={soloTile ? !isThisTileSolo : (activeId === BROWSER_PANE_ID && !browserVisible)}
+          data-selected={activeId === selectedId || tabs.includes(selectedId)} aria-label={activeId === BROWSER_PANE_ID ? 'Browser' : title(activeId)}
+          onFocusCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
+          onPointerDownCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
           onDragOver={(event) => {
             if (busy || !event.dataTransfer.types.includes(CHAT_DRAG_TYPE)) return
             if (soloTile) setSoloPaneId(null)
@@ -223,8 +204,8 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
             const x = (event.clientX - bounds.left) / bounds.width
             const y = (event.clientY - bounds.top) / bounds.height
             const edges: Array<[DockEdge, number]> = [['left', x], ['right', 1 - x], ['top', y], ['bottom', 1 - y]]
-            const edge = isReservedPane(activeId) ? (x < 0.5 ? 'left' : 'right')
-              : dragging?.id !== BROWSER_PANE_ID && dragging?.id !== AGENT_WORKSPACE_PANE_ID && (event.target as HTMLElement).closest('.chat-layout-header') ? null
+            const edge = activeId === BROWSER_PANE_ID ? (x < 0.5 ? 'left' : 'right')
+              : dragging?.id !== BROWSER_PANE_ID && (event.target as HTMLElement).closest('.chat-layout-header') ? null
               : edges.sort((a, b) => a[1] - b[1])[0]![0]
             dropTarget.current = { target: activeId, edge }
             setDrop(dropTarget.current)
@@ -248,7 +229,7 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
             setDrop(null)
             onDragActive(false)
           }}>
-          {!isReservedPane(activeId) && <ContextMenu.Root>
+          {activeId !== BROWSER_PANE_ID && <ContextMenu.Root>
             <ContextMenu.Trigger asChild>
               <header className="chat-layout-header"
                 onClick={(event) => {
@@ -297,19 +278,18 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
               onOpenPresets={onOpenPresets ? () => { if (soloTile) setSoloPaneId(null); onOpenPresets() } : undefined}
               onRename={onRenameChat ? () => onRenameChat(activeId) : undefined}
               onTogglePin={onTogglePin ? () => onTogglePin(activeId, row?.pinnedAt == null) : undefined}
+              onContinue={onContinueChat ? () => { if (soloTile) setSoloPaneId(null); onContinueChat(activeId) } : undefined}
               onPause={onPauseTab ? () => onPauseTab(activeId) : undefined}
               onResume={onResumeTab ? () => onResumeTab(activeId) : undefined}
               onCloseTab={() => { if (soloTile) setSoloPaneId(null); onCloseTab(activeId) }}
               onHide={() => { if (soloTile) setSoloPaneId(null); onHide(activeId) }} />
           </ContextMenu.Root>}
           {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
-          {isBrowserPane(activeId) ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
+          {activeId === BROWSER_PANE_ID ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
             {renderBrowser}
             {dragging && <div className="chat-layout-browser-shield">{dragging.id === BROWSER_PANE_ID
               ? 'Drop above or below a chat to stack; use the workspace edges for a full-height column'
               : 'Drop on either side to place a chat beside the browser'}</div>}
-          </div> : isAgentPane(activeId) ? <div className="chat-layout-agent-frame" data-ui="layout.agent-dock" ref={agentBoundsRef}>
-            {renderAgent?.({ toggleSolo: () => setSoloPaneId((current) => current === AGENT_WORKSPACE_PANE_ID ? null : AGENT_WORKSPACE_PANE_ID), solo: isThisTileSolo })}
           </div> : tabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
             aria-label={title(tabId)} hidden={tabId !== activeId}>{renderPane(tabId)}</div>)}
           {dragging?.id !== BROWSER_PANE_ID && drop?.target === activeId && (dragging?.id !== activeId || (dragging.singleTab && tabs.length > 1)) && <div className="chat-layout-drop" data-edge={drop.edge ?? 'tab'}>
