@@ -49,16 +49,21 @@ export class BrowserCoordination {
         return { ...input, new_tab: false, tab_id: id }
       }
     }
+    const ownedDefault = this.defaults.get(pane)
     const id = typeof input.tab_id === 'string' ? input.tab_id
-      : this.defaults.get(pane) ?? this.host.tabs().find(tab => tab.active)?.id
+      : ownedDefault ?? this.host.tabs().find(tab => tab.active)?.id
     if (!id || !this.host.tabs().some(tab => tab.id === id)) {
       throw new Error('This chat’s browser tab is closed or unavailable. Pass an open tab_id or navigate with new_tab: true; the selected tab was not used.')
+    }
+    const observing = this.observes(request, action, input, tabCommand)
+    if (!observing && typeof input.tab_id !== 'string' && !ownedDefault) {
+      throw new Error('This chat has no assigned tab yet. Open your own tab first (navigate with new_tab: true, or browser_tab new/new_right) before acting in a page; the visible tab is for reads, not default mutations.')
     }
     // Reading any tab is allowed and claims nothing; selecting one only changes what the window
     // shows. Both leave the page to whoever is working in it. Reading one this chat already owns
     // does point its default there, so "read that tab, now act in it" stays one conversation:
     // that moves nothing between chats, because the tab was already this one's.
-    if (this.observes(request, action, input, tabCommand)) {
+    if (observing) {
       if (this.owners.get(id) === pane) this.defaults.set(pane, id)
       return { ...input, tab_id: id }
     }

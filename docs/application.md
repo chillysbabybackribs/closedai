@@ -70,8 +70,12 @@ is lost for a non-clean reason and reports a second loss within a minute instead
 (`src/main/app-quit.ts`); the MCP HTTP bridges drop open connections before closing their listener.
 
 Model browser tools assign tabs to the calling chat, independently of directory and UI selection.
-The first untargeted navigation creates a tab and selects it, as does `new_tab` and the
-`browser_tab` new/new_right/duplicate commands: a page a model drives is one the user can watch.
+Each chat is expected to open its own tab for browser work (`navigate` with `new_tab: true`, or
+`browser_tab` new/new_right) rather than mutating whatever page is visible when that chat did not
+open it; ambient active-tab context is for reads when the user asks about the screen. The first
+untargeted navigation without an assigned tab creates a tab and selects it, as do explicit
+`new_tab` and the `browser_tab` new/new_right/duplicate commands: a page a model drives is one
+the user can watch. Acting without a `tab_id` before this chat has an assigned tab is refused.
 Observing verbs — `read_page`, `wait_for`, `query`, `extract`, `console`, `capture browser_page`,
 CDP `inspect_page`/`metrics`/`events`/`requests`/`body`, and `browser_tab select` — run against any
 tab, including another chat's, and claim nothing: looking at a page is not taking it over, so a chat
@@ -80,8 +84,8 @@ is what another chat's assignment refuses (`evaluate` and page `fetch` count as 
 tab the chat already owns does point its default there, so "read that tab, then act in it" needs no
 `tab_id`; later omitted targets use that chat's last assigned tab.
 Assignments protect the intervals between calls and can span turns when a chat keeps working in the
-same tabs; focus changes do not move them. Models should release tabs they are done with before
-finishing a turn (`browser_tab` `release` or `release_all`). `closedai_app.state` exposes
+same tabs; focus changes do not move them. `release` / `release_all` are optional cleanup; inactive
+chats drop assignments automatically. `closedai_app.state` exposes
 `browser.coordination` (the caller's default, tab assignments, and whether each owner pane is
 running). `browser_tab claim` reserves a tab; `release` drops one; `release_all` drops every
 assignment for the calling chat without closing tabs. Detaching the chat, restarting, or staying

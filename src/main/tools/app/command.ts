@@ -126,7 +126,7 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
     {
       action: 'browser_tab',
       description:
-        'Browser tabs assigned to this chat: new, new_right, select, close, close_others, close_right, duplicate, rename, back, forward, reload, claim, release, release_all. New tabs open selected. Defaults target this chat’s tab, independent of selection. claim reserves a tab for this chat before acting; release drops one assignment; release_all drops every assignment for this chat without closing tabs—use before finishing a turn when you will not keep driving those tabs. select works on any tab; other chats’ assigned tabs are protected from the rest. Inactive chats also drop assignments after idle time; until then idle assignments do not block session-wide tools. Returns browser state and assignments.',
+        'Browser tabs assigned to this chat: new, new_right, select, close, close_others, close_right, duplicate, rename, back, forward, reload, claim, release, release_all. Open new/new_right or navigate with new_tab for this chat’s browser work instead of mutating the visible tab by default. New tabs open selected. Defaults target this chat’s tab, independent of selection. claim reserves a tab; release/release_all drop assignments (optional cleanup). select works on any tab; other chats’ assigned tabs are protected from the rest. Inactive chats drop assignments after idle time. Returns browser state and assignments.',
       inputSchema: objectSchema({
         op: {
           type: 'string',

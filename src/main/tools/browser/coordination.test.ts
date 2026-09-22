@@ -77,6 +77,18 @@ test('any chat reads or selects a tab another chat is working in, and takes noth
     /assigned to chat a/)
 })
 
+test('acting without an assigned tab refuses to use the visible page', () => {
+  const { prepare } = harness()
+  assert.throws(
+    () => prepare('a', { action: 'evaluate', expression: '1' }),
+    /Open your own tab first/
+  )
+  assert.throws(
+    () => prepare('a', { action: 'browser_tab', op: 'reload' }, 'closedai_app', 'command'),
+    /Open your own tab first/
+  )
+})
+
 test('reading the visible page leaves it alone: the next navigation opens the chat its own tab', () => {
   const { prepare, policy, tabs } = harness()
   assert.equal(prepare('a', { action: 'read_page' }).tab_id, 'user', 'an untargeted read uses what is on screen')
@@ -100,10 +112,11 @@ test('closing a default tab never falls back to the visible page; new_tab recove
 
 test('detaching a chat releases assignments; focus and turns do not', () => {
   const { prepare, panes, policy } = harness()
+  const owned = prepare('a', { action: 'navigate', url: 'https://a.test' })
   prepare('a', { action: 'evaluate', expression: '1' })
-  assert.equal(policy.snapshot('a').defaultTabId, 'user')
+  assert.equal(policy.snapshot('a').defaultTabId, owned.tab_id)
   panes.delete('a')
-  assert.equal(prepare('b', { action: 'evaluate', expression: '1' }).tab_id, 'user')
+  assert.equal(prepare('b', { action: 'evaluate', expression: '1', tab_id: 'user' }).tab_id, 'user')
   assert.equal(policy.snapshot('a').defaultTabId, null)
 })
 
@@ -199,7 +212,8 @@ test('registry resolves bare tool names and defaults before cross-chat locks', a
 })
 
 test('batch cleanup uses the actual armed tab even after the chat default changes', async () => {
-  const { policy } = harness()
+  const { policy, prepare } = harness()
+  const owned = prepare('a', { action: 'navigate', url: 'https://a.test' })
   const calls: JsonObject[] = []
   const registry: ToolRegistry = new ToolRegistry([{ name: 'browser_cdp', description: 'test', tools: [{
     name: 'profile', description: 'test', inputSchema: { type: 'object' },
@@ -211,5 +225,5 @@ test('batch cleanup uses the actual armed tab even after the chat default change
     { tool: 'browser_cdp.profile', arguments: { action: 'metrics', tab_id: 'other', fail: true } }
   ] } }, { paneId: 'a', callId: 'batch', threadId: null, turnId: null })
   assert.equal(result.isError, true)
-  assert.deepEqual(calls.at(-1), { action: 'stop', tab_id: 'user' })
+  assert.deepEqual(calls.at(-1), { action: 'stop', tab_id: owned.tab_id })
 })
