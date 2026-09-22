@@ -187,9 +187,19 @@
   min-width: 0;
 }
 
+.project-tree-node-foot {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.project-tree-node-foot small {
+  flex: 1 1 auto;
+}
+
 .project-tree-node time {
   flex: none;
-  margin-left: auto;
   color: #55555a;
   font-size: 9px;
   font-variant-numeric: tabular-nums;

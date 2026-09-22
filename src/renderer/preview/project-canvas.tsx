@@ -148,9 +148,11 @@ export function ProjectCanvas(props: {
         <span className="project-tree-node-heading">
           {node.kind === 'root' && <LockKeyhole size={12} aria-hidden="true" />}
           <strong>{node.title}</strong>
+        </span>
+        <span className="project-tree-node-foot">
+          <small>{node.summary}</small>
           <time dateTime={new Date(node.updatedAt).toISOString()}>{relative(node.updatedAt, now)}</time>
         </span>
-        <small>{node.summary}</small>
       </button>)}
     </div>
 
