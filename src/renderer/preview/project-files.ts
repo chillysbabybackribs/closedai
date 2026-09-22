@@ -103,7 +103,7 @@ export function deriveFiles(input: {
     const path = nodePath(node, nodes)
     if (!path) continue
     const owner: FileOwner = node.kind === 'task' ? 'worker' : node.kind === 'amendment' ? 'user' : 'orchestrator'
-    const title = node.kind === 'scope' ? 'Plan' : node.title
+    const title = node.kind === 'scope' ? 'Plan' : node.kind === 'amendment' ? clip(node.summary, 48) : node.title
     files.push({ path, title, owner, editable: true, nodeId: node.id, content: nodeMarkdown(node) })
   }
   const decided = nodes.filter((node) => node.kind === 'research' && node.state === 'confirmed')
@@ -125,7 +125,9 @@ export function deriveFiles(input: {
 
 export function folderTree(files: ProjectFile[]): ProjectFolder {
   const root: ProjectFolder = { name: 'project', path: '', folders: [], files: [] }
-  for (const file of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
+  // A scope's plan leads its folder; everything else sorts by path.
+  const key = (file: ProjectFile) => file.path.replace(/plan\.md$/, ' plan.md')
+  for (const file of [...files].sort((a, b) => key(a).localeCompare(key(b)))) {
     const parts = file.path.split('/')
     let folder = root
     for (const part of parts.slice(0, -1)) {

@@ -108,10 +108,12 @@ export function ProjectShellPreview() {
   }
 
   function start(): void {
-    setTree([rootNode(record)])
-    const initial = deriveFiles({ record, messages, nodes: [rootNode(record)], journal: [], edits: {} })
+    const root = rootNode(record)
+    const opening = [{ id: nextId.current++, text: 'Direction confirmed. Working from the record; only the next useful moves are planned.' }]
+    const initial = deriveFiles({ record, messages, nodes: [root], journal: opening, edits: {} })
+    setTree([root])
+    setJournal(opening)
     setSeenFiles(Object.fromEntries(initial.map((file) => [file.path, file.content])))
-    setJournal([{ id: nextId.current++, text: 'Direction confirmed. Working from the record; only the next useful moves are planned.' }])
     setLocation(MAP)
     setPhase('canvas')
   }
