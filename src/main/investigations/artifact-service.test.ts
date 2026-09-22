@@ -6,7 +6,6 @@ import test from 'node:test'
 import { ArtifactService } from './artifact-service.js'
 import { ArtifactStore } from './artifact-store.js'
 import { cdpTools } from '../tools/cdp/index.js'
-import { investigationTools } from '../tools/investigation/index.js'
 import { ToolRegistry } from '../tools/registry.js'
 import type { CdpToolHost } from '../tools/cdp/host.js'
 import type { ToolContext, ToolResult } from '../tools/tool.js'
@@ -24,7 +23,7 @@ test('registered tools retain untruncated protocol JSON, page it, retry without 
   })
   const raw = { result: { prefix: 'x'.repeat(90_000), tail: 'preserved' } }
   const cdp = { command: async () => { calls++; return raw } } as unknown as CdpToolHost
-  const registry = new ToolRegistry([cdpTools(() => cdp, service), investigationTools(service)])
+  const registry = new ToolRegistry([cdpTools(() => cdp, service)])
   const call = (namespace: string, tool: string, args: Record<string, unknown>, caller = context) => registry.call(
     { namespace, tool, arguments: args }, caller
   )
@@ -34,15 +33,15 @@ test('registered tools retain untruncated protocol JSON, page it, retry without 
     assert.equal(receipt.artifact.byteLength > 90_000, true)
     assert.equal(JSON.stringify(receipt).length < 2000, true)
     const id = receipt.artifact.id
-    const read = payload(await call('investigation', 'read', { action: 'read', id, pointer: '/result/tail' }))
+    const read = await service.access(context, 'read', { id, pointer: '/result/tail' }) as { data: string }
     assert.equal(JSON.parse(read.data), 'preserved')
     assert.equal(payload(await call('browser_cdp', 'protocol', args)).artifact.id, id)
     assert.equal(calls, 1)
     assert.equal((await call('browser_cdp', 'protocol', { ...args, method: 'Page.navigate' })).isError, true)
     assert.equal(calls, 1)
-    assert.equal((await call('investigation', 'read', { action: 'read', id }, { ...context, paneId: 'other' })).isError, true)
-    assert.equal((await call('investigation', 'read', { action: 'read', id, scope: 'other' })).isError, true)
-    const deleted = payload(await call('investigation', 'manage', { action: 'delete', id }))
+    await assert.rejects(service.access({ ...context, paneId: 'other' }, 'read', { id }))
+    await assert.rejects(service.access({ ...context, paneId: undefined }, 'read', { id }), /No caller/)
+    const deleted = await service.access(context, 'delete', { id }) as { deleted: boolean }
     assert.equal(deleted.deleted, true)
     assert.equal((await call('browser_cdp', 'protocol', args)).isError, true)
     assert.equal(calls, 1)
@@ -50,7 +49,7 @@ test('registered tools retain untruncated protocol JSON, page it, retry without 
     assert.equal(calls, 1)
     const file = join(root, 'data.json')
     await writeFile(file, '{"value":1}')
-    const imported = payload(await call('investigation', 'manage', { action: 'import', path: file, operation_key: 'file', label: 'file', media_type: 'application/json' }))
+    const imported = await service.importFile(context, { path: file, key: 'file', label: 'file', mediaType: 'application/json' }) as { artifact: { byteLength: number } }
     assert.equal(imported.artifact.byteLength, 11)
   } finally { await store.close(); await rm(root, { recursive: true, force: true }) }
 })
