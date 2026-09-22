@@ -260,4 +260,6 @@ test('telemetry failure notes prefer the outcome line over trailing URL metadata
   assert.equal(failureMessage(wait), 'Not ready: still "complete" when the 15s wait ended; content may be incomplete')
   const read = failureResult('Title: Docs\nURL: https://example.com/docs\nLoad state: complete\n\nNothing matches selector "main"')
   assert.equal(failureMessage(read), 'Nothing matches selector "main"')
+  const capture = failureResult('Page: Home\nURL: https://example.com\nTab: tab-1\nNot ready: still "loading"\nCapture failed: The tab closed before capture')
+  assert.equal(failureMessage(capture), 'Capture failed: The tab closed before capture')
 })

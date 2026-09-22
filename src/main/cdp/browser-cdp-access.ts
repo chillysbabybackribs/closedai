@@ -8,6 +8,7 @@ import { CdpPageInput } from './page-control/page-input.js'
 import { CdpSession, type CdpChildOutcome, type CdpEventPage, type CdpSend } from './cdp-session.js'
 import {
   decodeResponseBody,
+  explainResponseBodyFailure,
   foldNetworkEvents,
   mergeRequests,
   parseResourceTiming,
@@ -117,7 +118,15 @@ export class BrowserCdpAccess implements CdpToolHost {
       }))
     }
     const { tab, session } = this.resolve(tabId)
-    const result = await session.command(method, params, sessionId)
+    let result: unknown
+    try {
+      result = await session.command(method, params, sessionId)
+    } catch (error) {
+      if (method === 'Network.getResponseBody') {
+        throw explainResponseBodyFailure(String(params.requestId ?? ''), sessionId, error)
+      }
+      throw error
+    }
     return { tab, connectionId: session.connectionId, method, sessionId: sessionId ?? null, result }
   }
 
@@ -172,7 +181,12 @@ export class BrowserCdpAccess implements CdpToolHost {
 
   async responseBody(tabId: string | undefined, requestId: string, sessionId?: string): Promise<unknown> {
     const { tab, session } = this.resolve(tabId)
-    const raw = await session.command('Network.getResponseBody', { requestId }, sessionId)
+    let raw: unknown
+    try {
+      raw = await session.command('Network.getResponseBody', { requestId }, sessionId)
+    } catch (error) {
+      throw explainResponseBodyFailure(requestId, sessionId, error)
+    }
     const record = raw !== null && typeof raw === 'object' ? raw as Record<string, unknown> : {}
     const body = typeof record.body === 'string' ? record.body : ''
     return {

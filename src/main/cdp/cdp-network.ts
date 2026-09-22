@@ -114,6 +114,21 @@ export type DecodedBody =
  * for an image: a megabyte of mojibake would sit in the transcript forever. Decode, then keep the
  * result only when it reads as text.
  */
+const STALE_BODY_PATTERN = /No resource with given identifier|Invalid requestId|request id was not found/i
+
+/** Turn transient CDP body failures into guidance to re-list requests. */
+export function explainResponseBodyFailure(requestId: string, sessionId: string | null | undefined, error: unknown): Error {
+  const detail = error instanceof Error ? error.message : String(error)
+  if (!STALE_BODY_PATTERN.test(detail)) return error instanceof Error ? error : new Error(detail)
+  const session = sessionId ? ` (session ${JSON.stringify(sessionId)})` : ''
+  return new Error(
+    `Response body for request ${JSON.stringify(requestId)}${session} is no longer in CDP capture. ` +
+    'Ids expire after navigation, target detach, or when the buffer rolls. ' +
+    'Call requests on the same tab, take a fresh requestId from that listing, and read body immediately. ' +
+    `(${detail})`
+  )
+}
+
 export function decodeResponseBody(body: string, base64Encoded: boolean): DecodedBody {
   if (!base64Encoded) return { text: body, base64Encoded: false, byteLength: Buffer.byteLength(body, 'utf8') }
   const bytes = Buffer.from(body, 'base64')

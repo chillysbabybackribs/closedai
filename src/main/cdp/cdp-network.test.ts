@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { CdpEventRecord } from './cdp-session.js'
-import { decodeResponseBody, foldNetworkEvents, mergeRequests, parseResourceTiming } from './cdp-network.js'
+import { decodeResponseBody, explainResponseBodyFailure, foldNetworkEvents, mergeRequests, parseResourceTiming } from './cdp-network.js'
 
 function event(method: string, params: unknown, cursor = 1): CdpEventRecord {
   return { cursor, at: 0, method, params, sessionId: null }
@@ -128,4 +128,13 @@ test('a redirect does not carry the prior hop response status into the new reque
 
 test('text body byte counts measure UTF-8 rather than JavaScript string length', () => {
   assert.equal(decodeResponseBody('é🙂', false).byteLength, 6)
+})
+
+test('explainResponseBodyFailure maps stale CDP ids to a re-list requests hint', () => {
+  const explained = explainResponseBodyFailure('r-old', 'worker-1', new Error('No resource with given identifier found'))
+  assert.match(explained.message, /no longer in CDP capture/)
+  assert.match(explained.message, /Call requests/)
+  assert.match(explained.message, /worker-1/)
+  const other = explainResponseBodyFailure('r1', null, new Error('Protocol error'))
+  assert.equal(other.message, 'Protocol error')
 })

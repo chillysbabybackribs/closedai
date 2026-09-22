@@ -284,14 +284,16 @@ export class ToolRegistry {
 export const FAILURE_MESSAGE_CHARS = 240
 
 /** Metadata lines tools append after the real outcome; skip them when picking a telemetry note. */
-const TELEMETRY_METADATA_LINE = /^(URL:|Title:|Load state:|Tab:)/i
+const TELEMETRY_METADATA_LINE = /^(URL:|Title:|Load state:|Tab:|Page:)/i
 
 /** The most informative line of a failed result, bounded, for telemetry's per-tool error notes. */
 export function failureMessage(result: ToolResult): string | null {
   const text = result.content.find((item) => item.type === 'text')
   if (!text || text.type !== 'text') return null
   const lines = text.text.split('\n').map((entry) => entry.trim()).filter(Boolean)
-  const line = lines.find((entry) => !TELEMETRY_METADATA_LINE.test(entry)) ?? lines[0] ?? ''
+  const line = lines.find((entry) => entry.startsWith('Capture failed:'))
+    ?? lines.find((entry) => !TELEMETRY_METADATA_LINE.test(entry))
+    ?? lines[0] ?? ''
   if (!line) return null
   return line.length > FAILURE_MESSAGE_CHARS ? `${line.slice(0, FAILURE_MESSAGE_CHARS - 1)}…` : line
 }

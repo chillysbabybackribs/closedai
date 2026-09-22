@@ -35,6 +35,26 @@ const tabs: BrowserTabInfo[] = [
 
 const cdpTabs: CdpBrowserTarget[] = tabs.map((tab) => ({ ...tab, kind: 'tab' as const }))
 
+test('stale response body ids explain how to reacquire request ids', async () => {
+  const contents = new FakeContents(1)
+  contents.debugger.sendCommand = async (method, _params, sessionId) => {
+    contents.debugger.commands.push(method)
+    contents.debugger.routed.push({ method, sessionId })
+    if (method === 'Network.getResponseBody') throw new Error('No resource with given identifier found')
+    return { source: method }
+  }
+  const access = new BrowserCdpAccess(() => ({
+    tabList: () => tabs,
+    contentsOf: () => contents as unknown as WebContents,
+    focusTabForInput: () => ({ activated: false })
+  }))
+  try {
+    await assert.rejects(() => access.responseBody('tab-1', 'stale-9'), /no longer in CDP capture/)
+  } finally {
+    access.dispose()
+  }
+})
+
 test('captured body reads route to the exact child session without fetching the URL', async () => {
   const contents = new FakeContents(1)
   const access = new BrowserCdpAccess(() => ({
