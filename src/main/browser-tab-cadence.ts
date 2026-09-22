@@ -24,22 +24,31 @@ export type TabCadenceAdapter = {
   setThrottled(tabId: string, throttled: boolean): void
 }
 
-/**
- * The slice of WebContents this needs. A tab resolves to null when it must be left alone — it is
- * closed, or something else owns its surface: Electron arms the exemption by showing the widget,
- * and doing that to a tab parked in the offscreen capture window leaves `capturePage` with
- * "Current display surface not available for capture" (reproduced by
- * scripts/browser-coordination-live-check.mjs).
- */
 export type ThrottleableContents = { isDestroyed(): boolean; setBackgroundThrottling(allowed: boolean): void }
 
+export type TabCadenceTargets = {
+  /**
+   * The tab's page, or null when it must be left alone: it is closed, or something else owns its
+   * surface. A tab parked in the offscreen capture window is the case that matters — Electron
+   * arms the exemption by showing the widget, and doing that under a capture leaves capturePage
+   * with "Current display surface not available for capture".
+   */
+  contents(tabId: string): ThrottleableContents | null
+  /** Whether the tab's page is on screen right now. */
+  onScreen(tabId: string): boolean
+}
+
 /** Adapter over live tabs. Only the runtime call restores animation frames to a hidden view. */
-export function webContentsCadence(find: (tabId: string) => ThrottleableContents | null): TabCadenceAdapter {
+export function webContentsCadence(targets: TabCadenceTargets): TabCadenceAdapter {
   return {
     setThrottled: (tabId, throttled) => {
-      const contents = find(tabId)
-      if (process.env.CLOSEDAI_CADENCE_DEBUG) console.error(`[cadence] ${tabId} throttled=${throttled} target=${!!contents}`)
-      if (contents && !contents.isDestroyed()) contents.setBackgroundThrottling(throttled)
+      const contents = targets.contents(tabId)
+      if (!contents || contents.isDestroyed()) return
+      // Never arm a page the user is looking at. It runs at full speed already, and arming shows
+      // the widget: doing that to the foreground tab costs it input focus, so a dispatched key
+      // lands nowhere (reproduced in scripts/browser-coordination-live-check.mjs).
+      if (!throttled && targets.onScreen(tabId)) return
+      contents.setBackgroundThrottling(throttled)
     }
   }
 }
@@ -47,7 +56,8 @@ export function webContentsCadence(find: (tabId: string) => ThrottleableContents
 export class TabCadencePolicy {
   private readonly holds = new Map<string, number>()
   private readonly grace = new Map<string, ReturnType<typeof setTimeout>>()
-  private readonly unthrottled = new Set<string>()
+  /** Tabs that should be exempt while hidden; whether one is armed right now is the adapter's. */
+  private readonly wanted = new Set<string>()
 
   constructor(
     private readonly adapter: TabCadenceAdapter,
@@ -84,27 +94,26 @@ export class TabCadencePolicy {
   }
 
   /**
-   * Re-apply the exemption to every tab that holds one, because Electron arms it on the widget
-   * that exists when it is set: a tab that has just been hidden needs to be told again, or its
-   * page goes back to ~1 Hz with no frames while a tool is still working in it. Hiding happens
-   * from more places than tab activation (surface parking during tool access, capture leases),
-   * which is why `apply` re-arms on every touch as well as here.
+   * The visible tab changed: hand the new one back to Chromium — it needs no exemption on screen —
+   * and re-arm every other tab that still holds one. Electron arms the exemption on the widget
+   * that exists when it is set, so a tab that has just been hidden has to be told again or its
+   * page drops back to ~1 Hz with no frames while a tool is still working in it.
    */
-  reassert(): void {
-    for (const tabId of this.unthrottled) this.adapter.setThrottled(tabId, false)
+  handoff(activeTabId: string | null): void {
+    for (const tabId of this.wanted) this.adapter.setThrottled(tabId, tabId === activeTabId)
   }
 
   /** The tab is gone: drop its timers without touching a destroyed WebContents. */
   forget(tabId: string): void {
     this.clearGrace(tabId)
     this.holds.delete(tabId)
-    this.unthrottled.delete(tabId)
+    this.wanted.delete(tabId)
   }
 
   /** Test/diagnostic view of why a tab is currently exempt. */
-  describe(tabId: string): { unthrottled: boolean; holds: number; inGrace: boolean } {
+  describe(tabId: string): { wanted: boolean; holds: number; inGrace: boolean } {
     return {
-      unthrottled: this.unthrottled.has(tabId),
+      wanted: this.wanted.has(tabId),
       holds: this.holds.get(tabId) ?? 0,
       inGrace: this.grace.has(tabId)
     }
@@ -114,12 +123,13 @@ export class TabCadencePolicy {
     for (const timer of this.grace.values()) clearTimeout(timer)
     this.grace.clear()
     this.holds.clear()
-    this.unthrottled.clear()
+    this.wanted.clear()
   }
 
   private apply(tabId: string): void {
-    this.unthrottled.add(tabId)
-    // Always re-apply rather than skipping a tab that already holds the exemption: see reassert().
+    this.wanted.add(tabId)
+    // Always re-apply rather than skipping a tab that already holds the exemption: parking and
+    // reparenting hide a surface without any activation change, and both disarm it.
     this.adapter.setThrottled(tabId, false)
   }
 
@@ -128,7 +138,7 @@ export class TabCadencePolicy {
     const timer = setTimeout(() => {
       this.grace.delete(tabId)
       if ((this.holds.get(tabId) ?? 0) > 0) return
-      this.unthrottled.delete(tabId)
+      this.wanted.delete(tabId)
       this.adapter.setThrottled(tabId, true)
     }, this.graceMs)
     // Restoring Chromium's default must never be the reason the process stays alive.

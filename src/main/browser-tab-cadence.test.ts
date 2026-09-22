@@ -18,10 +18,10 @@ test('a touched tab runs unthrottled and returns to Chromium’s default after t
   policy.touch('tab-1')
 
   assert.deepEqual(log, ['tab-1:false'])
-  assert.deepEqual(policy.describe('tab-1'), { unthrottled: true, holds: 0, inGrace: true })
+  assert.deepEqual(policy.describe('tab-1'), { wanted: true, holds: 0, inGrace: true })
   await settle()
   assert.deepEqual(log, ['tab-1:false', 'tab-1:true'])
-  assert.deepEqual(policy.describe('tab-1'), { unthrottled: false, holds: 0, inGrace: false })
+  assert.deepEqual(policy.describe('tab-1'), { wanted: false, holds: 0, inGrace: false })
 })
 
 test('a burst of calls keeps the exemption and the grace runs from the last of them', async () => {
@@ -38,15 +38,15 @@ test('a burst of calls keeps the exemption and the grace runs from the last of t
   assert.deepEqual(log.filter((entry) => entry.endsWith('true')), ['tab-1:true'])
 })
 
-test('reassert re-arms every exempt tab, for surfaces Electron hid after the fact', () => {
+test('a handoff gives the visible tab back and re-arms the ones Electron just hid', () => {
   const { policy, log } = harness()
   policy.hold('tab-1')
   policy.touch('tab-2')
   log.length = 0
 
-  policy.reassert()
+  policy.handoff('tab-2')
 
-  assert.deepEqual(log, ['tab-1:false', 'tab-2:false'])
+  assert.deepEqual(log, ['tab-1:false', 'tab-2:true'], 'on screen means no exemption')
 })
 
 test('a hold outlives the grace window and only its release starts one', async () => {
@@ -56,7 +56,7 @@ test('a hold outlives the grace window and only its release starts one', async (
   await settle()
 
   assert.deepEqual(log, ['tab-1:false'], 'a held tab is never restored mid-operation')
-  assert.deepEqual(policy.describe('tab-1'), { unthrottled: true, holds: 1, inGrace: false })
+  assert.deepEqual(policy.describe('tab-1'), { wanted: true, holds: 1, inGrace: false })
   release()
   release()
   assert.equal(policy.describe('tab-1').inGrace, true)
@@ -86,7 +86,7 @@ test('a touch during a hold does not schedule a restore behind the hold', async 
   await settle()
 
   assert.equal(log.some((entry) => entry.endsWith('true')), false)
-  assert.deepEqual(policy.describe('tab-1'), { unthrottled: true, holds: 1, inGrace: false })
+  assert.deepEqual(policy.describe('tab-1'), { wanted: true, holds: 1, inGrace: false })
   release()
   await settle()
   assert.deepEqual(log.filter((entry) => entry.endsWith('true')), ['tab-1:true'])
@@ -102,7 +102,7 @@ test('a closed tab is forgotten without touching its destroyed WebContents', asy
   await settle()
 
   assert.deepEqual(log, ['tab-1:false', 'tab-2:false'])
-  assert.deepEqual(policy.describe('tab-1'), { unthrottled: false, holds: 0, inGrace: false })
+  assert.deepEqual(policy.describe('tab-1'), { wanted: false, holds: 0, inGrace: false })
 })
 
 test('dispose drops pending restores', async () => {
@@ -122,7 +122,10 @@ test('the live adapter leaves an unknown or destroyed tab alone', () => {
     isDestroyed: () => contents.destroyed,
     setBackgroundThrottling: (allow: boolean) => { allowed.push(allow) }
   }
-  const adapter = webContentsCadence((tabId) => (tabId === 'tab-1' ? contents : null))
+  const adapter = webContentsCadence({
+    contents: (tabId: string) => (tabId === 'tab-1' ? contents : null),
+    onScreen: (tabId: string) => tabId === 'tab-visible'
+  })
 
   adapter.setThrottled('tab-1', false)
   adapter.setThrottled('tab-9', true)
@@ -130,6 +133,18 @@ test('the live adapter leaves an unknown or destroyed tab alone', () => {
   adapter.setThrottled('tab-1', true)
 
   assert.deepEqual(allowed, [false], 'only the live tab is told, and `throttled` is Electron’s `allowed`')
+})
+
+test('a page on screen is never armed, but can always be handed back', () => {
+  const allowed: boolean[] = []
+  const contents = { isDestroyed: () => false, setBackgroundThrottling: (allow: boolean) => { allowed.push(allow) } }
+  const adapter = webContentsCadence({ contents: () => contents, onScreen: (tabId: string) => tabId === 'tab-1' })
+
+  adapter.setThrottled('tab-1', false)
+  adapter.setThrottled('tab-1', true)
+  adapter.setThrottled('tab-2', false)
+
+  assert.deepEqual(allowed, [true, false], 'arming the foreground tab costs it input focus')
 })
 
 test('tabs are exempted independently', async () => {

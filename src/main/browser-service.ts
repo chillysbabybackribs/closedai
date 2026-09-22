@@ -73,14 +73,12 @@ export class BrowserService extends EventEmitter {
   })
   // A hidden tab runs at ~1 Hz with no animation frames; a page under tool control needs real
   // cycles to finish loading itself. See browser-tab-cadence.ts for the measurement.
-  private readonly cadence = new TabCadencePolicy(webContentsCadence((tabId) => {
-    // Only a hidden page needs the exemption, and only a page nothing else is holding: the
-    // visible tab is already running at full speed, and a tab parked in the capture window owns
-    // its own throttling. See browser-tab-cadence.ts for what re-arming either one costs.
-    if (this.captureSurfaces.has(tabId)) return null
-    if (tabId === this.activeId && browserSurfaceVisibility(this.bounds).pageVisible) return null
-    const tab = this.tabs.find((candidate) => candidate.id === tabId)
-    return tab instanceof BrowserTab ? tab.view.webContents : null
+  private readonly cadence = new TabCadencePolicy(webContentsCadence({
+    contents: (tabId) => {
+      const tab = this.captureSurfaces.has(tabId) ? null : this.tabs.find((candidate) => candidate.id === tabId)
+      return tab instanceof BrowserTab ? tab.view.webContents : null
+    },
+    onScreen: (tabId) => tabId === this.activeId && browserSurfaceVisibility(this.bounds).pageVisible
   }))
 
   constructor(
@@ -379,9 +377,7 @@ export class BrowserService extends EventEmitter {
       // already-present view to the top on re-add).
       () => this.attachTabView(next.id)
     )
-    // The tab that just lost the front is hidden now; a page still under tool control has to be
-    // told again that it keeps its cycles (browser-tab-cadence.ts).
-    this.cadence.reassert()
+    this.cadence.handoff(next.id)
     this.emit('state', next.getState())
     this.emitTabs()
   }
@@ -486,8 +482,7 @@ export class BrowserService extends EventEmitter {
     if (tab instanceof ImageTab) throw new Error('This is an image viewer tab. Use a web tab for browser page tools.')
     if (tab instanceof FileTab) throw new Error('This is a file viewer tab. Use a web tab for browser page tools.')
     if (tab) this.prepareTabForTool(tab)
-    // Every page tool reaches its page through here: keep the page it is about to read running
-    // at full speed, and for a beat afterwards so a burst of calls is one exemption.
+    // Every page tool reaches its page through here; the beat afterwards makes a burst one exemption.
     if (tab instanceof BrowserTab) this.cadence.touch(tab.id)
     const contents = tab?.view.webContents
     return contents && !contents.isDestroyed() ? contents : null
@@ -563,14 +558,10 @@ export class BrowserService extends EventEmitter {
     } else {
       tab = this.requireActive()
     }
-    // Hold full cadence across the load itself: a throttled page reaches dom-ready and then
-    // stalls on its own deferred work, which is exactly what the caller is waiting for.
+    // Hold full cadence across the load: a throttled page reaches dom-ready and then stalls on
+    // its own deferred work, which is exactly what the caller is waiting for.
     const release = this.cadence.hold(tab.id)
-    try {
-      await tab.navigate(input)
-    } finally {
-      release()
-    }
+    try { await tab.navigate(input) } finally { release() }
     return tab.id
   }
 
