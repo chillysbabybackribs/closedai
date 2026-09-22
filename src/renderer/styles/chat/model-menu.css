@@ -182,6 +182,13 @@
   padding-bottom: 5px;
 }
 
+/* Catalogue rows are name-only; keep the flyout scannable without subscription blurbs. */
+.model-menu-item-single {
+  align-items: center;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
 .model-menu-item[data-highlighted] {
   background: color-mix(in srgb, var(--foreground) 8%, transparent);
 }

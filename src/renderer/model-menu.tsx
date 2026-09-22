@@ -190,10 +190,9 @@ function ProviderModelsFlyout({
           </DropdownMenu.Label>
           <DropdownMenu.RadioGroup value={selectedModel ?? ''} onValueChange={onChooseModel}>
             {section.all.map((model) => (
-              <DropdownMenu.RadioItem key={model.id} value={model.id} className="model-menu-item" textValue={model.displayName} data-ui="composer.model-item" data-ui-key={model.id}>
+              <DropdownMenu.RadioItem key={model.id} value={model.id} className="model-menu-item model-menu-item-single" textValue={model.displayName} data-ui="composer.model-item" data-ui-key={model.id}>
                 <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>
                 <span className="model-menu-item-name">{model.displayName}</span>
-                {model.description && <span className="model-menu-item-detail">{model.description}</span>}
               </DropdownMenu.RadioItem>
             ))}
           </DropdownMenu.RadioGroup>
@@ -203,10 +202,9 @@ function ProviderModelsFlyout({
               <DropdownMenu.Label className="model-menu-label">Reasoning effort</DropdownMenu.Label>
               <DropdownMenu.RadioGroup value={selectedReasoningEffort ?? ''} onValueChange={onChooseEffort}>
                 {efforts.map((option) => (
-                  <DropdownMenu.RadioItem key={option.reasoningEffort} value={option.reasoningEffort} className="model-menu-item model-menu-item-compact" textValue={option.reasoningEffort} data-ui="composer.effort-item" data-ui-key={option.reasoningEffort}>
+                  <DropdownMenu.RadioItem key={option.reasoningEffort} value={option.reasoningEffort} className="model-menu-item model-menu-item-single" textValue={effortLabel(option.reasoningEffort)} data-ui="composer.effort-item" data-ui-key={option.reasoningEffort}>
                     <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>
                     <span className="model-menu-item-name">{effortLabel(option.reasoningEffort)}</span>
-                    {option.description && <span className="model-menu-item-detail">{option.description}</span>}
                   </DropdownMenu.RadioItem>
                 ))}
               </DropdownMenu.RadioGroup>
