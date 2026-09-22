@@ -58,8 +58,6 @@ export type ProjectWorkspaceProps = {
 }
 const MAP = PROJECT_WORKSPACE_MAP
 const START_NOTE = 'Direction confirmed. Working from the record; only the next useful moves are planned.'
-/** What the coordinator chat hears when Start is pressed; its building-phase guidance takes it from here. */
-const START_MESSAGE = 'The user pressed Start building. The direction record is confirmed and the project store is now in the building phase. Read closedai_project.snapshot, write the first tasks, and dispatch the first one to a worker chat.'
 
 export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout, composerBridge = null, chatAppearance, canvasFixture = null, projectPath = null }: ProjectWorkspaceProps) {
   const { file, mutate } = useProjectState(projectPath, canvasFixture)
@@ -152,13 +150,33 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
 
   function start(): void {
     const at = Date.now()
+    // Binding the coordinator is what hands this project to the run loop in main: it opens the
+    // workers and asks for the first plan itself, so nothing here sends the coordinator a message.
     // The store is in the building phase before the coordinator reads it, so its first snapshot
     // already shows the root node.
-    void mutate({ type: 'start', root: rootNode(record, at), note: START_NOTE })
-      .then(() => composerBridge?.onSend?.(START_MESSAGE))
+    void mutate([
+      { type: 'coordinator', coordinator: {
+        provider, modelId: bridgeModelId,
+        reasoningEffort: composerBridge?.selectedReasoningEffort ?? null,
+        threadId: null, paneId
+      } },
+      { type: 'start', root: rootNode(record, at), note: START_NOTE }
+    ])
     setNow(at)
     lastInteraction.current = at
     setLocation(MAP)
+  }
+
+  const paused = file.hive.dispatch.mode === 'paused'
+
+  function togglePause(): void {
+    const mode = paused ? 'rolling' : 'paused'
+    void mutate({
+      type: 'dispatch', mode,
+      note: mode === 'paused'
+        ? 'You paused the build. Work already running finishes; nothing new starts until you resume.'
+        : 'You resumed the build. Queued tasks start going out again.'
+    })
   }
 
   function navigate(next: Location): void {
@@ -309,6 +327,8 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
       navigate={navigate}
       proposal={proposal}
       acceptedAt={acceptedAt}
+      paused={paused}
+      onTogglePause={togglePause}
       folders={folders}
       openFile={openFile}
       changedFiles={changedFiles}

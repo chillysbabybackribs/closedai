@@ -52,6 +52,9 @@ export type ProjectWorkspaceShellChromeProps = {
   reports: AcknowledgedReport[]
   accept: () => void
   openNode: TreeNode | null
+  /** The run loop is holding off; running work finishes but nothing new is dispatched. */
+  paused: boolean
+  onTogglePause: () => void
   saveFile: (path: string, content: string) => void
   mapLocation: Location
   activeMessages: Message[]
@@ -83,7 +86,7 @@ export function ProjectWorkspaceShellChrome(props: ProjectWorkspaceShellChromePr
   const {
     paneId, embedded, fixedComposerLayout, composerBridge, phase, treeOpen, setTreeOpen, record, pending, location,
     navigate, proposal, acceptedAt, folders, openFile, changedFiles, now, crumbs, awayFor, setAwayFor, layout,
-    changedNodes, report, caughtUp, tree, files, progress, reports, accept, openNode, saveFile, mapLocation,
+    changedNodes, report, caughtUp, tree, files, progress, reports, accept, openNode, paused, onTogglePause, saveFile, mapLocation,
     activeMessages, sending, ready, chooseSuggestion, start, intakeTranscript, hasIntakeConversation, liveTranscript,
     scrollRef, placeholder, bridgeModels, bridgeModelId, selectedModelEntry, provider, send, canvasNote,
     onModelChangeFallback
@@ -106,9 +109,15 @@ export function ProjectWorkspaceShellChrome(props: ProjectWorkspaceShellChromePr
       </button>}
       {proposal && phase === 'canvas' && !acceptedAt && <button type="button" className="project-shell-proposal" data-ui="agent.project-proposal"
         aria-pressed={location.kind === 'proposal'} onClick={() => navigate({ kind: 'proposal' })}>Completion proposed</button>}
-      <span className="project-shell-kind" data-complete={acceptedAt ? 'true' : undefined}>
-        {phase !== 'canvas' ? 'Project shell' : acceptedAt ? 'Complete' : proposal ? 'Closing' : 'Building'}
-      </span>
+      {phase === 'canvas' && !acceptedAt && !proposal
+        ? <button type="button" className="project-shell-kind is-toggle" data-ui="agent.project-dispatch"
+          data-paused={paused || undefined} aria-pressed={paused} onClick={onTogglePause}
+          title={paused ? 'Nothing new starts until you resume' : 'Pause: work already running finishes, nothing new starts'}>
+          {paused ? 'Paused' : 'Building'}
+        </button>
+        : <span className="project-shell-kind" data-complete={acceptedAt ? 'true' : undefined}>
+          {phase !== 'canvas' ? 'Project shell' : acceptedAt ? 'Complete' : 'Closing'}
+        </span>}
     </header>
 
     {phase === 'canvas'

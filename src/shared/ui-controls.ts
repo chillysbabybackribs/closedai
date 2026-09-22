@@ -23,6 +23,7 @@ export const UI_CONTROLS = {
   'agent.project-gate': 'Agent workspace: open the node that proves a completion gate; item is the gate id (foundation, journey, unknowns, quality, boundaries)',
   'agent.project-proposal': 'Agent workspace: open the coordinator’s completion proposal, available only after an acknowledged report showed every gate met',
   'agent.project-accept': 'Agent workspace: accept the completion proposal; writes handoff.md and marks the project complete',
+  'agent.project-dispatch': 'Agent workspace: pause or resume the run loop for this project; running work always finishes, and pausing only stops new tasks going out',
   'agent.project-canvas-zoom': 'Agent workspace: zoom the intent canvas; item is in or out',
   'agent.project-canvas-reset': 'Agent workspace: restore the intent canvas to its initial position and zoom',
   'dialog.research-library': 'Public research library dialog, opened through Agent → Research library',

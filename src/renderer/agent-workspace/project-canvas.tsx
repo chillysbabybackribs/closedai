@@ -147,7 +147,7 @@ export function ProjectCanvas(props: {
           {node.kind === 'root' && <LockKeyhole size={12} aria-hidden="true" />}
           <strong>{node.title}</strong>
         </span>
-        <small>{node.summary}</small>
+        <small>{node.state === 'active' && node.assignment?.activity ? node.assignment.activity : node.summary}</small>
       </button>)}
     </div>
 
