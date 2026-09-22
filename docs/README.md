@@ -42,7 +42,7 @@ guides when behavior diverges.
 | Document | Typical use |
 |---|---|
 | [Adaptive multi-agent development blueprint](adaptive-multi-agent-development-blueprint.md) | User-guided, continuously evolving multi-agent development proposal |
-| [Agent workspace plan](agent-workspace-plan.md) | Live vs prototype inventory, ordered slices, and pane rules for the agent workspace; read before editing it |
+| [Agent workspace plan](agent-workspace-plan.md) | Live vs prototype inventory, the v1 pipeline pass condition, v2 candidates, and pane rules for the agent workspace; read before editing it |
 | [parallel-web-research-2026-09-04.md](parallel-web-research-2026-09-04.md) | Parallel search design history |
 | [model-harness-audit-2026-09-04.md](model-harness-audit-2026-09-04.md), [model-latency-audit-2026-09-04.md](model-latency-audit-2026-09-04.md) | Harness/latency measurements |
 | [trace-research.md](trace-research.md), [codex-desktop-recon.md](codex-desktop-recon.md) | Provider/trace recon |
