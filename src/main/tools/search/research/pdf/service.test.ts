@@ -2,10 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { PdfPageEvidence } from '../../../../../shared/pdf-evidence.js'
 import type { ToolContext } from '../../../tool.js'
-import { ToolRegistry } from '../../../registry.js'
 import { ResearchService, type ResearchDependencies } from '../service.js'
 import { SearchRouter } from '../../router.js'
-import { pdfTool } from './tools.js'
 
 const context: ToolContext = { paneId: 'pane', threadId: 'thread', turnId: 'turn', callId: 'call', signal: new AbortController().signal }
 const evidence: PdfPageEvidence = {
@@ -29,7 +27,7 @@ async function harness(inspectPdf: NonNullable<ResearchDependencies['inspectPdf'
   return { service, id: run.runId, source: run.sources[0].id }
 }
 
-test('PDF tool emits actual images and distinct OCR excerpts; invalid inputs never reach the inspector', async (t) => {
+test('PDF inspection returns page images and OCR text; invalid inputs are rejected', async (t) => {
   const calls: unknown[] = []
   const h = await harness(async (_run, _source, hash, request) => {
     calls.push(request)
@@ -37,21 +35,14 @@ test('PDF tool emits actual images and distinct OCR excerpts; invalid inputs nev
     return request.action === 'page' ? { ...evidence, ocr: undefined } : { ...evidence, image: undefined }
   })
   t.after(() => h.service.dispose())
-  const registry = new ToolRegistry([{ name: 'search', description: 'Research evidence', tools: [pdfTool(h.service)] }])
-  const call = (action: string, extra = {}) => registry.call({ namespace: 'search', tool: 'pdf', arguments: { action, run_id: h.id, source_id: h.source, page: 1, ...extra } }, context)
-  const page = await call('page')
-  assert.equal(page.isError, undefined)
-  assert.deepEqual(page.content[1], { type: 'image', dataUrl: evidence.image })
-  assert.match(page.content[0].type === 'text' ? page.content[0].text : '', /pdf_page/)
-  const ocr = await call('ocr', { offset: 11 })
-  assert.equal(ocr.content.length, 1)
-  const body = JSON.parse(ocr.content[0].type === 'text' ? ocr.content[0].text : '')
-  assert.equal(body.text, 'evidence')
-  assert.equal(body.representation, 'pdf_ocr')
-  assert.equal(body.untrusted, true)
-  assert.equal(body.verified, undefined)
-  assert.equal((await call('page', { page: 0 })).isError, true)
-  assert.equal((await call('ocr', { dpi: 217 })).isError, true)
+  const page = await h.service.inspectPdf(h.id, h.source, context, { action: 'page', page: 1, dpi: 144 })
+  assert.equal(page.image, evidence.image)
+  assert.equal(page.native.text, 'native evidence')
+  const ocr = await h.service.inspectPdf(h.id, h.source, context, { action: 'ocr', page: 1, dpi: 216 })
+  assert.equal(ocr.ocr?.text, 'recognized evidence')
+  assert.equal(ocr.ocr?.confidence, 95)
+  await assert.rejects(h.service.inspectPdf(h.id, h.source, context, { action: 'page', page: 0, dpi: 144 }), /Page must be between 1/)
+  await assert.rejects(h.service.inspectPdf(h.id, h.source, context, { action: 'ocr', page: 1, dpi: 217 }), /between 72 and 216/)
   assert.equal(calls.length, 2)
 })
 

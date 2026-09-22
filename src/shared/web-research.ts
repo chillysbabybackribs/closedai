@@ -3,7 +3,7 @@ export type ResearchState = 'running' | 'completed' | 'cancelled' | 'timed_out'
 /**
  * static_text: inert parse of the fetched body. rendered_text: innerText of a hidden Chromium page.
  * provider_text: page text a provider returned with discovery or selected-source extraction; this app never fetched the page.
- * pdf_text: native PDF.js text with page markers; search.pdf returns separate page images/OCR evidence.
+ * pdf_text: native PDF.js text with page markers.
  */
 export type SourceRepresentation = 'static_text' | 'rendered_text' | 'provider_text' | 'pdf_text'
 export type PdfCoverage = {
