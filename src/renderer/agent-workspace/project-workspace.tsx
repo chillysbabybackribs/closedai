@@ -5,23 +5,23 @@ import type { ChatModel, ChatProvider, ChatTranscriptItem } from '../../shared/c
 import { Composer, type ComposerProps } from '../composer.js'
 import type { ComposerLayout } from '../composer-layout.js'
 import { injectComposerDraft } from '../composer-drafts.js'
-import { ProjectCanvas } from '../preview/project-canvas.js'
-import { buildCatchUp, countSince, reportLines } from '../preview/project-catchup.js'
-import { CatchUpDetail, ProposalDetail } from '../preview/project-catchup-view.js'
-import { closureProgress, type AcknowledgedReport, type Proposal } from '../preview/project-closure.js'
-import { Breadcrumbs, FileDetail, NodeDetail } from '../preview/project-detail.js'
-import { advanceDiscovery, clip, createDiscovery, isDirectionReady, syncDiscoveryWithItems, type DiscoveryState } from '../preview/project-discovery.js'
-import { ProjectFileTree } from '../preview/project-file-tree.js'
+import { ProjectCanvas } from './project-canvas.js'
+import { buildCatchUp, countSince, reportLines } from './project-catchup.js'
+import { CatchUpDetail, ProposalDetail } from './project-catchup-view.js'
+import { closureProgress, type AcknowledgedReport, type Proposal } from './project-closure.js'
+import { Breadcrumbs, FileDetail, NodeDetail } from './project-detail.js'
+import { advanceDiscovery, clip, createDiscovery, isDirectionReady, syncDiscoveryWithItems, type DiscoveryState } from './project-discovery.js'
+import { ProjectFileTree } from './project-file-tree.js'
 import {
   breadcrumbs, deriveFiles, fileAt, filesForNode, folderTree, servesLine, targetNodeId,
   type FileEdit, type JournalLine, type Location
-} from '../preview/project-files.js'
-import { ProjectIntake, transcriptItemsToMessages, type Message } from '../preview/project-intake.js'
-import { duration } from '../preview/project-time.js'
+} from './project-files.js'
+import { ProjectIntake, transcriptItemsToMessages, type Message } from './project-intake.js'
+import { duration } from './project-time.js'
 import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
 import { hydrateFromSnapshot, shouldHydrateFromSnapshot, type PersistedProjectHydration } from './hydrate-project-snapshot.js'
-import type { ProjectCanvasFixture } from '../preview/project-canvas-fixture.js'
-import { amendTree, layoutTree, rootNode, type TreeNode } from '../preview/project-tree.js'
+import type { ProjectCanvasFixture } from './project-canvas-fixture.js'
+import { amendTree, layoutTree, rootNode, type TreeNode } from './project-tree.js'
 import { projectNodeSignature, useProjectWorkspacePrototypeEffects } from './use-project-workspace-prototype.js'
 
 export type ProjectWorkspaceComposerBridge = Pick<ComposerProps,
@@ -414,8 +414,8 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
               paused={composerBridge?.paused ?? false}
               onResume={composerBridge?.onResume ?? (async () => {})}
               onInspectContext={() => {}}
-              cwd={composerBridge?.cwd ?? '/preview/closedai'}
-              projectPath={composerBridge?.projectPath ?? '/preview/closedai'}
+              cwd={composerBridge?.cwd ?? ''}
+              projectPath={composerBridge?.projectPath ?? composerBridge?.cwd ?? ''}
               projectPending={composerBridge?.projectPending}
               recentProjects={composerBridge?.recentProjects ?? []}
               onChooseProject={composerBridge?.onChooseProject ?? (async () => {})}

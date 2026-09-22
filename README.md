@@ -23,11 +23,6 @@ launcher detects that case, starts without the sandbox, and prints the one-time 
 fix. `CLOSEDAI_NO_SANDBOX=1` forces the opt-out on any machine. Packaged builds install the helper
 correctly and are unaffected.
 
-For frontend work without restarting Electron, `npm run dev:web` starts or reuses the browser
-UI preview and prints direct links to populated, empty, streaming, settings, and split-pane
-states. It uses the actual renderer with sample data. See [UI preview](docs/ui-preview.md) for
-the model workflow, readiness checks, lifecycle commands, and native-feature limits.
-
 | Provider | Runtime and sign-in | Optional executable override |
 |---|---|---|
 | Codex | `codex` on `PATH`; ChatGPT sign-in from the app | `CLOSEDAI_CODEX_PATH` |

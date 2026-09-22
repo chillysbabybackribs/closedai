@@ -9,7 +9,6 @@
   "scripts": {
     "predev": "npm run hygiene",
     "dev": "node scripts/launch-electron-vite.mjs dev",
-    "dev:web": "node scripts/ui-preview.mjs",
     "prebuild": "npm run hygiene",
     "build": "tsc --noEmit && electron-vite build",
     "preview": "node scripts/launch-electron-vite.mjs preview",

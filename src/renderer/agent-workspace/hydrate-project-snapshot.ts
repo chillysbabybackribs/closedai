@@ -1,8 +1,8 @@
 import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
-import type { ProjectCanvasFixture } from '../preview/project-canvas-fixture.js'
-import type { DiscoveryState } from '../preview/project-discovery.js'
-import type { JournalLine } from '../preview/project-files.js'
-import type { TreeNode } from '../preview/project-tree.js'
+import type { ProjectCanvasFixture } from './project-canvas-fixture.js'
+import type { DiscoveryState } from './project-discovery.js'
+import type { JournalLine } from './project-files.js'
+import type { TreeNode } from './project-tree.js'
 
 export type PersistedProjectHydration = {
   discovery: DiscoveryState

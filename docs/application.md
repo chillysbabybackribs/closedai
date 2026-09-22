@@ -9,10 +9,8 @@ verification. Protocol measurements retain their dates in the provider guides. P
 model-facing routing live in [Model context](model-context.md); registry contracts live in
 [Tools](tools.md).
 
-For browser-only frontend development, `npm run dev:web` manages a reusable Vite preview of the
-actual renderer with a typed, in-memory bridge and direct sample-state links. It does not start
-Electron or model providers. The production entry remains separate. See [UI preview](ui-preview.md)
-for operation, readiness checks, and the boundary between UI fixtures and native verification.
+Renderer and agent-workstation UI changes are verified in Electron (`npm run dev`). There is no
+separate browser-only renderer entry or fixture bridge.
 
 ## Native instrumentation
 
@@ -348,14 +346,13 @@ browser's native view), so the renderer reports its on-screen rect to the main p
 that rect against the window's current size — see `src/renderer/chat-layout/chat-canvas.tsx` and
 `src/main/ui-capture-access.ts`.
 
-**Implementation note (2026-09-22).** The visible workstation still reuses the project-shell
-**preview** under `src/renderer/preview/` (intake UI, simulated tree dispatch, catch-up, and
-completion gates). The **live** pieces today are: the reserved layout pane, the detached
-coordinator chat (same provider pipeline and `ChatTranscript` streaming as ordinary chats), prompt
-guidance via `agent-workspace-instructions.ts`, and **read-only** hydration from
+**Implementation note (2026-09-22).** The agent workstation UI lives under
+`src/renderer/agent-workspace/` (intake UI, simulated tree dispatch, catch-up, and completion
+gates). The **live** pieces today are: the reserved layout pane, the detached coordinator chat
+(same provider pipeline and `ChatTranscript` streaming as ordinary chats), prompt guidance via
+`agent-workspace-instructions.ts`, and **read-only** hydration from
 `<project>/.closedai/project.json` when that file already contains work. Validate agent-pane
-layout, empty-state landing, and live intake in **Electron**; `npm run dev:web` keeps a
-full-viewport `scenario=project` prototype only and does not mount the reserved agent column.
+layout, empty-state landing, and live intake in **Electron** only.
 The renderer does not yet write discovery, tree, or journal changes back through `project:` IPC
 (only `project:snapshot` exists), and canvas-phase progress after “Start building” is still driven
 by local React state and timed prototype effects unless restored from disk. The direction-record

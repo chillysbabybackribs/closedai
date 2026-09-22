@@ -10,7 +10,6 @@ These are the sources AGENTS.md treats as authoritative for implemented behavior
 | [Model context](model-context.md) | Prompt assembly, per-turn context, trust boundaries, refresh workflow |
 | [Tools](tools.md) | Tool registry, namespaces, batching, captures, coordination locks |
 | [CDP tool foundation](cdp-tool-foundation.md) | Protocol transport, targets, semantic input, profiling/instrumentation |
-| [UI preview](ui-preview.md) | `dev:web` workflow and fixture boundaries |
 | [Provider guides](claude-code.md) | Claude, [Antigravity](antigravity.md), [Cursor](cursor.md) lane contracts |
 | [Native instrumentation](native-instrumentation.md) | Frida probe lifecycle and limits |
 | [Research library](research-library.md) | Saved paper index contracts |

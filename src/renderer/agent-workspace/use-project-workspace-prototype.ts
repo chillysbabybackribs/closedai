@@ -1,11 +1,11 @@
 import { useEffect, type Dispatch, type RefObject, type SetStateAction } from 'react'
 
-import { canPropose, closureProgress, type AcknowledgedReport, type Proposal } from '../preview/project-closure.js'
+import { canPropose, closureProgress, type AcknowledgedReport, type Proposal } from './project-closure.js'
 import type { DirectionRecord } from '../../shared/project/direction.js'
-import type { DiscoveryState } from '../preview/project-discovery.js'
-import { deriveFiles, type JournalLine, type Location } from '../preview/project-files.js'
-import { applyEvent, buildDispatchPlan, type TreeNode } from '../preview/project-tree.js'
-import type { ProjectCanvasFixture } from '../preview/project-canvas-fixture.js'
+import type { DiscoveryState } from './project-discovery.js'
+import { deriveFiles, type JournalLine, type Location } from './project-files.js'
+import { applyEvent, buildDispatchPlan, type TreeNode } from './project-tree.js'
+import type { ProjectCanvasFixture } from './project-canvas-fixture.js'
 import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
 import { hydrateFromSnapshot, shouldHydrateFromSnapshot } from './hydrate-project-snapshot.js'
 

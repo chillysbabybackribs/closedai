@@ -13,11 +13,11 @@
 @import "./styles/chat/layout.css";
 @import "./styles/chat/layout-presets.css";
 @import "./styles/browser.css";
-@import "./styles/preview/project-canvas.css";
-@import "./styles/preview/project-catchup.css";
-@import "./styles/preview/project-files.css";
-@import "./styles/preview/project-shell.css";
-@import "./styles/preview/project-workstation.css";
+@import "./styles/agent-workstation/project-canvas.css";
+@import "./styles/agent-workstation/project-catchup.css";
+@import "./styles/agent-workstation/project-files.css";
+@import "./styles/agent-workstation/project-shell.css";
+@import "./styles/agent-workstation/project-workstation.css";
 @import "./styles/agent-workspace/pane.css";
 @import "./styles/browser-downloads.css";
 @import "./styles/workspace.css";

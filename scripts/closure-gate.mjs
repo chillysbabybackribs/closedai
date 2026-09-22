@@ -11,7 +11,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // The artifact worker is launched by URL rather than a module import.
 const entries = [
   'src/main/index.ts', 'src/main/investigations/artifact-worker.ts',
-  'src/preload/index.ts', 'src/renderer/main.tsx', 'src/renderer/preview/entry.tsx'
+  'src/preload/index.ts', 'src/renderer/main.tsx'
 ]
 const allowedPackages = new Set([
   'electron', 'react', 'react-dom', 'lucide-react', 'clsx', 'tailwind-merge',
