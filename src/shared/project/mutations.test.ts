@@ -61,7 +61,7 @@ test('direction and coordinator verbs write only their fields', () => {
   assert.equal(file.direction.idea, 'Ship it')
   assert.equal(file.discoveryAsking, 'journey')
   assert.equal(file.phase, 'intake')
-  file = applyProjectMutation(file, { type: 'coordinator', coordinator: { provider: 'claude', modelId: 'm', reasoningEffort: null, threadId: 't' } }, 3)
+  file = applyProjectMutation(file, { type: 'coordinator', coordinator: { provider: 'claude', modelId: 'm', reasoningEffort: null, threadId: 't', paneId: 'pane-1' } }, 3)
   assert.equal(file.coordinator?.threadId, 't')
 })
 

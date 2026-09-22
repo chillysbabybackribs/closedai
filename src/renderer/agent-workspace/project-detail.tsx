@@ -8,7 +8,7 @@ import type { TreeNode } from './project-tree.js'
 
 const STATE_WORDS: Record<TreeNode['state'], string> = {
   anchored: 'anchored', active: 'in progress', queued: 'queued', complete: 'complete',
-  provisional: 'working hypothesis', confirmed: 'confirmed'
+  provisional: 'working hypothesis', confirmed: 'confirmed', blocked: 'stopped'
 }
 
 export function Breadcrumbs({ crumbs, onNavigate }: { crumbs: Crumb[]; onNavigate: (location: Location) => void }) {

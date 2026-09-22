@@ -45,7 +45,7 @@ export const slug = (text: string): string =>
 
 const STATE_WORDS: Record<TreeNode['state'], string> = {
   anchored: 'Anchored', active: 'In progress', queued: 'Queued', complete: 'Complete',
-  provisional: 'Working hypothesis', confirmed: 'Confirmed'
+  provisional: 'Working hypothesis', confirmed: 'Confirmed', blocked: 'Stopped'
 }
 
 function recordMarkdown(record: DirectionRecord, confirmedAt: number): string {
