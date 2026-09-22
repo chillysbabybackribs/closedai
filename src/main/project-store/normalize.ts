@@ -1,6 +1,7 @@
 import { CHAT_PROVIDERS } from '../../shared/chat-providers.js'
-import { type CoordinatorBinding, type HiveConfig } from '../../shared/project/coordinator.js'
+import { type CoordinatorBinding, type DispatchMode, type HiveConfig } from '../../shared/project/coordinator.js'
 import { PROJECT_STORE_VERSION, type ProjectStoreFile } from '../../shared/project/store-file.js'
+import type { TaskAssignment } from '../../shared/project/tree.js'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -47,10 +48,16 @@ export function normalizeProjectStoreFile(raw: unknown): ProjectStoreFile | null
       kind: node.kind === 'root' || node.kind === 'scope' || node.kind === 'task' || node.kind === 'research'
         || node.kind === 'amendment' || node.kind === 'proposal' ? node.kind : 'task',
       state: node.state === 'anchored' || node.state === 'active' || node.state === 'queued' || node.state === 'complete'
-        || node.state === 'provisional' || node.state === 'confirmed' ? node.state : 'queued',
+        || node.state === 'provisional' || node.state === 'confirmed' || node.state === 'blocked' ? node.state : 'queued',
       title: typeof node.title === 'string' ? node.title : '',
       summary: typeof node.summary === 'string' ? node.summary : '',
       detail: typeof node.detail === 'string' ? node.detail : '',
+      ...(Array.isArray(node.paths)
+        ? { paths: node.paths.filter((entry): entry is string => typeof entry === 'string') }
+        : {}),
+      // A relaunch inherits assignments so the run loop can see which workers it left behind;
+      // whether those panes are still alive is decided against the live workspace, not this file.
+      ...(isRecord(node.assignment) ? { assignment: parseAssignment(node.assignment) } : {}),
       createdAt: typeof node.createdAt === 'number' ? node.createdAt : Date.now(),
       updatedAt: typeof node.updatedAt === 'number' ? node.updatedAt : Date.now()
     })) : [],
@@ -59,6 +66,18 @@ export function normalizeProjectStoreFile(raw: unknown): ProjectStoreFile | null
       at: typeof line.at === 'number' ? line.at : Date.now(),
       text: typeof line.text === 'string' ? line.text : ''
     })) : []
+  }
+}
+
+function parseAssignment(raw: Record<string, unknown>): TaskAssignment | null {
+  if (typeof raw.paneId !== 'string' || !raw.paneId) return null
+  const startedAt = typeof raw.startedAt === 'number' ? raw.startedAt : Date.now()
+  return {
+    paneId: raw.paneId,
+    startedAt,
+    activityAt: typeof raw.activityAt === 'number' ? raw.activityAt : startedAt,
+    activity: typeof raw.activity === 'string' ? raw.activity : null,
+    attempts: typeof raw.attempts === 'number' && raw.attempts > 0 ? Math.floor(raw.attempts) : 1
   }
 }
 
@@ -71,7 +90,8 @@ function parseCoordinator(raw: unknown): CoordinatorBinding | null {
     provider: provider as CoordinatorBinding['provider'],
     modelId: raw.modelId,
     reasoningEffort: typeof raw.reasoningEffort === 'string' ? raw.reasoningEffort : null,
-    threadId: typeof raw.threadId === 'string' ? raw.threadId : null
+    threadId: typeof raw.threadId === 'string' ? raw.threadId : null,
+    paneId: typeof raw.paneId === 'string' ? raw.paneId : null
   }
 }
 
@@ -79,7 +99,9 @@ function parseHive(raw: unknown): HiveConfig | null {
   if (!isRecord(raw) || raw.version !== 1) return null
   const workers = isRecord(raw.workers) ? raw.workers : null
   const dispatch = isRecord(raw.dispatch) ? raw.dispatch : null
-  if (!workers || !dispatch || dispatch.mode !== 'rolling') return null
+  if (!workers || !dispatch) return null
+  const mode: DispatchMode | null = dispatch.mode === 'rolling' ? 'rolling' : dispatch.mode === 'paused' ? 'paused' : null
+  if (!mode) return null
   const roles = Array.isArray(workers.roles) ? workers.roles.filter(isRecord).map((role, index) => ({
     id: typeof role.id === 'string' ? role.id : `role-${index}`,
     model: typeof role.model === 'string' ? role.model : 'auto',
@@ -97,7 +119,7 @@ function parseHive(raw: unknown): HiveConfig | null {
           : 'auto',
       roles
     },
-    dispatch: { mode: 'rolling', replanAfterAmendment: dispatch.replanAfterAmendment !== false }
+    dispatch: { mode, replanAfterAmendment: dispatch.replanAfterAmendment !== false }
   }
 }
 

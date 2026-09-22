@@ -2,19 +2,21 @@
 // describe what changed as a mutation; the store applies it with this pure function so the
 // main process and an in-memory renderer fixture produce the same next state. Keep the verb
 // set small: a verb earns its place when a real caller needs it, not when the blueprint names it.
-import type { CoordinatorBinding } from './coordinator.js'
+import type { CoordinatorBinding, DispatchMode } from './coordinator.js'
 import type { ClaritySlot, DirectionRecord } from './direction.js'
 import type { ProjectJournalLine } from './journal.js'
 import type { ProjectPhase } from './record.js'
 import { createDefaultProjectStoreFile, type ProjectStoreFile } from './store-file.js'
-import type { TreeNode, TreeState } from './tree.js'
+import type { TaskAssignment, TreeNode, TreeState } from './tree.js'
 
 /** A node as a caller describes it; the store stamps timestamps when it lands. */
 export type PlannedNode = Omit<TreeNode, 'createdAt' | 'updatedAt'>
 
 export type ProjectTreeEvent =
   | { add: PlannedNode }
-  | { update: { id: string; state?: TreeState; summary?: string; detail?: string } }
+  | { update: { id: string; state?: TreeState; summary?: string; detail?: string; paths?: string[] } }
+  /** Which worker holds a task. The run loop writes this; a model is refused it by the tool parser. */
+  | { assign: { id: string; assignment: TaskAssignment | null } }
   | { remove: { id: string } }
   /** Whole-tree replacement for prototype paths that rebuild the array; superseded by finer verbs as they arrive. */
   | { replace: TreeNode[] }
@@ -29,6 +31,8 @@ export type ProjectMutation =
   | { type: 'caughtUp'; note?: string }
   | { type: 'journal'; text: string }
   | { type: 'coordinator'; coordinator: CoordinatorBinding | null }
+  /** Pause or resume the run loop for this project without leaving the building phase. */
+  | { type: 'dispatch'; mode: DispatchMode; note?: string }
   /** Back to a blank intake (the restart control): everything but the hive config is discarded. */
   | { type: 'reset' }
 
@@ -39,6 +43,10 @@ export function applyTreeEvent(nodes: TreeNode[], event: ProjectTreeEvent, at: n
   if ('update' in event) {
     const { id, ...changes } = event.update
     return nodes.map((node) => node.id === id ? { ...node, ...defined(changes), updatedAt: at } : node)
+  }
+  if ('assign' in event) {
+    const { id, assignment } = event.assign
+    return nodes.map((node) => node.id === id ? { ...node, assignment, updatedAt: at } : node)
   }
   if ('remove' in event) return nodes.filter((node) => node.id !== event.remove.id)
   return event.replace
@@ -85,6 +93,10 @@ export function applyProjectMutation(file: ProjectStoreFile, mutation: ProjectMu
       return withNote({ ...file, updatedAt: now }, mutation.text, now)
     case 'coordinator':
       return { ...file, coordinator: mutation.coordinator, updatedAt: now }
+    case 'dispatch':
+      return withNote({
+        ...file, hive: { ...file.hive, dispatch: { ...file.hive.dispatch, mode: mutation.mode } }, updatedAt: now
+      }, mutation.note, now)
     case 'reset':
       return { ...createDefaultProjectStoreFile(now), hive: file.hive }
   }

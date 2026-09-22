@@ -6,7 +6,12 @@ export type CoordinatorBinding = {
   modelId: string
   reasoningEffort: string | null
   threadId: string | null
+  /** Chat pane the workspace runs the coordinator in; the run loop sends planning turns here. */
+  paneId: string | null
 }
+
+/** `rolling` keeps the run loop dispatching; `paused` leaves running work alone and starts nothing. */
+export type DispatchMode = 'rolling' | 'paused'
 
 export type HiveWorkerRole = {
   id: string
@@ -22,7 +27,7 @@ export type HiveConfig = {
     defaultProvider: ChatProvider | 'auto'
     roles: HiveWorkerRole[]
   }
-  dispatch: { mode: 'rolling'; replanAfterAmendment: boolean }
+  dispatch: { mode: DispatchMode; replanAfterAmendment: boolean }
 }
 
 export function defaultHiveConfig(): HiveConfig {
