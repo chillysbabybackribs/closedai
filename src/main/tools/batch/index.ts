@@ -2,6 +2,7 @@ import { allSettledBounded } from '../../bounded-concurrency.js'
 import { normalizeBatchMaxCalls } from '../../batch-config.js'
 import { compensationFor, releases, type Compensation } from './compensation.js'
 import type { ToolRegistry } from '../registry.js'
+import { isBrowserObservingCall } from '../browser/tool-surface.js'
 import { resourceKey } from '../resource-locks.js'
 import {
   booleanArg,
@@ -349,44 +350,22 @@ async function runParallel(registry: ToolRegistry, calls: BatchCall[], context: 
   })
 }
 
-/**
- * Calls with a known tab id share one lane. An active-tab fallback or tab-strip mutation can
- * change which WebContents is active, so it becomes a browser-wide barrier for the whole batch.
- * Unrelated calls each receive their own lane and therefore retain maximum concurrency.
- */
+/** Group parallel batch calls by the same resource lock key; reads stay independent. */
 function parallelGroups(calls: BatchCall[]): BatchCall[][] {
-  const scopes = calls.map(batchResourceKey)
-  const hasBrowserBarrier = scopes.includes('browser:global')
   const grouped = new Map<string, BatchCall[]>()
-  calls.forEach((call, index) => {
-    const scope = scopes[index]
-    const key = scope?.startsWith('browser:') && hasBrowserBarrier ? 'browser:global' : scope ?? `independent:${call.index}`
-    const group = grouped.get(key)
+  calls.forEach((call) => {
+    const scope = batchResourceKey(call) ?? `independent:${call.index}`
+    const group = grouped.get(scope)
     if (group) group.push(call)
-    else grouped.set(key, [call])
+    else grouped.set(scope, [call])
   })
   return [...grouped.values()]
 }
 
-/**
- * Batch lanes are broader than cross-pane exclusive locks: reads do not lock a tab against
- * another chat, but they must still remain ordered with mutations to that tab inside one plan.
- */
 function batchResourceKey(call: BatchCall): string | null {
-  const exclusive = resourceKey({
-    namespace: call.namespace, tool: call.tool, arguments: call.arguments
-  }, call.arguments)
-  if (exclusive) return exclusive
-  const tab = typeof call.arguments.tab_id === 'string' && call.arguments.tab_id.length > 0
-    ? call.arguments.tab_id
-    : null
-  if (call.namespace === 'embedded_browser' && call.tool === 'page') {
-    return tab ? `browser:tab:${tab}` : 'browser:global'
-  }
-  if (call.namespace === 'browser_cdp' && ['page', 'protocol'].includes(call.tool)) {
-    return tab ? `browser:tab:${tab}` : 'browser:global'
-  }
-  return null
+  const request = { namespace: call.namespace, tool: call.tool, arguments: call.arguments }
+  if (isBrowserObservingCall(request, call.arguments)) return null
+  return resourceKey(request, call.arguments)
 }
 
 /** Separate call blocks let the registry's aggregate budget preserve short failures and ids. */

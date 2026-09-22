@@ -138,7 +138,7 @@ test('assignment discovery is bounded and keeps the caller default first', () =>
   assert.equal(snapshot.assignments[0].tabId, snapshot.defaultTabId)
 })
 
-test('bulk close preflights every affected tab and shared session mutations refuse peer assignments', () => {
+test('bulk close preflights every affected tab owned by another chat', () => {
   const { prepare } = harness()
   prepare('a', { action: 'evaluate', expression: '1', tab_id: 'user' })
   prepare('b', { action: 'evaluate', expression: '1', tab_id: 'other' })
@@ -149,14 +149,13 @@ test('bulk close preflights every affected tab and shared session mutations refu
   assert.equal(prepare('a', { action: 'click' }, 'closedai_app', 'ui').action, 'click')
 })
 
-test('idle peer tab assignments do not block session-wide tools; running peers still do', () => {
+test('a running peer on another tab does not block session or app-ui prepare', () => {
   const { prepare, running } = harness()
   prepare('a', { action: 'evaluate', expression: '1', tab_id: 'user' })
   prepare('b', { action: 'evaluate', expression: '1', tab_id: 'other' })
-  assert.equal(prepare('a', { action: 'click' }, 'closedai_app', 'ui').action, 'click')
   running.add('b')
-  assert.throws(() => prepare('a', { action: 'set_cookie' }, 'embedded_browser', 'session'), /still running/)
-  assert.throws(() => prepare('a', { action: 'click' }, 'closedai_app', 'ui'), /still running/)
+  assert.equal(prepare('a', { action: 'set_cookie', name: 'x', value: '1' }, 'embedded_browser', 'session').name, 'x')
+  assert.equal(prepare('a', { action: 'click' }, 'closedai_app', 'ui').action, 'click')
 })
 
 test('claim, release, and release_all manage assignments without closing tabs', () => {

@@ -1,26 +1,8 @@
 import type { ToolCallRequest } from '../registry.js'
 import type { JsonObject, ToolContext } from '../tool.js'
+import { isBrowserObservingCall } from './tool-surface.js'
 
 type Tab = { id: string; active: boolean }
-
-/**
- * Verbs that only observe a page, by `namespace.tool` and action. Any chat may run these against
- * any tab, and running one never claims a tab or moves the caller's default: looking at a page is
- * not taking it over, and a chat asked "what is on screen?" should not end up owning the page the
- * user was reading. Everything absent from this list — changing a page, where it points, what the
- * window shows, or the tab strip — still needs the assignment.
- *
- * `script evaluate` and `script fetch` are deliberately absent: both run in the page and can act
- * (evaluate is arbitrary JavaScript, fetch borrows the tab's origin and session for a write).
- */
-const OBSERVING: Record<string, readonly string[]> = {
-  'embedded_browser.page': ['read_page', 'wait_for'],
-  'embedded_browser.script': ['query', 'extract', 'console'],
-  'closedai_ui.capture': ['browser_page'],
-  'browser_cdp.page': ['inspect_page'],
-  'browser_cdp.profile': ['metrics'],
-  'browser_cdp.protocol': ['capabilities', 'targets', 'events', 'requests', 'body']
-}
 export type BrowserCoordinationHost = {
   tabs(): readonly Tab[]
   create(): string
@@ -50,26 +32,13 @@ export class BrowserCoordination {
     const input = { ...original }
     const { namespace, tool } = request
     const action = String(input.action ?? '')
-    if (namespace === 'embedded_browser' && tool === 'session') {
-      if (['set_cookie', 'remove_cookie'].includes(action) ||
-          (action === 'fetch' && !['GET', 'HEAD'].includes(String(input.method ?? 'GET')))) this.exclusiveSession(pane)
-      return input
-    }
-    if (namespace === 'embedded_browser' && tool === 'network') {
-      if (action === 'add_rule' && typeof input.tab_id === 'string') this.claim(input.tab_id, pane)
-      else if (['add_rule', 'remove_rule', 'clear'].includes(action)) this.exclusiveSession(pane)
-      return input
-    }
-    if (namespace === 'closedai_app' && tool === 'ui' && ['click', 'type', 'press_key', 'scroll'].includes(action)) {
-      // Renderer controls can switch/close arbitrary tabs; use addressed browser commands instead.
-      this.exclusiveSession(pane)
-      return input
+    if (namespace === 'embedded_browser' && tool === 'network' && action === 'add_rule' && typeof input.tab_id === 'string') {
+      this.claim(input.tab_id, pane)
     }
     const tabCommand = namespace === 'closedai_app' && tool === 'command' && action === 'browser_tab'
     const pageTool = namespace === 'embedded_browser' && ['page', 'script'].includes(tool)
     const capture = namespace === 'closedai_ui' && tool === 'capture' && action === 'browser_page'
     if (!tabCommand && !pageTool && !capture && namespace !== 'browser_cdp') return input
-    if (namespace === 'browser_cdp' && tool === 'protocol') this.checkProtocol(input, pane)
     if (tabCommand && input.op === 'new') return input
     if (tabCommand && ['release', 'release_all', 'claim'].includes(String(input.op))) return input
     if (pageTool && tool === 'page' && action === 'navigate') {
@@ -161,7 +130,7 @@ export class BrowserCoordination {
   /** Whether this call only looks at the tab, so it needs no assignment and takes none. */
   private observes(request: ToolCallRequest, action: string, input: JsonObject, tabCommand: boolean): boolean {
     if (tabCommand) return input.op === 'select'
-    return OBSERVING[`${request.namespace}.${request.tool}`]?.includes(action) === true
+    return isBrowserObservingCall(request, { ...input, action })
   }
 
   private checkOwner(tabId: string, paneId: string): void {
@@ -169,24 +138,6 @@ export class BrowserCoordination {
     if (owner && owner !== paneId) {
       throw new Error(`Browser tab ${tabId} is assigned to chat ${owner}. You can still read it (read_page, wait_for, query, extract, console, capture) and select it; to act in a page, use your own tab or navigate with new_tab: true. Its owner can release it with browser_tab op: release.`)
     }
-  }
-
-  private exclusiveSession(pane: string): void {
-    const blocker = [...this.owners.values()].find(owner => owner !== pane && this.host.paneRunning(owner))
-    if (blocker) {
-      throw new Error('Shared browser session or app-wide input is in use by another chat that is still running. Use tab-scoped browser tools, wait for that chat to finish, or ask it to release its tabs with browser_tab release or release_all.')
-    }
-  }
-
-  private checkProtocol(input: JsonObject, pane: string): void {
-    const method = String(input.method ?? '')
-    // Raw Target commands can address another root through the caller’s debugger connection.
-    // They remain available exclusively; addressed app commands also work alongside peers.
-    if (input.action === 'target' || (method.startsWith('Target.') && !['Target.getTargets', 'Target.getTargetInfo'].includes(method))) {
-      this.exclusiveSession(pane)
-    }
-    if ((/^(Browser|Storage)\./.test(method) && !/\.(get|can)/.test(method)) ||
-        /^Network\.(setCookie|setCookies|deleteCookies|clearBrowserCookies|clearBrowserCache)$/.test(method)) this.exclusiveSession(pane)
   }
 
   private prune(): void {

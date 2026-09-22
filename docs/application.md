@@ -88,16 +88,17 @@ block session-wide tools while the owner is not running. A closed default produc
 new or explicit target is chosen. Bulk tab close commands preflight all affected tabs before closing
 any.
 
-Independent tabs can navigate, extract, and capture concurrently. Foreground input and tab-strip
-commands take a shared browser lock; conflicting calls fail busy. A timed-out operation keeps its
-lock until its underlying work settles. Raw Input commands use the same foregrounding path as
-semantic input. A tab opened for a chat's browser work is selected (first untargeted navigation,
-`new_tab`, and the `browser_tab` new/new_right/duplicate commands); research source tabs still
-preserve browser selection, and popups inherit their opener's assignment while a background opener
-cannot activate its popup. Session-wide cookie,
-global network-rule, raw Target mutations, and renderer input are refused while another chat holds tabs.
-This coordinates app-owned tools, not human input or provider-native browser tools. Website account
-state and cookies are still shared; it is not isolation between separate browser profiles.
+Independent tabs can navigate, extract, and capture concurrently, including parallel reads on the
+same tab. Resource locks are scoped: one mutation at a time per tab, one lane for session-wide
+cookie/network-rule changes, one for tab-strip bulk operations, and one for real page or app
+input — unrelated tabs do not block each other. A timed-out operation keeps its lock until its
+underlying work settles. Cross-chat **assignment** still refuses acting in a tab another chat owns;
+observing verbs never claim. A tab opened for a chat's browser work is selected (first untargeted
+navigation, `new_tab`, and the `browser_tab` new/new_right/duplicate commands); research source
+tabs still preserve browser selection, and popups inherit their opener's assignment while a
+background opener cannot activate its popup. This coordinates app-owned tools, not human input or
+provider-native browser tools. Website account state and cookies are still shared; it is not
+isolation between separate browser profiles.
 
 The isolated `xvfb-run -a node scripts/browser-coordination-live-check.mjs` check exercises actual
 Electron tabs, parallel navigation and extraction, background screenshot pixels, foreground input
