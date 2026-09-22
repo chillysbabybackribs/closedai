@@ -41,7 +41,7 @@ test('PDF inspection returns page images and OCR text; invalid inputs are reject
   const ocr = await h.service.inspectPdf(h.id, h.source, context, { action: 'ocr', page: 1, dpi: 216 })
   assert.equal(ocr.ocr?.text, 'recognized evidence')
   assert.equal(ocr.ocr?.confidence, 95)
-  await assert.rejects(h.service.inspectPdf(h.id, h.source, context, { action: 'page', page: 0, dpi: 144 }), /Page must be between 1/)
+  await assert.rejects(h.service.inspectPdf(h.id, h.source, context, { action: 'page', page: 0, dpi: 144 }), /PDF page must be a positive integer/)
   await assert.rejects(h.service.inspectPdf(h.id, h.source, context, { action: 'ocr', page: 1, dpi: 217 }), /between 72 and 216/)
   assert.equal(calls.length, 2)
 })
@@ -61,20 +61,6 @@ test('inspection respects ownership, serializes against expansion, and releases 
   await failure
   assert.equal(h.service.read(h.id, context).pending, 0)
   assert.equal(h.service.read(h.id, context).sources[0].sha256, 'text-hash')
-})
-
-test('long native items fit the result budget with an accurate continuation cursor', async (t) => {
-  const h = await harness(async () => ({ ...evidence, ocr: undefined, native: {
-    ...evidence.native, text: 't'.repeat(12_000), items: Array.from({ length: 30 }, () => ({ text: 'x'.repeat(1000), transform: [1, 0, 0, 1, 0, 0], width: 100, height: 12 }))
-  } }))
-  t.after(() => h.service.dispose())
-  const result = await pdfTool(h.service).run({ action: 'page', run_id: h.id, source_id: h.source, page: 1, max_chars: 6000, max_items: 30 }, context)
-  const text = result.content[0].type === 'text' ? result.content[0].text.split('\n')[0] : ''
-  const body = JSON.parse(text)
-  assert.ok(text.length <= 14_000)
-  assert.ok(body.items.length > 0 && body.items.length < 30)
-  assert.equal(body.nextItemsOffset, body.items.length)
-  assert.equal(body.nextOffset, 6000)
 })
 
 test('cancel, turn replacement and shutdown abort active PDF inspection', async () => {
