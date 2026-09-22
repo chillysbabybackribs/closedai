@@ -4,7 +4,6 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import { Composer, type ComposerProps } from './composer.tsx'
-import { resetComposerLayoutCache, setComposerLayout } from './composer-layout.ts'
 
 const baseProps: ComposerProps = {
   enabled: true,
@@ -27,83 +26,72 @@ const baseProps: ComposerProps = {
   recentProjects: [],
   onChooseProject: async () => {},
   onSelectProject: async () => {},
-  onClearProject: async () => {},
-  activeTurnId: null
+  onClearProject: async () => {}
 }
 
-test('idle composer defaults to full mode with collapse toggle', () => {
+const gpt4o: ComposerProps['models'][number] = {
+  id: 'gpt-4o',
+  displayName: 'GPT-4o',
+  provider: 'codex',
+  contextWindow: 128_000,
+  defaultReasoningEffort: 'low',
+  supportedReasoningEfforts: [],
+  isDefault: true,
+  description: 'Omni model'
+}
+
+test('the idle composer is one line: attach, input, setup trigger, and a disabled send button', () => {
   const html = renderToStaticMarkup(createElement(Composer, { ...baseProps }))
-  assert.doesNotMatch(html, /prompt-composer is-compact/)
-  assert.match(html, /data-ui="composer\.compact-toggle"/)
-  assert.match(html, /aria-label="Collapse composer"/)
+  assert.match(html, /class="composer"/)
+  assert.match(html, /data-ui="composer\.upload"/)
   assert.match(html, /data-ui="composer\.input"/)
+  assert.match(html, /data-ui="composer\.setup"/)
+  assert.match(html, /data-ui="composer\.send"[^>]*disabled/)
+  assert.doesNotMatch(html, /data-ui="composer\.stop"/)
+  assert.doesNotMatch(html, /data-ui="composer\.resume"/)
+  // The rail, footer, compact pill, and hover ring are gone: nothing renders outside the card.
+  assert.doesNotMatch(html, /composer-project-strip|prompt-composer-footer|prompt-composer-compact-row|class="context-meter"/)
 })
 
-test('running composer stays full with stop and manual collapse controls', () => {
+test('the running composer swaps send for pause in the same slot and leaves the trigger alone', () => {
   const html = renderToStaticMarkup(createElement(Composer, {
     ...baseProps,
-    running: true,
-    activeTurnId: 'turn-123'
+    models: [gpt4o],
+    running: true
   }))
-  assert.doesNotMatch(html, /prompt-composer is-compact/)
-  assert.doesNotMatch(html, /prompt-composer-compact-row/)
   assert.match(html, /data-ui="composer\.stop"/)
-  assert.match(html, /data-ui="composer\.compact-toggle"/)
-  assert.match(html, /aria-label="Collapse composer"/)
-  assert.match(html, /data-ui="composer\.input"/)
+  assert.doesNotMatch(html, /data-ui="composer\.send"/)
+  assert.match(html, /aria-label="Pause Codex \(Esc\)"/)
+  // No spinner or clock on the trigger: it still names the model and folder while a turn runs.
+  assert.match(html, /composer-setup-model[^>]*>GPT-4o</)
+  assert.match(html, /composer-setup-folder[^>]*>workspace</)
+  assert.doesNotMatch(html, /Working for|spinner|elapsed/)
+  assert.match(html, /placeholder=""/)
 })
 
-test('paused composer defaults to full mode with resume control', () => {
-  const html = renderToStaticMarkup(createElement(Composer, {
-    ...baseProps,
-    paused: true
-  }))
-  assert.doesNotMatch(html, /prompt-composer is-compact/)
-  assert.match(html, /data-ui="composer\.compact-toggle"/)
-  assert.match(html, /aria-label="Collapse composer"/)
+test('the paused composer offers resume and says so in the placeholder', () => {
+  const html = renderToStaticMarkup(createElement(Composer, { ...baseProps, paused: true }))
   assert.match(html, /data-ui="composer\.resume"/)
+  assert.doesNotMatch(html, /data-ui="composer\.send"/)
+  assert.match(html, /placeholder="Resume, or send something new"/)
 })
 
-test('composer shows model name on the trigger and context meter below the card', () => {
+test('the trigger names the model and folder, not the context size or effort', () => {
   const html = renderToStaticMarkup(createElement(Composer, {
     ...baseProps,
-    models: [
-      {
-        id: 'gpt-4o',
-        displayName: 'GPT-4o',
-        provider: 'codex',
-        contextWindow: 128_000,
-        defaultReasoningEffort: 'low',
-        supportedReasoningEfforts: [],
-        isDefault: true,
-        description: 'Omni model'
-      }
-    ],
-    selectedModel: 'gpt-4o'
+    models: [{ ...gpt4o, supportedReasoningEfforts: [{ reasoningEffort: 'high', description: '' }] }],
+    selectedReasoningEffort: 'high',
+    projectPath: '/home/dp/Desktop/closedai'
   }))
-  assert.match(html, /data-ui="composer\.model"/)
-  assert.match(html, /model-menu-trigger-model/)
-  assert.match(html, /GPT-4o/)
-  // Context info (128K) is hidden from the resting trigger text
-  assert.doesNotMatch(html, /model-menu-trigger-context/)
-  assert.match(html, /class="context-meter"/)
-  assert.match(html, /prompt-composer-footer/)
-  assert.doesNotMatch(html, /prompt-composer-actions-start/)
+  assert.match(html, /composer-setup-model[^>]*>GPT-4o</)
+  assert.match(html, /composer-setup-folder[^>]*>closedai</)
+  assert.doesNotMatch(html, /128K/)
+  assert.doesNotMatch(html, /composer-setup-trigger[^>]*>[^<]*High/)
 })
 
-test('a persisted compact choice renders the pill for a fresh composer', () => {
-  setComposerLayout('compact')
-  try {
-    const html = renderToStaticMarkup(createElement(Composer, { ...baseProps }))
-    assert.match(html, /prompt-composer is-compact/)
-    assert.match(html, /prompt-composer-compact-row/)
-    assert.match(html, /aria-label="Expand composer"/)
-    // The project rail stays visible above the pill.
-    assert.match(html, /data-ui="composer\.project"/)
-  } finally {
-    setComposerLayout('full')
-    resetComposerLayoutCache()
-  }
+test('a queued folder change is named on the trigger', () => {
+  const html = renderToStaticMarkup(createElement(Composer, { ...baseProps, projectPending: true }))
+  assert.match(html, /composer-setup-folder[^>]*>workspace \(queued\)</)
 })
 
 test('composer copy names the pane provider, not Codex', () => {
@@ -111,8 +99,7 @@ test('composer copy names the pane provider, not Codex', () => {
   assert.match(claude, /aria-label="Message Claude Code"/)
   assert.match(claude, /placeholder="Claude Code is unavailable"/)
   assert.doesNotMatch(claude, /Codex/)
-  setComposerLayout('compact')
   const cursor = renderToStaticMarkup(createElement(Composer, { ...baseProps, provider: 'cursor' }))
-  assert.match(cursor, /aria-label="Message Cursor"/)
-  resetComposerLayoutCache()
+  assert.match(cursor, /placeholder="Message Cursor"/)
+  assert.match(cursor, /aria-label="Send to Cursor \(Enter\)"/)
 })
