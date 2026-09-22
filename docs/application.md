@@ -355,15 +355,13 @@ guidance via `agent-workspace-instructions.ts`, and the project store. The works
 building, journal lines, tree amendments, catch-up, accept, reopen) is a `ProjectMutation` sent over
 `project:mutate` and applied by the shared reducer in `src/shared/project/mutations.ts`. The same
 reducer runs in memory for the canvas fixture and tests, so both paths produce identical state.
-Quit and relaunch restores the phase, record, tree, and journal. **v1 pipeline (2026-09-22):** models
-read and write the same store through the `closedai_project` tool (`snapshot`, `mutate`; see
-`docs/tools.md`), resolved to the calling chat's project. Pressing Start writes the `start` mutation
-and then sends the coordinator chat a kickoff message; the coordinator's building-phase guidance in
-`agent-workspace-instructions.ts` has it read the snapshot, write the first tasks as tree nodes, open
-a background worker with `closedai_app.command new_chat` (`background: true`, off the main tab strip), and hand it one task by `send_message`. The
-worker is a normal chat in the same project and records its own completion with `closedai_project.mutate`,
-so the canvas shows nodes changing because a chat wrote them. There is no dispatch engine, claim, or
-lease; one task at a time is the whole v1 contract. What is still **prototype**: the direction record is
+Quit and relaunch restores the phase, record, tree, and journal. **Product intent (2026-09-22):** an **autonomous agent hive** — after Start, work keeps moving from
+`project.json` and `HiveConfig` (`rolling` dispatch, bounded concurrency) without the user opening
+worker chat tabs or messaging the coordinator after each task. The workspace pane is for optional
+monitoring and intervention; babysitting is a bug. **Current gap:** there is still no main-process
+**hive dispatch consumer**; a prompt-driven coordinator may spawn workers via app commands, but the
+app does not automatically run the next queued task when one completes. Models read and write the
+store through `closedai_project` (`snapshot`, `mutate`; see `docs/tools.md`). What is still **prototype**: the direction record is
 read off the coordinator transcript by message position (`syncDiscoveryWithItems`) rather than written
 by the model; a user message during building is also turned into an amendment node by the pane itself
 (`amendTree`, a whole-tree `replace`); acknowledged reports and the open completion proposal are local

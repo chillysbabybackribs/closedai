@@ -5,6 +5,36 @@ workspace. It records what is real today, what v1 must do and what v2 may add, a
 panes stay out of each other's way. Update it when a piece lands. The
 [blueprint](adaptive-multi-agent-development-blueprint.md) is the target shape; this plan is the path.
 
+## Product contract: autonomous hive (owner, 2026-09-22)
+
+The agent workspace is an **agent hive that runs on its own** after the user confirms direction.
+The user **may** monitor and intervene at any time; they must **not** have to babysit the build.
+
+| Default (hive) | Optional (user) | Not the product |
+| --- | --- | --- |
+| After Start, work is planned into `project.json` and **keeps moving** under `hive.dispatch` (rolling dispatch, bounded concurrency in `HiveConfig`) | Open the map, catch up, read journal/files, send direction or constraints | Per-task “continue”, nudging the coordinator after every completion |
+| Workers run **headless**; status and outcomes land on tree nodes and journal | Pause, stop, or amend; direction becomes a store amendment and replan | Opening each task as a **main-layout chat tab** the user must follow |
+| Shared store is truth; the workspace pane is the **cockpit** | Drill into a node or file; reopen history if needed | The chat tab strip as the orchestration surface |
+
+**Babysitting** means: queued tasks sit idle until a human or a one-shot coordinator turn does
+something; workers appear outside the workspace; or progress only advances when the user remembers
+to message the coordinator. That is a failure mode, not a v1 limitation to accept.
+
+The store already declares a hive (`hive.workers`, `hive.dispatch.mode: 'rolling'` in
+`src/shared/project/coordinator.ts`). The gap is a **main-process consumer** that watches the store
+and spawns/sends/briefs workers — not more coordinator prose.
+
+## Drift: prompt-driven v1 (acknowledged 2026-09-22)
+
+A shortcut landed: the coordinator model calls `closedai_app.command new_chat` and `send_message`,
+then its turn ends. Nothing in the app guarantees the next queued task runs. That path was useful to
+prove `closedai_project.mutate` and one worker completion, but it **contradicts the product contract**
+above and caused the “tab outside the workspace / everything stopped queued” experience.
+
+**Do not extend** that pattern (more instructions, background flags only, UI polish on Start).
+**Do** implement the smallest **hive runner** that reads `project.json`, respects `HiveConfig`, and
+loops: dispatch → worker completes → dispatch next, with user direction as amendments only.
+
 ## Why this document exists
 
 On 2026-09-21/22 seven panes edited the workspace at once. Two edit paths existed (the removed
@@ -27,8 +57,10 @@ What that means for a pane working here:
   fixture or flag, and never pretend to be runtime behavior on the live path.
 - **Prefer the crude version that runs** over the designed version that does not. A plain patch
   verb the owner can exercise today beats an event-sourced store that lands next week.
-- **Do not add structure for a phase that has not arrived.** No leases before there are two
-  writers, no observers before there are tasks, no branch isolation before there is dispatch.
+- **Do not add structure for a phase that has not arrived.** No leases before two writers race; no
+  branch isolation before headless workers exist. **Exception:** a minimal **dispatch consumer**
+  for `hive.dispatch.mode: 'rolling'` is required for the product to exist at all — not a “v2
+  luxury.”
 - **Each slice ends with the owner trying it** in the running Electron app. If they cannot, the
   slice is not done.
 
@@ -50,7 +82,8 @@ Verified in source on 2026-09-22.
 | Restart control, `closedai_ui.capture` `agent_workspace` | Live | `layout.agent-restart`, `src/main/tools/capture/agent-workspace.ts` |
 | Model tool over the store: `closedai_project` `snapshot` and `mutate` | Live (v1) | `src/main/tools/project/`; resolves the calling chat's project, or `project_path` |
 | Start sends the coordinator a kickoff message; coordinator plans tasks into the store | Live (v1) | `project-workspace.tsx` `start`, building-phase paragraphs in `agent-workspace-instructions.ts` |
-| Worker chats | Live (v1), by prompt | Background chats the coordinator opens with `closedai_app.command new_chat` (`background: true`) and briefs with `send_message`; they stay off the tab strip and record completion with `closedai_project.mutate` |
+| Worker chats | Misaligned interim | Prompt-driven `new_chat` / `send_message`; optional `background: true`. **Replace** with app-spawned headless workers under `HiveConfig` |
+| Hive dispatch consumer | **Not built — blocks product** | Should read store + `hive`, spawn workers, continue on task `complete` without user babysitting |
 | Direction record filled from the transcript | Prototype | `syncDiscoveryWithItems` maps user message N to pillar N and invents unknowns and evidence; persisted through `direction` mutations so Start is reachable |
 | User direction during building | Prototype | The pane turns it into an amendment node itself (`amendTree`, whole-tree replace) and also forwards it to the coordinator |
 | Acknowledged reports, open completion proposal | Prototype | Local React state and a 900 ms proposal timer |
@@ -67,14 +100,17 @@ earlier order built infrastructure (store, then tool namespace, then claims) and
 thing the owner wanted to see, which is an idea going in and real work coming out. Every remaining
 piece is pulled by a failure observed in a real run, not by the blueprint.
 
-The v1 pass condition, checked by the owner in the running app:
+The **hive pass condition** (what “working” means after the drift correction):
 
 1. Type an idea into the agent workspace and answer four questions.
 2. Press Start building.
-3. The coordinator writes one to three tasks under the root and the canvas shows them.
-4. A new chat pane opens, receives one task, and does it in the project directory.
-5. That chat marks the task complete through the tool, and the canvas and journal show it without
-   anyone touching the pane.
+3. The hive writes one to three tasks under the root; the canvas shows them.
+4. **Without further user action**, the hive dispatches the first task to a headless worker in the
+   project directory; **no main-layout chat tab** opens for that work.
+5. When the task completes in the store, the hive **automatically** dispatches the next queued
+   task (rolling, up to `hive.workers.maxConcurrent`) until none remain or the user stops the hive.
+6. The user can walk away, then return to the same pane and see tree + journal progress; optional
+   direction amends the store and replans — not required to unblock queued work.
 
 What v1 is made of, all landed 2026-09-22:
 
@@ -97,9 +133,20 @@ coordinator's, so the owner keeps the workspace on the same project as the selec
 pane's own amendment writer can race a coordinator write in the same second; nothing stops the
 coordinator from dispatching a second task before the first completes except its instructions.
 
-## v2: optimize and tune
+## Next: hive runner (required)
 
-Only after a v1 run has been observed. Candidates, each tied to the failure that would justify it:
+Smallest implementation that satisfies the product contract:
+
+1. **Dispatch consumer** in main: on store changes (and on Start), select `queued` tasks under rolling
+   rules, spawn headless worker runtimes (reuse `newWorkerPeer` / `agentWorker`), brief with task +
+   `project_path`, track `active` on the node.
+2. **Completion hook:** when a worker marks a task `complete`, consumer schedules the next dispatch
+   without a user or coordinator message.
+3. **Coordinator role narrows:** intake + initial plan (tasks into store) + amendments; **not** the
+   only thing that can start workers.
+4. **Enforce:** agent-workspace coordinators cannot create visible layout tabs for hive work.
+
+Further tuning after the hive runs without babysitting:
 
 - **Coordinator writes the record** (`direction` mutation during intake, delete
   `syncDiscoveryWithItems`) if the positional mapping records wrong answers in practice.
