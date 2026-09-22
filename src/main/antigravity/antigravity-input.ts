@@ -2,7 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { ChatAttachment, ChatAttachmentSummary } from '../../shared/chat.js'
 import { buildChatInput } from '../chat-input.js'
-import type { AdditionalContext } from '../chat-context/turn-context.js'
+import { contextBlockText, type AdditionalContext } from '../chat-context/turn-context.js'
 
 // One user turn for the CLI's stream-json stdin, whose message content is plain text. The
 // validation and attachment summaries come from the same buildChatInput the other lanes use;
@@ -42,7 +42,7 @@ export async function buildAntigravityPrompt(
 /** Codex receives turn context as tagged fragments; Antigravity gets the same fragments as tagged text. */
 export function contextBlocks(context: AdditionalContext | undefined): string[] {
   if (!context) return []
-  return Object.entries(context).map(([name, fragment]) => `<closedai_context name="${name}" kind="${fragment.kind}">\n${fragment.value}\n</closedai_context>`)
+  return Object.entries(context).map(([name, fragment]) => contextBlockText(name, fragment))
 }
 
 async function materializeImage(url: string, stateDir: string): Promise<string | null> {

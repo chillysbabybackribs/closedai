@@ -11,6 +11,23 @@ export type AdditionalContext = Record<string, {
 }>
 
 const ACTIVE_BROWSER_CONTEXT = 'closedai.browser.active-tab'
+const CONTEXT_ENVELOPE_TAG = /<(\/?)closedai_context\b/gi
+
+/**
+ * A fragment's value is transcript text, and this repository's own markup turns up inside it as
+ * soon as a chat quotes a page about prompt injection or discusses context blocks at all. Left
+ * alone, a `</closedai_context>` in a carried-forward digest closes the envelope early and every
+ * later line of that digest — the model's own prior words — reads as top-level instruction rather
+ * than as untrusted data. Only the app opens and closes a block.
+ */
+export function escapeContextEnvelope(value: string): string {
+  return value.replace(CONTEXT_ENVELOPE_TAG, '&lt;$1closedai_context')
+}
+
+/** The one tagged-text form of a fragment, for CLI lanes that cannot pass structured context. */
+export function contextBlockText(name: string, fragment: AdditionalContext[string]): string {
+  return `<closedai_context name="${name}" kind="${fragment.kind}">\n${escapeContextEnvelope(fragment.value)}\n</closedai_context>`
+}
 
 // Deliberately conservative: ordinary coding turns should not pay for unrelated browser
 // state. These phrases indicate either browser intent or a reference to visible page state.

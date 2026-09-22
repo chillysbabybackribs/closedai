@@ -20,8 +20,12 @@ export function buildCompactionSeed(items: ChatTranscriptItem[], threadName: str
   return handoff?.text ?? null
 }
 
+const COMPACTED_ENVELOPE_TAG = /<(\/?)compacted_conversation_context\b/gi
+
+/** Same rule as the outer envelope: transcript prose may quote this tag, so only the app closes it. */
 export function wrapCompactedContext(summary: string): string {
-  return ['<compacted_conversation_context>', summary, '</compacted_conversation_context>'].join('\n')
+  const body = summary.replace(COMPACTED_ENVELOPE_TAG, '&lt;$1compacted_conversation_context')
+  return ['<compacted_conversation_context>', body, '</compacted_conversation_context>'].join('\n')
 }
 
 export function compactedAdditionalContext(summary: string): AdditionalContext {

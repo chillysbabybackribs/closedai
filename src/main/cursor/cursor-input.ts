@@ -1,7 +1,7 @@
 import type { ChatAttachment, ChatAttachmentSummary } from '../../shared/chat.js'
 import { imageBytesFromDataUrl, imageBytesFromPath } from '../chat-image-bytes.js'
 import { buildChatInput } from '../chat-input.js'
-import type { AdditionalContext } from '../chat-context/turn-context.js'
+import { contextBlockText, type AdditionalContext } from '../chat-context/turn-context.js'
 import type { AcpPromptBlock } from './cursor-acp.js'
 
 // One user turn as ACP prompt blocks. Validation and attachment summaries come from the same
@@ -52,8 +52,5 @@ export async function buildCursorPrompt(
 /** Codex receives turn context as tagged fragments; Cursor gets the same fragments as tagged text. */
 export function contextBlocks(context: AdditionalContext | undefined): AcpPromptBlock[] {
   if (!context) return []
-  return Object.entries(context).map(([name, fragment]) => ({
-    type: 'text' as const,
-    text: `<closedai_context name="${name}" kind="${fragment.kind}">\n${fragment.value}\n</closedai_context>`
-  }))
+  return Object.entries(context).map(([name, fragment]) => ({ type: 'text' as const, text: contextBlockText(name, fragment) }))
 }

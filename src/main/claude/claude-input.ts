@@ -2,7 +2,7 @@ import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import type { ChatAttachment, ChatAttachmentSummary } from '../../shared/chat.js'
 import { imageBytesFromDataUrl, imageBytesFromPath, type ImageMimeType } from '../chat-image-bytes.js'
 import { buildChatInput } from '../chat-input.js'
-import type { AdditionalContext } from '../chat-context/turn-context.js'
+import { contextBlockText, type AdditionalContext } from '../chat-context/turn-context.js'
 
 // One user turn for the SDK's streaming input. Validation and attachment summaries come from
 // the same buildChatInput the Codex lane uses; only the wire shape differs: Anthropic content
@@ -60,10 +60,7 @@ export async function buildClaudeUserMessage(
 /** Codex receives turn context as tagged fragments; Claude gets the same fragments as tagged text. */
 export function contextBlocks(context: AdditionalContext | undefined): ContentBlock[] {
   if (!context) return []
-  return Object.entries(context).map(([name, fragment]) => ({
-    type: 'text',
-    text: `<closedai_context name="${name}" kind="${fragment.kind}">\n${fragment.value}\n</closedai_context>`
-  }))
+  return Object.entries(context).map(([name, fragment]) => ({ type: 'text', text: contextBlockText(name, fragment) }))
 }
 
 async function imageFromPath(path: string): Promise<ContentBlock | null> {
