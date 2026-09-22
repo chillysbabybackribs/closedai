@@ -151,20 +151,18 @@ capped at eight million characters. Recheck the internal adapter on Electron upg
 Native text does not establish complete reading order, table structure, math fidelity, or
 image coverage. The scan checked in this build returned no text: Google Chrome's separately
 distributed Screen AI OCR must not be assumed present in Electron. Research PDFs retained by
-`search.run` continue to use the independent `search.pdf` rendering/OCR path described below.
+`search.run` extract native text via PDF.js; for open Chromium PDF tabs, use `embedded_browser.page read_page`.
 
 Browser strip snapshots include app-owned image tabs, identified by `image` metadata.
 They support strip commands (select, close, rename, duplicate), but have no native web page
 or CDP target. Select a web tab for page tools, or use the `image.*` app controls for zoom,
 fit, pan, download, and reveal. Image bytes are not included in tool state or tab events.
 
-`investigation.read` offers `list` and `read` for durable artifacts; `investigation.manage`
-offers `import`, `export` and `delete`. Both are provider-neutral and deferred where supported.
 `browser_cdp.protocol command` accepts `retain: true`, with explicit `tab_id`, `operation_key`
-and `label`, to store the complete host response JSON before normal output truncation. It
-returns a compact artifact descriptor instead of inline data. Raw commands retain their
-ordinary effects and input checks. Ordinary commands without retention behave as before.
-See [artifact contracts, examples, limits and verification](investigation-artifacts.md).
+and `label`, to store the complete host response JSON before normal output truncation in the
+SQLite artifact store. It returns a compact artifact descriptor receipt instead of inline data.
+Raw commands retain their ordinary effects and input checks. Ordinary commands without retention
+behave as before.
 
 For exact network evidence, `browser_cdp.protocol requests` retains repeated URLs and child
 `sessionId` identities. Pass that value as `session_id` to `protocol body` for child traffic.
@@ -375,43 +373,11 @@ Results use `pdf_text`, `[Page N]` markers, and `pdf` coverage: `totalPages`, `e
 (pages processed, including a character-clipped final page), and `pagesWithoutText` among processed
 pages. The hash covers retained text. Character limits or pages without text mark `incomplete`.
 `pdf.documentSha256` and `pdf.bytes` identify the original PDF separately from the text hash.
-`pdf.textStatus: none` means no native text was found among inspected pages; the source remains
-ready with retained bytes for page inspection/OCR, and `incomplete` is true. Empty/scanned pages
-cannot be distinguished by text extraction. Password requirements and parsing failures still fail.
-Explicit Exa expansion remains available as provider extraction.
-
-`search.pdf page` renders one selected page or normalized crop from those retained bytes, without
-refetching. It returns a JPEG, the original byte hash, page number, dimensions, effective DPI,
-and pageable native text plus optional text-item transforms. Native text/items cover the whole
-page even when the image is cropped; they are not reconstructed columns, tables, or reading order.
-Page numbers are one-based. Crops use top-left fractions of the rotated page; width/height are
-at least 0.01 and the crop must fit inside the page. DPI defaults to 144 for page, 216 for OCR,
-ranges from 72 to 216, and is reduced to fit a maximum 2400 pixels per edge. PDF.js can omit
-embedded rasters above 16 million pixels or unsupported content, even with stopAtErrors enabled.
-An empty drawing-operation list marks `renderIncomplete` and `incomplete`: it can mean a blank
-page or a failed render. Nonempty operations do not prove fidelity; results disclose this limit.
-
-`search.pdf ocr` explicitly runs local Tesseract.js on one page/crop, including mixed native/image
-pages. English model data ships as a dependency; there are no runtime model downloads or document
-uploads. OCR text is separate from native text and has engine/language, confidence (not correctness
-probability), and optional word boxes in rendered-crop pixels. Empty OCR is marked incomplete.
-Results retain up to 120,000 characters and 5,000 items per page, flagging clipping; tool excerpts
-default to 3,000 characters (maximum 6,000) and zero items (maximum 30). Use offset/item_offset
-and nextOffset/nextItemsOffset to page. OCR results are cached separately by PDF revision and
-rendering settings; paging identical settings does not rerun recognition. The cache lives with
-research evidence, is removed with its run, and is cleared on restart.
-
-Both actions require the owning pane/thread and an active unstopped turn, pin the run against
-eviction, serialize against expansion of that source, and abort on cancellation, turn replacement,
-or shutdown. There is one inspection worker at a time, separate from the two text-parser slots,
-with a 60-second deadline including queue time. Workers have 256 MiB V8 old-generation limits;
-these are not total limits on native canvas/WASM memory. Abort terminates the worker and its
-Tesseract child. Page images are explicit research evidence and do not use the UI screenshot
-tool's two-image allowance; each call is limited to one page/crop. Code-mode callers split at
-the final newline-prefixed image data URL and pass it to `image()`, never print the whole payload.
-Rendering and OCR do not set a verification flag. Models must inspect images before visual claims
-and describe which pages/regions were checked; table, equation, figure, and OCR accuracy remain
-unverified unless checked. Provider-only sources need `search.run expand method=direct` first.
+`pdf.textStatus: none` means no native text was found among inspected pages, and `incomplete` is true.
+Empty/scanned pages cannot be distinguished by text extraction. Password requirements and parsing failures still fail.
+Explicit Exa expansion remains available as provider extraction. Note: the legacy `search.pdf` tool
+was retired after zero production calls; native Chromium PDF inspection via `embedded_browser.page read_page`
+(`pdf_page`) serves visual and accessibility reading natively without custom worker pipelines.
 
 Redirects are followed by the
 transport; the resolved URL is retained when available, alongside the requested source URL.
@@ -657,14 +623,9 @@ arguments require history scope. Explicit older references outweigh recency in s
 `peer_chats.read` refuses unknown ids and self-reads as **usage** (amber in Tools & capabilities)
 with pointers to `list` or `recall(scope=current)`; only detach/close races surface as errors.
 
-`peer_chats.checkpoint` writes a small structured checkpoint only for the calling pane's active
-thread/turn. It requires `expected_revision` (0 when absent) and `state` with `goal`, `constraints`,
-`decisions`, `progress`, `nextSteps`, and `files`. Goal is at most 1,000 characters; each list has
-at most 12 non-empty strings of at most 400 characters. The whole serialized state must fit
-6,000 characters. Oversized or stale-revision writes fail without replacing the checkpoint.
-The response contains revision and boundary metadata rather than echoing the entire state.
-One checkpoint per chat is persisted in `ChatStore` (`chats.json`), not a separate transcript
-database. It is model-authored data, not an approval or independently verified work record.
+Note: `peer_chats.checkpoint` was retired after zero production calls. Session continuity
+and project state rely on bounded turn handoffs and provider context compaction rather than
+model-written checkpoint notes.
 
 `peer_chats.recall` is read-only and accepts `scope: current|source|history`, optional literal
 case-insensitive `query`, `types` (defaults to user/assistant messages), `limit` (default 5, max 8),
@@ -691,13 +652,11 @@ history, or id changes can make old evidence unavailable. A history chat id reso
 records, rather than accepting an arbitrary provider thread id. Workspace/thread changes, target
 thread changes or archival, and cancellation invalidate pending reads.
 
-Recall and checkpoint are deferred where supported. Checkpoints remain optional. Routine retrieval
-does not require user-facing narration, but relevant uncertainty and requested sources are disclosed.
-Continuation copies applicable notes into the existing
-bounded handoff, marked untrusted; later conversation can supersede those notes. There is no
-new model call on Send from recall or checkpoints. Idle session rotation is a separate mechanism
-described above. Disabling the checkpoint
-tool prevents new model writes; existing notes/history are not deleted.
+Recall is deferred where supported. Routine retrieval does not require user-facing narration,
+but relevant uncertainty and requested sources are disclosed. Continuation copies applicable notes
+into the existing bounded handoff, marked untrusted; later conversation can supersede those notes.
+There is no new model call on Send from recall. Idle session rotation is a separate mechanism
+described above.
 
 ## Seeing what exists: Tools & capabilities
 
