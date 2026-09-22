@@ -72,6 +72,9 @@ export function ComposerSetupMenu({
 }: ComposerSetupMenuProps): JSX.Element {
   const [usage, recordModelUse] = useModelUsage()
   const triggerRef = useRef<HTMLButtonElement>(null)
+  // Set when a model row closes the panel, so the following close-focus lands in the composer
+  // textarea rather than snapping back to the trigger the way Radix would by default.
+  const focusInputOnCloseRef = useRef(false)
   // Resolved when the panel opens: the column it must stay inside, never the window.
   const [boundary, setBoundary] = useState<Element | null>(null)
   const [open, setOpenState] = useState(false)
@@ -90,6 +93,10 @@ export function ComposerSetupMenu({
   const folder = projectPath ? folderName(projectPath) : null
   const chooseModel = (value: string): void => {
     recordModelUse(value)
+    // Picking a model ends the setup step: close the panel and hand focus to the composer so the
+    // user can start typing without a second click.
+    focusInputOnCloseRef.current = true
+    setOpen(false)
     void onModelChange(value).catch((error: unknown) => onError(errorMessage(error, 'Could not change the model')))
   }
   const chooseEffort = (value: string): void => {
@@ -123,6 +130,15 @@ export function ComposerSetupMenu({
           collisionBoundary={boundary ?? undefined}
           avoidCollisions
           aria-label="Chat setup"
+          onCloseAutoFocus={(event) => {
+            if (!focusInputOnCloseRef.current) return
+            focusInputOnCloseRef.current = false
+            const textarea = triggerRef.current?.closest('.composer')?.querySelector<HTMLTextAreaElement>('textarea')
+            if (textarea) {
+              event.preventDefault()
+              textarea.focus()
+            }
+          }}
         >
           <ModelSection
             sections={providerSections(models, usage, selectedModel)}
