@@ -36,6 +36,7 @@ import { CursorToolBridge } from './cursor/cursor-mcp.js'
 import { AntigravityToolBridge } from './antigravity/antigravity-mcp.js'
 import { BrowserPageAccess } from './browser-page-access.js'
 import { BrowserCoordination } from './tools/browser/coordination.js'
+import { BrowserAssignmentIdleRelease } from './tools/browser/assignment-idle-release.js'
 import { BrowserNetworkAccess } from './browser-network-access.js'
 import { BrowserCdpAccess } from './cdp/browser-cdp-access.js'
 import { AppAutomationAccess } from './app-automation-access.js'
@@ -264,6 +265,11 @@ async function main(): Promise<void> {
     paneExists: paneId => !!chatService?.paneSnapshot(paneId),
     paneRunning: paneId => chatService?.snapshot().chats.find(row => row.paneId === paneId)?.running ?? false
   })
+  const browserAssignmentIdle = new BrowserAssignmentIdleRelease(browserCoordination, (paneId) => {
+    const row = chatService?.snapshot({ limit: 0 }).chats.find((chat) => chat.paneId === paneId)
+    if (row?.running) return true
+    return Boolean(chatService?.paneSnapshot(paneId)?.pausedTurnId)
+  })
   const pageAccess = new BrowserPageAccess(() => browserService)
   cdpAccess = new BrowserCdpAccess(() => browserService)
   const networkAccess = new BrowserNetworkAccess(() => browserService)
@@ -375,7 +381,7 @@ async function main(): Promise<void> {
   }, undefined, workspaceSelector, chatTranscripts, (paneId) => {
     const snapshot = chatService?.paneSnapshot(paneId)
     researchService?.cancelPane(paneId, snapshot?.threadId, snapshot?.activeTurnId)
-  })
+  }, browserAssignmentIdle)
   chatService.on('event', (event: ChatWorkspaceEvent) => {
     if (event.type !== 'pane' || !['turn', 'replace'].includes(event.event.type)) return
     const snapshot = chatService?.paneSnapshot(event.paneId)

@@ -79,14 +79,16 @@ asked what is on screen does not end up owning the user's page. Acting in a page
 is what another chat's assignment refuses (`evaluate` and page `fetch` count as acting). Reading a
 tab the chat already owns does point its default there, so "read that tab, then act in it" needs no
 `tab_id`; later omitted targets use that chat's last assigned tab.
-Assignments protect the intervals between calls and survive turn completion and focus changes.
-`closedai_app.state` exposes `browser.coordination` (the caller's default, tab assignments, and
-whether each owner pane is running). `browser_tab claim` reserves a tab; `release` drops one;
-`release_all` drops every assignment for the calling chat without closing tabs. Detaching the chat
-or restarting also releases assignments. Idle assignments keep per-tab act protection but do not
-block session-wide tools while the owner is not running. A closed default produces an error until a
-new or explicit target is chosen. Bulk tab close commands preflight all affected tabs before closing
-any.
+Assignments protect the intervals between calls and can span turns when a chat keeps working in the
+same tabs; focus changes do not move them. Models should release tabs they are done with before
+finishing a turn (`browser_tab` `release` or `release_all`). `closedai_app.state` exposes
+`browser.coordination` (the caller's default, tab assignments, and whether each owner pane is
+running). `browser_tab claim` reserves a tab; `release` drops one; `release_all` drops every
+assignment for the calling chat without closing tabs. Detaching the chat, restarting, or staying
+inactive long enough (same order of magnitude as idle provider parking, five minutes) also releases
+assignments. Until then, idle assignments keep per-tab act protection but do not block session-wide
+tools while the owner is not running. A closed default produces an error until a new or explicit
+target is chosen. Bulk tab close commands preflight all affected tabs before closing any.
 
 Independent tabs can navigate, extract, and capture concurrently, including parallel reads on the
 same tab. Resource locks are scoped: one mutation at a time per tab, one lane for session-wide

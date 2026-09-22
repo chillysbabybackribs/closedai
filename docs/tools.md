@@ -232,7 +232,9 @@ verification includes `embedded_browser.page` read_page/wait_for and the `embedd
 read actions, so a scripted read of the page counts as the assertion.
 
 `browser/coordination.ts` resolves a model call's tab before `resource-locks.ts` acquires its lock.
-Assignments belong to stable chat ids and span turns; they are independent of project and UI focus.
+Assignments belong to stable chat ids and can span turns when work continues; they are independent
+of project and UI focus. Release tabs you are done with before finishing a turn; inactive chats
+drop assignments automatically after idle time.
 The first untargeted navigation creates a tab and selects it. Observing verbs (`read_page`,
 `wait_for`, `query`, `extract`, `console`, `capture browser_page`, CDP `inspect_page`, `metrics`,
 `events`, `requests`, `body`, and `browser_tab select`) read any tab and claim none; reading one the

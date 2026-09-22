@@ -32,6 +32,7 @@ import { schedulePaneWarm } from './provider-warm.js'
 import { PeerProjectChanges, projectConversationPatch, rememberChatProjects } from './peer-project.js'
 import { PeerArchives } from './peer-archive.js'
 import type { ChatWorkspaceSelection, ChatWorkspaceSelector, ChatWorkspaceSurface } from './peer-workspace.js'
+import type { BrowserAssignmentIdleRelease } from '../tools/browser/assignment-idle-release.js'
 
 export type { ChatPeerFactory } from './peer-lifecycle.js'
 
@@ -61,12 +62,14 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     idleParkMs?: number,
     private readonly workspaceSelector?: ChatWorkspaceSelector,
     private readonly transcripts: ChatTranscriptCache = ChatTranscriptCache.inMemory(),
-    private readonly cancelPaneWork: (paneId: ChatPaneId) => void = () => {}
+    private readonly cancelPaneWork: (paneId: ChatPaneId) => void = () => {},
+    private readonly browserAssignmentIdle: BrowserAssignmentIdleRelease | null = null
   ) {
     super()
     this.memory = new ChatMemory(store, (paneId) => this.lifecycle.get(paneId)?.surface ?? null)
     this.parking = new PeerIdleParking((paneId) => this.lifecycle.get(paneId), () => this.selectedPaneId, idleParkMs)
-    this.lifecycle = new PeerLifecycle(store, settings, createSurface, this.parking, (entry, event) => this.onPaneEvent(entry, event), cancelPaneWork)
+    this.lifecycle = new PeerLifecycle(store, settings, createSurface, this.parking, (entry, event) => this.onPaneEvent(entry, event), cancelPaneWork,
+      (paneId) => this.browserAssignmentIdle?.detach(paneId))
     this.projectChanges = new PeerProjectChanges({
       record: (id) => { this.lifecycle.require(id); return store.require(id) },
       idle: (id) => Boolean(this.lifecycle.get(id)) && !this.lifecycle.isRunning(id)
@@ -605,8 +608,14 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       (event.type === 'replace' && event.snapshot.items.length > 0)) {
       this.rememberTranscript(entry)
     }
-    if (running) this.parking.cancel(entry)
-    else this.parking.schedule(paneId)
+    if (running) {
+      this.parking.cancel(entry)
+      this.browserAssignmentIdle?.cancel(paneId)
+    } else {
+      this.parking.schedule(paneId)
+      this.browserAssignmentIdle?.schedule(paneId, () =>
+        Boolean(entry.surface.snapshot({ limit: 0 }).pausedTurnId) || Boolean(entry.surface.hasRunningBackground?.()))
+    }
     this.projectChanges.observe(paneId)
   }
 
