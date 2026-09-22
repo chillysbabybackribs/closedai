@@ -309,7 +309,9 @@
    the digest its first message will carry. It sits where the transcript will start, so the
    composer keeps its bottom position instead of the blank chat's centred one. */
 .chat-continuation-card {
-  margin: 16px var(--chat-column-gutter, 16px) 0;
+  box-sizing: border-box;
+  width: min(var(--chat-column-width, 720px), calc(100% - var(--chat-column-gutter, 16px) * 2));
+  margin: 8px auto 0;
   padding: 14px 16px;
   border: 1px solid var(--border, #2a2a2c);
   border-radius: 10px;
