@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Pause, Play } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
+import { TooltipProvider } from '../components/ui/tooltip.js'
 import {
   PromptInput,
   PromptInputAction,
@@ -337,25 +338,27 @@ export function Composer({
           </div>
         )}
       </PromptInput>
-      <div className="prompt-composer-footer">
-        <div className="prompt-composer-footer-start">
-          <div className="prompt-model-controls">{modelMenu}</div>
+      <TooltipProvider>
+        <div className="prompt-composer-footer">
+          <div className="prompt-composer-footer-start">
+            <div className="prompt-model-controls">{modelMenu}</div>
+          </div>
+          <div className="prompt-composer-footer-end">
+            {attachmentPicker}
+            <ContextMeter
+              usage={contextUsage}
+              provider={selectedChatModel?.provider ?? provider}
+              planUsage={planUsage}
+              modelName={modelLabel.name}
+              modelContext={modelLabel.context}
+              modelDescription={modelLabel.description}
+              onRefreshPlanUsage={onRefreshPlanUsage}
+              onCompact={onCompactConversation}
+              compactEnabled={compactConversationEnabled}
+            />
+          </div>
         </div>
-        <div className="prompt-composer-footer-end">
-          {attachmentPicker}
-          <ContextMeter
-            usage={contextUsage}
-            provider={selectedChatModel?.provider ?? provider}
-            planUsage={planUsage}
-            modelName={modelLabel.name}
-            modelContext={modelLabel.context}
-            modelDescription={modelLabel.description}
-            onRefreshPlanUsage={onRefreshPlanUsage}
-            onCompact={onCompactConversation}
-            compactEnabled={compactConversationEnabled}
-          />
-        </div>
-      </div>
+      </TooltipProvider>
     </form>
   )
 }
