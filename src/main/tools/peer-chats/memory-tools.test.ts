@@ -1,11 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { ChatMemoryCheckpoint } from '../../../shared/chat-memory.js'
-import { validateMemoryState } from '../../chat-context/memory-checkpoint.js'
 import { ToolRegistry } from '../registry.js'
 import { peerChatTools } from './index.js'
 
-const state = { goal: 'Ship memory', constraints: ['Keep history'], decisions: [], progress: [], nextSteps: [], files: [] }
 const context = { paneId: 'p', threadId: 'thread', turnId: 't', callId: 'call' }
 
 function harness() {
