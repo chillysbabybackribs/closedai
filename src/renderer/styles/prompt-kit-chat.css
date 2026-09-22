@@ -172,6 +172,7 @@
 
 /* Composer: elevated floating Antigravity container */
 .prompt-composer {
+  container: composer / inline-size;
   grid-row: 3;
   min-width: 0;
   padding: 6px 12px 10px;
@@ -179,12 +180,47 @@
   background: transparent;
 }
 
-.prompt-composer-context {
+.prompt-composer-footer {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   width: min(calc(var(--chat-column-width) + 64px), 100%);
+  min-width: 0;
   margin: 4px auto 0;
   padding: 0 2px;
+}
+
+.prompt-composer-footer-start {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+}
+
+.prompt-composer-footer-end {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+}
+
+.prompt-composer-footer-start .prompt-model-controls {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.prompt-composer-footer-start .model-menu-trigger {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(260px, 100%);
+  height: 28px;
+  padding-inline: 4px 6px;
+}
+
+.prompt-composer-footer .model-menu-trigger-name {
+  color: color-mix(in srgb, var(--foreground) 78%, transparent);
+  font-weight: 600;
 }
 
 /* Before the first message, center the composer. Absolute positioning also lets
@@ -200,9 +236,6 @@
 }
 
 .prompt-composer-input {
-  /* The card is the query container for its own action row: when panes split the window,
-     the row adapts to the card's width, not the viewport's. */
-  container: composer / inline-size;
   max-width: calc(var(--chat-column-width) + 64px);
   margin-inline: auto;
   padding: 6px;
@@ -348,21 +381,11 @@
 .prompt-composer-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px;
   min-width: 0;
   margin-top: 2px;
   padding: 0 2px 2px;
-}
-
-/* The start group is the only thing allowed to give way: the model name ellipsizes and the
-   qualifiers drop before the send/pause button on the end group can leave the card. */
-.prompt-composer-actions-start {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
 }
 
 .prompt-composer-actions-end {
@@ -372,24 +395,14 @@
   gap: 8px;
 }
 
-.prompt-composer-actions-start .prompt-model-controls {
-  flex: 1 1 auto;
-}
-
-.prompt-composer-actions-start .model-menu-trigger {
-  flex: 0 1 auto;
-  min-width: 0;
-  height: 28px;
-}
-
 @container composer (max-width: 420px) {
-  .prompt-composer-actions .model-menu-trigger-effort {
+  .prompt-composer-footer .model-menu-trigger-effort {
     display: none;
   }
 }
 
 @container composer (max-width: 330px) {
-  .prompt-composer-actions .prompt-model-controls { gap: 4px; }
+  .prompt-composer-footer .prompt-model-controls { gap: 4px; }
 }
 
 .prompt-composer-tool {
@@ -417,11 +430,6 @@
 .prompt-composer-attachment:not(:disabled):hover {
   color: #fff;
   font-weight: 700;
-}
-
-.prompt-composer-actions .model-menu-trigger-name {
-  color: #fff;
-  font-weight: 600;
 }
 
 .prompt-composer-resume,
@@ -492,8 +500,8 @@
   padding: 6px var(--chat-column-gutter) 8px;
 }
 
-/* Above the pill: attachment chips, then the project rail, which keeps the working timer on its
-   left in both modes so the pill's model picker stays put while a turn runs. */
+/* Above the pill: attachment chips, then the project rail; model, attach, and context sit in the
+   footer row under the pill in both modes. */
 .prompt-composer-compact-attachments {
   width: min(calc(var(--chat-column-width) + 64px), 100%);
   margin: 0 auto;
@@ -515,25 +523,6 @@
   width: 100%;
   min-width: 0;
 }
-
-/* The full picker, sized down to the pill: smaller type, no effort tag, tighter caret. */
-.prompt-composer-compact-model {
-  display: inline-flex;
-  align-items: center;
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 200px;
-}
-
-.prompt-composer-compact-model .model-menu-trigger {
-  height: 24px;
-  max-width: 200px;
-  padding: 0 4px 0 4px;
-  font-size: 11.5px;
-  color: color-mix(in srgb, var(--foreground) 62%, transparent);
-}
-
-.prompt-composer-compact-model .model-menu-trigger-effort { display: none; }
 
 .prompt-composer-textarea-compact {
   flex: 1;

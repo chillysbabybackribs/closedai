@@ -177,6 +177,30 @@ export function Composer({
     if (event.dataTransfer.files.length) void addFiles(event.dataTransfer.files)
   }
 
+  const modelMenu = (
+    <ModelMenu
+      ref={modelMenuRef}
+      enabled={enabled && !running}
+      models={models}
+      selectedModel={selectedModel}
+      selectedReasoningEffort={selectedReasoningEffort}
+      onModelChange={onModelChange}
+      onReasoningEffortChange={onReasoningEffortChange}
+      onError={setComposerError}
+    />
+  )
+
+  const attachmentPicker = (
+    <AttachmentPicker
+      disabled={!enabled || running || sending}
+      inputRef={fileInputRef}
+      onChange={(event) => {
+        if (event.target.files) void addFiles(event.target.files)
+        event.target.value = ''
+      }}
+    />
+  )
+
   return (
     <form
       ref={formRef}
@@ -236,28 +260,6 @@ export function Composer({
         {isCompact ? (
           <ComposerCompactRow
             running={running}
-            modelMenu={
-              <ModelMenu
-                ref={modelMenuRef}
-                enabled={enabled && !running}
-                models={models}
-                selectedModel={selectedModel}
-                selectedReasoningEffort={selectedReasoningEffort}
-                onModelChange={onModelChange}
-                onReasoningEffortChange={onReasoningEffortChange}
-                onError={setComposerError}
-              />
-            }
-            attachmentPicker={
-              <AttachmentPicker
-                disabled={!enabled || running || sending}
-                inputRef={fileInputRef}
-                onChange={(event) => {
-                  if (event.target.files) void addFiles(event.target.files)
-                  event.target.value = ''
-                }}
-              />
-            }
             provider={provider}
             placeholder={inputPlaceholder}
             enabled={enabled}
@@ -292,33 +294,9 @@ export function Composer({
 
               {composerError && <div className="prompt-attachment-error" role="alert">{composerError}</div>}
 
-              <PromptInputActions className="prompt-composer-actions">
-                <div className="prompt-composer-actions-start">
-                  <AttachmentPicker
-                    disabled={!enabled || running || sending}
-                    inputRef={fileInputRef}
-                    onChange={(event) => {
-                      if (event.target.files) void addFiles(event.target.files)
-                      event.target.value = ''
-                    }}
-                  />
-
-                  <div className="prompt-model-controls">
-                    <ModelMenu
-                      ref={modelMenuRef}
-                      enabled={enabled && !running}
-                      models={models}
-                      selectedModel={selectedModel}
-                      selectedReasoningEffort={selectedReasoningEffort}
-                      onModelChange={onModelChange}
-                      onReasoningEffortChange={onReasoningEffortChange}
-                      onError={setComposerError}
-                    />
-                  </div>
-                </div>
-
-                <div className="prompt-composer-actions-end">
-                  {!running && paused ? (
+              {!running && paused ? (
+                <PromptInputActions className="prompt-composer-actions">
+                  <div className="prompt-composer-actions-end">
                     <PromptInputAction tooltip={`Resume where ${providerLabel} paused`}>
                       <Button
                         type="button"
@@ -332,9 +310,9 @@ export function Composer({
                         <Play size={15} fill="currentColor" aria-hidden="true" />
                       </Button>
                     </PromptInputAction>
-                  ) : null}
-                </div>
-              </PromptInputActions>
+                  </div>
+                </PromptInputActions>
+              ) : null}
             </div>
 
             {/* Enter is the only way to send; the pause control sits in its own column so it
@@ -359,18 +337,24 @@ export function Composer({
           </div>
         )}
       </PromptInput>
-      <div className="prompt-composer-context">
-        <ContextMeter
-          usage={contextUsage}
-          provider={selectedChatModel?.provider ?? provider}
-          planUsage={planUsage}
-          modelName={modelLabel.name}
-          modelContext={modelLabel.context}
-          modelDescription={modelLabel.description}
-          onRefreshPlanUsage={onRefreshPlanUsage}
-          onCompact={onCompactConversation}
-          compactEnabled={compactConversationEnabled}
-        />
+      <div className="prompt-composer-footer">
+        <div className="prompt-composer-footer-start">
+          <div className="prompt-model-controls">{modelMenu}</div>
+        </div>
+        <div className="prompt-composer-footer-end">
+          {attachmentPicker}
+          <ContextMeter
+            usage={contextUsage}
+            provider={selectedChatModel?.provider ?? provider}
+            planUsage={planUsage}
+            modelName={modelLabel.name}
+            modelContext={modelLabel.context}
+            modelDescription={modelLabel.description}
+            onRefreshPlanUsage={onRefreshPlanUsage}
+            onCompact={onCompactConversation}
+            compactEnabled={compactConversationEnabled}
+          />
+        </div>
       </div>
     </form>
   )

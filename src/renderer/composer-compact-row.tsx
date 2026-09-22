@@ -1,4 +1,4 @@
-import type { ClipboardEvent, JSX, ReactNode } from 'react'
+import type { ClipboardEvent, JSX } from 'react'
 import { ChevronUp, Pause, Play } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
@@ -8,11 +8,6 @@ import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 
 export type ComposerCompactRowProps = {
   running: boolean
-  /** The model picker, shown in every state; the working timer lives on the project rail above,
-   *  exactly where the full view keeps it, so the pill never swaps its controls mid-turn. */
-  modelMenu: ReactNode
-  /** The + upload button and its file input, shared with the full view. */
-  attachmentPicker: ReactNode
   provider: ChatProvider
   placeholder: string
   enabled: boolean
@@ -29,8 +24,6 @@ export type ComposerCompactRowProps = {
 
 export function ComposerCompactRow({
   running,
-  modelMenu,
-  attachmentPicker,
   provider,
   placeholder,
   enabled,
@@ -46,7 +39,6 @@ export function ComposerCompactRow({
 }: ComposerCompactRowProps): JSX.Element {
   return (
     <div className="prompt-composer-compact-row">
-      <div className="prompt-composer-compact-model">{modelMenu}</div>
       <PromptInputTextarea
         aria-label={`Message ${CHAT_PROVIDER_LABELS[provider]}`}
         data-ui="composer.input"
@@ -60,7 +52,6 @@ export function ComposerCompactRow({
         onBlur={onBlur}
       />
       <div className="prompt-composer-compact-actions">
-        {attachmentPicker}
         {running ? (
           <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]} (Esc)`} disabled={false}>
             <Button

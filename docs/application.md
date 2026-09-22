@@ -353,8 +353,9 @@ Composers start fully expanded and stay expanded while running or inactive. The 
 choice is one app-wide preference stored in renderer local storage: it applies to every open
 and new chat at once and survives typing, sending, turns, pane changes, and restarts. A collapsed
 composer accepts and sends drafts on its single line; its attachment chips and the project rail
-(folder icon and name) sit above the pill instead of inside it, and the model picker
-(`composer.model`) sits at the pill's left edge with the same menu as the full view. Right-clicking
+(folder icon and name) sit above the pill instead of inside it. Under the card or pill, the model
+picker (`composer.model`) is on the left and attach plus the context ring on the right—the same
+controls and menu as the full view. Right-clicking
 any tile header or tab opens a context menu led by **Close tab** (`layout.tab-close`, Ctrl/Cmd+W),
 then **Hide pane** (`layout.pane-hide`) and, with another tile open,
 **Move tab to next pane** / **Move tab to previous pane**

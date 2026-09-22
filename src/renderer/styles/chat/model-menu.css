@@ -265,7 +265,7 @@
 
 /* ---- Context meter --------------------------------------------------------
    How full the model's window is, parked under the composer (bottom-right) so the
-   model picker stays a plain name. The ring (and a compact in-ring percent once
+   model picker lives under the input on the left. The ring (and a compact in-ring percent once
    usage exists) is the whole control; token counts unfold on hover in the usage card. */
 .context-meter {
   --context-meter-ink: var(--muted-foreground, #959598);

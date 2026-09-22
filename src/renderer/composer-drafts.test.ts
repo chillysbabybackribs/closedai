@@ -57,15 +57,13 @@ test('composer draft store preserves drafts independently per paneId', () => {
   assert.equal(getComposerDraft('pane-2').input, 'Draft for agent 2')
 })
 
-test('ComposerCompactRow renders compact model and controls', () => {
+test('ComposerCompactRow renders the pill input and expand control', () => {
   const html = renderToStaticMarkup(
     createElement(
       TooltipProvider,
       null,
       createElement(ComposerCompactRow, {
         running: false,
-        modelMenu: createElement('span', { className: 'test-model-menu' }, 'GPT-4o'),
-        attachmentPicker: createElement('span', { className: 'test-attachment-picker' }),
         provider: 'codex',
         placeholder: 'Ask anything',
         enabled: true,
@@ -85,5 +83,4 @@ test('ComposerCompactRow renders compact model and controls', () => {
   assert.match(html, /prompt-composer-compact-row/)
   assert.match(html, /data-ui="composer\.input"/)
   assert.match(html, /data-ui="composer\.compact-toggle"/)
-  assert.match(html, /GPT-4o/)
 })

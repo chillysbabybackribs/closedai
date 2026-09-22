@@ -87,7 +87,8 @@ test('composer shows model name on the trigger and context meter below the card'
   // Context info (128K) is hidden from the resting trigger text
   assert.doesNotMatch(html, /model-menu-trigger-context/)
   assert.match(html, /class="context-meter"/)
-  assert.match(html, /prompt-composer-context/)
+  assert.match(html, /prompt-composer-footer/)
+  assert.doesNotMatch(html, /prompt-composer-actions-start/)
 })
 
 test('a persisted compact choice renders the pill for a fresh composer', () => {
