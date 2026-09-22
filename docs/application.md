@@ -329,8 +329,8 @@ left column (~38% width); hiding it keeps the pane mounted and its layout slot s
 The pane hosts the multi-agent project workspace (intent map, shared file tree, catch-up, and completion
 flow) with a compact composer backed by a dedicated, detached chat session. It is not a second view of
 the selected chat: changing the selected chat cannot change, send, pause, stop, or resume the agent chat.
-The agent chat uses the same provider pipeline and composer as every other chat; its coordinator behavior
-is prompt guidance only. Durable project state lives in **`<project>/.closedai/project.json`** (phase,
+The agent chat uses the same provider pipeline and composer as every other chat; its planning voice is
+prompt guidance, while dispatch belongs to the main-process run loop described below. Durable project state lives in **`<project>/.closedai/project.json`** (phase,
 direction record, tree, journal); the store writes a `.gitignore` beside it so the directory stays out of
 the project's version control, and the agent workspace hydrates from disk when that file contains work.
 Full view uses the same solo-tile maximize gesture as chat panes (`layout.agent-full-view` or double-click
@@ -355,20 +355,34 @@ guidance via `agent-workspace-instructions.ts`, and the project store. The works
 building, journal lines, tree amendments, catch-up, accept, reopen) is a `ProjectMutation` sent over
 `project:mutate` and applied by the shared reducer in `src/shared/project/mutations.ts`. The same
 reducer runs in memory for the canvas fixture and tests, so both paths produce identical state.
-Quit and relaunch restores the phase, record, tree, and journal. **Product intent (2026-09-22):** an **autonomous agent hive** — after Start, work keeps moving from
-`project.json` and `HiveConfig` (`rolling` dispatch, bounded concurrency) without the user opening
-worker chat tabs or messaging the coordinator after each task. The workspace pane is for optional
-monitoring and intervention; babysitting is a bug. **Current gap:** there is still no main-process
-**hive dispatch consumer**; a prompt-driven coordinator may spawn workers via app commands, but the
-app does not automatically run the next queued task when one completes. Models read and write the
-store through `closedai_project` (`snapshot`, `mutate`; see `docs/tools.md`). What is still **prototype**: the direction record is
+Quit and relaunch restores the phase, record, tree, and journal.
+
+**The run loop (`src/main/agent-runner/`).** Dispatch is owned by the main process, not by a
+coordinator's prompt. `AgentRunner` reacts to two signals — a project snapshot from `ProjectHub`
+(which now also emits when a store is opened, so a relaunch mid-build resumes) and a chat pane
+finishing a turn — and on either it asks the pure `planRun` what should be happening, then makes it
+true: open worker chats with `ChatPeerManager.newWorkerPeer` (off the tab strip, parented to the
+coordinator), hand each one a single task, and keep going as each lands. Pressing **Start building**
+binds the coordinator pane into `project.json` (`CoordinatorBinding.paneId`); that binding is what
+hands the project to the loop, so the pane itself no longer sends a kickoff message. Concurrency
+comes from `HiveConfig.workers.maxConcurrent`; two queued tasks whose `paths` overlap never run at
+once, and a task that declares no `paths` claims nothing. A worker whose turn ends without recording
+a result is nudged once and then the task becomes `blocked`, which is a state only a coordinator
+clears. The coordinator is asked to plan when there is nothing to run and only when the tree's shape
+has changed since it last saw it, so a reply that adds no tasks does not loop. The build badge in the
+workspace header is also the pause control (`agent.project-dispatch`, a `dispatch` mutation): pausing
+starts nothing new and leaves running work alone. A task node shows the worker carrying it — live
+activity plus a bounded read of its transcript over `project:workerLog` — so work stays inside the
+workspace instead of opening chat tabs. Models read and write the
+store through `closedai_project` (`snapshot`, `mutate`; see `docs/tools.md`); the tool refuses
+`assign` and `dispatch`, which the loop and the pause control own. What is still **prototype**: the direction record is
 read off the coordinator transcript by message position (`syncDiscoveryWithItems`) rather than written
 by the model; a user message during building is also turned into an amendment node by the pane itself
 (`amendTree`, a whole-tree `replace`); acknowledged reports and the open completion proposal are local
 React state; and the fixture dispatch script (`buildDispatchPlan`) exists only for previews and tests.
-Validate in **Electron** (`npm run preview` or `npm run dev`). Treat docs that describe full
-multi-agent orchestration as the target shape until coordination lands. The v1/v2 plan, path
-ownership, and pane rules are in `docs/agent-workspace-plan.md`; read it before editing anything
+Validate in **Electron** (`npm run preview` or `npm run dev`). `docs/agent-workspace-plan.md` is a
+dated proposal that predates the run loop and describes prompt-driven dispatch; where it disagrees
+with this section, this section is what the code does. Read before editing anything
 under `src/renderer/agent-workspace/`, `src/main/project-store/`, `src/main/tools/project/`, or
 `src/shared/project/`.
 
