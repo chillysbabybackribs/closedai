@@ -469,3 +469,22 @@
     animation: none;
   }
 }
+
+/* The build badge is also the hive's pause control, so the state and the switch are one thing. */
+.project-shell-kind.is-toggle {
+  cursor: pointer;
+  background: none;
+  font: inherit;
+  font-size: 10px;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.project-shell-kind.is-toggle:hover {
+  border-color: rgb(157 140 255 / 34%);
+  color: #bcb0ff;
+}
+
+.project-shell-kind.is-toggle[data-paused] {
+  border-color: rgb(180 154 102 / 45%);
+  color: #cdb07a;
+}

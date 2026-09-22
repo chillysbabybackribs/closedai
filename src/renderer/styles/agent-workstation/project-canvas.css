@@ -274,3 +274,12 @@
     animation: none;
   }
 }
+
+/* A task whose worker stopped without recording: it waits for the coordinator, not for time. */
+.project-tree-node[data-state="blocked"]::before {
+  background: #c98b86;
+}
+
+.project-tree-node[data-state="blocked"] {
+  border-color: rgb(201 139 134 / 30%);
+}
