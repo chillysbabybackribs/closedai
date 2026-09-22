@@ -14,6 +14,15 @@ function response(body: string | Buffer, init: { status?: number; headers?: Reco
   } as unknown as Response
 }
 
+test('fetchWithSession never attaches a body to GET or HEAD', async () => {
+  const seen: unknown[] = []
+  await fetchWithSession(async (url, init) => {
+    seen.push([url, init])
+    return response('ok')
+  }, { url: 'https://api.test/x', method: 'GET', body: 'ignored' })
+  assert.deepEqual(seen[0], ['https://api.test/x', { method: 'GET', headers: undefined, credentials: 'include', redirect: 'follow' }])
+})
+
 test('fetchWithSession sends with credentials and returns headers, text, and redirect facts', async () => {
   const seen: unknown[] = []
   const result = await fetchWithSession(async (url, init) => {

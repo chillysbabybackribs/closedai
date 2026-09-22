@@ -46,6 +46,21 @@ test('replay guard rejects a mismatched id before sending', async () => {
   assert.equal(calls.length, 1)
 })
 
+test('replay omits body on GET even when the log recorded post data', async () => {
+  const network = new NetworkLog()
+  network.begin({
+    id: 'get-with-body', tabId: 'tab-1', url: 'https://a.test/uuid', method: 'GET', resourceType: 'fetch',
+    postData: { text: 'should-not-send', byteLength: 15, truncated: false }
+  })
+  const calls: unknown[] = []
+  const browser = {
+    observers: { network },
+    session: { fetch: async (...args: unknown[]) => { calls.push(args); return new Response('ok') } }
+  } as unknown as BrowserService
+  await new BrowserNetworkAccess(() => browser).replay('get-with-body')
+  assert.deepEqual(calls[0], ['https://a.test/uuid', { method: 'GET', headers: {}, credentials: 'include', redirect: 'follow' }])
+})
+
 test('replay rejects missing and incomplete records without sending requests', async () => {
   const network = new NetworkLog()
   const browser = { observers: { network }, session: { fetch: async () => assert.fail('Unexpected request') } } as unknown as BrowserService

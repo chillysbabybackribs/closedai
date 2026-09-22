@@ -2,7 +2,7 @@ import type { BrowserService } from './browser-service.js'
 import type { NetworkListFilter, NetworkListing, NetworkRecord, NetworkWait, NetworkWaitResult } from './browser-network/network-log.js'
 import type { NetworkRule, NetworkRuleInput } from './browser-network/network-rules.js'
 import { listCookies, removeCookie, setCookie, type CookieFilter, type CookieInput, type CookieRecord } from './browser-network/session-cookies.js'
-import { fetchWithSession, replayableHeaders, type SessionFetchRequest, type SessionFetchResult } from './browser-network/session-fetch.js'
+import { assertSessionUrl, fetchWithSession, replayableHeaders, type SessionFetchRequest, type SessionFetchResult } from './browser-network/session-fetch.js'
 import type { NetworkBodyResult, NetworkReplayGuard, NetworkToolHost, SessionToolHost } from './tools/browser/index.js'
 
 /**
@@ -75,19 +75,25 @@ export class BrowserNetworkAccess implements NetworkToolHost, SessionToolHost {
     if (record.postData && (record.postData.text === null || record.postData.truncated)) {
       throw new Error(`Request ${record.id} has an incomplete, binary or file upload body, which cannot be replayed`)
     }
+    assertSessionUrl(record.url, `Request ${record.id}`)
+    const method = record.method.toUpperCase()
+    const canHaveBody = method !== 'GET' && method !== 'HEAD'
     const browserSession = service.session
     let response: Awaited<ReturnType<typeof fetchWithSession>>
     try {
       response = await fetchWithSession((url, init) => browserSession.fetch(url, init), {
-        url: record.url,
-        method: record.method,
+        url: record.url.trim(),
+        method,
         headers: replayableHeaders(record.requestHeaders),
-        body: record.postData?.text ?? undefined
+        body: canHaveBody ? record.postData?.text ?? undefined : undefined
       })
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error)
+      const hint = detail.includes('ERR_INVALID_ARGUMENT')
+        ? ' Chromium often reports this for an invalid URL, disallowed headers, or a body on GET/HEAD.'
+        : ''
       throw new Error(
-        `Replay of request ${record.id} (${record.method} ${record.url}) failed: ${detail}. ` +
+        `Replay of request ${record.id} (${record.method} ${record.url}) failed: ${detail}.${hint} ` +
         'Use the requests[].id from the listing, not cursor or tipCursor.'
       )
     }

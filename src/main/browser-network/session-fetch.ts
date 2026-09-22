@@ -35,13 +35,15 @@ export type SessionFetcher = (url: string, init: RequestInit) => Promise<Respons
 export const SESSION_BODY_CEILING = 1_000_000
 
 export async function fetchWithSession(fetcher: SessionFetcher, request: SessionFetchRequest): Promise<SessionFetchResult> {
+  const method = request.method.toUpperCase()
   const init: RequestInit = {
-    method: request.method,
+    method,
     headers: request.headers,
     credentials: 'include',
     redirect: request.redirect ?? 'follow'
   }
-  if (request.body !== undefined) init.body = request.body
+  // Chromium rejects GET/HEAD with a body (net::ERR_INVALID_ARGUMENT).
+  if (request.body !== undefined && method !== 'GET' && method !== 'HEAD') init.body = request.body
   const response = await fetcher(request.url, init)
   const bytes = Buffer.from(await response.arrayBuffer())
   const kept = bytes.subarray(0, SESSION_BODY_CEILING)
@@ -88,8 +90,21 @@ function isNonReplayableHeader(name: string): boolean {
 export function replayableHeaders(headers: Record<string, string> | null): Record<string, string> {
   const kept: Record<string, string> = {}
   for (const [name, value] of Object.entries(headers ?? {})) {
-    if (isNonReplayableHeader(name)) continue
+    if (!name.trim() || isNonReplayableHeader(name)) continue
+    if (value.includes('\0') || /[\r\n]/.test(value)) continue
     kept[name] = value
   }
   return kept
+}
+
+/** Validate before session.fetch; replay and session tools share this. */
+export function assertSessionUrl(url: string, context: string): void {
+  const trimmed = url.trim()
+  if (!trimmed) throw new Error(`${context}: URL is empty`)
+  try {
+    // eslint-disable-next-line no-new
+    new URL(trimmed)
+  } catch {
+    throw new Error(`${context}: URL is not valid: ${JSON.stringify(url)}`)
+  }
 }

@@ -3,8 +3,8 @@ import test from 'node:test'
 import { dynamicToolSpecs } from './app-server-tools.js'
 import { toolManifest } from './manifest.js'
 import { defineActionTool } from './action-tool.js'
-import { boundResult, MAX_RESULT_TEXT_CHARS, ToolRegistry } from './registry.js'
-import { textResult, type ToolNamespace } from './tool.js'
+import { boundResult, failureMessage, MAX_RESULT_TEXT_CHARS, ToolRegistry } from './registry.js'
+import { failureResult, textResult, type ToolNamespace } from './tool.js'
 
 function namespaces(): ToolNamespace[] {
   const echo = (name: string) => ({
@@ -253,4 +253,11 @@ test('a target-closed failure releases its browser-tab resource lock', async () 
   assert.match(closed.content[0]?.type === 'text' ? closed.content[0].text : '', /target-closed/)
   const retry = await registry.call(request(false), { ...context, paneId: 'pane-b', callId: 'retry' })
   assert.deepEqual(retry, textResult('new target work ran'))
+})
+
+test('telemetry failure notes prefer the outcome line over trailing URL metadata', () => {
+  const wait = failureResult('Not ready: still "complete" when the 15s wait ended; content may be incomplete\nURL: https://example.com — Example')
+  assert.equal(failureMessage(wait), 'Not ready: still "complete" when the 15s wait ended; content may be incomplete')
+  const read = failureResult('Title: Docs\nURL: https://example.com/docs\nLoad state: complete\n\nNothing matches selector "main"')
+  assert.equal(failureMessage(read), 'Nothing matches selector "main"')
 })
