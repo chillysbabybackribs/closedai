@@ -213,11 +213,11 @@ does not clone the provider's full session. User/assistant text is included, whi
 reasoning, and images stay in the original chat. The digest opens with a "Where it stood" line
 (how many requests, and whether the latest one was answered or cut off) and the source's
 working directory; a continued chat also opens in that directory, not the focused chat's, when
-the source has a record. Until its first message is sent, the new pane shows the last user message
-and answer (truncated like the digest) as a read-only preview, with the composer ready for the next
-request; **Open previous chat** (`chat.continuation-source`) switches to the source tab when it still
-exists. Drawer rows carry lineage as `continuedFrom` (source id and title, plus the digest only
-while undelivered); a directory change within one chat is not reported as a continuation.
+the source has a record. Until its first message is sent, the new pane is an ordinary empty chat
+with the composer ready for the next request. That first message delivers the handoff to the model;
+the handoff is not rendered as synthetic transcript content. Drawer rows carry lineage as
+`continuedFrom` (source id and title, plus the digest only while undelivered); a directory change
+within one chat is not reported as a continuation.
 See `chat-context/thread-handoff.ts` and `chat-peers/peer-continuation.ts`.
 
 Models can save a structured working checkpoint with `peer_chats.checkpoint`: goal, constraints,

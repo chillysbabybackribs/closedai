@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  continuationPreviewItems,
   firstLineOfUserMessage,
   handoffDigestForDisplay,
   handoffSourceTitle,
@@ -25,14 +24,6 @@ test('handoffSourceTitle prefers the user request after context markup', () => {
   assert.equal(handoffSourceTitle(wrapped), 'Move continue menu')
   assert.equal(handoffSourceTitle('<closedai_context name="x">', 'Real task'), 'Real task')
   assert.equal(handoffSourceTitle(null, null), 'Previous chat')
-})
-
-test('continuationPreviewItems builds a read-only transcript tail', () => {
-  const items = continuationPreviewItems('Ask me', 'Here is the answer')
-  assert.equal(items.length, 2)
-  assert.equal(items[0]?.type, 'user')
-  assert.equal(items[1]?.type, 'assistant')
-  assert.equal(items[1]?.type === 'assistant' ? items[1].text : '', 'Here is the answer')
 })
 
 test('handoffDigestForDisplay scrubs legacy stored digests for the card', () => {

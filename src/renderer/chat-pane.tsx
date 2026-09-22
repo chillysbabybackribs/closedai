@@ -18,7 +18,6 @@ import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { injectComposerDraft } from './composer-drafts.js'
 import { ContextInspectorModal } from './context-inspector-modal.js'
-import { continuationPreviewItems } from '../shared/chat-display.js'
 import { CredentialApprovalCards } from './credential-approval-card.js'
 import { errorMessage } from './error-message.js'
 import type { ModelMenuHandle } from './model-menu.js'
@@ -92,13 +91,8 @@ export const ChatPane = memo(function ChatPane({
   // pick is a settings write, and a send waits for the provider itself. Locking it out until the
   // process was ready made every launch and every provider switch a pause the user could feel.
   const usable = ready || connecting
-  // A continued chat with its digest still undelivered shows the last exchange as preview content
-  // so the pane feels like the same thread with a fresh context window, not an empty onboarding state.
-  const pendingContinuation = !hasMessages && record?.continuedFrom?.handoff ? record.continuedFrom : null
-  const continuationPreview = pendingContinuation
-    ? continuationPreviewItems(pendingContinuation.previewUser, pendingContinuation.previewAssistant)
-    : []
-  const centerComposer = !blocked && !hasMessages && !historyOpen && !pendingContinuation
+  // A continuation stays visually empty until its first message delivers the handoff to the model.
+  const centerComposer = !blocked && !hasMessages && !historyOpen
   const modelMenuRef = useRef<ModelMenuHandle>(null)
   const openModelMenu = (): void => modelMenuRef.current?.open()
   // What the pane itself could not do, shown above the composer until the next attempt.
@@ -190,27 +184,6 @@ export const ChatPane = memo(function ChatPane({
                 }, state.selectedModel),
                 continueInNewChat: onContinueInNewChat
               }} />
-            ) : pendingContinuation ? (
-              <>
-                {continuationPreview.length > 0 ? (
-                  <ChatTranscript items={continuationPreview} activeTurnId={null} />
-                ) : null}
-                <p className="chat-continuation-hint">
-                  Fresh context window — your next message sends the handoff to the model.
-                  {pendingContinuation.paneId && chat.chats.some((row) => row.paneId === pendingContinuation.paneId) ? (
-                    <>{' '}
-                      <button type="button" className="chat-connection-link" data-ui="chat.continuation-source"
-                        onClick={() => {
-                          setNotice('')
-                          chat.openChat(pendingContinuation.paneId!)
-                            .catch((error: unknown) => setNotice(errorMessage(error, 'Could not open the previous chat')))
-                        }}>
-                        Open previous chat
-                      </button>
-                    </>
-                  ) : null}
-                </p>
-              </>
             ) : (
               <div aria-hidden="true" />
             )}
