@@ -1,6 +1,6 @@
 import type { ChatPeerSummary, PeerChatReadOptions, PeerChatReadResult } from '../../../shared/chat-peers.js'
 import { PEER_READ_DEFAULT_CHARS, PEER_READ_MAX_CHARS } from '../../../shared/chat-peers.js'
-import { defineTool, failureResult, numberArg, stringArg, textResult, type ToolNamespace } from '../tool.js'
+import { defineTool, failureResult, numberArg, stringArg, textResult, usageResult, type ToolNamespace, type ToolResult } from '../tool.js'
 import { memoryTools, type PeerMemoryAccess } from './memory-tools.js'
 
 /** Every transcript item type a peer may see; reasoning stays with the model that produced it. */
@@ -42,7 +42,7 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
             })))
           }
           if (input.query !== undefined || input.cwd !== undefined || input.before_chat_id !== undefined || input.limit !== undefined) {
-            return failureResult('query, cwd, before_chat_id, and limit require history scope')
+            return usageResult('query, cwd, before_chat_id, and limit require scope: history')
           }
           return textResult(JSON.stringify({ chats: directory.listReadable(context.paneId ?? null) }))
         }
@@ -70,17 +70,36 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
           const directory = getDirectory()
           if (!directory) return failureResult('Peer chats are not available')
           const chatId = stringArg(input, 'chat_id')!
-          const result = await directory.readReadable(chatId, context.paneId ?? null, {
+          const callerPaneId = context.paneId ?? null
+          const misuse = readRefusal(directory, chatId, callerPaneId)
+          if (misuse) return misuse
+          const result = await directory.readReadable(chatId, callerPaneId, {
             cursor: numberArg(input, 'cursor', 0),
             limit: numberArg(input, 'limit', 30),
             order: stringArg(input, 'order', 'newest') === 'oldest' ? 'oldest' : 'newest',
             types: Array.isArray(input.types) ? (input.types as PeerChatReadOptions['types']) : undefined,
             maxChars: numberArg(input, 'max_chars', PEER_READ_DEFAULT_CHARS)
           })
-          return result ? textResult(JSON.stringify(result)) : failureResult(`Unknown or unavailable peer chat: ${chatId}`)
+          return result
+            ? textResult(JSON.stringify(result))
+            : failureResult(`Peer chat ${JSON.stringify(chatId)} is temporarily unreadable. Call list again; the pane may be closing.`)
         }
       }),
       ...memoryTools(() => getDirectory()?.memory ?? null)
     ]
   }
+}
+
+function readRefusal(directory: PeerChatDirectory, chatId: string, callerPaneId: string | null): ToolResult | null {
+  if (callerPaneId && chatId === callerPaneId) {
+    return usageResult('Cannot read the calling chat through peer_chats.read. Use recall(scope=current) for this transcript.')
+  }
+  const readable = directory.listReadable(callerPaneId)
+  if (!readable.some((peer) => peer.paneId === chatId)) {
+    return usageResult(
+      `Unknown peer chat ${JSON.stringify(chatId)}. Use list for open peers (paneId is chat_id), ` +
+      'or list(scope=history) and recall(scope=history) for closed chats.'
+    )
+  }
+  return null
 }

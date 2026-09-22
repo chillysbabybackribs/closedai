@@ -51,12 +51,16 @@ export class UiCaptureAccess implements UiCaptureHost {
       : service.tabList().find((candidate) => candidate.active)
     if (!tab) return null
     const release = service.leaseTabRendering(tab.id)
-    if (!release) return null
+    if (!release) {
+      return captureFailure(tab, 'Could not acquire a rendering lease for this tab. Another capture or browser tool may hold it; retry shortly.')
+    }
     let observedReady: PageReadyResult | null = null
     let restoreThrottling: (() => void) | undefined
     try {
       const contents = service.contentsOf(tab.id)
-      if (!contents) return null
+      if (!contents) {
+        return captureFailure(tab, 'The tab has no web contents (it may be closing).')
+      }
       const throttled = contents.getBackgroundThrottling()
       contents.setBackgroundThrottling(false)
       restoreThrottling = () => { if (!contents.isDestroyed()) contents.setBackgroundThrottling(throttled) }
@@ -167,6 +171,17 @@ function fitWithin(width: number, height: number, maxWidth: number, maxHeight: n
 
 function emptyReady(url: string, title: string): PageReadyResult {
   return { readyState: 'unknown', reached: false, conditionMet: null, elapsedMs: 0, url, title }
+}
+
+function captureFailure(tab: BrowserTabInfo, error: string): BrowserPageCapture {
+  return {
+    tabId: tab.id,
+    url: tab.url,
+    title: tab.title,
+    ready: emptyReady(tab.url, tab.title),
+    image: null,
+    error
+  }
 }
 
 function sleep(ms: number): Promise<void> {

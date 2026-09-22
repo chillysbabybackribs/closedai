@@ -1,6 +1,6 @@
 import type { ChatMemory } from '../../chat-context/chat-memory.js'
 import type { ChatRecallRequest } from '../../../shared/chat-memory.js'
-import { defineTool, failureResult, numberArg, stringArg, textResult, type ToolDefinition } from '../tool.js'
+import { defineTool, failureResult, numberArg, stringArg, textResult, usageResult, type ToolDefinition } from '../tool.js'
 
 export type PeerMemoryAccess = Pick<ChatMemory, 'save' | 'recall' | 'history'>
 
@@ -30,8 +30,8 @@ export function memoryTools(getMemory: () => PeerMemoryAccess | null): ToolDefin
         const memory = getMemory()
         if (!memory) return failureResult('Chat memory is unavailable')
         const itemId = stringArg(input, 'item_id')
-        if (input.offset !== undefined && !itemId) return failureResult('offset requires item_id')
-        if (input.chat_id !== undefined && input.scope !== 'history') return failureResult('chat_id requires history scope')
+        if (input.offset !== undefined && !itemId) return usageResult('offset requires item_id')
+        if (input.chat_id !== undefined && input.scope !== 'history') return usageResult('chat_id requires scope: history')
         const request: ChatRecallRequest = {
           scope: stringArg(input, 'scope') as ChatRecallRequest['scope'],
           chatId: stringArg(input, 'chat_id'),

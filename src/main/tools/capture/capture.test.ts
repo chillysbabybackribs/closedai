@@ -110,6 +110,19 @@ test('browser_page tells the model whether the pixels are verified, stale, or ta
   assert.match(textOf(await call({ action: 'browser_page', tab_id: 'stale' })), /Capture possibly stale: no fresh frame within the wait — pixels may be stale; DOM changed 7 times/)
 })
 
+test('browser_page surfaces capture host errors without mislabeling the tab as missing', async () => {
+  const { call } = harness({
+    captureBrowserPage: async () => ({
+      image: null, tabId: 'tab-1', url: ready.url, title: ready.title, ready,
+      error: 'Could not acquire a rendering lease for this tab. Another capture or browser tool may hold it; retry shortly.'
+    })
+  })
+  const result = await call({ action: 'browser_page', tab_id: 'tab-1' })
+  assert.equal(result.isError, true)
+  assert.match(textOf(result), /Capture failed: Could not acquire a rendering lease/)
+  assert.doesNotMatch(textOf(result), /No tab with id/)
+})
+
 test('browser_page refuses an image when readiness was not reached', async () => {
   const waiting = { ...ready, reached: false, conditionMet: false, readyState: 'interactive', elapsedMs: 1_000 }
   const { call } = harness({

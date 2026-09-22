@@ -671,6 +671,8 @@ the serialized result fits within 16k characters and may return fewer entries to
 case-insensitive metadata filter over title, preview, project directory, and applicable checkpoint
 notes, not transcript search. `cwd` optionally narrows discovery to a project directory. History
 arguments require history scope. Explicit older references outweigh recency in shared guidance.
+`peer_chats.read` refuses unknown ids and self-reads as **usage** (amber in Tools & capabilities)
+with pointers to `list` or `recall(scope=current)`; only detach/close races surface as errors.
 
 `peer_chats.checkpoint` writes a small structured checkpoint only for the calling pane's active
 thread/turn. It requires `expected_revision` (0 when absent) and `state` with `goal`, `constraints`,
@@ -685,7 +687,8 @@ database. It is model-authored data, not an approval or independently verified w
 case-insensitive `query`, `types` (defaults to user/assistant messages), `limit` (default 5, max 8),
 or `item_id` with a character `offset`. History accepts `chat_id` from discovery, defaulting to
 the most recent other conversation when omitted, and returns its `chatId`. `chat_id` is rejected
-with other scopes. Tool, plan, command, and file-change evidence can be requested through `types`.
+with other scopes (usage). `offset` without `item_id` is usage as well. Tool, plan, command, and
+file-change evidence can be requested through `types`.
 Search results contain at most 800 characters per excerpt and fit within 16,000 serialized
 characters including checkpoint state. Use `nextOffset` to read more of a matched item, or
 `nextBeforeItemId` as `before_item_id` to search older items. `hasMore` means older candidate

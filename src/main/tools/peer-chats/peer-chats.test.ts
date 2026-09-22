@@ -76,5 +76,17 @@ test('reading a peer is bounded and unknown chats fail clearly', async () => {
     { paneId: 'peer-a', threadId: null, turnId: null, callId: 'missing' }
   )
   assert.equal(missing.isError, true)
-  assert.match(text(missing), /Unknown or unavailable/)
+  assert.equal(missing.errorKind, 'usage')
+  assert.match(text(missing), /Unknown peer chat/)
+  const self = await registry.call(
+    { namespace: 'peer_chats', tool: 'read', arguments: { chat_id: 'peer-a' } },
+    { paneId: 'peer-a', threadId: null, turnId: null, callId: 'self-read' }
+  )
+  assert.equal(self.errorKind, 'usage')
+  assert.match(text(self), /recall\(scope=current\)/)
+  const badList = await registry.call(
+    { namespace: 'peer_chats', tool: 'list', arguments: { query: 'x' } },
+    { paneId: 'peer-a', threadId: null, turnId: null, callId: 'bad-list' }
+  )
+  assert.equal(badList.errorKind, 'usage')
 })
