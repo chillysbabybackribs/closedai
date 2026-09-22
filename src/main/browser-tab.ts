@@ -3,17 +3,12 @@ import { EventEmitter } from 'node:events'
 import type { BrowserHistory } from './browser-history-store.js'
 import type { BrowserBounds, BrowserState } from '../shared/types.js'
 import { normalizeUrl, isAbortedNavigation, PARTITION } from './browser-url.js'
-import { BrowserError, classifyBrowserError, isRendererGoneReason } from './browser-error.js'
+import { BrowserError, classifyBrowserError } from './browser-error.js'
 import { waitForUsableLoad } from './browser-navigation-wait.js'
-import { selectFavicon } from './browser-favicon.js'
 import { EMBEDDED_BROWSER_SCROLLBAR_CSS } from './browser-page-style.js'
-import { installTabZoom } from './browser-tab-zoom.js'
 import type { CreatePopupTab, PopupTabRequest } from './browser-popup-policy.js'
-import { installPopupBridge } from './browser-popup-bridge.js'
-import { installContentsPermissionPolicy } from './browser-permissions.js'
 import type { WebPermissionPolicy } from '../shared/security.js'
-import { showBrowserContextMenu } from './browser-context-menu.js'
-import { cookieImportTargetFor, refreshCookiesForUrl } from './cookie-refresh.js'
+import { attachBrowserTabWebContentsEvents } from './browser-tab-attach-events.js'
 import { BrowserNavigationFailureState } from './browser-navigation-failure-state.js'
 import {
   CHROME_BASE_COLOR,
@@ -441,110 +436,35 @@ export class BrowserTab extends EventEmitter {
   }
 
   private attachEvents(): void {
-    const contents = this.view.webContents
-    // Authoritative liveness signals. `render-process-gone` fires for every renderer-loss
-    // reason (crash, oom, killed, …); a clean-exit is not a crash, everything else is.
-    contents.on('render-process-gone', (_event, details) => {
-      const reason = details?.reason ?? 'crashed'
-      if (isRendererGoneReason(reason)) {
-        this.liveness = { alive: false, category: 'target-crashed', detail: `renderer ${reason}` }
-        this.emit('error', new BrowserError('target-crashed', `Browser tab ${this.id}: renderer ${reason}`))
-      }
+    attachBrowserTabWebContentsEvents({
+      tabId: this.id,
+      partition: this.partition,
+      createPopupTab: this.createPopupTab,
+      webContents: this.view.webContents,
+      permissionPolicy: () => this.permissionPolicy(),
+      history: this.history,
+      liveness: () => this.liveness,
+      setLiveness: (value) => { this.liveness = value },
+      state: () => this.state,
+      setState: (value) => { this.state = value },
+      favicon: () => this.favicon,
+      setFavicon: (value) => { this.favicon = value },
+      navigationFailures: this.navigationFailures,
+      onDidStartNavigation: (url, isInPlace, isMainFrame) => this.onDidStartNavigation(url, isInPlace, isMainFrame),
+      onDidFailLoad: (errno, description, validatedUrl, isMainFrame) => this.onDidFailLoad(errno, description, validatedUrl, isMainFrame),
+      emitState: () => this.emitState(),
+      refreshState: () => this.refreshState(),
+      refreshVisibleSurface: () => this.refreshVisibleSurface(),
+      adoptPageBackground: () => this.adoptPageBackground(),
+      applyPageAppearance: () => this.applyPageAppearance(),
+      back: () => this.back(),
+      forward: () => this.forward(),
+      reload: () => this.reload(),
+      navigate: (url) => this.navigate(url),
+      openLinkInNewTab: (request) => this.openLinkInNewTab(request),
+      emitError: (error) => this.emit('error', error),
+      emitClosed: () => this.emit('closed')
     })
-    contents.on('destroyed', () => {
-      this.liveness = { alive: false, category: 'target-closed', detail: 'WebContents destroyed' }
-      // Destruction we did not initiate (a page calling window.close(), renderer teardown)
-      // must reap the tab like any other close; our own dispose() drops listeners first.
-      this.emit('closed')
-    })
-    contents.on('unresponsive', () => {
-      // Not fatal — the renderer may recover, so liveness is not latched.
-      this.emit('error', new BrowserError('target-unresponsive', `Browser tab ${this.id}: renderer unresponsive`))
-    })
-    // A page's beforeunload handler would otherwise pop a native "Leave site?" modal that
-    // blocks window close / navigation. Always allow the unload.
-    contents.on('will-prevent-unload', (event) => {
-      event.preventDefault()
-    })
-    contents.on('did-start-loading', () => {
-      this.state = { ...this.state, isLoading: true }
-      this.emitState()
-    })
-    contents.on('did-start-navigation', (_event, url, isInPlace, isMainFrame) => {
-      this.onDidStartNavigation(url, isInPlace, isMainFrame)
-    })
-    contents.on('did-stop-loading', () => {
-      this.refreshState()
-      this.emitState()
-      // Covers user/page/history navigations that do not pass through navigate(), and pages
-      // whose subresources outlive the earlier usable-load checkpoint.
-      this.refreshVisibleSurface()
-    })
-    // Before the new document's first paint: the one moment where correcting the base colour
-    // is free. did-finish-load repeats it because a late stylesheet or a theme script can
-    // change the canvas after dom-ready.
-    contents.on('dom-ready', () => {
-      void this.adoptPageBackground()
-    })
-    contents.on('did-finish-load', () => {
-      this.applyPageAppearance()
-      void this.adoptPageBackground()
-    })
-    // Alt+wheel page zoom; owns its own input-event and did-finish-load listeners.
-    installTabZoom(contents)
-    installContentsPermissionPolicy(contents, () => this.permissionPolicy())
-    contents.on('page-title-updated', () => {
-      this.refreshState()
-      this.history.updateTitle(this.state.url, this.state.title)
-      this.emitState()
-    })
-    contents.on('page-favicon-updated', (_event, favicons) => {
-      const next = selectFavicon(favicons)
-      if (next) this.history.updateFavicon?.(contents.getURL(), next)
-      if (next === this.favicon) return
-      this.favicon = next
-      this.emitState()
-    })
-    contents.on('did-navigate', () => {
-      // A successful top-level navigation means the renderer is live again — clear a prior
-      // crash latch so reload-after-crash recovers. (A destroyed WebContents never navigates.)
-      if (!this.liveness.alive && this.liveness.category === 'target-crashed' && !contents.isDestroyed()) {
-        this.liveness = { alive: true }
-      }
-      this.state = this.navigationFailures.succeed(this.state)
-      this.refreshState()
-      this.history.record(this.state.url, this.state.title)
-      this.emitState()
-    })
-    contents.on('did-fail-load', (_event, errno, description, validatedUrl, isMainFrame) =>
-      this.onDidFailLoad(errno, description, validatedUrl, isMainFrame))
-    contents.on('did-navigate-in-page', () => {
-      this.refreshState()
-      this.emitState()
-    })
-    contents.on('context-menu', (_event, params) => {
-      // Native view right-clicks stay in main and delegate navigation to guarded tab methods.
-      showBrowserContextMenu(contents, params, {
-        back: () => this.back(),
-        forward: () => this.forward(),
-        reload: () => this.reload(),
-        canGoBack: () => contents.navigationHistory.canGoBack(),
-        canGoForward: () => contents.navigationHistory.canGoForward(),
-        openUrl: (url) => { void this.navigate(url).catch((error: unknown) => this.emit('error', error)) },
-        openUrlInNewTab: (url) => this.openLinkInNewTab({ url, activate: false }),
-        siteCookieImport: () => {
-          const target = cookieImportTargetFor(contents.getURL())
-          return target ? { domain: target.domain, source: target.source.name } : null
-        },
-        importSiteCookies: () => {
-          // Reload on completion so the page re-requests with the imported session.
-          void refreshCookiesForUrl(session.fromPartition(PARTITION), contents.getURL())
-            .then(() => this.reload())
-            .catch((error: unknown) => this.emit('error', error))
-        }
-      })
-    })
-    installPopupBridge(contents, this.partition, this.createPopupTab)
   }
 
   // Electron nulls WebContentsView.webContents once the contents are destroyed, despite the

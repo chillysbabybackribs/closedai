@@ -14,7 +14,15 @@ import type {
 } from '../../shared/chat.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import { describeUsage, type ContextUsage } from '../chat-context/context-compaction.js'
-import { applyProviderRotation, type RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
+import type { RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
+import {
+  detachClaudeThread,
+  readCachedClaudeThread,
+  resumeClaudeSession,
+  resumePersistedClaudeSession,
+  rotateClaudeProviderSession,
+  type ClaudeThreadHost
+} from './claude-thread-lifecycle.js'
 import { SessionRotator } from '../chat-context/session-rotation.js'
 import { applyPlanUsageSignal, planUsageUnavailable, type ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
 import {
@@ -38,7 +46,7 @@ import { ChatTranscript } from '../chat-transcript.js'
 import type { ScreenshotStore } from '../tools/capture/screenshot-store.js'
 import { ToolRegistry } from '../tools/registry.js'
 import { forgetClaudeCatalog, readClaudeCatalog, rememberClaudeCatalog } from './claude-catalog.js'
-import { archiveClaudeThread, claudeThreadName, listClaudeThreads, replayClaudeSession } from './claude-history.js'
+import { archiveClaudeThread, claudeThreadName, listClaudeThreads } from './claude-history.js'
 import { claudeModelValue, claudeSessionIdOf, claudeThreadId } from './claude-ids.js'
 import { buildClaudeUserMessage } from './claude-input.js'
 import { claudeSystemPromptAppend } from './claude-instructions.js'
@@ -81,7 +89,6 @@ export class ClaudeChatService extends EventEmitter {
    * later replay after it goes inactive again reads fresh rather than serving pre-live state.
    */
   private readonly threadCache = new Map<string, ChatThreadContent>()
-  private static readonly THREAD_CACHE_LIMIT = 8
 
   constructor(
     readonly cwd: string,
@@ -99,7 +106,7 @@ export class ClaudeChatService extends EventEmitter {
       thresholdTokens: () => this.settings.get().chatCompactAtTokens,
       threadId: () => (this.session?.sessionId ? claudeThreadId(this.session.sessionId) : null),
       turnActive: () => this.activeTurnId !== null,
-      rotate: () => this.rotateProviderSession()
+      rotate: () => rotateClaudeProviderSession(this.threadHost(), this.session)
     })
   }
 
@@ -223,30 +230,7 @@ export class ClaudeChatService extends EventEmitter {
   }
 
   async readThread(threadId: string, cwd = this.cwd): Promise<ChatThreadContent> {
-    const sessionId = claudeSessionIdOf(threadId)
-    if (!sessionId) throw new Error('Invalid Claude thread')
-    const live = sessionId === this.session?.sessionId
-    if (!live) {
-      const cached = this.threadCache.get(threadId)
-      if (cached) return cached
-    }
-    await this.ensureConnected()
-    const items = await replayClaudeSession(this.sdk!, sessionId, {
-      cwd,
-      displayScreenshot: (callId) => this.screenshots?.get(callId) ?? null
-    })
-    const threadName = await claudeThreadName(this.sdk!, sessionId, cwd).catch(() => null)
-    const content: ChatThreadContent = { threadId, threadName, items }
-    if (!live && sessionId !== this.session?.sessionId) this.rememberThread(threadId, content)
-    return content
-  }
-
-  private rememberThread(threadId: string, content: ChatThreadContent): void {
-    this.threadCache.delete(threadId)
-    this.threadCache.set(threadId, content)
-    if (this.threadCache.size <= ClaudeChatService.THREAD_CACHE_LIMIT) return
-    const oldest = this.threadCache.keys().next().value
-    if (oldest !== undefined) this.threadCache.delete(oldest)
+    return readCachedClaudeThread(this.threadHost(), threadId, cwd)
   }
 
   /** Clear the pane; the next message starts a fresh SDK session. */
@@ -309,7 +293,7 @@ export class ClaudeChatService extends EventEmitter {
     try {
       this.sdk ??= await loadClaudeSdk()
       this.session ??= this.createSession(this.sdk)
-      await this.resumePersistedSession()
+      await resumePersistedClaudeSession(this.threadHost(), this.session!)
       // Asking the CLI for the catalogue costs a process spawn and about a second, and the
       // answer is the same for every pane in this workspace. Reuse it when the workspace has
       // one, so a new chat's composer is live immediately.
@@ -383,62 +367,12 @@ export class ClaudeChatService extends EventEmitter {
   }
 
   /** Bring the saved session's transcript back before any process is spawned to resume it. */
-  private async resumePersistedSession(): Promise<void> {
-    const persisted = this.settings.get().chatClaudeSessionId
-    if (!persisted || this.session!.sessionId) return
-    try {
-      await this.resumeSession(persisted)
-    } catch (error) {
-      console.warn('[claude] could not resume saved session:', messageOf(error))
-      await this.detachThread()
-    }
-  }
-
   private async resumeSession(sessionId: string): Promise<void> {
-    const sdk = this.sdk!
-    // This thread is about to become live and can grow from here; a cached replay from before
-    // would go stale the moment it does, so drop it rather than let a later readThread serve it.
-    this.threadCache.delete(claudeThreadId(sessionId))
-    const items = await replayClaudeSession(sdk, sessionId, { cwd: this.cwd, displayScreenshot: (callId) => this.screenshots?.get(callId) ?? null })
-    await this.session!.adopt(sessionId)
-    this.transcript.replaceItems(items)
-    this.contextUsage = null
-    this.threadName = await claudeThreadName(sdk, sessionId, this.cwd).catch(() => null)
-    await this.settings.set({ chatClaudeSessionId: sessionId, chatContinuation: null })
-    this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
+    await resumeClaudeSession(this.threadHost(), this.session!, sessionId)
   }
 
   private async detachThread(): Promise<void> {
-    await this.session?.reset()
-    this.transcript.clear()
-    this.threadName = null
-    this.contextUsage = null
-    this.rotator.reset()
-    this.activeTurnId = null
-    this.turnContext = null
-    await this.settings.set({ chatClaudeSessionId: null })
-  }
-
-  private async rotateProviderSession(): Promise<void> {
-    try {
-      await applyProviderRotation(this.settings, {
-        paneId: this.paneId,
-        provider: 'claude',
-        threadId: this.session?.sessionId ? claudeThreadId(this.session.sessionId) : null,
-        threadName: this.threadName,
-        items: this.transcript.snapshot()
-      }, async () => {
-        await this.session?.reset()
-        this.contextUsage = null
-        this.rotator.reset()
-        await this.settings.set({ chatClaudeSessionId: null })
-        this.emitEvent({ type: 'thread', threadId: null, threadName: this.threadName })
-      }, this.contextUsage, {
-        prefetchSource: (threadId) => { void this.readThread(threadId).catch(() => undefined) }
-      })
-    } finally {
-      this.rotator.complete()
-    }
+    await detachClaudeThread(this.threadHost(), this.session)
   }
 
   private seamlessRotation(): boolean {
@@ -579,5 +513,31 @@ export class ClaudeChatService extends EventEmitter {
   private setTurnContext(report: ChatTurnContextReport): void {
     this.turnContext = report
     this.emitEvent({ type: 'turnContext', report })
+  }
+
+  private threadHost(): ClaudeThreadHost {
+    return {
+      cwd: this.cwd,
+      settings: this.settings,
+      paneId: this.paneId,
+      sdk: () => this.sdk,
+      setSdk: (sdk) => { this.sdk = sdk },
+      session: () => this.session,
+      transcript: this.transcript,
+      rotator: this.rotator,
+      threadCache: this.threadCache,
+      liveSessionId: () => this.session?.sessionId ?? null,
+      threadName: () => this.threadName,
+      setThreadName: (name) => { this.threadName = name },
+      contextUsage: () => this.contextUsage,
+      setContextUsage: (usage) => { this.contextUsage = usage },
+      setActiveTurnId: (id) => { this.activeTurnId = id },
+      setTurnContext: () => { this.turnContext = null },
+      ensureConnected: () => this.ensureConnected(),
+      snapshot: () => this.snapshot(),
+      emitEvent: (event) => this.emitEvent(event),
+      screenshots: this.screenshots,
+      readThreadPrefetch: (threadId) => { void this.readThread(threadId).catch(() => undefined) }
+    }
   }
 }
