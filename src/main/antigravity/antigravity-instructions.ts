@@ -4,7 +4,6 @@ import { engineeringInstructions } from '../chat-context/engineering-instruction
 import {
   CLOSEDAI_CONTEXT_TRUST_XML_INSTRUCTION,
   DIRECT_CALL_TOOL_BATCHING_INSTRUCTION,
-  EVIDENCE_CLAIMS_INSTRUCTION,
   TOOL_APPROVAL_DISABLED_INSTRUCTION
 } from '../chat-context/product-instructions.js'
 import { workspaceRulesSection } from '../chat-context/workspace-rules.js'
@@ -20,7 +19,6 @@ const INSTRUCTIONS = [
   TOOL_APPROVAL_DISABLED_INSTRUCTION,
   'ClosedAI mcp_ tools operate the visible signed-in browser. Native browser tools use a separate browser; native file search and editing tools are available.',
   CLOSEDAI_CONTEXT_TRUST_XML_INSTRUCTION,
-  EVIDENCE_CLAIMS_INSTRUCTION,
   DIRECT_CALL_TOOL_BATCHING_INSTRUCTION,
   engineeringInstructions('antigravity'),
   UNIVERSAL_ARTICULATION_INSTRUCTIONS

@@ -4,7 +4,6 @@ import { engineeringInstructions } from '../chat-context/engineering-instruction
 import {
   CLOSEDAI_CONTEXT_TRUST_XML_INSTRUCTION,
   DIRECT_CALL_TOOL_BATCHING_INSTRUCTION,
-  EVIDENCE_CLAIMS_INSTRUCTION,
   TOOL_APPROVAL_DISABLED_INSTRUCTION
 } from '../chat-context/product-instructions.js'
 import { workspaceRulesSection } from '../chat-context/workspace-rules.js'
@@ -22,7 +21,6 @@ const INSTRUCTIONS = [
   TOOL_APPROVAL_DISABLED_INSTRUCTION,
   'ClosedAI MCP tools own the visible signed-in browser; shell browsers and WebFetch do not share it.',
   CLOSEDAI_CONTEXT_TRUST_XML_INSTRUCTION,
-  EVIDENCE_CLAIMS_INSTRUCTION,
   DIRECT_CALL_TOOL_BATCHING_INSTRUCTION,
   // The preset tells Claude to act on the literal request and never widen scope. That is the
   // exact behaviour ClosedAI's objective instruction above asks for, so name the conflict, as the
