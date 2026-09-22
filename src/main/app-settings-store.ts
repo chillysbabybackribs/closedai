@@ -38,10 +38,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatSelectedPaneId: null,
   disabledTools: [],
   toolBatchMaxCalls: DEFAULT_BATCH_MAX_CALLS,
-  // Preserve existing behavior until the optional smaller budget is evaluated against
-  // first-text timing and recall. Cached input size alone does not establish latency.
+  // Default token rotation threshold drops accumulated tool dumps during idle time.
   chatCompactAtPercent: 80,
-  chatCompactAtTokens: 0,
+  chatCompactAtTokens: 40_000,
   chatMidTurnCompactTokens: 0,
   chatSeamlessRotation: true
 }
@@ -100,8 +99,8 @@ function normalize(parsed: unknown): AppSettings {
     chatCompactAtPercent: typeof record.chatCompactAtPercent === 'number' && Number.isFinite(record.chatCompactAtPercent)
       ? Math.min(MAX_COMPACT_AT_PERCENT, Math.max(0, Math.round(record.chatCompactAtPercent)))
       : DEFAULT_APP_SETTINGS.chatCompactAtPercent,
-    chatCompactAtTokens: normalizeAutoCompactTokens(record.chatCompactAtTokens),
-    chatMidTurnCompactTokens: normalizeAutoCompactTokens(record.chatMidTurnCompactTokens),
+    chatCompactAtTokens: normalizeAutoCompactTokens(record.chatCompactAtTokens, DEFAULT_APP_SETTINGS.chatCompactAtTokens),
+    chatMidTurnCompactTokens: normalizeAutoCompactTokens(record.chatMidTurnCompactTokens, DEFAULT_APP_SETTINGS.chatMidTurnCompactTokens),
     chatSeamlessRotation: record.chatSeamlessRotation !== false
   }
 }
@@ -244,8 +243,8 @@ export function normalizeContinuation(value: unknown): ChatContinuation | null {
 }
 
 /** 0 disables; anything else lands between the bounds so a typo cannot compact every call. */
-function normalizeAutoCompactTokens(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_APP_SETTINGS.chatMidTurnCompactTokens
+function normalizeAutoCompactTokens(value: unknown, fallback = 0): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
   if (value <= 0) return 0
   return Math.min(MAX_AUTO_COMPACT_TOKENS, Math.max(MIN_AUTO_COMPACT_TOKENS, Math.round(value)))
 }

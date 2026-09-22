@@ -5,7 +5,8 @@ remote-debugging port. Models start with `embedded_browser.page`, `network`, and
 `browser_cdp.protocol` is the advanced fallback; protocol, profiling, instrumentation, and
 emulation tools are deferred on providers supporting tool discovery. `browser_cdp.page` remains
 eagerly available for semantic element refs and an input wrapper.
-Source review: 2026-09-04; the behavior below follows the current implementation.
+Source review: 2026-09-21; the behavior below follows the current implementation. Registry-level
+CDP tool actions and limits are summarized in [Tools](tools.md).
 
 ## Ownership model
 

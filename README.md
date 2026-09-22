@@ -47,6 +47,8 @@ providers; the accepted browser permission and sandbox policy is recorded in
 
 ## Current application and engineering references
 
+See [Documentation map](docs/README.md) for how current guides relate to dated research notes.
+
 - [Application guide](docs/application.md): projects, chats, browser behavior, component ownership,
   persisted state, and current limitations.
 - [Model context](docs/model-context.md): shared instructions, provider injection points, trust

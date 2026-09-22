@@ -6,7 +6,8 @@ protocol: `app-server-tools.ts` for Codex (`dynamicTools` + `item/tool/call`),
 `src/main/claude/claude-tools.ts` for Claude Code (in-process MCP), and
 `src/main/antigravity/antigravity-mcp.ts` for Antigravity (HTTP MCP). The same page tool appears as
 `embedded_browser.page`, `mcp__embedded_browser__page`, and `mcp_embedded_browser_page`, respectively.
-Source review: 2026-09-04. See [Model context](model-context.md) for instruction assembly.
+Source review: 2026-09-21. See [Model context](model-context.md) for instruction assembly and
+[Application guide](application.md) for UI behavior the tools operate on.
 
 ## Native instrumentation
 
@@ -107,28 +108,13 @@ File search, reading, and editing use native provider tools. ClosedAI's workspac
 namespace has been removed, along with source hashing, related-source bundles, automatic source
 observations, and the injected repository map. Browser and web-search namespaces remain available.
 
-The renderer can show several chats at once. `closedai_app.state` UI facts include
-`layout.visiblePaneIds` and `layout.browserVisible`; composer facts describe the focused tile.
-`closedai_app.ui` chat/composer control ids resolve within that tile. Focus a different tile with
-`layout.tab` and its chat id before interacting, or use deterministic pane-id commands.
-The `layout` control family exposes conversation-tab, split, hide, browser-toggle, and resize controls.
-`layout.new-chat` adds a tab in the target tile, `layout.tab` selects one, and `layout.tab-close`
-removes it from the tile without stopping its turn or deleting history; items are chat ids.
-`layout.new-chat` is the header's plain `+` button (it adds a tab immediately, no menu). Splitting
-uses drag-and-drop on tabs and pane headers; `layout.presets` opens the workspace layout dialog from
-the tile context menu or View menu. The browser toggle is a plain header button. Their item is the chat id.
-With multiple visible tiles, `layout.new-chat` starts a fresh chat in the tile named by its item
-without changing the other tiles or the split geometry.
-The + at the end of a tile's tab strip is the same `layout.new-chat`; the composer's own + is
-`composer.upload`, which attaches files.
-The header's `titlebar.chat-search` searches saved chat titles across projects;
-`titlebar.chat-search-result` opens a suggestion by chat id. `titlebar.chat-search-pause` and
-`titlebar.chat-search-resume` control the row's chat without opening it, using the chat id as item.
-Empty input groups running chats, paused chats, unread completions, open tabs, and closed chats.
-Ctrl+H focuses it; arrows select, Enter opens, and Escape dismisses. UI state exposes
-`chatSearchOpen`. There is no sidebar or drawer toggle.
-Hiding a tile keeps its turn running; `close_chat` still detaches and stops it. A hidden browser
-keeps its tabs, but semantic page input still requires a visible page.
+Several chats can run at once. `closedai_app.state` UI facts include `layout.visiblePaneIds` and
+`layout.browserVisible`; composer and most `closedai_app.ui` control ids resolve within the
+focused tile. Use `layout.tab` with a chat id, or pane-scoped commands, before driving another
+tile. Control `item` values are chat ids unless noted in the manifest. Hiding a tile keeps its
+turn running; `close_chat` detaches and stops it. Semantic page input requires a visible page.
+Workspace chrome, search, splits, and tab strips are described in
+[Application guide — Workspace layout](application.md#workspace-layout).
 
 ### Application facts, browser targets, and batching
 

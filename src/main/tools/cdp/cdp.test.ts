@@ -110,7 +110,7 @@ test('agent page wrapper inspects and clicks refs or explicit coordinates', asyn
   await callPage({ action: 'click', ref: 'p1:main:e1', fallback_reason: 'No endpoint exposes this control.' })
   await callPage({ action: 'click_at', x: 12.5, y: 18, coordinate_space: 'main_viewport_css', fallback_reason: 'No semantic ref was available.' })
   assert.deepEqual(calls, [
-    ['inspectPage', 'tab-3', 200],
+    ['inspectPage', 'tab-3', 50],
     ['clickElement', undefined, 'p1:main:e1'],
     ['clickAt', undefined, 12.5, 18]
   ])

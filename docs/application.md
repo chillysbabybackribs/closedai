@@ -4,9 +4,10 @@ Chat renders Markdown, but does not interpret the Visualize skill's inline conte
 markers or provide its `Tweak`/`window.openai` host runtime. HTML comparisons can be served locally
 and viewed in the embedded browser; local HTML file links instead open a text preview.
 
-Source review: 2026-09-13, including the current uncommitted changes. This describes implemented
-behavior, not a new live UI or provider verification. Protocol measurements retain their dates
-in the provider guides.
+Source review: 2026-09-21. This describes implemented behavior, not a new live UI or provider
+verification. Protocol measurements retain their dates in the provider guides. Prompt assembly and
+model-facing routing live in [Model context](model-context.md); registry contracts live in
+[Tools](tools.md).
 
 For browser-only frontend development, `npm run dev:web` manages a reusable Vite preview of the
 actual renderer with a typed, in-memory bridge and direct sample-state links. It does not start
@@ -22,22 +23,6 @@ modify or crash the target. Browser semantics remain in the browser/CDP services
 [implemented contracts and validation](native-instrumentation.md).
 
 ## Projects, chats, panes, and conversations
-
-All provider instruction builders ask models to recover the intended outcome, respect explicit
-constraints, and treat diagnoses or proposed methods as hypotheses when their accuracy matters.
-Models use applicable local evidence, authoritative APIs, current documentation, original research,
-or firsthand experience reports according to the question. They start with current evidence and
-follow older work when relevant or foundational, matching the applicable version. Quality comes
-first, latency close behind, token cost third. Independent research and execution can overlap;
-dependent decisions wait for needed evidence. Research stops when important decisions are supported,
-material contradictions are resolved or disclosed, and further findings are unlikely to change the
-approach. The model still finishes and verifies the requested work. Search, library lookup, and
-checkpoints are optional, not per-task rituals. Models account for prior effects before retries.
-Stripe Directory's broad discovery trigger is narrowed in the Codex lane, where the plugin lives: use
-it when explicitly requested or materially useful, and skip supplementary directory searches when a
-suitable option can be verified directly. Required purchase safeguards remain.
-This is prompt guidance, not a new background worker or enforced completion guarantee. See
-[Model context](model-context.md) for delivery and boundaries.
 
 A chat is an app-owned `ChatRecord` in `ChatStore` (`chats.json`): a stable id, its project
 directory, provider, model and effort, per-provider thread ids, title, preview, timestamps, an
@@ -69,61 +54,11 @@ is lost for a non-clean reason and reports a second loss within a minute instead
 (`src/main/main-window-recovery.ts`). `before-quit` bounds its flush at 5 s and quits regardless
 (`src/main/app-quit.ts`); the MCP HTTP bridges drop open connections before closing their listener.
 
-Model browser tools assign tabs to the calling chat, independently of directory and UI selection.
-Each chat is expected to open its own tab for browser work (`navigate` with `new_tab: true`, or
-`browser_tab` new/new_right) rather than mutating whatever page is visible when that chat did not
-open it; ambient active-tab context is for reads when the user asks about the screen. The first
-untargeted navigation without an assigned tab creates a tab and selects it, as do explicit
-`new_tab` and the `browser_tab` new/new_right/duplicate commands: a page a model drives is one
-the user can watch. Acting without a `tab_id` before this chat has an assigned tab is refused.
-Observing verbs — `read_page`, `wait_for`, `query`, `extract`, `console`, `capture browser_page`,
-CDP `inspect_page`/`metrics`/`events`/`requests`/`body`, and `browser_tab select` — run against any
-tab, including another chat's, and claim nothing: looking at a page is not taking it over, so a chat
-asked what is on screen does not end up owning the user's page. Acting in a page claims the tab, and
-is what another chat's assignment refuses (`evaluate` and page `fetch` count as acting). Reading a
-tab the chat already owns does point its default there, so "read that tab, then act in it" needs no
-`tab_id`; later omitted targets use that chat's last assigned tab.
-Assignments protect the intervals between calls and can span turns when a chat keeps working in the
-same tabs; focus changes do not move them. `release` / `release_all` are optional cleanup; inactive
-chats drop assignments automatically. `closedai_app.state` exposes
-`browser.coordination` (the caller's default, tab assignments, and whether each owner pane is
-running). `browser_tab claim` reserves a tab; `release` drops one; `release_all` drops every
-assignment for the calling chat without closing tabs. Detaching the chat, restarting, or staying
-inactive long enough (same order of magnitude as idle provider parking, five minutes) also releases
-assignments. Until then, idle assignments keep per-tab act protection but do not block session-wide
-tools while the owner is not running. A closed default produces an error until a new or explicit
-target is chosen. Bulk tab close commands preflight all affected tabs before closing any.
-
-Independent tabs can navigate, extract, and capture concurrently, including parallel reads on the
-same tab. Resource locks are scoped: one mutation at a time per tab, one lane for session-wide
-cookie/network-rule changes, one for tab-strip bulk operations, and one for real page or app
-input — unrelated tabs do not block each other. A timed-out operation keeps its lock until its
-underlying work settles. Cross-chat **assignment** still refuses acting in a tab another chat owns;
-observing verbs never claim. A tab opened for a chat's browser work is selected (first untargeted
-navigation, `new_tab`, and the `browser_tab` new/new_right/duplicate commands); research source
-tabs still preserve browser selection, and popups inherit their opener's assignment while a
-background opener cannot activate its popup. This coordinates app-owned tools, not human input or
-provider-native browser tools. Website account state and cookies are still shared; it is not
-isolation between separate browser profiles.
-
-The isolated `xvfb-run -a node scripts/browser-coordination-live-check.mjs` check exercises actual
-Electron tabs, parallel navigation and extraction, background screenshot pixels, foreground input
-exclusion, popup ownership, bulk-close preflight, release, and closed-target recovery without
-touching the user's profile. Background surfaces receive a usable viewport before attachment;
-capture leases can render underneath the opaque active browser surface without selecting the tab.
-When the browser is collapsed or covered, a temporary never-shown native window hosts the same
-view for capture and returns it afterward. The live check verifies its pixels and later restoration.
-Capture temporarily disables background throttling and restores the previous setting afterward.
-
-Chromium throttles a hidden page to ~1 Hz timers with no animation frames, which is what an
-unselected tab is. `browser-tab-cadence.ts` therefore exempts a tab while a tool operates on it
-and for a 5 s grace afterwards, so a burst of model calls is one exemption and the page keeps
-loading itself between them: navigation holds the exemption across the load, and every page tool
-touches it through `contentsOf`. A runtime `setBackgroundThrottling(false)` is what restores both
-50 ms timers and 60 fps rAF to a hidden view (the `webPreferences` flag alone does not restore
-rAF); `visibilityState` stays `hidden`, because the page is not on screen. Tabs nobody is driving
-keep Chromium's default throttling, and a closed tab's exemption is dropped without touching its
-destroyed WebContents.
+Model browser tools assign tabs per chat, independently of directory and UI selection. Mutations
+expect an owned tab; observing verbs on any tab claim nothing; acting claims a tab and refuses
+another chat's assignment. Locks, batching, popups, and `state.browser.coordination` are specified in
+[Tools](tools.md#application-facts-browser-targets-and-batching). Regression coverage:
+`xvfb-run -a node scripts/browser-coordination-live-check.mjs`.
 
 `ChatHub` routes to Codex, Claude Code, Antigravity, or Cursor. Codex model/thread ids are
 unprefixed; Claude ids use `claude:`, Antigravity ids use `agy:`, and Cursor ids use `cursor:`. Claude ids
@@ -293,15 +228,9 @@ transcript through the frozen boundary so tool output remains recoverable withou
 dropped provider thread. Disabling seamless rotation restores the native compaction path.
 See [Model context](model-context.md) for trust and [Tools](tools.md) for limits.
 
-New chats can retrieve earlier conversations through the same memory service without transcript
-injection. `peer_chats.list(scope=history)` discovers nonarchived chats across projects, including
-closed chats, by recent user activity or a metadata query; `recall(scope=history)` reads bounded
-excerpts from the latest other chat or an explicit chat id. Older explicit references can outweigh
-recency. Discovery reads existing records, and recall uses existing provider history with the source
-project directory. There is no additional transcript archive, summarization call, or mandatory
-checkpoint. Shared instructions encourage natural use of prior context without announcing routine
-retrieval, while disclosing missing or conflicting evidence when it matters. This is guidance, not
-a guarantee that every model retrieves or phrases its response identically.
+Cross-project memory uses `peer_chats.list(scope=history)` and `recall(scope=history)` against
+existing provider stores — no separate archive or mandatory checkpoint. See [Tools](tools.md) for
+limits and [Model context](model-context.md) for prompt delivery.
 
 ## Workspace layout
 
@@ -745,7 +674,14 @@ After a navigation becomes usable, and again when loading stops, the tab reasser
 bounds and visibility. This revives Electron's frame sink when a redirect leaves DOM/CDP alive
 but the attached native surface blank.
 
-Browser inspection can read a background HTML tab without selecting it.
+Browser inspection can read a background HTML tab without selecting it. Chromium throttles hidden
+pages to ~1 Hz timers with no animation frames. `browser-tab-cadence.ts` exempts a tab while a tool
+operates on it and for 5 s afterwards; navigation holds the exemption across load. A runtime
+`setBackgroundThrottling(false)` restores 50 ms timers and 60 fps rAF while `visibilityState` stays
+`hidden`. Capture temporarily disables background throttling and restores it afterward. When the
+browser is collapsed or covered, a temporary never-shown native window can host the same view for
+capture and return it afterward.
+
 For native PDF text, select the PDF tab,
 then `embedded_browser.page read_page` reads `pdf_page` (one-based, default 1) from Chromium's
 already-loaded PDF accessibility tree. It uses a temporary sandboxed diagnostic WebContents,

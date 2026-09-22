@@ -54,11 +54,11 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
         tab_id: tabIdField,
         max_elements: {
           type: 'integer', minimum: 1, maximum: 500,
-          description: 'Maximum elements across all inspected frames; defaults to 200.'
+          description: 'Maximum elements across all inspected frames; defaults to 50.'
         }
       }),
       run: async (input) => jsonResult(await requireCdp(cdp).inspectPage(
-        tabIdFrom(input), numberArg(input, 'max_elements', 200)
+        tabIdFrom(input), numberArg(input, 'max_elements', 50)
       ))
     },
     {

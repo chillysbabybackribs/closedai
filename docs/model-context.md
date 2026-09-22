@@ -6,9 +6,10 @@ data. That request has a dedicated title-only instruction, no ClosedAI tool regi
 conversation continuation. It does not write a message into the user's transcript. Generated names
 are descriptive labels, not verified facts or instructions; provider catalogs cannot overwrite them.
 
-Source review: 2026-09-13. Common product facts, provider-specific rules, runtime context, and
+Source review: 2026-09-21. Common product facts, provider-specific rules, runtime context, and
 repository documentation have separate owners. Editing a Markdown guide alone does not change
-every running model's prompt.
+every running model's prompt. Product behavior and UI ownership live in
+[Application guide](application.md); tool contracts live in [Tools](tools.md).
 
 Shared application guidance explicitly overrides the Visualize skill's delivery format:
 ClosedAI has no inline visualization-marker renderer or `Tweak`/`window.openai` host runtime.
@@ -116,17 +117,12 @@ UI selection, direct models to inspect `state.browser.coordination`, and disclos
 session and human/provider-native input boundary. Assignments last across turns; they are not a
 claim of account isolation. Search-created tabs use the same assignments without stealing focus.
 
-Renderer chat/composer control ids target the focused tile; use `layout.tab` with a chat id
-to focus another tile before exercising its controls. The UI state includes visible pane ids and
-browser visibility. Browser pages use the CDP tools described in [Tools](tools.md) and [CDP](cdp-tool-foundation.md).
-Shared guidance also states that page-requested popups, including login windows, open as regular
-browser tabs with native opener behavior; they use the same tab ids, capture and input tools.
-Chats can dock on either side of the shared browser via `layout.browser-dock`; the browser's
-position and visibility are saved per directory with the chat layout.
-Press `layout.new-chat` (the header `+`) to add a conversation tab, drag tabs or panes to split the
-layout, `layout.tab` to select one, and `layout.tab-close`
-to remove it from the tile; each control's item is the chat id. Switching or removing a tab does
-not stop its running turn or delete its history.
+Renderer chat/composer control ids target the focused tile; use `layout.tab` with a chat id before
+exercising another tile's controls. UI facts include visible pane ids and browser visibility.
+Page-requested popups, including login windows, open as regular browser tabs with native opener
+behavior. Workspace layout, search, and splits are product behavior — see
+[Application guide — Workspace layout](application.md#workspace-layout). Browser and CDP tools are
+described in [Tools](tools.md) and [CDP](cdp-tool-foundation.md).
 The common routing policy prefers deterministic commands, page APIs, the session-owned
 `embedded_browser.network` and `session` tools, page `query`/`evaluate`/`console`, fetch/extract,
 and non-input CDP. Deeper runtime inspection, debugging, profiling, instrumentation, emulation
