@@ -83,7 +83,6 @@ export class FakeSurface extends EventEmitter implements ChatSurface {
       pausedTurnId: null,
       contextUsage: null,
       planUsage: null,
-      turnContext: null,
       items: []
     }
   }

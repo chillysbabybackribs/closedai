@@ -9,7 +9,7 @@ verification. Protocol measurements retain their dates in the provider guides. P
 model-facing routing live in [Model context](model-context.md); registry contracts live in
 [Tools](tools.md).
 
-Renderer and agent-workstation UI changes are verified in Electron (`npm run build &&
+Renderer UI changes are verified in Electron (`npm run build &&
 npm run preview`, or `npm run dev` for hot reload). There is no separate browser-only renderer
 entry or fixture bridge.
 

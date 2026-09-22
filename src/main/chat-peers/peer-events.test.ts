@@ -29,7 +29,6 @@ test('renderer snapshots keep only the latest turn for the live pane', () => {
     pausedTurnId: null,
     contextUsage: null,
     planUsage: null,
-    turnContext: null,
     items: [
       { type: 'user', id: 'u1', turnId: 't1', text: 'first' },
       { type: 'assistant', id: 'a1', turnId: 't1', text: 'one', phase: null, streaming: false },

@@ -92,7 +92,6 @@ async function mockHost(t: test.TestContext, tools: ToolRegistry) {
       pausedTurnId: null,
       contextUsage: null,
       planUsage: null,
-      turnContext: null,
       items: []
     }),
     emitEvent: () => {},
@@ -100,7 +99,6 @@ async function mockHost(t: test.TestContext, tools: ToolRegistry) {
     setThreadName: () => {},
     setThreadToolCatalog: (catalog) => { threadToolCatalog = catalog },
     setActiveTurnId: () => {},
-    setTurnContext: () => {}
   }
   return { host, requests, getSaved: () => saved, setThreadToolCatalog: (c: unknown) => { threadToolCatalog = c } }
 }

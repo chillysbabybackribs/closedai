@@ -18,7 +18,6 @@ class Surface extends EventEmitter implements ChatSurface {
       provider: 'codex', connection: { state: 'ready', message: 'ready' }, account: null,
       models: [], selectedModel: this.modelId, selectedReasoningEffort: null, cwd: this.cwd,
       threadId: null, threadName: null, activeTurnId: this.running ? 'turn' : null, pausedTurnId: null, contextUsage: null, planUsage: null,
-      turnContext: null, items: []
     }
   }
   async start(): Promise<void> {}

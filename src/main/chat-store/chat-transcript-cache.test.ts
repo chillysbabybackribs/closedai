@@ -28,7 +28,6 @@ function snapshotWith(items: ChatTranscriptItem[], hasEarlier = false): ChatSnap
     pausedTurnId: null,
     contextUsage: { usedTokens: 1_000, contextWindow: 10_000, percent: 10 },
     planUsage: null,
-    turnContext: null,
     items,
     history: { hasEarlier }
   }

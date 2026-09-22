@@ -19,7 +19,6 @@ function harness() {
   const snapshot: ChatSnapshot = {
     provider: 'codex', connection: { state: 'ready', message: '' }, account: null, models: [], selectedModel: null,
     selectedReasoningEffort: null, cwd: '/project', threadId: 'thread', threadName: null, activeTurnId: 't', pausedTurnId: null,
-    contextUsage: null, planUsage: null, turnContext: null,
     items: [{ type: 'user', id: 'u1', turnId: 't', text: 'Keep the old constraints' }]
   }
   const store = ChatStore.inMemory([chatRecord('p', null, { codexThreadId: 'thread', threadId: 'thread' })])

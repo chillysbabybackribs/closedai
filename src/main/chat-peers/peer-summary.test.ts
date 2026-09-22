@@ -21,7 +21,6 @@ function snapshot(overrides: Partial<ChatSnapshot> = {}): ChatSnapshot {
     pausedTurnId: null,
     contextUsage: null,
     planUsage: null,
-    turnContext: null,
     items: [],
     ...overrides
   }
