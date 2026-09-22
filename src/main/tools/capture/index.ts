@@ -1,5 +1,6 @@
 import { defineActionTool, type ToolAction } from '../action-tool.js'
 import { failureResult, type ToolNamespace, type ToolResult } from '../tool.js'
+import { agentWorkspaceAction } from './agent-workspace.js'
 import { appWindowAction } from './app-window.js'
 import { browserPageAction } from './browser-page.js'
 import { CaptureBudget } from './budget.js'
@@ -7,7 +8,7 @@ import { cropAction } from './crop.js'
 import type { UiCaptureHostProvider } from './host.js'
 import { ScreenshotStore } from './screenshot-store.js'
 
-export type { BrowserPageCapture, CapturedImage, ImageCrop, ModelImage, UiCaptureHost, UiCaptureHostProvider } from './host.js'
+export type { AgentWorkspaceCapture, BrowserPageCapture, CapturedImage, ImageCrop, ModelImage, UiCaptureHost, UiCaptureHostProvider } from './host.js'
 export { ScreenshotStore, type ScreenshotSurface, type StoredScreenshot } from './screenshot-store.js'
 export { CaptureBudget, DEFAULT_MAX_CAPTURES_PER_TURN } from './budget.js'
 
@@ -21,7 +22,10 @@ export function captureTools(
   store = new ScreenshotStore(),
   budget = new CaptureBudget()
 ): ToolNamespace {
-  const actions = [appWindowAction(capture, store), browserPageAction(capture, store), cropAction(capture, store)]
+  const actions = [
+    appWindowAction(capture, store), agentWorkspaceAction(capture, store),
+    browserPageAction(capture, store), cropAction(capture, store)
+  ]
   return {
     name: 'closedai_ui',
     description: 'Visual access to the application window and its embedded browser pages.',
@@ -30,9 +34,9 @@ export function captureTools(
         name: 'capture',
         deferLoading: true,
         description:
-          'Screenshots when visual evidence is needed: app_window (whole UI), browser_page (one readiness-gated page), ' +
-          'or crop (enlarge a retained region). At most ' +
-          `${budget.maxPerTurn} images per turn; prefer embedded_browser.page read_page for text. ` +
+          'Screenshots when visual evidence is needed: app_window (whole UI), agent_workspace (the agent workspace ' +
+          'pane alone, cropped, when open), browser_page (one readiness-gated page), or crop (enlarge a retained ' +
+          `region). At most ${budget.maxPerTurn} images per turn; prefer embedded_browser.page read_page for text. ` +
           'Batch changes, then capture once. Exec mode: split the text summary from the data:image/ URL before text().',
         actions: actions.map((action) => withBudget(action, budget))
       })

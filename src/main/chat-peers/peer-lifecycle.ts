@@ -1,7 +1,6 @@
 import type { ChatEvent, ChatSnapshot } from '../../shared/chat.js'
 import type { ChatPaneId, ChatPeerSummary } from '../../shared/chat-peers.js'
 import { chatProviderOfId } from '../../shared/chat-providers.js'
-import { isProjectPeerChatId } from '../../shared/project-peer-ids.js'
 import { chatRecordIsBlank, type ChatRecord, type ChatRecordPatch } from '../../shared/chat-store.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
@@ -216,7 +215,6 @@ export class PeerLifecycle {
 
   /** Drop a blank chat entirely: its pane and its record. Returns whether anything was removed. */
   discardIfBlank(chatId: ChatPaneId): boolean {
-    if (isProjectPeerChatId(chatId)) return false
     if (this.store.get(chatId)?.pinnedAt != null) return false
     if (!this.isBlank(chatId)) return false
     this.detach(chatId)

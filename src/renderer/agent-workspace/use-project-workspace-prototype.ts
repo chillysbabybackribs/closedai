@@ -11,7 +11,7 @@ import { hydrateFromSnapshot, shouldHydrateFromSnapshot } from './hydrate-projec
 
 const AWAY_AFTER_MS = 30_000
 
-const nodeSignature = (node: TreeNode) => `${node.state}|${node.summary}`
+export const projectNodeSignature = (node: TreeNode) => `${node.state}|${node.summary}`
 
 export function useProjectWorkspacePrototypeEffects(options: {
   phase: 'intake' | 'canvas'
@@ -87,7 +87,7 @@ export function useProjectWorkspacePrototypeEffects(options: {
       proposal: null, acceptedAt: hydration.acceptedAt
     })
     setSeenFiles(Object.fromEntries(initial.map((file) => [file.path, file.content])))
-    setSeenNodes(Object.fromEntries(hydration.tree.map((node) => [node.id, nodeSignature(node)])))
+    setSeenNodes(Object.fromEntries(hydration.tree.map((node) => [node.id, projectNodeSignature(node)])))
   }, [canvasFixture, persistedSnapshot, persistedApplied, setDiscovery, setPhase, setTree, setJournal, setConfirmedAt, setCaughtUpAt, setAcceptedAt, setSkipSimulatedDispatch, setSeenFiles, setSeenNodes])
 
   useEffect(() => {
@@ -98,11 +98,11 @@ export function useProjectWorkspacePrototypeEffects(options: {
       proposal: null, acceptedAt: fixtureHydration.acceptedAt
     })
     setSeenFiles(Object.fromEntries(initial.map((file) => [file.path, file.content])))
-    setSeenNodes(Object.fromEntries(fixtureHydration.tree.map((node) => [node.id, nodeSignature(node)])))
+    setSeenNodes(Object.fromEntries(fixtureHydration.tree.map((node) => [node.id, projectNodeSignature(node)])))
   }, [fixtureHydration, setSeenFiles, setSeenNodes])
 
   useEffect(() => {
-    if (location.kind === 'map') setSeenNodes(Object.fromEntries(tree.map((node) => [node.id, nodeSignature(node)])))
+    if (location.kind === 'map') setSeenNodes(Object.fromEntries(tree.map((node) => [node.id, projectNodeSignature(node)])))
   }, [location, tree, setSeenNodes])
 
   useEffect(() => {

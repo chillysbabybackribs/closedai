@@ -7,7 +7,7 @@ import type {
   ChatTranscriptItem
 } from '../shared/chat.js'
 import { nullableString, recordOf, stringOf } from './json-coerce.js'
-import { WITHHELD_TOOL_OUTPUT, toolResultWithheld } from './tool-transcript-shared.js'
+import { captureSurface, WITHHELD_TOOL_OUTPUT, toolResultWithheld } from './tool-transcript-shared.js'
 
 export { nullableString, recordOf, stringOf } from './json-coerce.js'
 
@@ -231,8 +231,7 @@ function normalizeScreenshot(
 ): Extract<ChatTranscriptItem, { type: 'screenshot' }> | null {
   if (item.namespace !== 'closedai_ui' || item.tool !== 'capture' || item.status !== 'completed') return null
   const args = recordOf(item.arguments)
-  const action = args?.action
-  const surface = action === 'app_window' || action === 'browser_page' || action === 'crop' ? action : null
+  const surface = captureSurface(args?.action)
   if (!surface || !Array.isArray(item.contentItems)) return null
   let imageUrl = ''
   let caption = ''

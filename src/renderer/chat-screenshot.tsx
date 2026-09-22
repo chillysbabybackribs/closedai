@@ -8,6 +8,8 @@ type ScreenshotItem = Extract<ChatTranscriptItem, { type: 'screenshot' }>
 export function ChatScreenshot({ item }: { item: ScreenshotItem }): JSX.Element {
   const surface = item.surface === 'app_window'
     ? 'Application window'
+    : item.surface === 'agent_workspace'
+    ? 'Agent workspace'
     : item.surface === 'browser_page' ? 'Browser page' : 'Screenshot crop'
   return (
     <Message className="message prompt-message prompt-message-screenshot">

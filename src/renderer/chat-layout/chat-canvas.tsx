@@ -10,6 +10,7 @@ import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import type { TabActivity } from './tab-activity.js'
 import { paneHideHint, tabCloseHint } from './layout-copy.js'
 import { browserDropAt, browserDropPreview, sameBrowserDrop, type BrowserDrop } from './browser-drop.js'
+import { useNativeViewBounds } from '../native-view-bounds.js'
 
 
 const isBrowserPane = (id: string): boolean => id === BROWSER_PANE_ID
@@ -117,6 +118,15 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
   const soloTile = soloPaneId
     ? geometry.panes.find((p) => p.id === soloPaneId || p.tabs.includes(soloPaneId))
     : null
+
+  // Plain DOM (unlike the native browser view), so a collapsed host already reports a zero
+  // rect on its own; the report just needs to reach the main process for capture to crop to it.
+  const agentBoundsRef = useNativeViewBounds(async (bounds) => {
+    await window.closedai.agentWorkspace.setBounds({
+      x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height,
+      visible: bounds.width > 1 && bounds.height > 1
+    })
+  }, JSON.stringify([agentVisible, soloPaneId, tree]), true)
 
   useEffect(() => {
     if (!soloPaneId) return
@@ -298,7 +308,7 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
             {dragging && <div className="chat-layout-browser-shield">{dragging.id === BROWSER_PANE_ID
               ? 'Drop above or below a chat to stack; use the workspace edges for a full-height column'
               : 'Drop on either side to place a chat beside the browser'}</div>}
-          </div> : isAgentPane(activeId) ? <div className="chat-layout-agent-frame" data-ui="layout.agent-dock">
+          </div> : isAgentPane(activeId) ? <div className="chat-layout-agent-frame" data-ui="layout.agent-dock" ref={agentBoundsRef}>
             {renderAgent?.({ toggleSolo: () => setSoloPaneId((current) => current === AGENT_WORKSPACE_PANE_ID ? null : AGENT_WORKSPACE_PANE_ID), solo: isThisTileSolo })}
           </div> : tabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
             aria-label={title(tabId)} hidden={tabId !== activeId}>{renderPane(tabId)}</div>)}

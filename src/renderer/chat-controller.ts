@@ -25,6 +25,7 @@ export type ChatController = {
   /** The store's chats now; the main process reconciles provider catalogs behind the answer. */
   listChats: () => Promise<ChatRowSummary[]>
   newThread: () => Promise<void>
+  newDetachedThread: () => Promise<string>
   continueInNewThread: () => Promise<void>
   continueFromChat: (source: ChatContinuationSource, modelId: string | null) => Promise<void>
   /** Show a chat by id. Main decides whether it replaces a blank selected chat or opens beside it. */
@@ -110,6 +111,7 @@ export function usePaneChatController(
   const loginWithChatGPT = useCallback(() => window.closedai.chat.loginWithChatGPT(), [])
   const listChats = useCallback(() => window.closedai.chat.listChats(), [])
   const newThread = useCallback(() => window.closedai.chat.newPeer().then(() => undefined), [])
+  const newDetachedThread = useCallback(() => window.closedai.chat.newDetachedPeer(), [])
   const continueFromChat = useCallback((source: ChatContinuationSource, modelId: string | null) =>
     window.closedai.chat.continueInNewPeer(source, modelId).then(() => undefined), [])
   const continueInNewThread = useCallback(() => continueFromChat(
@@ -155,6 +157,7 @@ export function usePaneChatController(
     loginWithChatGPT,
     listChats,
     newThread,
+    newDetachedThread,
     continueInNewThread,
     continueFromChat,
     openChat,
@@ -171,7 +174,7 @@ export function usePaneChatController(
   }), [
     state, workspace.workspace, workspace.preferences, workspace.chats, paneId,
     send, interrupt, interruptPane, resumePane, selectModel, selectReasoningEffort, refreshPlanUsage, loginWithChatGPT,
-    listChats, newThread, continueInNewThread, continueFromChat, openChat,
+    listChats, newThread, newDetachedThread, continueInNewThread, continueFromChat, openChat,
     archiveChat, unarchiveChat, setChatPinned, renameChat, retryChatTitle, compactConversation, selectPane, closePeer, loadEarlier, trimMountedHistory
   ])
 }

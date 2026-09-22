@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { AppWindow, Compass, History, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 
-import type { ChatModel, ChatProvider } from '../../shared/chat.js'
+import type { ChatModel, ChatProvider, ChatTranscriptItem } from '../../shared/chat.js'
 import { Composer, type ComposerProps } from '../composer.js'
 import type { ComposerLayout } from '../composer-layout.js'
 import { injectComposerDraft } from '../composer-drafts.js'
@@ -10,40 +10,50 @@ import { buildCatchUp, countSince, reportLines } from '../preview/project-catchu
 import { CatchUpDetail, ProposalDetail } from '../preview/project-catchup-view.js'
 import { closureProgress, type AcknowledgedReport, type Proposal } from '../preview/project-closure.js'
 import { Breadcrumbs, FileDetail, NodeDetail } from '../preview/project-detail.js'
-import { advanceDiscovery, clip, createDiscovery, isDirectionReady, type DiscoveryState } from '../preview/project-discovery.js'
+import { advanceDiscovery, clip, createDiscovery, isDirectionReady, syncDiscoveryWithItems, type DiscoveryState } from '../preview/project-discovery.js'
 import { ProjectFileTree } from '../preview/project-file-tree.js'
 import {
   breadcrumbs, deriveFiles, fileAt, filesForNode, folderTree, servesLine, targetNodeId,
   type FileEdit, type JournalLine, type Location
 } from '../preview/project-files.js'
-import { ProjectIntake, type Message } from '../preview/project-intake.js'
+import { ProjectIntake, transcriptItemsToMessages, type Message } from '../preview/project-intake.js'
 import { duration } from '../preview/project-time.js'
-import type { ProjectPeersSnapshot } from '../../shared/project-peers.js'
 import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
-import {
-  directionFromIntake, liveIntakeReady, sendLiveCoordinatorTurn, sendLiveIntakeTurn, useProjectPeerChatEvents
-} from './project-workspace-live.js'
-import { useProjectWorkspacePrototypeEffects } from './use-project-workspace-prototype.js'
 import { hydrateFromSnapshot, shouldHydrateFromSnapshot, type PersistedProjectHydration } from './hydrate-project-snapshot.js'
 import type { ProjectCanvasFixture } from '../preview/project-canvas-fixture.js'
 import { amendTree, layoutTree, rootNode, type TreeNode } from '../preview/project-tree.js'
+import { projectNodeSignature, useProjectWorkspacePrototypeEffects } from './use-project-workspace-prototype.js'
 
 export type ProjectWorkspaceComposerBridge = Pick<ComposerProps,
   'models' | 'selectedModel' | 'selectedReasoningEffort' | 'contextUsage' | 'provider' | 'planUsage'
   | 'onRefreshPlanUsage' | 'onModelChange' | 'onReasoningEffortChange' | 'cwd' | 'projectPath' | 'projectPending'
-  | 'recentProjects' | 'onChooseProject' | 'onSelectProject' | 'onClearProject' | 'activeTurnId'>
+  | 'recentProjects' | 'onChooseProject' | 'onSelectProject' | 'onClearProject' | 'activeTurnId'> & {
+  items?: ChatTranscriptItem[]
+  running?: boolean
+  paused?: boolean
+  pausedTurnId?: string | null
+  onStop?: () => Promise<void>
+  onResume?: () => Promise<void>
+  onSend?: (text: string) => Promise<void>
+}
+
+export type ProjectWorkspaceChatAppearance = {
+  zoom: number
+  fontSize: number
+  composerFontSize: number
+}
 
 export type ProjectWorkspaceProps = {
   paneId: string
   embedded?: boolean
   fixedComposerLayout?: ComposerLayout
   composerBridge?: ProjectWorkspaceComposerBridge | null
+  /** Match ordinary chat panes: zoom and message/composer font sizes from Appearance settings. */
+  chatAppearance?: ProjectWorkspaceChatAppearance
   /** Preview and tests: skip intake and simulated dispatch timers when canvas is pre-seeded. */
   canvasFixture?: ProjectCanvasFixture | null
   /** Durable state from main; hydrates once when the workspace would otherwise start empty. */
   persistedSnapshot?: ProjectSnapshot | null
-  /** Background intake/coordinator chats from main; enables live models when embedded. */
-  projectPeers?: ProjectPeersSnapshot | null
 }
 const MAP: Location = { kind: 'map' }
 const CLOCK_MS = 15_000
@@ -60,7 +70,6 @@ const MODELS: ChatModel[] = [
 ]
 
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
-const nodeSignature = (node: TreeNode) => `${node.state}|${node.summary}`
 
 function initialHydration(canvasFixture: ProjectCanvasFixture | null, persistedSnapshot: ProjectSnapshot | null | undefined): PersistedProjectHydration | null {
   if (canvasFixture) {
@@ -79,8 +88,7 @@ function initialHydration(canvasFixture: ProjectCanvasFixture | null, persistedS
   return null
 }
 
-export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout, composerBridge = null, canvasFixture = null, persistedSnapshot = null, projectPeers = null }: ProjectWorkspaceProps) {
-  const liveModels = Boolean(embedded && projectPeers && !canvasFixture)
+export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout, composerBridge = null, chatAppearance, canvasFixture = null, persistedSnapshot = null }: ProjectWorkspaceProps) {
   const fixtureHydration = useMemo(() => initialHydration(canvasFixture, null), [canvasFixture])
   const persistedApplied = useRef(false)
   const [skipSimulatedDispatch, setSkipSimulatedDispatch] = useState(() => fixtureHydration?.skipSimulatedDispatch ?? false)
@@ -108,20 +116,22 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
   const nextId = useRef(1)
   const scrollRef = useRef<HTMLDivElement>(null)
   const shellRef = useRef<HTMLElement>(null)
-  const { streamItemToMessageId, pendingCoordinatorReply } = useProjectPeerChatEvents({
-    liveModels, projectPeers, phase, nextId, setMessages
-  })
 
   const bridgeModels = composerBridge?.models ?? MODELS
   const bridgeModelId = composerBridge?.selectedModel ?? selectedModel
   const selectedModelEntry = bridgeModels.find((model) => model.id === bridgeModelId) ?? bridgeModels[0] ?? MODELS[0]!
   const provider = (composerBridge?.provider ?? selectedModelEntry.provider) as ChatProvider
-  const record = liveModels && phase === 'intake' ? directionFromIntake(messages) : discovery.record
-  const ready = liveModels ? liveIntakeReady(messages) : discovery.asking === null && isDirectionReady(record)
+  const bridgeMessages = useMemo(() => {
+    if (!composerBridge?.items) return null
+    return transcriptItemsToMessages(composerBridge.items)
+  }, [composerBridge?.items])
+  const activeMessages = bridgeMessages ?? messages
+  const record = discovery.record
+  const ready = discovery.asking === null && isDirectionReady(record)
   const layout = useMemo(() => layoutTree(tree), [tree])
   const progress = useMemo(() => closureProgress(tree, record), [tree, record])
-  const files = useMemo(() => deriveFiles({ record, messages, nodes: tree, journal, edits, confirmedAt, reports, progress, proposal, acceptedAt }),
-    [record, messages, tree, journal, edits, confirmedAt, reports, progress, proposal, acceptedAt])
+  const files = useMemo(() => deriveFiles({ record, messages: activeMessages, nodes: tree, journal, edits, confirmedAt, reports, progress, proposal, acceptedAt }),
+    [record, activeMessages, tree, journal, edits, confirmedAt, reports, progress, proposal, acceptedAt])
   const pending = useMemo(() => countSince(tree, caughtUpAt), [tree, caughtUpAt])
   const report = useMemo(() => location.kind === 'catchup' ? buildCatchUp({ nodes: tree, files, since: caughtUpAt, now, progress }) : null,
     [location, tree, files, caughtUpAt, now, progress])
@@ -136,12 +146,19 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
     .filter((file) => file.path in seenFiles && seenFiles[file.path] !== file.content && openFile?.path !== file.path)
     .map((file) => file.path)), [files, seenFiles, openFile])
   const changedNodes = useMemo(() => new Set(tree
-    .filter((node) => location.kind !== 'map' && node.id in seenNodes && seenNodes[node.id] !== nodeSignature(node))
+    .filter((node) => location.kind !== 'map' && node.id in seenNodes && seenNodes[node.id] !== projectNodeSignature(node))
     .map((node) => node.id)), [tree, seenNodes, location])
 
   useEffect(() => {
+    if (embedded || !composerBridge?.items || composerBridge.items.length === 0) return
+    setDiscovery((current) => syncDiscoveryWithItems(current, composerBridge.items!))
+  }, [composerBridge?.items, embedded])
+
+  const liveTranscript = composerBridge != null
+  useEffect(() => {
+    if (liveTranscript) return
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages, sending])
+  }, [activeMessages, sending, composerBridge?.running, liveTranscript])
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), CLOCK_MS)
@@ -166,12 +183,10 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
 
   function start(): void {
     const at = Date.now()
-    const buildRecord = liveModels ? directionFromIntake(messages) : record
-    if (liveModels) setDiscovery((current) => ({ ...current, record: buildRecord, asking: null }))
-    const root = rootNode(buildRecord, at)
+    const root = rootNode(record, at)
     const opening = [{ id: nextId.current++, at, text: 'Direction confirmed. Working from the record; only the next useful moves are planned.' }]
-    const initial = deriveFiles({ record: buildRecord, messages, nodes: [root], journal: opening, edits: {}, confirmedAt: at,
-      reports: [], progress: closureProgress([root], buildRecord), proposal: null, acceptedAt: null })
+    const initial = deriveFiles({ record, messages: activeMessages, nodes: [root], journal: opening, edits: {}, confirmedAt: at,
+      reports: [], progress: closureProgress([root], record), proposal: null, acceptedAt: null })
     setTree([root])
     setJournal(opening)
     setSeenFiles(Object.fromEntries(initial.map((file) => [file.path, file.content])))
@@ -245,16 +260,14 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
     const clean = text.trim()
     if (!clean) return
     setSending(true)
-    try {
     if (phase === 'canvas') {
-      if (liveModels && projectPeers) {
-        const reply = await sendLiveCoordinatorTurn(projectPeers.coordinatorPaneId, clean, pendingCoordinatorReply)
-        if (reply) note(`Coordinator: ${clip(reply, 220)}`)
-      } else {
-      await wait(260)
+      if (composerBridge?.onSend) {
+        void composerBridge.onSend(clean)
       }
+      await wait(260)
       if (acceptedAt) {
         reopen(clean)
+        setSending(false)
         return
       }
       const gap = location.kind === 'proposal' && proposal
@@ -264,26 +277,23 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
       setTree(nodes)
       note(location.kind === 'file' ? `${ripple} (from ${location.path})` : ripple)
       if (gap) navigate(MAP)
+      setSending(false)
+      return
+    }
+    if (composerBridge?.onSend) {
+      try {
+        await composerBridge.onSend(clean)
+      } finally {
+        setSending(false)
+      }
       return
     }
     setMessages((current) => [...current, { id: nextId.current++, at: Date.now(), role: 'user', text: clean }])
-    if (liveModels && projectPeers) {
-      await sendLiveIntakeTurn(projectPeers.intakePaneId, clean, streamItemToMessageId)
-      return
-    }
     const { state, reply } = advanceDiscovery(discovery, clean)
     await wait(420)
     setDiscovery(state)
     setMessages((current) => [...current, { id: nextId.current++, at: Date.now(), role: 'coordinator', text: reply }])
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      setMessages((current) => [...current, {
-        id: nextId.current++, at: Date.now(), role: 'coordinator',
-        text: `Could not reach the project model: ${message}`
-      }])
-    } finally {
-      setSending(false)
-    }
+    setSending(false)
   }
 
   const canvasNote = acceptedAt ? 'Complete. New direction reopens the project as an amendment.'
@@ -298,9 +308,31 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
   const shellAttrs = embedded
     ? { 'data-agent-workspace': true as const }
     : { 'data-preview-project-shell': true as const }
+  const zoom = chatAppearance?.zoom ?? 100
+  const fontSize = chatAppearance?.fontSize ?? 14
+  const composerFontSize = chatAppearance?.composerFontSize ?? 15
+  const intakeTranscript = composerBridge && (composerBridge.items?.length ?? 0) > 0
+    ? {
+        paneId,
+        items: composerBridge.items!,
+        activeTurnId: composerBridge.activeTurnId ?? null,
+        pausedTurnId: composerBridge.pausedTurnId ?? null,
+        running: composerBridge.running ?? false
+      }
+    : undefined
+  const hasIntakeConversation = (composerBridge?.items?.length ?? 0) > 0 || activeMessages.length > 0
 
-  return <section className="project-shell" ref={shellRef} {...shellAttrs} aria-label="Project">
-        <header className="project-shell-header">
+  const zoomStyle = chatAppearance ? {
+    '--chat-zoom': zoom / 100,
+    '--chat-zoom-inverse': 100 / zoom,
+    '--chat-font-size': `${fontSize}px`,
+    '--chat-fs-body': `${fontSize}px`,
+    '--chat-fs-markdown': `${fontSize}px`,
+    '--composer-font-size': `${composerFontSize}px`
+  } as CSSProperties : undefined
+
+  const shellChrome = <>
+    <header className="project-shell-header">
           {!embedded && <span className="project-shell-grip" aria-hidden="true">⠿</span>}
           {phase === 'canvas' && <button type="button" className="project-shell-tree-toggle"
             data-ui="preview.project-tree-toggle" aria-pressed={treeOpen}
@@ -353,19 +385,20 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
               </div>}
             </div>
           </div>
-          : <div className={`project-shell-body${messages.length ? ' has-conversation' : ''}`} ref={scrollRef}>
-            <ProjectIntake messages={messages} sending={sending} record={record} ready={ready}
-              onSuggestion={chooseSuggestion} onStart={start} />
+          : <div className={`project-shell-body${embedded ? ' is-agent-embedded' : ''}${hasIntakeConversation ? ' has-conversation' : ''}${liveTranscript ? ' has-live-transcript' : ''}`}
+            ref={liveTranscript ? undefined : scrollRef}>
+            <ProjectIntake messages={activeMessages} sending={sending || (composerBridge?.running ?? false)} record={record} ready={ready}
+              onSuggestion={chooseSuggestion} onStart={start} transcript={intakeTranscript} showDirectionRecord={!embedded} />
           </div>}
 
         <footer className="project-shell-footer">
-          {phase === 'intake' && !messages.length && <p className="project-shell-help">
+          {phase === 'intake' && !hasIntakeConversation && !embedded && <p className="project-shell-help">
             Describe what you want to exist and anything you already care about. The coordinator asks for the rest.
           </p>}
           <div className="composer project-shell-composer">
             <Composer
-              enabled={!sending}
-              running={false}
+              enabled={composerBridge ? true : !sending}
+              running={composerBridge?.running ?? sending}
               placeholder={placeholder}
               models={bridgeModels}
               selectedModel={bridgeModelId}
@@ -377,9 +410,9 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
               onModelChange={composerBridge?.onModelChange ?? (async (modelId) => setSelectedModel(modelId))}
               onReasoningEffortChange={composerBridge?.onReasoningEffortChange ?? (async () => {})}
               onSend={async (text) => send(text)}
-              onStop={async () => {}}
-              paused={false}
-              onResume={async () => {}}
+              onStop={composerBridge?.onStop ?? (async () => {})}
+              paused={composerBridge?.paused ?? false}
+              onResume={composerBridge?.onResume ?? (async () => {})}
               onInspectContext={() => {}}
               cwd={composerBridge?.cwd ?? '/preview/closedai'}
               projectPath={composerBridge?.projectPath ?? '/preview/closedai'}
@@ -394,8 +427,16 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
             />
           </div>
           <span className="project-provider-note"><AppWindow size={12} aria-hidden="true" />
-            {phase === 'canvas' ? canvasNote : liveModels ? `${selectedModelEntry.displayName} · intake coordinator` : '4 providers available to the coordinator'}
+            {phase === 'canvas' ? canvasNote : '4 providers available to the coordinator'}
           </span>
         </footer>
-      </section>
+  </>
+
+  return <section className={`project-shell${embedded ? ' project-shell-embedded' : ''}${chatAppearance ? ' project-shell-chat prompt-chat' : ''}`} ref={shellRef} {...shellAttrs}
+    aria-label="Project"
+    data-ui-surface={chatAppearance ? 'chat' as const : undefined}
+    data-zoom={chatAppearance ? zoom : undefined}
+    style={zoomStyle}>
+    {shellChrome}
+  </section>
 }

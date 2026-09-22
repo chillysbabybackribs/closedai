@@ -1,5 +1,5 @@
 import type { BrowserHistoryMatch } from './browser-history.js'
-import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
+import type { AgentWorkspaceBounds, BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
 import type { ProviderAvailability } from './provider-availability.js'
@@ -12,7 +12,6 @@ import type {
 } from './security.js'
 import type { ProjectSnapshot } from './project/snapshot.js'
 import type { ProjectWorkspaceEvent } from './project/events.js'
-import type { ProjectPeersSnapshot } from './project-peers.js'
 
 export type Unsubscribe = () => void
 
@@ -34,6 +33,10 @@ export type ClosedaiApi = {
     close: () => Promise<void>
     /** Developer menu: open or close DevTools for the app window itself, not a browser tab. */
     toggleDevTools: () => Promise<void>
+  }
+  agentWorkspace: {
+    /** Report the agent workspace pane's current on-screen rect, for readiness-gated capture. */
+    setBounds: (bounds: AgentWorkspaceBounds) => Promise<void>
   }
   browser: {
     setBounds: (bounds: BrowserBounds) => Promise<void>
@@ -91,6 +94,8 @@ export type ClosedaiApi = {
     listChats: () => Promise<ChatRowSummary[]>
     /** Clear the pane; the next message starts a fresh app-server thread. */
     newPeer: () => Promise<ChatPaneId>
+    /** Create and attach an ordinary chat without changing the selected chat. */
+    newDetachedPeer: () => Promise<ChatPaneId>
     /** Retire an open peer pane from the active workspace shelf back to history. */
     closePeer: (paneId: ChatPaneId) => Promise<void>
     /** Create a new pane whose first message carries a compact digest of the exact source chat. */
@@ -168,7 +173,6 @@ export type ClosedaiApi = {
   /** Durable multi-agent project state for the agent workspace (`.closedai/project.json`). */
   project: {
     snapshot: (projectPath: string) => Promise<ProjectSnapshot>
-    ensurePeers: (projectPath: string, modelId: string | null, reasoningEffort: string | null) => Promise<ProjectPeersSnapshot>
     onEvent: (listener: (event: ProjectWorkspaceEvent) => void) => Unsubscribe
   }
 }

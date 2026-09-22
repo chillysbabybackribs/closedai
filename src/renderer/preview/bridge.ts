@@ -102,6 +102,7 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
   const api: ClosedaiApi = {
     chat: { ...chat.api, providerAvailability: async () => structuredClone(providerAvailability) },
     window: { minimize: native, maximize: native, toggleFullscreen: native, close: native, toggleDevTools: native },
+    agentWorkspace: { setBounds: native },
     browser: {
       setBounds: async (bounds) => boundsChanged(bounds),
       navigate: async (url) => {
@@ -166,7 +167,6 @@ export function createPreviewBridge(scenario: Scenario, report: (message: string
       clear: native, onEvent: idleSubscription },
     project: {
       snapshot: async (projectPath: string) => projectSnapshot(projectPath),
-      ensurePeers: async () => { throw new Error('Project peers are not available in preview') },
       onEvent: (listener) => {
         projectListeners.add(listener)
         return () => { projectListeners.delete(listener) }

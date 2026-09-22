@@ -1,5 +1,5 @@
 import type { BrowserHistoryMatch } from './browser-history.js'
-import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
+import type { AgentWorkspaceBounds, BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from './chat-peers.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
@@ -10,7 +10,6 @@ import type { LibrarySettings, LibrarySnapshot } from './research-library.js'
 import type { ProviderAvailability } from './provider-availability.js'
 import type { ProjectSnapshot } from './project/snapshot.js'
 import type { ProjectWorkspaceEvent } from './project/events.js'
-import type { ProjectPeersSnapshot } from './project-peers.js'
 import type {
   BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
 } from './security.js'
@@ -36,6 +35,7 @@ export type IpcInvokeChannels = {
   'window:close': { args: []; result: void }
   'window:toggleDevTools': { args: []; result: void }
   'browser:setBounds': { args: [BrowserBounds]; result: void }
+  'agentWorkspace:setBounds': { args: [AgentWorkspaceBounds]; result: void }
   'browser:navigate': { args: [string]; result: void }
   'browser:back': { args: []; result: void }
   'browser:forward': { args: []; result: void }
@@ -74,6 +74,7 @@ export type IpcInvokeChannels = {
   'chat:login': { args: []; result: void }
   'chat:listChats': { args: []; result: ChatRowSummary[] }
   'chat:newPeer': { args: []; result: ChatPaneId }
+  'chat:newDetachedPeer': { args: []; result: ChatPaneId }
   'chat:closePeer': { args: [ChatPaneId]; result: void }
   'chat:continueInNewPeer': { args: [ChatContinuationSource, string | null]; result: ChatPaneId }
   'chat:openChat': { args: [string]; result: ChatPaneId }
@@ -110,7 +111,6 @@ export type IpcInvokeChannels = {
   'trace:snapshot': { args: []; result: TraceSnapshot }
   'trace:clear': { args: []; result: void }
   'project:snapshot': { args: [string]; result: ProjectSnapshot }
-  'project:ensurePeers': { args: [string, string | null, string | null]; result: ProjectPeersSnapshot }
 }
 
 export type IpcInvokeChannel = keyof IpcInvokeChannels
@@ -151,6 +151,9 @@ export const IPC = {
       toggleFullscreen: 'window:toggleFullscreen',
       close: 'window:close',
       toggleDevTools: 'window:toggleDevTools'
+    },
+    agentWorkspace: {
+      setBounds: 'agentWorkspace:setBounds'
     },
     browser: {
       setBounds: 'browser:setBounds',
@@ -196,6 +199,7 @@ export const IPC = {
       login: 'chat:login',
       listChats: 'chat:listChats',
       newPeer: 'chat:newPeer',
+      newDetachedPeer: 'chat:newDetachedPeer',
       closePeer: 'chat:closePeer',
       continueInNewPeer: 'chat:continueInNewPeer',
       openChat: 'chat:openChat',
@@ -243,8 +247,7 @@ export const IPC = {
       clear: 'trace:clear'
     },
     project: {
-      snapshot: 'project:snapshot',
-      ensurePeers: 'project:ensurePeers'
+      snapshot: 'project:snapshot'
     }
   },
   event: {

@@ -1,8 +1,40 @@
 import { Boxes, Check, Compass, FlaskConical, RefreshCw, Sparkles } from 'lucide-react'
 
+import type { ChatTranscriptItem } from '../../shared/chat.js'
+import { AgentWorkspaceTranscript } from '../agent-workspace/agent-workspace-transcript.js'
 import { clarityItems, clip, type DirectionRecord } from './project-discovery.js'
 
-export type Message = { id: number; at: number; role: 'user' | 'coordinator'; text: string }
+export type Message = { id: number | string; at: number; role: 'user' | 'coordinator'; text: string }
+
+export function isInterruptedUserMessage(text: string): boolean {
+  return /^\[Request interrupted.*\]$/i.test(text.trim())
+}
+
+export function transcriptItemsToMessages(items: ChatTranscriptItem[]): Message[] {
+  const result: Message[] = []
+  for (const item of items) {
+    if (item.type === 'user') {
+      if (!isInterruptedUserMessage(item.text)) {
+        result.push({
+          id: item.id,
+          at: Date.now(),
+          role: 'user',
+          text: item.text
+        })
+      }
+    } else if (item.type === 'assistant') {
+      if (item.text.length > 0) {
+        result.push({
+          id: item.id,
+          at: item.createdAt ?? Date.now(),
+          role: 'coordinator',
+          text: item.text
+        })
+      }
+    }
+  }
+  return result
+}
 
 const SUGGESTIONS = [
   {
@@ -44,11 +76,21 @@ export function ProjectIntake(props: {
   ready: boolean
   onSuggestion: (prompt: string) => void
   onStart: () => void
+  /** Live agent chat: same transcript UI as ordinary chat panes. */
+  transcript?: {
+    paneId: string
+    items: ChatTranscriptItem[]
+    activeTurnId: string | null
+    running: boolean
+  }
+  /** Full-viewport project preview only; hidden in the integrated agent workspace column. */
+  showDirectionRecord?: boolean
 }) {
-  const { messages, sending, record, ready, onSuggestion, onStart } = props
+  const { messages, sending, record, ready, onSuggestion, onStart, transcript, showDirectionRecord = true } = props
+  const hasTranscript = Boolean(transcript && transcript.items.length > 0)
 
-  if (!messages.length) {
-    return <>
+  if (!messages.length && !hasTranscript) {
+    return <div className="project-shell-landing">
       <div className="project-shell-intro">
         <span className="project-shell-intro-mark"><Compass size={21} aria-hidden="true" /></span>
         <h1>What should we build?</h1>
@@ -63,27 +105,36 @@ export function ProjectIntake(props: {
             <span><strong>{title}</strong><small>{detail}</small></span>
           </button>)}
       </div>
-    </>
+    </div>
   }
 
-  return <div className="project-intake">
-    <div className="project-conversation">
-      {messages.map((message) => <article key={message.id} className={`project-message is-${message.role}`}>
-        <div className="project-message-author">
-          {message.role === 'user' ? 'You' : <><Compass size={13} aria-hidden="true" /> Root coordinator</>}
-        </div>
-        <MessageText id={message.id} text={message.text} />
-      </article>)}
-      {sending && <div className="project-coordinator-thinking" role="status">
+  const busy = transcript?.running ?? sending
+
+  return <div className={`project-intake${showDirectionRecord ? '' : ' project-intake-single'}`}>
+    <div className={`project-conversation${transcript ? ' project-conversation-live' : ''}`}>
+      {transcript
+        ? <AgentWorkspaceTranscript
+            paneId={transcript.paneId}
+            items={transcript.items}
+            activeTurnId={transcript.activeTurnId}
+            running={transcript.running}
+          />
+        : messages.map((message) => <article key={message.id} className={`project-message is-${message.role}`}>
+          <div className="project-message-author">
+            {message.role === 'user' ? 'You' : <><Compass size={13} aria-hidden="true" /> Root coordinator</>}
+          </div>
+          <MessageText id={message.id} text={message.text} />
+        </article>)}
+      {!transcript && sending && <div className="project-coordinator-thinking" role="status">
         <span /><span /><span /> Understanding the direction
       </div>}
-      {ready && !sending && <div className="project-start-row">
+      {showDirectionRecord && ready && !busy && <div className="project-start-row">
         <div><strong>Direction record complete</strong><span>Correct anything above, or begin with this understanding.</span></div>
         <button type="button" data-ui="preview.project-start" onClick={onStart}>Start building</button>
       </div>}
     </div>
 
-    <aside className="project-clarity" aria-label="Direction record">
+    {showDirectionRecord && <aside className="project-clarity" aria-label="Direction record">
       <strong>Direction record</strong>
       <ol>
         {clarityItems(record).map((item) => <li key={item.slot} data-captured={item.captured || undefined}>
@@ -99,6 +150,6 @@ export function ProjectIntake(props: {
         {record.unknowns.map((unknown) => <small key={unknown}>{clip(unknown, 84)}</small>)}
       </div>}
       <p>{ready ? 'Complete. Start when it reads right.' : 'Start unlocks when every line is captured.'}</p>
-    </aside>
+    </aside>}
   </div>
 }

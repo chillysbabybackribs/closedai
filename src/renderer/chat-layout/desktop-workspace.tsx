@@ -118,7 +118,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
           <BrowserPane controller={browser} dragHandle={browserDragHandle} />
         </div>
       </div>}
-      renderAgent={(controls) => <AgentWorkspacePane controls={controls} busy={layout.busy} chat={chat} />}
+      renderAgent={(controls) => <AgentWorkspacePane controls={controls} busy={layout.busy} chat={chat} appearance={appearance} />}
     />
     </ChatLayoutActions.Provider>
     <LayoutPresetsDialog open={presetsOpen} size={canvasSize.current} tileCount={paneIds(layout.tree).length}

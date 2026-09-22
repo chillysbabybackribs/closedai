@@ -14,6 +14,8 @@ import { BrowserTabSessionStore } from './browser-tab-session-store.js'
 import { AppSettingsStore } from './app-settings-store.js'
 import { BrowserDownloadService } from './browser-download-service.js'
 import { registerBrowserCoreIpc } from './browser-core-ipc.js'
+import { AgentWorkspaceSurface } from './agent-workspace-surface.js'
+import { registerAgentWorkspaceIpc } from './agent-workspace-ipc.js'
 import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
 import { registerLocalFilesIpc } from './local-files/ipc.js'
 import { maintainBrowserCache, scheduleBrowserCacheMaintenance } from './browser-cache-maintenance.js'
@@ -98,6 +100,7 @@ nativeTheme.themeSource = 'dark'
 
 let mainWindow: BrowserWindow | null = null
 let browserService: BrowserService | null = null
+let agentWorkspaceSurface: AgentWorkspaceSurface | null = null
 let browserDownloads: BrowserDownloadService | null = null
 let browserHistory: BrowserHistoryStore | null = null
 let browserTabSession: BrowserTabSessionStore | null = null
@@ -285,7 +288,8 @@ async function main(): Promise<void> {
     chat: () => chatService, browser: () => browserService, downloads: () => browserDownloads, window: () => mainWindow,
     browserCoordination
   })
-  const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService)
+  agentWorkspaceSurface = new AgentWorkspaceSurface()
+  const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService, () => agentWorkspaceSurface?.current() ?? null)
   // Full-resolution captures for the transcript; the model only ever receives the scaled copy.
   const screenshots = new ScreenshotStore()
   const research = await createResearchRuntime({
@@ -483,10 +487,11 @@ function registerIpc(): void {
   registerResearchLibraryIpc(ipcMain, () => researchLibrary)
   registerWindowIpc(ipcMain, () => mainWindow)
   registerBrowserCoreIpc(ipcMain, () => browserService)
+  registerAgentWorkspaceIpc(ipcMain, () => agentWorkspaceSurface)
   registerBrowserDownloadsIpc(ipcMain, () => browserDownloads)
   registerLocalFilesIpc(ipcMain, () => browserService)
   registerChatIpc(ipcMain, () => chatService)
-  registerProjectIpc(ipcMain, () => projectHub, () => chatService)
+  registerProjectIpc(ipcMain, () => projectHub)
   registerTraceIpc(ipcMain, traceLog)
   registerCredentialVaultIpc(ipcMain, () => credentialVault)
   registerSecurityIpc(ipcMain, {

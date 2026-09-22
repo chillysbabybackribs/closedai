@@ -69,12 +69,10 @@ function Preview() {
     const ready = () => {
       const count = [...document.querySelectorAll('[data-ui="composer.input"]')]
         .filter((element) => element.getBoundingClientRect().width > 0).length
-      const expected = scenario === 'split' || scenario === 'agent' ? 2 : 1
+      const expected = scenario === 'split' ? 2 : 1
       const projectReady = scenario === 'project' && document.querySelector('[data-preview-project-shell]')
-      const agentReady = scenario === 'agent' && document.querySelector('[data-agent-workspace]')
       const appReady = scenario !== 'project' && document.querySelector('[data-ui-key="preview-chat-1"]')
         && (scenario !== 'settings' || document.querySelector('[role="dialog"]'))
-        && (scenario !== 'agent' || agentReady)
       if (!errors.length && count === expected && (projectReady || appReady)) {
         document.documentElement.dataset.previewState = 'ready'
         observer.disconnect()

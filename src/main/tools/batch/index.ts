@@ -192,7 +192,7 @@ function isVerificationCall(call: BatchCall): boolean {
   }
   if (call.namespace === 'embedded_browser' && call.tool === 'session') return action === 'cookies'
   return call.namespace === 'closedai_ui' && call.tool === 'capture' &&
-    ['app_window', 'browser_page'].includes(action)
+    ['app_window', 'agent_workspace', 'browser_page'].includes(action)
 }
 
 /** The schema has already vetted shapes; this owns limits and target resolution. */

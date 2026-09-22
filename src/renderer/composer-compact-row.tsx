@@ -62,7 +62,7 @@ export function ComposerCompactRow({
       <div className="prompt-composer-compact-actions">
         {attachmentPicker}
         {running ? (
-          <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]} (Esc)`}>
+          <PromptInputAction tooltip={`Pause ${CHAT_PROVIDER_LABELS[provider]} (Esc)`} disabled={false}>
             <Button
               type="button"
               variant="ghost"

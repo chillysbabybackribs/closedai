@@ -23,6 +23,7 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'window:toggleFullscreen',
     'window:toggleDevTools',
     'tools:setEnabledMany',
+    'agentWorkspace:setBounds',
     'browser:setBounds',
     'browser:navigate',
     'browser:back',
@@ -68,6 +69,7 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'chat:login',
     'chat:listChats',
     'chat:newPeer',
+    'chat:newDetachedPeer',
     'chat:closePeer',
     'chat:continueInNewPeer',
     'chat:openChat',
@@ -100,7 +102,6 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'trace:snapshot',
     'trace:clear',
     'project:snapshot',
-    'project:ensurePeers',
     'models:manifest',
     'models:setEnabled',
     'models:setEnabledMany'

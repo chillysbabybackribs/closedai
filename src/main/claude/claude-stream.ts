@@ -231,7 +231,7 @@ export class ClaudeTurnTranslator {
     const text = typeof content === 'string'
       ? content
       : blocks.flatMap((block) => (block.type === 'text' ? [stringOf(block.text)] : [])).join('\n')
-    if (!text.trim() || message.isSynthetic === true) return { ops: [] }
+    if (!text.trim() || message.isSynthetic === true || /^\[Request interrupted.*\]$/i.test(text.trim())) return { ops: [] }
     this.turnId = `turn:${safeId(stringOf(message.uuid) || String(this.messageCount + 1))}`
     this.messageCount += 1
     const images = blocks.filter((block) => block.type === 'image').length

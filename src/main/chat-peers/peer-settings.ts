@@ -31,7 +31,8 @@ export class PeerSettings implements AppSettingsAccess {
       chatModelId: chat.modelId,
       chatReasoningEffort: chat.reasoningEffort,
       chatContinuation: chat.continuation,
-      chatSessionRotations: chat.sessionRotations
+      chatSessionRotations: chat.sessionRotations,
+      chatAgentWorkspace: Boolean(chat.agentWorkspace || chat.title === 'Agent workspace')
     }
   }
 

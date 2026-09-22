@@ -61,6 +61,7 @@ export const UI_CONTROLS = {
   'layout.agent-dock': 'Agent workspace tile in the chat layout canvas',
   'layout.agent-drag': 'Drag handle on the agent workspace to stack or dock it beside a chat',
   'layout.agent-full-view': 'Expand the agent workspace to solo full view within the layout canvas',
+  'layout.agent-restart': 'Close the agent workspace\'s coordinator chat and its discovery/build state, and start a fresh one at the first view',
   'layout.browser-drag': 'Drag the shared browser by its tab-strip grip to a chat edge to stack or dock it',
   'layout.workspace-dock': 'Browser-drag drop target at the workspace edge for a full-height column; item is left or right',
   'layout.pane-drag': 'Chat pane header grip: drag to move the whole tile; item is the active chat id',

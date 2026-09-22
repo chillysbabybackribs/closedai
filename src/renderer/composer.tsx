@@ -343,7 +343,7 @@ export function Composer({
                 centres on the card's full height rather than the action row. */}
             {running ? (
               <div className="prompt-composer-primary">
-                <PromptInputAction tooltip={`Pause ${providerLabel} (Esc)`}>
+                <PromptInputAction tooltip={`Pause ${providerLabel} (Esc)`} disabled={false}>
                   <Button
                     type="button"
                     variant="ghost"

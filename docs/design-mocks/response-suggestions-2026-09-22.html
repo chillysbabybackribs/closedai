@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Clickable response suggestions — directions</title>
+<style>
+  :root {
+    --background: #181818;
+    --surface-raised: #1c1c1c;
+    --surface-control: #262626;
+    --surface-control-hover: #303030;
+    --border: rgb(255 255 255 / 9%);
+    --border-strong: rgb(255 255 255 / 14%);
+    --foreground: #eeeef0;
+    --transcript-copy: #aeaeb3;
+    --transcript-heading: #ffffff;
+    --transcript-strong: #f6f6f7;
+    --muted-foreground: #98989c;
+    --accent: #8ab4f8;
+    --accent-hover: #a5c5fa;
+    --accent-glow: rgb(138 180 248 / 22%);
+    --ok-ink: #7bbf96;
+    --user-bubble: #252526;
+    font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 28px;
+    background: #0c0c0d;
+    color: var(--foreground);
+    display: grid;
+    gap: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+    max-width: 1600px;
+  }
+  h1 { grid-column: 1 / -1; margin: 0 0 -8px; font-size: 15px; font-weight: 600; color: var(--foreground); }
+  h1 span { color: var(--muted-foreground); font-weight: 400; }
+  h2 { grid-column: 1 / -1; margin: 18px 0 0; font-size: 12px; font-weight: 600; color: var(--muted-foreground); letter-spacing: 0.02em; text-transform: uppercase; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; background: var(--background); }
+  .label { padding: 10px 16px; color: var(--muted-foreground); font-size: 12px; background: #131313; border-bottom: 1px solid var(--border); line-height: 1.5; }
+  .label b { color: var(--foreground); }
+
+  .body { padding: 18px 20px 20px; display: grid; gap: 14px; }
+  .user {
+    align-self: flex-start; padding: 10px 14px; border: 1px solid var(--border);
+    border-radius: 10px; background: var(--user-bubble); color: #ececee;
+    line-height: 1.55; font-size: 13.5px; box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+    width: fit-content; max-width: 90%;
+  }
+  .asst { color: var(--transcript-strong); font-size: 13.5px; line-height: 1.68; }
+  .asst p { margin: 0 0 10px; }
+  .asst a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgb(138 180 248 / 35%); }
+  .meta { display: flex; align-items: center; gap: 10px; color: var(--muted-foreground); font-size: 11px; margin-top: 4px; opacity: 0.7; }
+  .meta svg { width: 14px; height: 14px; }
+
+  /* ---------- A: quiet pill row, sibling to message-actions ---------- */
+  .sugg-a { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .sugg-a button {
+    display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px;
+    border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface-control);
+    color: var(--transcript-copy); font-size: 12.5px; font-family: inherit; cursor: pointer;
+    max-width: 320px;
+  }
+  .sugg-a button span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .sugg-a button:hover { background: var(--surface-control-hover); color: var(--foreground); border-color: rgb(255 255 255 / 20%); }
+  .sugg-a button svg { width: 13px; height: 13px; flex-shrink: 0; opacity: 0.6; }
+
+  /* ---------- B: bordered card grid, project-intake lineage ---------- */
+  .sugg-b { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .sugg-b button {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left;
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface-raised); color: var(--foreground); font-family: inherit; cursor: pointer;
+  }
+  .sugg-b button:hover { border-color: var(--accent); background: rgb(138 180 248 / 6%); }
+  .sugg-b .t { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 550; color: var(--foreground); }
+  .sugg-b .t svg { width: 14px; height: 14px; color: var(--accent); flex-shrink: 0; }
+  .sugg-b .d { font-size: 11.5px; color: var(--muted-foreground); line-height: 1.4; }
+
+  /* ---------- C: inline "next step" list, one clause per row ---------- */
+  .sugg-c { display: flex; flex-direction: column; margin-top: 12px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .sugg-c button {
+    display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px;
+    border: 0; border-bottom: 1px solid var(--border); background: var(--surface-raised);
+    color: var(--transcript-copy); font-size: 12.5px; font-family: inherit; text-align: left; cursor: pointer;
+  }
+  .sugg-c button:last-child { border-bottom: 0; }
+  .sugg-c button:hover { background: var(--surface-control-hover); color: var(--foreground); }
+  .sugg-c button svg { width: 14px; height: 14px; color: var(--muted-foreground); flex-shrink: 0; }
+  .sugg-c button:hover svg { color: var(--accent); }
+
+  /* ---------- D: inline text chips woven into the meta row ---------- */
+  .sugg-d-wrap { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .sugg-d-label { font-size: 11px; color: var(--muted-foreground); margin-right: 2px; }
+  .sugg-d { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px 3px 4px; border-radius: 999px;
+    background: transparent; border: 1px dashed var(--border-strong); color: var(--accent); font-size: 12px;
+    font-family: inherit; cursor: pointer; }
+  .sugg-d:hover { background: var(--accent-glow); border-style: solid; border-color: var(--accent); }
+  .sugg-d svg { width: 13px; height: 13px; }
+
+  .note { grid-column: 1 / -1; font-size: 12px; color: var(--muted-foreground); line-height: 1.6; margin-top: -6px; padding: 0 2px; }
+  .note b { color: var(--foreground); }
+  .tag { display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 4px; background: var(--surface-control); color: var(--muted-foreground); font-size: 10.5px; margin-left: 6px; vertical-align: 1px; }
+  .tag.send { color: var(--ok-ink); background: rgb(123 191 150 / 12%); }
+  .tag.draft { color: var(--accent); background: var(--accent-glow); }
+</style>
+</head>
+<body>
+
+<h1>Clickable response suggestions <span>&middot; four placement/shape directions, same assistant reply, dark theme tokens pulled from styles.css</span></h1>
+
+<div class="note">Every direction below renders after the same three-sentence assistant answer, in the same transcript column. <span class="tag draft">draft</span> = click stages the text in the composer (today's <code>injectComposerDraft</code> behavior, needs Enter). <span class="tag send">send</span> = click sends immediately as the next turn. Behavior is independent of shape — any shape could be wired either way.</div>
+
+<h2>A &middot; Quiet pill row, sibling to the existing copy/branch action row</h2>
+<div class="frame">
+  <div class="label"><b>Direction A</b> &middot; lowest visual weight, reads as an extension of <code>message-actions.css</code> &middot; <span class="tag draft">draft</span></div>
+  <div class="body">
+    <div class="user">What's the fastest way to add a Postgres index here without locking the table?</div>
+    <div class="asst">
+      <p>Use <code>CREATE INDEX CONCURRENTLY</code> — it builds the index in the background without holding the write lock that a plain <code>CREATE INDEX</code> takes.</p>
+      <p>It's slower overall and can't run inside a transaction block, but reads and writes stay available the whole time.</p>
+      <div class="meta">Copy &middot; Branch &middot; 6:59 PM</div>
+      <div class="sugg-a">
+        <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg><span>What if the migration times out?</span></button>
+        <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg><span>Show the rollback path</span></button>
+        <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg><span>Write this as a migration file</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>Bolder placements</h2>
+
+<div class="frame">
+  <div class="label"><b>Direction B</b> &middot; bordered card grid, same lineage as <code>project-intake.tsx</code> starter suggestions &middot; <span class="tag send">send</span></div>
+  <div class="body">
+    <div class="user">What's the fastest way to add a Postgres index here without locking the table?</div>
+    <div class="asst">
+      <p>Use <code>CREATE INDEX CONCURRENTLY</code> — it builds the index in the background without holding the write lock that a plain <code>CREATE INDEX</code> takes.</p>
+      <p>It's slower overall and can't run inside a transaction block, but reads and writes stay available the whole time.</p>
+      <div class="meta">Copy &middot; Branch &middot; 6:59 PM</div>
+      <div class="sugg-b">
+        <button>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>Timeout handling</span>
+          <span class="d">What if the migration times out mid-build?</span>
+        </button>
+        <button>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>Rollback path</span>
+          <span class="d">Show how to safely drop and retry</span>
+        </button>
+        <button>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 9h16"/></svg>Write the migration</span>
+          <span class="d">Turn this into a migration file for this repo</span>
+        </button>
+        <button>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>Check index usage</span>
+          <span class="d">How do I confirm the planner picks it up?</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="frame">
+  <div class="label"><b>Direction C</b> &middot; vertical "next step" list, one clause per row, heavier than A &middot; <span class="tag draft">draft</span></div>
+  <div class="body">
+    <div class="user">What's the fastest way to add a Postgres index here without locking the table?</div>
+    <div class="asst">
+      <p>Use <code>CREATE INDEX CONCURRENTLY</code> — it builds the index in the background without holding the write lock that a plain <code>CREATE INDEX</code> takes.</p>
+      <p>It's slower overall and can't run inside a transaction block, but reads and writes stay available the whole time.</p>
+      <div class="meta">Copy &middot; Branch &middot; 6:59 PM</div>
+      <div class="sugg-c">
+        <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>What if the migration times out?</button>
+        <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>Show the rollback path</button>
+        <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>Write this as a migration file</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="frame">
+  <div class="label"><b>Direction D</b> &middot; dashed inline chips woven straight into the meta row, no new block &middot; <span class="tag send">send</span></div>
+  <div class="body">
+    <div class="user">What's the fastest way to add a Postgres index here without locking the table?</div>
+    <div class="asst">
+      <p>Use <code>CREATE INDEX CONCURRENTLY</code> — it builds the index in the background without holding the write lock that a plain <code>CREATE INDEX</code> takes.</p>
+      <p>It's slower overall and can't run inside a transaction block, but reads and writes stay available the whole time.</p>
+      <div class="meta">Copy &middot; Branch &middot; 6:59 PM</div>
+      <div class="sugg-d-wrap">
+        <span class="sugg-d-label">Continue:</span>
+        <button class="sugg-d"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>Timeout handling</button>
+        <button class="sugg-d"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>Rollback path</button>
+        <button class="sugg-d"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>Write the migration</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>Same direction A, in context — streaming just finished vs. an older turn scrolled past</h2>
+<div class="frame">
+  <div class="label"><b>Fresh answer</b> &middot; full opacity, chips present alongside actions the instant streaming ends</div>
+  <div class="body">
+    <div class="asst">
+      <p>The index build finished in 4.2s and the planner is already using it for the query in <code>reports.ts:118</code>.</p>
+      <div class="meta">Copy &middot; Branch &middot; just now</div>
+      <div class="sugg-a">
+        <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg><span>Check the other slow queries too</span></button>
+        <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg><span>Add this to the migration log</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="frame">
+  <div class="label"><b>Scrolled-past turn</b> &middot; matches <code>message-actions</code>' existing hover-to-reveal rule (0.55 &rarr; 1 opacity); chips fade with it rather than a separate rule</div>
+  <div class="body">
+    <div class="asst" style="opacity:.55">
+      <p>The index build finished in 4.2s and the planner is already using it for the query in <code>reports.ts:118</code>.</p>
+      <div class="meta">Copy &middot; Branch &middot; 2:14 PM</div>
+      <div class="sugg-a">
+        <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg><span>Check the other slow queries too</span></button>
+        <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg><span>Add this to the migration log</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

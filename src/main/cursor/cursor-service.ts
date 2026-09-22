@@ -12,8 +12,13 @@ import {
   handoffAdditionalContext,
   type ThreadHandoffSource
 } from '../chat-context/thread-handoff.js'
-import { mergeProjectRoleContext } from '../chat-context/project-turn-context.js'
-import { buildTurnAdditionalContext, type ActiveBrowserContext, type AdditionalContext } from '../chat-context/turn-context.js'
+import {
+  buildAgentWorkspaceContext,
+  buildTurnAdditionalContext,
+  mergeTurnAdditionalContext,
+  type ActiveBrowserContext,
+  type AdditionalContext
+} from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { reasoningEffortForModel } from '../chat-model-catalog.js'
 import { ChatModelState } from '../chat-model-state.js'
@@ -130,13 +135,13 @@ export class CursorChatService extends EventEmitter {
       const sessionId = session.sessionId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const includeInstructions = session.consumeInstructionsPending()
-      const context: AdditionalContext = mergeProjectRoleContext(this.paneId, {
+      const context: AdditionalContext = {
         ...(includeInstructions
           ? { 'closedai.instructions': { kind: 'application', value: cursorSystemInstructions(this.cwd) } }
           : {}),
         ...this.turnAdditionalContext(text),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
-      }) ?? {}
+      }
       const turn = await buildCursorPrompt(
         text,
         shrunk,
@@ -488,7 +493,10 @@ export class CursorChatService extends EventEmitter {
 
   private turnAdditionalContext(prompt: string): ReturnType<typeof buildTurnAdditionalContext> {
     try {
-      return buildTurnAdditionalContext(prompt, this.activeBrowserContext())
+      return mergeTurnAdditionalContext(
+        buildTurnAdditionalContext(prompt, this.activeBrowserContext()),
+        buildAgentWorkspaceContext(Boolean(this.settings.get().chatAgentWorkspace))
+      )
     } catch (error) {
       console.warn('[chat-context] could not capture active browser state:', messageOf(error))
       return undefined

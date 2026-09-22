@@ -330,16 +330,39 @@ reduced-motion preferences.
 The **agent workspace** is a third reserved pane (`closedai:agent-workspace`), toggled from the compass
 button beside the browser control or **View → Toggle agent workspace**. The first open inserts it as a
 left column (~38% width); hiding it keeps the pane mounted and its layout slot saved, like the browser.
-The pane hosts the multi-agent project shell prototype (intent map, shared file tree, catch-up, completion
-flow) with a compact composer locked to that tile. Full view uses the same solo-tile maximize gesture as
-chat panes (`layout.agent-full-view` or double-click where supported). Durable project state lives in **`<project>/.closedai/project.json`** (phase, direction record, coordinator
-binding, hive config, tree, journal). The renderer loads it through `window.closedai.project.snapshot`
-and `project.onEvent`; the agent workspace hydrates from disk when that file contains work beyond empty
-intake. When the workspace is embedded in Electron, main ensures two pinned background chats per project
-(intake and coordinator) via `project.ensurePeers`; intake discovery and canvas steering call those peers
-with role-specific application instructions while the intent map and dispatch timeline remain prototype
-simulation. The composer reuses the selected chat's model catalog and project path as a bridge. Drag the agent workspace grip to stack or dock beside chats the same way as the
-browser, without selecting a conversation when you focus inside the pane.
+The pane hosts the multi-agent project workspace (intent map, shared file tree, catch-up, and completion
+flow) with a compact composer backed by a dedicated, detached chat session. It is not a second view of
+the selected chat: changing the selected chat cannot change, send, pause, stop, or resume the agent chat.
+The agent chat uses the same provider pipeline and composer as every other chat; its coordinator behavior
+is prompt guidance only. Durable project state lives in **`<project>/.closedai/project.json`** (phase,
+direction record, tree, journal); the agent workspace hydrates from disk when that file contains work.
+Full view uses the same solo-tile maximize gesture as chat panes (`layout.agent-full-view` or double-click
+where supported). Drag the agent workspace grip to stack or dock beside chats the same way as the browser,
+without selecting a conversation when you focus inside the pane. The restart control (`layout.agent-restart`)
+closes the backing coordinator chat and detaches a fresh one, remounting the workspace back at the first
+intake view; the closed chat is not deleted, only detached, so it stays reachable from chat history like any
+closed chat. `closedai_ui.capture`'s `agent_workspace` action screenshots this pane alone, cropped from the
+composed window; it fails with guidance when the pane is not open. The pane is plain DOM (unlike the
+browser's native view), so the renderer reports its on-screen rect to the main process
+(`agentWorkspace:setBounds`, tracked in `AgentWorkspaceSurface`) whenever it changes, and the crop scales
+that rect against the window's current size — see `src/renderer/chat-layout/chat-canvas.tsx` and
+`src/main/ui-capture-access.ts`.
+
+**Implementation note (2026-09-22).** The visible workstation still reuses the project-shell
+**preview** under `src/renderer/preview/` (intake UI, simulated tree dispatch, catch-up, and
+completion gates). The **live** pieces today are: the reserved layout pane, the detached
+coordinator chat (same provider pipeline and `ChatTranscript` streaming as ordinary chats), prompt
+guidance via `agent-workspace-instructions.ts`, and **read-only** hydration from
+`<project>/.closedai/project.json` when that file already contains work. Validate agent-pane
+layout, empty-state landing, and live intake in **Electron**; `npm run dev:web` keeps a
+full-viewport `scenario=project` prototype only and does not mount the reserved agent column.
+The renderer does not yet write discovery, tree, or journal changes back through `project:` IPC
+(only `project:snapshot` exists), and canvas-phase progress after “Start building” is still driven
+by local React state and timed prototype effects unless restored from disk. The direction-record
+rail beside intake (full-viewport project preview only) uses a heuristic transcript mapper; it is
+hidden in the integrated agent workspace column so live intake stays a normal chat until durable
+project sync lands. Treat docs that describe full multi-agent orchestration as the target
+shape until persistence and main-process coordination land.
 
 Drag empty chat header space onto another tile's left, right, top, or bottom edge to move the whole pane. A
 highlight previews the destination. Moving a tile collapses its former empty split, and its

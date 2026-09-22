@@ -1,7 +1,6 @@
 import type { ChatAttachment, ChatHistoryPage, ChatHistoryWindow, ChatThreadSummary } from '../../shared/chat.js'
 import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import type { DeferredProjectSwitch } from './deferred-project-switch.js'
-import type { ProjectPeersSnapshot } from '../../shared/project-peers.js'
 
 export type ChatWorkspaceSelection = {
   cwd: string
@@ -19,7 +18,6 @@ export interface ChatWorkspaceSurface {
   readHistoryPage(paneId: ChatPaneId, threadId: string | null, beforeItemId: string): Promise<ChatHistoryPage>
   start(): Promise<void>
   stop(): void
-  ensureProjectPeers(projectPath: string, modelId: string | null, reasoningEffort: string | null): ProjectPeersSnapshot
   send(paneId: ChatPaneId, text: string, attachments: ChatAttachment[]): Promise<void>
   interrupt(paneId: ChatPaneId): Promise<void>
   selectPane(paneId: ChatPaneId): Promise<void>
@@ -32,6 +30,7 @@ export interface ChatWorkspaceSurface {
   /** Every thread the providers and the store know, reconciled first; for tools that search by title. */
   listThreads(): Promise<ChatThreadSummary[]>
   newPeer(): Promise<ChatPaneId>
+  newDetachedPeer(): Promise<ChatPaneId>
   closePeer(paneId: ChatPaneId): Promise<void>
   continueInNewPeer(source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId>
   /** Show a chat: select it if attached, else attach it, replacing the selected chat only when that one is blank. */

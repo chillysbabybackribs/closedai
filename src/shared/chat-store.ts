@@ -48,6 +48,8 @@ export type ChatRecord = {
   parentChatId: string | null
   /** Invisible session rotations newest last; used for recall chains in later phases. */
   sessionRotations: ChatSessionRotation[]
+  /** True when the chat is created for and mounted in the agent workspace pane. */
+  agentWorkspace?: boolean
 }
 
 export type ChatRecordSeed = Pick<ChatRecord, 'cwd' | 'projectPath' | 'provider' | 'modelId' | 'reasoningEffort'> &

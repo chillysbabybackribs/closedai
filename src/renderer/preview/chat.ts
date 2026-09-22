@@ -101,7 +101,7 @@ export function createPreviewChat(scenario: Scenario, report: (message: string) 
     selectModel: async (id, model) => { pane(id).selectedModel = model; publish() },
     selectReasoningEffort: async (id, effort) => { pane(id).selectedReasoningEffort = effort; publish() },
     refreshPlanUsage: async () => {}, loginWithChatGPT: native,
-    listChats: async () => structuredClone(state.chats), newPeer: create, closePeer: close,
+    listChats: async () => structuredClone(state.chats), newPeer: create, newDetachedPeer: create, closePeer: close,
     // Same refusal and same empty-pane state as main: the new chat carries its lineage and digest.
     continueInNewPeer: async (source) => {
       const from = source.paneId ? pane(source.paneId) : null

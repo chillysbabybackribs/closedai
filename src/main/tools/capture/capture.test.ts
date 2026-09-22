@@ -28,6 +28,7 @@ function harness(overrides: Partial<UiCaptureHost> = {}, budget = new CaptureBud
   const host: UiCaptureHost = {
     listTabs: () => [],
     captureAppWindow: async () => { calls.push(['app']); return image },
+    captureAgentWorkspace: async () => { calls.push(['agent']); return { visible: true, image } },
     captureBrowserPage: async (tabId, readiness) => {
       calls.push(['page', tabId, readiness])
       return { image, tabId: tabId ?? 'tab-1', url: ready.url, title: ready.title, ready }
@@ -57,7 +58,7 @@ test('capture tool advertises one deferred tool with capture and crop actions', 
   const tool = registry.namespaces[0].tools[0]
   assert.equal(tool.deferLoading, true)
   const actions = tool.actions
-  assert.deepEqual(actions?.map((action) => action.name), ['app_window', 'browser_page', 'crop'])
+  assert.deepEqual(actions?.map((action) => action.name), ['app_window', 'agent_workspace', 'browser_page', 'crop'])
   const cropProperties = actions?.find((action) => action.name === 'crop')?.inputSchema.properties
   assert.deepEqual((cropProperties as Record<string, Record<string, unknown>>).zoom.type, 'number')
 })
@@ -86,6 +87,34 @@ test('an unscaled capture reports one size and is still retained', async () => {
   const result = await call({ action: 'app_window' }, 'call_2')
   assert.match(textOf(result), /Image: 1920x1080\nCaptured:/)
   assert.equal(store.get('call_2')?.surface, 'app_window')
+})
+
+test('agent_workspace hands the model the cropped image, labeled by its own surface', async () => {
+  const { calls, call, store } = harness()
+  const result = await call({ action: 'agent_workspace' }, 'call_a1')
+  assert.equal(result.isError, undefined)
+  assert.deepEqual(calls, [['agent']])
+  assert.match(textOf(result), /Surface: agent workspace pane\nCapture ID: call_a1/)
+  assert.equal(store.get('call_a1')?.surface, 'agent_workspace')
+})
+
+test('agent_workspace fails with guidance when the pane is not open in the layout', async () => {
+  const { call } = harness({ captureAgentWorkspace: async () => ({ visible: false, image: null }) })
+  const result = await call({ action: 'agent_workspace' })
+  assert.equal(result.isError, true)
+  assert.match(textOf(result), /not open in the layout.*layout\.agent-toggle/s)
+})
+
+test('agent_workspace surfaces a host error distinctly from an unavailable window', async () => {
+  const unavailable = await harness({ captureAgentWorkspace: async () => null }).call({ action: 'agent_workspace' })
+  assert.equal(unavailable.isError, true)
+  assert.match(textOf(unavailable), /application window is unavailable/)
+
+  const emptyRegion = await harness({
+    captureAgentWorkspace: async () => ({ visible: true, image: null, error: 'boom' })
+  }).call({ action: 'agent_workspace' })
+  assert.equal(emptyRegion.isError, true)
+  assert.match(textOf(emptyRegion), /produced an empty region: boom/)
 })
 
 test('browser_page defaults to a dom-ready wait and passes deterministic conditions', async () => {

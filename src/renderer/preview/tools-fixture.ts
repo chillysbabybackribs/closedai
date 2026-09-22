@@ -18,7 +18,7 @@ const SAMPLES: Sample[] = [
   ['embedded_browser.network_replay', 'acts-in-browser', 'Replay a request', 'Send a captured request again, with edits. Can repeat a mutation.', false, 180],
   ['browser_cdp.protocol', 'acts-in-browser', 'Raw DevTools protocol', 'Send any DevTools command, list targets, and read captured request bodies.', true, 700, ['capabilities', 'targets', 'command']],
   ['closedai_app.state', 'controls-app', 'App state', 'Read which chats, tabs, models, downloads, and dialogs are open.', true, 240],
-  ['closedai_ui.capture', 'controls-app', 'Screenshots', 'Capture the app window or a page for visual checks.', true, 260, ['app_window', 'browser_page', 'crop']],
+  ['closedai_ui.capture', 'controls-app', 'Screenshots', 'Capture the app window or a page for visual checks.', true, 260, ['app_window', 'agent_workspace', 'browser_page', 'crop']],
   ['credential_vault.read', 'reads-secrets', 'Read a credential', 'Decrypt one field for immediate use in a task you asked for.', true, 160],
   ['native_instrument.probe', 'runs-native', 'Custom probes', 'Inject a script into a local process. Can modify or crash it.', false, 330]
 ]

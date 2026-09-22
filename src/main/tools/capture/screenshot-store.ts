@@ -14,7 +14,7 @@ export type StoredScreenshot = {
   capturedAt: string
 }
 
-export type ScreenshotSurface = 'app_window' | 'browser_page' | 'crop'
+export type ScreenshotSurface = 'app_window' | 'agent_workspace' | 'browser_page' | 'crop'
 
 const DEFAULT_MAX_ENTRIES = 60
 const DEFAULT_MAX_BYTES = 96 * 1024 * 1024

@@ -12,8 +12,12 @@ import {
   handoffAdditionalContext,
   type ThreadHandoffSource
 } from '../chat-context/thread-handoff.js'
-import { mergeProjectRoleContext } from '../chat-context/project-turn-context.js'
-import { buildTurnAdditionalContext, type ActiveBrowserContext } from '../chat-context/turn-context.js'
+import {
+  buildAgentWorkspaceContext,
+  buildTurnAdditionalContext,
+  mergeTurnAdditionalContext,
+  type ActiveBrowserContext
+} from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { buildCompactionSeed, compactedAdditionalContext } from '../chat-context/provider-compaction.js'
 import { antigravityPlanUsage, planUsageUnavailable } from '../chat-context/plan-usage.js'
@@ -146,12 +150,12 @@ export class AntigravityChatService extends EventEmitter {
       const conversationId = session.conversationId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const pendingCompaction = this.session!.takePendingSeed()
-      const context = mergeProjectRoleContext(this.paneId, {
+      const context = {
         ...this.turnAdditionalContext(text),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {}),
         ...(pendingCompaction ? compactedAdditionalContext(pendingCompaction) : {})
-      }) ?? {}
-      const turn = await buildAntigravityPrompt(text, shrunk, context && Object.keys(context).length ? context : undefined, this.stateDir)
+      }
+      const turn = await buildAntigravityPrompt(text, shrunk, Object.keys(context).length ? context : undefined, this.stateDir)
       if (!turn) return
       await this.bridge.start()
       // The CLI reads the agent file once, at process start. A spawn is therefore the only
@@ -473,7 +477,10 @@ export class AntigravityChatService extends EventEmitter {
 
   private turnAdditionalContext(prompt: string): ReturnType<typeof buildTurnAdditionalContext> {
     try {
-      return buildTurnAdditionalContext(prompt, this.activeBrowserContext())
+      return mergeTurnAdditionalContext(
+        buildTurnAdditionalContext(prompt, this.activeBrowserContext()),
+        buildAgentWorkspaceContext(Boolean(this.settings.get().chatAgentWorkspace))
+      )
     } catch (error) {
       console.warn('[chat-context] could not capture active browser state:', messageOf(error))
       return undefined

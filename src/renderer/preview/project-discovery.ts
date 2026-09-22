@@ -2,6 +2,7 @@
 // fills a direction record one question at a time and refuses vague answers, so "Start
 // building" is gated by what the record actually contains rather than by a reply count.
 
+import type { ChatTranscriptItem } from '../../shared/chat.js'
 import {
   emptyDirectionRecord,
   type ClaritySlot,
@@ -168,4 +169,62 @@ export function advanceDiscovery(state: DiscoveryState, message: string): { stat
       break
   }
   return { state: { record: updated, asking: nextSlot(asking) }, reply }
+}
+
+const INTERRUPTED_PATTERN = /^\[Request interrupted.*\]$/i
+
+/** Synchronize discovery state with messages and tool executions from the live chat controller. */
+export function syncDiscoveryWithItems(state: DiscoveryState, items: ChatTranscriptItem[]): DiscoveryState {
+  const userMessages = items
+    .filter((item): item is Extract<ChatTranscriptItem, { type: 'user' }> => item.type === 'user')
+    .map((item) => item.text.trim())
+    .filter((text) => Boolean(text) && !INTERRUPTED_PATTERN.test(text))
+
+  if (!userMessages.length) return state
+
+  const toolItems = items.filter((item): item is Extract<ChatTranscriptItem, { type: 'tool' }> => item.type === 'tool')
+  const toolEvidence: EvidenceItem[] = toolItems.map((tool) => ({
+    id: tool.id,
+    label: tool.label || tool.detail || 'Tool execution',
+    url: 'local://tool/' + tool.id,
+    informs: tool.detail || tool.label || 'Gathered by coordinator'
+  }))
+
+  const updated: DirectionRecord = {
+    ...state.record,
+    idea: state.record.idea || userMessages[0] || '',
+    user: state.record.user ?? (userMessages.length > 1 ? userMessages[1]! : null),
+    journey: state.record.journey ?? (userMessages.length > 2 ? userMessages[2]! : null),
+    boundaries: state.record.boundaries ?? (userMessages.length > 3 ? userMessages[3]! : null),
+    evidence: toolEvidence.length ? toolEvidence : state.record.evidence,
+    refinements: userMessages.length > 4 ? [...new Set([...state.record.refinements, ...userMessages.slice(4)])] : state.record.refinements
+  }
+
+  if (updated.idea && updated.user && updated.journey && updated.boundaries) {
+    if (updated.evidence.length === 0) {
+      updated.evidence = [
+        {
+          id: 'ev-intake-dialogue',
+          label: 'ClosedAI · Intake alignment',
+          url: 'local://agent-workspace/intake',
+          informs: 'Direction pillars confirmed through intake dialogue'
+        }
+      ]
+    }
+    if (updated.unknowns.length === 0) {
+      updated.unknowns = [
+        'Tools and workflows the primary user already relies on',
+        'The minimal data model that supports the first session'
+      ]
+    }
+  }
+
+  let asking: ClaritySlot | null = 'idea'
+  if (!updated.idea) asking = 'idea'
+  else if (!updated.user) asking = 'user'
+  else if (!updated.journey) asking = 'journey'
+  else if (!updated.boundaries) asking = 'boundaries'
+  else asking = null
+
+  return { record: updated, asking }
 }
