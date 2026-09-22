@@ -4,7 +4,7 @@ import type { CredentialApprovalRequest, WebPermissionRequest } from '../../shar
 import { initialChatState } from '../chat-state.js'
 import { withBrowser, type SavedChatLayout } from '../chat-layout/layout-tree.js'
 
-export const SCENARIOS = ['conversation', 'empty', 'streaming', 'settings', 'split', 'unavailable', 'security'] as const
+export const SCENARIOS = ['conversation', 'empty', 'streaming', 'settings', 'split', 'unavailable', 'security', 'hive'] as const
 
 /** The first-run message main sends when the selected provider's executable is missing. */
 export const UNAVAILABLE_MESSAGE =

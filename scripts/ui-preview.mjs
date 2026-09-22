@@ -17,7 +17,7 @@ const logFile = join(directory, 'server.log')
 const protocol = 1
 const command = process.argv[2] ?? 'start'
 const scenario = process.argv[3] ?? 'conversation'
-const scenarios = ['conversation', 'empty', 'streaming', 'settings', 'split', 'unavailable', 'security']
+const scenarios = ['conversation', 'empty', 'streaming', 'settings', 'split', 'unavailable', 'security', 'hive']
 
 async function readState() {
   try { return JSON.parse(await readFile(stateFile, 'utf8')) } catch { return null }
