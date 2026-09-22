@@ -1,5 +1,5 @@
 import type { BrowserHistoryMatch } from './browser-history.js'
-import type { AgentWorkspaceBounds, BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
+import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type {
   ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot, PeerChatReadResult
@@ -10,9 +10,6 @@ import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from
 import type { TraceEvent, TraceSnapshot } from './trace.js'
 import type { LibrarySettings, LibrarySnapshot } from './research-library.js'
 import type { ProviderAvailability } from './provider-availability.js'
-import type { ProjectSnapshot } from './project/snapshot.js'
-import type { ProjectWorkspaceEvent } from './project/events.js'
-import type { ProjectMutation } from './project/mutations.js'
 import type {
   BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
 } from './security.js'

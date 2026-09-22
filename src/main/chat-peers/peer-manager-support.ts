@@ -23,7 +23,6 @@ import { openChatsPatch } from './peer-settings.js'
 import { schedulePaneWarm } from './provider-warm.js'
 import type { PeerChatCatalog } from './peer-chat-catalog.js'
 import type { DeferredProjectSwitch } from './deferred-project-switch.js'
-import { isPinnedChat } from './peer-detached.js'
 import { PeerProjectChanges } from './peer-project.js'
 import type { ChatWorkspaceSelection, ChatWorkspaceSelector } from './peer-workspace.js'
 import type { PeerEmitThrottle } from './peer-events.js'
@@ -65,12 +64,10 @@ export function peerManagerWorkspace(host: PeerManagerSupportHost): ChatWorkspac
 export async function peerManagerTrimAttached(host: PeerManagerSupportHost): Promise<void> {
   const pending = host.projectSwitch.state()
   const switching = pending && (pending.status === 'pending' || pending.status === 'switching') ? [pending.paneId] : []
-  const pinned = host.store.ids().filter((id) => isPinnedChat(host.store, id))
   const detached = host.lifecycle.trim([
     host.selectedPaneId(),
     ...host.visiblePaneIds(),
-    ...switching,
-    ...pinned
+    ...switching
   ])
   if (detached.length === 0) return
   host.chatsEmit.schedule()
@@ -98,8 +95,6 @@ export function peerManagerWakeLater(host: PeerManagerSupportHost, paneId: ChatP
     if (paneId !== host.selectedPaneId()
       && !host.visiblePaneIds().has(paneId)
       && !host.retainedTabIds().has(paneId)
-      && !isPinnedChat(host.store, paneId)
-      && !host.store.get(paneId)?.agentWorker
       && host.lifecycle.peers.size > 1
       && host.lifecycle.discardIfBlank(paneId)) {
       await peerManagerPersistOpenChats(host)

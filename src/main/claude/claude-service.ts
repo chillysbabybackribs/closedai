@@ -32,9 +32,7 @@ import {
   type ThreadHandoffSource
 } from '../chat-context/thread-handoff.js'
 import {
-  buildAgentWorkspaceContext,
   buildTurnAdditionalContext,
-  mergeTurnAdditionalContext,
   type ActiveBrowserContext
 } from '../chat-context/turn-context.js'
 import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
@@ -404,10 +402,7 @@ export class ClaudeChatService extends EventEmitter {
 
   private turnAdditionalContext(prompt: string): ReturnType<typeof buildTurnAdditionalContext> {
     try {
-      return mergeTurnAdditionalContext(
-        buildTurnAdditionalContext(prompt, this.activeBrowserContext()),
-        buildAgentWorkspaceContext(Boolean(this.settings.get().chatAgentWorkspace))
-      )
+      return buildTurnAdditionalContext(prompt, this.activeBrowserContext())
     } catch (error) {
       console.warn('[chat-context] could not capture active browser state:', messageOf(error))
       return undefined

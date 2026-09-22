@@ -16,7 +16,6 @@ import { rendererChatBatcher, rendererChatForwarder } from './chat-peers/peer-ev
 import { traceChatEvent, traceChatIpcMetrics } from './trace/taps.js'
 import { traceLog } from './trace/trace-log.js'
 import type { ChatPeerManager } from './chat-peers/peer-manager.js'
-import type { ProjectHub } from './project-store/project-hub.js'
 import type { SecuritySettingsStore } from './security-settings-store.js'
 import type { BrowserPermissionBroker } from './browser-permission-broker.js'
 import type { ToolRegistry } from './tools/registry.js'
@@ -34,7 +33,6 @@ export type MainWindowHost = {
   securitySettings: SecuritySettingsStore
   permissionRequests: BrowserPermissionBroker
   chatService: ChatPeerManager | null
-  projectHub: ProjectHub | null
   toolRegistry: ToolRegistry | null
   toolTelemetry: ToolTelemetry | null
   setMainWindow: (window: BrowserWindow | null) => void
@@ -81,7 +79,6 @@ export function openMainWindow(host: MainWindowHost): BrowserWindow {
     forwardChat(event)
   })
   traceLog.on('event', (event: TraceEvent) => host.sendToMainWindow(IPC.event.traceEvent, event))
-  host.projectHub?.on('event', (event) => host.sendToMainWindow(IPC.event.projectEvent, event))
   const sendToolsEvent = (event: ToolsEvent): void => { host.sendToMainWindow(IPC.event.toolsEvent, event) }
   host.toolTelemetry?.on('record', (record) => sendToolsEvent({ type: 'call', record }))
   host.toolTelemetry?.on('cleared', () => sendToolsEvent({ type: 'cleared' }))

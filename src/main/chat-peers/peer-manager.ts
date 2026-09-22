@@ -46,7 +46,6 @@ import { PeerIdleParking } from './peer-idle-parking.js'
 import { PeerLifecycle, type ChatPeerFactory, type PeerEntry } from './peer-lifecycle.js'
 import { PeerProjectChanges, projectConversationPatch, rememberChatProjects } from './peer-project.js'
 import { PeerArchives } from './peer-archive.js'
-import { createDetachedPeer, isPinnedChat } from './peer-detached.js'
 import type { ChatWorkspaceSelection, ChatWorkspaceSelector, ChatWorkspaceSurface } from './peer-workspace.js'
 import type { BrowserAssignmentIdleRelease } from '../tools/browser/assignment-idle-release.js'
 
@@ -166,7 +165,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       selectedPaneId: this.selectedPaneId,
       chats: this.chatRows(),
       selected: window ? this.rendererView(entry, selected) : selected,
-      panes: window ? Object.fromEntries([...new Set([...this.visiblePaneIds, this.selectedPaneId, ...this.store.ids().filter((id) => isPinnedChat(this.store, id))])]
+      panes: window ? Object.fromEntries([...new Set([...this.visiblePaneIds, this.selectedPaneId])]
         .flatMap((id) => {
           const peer = this.lifecycle.get(id)
           return peer ? [[id, this.rendererView(peer, peer.surface.snapshot(window))]] : []
@@ -187,18 +186,6 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   /** One pane's live snapshot without waking a parked peer; null for an unknown pane. */
   paneSnapshot(paneId: ChatPaneId): ChatSnapshot | null {
     return this.lifecycle.get(paneId)?.surface.snapshot() ?? null
-  }
-
-  /**
-   * Whether a chat is alive and what it is doing, without waking it. The agent workspace's run
-   * loop reads this to tell a worker that is still on its task from one that stopped, so it
-   * answers for a chat whose pane has been detached as well: the record is what it followed.
-   */
-  paneActivity(paneId: ChatPaneId): { exists: boolean; running: boolean; activity: string | null } {
-    const entry = this.lifecycle.get(paneId)
-    if (!entry) return { exists: this.store.get(paneId) !== undefined, running: false, activity: null }
-    const summary = entry.display.current
-    return { exists: true, running: summary.running, activity: summary.activity }
   }
 
   readonly modelSettings = { selectedHub: (): ReturnType<typeof hubForSelectedPane> => hubForSelectedPane(this.lifecycle, this.selectedPaneId),
@@ -260,7 +247,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.selectedPaneId = paneId
     // A blank chat the user clicked away from never became one; keep it and the drawer fills
     // with "New chat" rows. One mid-open (busy) is not blank, it is about to hold a thread.
-    if (this.lifecycle.peers.size > 1 && !this.visiblePaneIds.has(previousPaneId) && !this.retainedTabIds.has(previousPaneId) && !isPinnedChat(this.store, previousPaneId)) this.lifecycle.discardIfBlank(previousPaneId)
+    if (this.lifecycle.peers.size > 1 && !this.visiblePaneIds.has(previousPaneId) && !this.retainedTabIds.has(previousPaneId)) this.lifecycle.discardIfBlank(previousPaneId)
     this.parking.schedule(previousPaneId)
     // Paint the destination from the view it already holds — the live snapshot when its runtime
     // is up, the saved one when it is parked — before waking it. Waking replays the thread from
@@ -343,38 +330,6 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
     return this.newChat(current.selectedModel, current.selectedReasoningEffort, null)
   }
-  // The run loop opens workers whether or not their coordinator is on screen, so a parked or
-  // detached parent falls back to the model its record remembers rather than failing.
-  async newWorkerPeer(parentPaneId: ChatPaneId): Promise<ChatPaneId> {
-    this.projectSwitch.assertAvailable()
-    const parent = this.store.require(parentPaneId)
-    const current = this.lifecycle.get(parentPaneId)?.surface.snapshot({ limit: 0 })
-    const modelId = current?.selectedModel ?? parent.modelId
-    const record = this.store.create({
-      cwd: parent.cwd,
-      projectPath: parent.projectPath,
-      provider: chatProviderOfId(modelId),
-      modelId,
-      reasoningEffort: current?.selectedReasoningEffort ?? parent.reasoningEffort,
-      parentChatId: parentPaneId,
-      agentWorker: true
-    })
-    this.lifecycle.attach(record)
-    this.lifecycle.parkExcessIdle(record.id)
-    this.emitChats()
-    await this.persistOpenChats()
-    await this.trimAttached()
-    this.wakeLater(record.id, 'start the build worker')
-    return record.id
-  }
-  async newDetachedPeer(): Promise<ChatPaneId> {
-    return createDetachedPeer({
-      assertAvailable: () => this.projectSwitch.assertAvailable(),
-      selectedPaneId: this.selectedPaneId, store: this.store, lifecycle: this.lifecycle,
-      emitWorkspace: () => this.emitWorkspace(), persistOpenChats: () => this.persistOpenChats(),
-      wakeLater: (paneId, reason) => this.wakeLater(paneId, reason)
-    })
-  }
   private async newChat(modelId: string | null, reasoningEffort: string | null, continuation: ChatContinuation | null,
     selection: ChatWorkspaceSelection = this.store.require(this.selectedPaneId)): Promise<ChatPaneId> {
     const previousPaneId = this.selectedPaneId
@@ -442,7 +397,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // The chat's last known messages, model, and context reading paint now; the provider's
     // replay lands behind them rather than in front of an empty pane.
     await this.transcripts.load(chatId)
-    if (this.lifecycle.peers.size > 1 && !this.visiblePaneIds.has(previousPaneId) && !this.retainedTabIds.has(previousPaneId) && !isPinnedChat(this.store, previousPaneId)) this.lifecycle.discardIfBlank(previousPaneId)
+    if (this.lifecycle.peers.size > 1 && !this.visiblePaneIds.has(previousPaneId) && !this.retainedTabIds.has(previousPaneId)) this.lifecycle.discardIfBlank(previousPaneId)
     this.parking.schedule(previousPaneId)
     this.lifecycle.parkExcessIdle(chatId)
     this.emitWorkspace()

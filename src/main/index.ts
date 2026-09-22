@@ -12,12 +12,9 @@ import { BrowserHistoryStore } from './browser-history-store.js'
 import { BrowserTabSessionStore } from './browser-tab-session-store.js'
 import { AppSettingsStore } from './app-settings-store.js'
 import { BrowserDownloadService } from './browser-download-service.js'
-import { AgentWorkspaceSurface } from './agent-workspace-surface.js'
 import { maintainBrowserCache, scheduleBrowserCacheMaintenance } from './browser-cache-maintenance.js'
 import { importDefaultBrowserCookies } from './browser-cookie-import.js'
 import { CodexWorkspaceRuntime } from './codex-workspace-runtime.js'
-import { AgentRunner } from './agent-runner/agent-runner.js'
-import { runnerChat, runnerStore } from './agent-runner/runner-hosts.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { ChatStore } from './chat-store/chat-store.js'
 import { ChatTranscriptCache } from './chat-store/chat-transcript-cache.js'
@@ -47,13 +44,11 @@ import { createArtifactRuntime } from './investigations/artifact-runtime.js'
 import type { ArtifactStore } from './investigations/artifact-store.js'
 import type { ResearchService } from './tools/search/research/service.js'
 import { peerChatTools } from './tools/peer-chats/index.js'
-import { projectTools } from './tools/project/index.js'
 import { NativeControllerClient } from './native-instrument/client.js'
 import { NativeInstrumentService } from './native-instrument/service.js'
 import { nativeInstrumentTools } from './tools/native-instrument/index.js'
 import { ToolTelemetry } from './tools/telemetry.js'
 import { traceToolCalls } from './trace/taps.js'
-import { ProjectHub } from './project-store/project-hub.js'
 import { CredentialVault } from './credential-vault.js'
 import { safeStorageEncryption } from './safe-storage-encryption.js'
 import { SecuritySettingsStore } from './security-settings-store.js'
@@ -80,17 +75,14 @@ nativeTheme.themeSource = 'dark'
 
 let mainWindow: BrowserWindow | null = null
 let browserService: BrowserService | null = null
-let agentWorkspaceSurface: AgentWorkspaceSurface | null = null
 let browserDownloads: BrowserDownloadService | null = null
 let browserHistory: BrowserHistoryStore | null = null
 let browserTabSession: BrowserTabSessionStore | null = null
 let settings: AppSettingsStore | null = null
 let chatStore: ChatStore | null = null
-let projectHub: ProjectHub | null = null
 let chatTranscripts: ChatTranscriptCache | null = null
 let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
-let agentRunner: AgentRunner | null = null
 let credentialVault: CredentialVault | null = null
 let securitySettings: SecuritySettingsStore | null = null
 // Pending user decisions (credential reads, page permissions); empty unless Settings → Security asks for them.
@@ -153,7 +145,6 @@ async function main(): Promise<void> {
     ChatStore.open(join(userData(), 'chats.json')),
     SecuritySettingsStore.open(join(userData(), 'security-settings.json'))
   ])
-  projectHub = new ProjectHub()
   credentialVault = new CredentialVault(join(userData(), 'credential-vault.json'), safeStorageEncryption(safeStorage, process.platform), {
     secretsRequireKeychain: () => securitySettings!.get().secretsRequireKeychain
   })
@@ -208,8 +199,7 @@ async function main(): Promise<void> {
     chat: () => chatService, browser: () => browserService, downloads: () => browserDownloads, window: () => mainWindow,
     browserCoordination
   })
-  agentWorkspaceSurface = new AgentWorkspaceSurface()
-  const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService, () => agentWorkspaceSurface?.current() ?? null)
+  const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService)
   // Full-resolution captures for the transcript; the model only ever receives the scaled copy.
   const screenshots = new ScreenshotStore()
   const research = await createResearchRuntime({
@@ -248,12 +238,6 @@ async function main(): Promise<void> {
     captureTools(() => captureAccess, screenshots),
     research.namespace,
     peerChatTools(() => chatService),
-    // A chat writes into the project it runs in: the agent workspace's coordinator and the worker
-    // chats it opens share one store by path, so their plans and results meet on the canvas.
-    projectTools(() => projectHub, (paneId) => {
-      const record = chatStore?.get(paneId)
-      return record ? record.projectPath ?? record.cwd : null
-    }),
     // Lazy self-reference: the batch dispatches into the registry it is registered in.
     batchTools(() => toolRegistry!, { maxCalls: settings.get().toolBatchMaxCalls })
   ])
@@ -325,14 +309,6 @@ async function main(): Promise<void> {
   })
   openMainWindow(mainWindowHost())
   void chatService.start()
-  // The agent workspace's hive: it dispatches queued tasks to worker chats and keeps going as
-  // each one lands, so a build continues whether or not anyone is watching the workspace.
-  agentRunner = new AgentRunner({
-    store: () => (projectHub ? runnerStore(projectHub) : null),
-    chat: () => (chatService ? runnerChat(chatService) : null),
-    warn: (message) => console.warn(message)
-  })
-  agentRunner.start()
   stopBrowserCacheMaintenance = scheduleBrowserCacheMaintenance(userData())
   const liveVerifyMode = process.env.CLOSEDAI_LIVE_VERIFY?.trim() || liveVerifyFromArgv()
   if (liveVerifyMode) requestLiveVerify(liveVerifyHandle, app, liveVerifyMode, true)
@@ -353,10 +329,8 @@ function mainIpcRegistration() {
     researchLibrary: () => researchLibrary,
     mainWindow: () => mainWindow,
     browserService: () => browserService,
-    agentWorkspaceSurface: () => agentWorkspaceSurface,
     browserDownloads: () => browserDownloads,
     chatService: () => chatService,
-    projectHub: () => projectHub,
     credentialVault: () => credentialVault,
     securitySettings: () => securitySettings,
     settings: () => settings,
@@ -377,7 +351,6 @@ function mainWindowHost(): MainWindowHost {
     securitySettings: securitySettings!,
     permissionRequests,
     chatService,
-    projectHub,
     toolRegistry,
     toolTelemetry,
     setMainWindow: (window) => { mainWindow = window },
@@ -406,8 +379,6 @@ app.on('before-quit', (event) => {
   nativeInstrument?.dispose()
   stopBrowserCacheMaintenance?.()
   stopBrowserCacheMaintenance = null
-  agentRunner?.stop()
-  agentRunner = null
   chatService?.stop()
   for (const runtime of codexRuntimes.values()) runtime.stop()
   codexRuntimes.clear()
@@ -418,7 +389,6 @@ app.on('before-quit', (event) => {
     browserTabSession?.close(),
     settings?.set({}),
     chatStore?.flush(),
-    projectHub?.flushAll(),
     chatTranscripts?.flush(),
     artifactStore?.close(),
     providerCatalogs?.flush(),

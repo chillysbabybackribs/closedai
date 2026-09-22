@@ -22,9 +22,7 @@ import { listWorkspaceThreads, startChatGptLogin } from './chat-requests.js'
 import { routeChatNotification } from './chat-notification-router.js'
 import { ChatTranscript } from './chat-transcript.js'
 import {
-  buildAgentWorkspaceContext,
   buildTurnAdditionalContext,
-  mergeTurnAdditionalContext,
   type ActiveBrowserContext
 } from './chat-context/turn-context.js'
 import { resumeThreadParams } from './chat-context/thread-params.js'
@@ -469,10 +467,7 @@ export class ChatService extends EventEmitter {
   /** Context is optional enrichment: stale UI state must never prevent a send. */
   private turnAdditionalContext(prompt: string): ReturnType<typeof buildTurnAdditionalContext> {
     try {
-      return mergeTurnAdditionalContext(
-        buildTurnAdditionalContext(prompt, this.activeBrowserContext()),
-        buildAgentWorkspaceContext(Boolean(this.settings.get().chatAgentWorkspace))
-      )
+      return buildTurnAdditionalContext(prompt, this.activeBrowserContext())
     } catch (error) {
       console.warn('[chat-context] could not capture active browser state:', messageOf(error))
       return undefined

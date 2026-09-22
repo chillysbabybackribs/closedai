@@ -1,5 +1,3 @@
-import { AGENT_WORKSPACE_INSTRUCTIONS } from './agent-workspace-instructions.js'
-
 export type ActiveBrowserContext = {
   tabId: string
   url: string
@@ -13,7 +11,6 @@ export type AdditionalContext = Record<string, {
 }>
 
 const ACTIVE_BROWSER_CONTEXT = 'closedai.browser.active-tab'
-export const AGENT_WORKSPACE_CONTEXT_NAME = 'closedai.agent_workspace'
 
 // Deliberately conservative: ordinary coding turns should not pay for unrelated browser
 // state. These phrases indicate either browser intent or a reference to visible page state.
@@ -46,17 +43,6 @@ export function buildTurnAdditionalContext(
         capturedAt,
         ...activeBrowser
       })
-    }
-  }
-}
-
-/** Injects coordinator overview instructions into turns running inside the Agent Workspace. */
-export function buildAgentWorkspaceContext(isAgentWorkspace: boolean): AdditionalContext | undefined {
-  if (!isAgentWorkspace) return undefined
-  return {
-    [AGENT_WORKSPACE_CONTEXT_NAME]: {
-      kind: 'application',
-      value: AGENT_WORKSPACE_INSTRUCTIONS
     }
   }
 }

@@ -7,11 +7,9 @@ import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-
 import { registerResearchLibraryIpc } from './research-library/ipc.js'
 import { registerWindowIpc } from './window-ipc.js'
 import { registerBrowserCoreIpc } from './browser-core-ipc.js'
-import { registerAgentWorkspaceIpc } from './agent-workspace-ipc.js'
 import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
 import { registerLocalFilesIpc } from './local-files/ipc.js'
 import { registerChatIpc } from './chat-ipc.js'
-import { registerProjectIpc } from './project-ipc.js'
 import { registerTraceIpc } from './trace/ipc.js'
 import { registerCredentialVaultIpc } from './credential-vault-ipc.js'
 import { registerSecurityIpc } from './security-ipc.js'
@@ -23,10 +21,8 @@ import { PARTITION } from './browser-url.js'
 import { traceLog } from './trace/trace-log.js'
 import type { ResearchLibrary } from './research-library/service.js'
 import type { BrowserService } from './browser-service.js'
-import type { AgentWorkspaceSurface } from './agent-workspace-surface.js'
 import type { BrowserDownloadService } from './browser-download-service.js'
 import type { ChatPeerManager } from './chat-peers/peer-manager.js'
-import type { ProjectHub } from './project-store/project-hub.js'
 import type { CredentialVault } from './credential-vault.js'
 import type { SecuritySettingsStore } from './security-settings-store.js'
 import type { AppSettingsStore } from './app-settings-store.js'
@@ -43,10 +39,8 @@ export type MainIpcRegistration = {
   researchLibrary: () => ResearchLibrary | null
   mainWindow: () => BrowserWindow | null
   browserService: () => BrowserService | null
-  agentWorkspaceSurface: () => AgentWorkspaceSurface | null
   browserDownloads: () => BrowserDownloadService | null
   chatService: () => ChatPeerManager | null
-  projectHub: () => ProjectHub | null
   credentialVault: () => CredentialVault | null
   securitySettings: () => SecuritySettingsStore | null
   settings: () => AppSettingsStore | null
@@ -69,11 +63,9 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
   registerResearchLibraryIpc(reg.ipcMain, reg.researchLibrary)
   registerWindowIpc(reg.ipcMain, reg.mainWindow)
   registerBrowserCoreIpc(reg.ipcMain, reg.browserService)
-  registerAgentWorkspaceIpc(reg.ipcMain, reg.agentWorkspaceSurface)
   registerBrowserDownloadsIpc(reg.ipcMain, reg.browserDownloads)
   registerLocalFilesIpc(reg.ipcMain, reg.browserService)
   registerChatIpc(reg.ipcMain, reg.chatService)
-  registerProjectIpc(reg.ipcMain, reg.projectHub, reg.chatService)
   registerTraceIpc(reg.ipcMain, traceLog)
   registerCredentialVaultIpc(reg.ipcMain, reg.credentialVault)
   registerSecurityIpc(reg.ipcMain, {
