@@ -97,8 +97,10 @@ test('agent workspace context is injected only when chat is in agent workspace',
   assert.ok(context)
   assert.equal(context[AGENT_WORKSPACE_CONTEXT_NAME]?.kind, 'application')
   assert.match(context[AGENT_WORKSPACE_CONTEXT_NAME]?.value ?? '', /Agent Workspace/)
-  assert.match(context[AGENT_WORKSPACE_CONTEXT_NAME]?.value ?? '', /Project Intake Coordinator/)
-  assert.match(context[AGENT_WORKSPACE_CONTEXT_NAME]?.value ?? '', /4 essential discovery pillars/)
+  assert.match(context[AGENT_WORKSPACE_CONTEXT_NAME]?.value ?? '', /exactly one pillar per turn/)
+  assert.match(context[AGENT_WORKSPACE_CONTEXT_NAME]?.value ?? '', /exactly one question/)
+  assert.match(context[AGENT_WORKSPACE_CONTEXT_NAME]?.value ?? '', /search\.query \(presentation "background"/)
+  assert.match(context[AGENT_WORKSPACE_CONTEXT_NAME]?.value ?? '', /Never open, navigate, read, or capture the user's browser tabs/)
 })
 
 test('mergeTurnAdditionalContext merges independent contexts cleanly', () => {
