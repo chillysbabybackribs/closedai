@@ -5,8 +5,9 @@ import type { ChatModel, ChatProvider } from '../../shared/chat.js'
 import { Composer } from '../composer.js'
 import { injectComposerDraft } from '../composer-drafts.js'
 import { ProjectCanvas } from './project-canvas.js'
-import { buildCatchUp, countSince } from './project-catchup.js'
-import { CatchUpDetail } from './project-catchup-view.js'
+import { buildCatchUp, countSince, reportLines } from './project-catchup.js'
+import { CatchUpDetail, ProposalDetail } from './project-catchup-view.js'
+import { canPropose, closureProgress, type AcknowledgedReport, type Proposal } from './project-closure.js'
 import { Breadcrumbs, FileDetail, NodeDetail } from './project-detail.js'
 import { advanceDiscovery, clip, createDiscovery, isDirectionReady, type DiscoveryState } from './project-discovery.js'
 import { ProjectFileTree } from './project-file-tree.js'
@@ -53,6 +54,9 @@ export function ProjectShellPreview() {
   const [confirmedAt, setConfirmedAt] = useState(0)
   const [caughtUpAt, setCaughtUpAt] = useState(0)
   const [awayFor, setAwayFor] = useState(0)
+  const [reports, setReports] = useState<AcknowledgedReport[]>([])
+  const [proposal, setProposal] = useState<Proposal | null>(null)
+  const [acceptedAt, setAcceptedAt] = useState<number | null>(null)
   const lastInteraction = useRef(Date.now())
   // What the user last saw, so growth while they were elsewhere is visible when they return.
   const [seenFiles, setSeenFiles] = useState<Record<string, string>>({})
@@ -67,11 +71,12 @@ export function ProjectShellPreview() {
   const record = discovery.record
   const ready = discovery.asking === null && isDirectionReady(record)
   const layout = useMemo(() => layoutTree(tree), [tree])
-  const files = useMemo(() => deriveFiles({ record, messages, nodes: tree, journal, edits, confirmedAt }),
-    [record, messages, tree, journal, edits, confirmedAt])
+  const progress = useMemo(() => closureProgress(tree, record), [tree, record])
+  const files = useMemo(() => deriveFiles({ record, messages, nodes: tree, journal, edits, confirmedAt, reports, progress, proposal, acceptedAt }),
+    [record, messages, tree, journal, edits, confirmedAt, reports, progress, proposal, acceptedAt])
   const pending = useMemo(() => countSince(tree, caughtUpAt), [tree, caughtUpAt])
-  const report = useMemo(() => location.kind === 'catchup' ? buildCatchUp({ nodes: tree, files, since: caughtUpAt, now }) : null,
-    [location, tree, files, caughtUpAt, now])
+  const report = useMemo(() => location.kind === 'catchup' ? buildCatchUp({ nodes: tree, files, since: caughtUpAt, now, progress }) : null,
+    [location, tree, files, caughtUpAt, now, progress])
   const folders = useMemo(() => folderTree(files), [files])
   const crumbs = useMemo(() => breadcrumbs(location, tree, files), [location, tree, files])
   const openFile = location.kind === 'file' ? fileAt(files, location.path) : null
@@ -122,6 +127,25 @@ export function ProjectShellPreview() {
     if (openFile) setSeenFiles((current) => ({ ...current, [openFile.path]: openFile.content }))
   }, [openFile])
 
+  // The coordinator proposes completion only on the back of an acknowledged report that already
+  // showed every gate met, with nothing changed since. Acknowledging is what licenses it.
+  useEffect(() => {
+    if (phase !== 'canvas' || proposal || acceptedAt) return
+    const licensing = canPropose({ progress, reports, nodes: tree })
+    if (!licensing) return
+    const at = Date.now()
+    const timer = window.setTimeout(() => {
+      setProposal({ at, reportId: licensing.id })
+      setTree((current) => [...current, {
+        id: 'proposal', parent: 'root', kind: 'proposal', state: 'provisional', title: 'Completion proposed',
+        summary: `Rests on report ${reports.indexOf(licensing) + 1}`, createdAt: at, updatedAt: at,
+        detail: `Every gate is met and you acknowledged that state in report ${reports.indexOf(licensing) + 1}. Walk the acceptance, then accept or name the gap.`
+      }])
+      note(`Completion proposed. Every gate met; rests on progress report ${reports.indexOf(licensing) + 1}, which you acknowledged.`)
+    }, 900)
+    return () => window.clearTimeout(timer)
+  }, [phase, proposal, acceptedAt, progress, reports, tree])
+
   // Once building starts, the simulated root coordinator dispatches work on a timeline. The
   // record is fixed after Start, so the plan is derived once per build.
   useEffect(() => {
@@ -170,9 +194,28 @@ export function ProjectShellPreview() {
   }
 
   function caughtUp(): void {
-    setCaughtUpAt(Date.now())
+    const at = Date.now()
+    if (report) {
+      setReports((current) => [...current, { id: nextId.current++, since: report.since, at, changes: report.total, progress: report.progress, lines: reportLines(report) }])
+      note(`Progress report ${reports.length + 1} acknowledged by you: ${report.progress.met} of ${report.progress.total} gates, ${report.total} changes.`)
+    }
+    setCaughtUpAt(at)
     setAwayFor(0)
     navigate(MAP)
+  }
+
+  function accept(): void {
+    const at = Date.now()
+    setAcceptedAt(at)
+    setTree((current) => current.map((node) => node.id === 'proposal' ? { ...node, state: 'complete', summary: 'Accepted', updatedAt: at } : node))
+    note('Completion accepted by you. Handoff written; the tree is now the project’s history.')
+    navigate({ kind: 'file', path: 'handoff.md' })
+  }
+
+  function withdrawProposal(reason: string): void {
+    setProposal(null)
+    setTree((current) => current.filter((node) => node.id !== 'proposal'))
+    note(`Proposal withdrawn: you named a gap — ${clip(reason, 80)}`)
   }
 
   function saveFile(path: string, content: string): void {
@@ -193,9 +236,13 @@ export function ProjectShellPreview() {
     setSending(true)
     if (phase === 'canvas') {
       await wait(260)
-      const { nodes, note: ripple } = amendTree(tree, clean, targetId, Date.now())
+      const gap = location.kind === 'proposal' && proposal && !acceptedAt
+      const base = gap ? tree.filter((node) => node.id !== 'proposal') : tree
+      const { nodes, note: ripple } = amendTree(base, clean, gap ? 'root' : targetId, Date.now())
+      if (gap) withdrawProposal(clean)
       setTree(nodes)
       note(location.kind === 'file' ? `${ripple} (from ${location.path})` : ripple)
+      if (gap) navigate(MAP)
       setSending(false)
       return
     }
@@ -207,10 +254,12 @@ export function ProjectShellPreview() {
     setSending(false)
   }
 
-  const canvasNote = targetNode
-    ? `Direction lands on “${targetNode.title}”`
+  const canvasNote = acceptedAt ? 'Complete. New direction reopens the project as an amendment.'
+    : location.kind === 'proposal' ? 'Accept above, or name the gap here to withdraw the proposal'
+    : targetNode ? `Direction lands on “${targetNode.title}”`
     : 'Direction applies to the whole project; open a node or file to aim it'
   const placeholder = phase === 'intake' ? 'Describe what you want to create…'
+    : location.kind === 'proposal' && !acceptedAt ? 'Name the gap…'
     : targetNode ? `Add direction to “${targetNode.title}”…` : 'Add direction, a constraint, or a question…'
 
   return <div className="project-preview-app">
@@ -237,7 +286,11 @@ export function ProjectShellPreview() {
             title="What changed since you last caught up" onClick={() => navigate({ kind: 'catchup' })}>
             <History size={13} aria-hidden="true" /> Catch up{pending > 0 && <b>{pending}</b>}
           </button>}
-          <span className="project-shell-kind">{phase === 'canvas' ? 'Building' : 'Project shell'}</span>
+          {proposal && phase === 'canvas' && !acceptedAt && <button type="button" className="project-shell-proposal" data-ui="preview.project-proposal"
+            aria-pressed={location.kind === 'proposal'} onClick={() => navigate({ kind: 'proposal' })}>Completion proposed</button>}
+          <span className="project-shell-kind" data-complete={acceptedAt ? 'true' : undefined}>
+            {phase !== 'canvas' ? 'Project shell' : acceptedAt ? 'Complete' : proposal ? 'Closing' : 'Building'}
+          </span>
         </header>
 
         {phase === 'canvas'
@@ -256,6 +309,12 @@ export function ProjectShellPreview() {
                   onSelect={(id) => { if (id) navigate({ kind: 'node', id }) }} />
               </div>}
               {report && <div className="project-detail-pane"><CatchUpDetail report={report} onNavigate={navigate} onCaughtUp={caughtUp} /></div>}
+              {location.kind === 'proposal' && <div className="project-detail-pane">
+                {proposal
+                  ? <ProposalDetail proposal={proposal} reports={reports} progress={progress} record={record} acceptedAt={acceptedAt} now={now}
+                    onNavigate={navigate} onAccept={accept} />
+                  : <p className="project-detail-missing">No proposal is open. <button type="button" onClick={() => navigate(MAP)}>Back to the map</button></p>}
+              </div>}
               {openNode && <div className="project-detail-pane">
                 <NodeDetail node={openNode} nodes={tree} files={filesForNode(files, openNode.id)}
                   serves={servesLine(openNode, tree, record)} now={now} onNavigate={navigate} />
