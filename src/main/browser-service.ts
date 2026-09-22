@@ -21,7 +21,14 @@ import { prepareBrowserTabForTool } from './browser-service-tool-prep.js'
 import { browserPaneBounds, browserSurfaceVisibility } from './browser-surface-visibility.js'
 import { settleFrames } from './browser-frame-settle.js'
 import { PageBackgroundMemory } from './browser-page-background.js'
-import { activateTabSurface } from './browser-tab-activation.js'
+import {
+  closeBrowserTab,
+  closeBrowserTabsToRight,
+  closeOtherBrowserTabs,
+  parkWebBrowserTabs,
+  setBrowserActiveTab,
+  type BrowserServiceTabOpsHost
+} from './browser-service-tab-ops.js'
 import type { CdpBrowserTarget } from './cdp/browser-cdp-access.js'
 import { HiddenCaptureSurfaces } from './browser-capture-surface.js'
 
@@ -240,43 +247,15 @@ export class BrowserService extends EventEmitter {
   }
 
   closeTab(id: string): void {
-    const index = this.tabs.findIndex((tab) => tab.id === id)
-    if (index === -1) return
-    const [tab] = this.tabs.splice(index, 1)
-    this.rendering.unregister(id)
-    this.cadence.forget(id)
-    try {
-      if (tab instanceof BrowserTab) this.window.contentView.removeChildView(tab.view)
-    } catch {
-      // View may already be detached during shutdown.
-    }
-    tab.dispose()
-    // If we closed the active tab, activate a neighbor (prefer the one to its right, matching
-    // Chrome). Never leave zero tabs — open a fresh home tab instead.
-    if (this.activeId === id) {
-      this.activeId = null
-      const previous = (tab instanceof ImageTab || tab instanceof FileTab)
-        ? this.tabs.find((item) => item.id === tab.previousTabId) : null
-      const next = previous ?? this.tabs[index] ?? this.tabs[index - 1] ?? null
-      if (next) this.setActive(next.id)
-      else this.openTab(HOME_URL, true)
-    } else {
-      this.emitTabs()
-    }
+    closeBrowserTab(this.tabOpsHost(), id)
   }
 
   closeOtherTabs(id: string): void {
-    if (!this.tabs.some((tab) => tab.id === id)) return
-    const closing = this.tabs.filter((tab) => tab.id !== id).map((tab) => tab.id)
-    for (const tabId of closing) this.closeTab(tabId)
-    this.selectTab(id)
+    closeOtherBrowserTabs(this.tabOpsHost(), id)
   }
 
   closeTabsToRight(id: string): void {
-    const index = this.tabs.findIndex((tab) => tab.id === id)
-    if (index === -1) return
-    const closing = this.tabs.slice(index + 1).map((tab) => tab.id)
-    for (const tabId of closing) this.closeTab(tabId)
+    closeBrowserTabsToRight(this.tabOpsHost(), id)
   }
 
   duplicateTab(id: string, activate = true): void {
@@ -301,34 +280,7 @@ export class BrowserService extends EventEmitter {
   }
 
   private setActive(id: string): void {
-    const next = this.tabs.find((tab) => tab.id === id)
-    if (!next) return
-    if (next instanceof ImageTab || next instanceof FileTab) {
-      if (this.activeId !== id) next.previousTabId = this.activeId
-      this.activeId = id
-      this.parkWebTabs()
-      this.rendering.setActive(null)
-      this.emit('state', next.getState())
-      this.emitTabs()
-      return
-    }
-    this.activeId = id
-    // Prepare the real surface BEFORE it enters the window tree. Attaching an invisible
-    // previously-loaded view and revealing it afterward can leave Electron with no fresh
-    // compositor frame; new navigations hide that race, returning tabs expose it as blank.
-    activateTabSurface(
-      this.tabs.filter((tab): tab is BrowserTab => tab instanceof BrowserTab),
-      next,
-      this.bounds,
-      browserSurfaceVisibility(this.bounds),
-      () => this.rendering.setActive(id),
-      // Re-add the active view so it becomes the topmost child (Electron reorders an
-      // already-present view to the top on re-add).
-      () => this.attachTabView(next.id)
-    )
-    this.cadence.handoff(next.id)
-    this.emit('state', next.getState())
-    this.emitTabs()
+    setBrowserActiveTab(this.tabOpsHost(), id)
   }
 
   private tabInfos(): BrowserTabInfo[] {
@@ -370,7 +322,7 @@ export class BrowserService extends EventEmitter {
     const active = this.active
     this.rendering.setPaneVisible(paneVisible)
     if (active instanceof ImageTab || active instanceof FileTab) {
-      this.parkWebTabs()
+      parkWebBrowserTabs(this.tabOpsHost())
       return
     }
     // Keep the loaded surface attached and full-sized, using the same parking path as an
@@ -588,10 +540,22 @@ export class BrowserService extends EventEmitter {
     return tab
   }
 
-  private parkWebTabs(): void {
-    const bounds = { ...this.bounds, x: this.window.getContentBounds().width, occluded: true }
-    for (const tab of this.tabs) {
-      if (tab instanceof BrowserTab) tab.applyBounds(bounds, false)
+  private tabOpsHost(): BrowserServiceTabOpsHost {
+    return {
+      window: this.window,
+      tabs: this.tabs,
+      getActiveId: () => this.activeId,
+      setActiveId: (id) => { this.activeId = id },
+      bounds: this.bounds,
+      rendering: this.rendering,
+      cadence: this.cadence,
+      openHomeTab: () => { this.openTab(HOME_URL, true) },
+      attachTabView: (tabId) => { this.attachTabView(tabId) },
+      emitTabState: (state) => { this.emit('state', state) },
+      emitTabs: () => { this.emitTabs() },
+      unregisterRendering: (id) => { this.rendering.unregister(id) },
+      forgetCadence: (id) => { this.cadence.forget(id) },
+      detachBrowserView: (tab) => { this.detachTabView(tab.id) }
     }
   }
 

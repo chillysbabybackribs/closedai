@@ -1,28 +1,29 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { AppWindow, Compass, History, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 
-import type { ChatModel, ChatProvider, ChatTranscriptItem } from '../../shared/chat.js'
-import { Composer, type ComposerProps } from '../composer.js'
+import type { ChatProvider } from '../../shared/chat.js'
+import type { ComposerProps } from '../composer.js'
 import type { ComposerLayout } from '../composer-layout.js'
 import { injectComposerDraft } from '../composer-drafts.js'
-import { ProjectCanvas } from './project-canvas.js'
 import { buildCatchUp, countSince, reportLines } from './project-catchup.js'
-import { CatchUpDetail, ProposalDetail } from './project-catchup-view.js'
 import { closureProgress, type AcknowledgedReport, type Proposal } from './project-closure.js'
-import { Breadcrumbs, FileDetail, NodeDetail } from './project-detail.js'
 import { advanceDiscovery, clip, createDiscovery, isDirectionReady, syncDiscoveryWithItems, type DiscoveryState } from './project-discovery.js'
-import { ProjectFileTree } from './project-file-tree.js'
 import {
-  breadcrumbs, deriveFiles, fileAt, filesForNode, folderTree, servesLine, targetNodeId,
+  breadcrumbs, deriveFiles, fileAt, folderTree, targetNodeId,
   type FileEdit, type JournalLine, type Location
 } from './project-files.js'
-import { ProjectIntake, transcriptItemsToMessages, type Message } from './project-intake.js'
-import { duration } from './project-time.js'
+import { transcriptItemsToMessages, type Message } from './project-intake.js'
 import type { ProjectSnapshot } from '../../shared/project/snapshot.js'
-import { hydrateFromSnapshot, shouldHydrateFromSnapshot, type PersistedProjectHydration } from './hydrate-project-snapshot.js'
 import type { ProjectCanvasFixture } from './project-canvas-fixture.js'
 import { amendTree, layoutTree, rootNode, type TreeNode } from './project-tree.js'
 import { projectNodeSignature, useProjectWorkspaceEffects } from './use-project-workspace-effects.js'
+import {
+  PROJECT_WORKSPACE_CLOCK_MS,
+  PROJECT_WORKSPACE_MAP,
+  PROJECT_WORKSPACE_MODELS,
+  projectWorkspaceInitialHydration,
+  projectWorkspaceWait
+} from './project-workspace-fixture.js'
+import { ProjectWorkspaceShellChrome } from './project-workspace-shell-chrome.js'
 
 export type ProjectWorkspaceComposerBridge = Pick<ComposerProps,
   'models' | 'selectedModel' | 'selectedReasoningEffort' | 'contextUsage' | 'provider' | 'planUsage'
@@ -55,46 +56,15 @@ export type ProjectWorkspaceProps = {
   /** Durable state from main; hydrates once when the workspace would otherwise start empty. */
   persistedSnapshot?: ProjectSnapshot | null
 }
-const MAP: Location = { kind: 'map' }
-const CLOCK_MS = 15_000
-
-const MODELS: ChatModel[] = [
-  { id: 'gpt-5.6', provider: 'codex', displayName: 'GPT-5.6', description: 'OpenAI through Codex', contextWindow: 400_000,
-    defaultReasoningEffort: 'high', supportedReasoningEfforts: [{ reasoningEffort: 'high', description: 'Deep reasoning' }], isDefault: true },
-  { id: 'claude-fable-5-1', provider: 'claude', displayName: 'Claude Fable 5.1', description: 'Anthropic through Claude Code', contextWindow: 200_000,
-    defaultReasoningEffort: 'high', supportedReasoningEfforts: [{ reasoningEffort: 'high', description: 'Deep reasoning' }], isDefault: false },
-  { id: 'cursor-composer', provider: 'cursor', displayName: 'Composer', description: 'Cursor coding model', contextWindow: 200_000,
-    defaultReasoningEffort: 'medium', supportedReasoningEfforts: [{ reasoningEffort: 'medium', description: 'Balanced' }], isDefault: false },
-  { id: 'antigravity-gemini', provider: 'antigravity', displayName: 'Gemini', description: 'Google through Antigravity', contextWindow: 200_000,
-    defaultReasoningEffort: 'high', supportedReasoningEfforts: [{ reasoningEffort: 'high', description: 'Deep reasoning' }], isDefault: false }
-]
-
-const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
-
-function initialHydration(canvasFixture: ProjectCanvasFixture | null, persistedSnapshot: ProjectSnapshot | null | undefined): PersistedProjectHydration | null {
-  if (canvasFixture) {
-    return {
-      discovery: canvasFixture.discovery,
-      phase: 'canvas',
-      tree: canvasFixture.tree,
-      journal: canvasFixture.journal,
-      confirmedAt: canvasFixture.confirmedAt,
-      caughtUpAt: canvasFixture.caughtUpAt,
-      acceptedAt: null,
-      skipSimulatedDispatch: true
-    }
-  }
-  if (persistedSnapshot && shouldHydrateFromSnapshot(persistedSnapshot)) return hydrateFromSnapshot(persistedSnapshot)
-  return null
-}
+const MAP = PROJECT_WORKSPACE_MAP
 
 export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout, composerBridge = null, chatAppearance, canvasFixture = null, persistedSnapshot = null }: ProjectWorkspaceProps) {
-  const fixtureHydration = useMemo(() => initialHydration(canvasFixture, null), [canvasFixture])
+  const fixtureHydration = useMemo(() => projectWorkspaceInitialHydration(canvasFixture, null), [canvasFixture])
   const persistedApplied = useRef(false)
   const [skipSimulatedDispatch, setSkipSimulatedDispatch] = useState(() => fixtureHydration?.skipSimulatedDispatch ?? false)
   const [messages, setMessages] = useState<Message[]>([])
   const [discovery, setDiscovery] = useState<DiscoveryState>(() => fixtureHydration?.discovery ?? createDiscovery())
-  const [selectedModel, setSelectedModel] = useState(MODELS[0]!.id)
+  const [selectedModel, setSelectedModel] = useState(PROJECT_WORKSPACE_MODELS[0]!.id)
   const [phase, setPhase] = useState<'intake' | 'canvas'>(() => (fixtureHydration?.phase ?? 'intake'))
   const [tree, setTree] = useState<TreeNode[]>(() => fixtureHydration?.tree ?? [])
   const [journal, setJournal] = useState<JournalLine[]>(() => fixtureHydration?.journal ?? [])
@@ -117,9 +87,9 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
   const scrollRef = useRef<HTMLDivElement>(null)
   const shellRef = useRef<HTMLElement>(null)
 
-  const bridgeModels = composerBridge?.models ?? MODELS
+  const bridgeModels = composerBridge?.models ?? PROJECT_WORKSPACE_MODELS
   const bridgeModelId = composerBridge?.selectedModel ?? selectedModel
-  const selectedModelEntry = bridgeModels.find((model) => model.id === bridgeModelId) ?? bridgeModels[0] ?? MODELS[0]!
+  const selectedModelEntry = bridgeModels.find((model) => model.id === bridgeModelId) ?? bridgeModels[0] ?? PROJECT_WORKSPACE_MODELS[0]!
   const provider = (composerBridge?.provider ?? selectedModelEntry.provider) as ChatProvider
   const bridgeMessages = useMemo(() => {
     if (!composerBridge?.items) return null
@@ -161,7 +131,7 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
   }, [activeMessages, sending, composerBridge?.running, liveTranscript])
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), CLOCK_MS)
+    const timer = window.setInterval(() => setNow(Date.now()), PROJECT_WORKSPACE_CLOCK_MS)
     return () => window.clearInterval(timer)
   }, [])
 
@@ -264,7 +234,7 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
       if (composerBridge?.onSend) {
         void composerBridge.onSend(clean)
       }
-      await wait(260)
+      await projectWorkspaceWait(260)
       if (acceptedAt) {
         reopen(clean)
         setSending(false)
@@ -290,7 +260,7 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
     }
     setMessages((current) => [...current, { id: nextId.current++, at: Date.now(), role: 'user', text: clean }])
     const { state, reply } = advanceDiscovery(discovery, clean)
-    await wait(420)
+    await projectWorkspaceWait(420)
     setDiscovery(state)
     setMessages((current) => [...current, { id: nextId.current++, at: Date.now(), role: 'coordinator', text: reply }])
     setSending(false)
@@ -331,112 +301,61 @@ export function ProjectWorkspace({ paneId, embedded = false, fixedComposerLayout
     '--composer-font-size': `${composerFontSize}px`
   } as CSSProperties : undefined
 
-  const shellChrome = <>
-    <header className="project-shell-header">
-          {!embedded && <span className="project-shell-grip" aria-hidden="true">⠿</span>}
-          {phase === 'canvas' && <button type="button" className="project-shell-tree-toggle"
-            data-ui="agent.project-tree-toggle" aria-pressed={treeOpen}
-            aria-label={treeOpen ? 'Hide project files' : 'Show project files'} onClick={() => setTreeOpen((open) => !open)}>
-            {treeOpen ? <PanelLeftClose size={14} aria-hidden="true" /> : <PanelLeftOpen size={14} aria-hidden="true" />}
-          </button>}
-          <span className="project-shell-mark"><Compass size={15} aria-hidden="true" /></span>
-          <strong>{phase === 'canvas' ? clip(record.idea, 56) : 'New project'}</strong>
-          {phase === 'canvas' && <button type="button" className="project-shell-catchup" data-ui="agent.project-catchup"
-            data-pending={pending > 0 || undefined} aria-pressed={location.kind === 'catchup'}
-            title="What changed since you last caught up" onClick={() => navigate({ kind: 'catchup' })}>
-            <History size={13} aria-hidden="true" /> Catch up{pending > 0 && <b>{pending}</b>}
-          </button>}
-          {proposal && phase === 'canvas' && !acceptedAt && <button type="button" className="project-shell-proposal" data-ui="agent.project-proposal"
-            aria-pressed={location.kind === 'proposal'} onClick={() => navigate({ kind: 'proposal' })}>Completion proposed</button>}
-          <span className="project-shell-kind" data-complete={acceptedAt ? 'true' : undefined}>
-            {phase !== 'canvas' ? 'Project shell' : acceptedAt ? 'Complete' : proposal ? 'Closing' : 'Building'}
-          </span>
-        </header>
-
-        {phase === 'canvas'
-          ? <div className="project-workstation" data-tree-open={treeOpen || undefined}>
-            {treeOpen && <ProjectFileTree root={folders} openPath={openFile?.path ?? null} changed={changedFiles} now={now}
-              onOpen={(path) => navigate({ kind: 'file', path })} />}
-            <div className="project-stage">
-              <Breadcrumbs crumbs={crumbs} onNavigate={navigate} />
-              {awayFor > 0 && pending > 0 && location.kind !== 'catchup' && <div className="project-away" role="status">
-                <span>You were away {duration(awayFor)}; {pending} {pending === 1 ? 'thing' : 'things'} changed.</span>
-                <button type="button" data-ui="agent.project-catchup" onClick={() => navigate({ kind: 'catchup' })}>Catch up</button>
-                <button type="button" data-ui="agent.project-away-dismiss" onClick={() => setAwayFor(0)} aria-label="Dismiss">×</button>
-              </div>}
-              {location.kind === 'map' && <div className="project-tree-pane">
-                <ProjectCanvas layout={layout} selectedId={null} changedIds={changedNodes}
-                  onSelect={(id) => { if (id) navigate({ kind: 'node', id }) }} />
-              </div>}
-              {report && <div className="project-detail-pane"><CatchUpDetail report={report} onNavigate={navigate} onCaughtUp={caughtUp} /></div>}
-              {location.kind === 'proposal' && <div className="project-detail-pane">
-                {proposal
-                  ? <ProposalDetail proposal={proposal} reports={reports} progress={progress} record={record} acceptedAt={acceptedAt} now={now}
-                    onNavigate={navigate} onAccept={accept} />
-                  : <p className="project-detail-missing">No proposal is open. <button type="button" onClick={() => navigate(MAP)}>Back to the map</button></p>}
-              </div>}
-              {openNode && <div className="project-detail-pane">
-                <NodeDetail node={openNode} nodes={tree} files={filesForNode(files, openNode.id)}
-                  serves={servesLine(openNode, tree, record)} now={now} onNavigate={navigate} />
-              </div>}
-              {openFile && <div className="project-detail-pane"><FileDetail file={openFile} now={now} onSave={saveFile} /></div>}
-              {(location.kind === 'node' || location.kind === 'file') && !openNode && !openFile && <div className="project-detail-pane">
-                <p className="project-detail-missing">Nothing here yet. <button type="button" onClick={() => navigate(MAP)}>Back to the map</button></p>
-              </div>}
-            </div>
-          </div>
-          : <div className={`project-shell-body${embedded ? ' is-agent-embedded' : ''}${hasIntakeConversation ? ' has-conversation' : ''}${liveTranscript ? ' has-live-transcript' : ''}`}
-            ref={liveTranscript ? undefined : scrollRef}>
-            <ProjectIntake messages={activeMessages} sending={sending || (composerBridge?.running ?? false)} record={record} ready={ready}
-              onSuggestion={chooseSuggestion} onStart={start} transcript={intakeTranscript} showDirectionRecord={!embedded} />
-          </div>}
-
-        <footer className="project-shell-footer">
-          {phase === 'intake' && !hasIntakeConversation && !embedded && <p className="project-shell-help">
-            Describe what you want to exist and anything you already care about. The coordinator asks for the rest.
-          </p>}
-          <div className="composer project-shell-composer">
-            <Composer
-              enabled={composerBridge ? true : !sending}
-              running={composerBridge?.running ?? sending}
-              placeholder={placeholder}
-              models={bridgeModels}
-              selectedModel={bridgeModelId}
-              selectedReasoningEffort={composerBridge?.selectedReasoningEffort ?? selectedModelEntry.defaultReasoningEffort}
-              contextUsage={composerBridge?.contextUsage ?? null}
-              provider={provider}
-              planUsage={composerBridge?.planUsage ?? null}
-              onRefreshPlanUsage={composerBridge?.onRefreshPlanUsage ?? (async () => {})}
-              onModelChange={composerBridge?.onModelChange ?? (async (modelId) => setSelectedModel(modelId))}
-              onReasoningEffortChange={composerBridge?.onReasoningEffortChange ?? (async () => {})}
-              onSend={async (text) => send(text)}
-              onStop={composerBridge?.onStop ?? (async () => {})}
-              paused={composerBridge?.paused ?? false}
-              onResume={composerBridge?.onResume ?? (async () => {})}
-              onInspectContext={() => {}}
-              cwd={composerBridge?.cwd ?? ''}
-              projectPath={composerBridge?.projectPath ?? composerBridge?.cwd ?? ''}
-              projectPending={composerBridge?.projectPending}
-              recentProjects={composerBridge?.recentProjects ?? []}
-              onChooseProject={composerBridge?.onChooseProject ?? (async () => {})}
-              onSelectProject={composerBridge?.onSelectProject ?? (async () => {})}
-              onClearProject={composerBridge?.onClearProject ?? (async () => {})}
-              activeTurnId={composerBridge?.activeTurnId ?? null}
-              paneId={paneId}
-              fixedLayout={fixedComposerLayout}
-            />
-          </div>
-          <span className="project-provider-note"><AppWindow size={12} aria-hidden="true" />
-            {phase === 'canvas' ? canvasNote : '4 providers available to the coordinator'}
-          </span>
-        </footer>
-  </>
-
   return <section className={`project-shell${embedded ? ' project-shell-embedded' : ''}${chatAppearance ? ' project-shell-chat prompt-chat' : ''}`} ref={shellRef} {...shellAttrs}
     aria-label="Project"
     data-ui-surface={chatAppearance ? 'chat' as const : undefined}
     data-zoom={chatAppearance ? zoom : undefined}
     style={zoomStyle}>
-    {shellChrome}
+    <ProjectWorkspaceShellChrome
+      paneId={paneId}
+      embedded={embedded}
+      fixedComposerLayout={fixedComposerLayout}
+      composerBridge={composerBridge}
+      phase={phase}
+      treeOpen={treeOpen}
+      setTreeOpen={setTreeOpen}
+      record={record}
+      pending={pending}
+      location={location}
+      navigate={navigate}
+      proposal={proposal}
+      acceptedAt={acceptedAt}
+      folders={folders}
+      openFile={openFile}
+      changedFiles={changedFiles}
+      now={now}
+      crumbs={crumbs}
+      awayFor={awayFor}
+      setAwayFor={setAwayFor}
+      layout={layout}
+      changedNodes={changedNodes}
+      report={report}
+      caughtUp={caughtUp}
+      tree={tree}
+      files={files}
+      progress={progress}
+      reports={reports}
+      accept={accept}
+      openNode={openNode}
+      saveFile={saveFile}
+      mapLocation={MAP}
+      activeMessages={activeMessages}
+      sending={sending}
+      ready={ready}
+      chooseSuggestion={chooseSuggestion}
+      start={start}
+      intakeTranscript={intakeTranscript}
+      hasIntakeConversation={hasIntakeConversation}
+      liveTranscript={liveTranscript}
+      scrollRef={scrollRef}
+      placeholder={placeholder}
+      bridgeModels={bridgeModels}
+      bridgeModelId={bridgeModelId}
+      selectedModelEntry={selectedModelEntry}
+      provider={provider}
+      send={send}
+      canvasNote={canvasNote}
+      onModelChangeFallback={async (modelId) => setSelectedModel(modelId)}
+    />
   </section>
 }

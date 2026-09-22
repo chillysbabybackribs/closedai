@@ -12,7 +12,6 @@ import type {
   PeerChatReadResult
 } from '../../shared/chat-peers.js'
 import { chatProviderOfId } from '../../shared/chat-providers.js'
-import { chatRecordIsBlank } from '../../shared/chat-store.js'
 import type { ChatContinuation } from '../../shared/types.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
@@ -24,13 +23,27 @@ import type { ChatStore } from '../chat-store/chat-store.js'
 import { ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
 import { traceLog } from '../trace/trace-log.js'
 import { PeerChatCatalog } from './peer-chat-catalog.js'
-import { PeerEmitThrottle, rowSummary, syncStoreCheckpoint } from './peer-events.js'
-import { handlePeerPaneEvent, peerRendererView, rememberPeerTranscript, withSerializedAwake, type PeerPaneOpsHost } from './peer-manager-pane-ops.js'
+import { PeerEmitThrottle, syncStoreCheckpoint } from './peer-events.js'
+import {
+  peerManagerChatRows,
+  peerManagerEmitChats,
+  peerManagerEmitWorkspace,
+  peerManagerListReadable,
+  peerManagerOnPaneEvent,
+  peerManagerPersistOpenChats,
+  peerManagerReadReadable,
+  peerManagerRememberTranscript,
+  peerManagerRendererView,
+  peerManagerScheduleWarm,
+  peerManagerTrimAttached,
+  peerManagerWake,
+  peerManagerWakeLater,
+  peerManagerWithAwake,
+  peerManagerWorkspace,
+  type PeerManagerSupportHost
+} from './peer-manager-support.js'
 import { PeerIdleParking } from './peer-idle-parking.js'
 import { PeerLifecycle, type ChatPeerFactory, type PeerEntry } from './peer-lifecycle.js'
-import { listReadablePeers, readReadablePeer, type ReadablePeerHost } from './peer-readable.js'
-import { openChatsPatch } from './peer-settings.js'
-import { schedulePaneWarm } from './provider-warm.js'
 import { PeerProjectChanges, projectConversationPatch, rememberChatProjects } from './peer-project.js'
 import { PeerArchives } from './peer-archive.js'
 import { createDetachedPeer, isPinnedChat } from './peer-detached.js'
@@ -503,123 +516,83 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   listReadable(callerPaneId: string | null): ChatPeerSummary[] {
-    return listReadablePeers(this.readable(), callerPaneId)
+    return peerManagerListReadable(this.supportHost(), callerPaneId)
   }
 
   readReadable(chatId: string, callerPaneId: string | null, options: PeerChatReadOptions): Promise<PeerChatReadResult | null> {
-    return readReadablePeer(this.readable(), chatId, callerPaneId, options)
+    return peerManagerReadReadable(this.supportHost(), chatId, callerPaneId, options)
   }
 
-  private readable(): ReadablePeerHost {
-    return {
-      summaries: () => this.peerSummaries(),
-      live: (paneId) => this.lifecycle.require(paneId).surface.snapshot(),
-      record: (paneId) => this.store.get(paneId),
-      transcripts: this.transcripts
-    }
-  }
-
-  private workspace(): ChatWorkspaceSelection {
-    if (this.workspaceSelector) return this.workspaceSelector.current()
-    const saved = this.settings.get()
-    return { cwd: saved.chatWorkspacePath ?? '', projectPath: saved.chatProjectPath }
-  }
-
-  private async trimAttached(): Promise<void> {
-    const pending = this.projectSwitch.state()
-    const switching = pending && (pending.status === 'pending' || pending.status === 'switching') ? [pending.paneId] : []
-    const pinned = this.store.ids().filter((id) => isPinnedChat(this.store, id))
-    const detached = this.lifecycle.trim([this.selectedPaneId, ...this.visiblePaneIds, ...switching, ...pinned])
-    if (detached.length === 0) return
-    this.chatsEmit.schedule()
-    await this.persistOpenChats()
-  }
-
-  private async persistOpenChats(): Promise<void> {
-    const records = this.lifecycle.ids().map((id) => this.store.require(id))
-    await this.settings.set(openChatsPatch(records, this.store.require(this.selectedPaneId)))
-  }
-
-  private wake(paneId: ChatPaneId): Promise<PeerEntry> {
-    return this.lifecycle.withBusy(paneId, () => this.parking.wake(paneId) as Promise<PeerEntry>)
-  }
-
-  /** Warm the provider after the user dwells on a pane, without blocking selection paint. */
-  private scheduleWarm(paneId: ChatPaneId): void {
-    schedulePaneWarm(paneId, async (target) => {
-      if (target !== this.selectedPaneId) return
-      await this.withAwake(target, (surface) => surface.start())
-    })
-  }
-
-  /**
-   * Start a chat's runtime without holding the caller. A blank chat the user left while it was
-   * still starting could not be discarded then (the start might have been bringing a thread);
-   * once it has landed empty and unselected, it goes.
-   */
-  private wakeLater(paneId: ChatPaneId, what: string): void {
-    void this.wake(paneId).then(async () => {
-      if (paneId !== this.selectedPaneId && !this.visiblePaneIds.has(paneId) && !this.retainedTabIds.has(paneId) && !isPinnedChat(this.store, paneId) && this.lifecycle.peers.size > 1 && this.lifecycle.discardIfBlank(paneId)) {
-        await this.persistOpenChats()
-      }
-    }).catch((error: unknown) => {
-      console.warn(`[chat-peers] could not ${what}:`, error instanceof Error ? error.message : String(error))
-    })
-  }
-
-  private rendererView(entry: PeerEntry, snapshot: ChatSnapshot): ChatSnapshot {
-    return peerRendererView(this.store, this.transcripts, entry, snapshot)
-  }
-
-  private rememberTranscript(entry: PeerEntry): void {
-    rememberPeerTranscript(this.store, this.transcripts, entry)
-  }
-
-  private paneOpsHost(): PeerPaneOpsHost {
+  private supportHost(): PeerManagerSupportHost {
     return {
       lifecycle: this.lifecycle,
-      parking: this.parking,
       store: this.store,
-      transcripts: this.transcripts,
+      settings: this.settings,
       projectSwitch: this.projectSwitch,
       projectChanges: this.projectChanges,
+      transcripts: this.transcripts,
+      parking: this.parking,
       catalog: this.catalog,
       chatsEmit: this.chatsEmit,
       browserAssignmentIdle: this.browserAssignmentIdle,
       paneOperations: this.paneOperations,
-      emitWorkspaceEvent: (event) => { this.emit('event', event) },
-      assertAvailable: () => { this.projectSwitch.assertAvailable() },
-      wake: (paneId) => this.wake(paneId)
+      workspaceSelector: this.workspaceSelector,
+      selectedPaneId: () => this.selectedPaneId,
+      visiblePaneIds: () => this.visiblePaneIds,
+      retainedTabIds: () => this.retainedTabIds,
+      emitWorkspaceEvent: (event) => { this.emit('event', event) }
     }
   }
 
+  private workspace(): ChatWorkspaceSelection {
+    return peerManagerWorkspace(this.supportHost())
+  }
+
+  private async trimAttached(): Promise<void> {
+    await peerManagerTrimAttached(this.supportHost())
+  }
+
+  private async persistOpenChats(): Promise<void> {
+    await peerManagerPersistOpenChats(this.supportHost())
+  }
+
+  private wake(paneId: ChatPaneId): Promise<PeerEntry> {
+    return peerManagerWake(this.supportHost(), paneId)
+  }
+
+  private scheduleWarm(paneId: ChatPaneId): void {
+    peerManagerScheduleWarm(this.supportHost(), paneId)
+  }
+
+  private wakeLater(paneId: ChatPaneId, what: string): void {
+    peerManagerWakeLater(this.supportHost(), paneId, what)
+  }
+
+  private rendererView(entry: PeerEntry, snapshot: ChatSnapshot): ChatSnapshot {
+    return peerManagerRendererView(this.supportHost(), entry, snapshot)
+  }
+
+  private rememberTranscript(entry: PeerEntry): void {
+    peerManagerRememberTranscript(this.supportHost(), entry)
+  }
+
   private onPaneEvent(entry: PeerEntry, event: ChatEvent): void {
-    handlePeerPaneEvent(this.paneOpsHost(), entry, event)
+    peerManagerOnPaneEvent(this.supportHost(), entry, event)
   }
 
   private async withAwake<T>(paneId: ChatPaneId, action: (surface: ChatSurface) => Promise<T>, deferred = false): Promise<T> {
-    return withSerializedAwake(this.paneOpsHost(), paneId, action, deferred)
+    return peerManagerWithAwake(this.supportHost(), paneId, action, deferred)
   }
 
-  private peerSummaries(): ChatPeerSummary[] {
-    return [...this.lifecycle.peers.values()].map((entry) => ({ ...entry.display.current }))
-  }
-
-  /** Directory sections share one catalog; attachment and activity are independent of focus. */
   private chatRows(): ChatRowSummary[] {
-    return this.store.ids().map((id) => this.store.require(id))
-      .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
-      .filter((record) => this.lifecycle.get(record.id) || record.pinnedAt !== null || !chatRecordIsBlank(record))
-      .map((record) =>
-      ({ ...rowSummary(record, this.lifecycle.get(record.id)?.display.current ?? null),
-        pendingProject: this.projectChanges.selection(record.id) }))
+    return peerManagerChatRows(this.supportHost())
   }
 
   private emitWorkspace(): void {
-    this.emit('event', { type: 'workspace', snapshot: this.snapshot({ limit: CHAT_TURN_PAGE_SIZE, unit: 'turn' }) } satisfies ChatWorkspaceEvent)
+    peerManagerEmitWorkspace(this.supportHost(), this.snapshot({ limit: CHAT_TURN_PAGE_SIZE, unit: 'turn' }))
   }
 
   private emitChats(): void {
-    this.emit('event', { type: 'chats', selectedPaneId: this.selectedPaneId, chats: this.chatRows() } satisfies ChatWorkspaceEvent)
+    peerManagerEmitChats(this.supportHost())
   }
 }
