@@ -3,6 +3,7 @@
 // and the user may edit any of it. Files are derived from the direction record, the intake
 // transcript, the map nodes, and the journal, with user edits layered on top, so the tree and
 // the map are two views of one state rather than two stores.
+import { handoffMarkdown, proposalMarkdown, reportMarkdown, type AcknowledgedReport, type Progress, type Proposal } from './project-closure.js'
 import { clip, type DirectionRecord } from './project-discovery.js'
 import type { Message } from './project-intake.js'
 import { documentStamp } from './project-time.js'
@@ -32,6 +33,7 @@ export type JournalLine = { id: number; at: number; text: string }
 export type Location =
   | { kind: 'map' }
   | { kind: 'catchup' }
+  | { kind: 'proposal' }
   | { kind: 'node'; id: string }
   | { kind: 'file'; path: string }
 
@@ -71,7 +73,7 @@ function nodePath(node: TreeNode, nodes: TreeNode[]): string | null {
     case 'task': return `scopes/${parent?.id ?? 'unscoped'}/${node.id}.md`
     case 'research': return `research/${node.id}.md`
     case 'amendment': return `direction/amendments/${node.id}.md`
-    default: return null
+    default: return null // root and proposal have their own generated documents
   }
 }
 
@@ -97,8 +99,12 @@ export function deriveFiles(input: {
   edits: Record<string, FileEdit>
   /** When Start confirmed the record; the birth time of every intake-derived file. */
   confirmedAt: number
+  reports: AcknowledgedReport[]
+  progress: Progress
+  proposal: Proposal | null
+  acceptedAt: number | null
 }): ProjectFile[] {
-  const { record, messages, nodes, journal, edits, confirmedAt } = input
+  const { record, messages, nodes, journal, edits, confirmedAt, reports, progress, proposal, acceptedAt } = input
   const requestedAt = messages[0]?.at ?? confirmedAt
   const files: ProjectFile[] = [
     { path: 'request.md', title: 'Original request', owner: 'user', editable: false, nodeId: 'root', updatedAt: requestedAt,
@@ -113,6 +119,18 @@ export function deriveFiles(input: {
       updatedAt: confirmedAt, content: ['# Discovery sources', '', `Gathered while the direction was being clarified; direction confirmed ${documentStamp(confirmedAt)}.`, '',
         ...record.evidence.map((item) => `- [${item.label}](${item.url}) — ${item.informs}`)].join('\n') })
   }
+  if (acceptedAt) {
+    files.push({ path: 'handoff.md', title: 'Handoff', owner: 'orchestrator', editable: true, nodeId: 'root', updatedAt: acceptedAt,
+      content: handoffMarkdown({ record, acceptedAt, reports, nodes, progress }) })
+  }
+  if (proposal) {
+    files.push({ path: 'direction/proposal.md', title: 'Completion proposal', owner: 'orchestrator', editable: false, nodeId: 'proposal',
+      updatedAt: proposal.at, content: proposalMarkdown(proposal, reports, progress, record) })
+  }
+  reports.forEach((report, index) => {
+    files.push({ path: `reports/${String(index + 1).padStart(2, '0')}-progress.md`, title: `Progress report ${index + 1}`, owner: 'orchestrator',
+      editable: false, nodeId: 'root', updatedAt: report.at, content: reportMarkdown(report, index) })
+  })
   for (const node of nodes) {
     const path = nodePath(node, nodes)
     if (!path) continue
@@ -144,7 +162,7 @@ export function deriveFiles(input: {
 }
 
 /** Top-level folders in a ladder of importance beneath the original request. */
-const FOLDER_ORDER = ['direction', 'research', 'decisions', 'scopes', 'quality', 'journal']
+const FOLDER_ORDER = ['direction', 'reports', 'research', 'decisions', 'scopes', 'quality', 'journal']
 
 export function folderTree(files: ProjectFile[]): ProjectFolder {
   const root: ProjectFolder = { name: 'project', path: '', folders: [], files: [] }
@@ -184,6 +202,7 @@ export function filesForNode(files: ProjectFile[], nodeId: string): ProjectFile[
 export function breadcrumbs(location: Location, nodes: TreeNode[], files: ProjectFile[]): Crumb[] {
   if (location.kind === 'map') return [{ label: 'Map', location }]
   if (location.kind === 'catchup') return [{ label: 'Map', location: { kind: 'map' } }, { label: 'Catch-up', location }]
+  if (location.kind === 'proposal') return [{ label: 'Map', location: { kind: 'map' } }, { label: 'Completion proposal', location }]
   if (location.kind === 'node') {
     const chain: TreeNode[] = []
     let current = nodes.find((node) => node.id === location.id)
@@ -205,6 +224,7 @@ export function breadcrumbs(location: Location, nodes: TreeNode[], files: Projec
 /** Where composer direction lands for a location: the node itself, or the node a file belongs to. */
 export function targetNodeId(location: Location, files: ProjectFile[]): string | null {
   if (location.kind === 'map' || location.kind === 'catchup') return null
+  if (location.kind === 'proposal') return 'proposal'
   if (location.kind === 'node') return location.id
   return fileAt(files, location.path)?.nodeId ?? 'root'
 }
@@ -214,6 +234,7 @@ export function servesLine(node: TreeNode, nodes: TreeNode[], record: DirectionR
   switch (node.kind) {
     case 'root': return record.idea
     case 'amendment': return 'Your steering, recorded so the original words stay intact.'
+    case 'proposal': return 'Closing the record: every gate met and already shown to you in an acknowledged report.'
     case 'research': return record.unknowns.find((unknown) => unknown === node.detail)
       ? `Resolving an open unknown before it can bias the build: ${clip(node.detail, 90)}`
       : 'Evidence behind the direction record.'
@@ -228,5 +249,5 @@ export function servesLine(node: TreeNode, nodes: TreeNode[], record: DirectionR
 }
 
 export const sameLocation = (a: Location, b: Location): boolean =>
-  a.kind === b.kind && (a.kind === 'map' || a.kind === 'catchup' || (a.kind === 'node' && b.kind === 'node' && a.id === b.id)
+  a.kind === b.kind && (a.kind === 'map' || a.kind === 'catchup' || a.kind === 'proposal' || (a.kind === 'node' && b.kind === 'node' && a.id === b.id)
     || (a.kind === 'file' && b.kind === 'file' && a.path === b.path))

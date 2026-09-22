@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { CachedChatView } from '../chat-store/chat-transcript-cache.js'
-import { readableView, rendererChatBatcher, rendererSnapshot } from './peer-events.js'
+import { readableView, rendererChatBatcher, rendererSnapshot, rowSummary } from './peer-events.js'
 import { chatRecord, FakeSurface } from './peer-manager-harness.js'
 
 const cached: CachedChatView = {
@@ -79,6 +79,24 @@ test('active checkpoint memory is attached when thread ids match', () => {
   const wrongThreadRecord = chatRecord('pane-a', 'gpt', { threadId: 'codex:t2', checkpoint })
   const noMatch = readableView(parked, wrongThreadRecord, cached)
   assert.equal(noMatch.snapshot.checkpoint ?? null, null)
+})
+
+test('a drawer row names the chat it continues while the digest is undelivered', () => {
+  const lineage = {
+    sourcePaneId: 'pane-a', sourceThreadId: 'codex:t1', sourceProvider: 'codex' as const,
+    sourceTitle: 'Parser work', handoff: 'Handoff from the previous chat "Parser work".', createdAt: 1
+  }
+  const pending = rowSummary(chatRecord('pane-b', 'gpt', { continuation: lineage }), null)
+  assert.deepEqual(pending.continuedFrom, { paneId: 'pane-a', title: 'Parser work', handoff: lineage.handoff })
+
+  // Delivered: the lineage stays on the row without the text the first message already carried.
+  const delivered = rowSummary(chatRecord('pane-b', 'gpt', { continuation: { ...lineage, handoff: null } }), null)
+  assert.deepEqual(delivered.continuedFrom, { paneId: 'pane-a', title: 'Parser work', handoff: null })
+
+  // A directory change within one chat re-seeds that chat; it is not a continuation of another.
+  const moved = rowSummary(chatRecord('pane-b', 'gpt', { continuation: { ...lineage, sourceCwd: '/old' } }), null)
+  assert.equal('continuedFrom' in moved, false)
+  assert.equal('continuedFrom' in rowSummary(chatRecord('pane-b', 'gpt'), null), false)
 })
 
 test('IPC batching merges adjacent deltas and flushes them before ordering barriers', () => {

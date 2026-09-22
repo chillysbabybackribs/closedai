@@ -3,7 +3,7 @@
 // derived from the confirmed direction record.
 import { clip, describeRecord, type DirectionRecord, type EvidenceItem } from './project-discovery.js'
 
-export type TreeKind = 'root' | 'scope' | 'task' | 'research' | 'amendment'
+export type TreeKind = 'root' | 'scope' | 'task' | 'research' | 'amendment' | 'proposal'
 export type TreeState = 'anchored' | 'active' | 'queued' | 'complete' | 'provisional' | 'confirmed'
 
 export type TreeNode = {
@@ -137,7 +137,17 @@ export function buildDispatchPlan(record: DirectionRecord): DispatchEvent[] {
     { delay: 900, note: 'Dispatched: data model sketch → worker',
       add: task('data-model', 'foundation', 'Data model sketch', 'Smallest model for the first session', 'active', 'Derives the minimum persistent shape from the journey prototype rather than designing the full model up front.') },
     { delay: 1600, note: `Research resolved: ${clip(unknownA, 60)}`,
-      update: { id: 'unknown-0', state: 'confirmed', summary: 'Conclusion recorded' } }
+      update: { id: 'unknown-0', state: 'confirmed', summary: 'Conclusion recorded' } },
+    // The build then runs to a state where every closure gate can be met, so the prototype can
+    // show the report → acknowledgement → proposal → acceptance path end to end.
+    { delay: 2600, note: 'Foundation: data model settled against the prototype.',
+      update: { id: 'data-model', state: 'complete', summary: 'Settled · three entities' } },
+    { delay: 2200, note: `Research resolved: ${clip(unknownB, 60)}`,
+      update: { id: 'unknown-1', state: 'confirmed', summary: 'Hypothesis confirmed' } },
+    { delay: 2800, note: 'Primary journey: first useful session demonstrated end to end.',
+      update: { id: 'journey-proto', state: 'complete', summary: 'Demonstrated end to end' } },
+    { delay: 1800, note: 'Quality: baseline checks green across the build.',
+      update: { id: 'baseline', state: 'complete', summary: 'All green' } }
   ]
 }
 
