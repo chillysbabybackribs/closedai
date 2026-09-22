@@ -222,7 +222,7 @@ See `chat-context/thread-handoff.ts` and `chat-peers/peer-continuation.ts`.
 A chat record may still carry a legacy **working checkpoint** (goal, constraints, decisions,
 progress, next steps, and file references) from earlier builds. There is no model-facing
 checkpoint tool anymore; new checkpoints are not written. When present, checkpoints are
-read-only in the Context Inspector and are model-authored notes, not verified facts.
+read-only legacy data and are model-authored notes, not verified facts.
 
 A continuation or provider switch copies an applicable checkpoint into its existing
 ≤12k-character handoff, alongside recent conversation. It freezes the source's last item id, and
@@ -511,11 +511,10 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 - The project rail contains the working timer and project menu. The title bar has four menus.
   File owns chat creation, history, Settings (Appearance, Models, Credentials, and Security tabs), and closing the
   window; View owns browser visibility, layout, chat zoom, and fullscreen; Agent owns what the
-  model is given (Tools & capabilities, Research library) and a "Selected chat" section naming
-  the pane its rows act on (Context inspector, Compact context, Stop turn; rows that do not apply
-  are disabled, not hidden); Developer owns Turn trace, Reload renderer, and Toggle DevTools.
-  Shortcuts: Ctrl+Shift+T tools, Ctrl+Shift+K context, Ctrl+Shift+I trace, Ctrl+R reload, F12
-  DevTools.
+  model is given (Tools & capabilities) and a "Selected chat" section naming
+  the pane its rows act on (Compact context, Stop turn; rows that do not apply are disabled, not
+  hidden); Developer owns Turn trace, Reload renderer, and Toggle DevTools.
+  Shortcuts: Ctrl+Shift+T tools, Ctrl+Shift+I trace, Ctrl+R reload, F12 DevTools.
   Send, pause,
   and resume controls live in the composer; Pause and Resume also appear in header search rows.
   Pause ends the provider turn — no protocol can suspend
@@ -543,14 +542,11 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   read leaves the message-only state. Once a transcript
   exists the same guidance is a strip above the composer instead of replacing the messages.
   Failed pause, model, and effort changes appear in the composer's alert row; a failed compaction
-  or refused shell shortcut appears as a dismissible notice. The model menu lists Inspect context
-  and Compact conversation under its effort levels, so both are reachable by keyboard as well as
-  from the pill's hover card. The composer preserves unsubmitted
-  drafts (text and pending attachments) per conversation pane across tab switching and unmounting,
-  clearing them only on submission. The context inspector
-  modal provides a visual stacked token budget bar (retained history, ClosedAI additions, user turn,
-  and available headroom), live pressure badges (Cool, Warm, Hot), and actionable pressure advisories
-  offering one-click conversation compaction or fresh chat branching. Appearance settings separate message and composer font sizes
+  or refused shell shortcut appears as a dismissible notice. Compact conversation is available from
+  the context meter hover card and Agent → Compact context when the provider supports manual
+  compaction. The composer preserves unsubmitted drafts (text and pending attachments) per
+  conversation pane across tab switching and unmounting, clearing them only on submission.
+  Appearance settings separate message and composer font sizes
   (defaults 14 and 15 px, range 13–22) from chat zoom.
 - Ctrl/Cmd+, opens settings, Ctrl/Cmd+H opens chat history, Ctrl/Cmd+N creates a chat,
   Ctrl/Cmd+W closes the focused chat tab or hides its tile (same path as the ×; the last
@@ -779,13 +775,6 @@ through the main-process registry. Interactive controls use manifest ids, not mo
 DOM selectors. The generated workspace index is a maintenance artifact; it is not injected into model context. See [Tools](tools.md) and [Model context](model-context.md).
 
 ## State and retention
-
-Agent → **Research library** provides a manually refreshed, app-shared public paper index.
-Users choose topics and a publication window, update from alphaXiv without model calls, dismiss
-papers, and control agent retrieval. If the library cannot be read when the dialog opens, the
-reason is shown with a `Try again` control that re-runs the load. The bounded index persists in `research-library.json`;
-models have no library tool and nothing from the index is injected automatically. See
-[Research library](research-library.md) for limits, trust, and failure behavior.
 
 Selected protocol results can be retained through `browser_cdp.protocol command` with
 `retain: true`, `tab_id`, `operation_key`, and `label`. The private

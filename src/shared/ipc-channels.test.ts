@@ -14,9 +14,6 @@ function leafValues(value: unknown): string[] {
 test('IPC invoke constants cover the typed invoke registry', () => {
   const channels = new Set(leafValues(IPC.invoke))
   const typed: IpcInvokeChannel[] = [
-    'researchLibrary:snapshot', 'researchLibrary:configure', 'researchLibrary:refresh',
-    'researchLibrary:cancel', 'researchLibrary:dismiss', 'researchLibrary:restore',
-    'researchLibrary:progress',
     'window:minimize',
     'window:maximize',
     'window:close',

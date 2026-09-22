@@ -8,7 +8,6 @@ import { captureTools } from '../tools/capture/index.js'
 import { cdpTools } from '../tools/cdp/index.js'
 import { createToolRegistry } from '../tools/index.js'
 import { credentialVaultTools } from './credential-vault/index.js'
-import { projectTools } from './project/index.js'
 import { searchTools } from '../tools/search/index.js'
 import { zodShapeFromJsonSchema } from './json-schema-zod.js'
 
@@ -57,7 +56,6 @@ test('every registered ClosedAI tool schema imports exactly', () => {
     cdpTools(stub as never),
     captureTools(stub as never),
     credentialVaultTools(stub as never),
-    projectTools(stub as never, stub as never),
     searchTools(),
     batchTools(() => registry, { maxCalls: 16 })
   ]

@@ -23,8 +23,6 @@ import type { ToolTelemetry } from './tools/telemetry.js'
 import type { BrowserCdpAccess } from './cdp/browser-cdp-access.js'
 import type { AppAutomationAccess } from './app-automation-access.js'
 import type { NativeInstrumentService } from './native-instrument/service.js'
-import type { ResearchLibrary } from './research-library/service.js'
-
 export type MainWindowHost = {
   downloadsRoot: () => string
   sendToMainWindow: <C extends IpcEventChannel>(channel: C, payload: IpcEventChannels[C]) => void
@@ -43,7 +41,6 @@ export type MainWindowHost = {
   getMainWindow: () => BrowserWindow | null
   nativeInstrument: NativeInstrumentService | null
   disposeResearch: (() => void) | null
-  researchLibrary: ResearchLibrary | null
   appAutomationAccess: AppAutomationAccess | null
   cdpAccess: BrowserCdpAccess | null
   setCdpAccess: (access: BrowserCdpAccess | null) => void
@@ -106,7 +103,6 @@ export function wireBrowserEvents(host: MainWindowHost, service: BrowserService)
 export function disposeMainWindowServices(host: MainWindowHost): void {
   host.nativeInstrument?.dispose()
   host.disposeResearch?.()
-  host.researchLibrary?.dispose()
   host.setBrowserSessionFlush(host.getBrowserService()?.flushSessionData() ?? null)
   host.appAutomationAccess?.dispose()
   host.cdpAccess?.dispose()

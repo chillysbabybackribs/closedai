@@ -11,7 +11,7 @@ import {
 export type MenuAction =
   | 'new-chat' | 'history' | 'settings' | 'close-tab' | 'close-window' | 'search-chats'
   | 'toggle-browser' | 'layout' | 'toggle-fullscreen'
-  | 'tools' | 'research' | 'context' | 'compact' | 'stop-turn'
+  | 'tools' | 'research' | 'compact' | 'stop-turn'
   | 'trace' | 'reload' | 'devtools'
 
 /** A clickable row, a separator, or a section heading that names what the rows below act on. */
@@ -73,7 +73,6 @@ const MENUS: Menu[] = [
       { key: 'research-library', label: 'Research library…', action: 'research' },
       SEP,
       { kind: 'heading', label: 'Selected chat' },
-      { key: 'context-inspector', label: 'Context inspector…', shortcut: 'Ctrl+Shift+K', action: 'context' },
       { key: 'compact-context', label: 'Compact context', action: 'compact' },
       { key: 'stop-turn', label: 'Stop turn', shortcut: 'Esc', action: 'stop-turn' }
     ]
@@ -119,7 +118,6 @@ export const TitlebarMenu = memo(function TitlebarMenu({
     if (row.command) return zoomCommandIsDisabled(row.command, chatZoom)
     if (row.action === 'compact') return !compactEnabled
     if (row.action === 'stop-turn') return !stopEnabled
-    if (row.action === 'context') return selectedChatTitle === null
     return false
   }
   return (

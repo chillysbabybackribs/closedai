@@ -11,6 +11,10 @@ export const CHAT_DRAG_TYPE = 'application/x-closedai-chat'
 export const BROWSER_PANE_ID = 'closedai:shared-browser'
 export const WORKSPACE_DOCK_ID = 'closedai:workspace-edge'
 
+export function isReservedPaneId(id: string): boolean {
+  return id === BROWSER_PANE_ID
+}
+
 export function withBrowser(tree: ChatLayout): ChatLayout {
   if (layoutIds(tree).includes(BROWSER_PANE_ID)) return tree
   return { kind: 'split', id: 'closedai:browser-split', axis: 'horizontal', ratio: 0.6,

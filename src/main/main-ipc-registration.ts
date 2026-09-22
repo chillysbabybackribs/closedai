@@ -4,7 +4,6 @@ import { CHAT_PROVIDERS } from '../shared/chat-providers.js'
 import type { ModelsEvent } from '../shared/model-settings.js'
 import type { ToolsEvent } from '../shared/tools.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
-import { registerResearchLibraryIpc } from './research-library/ipc.js'
 import { registerWindowIpc } from './window-ipc.js'
 import { registerBrowserCoreIpc } from './browser-core-ipc.js'
 import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
@@ -19,7 +18,6 @@ import { detectProviderAvailability } from './provider-availability.js'
 import { importBrowserCookiesNow, type CookieImportDeps } from './browser-cookie-import.js'
 import { PARTITION } from './browser-url.js'
 import { traceLog } from './trace/trace-log.js'
-import type { ResearchLibrary } from './research-library/service.js'
 import type { BrowserService } from './browser-service.js'
 import type { BrowserDownloadService } from './browser-download-service.js'
 import type { ChatPeerManager } from './chat-peers/peer-manager.js'
@@ -36,7 +34,6 @@ import type { BrowserWindow } from 'electron'
 export type MainIpcRegistration = {
   ipcMain: IpcMain
   sendToMainWindow: <C extends IpcEventChannel>(channel: C, payload: IpcEventChannels[C]) => void
-  researchLibrary: () => ResearchLibrary | null
   mainWindow: () => BrowserWindow | null
   browserService: () => BrowserService | null
   browserDownloads: () => BrowserDownloadService | null
@@ -60,7 +57,6 @@ export function mainCookieImportDeps(reg: MainIpcRegistration): CookieImportDeps
 }
 
 export function registerMainProcessIpc(reg: MainIpcRegistration): void {
-  registerResearchLibraryIpc(reg.ipcMain, reg.researchLibrary)
   registerWindowIpc(reg.ipcMain, reg.mainWindow)
   registerBrowserCoreIpc(reg.ipcMain, reg.browserService)
   registerBrowserDownloadsIpc(reg.ipcMain, reg.browserDownloads)

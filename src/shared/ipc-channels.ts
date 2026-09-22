@@ -2,13 +2,12 @@ import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type {
-  ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot, PeerChatReadResult
+  ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot
 } from './chat-peers.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.js'
 import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot } from './trace.js'
-import type { LibrarySettings, LibrarySnapshot } from './research-library.js'
 import type { ProviderAvailability } from './provider-availability.js'
 import type {
   BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
@@ -16,13 +15,6 @@ import type {
 
 /** Invoke channels the preload bridge exposes on `window.closedai`. */
 export type IpcInvokeChannels = {
-  'researchLibrary:snapshot': { args: []; result: LibrarySnapshot }
-  'researchLibrary:progress': { args: []; result: Pick<LibrarySnapshot, 'refreshing' | 'lastRefresh'> }
-  'researchLibrary:configure': { args: [LibrarySettings]; result: LibrarySnapshot }
-  'researchLibrary:refresh': { args: []; result: LibrarySnapshot }
-  'researchLibrary:cancel': { args: []; result: void }
-  'researchLibrary:dismiss': { args: [string]; result: LibrarySnapshot }
-  'researchLibrary:restore': { args: []; result: LibrarySnapshot }
   'localFiles:open': { args: [string]; result: import('./local-files.js').LocalFileResult }
   'localFiles:openImage': { args: [{ name: string; src: string }]; result: string }
   'localFiles:image': { args: [string]; result: import('./local-files.js').ImageTabContent }
@@ -130,12 +122,6 @@ export type IpcEventChannel = keyof IpcEventChannels
 /** Canonical channel names grouped like the preload surface. */
 export const IPC = {
   invoke: {
-    researchLibrary: {
-      snapshot: 'researchLibrary:snapshot', configure: 'researchLibrary:configure',
-      progress: 'researchLibrary:progress',
-      refresh: 'researchLibrary:refresh', cancel: 'researchLibrary:cancel',
-      dismiss: 'researchLibrary:dismiss', restore: 'researchLibrary:restore'
-    },
     localFiles: {
       open: 'localFiles:open', openImage: 'localFiles:openImage',
       image: 'localFiles:image', revealImage: 'localFiles:revealImage',

@@ -13,7 +13,7 @@ import { browserDropAt, browserDropPreview, sameBrowserDrop, type BrowserDrop } 
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: {
+export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: {
   tree: ChatLayout
   selectedId: string
   busy: boolean
@@ -278,7 +278,6 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
               onOpenPresets={onOpenPresets ? () => { if (soloTile) setSoloPaneId(null); onOpenPresets() } : undefined}
               onRename={onRenameChat ? () => onRenameChat(activeId) : undefined}
               onTogglePin={onTogglePin ? () => onTogglePin(activeId, row?.pinnedAt == null) : undefined}
-              onContinue={onContinueChat ? () => { if (soloTile) setSoloPaneId(null); onContinueChat(activeId) } : undefined}
               onPause={onPauseTab ? () => onPauseTab(activeId) : undefined}
               onResume={onResumeTab ? () => onResumeTab(activeId) : undefined}
               onCloseTab={() => { if (soloTile) setSoloPaneId(null); onCloseTab(activeId) }}

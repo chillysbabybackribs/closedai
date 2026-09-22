@@ -39,7 +39,6 @@ import { captureTools, ScreenshotStore } from './tools/capture/index.js'
 import { credentialVaultTools } from './tools/credential-vault/index.js'
 import { batchTools } from './tools/batch/index.js'
 import { createResearchRuntime } from './research-runtime.js'
-import type { ResearchLibrary } from './research-library/service.js'
 import { createArtifactRuntime } from './investigations/artifact-runtime.js'
 import type { ArtifactStore } from './investigations/artifact-store.js'
 import type { ResearchService } from './tools/search/research/service.js'
@@ -91,7 +90,6 @@ const permissionRequests = new BrowserPermissionBroker()
 const codexRuntimes = new Map<string, CodexWorkspaceRuntime>()
 let toolRegistry: ToolRegistry | null = null
 let researchService: ResearchService | null = null
-let researchLibrary: ResearchLibrary | null = null
 let disposeResearch: (() => void) | null = null
 let artifactStore: ArtifactStore | null = null
 let toolTelemetry: ToolTelemetry | null = null
@@ -203,7 +201,6 @@ async function main(): Promise<void> {
   // Full-resolution captures for the transcript; the model only ever receives the scaled copy.
   const screenshots = new ScreenshotStore()
   const research = await createResearchRuntime({
-    libraryPath: join(userData(), 'research-library.json'),
     root: join(userData(), 'research-runs'), browser: () => browserService,
     // The verifier's synthetic pane owns research only in a process that was asked to verify.
     peers: () => liveVerifyHandle.requested
@@ -215,7 +212,6 @@ async function main(): Promise<void> {
     browserCoordination
   })
   researchService = research.service
-  researchLibrary = research.library
   disposeResearch = research.dispose
   const artifacts = createArtifactRuntime({
     root: join(userData(), 'investigation-artifacts'), workerUrl: new URL('./artifact-worker.js', import.meta.url),
@@ -326,7 +322,6 @@ function mainIpcRegistration() {
   return {
     ipcMain,
     sendToMainWindow,
-    researchLibrary: () => researchLibrary,
     mainWindow: () => mainWindow,
     browserService: () => browserService,
     browserDownloads: () => browserDownloads,
@@ -361,7 +356,6 @@ function mainWindowHost(): MainWindowHost {
     getMainWindow: () => mainWindow,
     nativeInstrument,
     disposeResearch,
-    researchLibrary,
     appAutomationAccess,
     cdpAccess,
     setCdpAccess: (access) => { cdpAccess = access }

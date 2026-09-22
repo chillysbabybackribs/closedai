@@ -1,11 +1,11 @@
 import type { ChatTranscriptItem } from '../shared/chat.js'
 
-export type CaptureSurface = 'app_window' | 'agent_workspace' | 'browser_page' | 'crop'
+export type CaptureSurface = 'app_window' | 'browser_page' | 'crop'
 
 const MAX_DETAIL_CHARS = 4_000
 
 export function captureSurface(action: unknown): CaptureSurface | null {
-  return action === 'app_window' || action === 'agent_workspace' || action === 'browser_page' || action === 'crop' ? action : null
+  return action === 'app_window' || action === 'browser_page' || action === 'crop' ? action : null
 }
 
 export function jsonPreview(value: unknown): string {

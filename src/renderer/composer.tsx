@@ -43,7 +43,6 @@ export type ComposerProps = {
   /** A turn the pause button ended and nothing has followed, so Resume is worth offering. */
   paused: boolean
   onResume: () => Promise<void>
-  onInspectContext: () => void
   cwd: string
   projectPath: string | null
   projectPending?: boolean
@@ -79,7 +78,6 @@ export function Composer({
   onStop,
   paused,
   onResume,
-  onInspectContext,
   cwd, projectPath, projectPending, recentProjects,
   onChooseProject, onSelectProject, onClearProject,
   activeTurnId, onCompactConversation, compactConversationEnabled = false, paneId, fixedLayout, modelMenuRef
@@ -369,7 +367,6 @@ export function Composer({
           modelName={modelLabel.name}
           modelContext={modelLabel.context}
           modelDescription={modelLabel.description}
-          onInspect={onInspectContext}
           onRefreshPlanUsage={onRefreshPlanUsage}
           onCompact={onCompactConversation}
           compactEnabled={compactConversationEnabled}

@@ -21,7 +21,6 @@ export type ContextMeterProps = {
   provider: ChatProvider
   /** The account's plan windows, cached between readings; null until one lands. */
   planUsage: ChatPlanUsage | null
-  onInspect: () => void
   /** Asked for a fresh reading each time the card opens, including mid-turn. */
   onRefreshPlanUsage: () => Promise<void>
   /** Re-seed provider-side context when the active provider supports it. */
@@ -42,7 +41,6 @@ export function ContextMeter({
   usage,
   provider,
   planUsage,
-  onInspect,
   onRefreshPlanUsage,
   onCompact,
   compactEnabled = false,
@@ -77,7 +75,6 @@ export function ContextMeter({
         modelDescription={modelDescription}
         level={level}
         percent={percent}
-        onInspect={onInspect}
         onCompact={onCompact}
         compactEnabled={compactEnabled}
       />
@@ -106,7 +103,6 @@ export function ContextMeter({
             data-ui="composer.context"
             data-level={level}
             aria-label={detail}
-            onClick={onInspect}
           >
             <svg className="context-meter-ring" viewBox="0 0 14 14" width="14" height="14" aria-hidden="true">
               <circle className="context-meter-track" cx="7" cy="7" r={RADIUS} />
@@ -136,7 +132,6 @@ function UsageCardBody({
   modelDescription,
   level,
   percent,
-  onInspect,
   onCompact,
   compactEnabled
 }: {
@@ -148,7 +143,6 @@ function UsageCardBody({
   modelDescription?: string | null
   level: 'cool' | 'warm' | 'hot'
   percent: number
-  onInspect?: () => void
   onCompact?: () => Promise<void>
   compactEnabled?: boolean
 }): JSX.Element {
@@ -206,16 +200,6 @@ function UsageCardBody({
         />
       ))}
       <div className="usage-card-actions">
-        {onInspect && (
-          <button
-            type="button"
-            className="usage-card-action"
-            data-ui="composer.context"
-            onClick={onInspect}
-          >
-            Inspect context
-          </button>
-        )}
         {onCompact && (
           <button
             type="button"

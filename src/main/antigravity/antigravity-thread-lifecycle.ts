@@ -23,7 +23,6 @@ export type AntigravityThreadHost = {
   contextUsage(): ContextUsage | null
   setContextUsage(usage: ContextUsage | null): void
   setActiveTurnId(id: string | null): void
-  setTurnContext(context: null): void
   snapshot(): ChatSnapshot
   emitEvent(event: ChatEvent): void
   addNotice(text: string, tone: 'info' | 'error', turnId: string | null): void
@@ -47,7 +46,6 @@ export async function detachAntigravityThread(host: AntigravityThreadHost): Prom
   host.transcript.clear()
   host.setThreadName(null)
   host.setActiveTurnId(null)
-  host.setTurnContext(null)
   host.setContextUsage(null)
   await host.settings.set({ chatAntigravityConversationId: null })
 }

@@ -2,7 +2,7 @@ import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type {
-  ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot, PeerChatReadResult
+  ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot
 } from './chat-peers.js'
 import type { ProviderAvailability } from './provider-availability.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
@@ -16,7 +16,6 @@ export type Unsubscribe = () => void
 
 /** The contextBridge surface the renderer sees as `window.closedai`. */
 export type ClosedaiApi = {
-  researchLibrary: import('./research-library.js').ResearchLibraryApi
   localFiles: {
     open: (href: string) => Promise<import('./local-files.js').LocalFileResult>
     openImage: (image: { name: string; src: string }) => Promise<string>

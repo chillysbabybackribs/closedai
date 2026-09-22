@@ -35,7 +35,6 @@ const CURRENT_GUIDES = [
   'docs/antigravity.md',
   'docs/cursor.md',
   'docs/native-instrumentation.md',
-  'docs/research-library.md',
   'docs/autogit.md',
   'AGENTS.md',
   'docs/README.md'

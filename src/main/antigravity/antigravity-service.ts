@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events'
 import type {
   ChatAccount, ChatAttachment, ChatConnection, ChatEvent, ChatHistoryWindow, ChatPlanUsage,
-  ChatSnapshot, ChatThreadContent, ChatThreadSummary, ChatTurnContextReport
+  ChatSnapshot, ChatThreadContent, ChatThreadSummary
 } from '../../shared/chat.js'
 import type { RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
 import { describeUsage, type ContextUsage } from '../chat-context/context-compaction.js'
@@ -16,7 +16,6 @@ import {
   buildTurnAdditionalContext,
   type ActiveBrowserContext
 } from '../chat-context/turn-context.js'
-import { buildTurnContextReport } from '../chat-context/turn-inspector.js'
 import { buildCompactionSeed, compactedAdditionalContext } from '../chat-context/provider-compaction.js'
 import { PROVIDER_CATALOG_TTL_MS, type WorkspaceCatalogs } from '../chat-context/provider-catalog-cache.js'
 import { buildChatInput } from '../chat-input.js'
@@ -78,7 +77,6 @@ export class AntigravityChatService extends EventEmitter {
   private threadName: string | null = null
   private activeTurnId: string | null = null
   private pausedTurnId: string | null = null
-  private turnContext: ChatTurnContextReport | null = null
   private planUsage: ChatPlanUsage | null = null
   private contextUsage: ContextUsage | null = null
   /** stdin content of the running turn, so a grant rejection can replay it on a rewritten profile. */
@@ -118,7 +116,6 @@ export class AntigravityChatService extends EventEmitter {
       pausedTurnId: this.pausedTurnId,
       contextUsage: describeUsage(this.contextUsage),
       planUsage: this.planUsage,
-      turnContext: this.turnContext,
       items: page?.items ?? this.transcript.snapshot(),
       ...(page ? { history: { hasEarlier: page.hasEarlier, backgroundTasks: page.backgroundTasks } } : {})
     }
@@ -164,14 +161,6 @@ export class AntigravityChatService extends EventEmitter {
       this.lastTurnContent = turn.content
       this.authRetrying = false
       session.send(turn.content)
-      this.setTurnContext(buildTurnContextReport({
-        provider: 'antigravity',
-        model: this.modelState.selectedModel,
-        threadId: session.conversationId ? antigravityThreadId(session.conversationId) : null,
-        prompt: turn.prompt,
-        attachments: turn.summaries,
-        additionalContext: Object.keys(context).length ? context : undefined
-      }))
       await this.clearDeliveredHandoff()
     } catch (error) {
       this.addNotice(messageOf(error), 'error')
@@ -522,11 +511,6 @@ export class AntigravityChatService extends EventEmitter {
     this.emitEvent({ type: 'paused', turnId })
   }
 
-  private setTurnContext(report: ChatTurnContextReport): void {
-    this.turnContext = report
-    this.emitEvent({ type: 'turnContext', report })
-  }
-
   private noteTokenUsage(usage: { inputTokens: number; cacheReadTokens?: number; cacheAnomaly: boolean }): void {
     if (usage.inputTokens <= 0) return
     const model = this.modelState.models.find((entry) => entry.id === this.modelState.selectedModel)
@@ -551,7 +535,6 @@ export class AntigravityChatService extends EventEmitter {
       contextUsage: () => this.contextUsage,
       setContextUsage: (usage) => { this.contextUsage = usage },
       setActiveTurnId: (id) => { this.activeTurnId = id },
-      setTurnContext: () => { this.turnContext = null },
       snapshot: () => this.snapshot(),
       emitEvent: (event) => this.emitEvent(event),
       addNotice: (text, tone, turnId) => this.addNotice(text, tone, turnId)

@@ -20,7 +20,6 @@ function chatSnapshot(overrides: Partial<ChatSnapshot> = {}): ChatSnapshot {
     threadName: null,
     activeTurnId: null,
     contextUsage: { usedTokens: 1000, contextWindow: 200000, percent: 1 },
-    turnContext: null,
     items: [
       { type: 'user', id: 'u1', turnId: 't1', text: 'hello   there' },
       { type: 'assistant', id: 'a1', turnId: 't1', text: 'Hi! '.repeat(200), streaming: false }

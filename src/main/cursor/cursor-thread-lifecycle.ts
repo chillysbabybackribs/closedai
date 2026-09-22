@@ -13,7 +13,6 @@ export type CursorThreadHost = {
   threadName(): string | null
   setThreadName(name: string | null): void
   setActiveTurnId(id: string | null): void
-  setTurnContext(context: null): void
   transcriptEmpty(): boolean
   activeTurnId(): string | null
   snapshot(): ChatSnapshot
@@ -45,7 +44,6 @@ export async function detachCursorThread(host: CursorThreadHost, session: Cursor
   host.transcript.clear()
   host.setThreadName(null)
   host.setActiveTurnId(null)
-  host.setTurnContext(null)
   await host.settings.set({ chatCursorSessionId: null })
 }
 

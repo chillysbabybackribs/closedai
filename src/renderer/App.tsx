@@ -82,7 +82,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       if (shortcut === 'settings') {
         event.preventDefault()
         setSettingsOpen(true)
-      } else if (shortcut === 'tools' || shortcut === 'context' || shortcut === 'trace') {
+      } else if (shortcut === 'tools' || shortcut === 'trace') {
         event.preventDefault()
         if (chatRef.current.selectedPaneId) setPaneDialog(shortcut)
       } else if (shortcut === 'reload') {
@@ -171,7 +171,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       case 'toggle-fullscreen': window.closedai.window.toggleFullscreen().catch(report('Could not toggle fullscreen')); break
       case 'close-tab': workspaceRef.current?.closeFocused().catch(report('Could not close the chat')); break
       case 'close-window': window.closedai.window.close().catch(report('Could not close the window')); break
-      case 'tools': case 'trace': case 'context': setPaneDialog(action); break
+      case 'tools': case 'trace': setPaneDialog(action); break
       case 'compact': chatRef.current.compactConversation().catch(report('Could not compact the conversation')); break
       case 'stop-turn': chatRef.current.interrupt().catch(report('Could not pause the task')); break
       case 'reload': window.location.reload(); break

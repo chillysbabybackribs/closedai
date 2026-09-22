@@ -12,7 +12,6 @@ These are the sources AGENTS.md treats as authoritative for implemented behavior
 | [CDP tool foundation](cdp-tool-foundation.md) | Protocol transport, targets, semantic input, profiling/instrumentation |
 | [Provider guides](claude-code.md) | Claude, [Antigravity](antigravity.md), [Cursor](cursor.md) lane contracts |
 | [Native instrumentation](native-instrumentation.md) | Frida probe lifecycle and limits |
-| [Research library](research-library.md) | Saved paper index (UI and on-disk contracts) |
 | [Auto-git](autogit.md) | Optional local snapshot service |
 
 Root [README.md](../README.md) covers install/run and points here. [AGENTS.md](../AGENTS.md) is the

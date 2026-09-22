@@ -39,7 +39,7 @@ export const ChatPane = memo(function ChatPane({
   dialog: controlledDialog,
   onDialogChange,
   selected = true,
-  onNewChat,
+  onNewChat: _onNewChat,
   onContinueInNewChat,
   archiveChat
 }: {
