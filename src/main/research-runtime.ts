@@ -51,7 +51,6 @@ export async function createResearchRuntime(options: {
     }
   })
   const namespace = searchTools({
-    library,
     onResearchCreated: (created) => { service = created },
     research: {
       trace: (owner, event) => traceLog.record({ paneId: owner.paneId, turnId: owner.turnId, provider: null }, {

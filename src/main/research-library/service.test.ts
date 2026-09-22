@@ -6,7 +6,6 @@ import test from 'node:test'
 import { ResearchLibrary } from './service.js'
 import { LibraryStore, DEFAULT_SETTINGS, MAX_PAPERS } from './store.js'
 import { parsePapers } from './provider.js'
-import { libraryTool } from '../tools/search/library.js'
 
 const now = Date.parse('2026-09-20T12:00:00.000Z')
 function papers(topic: string, id = '2609.12345', abstract = 'Memory retrieval for language model agents') {
@@ -140,11 +139,6 @@ test('bounded retention and model output; tool exposes no mutations', async (t) 
   assert.equal(result.results.length, 10)
   assert.ok(result.results.every((paper) => paper.excerpt.length <= 400))
   assert.ok(JSON.stringify(result).length < 16000)
-  assert.deepEqual(libraryTool(library).actions?.map((action) => action.name), ['status', 'search', 'read'])
-  const response = await libraryTool(library).run({ action: 'search', query: 'memory', limit: 999 }, {
-    callId: 'test', threadId: 'test-thread', turnId: 'test-turn', signal: new AbortController().signal
-  })
-  assert.equal(response.isError, true)
 })
 
 test('damaged disk state is preserved; failed persistence never publishes an in-memory change', async (t) => {
