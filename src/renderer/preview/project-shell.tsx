@@ -208,9 +208,24 @@ export function ProjectShellPreview() {
   function accept(): void {
     const at = Date.now()
     setAcceptedAt(at)
+    setProposal(null)
     setTree((current) => current.map((node) => node.id === 'proposal' ? { ...node, state: 'complete', summary: 'Accepted', updatedAt: at } : node))
-    note('Completion accepted by you. Handoff written; the tree is now the project’s history.')
+    note('Completion accepted by you. Handoff written; the tree is now the project’s history. You can reopen it with new direction any time.')
     navigate({ kind: 'file', path: 'handoff.md' })
+  }
+
+  /** Post-completion direction: clear Complete, record an amendment, reset catch-up from now. */
+  function reopen(clean: string): void {
+    const at = Date.now()
+    const aim = targetId ?? 'root'
+    const { nodes, note: ripple } = amendTree(tree, clean, aim, at)
+    setAcceptedAt(null)
+    setProposal(null)
+    setCaughtUpAt(at)
+    setAwayFor(0)
+    setTree(nodes)
+    note(`Project reopened: ${ripple} Handoff and prior reports stay on file; acknowledge progress again before the next completion proposal.`)
+    navigate(MAP)
   }
 
   function withdrawProposal(reason: string): void {
@@ -237,7 +252,12 @@ export function ProjectShellPreview() {
     setSending(true)
     if (phase === 'canvas') {
       await wait(260)
-      const gap = location.kind === 'proposal' && proposal && !acceptedAt
+      if (acceptedAt) {
+        reopen(clean)
+        setSending(false)
+        return
+      }
+      const gap = location.kind === 'proposal' && proposal
       const base = gap ? tree.filter((node) => node.id !== 'proposal') : tree
       const { nodes, note: ripple } = amendTree(base, clean, gap ? 'root' : targetId, Date.now())
       if (gap) withdrawProposal(clean)
@@ -260,7 +280,8 @@ export function ProjectShellPreview() {
     : targetNode ? `Direction lands on “${targetNode.title}”`
     : 'Direction applies to the whole project; open a node or file to aim it'
   const placeholder = phase === 'intake' ? 'Describe what you want to create…'
-    : location.kind === 'proposal' && !acceptedAt ? 'Name the gap…'
+    : acceptedAt ? 'Reopen with new direction…'
+    : location.kind === 'proposal' ? 'Name the gap…'
     : targetNode ? `Add direction to “${targetNode.title}”…` : 'Add direction, a constraint, or a question…'
 
   return <div className="project-preview-app">

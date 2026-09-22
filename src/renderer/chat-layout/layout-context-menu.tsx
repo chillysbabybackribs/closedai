@@ -51,14 +51,19 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
     : tabActivity?.state === 'paused' ? 'resume' : null
   // Main refuses to digest a chat mid-turn, so the row says why instead of failing after the click.
   const continueHint = turnControl === 'pause' ? 'Pause or stop the task first' : 'Fresh context, same task'
-  const hasChatActions = Boolean(onRename || onTogglePin || onContinue || turnControl)
-  const hasCloseActions = canCloseTab || canHidePane || canMoveTab
+  const hasChatActions = Boolean(onRename || onTogglePin || turnControl)
+  const hasCloseActions = canCloseTab || Boolean(onContinue) || canHidePane || canMoveTab
   const hasFollowing = Boolean(onOpenPresets || hasChatActions)
 
   return <ContextMenu.Content className="titlebar-menu-content chat-layout-context-menu" loop>
     {canCloseTab && (
       <LayoutMenuRow data-ui="layout.tab-close" data-ui-key={activeId} label="Close tab" hint={closeHint}
         shortcut="Ctrl+W" icon={<X size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onCloseTab} />
+    )}
+    {onContinue && (
+      <LayoutMenuRow data-ui="layout.continue" data-ui-key={activeId} label="Continue in new chat" hint={continueHint}
+        icon={<MessageSquareShare size={ICON} aria-hidden="true" />} disabled={busy || turnControl === 'pause'}
+        onSelect={onContinue} />
     )}
     {canHidePane && (
       <LayoutMenuRow data-ui="layout.pane-hide" data-ui-key={activeId} label="Hide pane" hint={hideHint}
@@ -85,11 +90,6 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
         <LayoutMenuRow data-ui="layout.pin" data-ui-key={activeId} label={pinned ? 'Unpin chat' : 'Pin chat'}
           icon={pinned ? <PinOff size={ICON} aria-hidden="true" /> : <Pin size={ICON} aria-hidden="true" />}
           onSelect={onTogglePin} />
-      )}
-      {onContinue && (
-        <LayoutMenuRow data-ui="layout.continue" data-ui-key={activeId} label="Continue in new chat" hint={continueHint}
-          icon={<MessageSquareShare size={ICON} aria-hidden="true" />} disabled={busy || turnControl === 'pause'}
-          onSelect={onContinue} />
       )}
       {turnControl === 'pause' && onPause && (
         <LayoutMenuRow data-ui="layout.pause-tab" data-ui-key={activeId} label="Pause task"

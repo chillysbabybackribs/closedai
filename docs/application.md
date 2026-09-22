@@ -355,14 +355,15 @@ and new chat at once and survives typing, sending, turns, pane changes, and rest
 composer accepts and sends drafts on its single line; its attachment chips and the project rail
 (folder icon and name) sit above the pill instead of inside it, and the model picker
 (`composer.model`) sits at the pill's left edge with the same menu as the full view. Right-clicking
-any tile header or tab opens a context menu with **Workspace layout…** (`layout.presets`), **Rename…**,
-optional **Pin chat**, **Continue in new chat** (`layout.continue`; disabled with a "Pause or stop the
-task first" subtitle while the tab's task runs), pause/resume when the tab’s task is running or paused, and separate **Close tab**
-(`layout.tab-close`, Ctrl/Cmd+W) and **Hide pane** (`layout.pane-hide`) rows with subtitles when tasks
-continue. With another tile open, **Move tab to next pane** / **Move tab to previous pane**
+any tile header or tab opens a context menu led by **Close tab** (`layout.tab-close`, Ctrl/Cmd+W) and
+**Continue in new chat** (`layout.continue`; disabled with a "Pause or stop the task first" subtitle
+while the tab's task runs), then **Hide pane** (`layout.pane-hide`) and, with another tile open,
+**Move tab to next pane** / **Move tab to previous pane**
 (`layout.tab-move`, item `next` or `previous`) move the active conversation into the neighbouring
 tile's strip in reading order, the keyboard route for a tab drag; an emptied tile collapses as it
-does after a drag. Ctrl/Cmd+W uses that same close or hide path for the focused chat.
+does after a drag. Close, hide, and move rows show subtitles when tasks continue. A separator
+follows, then **Workspace layout…** (`layout.presets`), **Rename…**, optional **Pin chat**, and
+pause/resume when the tab’s task is running or paused. Ctrl/Cmd+W uses that same close or hide path for the focused chat.
 A rejected layout operation shows its reason above the canvas, cleared by the next successful
 operation or after 8 s. Adding a tab waits for main to confirm the selection; if no confirmation
 arrives within 5 s the controls are released, the layout is reconciled against the current

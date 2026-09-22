@@ -115,6 +115,8 @@ export function handoffMarkdown(input: { record: DirectionRecord; acceptedAt: nu
     '## Where to look',
     ...scopes.map((scope) => `- ${scope.title} — scopes/${scope.id}/plan.md`),
     ...decisions.map((node) => `- Decision: ${node.title} — research/${node.id}.md`),
-    '- Every steering change — direction/amendments/', '- Every report you acknowledged — reports/'
+    '- Every steering change — direction/amendments/', '- Every report you acknowledged — reports/', '',
+    '## Reopening', 'This project stays reopenable. New direction from the composer becomes an amendment under the root;',
+    'handoff and every acknowledged report remain history. A later completion proposal must be licensed by a fresh acknowledged report again.'
   ].join('\n')
 }

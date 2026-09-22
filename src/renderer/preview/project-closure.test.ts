@@ -72,6 +72,9 @@ test('reports, the proposal, and the handoff are dated documents in the tree', (
   assert.match(proposalMarkdown(proposal, reports, progress, rec), /resting on progress report 1 \(acknowledged .*\)/)
   assert.match(proposalMarkdown(proposal, reports, progress, rec), /## Acceptance walk\n1\. Open the application as Investigative journalists/)
   assert.match(handoffMarkdown({ record: rec, acceptedAt: clock + 3_000, reports, nodes, progress }), /after 1 acknowledged progress report\./)
+  assert.match(handoffMarkdown({ record: rec, acceptedAt: clock + 3_000, reports, nodes, progress }), /stays reopenable/)
+  const reopened = amendTree(nodes, 'Add CMS export.', 'root', clock + 4_000).nodes
+  assert.equal(canPropose({ progress: closureProgress(reopened, rec), reports, nodes: reopened }), null, 'reopening changes the tree; the old report no longer licenses a proposal')
 
   const files = deriveFiles({ record: rec, messages: [], nodes, journal: [], edits: {}, confirmedAt: T0, reports, progress, proposal, acceptedAt: clock + 3_000 })
   const paths = files.map((file) => file.path)
