@@ -97,10 +97,8 @@
   color: color-mix(in srgb, var(--foreground) 48%, transparent);
 }
 
-/* One fixed panel, never a flyout: its width is the smaller of the picker's own measure and the
-   space Radix reports inside the chat column, so the menu cannot reach across the divider and
-   force the native browser view to be frozen behind a still. A single width for both views also
-   keeps the panel from resizing as it swaps providers for models. */
+/* Provider list and model catalogue are separate floating surfaces; each respects the chat
+   pane collision boundary so neither can reach across the divider over the native browser view. */
 .model-menu {
   z-index: 60;
   width: min(13.5rem, var(--radix-dropdown-menu-content-available-width, 13.5rem));
@@ -111,14 +109,12 @@
   border-radius: 12px;
   background: var(--popover);
   color: var(--popover-foreground);
-  /* Keep the floating surface separated without casting a light halo onto the
-     chat canvas. The picker is monochrome in both themes, so the ambient edge
-     should be a neutral depth cue rather than foreground-colored chrome. */
   box-shadow: 0 10px 24px rgb(0 0 0 / 42%);
 }
 
-.model-menu:has(.model-menu-columns-open) {
-  width: min(34rem, var(--radix-dropdown-menu-content-available-width, 34rem));
+.model-menu-flyout {
+  z-index: 61;
+  width: min(22rem, var(--radix-dropdown-menu-content-available-width, 22rem));
 }
 
 /* Providers read as sections, not as a run of names: a hairline between them, a little air
@@ -226,47 +222,8 @@
   white-space: nowrap;
 }
 
-/* ---- Two-column panel ------------------------------------------------------
-   Providers on the left, the hovered provider's models on the right, both inside the one
-   popover the collision boundary already keeps in the chat column. The columns are separate
-   scroll regions so a long catalogue never pushes the provider list out of reach. */
-.model-menu-panel {
-  min-width: 0;
-}
-
-.model-menu-columns {
-  display: grid;
-  grid-template-columns: minmax(11.5rem, 13rem);
-  gap: 0;
-  max-height: inherit;
-}
-
-.model-menu-columns-open {
-  grid-template-columns: minmax(11.5rem, 13rem) minmax(0, 1fr);
-}
-
-.model-menu-column {
-  min-width: 0;
-  max-height: calc(var(--radix-dropdown-menu-content-available-height, 70vh) - 10px);
-  overflow-y: auto;
-  scrollbar-width: thin;
-}
-
-.model-menu-providers {
-  padding-right: 5px;
-  border-right: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
-}
-
-.model-menu-models {
-  padding-left: 5px;
-}
-
-.model-menu-models .model-menu-label {
-  gap: 7px;
-}
-
-/* The row whose models are showing keeps a resting tint so the pair reads as linked even when
-   the pointer has moved into the models column. */
+/* The row whose flyout is open keeps a resting tint so the pair reads as linked when the
+   pointer moves into the detached catalogue panel. */
 .model-menu-provider[data-shown='true']:not([data-highlighted]) {
   background: color-mix(in srgb, var(--foreground) 5%, transparent);
 }

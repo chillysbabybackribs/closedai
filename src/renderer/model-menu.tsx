@@ -29,9 +29,8 @@ export type ModelMenuProps = {
 
 /**
  * One pill for model and effort. The menu opens on a short provider list — logo and name only —
- * and hovering a row reveals that provider's full catalogue beside it inside the same popover.
- * Context usage sits under the composer, not on this trigger. The chat pane is the collision
- * boundary so the widened menu cannot reach over the native browser view.
+ * and hovering a row opens that provider's catalogue in a separate flyout beside it. Context
+ * usage sits under the composer. The chat pane is the collision boundary for both surfaces.
  */
 export function ModelMenu({
   ref,
@@ -95,6 +94,7 @@ export function ModelMenu({
             usage={usage}
             selectedModel={selectedModel}
             selectedReasoningEffort={selectedReasoningEffort}
+            boundary={boundary}
             onChooseModel={chooseModel}
             onChooseEffort={chooseEffort}
           />
@@ -109,36 +109,81 @@ type ModelMenuPanelProps = {
   usage: ModelUsage
   selectedModel: string | null
   selectedReasoningEffort: string | null
+  boundary: Element | null
   onChooseModel: (modelId: string) => void
   onChooseEffort: (effort: string) => void
 }
 
-/**
- * A narrow provider list opens first; hovering or focusing a row reveals that provider's full
- * catalogue in a second column inside the same popover. Keeping both columns in-panel avoids a
- * Radix flyout that could reach over the native browser view. Effort levels for the selected
- * model sit at the bottom of its provider's catalogue. Context usage lives under the composer.
- */
+/** Provider rows only; each row's catalogue opens in its own submenu flyout. */
 function ModelMenuPanel({
-  models, usage, selectedModel, selectedReasoningEffort, onChooseModel, onChooseEffort
+  models, usage, selectedModel, selectedReasoningEffort, boundary, onChooseModel, onChooseEffort
 }: ModelMenuPanelProps): JSX.Element {
   const sections = providerSections(models, usage, selectedModel)
   const selected = models.find((model) => model.id === selectedModel)
   const [view, setView] = useState<ChatProvider | null>(null)
-  const section = view ? sections.find((entry) => entry.provider === view) : undefined
-  const efforts = section && selected?.provider === section.provider ? selected.supportedReasoningEfforts : []
 
   return (
-    <div className={`model-menu-panel model-menu-columns${section ? ' model-menu-columns-open' : ''}`}>
-      <div className="model-menu-column model-menu-providers" role="presentation">
-        {sections.map((entry) => (
-          <ProviderRow key={entry.provider} section={entry} selectedModel={selectedModel}
-            shown={entry.provider === section?.provider}
-            onShow={() => setView(entry.provider)} />
-        ))}
-      </div>
-      {section && (
-        <div className="model-menu-column model-menu-models" role="presentation" data-provider={section.provider}>
+    <>
+      {sections.map((entry) => (
+        <ProviderModelsFlyout
+          key={entry.provider}
+          section={entry}
+          selectedModel={selectedModel}
+          selectedReasoningEffort={selectedReasoningEffort}
+          efforts={entry.provider === selected?.provider ? selected.supportedReasoningEfforts : []}
+          open={view === entry.provider}
+          boundary={boundary}
+          onActivate={() => setView(entry.provider)}
+          onDismiss={() => setView((current) => (current === entry.provider ? null : current))}
+          onChooseModel={onChooseModel}
+          onChooseEffort={onChooseEffort}
+        />
+      ))}
+    </>
+  )
+}
+
+function ProviderModelsFlyout({
+  section, selectedModel, selectedReasoningEffort, efforts, open, boundary, onActivate, onDismiss,
+  onChooseModel, onChooseEffort
+}: {
+  section: ProviderSection
+  selectedModel: string | null
+  selectedReasoningEffort: string | null
+  efforts: ChatModel['supportedReasoningEfforts']
+  open: boolean
+  boundary: Element | null
+  onActivate: () => void
+  onDismiss: () => void
+  onChooseModel: (modelId: string) => void
+  onChooseEffort: (effort: string) => void
+}): JSX.Element {
+  const active = section.all.find((model) => model.id === selectedModel)
+  return (
+    <DropdownMenu.Sub open={open} onOpenChange={(next) => { if (next) onActivate(); else onDismiss() }}>
+      <DropdownMenu.SubTrigger
+        className="model-menu-item model-menu-provider"
+        textValue={section.label}
+        data-ui="composer.model-provider"
+        data-ui-key={section.provider}
+        data-active={active ? 'true' : undefined}
+        data-shown={open ? 'true' : undefined}
+        onPointerEnter={onActivate}
+        onFocus={onActivate}
+      >
+        <ProviderMark provider={section.provider} className="model-menu-label-mark" />
+        <span className="model-menu-item-name">{section.label}</span>
+        <ChevronRight className="model-menu-provider-caret" aria-hidden="true" />
+      </DropdownMenu.SubTrigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.SubContent
+          className="model-menu model-menu-flyout"
+          sideOffset={10}
+          collisionPadding={12}
+          collisionBoundary={boundary ?? undefined}
+          avoidCollisions
+          data-provider={section.provider}
+        >
           <DropdownMenu.Label className="model-menu-label">
             <ProviderMark provider={section.provider} className="model-menu-label-mark" />
             <span>{section.label}</span>
@@ -156,10 +201,7 @@ function ModelMenuPanel({
             <>
               <DropdownMenu.Separator className="model-menu-separator" />
               <DropdownMenu.Label className="model-menu-label">Reasoning effort</DropdownMenu.Label>
-              <DropdownMenu.RadioGroup
-                value={selectedReasoningEffort ?? ''}
-                onValueChange={onChooseEffort}
-              >
+              <DropdownMenu.RadioGroup value={selectedReasoningEffort ?? ''} onValueChange={onChooseEffort}>
                 {efforts.map((option) => (
                   <DropdownMenu.RadioItem key={option.reasoningEffort} value={option.reasoningEffort} className="model-menu-item model-menu-item-compact" textValue={option.reasoningEffort} data-ui="composer.effort-item" data-ui-key={option.reasoningEffort}>
                     <DropdownMenu.ItemIndicator className="model-menu-indicator"><Check aria-hidden="true" /></DropdownMenu.ItemIndicator>
@@ -170,40 +212,9 @@ function ModelMenuPanel({
               </DropdownMenu.RadioGroup>
             </>
           )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
- * One provider row: the mark, the name, and the model in use where that provider owns it.
- * Pointer or keyboard focus shows its models; select (click, Enter) does the same and keeps the
- * menu open so the models column is reachable with ArrowRight.
- */
-function ProviderRow({ section, selectedModel, shown, onShow }: {
-  section: ProviderSection
-  selectedModel: string | null
-  shown: boolean
-  onShow: () => void
-}): JSX.Element {
-  const active = section.all.find((model) => model.id === selectedModel)
-  return (
-    <DropdownMenu.Item
-      className="model-menu-item model-menu-provider"
-      textValue={section.label}
-      data-ui="composer.model-provider"
-      data-ui-key={section.provider}
-      data-active={active ? 'true' : undefined}
-      data-shown={shown ? 'true' : undefined}
-      onPointerEnter={onShow}
-      onFocus={onShow}
-      onSelect={(event) => { event.preventDefault(); onShow() }}
-    >
-      <ProviderMark provider={section.provider} className="model-menu-label-mark" />
-      <span className="model-menu-item-name">{section.label}</span>
-      <ChevronRight className="model-menu-provider-caret" aria-hidden="true" />
-    </DropdownMenu.Item>
+        </DropdownMenu.SubContent>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Sub>
   )
 }
 
