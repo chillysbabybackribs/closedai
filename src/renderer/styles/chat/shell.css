@@ -305,6 +305,70 @@
   gap: 12px;
 }
 
+/* Continuation card (continuation-card.tsx): an empty continued chat names its source and can show
+   the digest its first message will carry. It sits where the transcript will start, so the
+   composer keeps its bottom position instead of the blank chat's centred one. */
+.chat-continuation-card {
+  margin: 16px var(--chat-column-gutter, 16px) 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border, #2a2a2c);
+  border-radius: 10px;
+  background: var(--card, #1c1c1c);
+  color: var(--muted-foreground, #8c8c8e);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.chat-continuation-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--foreground, #ececee);
+}
+
+.chat-continuation-header h2 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-continuation-card p {
+  margin: 8px 0 0;
+}
+
+.chat-continuation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 10px;
+}
+
+.chat-continuation-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-continuation-digest {
+  max-height: 320px;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid var(--border, #2a2a2c);
+  border-radius: 8px;
+  background: var(--background, #121212);
+  color: var(--foreground, #ececee);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* Credential approval cards (credential-approval-card.tsx): an agent's request to read a saved
    secret, above the composer of the chat that asked. Only with Settings → Security → approvals
    on; off by default, so the stack is normally empty and renders nothing. */
