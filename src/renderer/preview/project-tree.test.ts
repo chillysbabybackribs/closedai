@@ -45,7 +45,8 @@ test('the dispatch plan grows a tree from the root using the confirmed record', 
   const ids = new Set(nodes.map((node) => node.id))
   for (const node of nodes) if (node.parent) assert.ok(ids.has(node.parent), `${node.id} has a placed parent`)
   assert.equal(nodes.find((node) => node.id === 'shell')?.state, 'complete')
-  assert.equal(nodes.find((node) => node.id === 'journey-proto')?.state, 'active')
+  assert.equal(nodes.find((node) => node.id === 'journey-proto')?.state, 'complete', 'the plan runs through to a closable build')
+  assert.ok(nodes.every((node) => node.kind !== 'research' || node.state === 'confirmed'), 'every unknown is resolved by the end')
   assert.equal(nodes.find((node) => node.id === 'evidence')?.links?.length, 3)
   assert.match(nodes.find((node) => node.id === 'journey')!.detail, /link it to one claim/)
 

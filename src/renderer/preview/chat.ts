@@ -1,7 +1,7 @@
 import type { ClosedaiApi } from '../../shared/api.js'
 import type { ChatSnapshot } from '../../shared/chat.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
-import { sampleChat, sampleRow, sampleWorkspace, type Scenario } from './fixtures.js'
+import { sampleChat, sampleHandoff, sampleRow, sampleWorkspace, type Scenario } from './fixtures.js'
 
 export function createPreviewChat(scenario: Scenario, report: (message: string) => void) {
   const state = sampleWorkspace(scenario)
@@ -102,7 +102,18 @@ export function createPreviewChat(scenario: Scenario, report: (message: string) 
     selectReasoningEffort: async (id, effort) => { pane(id).selectedReasoningEffort = effort; publish() },
     refreshPlanUsage: async () => {}, loginWithChatGPT: native,
     listChats: async () => structuredClone(state.chats), newPeer: create, closePeer: close,
-    continueInNewPeer: create, openChat: async (id) => {
+    // Same refusal and same empty-pane state as main: the new chat carries its lineage and digest.
+    continueInNewPeer: async (source) => {
+      const from = source.paneId ? pane(source.paneId) : null
+      if (from?.activeTurnId) throw new Error('Stop the current turn before continuing in a new chat')
+      const title = from?.threadName ?? 'Saved chat'
+      const id = await create()
+      const row = state.chats.find((entry) => entry.paneId === id)!
+      row.continuedFrom = { paneId: source.paneId, title, handoff: sampleHandoff(title, from?.items ?? []) }
+      pane(id).threadName = `Continuing: ${title}`
+      publish()
+      return id
+    }, openChat: async (id) => {
       if (!state.panes?.[id]) {
         const row = state.chats.find((entry) => entry.paneId === id)
         if (!row) throw new Error(`Unknown preview chat: ${id}`)

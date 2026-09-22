@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { buildCatchUp, countSince, SECTION_CAP } from './project-catchup.ts'
+import { closureProgress } from './project-closure.ts'
 import { advanceDiscovery, createDiscovery } from './project-discovery.ts'
 import { breadcrumbs, deriveFiles, folderTree, servesLine, targetNodeId } from './project-files.ts'
 import type { Message } from './project-intake.ts'
@@ -10,7 +11,7 @@ import { amendTree, applyEvent, buildDispatchPlan, rootNode } from './project-tr
 const T0 = Date.UTC(2026, 8, 22, 4, 0, 0)
 const MINUTE = 60_000
 
-function build() {
+function build(events = Number.POSITIVE_INFINITY) {
   let state = createDiscovery()
   const messages: Message[] = []
   let at = T0
@@ -29,12 +30,13 @@ function build() {
   const confirmedAt = at + MINUTE
   let nodes = [rootNode(record, confirmedAt)]
   let clock = confirmedAt
-  for (const event of buildDispatchPlan(record)) nodes = applyEvent(nodes, event, clock += event.delay)
-  return { record, messages, nodes, confirmedAt, now: clock + MINUTE }
+  for (const event of buildDispatchPlan(record).slice(0, events)) nodes = applyEvent(nodes, event, clock += event.delay)
+  return { record, messages, nodes, confirmedAt, now: clock + MINUTE, progress: closureProgress(nodes, record) }
 }
 
 const base = (input: ReturnType<typeof build>) =>
-  ({ record: input.record, messages: input.messages, nodes: input.nodes, journal: [], edits: {}, confirmedAt: input.confirmedAt })
+  ({ record: input.record, messages: input.messages, nodes: input.nodes, journal: [], edits: {}, confirmedAt: input.confirmedAt,
+    reports: [], progress: input.progress, proposal: null, acceptedAt: null })
 
 test('files are derived from the record, transcript, map, and journal, with edits layered on top', () => {
   const built = build()
@@ -73,7 +75,7 @@ test('the tree leads with the request and ladders folders by importance', () => 
   const files = deriveFiles({ ...base(built), journal: [{ id: 1, at: built.confirmedAt, text: 'Direction confirmed.' }] })
   const root = folderTree(files)
   assert.deepEqual(root.files.map((file) => file.path), ['request.md'])
-  assert.deepEqual(root.folders.map((folder) => folder.name), ['direction', 'research', 'decisions', 'scopes', 'quality', 'journal'])
+  assert.deepEqual(root.folders.map((folder) => folder.name), ['direction', 'research', 'decisions', 'scopes', 'quality', 'journal'], 'reports/ appears once one is acknowledged')
   const scopes = root.folders.find((folder) => folder.name === 'scopes')!
   const foundation = scopes.folders.find((folder) => folder.name === 'foundation')!
   assert.equal(foundation.files[0]!.title, 'Plan', 'a scope plan leads its folder')
@@ -110,12 +112,14 @@ test('breadcrumbs trace nodes to the root and files to their folders; direction 
 })
 
 test('the catch-up report is priority-descending, time-filtered, and capped per section', () => {
-  const built = build()
-  const { nodes, confirmedAt, now } = built
+  // Stop before the closing run so a hypothesis is still provisional.
+  const built = build(13)
+  const { nodes, confirmedAt, now, progress } = built
   const files = deriveFiles(base(built))
   const midway = nodes.find((node) => node.id === 'quality')!.createdAt
 
-  const full = buildCatchUp({ nodes, files, since: confirmedAt, now })
+  const full = buildCatchUp({ nodes, files, since: confirmedAt, now, progress })
+  assert.equal(full.progress.met, 1, 'only boundaries hold this early')
   assert.deepEqual(full.sections.map((section) => section.title), ['Needs you', 'Direction changed', 'Finished', 'In progress', 'Opened'].filter((title) =>
     full.sections.some((section) => section.title === title)))
   assert.equal(full.sections[0]!.title, 'Needs you')
@@ -127,17 +131,17 @@ test('the catch-up report is priority-descending, time-filtered, and capped per 
     for (let index = 1; index < section.items.length; index += 1) assert.ok(section.items[index - 1]!.at >= section.items[index]!.at, 'most recent first')
   }
 
-  const later = buildCatchUp({ nodes, files, since: midway, now })
+  const later = buildCatchUp({ nodes, files, since: midway, now, progress })
   assert.ok(later.total < full.total, 'a later baseline shows less')
   assert.ok(later.sections.find((section) => section.title === 'Finished')!.items.some((item) => /Runnable shell/.test(item.text)))
   assert.ok(!later.sections.find((section) => section.title === 'Opened')?.items.some((item) => /Foundation/.test(item.text)), 'old scopes are not re-reported')
   assert.equal(later.sections[0]!.title, 'Needs you', 'standing needs survive any baseline')
 
   const amended = amendTree(nodes, 'Ship dark theme first.', 'shell', now + MINUTE).nodes
-  const withAmendment = buildCatchUp({ nodes: amended, files, since: now, now: now + 2 * MINUTE })
+  const withAmendment = buildCatchUp({ nodes: amended, files, since: now, now: now + 2 * MINUTE, progress })
   assert.match(withAmendment.sections.find((section) => section.title === 'Direction changed')!.items[0]!.text, /Amended “Runnable shell”: Ship dark theme/)
   assert.equal(countSince(amended, now), 2, 'the amendment and its target both count as changed')
-  const quiet = buildCatchUp({ nodes, files, since: now, now: now + MINUTE })
+  const quiet = buildCatchUp({ nodes, files, since: now, now: now + MINUTE, progress })
   assert.deepEqual(quiet.sections.map((section) => section.title), ['Needs you'], 'only standing needs remain when nothing moved')
   assert.equal(quiet.total, 1)
 
