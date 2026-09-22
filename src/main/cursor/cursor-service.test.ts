@@ -58,7 +58,7 @@ test('cold catalog startup loads saved history once and obtains its models from 
       } })
       return {
         sessionId, models: [{ modelId: 'default[]', name: 'Auto' }], modes: [],
-        currentModelId: 'default[]', currentModeId: null
+        currentModelId: 'default[]', currentModeId: null, modelConfigId: 'model', modeConfigId: 'mode'
       }
     }
   } })
@@ -75,6 +75,39 @@ test('cold catalog startup loads saved history once and obtains its models from 
   assert.match(JSON.stringify(snapshot.items), /Earlier answer/)
   await session.warm()
   assert.deepEqual(loads, ['saved'])
+})
+
+test('a rejected live model change leaves the accepted selection in settings and UI', async () => {
+  let saved: typeof DEFAULT_APP_SETTINGS = { ...DEFAULT_APP_SETTINGS, chatCursorSessionId: 'saved' }
+  const service = new CursorChatService('/workspace', {
+    get: () => saved,
+    set: async (patch) => { saved = { ...saved, ...patch }; return saved },
+    checkpoint: () => null,
+    sessionRotations: () => []
+  }, toolBridge(), '/unused')
+  const session = (service as unknown as { createSession(): CursorSession }).createSession()
+  const target = 'claude-opus-5[thinking=true,effort=high]'
+  Object.assign(session, { client: {
+    connected: true,
+    capabilities: { loadSession: true, image: false },
+    async loadSession(sessionId: string) {
+      return {
+        sessionId,
+        models: [{ modelId: 'default[]', name: 'Auto' }, { modelId: target, name: 'Claude Opus 5' }],
+        modes: [], currentModelId: 'default[]', currentModeId: null,
+        modelConfigId: 'model', modeConfigId: 'mode'
+      }
+    }
+  } })
+  Object.assign(service, { session, readAccount: async () => {}, refreshPlanUsage: async () => {} })
+  await service.start({ warm: true })
+  Object.assign(session, { selectModel: async () => { throw new Error('Invalid params') } })
+
+  await assert.rejects(service.selectModel(`cursor:${target}`), /Invalid params/)
+
+  assert.equal(service.snapshot().selectedModel, 'cursor:default[]')
+  assert.notEqual(saved.chatModelId, `cursor:${target}`)
+  assert.match(JSON.stringify(service.snapshot().items), /Cursor did not accept that model/)
 })
 
 /**
@@ -99,7 +132,8 @@ test('a session opens with the ClosedAI tool endpoints, whatever opened it first
     capabilities: { loadSession: true, image: true },
     async loadSession(sessionId: string, _cwd: string, mcpServers: readonly AcpMcpServer[]) {
       attached.push(mcpServers)
-      return { sessionId, models: [{ modelId: 'default[]', name: 'Auto' }], modes: [], currentModelId: 'default[]', currentModeId: null }
+      return { sessionId, models: [{ modelId: 'default[]', name: 'Auto' }], modes: [],
+        currentModelId: 'default[]', currentModeId: null, modelConfigId: 'model', modeConfigId: 'mode' }
     }
   } })
   Object.assign(service, { session, readAccount: async () => {}, refreshPlanUsage: async () => {} })
@@ -128,7 +162,8 @@ test('a session already open without tools is reopened once they exist', async (
     capabilities: { loadSession: true, image: true },
     async loadSession(sessionId: string, _cwd: string, mcpServers: readonly AcpMcpServer[]) {
       attached.push(mcpServers.map((server) => server.name))
-      return { sessionId, models: [], modes: [], currentModelId: null, currentModeId: null }
+      return { sessionId, models: [], modes: [], currentModelId: null, currentModeId: null,
+        modelConfigId: null, modeConfigId: null }
     }
   } })
   session.adoptSaved('saved')

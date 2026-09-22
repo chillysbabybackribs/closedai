@@ -56,8 +56,6 @@
   z-index: 1;
   top: 0;
   left: 0;
-  width: 1160px;
-  height: 690px;
   transform-origin: 0 0;
   transition: transform 80ms linear;
 }
@@ -99,19 +97,26 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+  animation: project-node-in 320ms var(--ease-chrome, ease-out) both;
   transition:
+    left 280ms var(--ease-chrome, ease-out),
+    top 280ms var(--ease-chrome, ease-out),
     background 140ms var(--ease-chrome),
     border-color 140ms var(--ease-chrome),
     box-shadow 140ms var(--ease-chrome);
 }
 
+@keyframes project-node-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+}
+
 .project-tree-node::before {
   position: absolute;
-  top: 50%;
-  left: -5px;
+  top: -5px;
+  left: 50%;
   width: 7px;
   height: 7px;
-  transform: translateY(-50%);
+  transform: translateX(-50%);
   border: 1px solid #171718;
   border-radius: 50%;
   background: #5c5c61;
@@ -148,9 +153,31 @@
   background: #b49a66;
 }
 
-.project-tree-node.is-origin {
-  border-color: rgb(157 140 255 / 22%);
-  background: rgb(157 140 255 / 7%);
+.project-tree-node[data-state="queued"]::before {
+  background: transparent;
+  border-color: #6a6a70;
+}
+
+.project-tree-node[data-state="queued"] strong {
+  color: #9a9a9f;
+}
+
+.project-tree-node.is-root {
+  border-color: rgb(157 140 255 / 30%);
+  background: rgb(157 140 255 / 8%);
+}
+
+.project-tree-node.is-root::before {
+  display: none;
+}
+
+.project-tree-node.is-scope {
+  background: rgb(30 30 32 / 85%);
+}
+
+.project-tree-node.is-amendment {
+  border-color: rgb(180 154 102 / 30%);
+  background: rgb(180 154 102 / 7%);
 }
 
 .project-tree-node-heading {
@@ -178,22 +205,11 @@
   white-space: nowrap;
 }
 
-.project-tree-node.is-origin .project-tree-node-heading {
+.project-tree-node.is-root .project-tree-node-heading {
   color: #b9aeff;
 }
 
 .project-node-inspector {
-  position: absolute;
-  z-index: 6;
-  top: 16px;
-  right: 18px;
-  width: min(300px, calc(100% - 36px));
-  padding: 13px 14px;
-  border: 1px solid rgb(255 255 255 / 9%);
-  border-radius: 9px;
-  background: rgb(28 28 30 / 90%);
-  box-shadow: 0 16px 36px rgb(0 0 0 / 28%);
-  backdrop-filter: blur(14px);
   cursor: default;
 }
 
@@ -310,6 +326,7 @@
 @media (prefers-reduced-motion: reduce) {
   .project-canvas-world,
   .project-tree-node {
+    animation: none;
     transition: none;
   }
 

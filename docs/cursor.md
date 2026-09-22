@@ -3,7 +3,7 @@
 The fourth chat provider: the user's Cursor subscription, reached through the `cursor-agent` CLI's
 **Agent Client Protocol (ACP)** server. Ids carry a `cursor:` prefix; turn ids carry `cursor-turn-`.
 
-Everything below was verified live against `cursor-agent 2026.09.02-c22c1a3` on 2026-09-03, on an
+Everything below was verified live against `cursor-agent 2026.09.02-c22c1a3` through 2026-09-21, on an
 Ultra account. Where a claim came from a probe rather than the CLI's documentation, it says so.
 
 ## Why ACP, not `--print`
@@ -32,8 +32,8 @@ open protocol, so the wire format is not the fragile part — the subcommand's a
 | Starting a pane | Measured 2026-09-04 against 2026.09.02-c22c1a3: the ACP handshake is ~1s, `session/new` ~1.5s, `session/load` ~0.45s, and `cursor-agent about` ~1.45s. Only the work the pane actually needs is on the path to `ready`: the catalog comes from the cache when it can, the account is read behind the ready state, and the pane's saved session is what any open loads. |
 | Session identity | The pane's saved session id is seeded into the thread before anything opens, so warming loads that session instead of creating one next to it. Keying the resume on the session id instead of the transcript is what used to abandon the conversation on every relaunch and leave untitled, unloadable sessions in `session/list`. |
 | Model ids | `<base>[<k>=<v>,…]`, e.g. `claude-opus-5[thinking=true,context=300k,effort=high,fast=false]`. |
-| Reasoning effort | **None offered.** `session/set_model` accepts only a verbatim listed id; every bracket override was rejected with "Invalid model value", including efforts that `cursor-agent models` advertises. Effort is part of the model, so the picker shows one entry per model. |
-| Model switching | `session/set_model` on the live session, so an open chat keeps its history — no respawn. |
+| Reasoning effort | **None offered.** The advertised model config accepts only a verbatim listed id; every bracket override was rejected with "Invalid model value", including efforts that `cursor-agent models` advertises. Effort is part of the model, so the picker shows one entry per model. |
+| Model switching | `session/set_config_option` with the session-advertised `category: "model"` config id, so an open chat keeps its history — no respawn. The older experimental `session/set_model` can reject a loaded session with `Invalid params`. |
 | Chat history | `session/list` (agent-generated titles, `cwd`-scoped) and `session/load`, which replays the whole conversation as `session/update` notifications before resolving. Replay retains the returned session setup so continuing that session reuses the load. Startup restores saved history before checking for an uncached catalog, obtaining both from one load. The app records **no** transcript of its own, unlike the Antigravity lane. |
 | Thread title | `session_info_update` carries a title the agent writes a turn or two in. |
 | Interrupt | `session/cancel`; the session stays usable afterwards. |

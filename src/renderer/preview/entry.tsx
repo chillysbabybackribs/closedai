@@ -9,6 +9,7 @@ import { ProjectShellPreview } from './project-shell.js'
 import { createPreviewStorage } from './storage.js'
 import '../styles/preview/project-canvas.css'
 import '../styles/preview/project-shell.css'
+import '../styles/preview/project-workstation.css'
 import '../styles/preview/shell.css'
 
 if (window.closedai) throw new Error('The UI preview must not replace a real Electron bridge.')

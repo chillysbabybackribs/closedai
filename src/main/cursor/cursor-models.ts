@@ -9,7 +9,7 @@ import { cursorModelBase, cursorModelId } from './cursor-ids.js'
 // - An ACP model id is `<base>[<key>=<value>,…]`, e.g.
 //   `claude-opus-5[thinking=true,context=300k,effort=high,fast=false]`, with a display `name`
 //   that is just the base (`claude-opus-5`). `default[]` is "Auto".
-// - `session/set_model` accepts ONLY an id that appears verbatim in `availableModels`. Every
+// - The advertised model config accepts ONLY an id that appears verbatim in `availableModels`. Every
 //   bracket override was rejected with "Invalid model value", including efforts the one-shot
 //   `cursor-agent models` listing does advertise (`effort=xhigh`, `effort=max`).
 //

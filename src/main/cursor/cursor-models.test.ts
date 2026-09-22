@@ -49,7 +49,7 @@ test('the catalog is one entry per listed model and offers no effort ladder', ()
   const models = cursorModelsFromAcp(ACP_MODELS, 'gpt-5.6-sol[context=272k,reasoning=medium,fast=false]')
   assert.equal(models.length, 4)
   assert.deepEqual(models.map((model) => model.displayName), ['Auto', 'claude-opus-5', 'gpt-5.6-sol', 'composer-2.5'])
-  // `session/set_model` only accepts a listed id, so an id must round-trip verbatim.
+  // The model config only accepts a listed id, so an id must round-trip verbatim.
   assert.equal(cursorAcpModelId(models[1]!.id), ACP_MODELS[1]!.modelId)
   assert.equal(models[1]!.contextWindow, 300_000)
   assert.equal(models[2]!.contextWindow, 272_000)

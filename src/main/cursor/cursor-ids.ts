@@ -8,11 +8,11 @@ import {
 } from '../../shared/chat-providers.js'
 
 // Cursor models and threads share the chat surface with the other providers, so both carry a
-// `cursor:` prefix that lets the hub route an id without asking any provider. A model id names
-// a base model (`cursor:claude-opus-5`); ACP's bracketed parameters (`[effort=high,…]`) are
-// rebuilt from the effort picker at send time and never live in the composer id. A thread id
-// wraps the ACP session id. The prefix arithmetic lives in the shared provider registry; this
-// file only names those operations in Cursor's vocabulary.
+// `cursor:` prefix that lets the hub route an id without asking any provider. A model id keeps
+// the full ACP value (`cursor:claude-opus-5[effort=high,…]`) because Cursor accepts only a value
+// advertised verbatim by the session's model config. A thread id wraps the ACP session id. The
+// prefix arithmetic lives in the shared provider registry; this file only names those operations
+// in Cursor's vocabulary.
 
 export const CURSOR_ID_PREFIX = CHAT_PROVIDER_ID_PREFIXES.cursor
 
