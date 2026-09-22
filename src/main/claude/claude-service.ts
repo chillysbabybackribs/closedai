@@ -68,6 +68,15 @@ export class ClaudeChatService extends EventEmitter {
   private readonly transcript: ChatTranscript
   private readonly rotator: SessionRotator
   private startPromise: Promise<void> | null = null
+  /**
+   * Full replays of threads other than the live one: `readThread` rebuilds a whole session from
+   * disk, and rotation prefetches its own source on every rotation, so an unbounded chat re-paid
+   * that cost on every hover and every rotation. The live thread is never served from here — it
+   * can grow between calls — and an entry is dropped the moment its thread becomes live, so a
+   * later replay after it goes inactive again reads fresh rather than serving pre-live state.
+   */
+  private readonly threadCache = new Map<string, ChatThreadContent>()
+  private static readonly THREAD_CACHE_LIMIT = 8
 
   constructor(
     readonly cwd: string,
@@ -211,13 +220,28 @@ export class ClaudeChatService extends EventEmitter {
   async readThread(threadId: string, cwd = this.cwd): Promise<ChatThreadContent> {
     const sessionId = claudeSessionIdOf(threadId)
     if (!sessionId) throw new Error('Invalid Claude thread')
+    const live = sessionId === this.session?.sessionId
+    if (!live) {
+      const cached = this.threadCache.get(threadId)
+      if (cached) return cached
+    }
     await this.ensureConnected()
     const items = await replayClaudeSession(this.sdk!, sessionId, {
       cwd,
       displayScreenshot: (callId) => this.screenshots?.get(callId) ?? null
     })
     const threadName = await claudeThreadName(this.sdk!, sessionId, cwd).catch(() => null)
-    return { threadId, threadName, items }
+    const content: ChatThreadContent = { threadId, threadName, items }
+    if (!live && sessionId !== this.session?.sessionId) this.rememberThread(threadId, content)
+    return content
+  }
+
+  private rememberThread(threadId: string, content: ChatThreadContent): void {
+    this.threadCache.delete(threadId)
+    this.threadCache.set(threadId, content)
+    if (this.threadCache.size <= ClaudeChatService.THREAD_CACHE_LIMIT) return
+    const oldest = this.threadCache.keys().next().value
+    if (oldest !== undefined) this.threadCache.delete(oldest)
   }
 
   /** Clear the pane; the next message starts a fresh SDK session. */
@@ -367,6 +391,9 @@ export class ClaudeChatService extends EventEmitter {
 
   private async resumeSession(sessionId: string): Promise<void> {
     const sdk = this.sdk!
+    // This thread is about to become live and can grow from here; a cached replay from before
+    // would go stale the moment it does, so drop it rather than let a later readThread serve it.
+    this.threadCache.delete(claudeThreadId(sessionId))
     const items = await replayClaudeSession(sdk, sessionId, { cwd: this.cwd, displayScreenshot: (callId) => this.screenshots?.get(callId) ?? null })
     await this.session!.adopt(sessionId)
     this.transcript.replaceItems(items)
