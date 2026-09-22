@@ -18,6 +18,7 @@ import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { injectComposerDraft } from './composer-drafts.js'
 import { ContextInspectorModal } from './context-inspector-modal.js'
+import { ContinuationCard } from './continuation-card.js'
 import { CredentialApprovalCards } from './credential-approval-card.js'
 import { errorMessage } from './error-message.js'
 import type { ModelMenuHandle } from './model-menu.js'
@@ -88,7 +89,10 @@ export const ChatPane = memo(function ChatPane({
   // pick is a settings write, and a send waits for the provider itself. Locking it out until the
   // process was ready made every launch and every provider switch a pause the user could feel.
   const usable = ready || connecting
-  const centerComposer = !blocked && !hasMessages && !historyOpen
+  // A continued chat with its digest still undelivered shows the hand-over card as its first
+  // content, so the composer takes its transcript position rather than the blank chat's centre.
+  const pendingContinuation = !hasMessages && record?.continuedFrom?.handoff ? record.continuedFrom : null
+  const centerComposer = !blocked && !hasMessages && !historyOpen && !pendingContinuation
   const modelMenuRef = useRef<ModelMenuHandle>(null)
   const openModelMenu = (): void => modelMenuRef.current?.open()
   // What the pane itself could not do, shown above the composer until the next attempt.
@@ -179,6 +183,14 @@ export const ChatPane = memo(function ChatPane({
                   paneId: chat.selectedPaneId, threadId: state.threadId, throughItemId: itemId
                 }, state.selectedModel)
               }} />
+            ) : pendingContinuation ? (
+              <ContinuationCard source={pendingContinuation}
+                canOpenSource={chat.chats.some((row) => row.paneId === pendingContinuation.paneId)}
+                onOpenSource={() => {
+                  setNotice('')
+                  chat.openChat(pendingContinuation.paneId!)
+                    .catch((error: unknown) => setNotice(errorMessage(error, 'Could not open the previous chat')))
+                }} />
             ) : (
               <div aria-hidden="true" />
             )}
