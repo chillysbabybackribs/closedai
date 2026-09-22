@@ -5,6 +5,8 @@
 
 export const UI_CONTROLS = {
   'preview.dismiss-notice': 'Browser UI preview only: dismiss an unsupported-operation or error notice without changing the app layout',
+  'preview.project-suggestion': 'Project-shell prototype only: put a suggested starting direction into the composer; item is the suggestion title',
+  'preview.project-start': 'Project-shell prototype only: mark the confirmed direction ready for the future running-project view',
   'dialog.research-library': 'Public research library dialog, opened through Agent → Research library',
   'research.topics': 'Edit followed research topics, one per line (maximum five)',
   'research.window': 'Choose the publication lookback window',

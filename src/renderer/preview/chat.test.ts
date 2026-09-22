@@ -107,6 +107,7 @@ test('native actions report their limits and do not fabricate file or credential
     await assert.rejects(bridge.api.localFiles.open('/etc/passwd'), /Unavailable/)
     assert.deepEqual(await bridge.api.credentials.list(), [])
     assert.equal(parseScenario(null), 'conversation')
+    assert.equal(parseScenario('project'), 'project')
     assert.throws(() => parseScenario('typo'), /Unknown preview scenario/)
   } finally { bridge.dispose() }
 })

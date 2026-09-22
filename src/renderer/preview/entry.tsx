@@ -5,7 +5,9 @@ import { AppErrorBoundary, watchUnhandledRejections } from '../app-error-boundar
 import { saveLayout } from '../chat-layout/layout-tree.js'
 import { createPreviewBridge } from './bridge.js'
 import { parseScenario, PREVIEW_CWD, sampleLayout } from './fixtures.js'
+import { ProjectShellPreview } from './project-shell.js'
 import { createPreviewStorage } from './storage.js'
+import '../styles/preview/project-shell.css'
 import '../styles/preview/shell.css'
 
 if (window.closedai) throw new Error('The UI preview must not replace a real Electron bridge.')
@@ -62,8 +64,10 @@ function Preview() {
       const count = [...document.querySelectorAll('[data-ui="composer.input"]')]
         .filter((element) => element.getBoundingClientRect().width > 0).length
       const expected = scenario === 'split' ? 2 : 1
-      if (!errors.length && count === expected && document.querySelector('[data-ui-key="preview-chat-1"]')
-        && (scenario !== 'settings' || document.querySelector('[role="dialog"]'))) {
+      const projectReady = scenario === 'project' && document.querySelector('[data-preview-project-shell]')
+      const appReady = scenario !== 'project' && document.querySelector('[data-ui-key="preview-chat-1"]')
+        && (scenario !== 'settings' || document.querySelector('[role="dialog"]'))
+      if (!errors.length && count === expected && (projectReady || appReady)) {
         document.documentElement.dataset.previewState = 'ready'
         observer.disconnect()
       }
@@ -75,7 +79,7 @@ function Preview() {
   }, [])
   return <>
     <AppErrorBoundary fallback={previewFallback} onError={(error) => recordError(error.message)}>
-      <App initialSettingsOpen={scenario === 'settings'} />
+      {scenario === 'project' ? <ProjectShellPreview /> : <App initialSettingsOpen={scenario === 'settings'} />}
     </AppErrorBoundary>
     {message && <aside className="preview-notice" aria-label="UI preview notice">
       <span role="status">{message}</span>
