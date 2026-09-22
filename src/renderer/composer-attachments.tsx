@@ -76,7 +76,7 @@ export function AttachmentPicker({
           type="button"
           variant="ghost"
           size="icon"
-          className="prompt-composer-tool prompt-composer-attachment rounded-full"
+          className="composer-tool composer-attach"
           aria-label="Upload files"
           data-ui="composer.upload"
           disabled={disabled}

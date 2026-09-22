@@ -346,19 +346,8 @@ body[data-layout-resize='vertical'] * { cursor: row-resize !important; }
 
 @container chat-tile (max-width: 480px) {
   .chat-layout-content .chat-zoom-surface { --chat-column-gutter: 12px; }
-  .chat-layout-content .composer-project-trigger { min-width: 0; padding-inline: 5px; }
-  .chat-layout-content .composer-project-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .chat-layout-content .task-timer { display: none; }
-  .chat-layout-content .prompt-composer-footer { gap: 6px; }
-  .chat-layout-content .prompt-composer-footer-start .prompt-model-controls { flex: 1; gap: 3px; }
-  .chat-layout-content .prompt-composer-footer-start .model-menu-trigger { min-width: 0; padding-inline: 3px; gap: 3px; }
-  .chat-layout-content .model-menu-trigger { min-width: 0; padding-inline: 3px; gap: 3px; }
-  .chat-layout-content .model-menu-trigger-context,
-  .chat-layout-content .model-menu-trigger-effort { display: none; }
-  .chat-layout-content .context-meter { flex-shrink: 0; padding-inline: 3px; }
-  .chat-layout-content .prompt-composer-tool { width: 28px; min-width: 28px; padding-inline: 4px; }
-  .chat-layout-content .prompt-composer-resume,
-  .chat-layout-content .prompt-composer-stop { width: 30px; height: 30px; }
+  .chat-layout-content .composer-row { gap: 2px; padding-inline: 3px 4px; }
+  .chat-layout-content .composer-setup-trigger { padding-inline: 6px; gap: 5px; }
 }
 
 .chat-layout-context-menu {
@@ -509,4 +498,3 @@ body[data-layout-resize='vertical'] * { cursor: row-resize !important; }
   opacity: 0.5;
   cursor: not-allowed;
 }
-.composer-project-error { color: var(--destructive); font-size: 12px; }

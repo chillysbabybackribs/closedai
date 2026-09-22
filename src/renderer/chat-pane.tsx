@@ -19,7 +19,7 @@ import { Composer } from './composer.js'
 import { injectComposerDraft } from './composer-drafts.js'
 import { CredentialApprovalCards } from './credential-approval-card.js'
 import { errorMessage } from './error-message.js'
-import type { ModelMenuHandle } from './model-menu.js'
+import type { ComposerSetupHandle } from './composer-setup-menu.js'
 import { securityRequests } from './security-requests.js'
 import { ToolsModal } from './tools/tools-modal.js'
 import { TraceModal } from './trace/trace-modal.js'
@@ -90,7 +90,7 @@ export const ChatPane = memo(function ChatPane({
   const usable = ready || connecting
   // A continuation stays visually empty until its first message delivers the handoff to the model.
   const centerComposer = !blocked && !hasMessages && !historyOpen
-  const modelMenuRef = useRef<ModelMenuHandle>(null)
+  const modelMenuRef = useRef<ComposerSetupHandle>(null)
   const openModelMenu = (): void => modelMenuRef.current?.open()
   // What the pane itself could not do, shown above the composer until the next attempt.
   const [notice, setNotice] = useState('')
@@ -184,7 +184,7 @@ export const ChatPane = memo(function ChatPane({
         )}
         <Composer
           paneId={chat.selectedPaneId}
-          modelMenuRef={modelMenuRef}
+          setupMenuRef={modelMenuRef}
           enabled={usable}
           running={running}
           placeholder={connecting ? state.connection.message : undefined}
@@ -208,7 +208,6 @@ export const ChatPane = memo(function ChatPane({
           onChooseProject={() => window.closedai.chat.chooseProject(chat.selectedPaneId)}
           onSelectProject={(projectPath) => window.closedai.chat.selectProject(chat.selectedPaneId, projectPath)}
           onClearProject={() => window.closedai.chat.clearProject(chat.selectedPaneId)}
-          activeTurnId={state.activeTurnId}
           onCompactConversation={manualCompact ? compactConversation : undefined}
           compactConversationEnabled={canCompact}
         />

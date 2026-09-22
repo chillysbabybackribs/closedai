@@ -3,9 +3,7 @@ import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-import { TooltipProvider } from '../components/ui/tooltip.js'
 import type { ChatAttachment } from '../shared/chat.js'
-import { ComposerCompactRow } from './composer-compact-row.tsx'
 import {
   clearComposerDraft,
   getComposerDraft,
@@ -55,32 +53,4 @@ test('composer draft store preserves drafts independently per paneId', () => {
 
   // Pane 2 remains intact
   assert.equal(getComposerDraft('pane-2').input, 'Draft for agent 2')
-})
-
-test('ComposerCompactRow renders the pill input and expand control', () => {
-  const html = renderToStaticMarkup(
-    createElement(
-      TooltipProvider,
-      null,
-      createElement(ComposerCompactRow, {
-        running: false,
-        provider: 'codex',
-        placeholder: 'Ask anything',
-        enabled: true,
-        sending: false,
-        paused: false,
-        canSend: true,
-        onPaste: () => {},
-        onFocus: () => {},
-        onBlur: () => {},
-        onStop: async () => {},
-        onResume: async () => {},
-        onExpand: () => {}
-      })
-    )
-  )
-
-  assert.match(html, /prompt-composer-compact-row/)
-  assert.match(html, /data-ui="composer\.input"/)
-  assert.match(html, /data-ui="composer\.compact-toggle"/)
 })
