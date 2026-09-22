@@ -105,18 +105,6 @@
   color: #73aa80;
 }
 
-.project-file time {
-  flex: none;
-  margin-left: auto;
-  color: #55555a;
-  font-size: 9.5px;
-  font-variant-numeric: tabular-nums;
-}
-
-.project-file[data-changed="true"] time {
-  margin-right: 12px;
-}
-
 /* The original request leads the tree; everything else is a sub-directory beneath it. */
 .project-file[data-root="true"] {
   margin-bottom: 4px;

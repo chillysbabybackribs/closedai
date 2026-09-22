@@ -252,7 +252,7 @@ export function ProjectShellPreview() {
                 <button type="button" data-ui="preview.project-away-dismiss" onClick={() => setAwayFor(0)} aria-label="Dismiss">×</button>
               </div>}
               {location.kind === 'map' && <div className="project-tree-pane">
-                <ProjectCanvas layout={layout} selectedId={null} changedIds={changedNodes} now={now}
+                <ProjectCanvas layout={layout} selectedId={null} changedIds={changedNodes}
                   onSelect={(id) => { if (id) navigate({ kind: 'node', id }) }} />
               </div>}
               {report && <div className="project-detail-pane"><CatchUpDetail report={report} onNavigate={navigate} onCaughtUp={caughtUp} /></div>}

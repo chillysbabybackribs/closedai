@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight, FileText, FolderClosed, FolderOpen } from 'lucide-react'
 
 import type { ProjectFile, ProjectFolder } from './project-files.js'
-import { absolute, relative } from './project-time.js'
+import { absolute } from './project-time.js'
 
 export function ProjectFileTree(props: {
   root: ProjectFolder
@@ -30,7 +30,6 @@ export function ProjectFileTree(props: {
         onClick={() => onOpen(file.path)}>
         <FileText size={12} aria-hidden="true" />
         <span>{file.title}</span>
-        <time dateTime={new Date(file.updatedAt).toISOString()}>{relative(file.updatedAt, now)}</time>
       </button>
     </li>
 
