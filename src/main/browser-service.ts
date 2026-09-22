@@ -4,8 +4,8 @@ import { join } from 'node:path'
 import type { BrowserHistory } from './browser-history-store.js'
 import type { BrowserBounds, BrowserShot, BrowserState, BrowserTabInfo } from '../shared/types.js'
 import type { TabPersistRecord } from './browser-tab-session-store.js'
-import { BrowserTab, HOME_URL, PARTITION, allocateTabId } from './browser-tab.js'
-import { ImageTab, imageKey } from './local-files/image-tab.js'
+import { BrowserTab, HOME_URL, PARTITION } from './browser-tab.js'
+import { ImageTab } from './local-files/image-tab.js'
 import { FileTab } from './local-files/file-tab.js'
 import type { FileTabContent, ImageTabContent } from '../shared/local-files.js'
 import { PersistentSessionCookies } from './persistent-session-cookies.js'
@@ -14,12 +14,14 @@ import { describeMissingTab } from '../shared/browser-tabs.js'
 import { installPermissionPolicy, type PermissionPolicyDeps } from './browser-permissions.js'
 import { TabRenderingPolicy } from './browser-tab-rendering.js'
 import { TabCadencePolicy, webContentsCadence } from './browser-tab-cadence.js'
-import { allSettledBounded } from './bounded-concurrency.js'
-import { restorePlan, type RestoredTabSession } from './browser-tab-session-store.js'
+import type { RestoredTabSession } from './browser-tab-session-store.js'
+import { restoreBrowserTabs } from './browser-service-restore.js'
+import { duplicateSpecialTab, openFileViewerTab, openImageTab } from './browser-service-special-tabs.js'
+import { prepareBrowserTabForTool } from './browser-service-tool-prep.js'
 import { browserPaneBounds, browserSurfaceVisibility } from './browser-surface-visibility.js'
 import { settleFrames } from './browser-frame-settle.js'
 import { PageBackgroundMemory } from './browser-page-background.js'
-import { activateTabSurface, prepareTabSurfaceForTool } from './browser-tab-activation.js'
+import { activateTabSurface } from './browser-tab-activation.js'
 import type { CdpBrowserTarget } from './cdp/browser-cdp-access.js'
 import { HiddenCaptureSurfaces } from './browser-capture-surface.js'
 
@@ -30,10 +32,6 @@ type BrowserServiceOptions = {
   // Settings → Security web permission policy and the chrome that asks; absent means allow-all.
   permissions?: Pick<PermissionPolicyDeps, 'policy' | 'ask'>
 }
-
-// How many restored pages load at once. The strip is rebuilt instantly either way; this only
-// paces network/renderer startup so a 20-tab restore doesn't spawn 20 renderers in one tick.
-const RESTORE_LOAD_CONCURRENCY = 4
 
 // How long a reveal waits for the page's first frame before showing it anyway. Long enough
 // for a live page to answer in one or two frames, short enough that a page which will never
@@ -97,7 +95,7 @@ export class BrowserService extends EventEmitter {
     // Window teardown destroys every tab's WebContents BEFORE dispose() runs, and each destroy
     // fires the reap path. Latch here so shutdown never resurrects a home tab into a dying window.
     this.window.once('close', () => { this.disposed = true })
-    if (!options.restore || !this.restoreTabs(options.restore)) {
+    if (!options.restore || !this.restoreSession(options.restore)) {
       this.openTab(options.initialUrl ?? HOME_URL, true)
     }
   }
@@ -152,31 +150,16 @@ export class BrowserService extends EventEmitter {
     return tab
   }
 
-  // Rebuild the previous run's tab strip. Views and labels exist synchronously so the renderer
-  // paints the real tabs on its first frame; page loads run bounded, visible tab first.
-  private restoreTabs(restored: RestoredTabSession): boolean {
-    if (restored.tabs.length === 0) return false
-    const plan = restorePlan(restored.tabs.length, restored.activeIndex)
-    // Ids are reused when the file carries them; a duplicate (hand-edited file) falls back to a
-    // fresh id rather than two tabs answering to one name.
-    const seen = new Set<string>()
-    const tabs = restored.tabs.map((record) => {
-      const id = record.id && !seen.has(record.id) ? record.id : undefined
-      if (id) seen.add(id)
-      const tab = this.createTab(false, undefined, id)
-      tab.seedRestoredState(record.url, record.title, record.customTitle)
-      return { tab, record }
-    })
-    this.setActive(tabs[plan.activeIndex].tab.id)
-    void allSettledBounded(plan.loadOrder.map((index) => tabs[index]), RESTORE_LOAD_CONCURRENCY, async ({ tab, record }) => {
-      if (!this.tabs.includes(tab)) return
-      await tab.start(record.url, undefined, record.stack)
-    }).then((results) => {
-      for (const result of results) {
-        if (result.status === 'rejected') this.emit('error', result.reason)
-      }
-    })
-    return true
+  private restoreSession(restored: RestoredTabSession): boolean {
+    return restoreBrowserTabs({
+      window: this.window,
+      tabs: this.tabs,
+      disposed: this.disposed,
+      createTab: (activate, index, id) => this.createTab(activate, index, id),
+      setActive: (id) => { this.setActive(id) },
+      emitError: (error) => { this.emit('error', error) },
+      startTab: (tab, url, options, stack) => tab.start(url, options, stack)
+    }, restored)
   }
 
   private registerTab(tab: BrowserTab | ImageTab | FileTab, index?: number): void {
@@ -231,33 +214,13 @@ export class BrowserService extends EventEmitter {
   }
 
   openImage(content: ImageTabContent): string {
-    const key = imageKey(content)
-    const existing = this.tabs.find((tab) => tab instanceof ImageTab && tab.key === key)
-    if (existing) {
-      this.selectTab(existing.id)
-      this.emit('state', existing.getState())
-      return existing.id
-    }
-    const tab = new ImageTab(allocateTabId(), key, content, this.activeId)
-    const index = this.tabs.findIndex((item) => item.id === this.activeId)
-    this.registerTab(tab, index + 1)
-    this.setActive(tab.id)
-    return tab.id
+    return openImageTab(this.tabs, this.activeId, content, (tab, index) => { this.registerTab(tab, index) },
+      (id) => { this.setActive(id) }, (state) => { this.emit('state', state) })
   }
 
   openFileTab(content: { path: string; name: string; line?: number; endLine?: number }): string {
-    const existing = this.tabs.find((tab) => tab instanceof FileTab && tab.key === content.path)
-    if (existing instanceof FileTab) {
-      existing.updateLine(content.line, content.endLine)
-      this.selectTab(existing.id)
-      this.emit('state', existing.getState())
-      return existing.id
-    }
-    const tab = new FileTab(allocateTabId(), content.path, content, this.activeId)
-    const index = this.tabs.findIndex((item) => item.id === this.activeId)
-    this.registerTab(tab, index + 1)
-    this.setActive(tab.id)
-    return tab.id
+    return openFileViewerTab(this.tabs, this.activeId, content, (tab, index) => { this.registerTab(tab, index) },
+      (id) => { this.setActive(id) }, (state) => { this.emit('state', state) })
   }
 
   fileContent(id: string): Promise<FileTabContent> {
@@ -320,22 +283,8 @@ export class BrowserService extends EventEmitter {
     const index = this.tabs.findIndex((tab) => tab.id === id)
     const tab = index === -1 ? null : this.tabs[index]
     if (!tab) return
-    if (tab instanceof ImageTab) {
-      const duplicate = new ImageTab(allocateTabId(), tab.key, tab.content, this.activeId)
-      duplicate.rename(tab.getCustomTitle())
-      this.registerTab(duplicate, index + 1)
-      if (activate) this.setActive(duplicate.id)
-      else this.emitTabs()
-      return
-    }
-    if (tab instanceof FileTab) {
-      const duplicate = new FileTab(allocateTabId(), tab.key, { ...tab.info }, this.activeId)
-      duplicate.rename(tab.getCustomTitle())
-      this.registerTab(duplicate, index + 1)
-      if (activate) this.setActive(duplicate.id)
-      else this.emitTabs()
-      return
-    }
+    if (duplicateSpecialTab(this.tabs, id, this.activeId, activate, (duplicate, at) => { this.registerTab(duplicate, at) },
+      (activeId) => { this.setActive(activeId) }, () => { this.emitTabs() })) return
     const state = tab.getState()
     const duplicate = this.openTab(state.url, activate, undefined, index + 1)
     duplicate.rename(tab.getCustomTitle())
@@ -526,21 +475,11 @@ export class BrowserService extends EventEmitter {
   }
 
   private prepareTabForTool(tab: BrowserTab): void {
-    if (this.captureSurfaces.has(tab.id)) return
-    if (this.rendering.describe(tab.id).pins > 0 &&
-        (tab.id !== this.activeId || !browserSurfaceVisibility(this.bounds).pageVisible)) {
-      // A never-shown view has no usable frame sink. Initialize it underneath the opaque
-      // active browser surface, then restore its hidden state when the lease ends. Never
-      // expose a view over chats or a renderer overlay when the browser itself is hidden.
-      const active = this.active
-      if (active instanceof BrowserTab && active.id !== tab.id && browserSurfaceVisibility(this.bounds).pageVisible) {
-        tab.applyBounds(this.bounds, true)
-        this.attachTabView(active.id)
-      } else tab.applyBounds({ ...this.bounds, occluded: true }, false)
-      return
-    }
-    prepareTabSurfaceForTool(tab, this.activeId, this.bounds, browserSurfaceVisibility(this.bounds))
-    if (!browserSurfaceVisibility(this.bounds).paneVisible && tab.id !== this.activeId) tab.park(this.bounds)
+    prepareBrowserTabForTool({
+      tab, active: this.active, activeId: this.activeId, bounds: this.bounds,
+      rendering: this.rendering, captureSurfaces: this.captureSurfaces,
+      attachTabView: (tabId) => { this.attachTabView(tabId) }
+    })
   }
 
   /** Navigate a targeted tab, the active tab by default, or a new active tab. */

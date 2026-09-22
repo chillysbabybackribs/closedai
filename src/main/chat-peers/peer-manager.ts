@@ -21,10 +21,11 @@ import { continuePeer } from './peer-continuation.js'
 import { DeferredProjectSwitch } from './deferred-project-switch.js'
 import { ChatMemory } from '../chat-context/chat-memory.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
-import { CACHED_TRANSCRIPT_ITEMS, ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
+import { ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
 import { traceLog } from '../trace/trace-log.js'
 import { PeerChatCatalog } from './peer-chat-catalog.js'
-import { cachedPaneView, PeerEmitThrottle, rendererSnapshot, rowSummary, syncStoreCheckpoint } from './peer-events.js'
+import { PeerEmitThrottle, rowSummary, syncStoreCheckpoint } from './peer-events.js'
+import { handlePeerPaneEvent, peerRendererView, rememberPeerTranscript, withSerializedAwake, type PeerPaneOpsHost } from './peer-manager-pane-ops.js'
 import { PeerIdleParking } from './peer-idle-parking.js'
 import { PeerLifecycle, type ChatPeerFactory, type PeerEntry } from './peer-lifecycle.js'
 import { listReadablePeers, readReadablePeer, type ReadablePeerHost } from './peer-readable.js'
@@ -566,86 +567,38 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     })
   }
 
-  /** One pane as the renderer sees it: its live snapshot, filled in from the saved view. */
   private rendererView(entry: PeerEntry, snapshot: ChatSnapshot): ChatSnapshot {
-    const filled = cachedPaneView(snapshot, this.store.get(entry.chatId), this.transcripts.peek(entry.chatId))
-    return rendererSnapshot(filled, entry.display.current.title)
+    return peerRendererView(this.store, this.transcripts, entry, snapshot)
   }
 
-  /** Keep the chat's saved view current; a chat with no thread of its own has nothing to save. */
   private rememberTranscript(entry: PeerEntry): void {
-    const record = this.store.get(entry.chatId)
-    const threadId = record?.threadId ?? (record?.continuation?.sourceCwd ? record.continuation.sourceThreadId : null)
-    if (!threadId) return
-    this.transcripts.remember(entry.chatId, threadId, entry.surface.snapshot({ limit: CACHED_TRANSCRIPT_ITEMS, unit: 'item' }))
+    rememberPeerTranscript(this.store, this.transcripts, entry)
+  }
+
+  private paneOpsHost(): PeerPaneOpsHost {
+    return {
+      lifecycle: this.lifecycle,
+      parking: this.parking,
+      store: this.store,
+      transcripts: this.transcripts,
+      projectSwitch: this.projectSwitch,
+      projectChanges: this.projectChanges,
+      catalog: this.catalog,
+      chatsEmit: this.chatsEmit,
+      browserAssignmentIdle: this.browserAssignmentIdle,
+      paneOperations: this.paneOperations,
+      emitWorkspaceEvent: (event) => { this.emit('event', event) },
+      assertAvailable: () => { this.projectSwitch.assertAvailable() },
+      wake: (paneId) => this.wake(paneId)
+    }
   }
 
   private onPaneEvent(entry: PeerEntry, event: ChatEvent): void {
-    if (event.type === 'item' && event.item.type === 'notice' && event.item.tone === 'error') {
-      this.projectSwitch.cancel('The requesting chat reported an error', entry.chatId)
-    }
-    const paneId = entry.chatId
-    traceLog.responses.event(paneId, event)
-    if (event.type !== 'title' && event.type !== 'checkpoint') entry.updatedAt = Date.now()
-    const oldTitle = entry.display.current.title
-    const oldPreview = entry.display.current.preview
-    const wasRunning = entry.display.current.running
-    entry.display.update(event, entry.updatedAt)
-    const rendererEvent = event.type === 'replace'
-      ? { ...event, snapshot: this.rendererView(entry, event.snapshot) }
-      : event
-    this.emit('event', { type: 'pane', paneId, event: rendererEvent } satisfies ChatWorkspaceEvent)
-    this.chatsEmit.schedule()
-    const running = entry.display.current.running
-    const turnBoundary = wasRunning !== running
-    if (turnBoundary || entry.display.current.title !== oldTitle || (event.type === 'item' && entry.display.current.preview !== oldPreview)) {
-      this.lifecycle.rememberDisplay(paneId, entry.display.current, entry.updatedAt, turnBoundary ? wasRunning && !running : null)
-    }
-    if (turnBoundary && !running) this.catalog.invalidate()
-    // Save what the pane shows at each turn boundary, when a replay fills it, and when a context
-    // reading lands at rest — providers report that one after the turn has already ended, and it
-    // is what the composer's meter shows on the next open. Streaming deltas are not worth a
-    // write; the tail they build is.
-    if ((turnBoundary && !running) || (event.type === 'context' && !running) ||
-      (event.type === 'replace' && event.snapshot.items.length > 0)) {
-      this.rememberTranscript(entry)
-    }
-    if (running) {
-      this.parking.cancel(entry)
-      this.browserAssignmentIdle?.cancel(paneId)
-    } else {
-      this.parking.schedule(paneId)
-      this.browserAssignmentIdle?.schedule(paneId, () =>
-        Boolean(entry.surface.snapshot({ limit: 0 }).pausedTurnId) || Boolean(entry.surface.hasRunningBackground?.()))
-    }
-    this.projectChanges.observe(paneId)
+    handlePeerPaneEvent(this.paneOpsHost(), entry, event)
   }
 
-  /**
-   * One pane runs one operation at a time. Waking is asynchronous, so two callers could
-   * otherwise interleave: a model switch landing between another caller's wake and its send
-   * moves the pane to a different provider, and the send starts its turn on the surface the
-   * pane just left — invisibly, because the pane now reports on a surface with no turn.
-   */
   private async withAwake<T>(paneId: ChatPaneId, action: (surface: ChatSurface) => Promise<T>, deferred = false): Promise<T> {
-    if (!deferred) this.projectSwitch.assertAvailable()
-    const queued = (this.paneOperations.get(paneId) ?? Promise.resolve()).then(async () => {
-      const entry = await this.wake(paneId)
-      this.parking.cancel(entry)
-      try {
-        return await action(entry.surface)
-      } finally {
-        this.parking.schedule(paneId)
-      }
-    })
-    // A failed operation must not cancel the ones behind it, so the chain swallows its result.
-    const tail = queued.then(() => undefined, () => undefined)
-    this.paneOperations.set(paneId, tail)
-    try {
-      return await queued
-    } finally {
-      if (this.paneOperations.get(paneId) === tail) this.paneOperations.delete(paneId)
-    }
+    return withSerializedAwake(this.paneOpsHost(), paneId, action, deferred)
   }
 
   private peerSummaries(): ChatPeerSummary[] {
