@@ -93,10 +93,20 @@ results from the app's Turn Trace.
 
 Send adds no automatic source-version checks or workspace source-change fragments.
 
-Claude and Antigravity receive context in `<closedai_context name="…" kind="…">` blocks.
+Claude, Antigravity, and Cursor receive context in `<closedai_context name="…" kind="…">` blocks,
+all three through the single `contextBlockText` serializer in `chat-context/turn-context.ts`.
 Codex receives typed `additionalContext`. `application` denotes app-authored context;
-`untrusted` denotes data such as pages, files, attachments, and tool output. Embedded instructions
-in an arbitrary document are not the user's request. The selected workspace root's `AGENTS.md` is
+`untrusted` denotes data such as pages, files, attachments, tool output, and the carried-forward
+handoff, rotation, and compaction seeds — which contain the model's own earlier words, so the
+shared instructions name self-authored summaries and checkpoints explicitly rather than letting
+the enumeration stop at tool output. Embedded instructions
+in an arbitrary document are not the user's request.
+
+Only the app opens and closes an envelope. The serializer escapes `<closedai_context` and
+`</closedai_context>` inside a fragment's value (`wrapCompactedContext` does the same for its own
+tag), because fragment values are transcript text: a chat that quotes this markup — reviewing a
+page about prompt injection, or discussing context blocks at all — otherwise closes the envelope
+early, and the rest of the digest reads as top-level instruction instead of untrusted data. The selected workspace root's `AGENTS.md` is
 an explicit exception: it is project policy, bounded to 20,000 characters, and delivered as trusted
 guidance to Claude and Antigravity because those runtimes do not both load it natively. Nested policies are discovered with native file tools; ClosedAI no longer scans the directory tree
 to claim which nested policies exist.
