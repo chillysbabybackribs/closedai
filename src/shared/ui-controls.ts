@@ -190,7 +190,26 @@ export const UI_CONTROLS = {
   'settings.reset': 'Reset appearance settings',
   'settings.decrease': 'Decrease an appearance value; item is chat-font-size, composer-font-size, or chat-zoom',
   'settings.range': 'Appearance slider; item is chat-font-size, composer-font-size, or chat-zoom',
-  'settings.increase': 'Increase an appearance value; item is chat-font-size, composer-font-size, or chat-zoom'
+  'settings.increase': 'Increase an appearance value; item is chat-font-size, composer-font-size, or chat-zoom',
+
+  'hive.setup-goal': 'Hive preview: describe the outcome for a new run',
+  'hive.setup-advanced': 'Hive preview: show or hide optional workspace and capacity settings',
+  'hive.setup-start': 'Hive preview: start preparing the described run',
+  'hive.run-open': 'Hive preview: open a recent or active run; item is the run id',
+  'hive.pulse-cancel': 'Hive preview: cancel run preparation and return to setup',
+  'hive.pulse-open': 'Hive preview: open the full workspace after preparation finishes',
+  'hive.run-new': 'Hive preview: leave the active run and return to setup',
+  'hive.run-pause': 'Hive preview: pause the active run',
+  'hive.attention-inbox': 'Hive preview: open the run attention inbox from the header',
+  'hive.attention-open': 'Hive preview: open the run attention inbox from its summary banner',
+  'hive.view': 'Hive preview: select Pulse, Workers, Signal, or Gates; item is the view name',
+  'hive.filter': 'Hive preview: filter visible run steps',
+  'hive.step-select': 'Hive preview: inspect one run step; item is the step id',
+  'hive.gate-approve': 'Hive preview: approve the selected release gate',
+  'hive.gate-inspect': 'Hive preview: inspect artifacts attached to the selected gate',
+  'hive.gate-reject': 'Hive preview: reject the selected release gate',
+  'hive.inspector-tab': 'Hive preview: show Step, Steer, or Artifacts in the inspector; item is the tab name',
+  'hive.steer': 'Hive preview: submit the run steering instruction'
 } as const
 
 export type UiControlId = keyof typeof UI_CONTROLS

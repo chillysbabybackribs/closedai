@@ -55,22 +55,22 @@ export function HiveRunView({ runTitle, onNewRun }: HiveRunViewProps): JSX.Eleme
   }, [])
 
   return (
-    <div className="hive-workstation hive-workstation--live" data-ui="hive.workstation">
+    <div className="hive-workstation hive-workstation--live" data-preview-surface="hive-run">
       <header className="hive-workstation__bar">
         <span className="hive-workstation__bar-brand">ClosedAI</span>
         <span>Hive</span>
         <span className="hive-workstation__bar-crumb">{runTitle}</span>
         <span className="hive-workstation__pill hive-workstation__pill--run">Live</span>
         <span className="hive-workstation__bar-spacer" />
-        <Button type="button" variant="ghost" size="sm" data-ui="hive.run.new" onClick={onNewRun}>New run</Button>
-        <Button type="button" variant="secondary" size="sm" data-ui="hive.run.pause">Pause</Button>
-        <Button type="button" size="sm" data-ui="hive.attention.inbox">Attention (3)</Button>
+        <Button type="button" variant="ghost" size="sm" data-ui="hive.run-new" onClick={onNewRun}>New run</Button>
+        <Button type="button" variant="secondary" size="sm" data-ui="hive.run-pause">Pause</Button>
+        <Button type="button" size="sm" data-ui="hive.attention-inbox">Attention (3)</Button>
       </header>
 
-      <div className="hive-run-attention" data-ui="hive.attention.banner">
+      <div className="hive-run-attention">
         <span className="hive-run-attention__dot" aria-hidden />
         <span><strong>3 items</strong> need you — approvals, gates, or blocked steps.</span>
-        <Button type="button" variant="outline" size="sm" className="ml-auto">Open inbox</Button>
+        <Button type="button" variant="outline" size="sm" className="ml-auto" data-ui="hive.attention-open">Open inbox</Button>
       </div>
 
       <aside className="hive-workstation__sidebar" aria-label="Runs">
@@ -81,6 +81,8 @@ export function HiveRunView({ runTitle, onNewRun }: HiveRunViewProps): JSX.Eleme
             type="button"
             className="hive-workstation__run"
             data-active={run.id === activeRunId}
+            data-ui="hive.run-open"
+            data-ui-key={run.id}
             onClick={() => setActiveRunId(run.id)}
           >
             <span className="hive-workstation__run-name">{run.name}</span>
@@ -111,18 +113,19 @@ export function HiveRunView({ runTitle, onNewRun }: HiveRunViewProps): JSX.Eleme
         <div className="hive-workstation__toolbar">
           <div className="hive-workstation__tabs" role="tablist">
             {([
-              ['pulse', 'Pulse', 'hive.view.pulse'],
-              ['workers', 'Workers', 'hive.view.workers'],
-              ['signal', 'Signal', 'hive.view.signal'],
-              ['gates', 'Gates', 'hive.view.gates']
-            ] as const).map(([id, label, ui]) => (
+              ['pulse', 'Pulse'],
+              ['workers', 'Workers'],
+              ['signal', 'Signal'],
+              ['gates', 'Gates']
+            ] as const).map(([id, label]) => (
               <button
                 key={id}
                 type="button"
                 role="tab"
                 className="hive-workstation__tab"
                 data-active={mainView === id}
-                data-ui={ui}
+                data-ui="hive.view"
+                data-ui-key={id}
                 aria-selected={mainView === id}
                 onClick={() => setMainView(id)}
               >
@@ -131,7 +134,7 @@ export function HiveRunView({ runTitle, onNewRun }: HiveRunViewProps): JSX.Eleme
               </button>
             ))}
           </div>
-          <Input className="h-8 max-w-[200px]" placeholder="Filter steps…" aria-label="Filter steps" />
+          <Input className="h-8 max-w-[200px]" placeholder="Filter steps…" aria-label="Filter steps" data-ui="hive.filter" />
         </div>
 
         {mainView === 'pulse' && (
@@ -151,6 +154,8 @@ export function HiveRunView({ runTitle, onNewRun }: HiveRunViewProps): JSX.Eleme
                           type="button"
                           className="hive-workstation__unit"
                           data-selected={step.id === selectedStepId}
+                          data-ui="hive.step-select"
+                          data-ui-key={step.id}
                           onClick={() => setSelectedStepId(step.id)}
                         >
                           <div className="hive-workstation__unit-title">{step.title}</div>
@@ -236,16 +241,16 @@ export function HiveRunView({ runTitle, onNewRun }: HiveRunViewProps): JSX.Eleme
                 <CardDescription>Release candidate passed checks — approve to merge scope.</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
-                <Button type="button" size="sm" data-ui="hive.gate.approve">Approve</Button>
-                <Button type="button" size="sm" variant="outline">Inspect artifacts</Button>
-                <Button type="button" size="sm" variant="destructive">Reject</Button>
+                <Button type="button" size="sm" data-ui="hive.gate-approve">Approve</Button>
+                <Button type="button" size="sm" variant="outline" data-ui="hive.gate-inspect">Inspect artifacts</Button>
+                <Button type="button" size="sm" variant="destructive" data-ui="hive.gate-reject">Reject</Button>
               </CardContent>
             </Card>
           </div>
         )}
       </main>
 
-      <aside className="hive-workstation__inspector" data-ui="hive.inspector">
+      <aside className="hive-workstation__inspector">
         <div className="hive-workstation__insp-hd">
           <span className="hive-workstation__insp-title">{selectedStep.title}</span>
         </div>
@@ -256,6 +261,8 @@ export function HiveRunView({ runTitle, onNewRun }: HiveRunViewProps): JSX.Eleme
               type="button"
               className="hive-workstation__insp-tab"
               data-active={detailView === tab}
+              data-ui="hive.inspector-tab"
+              data-ui-key={tab}
               onClick={() => setDetailView(tab)}
             >
               {tab === 'step' ? 'Step' : tab === 'steer' ? 'Steer' : 'Artifacts'}
@@ -299,7 +306,7 @@ export function HiveRunView({ runTitle, onNewRun }: HiveRunViewProps): JSX.Eleme
         <div className="hive-workstation__composer">
           <p className="text-xs text-muted-foreground mb-1.5">Steer run</p>
           <div className="hive-workstation__composer-box">Pause new steps until gate 38 clears…</div>
-          <div className="flex justify-end mt-2"><Button type="button" size="sm">Send</Button></div>
+          <div className="flex justify-end mt-2"><Button type="button" size="sm" data-ui="hive.steer">Send</Button></div>
         </div>
       </aside>
 

@@ -1,11 +1,12 @@
 import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../components/ui/button.js'
+import '../styles/hive/pulse.css'
 
 const MOMENTS = [
-  { afterMs: 0, label: 'Understanding the outcome' },
-  { afterMs: 1800, label: 'Shaping the run' },
-  { afterMs: 3600, label: 'Finding the right capacity' },
+  { afterMs: 0, label: 'Understanding the outcome', ready: false },
+  { afterMs: 1800, label: 'Shaping the run', ready: false },
+  { afterMs: 3600, label: 'Finding the right capacity', ready: false },
   { afterMs: 5400, label: 'Ready to begin', ready: true }
 ] as const
 
@@ -26,11 +27,11 @@ export function HivePulseView({ runTitle, onCancel, onReady }: HivePulseViewProp
 
   const current = MOMENTS[moment]!
   return (
-    <main className="hive-pulse" data-ui="hive.pulse">
+    <main className="hive-pulse" data-preview-surface="hive-pulse">
       <button
         type="button"
         className="hive-pulse__cancel"
-        data-ui="hive.pulse.cancel"
+        data-ui="hive.pulse-cancel"
         onClick={onCancel}
       >
         Cancel
@@ -51,7 +52,7 @@ export function HivePulseView({ runTitle, onCancel, onReady }: HivePulseViewProp
           ))}
         </div>
         {current.ready && (
-          <Button type="button" size="sm" data-ui="hive.pulse.open" onClick={onReady}>
+          <Button type="button" size="sm" data-ui="hive.pulse-open" onClick={onReady}>
             Open run
           </Button>
         )}

@@ -63,7 +63,7 @@ function Preview() {
     bridge.start()
     const ready = () => {
       if (scenario === 'hive') {
-        if (!errors.length && (document.querySelector('[data-ui="hive.setup"]') || document.querySelector('[data-ui="hive.workstation"]'))) {
+        if (!errors.length && document.querySelector('[data-preview-surface^="hive-"]')) {
           document.documentElement.dataset.previewState = 'ready'
           observer.disconnect()
         }

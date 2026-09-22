@@ -1,0 +1,145 @@
+.hive-pulse {
+  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 48%, rgb(138 180 248 / 7%), transparent 28rem),
+    var(--background);
+}
+
+.hive-pulse__cancel {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.hive-pulse__cancel:hover {
+  color: var(--foreground);
+}
+
+.hive-pulse__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(440px, calc(100vw - 48px));
+  text-align: center;
+}
+
+.hive-pulse__orb {
+  position: relative;
+  width: 156px;
+  height: 156px;
+  margin-bottom: 30px;
+}
+
+.hive-pulse__orbit,
+.hive-pulse__core {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.hive-pulse__orbit {
+  inset: 0;
+  border: 1px solid rgb(138 180 248 / 25%);
+  animation: hive-pulse-breathe 2.8s ease-in-out infinite;
+}
+
+.hive-pulse__orbit--inner {
+  inset: 22px;
+  border-color: rgb(138 180 248 / 45%);
+  animation-delay: -1.4s;
+}
+
+.hive-pulse__core {
+  inset: 55px;
+  background: var(--antigravity-blue, #8ab4f8);
+  box-shadow:
+    0 0 28px rgb(138 180 248 / 40%),
+    0 0 72px rgb(138 180 248 / 14%);
+  animation: hive-pulse-core 2.8s ease-in-out infinite;
+}
+
+.hive-pulse__orb[data-ready="true"] .hive-pulse__orbit {
+  border-color: rgb(101 185 138 / 50%);
+}
+
+.hive-pulse__orb[data-ready="true"] .hive-pulse__core {
+  background: #65b98a;
+  box-shadow:
+    0 0 28px rgb(101 185 138 / 38%),
+    0 0 72px rgb(101 185 138 / 14%);
+}
+
+.hive-pulse__copy {
+  min-height: 64px;
+}
+
+.hive-pulse__status {
+  margin: 0 0 8px;
+  color: var(--foreground);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.hive-pulse__title {
+  max-width: 420px;
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hive-pulse__progress {
+  display: flex;
+  gap: 6px;
+  margin: 18px 0 22px;
+}
+
+.hive-pulse__progress span {
+  width: 22px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background 300ms ease;
+}
+
+.hive-pulse__progress span[data-active="true"] {
+  background: var(--antigravity-blue, #8ab4f8);
+}
+
+.hive-pulse__footnote {
+  position: absolute;
+  bottom: 20px;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+@keyframes hive-pulse-breathe {
+  0%, 100% { opacity: 0.35; transform: scale(0.94); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes hive-pulse-core {
+  0%, 100% { opacity: 0.68; transform: scale(0.82); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hive-pulse__orbit,
+  .hive-pulse__core {
+    animation: none;
+  }
+}

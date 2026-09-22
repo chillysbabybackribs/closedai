@@ -17,7 +17,7 @@ export function HiveSetupView({ onStart, onOpenRun }: HiveSetupViewProps): JSX.E
   const [advancedOpen, setAdvancedOpen] = useState(false)
 
   return (
-    <div className="hive-setup" data-ui="hive.setup">
+    <div className="hive-setup" data-preview-surface="hive-setup">
       <header className="hive-setup__bar">
         <span className="hive-setup__brand">ClosedAI</span>
         <span className="text-muted-foreground">Hive</span>
@@ -39,14 +39,14 @@ export function HiveSetupView({ onStart, onOpenRun }: HiveSetupViewProps): JSX.E
                   value={goal}
                   onChange={(event) => setGoal(event.target.value)}
                   rows={4}
-                  data-ui="hive.setup.goal"
+                  data-ui="hive.setup-goal"
                 />
               </label>
               <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
                 <button
                   type="button"
                   className="hive-setup__advanced-toggle"
-                  data-ui="hive.setup.advanced"
+                  data-ui="hive.setup-advanced"
                   onClick={() => setAdvancedOpen((open) => !open)}
                 >
                   {advancedOpen ? 'Hide' : 'Fine-tune'} workspace &amp; limits
@@ -67,7 +67,7 @@ export function HiveSetupView({ onStart, onOpenRun }: HiveSetupViewProps): JSX.E
                 type="button"
                 size="lg"
                 className="w-full sm:w-auto"
-                data-ui="hive.setup.start"
+                data-ui="hive.setup-start"
                 onClick={() => onStart(goal.trim() || 'Untitled run')}
               >
                 Start run
@@ -86,6 +86,8 @@ export function HiveSetupView({ onStart, onOpenRun }: HiveSetupViewProps): JSX.E
                 <button
                   type="button"
                   className="hive-setup__run-row"
+                  data-ui="hive.run-open"
+                  data-ui-key={run.id}
                   onClick={() => onOpenRun(run.id)}
                 >
                   <span className="hive-setup__run-name">{run.name}</span>

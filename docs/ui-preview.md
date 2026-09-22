@@ -56,7 +56,7 @@ preserve the current document's state; navigation/reload resets it.
 | `split` | Two stacked chats beside the browser chrome and labeled native-surface placeholder |
 | `unavailable` | Empty chat whose provider executable is missing: first-run guidance, provider availability list, and the disabled composer |
 | `security` | Populated conversation beside the browser chrome with the opt-in security prompts pending: credential approval cards above the composer and web permission bars under the tab strip (both off by default in the real app) |
-| `hive` | Hive mock: calm **setup** screen first; **Start run** unveils live pulse, attention inbox, workers, gates, and provider load (fixture data) |
+| `hive` | Hive mock: calm setup, then a pulse-only simulated first-five-minutes phase; **Open run** unveils attention, workers, gates, and provider load (fixture data) |
 
 Sending a message streams a local canned response. Pausing, creating/selecting/renaming/closing
 sample chats, model effort selection, layout changes, and appearance settings exercise real
