@@ -1,5 +1,5 @@
 import type { KeyboardEvent, MouseEventHandler, ReactNode } from 'react'
-import { createContext, createRef, useContext, useLayoutEffect, useRef, useState } from 'react'
+import { createContext, createRef, useContext, useRef, useState } from 'react'
 
 import { cn } from '../../lib/utils.js'
 import { Textarea } from './textarea.js'
@@ -82,18 +82,8 @@ function PromptInput({
 
 export type PromptInputTextareaProps = React.ComponentProps<typeof Textarea> & { disableAutosize?: boolean }
 
-function PromptInputTextarea({ className, onKeyDown, disableAutosize = false, ...props }: PromptInputTextareaProps) {
-  const { value, setValue, maxHeight, onSubmit, disabled, textareaRef } = usePromptInput()
-
-  function adjustHeight(element: HTMLTextAreaElement | null): void {
-    if (!element || disableAutosize) return
-    element.style.height = 'auto'
-    element.style.height = typeof maxHeight === 'number'
-      ? `${Math.min(element.scrollHeight, maxHeight)}px`
-      : `min(${element.scrollHeight}px, ${maxHeight})`
-  }
-
-  useLayoutEffect(() => adjustHeight(textareaRef.current), [value, maxHeight, disableAutosize, textareaRef])
+function PromptInputTextarea({ className, onKeyDown, disableAutosize = false, style, ...props }: PromptInputTextareaProps) {
+  const { value, setValue, onSubmit, disabled, maxHeight, textareaRef } = usePromptInput()
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -110,11 +100,15 @@ function PromptInputTextarea({ className, onKeyDown, disableAutosize = false, ..
       // The layout effect below already sizes it on mount and whenever the value changes.
       ref={textareaRef}
       value={value}
-      onChange={(event) => {
-        adjustHeight(event.target)
-        setValue(event.target.value)
-      }}
+      onChange={(event) => setValue(event.target.value)}
       onKeyDown={handleKeyDown}
+      // Chromium sizes the box to its content; `rows` is the floor and `maxHeight` the ceiling.
+      // The classic JS autosize (set `height: auto`, read `scrollHeight`, write the result back)
+      // is not equivalent here: the intermediate collapse re-lays out the whole pane, so a
+      // transcript scroller sharing the column briefly grows, Chromium clamps its scroll offset
+      // to the smaller maximum, and restoring the height does not restore the offset. A reader
+      // pinned to the latest message walked away from the bottom one keystroke at a time.
+      style={{ fieldSizing: disableAutosize ? 'fixed' : 'content', maxHeight, ...style }}
       className={cn(
         'text-primary min-h-11 w-full resize-none border-none bg-transparent shadow-none outline-none focus-visible:ring-0',
         className
