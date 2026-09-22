@@ -73,11 +73,53 @@ export function anchoredVisibleStart(anchor: string | null, rows: readonly Trans
   return clampVisibleStart(index < 0 ? lastTurnRowStart(rows) : index, rows, maxTurns)
 }
 
+function normalizeAssistantText(text: string): string {
+  return text.trim().replace(/\s+/g, ' ')
+}
+
+/** Cursor often re-emits an assistant paragraph after a tool call; drop exact repeats in one turn. */
+export function dedupeAssistantSegments(items: ChatTranscriptItem[]): ChatTranscriptItem[] {
+  const out: ChatTranscriptItem[] = []
+  for (const item of items) {
+    if (item.type !== 'assistant') {
+      out.push(item)
+      continue
+    }
+    const turnId = item.turnId
+    let priorIndex = -1
+    for (let index = out.length - 1; index >= 0; index -= 1) {
+      const prior = out[index]!
+      if (prior.type === 'user') break
+      if (prior.type === 'assistant' && prior.turnId === turnId) {
+        priorIndex = index
+        break
+      }
+    }
+    if (priorIndex >= 0) {
+      const prior = out[priorIndex]!
+      if (prior.type === 'assistant') {
+        const previous = normalizeAssistantText(prior.text)
+        const next = normalizeAssistantText(item.text)
+        if (!next) continue
+        if (next === previous) continue
+        if (previous && next.startsWith(previous)) {
+          out[priorIndex] = item
+          continue
+        }
+        if (previous.startsWith(next)) continue
+      }
+    }
+    out.push(item)
+  }
+  return out
+}
+
 export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {
   const rows: TranscriptRow[] = []
+  const visibleItems = dedupeAssistantSegments(items)
   const groups = new Map<string, Extract<TranscriptRow, { kind: 'background' }>>()
   const linked = new Set(items.flatMap((item) => item.type === 'tool' && item.background?.linkedToolId ? [item.background.linkedToolId] : []))
-  for (const item of items) {
+  for (const item of visibleItems) {
     if (linked.has(item.id)) continue
     if (item.type === 'tool' && item.background) {
       const key = item.turnId ?? 'background'

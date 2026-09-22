@@ -10,6 +10,7 @@ import {
   commandTitle,
   lastTurnRowStart,
   mountedTurnWindowStart,
+  dedupeAssistantSegments,
   transcriptRows,
   transcriptRowKey
 } from './transcript-rows.ts'
@@ -62,6 +63,20 @@ const command = (
   status = 'completed'
 ): ChatTranscriptItem => ({
   type: 'command', id, turnId, command: commandText, cwd: '/', status, output: '', exitCode: status === 'completed' ? 0 : null
+})
+
+test('duplicate assistant text after a tool in the same turn is shown once', () => {
+  const question = 'For the fourth piece, what should this agent never do on its own?'
+  const items: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u1', turnId: 't1', text: 'boundaries' },
+    { type: 'assistant', id: 'a1', turnId: 't1', text: question, phase: null, streaming: false },
+    { type: 'tool', id: 'tool1', turnId: 't1', label: 'closedai_app · state', detail: 'state', status: 'completed' },
+    { type: 'assistant', id: 'a2', turnId: 't1', text: question, phase: null, streaming: false }
+  ]
+  const rows = transcriptRows(items)
+  const assistants = rows.flatMap((row) => row.kind === 'item' && row.item.type === 'assistant' ? [row.item.text] : [])
+  assert.deepEqual(assistants, [question])
+  assert.deepEqual(dedupeAssistantSegments(items).map((item) => item.id), ['u1', 'a1', 'tool1'])
 })
 
 test('consecutive tool activity in one turn becomes one counted row', () => {

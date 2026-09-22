@@ -123,6 +123,13 @@
   padding: 0;
 }
 
+.agent-workspace-pane .project-conversation-live .project-start-row {
+  flex: none;
+  width: min(calc(var(--chat-column-width, 720px) + 64px), 100%);
+  margin-inline: auto;
+  padding: 10px var(--chat-column-gutter, 18px) 6px;
+}
+
 .agent-workspace-pane .agent-workspace-scroll {
   flex: 1;
   min-height: 0;
@@ -236,8 +243,7 @@
   }
 
   .agent-workspace-pane .project-start-row {
-    flex-direction: column;
-    align-items: stretch;
+    align-items: center;
   }
 }
 

@@ -18,6 +18,9 @@ These are the sources AGENTS.md treats as authoritative for implemented behavior
 Root [README.md](../README.md) covers install/run and points here. [AGENTS.md](../AGENTS.md) is the
 engineering contract for contributors.
 
+Maintenance: [Docs and tool-telemetry auditor spec](agent-workspace/docs-telemetry-auditor-spec.md)
+defines inputs and report sections for report-only doc/tool drift checks (no automatic edits).
+
 ## Prompt and tool token ownership
 
 What models pay for every turn:
