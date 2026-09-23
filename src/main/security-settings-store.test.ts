@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -44,6 +44,36 @@ test('unknown values in a patch fall back to defaults rather than persisting gar
   assert.equal(store.get().importBrowserCookies, true)
   const next = await store.set({ webPermissions: 'sometimes' as never })
   assert.equal(next.webPermissions, 'allow')
+})
+
+test('failed saves leave active settings and notifications unchanged, and later writes still work', async () => {
+  const { store, file } = await storeWith('{"credentialsRequireApproval":true}')
+  const seen: boolean[] = []
+  store.onChange((settings) => seen.push(settings.credentialsRequireApproval))
+  await rename(file, `${file}.saved`)
+  await mkdir(file)
+  await assert.rejects(store.set({ credentialsRequireApproval: false }))
+  assert.equal(store.get().credentialsRequireApproval, true)
+  assert.deepEqual(seen, [])
+  await rm(file, { recursive: true })
+  await rename(`${file}.saved`, file)
+  await store.set({ webPermissions: 'ask' })
+  assert.equal((await SecuritySettingsStore.open(file)).get().credentialsRequireApproval, true)
+  assert.equal(store.get().webPermissions, 'ask')
+})
+
+test('overlapping patches commit in order and merge only committed settings', async () => {
+  const { store, file } = await storeWith(null)
+  const writes = [
+    store.set({ webPermissions: 'ask' }),
+    store.set({ credentialsRequireApproval: true }),
+    store.set({ webPermissions: 'allow' })
+  ]
+  assert.deepEqual(store.get(), DEFAULT_SECURITY_SETTINGS, 'pending writes are not active')
+  const results = await Promise.all(writes)
+  assert.equal(results[1].webPermissions, 'ask')
+  assert.deepEqual(store.get(), { ...DEFAULT_SECURITY_SETTINGS, credentialsRequireApproval: true })
+  assert.deepEqual((await SecuritySettingsStore.open(file)).get(), store.get())
 })
 
 test('an unreadable file is moved aside, not overwritten, and defaults are used', async () => {

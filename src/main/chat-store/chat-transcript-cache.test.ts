@@ -59,9 +59,34 @@ test('one conversation of long outputs cannot outgrow the size cap', () => {
   const heavy = messages(20, 'x'.repeat(40_000))
   const view = cachedViewOf('thread-1', snapshotWith(heavy))
   assert.ok(view.items.length < heavy.length)
-  assert.ok(JSON.stringify(view.items).length <= CACHED_TRANSCRIPT_BYTES + 40_100)
+  assert.ok(Buffer.byteLength(JSON.stringify(view.items), 'utf8') <= CACHED_TRANSCRIPT_BYTES)
   assert.equal(view.hasEarlier, true)
   assert.equal(view.items.at(-1)?.id, 'u19')
+})
+
+test('a single oversized latest item is omitted without changing the provider snapshot', async () => {
+  const snapshot = snapshotWith(messages(1, 'x'.repeat(2_000_000)))
+  const view = cachedViewOf('thread-1', snapshot)
+  assert.deepEqual(view.items, [])
+  assert.equal(view.hasEarlier, true)
+  assert.equal(snapshot.items.length, 1)
+  assert.deepEqual(normalizeCachedView(view), view)
+  const dir = await cacheDir()
+  const cache = new ChatTranscriptCache(dir)
+  cache.remember('pane-a', 'thread-1', snapshot)
+  await cache.flush()
+  assert.deepEqual((await new ChatTranscriptCache(dir).load('pane-a'))?.items, [])
+})
+
+test('Unicode and JSON encoding count toward the byte cap, including when loading an older cache', () => {
+  const items = messages(8, '🙂漢\n"'.repeat(8_000))
+  const view = cachedViewOf('thread-1', snapshotWith(items))
+  assert.ok(view.items.length > 0 && view.items.length < items.length)
+  assert.ok(Buffer.byteLength(JSON.stringify(view.items), 'utf8') <= CACHED_TRANSCRIPT_BYTES)
+  assert.equal(view.items.at(-1)?.id, 'u7')
+  const loaded = normalizeCachedView({ ...view, items, hasEarlier: false })
+  assert.deepEqual(loaded?.items, view.items)
+  assert.equal(loaded?.hasEarlier, true)
 })
 
 test('a remembered chat comes back on the next launch and a forgotten one does not', async () => {

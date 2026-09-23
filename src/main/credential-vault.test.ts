@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -180,4 +180,68 @@ test('an unreadable vault file is moved aside and never overwritten by the next 
     assert.match(entries[1]!, /^credential-vault\.json\.corrupt-/)
     assert.match(await readFile(join(filePath, '..', entries[1]!), 'utf8'), /keep-me/)
   })
+})
+
+test('failed vault mutations preserve committed data and do not poison later saves', async () => {
+  await withVault(fakeEncryption(), async (vault, filePath) => {
+    const saved = await vault.save({ serviceId: 'openai', label: 'Original', values: { apiKey: 'sk-original' } })
+    await rename(filePath, `${filePath}.saved`)
+    await mkdir(filePath)
+    for (const change of [
+      () => vault.setAgentAccess(saved.id, false),
+      () => vault.rename(saved.id, 'Changed'),
+      () => vault.remove(saved.id),
+      () => vault.save({ serviceId: 'openai', label: 'Failed', values: { apiKey: 'sk-failed' } })
+    ]) {
+      await assert.rejects(change())
+      assert.deepEqual(await vault.list(), [saved])
+      assert.equal(await vault.reveal(saved.id, 'apiKey'), 'sk-original')
+    }
+    await rm(filePath, { recursive: true })
+    await rename(`${filePath}.saved`, filePath)
+    await vault.rename(saved.id, 'Recovered')
+    assert.deepEqual(await new CredentialVault(filePath, fakeEncryption()).list(), await vault.list())
+    assert.equal((await vault.list())[0].agentAccess, true)
+  })
+})
+
+test('overlapping vault mutations retain every successful change in call order', async () => {
+  await withVault(fakeEncryption(), async (vault, filePath) => {
+    const saved = await vault.save({ serviceId: 'openai', label: 'Original', values: { apiKey: 'sk-1' } })
+    const results = await Promise.all([
+      vault.rename(saved.id, 'First'),
+      vault.setAgentAccess(saved.id, false),
+      vault.rename(saved.id, 'Last'),
+      vault.save({ serviceId: 'openai', label: 'Second', values: { apiKey: 'sk-2' } }),
+      vault.save({ serviceId: 'openai', label: 'Third', values: { apiKey: 'sk-3' } })
+    ])
+    assert.equal(results[1].label, 'First')
+    assert.equal(results[2].agentAccess, false)
+    assert.equal((await vault.list()).length, 3)
+    assert.deepEqual(await new CredentialVault(filePath, fakeEncryption()).list(), await vault.list())
+  })
+})
+
+test('structurally invalid JSON is preserved in full before a replacement vault is saved', async () => {
+  const record = {
+    id: 'keep-me', serviceId: 'openai', label: 'Saved', createdAt: 1, updatedAt: 1,
+    fields: [{ id: 'apiKey', label: 'API key', kind: 'secret', value: 'recover-me', encrypted: false }]
+  }
+  for (const malformed of [
+    null,
+    { version: 1, credentials: {} },
+    { version: 2, credentials: [record] },
+    { version: 1, credentials: [record, null] },
+    { version: 1, credentials: [{ ...record, fields: [{ ...record.fields[0], value: null }] }] }
+  ]) {
+    await withVault(fakeEncryption(), async (vault, filePath) => {
+      const original = JSON.stringify(malformed)
+      await writeFile(filePath, original)
+      assert.deepEqual(await vault.list(), [])
+      await vault.save({ serviceId: 'openai', label: 'New', values: { apiKey: 'sk-new' } })
+      const backups = (await readdir(join(filePath, '..'))).filter((name) => name.includes('.corrupt-'))
+      assert.equal(backups.length, 1)
+      assert.equal(await readFile(join(filePath, '..', backups[0]), 'utf8'), original)
+    })
+  }
 })

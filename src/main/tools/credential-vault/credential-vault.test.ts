@@ -144,3 +144,28 @@ test('with approval off, read never consults the broker', async () => {
   assert.match(textOf(result), /super-secret/)
   assert.equal(asked, 0)
 })
+
+test('a pending approval uses the current entry access and existence before revealing values', async () => {
+  for (const change of ['disable', 'remove']) {
+    const list = structuredClone(credentials)
+    let reveals = 0
+    const broker = new CredentialApprovalBroker(10_000)
+    const host: CredentialVaultHost = {
+      list: async () => list,
+      reveal: async () => { reveals += 1; return 'super-secret' }
+    }
+    const registry = new ToolRegistry([credentialVaultTools(() => host, () => ({
+      requireApproval: () => true,
+      approve: (request, signal) => broker.ask(request, signal)
+    }))])
+    const call = registry.call({ namespace: 'credential_vault', tool: 'read', arguments: readArgs }, context)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    if (change === 'disable') list[0].agentAccess = false
+    else list.splice(0)
+    broker.resolve(broker.pending()[0]!.id, 'allow')
+    const result = await call
+    assert.equal(result.isError, true)
+    assert.match(textOf(result), change === 'disable' ? /has not allowed agents/ : /Credential not found/)
+    assert.equal(reveals, 0)
+  }
+})
