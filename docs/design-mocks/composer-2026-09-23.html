@@ -31,7 +31,7 @@
   }
   h1 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
   .lede { color: var(--muted-foreground); margin: 0 0 22px; max-width: 760px; line-height: 1.45; }
-  .frames { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 22px; align-items: start; }
+  .frames { display: grid; grid-template-columns: repeat(auto-fit, minmax(560px, 1fr)); gap: 22px; align-items: start; }
   .frame { min-width: 0; }
   .frame h2 { font-size: 12px; font-weight: 600; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
   .frame p.note { color: var(--muted-foreground); margin: 8px 0 0; line-height: 1.45; }
@@ -83,7 +83,7 @@
   .folder svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
 
   /* The four pills under the card. */
-  .pills { max-width: 784px; margin: 10px auto 0; display: flex; justify-content: center; gap: 8px; flex-wrap: nowrap; overflow: hidden; }
+  .pills { max-width: 784px; margin: 10px auto 0; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
   .pill {
     display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 13px 0 11px; border-radius: 999px;
     border: 1px solid var(--hairline-strong); background: var(--surface-control); color: var(--muted-foreground);
@@ -95,13 +95,13 @@
   .pill.value { color: var(--foreground); }
   .pill.value .k { color: var(--muted-foreground); }
   .pill.placeholder { border-style: dashed; color: color-mix(in srgb, var(--muted-foreground) 70%, transparent); }
-  .pill .label { overflow: hidden; text-overflow: ellipsis; }
-  .pane.narrow .pill .label { max-width: 82px; }
-  .pane.narrow .pill.placeholder .label { max-width: 46px; }
+  .pill .label { white-space: nowrap; }
+  .pane.narrow .pills { flex-wrap: nowrap; }
+  
 
   /* Dropdown panels drawn open (state C). */
   .menu {
-    position: absolute; bottom: 62px; width: 280px; background: var(--surface-raised); border: 1px solid var(--hairline-strong);
+    position: absolute; bottom: 62px; width: 250px; background: var(--surface-raised); border: 1px solid var(--hairline-strong);
     border-radius: 10px; box-shadow: 0 8px 24px rgb(0 0 0 / 34%); padding: 6px; z-index: 3;
   }
   .menu h4 { margin: 6px 8px 4px; font-size: 11px; font-weight: 600; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .04em; }
@@ -198,7 +198,7 @@
           <div class="seg"><span>low</span><span>medium</span><span class="on">high</span><span>max</span></div>
           <div class="foot"><span>Context <b>14%</b> of 1M</span><span>Plan <b>62%</b> · resets 4h</span></div>
         </div>
-        <div class="menu" style="left: 236px;">
+        <div class="menu" style="left: 282px;">
           <h4>Agents</h4>
           <div class="row">Reviewer<span class="sub">Claude · high</span></div>
           <div class="row">Researcher<span class="sub">Codex · deep</span></div>
@@ -252,7 +252,7 @@
         </div>
       </div>
     </div>
-    <p class="note">Pause replaces send; model pill is disabled while running. Under ~420px the placeholder pills drop their labels and the model label truncates, so four still fit in one row.</p>
+    <p class="note">Pause replaces send; model pill is disabled while running. Under ~420px the placeholder pills drop their labels so four still fit one row; wider panes wrap to a second row rather than clip.</p>
   </div>
 
 </div>
