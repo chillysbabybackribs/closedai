@@ -23,7 +23,9 @@
     .card button { display: block; width: 100%; padding: 0; border: 0; background: var(--box); cursor: zoom-in; }
     .card img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; }
     figcaption { display: flex; gap: 12px; align-items: baseline; padding: 10px 14px 12px; border-top: 1px solid #383a39; font-size: 13px; }
-    .states { display: grid; grid-template-columns: repeat(auto-fit, minmax(520px, 1fr)); gap: 18px; }
+    .states { display: grid; grid-template-columns: repeat(auto-fit, minmax(540px, 1fr)); gap: 18px; }
+    .state.wide { grid-column: span 2; }
+    @media (max-width: 1200px) { .state.wide { grid-column: auto; } .builder { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .state { border: 1px solid #2c2e2d; border-radius: 14px; padding: 22px 22px 24px; background: #141515; }
     .state > .cap { margin: 0 0 14px; font-size: 12px; color: var(--fg-3); }
     .state > .cap b { color: var(--fg-2); font-weight: 600; }
@@ -200,7 +202,7 @@
           <div class="bar"><span class="ib"><svg class="i"><use href="#plus"/></svg></span><span class="vr"></span><span class="tb"><svg class="i"><use href="#tools"/></svg>Tools</span><span class="sp"></span><span class="model"><span class="mark"></span>GPT-6-Sol <svg class="i s"><use href="#chev"/></svg></span><span class="run"><svg class="i s"><use href="#send"/></svg>Run</span></div>
         </div>
       </div>
-      <div class="state"><p class="cap"><b>Builder open</b> · four columns, everything editable, save as a named agent</p>
+      <div class="state wide"><p class="cap"><b>Builder open</b> · four columns, everything editable, save as a named agent</p>
         <div class="cx">
           <div class="builder">
             <div class="col"><h4>Brain</h4>
