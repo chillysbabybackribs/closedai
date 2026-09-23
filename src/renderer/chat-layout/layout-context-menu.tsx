@@ -75,7 +75,8 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
     {hasCloseActions && hasFollowing && <ContextMenu.Separator className="titlebar-menu-separator" />}
     {coordinatorRole !== 'worker' && onEnableCoordinator && coordinatorRole !== 'coordinator' && (
       <LayoutMenuRow data-ui="layout.coordinator-enable" data-ui-key={activeId} label="Coordinator…"
-        hint="Open two worker panes linked to this chat"
+        hint="Dedicated Coordinator + Worker beside browser"
+        shortcut="Ctrl+Shift+C"
         icon={<Network size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onEnableCoordinator} />
     )}
     {coordinatorRole === 'coordinator' && onDisableCoordinator && (

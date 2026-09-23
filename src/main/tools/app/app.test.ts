@@ -51,6 +51,9 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
     closeChat: async (paneId) => { calls.push(['closeChat', paneId]) },
     selectModel: async (paneId, modelId, effort) => { calls.push(['selectModel', paneId, modelId, effort]) },
     browserTab: async (request) => { calls.push(['browserTab', request]); return { tabCount: 1 } },
+    openCoordinatorWorkspace: async () => ({
+      groupId: 'g1', coordinatorPaneId: 'coord', workerPaneId: 'worker'
+    }),
     ...overrides.app
   }
   const page = {

@@ -77,6 +77,10 @@ export class AppCommandAccess implements AppCommandHost {
     return { paneId: await this.chat().newPeer(callerPaneId ?? undefined) }
   }
 
+  openCoordinatorWorkspace(): Promise<import('../shared/coordinator.js').OpenCoordinatorWorkspaceResult> {
+    return this.chat().openCoordinatorWorkspace()
+  }
+
   queueProjectSwitch(request: ProjectSwitchRequest, signal: AbortSignal): Promise<ProjectSwitchStatus> {
     return this.chat().projectSwitch.request(request, signal)
   }

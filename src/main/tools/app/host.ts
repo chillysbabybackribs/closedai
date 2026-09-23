@@ -138,6 +138,7 @@ export type AppCommandHost = {
   closeChat(paneId: string): Promise<void>
   selectModel(paneId: string, modelId: string, effort: string | undefined): Promise<void>
   browserTab(request: AppBrowserTabRequest, paneId?: string | null): Promise<unknown>
+  openCoordinatorWorkspace(): Promise<import('../../../shared/coordinator.js').OpenCoordinatorWorkspaceResult>
 }
 
 /** The slice of the chat workspace the command host needs; ChatPeerManager satisfies it. */
@@ -150,6 +151,7 @@ export type AppChatWorkspace = {
   snapshot(): ChatWorkspaceSnapshot
   paneSnapshot(paneId: string): ChatSnapshot | null
   newPeer(callerPaneId?: string): Promise<string>
+  openCoordinatorWorkspace(): Promise<import('../../../shared/coordinator.js').OpenCoordinatorWorkspaceResult>
   restoreCoordinatorFocus(callerPaneId: string, workerPaneId: string): Promise<void>
   send(paneId: string, text: string, attachments: ChatAttachment[]): Promise<void>
   interrupt(paneId: string): Promise<void>

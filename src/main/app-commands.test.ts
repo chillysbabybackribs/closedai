@@ -60,6 +60,9 @@ class FakeWorkspace extends EventEmitter implements AppChatWorkspace {
     this.selected = 'pane-3'
     return 'pane-3'
   }
+  async openCoordinatorWorkspace() {
+    return { groupId: 'g1', coordinatorPaneId: 'coord', workerPaneId: 'worker' }
+  }
   async restoreCoordinatorFocus(callerPaneId: string, workerPaneId: string): Promise<void> {
     this.calls.push(['restoreCoordinatorFocus', callerPaneId, workerPaneId])
     this.selected = callerPaneId

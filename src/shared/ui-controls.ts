@@ -20,6 +20,7 @@ export const UI_CONTROLS = {
   'window.close': 'Close the window',
 
   'layout.browser-toggle': 'Globe button beside Search chats in the top title bar: show or hide the shared browser in its saved position; no item required',
+  'layout.coordinator-open': 'Network button beside Search chats: open dedicated Coordinator and Worker chats stacked beside the browser without converting the current chat; Ctrl+Shift+C; no item required',
   'layout.browser-dock': 'Drop a chat tab or pane on the left or right half to place it beside the browser',
   'layout.browser-drag': 'Drag the shared browser by its tab-strip grip to a chat edge to stack or dock it',
   'layout.workspace-dock': 'Browser-drag drop target at the workspace edge for a full-height column; item is left or right',

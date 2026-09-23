@@ -51,6 +51,19 @@ export function appCommandActions(
       }
     },
     {
+      action: 'open_coordinator',
+      description:
+        'Open the coordinator workspace: dedicated Coordinator and Worker chats stacked beside the browser. Clicks the title-bar control so layout updates; the calling chat is unchanged.',
+      inputSchema: objectSchema({}),
+      run: async (_input, context) => {
+        const automation = ui()
+        if (!automation) throw new Error('Coordinator workspace needs the renderer UI; start the app and retry')
+        await automation.click({ control: 'layout.coordinator-open' })
+        const host = requireHost(app, 'app commands')
+        return jsonResult(host.state(['workspace'], undefined, context.paneId ?? null))
+      }
+    },
+    {
       action: 'send_message',
       description:
         'Submit a message to another pane. await_turn (default true) waits for completion; read state.chat for the reply. Refused for the calling pane.',

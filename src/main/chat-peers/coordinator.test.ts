@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { ChatStore } from '../chat-store/chat-store.js'
-import { normalizeCoordinatorGroup, pickCoordinatorWorker } from './coordinator.js'
+import { findCoordinatorWorkspace, normalizeCoordinatorGroup, pickCoordinatorWorker } from './coordinator.js'
 
 test('normalizeCoordinatorGroup accepts coordinator and worker shapes', () => {
   assert.deepEqual(normalizeCoordinatorGroup({ id: 'g1', role: 'coordinator', slot: null }), {
@@ -38,4 +38,26 @@ test('pickCoordinatorWorker prefers an idle worker slot', () => {
     }
   ])
   assert.equal(pickCoordinatorWorker(store, 'coord', (id) => id === 'wa'), 'wb')
+})
+
+test('findCoordinatorWorkspace returns coordinator and first worker', () => {
+  const store = ChatStore.inMemory([
+    {
+      id: 'coord', cwd: '/tmp', projectPath: null, provider: 'cursor', modelId: 'cursor:x', reasoningEffort: null,
+      codexThreadId: null, claudeSessionId: null, antigravityConversationId: null, cursorSessionId: null,
+      threadId: null, title: 'Coordinator', preview: '', createdAt: 1, updatedAt: 1, lastTurnEndedAt: null, messageSentAt: null,
+      archived: false, pinnedAt: null, continuation: null, checkpoint: null, parentChatId: null,
+      coordinatorGroup: { id: 'g', role: 'coordinator', slot: null }, sessionRotations: []
+    },
+    {
+      id: 'worker', cwd: '/tmp', projectPath: null, provider: 'cursor', modelId: 'cursor:x', reasoningEffort: null,
+      codexThreadId: null, claudeSessionId: null, antigravityConversationId: null, cursorSessionId: null,
+      threadId: null, title: 'Worker', preview: '', createdAt: 1, updatedAt: 1, lastTurnEndedAt: null, messageSentAt: null,
+      archived: false, pinnedAt: null, continuation: null, checkpoint: null, parentChatId: 'coord',
+      coordinatorGroup: { id: 'g', role: 'worker', slot: 'a' }, sessionRotations: []
+    }
+  ])
+  assert.deepEqual(findCoordinatorWorkspace(store), {
+    groupId: 'g', coordinatorPaneId: 'coord', workerPaneId: 'worker'
+  })
 })
