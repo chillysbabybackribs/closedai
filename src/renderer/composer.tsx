@@ -81,7 +81,9 @@ export function Composer({
   // One alert row for whatever the composer's own controls could not do: attach, pause, pick.
   const [composerError, setComposerError] = useState('')
   const [agentsOpen, setAgentsOpen] = useState(false)
+  const [agentPrompt, setAgentPrompt] = useState(DEFAULT_AGENT_PROMPT)
   const [startingAgent, setStartingAgent] = useState(false)
+  const agentPromptRef = useRef<HTMLTextAreaElement>(null)
   const providerLabel = CHAT_PROVIDER_LABELS[provider]
   const [sending, setSending] = useState(false)
   // Blank while a turn runs: the pause button is the affordance then, and a hint would compete.
@@ -95,19 +97,30 @@ export function Composer({
   const focusAfterSendRef = useRef(false)
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !sending && enabled && !running
 
-  async function startRepairAgent(): Promise<void> {
+  async function startAgentFromBuilder(): Promise<void> {
     if (!onStartAgent || startingAgent) return
+    const prompt = agentPrompt.trim()
+    if (!prompt) return
     setStartingAgent(true)
     setComposerError('')
     try {
-      await onStartAgent(CONTINUOUS_REPAIR_AGENT_PROMPT)
+      await onStartAgent(prompt)
       setAgentsOpen(false)
     } catch (error) {
-      setComposerError(errorMessage(error, 'Could not start the repair agent'))
+      setComposerError(errorMessage(error, 'Could not start the agent'))
     } finally {
       setStartingAgent(false)
     }
   }
+
+  useEffect(() => {
+    if (!agentsOpen) return
+    const frame = window.requestAnimationFrame(() => {
+      agentPromptRef.current?.focus()
+      agentPromptRef.current?.setSelectionRange(0, 0)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [agentsOpen])
 
   useEffect(() => {
     if (sending || !focusAfterSendRef.current) return
@@ -261,7 +274,7 @@ export function Composer({
         <div className="composer-footer">
           {onStartAgent && <div className="composer-footer-agent">
             <Button type="button" variant="ghost" className="composer-agent-trigger" data-ui="composer.agents"
-              aria-label="Open agents" disabled={!enabled || startingAgent} onClick={() => setAgentsOpen(true)}>
+              aria-label="Start agent" disabled={!enabled || startingAgent} onClick={() => setAgentsOpen(true)}>
               <span>Agent</span>
             </Button>
           </div>}
@@ -309,14 +322,27 @@ export function Composer({
       </div>
       <Dialog open={agentsOpen} onOpenChange={setAgentsOpen}>
         <DialogContent className="composer-agent-dialog">
-          <DialogTitle>Agents</DialogTitle>
-          <DialogDescription>Start an agent in its own chat. You can pause it whenever you want to test.</DialogDescription>
-          <button type="button" className="composer-agent-card" data-ui="composer.agent-start"
-            disabled={startingAgent} onClick={() => void startRepairAgent()}>
-            <span className="composer-agent-card-copy"><strong>Continuous app repair</strong>
-              <span>Check application workflows, fix failures, and keep iterating.</span></span>
-            <span className="composer-agent-card-action">{startingAgent ? 'Starting…' : 'Start'}</span>
-          </button>
+          <DialogTitle>Start agent</DialogTitle>
+          <DialogDescription>
+            Opens a new chat with your instructions, using this pane&apos;s model. Pause anytime to test manually.
+          </DialogDescription>
+          <textarea
+            ref={agentPromptRef}
+            className="composer-agent-prompt"
+            data-ui="composer.agent-prompt"
+            value={agentPrompt}
+            onChange={(event) => setAgentPrompt(event.target.value)}
+            disabled={startingAgent}
+            spellCheck={false}
+            aria-label="Agent instructions"
+          />
+          <div className="composer-agent-dialog-actions">
+            <Button type="button" data-ui="composer.agent-start"
+              disabled={startingAgent || agentPrompt.trim().length === 0}
+              onClick={() => void startAgentFromBuilder()}>
+              {startingAgent ? 'Starting…' : 'Start'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
       {composerError && <div className="prompt-attachment-error" role="alert">{composerError}</div>}
@@ -324,7 +350,7 @@ export function Composer({
   )
 }
 
-const CONTINUOUS_REPAIR_AGENT_PROMPT = `Act as the continuously running ClosedAI application repair agent. Keep working through repeated cycles until I manually pause you. Do not stop because a failure is ambiguous, a fix fails verification, or the same issue recurs. Report findings and keep going; I am monitoring and will pause you when I want to test manually.
+const DEFAULT_AGENT_PROMPT = `Act as the continuously running ClosedAI application repair agent. Keep working through repeated cycles until I manually pause you. Do not stop because a failure is ambiguous, a fix fails verification, or the same issue recurs. Report findings and keep going; I am monitoring and will pause you when I want to test manually.
 
 In each cycle, inspect the current application and repository state, choose a concrete user-facing workflow, exercise it, and use observed failures as evidence for a focused fix. After editing, run the relevant focused verification, inspect the result, and continue to the next workflow. Preserve unrelated user changes, avoid speculative edits, and explain what you changed and what you observed as you go. If a test or verification fails, record the failure and continue investigating or move to another useful check rather than ending the task.
 

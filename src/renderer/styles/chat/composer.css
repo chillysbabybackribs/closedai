@@ -153,26 +153,34 @@
 
 .composer-agent-dialog [data-slot='dialog-description'] { margin-top: -5px; }
 
-.composer-agent-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.composer-agent-prompt {
+  display: block;
   width: 100%;
-  padding: 14px;
+  min-height: 160px;
+  max-height: min(50vh, 360px);
+  padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
   border-radius: 10px;
   background: color-mix(in srgb, var(--foreground) 3%, transparent);
   color: var(--foreground);
-  text-align: left;
-  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+  resize: vertical;
 }
 
-.composer-agent-card:not(:disabled):hover { background: color-mix(in srgb, var(--foreground) 7%, transparent); }
-.composer-agent-card:disabled { opacity: 0.65; cursor: wait; }
-.composer-agent-card-copy { display: grid; flex: 1; gap: 3px; min-width: 0; }
-.composer-agent-card-copy strong { font-size: 13px; font-weight: 600; }
-.composer-agent-card-copy > span { color: var(--muted-foreground); font-size: 11px; line-height: 1.4; }
-.composer-agent-card-action { color: var(--primary); font-size: 12px; font-weight: 600; }
+.composer-agent-prompt:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.composer-agent-prompt:disabled { opacity: 0.65; cursor: wait; }
+
+.composer-agent-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 
 .composer-footer-attach .composer-tool {
   width: 30px;

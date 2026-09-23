@@ -362,10 +362,11 @@ available width for the title; the focused tile has the accent tab indicator.
 The composer is a single stack: a draft card (text and the action button on the right) and a
 footer bar beneath it with attach (`composer.upload`) on the left, the model setup trigger
 (`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
-on the right naming the working folder. The **Agent** button (`composer.agents`) opens an agent
-picker. **Continuous app repair** starts in a new chat (`composer.agent-start`), where it repeatedly
-checks workflows and fixes observed failures. It starts as a provider chat turn in a new chat and
-uses the existing Pause and Resume controls; the provider determines when a turn finishes. There is no collapsed mode;
+on the right naming the working folder. The **Agent** button (`composer.agents`) opens a small
+builder with an instructions field (`composer.agent-prompt`) prefilled with a repair-agent template;
+**Start** (`composer.agent-start`) docks a new chat and sends that text as the first turn, using
+the launching pane's model and folder. Pause and Resume control the agent chat; the provider
+determines when a turn finishes. There is no collapsed mode;
 pending attachment chips sit above the line inside the card. The setup trigger opens a
 fixed-height panel (520px, or less when the pane is shorter), top to bottom: a Context line
 (`composer.context`; used/window tokens, the first plan window, a meter) that expands to the
