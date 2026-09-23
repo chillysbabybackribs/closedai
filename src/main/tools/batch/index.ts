@@ -59,13 +59,11 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
       defineTool({
         name: 'run',
         description:
-          'Run up to ' + maxCalls + ' tool calls in one request. Each entry is `namespace.tool` with direct-call arguments; ' +
-          'results are numbered [1], [2], …. Default sequential: failure skips the rest and unwinds armed browser state ' +
-          '(pass `continue_on_error: true` to continue). `parallel` true for independent work; same-target work still serializes. ' +
-          'Only ClosedAI tools routable — call native file/shell tools directly. Real-input fallbacks need inspection and ' +
-          'verification in the same sequential batch. `include_result` false omits successful intermediate bodies; failures ' +
-          'always come back, and the summary names every failed call. A failed call makes the batch an error, except under ' +
-          '`continue_on_error`, where the batch stays ok if the plan ran through. In exec, await tools directly.',
+          'Batch ClosedAI tool calls; model-native shell/file/web tools are not routable here. Do not nest batches. ' +
+          'Calls run sequentially by default; use parallel only for independent work. By default, failures skip later ' +
+          'sequential calls and release armed browser state. Real-input actions require a later verification call in the ' +
+          'same sequential batch. Each call can set include_result:false to omit its successful output. Results are numbered in call order. ' +
+          'Await in exec.',
         inputSchema: {
           type: 'object',
           properties: {
