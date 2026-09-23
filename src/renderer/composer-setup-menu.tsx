@@ -7,9 +7,13 @@ import { PROVIDER_LABELS } from './chat-state.js'
 import { ModelPicker } from './composer-model-picker.js'
 import { ContextSection, EffortSection } from './composer-setup-sections.js'
 import { errorMessage } from './error-message.js'
-import { modelTriggerLabel, parseRecentModels, pushRecentModel, recentModels } from './model-menu-state.js'
-
-const RECENT_MODELS_KEY = 'closedai.composer.recentModels'
+import {
+  loadRecentModelIds,
+  RECENT_MODELS_CHANGED,
+  rememberRecentModel,
+  modelTriggerLabel,
+  recentModels
+} from './model-menu-state.js'
 
 /** Opens the panel from outside its trigger, e.g. the empty pane's "Choose model" hint. */
 export type ComposerSetupHandle = { open: () => void }
@@ -84,6 +88,7 @@ export function ComposerSetupMenu({
     // user can start typing without a second click.
     focusInputOnCloseRef.current = true
     setOpen(false)
+    if (value !== selectedModel) reloadRecent(rememberRecentModel(value))
     void onModelChange(value).catch((error: unknown) => onError(errorMessage(error, 'Could not change the model')))
   }
   const chooseEffort = (value: string): void => {
@@ -167,26 +172,19 @@ export function ComposerSetupMenu({
  * The models this window has used, most recent last, kept in this window rather than settings.
  * Every model the pane lands on counts — picked here, restored with the pane, or set by a tool.
  */
-function useRecentModels(selectedModel: string | null): [string[], () => void] {
-  const [recent, setRecent] = useState<string[]>(readRecentModels)
+function useRecentModels(selectedModel: string | null): [string[], (next?: string[]) => void] {
+  const [recent, setRecent] = useState(() => loadRecentModelIds(window.localStorage))
   useEffect(() => {
     if (!selectedModel) return
-    const next = pushRecentModel(readRecentModels(), selectedModel)
-    try {
-      window.localStorage.setItem(RECENT_MODELS_KEY, JSON.stringify(next))
-    } catch {
-      // Suppress storage failures: Recent is a convenience, not state the pane depends on.
-    }
-    setRecent(next)
+    setRecent(rememberRecentModel(selectedModel))
   }, [selectedModel])
-  const reload = useCallback(() => setRecent(readRecentModels()), [])
+  useEffect(() => {
+    const sync = (): void => setRecent(loadRecentModelIds(window.localStorage))
+    window.addEventListener(RECENT_MODELS_CHANGED, sync)
+    return () => window.removeEventListener(RECENT_MODELS_CHANGED, sync)
+  }, [])
+  const reload = useCallback((next?: string[]) => {
+    setRecent(next ?? loadRecentModelIds(window.localStorage))
+  }, [])
   return [recent, reload]
-}
-
-function readRecentModels(): string[] {
-  try {
-    return parseRecentModels(window.localStorage.getItem(RECENT_MODELS_KEY))
-  } catch {
-    return []
-  }
 }

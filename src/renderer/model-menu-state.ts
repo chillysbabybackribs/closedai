@@ -95,6 +95,39 @@ export const RECENT_MODELS_KEPT = 8
 /** How many of them the picker's Recent block shows. */
 export const RECENT_MODELS_SHOWN = 3
 
+export const RECENT_MODELS_STORAGE_KEY = 'closedai.composer.recentModels'
+/** Fired on `window` after `rememberRecentModel` writes so every pane's picker stays in sync. */
+export const RECENT_MODELS_CHANGED = 'closedai:composer-recent-models'
+
+export type RecentModelsStorage = Pick<Storage, 'getItem' | 'setItem'>
+
+/** The stored id list for this window, oldest first. */
+export function loadRecentModelIds(storage: RecentModelsStorage): string[] {
+  try {
+    return parseRecentModels(storage.getItem(RECENT_MODELS_STORAGE_KEY))
+  } catch {
+    return []
+  }
+}
+
+/** Record one model use and persist it; returns the updated id list. */
+export function rememberRecentModel(
+  modelId: string,
+  storage: RecentModelsStorage = window.localStorage,
+  notify = true
+): string[] {
+  const next = pushRecentModel(loadRecentModelIds(storage), modelId)
+  try {
+    storage.setItem(RECENT_MODELS_STORAGE_KEY, JSON.stringify(next))
+  } catch {
+    // Recent is a convenience, not state the pane depends on.
+  }
+  if (notify && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(RECENT_MODELS_CHANGED))
+  }
+  return next
+}
+
 /** Stored recents, oldest first; anything that is not a model id string is dropped. */
 export function parseRecentModels(raw: string | null): string[] {
   if (!raw) return []

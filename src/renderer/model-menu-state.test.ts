@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatModel } from '../shared/chat.js'
 import {
-  effortLabel, effortMenuDetail, modelContextLabel, modelMenuDetail, modelGroups, modelTriggerLabel, parseRecentModels, pushRecentModel,
-  RECENT_MODELS_KEPT, recentModels
+  effortLabel, effortMenuDetail, loadRecentModelIds, modelContextLabel, modelMenuDetail, modelGroups, modelTriggerLabel, parseRecentModels, pushRecentModel,
+  RECENT_MODELS_KEPT, RECENT_MODELS_STORAGE_KEY, rememberRecentModel, recentModels
 } from './model-menu-state.js'
 
 function model(provider: ChatModel['provider'], id: string, displayName: string, efforts: string[] = [], isDefault = false, contextWindow?: number): ChatModel {
@@ -100,4 +100,17 @@ test('stored recents survive a round trip and ignore junk', () => {
   assert.deepEqual(parseRecentModels('not json'), [])
   assert.deepEqual(parseRecentModels('{"sol":3}'), [])
   assert.deepEqual(parseRecentModels('["sol", 4, "", "terra"]'), ['sol', 'terra'])
+})
+
+test('rememberRecentModel persists through storage and reloads in order', () => {
+  const data = new Map<string, string>()
+  const storage = {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => { data.set(key, value) }
+  }
+  assert.deepEqual(rememberRecentModel('sol', storage, false), ['sol'])
+  assert.deepEqual(rememberRecentModel('terra', storage, false), ['sol', 'terra'])
+  assert.deepEqual(rememberRecentModel('sol', storage, false), ['terra', 'sol'])
+  assert.equal(data.get(RECENT_MODELS_STORAGE_KEY), '["terra","sol"]')
+  assert.deepEqual(loadRecentModelIds(storage), ['terra', 'sol'])
 })
