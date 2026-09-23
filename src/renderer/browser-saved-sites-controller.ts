@@ -38,13 +38,11 @@ export function useBrowserSavedSitesController(): BrowserSavedSitesController {
   }, [sites])
 
   const star = useCallback(async (tab: SaveableTab): Promise<void> => {
-    if (isOpen) {
-      setIsOpen(false)
-      return
-    }
-    if (!savedFor(tab.url)) await window.closedai.savedSites.save({ url: tab.url, title: tab.title, favicon: tab.favicon })
-    setIsOpen(true)
-  }, [isOpen, savedFor])
+    if (!savedFor(tab.url)) {
+      await window.closedai.savedSites.save({ url: tab.url, title: tab.title, favicon: tab.favicon })
+      setIsOpen(true)
+    } else setIsOpen((open) => !open)
+  }, [savedFor])
 
   const toggleSave = useCallback(async (tab: SaveableTab): Promise<void> => {
     const existing = savedFor(tab.url)
