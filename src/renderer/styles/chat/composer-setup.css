@@ -30,6 +30,12 @@
   outline: none;
 }
 
+/* The highlighted row is the focus indicator; the list containers take focus only to route keys. */
+.composer-setup [cmdk-root]:focus-visible,
+.composer-setup [cmdk-list]:focus-visible {
+  outline: none;
+}
+
 .composer-setup [data-slot='progress'][data-level='warm'] [data-slot='progress-indicator'] {
   background: #d9a45c;
 }

@@ -44,8 +44,9 @@ export function EffortSection({
   onChoose: (effort: string) => void
 }): JSX.Element {
   return (
-    <section className="shrink-0 border-t border-border px-3 pt-2.5 pb-3" aria-label="Reasoning effort">
-      <div className="mb-1.5 flex items-center text-xs text-muted-foreground">
+    // Sizes sit on containers: the app's unlayered `button { font: inherit }` outranks utilities on buttons.
+    <section className="shrink-0 border-t border-border px-3 pt-2.5 pb-3 text-xs" aria-label="Reasoning effort">
+      <div className="mb-1.5 flex items-center text-muted-foreground">
         Effort
         {note && <span className="ml-auto">{note}</span>}
       </div>
@@ -67,14 +68,14 @@ export function EffortSection({
               title={option.description || undefined}
               data-ui="composer.effort-item"
               data-ui-key={option.reasoningEffort}
-              className="h-7 flex-1 px-1 text-xs"
+              className="h-7 flex-1 px-1"
             >
               {effortLabel(option.reasoningEffort)}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
       ) : (
-        <p className="flex h-7 items-center text-xs text-muted-foreground">Set by {providerLabel} for this model</p>
+        <p className="flex h-7 items-center text-muted-foreground">Set by {providerLabel} for this model</p>
       )}
     </section>
   )
@@ -166,10 +167,10 @@ export function ContextSection(props: ContextUsageProps): JSX.Element {
   const window = planUsage?.windows[0]
   const of = usage ? modelContextLabel(usage.contextWindow) : modelContext
   return (
-    <Collapsible className="shrink-0 border-b border-border">
+    <Collapsible className="shrink-0 border-b border-border text-xs">
       <CollapsibleTrigger
         data-ui="composer.context"
-        className="group flex w-full flex-col gap-1.5 px-3 pt-2.5 pb-2 text-left text-xs text-muted-foreground outline-none hover:bg-accent/40 focus-visible:bg-accent/40"
+        className="group flex w-full flex-col gap-1.5 px-3 pt-2.5 pb-2 text-left text-muted-foreground outline-none hover:bg-accent/40 focus-visible:bg-accent/40"
       >
         <span className="flex w-full items-center">
           Context
