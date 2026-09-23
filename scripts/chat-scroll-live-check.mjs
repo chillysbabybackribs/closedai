@@ -57,7 +57,7 @@ if (!process.versions.electron) {
     const workspace = await evaluate('window.closedai.chat.snapshot()')
     const paneId = workspace.selectedPaneId
     const send = (event) => window.webContents.send('chat:event', { type: 'pane', paneId, event })
-    const sample = () => evaluate(`new Promise(resolve => {
+    const sample = (count = 30) => evaluate(`new Promise(resolve => {
       const rows = [];
       const frame = () => {
         const v = document.querySelector('.chat-scroll');
@@ -65,7 +65,7 @@ if (!process.versions.electron) {
         rows.push({ top:v.scrollTop, height:v.scrollHeight,
           anchor:a.getBoundingClientRect().top-v.getBoundingClientRect().top,
           spacer:v.querySelector('[data-message-scroller-spacer]').style.height });
-        if(rows.length < 30) requestAnimationFrame(frame); else resolve(rows);
+        if(rows.length < ${count}) requestAnimationFrame(frame); else resolve(rows);
       }; requestAnimationFrame(frame);
     })`)
     const reports = []
@@ -80,18 +80,23 @@ if (!process.versions.electron) {
       await pause(80)
       send({ type: 'item', item: { type: 'user', id: `prompt-${zoom}`, turnId: `turn-${zoom}`, text: 'Keep this prompt steady while the response streams.' } })
       await pause(150)
+      const streamingFrames = sample(100)
       send({ type: 'item', item: { type: 'assistant', id: `reply-${zoom}`, turnId: `turn-${zoom}`, phase: 'commentary', streaming: true, text: 'The response is streaming. ' } })
       for (let i = 0; i < 15; i++) {
         send({ type: 'itemDelta', itemId: `reply-${zoom}`, field: 'text', delta: 'More words arrive and wrap onto another line. ' })
         await pause(30)
       }
       await pause(800)
+      const streamed = await streamingFrames
       const frames = await sample()
       const tops = frames.map((frame) => frame.anchor)
-      reports.push({ zoom, drift: Math.max(...tops) - Math.min(...tops), frames: frames.slice(0, 6) })
+      const positions = streamed.map((frame) => frame.anchor)
+      reports.push({ zoom, streamingDrift: Math.max(...positions) - Math.min(...positions),
+        drift: Math.max(...tops) - Math.min(...tops), frames: streamed.slice(0, 8) })
     }
     console.log('CHAT_SCROLL_RESULT', JSON.stringify(reports))
-    assert.ok(reports.every((report) => report.drift <= 1), 'An idle anchored transcript must not oscillate')
+    assert.ok(reports.every((report) => report.drift <= 1 && report.streamingDrift <= 1),
+      'An anchored transcript must not oscillate during streaming or while idle')
     clearTimeout(watchdog)
     app.quit()
   } catch (error) {
