@@ -1,0 +1,168 @@
+[
+  {
+    "id": "read_pdf_page_2",
+    "tool": "embedded_browser.page",
+    "intent": "Read native PDF text from a specific page without navigating away.",
+    "fixture": "browser/default",
+    "source": "src/main/tools/browser/browser.test.ts",
+    "replay": [
+      {
+        "namespace": "embedded_browser",
+        "tool": "page",
+        "arguments": { "action": "read_page", "pdf_page": 2 }
+      }
+    ],
+    "oracle": {
+      "must_call": [
+        {
+          "namespace": "embedded_browser",
+          "tool": "page",
+          "arguments": { "action": "read_page", "pdf_page": 2 }
+        }
+      ],
+      "must_not_call": [
+        {
+          "namespace": "embedded_browser",
+          "tool": "page",
+          "arguments": { "action": "navigate" }
+        }
+      ],
+      "max_tool_calls": 2
+    },
+    "tags": ["pdf", "read_only"]
+  },
+  {
+    "id": "read_pdf_pages_matrix",
+    "tool": "embedded_browser.page",
+    "intent": "Parallel variations: same read action across PDF pages.",
+    "fixture": "browser/default",
+    "variations": { "pdf_page": [1, 2, 3] },
+    "replay": [
+      {
+        "namespace": "embedded_browser",
+        "tool": "page",
+        "arguments": { "action": "read_page", "pdf_page": 1 }
+      }
+    ],
+    "oracle": {
+      "must_call": [
+        {
+          "namespace": "embedded_browser",
+          "tool": "page",
+          "arguments": { "action": "read_page" },
+          "partialArgs": true
+        }
+      ],
+      "max_tool_calls": 2
+    },
+    "tags": ["pdf", "variations"]
+  },
+  {
+    "id": "navigate_new_tab",
+    "tool": "embedded_browser.page",
+    "intent": "Open a URL in a fresh tab when the user asks for isolated navigation.",
+    "fixture": "browser/default",
+    "replay": [
+      {
+        "namespace": "embedded_browser",
+        "tool": "page",
+        "arguments": { "action": "navigate", "url": "https://example.com/docs", "new_tab": true }
+      }
+    ],
+    "oracle": {
+      "must_call": [
+        {
+          "namespace": "embedded_browser",
+          "tool": "page",
+          "arguments": { "action": "navigate", "new_tab": true },
+          "partialArgs": true
+        }
+      ],
+      "max_tool_calls": 2
+    },
+    "tags": ["navigate"]
+  },
+  {
+    "id": "wait_for_interactive",
+    "tool": "embedded_browser.page",
+    "intent": "Wait for page readiness before reading dynamic content.",
+    "fixture": "browser/default",
+    "replay": [
+      {
+        "namespace": "embedded_browser",
+        "tool": "page",
+        "arguments": { "action": "wait_for", "wait_until": "load", "timeout_ms": 5000 }
+      }
+    ],
+    "oracle": {
+      "must_call": [
+        {
+          "namespace": "embedded_browser",
+          "tool": "page",
+          "arguments": { "action": "wait_for" },
+          "partialArgs": true
+        }
+      ],
+      "max_tool_calls": 2
+    },
+    "tags": ["wait"]
+  },
+  {
+    "id": "reject_pdf_selector_combo",
+    "tool": "embedded_browser.page",
+    "intent": "Schema policy: PDF page reads must not mix HTML selectors.",
+    "fixture": "browser/default",
+    "replay": [
+      {
+        "namespace": "embedded_browser",
+        "tool": "page",
+        "arguments": { "action": "read_page", "selector": "body", "pdf_page": 1 }
+      }
+    ],
+    "oracle": {
+      "expect_success": false,
+      "must_call": [
+        {
+          "namespace": "embedded_browser",
+          "tool": "page",
+          "arguments": { "action": "read_page" },
+          "partialArgs": true
+        }
+      ],
+      "max_tool_calls": 2
+    },
+    "tags": ["pdf", "policy"]
+  },
+  {
+    "id": "read_ambient_tab",
+    "tool": "embedded_browser.page",
+    "intent": "Read the open tab without navigation when the user points at current content.",
+    "fixture": "browser/default",
+    "replay": [
+      {
+        "namespace": "embedded_browser",
+        "tool": "page",
+        "arguments": { "action": "read_page" }
+      }
+    ],
+    "oracle": {
+      "must_call": [
+        {
+          "namespace": "embedded_browser",
+          "tool": "page",
+          "arguments": { "action": "read_page" },
+          "partialArgs": true
+        }
+      ],
+      "must_not_call": [
+        {
+          "namespace": "embedded_browser",
+          "tool": "page",
+          "arguments": { "action": "navigate" }
+        }
+      ],
+      "max_tool_calls": 2
+    },
+    "tags": ["read_only"]
+  }
+]

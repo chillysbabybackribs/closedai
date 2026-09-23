@@ -1,6 +1,6 @@
 # Tool harness simulation and optimization plan
 
-Status: design proposal for implementation and testing (not shipped behavior)  
+Status: Phase 0 replay harness implemented; model-backed runs remain Phase 2  
 Date: 2026-09-23
 
 ## Purpose
@@ -176,13 +176,14 @@ respect character budgets ([`model-efficiency-instructions.test.ts`](src/main/mo
 
 Deliverables:
 
-- [ ] `harness/tasks/embedded_browser.page.yaml` — ≥6 tasks (from `browser.test.ts` + docs).
-- [ ] `harness/fixtures/browser/default.yaml` + host factory shared with tests where possible.
-- [ ] `src/main/harness/oracle.ts` — match `must_call` / `must_not_call` on call log.
-- [ ] `src/main/harness/run-fixture.test.ts` — golden trace replay, no model.
-- [ ] `scripts/harness-sim/run.mjs` — run catalog, write `report.json`.
+- [x] `harness/tasks/embedded_browser.page.json` — ≥6 tasks (from `browser.test.ts` + docs).
+- [x] `src/main/harness/browser-fixture.ts` — stub host factory aligned with `browser.test.ts`.
+- [x] `src/main/harness/oracle.ts` — match `must_call` / `must_not_call` on call log.
+- [x] `src/main/harness/run-fixture.test.ts` — golden trace replay, no model.
+- [x] `scripts/harness-sim/run.mjs` + `npm run harness:replay` — run catalog, write `report.json`.
+- [x] `src/main/harness/expand-variations.ts` + `parallel.ts` — Cartesian variation expansion and parallel replay.
 
-**Exit criteria:** `node scripts/harness-sim/run.mjs --replay-only` passes 100% on pilot tasks.
+**Exit criteria:** `npm run harness:replay` passes 100% on pilot tasks (8 runs including variation matrix).
 
 ### Phase 1 — Task catalog generator
 
