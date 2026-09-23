@@ -1,16 +1,17 @@
 import type { JSX } from 'react'
-import { Folder, Plus, X } from 'lucide-react'
+import { ChevronRight, Folder, Plus, X } from 'lucide-react'
 
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible.js'
+import { Progress } from '../components/ui/progress.js'
+import { ToggleGroup, ToggleGroupItem } from '../components/ui/toggle-group.js'
+import { cn } from '../lib/utils.js'
 import type { ChatReasoningEffort } from '../shared/chat.js'
-import { ContextUsage, type ContextUsageProps } from './context-meter.js'
+import { contextLevel, ContextUsage, type ContextUsageProps } from './context-meter.js'
 import { errorMessage } from './error-message.js'
-import { effortLabel } from './model-menu-state.js'
+import { effortLabel, modelContextLabel } from './model-menu-state.js'
 
-export { ModelSection } from './composer-model-picker.js'
-
-// The sections of the composer's setup panel (composer-setup-menu.tsx). Each is a plain block of
-// buttons rather than a Radix menu: the panel is one surface with four kinds of control in it,
-// and only the model and effort rows are radios.
+// The sections around the model list in the composer's setup panel (composer-setup-menu.tsx),
+// and the folder panel's one section (composer-folder-menu.tsx).
 
 export function folderName(path: string): string {
   const trimmed = path.replace(/[\\/]+$/, '')
@@ -21,41 +22,60 @@ function SectionLabel({ children }: { children: React.ReactNode }): JSX.Element 
   return <div className="composer-setup-label">{children}</div>
 }
 
-/** Effort as a segmented control: every level visible, one press to change, no submenu. */
+/**
+ * Effort as a segmented control: every level visible, one press to change, no submenu. A model
+ * without levels keeps the row's height with a line saying who sets it, so Recent below never
+ * jumps when the selection changes.
+ */
 export function EffortSection({
   efforts,
   selected,
   disabled,
+  note,
+  providerLabel,
   onChoose
 }: {
   efforts: ChatReasoningEffort[]
   selected: string | null
   disabled: boolean
+  /** Why the control is locked, when it is. */
+  note?: string | null
+  providerLabel: string
   onChoose: (effort: string) => void
 }): JSX.Element {
   return (
-    <section className="composer-setup-section" aria-label="Reasoning effort">
-      <SectionLabel>Effort</SectionLabel>
-      <div role="radiogroup" className="composer-setup-segment" aria-label="Reasoning effort">
-        {efforts.map((option) => {
-          const checked = option.reasoningEffort === selected
-          return (
-            <button
+    <section className="shrink-0 border-t border-border px-3 pt-2.5 pb-3" aria-label="Reasoning effort">
+      <div className="mb-1.5 flex items-center text-xs text-muted-foreground">
+        Effort
+        {note && <span className="ml-auto">{note}</span>}
+      </div>
+      {efforts.length > 0 ? (
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          size="sm"
+          value={selected ?? ''}
+          onValueChange={(next) => { if (next && next !== selected) onChoose(next) }}
+          disabled={disabled}
+          aria-label="Reasoning effort"
+          className="w-full"
+        >
+          {efforts.map((option) => (
+            <ToggleGroupItem
               key={option.reasoningEffort}
-              type="button"
-              role="radio"
-              aria-checked={checked}
+              value={option.reasoningEffort}
               title={option.description || undefined}
               data-ui="composer.effort-item"
               data-ui-key={option.reasoningEffort}
-              disabled={disabled}
-              onClick={() => { if (!checked) onChoose(option.reasoningEffort) }}
+              className="h-7 flex-1 px-1 text-xs"
             >
               {effortLabel(option.reasoningEffort)}
-            </button>
-          )
-        })}
-      </div>
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      ) : (
+        <p className="flex h-7 items-center text-xs text-muted-foreground">Set by {providerLabel} for this model</p>
+      )}
     </section>
   )
 }
@@ -137,12 +157,32 @@ export function FolderSection({
   )
 }
 
-/** Context window and plan usage, plus manual compaction when the provider offers it. */
+/**
+ * Context and plan usage as one glanceable line at the far end of the popover from the trigger,
+ * opening onto the full usage card and manual compaction.
+ */
 export function ContextSection(props: ContextUsageProps): JSX.Element {
+  const { usage, planUsage, modelContext } = props
+  const window = planUsage?.windows[0]
+  const of = usage ? modelContextLabel(usage.contextWindow) : modelContext
   return (
-    <details className="composer-setup-section composer-setup-details">
-      <summary className="composer-setup-details-summary">Context & plan</summary>
-      <ContextUsage {...props} />
-    </details>
+    <Collapsible className="shrink-0 border-b border-border">
+      <CollapsibleTrigger
+        data-ui="composer.context"
+        className="group flex w-full flex-col gap-1.5 px-3 pt-2.5 pb-2 text-left text-xs text-muted-foreground outline-none hover:bg-accent/40 focus-visible:bg-accent/40"
+      >
+        <span className="flex w-full items-center">
+          Context
+          <span className="ml-1.5 tabular-nums text-foreground">{usage ? modelContextLabel(usage.usedTokens) ?? '0' : '—'}</span>
+          {of && <span className="ml-1">of {of}</span>}
+          {window && <span className="ml-auto tabular-nums">{window.label} {window.percent}%</span>}
+          <ChevronRight className={cn('size-3.5 transition-transform group-data-[state=open]:rotate-90', window ? 'ml-1' : 'ml-auto')} aria-hidden="true" />
+        </span>
+        <Progress value={usage?.percent ?? 0} data-level={contextLevel(usage?.percent ?? 0)} className="h-1 bg-[var(--surface-control)]" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="max-h-56 overflow-y-auto px-3 pb-2">
+        <ContextUsage {...props} />
+      </CollapsibleContent>
+    </Collapsible>
   )
 }

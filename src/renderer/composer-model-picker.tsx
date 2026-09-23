@@ -1,160 +1,162 @@
-import { useEffect, useMemo, useState, type JSX } from 'react'
+import { useLayoutEffect, useRef, useState, type JSX, type ReactNode } from 'react'
 import { Check } from 'lucide-react'
 
+import { Command, CommandGroup, CommandItem, CommandList } from '../components/ui/command.js'
 import { ProviderMark } from '../components/ui/provider-mark.js'
+import { cn } from '../lib/utils.js'
 import type { ChatModel, ChatProvider } from '../shared/chat.js'
-import { modelContextLabel, type ProviderSection } from './model-menu-state.js'
+import { PROVIDER_LABELS } from './chat-state.js'
+import { modelContextLabel, modelGroups } from './model-menu-state.js'
 
-function providerForModel(sections: ProviderSection[], modelId: string | null): ChatProvider | null {
-  if (!modelId) return null
-  return sections.find((section) => section.all.some((model) => model.id === modelId))?.provider ?? null
-}
-
-function matchesQuery(model: ChatModel, query: string): boolean {
-  const needle = query.trim().toLowerCase()
-  if (!needle) return true
-  return model.displayName.toLowerCase().includes(needle) || model.id.toLowerCase().includes(needle)
-}
+/** A section row and its Recent twin are distinct cmdk items, so the list can hold a model twice. */
+const itemValue = (group: string, model: ChatModel): string => `${group}\u0000${model.id}`
 
 /**
- * One provider at a time: tabs across the top, a compact scrollable list beneath, optional filter
- * when the catalogue is long. Descriptions stay in the row title, not in the list.
+ * The model list: every model, sectioned by provider under pinned headings, scrolling above a
+ * fixed footer (effort) and the Recent block. Recent is last so the models a user flips between
+ * sit right above the trigger. No search and no folding: the popover's fixed height is the only
+ * bound, and it opens scrolled to the section that holds the current model.
  */
-export function ModelSection({
-  sections,
+export function ModelPicker({
+  models,
   selectedModel,
+  provider,
+  recent,
   disabled,
+  footer,
   onChoose
 }: {
-  sections: ProviderSection[]
+  models: ChatModel[]
   selectedModel: string | null
+  /** The pane's provider; sections for any other one start a new thread when chosen. */
+  provider: ChatProvider
+  /** Most recent last, current model already excluded. */
+  recent: ChatModel[]
   disabled: boolean
+  /** Rendered between the scrolling list and Recent; keeps its own keyboard handling. */
+  footer?: ReactNode
   onChoose: (modelId: string) => void
 }): JSX.Element {
-  const selectedProvider = providerForModel(sections, selectedModel)
-  const [activeProvider, setActiveProvider] = useState<ChatProvider | null>(
-    () => selectedProvider ?? sections[0]?.provider ?? null
-  )
-  const [expanded, setExpanded] = useState(false)
-  const [query, setQuery] = useState('')
+  const groups = modelGroups(models)
+  const current = models.find((model) => model.id === selectedModel) ?? null
+  const landing = current ?? groups[0]?.models[0] ?? null
+  const [highlighted, setHighlighted] = useState(() => (landing ? itemValue(landing.provider, landing) : ''))
+  const rootRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (selectedProvider) setActiveProvider(selectedProvider)
-  }, [selectedProvider])
+  // Open on the current model's section, heading at the top. A model deep in a long section is
+  // still brought into view under the pinned heading. Runs a frame late, after cmdk's own
+  // nearest-edge scroll to the highlighted row.
+  useLayoutEffect(() => {
+    if (!landing) return
+    const frame = requestAnimationFrame(() => {
+      const root = rootRef.current
+      const list = root?.querySelector<HTMLElement>('[cmdk-list]')
+      const group = root?.querySelector<HTMLElement>(`[data-provider="${landing.provider}"]`)
+      const row = root?.querySelector<HTMLElement>(`[data-ui="composer.model-item"][data-ui-key="${CSS.escape(landing.id)}"]`)
+      if (!list || !group || !row) return
+      const listTop = list.getBoundingClientRect().top
+      let top = list.scrollTop + group.getBoundingClientRect().top - listTop
+      const rowBottom = list.scrollTop + row.getBoundingClientRect().bottom - listTop
+      if (rowBottom - top > list.clientHeight) top = rowBottom - list.clientHeight + 4
+      list.scrollTop = top
+    })
+    return () => cancelAnimationFrame(frame)
+    // Only on open: re-landing after every selection would yank the list under the pointer.
+  }, [])
 
-  useEffect(() => {
-    setExpanded(false)
-    setQuery('')
-  }, [activeProvider])
-
-  const section = sections.find((entry) => entry.provider === activeProvider)
-  const listed = useMemo(() => {
-    if (!section) return []
-    const base = expanded || section.hiddenCount === 0 ? section.all : section.featured
-    return base.filter((model) => matchesQuery(model, query))
-  }, [expanded, query, section])
-
-  if (sections.length === 0) {
-    return (
-      <section className="composer-setup-section composer-model-section" aria-label="Model">
-        <p className="composer-setup-note">No models are available yet.</p>
-      </section>
-    )
+  if (groups.length === 0) {
+    return <p className="composer-setup-note px-3 py-3">No models are available yet.</p>
   }
 
-  const showSearch = (section?.all.length ?? 0) > 5
-  const hiddenCount = section && !expanded && section.hiddenCount > 0 ? section.hiddenCount : 0
+  const activeProvider = current?.provider ?? provider
+  const choose = (model: ChatModel): void => { if (model.id !== selectedModel) onChoose(model.id) }
 
   return (
-    <section className="composer-setup-section composer-model-section" aria-label="Model">
-      <div className="composer-model-tabs" role="tablist" aria-label="Model providers">
-        {sections.map((entry) => {
-          const selected = entry.provider === activeProvider
-          return (
-            <button
-              key={entry.provider}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              className="composer-model-tab"
-              data-ui-key={entry.provider}
-              onClick={() => setActiveProvider(entry.provider)}
-            >
-              <ProviderMark provider={entry.provider} className="composer-model-tab-mark" aria-hidden="true" />
-              <span className="composer-model-tab-label">{entry.label}</span>
-            </button>
-          )
-        })}
-      </div>
-      {showSearch && (
-        <input
-          type="search"
-          className="composer-model-search"
-          aria-label="Filter models"
-          placeholder="Filter…"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          autoComplete="off"
-          spellCheck={false}
-        />
-      )}
-      <div className="composer-model-list" role="radiogroup" aria-label={`${section?.label ?? 'Model'} models`}>
-        {listed.map((model) => (
-          <ModelRow
-            key={model.id}
-            model={model}
-            checked={model.id === selectedModel}
-            disabled={disabled}
-            onChoose={onChoose}
-          />
+    <Command
+      ref={rootRef}
+      value={highlighted}
+      onValueChange={setHighlighted}
+      loop
+      label="Model"
+      className="min-h-0 flex-1 rounded-none bg-transparent outline-none"
+    >
+      <CommandList className="max-h-none min-h-0 flex-1 pb-1">
+        {groups.map((group) => (
+          <CommandGroup
+            key={group.provider}
+            data-provider={group.provider}
+            heading={
+              <span className="flex items-center gap-2">
+                <ProviderMark provider={group.provider} className="size-3 shrink-0" />
+                {group.label}
+                {group.provider !== activeProvider && <span className="ml-auto font-normal opacity-60">new thread</span>}
+              </span>
+            }
+            className="overflow-visible px-1 py-0 [&_[cmdk-group-heading]]:sticky [&_[cmdk-group-heading]]:top-0 [&_[cmdk-group-heading]]:z-10 [&_[cmdk-group-heading]]:bg-popover [&_[cmdk-group-heading]]:pt-2.5"
+          >
+            {group.models.map((model) => (
+              <ModelRow
+                key={model.id}
+                model={model}
+                value={itemValue(group.provider, model)}
+                checked={model.id === selectedModel}
+                disabled={disabled && model.id !== selectedModel}
+                onSelect={() => choose(model)}
+              />
+            ))}
+          </CommandGroup>
         ))}
-        {listed.length === 0 && (
-          <p className="composer-model-empty">No models match.</p>
-        )}
-      </div>
-      {hiddenCount > 0 && (
-        <button
-          type="button"
-          className="composer-model-more"
-          data-ui="composer.model-more"
-          data-ui-key={section!.provider}
-          onClick={() => setExpanded(true)}
-        >
-          Show {hiddenCount} more {hiddenCount === 1 ? 'model' : 'models'}
-        </button>
+      </CommandList>
+      {/* The footer's own controls take Enter and arrows; cmdk would otherwise choose the
+          highlighted model on Enter and move its highlight on arrows. */}
+      {footer && <div onKeyDown={(event) => event.stopPropagation()}>{footer}</div>}
+      {recent.length > 0 && (
+        <CommandGroup heading="Recent" className="shrink-0 border-t border-border px-1 pt-0 pb-1 [&_[cmdk-group-heading]]:pt-2.5">
+          {recent.map((model) => (
+            <ModelRow
+              key={model.id}
+              model={model}
+              value={itemValue('recent', model)}
+              checked={false}
+              disabled={disabled}
+              lane
+              onSelect={() => choose(model)}
+            />
+          ))}
+        </CommandGroup>
       )}
-    </section>
+    </Command>
   )
 }
 
-function ModelRow({
-  model,
-  checked,
-  disabled,
-  onChoose
-}: {
+function ModelRow({ model, value, checked, disabled, lane = false, onSelect }: {
   model: ChatModel
+  value: string
   checked: boolean
   disabled: boolean
-  onChoose: (modelId: string) => void
+  /** Recent rows mix providers, so they name theirs. */
+  lane?: boolean
+  onSelect: () => void
 }): JSX.Element {
   const context = modelContextLabel(model.contextWindow)
   const title = [model.description.trim(), context ? `${context} context` : ''].filter(Boolean).join(' · ')
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={checked}
-      className="composer-model-row"
-      data-ui="composer.model-item"
-      data-ui-key={model.id}
-      title={title || undefined}
+    <CommandItem
+      value={value}
       disabled={disabled}
-      onClick={() => { if (!checked) onChoose(model.id) }}
+      onSelect={onSelect}
+      data-ui={lane ? 'composer.model-recent' : 'composer.model-item'}
+      data-ui-key={model.id}
+      data-checked={checked || undefined}
+      title={title || undefined}
+      className="h-8 gap-2 text-[13px]"
     >
-      <Check className="composer-model-row-check" aria-hidden="true" />
-      <span className="composer-model-row-name">{model.displayName}</span>
-      {context && <span className="composer-model-row-badge">{context}</span>}
-    </button>
+      {lane
+        ? <ProviderMark provider={model.provider} className="size-3.5 shrink-0" />
+        : <Check className={cn('size-3.5', !checked && 'invisible')} aria-hidden="true" />}
+      <span className={cn('truncate', checked && 'font-medium')}>{model.displayName}</span>
+      {lane && <span className="truncate text-xs text-muted-foreground">{PROVIDER_LABELS[model.provider]}</span>}
+      {context && <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">{context}</span>}
+    </CommandItem>
   )
 }

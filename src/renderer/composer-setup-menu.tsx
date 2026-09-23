@@ -1,13 +1,15 @@
-import { useCallback, useImperativeHandle, useRef, useState, type JSX, type Ref } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, type JSX, type Ref } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Popover } from 'radix-ui'
 
 import type { ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
-import { ContextSection, EffortSection, ModelSection } from './composer-setup-sections.js'
+import { PROVIDER_LABELS } from './chat-state.js'
+import { ModelPicker } from './composer-model-picker.js'
+import { ContextSection, EffortSection } from './composer-setup-sections.js'
 import { errorMessage } from './error-message.js'
-import { countModelUse, modelTriggerLabel, parseModelUsage, providerSections, type ModelUsage } from './model-menu-state.js'
+import { modelTriggerLabel, parseRecentModels, pushRecentModel, recentModels } from './model-menu-state.js'
 
-const MODEL_USAGE_KEY = 'closedai.composer.modelUsage'
+const RECENT_MODELS_KEY = 'closedai.composer.recentModels'
 
 /** Opens the panel from outside its trigger, e.g. the empty pane's "Choose model" hint. */
 export type ComposerSetupHandle = { open: () => void }
@@ -16,6 +18,8 @@ export type ComposerSetupMenuProps = {
   ref?: Ref<ComposerSetupHandle>
   /** Model and effort can change; false while a turn runs or the provider is unavailable. */
   modelsEnabled: boolean
+  /** A turn is running: the locked controls say why. */
+  running?: boolean
   models: ChatModel[]
   selectedModel: string | null
   selectedReasoningEffort: string | null
@@ -32,14 +36,14 @@ export type ComposerSetupMenuProps = {
 }
 
 /**
- * The metadata trigger below the composer and the one panel behind it. The trigger names the
- * model on the left and folder on the right; the panel holds every per-chat setting — model,
- * reasoning effort, folder, context and plan usage — as sections of one surface. The chat pane is
- * the collision boundary.
+ * The model trigger below the composer and the fixed-height panel behind it: a context line at
+ * the far end, every model sectioned by provider, effort, and Recent nearest the trigger. The
+ * chat pane is the collision boundary.
  */
 export function ComposerSetupMenu({
   ref,
   modelsEnabled,
+  running = false,
   models,
   selectedModel,
   selectedReasoningEffort,
@@ -53,7 +57,7 @@ export function ComposerSetupMenu({
   onCompact,
   compactEnabled
 }: ComposerSetupMenuProps): JSX.Element {
-  const [usage, recordModelUse] = useModelUsage()
+  const [recent, reloadRecent] = useRecentModels(selectedModel)
   const triggerRef = useRef<HTMLButtonElement>(null)
   // Set when a model row closes the panel, so the following close-focus lands in the composer
   // textarea rather than snapping back to the trigger the way Radix would by default.
@@ -65,16 +69,17 @@ export function ComposerSetupMenu({
     setOpenState(next)
     if (next) {
       setBoundary(triggerRef.current?.closest('.chat-pane') ?? null)
+      // Other panes add to the same history, so Recent is read fresh on every open.
+      reloadRecent()
       // The plan windows are asked for fresh each time the panel opens, mid-turn included.
       void onRefreshPlanUsage()
     }
-  }, [onRefreshPlanUsage])
+  }, [onRefreshPlanUsage, reloadRecent])
   useImperativeHandle(ref, () => ({ open: () => setOpen(true) }), [setOpen])
 
   const trigger = modelTriggerLabel(models, selectedModel, selectedReasoningEffort)
   const selected = models.find((model) => model.id === selectedModel)
   const chooseModel = (value: string): void => {
-    recordModelUse(value)
     // Picking a model ends the setup step: close the panel and hand focus to the composer so the
     // user can start typing without a second click.
     focusInputOnCloseRef.current = true
@@ -107,6 +112,13 @@ export function ComposerSetupMenu({
           collisionBoundary={boundary ?? undefined}
           avoidCollisions
           aria-label="Chat setup"
+          onOpenAutoFocus={(event) => {
+            // Focus the model list, not the context line above it, so arrows and Enter pick a model.
+            const list = (event.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>('[cmdk-root]')
+            if (!list) return
+            event.preventDefault()
+            list.focus()
+          }}
           onCloseAutoFocus={(event) => {
             if (!focusInputOnCloseRef.current) return
             focusInputOnCloseRef.current = false
@@ -117,20 +129,6 @@ export function ComposerSetupMenu({
             }
           }}
         >
-          <ModelSection
-            sections={providerSections(models, usage, selectedModel)}
-            selectedModel={selectedModel}
-            disabled={!modelsEnabled}
-            onChoose={chooseModel}
-          />
-          {selected && selected.supportedReasoningEfforts.length > 0 && (
-            <EffortSection
-              efforts={selected.supportedReasoningEfforts}
-              selected={selectedReasoningEffort}
-              disabled={!modelsEnabled}
-              onChoose={chooseEffort}
-            />
-          )}
           <ContextSection
             usage={contextUsage}
             provider={selected?.provider ?? provider}
@@ -141,31 +139,54 @@ export function ComposerSetupMenu({
             onCompact={onCompact}
             compactEnabled={compactEnabled}
           />
+          <ModelPicker
+            models={models}
+            selectedModel={selectedModel}
+            provider={provider}
+            recent={recentModels(models, recent, selectedModel)}
+            disabled={!modelsEnabled}
+            onChoose={chooseModel}
+            footer={
+              <EffortSection
+                efforts={selected?.supportedReasoningEfforts ?? []}
+                selected={selectedReasoningEffort}
+                disabled={!modelsEnabled}
+                note={running ? 'Locked while this turn runs' : null}
+                providerLabel={PROVIDER_LABELS[selected?.provider ?? provider]}
+                onChoose={chooseEffort}
+              />
+            }
+          />
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
   )
 }
 
-/** The picker's own memory of which models get chosen, kept in this window rather than settings. */
-function useModelUsage(): [ModelUsage, (modelId: string) => void] {
-  const [usage, setUsage] = useState<ModelUsage>(() => {
+/**
+ * The models this window has used, most recent last, kept in this window rather than settings.
+ * Every model the pane lands on counts — picked here, restored with the pane, or set by a tool.
+ */
+function useRecentModels(selectedModel: string | null): [string[], () => void] {
+  const [recent, setRecent] = useState<string[]>(readRecentModels)
+  useEffect(() => {
+    if (!selectedModel) return
+    const next = pushRecentModel(readRecentModels(), selectedModel)
     try {
-      return parseModelUsage(window.localStorage.getItem(MODEL_USAGE_KEY))
+      window.localStorage.setItem(RECENT_MODELS_KEY, JSON.stringify(next))
     } catch {
-      return {}
+      // Suppress storage failures: Recent is a convenience, not state the pane depends on.
     }
-  })
-  const record = useCallback((modelId: string) => {
-    setUsage((previous) => {
-      const next = countModelUse(previous, modelId)
-      try {
-        window.localStorage.setItem(MODEL_USAGE_KEY, JSON.stringify(next))
-      } catch {
-        // Suppress storage failures: ranking is a convenience, not state the pane depends on.
-      }
-      return next
-    })
-  }, [])
-  return [usage, record]
+    setRecent(next)
+  }, [selectedModel])
+  const reload = useCallback(() => setRecent(readRecentModels()), [])
+  return [recent, reload]
+}
+
+function readRecentModels(): string[] {
+  try {
+    return parseRecentModels(window.localStorage.getItem(RECENT_MODELS_KEY))
+  } catch {
+    return []
+  }
 }

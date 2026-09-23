@@ -254,6 +254,7 @@ export function Composer({
             <ComposerSetupMenu
               ref={setupMenuRef}
               modelsEnabled={enabled && !running}
+              running={running}
               models={models}
               selectedModel={selectedModel}
               selectedReasoningEffort={selectedReasoningEffort}
