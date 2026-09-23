@@ -3,44 +3,50 @@ import { peerChatTools } from '../src/main/tools/peer-chats/index.js'
 import { nativeInstrumentTools } from '../src/main/tools/native-instrument/index.js'
 import { dynamicToolSpecs } from '../src/main/tools/app-server-tools.js'
 
-const any = (): any => null
 let registry: any = null
 registry = createToolRegistry([
-  nativeInstrumentTools(any(), () => true),
+  nativeInstrumentTools(null as any, () => true),
   credentialVaultTools(() => null, () => null),
-  appTools(() => null, () => null),
-  browserTools(() => null, () => null, () => null),
-  cdpTools(() => null, undefined),
-  captureTools(() => null),
-  searchTools({}),
+  appTools(() => null as any, () => null as any),
+  browserTools(() => null as any, () => null as any, () => null as any),
+  cdpTools(() => null as any, undefined),
+  captureTools(() => null as any),
+  // research tools (search.run / search.read) live in the same namespace in the real app
+  searchTools({ research: { browser: () => null as any } as any }),
   peerChatTools(() => null),
   batchTools(() => registry, { maxCalls: 16 })
 ])
 
 const specs = dynamicToolSpecs(registry)
 const tok = (s: string) => Math.ceil(s.length / 4)
+const full = (ns: string, t: any, prefix = (n: string, m: string) => `${n}.${m}`) =>
+  tok(JSON.stringify({ name: prefix(ns, t.name), description: t.description, parameters: t.inputSchema }))
+const stub = (ns: string, t: any) => Math.ceil(`${ns}.${t.name}`.length / 4) + 4
 
-let grandFull = 0, grandActual = 0, deferredCount = 0, toolCount = 0
-const rows: any[] = []
+let nsDescTotal = 0, all = 0, codex = 0, claude = 0, cursor = 0, agy = 0, agyStub = 0
+let nTools = 0, nDeferred = 0
+console.log('namespace            tools  def  nsDesc   all-loaded   codex/claude-sent')
 for (const ns of specs) {
-  let nsFull = 0, nsActual = 0
-  const nsDesc = tok(ns.name + ns.description)
+  const d = tok(ns.name + ns.description); nsDescTotal += d
+  let nsAll = 0, nsSent = 0
   for (const t of ns.tools) {
-    toolCount++
-    const full = tok(JSON.stringify({ name: `${ns.name}.${t.name}`, description: t.description, parameters: t.inputSchema }))
-    const stub = Math.ceil(`${ns.name}.${t.name}`.length / 4) + 4
-    const actual = t.deferLoading ? stub : full
-    if (t.deferLoading) deferredCount++
-    nsFull += full; nsActual += actual
-    rows.push({ tool: `${ns.name}.${t.name}`, deferred: !!t.deferLoading, full, sent: actual })
+    nTools++
+    const f = full(ns.name, t), s = stub(ns.name, t)
+    nsAll += f
+    nsSent += t.deferLoading ? s : f
+    all += f
+    codex += t.deferLoading ? s : f
+    claude += t.deferLoading ? s : full(ns.name, t, (n, m) => `mcp__${n}__${m}`)
+    cursor += full(ns.name, t, (n, m) => `mcp__${n}__${m}`)
+    if (t.deferLoading) { nDeferred++; agyStub += s } else agy += full(ns.name, t, (n, m) => `mcp__${n}__${m}`)
   }
-  grandFull += nsFull + nsDesc; grandActual += nsActual + nsDesc
-  console.log(`${ns.name.padEnd(20)} tools=${String(ns.tools.length).padStart(2)}  nsDesc=${String(nsDesc).padStart(4)}  full=${String(nsFull).padStart(6)}  sent=${String(nsActual).padStart(6)}`)
+  console.log(`${ns.name.padEnd(20)} ${String(ns.tools.length).padStart(4)} ${String(ns.tools.filter((t:any)=>t.deferLoading).length).padStart(4)} ${String(d).padStart(7)} ${String(nsAll).padStart(12)} ${String(nsSent).padStart(19)}`)
 }
 console.log('---')
-console.log(`namespaces=${specs.length} tools=${toolCount} deferred=${deferredCount}`)
-console.log(`ALL-LOADED tokens : ${grandFull}`)
-console.log(`AS-SENT tokens    : ${grandActual}`)
-console.log(`raw JSON chars (codex dynamicTools payload): ${JSON.stringify(specs).length}`)
-console.log('---- top 15 by full cost ----')
-rows.sort((a, b) => b.full - a.full).slice(0, 15).forEach(r => console.log(`${String(r.full).padStart(5)} ${r.deferred ? 'deferred' : 'always  '} ${r.tool}`))
+console.log(`namespaces=${specs.length} tools=${nTools} deferred=${nDeferred} namespace-description tokens=${nsDescTotal}`)
+const line = (label: string, n: number) => console.log(`${label.padEnd(34)} ${String(n).padStart(7)} tokens`)
+line('All tool schemas loaded', all + nsDescTotal)
+line('Codex (deferred stubs)', codex + nsDescTotal)
+line('Claude (mcp__ names, stubs)', claude + nsDescTotal)
+line('Cursor (every tool, no defer)', cursor + nsDescTotal)
+line('Antigravity (eager only + stubs)', agy + agyStub + nsDescTotal)
