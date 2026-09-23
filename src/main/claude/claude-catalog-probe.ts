@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { AccountInfo, ModelInfo } from '@anthropic-ai/claude-agent-sdk'
+import type { AccountInfo } from '@anthropic-ai/claude-agent-sdk'
 import type { ClaudeCatalog } from './claude-catalog.js'
 import { claudeQueryOptions } from './claude-options.js'
 import { ClaudeRuntime } from './claude-runtime.js'
