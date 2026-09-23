@@ -43,27 +43,6 @@ export function ModelPicker({
   const [highlighted, setHighlighted] = useState(() => (landing ? itemValue(landing.provider, landing) : ''))
   
 
-  // Open on the current model's section, heading at the top. A model deep in a long section is
-  // still brought into view under the pinned heading. Runs a frame late, after cmdk's own
-  // nearest-edge scroll to the highlighted row.
-  useLayoutEffect(() => {
-    if (!landing) return
-    const frame = requestAnimationFrame(() => {
-      const root = rootRef.current
-      const list = root?.querySelector<HTMLElement>('[cmdk-list]')
-      const group = root?.querySelector<HTMLElement>(`[data-provider="${landing.provider}"]`)
-      const row = root?.querySelector<HTMLElement>(`[data-ui="composer.model-item"][data-ui-key="${CSS.escape(landing.id)}"]`)
-      if (!list || !group || !row) return
-      const listTop = list.getBoundingClientRect().top
-      let top = list.scrollTop + group.getBoundingClientRect().top - listTop
-      const rowBottom = list.scrollTop + row.getBoundingClientRect().bottom - listTop
-      if (rowBottom - top > list.clientHeight) top = rowBottom - list.clientHeight + 4
-      list.scrollTop = top
-    })
-    return () => cancelAnimationFrame(frame)
-    // Only on open: re-landing after every selection would yank the list under the pointer.
-  }, [])
-
   if (groups.length === 0) {
     return <p className="composer-setup-note px-3 py-3">No models are available yet.</p>
   }

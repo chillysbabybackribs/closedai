@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, type JSX } from 'react'
 import { FolderOpen } from 'lucide-react'
-import { Popover } from 'radix-ui'
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js'
 
 import { FolderSection, folderName } from './composer-setup-sections.js'
 
@@ -40,8 +40,8 @@ export function ComposerFolderMenu({
   const title = `${projectPath ?? cwd}${projectPending ? ' (applies after this chat finishes its current work)' : ''}`
 
   return (
-    <Popover.Root open={open} onOpenChange={setOpenState} modal={false}>
-      <Popover.Trigger
+    <Popover open={open} onOpenChange={setOpenState} modal={false}>
+      <PopoverTrigger
         ref={triggerRef}
         type="button"
         className="composer-footer-folder-trigger"
@@ -53,9 +53,8 @@ export function ComposerFolderMenu({
         <span className="composer-footer-folder-name">
           {folder}{projectPending ? ' (queued)' : ''}
         </span>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
+      </PopoverTrigger>
+      <PopoverContent
           className="composer-setup composer-folder-popover"
           side="top"
           align="end"
@@ -76,8 +75,7 @@ export function ComposerFolderMenu({
             onClearProject={onClearProject}
             onError={onError}
           />
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+        </PopoverContent>
+    </Popover>
   )
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type JSX, type Ref } from 'react'
 import { ChevronDown } from 'lucide-react'
-import { Popover } from 'radix-ui'
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js'
 
 import type { ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { PROVIDER_LABELS } from './chat-state.js'
@@ -96,8 +96,8 @@ export function ComposerSetupMenu({
   }
 
   return (
-    <Popover.Root open={open} onOpenChange={setOpen} modal={false}>
-      <Popover.Trigger
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
+      <PopoverTrigger
         ref={triggerRef}
         className="composer-footer-model-trigger"
         aria-label="Model, reasoning effort, and context usage"
@@ -106,9 +106,8 @@ export function ComposerSetupMenu({
       >
         <span className="composer-footer-model-name">{trigger.name}</span>
         <ChevronDown className="composer-footer-chevron" size={12} strokeWidth={2.2} aria-hidden="true" />
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
+      </PopoverTrigger>
+      <PopoverContent
           className="composer-setup"
           side="top"
           align="start"
@@ -162,9 +161,8 @@ export function ComposerSetupMenu({
               />
             }
           />
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+        </PopoverContent>
+    </Popover>
   )
 }
 
