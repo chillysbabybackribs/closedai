@@ -13,7 +13,7 @@ const applyProperties: Record<string, JsonObject> = {
   device: {
     type: 'string',
     enum: deviceNames,
-    description: `Device preset: ${deviceNames.join(', ')}. Sets viewport, scale factor, touch and user agent together; individual fields below override parts of it.`
+    description: 'Sets viewport, scale factor, touch and user-agent defaults; fields below override individual values.'
   },
   width: { type: 'integer', minimum: 200, maximum: 4_000, description: 'Layout viewport width in CSS pixels. Give with height when no preset is named.' },
   height: { type: 'integer', minimum: 200, maximum: 4_000, description: 'Layout viewport height in CSS pixels.' },
@@ -26,7 +26,7 @@ const applyProperties: Record<string, JsonObject> = {
   locale: { type: 'string', minLength: 2, maxLength: 12, description: 'BCP 47 locale, for example ja-JP.' },
   latitude: { type: 'number', minimum: -90, maximum: 90, description: 'Geolocation latitude; give with longitude.' },
   longitude: { type: 'number', minimum: -180, maximum: 180, description: 'Geolocation longitude.' },
-  network: { type: 'string', enum: networkNames, description: `Throttling profile: ${networkNames.join(', ')}.` },
+  network: { type: 'string', enum: networkNames, description: 'Network throttling profile.' },
   cpu_throttle: { type: 'number', minimum: 1, maximum: 20, description: 'CPU slowdown multiplier; 1 is no throttling.' }
 }
 
@@ -35,15 +35,9 @@ export function cdpEmulateTool(cdp: CdpHostProvider): ToolDefinition {
     name: 'emulate',
     deferLoading: true,
     description:
-      'Change the device and environment a page believes it is running in, then verify it from inside ' +
-      'the page. Viewport resizing goes through the embedder rather than the protocol: Blink applies ' +
-      'CDP\'s screen metrics, but the layout viewport of a tab hosted in a WebContentsView follows the ' +
-      'native widget, so `Emulation.setDeviceMetricsOverride` alone leaves innerWidth untouched and a ' +
-      'responsive site keeps serving desktop layout. This tool drives Electron\'s own device emulation ' +
-      'for size and CDP for user agent, colour scheme, reduced motion, timezone, locale, geolocation, ' +
-      'network throttling and CPU slowdown. Every result includes what the page measured afterwards, so ' +
-      'an override that did not land is visible rather than assumed. Overrides persist across ' +
-      'navigations on that tab until reset.',
+      'Set and verify device or environment overrides on an embedded tab. Viewport changes use the embedder; raw CDP ' +
+      'screen metrics alone will not resize it. Results report what the page measured. Overrides persist across ' +
+      'navigation until reset.',
     actions: actions(cdp)
   })
 }
@@ -53,17 +47,15 @@ function actions(cdp: CdpHostProvider): ToolAction[] {
     {
       action: 'apply',
       description:
-        'Apply the named overrides to a tab and return which were applied plus the page\'s own reading ' +
-        'of viewport, screen, pixel ratio, touch points, user agent, language, timezone, colour scheme ' +
-        'and online state. Fields are independent: send only what you want changed.',
+        'Apply the named overrides and report which landed plus the page\'s own measurements. Fields are independent; ' +
+        'send only what you want changed.',
       inputSchema: objectSchema(applyProperties),
       run: async (input) => jsonResult(await requireCdp(cdp).emulate(tabIdFrom(input), requestFrom(input)))
     },
     {
       action: 'reset',
       description:
-        'Clear every override on the tab — viewport, user agent, media features, timezone, locale, ' +
-        'geolocation, CPU and network throttling — and return the page\'s reading afterwards.',
+        'Clear all overrides on the tab and return the page\'s measured values.',
       inputSchema: objectSchema({ tab_id: tabIdField }),
       run: async (input) => jsonResult(await requireCdp(cdp).emulate(tabIdFrom(input), null))
     }
