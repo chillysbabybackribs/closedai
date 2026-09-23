@@ -321,7 +321,7 @@ export function Composer({
         </div>
       </div>
       <Dialog open={agentsOpen} onOpenChange={setAgentsOpen}>
-        <DialogContent className="composer-agent-dialog">
+        <DialogContent className="composer-agent-dialog" data-ui="dialog.agent">
           <DialogTitle>Start agent</DialogTitle>
           <DialogDescription>
             Opens a new chat with your instructions, using this pane&apos;s model. Pause anytime to test manually.

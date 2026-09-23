@@ -129,6 +129,7 @@ export const UI_CONTROLS = {
   'dialog.tools': 'Tools & capabilities dialog root, opened through Agent → Tools & capabilities (present only while open)',
   'dialog.trace': 'Turn trace dialog root, opened through Developer → Turn trace (present only while open)',
   'dialog.settings': 'Settings dialog root with Appearance, Credentials, and Security tabs, opened through File → Settings (present only while open)',
+  'dialog.agent': 'Start agent dialog root, opened from the composer footer Agent button (present only while open)',
   'settings.tab': 'Switch the Settings dialog section; item is appearance, models, credentials, or security',
   'dialog.models': 'Models section of Settings: choose which provider models appear in the composer menu',
   'settings.models-provider': 'Select a connected provider in Settings → Models; item is the provider id',
