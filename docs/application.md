@@ -482,6 +482,13 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   never move the viewport. Opening a chat still mounts scrolled to the end, and revealing earlier
   history still preserves the reading position. Native `overflow-anchor` is disabled on the chat
   viewport because the scroller owns every correction.
+  Anchor measurements convert rendered geometry back into transcript coordinates at chat zoom,
+  retaining fractional row heights. Trailing space is calculated from the actual last row and
+  padding rather than the viewport's minimum height, so it settles in one correction and does
+  not feed its own size back into subsequent streaming updates. The real-app regression check
+  (`npm run build && xvfb-run -a node scripts/chat-scroll-live-check.mjs` on Linux) supplies
+  deterministic chat events through the existing preload in a disposable profile and checks
+  streaming at 50–250% zoom, manual scrolling, bottom following, new prompts, and resizing.
   The scroll-to-first-message button stays hidden until the user scrolls upward, and hides
   when they scroll downward or reach the top. Opening a chat and automatic positioning do not
   reveal it.
