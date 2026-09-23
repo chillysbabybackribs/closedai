@@ -6,7 +6,7 @@ catalogs; `src/main/chat-peers/` manages the project's pane set. Claude model an
 `claude:`, Antigravity uses `agy:`, Cursor uses `cursor:`, and Codex ids are unprefixed. See [Application](application.md).
 
 The SDK protocol observations were verified live against `@anthropic-ai/claude-agent-sdk`
-0.3.258 on 2026-09-02. The package is pinned exactly and ships its CLI. Application lifecycle
+0.3.280 (2026-09-23 bump from 0.3.258). The package is pinned exactly and ships its CLI. Application lifecycle
 and transcript notes were reviewed against current source on 2026-09-03, without a new live run.
 
 ## Semantics

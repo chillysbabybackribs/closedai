@@ -2,7 +2,7 @@
 
 Goal: record every step a model takes inside closedai — prompts sent, model output, every tool
 call with arguments and result, token usage, timing — across all three providers
-(Codex app-server 0.152.1, Claude Agent SDK 0.3.258 / CLI 2.1.258, Antigravity `agy` 1.1.24).
+(Codex app-server 0.152.1, Claude Agent SDK 0.3.280, Antigravity `agy` 1.1.24).
 
 This file preserves the investigation and proposals from 2026-09-02. Its baseline inventory,
 line numbers, and external-version observations are historical, not a description of the current
@@ -105,7 +105,7 @@ trace-context struct: `paneId, threadId, turnId, callId, parentCallId, batchId, 
 - Inbound W3C context is read from `TRACEPARENT` / `TRACESTATE` env vars (`codex-rs/otel/src/trace_context.rs`).
 - Known gap (issue #12913, Feb 2026): `codex mcp-server` emits no OTel at all; app-server exports logs and traces (service.name `codex-app-server`) but treat metrics as unverified.
 
-### Claude Agent SDK 0.3.258 (bundled CLI 2.1.258)
+### Claude Agent SDK 0.3.280
 - Every session is persisted under `~/.claude/projects/<cwd-slug>/<session>.jsonl`. Each
   `assistant` line carries `requestId`, `timestamp`, `effort`, `message.usage` with input, output,
   cache_creation, cache_read, thinking tokens and `service_tier`; content blocks include `thinking`,

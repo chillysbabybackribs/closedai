@@ -70,7 +70,12 @@ async function doStartIfDormant(host: ChatHubSwitchHost): Promise<void> {
   if (saved.chatModelId && loaded.selectedModel !== saved.chatModelId) {
     await provider.selectModel(saved.chatModelId)
   } else if (saved.chatReasoningEffort && loaded.selectedReasoningEffort !== saved.chatReasoningEffort) {
-    await provider.selectReasoningEffort(saved.chatReasoningEffort)
+    const model = loaded.models.find((entry) => entry.id === loaded.selectedModel)
+    // A saved effort from a previously selected model (e.g. Sonnet) may not exist on this
+    // one (e.g. Haiku, which supports none) — applying it unconditionally throws.
+    if (model?.supportedReasoningEfforts.some((option) => option.reasoningEffort === saved.chatReasoningEffort)) {
+      await provider.selectReasoningEffort(saved.chatReasoningEffort)
+    }
   }
   host.dormant.delete(host.active())
 }

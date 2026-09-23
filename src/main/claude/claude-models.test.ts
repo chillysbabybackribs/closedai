@@ -4,7 +4,7 @@ import type { ModelInfo } from '@anthropic-ai/claude-agent-sdk'
 import { claudeModelId, claudeModelValue, claudeSessionIdOf, claudeThreadId, isClaudeModelId, isClaudeThreadId } from './claude-ids.js'
 import { claudeContextWindow, claudeDisplayName, claudeModelCatalog, claudeModelsFromInfo, resolveClaudeModelId, supportsAdaptiveThinking } from './claude-models.js'
 
-// The catalog the CLI reported on 2026-09-02 (SDK 0.3.258), trimmed to the fields used.
+// Representative catalog shape (SDK 0.3.258 fixtures; still valid on 0.3.280), trimmed to the fields used.
 const infos: ModelInfo[] = [
   { value: 'default', resolvedModel: 'claude-opus-5[1m]', displayName: 'Default (recommended)', description: 'Opus 5 with 1M context', supportsEffort: true, supportedEffortLevels: ['low', 'medium', 'high', 'xhigh', 'max'], supportsAdaptiveThinking: true },
   { value: 'opus[1m]', resolvedModel: 'claude-opus-5[1m]', displayName: 'Opus (1M context)', description: 'Opus 5 with 1M context', supportsEffort: true, supportedEffortLevels: ['low', 'medium', 'high', 'xhigh', 'max'], supportsAdaptiveThinking: true },

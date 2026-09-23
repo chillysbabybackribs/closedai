@@ -26,14 +26,14 @@ export class ChatModelState {
   }
 
   preferenceForModel(model: string): ModelPreference {
-    if (!this.models.some((entry) => entry.id === model)) throw new Error('That Codex model is not available')
+    if (!this.models.some((entry) => entry.id === model)) throw new Error('That model is not available')
     return { model, effort: reasoningEffortForModel(this.models, model, this.selectedReasoningEffort) }
   }
 
   preferenceForEffort(effort: string): ModelPreference {
     const selected = this.models.find((model) => model.id === this.selectedModel)
     if (!selected?.supportedReasoningEfforts.some((option) => option.reasoningEffort === effort)) {
-      throw new Error('That reasoning effort is not available for this Codex model')
+      throw new Error('That reasoning effort is not available for this model')
     }
     return { model: selected.id, effort }
   }
