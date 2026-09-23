@@ -2,6 +2,7 @@ import type { ChatPeerSummary, ChatWorkspaceEvent } from '../shared/chat-peers.j
 import type { ProjectSwitchRequest, ProjectSwitchStatus } from '../shared/chat-peers.js'
 import type { ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
 import { describeAgentRun, type AgentRun, type AgentRunStartOptions } from '../shared/agent-runs.js'
+import type { SavedAgent } from '../shared/agent-library.js'
 import type { BrowserCoordination } from './tools/browser/coordination.js'
 import type {
   AppAgentRunRequest,
@@ -29,6 +30,14 @@ export type AppCommandDeps = {
   browserCoordination?: BrowserCoordination
   /** The agent run driving a chat, when one exists; projected beside the chat's own state. */
   agentRuns?: () => AppAgentRunDriver | null
+  /** Saved agents a start can name by id; listed compactly under state.workspace. */
+  agentLibrary?: () => AppAgentLibrary | null
+}
+
+/** The library surface the command host reads; AgentLibraryStore satisfies it. */
+export type AppAgentLibrary = {
+  get(id: string): SavedAgent | null
+  list(): SavedAgent[]
 }
 
 /** The run service surface the command host uses; AgentRunService satisfies it. */
@@ -50,7 +59,9 @@ export class AppCommandAccess implements AppCommandHost {
   state(sections: readonly AppStateSection[], paneId: string | undefined, callerPaneId: string | null): Record<string, unknown> {
     const result: Record<string, unknown> = {}
     const chat = this.deps.chat()
-    if (sections.includes('workspace')) result.workspace = chat ? projectWorkspace(chat, callerPaneId) : null
+    if (sections.includes('workspace')) {
+      result.workspace = chat ? { ...projectWorkspace(chat, callerPaneId), savedAgents: projectSavedAgents(this.deps.agentLibrary?.()?.list() ?? []) } : null
+    }
     if (sections.includes('chat')) {
       if (!chat) result.chat = null
       else {
@@ -127,13 +138,29 @@ export class AppCommandAccess implements AppCommandHost {
     await this.chat().interrupt(paneId)
   }
 
+  /** A saved agent supplies prompt, cap, and name; explicit fields override the cap only. */
+  private startOptions(agentId: string | null, options: Partial<AgentRunStartOptions>): AgentRunStartOptions {
+    if (!agentId) {
+      if (!options.prompt) throw new Error('agent start needs prompt (standing instructions) or agent_id of a saved agent from state.workspace.savedAgents')
+      return { prompt: options.prompt, maxCycles: options.maxCycles ?? null, agentId: null, name: null }
+    }
+    const saved = this.deps.agentLibrary?.()?.get(agentId)
+    if (!saved) throw new Error(`No saved agent ${agentId}; ids are listed under state.workspace.savedAgents`)
+    return {
+      prompt: options.prompt ?? saved.prompt,
+      maxCycles: options.maxCycles === undefined ? saved.maxCycles : options.maxCycles,
+      agentId: saved.id,
+      name: saved.name
+    }
+  }
+
   async agentRun(request: AppAgentRunRequest): Promise<AgentRun | null> {
     const runs = this.deps.agentRuns?.()
     if (!runs) throw new Error('Agent runs are not available')
     if (!this.chat().paneSnapshot(request.paneId)) throw new Error(`Unknown pane ${request.paneId}`)
     switch (request.op) {
       case 'start':
-        return runs.startRun(request.paneId, request.options)
+        return runs.startRun(request.paneId, this.startOptions(request.agentId, request.options))
       case 'pause': {
         const paused = await runs.pauseRun(request.paneId, 'Paused by a tool', { interrupt: true })
         if (!paused) throw new Error(`Pane ${request.paneId} has no agent run to pause`)
@@ -304,7 +331,7 @@ export function projectChat(paneId: string, snapshot: ChatSnapshot, agentRun: Ag
     // Present only for a chat the app is driving; the loop restarts this pane after every turn.
     ...(agentRun ? { agentRun: {
       status: agentRun.status, cycle: agentRun.cycle, maxCycles: agentRun.maxCycles, failures: agentRun.failures,
-      reason: agentRun.reason, summary: describeAgentRun(agentRun)
+      reason: agentRun.reason, agentId: agentRun.agentId, name: agentRun.name, summary: describeAgentRun(agentRun)
     } } : {}),
     contextUsage: snapshot.contextUsage ? {
       usedTokens: snapshot.contextUsage.usedTokens,
@@ -383,4 +410,11 @@ async function raceTimeout(done: Promise<void>, timeoutMs: number, signal: Abort
     signal.addEventListener('abort', onAbort, { once: true })
     void done.then(() => finish(true))
   })
+}
+
+/** Enough for a model to pick an agent by id; the full prompt stays in the library. */
+export function projectSavedAgents(agents: SavedAgent[]): Array<Record<string, unknown>> {
+  return agents.map((agent) => ({
+    id: agent.id, name: agent.name, maxCycles: agent.maxCycles, runCount: agent.runCount, lastRunAt: agent.lastRunAt
+  }))
 }

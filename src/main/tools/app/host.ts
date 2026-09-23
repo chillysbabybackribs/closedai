@@ -127,9 +127,13 @@ export type AppBrowserTabRequest = {
   title?: string | null
 }
 
-/** Drive the agent run of a pane: start attaches one, pause/resume/stop act on the existing run. */
+/**
+ * Drive the agent run of a pane: start attaches one, pause/resume/stop act on the existing run.
+ * A start names a saved library agent (`agentId`, prompt and cap come from the entry unless
+ * overridden) or carries its own prompt; one of the two is required.
+ */
 export type AppAgentRunRequest =
-  | { op: 'start'; paneId: string; options: AgentRunStartOptions }
+  | { op: 'start'; paneId: string; agentId: string | null; options: Partial<AgentRunStartOptions> }
   | { op: 'pause' | 'resume' | 'stop'; paneId: string }
 
 export type AppCommandHost = {

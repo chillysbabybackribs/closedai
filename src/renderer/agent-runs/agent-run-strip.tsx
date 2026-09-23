@@ -34,7 +34,7 @@ export function AgentRunStrip({ run, onPause, onResume, onStop }: AgentRunStripP
     <div className="agent-run-strip" data-state={run.status} role="status" aria-live="polite">
       <span className="agent-run-strip-dot" aria-hidden="true" />
       <span className="agent-run-strip-text" title={describeAgentRun(run)}>
-        <strong>{running ? 'Agent running' : 'Agent paused'}</strong>
+        <strong>{run.name || 'Agent'} {running ? 'running' : 'paused'}</strong>
         <span className="agent-run-strip-cycle"> · cycle {run.cycle}{limit}</span>
         {!running && run.reason ? <span className="agent-run-strip-reason"> · {run.reason}</span> : null}
         {error ? <span className="agent-run-strip-error"> · {error}</span> : null}

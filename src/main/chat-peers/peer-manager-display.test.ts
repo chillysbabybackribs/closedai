@@ -218,3 +218,24 @@ test('a saved view is left alone once the chat no longer holds that thread', asy
   await manager.openChat('pane-b')
   assert.deepEqual(manager.snapshot({ limit: 200 }).selected.items, [])
 })
+
+test('a rotated chat paints and saves its last session view while its active thread is released', async () => {
+  const transcripts = ChatTranscriptCache.inMemory([['pane-a', {
+    version: 1, threadId: 'last-session', threadName: 'Saved conversation',
+    items: [{ type: 'user', id: 'saved', turnId: null, text: 'Keep my conversation' }],
+    hasEarlier: false, contextUsage: null, updatedAt: 1
+  }]])
+  const { manager, surfaces, store } = harnessWith([chatRecord('pane-a', 'gpt', {
+    continuation: { sourcePaneId: 'pane-a', sourceThreadId: 'first-session', sourceProvider: 'codex',
+      sourceTitle: 'Saved conversation', handoff: 'Continue', createdAt: 1 },
+    sessionRotations: [{ epoch: 2, providerThreadId: 'last-session', sourceThroughItemId: 'saved', at: 2 }]
+  })], 'pane-a', undefined, undefined, transcripts)
+  await manager.start()
+  assert.equal(manager.snapshot().selected.items[0]?.id, 'saved')
+  assert.equal(manager.snapshot().selected.threadId, null)
+  surfaces[0]!.state.items = [{ type: 'user', id: 'live', turnId: null, text: 'Retained transcript' }]
+  manager.stop()
+  assert.equal(transcripts.peek('pane-a')?.items[0]?.id, 'live')
+  store.update('pane-a', { continuation: null })
+  assert.deepEqual(manager.snapshot().selected?.items ?? [], [])
+})

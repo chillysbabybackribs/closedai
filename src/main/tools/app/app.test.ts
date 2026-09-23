@@ -51,9 +51,10 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
       calls.push(['agentRun', request])
       if (request.op === 'stop') return null
       return {
-        chatId: request.paneId, prompt: request.op === 'start' ? request.options.prompt : 'standing', status: request.op === 'pause' ? 'paused' : 'running',
+        chatId: request.paneId, prompt: request.op === 'start' ? request.options.prompt ?? 'saved' : 'standing', status: request.op === 'pause' ? 'paused' : 'running',
         cycle: 1, maxCycles: request.op === 'start' ? request.options.maxCycles ?? null : null,
-        startedAt: 1, updatedAt: 1, lastTurnEndedAt: null, reason: null, failures: 0, threadId: null
+        startedAt: 1, updatedAt: 1, lastTurnEndedAt: null, reason: null, failures: 0, threadId: null,
+        agentId: request.op === 'start' ? request.agentId : null, name: null
       }
     },
     openChat: async (request) => { calls.push(['openChat', request]); return { paneId: request.paneId ?? 'pane-selected', threadId: 'thread-1' } },
@@ -181,7 +182,7 @@ test('agent actions drive another pane\'s run and refuse the calling pane', asyn
   assert.match(textOf(stopped), /"run": null/)
   const verbs = calls.flatMap((entry) => Array.isArray(entry) && entry[0] === 'agentRun' ? [entry[1]] : [])
   assert.deepEqual(verbs, [
-    { op: 'start', paneId: 'pane-agent', options: { prompt: 'repair the app', maxCycles: 3 } },
+    { op: 'start', paneId: 'pane-agent', agentId: null, options: { prompt: 'repair the app', maxCycles: 3 } },
     { op: 'pause', paneId: 'pane-agent' },
     { op: 'resume', paneId: 'pane-agent' },
     { op: 'stop', paneId: 'pane-agent' }
@@ -194,6 +195,12 @@ test('agent actions drive another pane\'s run and refuse the calling pane', asyn
   assert.match(textOf(onCaller), /calling pane/)
   const missingPrompt = await call('agent', { action: 'start', pane_id: 'pane-agent' })
   assert.equal(missingPrompt.isError, true)
+  assert.match(textOf(missingPrompt), /agent_id/)
+  calls.length = 0
+  await call('agent', { action: 'start', pane_id: 'pane-agent', agent_id: 'saved-1' })
+  assert.deepEqual(calls.filter((entry) => Array.isArray(entry) && entry[0] === 'agentRun').map((entry) => (entry as unknown[])[1]), [
+    { op: 'start', paneId: 'pane-agent', agentId: 'saved-1', options: {} }
+  ])
 })
 
 test('preview_html resolves workspace html and reveals the browser when hidden', async () => {

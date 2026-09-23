@@ -50,7 +50,11 @@ test('applyProviderRotation persists continuation and rotation without clearing 
     threadId: 'claude:abc',
     threadName: 'Hello',
     items
-  }, async () => { settings.released = true }, { usedTokens: 180_000, contextWindow: 200_000 })
+  }, async () => {
+    assert.equal(settings.saved.chatContinuation?.sourceThreadId, 'claude:abc')
+    assert.equal(settings.saved.chatSessionRotations?.length, 1)
+    settings.released = true
+  }, { usedTokens: 180_000, contextWindow: 200_000 })
   assert.equal(rotated, true)
   assert.equal(settings.released, true)
   assert.equal(settings.saved.chatContinuation?.sourceThreadId, 'claude:abc')

@@ -31,16 +31,20 @@ export function appAgentActions(app: () => AppCommandHost | null): ToolAction[] 
     {
       action: 'start',
       description:
-        'Attach a run to another pane and send its standing prompt now. After every finished turn the app sends the next Cycle N message until the run is paused or stopped; a turn already in flight is folded in. Refused for the calling pane and for a pane whose run is running.',
+        'Attach a run to another pane and send its standing prompt now. Name a saved agent with agent_id (ids under state.workspace.savedAgents; its prompt and cycle cap apply) or pass prompt for a one-off. After every finished turn the app sends the next Cycle N message until the run is paused or stopped; a turn already in flight is folded in. Refused for the calling pane and for a pane whose run is running.',
       inputSchema: objectSchema({
         pane_id: paneField,
-        prompt: { type: 'string', minLength: 1, maxLength: AGENT_RUN_MAX_PROMPT_CHARS, description: 'Standing instructions; re-sent whenever the provider thread changes.' },
-        max_cycles: { type: 'integer', minimum: 1, description: 'Pause after this many cycles; omit to run until paused.' }
-      }, ['prompt', 'pane_id']),
+        agent_id: { type: 'string', minLength: 1, description: 'Saved agent to start; supplies the prompt, cycle cap, and name. Required unless prompt is given.' },
+        prompt: { type: 'string', minLength: 1, maxLength: AGENT_RUN_MAX_PROMPT_CHARS, description: 'Standing instructions for a one-off run; re-sent whenever the provider thread changes. Required unless agent_id is given.' },
+        max_cycles: { type: 'integer', minimum: 1, description: 'Pause after this many cycles; omit to use the saved cap, or to run until paused.' }
+      }, ['pane_id']),
       run: async (input, context) => {
         const { host, paneId } = target(input, context, 'start an agent in')
-        const maxCycles = typeof input.max_cycles === 'number' ? input.max_cycles : null
-        const run = await host.agentRun({ op: 'start', paneId, options: { prompt: stringArg(input, 'prompt')!, maxCycles } })
+        const prompt = stringArg(input, 'prompt')
+        const agentId = stringArg(input, 'agent_id')
+        if (!prompt && !agentId) throw new Error('agent start needs agent_id (a saved agent from state.workspace.savedAgents) or prompt (standing instructions)')
+        const options = { ...(prompt ? { prompt } : {}), ...(typeof input.max_cycles === 'number' ? { maxCycles: input.max_cycles } : {}) }
+        const run = await host.agentRun({ op: 'start', paneId, agentId: agentId ?? null, options })
         return respond(host, paneId, context, run)
       }
     },

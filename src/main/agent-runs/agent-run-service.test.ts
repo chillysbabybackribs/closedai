@@ -272,3 +272,23 @@ test('a run cannot start in a chat that is not open or already has a running age
   await assert.rejects(h.service.startRun(id, { prompt: '   ' }), /standing instructions/)
   h.service.stop()
 })
+
+test('a start from the library keeps the agent id and name and announces the start once the first cycle is out', async () => {
+  const h = harness()
+  h.service.start()
+  const id = openChat(h)
+  const started: string[] = []
+  h.service.on('started', (run: { agentId: string | null }) => started.push(run.agentId ?? 'one-off'))
+  const run = await h.service.startRun(id, { prompt: 'Sort issues.', agentId: 'saved-1', name: ' Triage bot ' })
+  assert.equal(run.agentId, 'saved-1')
+  assert.equal(run.name, 'Triage bot')
+  assert.deepEqual(started, ['saved-1'])
+  await h.service.stopRun(id)
+  const failing = harness({ sendError: () => new Error('offline') })
+  failing.service.start()
+  const other = openChat(failing, 'chat-2')
+  let announced = 0
+  failing.service.on('started', () => { announced += 1 })
+  await assert.rejects(failing.service.startRun(other, { prompt: 'Go.', agentId: 'saved-1' }), /offline/)
+  assert.equal(announced, 0, 'a failed first send is not a run')
+})
