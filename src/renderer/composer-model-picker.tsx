@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type JSX, type ReactNode } from 'react'
+import { useState, type JSX, type ReactNode } from 'react'
 import { Check } from 'lucide-react'
 
 import { Command, CommandGroup, CommandItem, CommandList } from '../components/ui/command.js'
@@ -41,7 +41,7 @@ export function ModelPicker({
   const current = models.find((model) => model.id === selectedModel) ?? null
   const landing = current ?? groups[0]?.models[0] ?? null
   const [highlighted, setHighlighted] = useState(() => (landing ? itemValue(landing.provider, landing) : ''))
-  const rootRef = useRef<HTMLDivElement>(null)
+  
 
   // Open on the current model's section, heading at the top. A model deep in a long section is
   // still brought into view under the pinned heading. Runs a frame late, after cmdk's own
@@ -73,7 +73,6 @@ export function ModelPicker({
 
   return (
     <Command
-      ref={rootRef}
       value={highlighted}
       onValueChange={setHighlighted}
       loop
