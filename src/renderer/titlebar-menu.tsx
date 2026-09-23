@@ -201,35 +201,49 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                       </Menubar.Label>
                     )
                   }
-                  const controlUi = row.ui?.control ?? 'titlebar.menu-item'
-                  const controlKey = row.ui?.item ?? row.key
-                  return (
-                    <Menubar.Item
-                      key={row.key}
-                      className="titlebar-menu-item"
-                      data-ui={controlUi}
-                      data-ui-key={controlKey}
-                      disabled={disabled(row)}
-                      onSelect={() => {
-                        if (row.command) {
-                          onChatZoomChange(row.command)
-                          return
-                        }
-                        if (row.layoutPreset) {
-                          onApplyLayoutPreset(row.layoutPreset)
-                          return
-                        }
-                        // The search field is focused after the menu's own close-focus, not before it.
-                        if (row.action === 'search-chats') searchOnClose.current = true
-                        else onAction(row.action)
-                      }}
-                    >
+                  const onSelect = (): void => {
+                    if (row.command) {
+                      onChatZoomChange(row.command)
+                      return
+                    }
+                    if (row.layoutPreset) {
+                      onApplyLayoutPreset(row.layoutPreset)
+                      return
+                    }
+                    // The search field is focused after the menu's own close-focus, not before it.
+                    if (row.action === 'search-chats') searchOnClose.current = true
+                    else onAction(row.action)
+                  }
+                  const itemLabel = (
+                    <>
                       <span>{row.action === 'history' && historyOpen ? 'Close chat history' : row.label}</span>
                       {row.shortcut && (
                         <span className="titlebar-menu-shortcut">
                           {row.command === 'reset' ? `${chatZoom}%  ` : ''}{row.shortcut}
                         </span>
                       )}
+                    </>
+                  )
+                  if (row.layoutPreset) {
+                    return (
+                      <Menubar.Item key={row.key} className="titlebar-menu-item" data-ui="layout.dock-preset"
+                        data-ui-key={row.ui!.item!} disabled={disabled(row)} onSelect={onSelect}>
+                        {itemLabel}
+                      </Menubar.Item>
+                    )
+                  }
+                  if (row.action === 'layout') {
+                    return (
+                      <Menubar.Item key={row.key} className="titlebar-menu-item" data-ui="layout.preset-menu-custom"
+                        data-ui-key={row.key} disabled={disabled(row)} onSelect={onSelect}>
+                        {itemLabel}
+                      </Menubar.Item>
+                    )
+                  }
+                  return (
+                    <Menubar.Item key={row.key} className="titlebar-menu-item" data-ui="titlebar.menu-item"
+                      data-ui-key={row.key} disabled={disabled(row)} onSelect={onSelect}>
+                      {itemLabel}
                     </Menubar.Item>
                   )
                 })}
