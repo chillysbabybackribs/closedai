@@ -387,6 +387,10 @@ immediately restores the full split grid layout without modifying persisted divi
 in renderer localStorage, including tab order and each tile's active tab. Missing/archived chats
 are removed from a restored layout; layouts saved before tabs remain compatible.
 
+The title bar's layout menu (`layout.preset-menu`, beside Search chats) offers four one-click
+starting arrangements (`layout.dock-preset`: browser centre, six chats, four chats, chat + browser)
+and a **Workspace layout…** row (`layout.preset-menu-custom`) that opens the full dialog.
+
 **View → Workspace layout…** and the tile context menu's **Workspace layout…** row (`layout.presets`)
 open a dialog (`layout.presets-dialog`) with two starting arrangements drawn to scale for the current
 canvas: **Browser centre** (`layout.preset-browser-centre`), the browser at 42 % width between two

@@ -1,0 +1,147 @@
+/* Title-bar dropdown for the four quick workspace layouts (layout-preset-menu.tsx). */
+
+.titlebar-layout-trigger {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  height: 34px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--chrome-control-fg);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: color 110ms var(--ease-chrome), background 110ms var(--ease-chrome);
+}
+
+.titlebar-layout-trigger::before {
+  content: '';
+  position: absolute;
+  inset: 3px 2px;
+  border-radius: 6px;
+  transition: background 110ms var(--ease-chrome);
+}
+
+.titlebar-layout-trigger:hover:not(:disabled),
+.titlebar-layout-trigger[data-state='open'] {
+  color: var(--chrome-control-strong);
+}
+
+.titlebar-layout-trigger:hover:not(:disabled)::before,
+.titlebar-layout-trigger[data-state='open']::before {
+  background: var(--chrome-control-hover);
+}
+
+.titlebar-layout-trigger:focus-visible {
+  outline: 1px solid var(--focus-ink);
+  outline-offset: -1px;
+}
+
+.titlebar-layout-trigger:disabled {
+  color: var(--chrome-control-quiet);
+  cursor: default;
+}
+
+.titlebar-layout-trigger svg {
+  position: relative;
+}
+
+.titlebar-layout-chevron {
+  position: relative;
+  opacity: 0.72;
+}
+
+.titlebar-layout-menu {
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  padding: 8px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 10px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 32%),
+    0 10px 28px rgb(0 0 0 / 44%);
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-layout-menu-grid {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.titlebar-layout-menu-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 96px;
+  padding: 8px 6px 7px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--chrome-control-fg);
+  cursor: pointer;
+  transition: background 110ms var(--ease-chrome), border-color 110ms var(--ease-chrome);
+}
+
+.titlebar-layout-menu-preset:hover,
+.titlebar-layout-menu-preset:focus-visible {
+  background: var(--chrome-control-hover);
+  border-color: var(--hairline-strong);
+  color: var(--chrome-control-strong);
+  outline: none;
+}
+
+.titlebar-layout-menu-preset .layout-preset-wire {
+  width: 56px;
+  pointer-events: none;
+}
+
+.titlebar-layout-menu-preset .layout-preset-wire-chat span,
+.titlebar-layout-menu-preset .layout-preset-wire-browser span {
+  display: none;
+}
+
+.titlebar-layout-menu-label {
+  font-size: 10.5px;
+  font-weight: 550;
+  letter-spacing: var(--tracking-ui);
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.titlebar-layout-menu-divider {
+  height: 1px;
+  margin: 0 4px;
+  background: var(--chrome-control-divider);
+}
+
+.titlebar-layout-menu-more {
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--chrome-control-fg);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.titlebar-layout-menu-more:hover,
+.titlebar-layout-menu-more:focus-visible {
+  background: var(--chrome-control-hover);
+  color: var(--chrome-control-strong);
+  outline: none;
+}
