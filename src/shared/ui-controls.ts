@@ -42,9 +42,8 @@ export const UI_CONTROLS = {
   'layout.preset-grid-increment': 'Layout dialog: one more chat in the grid option',
   'layout.preset-apply': 'Layout dialog: apply the selected arrangement; open tiles keep their tabs, missing slots get new chats',
   'layout.preset-cancel': 'Layout dialog: close without changing the layout',
-  'layout.preset-menu': 'Layout grid button beside Search chats in the title bar: open the quick workspace layout menu; no item required',
-  'layout.preset-menu-custom': 'Quick layout menu row: open the full workspace layout dialog with custom grid count',
-  'layout.dock-preset': 'Quick layout menu preset: apply one of four starting arrangements without opening the layout dialog; item is browser-centre, six, four or browser-side',
+  'layout.preset-menu-custom': 'View → Workspace layout…: open the full workspace layout dialog with custom grid count',
+  'layout.dock-preset': 'View menu preset: apply one of four starting arrangements without opening the layout dialog; item is browser-centre, six, four or browser-side',
   'layout.divider': 'Resize adjacent chat or browser tiles by dragging the gutter or using arrow keys (Shift for fine control); double-click balances, Escape cancels a drag; item is the split id',
   'layout.tab-move': 'Tab context menu: move the active conversation into the next or previous tile in reading order; item is next or previous',
 

@@ -118,3 +118,11 @@ export function presetLayout(preset: LayoutPreset, groups: TileGroup[], size: Ca
 
 export const presetSlots = (preset: LayoutPreset): number =>
   preset.kind === 'grid' ? preset.count : preset.kind === 'browser-side' ? BROWSER_SIDE_SLOTS : BROWSER_CENTRE_SLOTS
+
+/** One-click starting layouts exposed in View and formerly the title-bar grid menu. */
+export const QUICK_LAYOUT_PRESETS: Array<{ key: string; label: string; preset: LayoutPreset }> = [
+  { key: 'browser-centre', label: 'Browser centre', preset: { kind: 'browser-centre' } },
+  { key: 'six', label: '6 chats', preset: { kind: 'grid', count: 6 } },
+  { key: 'four', label: '4 chats', preset: { kind: 'grid', count: 4 } },
+  { key: 'browser-side', label: 'Chat + browser', preset: { kind: 'browser-side' } }
+]

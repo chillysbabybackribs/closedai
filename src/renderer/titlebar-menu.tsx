@@ -6,6 +6,7 @@ import {
   CHAT_ZOOM_MIN,
   type ChatZoomCommand
 } from './chat-zoom.js'
+import { QUICK_LAYOUT_PRESETS, type LayoutPreset } from './chat-layout/layout-presets.js'
 
 /** Everything a menu row can do besides zoom. */
 export type MenuAction =
@@ -14,12 +15,16 @@ export type MenuAction =
   | 'tools' | 'compact' | 'stop-turn'
   | 'trace' | 'reload' | 'devtools'
 
+type MenuControlUi = { control: 'layout.dock-preset' | 'layout.preset-menu-custom'; item?: string }
+
 /** A clickable row, a separator, or a section heading that names what the rows below act on. */
 type MenuRow =
   | { kind: 'separator' }
   | { kind: 'heading'; label: string }
-  | ({ kind?: 'item'; key: string; label: string; shortcut?: string }
-    & ({ command: ChatZoomCommand; action?: never } | { action: MenuAction; command?: never }))
+  | ({ kind?: 'item'; key: string; label: string; shortcut?: string; ui?: MenuControlUi }
+    & ({ command: ChatZoomCommand; action?: never; layoutPreset?: never }
+      | { action: MenuAction; command?: never; layoutPreset?: never }
+      | { layoutPreset: LayoutPreset; action?: never; command?: never }))
 
 type Menu = { key: string; label: string; rows: MenuRow[] }
 
@@ -36,6 +41,17 @@ function zoomCommandIsDisabled(command: ChatZoomCommand, chatZoom: number): bool
  * File and View own the shell; Agent owns what the model is given and what the selected chat is
  * doing with it; Developer owns diagnostics of the app itself.
  */
+const VIEW_LAYOUT_ROWS: MenuRow[] = [
+  ...QUICK_LAYOUT_PRESETS.map(({ key, label, preset }) => ({
+    key: `layout-preset-${key}`,
+    label,
+    layoutPreset: preset,
+    ui: { control: 'layout.dock-preset' as const, item: key }
+  })),
+  { key: 'workspace-layout', label: 'Workspace layout…', action: 'layout' as const,
+    ui: { control: 'layout.preset-menu-custom' as const } }
+]
+
 const MENUS: Menu[] = [
   {
     key: 'file',
@@ -56,7 +72,8 @@ const MENUS: Menu[] = [
     label: 'View',
     rows: [
       { key: 'toggle-browser-pane', label: 'Toggle browser pane', action: 'toggle-browser' },
-      { key: 'workspace-layout', label: 'Workspace layout…', action: 'layout' },
+      SEP,
+      ...VIEW_LAYOUT_ROWS,
       SEP,
       { key: 'zoom-in', label: 'Zoom in', shortcut: 'Ctrl+=', command: 'in' },
       { key: 'zoom-out', label: 'Zoom out', shortcut: 'Ctrl+-', command: 'out' },
@@ -99,6 +116,8 @@ export type TitlebarMenuProps = {
   onChatZoomChange: (command: ChatZoomCommand) => void
   onAction: (action: Exclude<MenuAction, 'search-chats'>) => void
   onSearchChats: () => void
+  layoutEnabled: boolean
+  onApplyLayoutPreset: (preset: LayoutPreset) => void
 }
 
 /** The shell's File / View / Agent / Developer bar, sitting in the title bar's drag region. */
@@ -110,11 +129,14 @@ export const TitlebarMenu = memo(function TitlebarMenu({
   stopEnabled,
   onChatZoomChange,
   onAction,
-  onSearchChats
+  onSearchChats,
+  layoutEnabled,
+  onApplyLayoutPreset
 }: TitlebarMenuProps): JSX.Element {
   const searchOnClose = useRef(false)
   const disabled = (row: Extract<MenuRow, { key: string }>): boolean => {
     if (row.command) return zoomCommandIsDisabled(row.command, chatZoom)
+    if (row.layoutPreset || row.action === 'toggle-browser' || row.action === 'layout') return !layoutEnabled
     if (row.action === 'compact') return !compactEnabled
     if (row.action === 'stop-turn') return !stopEnabled
     return false
@@ -179,16 +201,22 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                       </Menubar.Label>
                     )
                   }
+                  const controlUi = row.ui?.control ?? 'titlebar.menu-item'
+                  const controlKey = row.ui?.item ?? row.key
                   return (
                     <Menubar.Item
                       key={row.key}
                       className="titlebar-menu-item"
-                      data-ui="titlebar.menu-item"
-                      data-ui-key={row.key}
+                      data-ui={controlUi}
+                      data-ui-key={controlKey}
                       disabled={disabled(row)}
                       onSelect={() => {
                         if (row.command) {
                           onChatZoomChange(row.command)
+                          return
+                        }
+                        if (row.layoutPreset) {
+                          onApplyLayoutPreset(row.layoutPreset)
                           return
                         }
                         // The search field is focused after the menu's own close-focus, not before it.

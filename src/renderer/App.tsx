@@ -17,7 +17,6 @@ import { AppStartup } from './app-startup.js'
 import { errorMessage } from './error-message.js'
 import { TitlebarMenu, type MenuAction } from './titlebar-menu.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
-import { TitlebarLayoutMenu } from './chat-layout/layout-preset-menu.js'
 import type { ChatPaneDialog } from './chat-pane.js'
 import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SettingsDialog, type SettingsTab } from './settings/settings-dialog.js'
@@ -189,15 +188,12 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           onChatZoomChange={changeChatZoom}
           onAction={menuAction}
           onSearchChats={focusSearch}
+          layoutEnabled={Boolean(chat.selectedPaneId)}
+          onApplyLayoutPreset={(preset) => workspaceRef.current?.applyPreset(preset)}
         />
         <div className="titlebar-search-tools">
           <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef}
             onOpened={() => setHistoryOpen(false)} />
-          <TitlebarLayoutMenu
-            disabled={!chat.selectedPaneId}
-            onApply={(preset) => workspaceRef.current?.applyPreset(preset)}
-            onOpenPresets={() => workspaceRef.current?.openLayoutPresets()}
-          />
           <button type="button" className={`titlebar-icon-button titlebar-browser-toggle${browserVisible ? ' is-selected' : ''}`}
             data-ui="layout.browser-toggle" disabled={!chat.selectedPaneId}
             aria-pressed={browserVisible} aria-label={browserVisible ? 'Hide browser' : 'Show browser'}
