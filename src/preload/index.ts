@@ -67,6 +67,13 @@ const api: ClosedaiApi = {
     clear: () => invoke(IPC.invoke.browserDownloads.clear),
     onChanged: (listener) => subscribe(IPC.event.browserDownloadsChanged, listener)
   },
+  savedSites: {
+    list: () => invoke(IPC.invoke.savedSites.list),
+    save: (draft) => invoke(IPC.invoke.savedSites.save, draft),
+    update: (id, patch) => invoke(IPC.invoke.savedSites.update, id, patch),
+    remove: (id) => invoke(IPC.invoke.savedSites.remove, id),
+    onChanged: (listener) => subscribe(IPC.event.savedSitesChanged, listener)
+  },
   chat: {
     snapshot: () => invoke(IPC.invoke.chat.snapshot),
     historyPage: (paneId, threadId, beforeItemId) => invoke(IPC.invoke.chat.historyPage, paneId, threadId, beforeItemId),

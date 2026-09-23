@@ -1,6 +1,7 @@
 import type { AgentRun, AgentRunStartOptions, AgentRunsEvent } from './agent-runs.js'
 import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
+import type { SavedSite, SavedSiteDraft, SavedSitePatch } from './saved-sites.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type {
   ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot
@@ -70,6 +71,16 @@ export type ClosedaiApi = {
     reveal: (id: string) => Promise<void>
     clear: () => Promise<void>
     onChanged: (listener: (downloads: BrowserDownload[]) => void) => Unsubscribe
+  }
+  /** Sites the user keeps on purpose; see src/shared/saved-sites.ts. */
+  savedSites: {
+    list: () => Promise<SavedSite[]>
+    /** Saves a web page, or refreshes title/favicon when its URL is already saved. */
+    save: (draft: SavedSiteDraft) => Promise<SavedSite>
+    update: (id: string, patch: SavedSitePatch) => Promise<SavedSite | null>
+    remove: (id: string) => Promise<void>
+    /** The full list, sent whenever it changes. */
+    onChanged: (listener: (sites: SavedSite[]) => void) => Unsubscribe
   }
   chat: {
     snapshot: () => Promise<ChatWorkspaceSnapshot>

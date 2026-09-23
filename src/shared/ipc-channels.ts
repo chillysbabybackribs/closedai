@@ -1,6 +1,7 @@
 import type { AgentRun, AgentRunStartOptions, AgentRunsEvent } from './agent-runs.js'
 import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
+import type { SavedSite, SavedSiteDraft, SavedSitePatch } from './saved-sites.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type {
   ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot
@@ -54,6 +55,10 @@ export type IpcInvokeChannels = {
   'browserDownloads:cancel': { args: [string]; result: void }
   'browserDownloads:reveal': { args: [string]; result: void }
   'browserDownloads:clear': { args: []; result: void }
+  'savedSites:list': { args: []; result: SavedSite[] }
+  'savedSites:save': { args: [SavedSiteDraft]; result: SavedSite }
+  'savedSites:update': { args: [string, SavedSitePatch]; result: SavedSite | null }
+  'savedSites:remove': { args: [string]; result: void }
   'chat:snapshot': { args: []; result: ChatWorkspaceSnapshot }
   'chat:historyPage': { args: [ChatPaneId, string | null, string]; result: ChatHistoryPage }
   'chat:send': { args: [ChatPaneId, string, ChatAttachment[]]; result: void }
@@ -116,6 +121,7 @@ export type IpcEventChannels = {
   'browser:tabs': BrowserTabInfo[]
   'browser:permissionRequests': WebPermissionRequest[]
   'browserDownloads:changed': BrowserDownload[]
+  'savedSites:changed': SavedSite[]
   'chat:event': ChatWorkspaceEvent
   'agentRuns:event': AgentRunsEvent
   'security:credentialApprovals': CredentialApprovalRequest[]
@@ -171,6 +177,12 @@ export const IPC = {
       cancel: 'browserDownloads:cancel',
       reveal: 'browserDownloads:reveal',
       clear: 'browserDownloads:clear'
+    },
+    savedSites: {
+      list: 'savedSites:list',
+      save: 'savedSites:save',
+      update: 'savedSites:update',
+      remove: 'savedSites:remove'
     },
     chat: {
       snapshot: 'chat:snapshot',
@@ -244,6 +256,7 @@ export const IPC = {
     browserTabs: 'browser:tabs',
     browserPermissionRequests: 'browser:permissionRequests',
     browserDownloadsChanged: 'browserDownloads:changed',
+    savedSitesChanged: 'savedSites:changed',
     chatEvent: 'chat:event',
     agentRunsEvent: 'agentRuns:event',
     securityCredentialApprovals: 'security:credentialApprovals',
