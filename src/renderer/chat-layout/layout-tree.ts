@@ -10,9 +10,15 @@ export const CHAT_DRAG_TYPE = 'application/x-closedai-chat'
 // Reserved layout leaf: never sent to chat services or included in conversation tabs.
 export const BROWSER_PANE_ID = 'closedai:shared-browser'
 export const WORKSPACE_DOCK_ID = 'closedai:workspace-edge'
+/** View tabs (trace, tools, …) share the tab strip with chats but are never chat ids for main. */
+export const VIEW_TAB_PREFIX = 'closedai:view:'
 
 export function isReservedPaneId(id: string): boolean {
   return id === BROWSER_PANE_ID
+}
+
+export function isViewTabId(id: string): boolean {
+  return id.startsWith(VIEW_TAB_PREFIX)
 }
 
 export function withBrowser(tree: ChatLayout): ChatLayout {
@@ -25,8 +31,14 @@ function layoutIds(tree: ChatLayout | null): string[] {
   return !tree ? [] : tree.kind === 'pane' ? [tree.id] : [...layoutIds(tree.first), ...layoutIds(tree.second)]
 }
 
+/** Tile ids: each tile is named by its active tab, which may be a view. */
 export function paneIds(tree: ChatLayout | null): string[] {
   return layoutIds(tree).filter((id) => id !== BROWSER_PANE_ID)
+}
+
+/** Tiles whose active tab is a chat: what main treats as visible. */
+export function chatPaneIds(tree: ChatLayout | null): string[] {
+  return paneIds(tree).filter((id) => !isViewTabId(id))
 }
 
 export function removePane(tree: ChatLayout | null, id: string): ChatLayout | null {
@@ -117,8 +129,22 @@ export function layoutGeometry(tree: ChatLayout, width: number, height: number) 
   return { panes, dividers, minimum }
 }
 
-export type SavedChatLayout = { tree: ChatLayout | null; browserVisible: boolean }
+/** A view pinned to one chat; unpinned views follow their tile and are absent here. */
+export type ViewScopes = Record<string, { pinnedChatId: string }>
+export type SavedChatLayout = { tree: ChatLayout | null; browserVisible: boolean; views?: ViewScopes }
 const storageKey = (cwd: string): string => `closedai.chat-layout.v1:${cwd}`
+
+function validViewScopes(raw: unknown, tabs: Set<string>): ViewScopes {
+  const views: ViewScopes = {}
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return views
+  for (const [id, scope] of Object.entries(raw as Record<string, unknown>)) {
+    const pinned = (scope as { pinnedChatId?: unknown } | null)?.pinnedChatId
+    if (isViewTabId(id) && tabs.has(id) && typeof pinned === 'string' && pinned && !isViewTabId(pinned)) {
+      views[id] = { pinnedChatId: pinned }
+    }
+  }
+  return views
+}
 
 export function readLayout(storage: Pick<Storage, 'getItem'>, cwd: string): SavedChatLayout {
   const fallback = { tree: null, browserVisible: true }
@@ -144,7 +170,10 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, cwd: string): Save
         && Number.isFinite(node.ratio) && node.ratio >= 0.05 && node.ratio <= 0.95
         && validate(node.first, depth + 1) && validate(node.second, depth + 1))
     }
-    return raw && (raw.tree === null || validate(raw.tree)) && typeof raw.browserVisible === 'boolean' ? raw : fallback
+    if (!raw || !(raw.tree === null || validate(raw.tree)) || typeof raw.browserVisible !== 'boolean') return fallback
+    const views = validViewScopes(raw.views, chats)
+    return Object.keys(views).length ? { tree: raw.tree, browserVisible: raw.browserVisible, views }
+      : { tree: raw.tree, browserVisible: raw.browserVisible }
   } catch { return fallback }
 }
 
