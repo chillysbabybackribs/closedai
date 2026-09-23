@@ -88,6 +88,7 @@ export type ClosedaiApi = {
     listChats: () => Promise<ChatRowSummary[]>
     /** Clear the pane; the next message starts a fresh app-server thread. */
     newPeer: () => Promise<ChatPaneId>
+    openCoordinatorWorkspace: () => Promise<import('./coordinator.js').OpenCoordinatorWorkspaceResult>
     enableCoordinator: (paneId: ChatPaneId) => Promise<import('./coordinator.js').EnableCoordinatorResult>
     disableCoordinator: (paneId: ChatPaneId) => Promise<void>
     /** Retire an open peer pane from the active workspace shelf back to history. */

@@ -81,6 +81,7 @@ const api: ClosedaiApi = {
     loginWithChatGPT: () => invoke(IPC.invoke.chat.login),
     listChats: () => invoke(IPC.invoke.chat.listChats),
     newPeer: () => invoke(IPC.invoke.chat.newPeer),
+    openCoordinatorWorkspace: () => invoke(IPC.invoke.chat.openCoordinatorWorkspace),
     enableCoordinator: (paneId) => invoke(IPC.invoke.chat.enableCoordinator, paneId),
     disableCoordinator: (paneId) => invoke(IPC.invoke.chat.disableCoordinator, paneId),
     closePeer: (paneId) => invoke(IPC.invoke.chat.closePeer, paneId),

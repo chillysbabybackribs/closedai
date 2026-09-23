@@ -1,5 +1,5 @@
 import type { ChatAttachment, ChatHistoryPage, ChatHistoryWindow, ChatThreadSummary } from '../../shared/chat.js'
-import type { EnableCoordinatorResult } from '../../shared/coordinator.js'
+import type { EnableCoordinatorResult, OpenCoordinatorWorkspaceResult } from '../../shared/coordinator.js'
 import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import type { DeferredProjectSwitch } from './deferred-project-switch.js'
 
@@ -31,6 +31,7 @@ export interface ChatWorkspaceSurface {
   /** Every thread the providers and the store know, reconciled first; for tools that search by title. */
   listThreads(): Promise<ChatThreadSummary[]>
   newPeer(callerPaneId?: ChatPaneId): Promise<ChatPaneId>
+  openCoordinatorWorkspace(): Promise<OpenCoordinatorWorkspaceResult>
   enableCoordinator(paneId: ChatPaneId): Promise<EnableCoordinatorResult>
   disableCoordinator(paneId: ChatPaneId): Promise<void>
   restoreCoordinatorFocus(callerPaneId: ChatPaneId, workerPaneId: ChatPaneId): Promise<void>

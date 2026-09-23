@@ -1,5 +1,21 @@
-import type { EnableCoordinatorResult } from '../../shared/coordinator.js'
+import type { EnableCoordinatorResult, OpenCoordinatorWorkspaceResult } from '../../shared/coordinator.js'
 import { withBrowser, type ChatLayout } from './layout-tree.js'
+
+/** Two stacked chats beside the shared browser (coordinator on top, worker below). */
+export function coordinatorBrowserSideLayout(
+  result: OpenCoordinatorWorkspaceResult,
+  newSplitId: () => string
+): ChatLayout {
+  const stack: ChatLayout = {
+    kind: 'split',
+    id: newSplitId(),
+    axis: 'vertical',
+    ratio: 0.5,
+    first: { kind: 'pane', id: result.coordinatorPaneId },
+    second: { kind: 'pane', id: result.workerPaneId }
+  }
+  return withBrowser(stack)
+}
 
 /** Coordinator left; workers stacked on the right. */
 export function coordinatorWorkspaceLayout(
