@@ -48,9 +48,9 @@ export type ComposerProps = {
 }
 
 /**
- * One line: attach, the text, a trigger naming the model and folder, and one action button that
- * is Send, Pause while a turn runs, or Resume after a pause. Everything else about the turn —
- * model, effort, folder, context usage — lives in the setup panel behind the trigger.
+ * The message card contains the draft and its actions. The setup trigger sits below it so the
+ * selected model and folder read as metadata for the composer rather than taking space from the
+ * writing surface; the trigger still opens the full setup panel.
  */
 export function Composer({
   enabled,
@@ -242,33 +242,35 @@ export function Composer({
             className="composer-textarea"
             onPaste={pasteFiles}
           />
-          <ComposerSetupMenu
-            ref={setupMenuRef}
-            modelsEnabled={enabled && !running}
-            busy={sending}
-            models={models}
-            selectedModel={selectedModel}
-            selectedReasoningEffort={selectedReasoningEffort}
-            onModelChange={onModelChange}
-            onReasoningEffortChange={onReasoningEffortChange}
-            onError={setComposerError}
-            cwd={cwd}
-            projectPath={projectPath}
-            projectPending={projectPending}
-            recentProjects={recentProjects}
-            onChooseProject={onChooseProject}
-            onSelectProject={onSelectProject}
-            onClearProject={onClearProject}
-            contextUsage={contextUsage}
-            provider={provider}
-            planUsage={planUsage}
-            onRefreshPlanUsage={onRefreshPlanUsage}
-            onCompact={onCompactConversation}
-            compactEnabled={compactConversationEnabled}
-          />
           {action}
         </div>
       </PromptInput>
+      <div className="composer-meta-row">
+        <ComposerSetupMenu
+          ref={setupMenuRef}
+          modelsEnabled={enabled && !running}
+          busy={sending}
+          models={models}
+          selectedModel={selectedModel}
+          selectedReasoningEffort={selectedReasoningEffort}
+          onModelChange={onModelChange}
+          onReasoningEffortChange={onReasoningEffortChange}
+          onError={setComposerError}
+          cwd={cwd}
+          projectPath={projectPath}
+          projectPending={projectPending}
+          recentProjects={recentProjects}
+          onChooseProject={onChooseProject}
+          onSelectProject={onSelectProject}
+          onClearProject={onClearProject}
+          contextUsage={contextUsage}
+          provider={provider}
+          planUsage={planUsage}
+          onRefreshPlanUsage={onRefreshPlanUsage}
+          onCompact={onCompactConversation}
+          compactEnabled={compactConversationEnabled}
+        />
+      </div>
       {composerError && <div className="prompt-attachment-error" role="alert">{composerError}</div>}
     </form>
   )

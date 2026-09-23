@@ -1,7 +1,6 @@
-/* The composer (composer.tsx): one line — attach, text, the setup trigger, one action button —
-   and the setup panel behind the trigger (composer-setup-menu.tsx) with its model, effort, folder,
-   and context sections. Every colour is a chat theme token so the line and its portal-rendered
-   panel sit on the same paper as the pane. */
+/* The composer (composer.tsx): a message card with a metadata row beneath it. The setup panel
+   behind that row (composer-setup-menu.tsx) contains model, effort, folder, and context sections.
+   Every colour is a chat theme token so the card and its portal-rendered panel share one surface. */
 
 .composer {
   container: composer / inline-size;
@@ -70,9 +69,8 @@
   opacity: 0.72;
 }
 
-/* Quiet icon controls: attach on the left, the setup trigger on the right. */
-.composer-tool,
-.composer-setup-trigger {
+/* Quiet icon controls: attach on the left. */
+.composer-tool {
   flex: none;
   height: 30px;
   border: 0;
@@ -89,26 +87,44 @@
   box-shadow: none;
 }
 
-.composer-tool:not(:disabled):hover,
-.composer-setup-trigger:not(:disabled):hover,
-.composer-setup-trigger[data-state='open'] {
+.composer-tool:not(:disabled):hover {
   background: color-mix(in srgb, var(--foreground) 7%, transparent);
   color: var(--foreground);
+}
+
+/* The setup trigger is a full-width metadata rail below the card. Its two labels remain one
+   button so opening either side reaches the same setup panel. */
+.composer-meta-row {
+  max-width: calc(var(--chat-column-width) + 64px);
+  margin-inline: auto;
 }
 
 .composer-setup-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
   min-width: 0;
-  max-width: min(280px, 60%);
+  min-height: 28px;
   padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: color-mix(in srgb, var(--foreground) 62%, transparent);
   font: inherit;
   font-size: 12.5px;
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.composer-setup-trigger:not(:disabled):hover,
+.composer-setup-trigger[data-state='open'] {
+  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+  color: var(--foreground);
 }
 
 .composer-setup-trigger:focus-visible {
@@ -130,8 +146,16 @@
   text-overflow: ellipsis;
 }
 
+.composer-setup-model-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
 /* The folder is a qualifier on the model, never the louder of the two. */
 .composer-setup-folder {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   color: color-mix(in srgb, var(--foreground) 50%, transparent);
@@ -145,11 +169,11 @@
 }
 
 @container composer (max-width: 460px) {
-  .composer-setup-folder { display: none; }
+  .composer-setup-folder { max-width: 42%; }
 }
 
 @container composer (max-width: 330px) {
-  .composer-setup-model { display: none; }
+  .composer-setup-model { max-width: 55%; }
   .composer-setup-trigger { padding: 0 8px; }
 }
 

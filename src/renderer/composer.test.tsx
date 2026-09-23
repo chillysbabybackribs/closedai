@@ -40,7 +40,7 @@ const gpt4o: ComposerProps['models'][number] = {
   description: 'Omni model'
 }
 
-test('the idle composer is one line: attach, input, setup trigger, and a disabled send button', () => {
+test('the idle composer has a message card and setup metadata beneath it', () => {
   const html = renderToStaticMarkup(createElement(Composer, { ...baseProps }))
   assert.match(html, /class="composer"/)
   assert.match(html, /data-ui="composer\.upload"/)
@@ -49,11 +49,10 @@ test('the idle composer is one line: attach, input, setup trigger, and a disable
   assert.match(html, /data-ui="composer\.send"[^>]*disabled/)
   assert.doesNotMatch(html, /data-ui="composer\.stop"/)
   assert.doesNotMatch(html, /data-ui="composer\.resume"/)
-  // The rail, footer, compact pill, and hover ring are gone: nothing renders outside the card.
-  assert.doesNotMatch(html, /composer-project-strip|prompt-composer-footer|prompt-composer-compact-row|class="context-meter"/)
+  assert.match(html, /class="composer-meta-row"/)
 })
 
-test('the running composer swaps send for pause in the same slot and leaves the trigger alone', () => {
+test('the running composer swaps send for pause and keeps setup metadata beneath the card', () => {
   const html = renderToStaticMarkup(createElement(Composer, {
     ...baseProps,
     models: [gpt4o],

@@ -41,10 +41,10 @@ export type ComposerSetupMenuProps = {
 }
 
 /**
- * The one trigger on the composer line and the one panel behind it. The trigger names the model
- * and the folder, which is all a glance needs; the panel holds every per-chat setting — model,
- * reasoning effort, folder, context and plan usage — as sections of a single surface, so nothing
- * about the turn's setup is spread across the composer. The chat pane is the collision boundary.
+ * The metadata trigger below the composer and the one panel behind it. The trigger names the
+ * model on the left and folder on the right; the panel holds every per-chat setting — model,
+ * reasoning effort, folder, context and plan usage — as sections of one surface. The chat pane is
+ * the collision boundary.
  */
 export function ComposerSetupMenu({
   ref,
@@ -112,8 +112,10 @@ export function ComposerSetupMenu({
         title={`${trigger.name}${selected?.provider ? '' : ''}${trigger.effort ? ` · ${trigger.effort} effort` : ''}\n${projectPath ?? cwd}${projectPending ? ' (applies after this chat finishes its current work)' : ''}`}
         data-ui="composer.setup"
       >
-        {selected && <ProviderMark provider={selected.provider} className="composer-setup-mark" />}
-        <span className="composer-setup-model">{trigger.name}</span>
+        <span className="composer-setup-model-wrap">
+          {selected && <ProviderMark provider={selected.provider} className="composer-setup-mark" />}
+          <span className="composer-setup-model">{trigger.name}</span>
+        </span>
         {folder && (
           <span className="composer-setup-folder">
             {folder}{projectPending ? ' (queued)' : ''}
