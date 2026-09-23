@@ -30,9 +30,9 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
     {
       action: 'controls',
       description:
-        'List rendered manifest controls: id, item, name, role, surface, and state (disabled, checked, selected, ' +
-        'expanded, pressed, current, value). Scope by surface and/or query; no bounds or refs are returned because ' +
-        'actions resolve controls by id at click time.',
+        'List rendered manifest controls: id, item, name, role, surface, pane (for chat-pane controls), and state ' +
+        '(disabled, checked, selected, expanded, pressed, current, value). Scope by surface and/or query; no bounds or ' +
+        'refs are returned because actions resolve controls by id at click time, in the selected pane when ids repeat.',
       inputSchema: objectSchema({
         surface: { type: 'string', enum: [...UI_SURFACES], description: 'Only controls inside this surface; overlay means dialogs and menus.' },
         query: { type: 'string', minLength: 1, maxLength: 200, description: 'Case-insensitive filter over id, item, name, and value.' },

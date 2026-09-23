@@ -31,8 +31,8 @@ export function controlsExpression(filter: AppControlFilter): string {
     ${helpers()}
     const filter = ${JSON.stringify(filter)};
     const query = (filter.query || '').toLowerCase();
-    const surfaces = Array.from(document.querySelectorAll('[data-ui-surface]'))
-      .filter(visible).map((element) => element.getAttribute('data-ui-surface'));
+    const surfaces = Array.from(new Set(Array.from(document.querySelectorAll('[data-ui-surface]'))
+      .filter(visible).map((element) => element.getAttribute('data-ui-surface'))));
     const controls = [];
     let total = 0;
     for (const element of Array.from(document.querySelectorAll('[data-ui]'))) {
@@ -316,6 +316,8 @@ function describeControl(element: Element, nameOf: NameOf, surfaceOf: SurfaceOf)
   }
   const key = element.getAttribute('data-ui-key')
   if (key) item.item = key
+  const pane = element.closest?.('[data-pane-id]')?.getAttribute('data-pane-id')
+  if (pane) item.pane = pane
   if (('disabled' in html && Boolean(html.disabled)) || element.getAttribute('aria-disabled') === 'true') item.disabled = true
   if (tag === 'input' && (html.type === 'checkbox' || html.type === 'radio')) item.checked = html.checked
   if (element.getAttribute('aria-checked') !== null) item.checked = element.getAttribute('aria-checked') === 'true'

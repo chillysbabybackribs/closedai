@@ -29,6 +29,8 @@ export type AppControl = {
   name: string
   role: string
   surface: string
+  /** Chat pane id for pane-scoped controls; repeated ids resolve to the selected pane at action time. */
+  pane?: string
   disabled?: boolean
   checked?: boolean
   selected?: boolean

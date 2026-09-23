@@ -131,6 +131,35 @@ test('ui state reads browser visibility from the workspace, not the titlebar tog
   })
 })
 
+test('control listing reports the owning pane and lists each surface once', () => {
+  const inPane = (paneId: string) => fakeElement({
+    tagName: 'TEXTAREA', attributes: { 'data-ui': 'composer.input' }, value: '',
+    closest: (selector: string) => selector.includes('data-pane-id')
+      ? { getAttribute: (name: string) => (name === 'data-pane-id' ? paneId : 'true') }
+      : selector.includes('data-ui-surface') ? { getAttribute: () => 'chat' } : null
+  })
+  const surface = fakeElement({ tagName: 'SECTION', attributes: { 'data-ui-surface': 'chat' }, closest: () => null })
+  withDom([], () => {
+    const originalDocument = globalThis.document
+    Object.assign(globalThis, {
+      document: {
+        querySelector: () => null,
+        querySelectorAll: (selector: string) => (selector === '[data-ui]' ? [inPane('pane-a'), inPane('pane-b')]
+          : selector === '[data-ui-surface]' ? [surface, surface] : [])
+      }
+    })
+    try {
+      const listing = new Function(`return ${controlsExpression({ maxControls: 20 })}`)() as {
+        surfaces: string[]; controls: Array<{ id: string; pane?: string }>
+      }
+      assert.deepEqual(listing.surfaces, ['chat'])
+      assert.deepEqual(listing.controls.map((control) => [control.id, control.pane]), [['composer.input', 'pane-a'], ['composer.input', 'pane-b']])
+    } finally {
+      Object.assign(globalThis, { document: originalDocument })
+    }
+  })
+})
+
 test('ui state names a portalled menu by its trigger control and lists it once', () => {
   const trigger = fakeElement({ attributes: { 'data-ui': 'titlebar.menu', 'data-state': 'open' }, closest: () => null })
   const content = fakeElement({ tagName: 'DIV', attributes: { 'aria-labelledby': 'trigger-1' }, closest: () => null })
