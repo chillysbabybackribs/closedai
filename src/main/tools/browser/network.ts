@@ -41,12 +41,9 @@ export function networkTool(network: NetworkHostProvider): ToolDefinition {
     name: 'network',
     deferLoading: true,
     description:
-      'The browser session\'s own network record: every request from every tab, with headers, status, ' +
-      'timing, redirects, and post data, captured passively by the app so nothing needs enabling and ' +
-      'records survive navigation within a bounded ring. Use requests to find endpoints and wait to catch ' +
-      'a completed request after a cursor. Historical bodies require browser_cdp.protocol requests/body ' +
-      'with exact CDP ids; this log does not capture bodies or map its ids to CDP ids. ' +
-      'Use network_replay only to deliberately issue a new request. Rules block, redirect, or rewrite headers. Results are JSON.',
+      'Session-wide passive request log; no setup is needed and records survive navigation. It does not retain response ' +
+      'bodies or share ids with CDP; use browser_cdp.protocol requests/body for captured bodies. network_replay sends a ' +
+      'new request and can repeat effects. Rules can block, redirect, or rewrite headers. Results are JSON.',
     actions: [requestsAction(network), waitAction(network), rulesAction(network), addRuleAction(network), removeRuleAction(network), clearAction(network)]
   })
 }
