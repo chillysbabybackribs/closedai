@@ -87,18 +87,16 @@ export function ModelSection({
         })}
       </div>
       {showSearch && (
-        <label className="composer-model-search-wrap">
-          <span className="sr-only">Filter models</span>
-          <input
-            type="search"
-            className="composer-model-search"
-            placeholder="Filter…"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </label>
+        <input
+          type="search"
+          className="composer-model-search"
+          aria-label="Filter models"
+          placeholder="Filter…"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+        />
       )}
       <div className="composer-model-list" role="radiogroup" aria-label={`${section?.label ?? 'Model'} models`}>
         {listed.map((model) => (

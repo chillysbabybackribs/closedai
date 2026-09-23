@@ -17,15 +17,17 @@ test('the model section groups by provider, checks the selection, and folds long
     ...Array.from({ length: 8 }, (_, index) => model(`cursor-${index}`, 'cursor', `Cursor ${index}`))
   ]
   const html = renderToStaticMarkup(createElement(ModelSection, {
-    sections: providerSections(models, {}, 'gpt-5'),
-    selectedModel: 'gpt-5',
+    sections: providerSections(models, {}, 'cursor-0'),
+    selectedModel: 'cursor-0',
     disabled: false,
     onChoose: () => {}
   }))
-  assert.match(html, /data-ui="composer\.model-item" data-ui-key="gpt-5"[^>]*/)
-  assert.match(html, /role="radio" aria-checked="true"[^>]*data-ui-key="gpt-5"/)
+  assert.match(html, /data-ui="composer\.model-item" data-ui-key="cursor-0"[^>]*/)
+  assert.match(html, /role="radio" aria-checked="true"[^>]*data-ui-key="cursor-0"/)
   assert.match(html, /data-ui="composer\.model-more" data-ui-key="cursor"[^>]*>[\s\S]*Show 4 more models/)
+  assert.match(html, /aria-selected="true" class="composer-model-tab" data-ui-key="cursor"/)
   assert.doesNotMatch(html, /Cursor 7/)
+  assert.doesNotMatch(html, /data-ui-key="gpt-5"/)
 })
 
 test('the model section says so when there are no models', () => {
@@ -61,8 +63,8 @@ test('the folder section lists the current folder, the other recents, and both w
     onClearProject: async () => {},
     onError: () => {}
   }))
-  assert.match(html, /is-current[^>]*>[\s\S]*?closedai/)
-  assert.match(html, /data-ui="composer\.project-recent" data-ui-key="\/home\/dp\/firecracker"/)
+  assert.match(html, /composer-folder-current[^>]*>[\s\S]*?closedai/)
+  assert.match(html, /composer-folder-chip[^>]*data-ui-key="\/home\/dp\/firecracker"/)
   assert.doesNotMatch(html, /data-ui="composer\.project-recent" data-ui-key="\/home\/dp\/Desktop\/closedai"/)
   assert.match(html, /data-ui="composer\.project-new"/)
   assert.match(html, /data-ui="composer\.project-clear"/)
@@ -83,6 +85,6 @@ test('without a project the clear action is disabled and the row says so', () =>
     onError: () => {}
   }))
   assert.match(html, /No project/)
-  assert.match(html, /change queued/)
+  assert.match(html, /queued until idle/)
   assert.match(html, /data-ui="composer\.project-clear"[^>]*disabled/)
 })

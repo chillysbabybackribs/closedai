@@ -359,11 +359,11 @@ available width for the title; the focused tile has the accent tab indicator.
 The composer is a single stack: a draft card (text and the action button on the right) and a
 footer bar beneath it with attach (`composer.upload`) on the left and the setup trigger
 (`composer.setup`) on the right naming the model (with a chevron) and the working folder. There is no collapsed mode;
-pending attachment chips sit above the line inside the card. The setup trigger opens a single panel with four
-sections: Model (providers as groups, each on its most-used short list with a full-width
-**Show N more models** disclosure (`composer.model-more`) for the rest), Effort (a segmented
-control, `composer.effort-item`), Folder, and Context (the
-context window, plan windows, and Compact conversation). Model and effort rows are disabled while a
+pending attachment chips sit above the line inside the card. The setup trigger opens a single panel:
+Model (provider tabs, a compact scrollable list with optional filter, context-size badges, and
+**Show N more models** (`composer.model-more`) per provider), Effort (segmented
+`composer.effort-item`), Folder (current name, recent chips, choose/clear actions), and Context &
+plan (collapsed by default; context window, plan windows, Compact conversation). Model and effort rows are disabled while a
 turn runs; the folder section stays usable because a change queues until the chat is idle. The
 trigger does not change while a turn runs: no spinner or elapsed clock. Right-clicking
 any tile header or tab opens a context menu led by **Close tab** (`layout.tab-close`, Ctrl/Cmd+W),
