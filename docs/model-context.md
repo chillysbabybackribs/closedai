@@ -13,7 +13,7 @@ contracts live in [Tools](tools.md).
 | Codex | `thread/start` or `thread/resume` with cwd, model settings, and the enabled tool catalog; no `developerInstructions` field. |
 | Claude Code | The SDK's native `claude_code` system preset with no ClosedAI append. Project `CLAUDE.md` can still load through the SDK's project settings source. |
 | Antigravity | The app-private `closedai` agent profile supplies the native tool grant and MCP inheritance required by this CLI. Its `agent.md` has no instruction body. |
-| Cursor | The ACP session receives enabled MCP servers. ClosedAI no longer inserts a first-turn `closedai.instructions` block. |
+| Cursor | The ACP session receives enabled MCP server endpoints. Its adapter does not pass ClosedAI's `deferLoading` flag; Cursor controls discovery from the connected MCP servers. ClosedAI no longer inserts a first-turn `closedai.instructions` block. |
 
 These provider runtimes have their own native behavior and may load project policy through their
 own mechanisms. Codex can load `AGENTS.md` natively. ClosedAI does not copy the selected

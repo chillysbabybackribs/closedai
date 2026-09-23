@@ -4,9 +4,10 @@ Everything the app offers a model lives under `src/main/tools/`. Tools are provi
 the registry is the single source of truth, and a provider adapter translates it to that provider's
 protocol: `app-server-tools.ts` for Codex (`dynamicTools` + `item/tool/call`),
 `src/main/claude/claude-tools.ts` for Claude Code (in-process MCP), and
-`src/main/antigravity/antigravity-mcp.ts` for Antigravity (HTTP MCP). The same page tool appears as
-`embedded_browser.page`, `mcp__embedded_browser__page`, and `mcp_embedded_browser_page`, respectively.
-Source review: 2026-09-21. See [Model context](model-context.md) for prompt delivery and
+`src/main/antigravity/antigravity-mcp.ts` and `src/main/cursor/cursor-mcp.ts` for the HTTP MCP
+providers. The same page tool appears as `embedded_browser.page` for Codex,
+`mcp__embedded_browser__page` for Claude, and `mcp_embedded_browser_page` for Antigravity and Cursor.
+Source review: 2026-09-23. See [Model context](model-context.md) for prompt delivery and
 [Application guide](application.md) for UI behavior the tools operate on.
 
 ## Native instrumentation
@@ -492,9 +493,11 @@ idle context-rotation preference. A failed thread start retains the prepared han
 The adapter maps registry text results to `inputText` and image results to `inputImage`.
 
 Set `deferLoading: true` on rarely used tools. Codex advertises that discovery flag; Claude maps
-it to `alwaysLoad: false`. Raw CDP protocol, profiling, instrumentation, and emulation now use it.
-Providers without deferred discovery still receive the definitions. Tools remain callable and
-visible in the Tools modal, and restricted action sets preserve the discovery flag.
+it to `alwaysLoad: false`. Antigravity lists only nondeferred tools as eager declarations and
+keeps the rest behind its MCP gateway. Cursor receives one MCP endpoint per enabled namespace;
+its adapter does not pass this flag, so Cursor controls how it discovers and loads those tools.
+Tools remain callable and visible in the Tools modal, and restricted action sets preserve the
+discovery flag.
 
 ## Results live in the thread history
 
