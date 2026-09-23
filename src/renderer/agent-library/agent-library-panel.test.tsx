@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import type { SavedAgent } from '../../shared/agent-library.js'
+import { describeAgentUse, type SavedAgent } from '../../shared/agent-library.js'
 import { AgentLibraryPanel, type AgentLibraryPanelProps } from './agent-library-panel.tsx'
 
 const HOUR = 3_600_000
@@ -21,7 +21,7 @@ test('the library lists every saved agent with its use and loads the first one i
   const html = render()
   assert.match(html, /data-ui="agents\.item" data-ui-key="a1"/)
   assert.match(html, /aria-selected="true"[^>]*data-ui-key="a1"/)
-  assert.match(html, /3 runs · last 2 h ago/)
+  assert.match(html, /Ran 3 times · last 2 h ago/)
   assert.match(html, /Never run · 4 cycles/)
   assert.match(html, /data-ui="agents\.name"[^>]*value="Repair agent"/)
   assert.match(html, /data-ui="agents\.prompt"[^>]*>Fix things\.<\/textarea>/)
@@ -41,4 +41,11 @@ test('an empty library shows a new draft with Start off until there are instruct
 test('start is off while the launching pane cannot run', () => {
   const html = render({ startEnabled: false })
   assert.match(html, /data-ui="agents\.start"[^>]*disabled=""/)
+})
+
+test('describeAgentUse counts runs and dates the last one', () => {
+  const now = 10 * HOUR
+  assert.equal(describeAgentUse({ runCount: 0, lastRunAt: null }, now), 'Never run')
+  assert.equal(describeAgentUse({ runCount: 1, lastRunAt: now - 30_000 }, now), 'Ran once · last moments ago')
+  assert.equal(describeAgentUse({ runCount: 12, lastRunAt: now - 3 * 24 * HOUR }, now), 'Ran 12 times · last 3 d ago')
 })

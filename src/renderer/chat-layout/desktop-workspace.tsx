@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactElement, type Ref } from 'react'
 import { BrowserPane } from '../browser-pane.js'
 import { useBrowserController } from '../browser-controller.js'
+import type { AgentRunStartOptions } from '../../shared/agent-runs.js'
 import { type ChatPaneDialog } from '../chat-pane.js'
 import { type useChatController } from '../chat-controller.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'

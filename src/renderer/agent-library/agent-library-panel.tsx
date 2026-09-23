@@ -6,13 +6,12 @@ import { Button } from '../../components/ui/button.js'
 import { Input } from '../../components/ui/input.js'
 import { Textarea } from '../../components/ui/textarea.js'
 import { cn } from '../../lib/utils.js'
-import { cleanAgentName, type SavedAgent, type SavedAgentDraft } from '../../shared/agent-library.js'
+import { cleanAgentName, describeAgentUse, type SavedAgent, type SavedAgentDraft } from '../../shared/agent-library.js'
 import { AGENT_RUN_MAX_PROMPT_CHARS, type AgentRunStartOptions } from '../../shared/agent-runs.js'
 import { errorMessage } from '../error-message.js'
-import { plural, relativeTime } from '../tools/tools-model.js'
 
-// The Agents dialog body (the dialog owns the title bar): the library on the left, one editor on the right. Selecting an entry
-// loads it; New clears the editor. Start runs whatever the editor shows, saving a named agent
+// The Agents dialog body (the dialog owns the title bar): the library on the left, one editor
+// on the right. Selecting an entry loads it; New clears the editor. Start runs whatever the editor shows, saving a named agent
 // first so the run and the library never disagree; a nameless draft starts as a one-off.
 
 export type AgentLibraryPanelProps = {
@@ -156,7 +155,7 @@ export function AgentLibraryPanel({ agents, now, startEnabled, onSave, onRemove,
               >
                 <span className="block truncate text-sm font-medium">{agent.name}</span>
                 <span className="text-muted-foreground block truncate text-xs">
-                  {agent.runCount === 0 ? 'Never run' : `${plural(agent.runCount, 'run')} · last ${relativeTime(agent.lastRunAt, now)}`}
+                  {describeAgentUse(agent, now)}
                   {agent.maxCycles !== null ? ` · ${agent.maxCycles} cycles` : ''}
                 </span>
               </button>

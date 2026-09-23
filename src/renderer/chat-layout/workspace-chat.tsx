@@ -1,4 +1,5 @@
 import { memo, useRef, type Dispatch } from 'react'
+import type { AgentRunStartOptions } from '../../shared/agent-runs.js'
 import { ChatPane, type ChatPaneDialog } from '../chat-pane.js'
 import { usePaneChatController } from '../chat-controller.js'
 import { initialChatState, type ChatWorkspaceAction } from '../chat-state.js'

@@ -95,12 +95,12 @@ test('a queued folder change is named on the trigger', () => {
   assert.match(html, /composer-footer-folder-name[^>]*>workspace \(queued\)</)
 })
 
-test('the agent trigger appears only when starting agents is enabled', () => {
+test('the agent trigger appears only when the pane can open the Agents dialog', () => {
   const without = renderToStaticMarkup(createElement(Composer, { ...baseProps }))
   assert.doesNotMatch(without, /data-ui="composer\.agents"/)
   const withAgent = renderToStaticMarkup(createElement(Composer, {
     ...baseProps,
-    onStartAgent: async () => {}
+    onOpenAgents: () => {}
   }))
   assert.match(withAgent, /data-ui="composer\.agents"/)
 })
