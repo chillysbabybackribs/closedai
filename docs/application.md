@@ -660,10 +660,25 @@ with `CLOSEDAI_KEEP_HARDWARE_VIDEO_DECODE=1`, while
 The omnibox combines navigation/search input with inline completion and a history suggestion
 list. History matches can be removed through `browser.removeHistory`; this deletes the stored
 history entry, not cookies or site data. `browser-omnibox.ts` owns the renderer interaction and
-`browser-history-store.ts` owns matching and persistence.
+`browser-history-store.ts` owns matching and persistence. Saved sites lead the suggestion list
+(marked with a star, no remove button) ahead of history rows for the same query; the main-process
+`browser:searchHistory` handler merges the two within the six-row budget.
+
+Saved sites (`saved-sites-store.ts`, `saved-sites.json`) are pages the user keeps on purpose, a
+different thing from history (every page visited, pruned by frequency, skipped for agent-driven
+tabs). The star left of Downloads (`browser.saved-sites`) saves the active web page and opens the
+saved-sites panel with the new row's note field focused; when the page is already saved the star
+is filled and only opens the panel. The panel (`browser-saved-sites-shelf.tsx`, same anchor as the
+downloads popover, so opening one closes the other) lists rows newest first with favicon, title,
+host, an editable note (why it matters, what to watch for), open, and remove. The tab context menu
+offers Save site / Unsave site for any web tab. Only http(s) pages can be saved; a saved URL is
+identified without scheme or leading `www.`, so re-saving refreshes title and favicon instead of
+duplicating. Each record also carries `tags`, `lastCheckedAt`, and `lastSummary`, empty until a
+future daily-brief agent reads the page and writes back.
 
 Right-clicking a browser tab opens tab actions for opening a new tab to its right, reloading,
-duplicating, renaming, closing, closing other tabs, and closing tabs to the right. The menu also
+duplicating, renaming, saving or unsaving the page as a saved site, closing, closing other tabs,
+and closing tabs to the right. The menu also
 opens from the ContextMenu key or Shift+F10 on a focused tab; its first row takes focus, Up/Down
 and Home/End move between rows, and Escape or a chosen row returns focus to the tab. A tab or
 navigation command the main process rejects shows its reason on one line under the tab strip,
@@ -853,6 +868,7 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 | `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, pin timestamp, parent chat, continuation digest, checkpoint, and the agent run driving the chat (`agentRun`: prompt, status, cycle, limits, failure count, last thread). Debounced atomic writes; flushed on quit |
 | `app-settings.json` | Cookie-import latch; active workspace/project; the open chat ids (`chatOpenIds`) and `chatSelectedPaneId`; saved per-project open ids and selection in `chatWorkspaces`; tool switches and context/batch settings. Legacy `chatPeers` and `chatWorkspaces[].peers` are imported into `chats.json` once, keeping each pane id as the chat id, and removed |
 | `browser-tabs.json`, `browser-history.json` | Restored tabs and omnibox history |
+| `saved-sites.json` | Sites the user saved on purpose: id, url, title, favicon, note, tags, saved/updated times, and the `lastCheckedAt`/`lastSummary` slots a daily brief will write; never pruned, debounced atomic writes, flushed on quit |
 | `Partitions/browser`, `code-cache/` | Chromium session data and app-configured code cache |
 | `browser-cache-state.json` | Last measured regenerable browser cache size and prune timestamp; when Cache + Service Worker + GPU caches exceed 768MB and the seven-day cooldown has elapsed, startup and periodic maintenance clear only regenerable stores (cookies, localStorage, and IndexedDB stay intact) |
 | `tool-telemetry.json` | Aggregate run/error/timeout counters; no arguments or conversation text |
