@@ -6,7 +6,8 @@ import {
   followingAfterViewportSync,
   preservedScrollTop,
   resizeScrollAction,
-  scrollEdges
+  scrollEdges,
+  shouldCollapseBrowsedHistory
 } from './message-scroller-state.ts'
 
 test('a new prompt gets enough trailing space to sit at the top of the viewport', () => {
@@ -58,6 +59,14 @@ test('the middle of a long transcript exposes both directions', () => {
     start: true,
     end: true
   })
+})
+
+test('browsed history collapses only after the reader returns to the bottom', () => {
+  const middle = scrollEdges({ clientHeight: 500, scrollHeight: 2_000, scrollTop: 700 }, 24)
+  const bottom = scrollEdges({ clientHeight: 500, scrollHeight: 2_000, scrollTop: 1_490 }, 24)
+  assert.equal(shouldCollapseBrowsedHistory(middle, true), false)
+  assert.equal(shouldCollapseBrowsedHistory(bottom, true), true)
+  assert.equal(shouldCollapseBrowsedHistory(bottom, false), false)
 })
 
 test('the edge threshold absorbs fractional layout and zoom drift', () => {

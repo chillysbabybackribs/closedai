@@ -11,6 +11,11 @@ export type ScrollEdges = {
   end: boolean
 }
 
+/** Collapse a widened transcript window once the reader scrolls back to the latest messages. */
+export function shouldCollapseBrowsedHistory(edges: ScrollEdges, browsedEarlier: boolean): boolean {
+  return browsedEarlier && !edges.end
+}
+
 export type AnchorScrollLayout = {
   scrollTop: number
   spacerHeight: number

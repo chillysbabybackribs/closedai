@@ -14,6 +14,7 @@ import {
   useMessageScroller,
   useMessageScrollerScrollable
 } from '../components/ui/message-scroller.js'
+import { shouldCollapseBrowsedHistory } from '../components/ui/message-scroller-state.js'
 import { usePacedText } from '../components/ui/paced-text.js'
 import type { ChatTranscriptItem } from '../shared/chat.js'
 import { displayUserMessageText } from '../shared/chat-display.js'
@@ -92,11 +93,11 @@ export const ChatTranscript = memo(function ChatTranscript({
   }, [start, tailStart])
 
   useEffect(() => {
-    if (!scrollable.end || !browsedEarlier.current) return
+    if (!shouldCollapseBrowsedHistory(scrollable, browsedEarlier.current)) return
     browsedEarlier.current = false
     setVisibleStart(tailStart)
     onTrimMountedHistory?.()
-  }, [scrollable.end, tailStart, onTrimMountedHistory])
+  }, [scrollable.end, scrollable.start, tailStart, onTrimMountedHistory])
 
   const revealEarlier = async (): Promise<void> => {
     if (loadingEarlier) return
