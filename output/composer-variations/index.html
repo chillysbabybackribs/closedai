@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Composer variations</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #191a1a; color: #eeeae4; }
+    main { width: min(1600px, calc(100% - 48px)); margin: 0 auto; padding: 36px 0 56px; }
+    h1 { margin: 0 0 8px; font-size: 25px; font-weight: 600; letter-spacing: -.025em; }
+    p { margin: 0 0 28px; color: #aaa69f; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+    .card { margin: 0; overflow: hidden; border: 1px solid #424443; border-radius: 12px; background: #202223; }
+    .card button { display: block; width: 100%; padding: 0; border: 0; background: #202223; cursor: zoom-in; }
+    .card button:focus-visible { outline: 2px solid #8ab4f8; outline-offset: -3px; }
+    .card img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; }
+    figcaption { display: flex; gap: 12px; align-items: baseline; padding: 14px 16px 16px; border-top: 1px solid #383a39; }
+    .num { color: #aaa69f; font-size: 12px; font-variant-numeric: tabular-nums; }
+    .name { font-size: 15px; font-weight: 600; }
+    dialog { width: min(96vw, 1700px); max-height: 96vh; padding: 14px; border: 1px solid #555854; border-radius: 12px; background: #202223; color: #eeeae4; box-shadow: 0 18px 70px #000b; }
+    dialog::backdrop { background: #000d; }
+    .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 3px 12px; }
+    .dialog-head strong { font-size: 14px; }
+    .dialog-head button { padding: 6px 10px; border: 1px solid #555854; border-radius: 7px; background: #292a29; color: inherit; cursor: pointer; }
+    dialog img { display: block; max-width: 100%; max-height: calc(96vh - 74px); margin: auto; object-fit: contain; }
+    @media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 700px) { main { width: min(100% - 24px, 580px); padding-top: 22px; } .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Composer variations</h1>
+    <p>Three directions adapted from the mockup to ClosedAI’s charcoal UI. Select an image to enlarge it.</p>
+    <div class="grid">
+      <figure class="card"><button type="button" data-image="1.png" data-name="Mode deck" aria-label="Enlarge variation 1: Mode deck"><img src="1.png" alt="Composer with four modes across the top"></button><figcaption><span class="num">01</span><span class="name">Mode deck</span></figcaption></figure>
+      <figure class="card"><button type="button" data-image="2.png" data-name="Focused command" aria-label="Enlarge variation 2: Focused command"><img src="2.png" alt="Composer with a compact mode selector and large prompt field"></button><figcaption><span class="num">02</span><span class="name">Focused command</span></figcaption></figure>
+      <figure class="card"><button type="button" data-image="3.png" data-name="Side mode rail" aria-label="Enlarge variation 3: Side mode rail"><img src="3.png" alt="Composer with Ask, Agent, Build, and Edit in a left rail"></button><figcaption><span class="num">03</span><span class="name">Side mode rail</span></figcaption></figure>
+    </div>
+  </main>
+  <dialog aria-label="Enlarged composer variation"><div class="dialog-head"><strong></strong><button type="button">Close</button></div><img alt=""></dialog>
+  <script>
+    const dialog = document.querySelector('dialog');
+    const large = dialog.querySelector('img');
+    const title = dialog.querySelector('strong');
+    document.querySelectorAll('[data-image]').forEach(button => button.addEventListener('click', () => {
+      large.src = button.dataset.image;
+      large.alt = button.querySelector('img').alt;
+      title.textContent = button.dataset.name;
+      dialog.showModal();
+    }));
+    dialog.querySelector('button').addEventListener('click', () => dialog.close());
+  </script>
+</body>
+</html>
