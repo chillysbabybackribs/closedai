@@ -366,8 +366,8 @@ available width for the title; the focused tile has the accent tab indicator.
 The composer is a single stack: a draft card (text and the action button on the right) and a
 footer bar beneath it with attach (`composer.upload`) on the left, the model setup trigger
 (`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
-on the right naming the working folder. The **Agent** button (`composer.agents`) opens the
-**Agents** dialog (`dialog.agents`, `src/renderer/agent-library/`): the saved-agent library on
+on the right naming the working folder. The **Agent** button (`composer.agents`; also Agent → Agents…) opens the
+**Agents** dialog (`dialog.agents`, `src/renderer/agent-library/`, a pane dialog like Tools): the saved-agent library on
 the left (`agents.item`, most recently used first, each with its run count and last run;
 `agents.new` clears the editor) and an editor on the right with a name (`agents.name`), a
 max-cycles cap (`agents.max-cycles`, blank runs until paused), and the standing instructions
@@ -577,7 +577,8 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   older history does not acquire invented timestamps.
 - There is no project rail: the folder lives in the composer's setup panel. The title bar has four menus.
   File owns chat creation, history, Settings (Appearance, Models, Credentials, and Security tabs), and closing the
-  window; View owns browser visibility, layout, chat zoom, and fullscreen; Agent owns what the
+  window; View owns browser visibility, layout, chat zoom, and fullscreen; Agent owns the
+  Agents dialog (Agents…, the saved-agent library and editor, opened on the selected pane), what the
   model is given (Tools & capabilities) and a "Selected chat" section naming
   the pane its rows act on (Compact context, Stop turn; rows that do not apply are disabled, not
   hidden); Developer owns Turn trace, Reload renderer, and Toggle DevTools.
