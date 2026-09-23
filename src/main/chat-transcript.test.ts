@@ -21,6 +21,19 @@ const running: ChatTranscriptItem = {
   type: 'command', id: 'c1', turnId: 'turn-1', command: 'npm test', cwd: '/repo', status: 'inProgress', output: '', exitCode: null
 }
 
+test('generated images replace live progress once and survive thread replay in order', () => {
+  const { transcript: live } = transcript({ now: 1000 })
+  const generated = { type: 'imageGeneration', id: 'generated-1', status: 'completed', result: 'cG5n', savedPath: '/tmp/design.png' }
+  live.consume({ ...generated, status: 'inProgress', result: '' }, 'turn-1', false)
+  live.consume(generated, 'turn-1', true)
+  live.consume(generated, 'turn-1', true)
+  assert.equal(live.snapshot().length, 1)
+  assert.equal(live.snapshot()[0]?.type, 'screenshot')
+  const { transcript: replay } = transcript({ now: 1000 })
+  replay.replaceFromThread({ turns: [{ id: 'turn-1', items: [generated] }] })
+  assert.deepEqual(replay.snapshot(), live.snapshot())
+})
+
 test('an activity is stamped when first seen running and again when it settles', () => {
   const clock = { now: 1_000 }
   const { transcript: t, events } = transcript(clock)
