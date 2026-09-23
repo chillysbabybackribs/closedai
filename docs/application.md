@@ -364,7 +364,8 @@ footer bar beneath it with attach (`composer.upload`) on the left, the model set
 (`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
 on the right naming the working folder. The **Agent** button (`composer.agents`) opens an agent
 picker. **Continuous app repair** starts in a new chat (`composer.agent-start`), where it repeatedly
-checks workflows, fixes observed failures, and continues until the user pauses it. There is no collapsed mode;
+checks workflows and fixes observed failures. It starts as a provider chat turn in a new chat and
+uses the existing Pause and Resume controls; the provider determines when a turn finishes. There is no collapsed mode;
 pending attachment chips sit above the line inside the card. The setup trigger opens a
 fixed-height panel (520px, or less when the pane is shorter), top to bottom: a Context line
 (`composer.context`; used/window tokens, the first plan window, a meter) that expands to the
