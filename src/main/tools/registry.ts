@@ -13,6 +13,7 @@ import {
   type ToolResult
 } from './tool.js'
 import { ToolResourceLocks } from './resource-locks.js'
+import { RepeatCallCollapse } from './repeat-calls.js'
 import type { BrowserCoordination } from './browser/coordination.js'
 
 export type ToolCallRequest = {
@@ -52,6 +53,7 @@ export class ToolRegistry {
   private readonly listeners = new Set<ToolCallListener>()
   private readonly observers = new Set<ToolCallObserver>()
   private readonly disabled = new Set<string>()
+  private readonly repeats = new RepeatCallCollapse()
   browserCoordination?: BrowserCoordination
 
   constructor(namespaces: ToolNamespace[], private readonly resourceLocks = new ToolResourceLocks()) {
@@ -149,7 +151,8 @@ export class ToolRegistry {
     const startedAt = performance.now()
     this.notifyObservers({ phase: 'start', request, context })
     const { sensitive, ...publicResult } = await this.run(request, context)
-    const result = boundResult(publicResult)
+    // Bound first, then dedupe, so the fingerprint is of what the model would actually read.
+    const result = this.repeats.apply(request, context, boundResult(publicResult), sensitive)
     const observedResult = sensitive
       ? { ...result, content: [{ type: 'text' as const, text: '<sensitive credential result redacted>' }] }
       : result
