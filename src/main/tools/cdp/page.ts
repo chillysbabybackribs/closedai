@@ -29,15 +29,11 @@ export function cdpPageTool(cdp: CdpHostProvider): ToolDefinition {
     name: 'page',
     deferLoading: true,
     description:
-      'Semantic page inspection plus exceptional real input over CDP. Use fetch/extract, site APIs, or ' +
-      'non-input protocol commands first. Click, type, press_key, and dismiss_overlay are escape hatches: ' +
-      'each requires fallback_reason and must be grouped with inspection and verification in one batch. ' +
-      'One type call inserts a whole string. Coordinates are snapshot-time CSS pixels in the main frame viewport and ' +
-      'can become stale after any layout change. Every verb that sends real input (click, click_at, ' +
-      'type, press_key, and scroll) needs its tab on screen, so it brings that tab to the ' +
-      'front first and reports `activatedTab: true` when doing so switched tabs; only inspect_page ' +
-      'reads a background tab in place. Results are JSON text: JSON.parse the returned ' +
-      'string in exec scripts. Oversized results shrink structurally and carry a `_closedai_truncated` note.',
+      'Semantic inspection and last-resort real input over CDP. Try deterministic browser/app APIs or non-input ' +
+      'protocol commands first. click, click_at, type, press_key, and dismiss_overlay require fallback_reason ' +
+      'and a batch with inspection and verification. Coordinates are main-viewport CSS pixels and may go stale ' +
+      'after layout changes. Any input action brings its tab to the front and reports activatedTab when it ' +
+      'switches; inspect_page alone reads a background tab. Results are JSON text; parse in exec.',
     actions: pageActions(cdp)
   })
 }
@@ -65,8 +61,7 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
       action: 'click',
       description:
         'Re-resolve a ref from the latest inspection, scroll it into view, verify its center is unobscured, ' +
-        'then send a real CDP mouse click as an escape hatch. Brings the tab to the front first, because an ' +
-        'off-screen view drops real input. Stale, detached, disabled, or covered refs fail without clicking.',
+        'then send a real CDP mouse click. Stale, detached, disabled, or covered refs fail without clicking.',
       inputSchema: objectSchema({
         tab_id: tabIdField,
         ref: refField,
@@ -100,8 +95,7 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
     {
       action: 'type',
       description:
-        'Escape-hatch semantic input after deterministic and non-input protocol options fail. Click a ref to focus ' +
-        'it, then insert text in one call. ' +
+        'Click a ref to focus it, then insert text. ' +
         'Replaces the existing value by default; the result echoes the field value so no re-inspection is needed. ' +
         'Works on inputs, textareas, and contenteditable elements.',
       inputSchema: objectSchema({
@@ -124,7 +118,7 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
     {
       action: 'press_key',
       description:
-        'Escape-hatch real keyDown+keyUp input, with optional modifiers — for Enter to submit, ' +
+        'Send keyDown+keyUp with optional modifiers — for Enter to submit, ' +
         'Escape to dismiss, Tab, arrows, or shortcut chords like ctrl+a. For text entry use type instead.',
       inputSchema: objectSchema({
         tab_id: tabIdField,
@@ -146,9 +140,7 @@ function pageActions(cdp: CdpHostProvider): ToolAction[] {
       action: 'scroll',
       description:
         'Scroll a ref into view (pass ref), or wheel-scroll the main viewport by delta_x/delta_y CSS pixels ' +
-        '(positive scrolls right/down). Both forms foreground the tab through the page input wrapper. ' +
-        'An off-screen view cannot acknowledge a wheel event. Re-inspect after scrolling: ' +
-        'coordinates and refs may be stale.',
+        '(positive scrolls right/down). Re-inspect after scrolling because coordinates and refs may be stale.',
       inputSchema: objectSchema({
         tab_id: tabIdField,
         ref: refField,
