@@ -364,9 +364,19 @@ footer bar beneath it with attach (`composer.upload`) on the left, the model set
 (`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
 on the right naming the working folder. The **Agent** button (`composer.agents`) opens a small
 builder with an instructions field (`composer.agent-prompt`) prefilled with a repair-agent template;
-**Start** (`composer.agent-start`) docks a new chat and sends that text as the first turn, using
-the launching pane's model and folder. Pause and Resume control the agent chat; the provider
-determines when a turn finishes. There is no collapsed mode;
+**Start** (`composer.agent-start`) docks a new chat and starts an **agent run** on it
+(`agentRuns.start`), using the launching pane's model and folder. The main process
+(`src/main/agent-runs/`) owns the loop: the instructions are cycle 1, and after every finished turn
+it waits a short settle delay and sends the next `Cycle N` message, so the chat never stops
+because the model signed off. A turn that produced no assistant or tool output counts as a
+failure; failures retry with backoff and the fifth in a row pauses the run with the reason. A
+provider thread change (rotation or handoff) re-sends the full instructions with the next cycle.
+The run record lives on the chat (`ChatRecord.agentRun`), so a relaunch shows every run paused
+with "App relaunched". A strip above the composer shows the state and cycle count with **Pause**
+(`chat.agent-pause`, also ends the turn in flight), **Resume** (`chat.agent-resume`) and **Stop**
+(`chat.agent-stop`, removes the run and leaves an ordinary chat). The composer's own pause button
+and a tool's `stop_agent` pause the run too; a user message sent between cycles is folded into
+the loop rather than raced. `closedai_app.state` reports the run under `chat.agentRun`. There is no collapsed mode;
 pending attachment chips sit above the line inside the card. The setup trigger opens a
 fixed-height panel (520px, or less when the pane is shorter), top to bottom: a Context line
 (`composer.context`; used/window tokens, the first plan window, a meter) that expands to the
@@ -796,6 +806,7 @@ instrumentation.
 | Chat records and persistence, settings migration | `src/main/chat-store/`, `src/shared/chat-store.ts` |
 | Store file reads that set a damaged file aside, durable atomic writes | `src/main/store-recovery.ts`, `src/main/atomic-write.ts` |
 | Attach/detach lifecycle, summaries, per-chat settings, idle parking, catalog reconciliation | `src/main/chat-peers/` |
+| Agent runs: the turn-by-turn loop behind agent chats, retry and pause policy, relaunch restore | `src/main/agent-runs/`, `src/shared/agent-runs.ts` |
 | Per-workspace provider model catalog cache | `src/main/chat-context/provider-catalog-cache.ts` |
 | Provider routing and id families | `src/main/chat-hub.ts`, `src/shared/chat-providers.ts` |
 | Workspace Codex process, pane routing, and transcript normalization | `src/main/codex-workspace-runtime.ts`, `src/main/chat-service.ts`, `src/main/app-server-client.ts`, `src/main/chat-normalizers.ts` |
@@ -839,7 +850,7 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 |---|---|
 | `provider-catalogs.json` | The last model catalog read per workspace and provider, so a relaunch starts only the active provider and the picker still offers every model; a provider refreshes its own entry when selected |
 | `chat-transcripts/<chat id>.json` | The bounded tail of each chat as the app last showed it, so opening one paints before its provider replays; display-only, pruned against the store's live chat ids on launch |
-| `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, pin timestamp, parent chat, continuation digest, checkpoint. Debounced atomic writes; flushed on quit |
+| `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, pin timestamp, parent chat, continuation digest, checkpoint, and the agent run driving the chat (`agentRun`: prompt, status, cycle, limits, failure count, last thread). Debounced atomic writes; flushed on quit |
 | `app-settings.json` | Cookie-import latch; active workspace/project; the open chat ids (`chatOpenIds`) and `chatSelectedPaneId`; saved per-project open ids and selection in `chatWorkspaces`; tool switches and context/batch settings. Legacy `chatPeers` and `chatWorkspaces[].peers` are imported into `chats.json` once, keeping each pane id as the chat id, and removed |
 | `browser-tabs.json`, `browser-history.json` | Restored tabs and omnibox history |
 | `Partitions/browser`, `code-cache/` | Chromium session data and app-configured code cache |
