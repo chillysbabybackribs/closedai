@@ -61,6 +61,7 @@
   {
     "id": "navigate_new_tab",
     "tool": "embedded_browser.page",
+    "user": "Open https://example.com/docs in a new browser tab.",
     "intent": "Open a URL in a fresh tab when the user asks for isolated navigation.",
     "fixture": "browser/default",
     "replay": [
@@ -86,6 +87,7 @@
   {
     "id": "wait_for_interactive",
     "tool": "embedded_browser.page",
+    "user": "Wait until the page has finished loading, then confirm it is ready.",
     "intent": "Wait for page readiness before reading dynamic content.",
     "fixture": "browser/default",
     "replay": [
@@ -137,6 +139,7 @@
   {
     "id": "read_ambient_tab",
     "tool": "embedded_browser.page",
+    "user": "Summarize what is on my current browser tab without navigating away.",
     "intent": "Read the open tab without navigation when the user points at current content.",
     "fixture": "browser/default",
     "replay": [

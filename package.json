@@ -26,6 +26,7 @@
     "harness:model": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs scripts/harness-sim/run.mjs --model",
     "harness:compare": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs scripts/harness-sim/run.mjs --compare",
     "harness:codex": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs scripts/harness-sim/run.mjs --model --adapter=codex --concurrency=1",
+    "harness:prompt-sweep": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs scripts/harness-sim/prompt-sweep.mjs --adapter=codex --concurrency=2",
     "harness:extract": "node scripts/harness-sim/extract-from-tests.mjs",
     "check": "npm run map:check && npm run hygiene && npm run typecheck && npm test && npm run build && npm run closure",
     "autogit": "node scripts/autogit.mjs run",

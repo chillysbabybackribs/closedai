@@ -3,12 +3,19 @@ import { join } from 'node:path'
 import type { ToolRegistry } from '../tools/registry.js'
 import { closedAiDeveloperInstructions } from '../chat-context/developer-instructions.js'
 
+export type HarnessInstructionOverrides = {
+  prepend?: string
+  append?: string
+  /** Drop instruction lines at these zero-based indices (after splitting on `\n`). */
+  omitLineIndices?: number[]
+}
+
 export type HarnessVariant = {
   id: string
   base?: string
   overrides?: {
     tools?: Record<string, { description?: string }>
-    instructions?: { append?: string }
+    instructions?: HarnessInstructionOverrides
   }
 }
 
@@ -38,7 +45,16 @@ export function applyVariantToRegistry(registry: ToolRegistry, variant?: Harness
 }
 
 export function harnessDeveloperInstructions(variant?: HarnessVariant): string {
-  const base = closedAiDeveloperInstructions()
-  const append = variant?.overrides?.instructions?.append?.trim()
-  return append ? `${base}\n${append}` : base
+  const inst = variant?.overrides?.instructions
+  let text = closedAiDeveloperInstructions()
+  const omit = inst?.omitLineIndices
+  if (omit?.length) {
+    const blocked = new Set(omit)
+    text = text.split('\n').filter((_, index) => !blocked.has(index)).join('\n')
+  }
+  const prepend = inst?.prepend?.trim()
+  if (prepend) text = `${prepend}\n${text}`
+  const append = inst?.append?.trim()
+  if (append) text = `${text}\n${append}`
+  return text
 }

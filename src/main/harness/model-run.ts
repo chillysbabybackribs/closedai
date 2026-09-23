@@ -17,6 +17,8 @@ export type ModelAdapterKind = 'golden' | 'codex'
 export type ModelRunOptions = {
   projectRoot: string
   variantId?: string
+  /** Inline variant overrides loading `variantId` from harness/variants/. */
+  variant?: HarnessVariant
   model?: string | null
   effort?: string | null
 }
@@ -83,7 +85,7 @@ export async function runModelSimulation(
     }
   }
   try {
-    const variant = await loadVariant(options.projectRoot, options.variantId)
+    const variant = options.variant ?? await loadVariant(options.projectRoot, options.variantId)
     const { registry } = fixtureRegistry(sim.fixture)
     applyVariantToRegistry(registry, variant)
     const turn = await runCodexHarnessTurn({
@@ -123,6 +125,7 @@ export async function runModelCatalog(options: {
   runId?: string
   projectRoot: string
   variantId?: string
+  variant?: HarnessVariant
   model?: string | null
   effort?: string | null
 }): Promise<SimulationReport> {
@@ -131,6 +134,7 @@ export async function runModelCatalog(options: {
   const runOpts: ModelRunOptions = {
     projectRoot: options.projectRoot,
     variantId: options.variantId,
+    variant: options.variant,
     model: options.model,
     effort: options.effort
   }
@@ -142,7 +146,10 @@ export async function runModelCatalog(options: {
   const passed = results.filter((r) => r.passed).length
   const skipped = results.filter((r) => r.skipped).length
   return {
-    runId: options.runId ?? `model-${Date.now()}${options.variantId ? `-${options.variantId}` : ''}`,
+    runId: options.runId ?? (() => {
+      const label = options.variant?.id ?? options.variantId
+      return `model-${Date.now()}${label ? `-${label}` : ''}`
+    })(),
     mode: adapter === 'codex' ? 'model-codex' : 'model-golden',
     startedAt,
     finishedAt: new Date().toISOString(),

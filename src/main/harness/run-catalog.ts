@@ -12,7 +12,7 @@ export async function loadTaskCatalog(path: string): Promise<HarnessSimulationTa
   return raw as HarnessSimulationTask[]
 }
 
-function filterTasks(tasks: HarnessSimulationTask[], taskFilter?: string): HarnessSimulationTask[] {
+export function filterHarnessTasks(tasks: HarnessSimulationTask[], taskFilter?: string): HarnessSimulationTask[] {
   if (!taskFilter) return tasks
   return tasks.filter((t) => t.id === taskFilter || t.tool === taskFilter)
 }
@@ -29,7 +29,7 @@ export async function runTaskCatalogReplay(options: {
   taskFilter?: string
   runId?: string
 }): Promise<SimulationReport> {
-  const tasks = filterTasks(await loadHarnessTasks(options.projectRoot, options.catalogPath), options.taskFilter)
+  const tasks = filterHarnessTasks(await loadHarnessTasks(options.projectRoot, options.catalogPath), options.taskFilter)
   const simulations = expandCatalog(tasks)
   return runReplayCatalog({
     simulations,
@@ -49,7 +49,7 @@ export async function runTaskCatalogModel(options: {
   model?: string | null
   effort?: string | null
 }): Promise<SimulationReport> {
-  const tasks = filterTasks(await loadHarnessTasks(options.projectRoot, options.catalogPath), options.taskFilter)
+  const tasks = filterHarnessTasks(await loadHarnessTasks(options.projectRoot, options.catalogPath), options.taskFilter)
   const simulations = expandCatalog(tasks)
   return runModelCatalog({
     simulations,
