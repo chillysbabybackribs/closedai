@@ -15,7 +15,7 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
   return [
     {
       action: 'project_switch',
-      description: 'Request or cancel a deferred project switch. request validates an absolute existing directory and queues a switch after all chats become idle. Acceptance is pending: finish your turn. The app verifies the destination and starts a fresh chat with your conversation handoff to continue the authorized task. cancel releases only the caller’s pending request. Restart cancels pending work. Inspect state.workspace.projectSwitch for status; completed means the continuation was submitted, not the task finished.',
+      description: 'Request or cancel a deferred project switch. request needs an absolute existing directory and waits for all chats to become idle; acceptance is pending, so finish your turn. The app verifies the destination and starts a new chat with your conversation handoff so work can continue. cancel releases only your request; restart cancels pending switches. Check state.workspace.projectSwitch: completed means the continuation was submitted, not that the task is done.',
       inputSchema: objectSchema({
         project_op: { type: 'string', enum: ['request', 'cancel'] },
         project_path: { type: 'string', minLength: 1, maxLength: 4096, description: 'Required for request: absolute path to an existing directory.' }
@@ -126,7 +126,7 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
     {
       action: 'browser_tab',
       description:
-        'Browser tabs assigned to this chat: new, new_right, select, close, close_others, close_right, duplicate, rename, back, forward, reload, claim, release, release_all. Open new/new_right or navigate with new_tab for this chat’s browser work instead of mutating the visible tab by default. New tabs open selected. Defaults target this chat’s tab, independent of selection. claim reserves a tab; release/release_all drop assignments (optional cleanup). select works on any tab; other chats’ assigned tabs are protected from the rest. Inactive chats drop assignments after idle time. Returns browser state and assignments.',
+        'Open new/new_right or navigate with new_tab for this chat’s browser work instead of mutating the visible tab by default. New tabs are selected. Calls without tab_id target this chat’s assigned tab, independent of selection. claim reserves a tab; release/release_all drop assignments. select can target any tab; other chats’ assignments protect the remaining operations. Inactive chats drop assignments after idle time. Returns tab state and assignments.',
       inputSchema: objectSchema({
         op: {
           type: 'string',
