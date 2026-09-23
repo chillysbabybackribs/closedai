@@ -24,6 +24,8 @@ export type HarnessSimulationTask = {
   id: string
   tool: string
   intent?: string
+  /** User message for model-backed runs (Phase 2). */
+  user?: string
   fixture?: string
   replay: ToolCallSpec[]
   oracle: HarnessOracle
@@ -45,11 +47,13 @@ export type SimulationRunResult = {
   failures: string[]
   calls: RecordedToolCall[]
   durationMs: number
+  skipped?: boolean
+  skipReason?: string
 }
 
 export type SimulationReport = {
   runId: string
-  mode: 'replay'
+  mode: 'replay' | 'model-golden' | 'model-codex'
   startedAt: string
   finishedAt: string
   concurrency: number

@@ -2,6 +2,7 @@
   {
     "id": "read_pdf_page_2",
     "tool": "embedded_browser.page",
+    "user": "Read the PDF in my browser tab and summarize page 2.",
     "intent": "Read native PDF text from a specific page without navigating away.",
     "fixture": "browser/default",
     "source": "src/main/tools/browser/browser.test.ts",

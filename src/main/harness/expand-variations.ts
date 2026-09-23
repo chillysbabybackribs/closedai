@@ -29,6 +29,7 @@ export type ExpandedSimulation = {
   replay: HarnessSimulationTask['replay']
   oracle: HarnessSimulationTask['oracle']
   fixture?: string
+  user?: string
 }
 
 /** Expand a task's `variations` map into independent simulation runs. */
@@ -40,7 +41,8 @@ export function expandTaskVariations(task: HarnessSimulationTask): ExpandedSimul
       variationKey: 'base',
       replay: task.replay,
       oracle: task.oracle,
-      fixture: task.fixture
+      fixture: task.fixture,
+      user: task.user
     }]
   }
   const keys = Object.keys(variations)
@@ -53,7 +55,8 @@ export function expandTaskVariations(task: HarnessSimulationTask): ExpandedSimul
       arguments: mergeArgs(step.arguments, overrides)
     })),
     oracle: task.oracle,
-    fixture: task.fixture
+    fixture: task.fixture,
+    user: task.user
   }))
 }
 

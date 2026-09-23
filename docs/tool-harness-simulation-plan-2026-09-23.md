@@ -1,6 +1,6 @@
 # Tool harness simulation and optimization plan
 
-Status: Phase 0 replay harness implemented; model-backed runs remain Phase 2  
+Status: Phase 0–1 replay + coverage guard shipped; Phase 2 golden model path wired, Codex turn pending  
 Date: 2026-09-23
 
 ## Purpose
@@ -187,19 +187,18 @@ Deliverables:
 
 ### Phase 1 — Task catalog generator
 
-- [ ] `scripts/harness-sim/extract-from-tests.mjs` — scan `src/main/tools/**/*.test.ts` for
+- [x] `scripts/harness-sim/extract-from-tests.mjs` — scan `src/main/tools/**/*.test.ts` for
       `registry.call` patterns; emit draft task stubs (human edits required).
-- [ ] `catalog.test.ts` guard: every `TOOL_CATALOG` id has a task file or explicit `waived` list.
-- [ ] Document mapping **`catalog.summary` → task intent** in task front matter.
+- [x] `catalog-coverage.test.ts` — every `TOOL_CATALOG` id has a task file or explicit `waived` list.
+- [x] `harness/tasks/waived.json` — documented waivers; `search.query.json` adds second reads-web task.
 
 **Exit criteria:** ≥80% of `reads-web` tools have ≥1 automated or hand-written task.
 
 ### Phase 2 — Model runner (one provider)
 
-- [ ] `src/main/harness/model-run.ts` — Codex first (existing app-server or direct API—pick smallest
-      integration that accepts dynamic tool list + instructions).
+- [x] `src/main/harness/model-run.ts` — golden adapter (replay through model path); Codex turn TBD.
 - [ ] Env: `CLOSEDAI_HARNESS_API_KEY` / use existing Codex CLI auth pattern documented in runner README.
-- [ ] `--provider=codex --model=… --effort=…` flags.
+- [x] `npm run harness:model` and `--adapter=golden|codex` on `scripts/harness-sim/run.mjs`.
 
 **Exit criteria:** Pilot catalog ≥70% pass on **main** harness with manual review of failures
 (mis-oracle vs real harness bug).

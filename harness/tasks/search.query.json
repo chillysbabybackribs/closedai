@@ -1,0 +1,27 @@
+[
+  {
+    "id": "search_quick_general",
+    "tool": "search.query",
+    "intent": "Look up a topic with the default quick, general routing.",
+    "fixture": "search/default",
+    "source": "src/main/tools/search/search.test.ts",
+    "replay": [
+      {
+        "namespace": "search",
+        "tool": "query",
+        "arguments": { "query": "closedai simulation harness", "intent": "general" }
+      }
+    ],
+    "oracle": {
+      "must_call": [
+        {
+          "namespace": "search",
+          "tool": "query",
+          "arguments": { "query": "closedai simulation harness", "intent": "general" }
+        }
+      ],
+      "max_tool_calls": 2
+    },
+    "tags": ["search", "read_only"]
+  }
+]
