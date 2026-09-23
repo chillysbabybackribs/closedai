@@ -57,7 +57,10 @@ async function check(BrowserWindow, root) {
     await pause(50)
   }
   assert.ok(window)
-  const evaluate = (code) => window.webContents.executeJavaScript(code)
+  const evaluate = async (code) => {
+    try { return await window.webContents.executeJavaScript(code) }
+    catch (error) { throw new Error(`Renderer check failed: ${code}`, { cause: error }) }
+  }
   async function until(expression) {
     for (let attempt = 0; attempt < 100; attempt++) {
       if (await evaluate(expression)) return
@@ -85,7 +88,7 @@ async function check(BrowserWindow, root) {
   live.consume(raw, 'turn-1', true)
   await until('document.querySelector(".prompt-generated-image img")?.naturalWidth > 0')
   assert.equal(await evaluate('document.querySelectorAll(".prompt-generated-image").length'), 1)
-  await evaluate('document.querySelector("[data-ui=\"chat.generated-image\"]").click()')
+  await evaluate(`document.querySelector('[data-ui="chat.generated-image"]').click()`)
   await until('document.querySelector(".image-viewer:not([hidden]) img")?.naturalWidth > 0')
   assert.equal(await evaluate('window.closedai.browser.snapshot().then(s => s.tabs.some(t => t.image?.path?.endsWith("generated #1.png")))'), true)
 
@@ -97,7 +100,7 @@ async function check(BrowserWindow, root) {
     items: replay.snapshot(), history: { hasEarlier: false } } })
   await until('document.querySelectorAll(".prompt-generated-image img").length === 3 && [...document.querySelectorAll(".prompt-generated-image img")].every(i => i.naturalWidth > 0)')
   assert.deepEqual(await evaluate('[...document.querySelectorAll(".prompt-generated-image")].map(b => b.dataset.uiKey)'), ['image-1', 'image-2', 'image-3'])
-  await evaluate('document.querySelector("[data-ui=\"chat.generated-image\"][data-ui-key=\"image-2\"]").click()')
+  await evaluate(`document.querySelector('[data-ui="chat.generated-image"][data-ui-key="image-2"]').click()`)
   await until('document.querySelector(".image-viewer:not([hidden]) img")?.naturalWidth > 0')
   if (process.env.CLOSEDAI_GENERATED_IMAGE_CAPTURE) {
     await writeFile(process.env.CLOSEDAI_GENERATED_IMAGE_CAPTURE, (await window.webContents.capturePage()).toPNG())
