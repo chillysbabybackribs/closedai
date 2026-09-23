@@ -55,7 +55,15 @@ class FakeWorkspace extends EventEmitter implements AppChatWorkspace {
     }
   }
   paneSnapshot(paneId: string): ChatSnapshot | null { return this.panes.get(paneId) ?? null }
-  async newPeer(): Promise<string> { this.panes.set('pane-3', chatSnapshot({ threadId: null })); this.selected = 'pane-3'; return 'pane-3' }
+  async newPeer(_callerPaneId?: string): Promise<string> {
+    this.panes.set('pane-3', chatSnapshot({ threadId: null }))
+    this.selected = 'pane-3'
+    return 'pane-3'
+  }
+  async restoreCoordinatorFocus(callerPaneId: string, workerPaneId: string): Promise<void> {
+    this.calls.push(['restoreCoordinatorFocus', callerPaneId, workerPaneId])
+    this.selected = callerPaneId
+  }
   async send(paneId: string, text: string): Promise<void> {
     this.calls.push(['send', paneId, text])
     this.panes.set(paneId, chatSnapshot({ activeTurnId: 'turn-9' }))

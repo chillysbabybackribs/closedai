@@ -92,6 +92,8 @@ export type AppSendRequest = {
   awaitTurn: boolean
   timeoutMs: number
   signal: AbortSignal
+  /** When set, focus returns here after a worker turn if caller is a coordinator. */
+  callerPaneId?: string | null
 }
 
 export type AppSendResult = {
@@ -127,7 +129,7 @@ export type AppBrowserTabRequest = {
 export type AppCommandHost = {
   state(sections: readonly AppStateSection[], paneId: string | undefined, callerPaneId: string | null): Record<string, unknown>
   selectedPaneId(): string
-  newChat(): Promise<{ paneId: string }>
+  newChat(callerPaneId?: string | null): Promise<{ paneId: string }>
   queueProjectSwitch(request: ProjectSwitchRequest, signal: AbortSignal): Promise<ProjectSwitchStatus>
   cancelProjectSwitch(paneId: string): ProjectSwitchStatus | null
   sendMessage(request: AppSendRequest): Promise<AppSendResult>
@@ -147,7 +149,8 @@ export type AppChatWorkspace = {
   }
   snapshot(): ChatWorkspaceSnapshot
   paneSnapshot(paneId: string): ChatSnapshot | null
-  newPeer(): Promise<string>
+  newPeer(callerPaneId?: string): Promise<string>
+  restoreCoordinatorFocus(callerPaneId: string, workerPaneId: string): Promise<void>
   send(paneId: string, text: string, attachments: ChatAttachment[]): Promise<void>
   interrupt(paneId: string): Promise<void>
   selectPane(paneId: string): Promise<void>

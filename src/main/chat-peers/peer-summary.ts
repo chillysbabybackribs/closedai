@@ -140,7 +140,8 @@ export function summaryForRecord(paneId: string, record: ChatRecord): ChatPeerSu
     preview: record.preview,
     running: false,
     activity: null,
-    updatedAt: record.updatedAt
+    updatedAt: record.updatedAt,
+    coordinatorGroup: record.coordinatorGroup
   }
 }
 
@@ -200,7 +201,8 @@ export function summaryOf(
     running,
     paused: snapshot.pausedTurnId !== null,
     activity,
-    updatedAt
+    updatedAt,
+    coordinatorGroup: record.coordinatorGroup
   }
 }
 

@@ -41,6 +41,7 @@ export function chatRecord(id: string, modelId: string | null, extra: Partial<Ch
     continuation: null,
     checkpoint: null,
     parentChatId: null,
+    coordinatorGroup: null,
     sessionRotations: [],
     ...extra
   }

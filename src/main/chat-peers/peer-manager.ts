@@ -390,6 +390,15 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.emitWorkspace()
   }
 
+  async restoreCoordinatorFocus(callerPaneId: ChatPaneId, workerPaneId: ChatPaneId): Promise<void> {
+    if (callerPaneId === workerPaneId) return
+    const caller = this.store.get(callerPaneId)
+    const worker = this.store.get(workerPaneId)
+    if (caller?.coordinatorGroup?.role !== 'coordinator') return
+    if (worker?.coordinatorGroup?.role !== 'worker' || worker.parentChatId !== callerPaneId) return
+    await this.selectPane(callerPaneId)
+  }
+
   private coordinatorWorkerPeer(coordinatorPaneId: ChatPaneId): ChatPaneId {
     const workerId = pickCoordinatorWorker(this.store, coordinatorPaneId, (id) => {
       const entry = this.lifecycle.get(id)

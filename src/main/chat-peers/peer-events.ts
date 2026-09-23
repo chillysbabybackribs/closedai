@@ -191,7 +191,8 @@ export function rowSummary(record: ChatRecord, live: ChatPeerSummary | null): Ch
     projectPath: record.projectPath,
     ...(continuedFrom(record.continuation) ?? {}),
     createdAt: record.createdAt,
-    lastTurnEndedAt: record.lastTurnEndedAt
+    lastTurnEndedAt: record.lastTurnEndedAt,
+    coordinatorGroup: record.coordinatorGroup
   }
 }
 

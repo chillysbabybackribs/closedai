@@ -115,6 +115,8 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   const onHide = useCallback((id: string) => { void layout.hide(id) }, [layout.hide])
   const onSizeChange = useCallback((size: CanvasSize) => { canvasSize.current = size }, [])
   const actions = useMemo(() => ({ moveTab: layout.moveTabToTile }), [layout.moveTabToTile])
+  const onEnableCoordinator = useCallback((id: string) => { void layout.enableCoordinator(id) }, [layout.enableCoordinator])
+  const onDisableCoordinator = useCallback((id: string) => { void layout.disableCoordinator(id) }, [layout.disableCoordinator])
   const onRename = useMemo(() => onRenameChat
     ? (id: string) => onRenameChat(id, chatsRef.current.find((row) => row.paneId === id)?.title ?? 'New chat')
     : undefined, [onRenameChat])
@@ -133,6 +135,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         onRenameChat={onRename} onTogglePin={onTogglePin} onContinueChat={(id) => { void continueChatRef.current(id) }}
         onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets} onSizeChange={onSizeChange}
         onHide={onHide} onResize={layout.resize}
+        onEnableCoordinator={onEnableCoordinator} onDisableCoordinator={onDisableCoordinator}
         renderPane={renderPane}
       renderBrowser={renderBrowser}
     />

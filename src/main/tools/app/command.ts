@@ -41,12 +41,13 @@ export function appCommandActions(
     },
     {
       action: 'new_chat',
-      description: 'Create a chat and return its pane id; selects it like File → New chat.',
+      description:
+        'Create a chat and return its pane id. From a coordinator pane, returns a linked worker id without moving focus. Otherwise selects the new chat like File → New chat.',
       inputSchema: objectSchema({}),
-      run: async (_input, _context) => {
+      run: async (_input, context) => {
         const host = requireHost(app, 'app commands')
-        const created = await host.newChat()
-        return jsonResult({ ...created, ...host.state(['workspace'], created.paneId, null) })
+        const created = await host.newChat(context.paneId ?? null)
+        return jsonResult({ ...created, ...host.state(['workspace'], created.paneId, context.paneId ?? null) })
       }
     },
     {
@@ -71,7 +72,8 @@ export function appCommandActions(
           text: stringArg(input, 'text')!,
           awaitTurn: booleanArg(input, 'await_turn', true),
           timeoutMs: numberArg(input, 'timeout_ms', 60_000),
-          signal: context.signal
+          signal: context.signal,
+          callerPaneId: context.paneId ?? null
         })
         return jsonResult({ ...result, ...host.state(['chat'], paneId, context.paneId ?? null) })
       }

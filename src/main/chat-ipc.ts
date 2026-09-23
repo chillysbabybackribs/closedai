@@ -32,6 +32,8 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   ipcMain.handle(IPC.invoke.chat.refreshPlanUsage, (_event, paneId: string) => requireService().refreshPlanUsage(paneId))
   ipcMain.handle(IPC.invoke.chat.listChats, () => requireService().listChats())
   ipcMain.handle(IPC.invoke.chat.newPeer, () => requireService().newPeer())
+  ipcMain.handle(IPC.invoke.chat.enableCoordinator, (_event, paneId: string) => requireService().enableCoordinator(paneId))
+  ipcMain.handle(IPC.invoke.chat.disableCoordinator, (_event, paneId: string) => requireService().disableCoordinator(paneId))
   ipcMain.handle(IPC.invoke.chat.closePeer, (_event, paneId: string) => requireService().closePeer(paneId))
   ipcMain.handle(IPC.invoke.chat.continueInNewPeer, (_event, source: ChatContinuationSource, modelId: string | null) =>
     requireService().continueInNewPeer(source, modelId)

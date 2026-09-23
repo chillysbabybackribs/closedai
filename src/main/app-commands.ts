@@ -73,8 +73,8 @@ export class AppCommandAccess implements AppCommandHost {
     return this.chat().snapshot().selectedPaneId
   }
 
-  async newChat(): Promise<{ paneId: string }> {
-    return { paneId: await this.chat().newPeer() }
+  async newChat(callerPaneId?: string | null): Promise<{ paneId: string }> {
+    return { paneId: await this.chat().newPeer(callerPaneId ?? undefined) }
   }
 
   queueProjectSwitch(request: ProjectSwitchRequest, signal: AbortSignal): Promise<ProjectSwitchStatus> {
@@ -104,6 +104,9 @@ export class AppCommandAccess implements AppCommandHost {
       if (!request.awaitTurn) return { paneId: request.paneId, turnStarted, turnCompleted: false, elapsedMs: Date.now() - started }
       const idle = turnStarted && chat.paneSnapshot(request.paneId)?.activeTurnId === null
       const turnCompleted = idle || await raceTimeout(completed, request.timeoutMs, request.signal)
+      if (turnCompleted && request.callerPaneId) {
+        await chat.restoreCoordinatorFocus(request.callerPaneId, request.paneId)
+      }
       return { paneId: request.paneId, turnStarted, turnCompleted, elapsedMs: Date.now() - started }
     } finally {
       chat.off('event', listener)

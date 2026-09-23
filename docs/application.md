@@ -381,7 +381,12 @@ then **Hide pane** (`layout.pane-hide`) and, with another tile open,
 (`layout.tab-move`, item `next` or `previous`) move the active conversation into the neighbouring
 tile's strip in reading order, the keyboard route for a tab drag; an emptied tile collapses as it
 does after a drag. Close, hide, and move rows show subtitles when tasks continue. A separator
-follows, then **Workspace layout…** (`layout.presets`), **Rename…**, optional **Pin chat**, and
+follows, then **Coordinator…** (`layout.coordinator-enable`) on a chat that is not already a
+worker: it marks the chat as the coordinator, opens **Worker A** and **Worker B** in a linked
+right-hand column (coordinator left), applies matching border colors on the three tiles, and keeps
+coordinator focus when tools spawn workers or finish an awaited worker turn. **Stop coordinating**
+(`layout.coordinator-disable`) clears the grouping. Coordinator tiles cannot be dragged out of
+the group. Then **Workspace layout…** (`layout.presets`), **Rename…**, optional **Pin chat**, and
 pause/resume when the tab’s task is running or paused. Ctrl/Cmd+W uses that same close or hide path for the focused chat.
 A rejected layout operation shows its reason above the canvas, cleared by the next successful
 operation or after 8 s. Adding a tab waits for main to confirm the selection; if no confirmation

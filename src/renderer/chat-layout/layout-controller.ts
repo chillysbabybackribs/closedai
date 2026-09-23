@@ -5,6 +5,7 @@ import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, withBrowser, dockBrowser, dockPane,
 import { addTab, focusedCloseAction, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds, tabOwner, type TileDirection } from './layout-tabs.js'
 import { removalNotice } from './layout-copy.js'
 import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
+import { coordinatorWorkspaceLayout } from './layout-coordinator.js'
 
 const ERROR_TTL_MS = 8000
 /** Main announces a selection within one workspace event; past this the layout resyncs instead of staying locked. */
@@ -293,5 +294,43 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   }, [cwd, clearError, fail, release])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
-  return { ...layout, error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane, activateTab, moveTabToTile, closeTab, hide, closeFocused, resize, arrange, toggleBrowser, showBrowser }
+  const enableCoordinator = useCallback(async (paneId: string): Promise<void> => {
+    if (pending.current) return
+    pending.current = true
+    setBusy(true)
+    clearError()
+    try {
+      const result = await window.closedai.chat.enableCoordinator(paneId)
+      const visible = [...new Set([...paneIds(current.current.tree), result.coordinatorPaneId, ...result.workerPaneIds])]
+      await window.closedai.chat.setVisiblePanes(cwd, visible, visible)
+      setLayout((value) => ({
+        ...value,
+        tree: coordinatorWorkspaceLayout(result, () => crypto.randomUUID())
+      }))
+      selected.current = result.coordinatorPaneId
+      await window.closedai.chat.selectPane(result.coordinatorPaneId)
+      setNotice({ text: 'Coordinator mode: workers run on the right; focus stays on this chat when they finish.' })
+      release()
+    } catch (reason) {
+      fail(reason)
+      release()
+    }
+  }, [cwd, clearError, fail, release])
+  const disableCoordinator = useCallback(async (paneId: string): Promise<void> => {
+    try {
+      await window.closedai.chat.disableCoordinator(paneId)
+      setNotice({ text: 'Coordinator mode cleared for this group.' })
+      clearError()
+    } catch (reason) { fail(reason) }
+  }, [clearError, fail])
+  const moveTabToTileGuarded = useCallback((id: string, direction: TileDirection): void => {
+    const row = latestSnapshot.current.chats.find((chat) => chat.paneId === id)
+    if (row?.coordinatorGroup) return
+    moveTabToTile(id, direction)
+  }, [moveTabToTile])
+  return {
+    ...layout, error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane,
+    activateTab, moveTabToTile: moveTabToTileGuarded, closeTab, hide, closeFocused, resize, arrange, toggleBrowser,
+    showBrowser, enableCoordinator, disableCoordinator
+  }
 }

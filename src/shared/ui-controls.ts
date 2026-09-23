@@ -34,6 +34,8 @@ export const UI_CONTROLS = {
   'layout.resume-tab': 'Tab context menu: resume a paused task in this chat; item is the chat id',
   'layout.pane-hide': 'Tab context menu or header control: remove this tile from the layout without stopping its chat; item is the chat id',
   'layout.presets': 'Header context-menu row (also View → Workspace layout): open the workspace layout dialog; item is the chat id',
+  'layout.coordinator-enable': 'Tab context menu: enable coordinator mode for this chat; item is the chat id',
+  'layout.coordinator-disable': 'Tab context menu: clear coordinator grouping; item is the chat id',
   'layout.presets-dialog': 'Workspace layout dialog: pick a starting arrangement that saves like any hand-built layout',
   'layout.preset-browser-centre': 'Layout dialog option: browser in the centre with two stacked chats on each side',
   'layout.preset-grid': 'Layout dialog option: browser hidden, chats in a balanced grid sized for the window',
