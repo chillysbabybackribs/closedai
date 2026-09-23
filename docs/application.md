@@ -4,6 +4,11 @@ Chat renders Markdown, but does not interpret the Visualize skill's inline conte
 markers or provide its `Tweak`/`window.openai` host runtime. HTML comparisons can be served locally
 and viewed in the embedded browser; local HTML file links instead open a text preview.
 
+Codex's native `imageGeneration` results render inline in the transcript, both during live turns
+and when replaying a saved thread. Click a generated image to open the full-size browser-pane
+image viewer. Pending generation remains an activity row; failures display an error. The revised
+generation prompt is not used as a caption. These images are display data, not instructions.
+
 Source review: 2026-09-21. This describes implemented behavior, not a new live UI or provider
 verification. Protocol measurements retain their dates in the provider guides. Prompt assembly and
 model-facing routing live in [Model context](model-context.md); registry contracts live in

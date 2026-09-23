@@ -82,6 +82,25 @@ test('completed crop calls become crop screenshots', () => {
   })
 })
 
+test('native generated images become visible transcript images instead of being dropped', () => {
+  const item = normalizeItem({ type: 'imageGeneration', status: 'completed', result: 'cG5n',
+    savedPath: '/tmp/generated.png', revisedPrompt: 'A private draft prompt' }, 'image-1', 'turn-1', true)
+  assert.deepEqual(item, { type: 'screenshot', id: 'image-1', turnId: 'turn-1',
+    imageUrl: 'data:image/png;base64,cG5n', surface: 'generated_image', caption: '', savedPath: '/tmp/generated.png' })
+  assert.equal(JSON.stringify(item).includes('private draft'), false)
+  const unsaved = normalizeItem({ type: 'imageGeneration', status: 'completed', result: 'cG5n' }, 'i', 't', true)
+  assert.equal(unsaved?.type, 'screenshot')
+})
+
+test('image generation reports progress, failure and empty results', () => {
+  const pending = normalizeItem({ type: 'imageGeneration', status: 'inProgress', result: '' }, 'i', 't', false)
+  assert.equal(pending?.type === 'tool' && pending.status, 'inProgress')
+  const failed = normalizeItem({ type: 'imageGeneration', status: 'failed', failure: { message: 'Generation failed' } }, 'i', 't', true)
+  assert.deepEqual(failed, { type: 'notice', id: 'i', turnId: 't', tone: 'error', text: 'Generation failed' })
+  const empty = normalizeItem({ type: 'imageGeneration', status: 'completed', result: '' }, 'i', 't', true)
+  assert.equal(empty?.type === 'tool' && empty.output, 'Image generation returned no image.')
+})
+
 test('reasoning and plan items stream until the item is completed', () => {
   const live = normalizeItem({ type: 'reasoning', summary: ['a'] }, 'r1', 't1', false)
   assert.deepEqual(live, { type: 'reasoning', id: 'r1', turnId: 't1', text: 'a', streaming: true })

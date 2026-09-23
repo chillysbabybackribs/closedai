@@ -18,7 +18,7 @@ export function ChatScreenshot({ item }: { item: ScreenshotItem }): JSX.Element 
         {generated ? (
           <button type="button" className="prompt-generated-image" data-ui="chat.generated-image"
             data-ui-key={item.id} aria-label="Open generated image"
-            onClick={() => preview.open({ src: item.imageUrl, name: 'Generated image' })}>
+            onClick={() => preview.open({ src: item.savedPath || item.imageUrl, name: 'Generated image' })}>
             <img src={item.imageUrl} alt="Generated image" loading="lazy" />
           </button>
         ) : <img src={item.imageUrl} alt={`${surface} screenshot`} loading="lazy" />}
