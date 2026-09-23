@@ -579,7 +579,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   older history does not acquire invented timestamps.
 - There is no project rail: the folder lives in the composer's setup panel. The title bar has four menus.
   File owns chat creation, history, Settings (Appearance, Models, Credentials, and Security tabs), and closing the
-  window; View owns browser visibility, layout, chat zoom, and fullscreen; Agent owns the
+  window; View owns browser visibility, Saved sites, layout, chat zoom, and fullscreen; Agent owns the
   Agents dialog (Agents…, the saved-agent library and editor, opened on the selected pane), what the
   model is given (Tools & capabilities) and a "Selected chat" section naming
   the pane its rows act on (Compact context, Stop turn; rows that do not apply are disabled, not
@@ -685,10 +685,9 @@ history entry, not cookies or site data. `browser-omnibox.ts` owns the renderer 
 Saved sites (`saved-sites-store.ts`, `saved-sites.json`) are pages the user keeps on purpose, a
 different thing from history (every page visited, pruned by frequency, skipped for agent-driven
 tabs). The star left of Downloads (`browser.saved-sites`) saves the active web page and opens the
-saved-sites panel; when the page is already saved the star is gold and only opens the panel. The panel (`browser-saved-sites-shelf.tsx`, same anchor as the
-downloads popover, so opening one closes the other) lists rows newest first with favicon, title,
+saved-sites panel; when the page is already saved the star is gold and only opens the panel. View → Saved sites opens the same panel even when the browser is hidden. The panel (`browser-saved-sites-shelf.tsx`) floats above the workspace without blocking chat controls; its header moves it and its lower-right corner resizes it. Opening Downloads closes it. It lists rows newest first with favicon, title,
 host, an optional note shown as text (click it, or "Add note", to edit), open, and a remove
-control revealed on hover. The tab context menu
+control revealed on hover. Opening a saved site restores the browser pane if hidden. The tab context menu
 offers Save site / Unsave site for any web tab. Only http(s) pages can be saved; a saved URL is
 identified without scheme or leading `www.`, so re-saving refreshes title and favicon instead of
 duplicating. Each record also carries `tags`, `lastCheckedAt`, and `lastSummary`, empty until a
