@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { savedSiteKey, type SavedSite } from '../shared/saved-sites.js'
 
-// Owns the saved-sites IPC subscription and the panel's open state, on the
-// useBrowserDownloadsController pattern. Unlike downloads, nothing opens this panel by itself:
-// saving is always a user act, so the panel only appears when the star or the tab menu asks.
+// Shared by the title bar and browser controls so the collection stays reachable when the
+// browser pane is hidden. Nothing opens it on its own; saving is a user act.
 
 export type SaveableTab = { url: string; title: string; favicon: string | null }
 
@@ -16,6 +15,7 @@ export type BrowserSavedSitesController = {
   /** Tab menu: save when unsaved, remove when saved. */
   toggleSave: (tab: SaveableTab) => Promise<void>
   dismiss: () => void
+  toggle: () => void
   update: (id: string, note: string) => Promise<void>
   remove: (id: string) => Promise<void>
   open: (url: string) => Promise<void>
@@ -62,6 +62,7 @@ export function useBrowserSavedSitesController(): BrowserSavedSitesController {
     star,
     toggleSave,
     dismiss: () => setIsOpen(false),
+    toggle: () => setIsOpen((open) => !open),
     update: async (id: string, note: string) => { await window.closedai.savedSites.update(id, { note }) },
     remove: async (id: string) => { await window.closedai.savedSites.remove(id) },
     open: (url: string) => window.closedai.browser.navigate(url)

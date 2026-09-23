@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactElement, type Ref } from 'react'
 import { BrowserPane } from '../browser-pane.js'
+import type { BrowserSavedSitesController } from '../browser-saved-sites-controller.js'
 import { useBrowserController } from '../browser-controller.js'
 import type { AgentRunStartOptions } from '../../shared/agent-runs.js'
 import { type ChatPaneDialog } from '../chat-pane.js'
@@ -24,8 +25,9 @@ export type ChatLayoutHandle = {
   applyPreset: (preset: LayoutPreset) => void
 }
 
-export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, toolsPreset = null, onRenameChat, onBrowserVisibilityChange, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, toolsPreset = null, onRenameChat, onBrowserVisibilityChange, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
+  savedSites: BrowserSavedSitesController
   reviewQueue: ChatReviewQueue
   appearance: AppearanceSettings
   historyOpen: boolean
@@ -75,10 +77,10 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   const renderBrowser = useMemo(() => (
     <div className="workspace-right" data-mode="browser" data-with-browser={layout.browserVisible ? 'yes' : 'no'}>
       <div className={`workspace-surface workspace-surface-browser${layout.browserVisible ? '' : ' is-collapsed'}`}>
-        <BrowserPane controller={browser} dragHandle={browserDragHandle} />
+        <BrowserPane controller={browser} savedSites={savedSites} dragHandle={browserDragHandle} />
       </div>
     </div>
-  ), [browser, browserDragHandle, layout.browserVisible])
+  ), [browser, browserDragHandle, layout.browserVisible, savedSites])
   const continueChatRef = useRef<(id: string) => Promise<void>>(async () => {})
   const startAgentRef = useRef<(id: string, options: AgentRunStartOptions) => Promise<void>>(async () => {})
   startAgentRef.current = async (sourceId, options) => {

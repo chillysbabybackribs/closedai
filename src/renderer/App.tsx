@@ -22,6 +22,8 @@ import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SettingsDialog, type SettingsTab } from './settings/settings-dialog.js'
 import { useToolsPreset } from './tools/use-tools-preset.js'
 import { BrowserGlobeIcon } from './browser-globe-icon.js'
+import { useBrowserSavedSitesController } from './browser-saved-sites-controller.js'
+import { BrowserSavedSitesShelf } from './browser-saved-sites-shelf.js'
 import {
   normalizeAppearanceSettings,
   persistAppearanceSettings,
@@ -50,6 +52,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   dialogsRef.current = { settingsOpen, renamingChat, paneDialog }
   const toolsPreset = useToolsPreset()
   const [browserVisible, setBrowserVisible] = useState(false)
+  const savedSites = useBrowserSavedSitesController()
   // A shortcut or menu action main refused; shown under the title bar until dismissed.
   const [shellError, setShellError] = useState<string | null>(null)
   const report = useCallback((fallback: string) => (error: unknown) => setShellError(errorMessage(error, fallback)), [])
@@ -175,6 +178,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       case 'settings': setSettingsTab('appearance'); setSettingsOpen(true); break
       case 'history': toggleHistory(); break
       case 'toggle-browser': workspaceRef.current?.toggleBrowser(); break
+      case 'saved-sites': savedSites.toggle(); break
       case 'layout': workspaceRef.current?.openLayoutPresets(); break
       case 'toggle-fullscreen': window.closedai.window.toggleFullscreen().catch(report('Could not toggle fullscreen')); break
       case 'close-tab': workspaceRef.current?.closeFocused().catch(report('Could not close the chat')); break
@@ -185,7 +189,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       case 'reload': window.location.reload(); break
       case 'devtools': window.closedai.window.toggleDevTools().catch(report('Could not open developer tools')); break
     }
-  }, [history.newChat, toggleHistory, report])
+  }, [history.newChat, toggleHistory, savedSites.toggle, report])
 
   return (
     <div className="shell" data-ui-surface="shell">
@@ -229,6 +233,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           ref={workspaceRef}
           onBrowserVisibilityChange={setBrowserVisible}
           chat={chat}
+          savedSites={savedSites}
           reviewQueue={history.reviewQueue}
           appearance={appearance}
           historyOpen={historyOpen}
@@ -240,6 +245,11 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           archiveChat={history.deleteRow}
         />}
       </div>
+      {savedSites.isOpen && <BrowserSavedSitesShelf controller={savedSites} onError={report('Could not open saved site')}
+        onOpenSite={(url) => {
+          if (!browserVisible) workspaceRef.current?.toggleBrowser()
+          return savedSites.open(url)
+        }} />}
       <ChatRenameDialog
         open={Boolean(renamingChat)}
         chatId={renamingChat?.id ?? ''}

@@ -10,8 +10,7 @@ import { opensContextMenu, tabIndexForKey, tabPanelId } from './browser-tab-navi
 import { errorMessage } from './error-message.js'
 import { useBrowserDownloadsController, type BrowserDownloadsController } from './browser-downloads-controller.js'
 import { BrowserDownloadsShelf } from './browser-downloads-shelf.js'
-import { useBrowserSavedSitesController, type BrowserSavedSitesController } from './browser-saved-sites-controller.js'
-import { BrowserSavedSitesShelf } from './browser-saved-sites-shelf.js'
+import type { BrowserSavedSitesController } from './browser-saved-sites-controller.js'
 import { BrowserNavigationError } from './browser-navigation-error.js'
 import { BrowserTabMenu, BrowserTabRename, type BrowserTabMenuTarget } from './browser-tab-menu.js'
 import { securityRequests } from './security-requests.js'
@@ -21,14 +20,14 @@ import { WebPermissionBar } from './web-permission-bar.js'
 // Memoized: the pane stays mounted, and its native-view host ref and ResizeObserver must
 // survive re-renders of the shell around it.
 export const BrowserPane = memo(function BrowserPane({
-  controller, dragHandle
+  controller, savedSites, dragHandle
 }: {
   controller: BrowserController
+  savedSites: BrowserSavedSitesController
   dragHandle?: ReactNode
 }): JSX.Element {
   const downloads = useBrowserDownloadsController()
-  const savedSites = useBrowserSavedSitesController()
-  // Both popovers share the same anchor; a download arriving on its own closes the saved panel.
+  // Opening downloads closes the saved-sites workspace panel.
   const dismissSaved = savedSites.dismiss
   useEffect(() => { if (downloads.isOpen) dismissSaved() }, [downloads.isOpen, dismissSaved])
   // One slot for a rejected tab or navigation command; it shares the tab strip's grid row.
@@ -62,7 +61,6 @@ export const BrowserPane = memo(function BrowserPane({
         </div>
         {!controller.browser.image && !controller.browser.file && <BrowserToolbar controller={controller} downloads={downloads} savedSites={savedSites} onError={report} />}
         {downloads.isOpen && !controller.browser.image && !controller.browser.file ? <BrowserDownloadsShelf controller={downloads} /> : null}
-        {savedSites.isOpen && !controller.browser.image && !controller.browser.file ? <BrowserSavedSitesShelf controller={savedSites} onError={report} /> : null}
         <div className={`browser-frame ${controller.browser.navigationError ? 'has-navigation-error' : ''}`}>
           <div
             className={`browser-view-host ${controller.browser.image ? 'is-image-viewer' : controller.browser.file ? 'is-file-viewer' : controller.browser.navigationError ? 'is-navigation-error' : ''}`}

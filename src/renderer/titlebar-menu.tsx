@@ -11,7 +11,7 @@ import { QUICK_LAYOUT_PRESETS, type LayoutPreset } from './chat-layout/layout-pr
 /** Everything a menu row can do besides zoom. */
 export type MenuAction =
   | 'new-chat' | 'history' | 'settings' | 'close-tab' | 'close-window' | 'search-chats'
-  | 'toggle-browser' | 'layout' | 'toggle-fullscreen'
+  | 'toggle-browser' | 'saved-sites' | 'layout' | 'toggle-fullscreen'
   | 'agents' | 'tools' | 'compact' | 'stop-turn'
   | 'trace' | 'reload' | 'devtools'
 
@@ -72,6 +72,7 @@ const MENUS: Menu[] = [
     label: 'View',
     rows: [
       { key: 'toggle-browser-pane', label: 'Toggle browser pane', action: 'toggle-browser' },
+      { key: 'saved-sites', label: 'Saved sites…', action: 'saved-sites' },
       SEP,
       ...VIEW_LAYOUT_ROWS,
       SEP,
