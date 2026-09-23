@@ -7,7 +7,7 @@ export const UI_CONTROLS = {
   'file.copy-path': 'Copy the local file preview path',
   'file.copy-content': 'Copy the local file preview text',
   'file.reveal': 'Reveal the previewed local file in the system file manager',
-  'titlebar.chat-search': 'Hover or focus to browse running, paused, unread, open, and closed chats; type to search saved chat titles across projects. Leaving the field and dropdown hides suggestions',
+  'titlebar.chat-search': 'Click or focus to browse running, paused, unread, open, and closed chats; type to search saved chat titles across projects. Leaving the field and dropdown hides suggestions',
   'titlebar.chat-search-clear': 'Clear chat title search',
   'titlebar.chat-search-result': 'Open a chat history suggestion; item is the chat id',
   'titlebar.chat-search-pause': 'Pause a running chat without opening it; item is the chat id',

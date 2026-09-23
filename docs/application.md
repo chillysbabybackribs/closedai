@@ -255,9 +255,10 @@ limits and [Model context](model-context.md) for prompt delivery.
 ## Workspace layout
 
 The workspace has no sidebar. A centered title-bar input searches saved chat titles across projects.
-Hovering over it opens a dropdown that stays open across the field, the gap, and the results;
-leaving the component hides it, even while the input retains focus. Hovering does not steal keyboard
-focus. Focusing, clicking, typing, or using arrow keys also opens it for keyboard and touch access.
+Clicking or focusing the input opens a dropdown that stays open across the field, the gap, and the
+results; leaving the component hides it, even while the input retains focus. Moving the pointer over
+the title bar beside the pill does not open it, so nearby tabs stay easy to hit. Focusing, clicking,
+typing, or using arrow keys opens it for keyboard and touch access.
 The dropdown groups chats into Running, Paused, Recently completed (unread), Open (still attached),
 and Closed (detached). Open and Closed each show up to eight chats, newest last turn first. Rows are
 single lines in a command-palette surface wider than the input: a live-state glyph (or the provider's

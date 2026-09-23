@@ -31,19 +31,26 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   const optionId = (index: number): string => `${listId}-${index}`
 
   useEffect(() => {
+    if (!expanded) return
     resultsRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
-  }, [cursor, expanded, query, hits])
+  }, [cursor, expanded])
 
   const refreshChats = controller.refreshChats
   useEffect(() => {
-    if (expanded) refreshChats()
+    if (!expanded) return
+    const idle = window.requestIdleCallback?.(() => refreshChats(), { timeout: 600 })
+    const timer = idle === undefined ? window.setTimeout(refreshChats, 0) : null
+    return () => {
+      if (idle !== undefined) window.cancelIdleCallback?.(idle)
+      if (timer !== null) window.clearTimeout(timer)
+    }
   }, [expanded, refreshChats])
 
-  // Hover keeps the popup open by geometry, not by DOM boundary events: the popup is wider than
-  // the field, and in Electron a native browser view can cover part of it until the freeze still
-  // lands, so the renderer may see a leave while the pointer is still inside the popup's box.
-  // Only an inside-to-outside transition closes; a popup opened by focus with the pointer resting
-  // elsewhere stays open until the pointer has actually visited it.
+  // While open, pointer geometry (not DOM enter/leave) decides when to dismiss: the popup is wider
+  // than the field, and in Electron a native browser view can cover part of it until the freeze
+  // still lands, so the renderer may see a leave while the pointer is still inside the popup's box.
+  // Only an inside-to-outside transition closes; a popup opened by keyboard with the pointer
+  // elsewhere stays open until the pointer has actually visited the field or popup.
   useEffect(() => {
     if (!expanded) return
     const track = (event: PointerEvent): void => {
@@ -118,11 +125,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   const busy = opening || deleting !== null || changingTurn !== null
   const searching = query.trim() !== ''
 
-  return <div className="header-chat-search" data-expanded={expanded} onPointerEnter={event => {
-    if (event.pointerType === 'touch') return
-    hoveredRef.current = true
-    setExpanded(true)
-  }} onBlur={event => {
+  return <div className="header-chat-search" data-expanded={expanded} onBlur={event => {
     if (!hoveredRef.current && !event.currentTarget.contains(event.relatedTarget)) setExpanded(false)
   }} onKeyDown={event => {
     if (event.key === 'Escape') {
@@ -132,7 +135,10 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
       inputRef.current?.blur()
     }
   }}>
-    <div ref={fieldRef} className="header-chat-search-field">
+    <div ref={fieldRef} className="header-chat-search-field" onPointerDown={event => {
+      if (event.pointerType === 'touch') return
+      hoveredRef.current = true
+    }}>
       <Search size={15} aria-hidden="true" />
       <input ref={inputRef} type="text" value={query} placeholder="Search chats"
         aria-label="Search previous chat titles" role="combobox" aria-autocomplete="list" aria-haspopup="grid"
