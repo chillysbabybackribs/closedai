@@ -63,3 +63,12 @@ test('openCoordinatorWorkspace re-attains stored coordinator group before select
   assert.equal(h.selectedPane, 'home')
   assert.deepEqual([...h.retained].sort(), ['coord', 'home', 'worker'])
 })
+
+test('openCoordinatorWorkspace normalizes stale crew tab titles on reopen', async () => {
+  const h = host()
+  h.store.update('coord', { title: 'New chat', titleSource: 'auto' })
+  h.store.update('worker', { title: 'Worker A', titleSource: 'manual' })
+  await openCoordinatorWorkspace(h)
+  assert.equal(h.store.require('coord').title, 'Coordinator')
+  assert.equal(h.store.require('worker').title, 'Worker')
+})

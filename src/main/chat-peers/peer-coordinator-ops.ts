@@ -24,12 +24,19 @@ function retainCoordinatorGroup(host: PeerCoordinatorHost, result: OpenCoordinat
   host.retainPane(result.workerPaneId)
 }
 
+/** Dedicated workspace panes always read Coordinator / Worker in the tab strip. */
+function normalizeDedicatedWorkspaceLabels(store: ChatStore, result: OpenCoordinatorWorkspaceResult): void {
+  store.update(result.coordinatorPaneId, { title: 'Coordinator', titleSource: 'manual' })
+  store.update(result.workerPaneId, { title: 'Worker', titleSource: 'manual' })
+}
+
 export async function openCoordinatorWorkspace(host: PeerCoordinatorHost): Promise<OpenCoordinatorWorkspaceResult> {
   host.assertAvailable()
   const anchorPaneId = host.selectedPaneId()
   host.retainPane(anchorPaneId)
   const existing = findCoordinatorWorkspace(host.store)
   if (existing) {
+    normalizeDedicatedWorkspaceLabels(host.store, existing)
     retainCoordinatorGroup(host, existing)
     await host.settle()
     return existing
@@ -49,6 +56,7 @@ export async function openCoordinatorWorkspace(host: PeerCoordinatorHost): Promi
     titleSource: 'manual'
   })
   const created = { groupId, coordinatorPaneId, workerPaneId }
+  normalizeDedicatedWorkspaceLabels(host.store, created)
   retainCoordinatorGroup(host, created)
   await host.settle()
   return created
