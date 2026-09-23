@@ -897,8 +897,8 @@ takes. The form validates the catalog's required fields and saves directly; ther
 Every provider receives the same `credential_vault` model tools. `list` discovers saved entries
 and masked field ids without decryption; `read` requires the chosen credential id, exact field ids,
 and a reason before returning only those values to the requesting model. Sensitive reads cannot run
-inside `tool_batch`, and their Turn Trace result is redacted. Shared model instructions restrict
-access to the current user-requested operation and prohibit echoing, logging, or persisting secrets.
+inside `tool_batch`, and their Turn Trace result is redacted. The current native-provider
+baseline adds no ClosedAI behavioral instructions about credential use.
 
 The service catalog in `src/shared/credentials.ts` is the single definition of which fields a
 service takes, which are required, and which hosts select it, so the store validates every saved
