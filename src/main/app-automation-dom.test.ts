@@ -162,6 +162,26 @@ test('control listing reports the owning pane and lists each surface once', () =
   })
 })
 
+test('control listing names switches and inputs from their native labels', () => {
+  const toggle = fakeElement({
+    attributes: { 'data-ui': 'security.secrets-keychain', role: 'switch', 'aria-checked': 'false' },
+    innerText: '', labels: [{ innerText: 'Only save secrets when the OS keychain is available' }], closest: () => null
+  })
+  withDom([], () => {
+    const originalDocument = globalThis.document
+    Object.assign(globalThis, {
+      document: { querySelector: () => null, querySelectorAll: (selector: string) => (selector === '[data-ui]' ? [toggle] : []) }
+    })
+    try {
+      const listing = new Function(`return ${controlsExpression({ maxControls: 5 })}`)() as { controls: Array<{ name: string; checked?: boolean }> }
+      assert.deepEqual(listing.controls.map((control) => [control.name, control.checked]),
+        [['Only save secrets when the OS keychain is available', false]])
+    } finally {
+      Object.assign(globalThis, { document: originalDocument })
+    }
+  })
+})
+
 test('ui state names a portalled menu by its trigger control and lists it once', () => {
   const trigger = fakeElement({ attributes: { 'data-ui': 'titlebar.menu', 'data-state': 'open' }, closest: () => null })
   const content = fakeElement({ tagName: 'DIV', attributes: { 'aria-labelledby': 'trigger-1' }, closest: () => null })

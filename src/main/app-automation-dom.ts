@@ -314,7 +314,11 @@ function accessibleName(element: Element): string {
   const labelledBy = element.getAttribute('aria-labelledby')
   const labelledText = labelledBy?.split(/\s+/)
     .map((id) => document.getElementById(id)?.innerText ?? '').join(' ').trim()
-  const name = labelledText || element.getAttribute('aria-label') || element.getAttribute('title') ||
+  // Native <label for> associations name inputs and Radix switches that carry no aria-label.
+  const labels = (element as HTMLInputElement).labels
+  const labelText = labels && labels.length
+    ? Array.from(labels).map((label) => label.innerText || label.textContent || '').join(' ').trim() : ''
+  const name = labelledText || element.getAttribute('aria-label') || labelText || element.getAttribute('title') ||
     element.getAttribute('placeholder') || element.getAttribute('alt') ||
     ((element as HTMLElement).innerText || element.textContent || '')
   return name.replace(/\s+/g, ' ').trim().slice(0, 120)
