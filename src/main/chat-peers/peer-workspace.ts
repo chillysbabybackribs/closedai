@@ -34,6 +34,7 @@ export interface ChatWorkspaceSurface {
   openCoordinatorWorkspace(): Promise<OpenCoordinatorWorkspaceResult>
   enableCoordinator(paneId: ChatPaneId): Promise<EnableCoordinatorResult>
   disableCoordinator(paneId: ChatPaneId): Promise<void>
+  stopCoordinatorCrew(paneId?: ChatPaneId): Promise<void>
   restoreCoordinatorFocus(callerPaneId: ChatPaneId, workerPaneId: ChatPaneId): Promise<void>
   closePeer(paneId: ChatPaneId): Promise<void>
   continueInNewPeer(source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId>

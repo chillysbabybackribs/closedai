@@ -15,9 +15,9 @@ import { chatProviderOfId } from '../../shared/chat-providers.js'
 import type { EnableCoordinatorResult, OpenCoordinatorWorkspaceResult } from '../../shared/coordinator.js'
 import type { ChatRecordSeed } from '../../shared/chat-store.js'
 import type { ChatContinuation } from '../../shared/types.js'
-import { groupMembers, pickCoordinatorWorker } from './coordinator.js'
+import { findCoordinatorWorkspace, groupMembers, pickCoordinatorWorker } from './coordinator.js'
 import { enableCoordinator, openCoordinatorWorkspace, type PeerCoordinatorHost } from './peer-coordinator-ops.js'
-import { wireCoordinatorAfterSend } from './peer-coordinator-bridge.js'
+import { stopCoordinatorCrew as haltCoordinatorCrew, wireCoordinatorAfterSend } from './peer-coordinator-bridge.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import { refreshModelPicker as refreshPaneModelPickers, selectedHub as hubForSelectedPane } from './peer-model-settings.js'
@@ -376,13 +376,20 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     }
   }
 
-  async disableCoordinator(paneId: ChatPaneId): Promise<void> {
-    const record = this.store.get(paneId)
-    const groupId = record?.coordinatorGroup?.id
-    if (!groupId) return
-    for (const member of groupMembers(this.store, groupId)) {
-      this.store.update(member.id, { coordinatorGroup: null })
+  async stopCoordinatorCrew(paneId?: ChatPaneId): Promise<void> {
+    const target = this.store.get(paneId ?? '')?.coordinatorGroup
+      ? paneId!
+      : findCoordinatorWorkspace(this.store)?.coordinatorPaneId
+    if (!target || !await haltCoordinatorCrew(this.store, target, (id) => this.interrupt(id), (id) => this.lifecycle.isRunning(id))) {
+      throw new Error('No coordinator crew is active')
     }
+  }
+
+  async disableCoordinator(paneId: ChatPaneId): Promise<void> {
+    await haltCoordinatorCrew(this.store, paneId, (id) => this.interrupt(id), (id) => this.lifecycle.isRunning(id)).catch(() => {})
+    const groupId = this.store.get(paneId)?.coordinatorGroup?.id
+    if (!groupId) return
+    for (const member of groupMembers(this.store, groupId)) this.store.update(member.id, { coordinatorGroup: null })
     this.emitWorkspace()
   }
 

@@ -84,6 +84,7 @@ const api: ClosedaiApi = {
     openCoordinatorWorkspace: () => invoke(IPC.invoke.chat.openCoordinatorWorkspace),
     enableCoordinator: (paneId) => invoke(IPC.invoke.chat.enableCoordinator, paneId),
     disableCoordinator: (paneId) => invoke(IPC.invoke.chat.disableCoordinator, paneId),
+    stopCoordinatorCrew: (paneId) => invoke(IPC.invoke.chat.stopCoordinatorCrew, paneId ?? null),
     closePeer: (paneId) => invoke(IPC.invoke.chat.closePeer, paneId),
     continueInNewPeer: (source, modelId) => invoke(IPC.invoke.chat.continueInNewPeer, source, modelId),
     openChat: (chatId) => invoke(IPC.invoke.chat.openChat, chatId),

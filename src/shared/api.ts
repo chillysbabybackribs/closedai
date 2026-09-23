@@ -91,6 +91,7 @@ export type ClosedaiApi = {
     openCoordinatorWorkspace: () => Promise<import('./coordinator.js').OpenCoordinatorWorkspaceResult>
     enableCoordinator: (paneId: ChatPaneId) => Promise<import('./coordinator.js').EnableCoordinatorResult>
     disableCoordinator: (paneId: ChatPaneId) => Promise<void>
+    stopCoordinatorCrew: (paneId?: ChatPaneId | null) => Promise<void>
     /** Retire an open peer pane from the active workspace shelf back to history. */
     closePeer: (paneId: ChatPaneId) => Promise<void>
     /** Create a new pane whose first message carries a compact digest of the exact source chat. */

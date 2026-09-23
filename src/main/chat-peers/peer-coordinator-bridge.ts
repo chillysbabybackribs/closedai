@@ -1,7 +1,7 @@
 import type { ChatAttachment, ChatSnapshot } from '../../shared/chat.js'
 import type { ChatPaneId } from '../../shared/chat-peers.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
-import { pickCoordinatorWorker } from './coordinator.js'
+import { groupMembers, pickCoordinatorWorker } from './coordinator.js'
 import type { ChatEvent } from '../../shared/chat.js'
 import type { PeerEntry, PeerLifecycle } from './peer-lifecycle.js'
 
@@ -17,9 +17,35 @@ export type CoordinatorBridgeHost = {
 }
 
 const awaitingReview = new Map<ChatPaneId, boolean>()
+const pausedCoordinators = new Set<ChatPaneId>()
 
 export function resetCoordinatorBridgeForTests(): void {
   awaitingReview.clear()
+  pausedCoordinators.clear()
+}
+
+function coordinatorIdForGroup(store: ChatStore, groupId: string): ChatPaneId | null {
+  for (const id of store.ids()) {
+    const record = store.get(id)
+    if (record?.coordinatorGroup?.id === groupId && record.coordinatorGroup.role === 'coordinator') return id
+  }
+  return null
+}
+
+/** Stop auto handoff and clear pending review; returns coordinator pane id when a crew was found. */
+export function pauseCoordinatorCrew(store: ChatStore, paneId: ChatPaneId): ChatPaneId | null {
+  const record = store.get(paneId)
+  const groupId = record?.coordinatorGroup?.id
+  if (!groupId) return null
+  const coordinatorId = record.coordinatorGroup?.role === 'coordinator' ? paneId : coordinatorIdForGroup(store, groupId)
+  if (!coordinatorId) return null
+  pausedCoordinators.add(coordinatorId)
+  awaitingReview.set(coordinatorId, false)
+  return coordinatorId
+}
+
+function crewPaused(store: ChatStore, coordinatorPaneId: ChatPaneId): boolean {
+  return pausedCoordinators.has(coordinatorPaneId)
 }
 
 function lastAssistantText(snapshot: ChatSnapshot | null): string {
@@ -52,6 +78,7 @@ export async function onCoordinatorUserMessage(
   if (!trimmed || trimmed.startsWith(WORKER_FINISHED_PREFIX)) return
   const record = host.store.get(coordinatorPaneId)
   if (record?.coordinatorGroup?.role !== 'coordinator') return
+  pausedCoordinators.delete(coordinatorPaneId)
   awaitingReview.set(coordinatorPaneId, false)
   const workerId = pickCoordinatorWorker(host.store, coordinatorPaneId, (id) => host.isRunning(id))
   await host.send(workerId, trimmed, [])
@@ -60,7 +87,7 @@ export async function onCoordinatorUserMessage(
 /** Worker turn ended: ping Coordinator right away so its next turn starts. */
 export async function onWorkerTurnEnded(host: CoordinatorBridgeHost, workerPaneId: ChatPaneId): Promise<void> {
   const coordinatorId = coordinatorOfWorker(host.store, workerPaneId)
-  if (!coordinatorId) return
+  if (!coordinatorId || crewPaused(host.store, coordinatorId)) return
   const excerpt = lastAssistantText(host.snapshot(workerPaneId))
   const body = excerpt.length > 0 ? excerpt.slice(0, 12_000) : '(Worker finished with no assistant text yet.)'
   const message =
@@ -77,7 +104,7 @@ export async function onWorkerTurnEnded(host: CoordinatorBridgeHost, workerPaneI
 
 /** Coordinator turn ended after a worker report: send its reply to Worker immediately. */
 export async function onCoordinatorTurnEnded(host: CoordinatorBridgeHost, coordinatorPaneId: ChatPaneId): Promise<void> {
-  if (!awaitingReview.get(coordinatorPaneId)) return
+  if (!awaitingReview.get(coordinatorPaneId) || crewPaused(host.store, coordinatorPaneId)) return
   awaitingReview.set(coordinatorPaneId, false)
   const record = host.store.get(coordinatorPaneId)
   if (record?.coordinatorGroup?.role !== 'coordinator') return
@@ -132,6 +159,21 @@ export function wireCoordinatorAfterSend(
   void onCoordinatorUserMessage(coordinatorBridgeHost(manager), paneId, text).catch((error) => {
     logBridgeError('delegate to worker failed', error)
   })
+}
+
+export async function stopCoordinatorCrew(
+  store: ChatStore,
+  paneId: ChatPaneId,
+  interrupt: (paneId: ChatPaneId) => Promise<void>,
+  isRunning: (paneId: ChatPaneId) => boolean
+): Promise<boolean> {
+  const record = store.get(paneId)
+  const groupId = record?.coordinatorGroup?.id
+  if (!groupId || !pauseCoordinatorCrew(store, paneId)) return false
+  await Promise.all(groupMembers(store, groupId).map(async (member) => {
+    if (isRunning(member.id)) await interrupt(member.id)
+  }))
+  return true
 }
 
 export function wireCoordinatorAfterPaneEvent(

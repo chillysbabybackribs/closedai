@@ -69,6 +69,7 @@ export type IpcInvokeChannels = {
   'chat:openCoordinatorWorkspace': { args: []; result: OpenCoordinatorWorkspaceResult }
   'chat:enableCoordinator': { args: [ChatPaneId]; result: EnableCoordinatorResult }
   'chat:disableCoordinator': { args: [ChatPaneId]; result: void }
+  'chat:stopCoordinatorCrew': { args: [ChatPaneId | null]; result: void }
   'chat:closePeer': { args: [ChatPaneId]; result: void }
   'chat:continueInNewPeer': { args: [ChatContinuationSource, string | null]; result: ChatPaneId }
   'chat:openChat': { args: [string]; result: ChatPaneId }
@@ -185,6 +186,7 @@ export const IPC = {
       openCoordinatorWorkspace: 'chat:openCoordinatorWorkspace',
       enableCoordinator: 'chat:enableCoordinator',
       disableCoordinator: 'chat:disableCoordinator',
+      stopCoordinatorCrew: 'chat:stopCoordinatorCrew',
       closePeer: 'chat:closePeer',
       continueInNewPeer: 'chat:continueInNewPeer',
       openChat: 'chat:openChat',
