@@ -1,0 +1,9 @@
+{
+  "id": "page-preamble-v1",
+  "base": "main",
+  "overrides": {
+    "instructions": {
+      "append": "Simulation harness: when the user asks for a specific PDF page, call embedded_browser.page read_page with pdf_page set. Do not navigate if the PDF is already open."
+    }
+  }
+}

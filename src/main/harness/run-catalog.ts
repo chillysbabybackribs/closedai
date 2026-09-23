@@ -45,6 +45,9 @@ export async function runTaskCatalogModel(options: {
   taskFilter?: string
   adapter: ModelAdapterKind
   runId?: string
+  variantId?: string
+  model?: string | null
+  effort?: string | null
 }): Promise<SimulationReport> {
   const tasks = filterTasks(await loadHarnessTasks(options.projectRoot, options.catalogPath), options.taskFilter)
   const simulations = expandCatalog(tasks)
@@ -52,8 +55,34 @@ export async function runTaskCatalogModel(options: {
     simulations,
     concurrency: options.concurrency ?? 8,
     adapter: options.adapter,
-    runId: options.runId
+    runId: options.runId,
+    projectRoot: options.projectRoot,
+    variantId: options.variantId,
+    model: options.model,
+    effort: options.effort
   })
+}
+
+export async function runVariantComparison(options: {
+  projectRoot: string
+  variantIds: string[]
+  adapter: ModelAdapterKind
+  concurrency?: number
+  catalogPath?: string
+  taskFilter?: string
+}): Promise<{ variants: SimulationReport[] }> {
+  const reports: SimulationReport[] = []
+  for (const variantId of options.variantIds) {
+    reports.push(await runTaskCatalogModel({
+      projectRoot: options.projectRoot,
+      catalogPath: options.catalogPath,
+      taskFilter: options.taskFilter,
+      adapter: options.adapter,
+      concurrency: options.concurrency,
+      variantId: variantId === 'main' ? undefined : variantId
+    }))
+  }
+  return { variants: reports }
 }
 
 export async function defaultCatalogPaths(projectRoot: string): Promise<string[]> {
