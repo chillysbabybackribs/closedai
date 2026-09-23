@@ -47,17 +47,18 @@
 .composer-row {
   display: flex;
   align-items: flex-end;
-  gap: 4px;
+  gap: 8px;
   min-height: 52px;
-  padding: 7px 6px 7px 5px;
+  padding: 8px 8px 8px 12px;
 }
 
 .composer-textarea {
   flex: 1 1 auto;
+  align-self: center;
   min-width: 0;
   min-height: 40px;
   max-height: var(--composer-max-height, min(36vh, 240px));
-  padding: 4px 6px;
+  padding: 4px 0;
   color: #fff;
   font-size: var(--composer-font-size, 15px);
   font-weight: 500;
@@ -69,7 +70,7 @@
   opacity: 0.72;
 }
 
-/* Quiet icon controls: attach on the left. */
+/* Footer attach and other quiet icon controls. */
 .composer-tool {
   flex: none;
   height: 30px;
@@ -95,20 +96,31 @@
 /* The setup trigger is a full-width metadata rail below the card. Its two labels remain one
    button so opening either side reaches the same setup panel. */
 .composer-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   max-width: calc(var(--chat-column-width) + 64px);
   margin-inline: auto;
-  padding: 5px 2px 0;
+  padding: 5px 0 0;
+}
+
+.composer-meta-row .composer-tool {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  margin-inline: 0 2px;
+  border-radius: 6px;
 }
 
 .composer-setup-trigger {
   display: inline-flex;
+  flex: 1 1 auto;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  width: 100%;
   min-width: 0;
-  min-height: 24px;
-  padding: 2px 8px 0;
+  min-height: 28px;
+  padding: 2px 8px 0 4px;
   border: 0;
   border-radius: 6px;
   background: transparent;
@@ -188,12 +200,13 @@
 
 /* The one action. Send fills with the accent as soon as there is something to send; Pause is an
    outlined square in the same slot while a turn runs; Resume the same outline in the pause amber. */
-.composer-action {
+.composer-row .composer-action {
   flex: none;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 3px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 9px;
   display: grid;
   place-items: center;
   transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;

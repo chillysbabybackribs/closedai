@@ -224,14 +224,6 @@ export function Composer({
           />
         )}
         <div className="composer-row">
-          <AttachmentPicker
-            disabled={!enabled || running || sending}
-            inputRef={fileInputRef}
-            onChange={(event) => {
-              if (event.target.files) void addFiles(event.target.files)
-              event.target.value = ''
-            }}
-          />
           <PromptInputTextarea
             aria-label={`Message ${providerLabel}`}
             data-ui="composer.input"
@@ -246,6 +238,14 @@ export function Composer({
         </div>
       </PromptInput>
       <div className="composer-meta-row">
+        <AttachmentPicker
+          disabled={!enabled || running || sending}
+          inputRef={fileInputRef}
+          onChange={(event) => {
+            if (event.target.files) void addFiles(event.target.files)
+            event.target.value = ''
+          }}
+        />
         <ComposerSetupMenu
           ref={setupMenuRef}
           modelsEnabled={enabled && !running}

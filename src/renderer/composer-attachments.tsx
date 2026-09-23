@@ -13,7 +13,7 @@ import {
 } from '../components/ui/attachment.js'
 import { useImagePreview, type ImagePreviewTarget } from './attachment-preview.js'
 import { Button } from '../components/ui/button.js'
-import { PromptInputAction } from '../components/ui/prompt-input.js'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip.js'
 import type { ChatAttachment, ChatAttachmentSummary } from '../shared/chat.js'
 
 const IMAGE_EXTENSIONS = /\.(?:avif|bmp|gif|jpe?g|png|webp)$/i
@@ -69,23 +69,26 @@ export function AttachmentPicker({
   onChange: (event: ChangeEvent<HTMLInputElement>) => void
 }): JSX.Element {
   return (
-    <>
+    <TooltipProvider>
       <input ref={inputRef} className="prompt-attachment-input" type="file" multiple onChange={onChange} />
-      <PromptInputAction tooltip="Upload files">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="composer-tool composer-attach"
-          aria-label="Upload files"
-          data-ui="composer.upload"
-          disabled={disabled}
-          onClick={() => inputRef.current?.click()}
-        >
-          <Plus size={21} strokeWidth={2.6} aria-hidden="true" />
-        </Button>
-      </PromptInputAction>
-    </>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="composer-tool composer-attach"
+            aria-label="Upload files"
+            data-ui="composer.upload"
+            disabled={disabled}
+            onClick={() => inputRef.current?.click()}
+          >
+            <Plus size={18} strokeWidth={2.4} aria-hidden="true" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Upload files</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 

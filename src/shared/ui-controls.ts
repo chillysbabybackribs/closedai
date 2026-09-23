@@ -91,7 +91,7 @@ export const UI_CONTROLS = {
   'composer.project-clear': 'Use the home directory for this chat',
   'composer.usage': 'Context window and plan usage block in the setup panel',
   'composer.compact': 'Compact provider-side context from a transcript summary (setup panel)',
-  'composer.upload': 'Attach files (the + button in the composer)',
+  'composer.upload': 'Attach files (+ in the composer footer, left of model and folder)',
   'composer.attachment-remove': 'Remove a pending attachment; item is the attachment id',
   'composer.attachment-preview': 'Open an attached image in a browser-pane image tab; item is the attachment id',
   'composer.stop': 'Pause the running turn via button or Escape key (present only while running)',

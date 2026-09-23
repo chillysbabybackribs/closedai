@@ -356,9 +356,10 @@ then scroll, leaving room for the transcript.
 Tiles at most 680 px wide or 640 px tall also tighten transcript spacing; under 460 px the setup
 trigger drops the folder name, and under 330 px the model name too. Single-tab headers use the
 available width for the title; the focused tile has the accent tab indicator.
-The composer is one line inside one card: attach (`composer.upload`) on the left, the text, and the
-action button on the right. The setup trigger (`composer.setup`) sits beneath the card with the
-model on the left and folder on the right, using matching muted text. There is no collapsed mode;
+The composer is one line inside one card: the text and the action button on the right. Attach
+(`composer.upload`) sits in the footer row to the left of the setup trigger. The setup trigger
+(`composer.setup`) shares that row with the model on the left and folder on the right, using
+matching muted text. There is no collapsed mode;
 pending attachment chips sit above the line inside the card. The setup trigger opens a single panel with four
 sections: Model (providers as groups, each on its most-used short list with a full-width
 **Show N more models** disclosure (`composer.model-more`) for the rest), Effort (a segmented
