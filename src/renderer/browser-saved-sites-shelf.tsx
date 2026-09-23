@@ -19,7 +19,8 @@ export function BrowserSavedSitesShelf({
   onOpenSite: (url: string) => Promise<void>
 }): JSX.Element {
   const [position, setPosition] = useState(() => ({
-    x: Math.max(12, window.innerWidth - 408), y: 72
+    x: Math.max(12, window.innerWidth - 408),
+    y: Math.min(152, Math.max(42, window.innerHeight - 240))
   }))
   const [size, setSize] = useState(() => ({ width: 380, height: Math.min(440, window.innerHeight - 96) }))
   const [drag, setDrag] = useState<{ x: number; y: number; left: number; top: number } | null>(null)
