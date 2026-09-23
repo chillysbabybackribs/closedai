@@ -367,20 +367,19 @@ The composer is a single stack: a draft card (text and the action button on the 
 footer bar beneath it with attach (`composer.upload`) on the left, the model setup trigger
 (`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
 on the right naming the working folder. The **Agent** button (`composer.agents`) opens the
-**Agents** dialog (`dialog.agent`, `src/renderer/agent-library/`): the saved-agent library on
-the left (`composer.agent-item`, most recently used first, each with its run count and last run;
-`composer.agent-new` clears the editor) and an editor on the right with a name
-(`composer.agent-name`), a max-cycles cap (`composer.agent-cycles`, blank runs until paused), and
-the standing instructions (`composer.agent-prompt`). The library (`src/main/agent-library/`,
-`agent-library.json`) is user-owned and never pruned; a first open seeds it with the built-in
-repair agent (`BUILT_IN_AGENTS` in `src/shared/agent-library.ts`), and an emptied library stays
-empty. **Save** (`composer.agent-save`) keeps a new entry or the loaded one's edits;
-**Delete** (`composer.agent-delete`) removes the loaded entry. **Start**
-(`composer.agent-start`) saves a named editor first, then docks a new chat and starts an
-**agent run** on it (`agentRuns.start`) using the launching pane's model and folder; an unnamed
-editor runs once and is not kept. The run records the library entry it came from (`agentId`,
-`name`), the strip and `closedai_app.state` show the agent's name, and main counts the run on
-the entry (`lastRunAt`, `runCount`) once its first cycle is out. The main process
+**Agents** dialog (`dialog.agents`, `src/renderer/agent-library/`): the saved-agent library on
+the left (`agents.item`, most recently used first, each with its run count and last run;
+`agents.new` clears the editor) and an editor on the right with a name (`agents.name`), a
+max-cycles cap (`agents.max-cycles`, blank runs until paused), and the standing instructions
+(`agents.prompt`). The library (`src/main/agent-library/`, `agent-library.json`) is user-owned
+and never pruned; a first open seeds it with the built-in repair agent (`BUILT_IN_AGENTS` in
+`src/shared/agent-library.ts`), and an emptied library stays empty. **Save** (`agents.save`)
+keeps a new entry or the loaded one's edits; **Delete** (`agents.delete`) removes the loaded
+entry. **Start** (`agents.start`) docks a new chat and starts an **agent run** on it
+(`agentRuns.start`) using the launching pane's model and folder. The run records the library
+entry it came from (`agentId`, `name`), the strip and `closedai_app.state` show the agent's
+name, and main counts the run on the entry (`lastRunAt`, `runCount`) once its first cycle is
+out. The main process
 (`src/main/agent-runs/`) owns the loop: the instructions are cycle 1, and after every finished turn
 it waits a short settle delay and sends the next `Cycle N` message, so the chat never stops
 because the model signed off. A turn that produced no assistant or tool output counts as a
