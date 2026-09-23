@@ -49,7 +49,7 @@ test('the idle composer has a message card and setup metadata beneath it', () =>
   assert.match(html, /data-ui="composer\.send"[^>]*disabled/)
   assert.doesNotMatch(html, /data-ui="composer\.stop"/)
   assert.doesNotMatch(html, /data-ui="composer\.resume"/)
-  assert.match(html, /class="composer-meta-row"/)
+  assert.match(html, /class="composer-footer"/)
 })
 
 test('the running composer swaps send for pause and keeps setup metadata beneath the card', () => {
@@ -62,8 +62,8 @@ test('the running composer swaps send for pause and keeps setup metadata beneath
   assert.doesNotMatch(html, /data-ui="composer\.send"/)
   assert.match(html, /aria-label="Pause Codex \(Esc\)"/)
   // No spinner or clock on the trigger: it still names the model and folder while a turn runs.
-  assert.match(html, /composer-setup-model[^>]*>GPT-4o</)
-  assert.match(html, /composer-setup-folder[^>]*>workspace</)
+  assert.match(html, /composer-footer-model-name[^>]*>GPT-4o</)
+  assert.match(html, /composer-footer-folder-name[^>]*>workspace</)
   assert.doesNotMatch(html, /composer-setup-mark/)
   assert.doesNotMatch(html, /Working for|spinner|elapsed/)
   assert.match(html, /placeholder=""/)
@@ -83,15 +83,15 @@ test('the trigger names the model and folder, not the context size or effort', (
     selectedReasoningEffort: 'high',
     projectPath: '/home/dp/Desktop/closedai'
   }))
-  assert.match(html, /composer-setup-model[^>]*>GPT-4o</)
-  assert.match(html, /composer-setup-folder[^>]*>closedai</)
+  assert.match(html, /composer-footer-model-name[^>]*>GPT-4o</)
+  assert.match(html, /composer-footer-folder-name[^>]*>closedai</)
   assert.doesNotMatch(html, /128K/)
-  assert.doesNotMatch(html, /composer-setup-trigger[^>]*>[^<]*High/)
+  assert.doesNotMatch(html, /composer-footer-trigger[^>]*>[^<]*High/)
 })
 
 test('a queued folder change is named on the trigger', () => {
   const html = renderToStaticMarkup(createElement(Composer, { ...baseProps, projectPending: true }))
-  assert.match(html, /composer-setup-folder[^>]*>workspace \(queued\)</)
+  assert.match(html, /composer-footer-folder-name[^>]*>workspace \(queued\)</)
 })
 
 test('composer copy names the pane provider, not Codex', () => {

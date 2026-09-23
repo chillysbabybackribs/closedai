@@ -1,4 +1,5 @@
 import { useCallback, useImperativeHandle, useRef, useState, type JSX, type Ref } from 'react'
+import { ChevronDown, FolderOpen } from 'lucide-react'
 import { Popover } from 'radix-ui'
 
 import type { ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
@@ -106,18 +107,19 @@ export function ComposerSetupMenu({
     <Popover.Root open={open} onOpenChange={setOpen} modal={false}>
       <Popover.Trigger
         ref={triggerRef}
-        className="composer-setup-trigger"
+        className="composer-footer-trigger"
         aria-label="Model, reasoning effort, folder, and context usage"
         title={`${trigger.name}${selected?.provider ? '' : ''}${trigger.effort ? ` · ${trigger.effort} effort` : ''}\n${projectPath ?? cwd}${projectPending ? ' (applies after this chat finishes its current work)' : ''}`}
         data-ui="composer.setup"
       >
-        <span className="composer-setup-model-wrap">
-          <span className="composer-setup-model">{trigger.name}</span>
+        <span className="composer-footer-model">
+          <span className="composer-footer-model-name">{trigger.name}</span>
+          <ChevronDown className="composer-footer-chevron" size={12} strokeWidth={2.2} aria-hidden="true" />
         </span>
         {folder && (
-          <span className="composer-setup-folder-wrap">
-            <span className="composer-setup-folder-sep" aria-hidden="true">·</span>
-            <span className="composer-setup-folder">
+          <span className="composer-footer-folder">
+            <FolderOpen className="composer-footer-folder-icon" size={12} strokeWidth={2.2} aria-hidden="true" />
+            <span className="composer-footer-folder-name">
               {folder}{projectPending ? ' (queued)' : ''}
             </span>
           </span>
@@ -127,8 +129,8 @@ export function ComposerSetupMenu({
         <Popover.Content
           className="composer-setup"
           side="top"
-          align="end"
-          sideOffset={8}
+          align="start"
+          sideOffset={6}
           collisionPadding={12}
           collisionBoundary={boundary ?? undefined}
           avoidCollisions

@@ -208,68 +208,74 @@ export function Composer({
       onDragOver={(event) => event.preventDefault()}
       onDrop={dropFiles}
     >
-      <PromptInput
-        value={input}
-        onValueChange={setInput}
-        onSubmit={() => void submit()}
-        isLoading={running || sending}
-        disabled={!enabled || sending}
-        maxHeight="var(--composer-max-height, min(36vh, 240px))"
-        className="composer-card"
-      >
-        {attachments.length > 0 && (
-          <AttachmentChips
-            attachments={attachments}
-            onRemove={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
-          />
-        )}
-        <div className="composer-row">
-          <PromptInputTextarea
-            aria-label={`Message ${providerLabel}`}
-            data-ui="composer.input"
-            data-can-send={canSend || undefined}
-            placeholder={inputPlaceholder}
-            spellCheck={false}
-            rows={1}
-            className="composer-textarea"
-            onPaste={pasteFiles}
-          />
-          {action}
+      <div className="composer-stack">
+        <PromptInput
+          value={input}
+          onValueChange={setInput}
+          onSubmit={() => void submit()}
+          isLoading={running || sending}
+          disabled={!enabled || sending}
+          maxHeight="var(--composer-max-height, min(36vh, 240px))"
+          className="composer-card"
+        >
+          {attachments.length > 0 && (
+            <AttachmentChips
+              attachments={attachments}
+              onRemove={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
+            />
+          )}
+          <div className="composer-row">
+            <PromptInputTextarea
+              aria-label={`Message ${providerLabel}`}
+              data-ui="composer.input"
+              data-can-send={canSend || undefined}
+              placeholder={inputPlaceholder}
+              spellCheck={false}
+              rows={1}
+              className="composer-textarea"
+              onPaste={pasteFiles}
+            />
+            {action}
+          </div>
+        </PromptInput>
+        <div className="composer-footer">
+          <div className="composer-footer-attach">
+            <AttachmentPicker
+              disabled={!enabled || running || sending}
+              inputRef={fileInputRef}
+              onChange={(event) => {
+                if (event.target.files) void addFiles(event.target.files)
+                event.target.value = ''
+              }}
+            />
+          </div>
+          <div className="composer-footer-setup">
+            <ComposerSetupMenu
+              ref={setupMenuRef}
+              modelsEnabled={enabled && !running}
+              busy={sending}
+              models={models}
+              selectedModel={selectedModel}
+              selectedReasoningEffort={selectedReasoningEffort}
+              onModelChange={onModelChange}
+              onReasoningEffortChange={onReasoningEffortChange}
+              onError={setComposerError}
+              cwd={cwd}
+              projectPath={projectPath}
+              projectPending={projectPending}
+              recentProjects={recentProjects}
+              onChooseProject={onChooseProject}
+              onSelectProject={onSelectProject}
+              onClearProject={onClearProject}
+              contextUsage={contextUsage}
+              provider={provider}
+              planUsage={planUsage}
+              onRefreshPlanUsage={onRefreshPlanUsage}
+              onCompact={onCompactConversation}
+              compactEnabled={compactConversationEnabled}
+            />
+          </div>
         </div>
-      </PromptInput>
-      <div className="composer-meta-row">
-        <AttachmentPicker
-          disabled={!enabled || running || sending}
-          inputRef={fileInputRef}
-          onChange={(event) => {
-            if (event.target.files) void addFiles(event.target.files)
-            event.target.value = ''
-          }}
-        />
-        <ComposerSetupMenu
-          ref={setupMenuRef}
-          modelsEnabled={enabled && !running}
-          busy={sending}
-          models={models}
-          selectedModel={selectedModel}
-          selectedReasoningEffort={selectedReasoningEffort}
-          onModelChange={onModelChange}
-          onReasoningEffortChange={onReasoningEffortChange}
-          onError={setComposerError}
-          cwd={cwd}
-          projectPath={projectPath}
-          projectPending={projectPending}
-          recentProjects={recentProjects}
-          onChooseProject={onChooseProject}
-          onSelectProject={onSelectProject}
-          onClearProject={onClearProject}
-          contextUsage={contextUsage}
-          provider={provider}
-          planUsage={planUsage}
-          onRefreshPlanUsage={onRefreshPlanUsage}
-          onCompact={onCompactConversation}
-          compactEnabled={compactConversationEnabled}
-        />
       </div>
       {composerError && <div className="prompt-attachment-error" role="alert">{composerError}</div>}
     </form>

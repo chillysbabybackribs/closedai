@@ -347,7 +347,7 @@ body[data-layout-resize='vertical'] * { cursor: row-resize !important; }
 @container chat-tile (max-width: 480px) {
   .chat-layout-content .chat-zoom-surface { --chat-column-gutter: 12px; }
   .chat-layout-content .composer-row { gap: 2px; padding-inline: 3px 4px; }
-  .chat-layout-content .composer-setup-trigger { padding-inline: 6px; gap: 5px; }
+  .chat-layout-content .composer-footer-trigger { padding-inline: 6px; gap: 8px; }
 }
 
 .chat-layout-context-menu {

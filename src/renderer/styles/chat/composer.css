@@ -1,6 +1,6 @@
-/* The composer (composer.tsx): a message card with a metadata row beneath it. The setup panel
-   behind that row (composer-setup-menu.tsx) contains model, effort, folder, and context sections.
-   Every colour is a chat theme token so the card and its portal-rendered panel share one surface. */
+/* The composer (composer.tsx): one stack — draft card plus a footer bar. The setup panel
+   (composer-setup-menu.tsx) opens from the footer and holds model, effort, folder, and context.
+   Every colour is a chat theme token so the stack and its portal-rendered panel share one surface. */
 
 .composer {
   container: composer / inline-size;
@@ -21,12 +21,12 @@
   transform: translateY(-50%);
 }
 
-.composer-card {
+.composer-stack {
   display: flex;
   flex-direction: column;
   max-width: calc(var(--chat-column-width) + 64px);
   margin-inline: auto;
-  padding: 0;
+  overflow: hidden;
   border: 1px solid var(--hairline-strong);
   border-radius: 12px;
   background: var(--antigravity-card-bg, #252526);
@@ -34,9 +34,19 @@
   transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
-.composer-card:focus-within {
+.composer-stack:focus-within {
   border-color: var(--focus-ink);
   box-shadow: 0 2px 8px rgb(0 0 0 / 22%), 0 1px 2px rgb(0 0 0 / 14%);
+}
+
+.composer-card {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .composer-card .prompt-attachments {
@@ -93,109 +103,121 @@
   color: var(--foreground);
 }
 
-/* The setup trigger is a full-width metadata rail below the card. Its two labels remain one
-   button so opening either side reaches the same setup panel. */
-.composer-meta-row {
+/* Footer: attach on the left, one setup trigger for model and folder on the right. */
+.composer-footer {
   display: flex;
+  align-items: stretch;
+  min-height: 34px;
+  border-top: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);
+  background: color-mix(in srgb, var(--foreground) 4%, var(--antigravity-card-bg, #252526));
+}
+
+.composer-footer-attach {
+  display: flex;
+  flex: none;
   align-items: center;
-  gap: 2px;
-  max-width: calc(var(--chat-column-width) + 64px);
-  margin-inline: auto;
-  padding: 5px 0 0;
+  padding: 0 2px 0 6px;
+  border-right: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
-.composer-meta-row .composer-tool {
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
-  margin-inline: 0 2px;
-  border-radius: 6px;
+.composer-footer-attach .composer-tool {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  border-radius: 7px;
 }
 
-.composer-setup-trigger {
-  display: inline-flex;
+.composer-footer-setup {
+  display: flex;
   flex: 1 1 auto;
+  min-width: 0;
+}
+
+.composer-footer-trigger {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
-  min-height: 28px;
-  padding: 2px 8px 0 4px;
+  padding: 5px 10px 5px 8px;
   border: 0;
-  border-radius: 6px;
   background: transparent;
-  color: color-mix(in srgb, var(--foreground) 52%, transparent);
+  color: color-mix(in srgb, var(--foreground) 58%, transparent);
   font: inherit;
   font-size: 11.5px;
   font-weight: 500;
-  line-height: 1.35;
-  letter-spacing: 0.01em;
+  line-height: 1.25;
   white-space: nowrap;
   cursor: pointer;
   transition: background-color 120ms ease, color 120ms ease;
 }
 
-.composer-setup-trigger:not(:disabled):hover,
-.composer-setup-trigger[data-state='open'] {
-  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+.composer-footer-trigger:not(:disabled):hover,
+.composer-footer-trigger[data-state='open'] {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
   color: var(--foreground);
 }
 
-.composer-setup-trigger:focus-visible {
+.composer-footer-trigger:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: -2px;
 }
 
-.composer-setup-model,
-.composer-setup-folder {
-  font: inherit;
-  line-height: inherit;
-}
-
-.composer-setup-model {
-  min-width: 0;
-  overflow: hidden;
-  color: color-mix(in srgb, var(--foreground) 78%, transparent);
-  text-overflow: ellipsis;
-}
-
-.composer-setup-model-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-}
-
-.composer-setup-folder-wrap {
+.composer-footer-model {
   display: inline-flex;
   flex: 0 1 auto;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
+  color: color-mix(in srgb, var(--foreground) 82%, transparent);
 }
 
-.composer-setup-folder-sep {
-  flex: none;
-  color: color-mix(in srgb, var(--foreground) 30%, transparent);
-  font-weight: 400;
-  user-select: none;
-}
-
-.composer-setup-folder {
+.composer-footer-model-name {
   min-width: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.composer-footer-chevron {
+  flex: none;
+  opacity: 0.55;
+}
+
+.composer-footer-trigger:not(:disabled):hover .composer-footer-chevron,
+.composer-footer-trigger[data-state='open'] .composer-footer-chevron {
+  opacity: 0.85;
+}
+
+.composer-footer-folder {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
   color: var(--cwd-ink, #7eb0e0);
   font-weight: 550;
+}
+
+.composer-footer-folder-icon {
+  flex: none;
+  opacity: 0.88;
+}
+
+.composer-footer-folder-name {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
 }
 
 @container composer (max-width: 460px) {
-  .composer-setup-folder-wrap { max-width: 42%; }
+  .composer-footer-folder { max-width: 44%; }
 }
 
 @container composer (max-width: 330px) {
-  .composer-setup-model { max-width: 55%; }
-  .composer-setup-trigger { padding: 0 8px; }
+  .composer-footer-model { max-width: 58%; }
+  .composer-footer-trigger { padding-inline: 8px; gap: 8px; }
 }
 
 /* The one action. Send fills with the accent as soon as there is something to send; Pause is an
@@ -616,7 +638,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .composer-card,
+  .composer-stack,
   .composer-action,
   .context-meter-fill,
   .usage-row-fill {
