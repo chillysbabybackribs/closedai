@@ -1,12 +1,13 @@
 import type { JSX } from 'react'
-import { useEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Trash2, X } from 'lucide-react'
 import type { SavedSite } from '../shared/saved-sites.js'
 import { BrowserSiteIcon } from './browser-site-icon.js'
 import type { BrowserSavedSitesController } from './browser-saved-sites-controller.js'
 
 // Floating panel anchored under the toolbar star, the same placement as the downloads popover.
-// Each row is the record a daily brief will later read: the page, and the note saying why.
+// Each row is the record a daily brief will later read: the page, and an optional note saying
+// why. The note is plain text until clicked, so a row without one stays quiet.
 
 export function BrowserSavedSitesShelf({
   controller,
@@ -42,7 +43,7 @@ export function BrowserSavedSitesShelf({
       ) : (
         <ul className="browser-saved-sites-list">
           {controller.sites.map((site) => (
-            <SavedSiteRow key={site.id} site={site} autoFocusNote={controller.focusId === site.id} controller={controller} onError={onError} />
+            <SavedSiteRow key={site.id} site={site} controller={controller} onError={onError} />
           ))}
         </ul>
       )}
@@ -52,22 +53,13 @@ export function BrowserSavedSitesShelf({
 
 function SavedSiteRow({
   site,
-  autoFocusNote,
   controller,
   onError
 }: {
   site: SavedSite
-  autoFocusNote: boolean
   controller: BrowserSavedSitesController
   onError: (reason: unknown) => void
 }): JSX.Element {
-  const [note, setNote] = useState(site.note)
-  const noteRef = useRef<HTMLInputElement>(null)
-  // A remote change (another pane, a later brief agent) wins over a stale draft only when the
-  // field is not being typed in.
-  useEffect(() => { if (document.activeElement !== noteRef.current) setNote(site.note) }, [site.note])
-  useEffect(() => { if (autoFocusNote) noteRef.current?.focus() }, [autoFocusNote])
-  const commit = (): void => { if (note.trim() !== site.note) void controller.update(site.id, note).catch(onError) }
   const label = site.title || hostOf(site.url)
   return (
     <li className="browser-saved-sites-row">
@@ -86,22 +78,6 @@ function SavedSiteRow({
           <span className="browser-saved-sites-host">{hostOf(site.url)}</span>
         </span>
       </button>
-      <input
-        ref={noteRef}
-        className="browser-saved-sites-note"
-        data-ui="saved-sites.note"
-        data-ui-key={site.id}
-        value={note}
-        placeholder="Why keep this? What to watch for…"
-        aria-label={`Note for ${label}`}
-        spellCheck={false}
-        onChange={(event) => setNote(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur() }
-          if (event.key === 'Escape') { event.preventDefault(); setNote(site.note); event.currentTarget.blur() }
-        }}
-      />
       <button
         type="button"
         className="browser-saved-sites-remove"
@@ -111,9 +87,67 @@ function SavedSiteRow({
         title="Remove"
         onClick={() => { void controller.remove(site.id).catch(onError) }}
       >
-        <X size={12} />
+        <Trash2 size={12} />
       </button>
+      <SavedSiteNote site={site} label={label} controller={controller} onError={onError} />
     </li>
+  )
+}
+
+function SavedSiteNote({
+  site,
+  label,
+  controller,
+  onError
+}: {
+  site: SavedSite
+  label: string
+  controller: BrowserSavedSitesController
+  onError: (reason: unknown) => void
+}): JSX.Element {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(site.note)
+  // A remote change (another pane, a later brief agent) wins over a stale draft only while the
+  // field is not open.
+  useEffect(() => { if (!editing) setDraft(site.note) }, [site.note, editing])
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        className={`browser-saved-sites-note-text ${site.note ? '' : 'is-empty'}`}
+        data-ui="saved-sites.note-edit"
+        data-ui-key={site.id}
+        aria-label={site.note ? `Edit note for ${label}` : `Add note for ${label}`}
+        title={site.note ? 'Edit note' : 'Add a note'}
+        onClick={() => { setDraft(site.note); setEditing(true) }}
+      >
+        {site.note || 'Add note'}
+      </button>
+    )
+  }
+  const close = (): void => setEditing(false)
+  const commit = (): void => {
+    const next = draft.trim()
+    if (next !== site.note) void controller.update(site.id, next).catch(onError)
+    close()
+  }
+  return (
+    <input
+      autoFocus
+      className="browser-saved-sites-note"
+      data-ui="saved-sites.note"
+      data-ui-key={site.id}
+      value={draft}
+      placeholder="Why keep this? What to watch for…"
+      aria-label={`Note for ${label}`}
+      spellCheck={false}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') { event.preventDefault(); commit() }
+        if (event.key === 'Escape') { event.preventDefault(); setDraft(site.note); close() }
+      }}
+    />
   )
 }
 

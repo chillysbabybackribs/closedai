@@ -160,16 +160,27 @@ export class AppCommandAccess implements AppCommandHost {
       return request.tabId
     }
     const previous = new Set(browser.tabList().map(tab => tab.id))
+    let pendingUrl: string | null = null
     switch (request.op) {
       // A tab opened for browser work comes to the front, whoever asked for it: the user sees
       // what the model is doing, and a selected tab is the one Chromium runs at full speed.
-      case 'new': browser.openNewTab(request.url ?? 'about:blank', true); break
+      case 'new': {
+        pendingUrl = pendingNavigationUrl(request.url ?? 'about:blank')
+        browser.openNewTab(request.url ?? 'about:blank', true)
+        break
+      }
       case 'new_right': browser.newTabToRight(requireTab(), true); break
       case 'select': browser.selectTab(requireTab()); break
       case 'close': browser.closeTab(requireTab()); break
       case 'close_others': browser.closeOtherTabs(requireTab()); break
       case 'close_right': browser.closeTabsToRight(requireTab()); break
-      case 'duplicate': browser.duplicateTab(requireTab(), true); break
+      case 'duplicate': {
+        const sourceId = requireTab()
+        const source = browser.tabList().find((tab) => tab.id === sourceId)
+        pendingUrl = pendingNavigationUrl(source?.url)
+        browser.duplicateTab(sourceId, true)
+        break
+      }
       case 'back': browser.back(request.tabId); break
       case 'forward': browser.forward(request.tabId); break
       case 'reload': request.tabId ? browser.reloadTab(requireTab()) : browser.reload(); break
@@ -193,7 +204,9 @@ export class AppCommandAccess implements AppCommandHost {
     }
     const created = browser.tabList().filter(tab => !previous.has(tab.id))
     if (paneId) for (const tab of created) this.deps.browserCoordination?.claim(tab.id, paneId)
-    return { ...projectBrowser(browser), coordination: this.deps.browserCoordination?.snapshot(paneId) }
+    let projected = projectBrowser(browser)
+    if (pendingUrl) projected = applyPendingNavigation(projected, pendingUrl, created.map((tab) => tab.id))
+    return { ...projected, coordination: this.deps.browserCoordination?.snapshot(paneId) }
   }
 
   private chat(): AppChatWorkspace {
@@ -277,6 +290,35 @@ function lastItem(items: ChatTranscriptItem[], type: 'user' | 'assistant' | 'not
     if (item.type === type) return item.text.replace(/\s+/g, ' ').trim()
   }
   return null
+}
+
+function pendingNavigationUrl(url: string | null | undefined): string | null {
+  if (!url || url === 'about:blank') return null
+  return url
+}
+
+/** New tabs often report about:blank until the first commit; surface the intended URL for tool callers. */
+export function applyPendingNavigation(
+  projected: Record<string, unknown>,
+  url: string,
+  createdTabIds: string[]
+): Record<string, unknown> {
+  const created = new Set(createdTabIds)
+  type TabRow = { id?: string; url: string; isLoading: boolean; active?: boolean }
+  const patch = (entry: TabRow): TabRow => {
+    if (entry.url !== 'about:blank' || !entry.isLoading) return entry
+    if (created.size === 0 || (entry.id && created.has(entry.id)) || entry.active) {
+      return { ...entry, url, navigationPending: true }
+    }
+    return entry
+  }
+  const active = projected.active as TabRow
+  const tabs = projected.tabs as TabRow[]
+  return {
+    ...projected,
+    active: patch({ ...active, active: true }),
+    tabs: tabs.map((tab) => patch(tab))
+  }
 }
 
 export function projectBrowser(browser: AppBrowserTabs): Record<string, unknown> {

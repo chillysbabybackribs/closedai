@@ -10,8 +10,6 @@ export type SaveableTab = { url: string; title: string; favicon: string | null }
 export type BrowserSavedSitesController = {
   sites: SavedSite[]
   isOpen: boolean
-  /** Row whose note field should take focus, set right after a save from the star. */
-  focusId: string | null
   savedFor: (url: string) => SavedSite | null
   /** Star: save the page and show it, or just show the panel when the page is already saved. */
   star: (tab: SaveableTab) => Promise<void>
@@ -26,7 +24,6 @@ export type BrowserSavedSitesController = {
 export function useBrowserSavedSitesController(): BrowserSavedSitesController {
   const [sites, setSites] = useState<SavedSite[]>([])
   const [isOpen, setIsOpen] = useState(false)
-  const [focusId, setFocusId] = useState<string | null>(null)
 
   useEffect(() => window.closedai.savedSites.onChanged(setSites), [])
   useEffect(() => {
@@ -45,10 +42,7 @@ export function useBrowserSavedSitesController(): BrowserSavedSitesController {
       setIsOpen(false)
       return
     }
-    if (!savedFor(tab.url)) {
-      const site = await window.closedai.savedSites.save({ url: tab.url, title: tab.title, favicon: tab.favicon })
-      setFocusId(site.id)
-    } else setFocusId(null)
+    if (!savedFor(tab.url)) await window.closedai.savedSites.save({ url: tab.url, title: tab.title, favicon: tab.favicon })
     setIsOpen(true)
   }, [isOpen, savedFor])
 
@@ -56,8 +50,7 @@ export function useBrowserSavedSitesController(): BrowserSavedSitesController {
     const existing = savedFor(tab.url)
     if (existing) await window.closedai.savedSites.remove(existing.id)
     else {
-      const site = await window.closedai.savedSites.save({ url: tab.url, title: tab.title, favicon: tab.favicon })
-      setFocusId(site.id)
+      await window.closedai.savedSites.save({ url: tab.url, title: tab.title, favicon: tab.favicon })
       setIsOpen(true)
     }
   }, [savedFor])
@@ -65,7 +58,6 @@ export function useBrowserSavedSitesController(): BrowserSavedSitesController {
   return useMemo(() => ({
     sites,
     isOpen,
-    focusId,
     savedFor,
     star,
     toggleSave,
@@ -73,5 +65,5 @@ export function useBrowserSavedSitesController(): BrowserSavedSitesController {
     update: async (id: string, note: string) => { await window.closedai.savedSites.update(id, { note }) },
     remove: async (id: string) => { await window.closedai.savedSites.remove(id) },
     open: (url: string) => window.closedai.browser.navigate(url)
-  }), [sites, isOpen, focusId, savedFor, star, toggleSave])
+  }), [sites, isOpen, savedFor, star, toggleSave])
 }

@@ -121,11 +121,12 @@ export const UI_CONTROLS = {
   'browser.suggestion-remove': 'Remove a saved browser history entry; item is its URL',
   'browser.address': 'Address bar',
   'browser.downloads': 'Show or hide the downloads shelf',
-  'browser.saved-sites': 'Star left of Downloads: save the active web page and open the saved-sites panel, or open the panel when the page is already saved (filled star); click again to hide it. Disabled on non-web pages',
+  'browser.saved-sites': 'Star left of Downloads: save the active web page and open the saved-sites panel, or open the panel when the page is already saved (gold star); click again to hide it. Disabled on non-web pages',
 
   'saved-sites.hide': 'Hide the saved-sites panel',
   'saved-sites.open': 'Navigate the active tab to a saved site; item is the saved-site id',
-  'saved-sites.note': 'Edit the note on a saved site (why it matters, what to watch for); Enter or blur saves, Escape reverts; item is the saved-site id',
+  'saved-sites.note-edit': 'Open the optional note on a saved site for editing (shows the note text, or "Add note" when empty); item is the saved-site id',
+  'saved-sites.note': 'Note field shown after saved-sites.note-edit; Enter or blur saves, Escape reverts; item is the saved-site id',
   'saved-sites.remove': 'Remove a saved site; item is the saved-site id',
 
   'downloads.clear': 'Clear finished downloads',

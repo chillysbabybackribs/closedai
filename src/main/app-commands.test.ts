@@ -248,6 +248,29 @@ test('model, close, and browser commands call the underlying services', async ()
   ])
 })
 
+test('browser_tab duplicate reports the source url while the copy is still loading', async () => {
+  const tabs = browser()
+  let list = [{ id: '1', pos: 1, title: 'Site', url: 'https://example.com/page', favicon: null, isLoading: false, active: true }]
+  tabs.tabList = () => list
+  tabs.snapshot = () => ({ url: 'about:blank', title: 'New Tab', isLoading: true, canGoBack: false, canGoForward: false })
+  tabs.duplicateTab = (id, activate) => {
+    tabs.calls.push(['duplicateTab', id, activate])
+    list = [
+      { id: '1', pos: 1, title: 'Site', url: 'https://example.com/page', favicon: null, isLoading: false, active: false },
+      { id: '2', pos: 2, title: 'New Tab', url: 'about:blank', favicon: null, isLoading: true, active: true }
+    ]
+  }
+  const { host } = access(new FakeWorkspace(), tabs)
+  const result = await host.browserTab({ op: 'duplicate', tabId: '1' }) as {
+    active: { url: string; navigationPending?: boolean }
+    tabs: Array<{ id: string; url: string; navigationPending?: boolean }>
+  }
+  assert.equal(result.active.url, 'https://example.com/page')
+  assert.equal(result.active.navigationPending, true)
+  assert.equal(result.tabs[1]?.url, 'https://example.com/page')
+  assert.equal(result.tabs[1]?.navigationPending, true)
+})
+
 test('a tab a chat opens for its own work is selected, like one the user opens', async () => {
   const { host, tabs } = access()
   await host.browserTab({ op: 'new', url: 'https://example.com' }, 'pane-1')

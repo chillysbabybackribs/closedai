@@ -667,10 +667,10 @@ history entry, not cookies or site data. `browser-omnibox.ts` owns the renderer 
 Saved sites (`saved-sites-store.ts`, `saved-sites.json`) are pages the user keeps on purpose, a
 different thing from history (every page visited, pruned by frequency, skipped for agent-driven
 tabs). The star left of Downloads (`browser.saved-sites`) saves the active web page and opens the
-saved-sites panel with the new row's note field focused; when the page is already saved the star
-is filled and only opens the panel. The panel (`browser-saved-sites-shelf.tsx`, same anchor as the
+saved-sites panel; when the page is already saved the star is gold and only opens the panel. The panel (`browser-saved-sites-shelf.tsx`, same anchor as the
 downloads popover, so opening one closes the other) lists rows newest first with favicon, title,
-host, an editable note (why it matters, what to watch for), open, and remove. The tab context menu
+host, an optional note shown as text (click it, or "Add note", to edit), open, and a remove
+control revealed on hover. The tab context menu
 offers Save site / Unsave site for any web tab. Only http(s) pages can be saved; a saved URL is
 identified without scheme or leading `www.`, so re-saving refreshes title and favicon instead of
 duplicating. Each record also carries `tags`, `lastCheckedAt`, and `lastSummary`, empty until a
