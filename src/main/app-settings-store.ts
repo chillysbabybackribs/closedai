@@ -104,11 +104,27 @@ function normalize(parsed: unknown): AppSettings {
       ? [...new Set(record.disabledModels.filter((id): id is string => typeof id === 'string' && id.length > 0))]
       : [],
     toolBatchMaxCalls: normalizeBatchMaxCalls(record.toolBatchMaxCalls),
-    chatCompactAtPercent: typeof record.chatCompactAtPercent === 'number' && Number.isFinite(record.chatCompactAtPercent)
-      ? Math.min(MAX_COMPACT_AT_PERCENT, Math.max(0, Math.round(record.chatCompactAtPercent)))
-      : DEFAULT_APP_SETTINGS.chatCompactAtPercent,
+    ...normalizeCompactionPolicy(record),
+    chatMidTurnCompactTokens: normalizeAutoCompactTokens(record.chatMidTurnCompactTokens, DEFAULT_APP_SETTINGS.chatMidTurnCompactTokens)
+  }
+}
+
+/** Token trigger off with seamless rotation off was a common eval preset; migrate to the Codex replay default. */
+function normalizeCompactionPolicy(record: Record<string, unknown>): Pick<AppSettings, 'chatCompactAtPercent' | 'chatCompactAtTokens' | 'chatSeamlessRotation'> {
+  const chatCompactAtPercent = typeof record.chatCompactAtPercent === 'number' && Number.isFinite(record.chatCompactAtPercent)
+    ? Math.min(MAX_COMPACT_AT_PERCENT, Math.max(0, Math.round(record.chatCompactAtPercent)))
+    : DEFAULT_APP_SETTINGS.chatCompactAtPercent
+  const legacyDisabled = record.chatCompactAtTokens === 0 && record.chatSeamlessRotation === false
+  if (legacyDisabled) {
+    return {
+      chatCompactAtPercent,
+      chatCompactAtTokens: DEFAULT_APP_SETTINGS.chatCompactAtTokens,
+      chatSeamlessRotation: true
+    }
+  }
+  return {
+    chatCompactAtPercent,
     chatCompactAtTokens: normalizeAutoCompactTokens(record.chatCompactAtTokens, DEFAULT_APP_SETTINGS.chatCompactAtTokens),
-    chatMidTurnCompactTokens: normalizeAutoCompactTokens(record.chatMidTurnCompactTokens, DEFAULT_APP_SETTINGS.chatMidTurnCompactTokens),
     chatSeamlessRotation: record.chatSeamlessRotation !== false
   }
 }

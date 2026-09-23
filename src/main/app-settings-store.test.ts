@@ -82,6 +82,17 @@ test('the compaction threshold is clamped and bad values fall back', async () =>
   assert.match(await readFile(file, 'utf8'), /"chatCompactAtPercent": 72/)
 })
 
+test('legacy token-off plus rotation-off migrates to the Codex replay default on load', async () => {
+  const { store } = await storeWith(JSON.stringify({
+    chatCompactAtPercent: 60,
+    chatCompactAtTokens: 0,
+    chatSeamlessRotation: false
+  }))
+  assert.equal(store.get().chatCompactAtTokens, 28_000)
+  assert.equal(store.get().chatSeamlessRotation, true)
+  assert.equal(store.get().chatCompactAtPercent, 60)
+})
+
 test('the between-turn token budget is opt-in, bounded, and persists independently', async () => {
   for (const [input, expected] of [[0, 0], [-1, 0], [500, 20_000], [32_000.4, 32_000], [9e9, 2_000_000], ['lots', 28_000]]) {
     const { store } = await storeWith(JSON.stringify({ chatCompactAtTokens: input }))
