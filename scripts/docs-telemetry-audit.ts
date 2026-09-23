@@ -40,12 +40,6 @@ const CURRENT_GUIDES = [
   'docs/README.md'
 ]
 
-const PROMPT_SOURCES = [
-  'src/main/chat-context/application-instructions.ts',
-  'src/main/chat-context/product-instructions.ts',
-  'src/main/chat-context/articulation-instructions.ts'
-]
-
 /** Retired model tools — mentions outside explicit retirement prose are stale. */
 const LEGACY_TOOL_IDS = [
   'search.pdf',
@@ -455,16 +449,8 @@ async function main(): Promise<void> {
     mapCheckOk
   }
 
-  const promptFiles = [...PROMPT_SOURCES]
-  const adapterDir = path.join(root, 'src/main/chat-context')
-  for (const name of await readdir(adapterDir)) {
-    if (name.endsWith('-instructions.ts') && !promptFiles.includes(`src/main/chat-context/${name}`)) {
-      promptFiles.push(`src/main/chat-context/${name}`)
-    }
-  }
-
   const findings: Finding[] = [
-    ...await scanStaleLegacyClaims([...CURRENT_GUIDES, ...promptFiles]),
+    ...await scanStaleLegacyClaims(CURRENT_GUIDES),
     ...catalogFindings(ctx),
     ...await toolsMdCoverage(ctx),
     ...telemetryFindings(ctx),

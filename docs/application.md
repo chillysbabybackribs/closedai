@@ -780,7 +780,7 @@ instrumentation.
 | Provider routing and id families | `src/main/chat-hub.ts`, `src/shared/chat-providers.ts` |
 | Workspace Codex process, pane routing, and transcript normalization | `src/main/codex-workspace-runtime.ts`, `src/main/chat-service.ts`, `src/main/app-server-client.ts`, `src/main/chat-normalizers.ts` |
 | Claude / Antigravity / Cursor sessions and translation | `src/main/claude/`, `src/main/antigravity/`, `src/main/cursor/` |
-| Model instructions, trust and handoff | `src/main/chat-context/`, provider `*-instructions.ts` files |
+| Model context, trust and handoff | `src/main/chat-context/`, provider session adapters |
 | Provider-neutral tool definitions and execution | `src/main/tools/` |
 | CDP retain receipts, worker storage | `src/main/investigations/`, `src/shared/investigation-artifacts.ts`, `browser_cdp.protocol` retain |
 | Deterministic app commands and renderer control access | `src/main/app-commands.ts`, `src/main/app-automation-*.ts`, `src/shared/ui-controls.ts` |

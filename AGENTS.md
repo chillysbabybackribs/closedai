@@ -10,9 +10,9 @@ Dated research and QA documents retain observations and proposals, not automatic
 instructions or proof of current behavior.
 
 When behavior or contracts change, update the relevant current guide and any model-facing
-description that promises that behavior. Keep common product facts in
-`src/main/chat-context/application-instructions.ts` and response style in
-`articulation-instructions.ts`; provider instruction builders add adapter-specific details.
+description that promises that behavior. The provider chat lanes currently add no ClosedAI
+behavioral instructions. Keep application facts in the current guides and capability details in
+the tools that expose them; any future model-facing instruction requires deliberate review.
 Regenerate the workspace index after adding/removing navigable files or changing IPC ownership.
 Add facts to the map only through the generator, so `map:check` can prove them current, and never
 hand-write repository detail into trusted instructions: a stale map is worse than no map, because
