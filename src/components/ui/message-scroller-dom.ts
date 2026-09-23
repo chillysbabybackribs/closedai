@@ -31,15 +31,6 @@ export function viewportMetrics(viewport: HTMLElement): ScrollMetrics {
   }
 }
 
-/** Offset geometry uses the same unscaled coordinates as scrollTop, even inside chat zoom. */
-function layoutTop(element: HTMLElement): number {
-  let top = element.offsetTop
-  for (let parent = element.offsetParent as HTMLElement | null; parent; parent = parent.offsetParent as HTMLElement | null) {
-    top += parent.offsetTop + parent.clientTop
-  }
-  return top
-}
-
 /**
  * Measure the actual rows, not scrollHeight: the viewport and content's min-height can keep
  * scrollHeight constant while a spacer grows. Subtracting that spacer then feeds its own size
@@ -50,18 +41,27 @@ export function measureScrollAnchor(
   content: HTMLElement,
   anchor: HTMLElement,
   spacer: HTMLElement | null
-): { anchorTop: number; contentHeight: number; spacerGap: number } {
-  const origin = layoutTop(viewport) + viewport.clientTop
+): { anchorTop: number; contentHeight: number; spacerGap: number } | null {
   const contentStyle = window.getComputedStyle(content)
   const viewportStyle = window.getComputedStyle(viewport)
+  const viewportRect = viewport.getBoundingClientRect()
+  // offsetHeight/clientHeight round to whole pixels. Use the resolved CSS box size to retain
+  // fractional row heights at zoom; rounding the rows can undersize the spacer and clamp scrollTop.
+  const borderBoxHeight = pixels(viewportStyle.height) + (viewportStyle.boxSizing === 'border-box' ? 0 :
+    pixels(viewportStyle.paddingTop) + pixels(viewportStyle.paddingBottom) +
+    pixels(viewportStyle.borderTopWidth) + pixels(viewportStyle.borderBottomWidth))
+  if (borderBoxHeight <= 0 || viewportRect.height <= 0) return null
+  const scale = viewportRect.height / borderBoxHeight
+  const toScrollY = (screenY: number): number =>
+    viewport.scrollTop + (screenY - viewportRect.top) / scale - pixels(viewportStyle.borderTopWidth)
   let last = content.lastElementChild as HTMLElement | null
   if (last && last === spacer) last = last.previousElementSibling as HTMLElement | null
   const bottom = last
-    ? layoutTop(last) + last.offsetHeight + pixels(window.getComputedStyle(last).marginBottom)
-    : layoutTop(content) + content.clientTop + pixels(contentStyle.paddingTop)
+    ? toScrollY(last.getBoundingClientRect().bottom) + pixels(window.getComputedStyle(last).marginBottom)
+    : toScrollY(content.getBoundingClientRect().top) + pixels(contentStyle.borderTopWidth) + pixels(contentStyle.paddingTop)
   return {
-    anchorTop: layoutTop(anchor) - origin,
-    contentHeight: bottom - origin + pixels(contentStyle.paddingBottom) +
+    anchorTop: toScrollY(anchor.getBoundingClientRect().top),
+    contentHeight: bottom + pixels(contentStyle.paddingBottom) +
       pixels(contentStyle.borderBottomWidth) + pixels(contentStyle.marginBottom) + pixels(viewportStyle.paddingBottom),
     spacerGap: pixels(contentStyle.rowGap)
   }

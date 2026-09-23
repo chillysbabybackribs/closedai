@@ -153,9 +153,11 @@ export function MessageScrollerProvider({
 
   const anchorToElement = useCallback((element: HTMLElement) => {
     if (!viewport || !content || !content.contains(element)) return false
+    const measurements = measureScrollAnchor(viewport, content, element, spacer)
+    if (!measurements) return false
     userScrollingRef.current = false
     const layout = anchorScrollLayout({
-      ...measureScrollAnchor(viewport, content, element, spacer),
+      ...measurements,
       previousItemPeek: scrollPreviousItemPeek,
       viewportHeight: viewport.clientHeight
     })
