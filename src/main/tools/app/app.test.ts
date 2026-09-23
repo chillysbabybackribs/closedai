@@ -181,6 +181,48 @@ test('preview_html resolves workspace html and reveals the browser when hidden',
   assert.match(textOf(result), /tab-preview/)
   const toggle = calls.find((entry) => Array.isArray(entry) && entry[0] === 'click') as ['click', { control: string }]
   assert.equal(toggle[1].control, 'layout.browser-toggle')
+  assert.match(textOf(result), /"browserRevealed": true/)
+})
+
+test('preview_html reports browserRevealed when opening the tab already showed the hidden pane', async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), 'closedai-app-preview-'))
+  await writeFile(path.join(cwd, 'mock.html'), '<!doctype html><title>mock</title>')
+  let visible = false
+  const { calls, call } = harness({
+    app: { state: (sections) => (sections.includes('chat') ? { chat: { cwd } } : {}) },
+    ui: {
+      uiState: async () => {
+        const layout = { visiblePaneIds: ['pane-caller'], browserVisible: visible }
+        visible = true // the renderer shows the pane as soon as the new tab appears
+        return {
+          chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
+          layout, composer: null, focused: null, viewport: { width: 1200, height: 800 }
+        }
+      }
+    }
+  })
+  const result = await call('command', { action: 'browser_tab', op: 'preview_html', path: 'mock.html' })
+  assert.equal(result.isError, undefined)
+  assert.match(textOf(result), /"browserRevealed": true/)
+  assert.equal(calls.some((entry) => Array.isArray(entry) && entry[0] === 'click'), false)
+})
+
+test('preview_html leaves a visible browser pane alone', async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), 'closedai-app-preview-'))
+  await writeFile(path.join(cwd, 'mock.html'), '<!doctype html><title>mock</title>')
+  const { calls, call } = harness({
+    app: { state: (sections) => (sections.includes('chat') ? { chat: { cwd } } : {}) },
+    ui: {
+      uiState: async () => ({
+        chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
+        layout: { visiblePaneIds: ['pane-caller'], browserVisible: true },
+        composer: null, focused: null, viewport: { width: 1200, height: 800 }
+      })
+    }
+  })
+  const result = await call('command', { action: 'browser_tab', op: 'preview_html', path: 'mock.html' })
+  assert.match(textOf(result), /"browserRevealed": false/)
+  assert.equal(calls.some((entry) => Array.isArray(entry) && entry[0] === 'click'), false)
 })
 
 test('ui actions resolve controls by id, item, match, selector, or coordinates', async () => {

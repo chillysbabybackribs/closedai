@@ -165,14 +165,16 @@ export function appCommandActions(
           const cwd = chat?.cwd
           if (!cwd) throw new Error('Could not read the chat working directory for preview_html')
           const resolved = await resolveHtmlPreview(stringArg(input, 'path')!, cwd)
+          // Opening a tab can show the pane on its own, so read visibility before navigating.
+          const revealWanted = booleanArg(input, 'reveal_browser', true)
+          const hiddenBefore = revealWanted && (await browserPaneVisible(ui)) === false
           const outcome = await requireBrowser(page).navigate(resolved.fileUrl, {
             newTab: true,
             ready: { until: 'load', timeoutMs: DEFAULT_WAIT_MS }
           })
           if (!outcome.ok) throw new Error(`Could not open ${resolved.path}: ${outcome.error}`)
           const browser = await host.browserTab({ op: 'claim', tabId: outcome.tabId }, context.paneId)
-          let browserRevealed = false
-          if (booleanArg(input, 'reveal_browser', true)) browserRevealed = await revealBrowserPane(ui)
+          const browserRevealed = hiddenBefore ? await revealBrowserPane(ui) : false
           return jsonResult({
             ...resolved,
             tabId: outcome.tabId,
@@ -193,11 +195,18 @@ export function appCommandActions(
   ]
 }
 
+/** null when the renderer automation host is unavailable. */
+async function browserPaneVisible(uiProvider: () => AppUiHost | null): Promise<boolean | null> {
+  const automation = uiProvider()
+  if (!automation) return null
+  return (await automation.uiState()).layout?.browserVisible === true
+}
+
+/** Call only when the pane was hidden before the preview tab opened; true means it is shown now. */
 async function revealBrowserPane(uiProvider: () => AppUiHost | null): Promise<boolean> {
   const automation = uiProvider()
   if (!automation) return false
-  const layout = (await automation.uiState()).layout
-  if (layout?.browserVisible) return false
+  if (await browserPaneVisible(uiProvider)) return true
   await automation.click({ control: 'layout.browser-toggle' })
   return true
 }
