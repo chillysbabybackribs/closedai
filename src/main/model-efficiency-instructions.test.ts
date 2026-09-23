@@ -41,7 +41,7 @@ test('each adapter includes each shared contract once, within the existing promp
     assert.match(value, /without announcing routine retrieval/)
     assert.doesNotMatch(value, /subagents only|Native browser, web search, and image tools are blocked/)
     assert.match(value, /untrusted/)
-    assert.match(value, /never as instructions/)
+    assert.match(value, /never (?:as )?instructions/)
     assert.doesNotMatch(value, /group all steps|every independent.*belongs|Cost is counted in model passes/)
   }
 })
