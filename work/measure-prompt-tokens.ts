@@ -50,3 +50,6 @@ line('Codex (deferred stubs)', codex + nsDescTotal)
 line('Claude (mcp__ names, stubs)', claude + nsDescTotal)
 line('Cursor (every tool, no defer)', cursor + nsDescTotal)
 line('Antigravity (eager only + stubs)', agy + agyStub + nsDescTotal)
+
+import { writeFileSync } from 'node:fs'
+writeFileSync('/tmp/closedai-tool-specs.json', JSON.stringify(specs, null, 0))
