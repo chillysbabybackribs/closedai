@@ -62,25 +62,11 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
   replays the turn once on a fresh process (a name already recorded means the rewrite cannot help,
   so the failure is shown as-is). Verified 2026-09-20 on agy 1.2.7: the regenerated profile answers
   a turn with `--agent closedai`.
-- **Shared application voice and context.** The agent includes the common application,
-  articulation, and engineering contracts: project-scoped panes, one shared browser, app/tool
-  routing, concise result-led messages, native focused read/edit tools, narrow verification, and
-  preservation of Git state. ClosedAI also appends the selected workspace root's bounded
-  `AGENTS.md` policy because the CLI exposes no equivalent loading contract; nearer nested policies
-  are read before editing beneath them. Provider-specific grants remain here.
-- **File links without re-verification.** The CLI's built-in Communication section demands a
-  clickable `file://` link, anchored `#L10-L20` in its example, for every file and symbol. Measured
-  2026-09-03, gemini-3.8-flash obeyed it by opening files whose paths it already had, just to mint
-  line numbers, and re-verified the repository map (5 to 13 calls where every other model made 0).
-  The agent therefore says to satisfy the link rule from known paths without an anchor, to add an
-  anchor only for a line actually read this turn. Repository maps are no longer injected;
-  file discovery uses the native file tools.
-  The profile is refreshed on provider connection and loaded by a new CLI process; changing
-  documentation alone does not update an already running agent. See [Model context](model-context.md).
-- **Objective enhancement without artificial delays.** The shared objective instruction guides
-  the model to treat named tools or sources as the user's best-known starting point and enhance
-  the solution with model intelligence, without imposing mandatory extra searches or speculative
-  round-trips that degrade completion speed when the requested instrument is already effective.
+- **Native-provider baseline.** The custom agent retains only the frontmatter needed for its
+  native tool grant and MCP inheritance. ClosedAI adds no behavioral instruction body or copy
+  of the workspace's `AGENTS.md`. The profile is refreshed on provider connection and loaded
+  by a new CLI process; changing documentation alone does not update it. See
+  [Model context](model-context.md).
 - **No context gauge.** `agy` reports token usage per step but no context window, and the transcript
   shows a gauge only with a denominator.
 - **Subscription plan usage.** `agy -p "/quota" --output-format json` reports 5-hour and weekly rolling

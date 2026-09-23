@@ -48,7 +48,7 @@ and transcript notes were reviewed against current source on 2026-09-03, without
   Code builds otherwise omit them and route every search through Bash (SDK `tools` docs). Verified
   2026-09-03: without the option the `init` tool list had no Grep/Glob, which is why the app's
   panes had made 0 such calls in 2,018 tool calls; with it both appear and the model uses them.
-  There is no MultiEdit tool in this CLI, so instructions name only Edit.
+  There is no MultiEdit tool in this CLI.
 - **Native reads** (revised 2026-09-04): ClosedAI no longer installs read-ledger hooks. The SDK
   handles `Read` directly, including repeated reads, without app denial, range rewriting, or
   `closedai_read` output injection. The custom workspace tools and automatic source-version observations have also been removed. This removes app-side duplicate file reads and

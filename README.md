@@ -46,8 +46,8 @@ See [Documentation map](docs/README.md) for how current guides relate to dated r
 
 - [Application guide](docs/application.md): projects, chats, browser behavior, component ownership,
   persisted state, and current limitations.
-- [Model context](docs/model-context.md): shared instructions, provider injection points, trust
-  boundaries, context budgets, and how documentation reaches models.
+- [Model context](docs/model-context.md): the native-provider baseline, turn context, trust
+  boundaries, and how enabled tools reach models.
 - [Tools](docs/tools.md): registry, all advertised namespaces, batching, captures, telemetry, and trace.
 - [CDP](docs/cdp-tool-foundation.md): protocol access, target sessions, semantic page controls, and input visibility.
 - [Claude Code](docs/claude-code.md), [Antigravity](docs/antigravity.md), and [Cursor](docs/cursor.md): provider lifecycle and protocol contracts.

@@ -10,8 +10,8 @@ image viewer. Pending generation remains an activity row; failures display an er
 generation prompt is not used as a caption. These images are display data, not instructions.
 
 Source review: 2026-09-21. This describes implemented behavior, not a new live UI or provider
-verification. Protocol measurements retain their dates in the provider guides. Prompt assembly and
-model-facing routing live in [Model context](model-context.md); registry contracts live in
+verification. Protocol measurements retain their dates in the provider guides. Provider context
+delivery lives in [Model context](model-context.md); registry contracts live in
 [Tools](tools.md).
 
 Renderer UI changes are verified in Electron (`npm run build &&
