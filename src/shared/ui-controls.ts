@@ -83,6 +83,8 @@ export const UI_CONTROLS = {
   'composer.input': 'Message textarea of the selected pane; Enter or the send button sends, Shift+Enter inserts a newline',
   'composer.send': 'Send the draft (present while no turn runs; disabled until there is text or an attachment)',
   'composer.setup': 'Open the model setup panel — model, reasoning effort, and context/plan usage',
+  'composer.agents': 'Open the composer agents popup',
+  'composer.agent-start': 'Start the continuous app repair agent in a new chat',
   'composer.folder': 'Open the working-folder panel; the trigger names the current folder',
   'composer.model-item': 'Choose a model in the setup panel; item is the model id',
   'composer.model-recent': 'Choose one of the recently used models at the bottom of the setup panel; item is the model id',
