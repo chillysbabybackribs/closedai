@@ -1,7 +1,6 @@
 import { antigravityTurnLine } from './antigravity-cli.js'
 import { antigravityTurnId } from './antigravity-ids.js'
 import { AntigravityProcess } from './antigravity-process.js'
-import { ANTIGRAVITY_EMPTY_SUCCESS_RECOVERY_PROMPT } from './antigravity-runtime-prompts.js'
 import { AntigravityTurnTranslator, type TranscriptOp, type TurnEnd } from './antigravity-stream.js'
 import type { AntigravityServerName } from './antigravity-tool-items.js'
 import { IdleProcessGuard } from '../idle-process-guard.js'
@@ -154,7 +153,6 @@ export class AntigravitySession {
       servers: this.deps.servers(),
       displayScreenshot: this.deps.displayScreenshot,
       takeCallId: (namespace, tool) => this.deps.takeCallId(this.conversationId, namespace, tool),
-      requestEmptySuccessRecovery: () => this.requestEmptySuccessRecovery(),
       onTokenUsage: (usage) => {
         this.deps.onTokenUsage?.(usage)
         if (!this.deps.traceScope) return
@@ -166,18 +164,6 @@ export class AntigravitySession {
         })
       }
     })
-  }
-
-  private requestEmptySuccessRecovery(): boolean {
-    const process = this.process
-    if (!process?.alive) return false
-    try {
-      process.write(antigravityTurnLine(ANTIGRAVITY_EMPTY_SUCCESS_RECOVERY_PROMPT))
-      this.trace('out', 'empty-success recovery', ANTIGRAVITY_EMPTY_SUCCESS_RECOVERY_PROMPT)
-      return true
-    } catch {
-      return false
-    }
   }
 
   private trace(direction: 'in' | 'out', summary: string, detail: unknown): void {
@@ -195,7 +181,6 @@ export class AntigravitySession {
       this.deps.onConversationId(translation.conversationId)
     }
     for (const op of translation.ops) this.deps.apply(op)
-    if (translation.requestEmptySuccessRecovery) return
     if (translation.turnEnd) {
       this.endTurn(translation.turnEnd)
       this.scheduleIdleClose()

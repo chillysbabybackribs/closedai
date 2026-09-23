@@ -3,6 +3,9 @@
 Status: Phase 0–2 replay, coverage, Codex turns, and variant compare shipped  
 Date: 2026-09-23
 
+Historical plan: the shared prompt discussed below was removed on 2026-09-23. Its prompt
+optimization steps are not current implementation instructions; see [Model context](model-context.md).
+
 ## Purpose
 
 ClosedAI cannot today prove that a given **tool description + schema + shared instructions**

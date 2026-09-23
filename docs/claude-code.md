@@ -17,12 +17,11 @@ and transcript notes were reviewed against current source on 2026-09-03, without
 - **Sign-in is per provider.** Codex signs in with ChatGPT from the app. Claude Code signs in from its own
   CLI (`claude`, then `/login`); the pane shows how, and choosing a Claude model re-checks.
 - **No approval prompts**, matching the Codex lane: `permissionMode: 'bypassPermissions'` with the
-  required `allowDangerouslySkipPermissions`. `AskUserQuestion` is disallowed (no UI for it); the system
-  prompt tells the model to ask in its final message.
+  required `allowDangerouslySkipPermissions`. `AskUserQuestion` is disallowed because the app has
+  no UI for it; ClosedAI adds no replacement instruction.
 - **Settings isolation.** `settingSources: ['project']` loads the workspace's `CLAUDE.md` and
   `.claude/settings.json` only; the user's `~/.claude` settings never shape an app session.
-  The SDK does not load `AGENTS.md`, so ClosedAI appends the selected workspace root's bounded
-  `AGENTS.md` policy explicitly and tells the model to check for nearer nested policies.
+  The SDK does not load `AGENTS.md`; ClosedAI no longer appends that policy to the model prompt.
   `strictMcpConfig: true` keeps the user's own MCP connectors (claude.ai connectors were observed
   loading without it) out of the session.
 - **Tools** are the shared registry, exposed as one in-process MCP server per namespace

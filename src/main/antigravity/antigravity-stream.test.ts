@@ -81,16 +81,10 @@ test('result completes the turn and repairs a final text the deltas came up shor
   assert.deepEqual(items(noRepair.ops).filter((item) => item.type === 'assistant' && item.text !== 'PONG\n'), [])
 })
 
-test('a result without any text requests recovery when available, otherwise a notice', () => {
-  const recovering = new AntigravityTurnTranslator({
-    turnId: 'turn-1', cwd: '/w', servers: [], displayScreenshot: () => null, takeCallId: () => null,
-    requestEmptySuccessRecovery: () => true
-  })
-  const recovery = recovering.handle({ event: 'result', result: { status: 'SUCCESS', response: '' } })
-  assert.equal(recovery.requestEmptySuccessRecovery, true)
-  assert.equal(recovery.turnEnd, undefined)
+test('a result without any text ends with a notice and no automatic recovery turn', () => {
   const empty = translator().handle({ event: 'result', result: { status: 'SUCCESS', response: '' } })
   assert.deepEqual(empty.ops, [{ type: 'notice', text: 'Antigravity finished the turn without a reply', tone: 'info' }])
+  assert.deepEqual(empty.turnEnd, { status: 'completed' })
   const failed = translator().handle({ event: 'result', result: { status: 'ERROR', error: 'invalid model selection' } })
   assert.deepEqual(failed.turnEnd, { status: 'failed', error: 'invalid model selection' })
   const cancelled = translator().handle({ event: 'result', result: { status: 'CANCELED' } })

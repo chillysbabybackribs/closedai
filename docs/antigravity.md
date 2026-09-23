@@ -84,8 +84,8 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
   `embedded_browser.page` tool through an isolated MCP registration on the first user turn.
   The browser host returned controlled fixture data; this verifies tool initialization, not
   navigation/rendering or every model/version combination.
-- **Empty-success recovery.** When the CLI reports SUCCESS without final assistant text, the session
-  sends one internal recovery prompt on the same process before surfacing a notice.
+- **Empty success.** When the CLI reports SUCCESS without final assistant text, the session
+  surfaces a notice without sending an app-authored follow-up prompt.
 - **Cache telemetry.** Per-turn usage with zero `cache_read_tokens` on large prompts is recorded in the
   turn trace as a cache anomaly (`antigravity-cache-diagnostics.ts`).
 - **Context gauge and token metering.** Turn step usage is translated against the active model's context

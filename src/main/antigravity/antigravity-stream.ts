@@ -27,8 +27,6 @@ export type AntigravityTranslation = {
   conversationId?: string
   model?: string
   turnEnd?: TurnEnd
-  /** Session should send the empty-success recovery prompt on the live process. */
-  requestEmptySuccessRecovery?: boolean
 }
 
 export type AntigravityTranslatorOptions = {
@@ -39,8 +37,6 @@ export type AntigravityTranslatorOptions = {
   displayScreenshot: (callId: string) => { dataUrl: string } | null
   /** The registry call id behind the ClosedAI tool the CLI just reported, when the bridge served one. */
   takeCallId: (namespace: string, tool: string) => string | null
-  /** When SUCCESS arrives without assistant text, return true to queue one internal recovery turn. */
-  requestEmptySuccessRecovery?: () => boolean
   /** Token accounting from the turn, for trace telemetry. */
   onTokenUsage?: (usage: { inputTokens: number; cacheReadTokens?: number; cacheAnomaly: boolean }) => void
 }
@@ -52,7 +48,6 @@ export class AntigravityTurnTranslator {
   private readonly texts = new Map<number, string>()
   private lastText: { id: string; text: string } | null = null
   private settled = false
-  private emptySuccessRecoveries = 0
   private lastStepUsage: Record<string, unknown> | null = null
 
   constructor(private readonly options: AntigravityTranslatorOptions) {}
@@ -169,15 +164,7 @@ export class AntigravityTurnTranslator {
     if (status === 'SUCCESS') {
       const finalText = response.trim()
       if (!finalText && (!this.lastText || !this.lastText.text.trim())) {
-        if (this.emptySuccessRecoveries === 0 && this.tryEmptySuccessRecovery()) {
-          this.emptySuccessRecoveries = 1
-          this.settled = false
-          return { ops, ...conversationId, requestEmptySuccessRecovery: true }
-        }
-        const message = this.emptySuccessRecoveries > 0
-          ? 'Antigravity finished twice without a reply'
-          : 'Antigravity finished the turn without a reply'
-        ops.push({ type: 'notice', text: message, tone: 'info' })
+        ops.push({ type: 'notice', text: 'Antigravity finished the turn without a reply', tone: 'info' })
         this.emitTokenUsage()
         return { ops, ...conversationId, turnEnd: { status: 'completed' } }
       }
@@ -192,14 +179,6 @@ export class AntigravityTurnTranslator {
     const error = stringOf(result.error) || `Antigravity turn ended: ${status.toLowerCase()}`
     this.emitTokenUsage()
     return { ops, ...conversationId, turnEnd: { status: 'failed', error } }
-  }
-
-  private tryEmptySuccessRecovery(): boolean {
-    try {
-      return this.options.requestEmptySuccessRecovery?.() === true
-    } catch {
-      return false
-    }
   }
 
   private emitTokenUsage(): void {

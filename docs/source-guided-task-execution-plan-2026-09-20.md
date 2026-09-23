@@ -2,6 +2,8 @@
 
 Status: implementation started, 2026-09-20. The sections below retain the design proposal;
 the implementation record distinguishes delivered changes from pending work.
+Historical prompt note: the shared instructions described below were removed on 2026-09-23.
+See [Model context](model-context.md) for the current provider baseline.
 Priorities: quality first, latency a close second, token usage third. No evaluator,
 additional planning agent, persistent learning loop, or expanded conversational memory.
 Paid search APIs are eligible wherever they improve evidence quality, freshness, coverage, or speed.

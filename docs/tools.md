@@ -622,7 +622,7 @@ the serialized result fits within 16k characters and may return fewer entries to
 `nextBeforeChatId` as `before_chat_id`. A missing cursor is an error. `query` is a literal
 case-insensitive metadata filter over title, preview, project directory, and applicable checkpoint
 notes, not transcript search. `cwd` optionally narrows discovery to a project directory. History
-arguments require history scope. Explicit older references outweigh recency in shared guidance.
+arguments require history scope. The native-provider baseline adds no shared retrieval guidance.
 `peer_chats.read` refuses unknown ids and self-reads as **usage** (amber in Tools & capabilities)
 with pointers to `list` or `recall(scope=current)`; only detach/close races surface as errors.
 

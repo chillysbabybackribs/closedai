@@ -5,6 +5,10 @@ advertising and dispatch, Claude native-read interception, workspace orientation
 completion. This is a source audit and local regression verification, not a comparative model
 benchmark. Provider base prompts and model weights are outside this repository.
 
+Historical prompt note: the shared instruction builders described below were removed on
+2026-09-23. This audit records an earlier configuration; see [Model context](model-context.md)
+for current delivery.
+
 ## Findings and changes
 
 | Finding | Evidence in the original implementation | Change |
