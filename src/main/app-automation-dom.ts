@@ -56,14 +56,20 @@ export function uiStateExpression(): string {
     ${helpers()}
     const byId = (id) => Array.from(document.querySelectorAll('[data-ui="' + id + '"]'))
       .find((element) => visible(element) && (!element.closest('[data-pane-id]') || element.closest('[data-pane-id]').getAttribute('data-selected') === 'true')) || null;
-    // Portalled popovers (Radix menu/listbox content) carry no data-ui; name them by their trigger.
+    // Portalled popovers (Radix menu/listbox content) carry no data-ui; name them by their trigger,
+    // else by the labelled container around them (a cmdk listbox only says "Suggestions").
     const labelledBy = (element) => {
       const trigger = element.getAttribute('aria-labelledby');
       const owner = trigger ? document.getElementById(trigger) : null;
       return owner && owner.getAttribute('data-ui');
     };
+    const container = (element) => {
+      const parent = element.parentElement ? element.parentElement.closest('[data-ui], [aria-label]') : null;
+      return parent && (parent.getAttribute('data-ui') || parent.getAttribute('aria-label'));
+    };
     const ids = (selector) => Array.from(new Set(Array.from(document.querySelectorAll(selector)).filter(visible)
-      .map((element) => element.getAttribute('data-ui') || labelledBy(element) || element.getAttribute('aria-label') || element.tagName.toLowerCase())));
+      .map((element) => element.getAttribute('data-ui') || labelledBy(element) || container(element) ||
+        element.getAttribute('aria-label') || element.tagName.toLowerCase())));
     const input = byId('composer.input');
     const active = document.activeElement;
     const focused = active && active.closest ? active.closest('[data-ui]') : null;

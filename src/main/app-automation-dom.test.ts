@@ -177,6 +177,15 @@ test('ui state names a portalled menu by its trigger control and lists it once',
     try {
       const state = new Function(`return ${uiStateExpression()}`)() as { menus: string[] }
       assert.deepEqual(state.menus, ['titlebar.menu'])
+      const listbox = fakeElement({
+        tagName: 'DIV', attributes: { role: 'listbox', 'aria-label': 'Suggestions' }, closest: () => null,
+        parentElement: { closest: () => ({ getAttribute: (name: string) => (name === 'aria-label' ? 'Chat setup' : null) }) }
+      })
+      Object.assign(globalThis.document, {
+        querySelectorAll: (selector: string) => (selector.includes('[role="menu"]') ? [listbox] : [])
+      })
+      const popover = new Function(`return ${uiStateExpression()}`)() as { menus: string[] }
+      assert.deepEqual(popover.menus, ['Chat setup'])
     } finally {
       Object.assign(globalThis, { document: originalDocument })
     }
