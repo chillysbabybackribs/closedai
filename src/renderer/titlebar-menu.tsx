@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef, useState, type JSX } from 'react'
+import { memo, useRef, type JSX } from 'react'
 import { Menubar } from 'radix-ui'
 import {
   CHAT_ZOOM_DEFAULT,
@@ -144,48 +144,18 @@ export const TitlebarMenu = memo(function TitlebarMenu({
     return false
   }
 
-  // Hover opens a menu immediately; leaving both the trigger and the portaled content closes it
-  // after a short grace period, so crossing the gap between them doesn't dismiss the menu.
-  const [openKey, setOpenKey] = useState('')
-  const closeTimer = useRef<number | null>(null)
-  const clearCloseTimer = useCallback(() => {
-    if (closeTimer.current !== null) {
-      window.clearTimeout(closeTimer.current)
-      closeTimer.current = null
-    }
-  }, [])
-  const scheduleClose = useCallback(() => {
-    clearCloseTimer()
-    closeTimer.current = window.setTimeout(() => setOpenKey(''), 150)
-  }, [clearCloseTimer])
-  const openOnHover = useCallback((key: string) => {
-    clearCloseTimer()
-    setOpenKey(key)
-  }, [clearCloseTimer])
-
+  // A click opens a menu; once one is open, moving across the bar switches menus like a native
+  // menubar. Outside click, Escape, or choosing a row closes it.
   return (
-    <Menubar.Root
-      className="titlebar-nav-menu"
-      aria-label="Application menu"
-      value={openKey}
-      onValueChange={setOpenKey}
-    >
+    <Menubar.Root className="titlebar-nav-menu" aria-label="Application menu">
       <div className="titlebar-nav-group">
         {MENUS.map((menu) => (
           <Menubar.Menu key={menu.key} value={menu.key}>
-            <Menubar.Trigger
-              className="titlebar-nav-tab"
-              data-ui="titlebar.menu"
-              data-ui-key={menu.key}
-              onMouseEnter={() => openOnHover(menu.key)}
-              onMouseLeave={scheduleClose}
-            >
+            <Menubar.Trigger className="titlebar-nav-tab" data-ui="titlebar.menu" data-ui-key={menu.key}>
               {menu.label}
             </Menubar.Trigger>
             <Menubar.Portal>
               <Menubar.Content className="titlebar-menu-content" align="start" sideOffset={4} loop
-                onMouseEnter={clearCloseTimer}
-                onMouseLeave={scheduleClose}
                 onCloseAutoFocus={event => {
                   if (!searchOnClose.current) return
                   event.preventDefault()
