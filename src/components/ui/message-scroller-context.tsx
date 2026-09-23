@@ -19,7 +19,7 @@ import {
   scrollEdges,
   type ScrollEdges
 } from './message-scroller-state.js'
-import { findLastScrollAnchor, isTrailingContent, viewportMetrics } from './message-scroller-dom.js'
+import { findLastScrollAnchor, isTrailingContent, measureScrollAnchor, viewportMetrics } from './message-scroller-dom.js'
 
 const EDGE_THRESHOLD = 24
 
@@ -154,13 +154,8 @@ export function MessageScrollerProvider({
   const anchorToElement = useCallback((element: HTMLElement) => {
     if (!viewport || !content || !content.contains(element)) return false
     userScrollingRef.current = false
-    const viewportRect = viewport.getBoundingClientRect()
-    const anchorRect = element.getBoundingClientRect()
-    const anchorTop = viewport.scrollTop + anchorRect.top - viewportRect.top
-    const contentHeight = Math.max(0, viewport.scrollHeight - spacerHeightRef.current)
     const layout = anchorScrollLayout({
-      anchorTop,
-      contentHeight,
+      ...measureScrollAnchor(viewport, content, element, spacer),
       previousItemPeek: scrollPreviousItemPeek,
       viewportHeight: viewport.clientHeight
     })
@@ -172,7 +167,7 @@ export function MessageScrollerProvider({
     lastScrollTopRef.current = viewport.scrollTop
     scheduleSync()
     return true
-  }, [content, scheduleSync, scrollPreviousItemPeek, setSpacerHeight, viewport])
+  }, [content, scheduleSync, scrollPreviousItemPeek, setSpacerHeight, spacer, viewport])
 
   const prepareForPrepend = useCallback(() => {
     if (!viewport) return

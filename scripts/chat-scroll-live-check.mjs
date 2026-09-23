@@ -37,6 +37,7 @@ if (!process.versions.electron) {
   await mkdir(join(root, 'profile'), { recursive: true })
   app.setPath('userData', join(root, 'profile'))
   await writeFile(join(root, 'profile', 'app-settings.json'), JSON.stringify({ browserCookiesImported: true }))
+  await writeFile(join(root, 'profile', 'security-settings.json'), JSON.stringify({ importBrowserCookies: false }))
   const watchdog = setTimeout(() => { console.error('Chat scroll check timed out'); app.exit(1) }, 60_000)
   await import('../out/main/index.js')
   // Electron waits for the entry module's top-level await before emitting ready.

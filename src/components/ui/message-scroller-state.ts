@@ -53,17 +53,22 @@ export function anchorScrollLayout({
   anchorTop,
   contentHeight,
   previousItemPeek,
+  spacerGap = 0,
   viewportHeight
 }: {
   anchorTop: number
   contentHeight: number
   previousItemPeek: number
+  spacerGap?: number
   viewportHeight: number
 }): AnchorScrollLayout {
   const scrollTop = Math.max(0, anchorTop - previousItemPeek)
+  const missingHeight = scrollTop + viewportHeight - contentHeight
   return {
     scrollTop,
-    spacerHeight: Math.max(0, Math.ceil(scrollTop + viewportHeight - contentHeight))
+    // A visible flex spacer introduces one row gap. Keep it visible when that gap alone
+    // covers the deficit; otherwise hiding it would alternate between two layouts.
+    spacerHeight: missingHeight > 0 ? Math.max(1, Math.ceil(missingHeight - spacerGap)) : 0
   }
 }
 
