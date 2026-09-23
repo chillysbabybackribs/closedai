@@ -1,10 +1,14 @@
-import { useEffect, useId, useMemo, useRef, useState, type JSX, type RefObject } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type JSX, type RefObject } from 'react'
 import { MessageSquareDashed, Search, SearchX, X } from 'lucide-react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { HistoryController } from './history-controller.js'
 import { pointerKeepsSearchOpen } from './header-search-hover.js'
 import { HeaderChatSearchRow } from './header-search-row.js'
 import { chatSearchView, stepHighlight, type ChatSearchHit } from './history-search.js'
+
+/** Pause before the exit fade so a stray edge crossing does not flicker the palette shut. */
+const POINTER_DISMISS_GRACE_MS = 120
+const SHEET_EXIT_MS = 160
 
 export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   chats: ChatRowSummary[]
@@ -15,6 +19,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   const [query, setQuery] = useState('')
   const [highlight, setHighlight] = useState(0)
   const [expanded, setExpanded] = useState(false)
+  const [closing, setClosing] = useState(false)
   const [opening, setOpening] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [changingTurn, setChangingTurn] = useState<string | null>(null)
@@ -23,7 +28,46 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   const fieldRef = useRef<HTMLDivElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
+  const dismissGraceRef = useRef<number | null>(null)
   const listId = useId()
+  const sheetOpen = expanded || closing
+  const sheetPhase = closing ? 'closing' : 'open'
+
+  const clearDismissGrace = useCallback((): void => {
+    if (dismissGraceRef.current === null) return
+    window.clearTimeout(dismissGraceRef.current)
+    dismissGraceRef.current = null
+  }, [])
+
+  const finishSheetClose = useCallback((): void => {
+    clearDismissGrace()
+    setClosing(false)
+    setExpanded(false)
+  }, [clearDismissGrace])
+
+  const beginSheetClose = useCallback((): void => {
+    if (!expanded || closing) return
+    clearDismissGrace()
+    setClosing(true)
+  }, [clearDismissGrace, closing, expanded])
+
+  const dismissSheet = useCallback((graceMs = POINTER_DISMISS_GRACE_MS): void => {
+    clearDismissGrace()
+    if (!expanded || closing) return
+    if (graceMs <= 0) {
+      beginSheetClose()
+      return
+    }
+    dismissGraceRef.current = window.setTimeout(() => {
+      dismissGraceRef.current = null
+      beginSheetClose()
+    }, graceMs)
+  }, [beginSheetClose, clearDismissGrace, closing, expanded])
+
+  const cancelSheetDismiss = useCallback((): void => {
+    clearDismissGrace()
+    setClosing(false)
+  }, [clearDismissGrace])
   const view = useMemo(() => chatSearchView(chats, query, controller.reviewQueue),
     [chats, query, controller.reviewQueue])
   const hits = useMemo(() => view.sections.flatMap(section => section.hits), [view])
@@ -31,20 +75,28 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   const optionId = (index: number): string => `${listId}-${index}`
 
   useEffect(() => {
-    if (!expanded) return
+    if (!sheetOpen || closing) return
     resultsRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
-  }, [cursor, expanded])
+  }, [closing, cursor, sheetOpen])
 
   const refreshChats = controller.refreshChats
   useEffect(() => {
-    if (!expanded) return
+    if (!sheetOpen || closing) return
     const idle = window.requestIdleCallback?.(() => refreshChats(), { timeout: 600 })
     const timer = idle === undefined ? window.setTimeout(refreshChats, 0) : null
     return () => {
       if (idle !== undefined) window.cancelIdleCallback?.(idle)
       if (timer !== null) window.clearTimeout(timer)
     }
-  }, [expanded, refreshChats])
+  }, [closing, refreshChats, sheetOpen])
+
+  useEffect(() => () => clearDismissGrace(), [clearDismissGrace])
+
+  useEffect(() => {
+    if (!closing) return
+    const timer = window.setTimeout(finishSheetClose, SHEET_EXIT_MS + 40)
+    return () => window.clearTimeout(timer)
+  }, [closing, finishSheetClose])
 
   // While open, pointer geometry (not DOM enter/leave) decides when to dismiss: the popup is wider
   // than the field, and in Electron a native browser view can cover part of it until the freeze
@@ -52,15 +104,17 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   // Only an inside-to-outside transition closes; a popup opened by keyboard with the pointer
   // elsewhere stays open until the pointer has actually visited the field or popup.
   useEffect(() => {
-    if (!expanded) return
+    if (!sheetOpen) return
     const track = (event: PointerEvent): void => {
       if (event.pointerType === 'touch' || !fieldRef.current) return
       const inside = pointerKeepsSearchOpen({ x: event.clientX, y: event.clientY },
         fieldRef.current.getBoundingClientRect(), popupRef.current?.getBoundingClientRect() ?? null)
-      if (inside) hoveredRef.current = true
-      else if (hoveredRef.current) {
+      if (inside) {
+        hoveredRef.current = true
+        cancelSheetDismiss()
+      } else if (hoveredRef.current) {
         hoveredRef.current = false
-        setExpanded(false)
+        dismissSheet()
       }
     }
     window.addEventListener('pointermove', track, { passive: true })
@@ -69,7 +123,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
       window.removeEventListener('pointermove', track)
       document.documentElement.removeEventListener('pointerleave', track)
     }
-  }, [expanded])
+  }, [cancelSheetDismiss, dismissSheet, sheetOpen])
 
   const open = async (hit: ChatSearchHit | undefined): Promise<void> => {
     if (!hit || actionRef.current) return
@@ -80,7 +134,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
       onOpened?.()
       setQuery('')
       setHighlight(0)
-      setExpanded(false)
+      finishSheetClose()
       inputRef.current?.blur()
     } catch (error) {
       controller.reportError(error)
@@ -125,13 +179,13 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   const busy = opening || deleting !== null || changingTurn !== null
   const searching = query.trim() !== ''
 
-  return <div className="header-chat-search" data-expanded={expanded} onBlur={event => {
-    if (!hoveredRef.current && !event.currentTarget.contains(event.relatedTarget)) setExpanded(false)
+  return <div className="header-chat-search" data-expanded={sheetOpen && !closing} onBlur={event => {
+    if (!hoveredRef.current && !event.currentTarget.contains(event.relatedTarget)) dismissSheet(0)
   }} onKeyDown={event => {
     if (event.key === 'Escape') {
       event.preventDefault()
       event.stopPropagation()
-      setExpanded(false)
+      dismissSheet(0)
       inputRef.current?.blur()
     }
   }}>
@@ -142,21 +196,22 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
       <Search size={15} aria-hidden="true" />
       <input ref={inputRef} type="text" value={query} placeholder="Search chats"
         aria-label="Search previous chat titles" role="combobox" aria-autocomplete="list" aria-haspopup="grid"
-        aria-expanded={expanded} aria-controls={expanded ? listId : undefined}
-        aria-activedescendant={expanded && hits.length ? optionId(cursor) : undefined}
+        aria-expanded={sheetOpen && !closing} aria-controls={sheetOpen ? listId : undefined}
+        aria-activedescendant={sheetOpen && !closing && hits.length ? optionId(cursor) : undefined}
         autoComplete="off" spellCheck={false} data-ui="titlebar.chat-search"
-        onChange={event => { setQuery(event.target.value); setHighlight(0); setExpanded(true) }}
-        onFocus={() => setExpanded(true)}
-        onClick={() => setExpanded(true)}
+        onChange={event => { setQuery(event.target.value); setHighlight(0); cancelSheetDismiss(); setExpanded(true) }}
+        onFocus={() => { cancelSheetDismiss(); setExpanded(true) }}
+        onClick={() => { cancelSheetDismiss(); setExpanded(true) }}
         onKeyDown={event => {
           if (event.nativeEvent.isComposing) return
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault()
+            cancelSheetDismiss()
             setExpanded(true)
             setHighlight(stepHighlight(cursor, event.key === 'ArrowDown' ? 1 : -1, hits.length))
           } else if (event.key === 'Enter') {
             event.preventDefault()
-            if (expanded) void open(hits[cursor])
+            if (sheetOpen && !closing) void open(hits[cursor])
           }
         }} />
       {query
@@ -167,8 +222,11 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
         </button>
         : <span className="header-chat-search-hint" aria-hidden="true"><kbd>Ctrl</kbd><kbd>H</kbd></span>}
     </div>
-    {expanded && <div ref={popupRef} className="header-chat-search-sheet">
-      <div className="header-chat-search-popup">
+    {sheetOpen && <div ref={popupRef} className="header-chat-search-sheet" data-phase={sheetPhase}>
+      <div className="header-chat-search-popup" onAnimationEnd={event => {
+        if (event.currentTarget !== event.target || event.animationName !== 'header-chat-search-exit') return
+        finishSheetClose()
+      }}>
         <div ref={resultsRef} id={listId} role="grid" aria-label="Chat history suggestions" aria-busy={busy}
           className="header-chat-search-list">
           {view.sections.map(section => <div role="rowgroup" key={section.label}

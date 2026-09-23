@@ -195,9 +195,19 @@
   animation: header-chat-search-enter 90ms var(--ease-chrome);
 }
 
+.header-chat-search-sheet[data-phase='closing'] .header-chat-search-popup {
+  animation: header-chat-search-exit 160ms var(--ease-chrome) forwards;
+  pointer-events: none;
+}
+
 @keyframes header-chat-search-enter {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes header-chat-search-exit {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 .header-chat-search-sheet::before {
@@ -451,5 +461,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .header-chat-search-popup { animation: none; }
+  .header-chat-search-sheet[data-phase='closing'] .header-chat-search-popup { animation: none; opacity: 0; }
   .header-chat-search-spinner { animation: none; }
 }
