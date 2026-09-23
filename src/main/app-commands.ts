@@ -338,7 +338,7 @@ export function applyPendingNavigation(
   createdTabIds: string[]
 ): Record<string, unknown> {
   const created = new Set(createdTabIds)
-  type TabRow = { id?: string; url: string; isLoading: boolean; active?: boolean }
+  type TabRow = { id?: string; url: string; isLoading: boolean; active?: boolean; navigationPending?: boolean }
   const patch = (entry: TabRow): TabRow => {
     if (entry.url !== 'about:blank' || !entry.isLoading) return entry
     if (created.size === 0 || (entry.id && created.has(entry.id)) || entry.active) {

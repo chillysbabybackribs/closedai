@@ -179,7 +179,7 @@ test('agent actions drive another pane\'s run and refuse the calling pane', asyn
   await call('agent', { action: 'resume', pane_id: 'pane-agent' })
   const stopped = await call('agent', { action: 'stop', pane_id: 'pane-agent' })
   assert.match(textOf(stopped), /"run": null/)
-  const verbs = calls.filter((entry) => Array.isArray(entry) && entry[0] === 'agentRun').map((entry) => entry[1])
+  const verbs = calls.flatMap((entry) => Array.isArray(entry) && entry[0] === 'agentRun' ? [entry[1]] : [])
   assert.deepEqual(verbs, [
     { op: 'start', paneId: 'pane-agent', options: { prompt: 'repair the app', maxCycles: 3 } },
     { op: 'pause', paneId: 'pane-agent' },
