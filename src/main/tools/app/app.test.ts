@@ -47,6 +47,13 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
       return { paneId: request.paneId, turnStarted: true, turnCompleted: true, elapsedMs: 1200 }
     },
     stopAgent: async (paneId) => { calls.push(['stopAgent', paneId]) },
+    startAgent: async (paneId, options) => {
+      calls.push(['startAgent', paneId, options])
+      return {
+        chatId: paneId, prompt: options.prompt, status: 'running', cycle: 1, maxCycles: options.maxCycles ?? null,
+        startedAt: 1, updatedAt: 1, lastTurnEndedAt: null, reason: null, failures: 0, threadId: null
+      }
+    },
     openChat: async (request) => { calls.push(['openChat', request]); return { paneId: request.paneId ?? 'pane-selected', threadId: 'thread-1' } },
     closeChat: async (paneId) => { calls.push(['closeChat', paneId]) },
     selectModel: async (paneId, modelId, effort) => { calls.push(['selectModel', paneId, modelId, effort]) },
@@ -88,7 +95,7 @@ test('namespace advertises state, deterministic commands, and control-level ui a
   const [state, command, ui] = registry.namespaces[0]!.tools
   assert.equal(state!.actions, undefined)
   assert.deepEqual(command!.actions?.map((action) => action.name), [
-    'project_switch', 'new_chat', 'send_message', 'stop_agent', 'open_chat', 'close_chat', 'select_model', 'browser_tab'
+    'project_switch', 'new_chat', 'send_message', 'stop_agent', 'start_agent', 'open_chat', 'close_chat', 'select_model', 'browser_tab'
   ])
   assert.deepEqual(ui!.actions?.map((action) => action.name), [
     'controls', 'click', 'type', 'press_key', 'scroll', 'wait_for'
@@ -138,6 +145,9 @@ test('send_message defaults to awaiting the turn and refuses the calling pane', 
   assert.match(textOf(self), /calling pane/)
   const selected = await call('command', { action: 'stop_agent' }, 'pane-selected')
   assert.equal(selected.isError, true)
+  const started = await call('command', { action: 'start_agent', prompt: 'keep going' }, 'pane-selected')
+  assert.equal(started.isError, true)
+  assert.match(textOf(started), /calling pane/)
   assert.equal(calls.length, 2)
 })
 
@@ -145,6 +155,7 @@ test('commands route to the host with the selected pane as the default target', 
   const { calls, call } = harness()
   await call('command', { action: 'new_chat' })
   await call('command', { action: 'stop_agent' })
+  await call('command', { action: 'start_agent', pane_id: 'pane-agent', prompt: 'repair the app', max_cycles: 3 })
   await call('command', { action: 'open_chat', title: 'benchmark' })
   await call('command', { action: 'close_chat', pane_id: 'pane-old' })
   await call('command', { action: 'select_model', model_id: 'gpt-5', reasoning_effort: 'high' })
@@ -153,6 +164,7 @@ test('commands route to the host with the selected pane as the default target', 
   assert.deepEqual(verbs, [
     ['newChat'],
     ['stopAgent', 'pane-selected'],
+    ['startAgent', 'pane-agent', { prompt: 'repair the app', maxCycles: 3 }],
     ['openChat', { paneId: undefined, threadId: undefined, title: 'benchmark' }],
     ['closeChat', 'pane-old'],
     ['selectModel', 'pane-selected', 'gpt-5', 'high'],

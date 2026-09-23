@@ -157,6 +157,8 @@
   border-radius: 4px;
   background: none;
   color: #c9c9cf;
+  /* Indent past the favicon so the note lines up under the title. */
+  margin-left: 18px;
   cursor: text;
   font: inherit;
   font-size: 11px;
@@ -167,7 +169,7 @@
 }
 
 .browser-saved-sites-note-text.is-empty {
-  color: #5f5f66;
+  color: #7c7c84;
   opacity: 0;
   transition: opacity 110ms var(--ease-chrome);
 }
@@ -188,6 +190,7 @@
 
 .browser-saved-sites-note {
   min-width: 0;
+  margin-left: 18px;
   padding: 2px 6px;
   border: 1px solid transparent;
   border-radius: 4px;

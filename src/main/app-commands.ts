@@ -1,7 +1,7 @@
 import type { ChatPeerSummary, ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import type { ProjectSwitchRequest, ProjectSwitchStatus } from '../shared/chat-peers.js'
 import type { ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
-import { describeAgentRun, type AgentRun } from '../shared/agent-runs.js'
+import { describeAgentRun, type AgentRun, type AgentRunStartOptions } from '../shared/agent-runs.js'
 import type { BrowserCoordination } from './tools/browser/coordination.js'
 import type {
   AppBrowserTabRequest,
@@ -27,7 +27,7 @@ export type AppCommandDeps = {
   window: () => AppWindowInfo | null
   browserCoordination?: BrowserCoordination
   /** The agent run driving a chat, when one exists; projected beside the chat's own state. */
-  agentRuns?: () => { get(chatId: string): AgentRun | null } | null
+  agentRuns?: () => { get(chatId: string): AgentRun | null; startRun(chatId: string, options: AgentRunStartOptions): Promise<AgentRun> } | null
 }
 
 const PEER_LIMIT = 12
@@ -115,6 +115,12 @@ export class AppCommandAccess implements AppCommandHost {
 
   async stopAgent(paneId: string): Promise<void> {
     await this.chat().interrupt(paneId)
+  }
+
+  async startAgent(paneId: string, options: AgentRunStartOptions): Promise<AgentRun> {
+    const runs = this.deps.agentRuns?.()
+    if (!runs) throw new Error('Agent runs are not available')
+    return runs.startRun(paneId, options)
   }
 
   async openChat(request: AppOpenChatRequest): Promise<{ paneId: string; threadId: string | null }> {

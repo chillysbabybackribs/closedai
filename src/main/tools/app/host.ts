@@ -1,4 +1,5 @@
 import type { ChatWorkspaceSnapshot, ChatPeerSummary, ChatWorkspaceEvent } from '../../../shared/chat-peers.js'
+import type { AgentRun, AgentRunStartOptions } from '../../../shared/agent-runs.js'
 import type { ProjectSwitchRequest, ProjectSwitchStatus } from '../../../shared/chat-peers.js'
 import type { ChatAttachment, ChatSnapshot, ChatThreadSummary } from '../../../shared/chat.js'
 import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../../../shared/types.js'
@@ -134,6 +135,7 @@ export type AppCommandHost = {
   cancelProjectSwitch(paneId: string): ProjectSwitchStatus | null
   sendMessage(request: AppSendRequest): Promise<AppSendResult>
   stopAgent(paneId: string): Promise<void>
+  startAgent(paneId: string, options: AgentRunStartOptions): Promise<AgentRun>
   openChat(request: AppOpenChatRequest): Promise<{ paneId: string; threadId: string | null }>
   closeChat(paneId: string): Promise<void>
   selectModel(paneId: string, modelId: string, effort: string | undefined): Promise<void>
