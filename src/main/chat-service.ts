@@ -41,9 +41,14 @@ import { codexPlanUsage } from './chat-context/plan-usage.js'
 import {
   buildThreadHandoff,
   continuationFromThreadHandoff,
-  handoffAdditionalContext,
   type ThreadHandoffSource
 } from './chat-context/thread-handoff.js'
+import {
+  buildTurnSendContext,
+  markSessionGuideDelivered,
+  sessionGuideThreadKey,
+  type SessionGuideDeliveryState
+} from './chat-context/session-guide.js'
 import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
 import { reasoningEffortForModel } from './chat-model-catalog.js'
@@ -84,6 +89,7 @@ export class ChatService extends EventEmitter {
   private restartTimer: NodeJS.Timeout | null = null
   private restartAttempt = 0
   private stopping = false
+  private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
 
   constructor(
     readonly cwd: string,
@@ -192,6 +198,7 @@ export class ChatService extends EventEmitter {
       const { prompt, input, summaries } = buildChatInput(text, shrinkPastedImages(attachments))
       if (input.length === 0) return
       if (this.activeTurnId) throw new Error('A Codex turn is already running')
+      const transcriptWasEmpty = this.transcript.isEmpty
       const clientUserMessageId = crypto.randomUUID()
       // Paint the accepted message before a cold workspace runtime or fresh thread is ready.
       this.transcript.addOptimisticUser(clientUserMessageId, prompt, summaries)
@@ -203,20 +210,25 @@ export class ChatService extends EventEmitter {
       if (this.activeTurnId) throw new Error('A Codex turn is already running')
       const threadId = await this.ensureThread(clientUserMessageId)
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
-      const additionalContext = {
-        ...this.turnAdditionalContext(prompt),
-        ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
-      }
+      const guideThreadKey = sessionGuideThreadKey(this.settings.get().chatThreadId, threadId, this.paneId ?? 'pane')
+      const { context: additionalContext, attachGuide } = buildTurnSendContext({
+        threadKey: guideThreadKey,
+        state: this.sessionGuideState,
+        transcriptWasEmpty,
+        pendingHandoff,
+        browserContext: this.turnAdditionalContext(prompt)
+      })
       if (this.threadId !== threadId || this.activeTurnId || this.stopping) throw new Error('Codex conversation changed while preparing the turn')
       const response = await this.client.request<{ turn?: unknown }>('turn/start', {
         threadId,
         clientUserMessageId,
         ...(this.modelState.selectedModel ? { model: this.modelState.selectedModel } : {}),
         ...(this.modelState.selectedReasoningEffort ? { effort: this.modelState.selectedReasoningEffort } : {}),
-        ...(Object.keys(additionalContext).length ? { additionalContext } : {}),
+        ...(additionalContext ? { additionalContext } : {}),
         input
       })
       await this.clearDeliveredHandoff()
+      if (attachGuide) markSessionGuideDelivered(this.sessionGuideState, guideThreadKey)
       const turn = recordOf(response.turn)
       if (typeof turn?.id === 'string') this.setTurn(turn.id)
     } catch (error) {
