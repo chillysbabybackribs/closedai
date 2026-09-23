@@ -26,15 +26,16 @@ function retainCoordinatorGroup(host: PeerCoordinatorHost, result: OpenCoordinat
 
 export async function openCoordinatorWorkspace(host: PeerCoordinatorHost): Promise<OpenCoordinatorWorkspaceResult> {
   host.assertAvailable()
+  const anchorPaneId = host.selectedPaneId()
+  host.retainPane(anchorPaneId)
   const existing = findCoordinatorWorkspace(host.store)
   if (existing) {
     retainCoordinatorGroup(host, existing)
-    await host.selectPane(existing.coordinatorPaneId)
     await host.settle()
     return existing
   }
   const groupId = crypto.randomUUID()
-  const model = host.modelOf(host.selectedPaneId())
+  const model = host.modelOf(anchorPaneId)
   const coordinatorPaneId = await host.createSeeded(model, {
     coordinatorGroup: { id: groupId, role: 'coordinator', slot: null },
     title: 'Coordinator',
@@ -49,7 +50,6 @@ export async function openCoordinatorWorkspace(host: PeerCoordinatorHost): Promi
   })
   const created = { groupId, coordinatorPaneId, workerPaneId }
   retainCoordinatorGroup(host, created)
-  await host.selectPane(coordinatorPaneId)
   await host.settle()
   return created
 }

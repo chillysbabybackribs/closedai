@@ -300,17 +300,18 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     setBusy(true)
     clearError()
     try {
+      const anchorPaneId = latestSnapshot.current.selectedPaneId
       const result = await window.closedai.chat.openCoordinatorWorkspace()
-      const visible = [result.coordinatorPaneId, result.workerPaneId]
+      const visible = [anchorPaneId, result.coordinatorPaneId, result.workerPaneId]
       await window.closedai.chat.setVisiblePanes(cwd, visible, visible)
       setLayout((value) => ({
         ...value,
         browserVisible: true,
-        tree: coordinatorBrowserSideLayout(result, () => crypto.randomUUID())
+        tree: coordinatorBrowserSideLayout(result, anchorPaneId, () => crypto.randomUUID())
       }))
-      selected.current = result.coordinatorPaneId
-      await window.closedai.chat.selectPane(result.coordinatorPaneId)
-      setNotice({ text: 'Coordinator workspace: dedicated Coordinator and Worker chats beside the browser.' })
+      selected.current = anchorPaneId
+      await window.closedai.chat.selectPane(anchorPaneId)
+      setNotice({ text: 'Coordinator and Worker opened beside the browser; this chat stays in view.' })
       release()
     } catch (reason) {
       fail(reason)

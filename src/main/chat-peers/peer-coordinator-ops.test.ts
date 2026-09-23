@@ -60,6 +60,6 @@ test('openCoordinatorWorkspace re-attains stored coordinator group before select
   const h = host()
   const result = await openCoordinatorWorkspace(h)
   assert.deepEqual(result, { groupId: 'g', coordinatorPaneId: 'coord', workerPaneId: 'worker' })
-  assert.equal(h.selectedPane, 'coord')
-  assert.deepEqual([...h.retained].sort(), ['coord', 'worker'])
+  assert.equal(h.selectedPane, 'home')
+  assert.deepEqual([...h.retained].sort(), ['coord', 'home', 'worker'])
 })

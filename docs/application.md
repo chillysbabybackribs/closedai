@@ -382,8 +382,9 @@ then **Hide pane** (`layout.pane-hide`) and, with another tile open,
 tile's strip in reading order, the keyboard route for a tab drag; an emptied tile collapses as it
 does after a drag. Close, hide, and move rows show subtitles when tasks continue. A separator
 follows, then the title-bar **Coordinator** button (`layout.coordinator-open`, Ctrl/Cmd+Shift+C) or
-**Coordinator…** (`layout.coordinator-enable`) opens a dedicated **Coordinator** and **Worker**
-chat stacked on the chat side of the browser without converting the current conversation. Border
+**Coordinator…** (`layout.coordinator-enable`) opens **Coordinator** and **Worker** stacked vertically
+between the current chat and the browser (`[ this chat | coordinator / worker | browser ]`) without
+converting or hiding the conversation you had selected. Border
 colors mark coordinator (blue) and worker (green) tiles. From the Coordinator pane, `new_chat` and
 awaited worker turns keep focus on the coordinator. **Stop coordinating**
 (`layout.coordinator-disable`) clears the grouping. Coordinator tiles cannot be dragged out of

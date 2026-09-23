@@ -1,9 +1,13 @@
 import type { EnableCoordinatorResult, OpenCoordinatorWorkspaceResult } from '../../shared/coordinator.js'
-import { withBrowser, type ChatLayout } from './layout-tree.js'
+import { BROWSER_PANE_ID, withBrowser, type ChatLayout } from './layout-tree.js'
 
-/** Two stacked chats beside the shared browser (coordinator on top, worker below). */
+/**
+ * Home chat stays visible; Coordinator and Worker stack vertically between it and the browser.
+ * [ anchor | coordinator / worker | browser ]
+ */
 export function coordinatorBrowserSideLayout(
   result: OpenCoordinatorWorkspaceResult,
+  anchorPaneId: string,
   newSplitId: () => string
 ): ChatLayout {
   const stack: ChatLayout = {
@@ -14,7 +18,22 @@ export function coordinatorBrowserSideLayout(
     first: { kind: 'pane', id: result.coordinatorPaneId },
     second: { kind: 'pane', id: result.workerPaneId }
   }
-  return withBrowser(stack)
+  const crewAndBrowser: ChatLayout = {
+    kind: 'split',
+    id: newSplitId(),
+    axis: 'horizontal',
+    ratio: 0.42,
+    first: stack,
+    second: { kind: 'pane', id: BROWSER_PANE_ID }
+  }
+  return {
+    kind: 'split',
+    id: newSplitId(),
+    axis: 'horizontal',
+    ratio: 0.36,
+    first: { kind: 'pane', id: anchorPaneId },
+    second: crewAndBrowser
+  }
 }
 
 /** Coordinator left; workers stacked on the right. */
