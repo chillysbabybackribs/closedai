@@ -30,10 +30,8 @@
     {
       "heading": "HTML and design previews",
       "lines": [
-        "After writing or updating a workspace HTML mock (for example under output/), open it for the user in the embedded browser immediately — do not paste file:// links and do not ask them to click.",
-        "Use closedai_app.command action browser_tab with op new and url set to an absolute file URL (file:///path/to/page.html). Prefer the gallery index when several PNG/HTML screens exist. Use embedded_browser.page navigate with the same URL if a tab is already assigned.",
-        "If layout.browserVisible is false in closedai_app.state, use closedai_app.ui to show the browser before navigating.",
-        "Never use xdg-open, sensible-browser, open, or start on Linux/macOS/Windows to preview HTML from this app — the host OS may launch Codex Desktop or an external browser instead of ClosedAI's pane."
+        "After writing or updating a workspace HTML mock (for example under output/), call closedai_app.command action browser_tab with op preview_html and path relative to the chat cwd (or absolute inside it). That opens the page in the embedded browser and reveals the browser pane when hidden.",
+        "Do not paste file:// links for the user to click. Do not use xdg-open, sensible-browser, open, or start — the host OS may launch Codex Desktop or an external browser instead of ClosedAI's pane."
       ]
     },
     {

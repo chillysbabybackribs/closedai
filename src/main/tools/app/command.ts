@@ -1,7 +1,8 @@
 import type { ToolAction } from '../action-tool.js'
 import { jsonResult, objectSchema } from '../json-result.js'
 import { booleanArg, numberArg, stringArg, type JsonObject, type ToolContext } from '../tool.js'
-import { requireHost, type AppBrowserTabRequest, type AppCommandHost } from './host.js'
+import { requireHost, type AppBrowserTabRequest, type AppCommandHost, type AppUiHost } from './host.js'
+import { resolveHtmlPreview } from './preview-html.js'
 
 const paneField: JsonObject = {
   type: 'string', minLength: 1,
@@ -11,7 +12,10 @@ const paneField: JsonObject = {
 const AWAIT_TURN_MAX_MS = 120_000
 
 /** Deterministic app commands over the same services the renderer's IPC calls. */
-export function appCommandActions(app: () => AppCommandHost | null): ToolAction[] {
+export function appCommandActions(
+  app: () => AppCommandHost | null,
+  ui: () => AppUiHost | null
+): ToolAction[] {
   return [
     {
       action: 'project_switch',
@@ -126,15 +130,21 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
     {
       action: 'browser_tab',
       description:
-        'Open new/new_right or navigate with new_tab for this chat’s browser work instead of mutating the visible tab by default. New tabs are selected. Calls without tab_id target this chat’s assigned tab, independent of selection. claim reserves a tab; release/release_all drop assignments. select can target any tab; other chats’ assignments protect the remaining operations. Inactive chats drop assignments after idle time. Returns tab state and assignments.',
+        'Browser tab strip and workspace HTML previews. preview_html opens a .html/.htm file under the chat cwd in a new selected tab and reveals the browser pane when hidden — use after writing mocks, never xdg-open. Other ops: new/new_right, select, close, duplicate, reload, rename, claim, release. Returns tab state and assignments.',
       inputSchema: objectSchema({
         op: {
           type: 'string',
           enum: [
+            'preview_html',
             'new', 'new_right', 'select', 'close', 'close_others', 'close_right',
             'duplicate', 'back', 'forward', 'reload', 'rename', 'claim', 'release', 'release_all'
           ]
         },
+        path: {
+          type: 'string', minLength: 1, maxLength: 4096,
+          description: 'Required for preview_html: file path relative to the chat cwd or absolute inside it.'
+        },
+        reveal_browser: { type: 'boolean', description: 'For preview_html: show the browser pane when hidden; default true.' },
         tab_id: {
           type: 'string',
           minLength: 1,
@@ -145,8 +155,20 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
       }, ['op']),
       run: async (input, context) => {
         const host = requireHost(app, 'app commands')
+        const opRaw = stringArg(input, 'op')
+        if (opRaw === 'preview_html') {
+          const paneId = context.paneId ?? host.selectedPaneId()
+          const chat = host.state(['chat'], paneId, context.paneId ?? null).chat as { cwd?: string } | null
+          const cwd = chat?.cwd
+          if (!cwd) throw new Error('Could not read the chat working directory for preview_html')
+          const resolved = await resolveHtmlPreview(stringArg(input, 'path')!, cwd)
+          const browser = await host.browserTab({ op: 'new', url: resolved.fileUrl }, context.paneId)
+          let browserRevealed = false
+          if (booleanArg(input, 'reveal_browser', true)) browserRevealed = await revealBrowserPane(ui)
+          return jsonResult({ ...resolved, browser, browserRevealed })
+        }
         return jsonResult(await host.browserTab({
-          op: stringArg(input, 'op') as AppBrowserTabRequest['op'],
+          op: opRaw as AppBrowserTabRequest['op'],
           tabId: stringArg(input, 'tab_id'),
           url: stringArg(input, 'url'),
           title: stringArg(input, 'tab_title')
@@ -154,6 +176,15 @@ export function appCommandActions(app: () => AppCommandHost | null): ToolAction[
       }
     }
   ]
+}
+
+async function revealBrowserPane(uiProvider: () => AppUiHost | null): Promise<boolean> {
+  const automation = uiProvider()
+  if (!automation) return false
+  const layout = (await automation.uiState()).layout
+  if (layout?.browserVisible) return false
+  await automation.click({ control: 'layout.browser-toggle' })
+  return true
 }
 
 function otherPane(host: AppCommandHost, input: JsonObject, context: ToolContext, verb: string): string {

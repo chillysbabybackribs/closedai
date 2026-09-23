@@ -22,7 +22,7 @@ export function appTools(app: () => AppCommandHost | null, ui: () => AppUiHost |
         description:
           'Deterministic app commands via main-process services — no DOM inspection. Operate panes, models, and ' +
           'browser tabs; use closedai_app.state for facts. Use closedai_app.ui only when a real control must be exercised as a batched fallback.',
-        actions: appCommandActions(app)
+        actions: appCommandActions(app, ui)
       }),
       defineActionTool({
         name: 'ui',

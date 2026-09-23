@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict'
+import { mkdtemp, writeFile } from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import test from 'node:test'
 import { uiControlFamilies } from '../../../shared/ui-controls.js'
 import { ToolRegistry } from '../registry.js'
 import { appTools } from './index.js'
-import type { AppCommandHost, AppUiHost } from './host.js'
+import type { AppBrowserTabRequest, AppCommandHost, AppUiHost } from './host.js'
 
 function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandHost> } = {}) {
   const calls: unknown[] = []
@@ -136,6 +140,31 @@ test('commands route to the host with the selected pane as the default target', 
     ['selectModel', 'pane-selected', 'gpt-5', 'high'],
     ['browserTab', { op: 'rename', tabId: '3', url: undefined, title: 'Docs' }]
   ])
+})
+
+test('preview_html resolves workspace html and reveals the browser when hidden', async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), 'closedai-app-preview-'))
+  await writeFile(path.join(cwd, 'mock.html'), '<!doctype html><title>mock</title>')
+  const { calls, call } = harness({
+    app: {
+      state: (sections) => (sections.includes('chat') ? { chat: { cwd } } : {})
+    },
+    ui: {
+      uiState: async () => ({
+        chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
+        layout: { visiblePaneIds: ['pane-caller'], browserVisible: false },
+        composer: null, focused: null, viewport: { width: 1200, height: 800 }
+      })
+    }
+  })
+  const result = await call('command', { action: 'browser_tab', op: 'preview_html', path: 'mock.html' })
+  assert.equal(result.isError, undefined)
+  assert.match(textOf(result), /mock\.html/)
+  const browserCall = calls.find((entry) => Array.isArray(entry) && entry[0] === 'browserTab') as ['browserTab', AppBrowserTabRequest]
+  assert.equal(browserCall[1].op, 'new')
+  assert.equal(browserCall[1].url, pathToFileURL(path.join(cwd, 'mock.html')).href)
+  const toggle = calls.find((entry) => Array.isArray(entry) && entry[0] === 'click') as ['click', { control: string }]
+  assert.equal(toggle[1].control, 'layout.browser-toggle')
 })
 
 test('ui actions resolve controls by id, item, match, selector, or coordinates', async () => {
