@@ -140,6 +140,15 @@ export type ClosedaiApi = {
     stop: (chatId: string) => Promise<void>
     onEvent: (listener: (event: AgentRunsEvent) => void) => Unsubscribe
   }
+  /** Agents the user built and kept; see `src/shared/agent-library.ts`. */
+  agentLibrary: {
+    list: () => Promise<SavedAgent[]>
+    save: (draft: SavedAgentDraft) => Promise<SavedAgent>
+    update: (id: string, patch: SavedAgentPatch) => Promise<SavedAgent | null>
+    remove: (id: string) => Promise<void>
+    /** The full list, sent whenever it changes, including run bookkeeping after a start. */
+    onChanged: (listener: (agents: SavedAgent[]) => void) => Unsubscribe
+  }
   /** OS-keychain-backed credential store. Secrets cross the bridge one field at a time, on request. */
   credentials: {
     status: () => Promise<CredentialVaultStatus>

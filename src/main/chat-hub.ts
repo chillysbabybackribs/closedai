@@ -27,6 +27,7 @@ import {
 } from './chat-hub-provider-switch.js'
 import type { ChatMemoryCheckpoint } from '../shared/chat-memory.js'
 import { generateChatTitle } from './chat-titles/title-provider.js'
+import { restoreHubHistory, withHubHistory } from './chat-hub-history.js'
 import type { TitleGenerator } from './chat-titles/title-policy.js'
 
 // One chat pane, several providers. Each provider owns its own thread, transcript, and
@@ -162,6 +163,9 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   snapshot(window?: ChatHistoryWindow): ChatSnapshot {
+    if (this.carriedHistory) {
+      return { ...this.paneView(withHubHistory(this.current().snapshot(), this.carriedHistory, window)), models: this.models() }
+    }
     return this.merge(this.current().snapshot(window))
   }
 
@@ -181,7 +185,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
    */
   async start(): Promise<void> {
     this.stopped = false
-    await this.restoreDirectoryHistory()
+    await this.restoreSavedHistory()
     // A dormant provider waits for the first message; a ready one is not connected again (every
     // connect re-reads the catalog and replays the thread, which a warm-up must not repeat).
     if (!this.dormant.has(this.active) && !this.isReady(this.active)) {
@@ -197,18 +201,15 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     }
   }
 
-  private async restoreDirectoryHistory(): Promise<void> {
-    const source = this.settings.get().chatContinuation
-    if (this.carriedHistory || !source?.sourceCwd || !source.sourceThreadId || !source.sourceThroughItemId) return
-    try {
-      const history = await this.readThread(source.sourceThreadId, source.sourceCwd)
-      const end = history.items.findIndex((item) => item.id === source.sourceThroughItemId)
-      if (end < 0 || this.stopped || this.settings.get().chatContinuation?.sourceThreadId !== source.sourceThreadId) return
-      this.restoreConversation({ ...this.current().snapshot(), threadName: history.threadName, items: history.items.slice(0, end + 1) })
-      this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
-    } catch (error) {
-      console.warn('[chat] could not restore the previous directory’s transcript:', error)
-    }
+  private async restoreSavedHistory(): Promise<void> {
+    if (this.carriedHistory) return
+    const saved = this.settings.get()
+    const history = await restoreHubHistory(saved, (id, cwd) => this.readThread(id, cwd))
+    const current = this.settings.get()
+    if (!history || this.stopped || JSON.stringify([saved.chatContinuation, saved.chatSessionRotations]) !==
+        JSON.stringify([current.chatContinuation, current.chatSessionRotations])) return
+    this.restoreConversation({ ...this.current().snapshot(), threadName: history.threadName, items: history.items })
+    this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }
 
   stop(): void {
@@ -297,13 +298,15 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   async newThread(): Promise<void> {
     await this.settled()
     this.carriedHistory = null
-    return this.current().newThread()
+    await this.current().newThread()
+    await this.settings.set({ chatSessionRotations: [] })
   }
 
   async continueInNewThread(): Promise<void> {
     await this.settled()
     this.carriedHistory = null
-    return this.current().continueInNewThread()
+    await this.current().continueInNewThread()
+    await this.settings.set({ chatSessionRotations: [] })
   }
 
   async openThread(threadId: string): Promise<void> {
@@ -313,10 +316,13 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     this.carriedHistory = null
     if (target === this.active) {
       await startIfDormant(this.switchHost())
-      return this.current().openThread(threadId)
+      await this.current().openThread(threadId)
+      await this.settings.set({ chatSessionRotations: [] })
+      return
     }
     this.dormant.delete(target)
     await switchToProvider(this.switchHost(), source, target, () => this.providers[target].openThread(threadId), { threadId })
+    await this.settings.set({ chatSessionRotations: [] })
   }
 
   archiveThread(threadId: string): Promise<void> {
@@ -368,13 +374,8 @@ export class ChatHub extends EventEmitter implements ChatSurface {
    * receives it once that page reaches the start of the provider's own transcript.
    */
   private withCarriedHistory(snapshot: ChatSnapshot): ChatSnapshot {
-    const carried = this.carriedHistory
-    if (!carried || carried.provider !== this.active || snapshot.history?.hasEarlier) return snapshot
-    return {
-      ...snapshot,
-      threadName: snapshot.threadName ?? carried.threadName,
-      items: [...carried.items, ...snapshot.items]
-    }
+    if (snapshot.history?.hasEarlier) return snapshot
+    return withHubHistory(snapshot, this.carriedHistory)
   }
 
   private merge(snapshot: ChatSnapshot): ChatSnapshot {

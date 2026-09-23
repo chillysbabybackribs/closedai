@@ -11,6 +11,7 @@ import { registerSavedSitesIpc } from './saved-sites-ipc.js'
 import { registerLocalFilesIpc } from './local-files/ipc.js'
 import { registerChatIpc } from './chat-ipc.js'
 import { registerAgentRunsIpc } from './agent-runs/ipc.js'
+import { registerAgentLibraryIpc } from './agent-library/ipc.js'
 import { registerTraceIpc } from './trace/ipc.js'
 import { registerCredentialVaultIpc } from './credential-vault-ipc.js'
 import { registerSecurityIpc } from './security-ipc.js'
@@ -25,6 +26,7 @@ import type { BrowserDownloadService } from './browser-download-service.js'
 import type { SavedSitesStore } from './saved-sites-store.js'
 import type { ChatPeerManager } from './chat-peers/peer-manager.js'
 import type { AgentRunService } from './agent-runs/agent-run-service.js'
+import type { AgentLibraryStore } from './agent-library/agent-library-store.js'
 import type { CredentialVault } from './credential-vault.js'
 import type { SecuritySettingsStore } from './security-settings-store.js'
 import type { AppSettingsStore } from './app-settings-store.js'
@@ -44,6 +46,7 @@ export type MainIpcRegistration = {
   savedSites: () => SavedSitesStore | null
   chatService: () => ChatPeerManager | null
   agentRuns: () => AgentRunService | null
+  agentLibrary: () => AgentLibraryStore | null
   credentialVault: () => CredentialVault | null
   securitySettings: () => SecuritySettingsStore | null
   settings: () => AppSettingsStore | null
@@ -70,6 +73,7 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
   registerLocalFilesIpc(reg.ipcMain, reg.browserService)
   registerChatIpc(reg.ipcMain, reg.chatService)
   registerAgentRunsIpc(reg.ipcMain, reg.agentRuns)
+  registerAgentLibraryIpc(reg.ipcMain, reg.agentLibrary)
   registerTraceIpc(reg.ipcMain, traceLog)
   registerCredentialVaultIpc(reg.ipcMain, reg.credentialVault)
   registerSecurityIpc(reg.ipcMain, {

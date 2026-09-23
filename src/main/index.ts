@@ -18,6 +18,7 @@ import { importDefaultBrowserCookies } from './browser-cookie-import.js'
 import { CodexWorkspaceRuntime } from './codex-workspace-runtime.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { AgentRunService } from './agent-runs/agent-run-service.js'
+import { AgentLibraryStore } from './agent-library/agent-library-store.js'
 import { ChatStore } from './chat-store/chat-store.js'
 import { ChatTranscriptCache } from './chat-store/chat-transcript-cache.js'
 import { migrateChatPeersIntoStore } from './chat-store/chat-store-migration.js'
@@ -55,7 +56,8 @@ import { safeStorageEncryption } from './safe-storage-encryption.js'
 import { SecuritySettingsStore } from './security-settings-store.js'
 import { CredentialApprovalBroker } from './security-approvals.js'
 import { BrowserPermissionBroker } from './browser-permission-broker.js'
-import type { AgentRunsEvent } from '../shared/agent-runs.js'
+import type { AgentRun, AgentRunsEvent } from '../shared/agent-runs.js'
+import type { SavedAgent } from '../shared/agent-library.js'
 import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
 import type { SavedSite } from '../shared/saved-sites.js'
@@ -88,6 +90,7 @@ let chatTranscripts: ChatTranscriptCache | null = null
 let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
 let agentRuns: AgentRunService | null = null
+let agentLibrary: AgentLibraryStore | null = null
 let credentialVault: CredentialVault | null = null
 let securitySettings: SecuritySettingsStore | null = null
 // Pending user decisions (credential reads, page permissions); empty unless Settings → Security asks for them.
@@ -146,15 +149,17 @@ if (!claimProfileInstance(app, { profile: userData(), checkout: app.getAppPath()
 async function main(): Promise<void> {
   logGpuFeatureStatus()
   await mkdir(userData(), { recursive: true })
-  ;[browserHistory, savedSites, browserTabSession, settings, chatStore, securitySettings] = await Promise.all([
+  ;[browserHistory, savedSites, browserTabSession, settings, chatStore, securitySettings, agentLibrary] = await Promise.all([
     BrowserHistoryStore.open(join(userData(), 'browser-history.json')),
     SavedSitesStore.open(join(userData(), 'saved-sites.json')),
     BrowserTabSessionStore.open(join(userData(), 'browser-tabs.json')),
     AppSettingsStore.open(join(userData(), 'app-settings.json')),
     ChatStore.open(join(userData(), 'chats.json')),
-    SecuritySettingsStore.open(join(userData(), 'security-settings.json'))
+    SecuritySettingsStore.open(join(userData(), 'security-settings.json')),
+    AgentLibraryStore.open(join(userData(), 'agent-library.json'))
   ])
   savedSites.on('changed', (sites: SavedSite[]) => sendToMainWindow(IPC.event.savedSitesChanged, sites))
+  agentLibrary.on('changed', (agents: SavedAgent[]) => sendToMainWindow(IPC.event.agentLibraryChanged, agents))
   credentialVault = new CredentialVault(join(userData(), 'credential-vault.json'), safeStorageEncryption(safeStorage, process.platform), {
     secretsRequireKeychain: () => securitySettings!.get().secretsRequireKeychain
   })
@@ -243,7 +248,7 @@ async function main(): Promise<void> {
   appAutomationAccess = new AppAutomationAccess(() => mainWindow)
   appCommandAccess = new AppCommandAccess({
     chat: () => chatService, browser: () => browserService, downloads: () => browserDownloads, window: () => mainWindow,
-    browserCoordination, agentRuns: () => agentRuns
+    browserCoordination, agentRuns: () => agentRuns, agentLibrary: () => agentLibrary
   })
   const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService)
   // Full-resolution captures for the transcript; the model only ever receives the scaled copy.
@@ -329,6 +334,8 @@ async function main(): Promise<void> {
   // The loop behind agent chats: every finished turn is followed by the next cycle until paused.
   agentRuns = new AgentRunService(chatStore, chatService)
   agentRuns.on('change', (event: AgentRunsEvent) => sendToMainWindow(IPC.event.agentRunsEvent, event))
+  // A run started from a library entry counts as that agent's use, whichever surface started it.
+  agentRuns.on('started', (run: AgentRun) => { if (run.agentId) agentLibrary?.recordRun(run.agentId) })
   liveVerifyHandle.toolRegistry = toolRegistry
   liveVerifyHandle.researchService = researchService
   registerMainProcessIpc(mainIpcRegistration())
@@ -396,6 +403,7 @@ function mainIpcRegistration() {
     savedSites: () => savedSites,
     chatService: () => chatService,
     agentRuns: () => agentRuns,
+    agentLibrary: () => agentLibrary,
     credentialVault: () => credentialVault,
     securitySettings: () => securitySettings,
     settings: () => settings,
@@ -453,6 +461,7 @@ app.on('before-quit', (event) => {
   void settleWithin([
     browserHistory?.flush(),
     savedSites?.flush(),
+    agentLibrary?.flush(),
     browserTabSession?.close(),
     settings?.set({}),
     chatStore?.flush(),
