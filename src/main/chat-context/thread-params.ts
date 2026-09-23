@@ -12,14 +12,12 @@ export type ThreadModelSettings = {
   effort: string | null
   contextWindow?: number
 }
-import { closedAiDeveloperInstructions } from './developer-instructions.js'
 
 function sharedThreadParams(cwd: string): Record<string, unknown> {
   return {
     cwd,
     approvalPolicy: 'never',
-    sandbox: 'danger-full-access',
-    developerInstructions: closedAiDeveloperInstructions()
+    sandbox: 'danger-full-access'
   }
 }
 

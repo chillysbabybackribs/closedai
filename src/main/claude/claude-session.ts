@@ -23,7 +23,6 @@ export type ClaudeSessionDeps = {
   sdk: ClaudeSdk
   cwd: string
   mcpServers: () => NonNullable<Options['mcpServers']>
-  systemPromptAppend: string
   displayScreenshot: DisplayScreenshot
   apply: (op: TranscriptOp) => void
   onTurn: (turnId: string | null) => void
@@ -75,7 +74,6 @@ export class ClaudeSession {
       runtimeId: id,
       seamlessRotation: this.deps.seamlessRotation?.() === true,
       mcpServers: this.deps.mcpServers(),
-      systemPromptAppend: this.deps.systemPromptAppend,
       stderr: (data) => { const text = data.trim(); if (text) console.warn('[claude]', text) }
     })
     const runtime = new ClaudeRuntime(this.deps.sdk, id, options, {

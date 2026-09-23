@@ -1,8 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { antigravityAgentInstructions } from './antigravity-instructions.js'
 
-// The app-private Antigravity plugin supplies product context and native tool declarations.
+// The app-private Antigravity plugin supplies native tool declarations.
 // Browser routing is guidance, not an app-authored tool denial. The profile is written
 // under the app's state dir and reaches agy as an extra `--add-dir`, so nothing lands in the
 // user's project or global config.
@@ -101,7 +100,7 @@ export async function recordUndeclarableTools(stateDir: string, tools: readonly 
   return added
 }
 
-export function renderAgent(cwd: string, excluded: readonly string[] = []): string {
+export function renderAgent(_cwd: string, excluded: readonly string[] = []): string {
   const tools = ANTIGRAVITY_GRANTED_TOOLS.filter((tool) => !excluded.includes(tool)).map((tool) => `  - ${tool}`).join('\n')
   return `---
 name: ${ANTIGRAVITY_AGENT_NAME}
@@ -110,10 +109,6 @@ tools:
 ${tools}
 inheritMcp: true
 ---
-
-# Agent System Instructions
-
-${antigravityAgentInstructions(cwd)}
 `
 }
 

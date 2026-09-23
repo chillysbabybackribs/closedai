@@ -35,7 +35,6 @@ export type ClaudeQueryConfig = {
   /** When true, ClosedAI rotates sessions instead of relying on Claude Code auto-compaction. */
   seamlessRotation?: boolean
   mcpServers: NonNullable<Options['mcpServers']>
-  systemPromptAppend: string
   env?: NodeJS.ProcessEnv
   stderr?: (data: string) => void
 }
@@ -74,7 +73,7 @@ export function claudeQueryOptions(config: ClaudeQueryConfig): Options {
     strictMcpConfig: true,
     allowedTools: CLAUDE_ALLOWED_TOOLS,
     disallowedTools: CLAUDE_DISALLOWED_TOOLS,
-    systemPrompt: { type: 'preset', preset: 'claude_code', append: config.systemPromptAppend },
+    systemPrompt: { type: 'preset', preset: 'claude_code' },
     mcpServers: config.mcpServers,
     ...(config.stderr ? { stderr: config.stderr } : {})
   }

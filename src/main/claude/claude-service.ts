@@ -45,7 +45,6 @@ import { forgetClaudeCatalog, readClaudeCatalog, rememberClaudeCatalog } from '.
 import { archiveClaudeThread, claudeThreadName, listClaudeThreads } from './claude-history.js'
 import { claudeModelValue, claudeSessionIdOf, claudeThreadId } from './claude-ids.js'
 import { buildClaudeUserMessage } from './claude-input.js'
-import { claudeSystemPromptAppend } from './claude-instructions.js'
 import { claudeModelCatalog, resolveClaudeModelId, supportsAdaptiveThinking } from './claude-models.js'
 import { loadClaudeSdk, type ClaudeSdk } from './claude-sdk.js'
 import { ClaudeSession } from './claude-session.js'
@@ -337,7 +336,6 @@ export class ClaudeChatService extends EventEmitter {
         threadId: this.session?.sessionId ? claudeThreadId(this.session.sessionId) : null,
         turnId: this.activeTurnId
       })),
-      systemPromptAppend: claudeSystemPromptAppend(this.cwd),
       displayScreenshot: (callId) => this.screenshots?.get(callId) ?? null,
       apply: (op) => this.applyOp(op),
       onTurn: (turnId) => this.setTurn(turnId),

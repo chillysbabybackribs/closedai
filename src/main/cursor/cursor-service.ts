@@ -38,7 +38,6 @@ import { isCursorAuthFailure, parseCursorAccountEmail, parseCursorPlan, readCurs
 import { isMissingExecutable, missingProviderMessage } from '../provider-binary.js'
 import { cursorSessionIdOf, cursorThreadId } from './cursor-ids.js'
 import { buildCursorPrompt } from './cursor-input.js'
-import { cursorSystemInstructions } from './cursor-instructions.js'
 import { cursorAcpModelId, cursorModelCatalog } from './cursor-models.js'
 import { CursorSession } from './cursor-session.js'
 import { applyTranscriptOp, handleProviderTurnEnd, type TranscriptOp, type TurnEnd } from '../chat-transcript-ops.js'
@@ -136,11 +135,7 @@ export class CursorChatService extends EventEmitter {
       if (this.activeTurnId) throw new Error('A Cursor turn is already running')
       const sessionId = session.sessionId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
-      const includeInstructions = session.consumeInstructionsPending()
       const context: AdditionalContext = {
-        ...(includeInstructions
-          ? { 'closedai.instructions': { kind: 'application', value: cursorSystemInstructions(this.cwd) } }
-          : {}),
         ...this.turnAdditionalContext(text),
         ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
       }
