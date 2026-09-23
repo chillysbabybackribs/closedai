@@ -12,15 +12,23 @@ export type PeerCoordinatorHost = {
   modelOf: (paneId: ChatPaneId) => { modelId: string | null; reasoningEffort: string | null }
   selectedPaneId: () => ChatPaneId
   createSeeded: (model: { modelId: string | null; reasoningEffort: string | null }, seed: Partial<ChatRecordSeed>) => Promise<ChatPaneId>
+  /** Attach a stored pane and keep it through trim while the workspace opens. */
+  retainPane: (paneId: ChatPaneId) => void
   selectPane: (paneId: ChatPaneId) => Promise<void>
   /** Persist open chats, trim attached surfaces, and emit the workspace. */
   settle: () => Promise<void>
+}
+
+function retainCoordinatorGroup(host: PeerCoordinatorHost, result: OpenCoordinatorWorkspaceResult): void {
+  host.retainPane(result.coordinatorPaneId)
+  host.retainPane(result.workerPaneId)
 }
 
 export async function openCoordinatorWorkspace(host: PeerCoordinatorHost): Promise<OpenCoordinatorWorkspaceResult> {
   host.assertAvailable()
   const existing = findCoordinatorWorkspace(host.store)
   if (existing) {
+    retainCoordinatorGroup(host, existing)
     await host.selectPane(existing.coordinatorPaneId)
     await host.settle()
     return existing
@@ -32,15 +40,18 @@ export async function openCoordinatorWorkspace(host: PeerCoordinatorHost): Promi
     title: 'Coordinator',
     titleSource: 'manual'
   })
+  host.retainPane(coordinatorPaneId)
   const workerPaneId = await host.createSeeded(model, {
     parentChatId: coordinatorPaneId,
     coordinatorGroup: { id: groupId, role: 'worker', slot: 'a' },
     title: 'Worker',
     titleSource: 'manual'
   })
+  const created = { groupId, coordinatorPaneId, workerPaneId }
+  retainCoordinatorGroup(host, created)
   await host.selectPane(coordinatorPaneId)
   await host.settle()
-  return { groupId, coordinatorPaneId, workerPaneId }
+  return created
 }
 
 export async function enableCoordinator(host: PeerCoordinatorHost, paneId: ChatPaneId): Promise<EnableCoordinatorResult> {

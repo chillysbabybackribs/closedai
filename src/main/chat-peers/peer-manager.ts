@@ -360,6 +360,10 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       selectedPaneId: () => this.selectedPaneId,
       createSeeded: (model, seed) =>
         this.newChat(model.modelId, model.reasoningEffort, null, this.workspace(), { selectPane: false, seed }),
+      retainPane: (paneId) => {
+        if (!this.lifecycle.get(paneId)) this.lifecycle.attach(this.store.require(paneId))
+        this.visiblePaneIds.add(paneId)
+      },
       selectPane: (paneId) => this.selectPane(paneId),
       settle: async () => {
         await this.persistOpenChats()
