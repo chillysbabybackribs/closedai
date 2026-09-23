@@ -61,7 +61,7 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
         description:
           'Batch ClosedAI tool calls; model-native shell/file/web tools are not routable here. Do not nest batches. ' +
           'Calls run sequentially by default; use parallel only for independent work. By default, failures skip later ' +
-          'sequential calls and release armed browser state. Real-input actions require a later verification call in the ' +
+          'sequential calls and unwind armed browser state. Real-input actions require a later verification call in the ' +
           'same sequential batch. Each call can set include_result:false to omit its successful output. Results are numbered in call order. ' +
           'Await in exec.',
         inputSchema: {
