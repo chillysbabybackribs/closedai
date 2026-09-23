@@ -4,6 +4,21 @@ Design tasks here, then run them in a **fresh chat pane** inside ClosedAI while 
 calls, latency, and UX. This is separate from `harness/tasks/` replay and headless Codex runs
 (stub fixtures, automated oracles).
 
+## Start: mission loop pilot (no UI changes)
+
+1. In your **home** chat (director), read or attach `harness/live-eval/director-charter.md`.
+2. Print the pilot task:
+
+   ```sh
+   npm run harness:live -- --task=mission_loop_pilot_01
+   ```
+
+3. Send the **User message** block from that output as your next message (or tell the model to
+   run that task after reading the charter).
+4. Watch the browser if a task uses it; score against the **Observe** list. The transcript is the
+   log; `harness/out/current-mission.md` is continuity only.
+5. Optional notes: `harness/out/live-eval-notes.md` (gitignored).
+
 ## Task file
 
 - `tasks.json` — natural-language `user` prompts, optional `setup.browserUrl`, and an `observe`

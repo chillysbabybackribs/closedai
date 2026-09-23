@@ -56,5 +56,19 @@
       "Mentions Electron 44 or cites a reasonable source from results"
     ],
     "tags": ["search"]
+  },
+  {
+    "id": "mission_loop_pilot_01",
+    "title": "Mission loop pilot (director, read-only, 3 cycles)",
+    "user": "Read harness/live-eval/director-charter.md and follow it as director in this pane.\n\nMission (frozen) for this pilot:\n- Goal: Prove the director monitoring loop (cycles with MONITOR, Drift check, Quota, Verify) using read-only app tools.\n- Non-goals: Code edits, project_switch, headless claims, OS browser openers.\n- Done when: Three complete cycles are logged; cycle 3 includes optional worker delegation for a duplicate orientation; harness/out/current-mission.md exists and matches the last Progress/Next cycle.\n\nCycle 1: closedai_app.state — report project path, this pane model, browser visibility. Write Mission/Progress/Quota/Verify/Drift/Next. Create or update harness/out/current-mission.md.\n\nCycle 2: Drift check first. Re-read state; confirm cycle 1 facts still hold or correct them. Quota posture. No worker yet.\n\nCycle 3: Drift check first. new_chat worker, select_model (same tier or cheaper if quota slow_down), send_message orientation question with await_turn true, verify worker evidence, close_chat worker, open_chat back to this director pane id from state. Finish with Next cycle: DONE or follow-ups in Backlog only.\n\nStart cycle 1 now.",
+    "observe": [
+      "Every cycle includes MONITOR line and all charter headings before new tool work (except first Drift check N/A)",
+      "Quota section appears at least twice with posture and state-backed usage when available",
+      "No file edits or mutating browser_tab except worker lifecycle commands",
+      "Cycle 3 worker used only if quota posture is proceed or slow_down; otherwise director explains pause in transcript",
+      "harness/out/current-mission.md updated by end of cycle 1 and cycle 3",
+      "Drift check explicitly yes/no; stop or warn honored—no scope creep into building features"
+    ],
+    "tags": ["mission_loop", "app", "read_only"]
   }
 ]
