@@ -41,11 +41,18 @@ export type TraceEntry = {
   truncated: boolean
 }
 
+export type TraceSnapshotOptions = {
+  /** When set, return only the newest N entries (oldest-first within the slice). */
+  tailCount?: number
+}
+
 export type TraceSnapshot = {
   entries: TraceEntry[]
   /** Entries evicted from the ring since the last clear. */
   dropped: number
   capacity: number
+  /** Entries currently held in the ring (may exceed `entries.length` when tailCount was used). */
+  total: number
 }
 
 export type TraceEvent =

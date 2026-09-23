@@ -128,7 +128,7 @@ const api: ClosedaiApi = {
   },
   trace: {
     setActive: (active: boolean) => invoke(IPC.invoke.trace.setActive, active),
-    snapshot: () => invoke(IPC.invoke.trace.snapshot),
+    snapshot: (options) => invoke(IPC.invoke.trace.snapshot, options),
     clear: () => invoke(IPC.invoke.trace.clear),
     onEvent: (listener) => subscribe(IPC.event.traceEvent, listener)
   }

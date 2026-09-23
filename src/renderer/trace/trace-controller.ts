@@ -7,6 +7,8 @@ import { summarizeTracePerformance, type TracePerformance } from './trace-perfor
 // keeps its own bound so a long-open panel cannot grow past what the main process holds.
 
 const MAX_KEPT = 4_000
+/** First open loads a tail slice so a full ring does not cross IPC in one shot. */
+const INITIAL_TAIL = 600
 
 export const TRACE_KINDS: readonly TraceKind[] = ['turn', 'tool', 'event', 'raw', 'note']
 
@@ -30,7 +32,9 @@ export type TraceController = {
   error: string | null
   /** True once the first snapshot read has settled, so an empty ring is not shown as loading. */
   loaded: boolean
-  refresh: () => Promise<void>
+  /** True when the renderer holds every entry the main ring currently has. */
+  loadedFull: boolean
+  refresh: (options?: { full?: boolean }) => Promise<void>
   clear: () => Promise<void>
 }
 
@@ -41,12 +45,18 @@ export function useTraceController(active: boolean, paneId: string): TraceContro
   const [kinds, setKinds] = useState<Set<TraceKind>>(() => new Set(['turn', 'tool', 'event']))
   const [allPanes, setAllPanes] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [loadedFull, setLoadedFull] = useState(false)
+  const [ringTotal, setRingTotal] = useState(0)
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { full?: boolean }) => {
     try {
-      const snapshot = await window.closedai.trace.snapshot()
+      const snapshot = await window.closedai.trace.snapshot(
+        options?.full ? undefined : { tailCount: INITIAL_TAIL }
+      )
       setEntries(snapshot.entries)
       setDropped(snapshot.dropped)
+      setRingTotal(snapshot.total)
+      setLoadedFull(options?.full === true || snapshot.entries.length >= snapshot.total)
       setError(null)
     } catch (caught) {
       setError(errorMessage(caught, 'The trace could not be read.'))
@@ -65,6 +75,8 @@ export function useTraceController(active: boolean, paneId: string): TraceContro
       if (event.type === 'cleared') {
         setEntries([])
         setDropped(0)
+        setRingTotal(0)
+        setLoadedFull(true)
         return
       }
       setEntries((current) => {
@@ -72,6 +84,7 @@ export function useTraceController(active: boolean, paneId: string): TraceContro
         next.push(event.entry)
         return next
       })
+      setRingTotal((current) => Math.min(MAX_KEPT, current + 1))
     })
     return () => {
       live = false
@@ -102,7 +115,9 @@ export function useTraceController(active: boolean, paneId: string): TraceContro
     return filterTurnGroups(groupByTurn(scoped), kinds)
   }, [entries, allPanes, paneId, kinds])
 
-  return { groups, total: entries.length, dropped, kinds, toggleKind, allPanes, setAllPanes, error, loaded, refresh, clear }
+  return {
+    groups, total: ringTotal, dropped, kinds, toggleKind, allPanes, setAllPanes, error, loaded, loadedFull, refresh, clear
+  }
 }
 
 /**

@@ -4,7 +4,11 @@ const fallbackUrl = new URL('./assets/browser-globe-natural-earth.png', import.m
 // Same Earth texture as the approved motion preview, bundled for offline use.
 // https://github.com/mrdoob/three.js/blob/r160/examples/textures/planets/earth_atmos_2048.jpg
 const textureUrl = new URL('./assets/browser-earth-texture.jpg', import.meta.url).href
-const resolution = 96
+/** Internal canvas resolution; the icon renders at ~24 CSS px, so 64 is enough detail. */
+const resolution = 64
+const textureWidth = 512
+const textureHeight = 256
+const frameMs = 1000 / 15
 const tilt = 15 * Math.PI / 180
 const revolutionMs = 24_000
 
@@ -60,8 +64,15 @@ export function BrowserGlobeIcon({ size = 24 }: { size?: number }) {
       context.putImageData(pixels, 0, 0)
     }
 
+    let visible = true
+    const visibility = new IntersectionObserver(([entry]) => {
+      visible = entry?.isIntersecting ?? true
+      sync()
+    }, { threshold: 0 })
+    visibility.observe(canvas.parentElement ?? canvas)
+
     function running() {
-      return !disposed && texture && !document.hidden && !reduced.matches
+      return !disposed && texture && visible && !document.hidden && !reduced.matches
     }
 
     function tick(time: number) {
@@ -69,8 +80,7 @@ export function BrowserGlobeIcon({ size = 24 }: { size?: number }) {
       if (!running()) { previousTime = undefined; return }
       if (previousTime === undefined) previousTime = time
       const elapsed = time - previousTime
-      // A small toolbar globe only needs 30 fps, even on a high-refresh display.
-      if (elapsed >= 1000 / 30) {
+      if (elapsed >= frameMs) {
         longitude = (longitude + Math.min(elapsed, 100) / revolutionMs * Math.PI * 2) % (Math.PI * 2)
         previousTime = time
         draw()
@@ -93,8 +103,8 @@ export function BrowserGlobeIcon({ size = 24 }: { size?: number }) {
     map.onload = () => {
       if (disposed) return
       const source = document.createElement('canvas')
-      source.width = 1024
-      source.height = 512
+      source.width = textureWidth
+      source.height = textureHeight
       const sourceContext = source.getContext('2d', { willReadFrequently: true })
       if (!sourceContext) return
       sourceContext.drawImage(map, 0, 0, source.width, source.height)
@@ -111,6 +121,7 @@ export function BrowserGlobeIcon({ size = 24 }: { size?: number }) {
       map.onload = null
       reduced.removeEventListener('change', sync)
       document.removeEventListener('visibilitychange', sync)
+      visibility.disconnect()
     }
   }, [])
 

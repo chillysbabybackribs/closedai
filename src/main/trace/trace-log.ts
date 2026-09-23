@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events'
 import type { ChatProvider } from '../../shared/chat.js'
 import { chatProviderOfTurnId } from '../../shared/chat-providers.js'
-import type { TraceEntry, TraceEvent, TraceKind, TraceSnapshot } from '../../shared/trace.js'
+import type { TraceEntry, TraceEvent, TraceKind, TraceSnapshot, TraceSnapshotOptions } from '../../shared/trace.js'
 import { ResponseLatency } from './response-latency.js'
 
 // In-memory ring of everything the main process saw the model do. One instance per process;
@@ -94,8 +94,11 @@ export class TraceLog extends EventEmitter {
     })
   }
 
-  snapshot(): TraceSnapshot {
-    return { entries: this.entries.slice(this.head), dropped: this.dropped, capacity: MAX_ENTRIES }
+  snapshot(options?: TraceSnapshotOptions): TraceSnapshot {
+    const all = this.entries.slice(this.head)
+    const tailCount = options?.tailCount
+    const entries = tailCount !== undefined && tailCount < all.length ? all.slice(-tailCount) : all
+    return { entries, dropped: this.dropped, capacity: MAX_ENTRIES, total: all.length }
   }
 
   clear(): void {

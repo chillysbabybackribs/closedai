@@ -7,7 +7,7 @@ import type {
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.js'
 import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
-import type { TraceEvent, TraceSnapshot } from './trace.js'
+import type { TraceEvent, TraceSnapshot, TraceSnapshotOptions } from './trace.js'
 import type { ProviderAvailability } from './provider-availability.js'
 import type {
   BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
@@ -98,7 +98,7 @@ export type IpcInvokeChannels = {
   'models:setEnabled': { args: [string, boolean]; result: void }
   'models:setEnabledMany': { args: [ModelSwitch[]]; result: void }
   'trace:setActive': { args: [boolean]; result: void }
-  'trace:snapshot': { args: []; result: TraceSnapshot }
+  'trace:snapshot': { args: [TraceSnapshotOptions?]; result: TraceSnapshot }
   'trace:clear': { args: []; result: void }
 }
 

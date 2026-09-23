@@ -85,6 +85,17 @@ test('structured serialization bounds traversal by node count and depth', () => 
   assert.ok(longKeyResult.text.length < MAX_DETAIL_CHARS + 100)
 })
 
+test('snapshot tailCount returns the newest slice while reporting ring total', () => {
+  const log = new TraceLog()
+  for (let index = 0; index < 12; index += 1) {
+    log.record(scope, { kind: 'event', label: 'item', summary: String(index), detail: index })
+  }
+  const snapshot = log.snapshot({ tailCount: 5 })
+  assert.equal(snapshot.total, 12)
+  assert.equal(snapshot.entries.length, 5)
+  assert.deepEqual(snapshot.entries.map((entry) => entry.summary), ['7', '8', '9', '10', '11'])
+})
+
 test('evicts the oldest entries past the capacity and counts them as dropped', () => {
   const log = new TraceLog()
   log.setActive(true)

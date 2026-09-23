@@ -38,11 +38,11 @@ export function TraceModal({ open, onOpenChange, paneId }: TraceModalProps): JSX
           <div>
             <DialogTitle>Turn trace</DialogTitle>
             <DialogDescription id="trace-modal-description">
-              {`${shown} of ${trace.total} entries shown${trace.dropped > 0 ? ` · ${trace.dropped} oldest evicted` : ''} · in memory only, cleared at restart`}
+              {`${shown} of ${trace.total} entries shown${trace.dropped > 0 ? ` · ${trace.dropped} oldest evicted` : ''}${trace.loadedFull ? '' : ' · Refresh loads full history'} · in memory only, cleared at restart`}
             </DialogDescription>
           </div>
           <div className="trace-modal-header-actions">
-            <Button type="button" variant="ghost" size="sm" data-ui="trace.refresh" onClick={() => void trace.refresh()}>
+            <Button type="button" variant="ghost" size="sm" data-ui="trace.refresh" onClick={() => void trace.refresh({ full: true })}>
               <RefreshCw aria-hidden="true" /> Refresh
             </Button>
             <Button type="button" variant="ghost" size="sm" disabled={trace.total === 0} data-ui="trace.clear" onClick={() => void trace.clear()}>

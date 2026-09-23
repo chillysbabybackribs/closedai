@@ -8,7 +8,7 @@ import type { ProviderAvailability } from './provider-availability.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
-import type { TraceEvent, TraceSnapshot } from './trace.js'
+import type { TraceEvent, TraceSnapshot, TraceSnapshotOptions } from './trace.js'
 import type {
   BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
 } from './security.js'
@@ -158,7 +158,7 @@ export type ClosedaiApi = {
   /** The live turn trace: in-memory, every pane, cleared at restart or on request. */
   trace: {
     setActive: (active: boolean) => Promise<void>
-    snapshot: () => Promise<TraceSnapshot>
+    snapshot: (options?: TraceSnapshotOptions) => Promise<TraceSnapshot>
     clear: () => Promise<void>
     onEvent: (listener: (event: TraceEvent) => void) => Unsubscribe
   }
