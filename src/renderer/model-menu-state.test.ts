@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatModel } from '../shared/chat.js'
 import {
-  countModelUse, effortLabel, effortMenuDetail, modelContextLabel, modelMenuDetail, modelGroups, modelTriggerLabel, parseModelUsage, providerSections
+  effortLabel, effortMenuDetail, modelContextLabel, modelMenuDetail, modelGroups, modelTriggerLabel, parseRecentModels, pushRecentModel,
+  RECENT_MODELS_KEPT, recentModels
 } from './model-menu-state.js'
 
 function model(provider: ChatModel['provider'], id: string, displayName: string, efforts: string[] = [], isDefault = false, contextWindow?: number): ChatModel {
@@ -23,10 +24,6 @@ const catalogue = [
   model('claude', 'claude:sonnet', 'Sonnet 5'),
   model('claude', 'claude:haiku', 'Haiku 4.5')
 ]
-
-function featuredIds(sections: ReturnType<typeof providerSections>): string[] {
-  return sections.flatMap((section) => section.featured.map((entry) => entry.id))
-}
 
 const models = [
   model('claude', 'claude:opus[1m]', 'Opus 5 (1M)', ['low', 'high']),
@@ -86,48 +83,21 @@ test('context labels stay compact at common model-window sizes', () => {
   assert.equal(modelContextLabel(undefined), null)
 })
 
-const wide = catalogue.concat(model('codex', 'nova', 'Nova'), model('codex', 'pulse', 'Pulse'))
-
-test("each provider's submenu opens on its top models and folds the rest away", () => {
-  const sections = providerSections(wide, {}, null)
-  // Four slots per provider: Codex fills its own with the default first, then catalogue order,
-  // while Claude Code keeps all three of its models. Listed in menu order, not rank order.
-  assert.deepEqual(featuredIds(sections), ['sol', 'terra', 'luna', 'gpt-5.5', 'claude:opus', 'claude:sonnet', 'claude:haiku'])
-  // Folding is per provider now: Codex hides three, Claude Code hides none.
-  assert.deepEqual(sections.map((section) => [section.provider, section.hiddenCount]), [['codex', 3], ['claude', 0]])
-  assert.equal(sections.flatMap((section) => section.all).length, wide.length)
+test('recent models move to the end on reuse and keep a bounded history', () => {
+  assert.deepEqual(pushRecentModel(['sol', 'terra', 'luna'], 'sol'), ['terra', 'luna', 'sol'])
+  const long = Array.from({ length: RECENT_MODELS_KEPT }, (_, index) => `m${index}`)
+  assert.deepEqual(pushRecentModel(long, 'new'), [...long.slice(1), 'new'])
 })
 
-test('a provider keeps its slots however much another provider is used', () => {
-  const usage = { 'claude:haiku': 9, 'claude:sonnet': 7, 'claude:opus': 5 }
-  assert.deepEqual(providerSections(wide, usage, null).map((section) => section.featured.length), [4, 3])
+test('the Recent block skips the current model and ones the catalogue lost, most recent last', () => {
+  const recent = ['claude:sonnet', 'gone', 'sol', 'claude:haiku', 'spark', 'terra']
+  assert.deepEqual(recentModels(catalogue, recent, 'terra').map((entry) => entry.id), ['sol', 'claude:haiku', 'spark'])
+  assert.deepEqual(recentModels(catalogue, ['gone', 'sol'], null).map((entry) => entry.id), ['sol'])
 })
 
-test('the most used models are featured, and the selected one always is', () => {
-  const usage = { spark: 9, 'gpt-5.5': 5 }
-  // Within Codex: the two used models, then the default and catalogue order fill the rest.
-  assert.deepEqual(featuredIds(providerSections(wide, usage, null)).slice(0, 4), ['sol', 'terra', 'gpt-5.5', 'spark'])
-  // The selected model takes a slot instead of adding a fifth row to its provider.
-  assert.deepEqual(featuredIds(providerSections(wide, usage, 'nova')).slice(0, 4), ['terra', 'gpt-5.5', 'spark', 'nova'])
-})
-
-test('a remainder of one model is shown rather than hidden behind a row', () => {
-  const sections = providerSections(catalogue, {}, null)
-  assert.deepEqual(sections.map((section) => section.hiddenCount), [0, 0])
-  assert.equal(featuredIds(sections).length, catalogue.length)
-})
-
-test('a provider row can name the model in use and count what it offers', () => {
-  const sections = providerSections(models, {}, 'claude:haiku')
-  assert.deepEqual(sections.map((section) => [section.label, section.all.length]), [['Codex', 1], ['Claude Code', 2]])
-  // The submenu the row opens always carries the selection, so its checkmark needs no expanding.
-  assert.ok(sections[1]!.featured.some((entry) => entry.id === 'claude:haiku'))
-})
-
-test('usage counts survive a round trip and ignore junk', () => {
-  assert.deepEqual(parseModelUsage(null), {})
-  assert.deepEqual(parseModelUsage('not json'), {})
-  assert.deepEqual(parseModelUsage('{"sol":3,"terra":"x","luna":0}'), { sol: 3 })
-  assert.deepEqual(countModelUse({ sol: 3 }, 'sol'), { sol: 4 })
-  assert.deepEqual(countModelUse({}, 'terra'), { terra: 1 })
+test('stored recents survive a round trip and ignore junk', () => {
+  assert.deepEqual(parseRecentModels(null), [])
+  assert.deepEqual(parseRecentModels('not json'), [])
+  assert.deepEqual(parseRecentModels('{"sol":3}'), [])
+  assert.deepEqual(parseRecentModels('["sol", 4, "", "terra"]'), ['sol', 'terra'])
 })

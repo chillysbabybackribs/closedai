@@ -90,77 +90,42 @@ export function modelContextLabel(tokens: number | undefined): string | null {
   return String(Math.round(tokens))
 }
 
-/** How many of each provider's models the menu shows before the rest are folded away. */
-export const FEATURED_MODELS_PER_PROVIDER = 4
+/** How many recently used models the picker remembers, across providers. */
+export const RECENT_MODELS_KEPT = 8
+/** How many of them the picker's Recent block shows. */
+export const RECENT_MODELS_SHOWN = 3
 
-/** How many times the picker has been used for each model id. */
-export type ModelUsage = Readonly<Record<string, number>>
-
-export type ProviderSection = {
-  provider: ChatProvider
-  label: string
-  /** The short list this provider's submenu opens on. */
-  featured: ChatModel[]
-  /** Every model this provider offers. */
-  all: ChatModel[]
-  /** How many models `featured` leaves out; 0 when the submenu already shows everything. */
-  hiddenCount: number
-}
-
-/**
- * The menu opens on the providers rather than the catalogue: one row each, and the models
- * behind it. That already answers the wall-of-names problem the flat list had, but a single
- * provider can still be long on its own (37 Cursor models against four Codex ones), so each
- * submenu keeps the same short-list rule the flat menu used to apply globally.
- *
- * Within a provider the ranking is by how often the picker has been used for a model, then its
- * default, then catalogue order. The selected model is always featured — its checkmark has to
- * be visible without expanding — and a remainder of one is featured too, rather than hidden
- * behind a row that reveals a single name.
- */
-export function providerSections(
-  models: ChatModel[],
-  usage: ModelUsage,
-  selectedModel: string | null,
-  limit = FEATURED_MODELS_PER_PROVIDER
-): ProviderSection[] {
-  return modelGroups(models).map(({ provider, label, models: all }) => {
-    const featured = featuredModels(all, usage, selectedModel, limit)
-    const hiddenCount = all.length - featured.length
-    return hiddenCount <= 1
-      ? { provider, label, featured: all, all, hiddenCount: 0 }
-      : { provider, label, featured, all, hiddenCount }
-  })
-}
-
-/** One provider's featured slots, filled by rank but listed back in catalogue order. */
-function featuredModels(entries: ChatModel[], usage: ModelUsage, selectedModel: string | null, limit: number): ChatModel[] {
-  const ranked = [...entries].sort((a, b) => (
-    Number(b.id === selectedModel) - Number(a.id === selectedModel)
-    || (usage[b.id] ?? 0) - (usage[a.id] ?? 0)
-    || Number(b.isDefault) - Number(a.isDefault)
-  ))
-  const keep = new Set(ranked.slice(0, limit).map((model) => model.id))
-  return entries.filter((model) => keep.has(model.id))
-}
-
-/** Stored usage counts, ignoring anything that is not a positive count. */
-export function parseModelUsage(raw: string | null): ModelUsage {
-  if (!raw) return {}
+/** Stored recents, oldest first; anything that is not a model id string is dropped. */
+export function parseRecentModels(raw: string | null): string[] {
+  if (!raw) return []
   try {
     const parsed: unknown = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object') return {}
-    const usage: Record<string, number> = {}
-    for (const [id, count] of Object.entries(parsed as Record<string, unknown>)) {
-      if (typeof count === 'number' && Number.isFinite(count) && count > 0) usage[id] = count
-    }
-    return usage
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((id): id is string => typeof id === 'string' && id.length > 0).slice(-RECENT_MODELS_KEPT)
   } catch {
-    return {}
+    return []
   }
 }
 
-/** One more use of a model. */
-export function countModelUse(usage: ModelUsage, modelId: string): ModelUsage {
-  return { ...usage, [modelId]: (usage[modelId] ?? 0) + 1 }
+/** One more use of a model: it moves to the end, the oldest falls off past the cap. */
+export function pushRecentModel(recent: readonly string[], modelId: string): string[] {
+  return [...recent.filter((id) => id !== modelId), modelId].slice(-RECENT_MODELS_KEPT)
+}
+
+/**
+ * The Recent block, most recent last so the model used just before this one sits nearest the
+ * trigger. The current model is already checked in its own section, and models no longer in the
+ * catalogue are skipped rather than shown as dead rows.
+ */
+export function recentModels(
+  models: ChatModel[],
+  recent: readonly string[],
+  selectedModel: string | null,
+  limit = RECENT_MODELS_SHOWN
+): ChatModel[] {
+  const byId = new Map(models.map((model) => [model.id, model]))
+  return recent
+    .filter((id) => id !== selectedModel)
+    .flatMap((id) => byId.get(id) ?? [])
+    .slice(-limit)
 }
