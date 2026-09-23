@@ -34,6 +34,8 @@ type LiveState = {
   sawOutput: boolean
   /** A driven send is out and no turn has started for it yet. */
   awaitingStart: boolean
+  /** The thread changed as a turn started (a rotation at send time), so the next cycle re-seeds. */
+  reseed: boolean
 }
 
 export const AGENT_RUN_RELAUNCH_REASON = 'App relaunched'
@@ -171,7 +173,12 @@ export class AgentRunService extends EventEmitter {
     // The thread the turn runs in; the first turn creates it, so the send-time id may be null.
     const threadId = this.chat.paneSnapshot(chatId)?.threadId ?? null
     const run = this.get(chatId)
-    if (run && threadId && run.threadId !== threadId) this.patch(chatId, { threadId })
+    if (run && threadId && run.threadId !== threadId) {
+      // A rotation that landed with this send moved the turn to a thread that never saw the
+      // standing instructions; the send-time comparison missed it, so the next cycle carries them.
+      if (run.threadId !== null) live.reseed = true
+      this.patch(chatId, { threadId })
+    }
   }
 
   private noteTurnEnded(chatId: string, live: LiveState): void {
@@ -231,9 +238,10 @@ export class AgentRunService extends EventEmitter {
       live.turnActive = true
       return
     }
-    const threadChanged = run.threadId !== null && snapshot.threadId !== null && snapshot.threadId !== run.threadId
+    const threadChanged = live.reseed || (run.threadId !== null && snapshot.threadId !== null && snapshot.threadId !== run.threadId)
     const text = agentCycleMessage(run, threadChanged)
     this.patch(chatId, { cycle: run.cycle + 1, threadId: snapshot.threadId ?? run.threadId, reason: null })
+    live.reseed = false
     live.awaitingStart = true
     live.sawOutput = false
     this.clearTimer(live)
@@ -287,7 +295,7 @@ export class AgentRunService extends EventEmitter {
   private liveFor(chatId: string): LiveState {
     let live = this.live.get(chatId)
     if (!live) {
-      live = { timer: null, turnActive: Boolean(this.chat.paneSnapshot(chatId)?.activeTurnId), sawOutput: false, awaitingStart: false }
+      live = { timer: null, turnActive: Boolean(this.chat.paneSnapshot(chatId)?.activeTurnId), sawOutput: false, awaitingStart: false, reseed: false }
       this.live.set(chatId, live)
     }
     return live
