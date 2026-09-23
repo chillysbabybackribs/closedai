@@ -29,7 +29,10 @@ export function navigateAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'navigate',
     description:
-      'Open a URL in this chat’s assigned tab, wait for readiness, and return final URL, title, and load state. Takes a URL, never search text: search.query does discovery and opens a source here, and this action refuses both free text and search-engine results pages. The first untargeted navigation opens an assigned tab and selects it; new_tab opens another. Pages run at full speed whether or not their tab is the selected one. Assignments keep other chats from acting in the tab until released, though any chat may read it; cookies and website accounts remain shared.',
+      'Navigate to a URL; use search.query or search.run for discovery. Free text and search-engine pages are refused. ' +
+      'Waits for the requested readiness condition and returns URL, title, and load state. The first untargeted call ' +
+      'assigns and selects a tab; new_tab creates another. Use tab_id for a known tab. Another chat’s assigned tab ' +
+      'cannot be navigated, and the signed-in browser session is shared.',
     inputSchema: {
       type: 'object',
       properties: {
