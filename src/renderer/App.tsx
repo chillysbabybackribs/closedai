@@ -200,8 +200,8 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             onOpened={() => setHistoryOpen(false)} />
           <button type="button" className="titlebar-icon-button titlebar-coordinator-toggle"
             data-ui="layout.coordinator-open" disabled={!chat.selectedPaneId}
-            aria-label="Open coordinator workspace"
-            title="Coordinator workspace (Ctrl+Shift+C)"
+            aria-label="Coordinator and Worker chats"
+            title="Coordinator and Worker (Ctrl+Shift+C)"
             onClick={() => workspaceRef.current?.openCoordinatorWorkspace()}>
             <Network size={20} strokeWidth={1.75} aria-hidden="true" />
           </button>

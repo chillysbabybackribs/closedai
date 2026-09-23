@@ -12,7 +12,7 @@ export type EnableCoordinatorResult = {
   workerPaneIds: [string, string]
 }
 
-/** Dedicated Coordinator + Worker chats opened beside the browser; not the caller's pane. */
+/** Coordinator + Worker chat ids for the dedicated crew pair; layout is ordinary pane docking. */
 export type OpenCoordinatorWorkspaceResult = {
   groupId: string
   coordinatorPaneId: string

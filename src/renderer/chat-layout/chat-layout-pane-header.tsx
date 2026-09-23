@@ -42,7 +42,6 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
   canMaximize: boolean
   isThisTileSolo: boolean
 }) {
-  const coordinatorLocked = Boolean(row?.coordinatorGroup)
   return <ContextMenu.Root>
     <ContextMenu.Trigger asChild>
       <header className="chat-layout-header"
@@ -54,7 +53,7 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
           if (canMaximize || isThisTileSolo) setSoloPaneId((current) => current ? null : activeId)
         }}>
         <button type="button" className="chat-layout-drag" data-ui="layout.pane-drag" data-ui-key={activeId}
-          draggable={!busy && !coordinatorLocked} disabled={busy || coordinatorLocked} aria-label="Drag to move chat pane"
+          draggable={!busy} disabled={busy} aria-label="Drag to move chat pane"
           title="Drag to move whole pane · Tab drags move one conversation"
           onDragStart={(event) => {
             event.dataTransfer.setData(CHAT_DRAG_TYPE, activeId)

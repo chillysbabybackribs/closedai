@@ -1,19 +1,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { coordinatorWorkspaceLayout } from './layout-coordinator.ts'
 import { paneIds } from './layout-tree.ts'
-import { coordinatorBrowserSideLayout } from './layout-coordinator.ts'
 
-test('coordinatorBrowserSideLayout stacks chats beside the browser', () => {
-  let n = 0
-  const tree = coordinatorBrowserSideLayout(
-    { groupId: 'g', coordinatorPaneId: 'coord', workerPaneId: 'worker' },
-    'home',
-    () => `split-${++n}`
+test('coordinatorWorkspaceLayout places coordinator beside stacked workers', () => {
+  const tree = coordinatorWorkspaceLayout(
+    { groupId: 'g', coordinatorPaneId: 'coord', workerPaneIds: ['wa', 'wb'] },
+    () => crypto.randomUUID()
   )
-  const ids = paneIds(tree)
-  assert.deepEqual(ids.sort(), ['coord', 'home', 'worker'])
-  assert.equal(tree.kind, 'split')
-  if (tree.kind !== 'split') return
-  assert.equal(tree.first.kind, 'pane')
-  assert.equal(tree.first.id, 'home')
+  assert.deepEqual(new Set(paneIds(tree)), new Set(['coord', 'wa', 'wb']))
 })

@@ -1,43 +1,7 @@
-import type { EnableCoordinatorResult, OpenCoordinatorWorkspaceResult } from '../../shared/coordinator.js'
-import { BROWSER_PANE_ID, withBrowser, type ChatLayout } from './layout-tree.js'
+import type { EnableCoordinatorResult } from '../../shared/coordinator.js'
+import { withBrowser, type ChatLayout } from './layout-tree.js'
 
-/**
- * Home chat stays visible; Coordinator and Worker are full-height columns side by side,
- * on the far side of the browser from that chat.
- * [ anchor | coordinator | worker | browser ]
- */
-export function coordinatorBrowserSideLayout(
-  result: OpenCoordinatorWorkspaceResult,
-  anchorPaneId: string,
-  newSplitId: () => string
-): ChatLayout {
-  const crew: ChatLayout = {
-    kind: 'split',
-    id: newSplitId(),
-    axis: 'horizontal',
-    ratio: 0.5,
-    first: { kind: 'pane', id: result.coordinatorPaneId },
-    second: { kind: 'pane', id: result.workerPaneId }
-  }
-  const oppositeBrowser: ChatLayout = {
-    kind: 'split',
-    id: newSplitId(),
-    axis: 'horizontal',
-    ratio: 0.62,
-    first: crew,
-    second: { kind: 'pane', id: BROWSER_PANE_ID }
-  }
-  return {
-    kind: 'split',
-    id: newSplitId(),
-    axis: 'horizontal',
-    ratio: 0.28,
-    first: { kind: 'pane', id: anchorPaneId },
-    second: oppositeBrowser
-  }
-}
-
-/** Coordinator left; workers stacked on the right. */
+/** Layout helper when a pane is converted to coordinator mode with two workers (legacy IPC path). */
 export function coordinatorWorkspaceLayout(
   result: EnableCoordinatorResult,
   newSplitId: () => string

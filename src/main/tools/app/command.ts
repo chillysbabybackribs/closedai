@@ -43,7 +43,7 @@ export function appCommandActions(
       action: 'new_chat',
       description:
         'Create a chat and return its pane id. From a coordinator pane, returns a linked worker id without moving focus. Otherwise selects the new chat like File → New chat. ' +
-        'coordinator: true instead opens the coordinator workspace (dedicated Coordinator and Worker chats stacked beside the browser) through the title-bar control; the calling chat is unchanged.',
+        'coordinator: true instead runs the title-bar Coordinator control (ensure Coordinator and Worker chats exist beside the selected chat); the calling chat stays selected.',
       inputSchema: objectSchema({
         coordinator: { type: 'boolean', description: 'Open the coordinator workspace instead of a single chat; default false.' }
       }),

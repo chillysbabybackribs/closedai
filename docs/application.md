@@ -382,13 +382,13 @@ then **Hide pane** (`layout.pane-hide`) and, with another tile open,
 tile's strip in reading order, the keyboard route for a tab drag; an emptied tile collapses as it
 does after a drag. Close, hide, and move rows show subtitles when tasks continue. A separator
 follows, then the title-bar **Coordinator** button (`layout.coordinator-open`, Ctrl/Cmd+Shift+C) or
-**Coordinator…** (`layout.coordinator-enable`) opens **Coordinator** and **Worker** as two full-height
-columns side by side on the far side of the browser from the selected chat
-(`[ this chat | coordinator | worker | browser ]`) without converting or hiding that conversation. Border
-colors mark coordinator (blue) and worker (green) tiles. From the Coordinator pane, `new_chat` and
-awaited worker turns keep focus on the coordinator. **Stop coordinating**
-(`layout.coordinator-disable`) clears the grouping. Coordinator tiles cannot be dragged out of
-the group. Then **Workspace layout…** (`layout.presets`), **Rename…**, optional **Pin chat**, and
+**Coordinator…** (`layout.coordinator-enable`) ensures **Coordinator** and **Worker** chats exist
+(creating or reusing them), docks them beside the selected chat if they are not already in the
+layout, and leaves focus on the current chat. Border colors mark coordinator (blue) and worker
+(green) tiles; otherwise they behave like any other pane (drag, stack, close, presets). From the
+Coordinator pane, `new_chat` and awaited worker turns keep focus on the coordinator. **Stop
+coordinating** (`layout.coordinator-disable`) clears the grouping only. Then **Workspace layout…**
+(`layout.presets`), **Rename…**, optional **Pin chat**, and
 pause/resume when the tab’s task is running or paused. Ctrl/Cmd+W uses that same close or hide path for the focused chat.
 A rejected layout operation shows its reason above the canvas, cleared by the next successful
 operation or after 8 s. Adding a tab waits for main to confirm the selection; if no confirmation
