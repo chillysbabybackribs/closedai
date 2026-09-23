@@ -21,8 +21,11 @@ workspace's `AGENTS.md` into Claude, Antigravity, or Cursor prompts. Tool switch
 ClosedAI registry, not each provider's native tools.
 
 The user controls ClosedAI tool switches in the Tools modal. Disabled tools and actions are
-omitted from new tool catalogs and refused by the registry. The app does not automatically
-switch every tool off as part of the prompt reset. Codex 0.154 may retain a saved tool catalog
+omitted from new tool catalogs and refused by the registry. Credential reads can also require an
+in-chat approval card (Settings → Security). Claude Code and Codex do not show their native
+permission or approval dialogs in ClosedAI sessions; capability is gated here instead. See
+[Claude Code](claude-code.md#semantics) for the Claude SDK settings that enforce that boundary.
+The app does not automatically switch every tool off as part of the prompt reset. Codex 0.154 may retain a saved tool catalog
 on resume; when the enabled catalog changes, ClosedAI starts a new provider thread with its
 existing conversation handoff before the next send. This preserves the visible transcript.
 For a clean native baseline, use a new chat after loading the new build; an existing provider

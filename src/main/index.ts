@@ -106,8 +106,7 @@ const liveVerifyHandle: LiveVerifyHandle = {
   requested: false,
   pending: null,
   toolRegistry: null,
-  researchService: null,
-  userDataPath: () => app.getPath('userData')
+  researchService: null
 }
 
 // The BrowserWindow reference can outlive its WebContents during Electron shutdown. Keep all

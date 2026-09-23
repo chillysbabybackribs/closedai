@@ -129,26 +129,12 @@ export async function runSearchPipelineLiveVerify(
 export async function runLiveVerify(
   mode: string,
   registry: ToolRegistry,
-  research: ResearchService | null,
-  userData?: string
+  research: ResearchService | null
 ): Promise<Record<string, unknown>> {
   if (mode === 'browser') return runBrowserLiveVerify(registry)
   if (mode === 'search-pipeline') {
     if (!research) throw new Error('Research service is not ready')
     return runSearchPipelineLiveVerify(registry, research)
-  }
-  if (mode === 'poker-autopilot') {
-    if (!userData) throw new Error('userData is required for poker-autopilot')
-    const { runPokerAutopilotLiveVerify } = await import('./poker-autopilot.js')
-    return runPokerAutopilotLiveVerify(registry, userData)
-  }
-  if (mode === 'poker-autopilot-stop') {
-    if (!userData) throw new Error('userData is required for poker-autopilot-stop')
-    const { writeFile } = await import('node:fs/promises')
-    const { stopFile, writeStatus } = await import('../poker-autopilot/status.js')
-    await writeFile(stopFile(userData), 'stop')
-    await writeStatus(userData, { running: false, lastDecision: 'stop requested' })
-    return { ok: true, stopped: true }
   }
   throw new Error(`Unknown CLOSEDAI_LIVE_VERIFY mode: ${mode}`)
 }

@@ -25,10 +25,11 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
         name: 'list',
         deferLoading: true,
         description:
-          'scope open lists current chat activity; scope history searches open and closed chats across projects, newest ' +
-          'first. Returns up to eight compact entries without transcripts. query matches titles, previews, paths, and saved ' +
-          'notes, not transcript bodies; cwd narrows history to a directory. Continue with before_chat_id. Use ' +
-          'recall(scope: history, chat_id) to read a transcript. Prefer explicit chat references over recency.',
+          'scope open (default) lists live peer activity; paneId is chat_id for read. scope history discovers other chats ' +
+          'in the store (open panes and closed) across projects, newest activity first, without transcripts. Returns up to ' +
+          '8 entries (default limit 5). query matches titles, previews, project paths, and checkpoint notes, not transcript ' +
+          'bodies; cwd narrows history to one project. Page with nextBeforeChatId as before_chat_id. Use recall(scope=history, ' +
+          'chat_id=...) for transcript excerpts; read only for ids from scope open. Prefer explicit references over recency.',
         inputSchema: { type: 'object', additionalProperties: false, properties: {
           scope: { type: 'string', enum: ['open', 'history'] },
           query: { type: 'string', maxLength: 200 },

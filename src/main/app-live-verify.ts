@@ -7,7 +7,6 @@ export type LiveVerifyHandle = {
   pending: { mode: string; quitAfter: boolean } | null
   toolRegistry: ToolRegistry | null
   researchService: ResearchService | null
-  userDataPath: () => string
 }
 
 export function liveVerifyFromArgv(): string | undefined {
@@ -26,7 +25,7 @@ export async function runPendingLiveVerify(handle: LiveVerifyHandle, app: App): 
   handle.pending = null
   try {
     const { runLiveVerify } = await import('./live-verify/search-pipeline.js')
-    const result = await runLiveVerify(pending.mode, handle.toolRegistry, handle.researchService, handle.userDataPath())
+    const result = await runLiveVerify(pending.mode, handle.toolRegistry, handle.researchService)
     console.log(`[live-verify:${pending.mode}]`, JSON.stringify(result))
   } catch (error) {
     console.error(`[live-verify:${pending.mode}]`, error)

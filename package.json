@@ -20,7 +20,6 @@
     "map:check": "node scripts/repo-tree.mjs --check",
     "audit:docs": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs scripts/docs-telemetry-audit.ts",
     "browser:live": "node scripts/browser-live-check.mjs",
-    "poker-autopilot": "node scripts/poker-autopilot.mjs",
     "search:pipeline": "node scripts/search-pipeline-live-check.mjs",
     "harness:replay": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs scripts/harness-sim/run.mjs",
     "harness:model": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs scripts/harness-sim/run.mjs --model",

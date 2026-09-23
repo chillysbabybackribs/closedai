@@ -617,9 +617,11 @@ described below.
 
 ## Working memory and recall
 
-`peer_chats.list` retains `scope: open` as the peer-status default. `scope: history` discovers
-previous conversations, including closed chats across projects, using existing records without
-loading transcripts. It excludes the caller, archived chats, and empty chats. Entries contain
+`peer_chats.list` retains `scope: open` as the peer-status default: live peer summaries and
+visible subagent rows (`paneId` is the `chat_id` for `read`). `scope: history` discovers other
+chats from the store (open panes and parked or closed conversations) across projects, using
+existing records without loading transcripts. It excludes the caller, archived chats, and empty
+chats. Entries contain
 `chatId`, `threadId`, title (120 chars), preview (240 chars), `cwd`, and `lastActivityAt`, ordered by
 most recent user submission; older records fall back to turn completion or creation. Background
 completion and pinning do not outrank a recorded user submission. `limit` defaults to 5, max 8;
