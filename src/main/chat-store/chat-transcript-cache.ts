@@ -15,7 +15,7 @@ import { writeAtomic } from '../atomic-write.js'
 /** How much of the tail is kept: enough to fill the first screen, not the whole conversation. */
 export const CACHED_TRANSCRIPT_ITEMS = 60
 
-/** Ceiling per chat, so one conversation full of long diffs cannot own the cache directory. */
+/** Ceiling for each chat's serialized transcript items, measured in UTF-8 bytes. */
 export const CACHED_TRANSCRIPT_BYTES = 256 * 1024
 
 const WRITE_DELAY_MS = 400
@@ -35,23 +35,29 @@ export type CachedChatView = {
 
 /** The bounded tail of a snapshot: the last items that fit both caps, oldest dropped first. */
 export function cachedViewOf(threadId: string, snapshot: ChatSnapshot): CachedChatView {
-  const tail = snapshot.items.slice(-CACHED_TRANSCRIPT_ITEMS)
-  let dropped = snapshot.items.length - tail.length
-  let bytes = tail.reduce((total, item) => total + JSON.stringify(item).length, 0)
-  while (tail.length > 1 && bytes > CACHED_TRANSCRIPT_BYTES) {
-    const oldest = tail.shift()!
-    bytes -= JSON.stringify(oldest).length
-    dropped += 1
-  }
-  return {
+  return boundView({
     version: 1,
     threadId,
     threadName: snapshot.threadName,
-    items: tail,
-    hasEarlier: dropped > 0 || Boolean(snapshot.history?.hasEarlier),
+    items: snapshot.items,
+    hasEarlier: Boolean(snapshot.history?.hasEarlier),
     contextUsage: snapshot.contextUsage,
     updatedAt: Date.now()
+  })
+}
+
+function boundView(view: CachedChatView): CachedChatView {
+  const tail = view.items.slice(-CACHED_TRANSCRIPT_ITEMS)
+  const sizes = tail.map((item) => Buffer.byteLength(JSON.stringify(item), 'utf8'))
+  // Include the array brackets and commas, even when no individual item fits.
+  let bytes = 2 + Math.max(0, tail.length - 1) + sizes.reduce((total, size) => total + size, 0)
+  let dropped = 0
+  while (dropped < tail.length && bytes > CACHED_TRANSCRIPT_BYTES) {
+    bytes -= sizes[dropped] + (dropped < tail.length - 1 ? 1 : 0)
+    dropped += 1
   }
+  const items = tail.slice(dropped)
+  return { ...view, items, hasEarlier: view.hasEarlier || items.length < view.items.length }
 }
 
 export class ChatTranscriptCache {
@@ -213,8 +219,8 @@ export function normalizeCachedView(parsed: unknown): CachedChatView | null {
   const items = view.items.filter((item): item is ChatTranscriptItem =>
     Boolean(item) && typeof item === 'object' && typeof (item as ChatTranscriptItem).id === 'string' &&
     typeof (item as ChatTranscriptItem).type === 'string')
-  if (items.length === 0) return null
-  return {
+  if (items.length === 0 && view.hasEarlier !== true) return null
+  return boundView({
     version: 1,
     threadId: view.threadId,
     threadName: typeof view.threadName === 'string' ? view.threadName : null,
@@ -222,7 +228,7 @@ export function normalizeCachedView(parsed: unknown): CachedChatView | null {
     hasEarlier: view.hasEarlier === true || items.length < view.items.length,
     contextUsage: normalizeUsage(view.contextUsage),
     updatedAt: typeof view.updatedAt === 'number' ? view.updatedAt : 0
-  }
+  })
 }
 
 function normalizeUsage(usage: unknown): ChatContextUsage | null {
