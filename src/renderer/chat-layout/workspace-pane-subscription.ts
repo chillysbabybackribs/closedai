@@ -9,7 +9,7 @@ import {
 
 /** Pane-scoped workspace slice; streaming on another pane does not change this reference. */
 export function useWorkspacePaneSlice(paneId: string): WorkspacePaneSlice {
-  const cached = useRef<WorkspacePaneSlice>()
+  const cached = useRef<WorkspacePaneSlice | undefined>(undefined)
   return useSyncExternalStore(
     subscribeWorkspaceSnapshot,
     () => {

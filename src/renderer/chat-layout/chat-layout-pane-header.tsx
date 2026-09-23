@@ -1,3 +1,4 @@
+import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { ContextMenu } from 'radix-ui'
 import { Plus, X } from 'lucide-react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
@@ -20,8 +21,8 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
   reviewQueue?: ChatReviewQueue
   row: ChatRowSummary | undefined
   soloTile: { id: string; tabs: string[] } | null
-  setSoloPaneId: React.Dispatch<React.SetStateAction<string | null>>
-  tabFocus: React.MutableRefObject<string | null>
+  setSoloPaneId: Dispatch<SetStateAction<string | null>>
+  tabFocus: MutableRefObject<string | null>
   hideHint: string
   closeHint: string
   tabActivity?: TabActivity
@@ -93,12 +94,11 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
   </ContextMenu.Root>
 }
 
-export function ChatLayoutPaneHeader(props: Parameters<typeof ChatLayoutPaneHeaderBody>[0] & {
+type ChatLayoutPaneHeaderProps = Omit<Parameters<typeof ChatLayoutPaneHeaderBody>[0], 'hideHint' | 'closeHint' | 'tabActivity'> & {
   reviewQueue?: ChatReviewQueue
-  activity?: (id: string) => TabActivity
-  tabs: string[]
-  activeId: string
-}) {
+}
+
+export function ChatLayoutPaneHeader(props: ChatLayoutPaneHeaderProps) {
   const { reviewQueue, activity, tabs, activeId, ...rest } = props
   if (reviewQueue) {
     return <ChatLayoutPaneHints tabs={tabs} activeId={activeId} reviewQueue={reviewQueue}>

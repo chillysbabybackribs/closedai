@@ -177,13 +177,20 @@ async function main(): Promise<void> {
   // browser profile — ~600ms on a first launch — so the window no longer waits behind it:
   // only the first page load does, and only until the cap, since a stuck import must not
   // leave someone looking at an empty browser.
-  browserReadyToLoad = capped(
-    started(importDefaultBrowserCookies(mainCookieImportDeps(mainIpcRegistration())).catch((error: unknown) => {
-      console.warn('[cookie-import] failed', error)
-    })),
-    COOKIE_IMPORT_LOAD_GATE_MS,
-    () => { console.warn('[cookie-import] still running; loading the first page without it') }
-  )
+  const cookieDeps = mainCookieImportDeps(mainIpcRegistration())
+  // Every later launch is latched, and there the gate would cost what it saves: the import's
+  // own latch check reads the whole session cookie jar, which is slower than the first page.
+  // (It re-imports when that read comes back empty; that repair is not worth gating a launch
+  // for, and the launch after it is latched and correct.)
+  const cookieImportPending = cookieDeps.enabled() && !cookieDeps.latch.get().browserCookiesImported
+  const cookieImport = started(importDefaultBrowserCookies(cookieDeps).catch((error: unknown) => {
+    console.warn('[cookie-import] failed', error)
+  }))
+  browserReadyToLoad = cookieImportPending
+    ? capped(cookieImport, COOKIE_IMPORT_LOAD_GATE_MS, () => {
+        console.warn('[cookie-import] still running; loading the first page without it')
+      })
+    : null
   // Tools resolve the browser lazily: it is created with the window, after the chat service.
   const browserCoordination = new BrowserCoordination({
     tabs: () => browserService?.tabList() ?? [],

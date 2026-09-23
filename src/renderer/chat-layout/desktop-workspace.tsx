@@ -1,10 +1,8 @@
-import { useEffect, useImperativeHandle, useMemo, useRef, useState, type Dispatch, type Ref } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactElement, type Ref } from 'react'
 import { BrowserPane } from '../browser-pane.js'
 import { useBrowserController } from '../browser-controller.js'
-import { ChatPane, type ChatPaneDialog } from '../chat-pane.js'
-import { usePaneChatController, type useChatController } from '../chat-controller.js'
-import { initialChatState, type ChatWorkspaceAction } from '../chat-state.js'
-import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
+import { type ChatPaneDialog } from '../chat-pane.js'
+import { type useChatController } from '../chat-controller.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import { ChatCanvas } from './chat-canvas.js'
 import { ChatLayoutActions } from './layout-context-menu.js'
@@ -12,8 +10,8 @@ import { useChatLayout } from './layout-controller.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, paneIds } from './layout-tree.js'
 import { LayoutPresetsDialog } from './layout-presets-dialog.js'
 import type { CanvasSize, LayoutPreset } from './layout-presets.js'
-import { tabActivity } from './tab-activity.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
+import { WorkspaceChat } from './workspace-chat.js'
 
 export type ChatLayoutHandle = {
   splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
@@ -31,7 +29,6 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   onHistoryOpenChange: (open: boolean) => void
   dialog: ChatPaneDialog | null
   onDialogChange: (dialog: ChatPaneDialog | null) => void
-  /** Shown in every pane header while the registry is in Read-only; null until known. */
   toolsPreset?: 'full' | 'read-only' | 'custom' | null
   onRenameChat?: (id: string, title: string) => void
   onBrowserVisibilityChange: (visible: boolean) => void
@@ -53,6 +50,35 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   const [browserRevealVersion, setBrowserRevealVersion] = useState(0)
   const [presetsOpen, setPresetsOpen] = useState(false)
   const canvasSize = useRef<CanvasSize>({ width: 0, height: 0 })
+  const chatsRef = useRef(chat.chats)
+  chatsRef.current = chat.chats
+  const selectedPaneId = chat.selectedPaneId
+  const dispatch = chat.dispatch
+  const title = useCallback((id: string) => chatsRef.current.find((row) => row.paneId === id)?.title ?? 'New chat', [])
+  const chatRow = useCallback((id: string) => chatsRef.current.find((row) => row.paneId === id), [])
+  const renderPaneRef = useRef<(id: string) => ReactElement>(() => null as unknown as ReactElement)
+  renderPaneRef.current = (id: string) => (
+    <WorkspaceChat paneId={id} dispatch={dispatch}
+      appearance={appearance} historyOpen={historyOpen && selectedPaneId === id}
+      onHistoryOpenChange={onHistoryOpenChange} dialog={selectedPaneId === id ? dialog : null}
+      onDialogChange={onDialogChange} archiveChat={archiveChat}
+      onContinueInNewChat={() => continueChatRef.current(id)}
+      onNewChat={() => { void layout.newChat(id) }} />
+  )
+  const renderPane = useCallback((id: string) => renderPaneRef.current(id), [])
+  const renderBrowser = useMemo(() => (
+    <div className="workspace-right" data-mode="browser" data-with-browser={layout.browserVisible ? 'yes' : 'no'}>
+      <div className={`workspace-surface workspace-surface-browser${layout.browserVisible ? '' : ' is-collapsed'}`}>
+        <BrowserPane controller={browser} dragHandle={browserDragHandle} />
+      </div>
+    </div>
+  ), [browser, browserDragHandle, layout.browserVisible])
+  const continueChatRef = useRef<(id: string) => Promise<void>>(async () => {})
+  continueChatRef.current = (id: string): Promise<void> => {
+    onHistoryOpenChange(false)
+    const row = chatsRef.current.find((entry) => entry.paneId === id)
+    return layout.continueChat(id, row?.threadId ?? null, row?.modelId ?? null)
+  }
   useImperativeHandle(ref, () => ({
     splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),
     toggleBrowser: () => {
@@ -75,15 +101,23 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   useEffect(() => {
     if (imageTabId) layout.showBrowser()
   }, [imageTabId, layout.showBrowser])
-  const select = (id: string): void => { void layout.focusPane(id) }
-  // One path for both entry points: the tab header's continue action and the message action under
-  // the latest completed response.
-  const continueChat = (id: string): Promise<void> => {
-    onHistoryOpenChange(false)
-    const row = chat.chats.find((entry) => entry.paneId === id)
-    return layout.continueChat(id, row?.threadId ?? null, row?.modelId ?? null)
-  }
+  const select = useCallback((id: string): void => { void layout.focusPane(id) }, [layout.focusPane])
+  const onDock = useCallback((id: string | null, target: string, edge: import('./layout-tree.js').DockEdge | null, singleTab?: boolean) => {
+    void layout.dock(id, target, edge, singleTab)
+  }, [layout.dock])
+  const onSelectTab = useCallback((id: string) => { onHistoryOpenChange(false); void layout.activateTab(id) }, [layout.activateTab, onHistoryOpenChange])
+  const onCloseTab = useCallback((id: string) => { void layout.closeTab(id) }, [layout.closeTab])
+  const onNewChat = useCallback((id: string) => { onHistoryOpenChange(false); void layout.newChat(id) }, [layout.newChat, onHistoryOpenChange])
+  const onTogglePin = useCallback((id: string, pinned: boolean) => { void chat.sidebar.setChatPinned(id, pinned).catch(() => {}) }, [chat.sidebar])
+  const onPauseTab = useCallback((id: string) => { void chat.interruptPane(id) }, [chat.interruptPane])
+  const onResumeTab = useCallback((id: string) => { void chat.resumePane(id) }, [chat.resumePane])
+  const onOpenPresets = useCallback(() => setPresetsOpen(true), [])
+  const onHide = useCallback((id: string) => { void layout.hide(id) }, [layout.hide])
+  const onSizeChange = useCallback((size: CanvasSize) => { canvasSize.current = size }, [])
   const actions = useMemo(() => ({ moveTab: layout.moveTabToTile }), [layout.moveTabToTile])
+  const onRename = useMemo(() => onRenameChat
+    ? (id: string) => onRenameChat(id, chatsRef.current.find((row) => row.paneId === id)?.title ?? 'New chat')
+    : undefined, [onRenameChat])
   return <div className="chat-desktop-workspace">
     {layout.error && <div className="chat-layout-error" role="alert">{layout.error}</div>}
     <ChatLayoutActions.Provider value={actions}>
@@ -92,33 +126,15 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         browserRevealVersion={browserRevealVersion}
         onDragActive={setDragging}
         browserVisible={layout.browserVisible}
-        title={(id) => chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat'}
-        activity={(id) => tabActivity(chat.chats.find((row) => row.paneId === id),
-          chat.snapshot.panes?.[id] ?? (id === chat.selectedPaneId ? chat.snapshot.selected : undefined), reviewQueue[id])}
-        onSelect={select} onDock={(id, target, edge, singleTab) => { void layout.dock(id, target, edge, singleTab) }}
-        onSelectTab={(id) => { onHistoryOpenChange(false); void layout.activateTab(id) }}
-        onCloseTab={(id) => { void layout.closeTab(id) }}
-        onNewChat={(id) => { onHistoryOpenChange(false); void layout.newChat(id) }}
-        onRenameChat={onRenameChat ? (id) => onRenameChat(id, chat.chats.find((row) => row.paneId === id)?.title ?? 'New chat') : undefined}
-        chatRow={(id) => chat.chats.find((row) => row.paneId === id)}
-        onTogglePin={(id, pinned) => { void chat.sidebar.setChatPinned(id, pinned).catch(() => {}) }}
-        onContinueChat={(id) => { void continueChat(id) }}
-        onPauseTab={(id) => { void chat.interruptPane(id) }}
-        onResumeTab={(id) => { void chat.resumePane(id) }}
-        onOpenPresets={() => setPresetsOpen(true)}
-        onSizeChange={(size) => { canvasSize.current = size }}
-        onHide={(id) => { void layout.hide(id) }} onResize={layout.resize}
-        renderPane={(id) => <WorkspaceChat paneId={id} snapshot={chat.snapshot} dispatch={chat.dispatch}
-          appearance={appearance} historyOpen={historyOpen && chat.selectedPaneId === id}
-          onHistoryOpenChange={onHistoryOpenChange} dialog={chat.selectedPaneId === id ? dialog : null}
-          onDialogChange={onDialogChange} archiveChat={archiveChat}
-          onContinueInNewChat={() => continueChat(id)}
-          onNewChat={() => { void layout.newChat(id) }} />}
-      renderBrowser={<div className="workspace-right" data-mode="browser" data-with-browser={layout.browserVisible ? 'yes' : 'no'}>
-        <div className={`workspace-surface workspace-surface-browser${layout.browserVisible ? '' : ' is-collapsed'}`}>
-          <BrowserPane controller={browser} dragHandle={browserDragHandle} />
-        </div>
-      </div>}
+        title={title}
+        reviewQueue={reviewQueue}
+        chatRow={chatRow}
+        onSelect={select} onDock={onDock} onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat}
+        onRenameChat={onRename} onTogglePin={onTogglePin} onContinueChat={(id) => { void continueChatRef.current(id) }}
+        onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets} onSizeChange={onSizeChange}
+        onHide={onHide} onResize={layout.resize}
+        renderPane={renderPane}
+      renderBrowser={renderBrowser}
     />
     </ChatLayoutActions.Provider>
     <LayoutPresetsDialog open={presetsOpen} size={canvasSize.current} tileCount={paneIds(layout.tree).length}
@@ -128,29 +144,4 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         void layout.arrange(preset, canvasSize.current)
       }} />
   </div>
-}
-
-function WorkspaceChat({ paneId, snapshot, dispatch, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onNewChat, onContinueInNewChat, archiveChat }: {
-  paneId: string
-  snapshot: ChatWorkspaceSnapshot
-  dispatch: Dispatch<ChatWorkspaceAction>
-  appearance: AppearanceSettings
-  historyOpen: boolean
-  onHistoryOpenChange: (open: boolean) => void
-  dialog: ChatPaneDialog | null
-  onDialogChange: (dialog: ChatPaneDialog | null) => void
-  onNewChat: () => void
-  /** Digest-seeded continuation for the message action under the latest completed response. */
-  onContinueInNewChat?: () => Promise<void>
-  archiveChat?: (chatId: string) => Promise<void>
-}) {
-  const retained = useRef(initialChatState())
-  const state = snapshot.panes?.[paneId] ?? (snapshot.selectedPaneId === paneId ? snapshot.selected : retained.current)
-  retained.current = state
-  const controller = usePaneChatController(snapshot, paneId, state, dispatch)
-  const isSelected = snapshot.selectedPaneId === paneId
-  return <ChatPane controller={controller} zoom={appearance.chatZoom} fontSize={appearance.chatFontSize}
-    composerFontSize={appearance.composerFontSize} historyOpen={historyOpen} onHistoryOpenChange={onHistoryOpenChange}
-    dialog={dialog} onDialogChange={onDialogChange} selected={isSelected} onNewChat={onNewChat}
-    onContinueInNewChat={onContinueInNewChat} archiveChat={archiveChat} />
 }

@@ -1,4 +1,5 @@
-import { startTransition, useCallback, useEffect, useMemo, useReducer, useState, type Dispatch } from 'react'
+import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useState, type Dispatch } from 'react'
+import { setWorkspaceSnapshot } from './chat-layout/workspace-snapshot-store.js'
 import type { ChatAttachment, ChatSnapshot } from '../shared/chat.js'
 import { CHAT_RESUME_PROMPT } from '../shared/chat.js'
 import type { ChatContinuationSource, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../shared/chat-peers.js'
@@ -42,7 +43,14 @@ export type ChatController = {
 }
 
 export function useChatController(enabled = true) {
-  const [{ workspace, sidebar: sidebarState }, dispatch] = useReducer(reduceChatRendererEvent, undefined, initialChatRendererState)
+  const [{ workspace, sidebar: sidebarState }, dispatch] = useReducer(reduceChatRendererEvent, undefined, () => {
+    const initial = initialChatRendererState()
+    setWorkspaceSnapshot(initial.workspace)
+    return initial
+  })
+  useLayoutEffect(() => {
+    setWorkspaceSnapshot(workspace)
+  }, [workspace])
   // Bumped by Retry after the first snapshot failed; the effect below re-requests it.
   const [startupAttempt, setStartupAttempt] = useState(0)
 
