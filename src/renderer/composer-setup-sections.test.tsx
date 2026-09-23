@@ -24,7 +24,7 @@ test('the model section groups by provider, checks the selection, and folds long
   }))
   assert.match(html, /data-ui="composer\.model-item" data-ui-key="gpt-5"[^>]*/)
   assert.match(html, /role="radio" aria-checked="true"[^>]*data-ui-key="gpt-5"/)
-  assert.match(html, /data-ui="composer\.model-more" data-ui-key="cursor"[^>]*>4 more</)
+  assert.match(html, /data-ui="composer\.model-more" data-ui-key="cursor"[^>]*>[\s\S]*Show 4 more models/)
   assert.doesNotMatch(html, /Cursor 7/)
 })
 

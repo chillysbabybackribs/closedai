@@ -330,19 +330,35 @@
 }
 
 .composer-setup-more {
-  margin: 0 0 2px 32px;
-  padding: 3px 0;
-  border: 0;
-  background: transparent;
-  color: var(--muted-foreground);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: calc(100% - 16px);
+  margin: 4px 8px 6px;
+  padding: 7px 9px 7px 32px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  color: color-mix(in srgb, var(--foreground) 78%, transparent);
   font: inherit;
-  font-size: 11.5px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
   cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
-.composer-setup-more:hover {
+.composer-setup-more svg {
+  width: 14px;
+  height: 14px;
+}
+
+.composer-setup-more:hover,
+.composer-setup-more:focus-visible {
+  border-color: color-mix(in srgb, var(--foreground) 24%, transparent);
+  background: color-mix(in srgb, var(--foreground) 9%, transparent);
   color: var(--foreground);
-  text-decoration: underline;
+  outline: none;
 }
 
 /* Effort as a segmented control. */

@@ -1,5 +1,5 @@
 import { useState, type JSX } from 'react'
-import { Check, Folder, Plus, X } from 'lucide-react'
+import { Check, ChevronDown, Folder, Plus, X } from 'lucide-react'
 
 import { ProviderMark } from '../components/ui/provider-mark.js'
 import type { ChatModel, ChatReasoningEffort } from '../shared/chat.js'
@@ -68,7 +68,8 @@ export function ModelSection({
                 data-ui-key={section.provider}
                 onClick={() => setExpanded((current) => new Set([...current, section.provider]))}
               >
-                {section.hiddenCount} more
+                <span>Show {section.hiddenCount} more {section.hiddenCount === 1 ? 'model' : 'models'}</span>
+                <ChevronDown aria-hidden="true" />
               </button>
             )}
           </div>

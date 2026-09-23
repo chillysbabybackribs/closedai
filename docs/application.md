@@ -354,8 +354,9 @@ The composer is one line inside one card: attach (`composer.upload`) on the left
 the setup trigger (`composer.setup`, provider mark, model name, and folder name) and the action
 button on the right. There is no collapsed mode and no separate rail or footer; pending attachment
 chips sit above the line inside the card. The setup trigger opens a single panel with four
-sections: Model (providers as groups, each on its most-used short list with a `composer.model-more`
-row for the rest), Effort (a segmented control, `composer.effort-item`), Folder, and Context (the
+sections: Model (providers as groups, each on its most-used short list with a full-width
+**Show N more models** disclosure (`composer.model-more`) for the rest), Effort (a segmented
+control, `composer.effort-item`), Folder, and Context (the
 context window, plan windows, and Compact conversation). Model and effort rows are disabled while a
 turn runs; the folder section stays usable because a change queues until the chat is idle. The
 trigger does not change while a turn runs: no spinner or elapsed clock. Right-clicking
