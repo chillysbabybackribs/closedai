@@ -10,7 +10,7 @@ import { CHAT_DRAG_TYPE } from './layout-tree.js'
 import { paneHideHint, tabCloseHint } from './layout-copy.js'
 import type { TabActivity } from './tab-activity.js'
 
-function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, soloTile, setSoloPaneId, tabFocus, hideHint, closeHint, tabActivity, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onEnableCoordinator, onDisableCoordinator, onHide, setDragging, canMaximize, isThisTileSolo }: {
+function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, soloTile, setSoloPaneId, tabFocus, hideHint, closeHint, tabActivity, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onHide, setDragging, canMaximize, isThisTileSolo }: {
   activeId: string
   tabs: string[]
   chatCount: number
@@ -35,8 +35,6 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
   onPauseTab?: (id: string) => void
   onResumeTab?: (id: string) => void
   onOpenPresets?: () => void
-  onEnableCoordinator?: (id: string) => void
-  onDisableCoordinator?: (id: string) => void
   onHide: (id: string) => void
   setDragging: (value: { id: string; singleTab: boolean } | null) => void
   canMaximize: boolean
@@ -91,9 +89,6 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
       onTogglePin={onTogglePin ? () => onTogglePin(activeId, row?.pinnedAt == null) : undefined}
       onPause={onPauseTab ? () => onPauseTab(activeId) : undefined}
       onResume={onResumeTab ? () => onResumeTab(activeId) : undefined}
-      onEnableCoordinator={onEnableCoordinator ? () => onEnableCoordinator(activeId) : undefined}
-      onDisableCoordinator={onDisableCoordinator ? () => onDisableCoordinator(activeId) : undefined}
-      coordinatorRole={row?.coordinatorGroup?.role ?? null}
       onCloseTab={() => { if (soloTile) setSoloPaneId(null); onCloseTab(activeId) }}
       onHide={() => { if (soloTile) setSoloPaneId(null); onHide(activeId) }} />
   </ContextMenu.Root>

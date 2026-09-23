@@ -20,8 +20,6 @@ export const UI_CONTROLS = {
   'window.close': 'Close the window',
 
   'layout.browser-toggle': 'Globe button beside Search chats in the top title bar: show or hide the shared browser in its saved position; no item required',
-  'layout.coordinator-open': 'Network button beside Search chats: create or show Coordinator and Worker chats docked beside the selected chat; Ctrl+Shift+C; no item required',
-  'layout.coordinator-stop': 'Square button beside the coordinator control: interrupt Coordinator and Worker and pause auto handoff until the next user message in Coordinator; Ctrl+Shift+X; no item required',
   'layout.browser-dock': 'Drop a chat tab or pane on the left or right half to place it beside the browser',
   'layout.browser-drag': 'Drag the shared browser by its tab-strip grip to a chat edge to stack or dock it',
   'layout.workspace-dock': 'Browser-drag drop target at the workspace edge for a full-height column; item is left or right',
@@ -36,8 +34,6 @@ export const UI_CONTROLS = {
   'layout.resume-tab': 'Tab context menu: resume a paused task in this chat; item is the chat id',
   'layout.pane-hide': 'Tab context menu or header control: remove this tile from the layout without stopping its chat; item is the chat id',
   'layout.presets': 'Header context-menu row (also View → Workspace layout): open the workspace layout dialog; item is the chat id',
-  'layout.coordinator-enable': 'Tab context menu: enable coordinator mode for this chat; item is the chat id',
-  'layout.coordinator-disable': 'Tab context menu: clear coordinator grouping; item is the chat id',
   'layout.presets-dialog': 'Workspace layout dialog: pick a starting arrangement that saves like any hand-built layout',
   'layout.preset-browser-centre': 'Layout dialog option: browser in the centre with two stacked chats on each side',
   'layout.preset-grid': 'Layout dialog option: browser hidden, chats in a balanced grid sized for the window',

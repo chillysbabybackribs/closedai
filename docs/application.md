@@ -381,18 +381,7 @@ then **Hide pane** (`layout.pane-hide`) and, with another tile open,
 (`layout.tab-move`, item `next` or `previous`) move the active conversation into the neighbouring
 tile's strip in reading order, the keyboard route for a tab drag; an emptied tile collapses as it
 does after a drag. Close, hide, and move rows show subtitles when tasks continue. A separator
-follows, then the title-bar **Coordinator** button (`layout.coordinator-open`, Ctrl/Cmd+Shift+C) or
-**Coordinator…** (`layout.coordinator-enable`) ensures **Coordinator** and **Worker** chats exist
-(creating or reusing them), docks them beside the selected chat if they are not already in the
-layout, and leaves focus on the current chat. Border colors mark coordinator (blue) and worker
-(green) tiles; otherwise they behave like any other pane (drag, stack, close, presets). A user
-messages to **Coordinator** (from you or another pane) stay in **Coordinator** only. When
-**Coordinator** finishes a turn, its assistant reply is sent to **Worker** automatically. When
-**Worker** finishes a turn, **Coordinator** receives a `[Worker finished]` message and starts its
-next turn immediately (repeat until you stop a turn). **Stop crew** (`layout.coordinator-stop`, Ctrl/Cmd+Shift+X) interrupts every
-pane in the crew and pauses auto handoff until you send a new message in Coordinator. From the
-Coordinator pane, `new_chat` and awaited worker turns keep focus on the coordinator. **Stop
-coordinating** (`layout.coordinator-disable`) stops the crew and clears the grouping. Then **Workspace layout…**
+follows, then **Workspace layout…**
 (`layout.presets`), **Rename…**, optional **Pin chat**, and
 pause/resume when the tab’s task is running or paused. Ctrl/Cmd+W uses that same close or hide path for the focused chat.
 A rejected layout operation shows its reason above the canvas, cleared by the next successful

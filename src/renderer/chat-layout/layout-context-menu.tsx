@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { ContextMenu } from 'radix-ui'
-import { ArrowLeftToLine, ArrowRightToLine, LayoutGrid, Network, PanelLeftClose, Pause, Pencil, Pin, PinOff, Play, Unlink, X } from 'lucide-react'
+import { ArrowLeftToLine, ArrowRightToLine, LayoutGrid, PanelLeftClose, Pause, Pencil, Pin, PinOff, Play, X } from 'lucide-react'
 import type { TabActivity } from './tab-activity.js'
 import type { TileDirection } from './layout-tabs.js'
 
@@ -10,8 +10,7 @@ const ICON = 16
 export const ChatLayoutActions = createContext<{ moveTab?: (id: string, direction: TileDirection) => void }>({})
 
 export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, hideHint, closeHint, tabActivity,
-  pinned, onOpenPresets, onRename, onTogglePin, onPause, onResume, onEnableCoordinator, onDisableCoordinator,
-  coordinatorRole, onCloseTab, onHide
+  pinned, onOpenPresets, onRename, onTogglePin, onPause, onResume, onCloseTab, onHide
 }: {
   activeId: string
   tabs: string[]
@@ -26,9 +25,6 @@ export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, hideHin
   onTogglePin?: () => void
   onPause?: () => void
   onResume?: () => void
-  onEnableCoordinator?: () => void
-  onDisableCoordinator?: () => void
-  coordinatorRole?: 'coordinator' | 'worker' | null
   onCloseTab: () => void
   onHide: () => void
 }): ReactNode {
@@ -36,8 +32,7 @@ export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, hideHin
     <ChatLayoutContextMenuContent activeId={activeId} tabs={tabs} chatCount={chatCount} busy={busy}
       hideHint={hideHint} closeHint={closeHint} tabActivity={tabActivity} pinned={pinned}
       onOpenPresets={onOpenPresets} onRename={onRename} onTogglePin={onTogglePin}
-      onPause={onPause} onResume={onResume} onEnableCoordinator={onEnableCoordinator}
-      onDisableCoordinator={onDisableCoordinator} coordinatorRole={coordinatorRole}
+      onPause={onPause} onResume={onResume}
       onCloseTab={onCloseTab} onHide={onHide} />
   </ContextMenu.Portal>
 }
@@ -45,7 +40,7 @@ export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, hideHin
 /** Menu body (also mounted in tests without Radix portal). */
 export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayoutContextMenu>[0]): ReactNode {
   const { activeId, tabs, chatCount, busy, hideHint, closeHint, tabActivity, pinned, onOpenPresets, onRename,
-    onTogglePin, onPause, onResume, onEnableCoordinator, onDisableCoordinator, coordinatorRole, onCloseTab, onHide } = props
+    onTogglePin, onPause, onResume, onCloseTab, onHide } = props
   const { moveTab } = useContext(ChatLayoutActions)
   const canHidePane = chatCount >= 2
   const canCloseTab = tabs.length > 1
@@ -72,18 +67,7 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
       <LayoutMenuRow data-ui="layout.tab-move" data-ui-key="previous" label="Move tab to previous pane"
         icon={<ArrowLeftToLine size={ICON} aria-hidden="true" />} disabled={busy} onSelect={() => moveTab!(activeId, 'previous')} />
     </>}
-    {hasCloseActions && hasFollowing && <ContextMenu.Separator className="titlebar-menu-separator" />}
-    {coordinatorRole !== 'worker' && onEnableCoordinator && coordinatorRole !== 'coordinator' && (
-      <LayoutMenuRow data-ui="layout.coordinator-enable" data-ui-key={activeId} label="Coordinator…"
-        hint="Dedicated Coordinator + Worker beside browser"
-        shortcut="Ctrl+Shift+C"
-        icon={<Network size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onEnableCoordinator} />
-    )}
-    {coordinatorRole === 'coordinator' && onDisableCoordinator && (
-      <LayoutMenuRow data-ui="layout.coordinator-disable" data-ui-key={activeId} label="Stop coordinating"
-        icon={<Unlink size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onDisableCoordinator} />
-    )}
-    {(onEnableCoordinator || onDisableCoordinator) && onOpenPresets && <ContextMenu.Separator className="titlebar-menu-separator" />}
+    {hasCloseActions && onOpenPresets && <ContextMenu.Separator className="titlebar-menu-separator" />}
     {onOpenPresets && (
       <LayoutMenuRow data-ui="layout.presets" data-ui-key={activeId} label="Workspace layout…"
         icon={<LayoutGrid size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onOpenPresets} />
