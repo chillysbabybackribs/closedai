@@ -26,6 +26,7 @@ import type { DeferredProjectSwitch } from './deferred-project-switch.js'
 import { PeerProjectChanges } from './peer-project.js'
 import type { ChatWorkspaceSelection, ChatWorkspaceSelector } from './peer-workspace.js'
 import type { PeerEmitThrottle } from './peer-events.js'
+import { wireCoordinatorAfterPaneEvent, type PeerManagerCoordinatorBridge } from './peer-coordinator-bridge.js'
 
 export type PeerManagerSupportHost = {
   lifecycle: PeerLifecycle
@@ -44,6 +45,7 @@ export type PeerManagerSupportHost = {
   visiblePaneIds: () => Set<ChatPaneId>
   retainedTabIds: () => Set<ChatPaneId>
   emitWorkspaceEvent: (event: ChatWorkspaceEvent) => void
+  coordinatorBridge: PeerManagerCoordinatorBridge
 }
 
 export function peerManagerReadable(host: PeerManagerSupportHost): ReadablePeerHost {
@@ -132,6 +134,7 @@ export function peerManagerPaneOpsHost(host: PeerManagerSupportHost): PeerPaneOp
 
 export function peerManagerOnPaneEvent(host: PeerManagerSupportHost, entry: PeerEntry, event: ChatEvent): void {
   handlePeerPaneEvent(peerManagerPaneOpsHost(host), entry, event)
+  wireCoordinatorAfterPaneEvent(host.coordinatorBridge, entry, event)
 }
 
 export async function peerManagerWithAwake<T>(

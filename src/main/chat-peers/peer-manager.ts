@@ -17,6 +17,7 @@ import type { ChatRecordSeed } from '../../shared/chat-store.js'
 import type { ChatContinuation } from '../../shared/types.js'
 import { groupMembers, pickCoordinatorWorker } from './coordinator.js'
 import { enableCoordinator, openCoordinatorWorkspace, type PeerCoordinatorHost } from './peer-coordinator-ops.js'
+import { wireCoordinatorAfterSend } from './peer-coordinator-bridge.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import { refreshModelPicker as refreshPaneModelPickers, selectedHub as hubForSelectedPane } from './peer-model-settings.js'
@@ -71,6 +72,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   private readonly projectChanges: PeerProjectChanges
   /** Tail of each pane's operation chain, so callers on one pane cannot interleave. */
   private readonly paneOperations = new Map<ChatPaneId, Promise<void>>()
+  private readonly crewInternalSend = new Set<ChatPaneId>()
   private readonly chatsEmit = new PeerEmitThrottle(() => this.emitChats())
   private readonly archives: PeerArchives
 
@@ -231,6 +233,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     try {
       await this.withAwake(paneId, (surface) => surface.send(text, attachments))
       if (text.trim() || attachments.length) this.store.update(paneId, { messageSentAt: Date.now() })
+      wireCoordinatorAfterSend(this.supportHost().coordinatorBridge, paneId, text, attachments)
     } catch (error) {
       cancelTiming?.()
       throw error
@@ -611,7 +614,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       selectedPaneId: () => this.selectedPaneId,
       visiblePaneIds: () => this.visiblePaneIds,
       retainedTabIds: () => this.retainedTabIds,
-      emitWorkspaceEvent: (event) => { this.emit('event', event) }
+      emitWorkspaceEvent: (event) => { this.emit('event', event) },
+      coordinatorBridge: { store: this.store, send: (paneId, text, attachments) => this.send(paneId, text, attachments),
+        lifecycle: this.lifecycle, crewInternalSend: this.crewInternalSend }
     }
   }
 
