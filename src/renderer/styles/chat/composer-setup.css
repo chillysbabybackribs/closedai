@@ -1,5 +1,16 @@
 /* Setup popover: model tabs + list, effort, folder, collapsible context. */
 
+.composer-folder-popover {
+  width: min(17rem, var(--radix-popover-content-available-width, 17rem));
+  max-height: min(var(--radix-popover-content-available-height, 60vh), 320px);
+}
+
+.composer-folder-popover .composer-setup-section {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
 .composer-setup {
   z-index: 60;
   display: flex;

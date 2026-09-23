@@ -1,9 +1,9 @@
 import { useCallback, useImperativeHandle, useRef, useState, type JSX, type Ref } from 'react'
-import { ChevronDown, FolderOpen } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { Popover } from 'radix-ui'
 
 import type { ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
-import { ContextSection, EffortSection, FolderSection, ModelSection, folderName } from './composer-setup-sections.js'
+import { ContextSection, EffortSection, ModelSection } from './composer-setup-sections.js'
 import { errorMessage } from './error-message.js'
 import { countModelUse, modelTriggerLabel, parseModelUsage, providerSections, type ModelUsage } from './model-menu-state.js'
 
@@ -16,8 +16,6 @@ export type ComposerSetupMenuProps = {
   ref?: Ref<ComposerSetupHandle>
   /** Model and effort can change; false while a turn runs or the provider is unavailable. */
   modelsEnabled: boolean
-  /** A send is in flight, so folder changes wait. */
-  busy: boolean
   models: ChatModel[]
   selectedModel: string | null
   selectedReasoningEffort: string | null
@@ -25,13 +23,6 @@ export type ComposerSetupMenuProps = {
   onReasoningEffortChange: (effort: string) => Promise<void>
   /** Where a failed change is shown: the composer's alert row. */
   onError: (message: string) => void
-  cwd: string
-  projectPath: string | null
-  projectPending?: boolean
-  recentProjects: Array<{ cwd: string; projectPath: string }>
-  onChooseProject: () => Promise<void>
-  onSelectProject: (projectPath: string) => Promise<void>
-  onClearProject: () => Promise<void>
   contextUsage: ChatContextUsage | null
   provider: ChatProvider
   planUsage: ChatPlanUsage | null
@@ -49,20 +40,12 @@ export type ComposerSetupMenuProps = {
 export function ComposerSetupMenu({
   ref,
   modelsEnabled,
-  busy,
   models,
   selectedModel,
   selectedReasoningEffort,
   onModelChange,
   onReasoningEffortChange,
   onError,
-  cwd,
-  projectPath,
-  projectPending = false,
-  recentProjects,
-  onChooseProject,
-  onSelectProject,
-  onClearProject,
   contextUsage,
   provider,
   planUsage,
@@ -90,7 +73,6 @@ export function ComposerSetupMenu({
 
   const trigger = modelTriggerLabel(models, selectedModel, selectedReasoningEffort)
   const selected = models.find((model) => model.id === selectedModel)
-  const folder = projectPath ? folderName(projectPath) : null
   const chooseModel = (value: string): void => {
     recordModelUse(value)
     // Picking a model ends the setup step: close the panel and hand focus to the composer so the
@@ -107,23 +89,13 @@ export function ComposerSetupMenu({
     <Popover.Root open={open} onOpenChange={setOpen} modal={false}>
       <Popover.Trigger
         ref={triggerRef}
-        className="composer-footer-trigger"
-        aria-label="Model, reasoning effort, folder, and context usage"
-        title={`${trigger.name}${selected?.provider ? '' : ''}${trigger.effort ? ` · ${trigger.effort} effort` : ''}\n${projectPath ?? cwd}${projectPending ? ' (applies after this chat finishes its current work)' : ''}`}
+        className="composer-footer-model-trigger"
+        aria-label="Model, reasoning effort, and context usage"
+        title={`${trigger.name}${trigger.effort ? ` · ${trigger.effort} effort` : ''}`}
         data-ui="composer.setup"
       >
-        <span className="composer-footer-model">
-          <span className="composer-footer-model-name">{trigger.name}</span>
-          <ChevronDown className="composer-footer-chevron" size={12} strokeWidth={2.2} aria-hidden="true" />
-        </span>
-        {folder && (
-          <span className="composer-footer-folder">
-            <FolderOpen className="composer-footer-folder-icon" size={12} strokeWidth={2.2} aria-hidden="true" />
-            <span className="composer-footer-folder-name">
-              {folder}{projectPending ? ' (queued)' : ''}
-            </span>
-          </span>
-        )}
+        <span className="composer-footer-model-name">{trigger.name}</span>
+        <ChevronDown className="composer-footer-chevron" size={12} strokeWidth={2.2} aria-hidden="true" />
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
@@ -159,17 +131,6 @@ export function ComposerSetupMenu({
               onChoose={chooseEffort}
             />
           )}
-          <FolderSection
-            cwd={cwd}
-            projectPath={projectPath}
-            pending={projectPending}
-            recentProjects={recentProjects}
-            disabled={busy}
-            onChooseProject={onChooseProject}
-            onSelectProject={onSelectProject}
-            onClearProject={onClearProject}
-            onError={onError}
-          />
           <ContextSection
             usage={contextUsage}
             provider={selected?.provider ?? provider}

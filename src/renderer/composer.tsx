@@ -7,6 +7,7 @@ import { PromptInput, PromptInputAction, PromptInputTextarea } from '../componen
 import type { ChatAttachment, ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
+import { ComposerFolderMenu } from './composer-folder-menu.js'
 import { ComposerSetupMenu, type ComposerSetupHandle } from './composer-setup-menu.js'
 import { useComposerDraft } from './composer-drafts.js'
 import { errorMessage } from './error-message.js'
@@ -253,13 +254,21 @@ export function Composer({
             <ComposerSetupMenu
               ref={setupMenuRef}
               modelsEnabled={enabled && !running}
-              busy={sending}
               models={models}
               selectedModel={selectedModel}
               selectedReasoningEffort={selectedReasoningEffort}
               onModelChange={onModelChange}
               onReasoningEffortChange={onReasoningEffortChange}
               onError={setComposerError}
+              contextUsage={contextUsage}
+              provider={provider}
+              planUsage={planUsage}
+              onRefreshPlanUsage={onRefreshPlanUsage}
+              onCompact={onCompactConversation}
+              compactEnabled={compactConversationEnabled}
+            />
+            <ComposerFolderMenu
+              busy={sending}
               cwd={cwd}
               projectPath={projectPath}
               projectPending={projectPending}
@@ -267,12 +276,7 @@ export function Composer({
               onChooseProject={onChooseProject}
               onSelectProject={onSelectProject}
               onClearProject={onClearProject}
-              contextUsage={contextUsage}
-              provider={provider}
-              planUsage={planUsage}
-              onRefreshPlanUsage={onRefreshPlanUsage}
-              onCompact={onCompactConversation}
-              compactEnabled={compactConversationEnabled}
+              onError={setComposerError}
             />
           </div>
         </div>

@@ -354,17 +354,20 @@ when a small window cannot fit the chosen arrangement. Every layout uses the sam
 composer (42 px at rest, 30 px controls). Drafts grow upward within a tile-relative height limit and
 then scroll, leaving room for the transcript.
 Tiles at most 680 px wide or 640 px tall also tighten transcript spacing; under 460 px the setup
-trigger drops the folder name, and under 330 px the model name too. Single-tab headers use the
+folder trigger truncates on narrow composers, and under 330 px the model name too. Single-tab headers use the
 available width for the title; the focused tile has the accent tab indicator.
 The composer is a single stack: a draft card (text and the action button on the right) and a
-footer bar beneath it with attach (`composer.upload`) on the left and the setup trigger
-(`composer.setup`) on the right naming the model (with a chevron) and the working folder. There is no collapsed mode;
-pending attachment chips sit above the line inside the card. The setup trigger opens a single panel:
+footer bar beneath it with attach (`composer.upload`) on the left, the model setup trigger
+(`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
+on the right naming the working folder. There is no collapsed mode;
+pending attachment chips sit above the line inside the card. The setup trigger opens a panel with
 Model (provider tabs, a compact scrollable list with optional filter, context-size badges, and
 **Show N more models** (`composer.model-more`) per provider), Effort (segmented
-`composer.effort-item`), Folder (current name, recent chips, choose/clear actions), and Context &
-plan (collapsed by default; context window, plan windows, Compact conversation). Model and effort rows are disabled while a
-turn runs; the folder section stays usable because a change queues until the chat is idle. The
+`composer.effort-item`), and Context & plan (collapsed by default; context window, plan windows,
+Compact conversation). The folder trigger opens a separate panel with the current folder, recent
+chips, and choose/clear actions (`composer.project-new`, `composer.project-recent`,
+`composer.project-clear`). Model and effort rows are disabled while a turn runs; folder changes
+queue until the chat is idle when a turn is in flight. The
 trigger does not change while a turn runs: no spinner or elapsed clock. Right-clicking
 any tile header or tab opens a context menu led by **Close tab** (`layout.tab-close`, Ctrl/Cmd+W),
 then **Hide pane** (`layout.pane-hide`) and, with another tile open,

@@ -86,7 +86,8 @@ test('the trigger names the model and folder, not the context size or effort', (
   assert.match(html, /composer-footer-model-name[^>]*>GPT-4o</)
   assert.match(html, /composer-footer-folder-name[^>]*>closedai</)
   assert.doesNotMatch(html, /128K/)
-  assert.doesNotMatch(html, /composer-footer-trigger[^>]*>[^<]*High/)
+  assert.doesNotMatch(html, /composer-footer-model-trigger[^>]*>[^<]*High/)
+  assert.match(html, /data-ui="composer\.folder"/)
 })
 
 test('a queued folder change is named on the trigger', () => {

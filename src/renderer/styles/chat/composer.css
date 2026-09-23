@@ -105,7 +105,7 @@
   color: var(--foreground);
 }
 
-/* Footer: attach on the left, one setup trigger for model and folder on the right. */
+/* Footer: attach, model setup trigger, and folder trigger. */
 .composer-footer {
   display: flex;
   align-items: stretch;
@@ -132,21 +132,20 @@
 .composer-footer-setup {
   display: flex;
   flex: 1 1 auto;
+  align-items: stretch;
+  gap: 0;
   min-width: 0;
 }
 
-.composer-footer-trigger {
-  display: flex;
-  flex: 1 1 auto;
-  width: 100%;
+.composer-footer-model-trigger,
+.composer-footer-folder-trigger {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 5px;
   min-width: 0;
-  padding: 5px 10px 5px 8px;
+  padding: 5px 8px;
   border: 0;
   background: transparent;
-  color: color-mix(in srgb, var(--foreground) 58%, transparent);
   font: inherit;
   font-size: 11.5px;
   font-weight: 500;
@@ -156,24 +155,37 @@
   transition: background-color 120ms ease, color 120ms ease;
 }
 
-.composer-footer-trigger:not(:disabled):hover,
-.composer-footer-trigger[data-state='open'] {
+.composer-footer-model-trigger {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  color: color-mix(in srgb, var(--foreground) 82%, transparent);
+}
+
+.composer-footer-folder-trigger {
+  flex: 0 1 auto;
+  max-width: 46%;
+  margin-left: auto;
+  color: var(--cwd-ink, #7eb0e0);
+  font-weight: 550;
+}
+
+.composer-footer-model-trigger:not(:disabled):hover,
+.composer-footer-model-trigger[data-state='open'],
+.composer-footer-folder-trigger:not(:disabled):hover,
+.composer-footer-folder-trigger[data-state='open'] {
   background: color-mix(in srgb, var(--foreground) 6%, transparent);
   color: var(--foreground);
 }
 
-.composer-footer-trigger:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: -2px;
+.composer-footer-folder-trigger:not(:disabled):hover,
+.composer-footer-folder-trigger[data-state='open'] {
+  color: var(--cwd-ink, #7eb0e0);
 }
 
-.composer-footer-model {
-  display: inline-flex;
-  flex: 0 1 auto;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  color: color-mix(in srgb, var(--foreground) 82%, transparent);
+.composer-footer-model-trigger:focus-visible,
+.composer-footer-folder-trigger:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
 }
 
 .composer-footer-model-name {
@@ -187,19 +199,9 @@
   opacity: 0.55;
 }
 
-.composer-footer-trigger:not(:disabled):hover .composer-footer-chevron,
-.composer-footer-trigger[data-state='open'] .composer-footer-chevron {
+.composer-footer-model-trigger:not(:disabled):hover .composer-footer-chevron,
+.composer-footer-model-trigger[data-state='open'] .composer-footer-chevron {
   opacity: 0.85;
-}
-
-.composer-footer-folder {
-  display: inline-flex;
-  flex: 0 1 auto;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-  color: var(--cwd-ink, #7eb0e0);
-  font-weight: 550;
 }
 
 .composer-footer-folder-icon {
@@ -214,12 +216,11 @@
 }
 
 @container composer (max-width: 460px) {
-  .composer-footer-folder { max-width: 44%; }
+  .composer-footer-folder-trigger { max-width: 42%; }
 }
 
 @container composer (max-width: 330px) {
-  .composer-footer-model { max-width: 58%; }
-  .composer-footer-trigger { padding-inline: 8px; gap: 8px; }
+  .composer-footer-model-trigger { max-width: 58%; }
 }
 
 /* The one action. Send fills with the accent as soon as there is something to send; Pause is an
