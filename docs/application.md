@@ -354,12 +354,12 @@ when a small window cannot fit the chosen arrangement. Every layout uses the sam
 composer (42 px at rest, 30 px controls). Drafts grow upward within a tile-relative height limit and
 then scroll, leaving room for the transcript.
 Tiles at most 680 px wide or 640 px tall also tighten transcript spacing; under 460 px the setup
-trigger drops the folder name, and under 330 px the model name too, leaving the provider mark. Single-tab headers use the
+trigger drops the folder name, and under 330 px the model name too. Single-tab headers use the
 available width for the title; the focused tile has the accent tab indicator.
-The composer is one line inside one card: attach (`composer.upload`) on the left, the text, then
-the setup trigger (`composer.setup`, provider mark, model name, and folder name) and the action
-button on the right. There is no collapsed mode and no separate rail or footer; pending attachment
-chips sit above the line inside the card. The setup trigger opens a single panel with four
+The composer is one line inside one card: attach (`composer.upload`) on the left, the text, and the
+action button on the right. The setup trigger (`composer.setup`) sits beneath the card with the
+model on the left and folder on the right, using matching muted text. There is no collapsed mode;
+pending attachment chips sit above the line inside the card. The setup trigger opens a single panel with four
 sections: Model (providers as groups, each on its most-used short list with a full-width
 **Show N more models** disclosure (`composer.model-more`) for the rest), Effort (a segmented
 control, `composer.effort-item`), Folder, and Context (the

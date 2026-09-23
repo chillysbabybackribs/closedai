@@ -132,17 +132,16 @@
   outline-offset: -2px;
 }
 
-.composer-setup-mark {
-  flex: none;
-  width: 13px;
-  height: 13px;
+.composer-setup-model,
+.composer-setup-folder {
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
 }
 
 .composer-setup-model {
   min-width: 0;
   overflow: hidden;
-  color: color-mix(in srgb, var(--foreground) 88%, transparent);
-  font-weight: 600;
   text-overflow: ellipsis;
 }
 
@@ -153,14 +152,10 @@
   min-width: 0;
 }
 
-/* The folder is a qualifier on the model, never the louder of the two. */
 .composer-setup-folder {
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
-  color: color-mix(in srgb, var(--foreground) 50%, transparent);
-  font-size: 11.5px;
-  font-weight: 450;
   text-overflow: ellipsis;
 }
 

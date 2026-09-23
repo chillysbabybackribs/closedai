@@ -1,7 +1,6 @@
 import { useCallback, useImperativeHandle, useRef, useState, type JSX, type Ref } from 'react'
 import { Popover } from 'radix-ui'
 
-import { ProviderMark } from '../components/ui/provider-mark.js'
 import type { ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { ContextSection, EffortSection, FolderSection, ModelSection, folderName } from './composer-setup-sections.js'
 import { errorMessage } from './error-message.js'
@@ -113,7 +112,6 @@ export function ComposerSetupMenu({
         data-ui="composer.setup"
       >
         <span className="composer-setup-model-wrap">
-          {selected && <ProviderMark provider={selected.provider} className="composer-setup-mark" />}
           <span className="composer-setup-model">{trigger.name}</span>
         </span>
         {folder && (

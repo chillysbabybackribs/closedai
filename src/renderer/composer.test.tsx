@@ -64,6 +64,7 @@ test('the running composer swaps send for pause and keeps setup metadata beneath
   // No spinner or clock on the trigger: it still names the model and folder while a turn runs.
   assert.match(html, /composer-setup-model[^>]*>GPT-4o</)
   assert.match(html, /composer-setup-folder[^>]*>workspace</)
+  assert.doesNotMatch(html, /composer-setup-mark/)
   assert.doesNotMatch(html, /Working for|spinner|elapsed/)
   assert.match(html, /placeholder=""/)
 })
