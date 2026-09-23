@@ -38,6 +38,12 @@ type BrowserServiceOptions = {
   restore?: RestoredTabSession
   // Settings → Security web permission policy and the chrome that asks; absent means allow-all.
   permissions?: Pick<PermissionPolicyDeps, 'policy' | 'ask'>
+  /**
+   * Work the first page load must not race — the one-shot cookie import, which decides
+   * whether a restored or home page arrives signed in. The window, and with it the chat
+   * UI, paints while this settles instead of waiting behind it.
+   */
+  readyToLoad?: Promise<unknown>
 }
 
 // How long a reveal waits for the page's first frame before showing it anyway. Long enough
@@ -102,9 +108,14 @@ export class BrowserService extends EventEmitter {
     // Window teardown destroys every tab's WebContents BEFORE dispose() runs, and each destroy
     // fires the reap path. Latch here so shutdown never resurrects a home tab into a dying window.
     this.window.once('close', () => { this.disposed = true })
-    if (!options.restore || !this.restoreSession(options.restore)) {
-      this.openTab(options.initialUrl ?? HOME_URL, true)
+    const openInitialTabs = (): void => {
+      if (this.disposed) return
+      if (!options.restore || !this.restoreSession(options.restore)) {
+        this.openTab(options.initialUrl ?? HOME_URL, true)
+      }
     }
+    if (options.readyToLoad) void options.readyToLoad.then(openInitialTabs, openInitialTabs)
+    else openInitialTabs()
   }
 
   // ---- Tab management -------------------------------------------------------

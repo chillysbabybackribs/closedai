@@ -101,6 +101,9 @@ let nativeInstrument: NativeInstrumentService | null = null
 let appAutomationAccess: AppAutomationAccess | null = null
 let appCommandAccess: AppCommandAccess | null = null
 let stopBrowserCacheMaintenance: (() => void) | null = null
+let browserReadyToLoad: Promise<unknown> | null = null
+/** A cookie import this slow is a broken one; the first page loads without it. */
+const COOKIE_IMPORT_LOAD_GATE_MS = 5000
 let quitting = false
 const liveVerifyHandle: LiveVerifyHandle = {
   requested: false,
@@ -170,9 +173,17 @@ async function main(): Promise<void> {
   // providers fill the picker from the last catalog seen instead of each starting a process.
   const catalogOpening = started(ProviderCatalogCache.open(join(userData(), 'provider-catalogs.json')))
   // The one-shot cookie import must finish before the first tab loads, so a restored or home
-  // page arrives already signed in rather than racing the import — but it has the whole of
-  // bootstrap to do it in, not the moment before the window opens.
-  const cookieImport = started(importDefaultBrowserCookies(mainCookieImportDeps(mainIpcRegistration())))
+  // page arrives already signed in rather than racing the import. It walks the user's real
+  // browser profile — ~600ms on a first launch — so the window no longer waits behind it:
+  // only the first page load does, and only until the cap, since a stuck import must not
+  // leave someone looking at an empty browser.
+  browserReadyToLoad = capped(
+    started(importDefaultBrowserCookies(mainCookieImportDeps(mainIpcRegistration())).catch((error: unknown) => {
+      console.warn('[cookie-import] failed', error)
+    })),
+    COOKIE_IMPORT_LOAD_GATE_MS,
+    () => { console.warn('[cookie-import] still running; loading the first page without it') }
+  )
   // Tools resolve the browser lazily: it is created with the window, after the chat service.
   const browserCoordination = new BrowserCoordination({
     tabs: () => browserService?.tabList() ?? [],
@@ -305,7 +316,6 @@ async function main(): Promise<void> {
   liveVerifyHandle.toolRegistry = toolRegistry
   liveVerifyHandle.researchService = researchService
   registerMainProcessIpc(mainIpcRegistration())
-  await cookieImport
   // Measure and prune before the first tab paints so a bloated cache does not slow restore.
   void maintainBrowserCache(userData()).catch((error: unknown) => {
     console.warn('[browser-cache] startup maintenance failed', error)
@@ -325,6 +335,11 @@ async function main(): Promise<void> {
 function started<T>(work: Promise<T>): Promise<T> {
   work.catch(() => {})
   return work
+}
+
+/** The same promise, but never waited on for longer than `ms`. */
+function capped(work: Promise<unknown>, ms: number, onTimeout: () => void): Promise<unknown> {
+  return Promise.race([work, new Promise((resolve) => setTimeout(() => { onTimeout(); resolve(null) }, ms).unref())])
 }
 
 /** Null for Electron's default userData; a short stable hash for any other profile. */
@@ -363,6 +378,7 @@ function mainWindowHost(): MainWindowHost {
     securitySettings: securitySettings!,
     permissionRequests,
     chatService,
+    browserReadyToLoad,
     toolRegistry,
     toolTelemetry,
     setMainWindow: (window) => { mainWindow = window },

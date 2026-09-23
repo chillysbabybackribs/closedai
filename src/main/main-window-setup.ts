@@ -31,6 +31,8 @@ export type MainWindowHost = {
   securitySettings: SecuritySettingsStore
   permissionRequests: BrowserPermissionBroker
   chatService: ChatPeerManager | null
+  /** Settled before the first page loads; see BrowserServiceOptions.readyToLoad. */
+  browserReadyToLoad: Promise<unknown> | null
   toolRegistry: ToolRegistry | null
   toolTelemetry: ToolTelemetry | null
   setMainWindow: (window: BrowserWindow | null) => void
@@ -51,6 +53,7 @@ export function openMainWindow(host: MainWindowHost): BrowserWindow {
   host.setMainWindow(window)
   const browserService = new BrowserService(window, host.browserHistory, {
     restore: host.browserTabSession?.restored() ?? undefined,
+    readyToLoad: host.browserReadyToLoad ?? undefined,
     permissions: {
       policy: () => host.securitySettings.get().webPermissions,
       ask: (request) => host.permissionRequests.ask(request)
