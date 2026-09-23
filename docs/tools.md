@@ -176,7 +176,12 @@ integration, extraction and other applicable tasks as well as recon.
 
 Use `closedai_app.state` for app facts, `closedai_app.command` for service operations, and
 `closedai_app.ui` only for exercising real controls when deterministic service operations cannot
-complete the task. Browser-page DOM and CDP targets
+complete the task. Workspace HTML mocks and design comps belong in the embedded browser: after
+writing a file under the checkout (for example `output/…/index.html`), open it with
+`closedai_app.command` `browser_tab` `op: new` and an absolute `file://` URL, or
+`embedded_browser.page` `navigate` on the chat’s assigned tab. Do not use the host OS default
+handler (`xdg-open`, `open`, and similar) — on some machines that launches Codex Desktop or an
+external browser instead of ClosedAI’s pane. Browser-page DOM and CDP targets
 belong to the browser tools; app renderer controls belong to `closedai_app.ui`. Workspace state
 shows at most 12 panes, prioritizing selection, caller, running panes, and real conversations;
 `omittedPanes` reports any remainder. Browser/download lists are also bounded.
