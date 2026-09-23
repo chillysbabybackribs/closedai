@@ -115,8 +115,11 @@ export function ComposerSetupMenu({
           <span className="composer-setup-model">{trigger.name}</span>
         </span>
         {folder && (
-          <span className="composer-setup-folder">
-            {folder}{projectPending ? ' (queued)' : ''}
+          <span className="composer-setup-folder-wrap">
+            <span className="composer-setup-folder-sep" aria-hidden="true">·</span>
+            <span className="composer-setup-folder">
+              {folder}{projectPending ? ' (queued)' : ''}
+            </span>
           </span>
         )}
       </Popover.Trigger>
