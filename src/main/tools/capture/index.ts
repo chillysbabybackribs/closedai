@@ -35,7 +35,7 @@ export function captureTools(
         description:
           'Screenshots when visual evidence is needed: app_window (whole UI), browser_page (one readiness-gated page), or crop (enlarge a retained ' +
           `region). At most ${budget.maxPerTurn} images per turn; prefer embedded_browser.page read_page for text. ` +
-          'Batch changes, then capture once. Exec mode: split the text summary from the data:image/ URL before text().',
+          'Batch changes, then capture once.',
         actions: actions.map((action) => withBudget(action, budget))
       })
     ]

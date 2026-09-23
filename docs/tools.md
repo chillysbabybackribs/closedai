@@ -581,9 +581,10 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   ONE STRING — the text, a newline, then the raw `data:image/jpeg;base64,…` URL. Nothing is an
   image unless the script passes the URL to `image()`. Before the recipe was spelled out, 29 of
   43 captures in one day's threads were dumped through `text(JSON.stringify(r))`: ~10k tokens of
-  base64 each and no picture. So every tool description states its return shape for scripts,
-  the capture result text repeats the split recipe (`EXEC_IMAGE_HINT` in `capture/result.ts`,
-  so it survives compaction). The baseline adds no developer instruction repeating it.
+  base64 each and no picture. Tool descriptions state their return shapes. The capture result text
+  carries the split recipe (`EXEC_IMAGE_HINT` in `capture/result.ts`) so it survives compaction;
+  its tool description stays focused on choosing and using capture. The baseline adds no developer
+  instruction repeating it.
 - Reading habits, not caps, drive context size: a fresh thread reached 100k tokens in 26 calls
   because the model ran `sed -n '1,360p'` over several files per call with
   `max_output_tokens` 22k-30k. The former developer instructions asked for ranged reads and JS-side

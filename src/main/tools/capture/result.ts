@@ -45,9 +45,9 @@ export function imageResult(
 
 /**
  * Code-mode models receive this result as one string with the JPEG data URL after the text.
- * Repeating the split recipe in every result (not only the tool description, which a
- * compaction can leave behind) is what stops `text(JSON.stringify(r))` dumping the image as
- * base64 text — 10k tokens of noise and no picture.
+ * Keeping the split recipe in the result is what stops `text(JSON.stringify(r))` dumping the
+ * image as base64 text — 10k tokens of noise and no picture. The tool description stays
+ * focused on choosing and using the capture action.
  */
 export const EXEC_IMAGE_HINT =
   'exec scripts: const i = r.lastIndexOf("\\ndata:image/") + 1; text(r.slice(0, i)); image(r.slice(i).trim()); — never text() the whole result.'
