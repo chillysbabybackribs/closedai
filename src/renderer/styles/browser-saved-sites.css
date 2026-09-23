@@ -1,13 +1,12 @@
-/* Saved sites popover: anchored under the toolbar star, floating over the page like the
-   downloads popover. Rows are page + optional note; the note is the only editable thing and
-   reads as plain text until clicked. */
+/* Movable, resizable workspace panel for saved sites. */
 .browser-saved-sites {
-  position: absolute;
-  top: 76px;
-  right: 12px;
+  position: fixed;
   width: 380px;
-  max-width: calc(100% - 24px);
-  max-height: 440px;
+  height: min(440px, calc(100vh - 96px));
+  min-width: 280px;
+  min-height: 180px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 56px);
   display: flex;
   min-height: 0;
   flex-direction: column;
@@ -18,8 +17,9 @@
     0 0 0 1px rgb(0 0 0 / 34%),
     0 2px 6px rgb(0 0 0 / 34%),
     0 12px 32px rgb(0 0 0 / 46%);
-  z-index: 60;
+  z-index: 120;
   overflow: hidden;
+  resize: both;
 }
 
 .browser-saved-sites-head {
@@ -27,6 +27,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 8px 4px 10px;
+  min-height: 32px;
+  cursor: move;
+  touch-action: none;
+  user-select: none;
 }
 
 .browser-saved-sites-title {

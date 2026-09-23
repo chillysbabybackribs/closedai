@@ -114,7 +114,7 @@ export function useTitlebarBrowserFreeze(): {
     const observer = new MutationObserver(sync)
     observer.observe(document.body, {
       attributes: true,
-      attributeFilter: ['aria-hidden', 'data-state', 'hidden', 'open'],
+      attributeFilter: ['aria-hidden', 'data-state', 'hidden', 'open', 'style'],
       childList: true,
       subtree: true
     })

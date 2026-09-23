@@ -1,31 +1,53 @@
 import type { JSX } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type PointerEvent } from 'react'
 import { Trash2, X } from 'lucide-react'
 import type { SavedSite } from '../shared/saved-sites.js'
 import { BrowserSiteIcon } from './browser-site-icon.js'
 import type { BrowserSavedSitesController } from './browser-saved-sites-controller.js'
 
-// Floating panel anchored under the toolbar star, the same placement as the downloads popover.
+// Floating workspace panel opened from View or the browser star.
 // Each row is the record a daily brief will later read: the page, and an optional note saying
 // why. The note is plain text until clicked, so a row without one stays quiet.
 
 export function BrowserSavedSitesShelf({
   controller,
-  onError
+  onError,
+  onOpenSite
 }: {
   controller: BrowserSavedSitesController
   onError: (reason: unknown) => void
+  onOpenSite: (url: string) => Promise<void>
 }): JSX.Element {
+  const [position, setPosition] = useState(() => ({
+    x: Math.max(12, window.innerWidth - 408), y: 72
+  }))
+  const [drag, setDrag] = useState<{ x: number; y: number; left: number; top: number } | null>(null)
+  const startDrag = (event: PointerEvent<HTMLElement>): void => {
+    if (event.button !== 0 || (event.target as Element).closest('button')) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setDrag({ x: event.clientX, y: event.clientY, left: position.x, top: position.y })
+  }
+  const moveDrag = (event: PointerEvent<HTMLElement>): void => {
+    if (!drag) return
+    const panel = event.currentTarget.parentElement!
+    setPosition({
+      x: Math.max(8, Math.min(window.innerWidth - panel.offsetWidth - 8, drag.left + event.clientX - drag.x)),
+      y: Math.max(42, Math.min(window.innerHeight - 48, drag.top + event.clientY - drag.y))
+    })
+  }
   return (
     <section
       className="browser-saved-sites"
+      style={{ left: position.x, top: position.y }}
       aria-label="Saved sites"
       role="dialog"
       aria-modal="false"
       data-ui-surface="browser-saved-sites"
       data-ui-source="src/renderer/browser-saved-sites-shelf.tsx#BrowserSavedSitesShelf" data-ui-state-owner="src/renderer/browser-saved-sites-controller.ts#useBrowserSavedSitesController"
     >
-      <header className="browser-saved-sites-head">
+      <header className="browser-saved-sites-head" data-ui="saved-sites.move"
+        onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={() => setDrag(null)}
+        onLostPointerCapture={() => setDrag(null)}>
         <span className="browser-saved-sites-title">Saved sites{controller.sites.length ? ` · ${controller.sites.length}` : ''}</span>
         <button
           type="button"
@@ -43,7 +65,7 @@ export function BrowserSavedSitesShelf({
       ) : (
         <ul className="browser-saved-sites-list">
           {controller.sites.map((site) => (
-            <SavedSiteRow key={site.id} site={site} controller={controller} onError={onError} />
+            <SavedSiteRow key={site.id} site={site} controller={controller} onError={onError} onOpenSite={onOpenSite} />
           ))}
         </ul>
       )}
@@ -54,11 +76,13 @@ export function BrowserSavedSitesShelf({
 function SavedSiteRow({
   site,
   controller,
-  onError
+  onError,
+  onOpenSite
 }: {
   site: SavedSite
   controller: BrowserSavedSitesController
   onError: (reason: unknown) => void
+  onOpenSite: (url: string) => Promise<void>
 }): JSX.Element {
   const label = site.title || hostOf(site.url)
   return (
@@ -70,7 +94,7 @@ function SavedSiteRow({
         data-ui-key={site.id}
         title={site.url}
         aria-label={`Open ${label}`}
-        onClick={() => { void controller.open(site.url).catch(onError) }}
+        onClick={() => { void onOpenSite(site.url).catch(onError) }}
       >
         <BrowserSiteIcon favicon={site.favicon ?? undefined} />
         <span className="browser-saved-sites-text">
