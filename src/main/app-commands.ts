@@ -1,6 +1,7 @@
 import type { ChatPeerSummary, ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import type { ProjectSwitchRequest, ProjectSwitchStatus } from '../shared/chat-peers.js'
 import type { ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
+import { describeAgentRun, type AgentRun } from '../shared/agent-runs.js'
 import type { BrowserCoordination } from './tools/browser/coordination.js'
 import type {
   AppBrowserTabRequest,
@@ -25,6 +26,8 @@ export type AppCommandDeps = {
   downloads: () => AppDownloadList | null
   window: () => AppWindowInfo | null
   browserCoordination?: BrowserCoordination
+  /** The agent run driving a chat, when one exists; projected beside the chat's own state. */
+  agentRuns?: () => { get(chatId: string): AgentRun | null } | null
 }
 
 const PEER_LIMIT = 12
@@ -43,7 +46,7 @@ export class AppCommandAccess implements AppCommandHost {
       else {
         const targetPane = paneId ?? callerPaneId ?? chat.snapshot().selectedPaneId
         const snapshot = chat.paneSnapshot(targetPane)
-        result.chat = snapshot ? projectChat(targetPane, snapshot) : { paneId: targetPane, error: 'Unknown pane' }
+        result.chat = snapshot ? projectChat(targetPane, snapshot, this.deps.agentRuns?.()?.get(targetPane) ?? null) : { paneId: targetPane, error: 'Unknown pane' }
       }
     }
     if (sections.includes('browser')) {
@@ -235,7 +238,7 @@ function projectWorkspace(chat: AppChatWorkspace, callerPaneId: string | null): 
   }
 }
 
-export function projectChat(paneId: string, snapshot: ChatSnapshot): Record<string, unknown> {
+export function projectChat(paneId: string, snapshot: ChatSnapshot, agentRun: AgentRun | null = null): Record<string, unknown> {
   const lastUser = lastItem(snapshot.items, 'user')
   const lastAssistant = lastItem(snapshot.items, 'assistant')
   const lastNotice = lastItem(snapshot.items, 'notice')
@@ -251,6 +254,11 @@ export function projectChat(paneId: string, snapshot: ChatSnapshot): Record<stri
     running: snapshot.activeTurnId !== null,
     activeTurnId: snapshot.activeTurnId,
     ...(snapshot.pausedTurnId ? { pausedTurnId: snapshot.pausedTurnId } : {}),
+    // Present only for a chat the app is driving; the loop restarts this pane after every turn.
+    ...(agentRun ? { agentRun: {
+      status: agentRun.status, cycle: agentRun.cycle, maxCycles: agentRun.maxCycles, failures: agentRun.failures,
+      reason: agentRun.reason, summary: describeAgentRun(agentRun)
+    } } : {}),
     contextUsage: snapshot.contextUsage ? {
       usedTokens: snapshot.contextUsage.usedTokens,
       contextWindow: snapshot.contextUsage.contextWindow,
