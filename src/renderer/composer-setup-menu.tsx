@@ -171,16 +171,17 @@ export function ComposerSetupMenu({
  * Every model the pane lands on counts — picked here, restored with the pane, or set by a tool.
  */
 function useRecentModels(selectedModel: string | null): [string[], (next?: string[]) => void] {
-  const [recent, setRecent] = useState(() => loadRecentModelIds(window.localStorage))
+  const [recent, setRecent] = useState<string[]>([])
   useEffect(() => {
-    if (!selectedModel) return
-    setRecent(rememberRecentModel(selectedModel))
-  }, [selectedModel])
-  useEffect(() => {
+    setRecent(loadRecentModelIds(window.localStorage))
     const sync = (): void => setRecent(loadRecentModelIds(window.localStorage))
     window.addEventListener(RECENT_MODELS_CHANGED, sync)
     return () => window.removeEventListener(RECENT_MODELS_CHANGED, sync)
   }, [])
+  useEffect(() => {
+    if (!selectedModel) return
+    setRecent(rememberRecentModel(selectedModel))
+  }, [selectedModel])
   const reload = useCallback((next?: string[]) => {
     setRecent(next ?? loadRecentModelIds(window.localStorage))
   }, [])

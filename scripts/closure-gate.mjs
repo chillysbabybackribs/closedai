@@ -21,7 +21,7 @@ const entries = [
 ]
 const allowedPackages = new Set([
   'electron', 'react', 'react-dom', 'lucide-react', 'clsx', 'tailwind-merge',
-  'class-variance-authority', 'radix-ui',
+  'class-variance-authority', 'cmdk', 'radix-ui',
   'marked', 'parse5', 'react-markdown', 'remark-breaks', 'remark-gfm', 'shiki',
   '@fontsource-variable/inter', '@fontsource-variable/geist-mono', '@fontsource/instrument-serif',
   // The Claude Code provider: the Agent SDK (loaded lazily, externalized from the bundle) and
@@ -134,7 +134,9 @@ while (testStack.length) {
   }
 }
 for (const file of sourceFiles(join(root, 'src'))) {
-  if (!seen.has(file) && !reachedByTests.has(file)) problems.push(`unreachable source file: ${relative(root, file)}`)
+  const rel = relative(root, file)
+  if (/\.generated\.ts$/.test(rel)) continue
+  if (!seen.has(file) && !reachedByTests.has(file)) problems.push(`unreachable source file: ${rel}`)
 }
 
 let lines = 0
