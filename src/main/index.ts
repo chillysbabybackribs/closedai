@@ -9,6 +9,7 @@ import { QUIT_SETTLE_TIMEOUT_MS, settleWithin } from './app-quit.js'
 import { browserUserAgentFallback } from './browser-identity.js'
 import { BrowserService } from './browser-service.js'
 import { BrowserHistoryStore } from './browser-history-store.js'
+import { SavedSitesStore } from './saved-sites-store.js'
 import { BrowserTabSessionStore } from './browser-tab-session-store.js'
 import { AppSettingsStore } from './app-settings-store.js'
 import { BrowserDownloadService } from './browser-download-service.js'
@@ -57,6 +58,7 @@ import { BrowserPermissionBroker } from './browser-permission-broker.js'
 import type { AgentRunsEvent } from '../shared/agent-runs.js'
 import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
+import type { SavedSite } from '../shared/saved-sites.js'
 import { liveVerifyFromArgv, requestLiveVerify, type LiveVerifyHandle } from './app-live-verify.js'
 import { createChatWorkspaceSelector } from './main-workspace-selector.js'
 import { createPaneChatHub } from './main-pane-chat-hub.js'
@@ -78,6 +80,7 @@ let mainWindow: BrowserWindow | null = null
 let browserService: BrowserService | null = null
 let browserDownloads: BrowserDownloadService | null = null
 let browserHistory: BrowserHistoryStore | null = null
+let savedSites: SavedSitesStore | null = null
 let browserTabSession: BrowserTabSessionStore | null = null
 let settings: AppSettingsStore | null = null
 let chatStore: ChatStore | null = null
@@ -143,13 +146,15 @@ if (!claimProfileInstance(app, { profile: userData(), checkout: app.getAppPath()
 async function main(): Promise<void> {
   logGpuFeatureStatus()
   await mkdir(userData(), { recursive: true })
-  ;[browserHistory, browserTabSession, settings, chatStore, securitySettings] = await Promise.all([
+  ;[browserHistory, savedSites, browserTabSession, settings, chatStore, securitySettings] = await Promise.all([
     BrowserHistoryStore.open(join(userData(), 'browser-history.json')),
+    SavedSitesStore.open(join(userData(), 'saved-sites.json')),
     BrowserTabSessionStore.open(join(userData(), 'browser-tabs.json')),
     AppSettingsStore.open(join(userData(), 'app-settings.json')),
     ChatStore.open(join(userData(), 'chats.json')),
     SecuritySettingsStore.open(join(userData(), 'security-settings.json'))
   ])
+  savedSites.on('changed', (sites: SavedSite[]) => sendToMainWindow(IPC.event.savedSitesChanged, sites))
   credentialVault = new CredentialVault(join(userData(), 'credential-vault.json'), safeStorageEncryption(safeStorage, process.platform), {
     secretsRequireKeychain: () => securitySettings!.get().secretsRequireKeychain
   })
@@ -388,6 +393,7 @@ function mainIpcRegistration() {
     mainWindow: () => mainWindow,
     browserService: () => browserService,
     browserDownloads: () => browserDownloads,
+    savedSites: () => savedSites,
     chatService: () => chatService,
     agentRuns: () => agentRuns,
     credentialVault: () => credentialVault,
@@ -446,6 +452,7 @@ app.on('before-quit', (event) => {
   // Bounded: a store or listener that will not settle must not hold the quit open.
   void settleWithin([
     browserHistory?.flush(),
+    savedSites?.flush(),
     browserTabSession?.close(),
     settings?.set({}),
     chatStore?.flush(),

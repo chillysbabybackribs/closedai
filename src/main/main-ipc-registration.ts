@@ -7,6 +7,7 @@ import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-
 import { registerWindowIpc } from './window-ipc.js'
 import { registerBrowserCoreIpc } from './browser-core-ipc.js'
 import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
+import { registerSavedSitesIpc } from './saved-sites-ipc.js'
 import { registerLocalFilesIpc } from './local-files/ipc.js'
 import { registerChatIpc } from './chat-ipc.js'
 import { registerAgentRunsIpc } from './agent-runs/ipc.js'
@@ -21,6 +22,7 @@ import { PARTITION } from './browser-url.js'
 import { traceLog } from './trace/trace-log.js'
 import type { BrowserService } from './browser-service.js'
 import type { BrowserDownloadService } from './browser-download-service.js'
+import type { SavedSitesStore } from './saved-sites-store.js'
 import type { ChatPeerManager } from './chat-peers/peer-manager.js'
 import type { AgentRunService } from './agent-runs/agent-run-service.js'
 import type { CredentialVault } from './credential-vault.js'
@@ -39,6 +41,7 @@ export type MainIpcRegistration = {
   mainWindow: () => BrowserWindow | null
   browserService: () => BrowserService | null
   browserDownloads: () => BrowserDownloadService | null
+  savedSites: () => SavedSitesStore | null
   chatService: () => ChatPeerManager | null
   agentRuns: () => AgentRunService | null
   credentialVault: () => CredentialVault | null
@@ -61,8 +64,9 @@ export function mainCookieImportDeps(reg: MainIpcRegistration): CookieImportDeps
 
 export function registerMainProcessIpc(reg: MainIpcRegistration): void {
   registerWindowIpc(reg.ipcMain, reg.mainWindow)
-  registerBrowserCoreIpc(reg.ipcMain, reg.browserService)
+  registerBrowserCoreIpc(reg.ipcMain, reg.browserService, reg.savedSites)
   registerBrowserDownloadsIpc(reg.ipcMain, reg.browserDownloads)
+  registerSavedSitesIpc(reg.ipcMain, reg.savedSites)
   registerLocalFilesIpc(reg.ipcMain, reg.browserService)
   registerChatIpc(reg.ipcMain, reg.chatService)
   registerAgentRunsIpc(reg.ipcMain, reg.agentRuns)

@@ -2,18 +2,22 @@ import type { IpcMain } from 'electron'
 import type { BrowserBounds } from '../shared/types.js'
 import { IPC } from '../shared/ipc-channels.js'
 import type { BrowserService } from './browser-service.js'
+import { rankSavedFirst, type SavedSitesStore } from './saved-sites-store.js'
 
 /** The renderer-facing browser surface. */
 export function registerBrowserCoreIpc(
   ipcMain: Pick<IpcMain, 'handle'>,
-  getBrowserService: () => BrowserService | null
+  getBrowserService: () => BrowserService | null,
+  getSavedSites: () => SavedSitesStore | null = () => null
 ): void {
   ipcMain.handle(IPC.invoke.browser.setBounds, (_event, bounds: BrowserBounds) => getBrowserService()?.setBounds(bounds))
   ipcMain.handle(IPC.invoke.browser.navigate, (_event, input: string) => getBrowserService()?.navigate(input))
   ipcMain.handle(IPC.invoke.browser.back, () => getBrowserService()?.back())
   ipcMain.handle(IPC.invoke.browser.forward, () => getBrowserService()?.forward())
   ipcMain.handle(IPC.invoke.browser.reload, () => getBrowserService()?.reload())
-  ipcMain.handle(IPC.invoke.browser.searchHistory, (_event, input: string) => getBrowserService()?.searchHistory(input) ?? [])
+  // Saved sites lead the suggestion list: a page the user kept on purpose outranks one merely visited often.
+  ipcMain.handle(IPC.invoke.browser.searchHistory, (_event, input: string) =>
+    rankSavedFirst(getSavedSites()?.search(input) ?? [], getBrowserService()?.searchHistory(input) ?? []))
   ipcMain.handle(IPC.invoke.browser.removeHistory, (_event, url: string) => getBrowserService()?.removeHistory(url))
   ipcMain.handle(IPC.invoke.browser.suggest, (_event, input: string) => getBrowserService()?.suggest(input) ?? null)
   ipcMain.handle(IPC.invoke.browser.newTab, () => getBrowserService()?.newTab())
