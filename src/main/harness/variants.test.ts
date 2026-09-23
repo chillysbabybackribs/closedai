@@ -22,6 +22,7 @@ test('applyVariantToRegistry patches tool descriptions', () => {
 })
 
 test('harnessDeveloperInstructions appends variant text', () => {
+  assert.equal(harnessDeveloperInstructions(), '')
   const text = harnessDeveloperInstructions({ id: 'v', overrides: { instructions: { append: 'Harness extra.' } } })
   assert.match(text, /Harness extra\./)
 })

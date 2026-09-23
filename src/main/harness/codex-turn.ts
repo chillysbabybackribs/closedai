@@ -75,12 +75,13 @@ export async function runCodexHarnessTurn(options: CodexHarnessTurnOptions): Pro
 
   try {
     await client.start()
+    const developerInstructions = harnessDeveloperInstructions(options.variant)
     const startParams = {
       ...startThreadParams(cwd, options.registry, {
         model: options.model ?? null,
         effort: options.effort ?? null
       }),
-      developerInstructions: harnessDeveloperInstructions(options.variant)
+      ...(developerInstructions ? { developerInstructions } : {})
     }
     const started = await client.request<{ thread?: unknown }>('thread/start', startParams, 60_000)
     const thread = recordOf(started.thread)

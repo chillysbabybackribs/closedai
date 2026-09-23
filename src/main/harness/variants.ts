@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { ToolRegistry } from '../tools/registry.js'
-import { closedAiDeveloperInstructions } from '../chat-context/developer-instructions.js'
 
 export type HarnessInstructionOverrides = {
   prepend?: string
@@ -46,15 +45,15 @@ export function applyVariantToRegistry(registry: ToolRegistry, variant?: Harness
 
 export function harnessDeveloperInstructions(variant?: HarnessVariant): string {
   const inst = variant?.overrides?.instructions
-  let text = closedAiDeveloperInstructions()
+  let text = ''
   const omit = inst?.omitLineIndices
   if (omit?.length) {
     const blocked = new Set(omit)
     text = text.split('\n').filter((_, index) => !blocked.has(index)).join('\n')
   }
   const prepend = inst?.prepend?.trim()
-  if (prepend) text = `${prepend}\n${text}`
+  if (prepend) text = [prepend, text].filter(Boolean).join('\n')
   const append = inst?.append?.trim()
-  if (append) text = `${text}\n${append}`
+  if (append) text = [text, append].filter(Boolean).join('\n')
   return text
 }

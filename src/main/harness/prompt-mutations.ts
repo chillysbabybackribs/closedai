@@ -1,4 +1,3 @@
-import { closedAiDeveloperInstructions } from '../chat-context/developer-instructions.js'
 import type { HarnessVariant } from './variants.js'
 
 const APPEND_HINTS = [
@@ -22,16 +21,11 @@ const PREPEND_EMPHASIS = [
   'Default to read-only browser tools unless the user requests navigation.'
 ]
 
-function lineCount(): number {
-  return closedAiDeveloperInstructions().split('\n').length
-}
-
 /** Deterministic prompt mutations for harness sweeps (instruction prepend/omit/append). */
 export function generatePromptMutations(count: number): HarnessVariant[] {
   if (!Number.isInteger(count) || count < 1 || count > 512) {
     throw new Error('count must be an integer 1–512')
   }
-  const lines = lineCount()
   const out: HarnessVariant[] = []
   for (let i = 0; i < count; i++) {
     const id = `sweep-${String(i).padStart(3, '0')}`
@@ -40,12 +34,10 @@ export function generatePromptMutations(count: number): HarnessVariant[] {
       continue
     }
     const instructions: NonNullable<HarnessVariant['overrides']>['instructions'] = {}
-    const mode = i % 4
+    const mode = i % 3
     if (mode === 1) {
-      instructions.omitLineIndices = [(i - 1) % lines]
-    } else if (mode === 2) {
       instructions.prepend = PREPEND_EMPHASIS[i % PREPEND_EMPHASIS.length]
-    } else if (mode === 3) {
+    } else if (mode === 2) {
       instructions.append = APPEND_HINTS[i % APPEND_HINTS.length]
     } else {
       instructions.prepend = PREPEND_EMPHASIS[(i >> 1) % PREPEND_EMPHASIS.length]

@@ -14,6 +14,6 @@ test('generatePromptMutations returns unique ids and includes baseline', () => {
 
 test('instruction mutations change assembled developer text', () => {
   const main = harnessDeveloperInstructions()
-  const mutated = harnessDeveloperInstructions(generatePromptMutations(100)[3])
+  const mutated = harnessDeveloperInstructions(generatePromptMutations(100)[1])
   assert.notEqual(main, mutated)
 })
