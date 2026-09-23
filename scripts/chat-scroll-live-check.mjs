@@ -131,7 +131,10 @@ async function runChecks(BrowserWindow) {
     const r = document.querySelector('.chat-scroll').getBoundingClientRect();
     return {x:Math.round(r.left+r.width/2),y:Math.round(r.top+r.height/2)};
   })()`)
-  window.webContents.sendInputEvent({ type: 'mouseWheel', ...point, deltaY: -600, deltaX: 0 })
+  window.webContents.focus()
+  window.webContents.sendInputEvent({ type: 'mouseMove', ...point })
+  // Electron's native wheel delta is positive upwards (DOM WheelEvent has the opposite sign).
+  window.webContents.sendInputEvent({ type: 'mouseWheel', ...point, deltaY: 600, deltaX: 0 })
   await pause(400)
   const reading = await metrics()
   assert.ok(reading.remaining > 24, 'Native wheel input must leave bottom following')
