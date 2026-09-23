@@ -62,8 +62,9 @@ is documented in the application, model-context, and tool guides.
 
 ## Verification
 
-For routine edits, use `npm run typecheck`, the specific tests exercising changed code, and
-`npm run hygiene` for changed file lengths or structure. Run `npm run map` when navigable files
-or IPC ownership change, then `npm run map:check`. For real Chromium browser paths against the
-app's `HOME_URL`, run `npm run browser:live`. The full `npm run check` gate is for release
-preparation or an explicit request; see [AGENTS.md](AGENTS.md).
+For routine edits, run one co-located test with `npm run test:one -- src/path/to/module.test.ts`,
+then `npm run typecheck` when shared types or cross-layer contracts change. Use `npm run hygiene`
+for changed file lengths or structure. Run `npm run map` when navigable files or IPC ownership
+change, then `npm run map:check`. For real Chromium browser paths against the app's `HOME_URL`,
+run `npm run browser:live`. The full `npm run check` gate is for release preparation or an
+explicit request; see [AGENTS.md](AGENTS.md).

@@ -23,7 +23,7 @@ export function displayUserMessageText(text: string): string {
 /** True when a title is really injected markup, not a human-readable name. */
 export function isInjectedContextTitle(title: string): boolean {
   const trimmed = title.trim()
-  return trimmed.includes('<closedai_context') || trimmed.includes('closedai.instructions')
+  return trimmed.includes('<closedai_context') || trimmed.includes('closedai.instructions') || trimmed.includes('closedai.guide')
 }
 
 /**

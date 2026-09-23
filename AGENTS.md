@@ -19,6 +19,8 @@ Regenerate the workspace index after adding/removing navigable files or changing
 Add facts to the map only through the generator, so `map:check` can prove them current, and never
 hand-write repository detail into trusted instructions: a stale map is worse than no map, because
 it is believed without checking.
+Edit `scripts/agent-guide-outline.json` and run `npm run guide:generate` when cold-start orientation
+changes; `guide:check` proves the generated `closedai.guide` text is current.
 
 ## Architecture
 
@@ -61,6 +63,7 @@ The byte caps and layer-boundary rules live in `scripts/hygiene-gate.mjs`; sourc
 - For renderer UI work, run the real Electron app (`npm run build && npm run preview`, or
   `npm run dev` for hot reload). Do not add a second browser-only entry or duplicate bridge.
 
-- Verify with `npm run typecheck` and only the test file that exercises the edited code: `node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs --test "src/path/to/target.test.ts"`.
+- Default verification: one co-located test via `npm run test:one -- src/path/to/target.test.ts`. Run
+  `npm run typecheck` when shared types or cross-layer contracts change, not after every micro-edit.
 - Run `npm run hygiene` when changing file lengths or structure.
 - Full gates (`npm test`, `npm run check`) are for releases or an explicit request; a routine edit does not earn one.

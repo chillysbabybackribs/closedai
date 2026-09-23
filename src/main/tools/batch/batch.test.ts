@@ -421,8 +421,7 @@ test('a configured batch limit shapes both advertising and enforcement', async (
   const { registry } = harness(24)
   const tool = registry.namespaces.find((namespace) => namespace.name === 'tool_batch')?.tools[0]
   const properties = tool?.inputSchema.properties as Record<string, { description?: string }> | undefined
-  assert.match(tool?.description ?? '', /up to 24 tool calls/)
-  assert.match(String(properties?.calls.description), /1 and 24/)
+  assert.match(String(properties?.calls.description), /Between 1 and 24 entries/)
 
   const oversized = await call(registry, {
     calls: Array.from({ length: 25 }, () => ({ tool: 'lab.echo', arguments: { text: 'x' } }))

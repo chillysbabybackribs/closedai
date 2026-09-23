@@ -9,11 +9,17 @@ import { shrinkPastedImages } from '../chat-attachment-images.js'
 import {
   buildThreadHandoff,
   continuationFromThreadHandoff,
-  handoffAdditionalContext,
   type ThreadHandoffSource
 } from '../chat-context/thread-handoff.js'
 import {
+  buildTurnSendContext,
+  markSessionGuideDelivered,
+  sessionGuideThreadKey,
+  type SessionGuideDeliveryState
+} from '../chat-context/session-guide.js'
+import {
   buildTurnAdditionalContext,
+  mergeTurnAdditionalContext,
   type ActiveBrowserContext
 } from '../chat-context/turn-context.js'
 import { buildCompactionSeed, compactedAdditionalContext } from '../chat-context/provider-compaction.js'
@@ -84,6 +90,7 @@ export class AntigravityChatService extends EventEmitter {
   private authRetrying = false
   private readonly transcript: ChatTranscript
   private startPromise: Promise<void> | null = null
+  private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
 
   constructor(
     readonly cwd: string,
@@ -137,6 +144,7 @@ export class AntigravityChatService extends EventEmitter {
       const { prompt, input, summaries } = buildChatInput(text, shrunk)
       if (input.length === 0) return
       if (this.activeTurnId) throw new Error('An Antigravity turn is already running')
+      const transcriptWasEmpty = this.transcript.isEmpty
       // Paint the accepted message before the provider starts; see the Claude lane for why.
       this.transcript.addOptimisticUser(crypto.randomUUID(), prompt, summaries)
       await prepare?.()
@@ -146,12 +154,23 @@ export class AntigravityChatService extends EventEmitter {
       const conversationId = session.conversationId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const pendingCompaction = this.session!.takePendingSeed()
-      const context = {
-        ...this.turnAdditionalContext(text),
-        ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {}),
-        ...(pendingCompaction ? compactedAdditionalContext(pendingCompaction) : {})
-      }
-      const turn = await buildAntigravityPrompt(text, shrunk, Object.keys(context).length ? context : undefined, this.stateDir)
+      const guideThreadKey = sessionGuideThreadKey(
+        this.settings.get().chatAntigravityConversationId,
+        session.conversationId,
+        this.paneId ?? 'pane'
+      )
+      const { context: guided, attachGuide } = buildTurnSendContext({
+        threadKey: guideThreadKey,
+        state: this.sessionGuideState,
+        transcriptWasEmpty,
+        pendingHandoff,
+        browserContext: this.turnAdditionalContext(text)
+      })
+      const context = mergeTurnAdditionalContext(
+        guided,
+        pendingCompaction ? compactedAdditionalContext(pendingCompaction) : undefined
+      )
+      const turn = await buildAntigravityPrompt(text, shrunk, context, this.stateDir)
       if (!turn) return
       await this.bridge.start()
       // The CLI reads the agent file once, at process start. A spawn is therefore the only
@@ -162,6 +181,7 @@ export class AntigravityChatService extends EventEmitter {
       this.authRetrying = false
       session.send(turn.content)
       await this.clearDeliveredHandoff()
+      if (attachGuide) markSessionGuideDelivered(this.sessionGuideState, guideThreadKey)
     } catch (error) {
       this.addNotice(messageOf(error), 'error')
       throw error

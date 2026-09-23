@@ -27,9 +27,14 @@ import { applyPlanUsageSignal, planUsageUnavailable, type ClaudeRateLimitSignal 
 import {
   buildThreadHandoff,
   continuationFromThreadHandoff,
-  handoffAdditionalContext,
   type ThreadHandoffSource
 } from '../chat-context/thread-handoff.js'
+import {
+  buildTurnSendContext,
+  markSessionGuideDelivered,
+  sessionGuideThreadKey,
+  type SessionGuideDeliveryState
+} from '../chat-context/session-guide.js'
 import {
   buildTurnAdditionalContext,
   type ActiveBrowserContext
@@ -83,6 +88,7 @@ export class ClaudeChatService extends EventEmitter {
    * later replay after it goes inactive again reads fresh rather than serving pre-live state.
    */
   private readonly threadCache = new Map<string, ChatThreadContent>()
+  private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
 
   constructor(
     readonly cwd: string,
@@ -141,6 +147,7 @@ export class ClaudeChatService extends EventEmitter {
       const { prompt, input, summaries } = buildChatInput(text, shrunk)
       if (input.length === 0) return
       if (this.activeTurnId) throw new Error('A Claude turn is already running')
+      const transcriptWasEmpty = this.transcript.isEmpty
       // Paint the accepted message before anything that can take a moment. Painting it last held
       // a new chat on its empty state — composer text and all — through the provider's start, the
       // catalog read and the turn context, which is most of the wait before a first reply.
@@ -152,15 +159,24 @@ export class ClaudeChatService extends EventEmitter {
       if (this.activeTurnId) throw new Error('A Claude turn is already running')
       const sessionId = session.sessionId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
-      const context = {
-        ...this.turnAdditionalContext(text),
-        ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
-      }
-      const turn = await buildClaudeUserMessage(text, shrunk, Object.keys(context).length ? context : undefined, session.sessionId)
+      const guideThreadKey = sessionGuideThreadKey(
+        this.settings.get().chatClaudeSessionId,
+        session.sessionId,
+        this.paneId ?? 'pane'
+      )
+      const { context, attachGuide } = buildTurnSendContext({
+        threadKey: guideThreadKey,
+        state: this.sessionGuideState,
+        transcriptWasEmpty,
+        pendingHandoff,
+        browserContext: this.turnAdditionalContext(text)
+      })
+      const turn = await buildClaudeUserMessage(text, shrunk, context, session.sessionId)
       if (!turn) return
       if (this.session !== session || (sessionId && session.sessionId !== sessionId) || this.activeTurnId) throw new Error('Claude conversation changed while preparing the turn')
       session.send(turn.message)
       await this.clearDeliveredHandoff()
+      if (attachGuide) markSessionGuideDelivered(this.sessionGuideState, guideThreadKey)
     } catch (error) {
       this.addNotice(messageOf(error), 'error')
       throw error

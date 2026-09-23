@@ -16,13 +16,17 @@ import { shrinkPastedImages } from '../chat-attachment-images.js'
 import {
   buildThreadHandoff,
   continuationFromThreadHandoff,
-  handoffAdditionalContext,
   type ThreadHandoffSource
 } from '../chat-context/thread-handoff.js'
 import {
+  buildTurnSendContext,
+  markSessionGuideDelivered,
+  sessionGuideThreadKey,
+  type SessionGuideDeliveryState
+} from '../chat-context/session-guide.js'
+import {
   buildTurnAdditionalContext,
-  type ActiveBrowserContext,
-  type AdditionalContext
+  type ActiveBrowserContext
 } from '../chat-context/turn-context.js'
 import { reasoningEffortForModel } from '../chat-model-catalog.js'
 import { ChatModelState } from '../chat-model-state.js'
@@ -69,6 +73,7 @@ export class CursorChatService extends EventEmitter {
    * the caller, and a pane has one thread at a time, so it survives every new chat and reload.
    */
   private readonly bridgeKey = randomUUID()
+  private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
 
   constructor(
     readonly cwd: string,
@@ -127,6 +132,7 @@ export class CursorChatService extends EventEmitter {
       const { prompt, input, summaries } = buildChatInput(text, shrunk)
       if (input.length === 0) return
       if (this.activeTurnId) throw new Error('A Cursor turn is already running')
+      const transcriptWasEmpty = this.transcript.isEmpty
       // Paint the accepted message before the provider starts; see the Claude lane for why.
       this.transcript.addOptimisticUser(randomUUID(), prompt, summaries)
       await prepare?.()
@@ -135,14 +141,22 @@ export class CursorChatService extends EventEmitter {
       if (this.activeTurnId) throw new Error('A Cursor turn is already running')
       const sessionId = session.sessionId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
-      const context: AdditionalContext = {
-        ...this.turnAdditionalContext(text),
-        ...(pendingHandoff ? handoffAdditionalContext(pendingHandoff) : {})
-      }
+      const guideThreadKey = sessionGuideThreadKey(
+        this.settings.get().chatCursorSessionId,
+        session.sessionId,
+        this.paneId ?? 'pane'
+      )
+      const { context, attachGuide } = buildTurnSendContext({
+        threadKey: guideThreadKey,
+        state: this.sessionGuideState,
+        transcriptWasEmpty,
+        pendingHandoff,
+        browserContext: this.turnAdditionalContext(text)
+      })
       const turn = await buildCursorPrompt(
         text,
         shrunk,
-        Object.keys(context).length ? context : undefined,
+        context,
         { images: this.supportsImages }
       )
       if (!turn) return
@@ -150,6 +164,7 @@ export class CursorChatService extends EventEmitter {
       if (this.session !== session || (sessionId && session.sessionId !== sessionId) || this.activeTurnId) throw new Error('Cursor conversation changed while preparing the turn')
       await session.send(turn.blocks)
       await this.clearDeliveredHandoff()
+      if (attachGuide) markSessionGuideDelivered(this.sessionGuideState, guideThreadKey)
     } catch (error) {
       this.addNotice(messageOf(error), 'error')
       throw error
