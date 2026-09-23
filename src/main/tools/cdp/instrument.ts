@@ -29,17 +29,10 @@ export function cdpInstrumentTool(cdp: CdpHostProvider): ToolDefinition {
     name: 'instrument',
     deferLoading: true,
     description:
-      'Watch what a page does from its very first instruction. The recorder is installed with ' +
-      '`Page.addScriptToEvaluateOnNewDocument`, so it wraps fetch, XHR, WebSocket, document.cookie, ' +
-      'storage and fingerprinting getters before the document scripts run, ' +
-      'and it stays installed across navigations and redirects — which is the window ordinary page ' +
-      'evaluation cannot see, because by then the work has already happened. Wrappers are observable ' +
-      'and may affect page behavior; eval/Function are never wrapped. Inspect recording.patches for ' +
-      'failed or unavailable APIs. Cross-origin frames get the same recorder, including frames created ' +
-      'later, which start paused until it is installed; recording lists them under frames and unhook ' +
-      'cleans them. Workers are not recorded. Counting happens in the page and only a ' +
-      'bounded fold is returned. Pair it with embedded_browser.network when you also need the wire ' +
-      'view: this reports the call the page made, that reports the request that left.',
+      'Record page API calls for fetch/XHR/WebSocket, cookies, storage, fingerprinting and errors. Hooks cover current ' +
+      'and future documents, persist across navigation and redirects, and include cross-origin frames; workers are not ' +
+      'recorded. Wrappers are observable and may affect the page; eval/Function are not wrapped. Results are bounded. ' +
+      'Pair with embedded_browser.network for wire-level request evidence.',
     actions: actions(cdp)
   })
 }
