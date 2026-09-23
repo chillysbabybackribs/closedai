@@ -56,6 +56,12 @@ test('modal backdrop occludes the browser before an image dialog grows into it',
       querySelectorAll: (selector: string) => selector.includes('.header-chat-search-popup') ? [search] : []
     } as unknown as ParentNode
     assert.equal(overlayBlocksBrowser(searchRoot), true, 'header suggestions freeze an overlapping native page')
+    const layoutMenu = new Surface(720, 460, { 'data-state': 'open' })
+    const layoutRoot = {
+      querySelector: () => host,
+      querySelectorAll: (selector: string) => selector.includes('.titlebar-layout-menu') ? [layoutMenu] : []
+    } as unknown as ParentNode
+    assert.equal(overlayBlocksBrowser(layoutRoot), true, 'title bar layout menu freezes an overlapping native page')
     const clearRoot = {
       querySelector: () => host,
       querySelectorAll: () => [new Surface(100, 440)]
