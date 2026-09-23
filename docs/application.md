@@ -156,11 +156,13 @@ A provider send failure leaves the destination and handoff available for inspect
 On launch only the selected pane is warmed. Selecting another pane immediately displays its
 available snapshot, then wakes its runtime asynchronously. A pane with no snapshot of its own —
 parked, detached, or freshly restored — paints from the chat's saved view instead: the last 60
-transcript items (capped at 256 KB), its thread name, and the context reading it was last
-measured with, written to `chat-transcripts/<chat id>.json` at each turn boundary and read back
+transcript items (their serialized JSON capped at 256 KiB in UTF-8), its thread name, and its last
+context reading, written to `chat-transcripts/<chat id>.json` at each turn boundary and read back
 before the pane is announced. The view is display-only and never reaches a model; the provider's
 replay replaces it as soon as it lands, and it is used only while the chat still holds the thread
-it was taken from, so a new chat or a provider switch shows nothing stale. The live transcript
+it was taken from, so a new chat or a provider switch shows nothing stale. The cache drops oldest
+items until the tail fits, including the last item if it alone exceeds the cap; older cache files
+receive the same trimming when loaded. The provider retains the full transcript. The live transcript
 shows the current turn by default; **View previous messages** loads one earlier user/model turn at
 a time from the provider when needed. Such a pane wakes the provider first, since earlier messages
 come from the thread itself. The
@@ -917,7 +919,11 @@ baseline adds no ClosedAI behavioral instructions about credential use.
 The service catalog in `src/shared/credentials.ts` is the single definition of which fields a
 service takes, which are required, and which hosts select it, so the store validates every saved
 draft and the form renders and detects from the same source. `CredentialVault` encrypts
-secret fields with Electron `safeStorage` before writing;
+secret fields with Electron `safeStorage` before writing. Vault mutations are serialized and become
+visible to reads only after persistence succeeds; a failed save leaves the previous state intact.
+Structurally invalid vault JSON follows the same recovery-copy path as unparseable JSON, preserving
+the original file before a replacement vault is saved.
+
 `safeStorage` is injected rather than imported, which is what lets `credential-vault.test.ts`
 exercise the round trip outside Electron. When no OS keychain is available the vault still works
 but says so — the create form warns before saving and the saved row carries an `Unencrypted`
@@ -932,7 +938,8 @@ reports that backend as unavailable so the badge and each entry's `encrypted` fl
 `credential_vault.read` then refuses that entry with a message that points the model at the
 setting. With `credentialsRequireApproval` on, each `read` first posts a `CredentialApprovalRequest`
 (pane, credential, field ids, the model's stated reason) through `security:credentialApprovals`; the
-tool waits for `security.resolveCredentialApproval`, refuses on deny, and an unanswered card is denied
+tool waits for `security.resolveCredentialApproval`, rechecks that the entry still exists and has
+agent access after approval, refuses on deny, and an unanswered card is denied
 after 120 s; the tool's own timeout is longer, and a call the registry aborts withdraws its card. With
 `secretsRequireKeychain` on, `CredentialVault.save` refuses a draft with a secret field whenever
 encryption is unavailable instead of storing it plainly. `importBrowserCookies` gates only the launch
@@ -953,6 +960,8 @@ a plain statement that agents run unrestricted, with no control. The panel
 (`src/renderer/settings/security-panel.tsx`) drives a pure controller
 (`security-settings.ts`) that loads on tab open, applies each change optimistically, and rolls the
 touched keys back with the vault's reason in the footer when the main process refuses the write.
+The main-process store serializes patches and activates and announces each change only after its
+write succeeds, so a rejected save leaves the active settings unchanged.
 The switches are Radix switches (`role="switch"`, `aria-checked`, labelled by `for`), the
 segmented control is a Radix radio group with arrow-key movement, and every control carries a
 `security.*` id from `src/shared/ui-controls.ts`.

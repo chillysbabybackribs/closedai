@@ -87,6 +87,10 @@ before the app-server starts.
 | `peer_chats` | `recall` | plain tool, read-only | Bounded phrase search or exact-message excerpts from the caller's current chat, frozen direct continuation source (live in-memory transcript after same-pane rotation), or a previous conversation across projects, and optional `sessionRotationEpoch`. |
 | `tool_batch` | `run` | plain tool, deferred where supported | Runs up to 16 other tools by default, sequentially or in parallel by resource. Set `continue_on_error: true` in sequential batches to run remaining steps despite earlier failures while still unwinding unreleased armed state; a plan that runs through keeps a successful batch result, because the caller declared those failures expected. Same-target work serializes; distinct explicit browser targets can run concurrently. When the outer batch ends or times out, its signal cancels in-flight inner calls and prevents queued calls from starting; a resource lock remains until the underlying call settles. `toolBatchMaxCalls` configures 1–64 at startup; nested batches are refused. A failed sequential batch compensates itself: profiling recorders, pre-document hooks, and device emulation armed by earlier steps are released in reverse order using their resolved tab ids, including after a timeout. State already released is not released twice; visible mutations (an opened tab, a cookie, a network rule) are never undone. Parallel calls are declared independent, so a failure does not unwind them. See `src/main/tools/batch/compensation.ts`. |
 
+Credential reads recheck the entry's existence and existing `agentAccess` switch after a pending
+approval is allowed, before revealing fields. Changing the switch while the card is pending is
+therefore reflected in that read.
+
 `embedded_browser.network_replay` is a separate deferred tool taking `request_id` and required
 `url_contains` from the session request log (optional `method`). It verifies the recorded row
 matches before sending a new request with replayable headers and post data on the current session.
