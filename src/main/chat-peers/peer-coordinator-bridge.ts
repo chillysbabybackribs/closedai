@@ -16,11 +16,9 @@ export type CoordinatorBridgeHost = {
   snapshot: (paneId: ChatPaneId) => ChatSnapshot | null
 }
 
-const awaitingReview = new Map<ChatPaneId, boolean>()
 const pausedCoordinators = new Set<ChatPaneId>()
 
 export function resetCoordinatorBridgeForTests(): void {
-  awaitingReview.clear()
   pausedCoordinators.clear()
 }
 
