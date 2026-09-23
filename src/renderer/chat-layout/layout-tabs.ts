@@ -37,6 +37,16 @@ export function tabOwner(tree: ChatLayout | null, id: string): string | null {
     : tabOwner(tree.first, id) ?? tabOwner(tree.second, id)
 }
 
+/** Whether `chatId` is the visible tab in its tile (not merely present as a background tab). */
+export function isChatTabActive(tree: ChatLayout | null, chatId: string): boolean {
+  if (!tree) return false
+  if (tree.kind === 'pane') {
+    const tabs = tree.tabs ?? [tree.id]
+    return tabs.includes(chatId) && tree.id === chatId
+  }
+  return isChatTabActive(tree.first, chatId) || isChatTabActive(tree.second, chatId)
+}
+
 /** Select an existing tab wherever it lives; unopened chats join the focused tile as a new tab. */
 export function selectTab(tree: ChatLayout, target: string, id: string): ChatLayout {
   const owner = tabOwner(tree, id)

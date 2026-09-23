@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { CachedChatView } from '../chat-store/chat-transcript-cache.js'
-import { cachedPaneView, readableView, rendererChatBatcher, rendererSnapshot, rowSummary } from './peer-events.js'
+import { readableView, rendererChatBatcher, rendererSnapshot, rowSummary } from './peer-events.js'
 import { chatRecord, FakeSurface } from './peer-manager-harness.js'
 
 const cached: CachedChatView = {
@@ -38,15 +38,6 @@ test('renderer snapshots keep only the latest turn for the live pane', () => {
   }, 'Example')
   assert.deepEqual(snapshot.items.map((item) => item.id), ['u2', 'a2'])
   assert.equal(snapshot.history?.hasEarlier, true)
-})
-
-test('a saved view paints when the store thread id is still unset but the cache matches the live thread', () => {
-  const parked = new FakeSurface('gpt').snapshot()
-  parked.threadId = 'codex:t1'
-  const record = chatRecord('pane-a', 'gpt', { threadId: null })
-  const filled = cachedPaneView(parked, record, cached)
-  assert.equal(filled.items[0]?.id, 'u')
-  assert.equal(filled.history?.hasEarlier, true)
 })
 
 test('a peer reads a parked pane from its saved view rather than as an empty chat', () => {

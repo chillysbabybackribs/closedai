@@ -227,10 +227,8 @@ export function cachedPaneView(
   const checkpoint = record?.checkpoint && record.checkpoint.threadId === threadId
     ? record.checkpoint
     : snapshot.checkpoint
-  const recordThreadId = record?.threadId ?? (record?.continuation?.sourceCwd ? record.continuation.sourceThreadId : null)
-  const liveThreadId = threadId ?? recordThreadId
-  if (!cached || !liveThreadId || cached.threadId !== liveThreadId ||
-      (recordThreadId && cached.threadId !== recordThreadId)) {
+  const cachedThreadId = record?.threadId ?? (record?.continuation?.sourceCwd ? record.continuation.sourceThreadId : null)
+  if (!cached || !cachedThreadId || cached.threadId !== cachedThreadId) {
     return checkpoint === snapshot.checkpoint ? snapshot : { ...snapshot, checkpoint }
   }
   const contextUsage = snapshot.contextUsage ?? cached.contextUsage

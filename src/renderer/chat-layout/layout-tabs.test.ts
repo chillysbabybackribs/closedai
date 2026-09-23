@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { dockPane, layoutGeometry, paneIds, readLayout, resizeSplit, saveLayout, withBrowser, type ChatLayout } from './layout-tree.ts'
-import { addTab, focusedCloseAction, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds } from './layout-tabs.ts'
+import { addTab, focusedCloseAction, isChatTabActive, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds } from './layout-tabs.ts'
 
 const split = (): ChatLayout => resizeSplit(dockPane({ kind: 'pane', id: 'a' }, 'b', 'a', 'right', 'split'), 'split', 0.6)
 
@@ -131,4 +131,13 @@ test('moving a tab to the neighbouring tile joins its strip and collapses an emp
   const lone = moveTab(split(), 'a', neighborTile(split(), 'a', 'next')!, null, 'x')
   assert.equal(lone.kind, 'pane')
   assert.deepEqual(tabIds(lone), ['b', 'a'])
+})
+
+test('isChatTabActive is true only for the visible tab in a tile', () => {
+  const tree = addTab({ kind: 'pane', id: 'a' }, 'a', 'b')
+  assert.equal(isChatTabActive(tree, 'a'), true)
+  assert.equal(isChatTabActive(tree, 'b'), false)
+  const focused = selectTab(tree, 'a', 'b')
+  assert.equal(isChatTabActive(focused, 'b'), true)
+  assert.equal(isChatTabActive(focused, 'a'), false)
 })

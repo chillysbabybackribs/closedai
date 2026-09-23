@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { errorMessage } from '../error-message.js'
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
-import { addTab, focusedCloseAction, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds, tabOwner, type TileDirection } from './layout-tabs.js'
+import { addTab, focusedCloseAction, isChatTabActive, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds, tabOwner, type TileDirection } from './layout-tabs.js'
 import { removalNotice } from './layout-copy.js'
 import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
 const ERROR_TTL_MS = 8000
@@ -72,16 +72,33 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     return () => { active = false }
   }, [cwd, idsKey, tabsKey, fail])
 
+  const chatIdsKey = useMemo(() => {
+    const ids = snapshot.chats.map((chat) => chat.paneId)
+    ids.sort()
+    return ids.join('\0')
+  }, [snapshot.chats.map((chat) => chat.paneId).sort().join('\0')])
+
+  // Drop archived or removed chats from the saved tree without touching tab focus.
+  useEffect(() => {
+    const available = new Set(chatIdsKey.split('\0').filter(Boolean))
+    setLayout((value) => {
+      const tree = pruneTabs(value.tree, available)
+      return tree === value.tree ? value : { ...value, tree: tree! }
+    })
+  }, [chatIdsKey, cwd])
+
   // History/search selection focuses an existing tab or adds one to the focused tile.
   // Split/add operations manage their own destination while main announces selection.
-  // LayoutEffect keeps the destination pane mounted before paint; useEffect left a gap where
-  // main had already switched chats but the tree still showed the previous tab's transcript.
+  // LayoutEffect keeps the destination pane mounted before paint. It must not depend on
+  // `chats` row updates: streaming refreshes the drawer every few hundred ms and
+  // re-running selectTab there rewrote the tree and starved provider runtimes.
   useLayoutEffect(() => {
     // Workspace events are delivered in a React transition. An IPC reply can arrive
     // first; do not prune the new tab against the previous workspace snapshot.
     if (selectionToConfirm) {
+      const chats = latestSnapshot.current.chats
       if (snapshot.selectedPaneId !== selectionToConfirm ||
-          !snapshot.chats.some((chat) => chat.paneId === selectionToConfirm)) return
+          !chats.some((chat) => chat.paneId === selectionToConfirm)) return
       release()
     } else if (pending.current) return
     const next = snapshot.selectedPaneId
@@ -89,16 +106,17 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     selected.current = next
     setLayout((value) => {
       let tree: ChatLayout | null = value.tree
-      const available = new Set(snapshot.chats.map((chat) => chat.paneId))
-      tree = pruneTabs(tree, available)
       if (!tree || !paneIds(tree).length) tree = withBrowser({ kind: 'pane', id: next })
-      else {
+      else if (!tabIds(tree).includes(next)) {
+        const anchor = paneIds(tree).includes(previous) ? previous : paneIds(tree)[0]!
+        tree = selectTab(tree, anchor, next)
+      } else if (!isChatTabActive(tree, next)) {
         const anchor = paneIds(tree).includes(previous) ? previous : paneIds(tree)[0]!
         tree = selectTab(tree, anchor, next)
       }
       return tree === value.tree ? value : { ...value, tree: tree! }
     })
-  }, [snapshot.selectedPaneId, snapshot.chats, busy, cwd, selectionToConfirm, release])
+  }, [snapshot.selectedPaneId, busy, cwd, selectionToConfirm, release])
 
   // A confirmation that never arrives would leave every structural control disabled. Releasing
   // re-runs the reconciliation above against the latest snapshot, which drops any tab main never opened.
