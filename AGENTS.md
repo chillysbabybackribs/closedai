@@ -39,6 +39,13 @@ Use native file search and read tools to navigate this repository. Tests sit bes
 feature stylesheets live under `src/renderer/styles/<feature>/`. The generated index is a maintenance
 artifact, not injected model context or a replacement for native file tools.
 
+## Visual concept work
+
+When a user asks to see visual variations inspired by an image, consider the image generation
+skill before choosing an output medium. Use it for exploratory bitmap concepts; use HTML/CSS
+when the user needs an interactive prototype or exact application controls. State which medium
+produced each result so a browser capture is never presented as an image-generated concept.
+
 ## Model tools
 
 - Keep model tools provider-agnostic under `src/main/tools/`; provider adapters only translate the shared contract.
