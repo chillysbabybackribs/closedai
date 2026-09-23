@@ -4,14 +4,12 @@ import { ArrowUp, Play, Square } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import { PromptInput, PromptInputAction, PromptInputTextarea } from '../components/ui/prompt-input.js'
-import type { AgentRunStartOptions } from '../shared/agent-runs.js'
 import type { ChatAttachment, ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
 import { ComposerFolderMenu } from './composer-folder-menu.js'
 import { ComposerSetupMenu, type ComposerSetupHandle } from './composer-setup-menu.js'
 import { useComposerDraft } from './composer-drafts.js'
-import { AgentLibraryDialog } from './agent-library/agent-library-dialog.js'
 import { errorMessage } from './error-message.js'
 
 export type ComposerProps = {
@@ -32,8 +30,8 @@ export type ComposerProps = {
   onModelChange: (modelId: string) => Promise<void>
   onReasoningEffortChange: (effort: string) => Promise<void>
   onSend: (text: string, attachments: ChatAttachment[]) => Promise<void>
-  /** Starts an agent run in a new chat from the Agent dialog; see agent-library/. */
-  onStartAgent?: (options: AgentRunStartOptions) => Promise<void>
+  /** Opens the pane's Agents dialog (agent-library/); absent where this pane cannot launch agents. */
+  onOpenAgents?: () => void
   onStop: () => Promise<void>
   /** A turn the pause button ended and nothing has followed, so Resume is worth offering. */
   paused: boolean
@@ -71,7 +69,7 @@ export function Composer({
   onModelChange,
   onReasoningEffortChange,
   onSend,
-  onStartAgent,
+  onOpenAgents,
   onStop,
   paused,
   onResume,
@@ -82,7 +80,6 @@ export function Composer({
   const { input, setInput, attachments, setAttachments, clearDraft } = useComposerDraft(paneId)
   // One alert row for whatever the composer's own controls could not do: attach, pause, pick.
   const [composerError, setComposerError] = useState('')
-  const [agentsOpen, setAgentsOpen] = useState(false)
   const providerLabel = CHAT_PROVIDER_LABELS[provider]
   const [sending, setSending] = useState(false)
   // Blank while a turn runs: the pause button is the affordance then, and a hint would compete.
@@ -246,9 +243,9 @@ export function Composer({
           </div>
         </PromptInput>
         <div className="composer-footer">
-          {onStartAgent && <div className="composer-footer-agent">
+          {onOpenAgents && <div className="composer-footer-agent">
             <Button type="button" variant="ghost" className="composer-agent-trigger" data-ui="composer.agents"
-              aria-label="Open agents" disabled={!enabled} onClick={() => setAgentsOpen(true)}>
+              aria-label="Open agents" onClick={onOpenAgents}>
               <span>Agent</span>
             </Button>
           </div>}
@@ -294,7 +291,6 @@ export function Composer({
           </div>
         </div>
       </div>
-      {onStartAgent && <AgentLibraryDialog open={agentsOpen} onOpenChange={setAgentsOpen} onStart={onStartAgent} />}
       {composerError && <div className="prompt-attachment-error" role="alert">{composerError}</div>}
     </form>
   )

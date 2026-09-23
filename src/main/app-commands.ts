@@ -330,7 +330,7 @@ export function projectChat(paneId: string, snapshot: ChatSnapshot, agentRun: Ag
     ...(snapshot.pausedTurnId ? { pausedTurnId: snapshot.pausedTurnId } : {}),
     // Present only for a chat the app is driving; the loop restarts this pane after every turn.
     ...(agentRun ? { agentRun: {
-      name: agentRun.name, status: agentRun.status, cycle: agentRun.cycle, maxCycles: agentRun.maxCycles, failures: agentRun.failures,
+      status: agentRun.status, cycle: agentRun.cycle, maxCycles: agentRun.maxCycles, failures: agentRun.failures,
       reason: agentRun.reason, agentId: agentRun.agentId, name: agentRun.name, summary: describeAgentRun(agentRun)
     } } : {}),
     contextUsage: snapshot.contextUsage ? {

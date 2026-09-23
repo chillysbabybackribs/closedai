@@ -12,7 +12,7 @@ import { QUICK_LAYOUT_PRESETS, type LayoutPreset } from './chat-layout/layout-pr
 export type MenuAction =
   | 'new-chat' | 'history' | 'settings' | 'close-tab' | 'close-window' | 'search-chats'
   | 'toggle-browser' | 'layout' | 'toggle-fullscreen'
-  | 'tools' | 'compact' | 'stop-turn'
+  | 'agents' | 'tools' | 'compact' | 'stop-turn'
   | 'trace' | 'reload' | 'devtools'
 
 type MenuControlUi = { control: 'layout.dock-preset' | 'layout.preset-menu-custom'; item?: string }
@@ -86,6 +86,7 @@ const MENUS: Menu[] = [
     key: 'agent',
     label: 'Agent',
     rows: [
+      { key: 'agents', label: 'Agents…', action: 'agents' },
       { key: 'tools', label: 'Tools & capabilities…', shortcut: 'Ctrl+Shift+T', action: 'tools' },
       SEP,
       { kind: 'heading', label: 'Selected chat' },

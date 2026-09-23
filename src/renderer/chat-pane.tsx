@@ -18,6 +18,7 @@ import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { injectComposerDraft } from './composer-drafts.js'
 import { CredentialApprovalCards } from './credential-approval-card.js'
+import { AgentLibraryDialog } from './agent-library/agent-library-dialog.js'
 import { AgentRunStrip } from './agent-runs/agent-run-strip.js'
 import { useAgentRun } from './agent-runs/agent-runs-store.js'
 import { errorMessage } from './error-message.js'
@@ -28,7 +29,7 @@ import { TraceModal } from './trace/trace-modal.js'
 import { useCredentialApprovals } from './use-security-requests.js'
 
 /** Pane-scoped dialogs the shell's Agent and Developer menus can open on the selected chat pane. */
-export type ChatPaneDialog = 'tools' | 'trace'
+export type ChatPaneDialog = 'tools' | 'trace' | 'agents'
 
 export const ChatPane = memo(function ChatPane({
   controller,
@@ -147,6 +148,10 @@ export const ChatPane = memo(function ChatPane({
         <ToolsModal open={dialog === 'tools'} onOpenChange={(open) => setDialog(open ? 'tools' : null)}
           onSendToChat={(text) => { injectComposerDraft(chat.selectedPaneId, text); setDialog(null) }} />
         <TraceModal open={dialog === 'trace'} onOpenChange={(open) => setDialog(open ? 'trace' : null)} paneId={chat.selectedPaneId} />
+        {onStartAgent && (
+          <AgentLibraryDialog open={dialog === 'agents'} onOpenChange={(open) => setDialog(open ? 'agents' : null)}
+            startEnabled={usable} onStart={onStartAgent} />
+        )}
         {historyOpen ? (
           <ChatHistory
             activeChatId={chat.selectedPaneId}
@@ -211,7 +216,7 @@ export const ChatPane = memo(function ChatPane({
           onModelChange={chat.selectModel}
           onReasoningEffortChange={chat.selectReasoningEffort}
           onSend={sendMessage}
-          onStartAgent={onStartAgent}
+          onOpenAgents={onStartAgent ? () => setDialog('agents') : undefined}
           onStop={chat.interrupt}
           paused={state.pausedTurnId !== null}
           onResume={() => sendMessage(CHAT_RESUME_PROMPT, [])}
