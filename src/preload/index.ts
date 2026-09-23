@@ -96,6 +96,14 @@ const api: ClosedaiApi = {
     providerAvailability: () => invoke(IPC.invoke.chat.providerAvailability),
     onEvent: (listener) => subscribe(IPC.event.chatEvent, listener)
   },
+  agentRuns: {
+    list: () => invoke(IPC.invoke.agentRuns.list),
+    start: (chatId, options) => invoke(IPC.invoke.agentRuns.start, chatId, options),
+    pause: (chatId) => invoke(IPC.invoke.agentRuns.pause, chatId),
+    resume: (chatId) => invoke(IPC.invoke.agentRuns.resume, chatId),
+    stop: (chatId) => invoke(IPC.invoke.agentRuns.stop, chatId),
+    onEvent: (listener) => subscribe(IPC.event.agentRunsEvent, listener)
+  },
   credentials: {
     status: () => invoke(IPC.invoke.credentials.status),
     list: () => invoke(IPC.invoke.credentials.list),

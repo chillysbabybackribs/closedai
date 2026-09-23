@@ -287,7 +287,7 @@ export class AgentRunService extends EventEmitter {
   private liveFor(chatId: string): LiveState {
     let live = this.live.get(chatId)
     if (!live) {
-      live = { timer: null, turnActive: this.chat.paneSnapshot(chatId)?.activeTurnId !== null, sawOutput: false, awaitingStart: false }
+      live = { timer: null, turnActive: Boolean(this.chat.paneSnapshot(chatId)?.activeTurnId), sawOutput: false, awaitingStart: false }
       this.live.set(chatId, live)
     }
     return live

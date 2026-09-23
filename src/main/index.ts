@@ -16,6 +16,7 @@ import { maintainBrowserCache, scheduleBrowserCacheMaintenance } from './browser
 import { importDefaultBrowserCookies } from './browser-cookie-import.js'
 import { CodexWorkspaceRuntime } from './codex-workspace-runtime.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
+import { AgentRunService } from './agent-runs/agent-run-service.js'
 import { ChatStore } from './chat-store/chat-store.js'
 import { ChatTranscriptCache } from './chat-store/chat-transcript-cache.js'
 import { migrateChatPeersIntoStore } from './chat-store/chat-store-migration.js'
@@ -82,6 +83,7 @@ let chatStore: ChatStore | null = null
 let chatTranscripts: ChatTranscriptCache | null = null
 let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
+let agentRuns: AgentRunService | null = null
 let credentialVault: CredentialVault | null = null
 let securitySettings: SecuritySettingsStore | null = null
 // Pending user decisions (credential reads, page permissions); empty unless Settings → Security asks for them.
@@ -235,7 +237,7 @@ async function main(): Promise<void> {
   appAutomationAccess = new AppAutomationAccess(() => mainWindow)
   appCommandAccess = new AppCommandAccess({
     chat: () => chatService, browser: () => browserService, downloads: () => browserDownloads, window: () => mainWindow,
-    browserCoordination
+    browserCoordination, agentRuns: () => agentRuns
   })
   const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService)
   // Full-resolution captures for the transcript; the model only ever receives the scaled copy.
@@ -318,6 +320,9 @@ async function main(): Promise<void> {
     const snapshot = chatService?.paneSnapshot(event.paneId)
     researchService?.reconcile(event.paneId, snapshot?.threadId ?? null, snapshot?.activeTurnId ?? null)
   })
+  // The loop behind agent chats: every finished turn is followed by the next cycle until paused.
+  agentRuns = new AgentRunService(chatStore, chatService)
+  agentRuns.on('change', (event: AgentRunsEvent) => sendToMainWindow(IPC.event.agentRunsEvent, event))
   liveVerifyHandle.toolRegistry = toolRegistry
   liveVerifyHandle.researchService = researchService
   registerMainProcessIpc(mainIpcRegistration())
@@ -337,6 +342,7 @@ async function main(): Promise<void> {
     })
   }
   void chatService.start()
+  agentRuns.start()
   stopBrowserCacheMaintenance = scheduleBrowserCacheMaintenance(userData())
   const liveVerifyMode = process.env.CLOSEDAI_LIVE_VERIFY?.trim() || liveVerifyFromArgv()
   if (liveVerifyMode) requestLiveVerify(liveVerifyHandle, app, liveVerifyMode, true)
@@ -382,6 +388,7 @@ function mainIpcRegistration() {
     browserService: () => browserService,
     browserDownloads: () => browserDownloads,
     chatService: () => chatService,
+    agentRuns: () => agentRuns,
     credentialVault: () => credentialVault,
     securitySettings: () => securitySettings,
     settings: () => settings,
@@ -430,6 +437,7 @@ app.on('before-quit', (event) => {
   nativeInstrument?.dispose()
   stopBrowserCacheMaintenance?.()
   stopBrowserCacheMaintenance = null
+  agentRuns?.stop()
   chatService?.stop()
   for (const runtime of codexRuntimes.values()) runtime.stop()
   codexRuntimes.clear()

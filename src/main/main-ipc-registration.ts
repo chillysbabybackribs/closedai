@@ -9,6 +9,7 @@ import { registerBrowserCoreIpc } from './browser-core-ipc.js'
 import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
 import { registerLocalFilesIpc } from './local-files/ipc.js'
 import { registerChatIpc } from './chat-ipc.js'
+import { registerAgentRunsIpc } from './agent-runs/ipc.js'
 import { registerTraceIpc } from './trace/ipc.js'
 import { registerCredentialVaultIpc } from './credential-vault-ipc.js'
 import { registerSecurityIpc } from './security-ipc.js'
@@ -21,6 +22,7 @@ import { traceLog } from './trace/trace-log.js'
 import type { BrowserService } from './browser-service.js'
 import type { BrowserDownloadService } from './browser-download-service.js'
 import type { ChatPeerManager } from './chat-peers/peer-manager.js'
+import type { AgentRunService } from './agent-runs/agent-run-service.js'
 import type { CredentialVault } from './credential-vault.js'
 import type { SecuritySettingsStore } from './security-settings-store.js'
 import type { AppSettingsStore } from './app-settings-store.js'
@@ -38,6 +40,7 @@ export type MainIpcRegistration = {
   browserService: () => BrowserService | null
   browserDownloads: () => BrowserDownloadService | null
   chatService: () => ChatPeerManager | null
+  agentRuns: () => AgentRunService | null
   credentialVault: () => CredentialVault | null
   securitySettings: () => SecuritySettingsStore | null
   settings: () => AppSettingsStore | null
@@ -62,6 +65,7 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
   registerBrowserDownloadsIpc(reg.ipcMain, reg.browserDownloads)
   registerLocalFilesIpc(reg.ipcMain, reg.browserService)
   registerChatIpc(reg.ipcMain, reg.chatService)
+  registerAgentRunsIpc(reg.ipcMain, reg.agentRuns)
   registerTraceIpc(reg.ipcMain, traceLog)
   registerCredentialVaultIpc(reg.ipcMain, reg.credentialVault)
   registerSecurityIpc(reg.ipcMain, {

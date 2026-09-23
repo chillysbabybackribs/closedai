@@ -1,3 +1,4 @@
+import type { AgentRun, AgentRunStartOptions, AgentRunsEvent } from './agent-runs.js'
 import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
@@ -78,6 +79,11 @@ export type IpcInvokeChannels = {
   'chat:selectProject': { args: [ChatPaneId, string]; result: void }
   'chat:clearProject': { args: [ChatPaneId]; result: void }
   'chat:providerAvailability': { args: []; result: ProviderAvailability[] }
+  'agentRuns:list': { args: []; result: AgentRun[] }
+  'agentRuns:start': { args: [string, AgentRunStartOptions]; result: AgentRun }
+  'agentRuns:pause': { args: [string]; result: AgentRun | null }
+  'agentRuns:resume': { args: [string]; result: AgentRun | null }
+  'agentRuns:stop': { args: [string]; result: void }
   'credentials:status': { args: []; result: CredentialVaultStatus }
   'credentials:list': { args: []; result: CredentialSummary[] }
   'credentials:save': { args: [CredentialDraft]; result: CredentialSummary }
@@ -111,6 +117,7 @@ export type IpcEventChannels = {
   'browser:permissionRequests': WebPermissionRequest[]
   'browserDownloads:changed': BrowserDownload[]
   'chat:event': ChatWorkspaceEvent
+  'agentRuns:event': AgentRunsEvent
   'security:credentialApprovals': CredentialApprovalRequest[]
   'tools:event': ToolsEvent
   'models:event': ModelsEvent
@@ -192,6 +199,13 @@ export const IPC = {
       clearProject: 'chat:clearProject',
       providerAvailability: 'chat:providerAvailability'
     },
+    agentRuns: {
+      list: 'agentRuns:list',
+      start: 'agentRuns:start',
+      pause: 'agentRuns:pause',
+      resume: 'agentRuns:resume',
+      stop: 'agentRuns:stop'
+    },
     credentials: {
       status: 'credentials:status',
       list: 'credentials:list',
@@ -231,6 +245,7 @@ export const IPC = {
     browserPermissionRequests: 'browser:permissionRequests',
     browserDownloadsChanged: 'browserDownloads:changed',
     chatEvent: 'chat:event',
+    agentRunsEvent: 'agentRuns:event',
     securityCredentialApprovals: 'security:credentialApprovals',
     toolsEvent: 'tools:event',
     modelsEvent: 'models:event',

@@ -1,3 +1,4 @@
+import type { AgentRun, AgentRunStartOptions, AgentRunsEvent } from './agent-runs.js'
 import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
@@ -114,6 +115,18 @@ export type ClosedaiApi = {
     /** Which providers can start on this machine (binary present), with an install or sign-in sentence each; for onboarding. */
     providerAvailability: () => Promise<ProviderAvailability[]>
     onEvent: (listener: (event: ChatWorkspaceEvent) => void) => Unsubscribe
+  }
+  /** Agent runs: chats the main process keeps driving cycle after cycle; see `src/shared/agent-runs.ts`. */
+  agentRuns: {
+    list: () => Promise<AgentRun[]>
+    /** Create the run on an open chat and send its first cycle; rejects when that send fails. */
+    start: (chatId: string, options: AgentRunStartOptions) => Promise<AgentRun>
+    /** Stop driving and end the turn in flight; the run keeps its cycle count for Resume. */
+    pause: (chatId: string) => Promise<AgentRun | null>
+    resume: (chatId: string) => Promise<AgentRun | null>
+    /** End the run; the chat stays open as an ordinary chat. */
+    stop: (chatId: string) => Promise<void>
+    onEvent: (listener: (event: AgentRunsEvent) => void) => Unsubscribe
   }
   /** OS-keychain-backed credential store. Secrets cross the bridge one field at a time, on request. */
   credentials: {
