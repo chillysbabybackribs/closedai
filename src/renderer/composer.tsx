@@ -1,6 +1,6 @@
 import type { ClipboardEvent, DragEvent, FormEvent, JSX, Ref } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, Bot, Play, Square } from 'lucide-react'
+import { ArrowUp, Play, Square } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog.js'
@@ -262,7 +262,7 @@ export function Composer({
           {onStartAgent && <div className="composer-footer-agent">
             <Button type="button" variant="ghost" className="composer-agent-trigger" data-ui="composer.agents"
               aria-label="Open agents" disabled={!enabled || startingAgent} onClick={() => setAgentsOpen(true)}>
-              <Bot size={14} aria-hidden="true" /> <span>Agent</span>
+              <span>Agent</span>
             </Button>
           </div>}
           <div className="composer-footer-attach">
@@ -313,7 +313,6 @@ export function Composer({
           <DialogDescription>Start an agent in its own chat. You can pause it whenever you want to test.</DialogDescription>
           <button type="button" className="composer-agent-card" data-ui="composer.agent-start"
             disabled={startingAgent} onClick={() => void startRepairAgent()}>
-            <span className="composer-agent-card-icon"><Bot size={18} aria-hidden="true" /></span>
             <span className="composer-agent-card-copy"><strong>Continuous app repair</strong>
               <span>Check application workflows, fix failures, and keep iterating.</span></span>
             <span className="composer-agent-card-action">{startingAgent ? 'Starting…' : 'Start'}</span>
