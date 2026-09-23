@@ -118,11 +118,11 @@ use the existing session handoff to start a fresh provider thread, preserving th
 conversation and source recall. This also applies to tool switches, independently of idle
 context rotation; unchanged catalogs keep their thread.
 
-The Folder section of each composer's setup panel (`composer.setup`) changes only that chat's
-working directory. It offers a directory picker (`composer.project-new`), recent projects
-(`composer.project-recent`), and “Don’t work in a project” (`composer.project-clear`, uses the home
-directory); the setup trigger below the composer names the current model on the left and folder on
-the right.
+Each composer's folder panel (`composer.folder`, opened from the footer folder trigger) changes
+only that chat's working directory. It offers a directory picker (`composer.project-new`), recent
+projects (`composer.project-recent`), and “Don’t work in a project” (`composer.project-clear`,
+uses the home directory). The model setup trigger (`composer.setup`) and folder trigger sit beside
+each other in the footer.
 The chat keeps its identity, messages, draft, and scroll position; other tabs, split panes, and the
 browser stay in place. Chats from different directories can share the layout, and focusing a chat
 or opening a history search result does not switch the workspace. New chats inherit the focused
