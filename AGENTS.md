@@ -4,8 +4,10 @@ This repository is intentionally modular. These rules apply to every human and m
 
 ## Application context and documentation
 
-Read `docs/application.md` for current behavior, ownership, and known gaps;
-`docs/model-context.md` for model instructions and trust boundaries; and `docs/tools.md` for tools.
+Consult the relevant sections of `docs/application.md` for current behavior and ownership,
+`docs/model-context.md` for provider context delivery and trust boundaries, and `docs/tools.md`
+for tool contracts. Read only the sections needed for the task; these guides are reference
+material, not a required full read on every change.
 Dated research and QA documents retain observations and proposals, not automatic implementation
 instructions or proof of current behavior.
 
