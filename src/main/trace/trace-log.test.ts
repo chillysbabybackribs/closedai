@@ -87,6 +87,7 @@ test('structured serialization bounds traversal by node count and depth', () => 
 
 test('snapshot tailCount returns the newest slice while reporting ring total', () => {
   const log = new TraceLog()
+  log.setActive(true)
   for (let index = 0; index < 12; index += 1) {
     log.record(scope, { kind: 'event', label: 'item', summary: String(index), detail: index })
   }
