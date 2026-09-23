@@ -55,6 +55,8 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const report = useCallback((fallback: string) => (error: unknown) => setShellError(errorMessage(error, fallback)), [])
   // The File menu retains the history management panel; Ctrl+H focuses header search.
   const [historyOpen, setHistoryOpen] = useState(false)
+  const historyOpenRef = useRef(historyOpen)
+  historyOpenRef.current = historyOpen
   const toggleHistory = useCallback(() => setHistoryOpen((open) => !open), [])
   const updateAppearance = useCallback((patch: Partial<AppearanceSettings>): void => {
     setAppearance((current) => {
@@ -120,6 +122,12 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           layoutBusy: document.body.hasAttribute('data-layout-resize') || Boolean(document.querySelector('[data-layout-drag]'))
         })
         if (!pauses) return
+
+        if (historyOpenRef.current) {
+          event.preventDefault()
+          setHistoryOpen(false)
+          return
+        }
 
         const currentChat = chatRef.current
         const runningPaneId = targetRunningPaneId(

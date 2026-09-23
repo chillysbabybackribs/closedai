@@ -70,6 +70,12 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
     }
   }
 
+  function onSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>): void {
+    if (!closesHistoryOnSearchEscape(event)) return
+    event.preventDefault()
+    onClose()
+  }
+
   async function archive(chatId: string): Promise<void> {
     if (pendingId) return
     setPendingId(chatId)
@@ -96,6 +102,7 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={onSearchKeyDown}
           placeholder="Search chats"
           aria-label="Search chats"
           data-ui="chat.history-search"
@@ -169,6 +176,15 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
       )}
     </section>
   )
+}
+
+/** Escape in the history search field closes the panel instead of clearing the query. */
+export function closesHistoryOnSearchEscape(
+  event: Pick<React.KeyboardEvent, 'key' | 'altKey' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'nativeEvent'>
+): boolean {
+  if (event.nativeEvent.isComposing) return false
+  if (event.key !== 'Escape') return false
+  return !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
 }
 
 const MINUTE = 60_000
