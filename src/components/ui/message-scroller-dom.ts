@@ -55,7 +55,7 @@ export function measureScrollAnchor(
   const contentStyle = window.getComputedStyle(content)
   const viewportStyle = window.getComputedStyle(viewport)
   let last = content.lastElementChild as HTMLElement | null
-  if (last === spacer) last = last.previousElementSibling as HTMLElement | null
+  if (last && last === spacer) last = last.previousElementSibling as HTMLElement | null
   const bottom = last
     ? layoutTop(last) + last.offsetHeight + pixels(window.getComputedStyle(last).marginBottom)
     : layoutTop(content) + content.clientTop + pixels(contentStyle.paddingTop)

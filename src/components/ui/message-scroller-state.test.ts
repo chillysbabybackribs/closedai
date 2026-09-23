@@ -33,6 +33,19 @@ test('a prompt with a full response below it does not create trailing space', ()
   })
 })
 
+test('a short transcript gets its full spacer in one correction, independent of viewport min-height', () => {
+  assert.deepEqual(anchorScrollLayout({
+    anchorTop: 56, contentHeight: 140, previousItemPeek: 12, viewportHeight: 690
+  }), { scrollTop: 44, spacerHeight: 594 })
+})
+
+test('the spacer accounts for its flex gap without toggling visibility at the boundary', () => {
+  const input = { anchorTop: 56, contentHeight: 700, previousItemPeek: 12, viewportHeight: 690, spacerGap: 32 }
+  assert.deepEqual(anchorScrollLayout(input), { scrollTop: 44, spacerHeight: 2 })
+  assert.deepEqual(anchorScrollLayout({ ...input, contentHeight: 710 }), { scrollTop: 44, spacerHeight: 1 })
+  assert.deepEqual(anchorScrollLayout({ ...input, contentHeight: 734 }), { scrollTop: 44, spacerHeight: 0 })
+})
+
 test('short content has no scrollable edge', () => {
   assert.deepEqual(scrollEdges({ clientHeight: 500, scrollHeight: 300, scrollTop: 0 }, 24), {
     start: false,
