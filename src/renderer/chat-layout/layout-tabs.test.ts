@@ -135,9 +135,9 @@ test('moving a tab to the neighbouring tile joins its strip and collapses an emp
 
 test('isChatTabActive is true only for the visible tab in a tile', () => {
   const tree = addTab({ kind: 'pane', id: 'a' }, 'a', 'b')
-  assert.equal(isChatTabActive(tree, 'a'), true)
-  assert.equal(isChatTabActive(tree, 'b'), false)
-  const focused = selectTab(tree, 'a', 'b')
-  assert.equal(isChatTabActive(focused, 'b'), true)
-  assert.equal(isChatTabActive(focused, 'a'), false)
+  assert.equal(isChatTabActive(tree, 'b'), true)
+  assert.equal(isChatTabActive(tree, 'a'), false)
+  const focused = selectTab(tree, 'a', 'a')
+  assert.equal(isChatTabActive(focused, 'a'), true)
+  assert.equal(isChatTabActive(focused, 'b'), false)
 })
