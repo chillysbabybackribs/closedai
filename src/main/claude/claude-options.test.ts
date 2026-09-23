@@ -11,7 +11,6 @@ const base = {
   resume: null,
   runtimeId: '0f7c0c9c-1c1e-4c7a-9f8b-3a1f6d2e9a10',
   mcpServers: {},
-  systemPromptAppend: 'Be brief.',
   env: { PATH: '/bin' }
 }
 
@@ -30,7 +29,7 @@ test('the session shape: no prompts, isolated settings, only app MCP servers, su
   assert.deepEqual(options.disallowedTools, ['AskUserQuestion'])
   assert.deepEqual(options.allowedTools, ['Grep', 'Glob'])
   assert.deepEqual(options.thinking, { type: 'adaptive', display: 'summarized' })
-  assert.deepEqual(options.systemPrompt, { type: 'preset', preset: 'claude_code', append: 'Be brief.' })
+  assert.deepEqual(options.systemPrompt, { type: 'preset', preset: 'claude_code' })
   assert.equal(options.model, 'opus[1m]')
   assert.equal(options.effort, 'xhigh')
   assert.equal(options.resume, undefined)

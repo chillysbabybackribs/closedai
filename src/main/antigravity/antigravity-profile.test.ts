@@ -11,7 +11,7 @@ test('the agent declares exactly the granted native tools and keeps MCP', () => 
   for (const tool of ANTIGRAVITY_GRANTED_TOOLS) assert.ok(agent.includes(`  - ${tool}\n`), tool)
   assert.ok(!agent.includes('- finish\n'))
   assert.ok(agent.includes('inheritMcp: true'))
-  assert.ok(agent.includes('# Agent System Instructions'))
+  assert.equal(agent.trimEnd().endsWith('---'), true, 'the profile carries no app-authored instruction body')
 })
 
 test('file, shell, and image tools are granted; no native web or browser tool is declared', () => {
