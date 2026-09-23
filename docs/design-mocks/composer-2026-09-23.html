@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Composer draft — 2026-09-23</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --font-sans: "OpenAI Sans", "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+    --chassis: #070708;
+    --surface-card: #181818;
+    --surface-raised: #1c1c1c;
+    --surface-control: #262626;
+    --surface-control-hover: #303030;
+    --hairline: rgb(255 255 255 / 8%);
+    --hairline-strong: rgb(255 255 255 / 14%);
+    --foreground: #eeeef0;
+    --muted-foreground: #98989c;
+    --focus-ink: #adadb0;
+    --primary: #e8e8ea;
+    --primary-foreground: #141415;
+    --tab-accent: #4f8cff;
+    --cwd-ink: #7eb0e0;
+    --ok-ink: #65b98a;
+    --transcript-copy: #aeaeb3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 32px 60px; background: var(--chassis); color: var(--foreground);
+    font-family: var(--font-sans); font-size: 13px; -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+  .lede { color: var(--muted-foreground); margin: 0 0 22px; max-width: 760px; line-height: 1.45; }
+  .frames { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 22px; align-items: start; }
+  .frame { min-width: 0; }
+  .frame h2 { font-size: 12px; font-weight: 600; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
+  .frame p.note { color: var(--muted-foreground); margin: 8px 0 0; line-height: 1.45; }
+
+  /* Fake chat pane */
+  .pane {
+    position: relative; height: 440px; border: 1px solid var(--hairline); border-radius: 8px;
+    background: var(--surface-card); overflow: hidden; display: flex; flex-direction: column;
+  }
+  .pane.narrow { width: 360px; }
+  .pane-header {
+    display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 12px; flex: none;
+    border-bottom: 1px solid var(--hairline); color: var(--muted-foreground); font-size: 12px;
+  }
+  .pane-header .tab { color: var(--foreground); box-shadow: inset 0 -2px 0 var(--tab-accent); padding: 8px 0; }
+  .transcript { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 16px 16px 8px; display: flex; flex-direction: column; gap: 14px; }
+  .msg.user { align-self: flex-end; max-width: 78%; background: var(--surface-control); border-radius: 12px; padding: 8px 12px; line-height: 1.45; }
+  .msg.assistant { color: var(--transcript-copy); line-height: 1.5; max-width: 92%; }
+  .msg.assistant b { color: #fff; font-weight: 600; }
+  .activity { color: #9d9da4; font-size: 12px; }
+
+  /* Composer block: card + pill row. Centered when empty, docked otherwise. */
+  .composer { padding: 6px 16px 10px; flex: none; }
+  .pane.empty .composer { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); }
+  .card {
+    max-width: 784px; margin-inline: auto; border: 1px solid var(--hairline-strong); border-radius: 12px;
+    background: var(--surface-raised); box-shadow: 0 1px 3px rgb(0 0 0 / 14%);
+  }
+  .card.focus { border-color: var(--focus-ink); box-shadow: 0 2px 8px rgb(0 0 0 / 22%); }
+  .card .text { min-height: 56px; padding: 12px 14px 4px; font-size: 15px; font-weight: 500; line-height: 22px; color: #fff; }
+  .card .text.placeholder { color: var(--muted-foreground); opacity: .72; }
+  .card .bar { display: flex; align-items: center; gap: 6px; padding: 6px 8px 8px 8px; }
+  .card .spacer { flex: 1; }
+  .icon-btn {
+    width: 30px; height: 30px; border-radius: 8px; border: 0; background: transparent; display: grid; place-items: center;
+    color: color-mix(in srgb, var(--foreground) 62%, transparent);
+  }
+  .icon-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+  .send { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; border: 1px solid var(--hairline-strong); background: transparent; color: var(--muted-foreground); }
+  .send.armed { background: var(--primary); color: var(--primary-foreground); border-color: transparent; }
+  .send.stop { color: #ff8f8f; border-color: #ff8f8f; }
+  .send svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .send.stop svg { fill: currentColor; width: 11px; height: 11px; }
+  .folder {
+    display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px 0 8px; border-radius: 8px;
+    border: 1px solid var(--hairline-strong); background: transparent; color: var(--muted-foreground); font: inherit; font-size: 12.5px; font-weight: 500;
+  }
+  .folder.set { color: var(--cwd-ink); border-style: solid; }
+  .folder svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* The four pills under the card. */
+  .pills { max-width: 784px; margin: 10px auto 0; display: flex; justify-content: center; gap: 8px; flex-wrap: nowrap; overflow: hidden; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 13px 0 11px; border-radius: 999px;
+    border: 1px solid var(--hairline-strong); background: var(--surface-control); color: var(--muted-foreground);
+    font: inherit; font-size: 12.5px; font-weight: 500; white-space: nowrap; min-width: 0;
+  }
+  .pill svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .pill .chev { width: 11px; height: 11px; opacity: .7; }
+  .pill.open, .pill:hover { background: var(--surface-control-hover); color: var(--foreground); }
+  .pill.value { color: var(--foreground); }
+  .pill.value .k { color: var(--muted-foreground); }
+  .pill.placeholder { border-style: dashed; color: color-mix(in srgb, var(--muted-foreground) 70%, transparent); }
+  .pill .label { overflow: hidden; text-overflow: ellipsis; }
+  .pane.narrow .pill .label { max-width: 82px; }
+  .pane.narrow .pill.placeholder .label { max-width: 46px; }
+
+  /* Dropdown panels drawn open (state C). */
+  .menu {
+    position: absolute; bottom: 62px; width: 280px; background: var(--surface-raised); border: 1px solid var(--hairline-strong);
+    border-radius: 10px; box-shadow: 0 8px 24px rgb(0 0 0 / 34%); padding: 6px; z-index: 3;
+  }
+  .menu h4 { margin: 6px 8px 4px; font-size: 11px; font-weight: 600; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .04em; }
+  .menu .row { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border-radius: 6px; color: var(--foreground); }
+  .menu .row .sub { color: var(--muted-foreground); font-size: 11.5px; margin-left: auto; }
+  .menu .row.sel { background: var(--surface-control); }
+  .menu .row.sel::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--tab-accent); }
+  .menu .row:not(.sel)::before { content: ""; width: 5px; height: 5px; }
+  .menu .seg { display: flex; gap: 4px; padding: 2px 8px 6px; }
+  .menu .seg span { padding: 3px 9px; border-radius: 6px; border: 1px solid var(--hairline-strong); font-size: 11.5px; color: var(--muted-foreground); }
+  .menu .seg span.on { background: var(--surface-control); color: var(--foreground); }
+  .menu .foot { border-top: 1px solid var(--hairline); margin-top: 4px; padding: 8px 8px 4px; color: var(--muted-foreground); font-size: 11.5px; display: flex; justify-content: space-between; }
+  .menu .foot b { color: var(--foreground); font-weight: 500; }
+  .menu .new { color: var(--tab-accent); }
+</style>
+</head>
+<body>
+<h1>Composer draft · 2026-09-23</h1>
+<p class="lede">Reference: v0's composer. Text surface on top, one control bar inside the card, four pills under it. No heading above the card. The composer block (card + pills) is centered while the chat is empty and docks to the footer once a message exists. Folder selection takes the reference's "+ Project" slot in the card bar; model, effort, context and plan usage live behind the Model pill. Agents and the two placeholders are visual only in this draft.</p>
+
+<div class="frames">
+
+  <!-- A: empty, centered -->
+  <div class="frame">
+    <h2>A · Empty chat, centered</h2>
+    <div class="pane empty">
+      <div class="pane-header"><span class="tab">New chat</span><span>·</span><span>closedai</span></div>
+      <div class="composer">
+        <div class="card">
+          <div class="text placeholder">Message Claude</div>
+          <div class="bar">
+            <button class="icon-btn" title="Attach"><svg viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+            <span class="spacer"></span>
+            <button class="folder"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Project</button>
+            <button class="send"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+          </div>
+        </div>
+        <div class="pills">
+          <button class="pill value"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg><span class="label">Fable 5.1 (1M)</span><svg class="chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+          <button class="pill"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span class="label">Agents</span><svg class="chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+          <button class="pill placeholder"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/></svg><span class="label">Placeholder</span></button>
+          <button class="pill placeholder"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/></svg><span class="label">Placeholder</span></button>
+        </div>
+      </div>
+    </div>
+    <p class="note">Whole block is vertically centered, pills included. No "What can I help you ship?" line.</p>
+  </div>
+
+  <!-- B: docked with transcript, draft typed -->
+  <div class="frame">
+    <h2>B · Docked, draft in progress</h2>
+    <div class="pane">
+      <div class="pane-header"><span class="tab">Redesign chat composer</span><span>·</span><span>closedai</span></div>
+      <div class="transcript">
+        <div class="msg user">Move the model and folder controls below the composer.</div>
+        <div class="msg assistant"><b>Done.</b> The setup trigger now sits under the card as a full-width rail. The panel behind it still holds model, effort, folder and context.</div>
+        <div class="activity">Read composer.tsx, composer.css</div>
+      </div>
+      <div class="composer">
+        <div class="card focus">
+          <div class="text">Now turn that rail into pills like the v0 reference</div>
+          <div class="bar">
+            <button class="icon-btn" title="Attach"><svg viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+            <span class="spacer"></span>
+            <button class="folder set"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>closedai</button>
+            <button class="send armed"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+          </div>
+        </div>
+        <div class="pills">
+          <button class="pill value"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg><span class="label">Fable 5.1 (1M)</span><svg class="chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+          <button class="pill"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span class="label">Agents</span><svg class="chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+          <button class="pill placeholder"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/></svg><span class="label">Placeholder</span></button>
+          <button class="pill placeholder"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/></svg><span class="label">Placeholder</span></button>
+        </div>
+      </div>
+    </div>
+    <p class="note">Same block at the footer. Folder chip shows the chosen project name in slate ink; send fills once there is text.</p>
+  </div>
+
+  <!-- C: menus open -->
+  <div class="frame">
+    <h2>C · Model pill and Agents pill open</h2>
+    <div class="pane">
+      <div class="pane-header"><span class="tab">Redesign chat composer</span><span>·</span><span>closedai</span></div>
+      <div class="transcript"><div class="msg assistant">…</div></div>
+      <div class="composer" style="position:relative">
+        <div class="menu" style="left: 16px;">
+          <h4>Model</h4>
+          <div class="row sel">Fable 5.1 (1M)<span class="sub">Claude</span></div>
+          <div class="row">Opus 5.5<span class="sub">Claude</span></div>
+          <div class="row">gpt-5.6-luna<span class="sub">Codex</span></div>
+          <div class="row">composer-2.5<span class="sub">Cursor</span></div>
+          <h4>Reasoning effort</h4>
+          <div class="seg"><span>low</span><span>medium</span><span class="on">high</span><span>max</span></div>
+          <div class="foot"><span>Context <b>14%</b> of 1M</span><span>Plan <b>62%</b> · resets 4h</span></div>
+        </div>
+        <div class="menu" style="left: 236px;">
+          <h4>Agents</h4>
+          <div class="row">Reviewer<span class="sub">Claude · high</span></div>
+          <div class="row">Researcher<span class="sub">Codex · deep</span></div>
+          <div class="row">Frontend<span class="sub">Cursor</span></div>
+          <div class="foot"><span class="new">+ New agent…</span><span>Manage</span></div>
+        </div>
+        <div class="card">
+          <div class="text placeholder">Message Claude</div>
+          <div class="bar">
+            <button class="icon-btn" title="Attach"><svg viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+            <span class="spacer"></span>
+            <button class="folder set"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>closedai</button>
+            <button class="send"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+          </div>
+        </div>
+        <div class="pills">
+          <button class="pill value open"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg><span class="label">Fable 5.1 (1M)</span><svg class="chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+          <button class="pill open"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span class="label">Agents</span><svg class="chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+          <button class="pill placeholder"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/></svg><span class="label">Placeholder</span></button>
+          <button class="pill placeholder"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/></svg><span class="label">Placeholder</span></button>
+        </div>
+      </div>
+    </div>
+    <p class="note">Only one menu opens at a time in the real app; both are drawn here to show contents. The Model menu absorbs today's setup panel minus folder. The Agents list is illustrative: nothing backs it yet.</p>
+  </div>
+
+  <!-- D: running, narrow pane -->
+  <div class="frame">
+    <h2>D · Running turn, 360px pane</h2>
+    <div class="pane narrow">
+      <div class="pane-header"><span class="tab">Redesign chat composer</span></div>
+      <div class="transcript">
+        <div class="msg user">Turn the rail into pills.</div>
+        <div class="activity">Editing composer.tsx…</div>
+      </div>
+      <div class="composer">
+        <div class="card">
+          <div class="text placeholder">&nbsp;</div>
+          <div class="bar">
+            <button class="icon-btn" title="Attach"><svg viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+            <span class="spacer"></span>
+            <button class="folder set"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>closedai</button>
+            <button class="send stop"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></svg></button>
+          </div>
+        </div>
+        <div class="pills">
+          <button class="pill value"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg><span class="label">Fable 5.1</span><svg class="chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+          <button class="pill"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span class="label">Agents</span></button>
+          <button class="pill placeholder"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/></svg></button>
+          <button class="pill placeholder"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <p class="note">Pause replaces send; model pill is disabled while running. Under ~420px the placeholder pills drop their labels and the model label truncates, so four still fit in one row.</p>
+  </div>
+
+</div>
+</body>
+</html>
