@@ -32,3 +32,21 @@ export type SavedSitePatch = {
   note?: string
   tags?: string[]
 }
+
+/**
+ * Identity of a saved web page: host without a leading www., plus path, query, and hash, no
+ * scheme. Empty for anything that is not an http(s) page, which is what makes it unsaveable.
+ * Pure so the renderer can ask "is this tab saved" without a round trip.
+ */
+export function savedSiteKey(rawUrl: string): string {
+  let url: URL
+  try {
+    url = new URL(rawUrl)
+  } catch {
+    return ''
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return ''
+  const host = url.host.replace(/^www\./, '')
+  const rest = (url.pathname === '/' ? '' : url.pathname) + url.search + url.hash
+  return (host + rest).toLowerCase()
+}

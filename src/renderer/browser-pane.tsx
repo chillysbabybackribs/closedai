@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from 'react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Download, FileCode, FileImage, Globe2, Loader2, Lock, Plus, RefreshCw, Search, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Download, FileCode, FileImage, Globe2, Loader2, Lock, Plus, RefreshCw, Search, Star, X } from 'lucide-react'
 import { ImageViewer } from './image-viewer/image-viewer.js'
 import { FileViewer } from './file-viewer/file-viewer.js'
 import { BrowserSiteIcon } from './browser-site-icon.js'
@@ -10,6 +10,8 @@ import { opensContextMenu, tabIndexForKey, tabPanelId } from './browser-tab-navi
 import { errorMessage } from './error-message.js'
 import { useBrowserDownloadsController, type BrowserDownloadsController } from './browser-downloads-controller.js'
 import { BrowserDownloadsShelf } from './browser-downloads-shelf.js'
+import { useBrowserSavedSitesController, type BrowserSavedSitesController } from './browser-saved-sites-controller.js'
+import { BrowserSavedSitesShelf } from './browser-saved-sites-shelf.js'
 import { BrowserNavigationError } from './browser-navigation-error.js'
 import { BrowserTabMenu, BrowserTabRename, type BrowserTabMenuTarget } from './browser-tab-menu.js'
 import { securityRequests } from './security-requests.js'
@@ -25,6 +27,10 @@ export const BrowserPane = memo(function BrowserPane({
   dragHandle?: ReactNode
 }): JSX.Element {
   const downloads = useBrowserDownloadsController()
+  const savedSites = useBrowserSavedSitesController()
+  // Both popovers share the same anchor; a download arriving on its own closes the saved panel.
+  const dismissSaved = savedSites.dismiss
+  useEffect(() => { if (downloads.isOpen) dismissSaved() }, [downloads.isOpen, dismissSaved])
   // One slot for a rejected tab or navigation command; it shares the tab strip's grid row.
   const [notice, setNotice] = useState<{ text: string } | null>(null)
   const report = useCallback((reason: unknown) => setNotice({ text: errorMessage(reason) }), [])
@@ -43,7 +49,7 @@ export const BrowserPane = memo(function BrowserPane({
     <section className="browser-pane" aria-label="Browser" data-ui-surface="browser">
       <div className={`browser-shell ${downloads.isOpen && !controller.browser.image && !controller.browser.file ? 'has-downloads' : ''} ${controller.browser.image ? 'has-image-viewer' : ''} ${controller.browser.file ? 'has-file-viewer' : ''}`}>
         <div className="browser-tabstrip-host">
-          <BrowserTabs controller={controller} dragHandle={dragHandle} onError={report} />
+          <BrowserTabs controller={controller} savedSites={savedSites} dragHandle={dragHandle} onError={report} />
           {notice ? (
             <div className="browser-chrome-notice" role="alert">
               <span>{notice.text}</span>
@@ -54,8 +60,9 @@ export const BrowserPane = memo(function BrowserPane({
           ) : null}
           <WebPermissionBar requests={permissions} onDecide={decidePermission} />
         </div>
-        {!controller.browser.image && !controller.browser.file && <BrowserToolbar controller={controller} downloads={downloads} onError={report} />}
+        {!controller.browser.image && !controller.browser.file && <BrowserToolbar controller={controller} downloads={downloads} savedSites={savedSites} onError={report} />}
         {downloads.isOpen && !controller.browser.image && !controller.browser.file ? <BrowserDownloadsShelf controller={downloads} /> : null}
+        {savedSites.isOpen && !controller.browser.image && !controller.browser.file ? <BrowserSavedSitesShelf controller={savedSites} onError={report} /> : null}
         <div className={`browser-frame ${controller.browser.navigationError ? 'has-navigation-error' : ''}`}>
           <div
             className={`browser-view-host ${controller.browser.image ? 'is-image-viewer' : controller.browser.file ? 'is-file-viewer' : controller.browser.navigationError ? 'is-navigation-error' : ''}`}
@@ -85,8 +92,9 @@ export const BrowserPane = memo(function BrowserPane({
   )
 })
 
-function BrowserTabs({ controller, dragHandle, onError }: {
+function BrowserTabs({ controller, savedSites, dragHandle, onError }: {
   controller: BrowserController
+  savedSites: BrowserSavedSitesController
   dragHandle?: ReactNode
   onError: (reason: unknown) => void
 }): JSX.Element {
@@ -187,6 +195,8 @@ function BrowserTabs({ controller, dragHandle, onError }: {
         <BrowserTabMenu
           target={menuTarget}
           tabCount={controller.tabs.length}
+          isSaved={savedSites.savedFor(menuTarget.tab.url) !== null}
+          onToggleSave={savedSites.toggleSave}
           onRename={beginRename}
           onError={onError}
           onClose={() => setMenuTarget(null)}
@@ -211,13 +221,17 @@ function TabIcon({ tab }: { tab: BrowserTabInfo }): JSX.Element {
 function BrowserToolbar({
   controller,
   downloads,
+  savedSites,
   onError
 }: {
   controller: BrowserController
   downloads: BrowserDownloadsController
+  savedSites: BrowserSavedSitesController
   onError: (reason: unknown) => void
 }): JSX.Element {
   const { browser, blur, focus, ghost, handleOmniboxChange, handleOmniboxKeyDown, identity, location, navigate, omniboxRef } = controller
+  const activeTab = controller.tabs.find((tab) => tab.active) ?? null
+  const pageIsSaved = savedSites.savedFor(browser.url) !== null
   return (
     <form className="browser-toolbar" onSubmit={navigate}>
       <button type="button" className="browser-nav-button" disabled={!browser.canGoBack} onClick={() => { void window.closedai.browser.back().catch(onError) }} title="Back" aria-label="Back" data-ui="browser.back">
@@ -272,8 +286,9 @@ function BrowserToolbar({
                   {row.kind === 'search' ? <Search size={17} /> : <BrowserSiteIcon favicon={row.favicon} />}
                   <span className="browser-suggestion-title">{row.title || row.completion}</span>
                   <span className="browser-suggestion-detail">{row.completion}</span>
+                  {row.saved ? <Star className="browser-suggestion-saved" size={13} fill="currentColor" aria-label="Saved site" /> : null}
                 </button>
-                {row.kind === 'history' ? (
+                {row.kind === 'history' && !row.saved ? (
                   <button
                     type="button"
                     className="browser-suggestion-remove"
@@ -300,8 +315,23 @@ function BrowserToolbar({
       </div>
       <button
         type="button"
+        className={`browser-nav-button ${savedSites.isOpen ? 'is-active' : ''} ${pageIsSaved ? 'is-saved' : ''}`}
+        disabled={!browser.url.startsWith('http')}
+        onClick={() => {
+          downloads.dismiss()
+          void savedSites.star({ url: browser.url, title: activeTab?.title ?? browser.title, favicon: activeTab?.favicon ?? null }).catch(onError)
+        }}
+        title={pageIsSaved ? 'Saved sites' : 'Save site'}
+        aria-label={pageIsSaved ? 'Saved sites' : 'Save site'}
+        data-ui="browser.saved-sites"
+        aria-pressed={savedSites.isOpen}
+      >
+        <Star size={16} />
+      </button>
+      <button
+        type="button"
         className={`browser-nav-button ${downloads.isOpen ? 'is-active' : ''} ${downloads.hasActive ? 'is-busy' : ''}`}
-        onClick={downloads.toggle}
+        onClick={() => { savedSites.dismiss(); downloads.toggle() }}
         title="Downloads"
         aria-label="Downloads"
         data-ui="browser.downloads"

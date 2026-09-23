@@ -215,7 +215,7 @@ export class BrowserHistoryStore extends EventEmitter implements BrowserHistory 
 
 // Deduplication/completion identity for a real URL: host (minus leading www.)
 // plus path/query/hash, no scheme. Returns '' for anything not worth completing.
-export function historyKey(rawUrl: string): string {
+function historyKey(rawUrl: string): string {
   let url: URL
   try {
     url = new URL(rawUrl)

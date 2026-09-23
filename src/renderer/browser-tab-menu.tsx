@@ -1,7 +1,7 @@
 import type { JSX, KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Copy, Edit3, PanelRightOpen, RefreshCw, X } from 'lucide-react'
+import { Copy, Edit3, PanelRightOpen, RefreshCw, Star, X } from 'lucide-react'
 import type { BrowserTabInfo } from '../shared/types.js'
 import { placeRowMenu, type MenuPlacement } from './menu-position.js'
 import { menuIndexForKey, tabPanelId } from './browser-tab-navigation.js'
@@ -20,12 +20,16 @@ const ITEMS = '[role="menuitem"]:not(:disabled)'
 export function BrowserTabMenu({
   target,
   tabCount,
+  isSaved,
+  onToggleSave,
   onRename,
   onError,
   onClose
 }: {
   target: BrowserTabMenuTarget
   tabCount: number
+  isSaved: boolean
+  onToggleSave: (tab: BrowserTabInfo) => Promise<void>
   onRename: (tab: BrowserTabInfo) => void
   onError: (reason: unknown) => void
   onClose: () => void
@@ -134,6 +138,13 @@ export function BrowserTabMenu({
         label="Rename"
         item="rename"
         onClick={() => run(() => onRename(target.tab))}
+      />
+      <BrowserTabMenuItem
+        icon={<Star size={13} fill={isSaved ? 'currentColor' : 'none'} />}
+        label={isSaved ? 'Unsave site' : 'Save site'}
+        item="save-site"
+        disabled={!target.tab.url.startsWith('http')}
+        onClick={call(() => onToggleSave(target.tab))}
       />
       <BrowserTabMenuItem
         icon={<X size={13} />}

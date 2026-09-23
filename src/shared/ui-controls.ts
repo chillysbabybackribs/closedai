@@ -111,7 +111,7 @@ export const UI_CONTROLS = {
   'browser.permission-block': 'Permission bar (Settings → Security set to Ask): refuse the active page’s request; item is the request id',
   'browser.tab-close': 'Close a browser tab; item is the tab id',
   'browser.tab-menu': 'Right-click context menu for a browser tab',
-  'browser.tab-menu-item': 'Browser tab context menu item; item is new-right, reload, duplicate, rename, close, close-others, or close-right',
+  'browser.tab-menu-item': 'Browser tab context menu item; item is new-right, reload, duplicate, rename, save-site (saves or unsaves the tab’s page), close, close-others, or close-right',
   'browser.tab-rename': 'Inline browser tab rename field; item is the tab id',
   'browser.tab-new': 'Open a new browser tab',
   'browser.back': 'Browser back',
@@ -121,6 +121,12 @@ export const UI_CONTROLS = {
   'browser.suggestion-remove': 'Remove a saved browser history entry; item is its URL',
   'browser.address': 'Address bar',
   'browser.downloads': 'Show or hide the downloads shelf',
+  'browser.saved-sites': 'Star left of Downloads: save the active web page and open the saved-sites panel, or open the panel when the page is already saved (filled star); click again to hide it. Disabled on non-web pages',
+
+  'saved-sites.hide': 'Hide the saved-sites panel',
+  'saved-sites.open': 'Navigate the active tab to a saved site; item is the saved-site id',
+  'saved-sites.note': 'Edit the note on a saved site (why it matters, what to watch for); Enter or blur saves, Escape reverts; item is the saved-site id',
+  'saved-sites.remove': 'Remove a saved site; item is the saved-site id',
 
   'downloads.clear': 'Clear finished downloads',
   'downloads.hide': 'Hide the downloads shelf',
@@ -187,7 +193,7 @@ export const UI_CONTROLS = {
 
 export type UiControlId = keyof typeof UI_CONTROLS
 
-export const UI_SURFACES = ['shell', 'chat', 'browser', 'browser-downloads', 'overlay'] as const
+export const UI_SURFACES = ['shell', 'chat', 'browser', 'browser-downloads', 'browser-saved-sites', 'overlay'] as const
 
 export type UiSurface = (typeof UI_SURFACES)[number]
 

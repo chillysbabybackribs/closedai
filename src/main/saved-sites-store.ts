@@ -2,10 +2,9 @@ import { EventEmitter } from 'node:events'
 import { readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { selectFavicon } from './browser-favicon.js'
-import { historyKey } from './browser-history-store.js'
 import { writeAtomic } from './atomic-write.js'
 import type { BrowserHistoryMatch } from '../shared/browser-history.js'
-import type { SavedSite, SavedSiteDraft, SavedSitePatch } from '../shared/saved-sites.js'
+import { savedSiteKey, type SavedSite, type SavedSiteDraft, type SavedSitePatch } from '../shared/saved-sites.js'
 
 // Sites the user chose to keep. Separate from browser history on purpose: history is every
 // page visited, pruned by frequency and skipped for agent-driven tabs, so it cannot carry
@@ -46,16 +45,16 @@ export class SavedSitesStore extends EventEmitter {
   }
 
   findByUrl(url: string): SavedSite | null {
-    const key = historyKey(url)
+    const key = savedSiteKey(url)
     if (!key) return null
-    return this.state.sites.find((site) => historyKey(site.url) === key) ?? null
+    return this.state.sites.find((site) => savedSiteKey(site.url) === key) ?? null
   }
 
   // Saving an already-saved URL refreshes its title/favicon rather than duplicating it, so
   // the star and the tab menu can both call this without checking first.
   save(draft: SavedSiteDraft): SavedSite {
     const url = typeof draft.url === 'string' ? draft.url.trim() : ''
-    if (!historyKey(url)) throw new Error('Only web pages (http or https) can be saved')
+    if (!savedSiteKey(url)) throw new Error('Only web pages (http or https) can be saved')
     const now = Date.now()
     const existing = this.findByUrl(url)
     if (existing) {
@@ -108,14 +107,14 @@ export class SavedSitesStore extends EventEmitter {
     const query = input.trim().toLowerCase().replace(/^[a-z][a-z0-9+.-]*:\/\//, '').replace(/^www\./, '').replace(/\/$/, '')
     return this.list()
       .filter((site) => {
-        const key = historyKey(site.url)
+        const key = savedSiteKey(site.url)
         return !query || key.includes(query) || site.title.toLowerCase().includes(query) || site.note.toLowerCase().includes(query)
       })
       .slice(0, SUGGESTION_LIMIT)
       .map((site) => ({
         url: site.url,
         title: site.title,
-        completion: historyKey(site.url),
+        completion: savedSiteKey(site.url),
         favicon: site.favicon ?? new URL('/favicon.ico', site.url).href,
         saved: true
       }))
@@ -148,8 +147,8 @@ export class SavedSitesStore extends EventEmitter {
 // Saved sites first, then history rows that are not already covered by a saved site, within
 // the same six-row budget the omnibox already lays out.
 export function rankSavedFirst(saved: BrowserHistoryMatch[], history: BrowserHistoryMatch[]): BrowserHistoryMatch[] {
-  const covered = new Set(saved.map((row) => historyKey(row.url)))
-  const rest = history.filter((row) => !covered.has(historyKey(row.url)))
+  const covered = new Set(saved.map((row) => savedSiteKey(row.url)))
+  const rest = history.filter((row) => !covered.has(savedSiteKey(row.url)))
   return [...saved, ...rest].slice(0, SUGGESTION_LIMIT)
 }
 
@@ -195,7 +194,7 @@ async function readSavedSites(filePath: string): Promise<PersistedSavedSites | n
 function normalizeSite(value: unknown): SavedSite | null {
   if (!value || typeof value !== 'object') return null
   const site = value as Partial<SavedSite>
-  if (typeof site.url !== 'string' || !historyKey(site.url)) return null
+  if (typeof site.url !== 'string' || !savedSiteKey(site.url)) return null
   const savedAt = typeof site.savedAt === 'number' ? site.savedAt : 0
   return {
     id: typeof site.id === 'string' && site.id ? site.id : randomUUID(),

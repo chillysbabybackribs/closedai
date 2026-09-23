@@ -34,7 +34,7 @@ export function useOmnibox(
     const query = location.trim()
     return query ? [...rows, {
       url: 'https://www.google.com/search?q=' + encodeURIComponent(query),
-      title: query, completion: 'Search the web', kind: 'search' as const
+      title: query, completion: 'Search the web', kind: 'search' as const, saved: false
     }] : rows
   }, [matches, location])
 

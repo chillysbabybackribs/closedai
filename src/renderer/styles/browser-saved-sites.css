@@ -1,0 +1,172 @@
+/* Saved sites popover: anchored under the toolbar star, floating over the page like the
+   downloads popover. Rows are page + note; the note is the only editable thing. */
+.browser-saved-sites {
+  position: absolute;
+  top: 76px;
+  right: 12px;
+  width: 380px;
+  max-width: calc(100% - 24px);
+  max-height: 440px;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  background: #141416;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 34%),
+    0 2px 6px rgb(0 0 0 / 34%),
+    0 12px 32px rgb(0 0 0 / 46%);
+  z-index: 60;
+  overflow: hidden;
+}
+
+.browser-saved-sites-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px 4px 10px;
+}
+
+.browser-saved-sites-title {
+  color: #8a8a91;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.browser-saved-sites-close,
+.browser-saved-sites-remove {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: #8a8a91;
+  cursor: pointer;
+  place-items: center;
+}
+
+.browser-saved-sites-close:hover,
+.browser-saved-sites-remove:hover {
+  background: var(--surface-raised);
+  color: #e4e4e8;
+}
+
+.browser-saved-sites-empty {
+  margin: 0;
+  padding: 2px 10px 10px;
+  color: #6c6c73;
+  font-size: 11px;
+}
+
+.browser-saved-sites-list {
+  overflow-y: auto;
+  margin: 0;
+  padding: 0 0 6px;
+  list-style: none;
+}
+
+.browser-saved-sites-row {
+  display: grid;
+  align-items: center;
+  padding: 5px 8px 6px 10px;
+  gap: 3px 8px;
+  grid-template-areas:
+    'page remove'
+    'note note';
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.browser-saved-sites-row:hover {
+  background: rgb(255 255 255 / 3%);
+}
+
+.browser-saved-sites-open {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  gap: 8px;
+  grid-area: page;
+  text-align: left;
+}
+
+.browser-saved-sites-open svg,
+.browser-saved-sites-open .browser-suggestion-favicon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.browser-saved-sites-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.browser-saved-sites-name {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-saved-sites-open:hover .browser-saved-sites-name {
+  text-decoration: underline;
+}
+
+.browser-saved-sites-host {
+  overflow: hidden;
+  color: #7c7c84;
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-saved-sites-remove {
+  grid-area: remove;
+}
+
+.browser-saved-sites-note {
+  min-width: 0;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 3%);
+  color: #c9c9cf;
+  font: inherit;
+  font-size: 11px;
+  grid-area: note;
+}
+
+.browser-saved-sites-note::placeholder {
+  color: #5f5f66;
+}
+
+.browser-saved-sites-note:hover {
+  border-color: var(--hairline);
+}
+
+.browser-saved-sites-note:focus {
+  border-color: var(--focus-ink);
+  outline: 0;
+  background: #0f0f11;
+}
+
+/* The star reads as "this page is kept" when filled, independent of whether the panel is open. */
+.browser-nav-button.is-saved svg {
+  fill: currentcolor;
+}
+
+.browser-suggestion-saved {
+  flex-shrink: 0;
+  color: #8a8a91;
+}
