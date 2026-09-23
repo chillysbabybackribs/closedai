@@ -38,7 +38,6 @@ export function pauseCoordinatorCrew(store: ChatStore, paneId: ChatPaneId): Chat
   const coordinatorId = record.coordinatorGroup?.role === 'coordinator' ? paneId : coordinatorIdForGroup(store, groupId)
   if (!coordinatorId) return null
   pausedCoordinators.add(coordinatorId)
-  awaitingReview.set(coordinatorId, false)
   return coordinatorId
 }
 
@@ -66,20 +65,13 @@ function coordinatorOfWorker(store: ChatStore, workerPaneId: ChatPaneId): ChatPa
   return parent
 }
 
-/** User typed in Coordinator: start Worker on the same text immediately. */
-export async function onCoordinatorUserMessage(
-  host: CoordinatorBridgeHost,
-  coordinatorPaneId: ChatPaneId,
-  text: string
-): Promise<void> {
+/** Incoming user message in Coordinator: resume auto handoff only; Worker waits for Coordinator's turn. */
+export function resumeCoordinatorOnUserMessage(store: ChatStore, coordinatorPaneId: ChatPaneId, text: string): void {
   const trimmed = text.trim()
   if (!trimmed || trimmed.startsWith(WORKER_FINISHED_PREFIX)) return
-  const record = host.store.get(coordinatorPaneId)
+  const record = store.get(coordinatorPaneId)
   if (record?.coordinatorGroup?.role !== 'coordinator') return
   pausedCoordinators.delete(coordinatorPaneId)
-  awaitingReview.set(coordinatorPaneId, false)
-  const workerId = pickCoordinatorWorker(host.store, coordinatorPaneId, (id) => host.isRunning(id))
-  await host.send(workerId, trimmed, [])
 }
 
 /** Worker turn ended: ping Coordinator right away so its next turn starts. */
@@ -91,7 +83,6 @@ export async function onWorkerTurnEnded(host: CoordinatorBridgeHost, workerPaneI
   const message =
     `${WORKER_FINISHED_PREFIX}\n\n${body}\n\n` +
     'Review what Worker did. Your reply will be sent to Worker automatically when this turn finishes.'
-  awaitingReview.set(coordinatorId, true)
   host.markInternalSend(coordinatorId)
   try {
     await host.send(coordinatorId, message, [])
@@ -100,10 +91,9 @@ export async function onWorkerTurnEnded(host: CoordinatorBridgeHost, workerPaneI
   }
 }
 
-/** Coordinator turn ended after a worker report: send its reply to Worker immediately. */
+/** Coordinator turn ended: delegate its assistant reply to Worker immediately. */
 export async function onCoordinatorTurnEnded(host: CoordinatorBridgeHost, coordinatorPaneId: ChatPaneId): Promise<void> {
-  if (!awaitingReview.get(coordinatorPaneId) || crewPaused(coordinatorPaneId)) return
-  awaitingReview.set(coordinatorPaneId, false)
+  if (crewPaused(coordinatorPaneId)) return
   const record = host.store.get(coordinatorPaneId)
   if (record?.coordinatorGroup?.role !== 'coordinator') return
   const instruction = lastAssistantText(host.snapshot(coordinatorPaneId))
@@ -152,11 +142,7 @@ export function wireCoordinatorAfterSend(
   attachments: ChatAttachment[]
 ): void {
   if (manager.crewInternalSend.has(paneId) || !text.trim() || attachments.length > 0) return
-  const record = manager.store.get(paneId)
-  if (record?.coordinatorGroup?.role !== 'coordinator') return
-  void onCoordinatorUserMessage(coordinatorBridgeHost(manager), paneId, text).catch((error) => {
-    logBridgeError('delegate to worker failed', error)
-  })
+  resumeCoordinatorOnUserMessage(manager.store, paneId, text)
 }
 
 export async function stopCoordinatorCrew(

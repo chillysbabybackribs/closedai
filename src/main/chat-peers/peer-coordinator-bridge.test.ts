@@ -2,11 +2,11 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { ChatStore } from '../chat-store/chat-store.js'
 import {
-  onCoordinatorUserMessage,
   onCoordinatorTurnEnded,
   onWorkerTurnEnded,
   pauseCoordinatorCrew,
   resetCoordinatorBridgeForTests,
+  resumeCoordinatorOnUserMessage,
   WORKER_FINISHED_PREFIX,
   type CoordinatorBridgeHost
 } from './peer-coordinator-bridge.js'
@@ -52,11 +52,14 @@ function snap(items: ChatSnapshot['items']): ChatSnapshot {
   }
 }
 
-test('coordinator user message forwards the same text to worker', async () => {
+test('coordinator user message does not forward to worker until coordinator turn ends', async () => {
   resetCoordinatorBridgeForTests()
-  const h = host()
-  await onCoordinatorUserMessage(h, 'coord', 'Research infinite loops')
-  assert.deepEqual(h.sends, [['worker', 'Research infinite loops']])
+  const h = host() as ReturnType<typeof host> & { setSnapshot: (id: string, s: ChatSnapshot) => void }
+  resumeCoordinatorOnUserMessage(h.store, 'coord', 'Research infinite loops')
+  assert.equal(h.sends.length, 0)
+  h.setSnapshot('coord', snap([{ type: 'assistant', id: 'a0', turnId: 't0', text: 'Worker: read docs/tools.md and summarize.', phase: null, streaming: false }]))
+  await onCoordinatorTurnEnded(h, 'coord')
+  assert.deepEqual(h.sends, [['worker', 'Worker: read docs/tools.md and summarize.']])
 })
 
 test('worker turn ended alerts coordinator immediately', async () => {
