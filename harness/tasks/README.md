@@ -25,3 +25,6 @@ npm run harness:extract -- --write
 ```
 
 Reports land in `harness/out/<run-id>/report.json`.
+
+For **in-app** runs with a human watching a new chat pane, use `harness/live-eval/` and
+`npm run harness:live`.

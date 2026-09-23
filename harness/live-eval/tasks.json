@@ -1,0 +1,60 @@
+[
+  {
+    "id": "browser_ambient_github",
+    "title": "Read open tab without navigation",
+    "user": "I'm looking at a repo in the browser. Tell me the project name, roughly how many stars it has, and the latest commit subject—use the open tab only, don't navigate away or open new tabs.",
+    "provider": "cursor",
+    "modelId": "cursor:composer-2.5[fast=true]",
+    "setup": {
+      "browserUrl": "https://github.com/electron/electron",
+      "revealBrowser": true
+    },
+    "observe": [
+      "Calls closedai_app.state or embedded_browser read tools before answering",
+      "Does not navigate away from the repo URL",
+      "Answer cites plausible repo facts (stars, recent commit)",
+      "Completes without pausing the turn (no Escape / stop)"
+    ],
+    "tags": ["browser", "read_only"]
+  },
+  {
+    "id": "browser_open_example_docs",
+    "title": "Open a docs URL in the embedded browser",
+    "user": "Open https://example.com in the embedded browser next to this chat and confirm the main heading text once the page is ready.",
+    "provider": "cursor",
+    "modelId": "cursor:composer-2.5[fast=true]",
+    "setup": { "revealBrowser": true },
+    "observe": [
+      "Uses embedded_browser or closedai_app browser_tab rather than OS open/xdg-open",
+      "Waits for load or idle before claiming the heading",
+      "Reports heading close to \"Example Domain\""
+    ],
+    "tags": ["browser", "navigate"]
+  },
+  {
+    "id": "workspace_orientation",
+    "title": "Orient from app state",
+    "user": "Before changing anything: what folder is this chat working in, which model is selected here, and is the browser pane visible?",
+    "provider": "cursor",
+    "modelId": "cursor:composer-2.5[fast=true]",
+    "observe": [
+      "Uses closedai_app.state (not guessing from memory)",
+      "Answers cwd/project path, model id, and browser visibility correctly",
+      "Does not mutate browser tabs or send spurious UI clicks"
+    ],
+    "tags": ["app", "read_only"]
+  },
+  {
+    "id": "search_electron_release",
+    "title": "Quick web lookup",
+    "user": "Use the app's search tools (not the browser search box) to find what major Electron version shipped around August 2025 and give a one-sentence answer with a source link if the tool returns one.",
+    "provider": "codex",
+    "modelId": "gpt-5.6-luna",
+    "observe": [
+      "Uses search.query or search.run—not embedded_browser navigate to Google",
+      "Single focused answer; no long essay",
+      "Mentions Electron 44 or cites a reasonable source from results"
+    ],
+    "tags": ["search"]
+  }
+]
