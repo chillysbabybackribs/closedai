@@ -65,10 +65,8 @@ spawns to query the SDK and retires again. Signed-out reads are not cached, and 
 invalidate the cache. The outer pane manager parks unselected idle panes after five minutes;
 see the lifecycle boundary below.
 
-`claude-instructions.ts` appends the shared application, articulation, and engineering contracts
-to the SDK preset. Its engineering clause names Claude's native read/edit tools and prevents shell
-rewrites, broad verification, and Git stash mutation by default. Updated prompt source is loaded by
-a new main-process build and query runtime. See
+ClosedAI uses the SDK's native `claude_code` system preset without an app-authored append.
+Project `CLAUDE.md` remains available through the SDK's project settings source. See
 [Model context](model-context.md).
 
 Nonessential CLI traffic is left enabled on purpose: `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` also

@@ -2,7 +2,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
 // The app-private Antigravity plugin supplies native tool declarations.
-// Browser routing is guidance, not an app-authored tool denial. The profile is written
+// The profile is written
 // under the app's state dir and reaches agy as an extra `--add-dir`, so nothing lands in the
 // user's project or global config.
 //
@@ -21,11 +21,8 @@ import { dirname, join } from 'node:path'
 // tools own the visible browser anyway), and any name a future build rejects is parsed from that
 // error, remembered under the state dir, and dropped from the next profile write.
 //
-// `search_web` and `read_url_content` left the grant on 2026-09-22 for the same reason, not a
-// registry error: they reach the web through agy's own hidden fetcher, so the work happens where
-// the user cannot see it and the result is not a tab anyone can inspect. search.query does
-// discovery and presents a source in the visible browser; embedded_browser page/script read it.
-// Two overlapping web paths also gave the model a reason to improvise its own search route.
+// `search_web` and `read_url_content` left the grant on 2026-09-22 because they reach the web
+// through agy's own hidden fetcher. The shared registry has separate web tools when enabled.
 
 export const ANTIGRAVITY_AGENT_NAME = 'closedai'
 const PLUGIN_NAME = 'closedai'

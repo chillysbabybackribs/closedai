@@ -19,16 +19,16 @@ engineering contract for contributors.
 
 Run **`npm run audit:docs`** to write a timestamped report under [docs/reports/](reports/) (report-only doc/tool drift checks; no automatic edits).
 
-## Prompt and tool token ownership
+## Model context and tool token ownership
 
 What models pay for every turn:
 
 | Cost | Owner | Maintainer rule |
 |---|---|---|
-| Shared product facts | `src/main/chat-context/application-instructions.ts` | One copy across lanes; do not restate in Markdown or per-tool prose |
-| Batching / XML trust | `src/main/chat-context/product-instructions.ts` | Lane adapters import slices; avoid duplicating in `tools.md` |
+| Provider-native chat behavior | Provider session adapters | ClosedAI currently adds no behavioral prompt; see [Model context](model-context.md) |
+| Turn data and handoff | `src/main/chat-context/` | Keep context scoped to the relevant turn |
 | Tool schemas and descriptions | `src/main/tools/**` | Defaults and limits here; cross-link from guides instead of copying |
-| Human guides | `docs/application.md`, `docs/tools.md` | Behavior and contracts for people; trim overlap with prompt source |
+| Human guides | `docs/application.md`, `docs/tools.md` | Behavior and contracts for people |
 
 The Tools modal **advertised tokens** sum enabled tool descriptions (see `toolManifest`). Deferred
 tools (`deferLoading: true`) ship stubs until discovered — keep eager tool text minimal.
