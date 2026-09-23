@@ -24,11 +24,8 @@ export function sessionTool(sessions: SessionHostProvider): ToolDefinition {
     name: 'session',
     deferLoading: true,
     description:
-      'The browser\'s signed-in session, used directly from the app. fetch sends a request with the ' +
-      'session\'s cookies from the main process, so cross-origin APIs that reject a page\'s fetch answer ' +
-      'here, and response headers come back too. cookies, set_cookie, and remove_cookie read and write ' +
-      'the cookie store for any domain. Prefer this over embedded_browser.page fetch unless the request ' +
-      'must run inside the page\'s own JavaScript context. Results are JSON.',
+      'Use the signed-in browser session for requests that need its cookies or must bypass page CORS; also read or write cookies. ' +
+      'Use embedded_browser.script fetch when the request must run inside page JavaScript. Results are JSON.',
     actions: [fetchAction(sessions), cookiesAction(sessions), setCookieAction(sessions), removeCookieAction(sessions)]
   })
 }
@@ -37,11 +34,8 @@ function fetchAction(sessions: SessionHostProvider): ToolAction {
   return {
     action: 'fetch',
     description:
-      'Request a URL on the session: cookies included, no CORS, redirects followed unless redirect is ' +
-      'manual. Returns status, response headers, and the body. For a large JSON response name ' +
-      'json_path, fields, and limit to project it — the projection happens before the result is ' +
-      'serialised, so only what you asked for costs anything. Binary comes back as base64 with its byte length. ' +
-      'For HTML documents, format: "text" extracts clean article prose and document title, omitting markup, scripts, and chrome.',
+      'Send a request with session cookies and no page CORS; redirects follow unless manual. Returns status, headers, ' +
+      'and body. Project large JSON with json_path, fields, or limit before returning it. Binary is base64.',
     inputSchema: objectSchema({
       url: urlField,
       method: methodField,
