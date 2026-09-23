@@ -1,11 +1,12 @@
-import { useState, type JSX } from 'react'
-import { Check, ChevronDown, Folder, Plus, X } from 'lucide-react'
+import type { JSX } from 'react'
+import { Folder, Plus, X } from 'lucide-react'
 
-import { ProviderMark } from '../components/ui/provider-mark.js'
-import type { ChatModel, ChatReasoningEffort } from '../shared/chat.js'
+import type { ChatReasoningEffort } from '../shared/chat.js'
 import { ContextUsage, type ContextUsageProps } from './context-meter.js'
 import { errorMessage } from './error-message.js'
-import { effortLabel, modelMenuDetail, type ProviderSection } from './model-menu-state.js'
+import { effortLabel } from './model-menu-state.js'
+
+export { ModelSection } from './composer-model-picker.js'
 
 // The sections of the composer's setup panel (composer-setup-menu.tsx). Each is a plain block of
 // buttons rather than a Radix menu: the panel is one surface with four kinds of control in it,
@@ -18,87 +19,6 @@ export function folderName(path: string): string {
 
 function SectionLabel({ children }: { children: React.ReactNode }): JSX.Element {
   return <div className="composer-setup-label">{children}</div>
-}
-
-/**
- * Providers as groups, each opening on its short list — the models used most, the default, the
- * selected one — with a row that reveals the rest. A single provider can be long on its own
- * (dozens of Cursor models against four Codex ones), so the fold is per provider.
- */
-export function ModelSection({
-  sections,
-  selectedModel,
-  disabled,
-  onChoose
-}: {
-  sections: ProviderSection[]
-  selectedModel: string | null
-  disabled: boolean
-  onChoose: (modelId: string) => void
-}): JSX.Element {
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
-  if (sections.length === 0) {
-    return (
-      <section className="composer-setup-section" aria-label="Model">
-        <SectionLabel>Model</SectionLabel>
-        <p className="composer-setup-note">No models are available yet.</p>
-      </section>
-    )
-  }
-  return (
-    <section className="composer-setup-section" aria-label="Model">
-      {sections.map((section) => {
-        const shown = expanded.has(section.provider) ? section.all : section.featured
-        return (
-          <div key={section.provider} className="composer-setup-group">
-            <SectionLabel>
-              <ProviderMark provider={section.provider} className="composer-setup-label-mark" />
-              {section.label}
-            </SectionLabel>
-            <div role="radiogroup" aria-label={`${section.label} models`}>
-              {shown.map((model) => (
-                <ModelRow key={model.id} model={model} checked={model.id === selectedModel} disabled={disabled} onChoose={onChoose} />
-              ))}
-            </div>
-            {section.hiddenCount > 0 && !expanded.has(section.provider) && (
-              <button
-                type="button"
-                className="composer-setup-more"
-                data-ui="composer.model-more"
-                data-ui-key={section.provider}
-                onClick={() => setExpanded((current) => new Set([...current, section.provider]))}
-              >
-                <span>Show {section.hiddenCount} more {section.hiddenCount === 1 ? 'model' : 'models'}</span>
-                <ChevronDown aria-hidden="true" />
-              </button>
-            )}
-          </div>
-        )
-      })}
-    </section>
-  )
-}
-
-function ModelRow({
-  model, checked, disabled, onChoose
-}: { model: ChatModel; checked: boolean; disabled: boolean; onChoose: (modelId: string) => void }): JSX.Element {
-  const detail = modelMenuDetail(model)
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={checked}
-      className="composer-setup-item"
-      data-ui="composer.model-item"
-      data-ui-key={model.id}
-      disabled={disabled}
-      onClick={() => { if (!checked) onChoose(model.id) }}
-    >
-      <Check className="composer-setup-check" aria-hidden="true" />
-      <span className="composer-setup-item-name">{model.displayName}</span>
-      {detail && <span className="composer-setup-item-detail">{detail}</span>}
-    </button>
-  )
 }
 
 /** Effort as a segmented control: every level visible, one press to change, no submenu. */
@@ -167,29 +87,30 @@ export function FolderSection({
   }
   const others = recentProjects.filter((project) => project.projectPath !== projectPath)
   return (
-    <section className="composer-setup-section" aria-label="Folder">
-      <SectionLabel>Folder{pending ? ' · change queued until this chat is idle' : ''}</SectionLabel>
-      <div className="composer-setup-item is-current" title={projectPath ?? cwd}>
-        <Folder className="composer-setup-item-icon" aria-hidden="true" />
-        <span className="composer-setup-item-name">{projectPath ? folderName(projectPath) : 'No project'}</span>
-        <span className="composer-setup-item-detail">{projectPath ?? cwd}</span>
+    <section className="composer-setup-section composer-folder-section" aria-label="Folder">
+      <SectionLabel>Folder{pending ? ' · queued until idle' : ''}</SectionLabel>
+      <div className="composer-folder-current" title={projectPath ?? cwd}>
+        <Folder className="composer-folder-icon" aria-hidden="true" />
+        <span className="composer-folder-name">{projectPath ? folderName(projectPath) : 'No project'}</span>
       </div>
-      {others.map((project) => (
-        <button
-          key={project.projectPath}
-          type="button"
-          className="composer-setup-item"
-          data-ui="composer.project-recent"
-          data-ui-key={project.projectPath}
-          title={project.cwd}
-          disabled={disabled}
-          onClick={() => void choose(() => onSelectProject(project.projectPath))}
-        >
-          <Folder className="composer-setup-item-icon" aria-hidden="true" />
-          <span className="composer-setup-item-name">{folderName(project.projectPath)}</span>
-          <span className="composer-setup-item-detail">{project.cwd}</span>
-        </button>
-      ))}
+      {others.length > 0 && (
+        <div className="composer-folder-recents" aria-label="Recent folders">
+          {others.map((project) => (
+            <button
+              key={project.projectPath}
+              type="button"
+              className="composer-folder-chip"
+              data-ui="composer.project-recent"
+              data-ui-key={project.projectPath}
+              title={project.cwd}
+              disabled={disabled}
+              onClick={() => void choose(() => onSelectProject(project.projectPath))}
+            >
+              {folderName(project.projectPath)}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="composer-setup-actions">
         <button
           type="button"
@@ -219,9 +140,9 @@ export function FolderSection({
 /** Context window and plan usage, plus manual compaction when the provider offers it. */
 export function ContextSection(props: ContextUsageProps): JSX.Element {
   return (
-    <section className="composer-setup-section" aria-label="Context and plan usage">
-      <SectionLabel>Context</SectionLabel>
+    <details className="composer-setup-section composer-setup-details">
+      <summary className="composer-setup-details-summary">Context & plan</summary>
       <ContextUsage {...props} />
-    </section>
+    </details>
   )
 }
