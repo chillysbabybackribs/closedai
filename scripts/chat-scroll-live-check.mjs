@@ -38,8 +38,9 @@ if (!process.versions.electron) {
   app.setPath('userData', join(root, 'profile'))
   await writeFile(join(root, 'profile', 'app-settings.json'), JSON.stringify({ browserCookiesImported: true }))
   const watchdog = setTimeout(() => { console.error('Chat scroll check timed out'); app.exit(1) }, 60_000)
-  try {
-    await import('../out/main/index.js')
+  await import('../out/main/index.js')
+  // Electron waits for the entry module's top-level await before emitting ready.
+  void (async () => { try {
     let window
     for (let i = 0; i < 200; i++) {
       window = BrowserWindow.getAllWindows().find((candidate) => candidate.webContents.getURL().includes('/renderer/'))
@@ -97,5 +98,5 @@ if (!process.versions.electron) {
     console.error(error)
     clearTimeout(watchdog)
     app.exit(1)
-  }
+  } })()
 }
