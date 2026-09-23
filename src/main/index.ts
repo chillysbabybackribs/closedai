@@ -159,18 +159,20 @@ async function main(): Promise<void> {
     : isFirstLaunch
       ? chatWorkspace
       : savedSettings.chatProjectPath
-  // Pane records that settings used to hold become chat records once; ids are preserved.
-  await migrateChatPeersIntoStore(settings, chatStore, { cwd: chatWorkspace, projectPath })
-  const workspaceSelector = createChatWorkspaceSelector({
-    app,
-    settings: settings!,
-    chatStore: chatStore!,
-    getWorkspace: () => ({ cwd: chatWorkspace, projectPath }),
-    setWorkspace: (cwd, nextProjectPath) => {
-      chatWorkspace = cwd
-      projectPath = nextProjectPath
-    }
-  })
+  // Bootstrap is a handful of small, unrelated disk reads, and the window cannot paint until
+  // the last of them returns. Start them together here and await each where it is first
+  // needed: the cookie import alone walks the user's real browser profile.
+  const telemetryOpening = started(ToolTelemetry.open(
+    join(userData(), 'tool-telemetry.json'),
+    join(userData(), 'tool-telemetry.jsonl')
+  ))
+  // Model catalogs are shared per workspace and across launches, so a pane's non-active
+  // providers fill the picker from the last catalog seen instead of each starting a process.
+  const catalogOpening = started(ProviderCatalogCache.open(join(userData(), 'provider-catalogs.json')))
+  // The one-shot cookie import must finish before the first tab loads, so a restored or home
+  // page arrives already signed in rather than racing the import — but it has the whole of
+  // bootstrap to do it in, not the moment before the window opens.
+  const cookieImport = started(importDefaultBrowserCookies(mainCookieImportDeps(mainIpcRegistration())))
   // Tools resolve the browser lazily: it is created with the window, after the chat service.
   const browserCoordination = new BrowserCoordination({
     tabs: () => browserService?.tabList() ?? [],
@@ -182,6 +184,29 @@ async function main(): Promise<void> {
     },
     paneExists: paneId => !!chatService?.paneSnapshot(paneId),
     paneRunning: paneId => chatService?.snapshot().chats.find(row => row.paneId === paneId)?.running ?? false
+  })
+  const researchOpening = started(createResearchRuntime({
+    root: join(userData(), 'research-runs'), browser: () => browserService,
+    // The verifier's synthetic pane owns research only in a process that was asked to verify.
+    peers: () => liveVerifyHandle.requested
+      ? ({
+          paneSnapshot: () => ({ threadId: 'live-verify-thread', activeTurnId: 'live-verify-turn' })
+        } as unknown as ChatPeerManager)
+      : chatService,
+    workspace: () => chatWorkspace,
+    browserCoordination
+  }))
+  // Pane records that settings used to hold become chat records once; ids are preserved.
+  await migrateChatPeersIntoStore(settings, chatStore, { cwd: chatWorkspace, projectPath })
+  const workspaceSelector = createChatWorkspaceSelector({
+    app,
+    settings: settings!,
+    chatStore: chatStore!,
+    getWorkspace: () => ({ cwd: chatWorkspace, projectPath }),
+    setWorkspace: (cwd, nextProjectPath) => {
+      chatWorkspace = cwd
+      projectPath = nextProjectPath
+    }
   })
   const browserAssignmentIdle = new BrowserAssignmentIdleRelease(browserCoordination, (paneId) => {
     const row = chatService?.snapshot({ limit: 0 }).chats.find((chat) => chat.paneId === paneId)
@@ -199,17 +224,7 @@ async function main(): Promise<void> {
   const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService)
   // Full-resolution captures for the transcript; the model only ever receives the scaled copy.
   const screenshots = new ScreenshotStore()
-  const research = await createResearchRuntime({
-    root: join(userData(), 'research-runs'), browser: () => browserService,
-    // The verifier's synthetic pane owns research only in a process that was asked to verify.
-    peers: () => liveVerifyHandle.requested
-      ? ({
-          paneSnapshot: () => ({ threadId: 'live-verify-thread', activeTurnId: 'live-verify-turn' })
-        } as unknown as ChatPeerManager)
-      : chatService,
-    workspace: () => chatWorkspace,
-    browserCoordination
-  })
+  const research = await researchOpening
   researchService = research.service
   disposeResearch = research.dispose
   const artifacts = createArtifactRuntime({
@@ -238,10 +253,7 @@ async function main(): Promise<void> {
   ])
   toolRegistry.browserCoordination = browserCoordination
   for (const toolId of settings.get().disabledTools) toolRegistry.setEnabled(toolId, false)
-  toolTelemetry = await ToolTelemetry.open(
-    join(userData(), 'tool-telemetry.json'),
-    join(userData(), 'tool-telemetry.jsonl')
-  )
+  toolTelemetry = await telemetryOpening
   toolRegistry.subscribe((record) => toolTelemetry?.record(record))
   // The live turn trace: full arguments and results, in memory only, for the user's own view.
   traceToolCalls(toolRegistry)
@@ -262,9 +274,7 @@ async function main(): Promise<void> {
   const cursorStateDir = join(userData(), 'cursor')
   // ACP takes its MCP servers per session, so this bridge registers nothing outside the app.
   cursorBridge = new CursorToolBridge(toolRegistry, { version: app.getVersion() })
-  // Model catalogs are shared per workspace and across launches, so a pane's non-active
-  // providers fill the picker from the last catalog seen instead of each starting a process.
-  const catalogCache = await ProviderCatalogCache.open(join(userData(), 'provider-catalogs.json'))
+  const catalogCache = await catalogOpening
   providerCatalogs = catalogCache
   // What each chat last looked like, so opening one paints before its provider has replayed it.
   chatTranscripts = new ChatTranscriptCache(join(userData(), 'chat-transcripts'))
@@ -295,9 +305,7 @@ async function main(): Promise<void> {
   liveVerifyHandle.toolRegistry = toolRegistry
   liveVerifyHandle.researchService = researchService
   registerMainProcessIpc(mainIpcRegistration())
-  // The one-shot cookie import runs before the first tab loads, so a restored or home page
-  // arrives already signed in rather than racing the import.
-  await importDefaultBrowserCookies(mainCookieImportDeps(mainIpcRegistration()))
+  await cookieImport
   // Measure and prune before the first tab paints so a bloated cache does not slow restore.
   void maintainBrowserCache(userData()).catch((error: unknown) => {
     console.warn('[browser-cache] startup maintenance failed', error)
@@ -307,6 +315,16 @@ async function main(): Promise<void> {
   stopBrowserCacheMaintenance = scheduleBrowserCacheMaintenance(userData())
   const liveVerifyMode = process.env.CLOSEDAI_LIVE_VERIFY?.trim() || liveVerifyFromArgv()
   if (liveVerifyMode) requestLiveVerify(liveVerifyHandle, app, liveVerifyMode, true)
+}
+
+/**
+ * Run work now, deliver its failure to whoever awaits it later. The `catch` marks the
+ * rejection handled so a bootstrap step that fails while another is still in flight is
+ * reported as the bootstrap failure it is, not as an unhandled rejection.
+ */
+function started<T>(work: Promise<T>): Promise<T> {
+  work.catch(() => {})
+  return work
 }
 
 /** Null for Electron's default userData; a short stable hash for any other profile. */
