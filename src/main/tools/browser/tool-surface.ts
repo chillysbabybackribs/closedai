@@ -46,7 +46,7 @@ export function browserResourceLockKey(request: ToolCallRequest, input: JsonObje
   if (namespace === 'closedai_app' && tool === 'command' && action === 'browser_tab') {
     const op = String(input.op)
     if (['release', 'release_all', 'claim'].includes(op)) return null
-    if (['new', 'new_right'].includes(op)) return 'browser:strip'
+    if (['new', 'new_right', 'preview_html'].includes(op)) return 'browser:strip'
     if (['close_others', 'close_right'].includes(op)) return 'browser:strip'
     return tabKey(input) ?? 'browser:strip'
   }

@@ -170,6 +170,7 @@ export function appCommandActions(
             ready: { until: 'load', timeoutMs: DEFAULT_WAIT_MS }
           })
           if (!outcome.ok) throw new Error(`Could not open ${resolved.path}: ${outcome.error}`)
+          const browser = await host.browserTab({ op: 'claim', tabId: outcome.tabId }, context.paneId)
           let browserRevealed = false
           if (booleanArg(input, 'reveal_browser', true)) browserRevealed = await revealBrowserPane(ui)
           return jsonResult({
@@ -177,6 +178,7 @@ export function appCommandActions(
             tabId: outcome.tabId,
             title: outcome.ready.title,
             url: outcome.ready.url,
+            browser,
             browserRevealed
           })
         }
