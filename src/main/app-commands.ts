@@ -237,7 +237,14 @@ function projectWorkspace(chat: AppChatWorkspace, callerPaneId: string | null): 
       running: peer.running,
       ...(peer.activity ? { activity: peer.activity.slice(0, 80) } : {}),
       threadId: peer.threadId,
-      updatedAt: peer.updatedAt
+      updatedAt: peer.updatedAt,
+      ...(peer.coordinatorGroup ? {
+        coordinatorRole: peer.coordinatorGroup.role,
+        coordinatorGroupId: peer.coordinatorGroup.id,
+        ...(peer.coordinatorGroup.role === 'worker' && peer.coordinatorGroup.slot
+          ? { coordinatorWorkerSlot: peer.coordinatorGroup.slot }
+          : {})
+      } : {})
     }))
   }
 }
