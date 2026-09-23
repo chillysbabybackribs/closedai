@@ -30,11 +30,9 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
   const query = defineTool({
       name: 'query',
       description:
-        'Search Brave, Exa, Serper, Tavily, and You.com. Choose intent for the evidence needed; for technical/product ' +
-        'questions, use preferred_domains to boost official documentation. Depth defaults to quick (one provider); ' +
-        'balanced and deep use more providers. discoveredBy is index overlap, not independent confirmation. ' +
-        'Live opens source pages; background skips browser presentation. Prefer search.run for parallel research. ' +
-        'Returns JSON text; parse it in exec.',
+        'Search Brave, Exa, Serper, Tavily, and You.com. Set intent for evidence shape; boost official docs with preferred_domains. ' +
+        'depth quick (default) uses one provider; balanced/deep wait for more. discoveredBy is index overlap, not confirmation. ' +
+        'Use search.run for parallel research. Returns JSON; parse in exec.',
       timeoutMs: 45_000,
       inputSchema: {
         type: 'object',

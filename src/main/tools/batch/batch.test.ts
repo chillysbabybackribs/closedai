@@ -420,6 +420,7 @@ test('the batch size is bounded at both ends', async () => {
 test('a configured batch limit shapes both advertising and enforcement', async () => {
   const { registry } = harness(24)
   const tool = registry.namespaces.find((namespace) => namespace.name === 'tool_batch')?.tools[0]
+  assert.equal(tool?.deferLoading, true)
   const properties = tool?.inputSchema.properties as Record<string, { description?: string }> | undefined
   assert.match(String(properties?.calls.description), /Between 1 and 24 entries/)
 

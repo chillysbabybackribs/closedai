@@ -17,6 +17,7 @@ import { TOOL_CATALOG } from '../src/main/tools/catalog.ts'
 import { cdpTools } from '../src/main/tools/cdp/index.ts'
 import { credentialVaultTools } from '../src/main/tools/credential-vault/index.ts'
 import { createToolRegistry, type ToolRegistry } from '../src/main/tools/index.ts'
+import { measureToolContextBudget } from '../src/main/tools/tool-context-budget.ts'
 import { nativeInstrumentTools } from '../src/main/tools/native-instrument/index.ts'
 import { peerChatTools } from '../src/main/tools/peer-chats/index.ts'
 import { searchTools } from '../src/main/tools/search/index.ts'
@@ -402,6 +403,11 @@ function renderReport(ctx: AuditContext, findings: Finding[], reportPath: string
     `- **map:check:** ${ctx.mapCheckOk === null ? '(not run)' : ctx.mapCheckOk ? 'pass' : 'fail'}`,
     `- **Telemetry source:** ${ctx.telemetrySource}`,
     `- **Registry tool count:** ${ctx.toolNames.size} tools, ${ctx.switchable.size} switchable ids`,
+    (() => {
+      const budget = measureToolContextBudget(ctx.registry)
+      const top = budget.eagerTools.slice(0, 3).map((row) => `${row.id} (${row.chars}c)`).join(', ')
+      return `- **Codex eager tool wire:** ${budget.eagerWireChars} chars, ${budget.advertisedTokens} advertised tokens; top eager: ${top}`
+    })(),
     `- **Report path:** ${path.relative(root, reportPath)}`,
     ''
   ]

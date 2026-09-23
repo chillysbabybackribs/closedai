@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+
+import { appTools } from './app/index.ts'
+import { batchTools } from './batch/index.ts'
+import { browserTools } from './browser/index.ts'
+import { cdpTools } from './cdp/index.ts'
+import { captureTools } from './capture/index.ts'
+import { createToolRegistry } from './index.ts'
+import { nativeInstrumentTools } from './native-instrument/index.ts'
+import { credentialVaultTools } from './credential-vault/index.ts'
+import { peerChatTools } from './peer-chats/index.ts'
+import { searchTools } from './search/index.ts'
+import type { ResearchDependencies } from './search/research/service.ts'
+import { measureToolContextBudget } from './tool-context-budget.ts'
+
+const root = '/tmp/closedai-tool-budget'
+
+function stubHost(): null {
+  return null
+}
+
+function minimalResearch(): ResearchDependencies {
+  const document = {
+    url: 'https://example.com/', title: 'x', text: 'x', contentType: 'text/plain',
+    sha256: 'hash', incomplete: false, representation: 'static_text' as const
+  }
+  return {
+    owner: (caller) => ({
+      paneId: caller.paneId!, threadId: caller.threadId!, turnId: caller.turnId, workspace: root
+    }),
+    collect: async () => document,
+    read: async () => document.text,
+    remove: async () => {},
+    openLive: () => 'tab-stub'
+  }
+}
+
+function fullRegistry() {
+  let registry = createToolRegistry([])
+  registry = createToolRegistry([
+    nativeInstrumentTools(stubHost as never, () => false),
+    credentialVaultTools(stubHost, stubHost),
+    appTools(stubHost, stubHost),
+    browserTools(() => stubHost(), () => stubHost(), () => stubHost()),
+    cdpTools(stubHost),
+    captureTools(stubHost, stubHost as never),
+    searchTools({ research: minimalResearch() }),
+    peerChatTools(stubHost),
+    batchTools(() => registry, { maxCalls: 16 })
+  ])
+  return registry
+}
+
+test('eager Codex tool wire stays within the regression budget', () => {
+  const budget = measureToolContextBudget(fullRegistry())
+  assert.equal(budget.toolCount, 26)
+  assert.ok(budget.deferredWireChars > budget.eagerWireChars, 'most schema weight should stay deferred')
+  assert.ok(budget.eagerWireChars <= 6_800, `eager wire grew to ${budget.eagerWireChars}`)
+  assert.ok(budget.advertisedTokens <= 1_950, `advertised tokens grew to ${budget.advertisedTokens}`)
+  const top = budget.eagerTools.slice(0, 4).map((row) => row.id)
+  assert.deepEqual(top, ['search.query', 'embedded_browser.page', 'closedai_app.state'])
+})

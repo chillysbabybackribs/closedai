@@ -58,11 +58,11 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
     tools: [
       defineTool({
         name: 'run',
+        deferLoading: true,
         description:
-          'Batch ClosedAI tool calls; model-native shell/file/web tools are not routable here. Do not nest batches. ' +
-          'Calls run sequentially by default; use parallel only for independent work. By default, failures skip later ' +
-          'sequential calls and unwind armed browser state. Real-input actions require a later verification call in the ' +
-          'same sequential batch. Each call can set include_result:false to omit its successful output. Results are numbered in call order. ' +
+          'Batch ClosedAI tool calls; native provider shell/file tools are not routable here. No nested batches. ' +
+          'Default: sequential with stop-on-error and browser unwind; parallel only for independent work. ' +
+          'Real-input actions need verification in the same sequential batch. include_result:false omits successful bodies. ' +
           'Await in exec.',
         inputSchema: {
           type: 'object',

@@ -11,13 +11,13 @@ export const MAX_CHARS = 100_000
 
 export const tabIdField: JsonObject = {
   type: 'string',
-  description: 'Tab id from navigate. Defaults to this chat’s assigned tab, independent of UI selection. Another chat’s assigned tab can be read, not acted in.'
+  description: 'Tab id from navigate; default is this chat’s assigned tab. Other chats’ tabs are read-only.'
 }
 
 export const selectorField: JsonObject = {
   type: 'string',
   minLength: 1,
-  description: 'Standard CSS selector in the main frame. Playwright/jQuery forms (:has-text, :contains, :visible, text=, XPath) are rejected by the page; match on text with script query and text_contains.'
+  description: 'Main-frame CSS only; Playwright/jQuery pseudo-selectors are rejected. Match text via embedded_browser.script query.'
 }
 
 export const maxCharsField: JsonObject = {
@@ -30,7 +30,7 @@ export const maxCharsField: JsonObject = {
 export const urlField: JsonObject = {
   type: 'string',
   minLength: 1,
-  description: 'Absolute URL or relative path. Not search text: navigate refuses free text and search-engine results pages — use search.query for discovery.'
+  description: 'Absolute URL or site-relative path. Not search text — use search.query for discovery.'
 }
 
 export const waitUntilField: JsonObject = {
@@ -55,7 +55,7 @@ export const timeoutMsField: JsonObject = {
   type: 'integer',
   minimum: 1_000,
   maximum: MAX_WAIT_MS,
-  description: `Milliseconds to wait before giving up; default ${DEFAULT_WAIT_MS}. The result says whether the wait succeeded, and an unmet wait comes back as an error naming what was still missing.`
+  description: `Wait budget in ms; default ${DEFAULT_WAIT_MS}. Unmet conditions return an error.`
 }
 
 export const readinessProperties: Record<string, JsonObject> = {
