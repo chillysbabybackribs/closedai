@@ -139,7 +139,7 @@ function validViewScopes(raw: unknown, tabs: Set<string>): ViewScopes {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return views
   for (const [id, scope] of Object.entries(raw as Record<string, unknown>)) {
     const pinned = (scope as { pinnedChatId?: unknown } | null)?.pinnedChatId
-    if (isViewTabId(id) && tabs.has(id) && typeof pinned === 'string' && pinned && !isViewTabId(pinned)) {
+    if (isViewTabId(id) && tabs.has(id) && typeof pinned === 'string' && tabs.has(pinned) && !isViewTabId(pinned)) {
       views[id] = { pinnedChatId: pinned }
     }
   }

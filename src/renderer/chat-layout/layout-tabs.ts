@@ -1,4 +1,4 @@
-import { dockPane, isReservedPaneId, paneIds, type ChatLayout, type DockEdge } from './layout-tree.js'
+import { dockPane, isReservedPaneId, isViewTabId, paneIds, type ChatLayout, type DockEdge } from './layout-tree.js'
 
 export const CHAT_TAB_DRAG_TYPE = 'application/x-closedai-chat-tab'
 
@@ -29,6 +29,11 @@ export function moveTab(tree: ChatLayout, id: string, target: string, edge: Dock
 export function tabIds(tree: ChatLayout | null): string[] {
   if (!tree || isReservedPaneId(tree.id)) return []
   return tree.kind === 'pane' ? tree.tabs ?? [tree.id] : [...tabIds(tree.first), ...tabIds(tree.second)]
+}
+
+/** Conversation tabs only: what main retains, prunes, and reports on. */
+export function chatTabIds(tree: ChatLayout | null): string[] {
+  return tabIds(tree).filter((id) => !isViewTabId(id))
 }
 
 export function tabOwner(tree: ChatLayout | null, id: string): string | null {
@@ -80,8 +85,9 @@ export function removeTab(tree: ChatLayout | null, id: string): ChatLayout | nul
   return !first ? second : !second ? first : first === tree.first && second === tree.second ? tree : { ...tree, first, second }
 }
 
+/** Views are never in main's chat list, so only chat tabs are checked against it. */
 export function pruneTabs(tree: ChatLayout | null, available: Set<string>): ChatLayout | null {
-  for (const id of tabIds(tree)) if (!available.has(id)) tree = removeTab(tree, id)
+  for (const id of chatTabIds(tree)) if (!available.has(id)) tree = removeTab(tree, id)
   return tree
 }
 
