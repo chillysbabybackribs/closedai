@@ -40,7 +40,8 @@ export const ChatPane = memo(function ChatPane({
   selected = true,
   onNewChat: _onNewChat,
   onContinueInNewChat,
-  archiveChat
+  archiveChat,
+  openHistoryChat
 }: {
   controller?: ChatController
   zoom?: number
@@ -57,6 +58,7 @@ export const ChatPane = memo(function ChatPane({
   /** Opens a sibling tab with a digest-seeded chat (layout placement); message actions use this for full continue. */
   onContinueInNewChat?: () => Promise<void>
   archiveChat?: (chatId: string) => Promise<void>
+  openHistoryChat?: (chatId: string) => Promise<void>
 }): JSX.Element {
   const internalChat = useChatController(!controller)
   const chat = controller ?? internalChat
@@ -146,7 +148,7 @@ export const ChatPane = memo(function ChatPane({
             busy={running}
             listChats={chat.listChats}
             chats={chat.chats}
-            openChat={chat.openChat}
+            openChat={openHistoryChat ?? chat.openChat}
             archiveChat={archiveChat ?? chat.archiveChat}
             onClose={() => setHistoryOpen(false)}
           />

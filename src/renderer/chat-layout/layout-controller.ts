@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { errorMessage } from '../error-message.js'
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
@@ -74,7 +74,9 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
 
   // History/search selection focuses an existing tab or adds one to the focused tile.
   // Split/add operations manage their own destination while main announces selection.
-  useEffect(() => {
+  // LayoutEffect keeps the destination pane mounted before paint; useEffect left a gap where
+  // main had already switched chats but the tree still showed the previous tab's transcript.
+  useLayoutEffect(() => {
     // Workspace events are delivered in a React transition. An IPC reply can arrive
     // first; do not prune the new tab against the previous workspace snapshot.
     if (selectionToConfirm) {
@@ -90,8 +92,9 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       const available = new Set(snapshot.chats.map((chat) => chat.paneId))
       tree = pruneTabs(tree, available)
       if (!tree || !paneIds(tree).length) tree = withBrowser({ kind: 'pane', id: next })
-      else if (!paneIds(tree).includes(next)) {
-        tree = selectTab(tree, paneIds(tree).includes(previous) ? previous : paneIds(tree)[0]!, next)
+      else {
+        const anchor = paneIds(tree).includes(previous) ? previous : paneIds(tree)[0]!
+        tree = selectTab(tree, anchor, next)
       }
       return tree === value.tree ? value : { ...value, tree: tree! }
     })

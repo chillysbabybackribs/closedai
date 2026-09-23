@@ -15,6 +15,8 @@ import { WorkspaceChat } from './workspace-chat.js'
 
 export type ChatLayoutHandle = {
   splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
+  /** Open or focus a saved chat and sync the tab strip before the transcript paints. */
+  activateChat: (chatId: string) => Promise<void>
   toggleBrowser: () => void
   closeFocused: () => Promise<void>
   openLayoutPresets: () => void
@@ -57,11 +59,13 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   const title = useCallback((id: string) => chatsRef.current.find((row) => row.paneId === id)?.title ?? 'New chat', [])
   const chatRow = useCallback((id: string) => chatsRef.current.find((row) => row.paneId === id), [])
   const renderPaneRef = useRef<(id: string) => ReactElement>(() => null as unknown as ReactElement)
+  const openHistoryChat = useCallback((chatId: string) => layout.activateTab(chatId), [layout.activateTab])
   renderPaneRef.current = (id: string) => (
     <WorkspaceChat paneId={id} dispatch={dispatch}
       appearance={appearance} historyOpen={historyOpen && selectedPaneId === id}
       onHistoryOpenChange={onHistoryOpenChange} dialog={selectedPaneId === id ? dialog : null}
       onDialogChange={onDialogChange} archiveChat={archiveChat}
+      openHistoryChat={openHistoryChat}
       onContinueInNewChat={() => continueChatRef.current(id)}
       onNewChat={() => { void layout.newChat(id) }} />
   )
@@ -81,6 +85,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   }
   useImperativeHandle(ref, () => ({
     splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),
+    activateChat: (chatId) => layout.activateTab(chatId),
     toggleBrowser: () => {
       layout.toggleBrowser()
       setBrowserRevealVersion((value) => value + 1)

@@ -36,7 +36,11 @@ export function reviewTransitions(
   return { finished, runningAgain, nextRunning }
 }
 
-export function useHistoryController(chat: ChatController) {
+export function useHistoryController(
+  chat: ChatController,
+  /** When set, history opens sync the layout tree (tabs) before main selection paints. */
+  openInWorkspace?: (chatId: string) => Promise<void>
+) {
   const [reviewQueue, setReviewQueue] = useState<ChatReviewQueue>(() =>
     readChatReviewQueue(window.localStorage)
   )
@@ -110,8 +114,9 @@ export function useHistoryController(chat: ChatController) {
   /** Open a chat by id; the main process decides whether it takes the blank selected pane or opens beside it. */
   const openRow = useCallback(async (chatId: string) => {
     if (chatId === chat.selectedPaneId) return
-    await chat.openChat(chatId)
-  }, [chat])
+    if (openInWorkspace) await openInWorkspace(chatId)
+    else await chat.openChat(chatId)
+  }, [chat, openInWorkspace])
 
   const newChat = useCallback(() => {
     chat.newThread().catch(reportError)

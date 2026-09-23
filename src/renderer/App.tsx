@@ -34,7 +34,11 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const chat = useChatController()
   const chatRef = useRef(chat)
   chatRef.current = chat
-  const history = useHistoryController(chat.sidebar)
+  const workspaceRef = useRef<ChatLayoutHandle>(null)
+  const openHistoryChat = useCallback(async (chatId: string) => {
+    await (workspaceRef.current?.activateChat(chatId) ?? chatRef.current.openChat(chatId))
+  }, [])
+  const history = useHistoryController(chat.sidebar, openHistoryChat)
   const searchRef = useRef<HTMLInputElement>(null)
   const focusSearch = useCallback(() => { searchRef.current?.focus(); searchRef.current?.select() }, [])
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
@@ -44,7 +48,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const [paneDialog, setPaneDialog] = useState<ChatPaneDialog | null>(null)
   const dialogsRef = useRef({ settingsOpen, renamingChat, paneDialog })
   dialogsRef.current = { settingsOpen, renamingChat, paneDialog }
-  const workspaceRef = useRef<ChatLayoutHandle>(null)
   const toolsPreset = useToolsPreset()
   const [browserVisible, setBrowserVisible] = useState(false)
   // A shortcut or menu action main refused; shown under the title bar until dismissed.
