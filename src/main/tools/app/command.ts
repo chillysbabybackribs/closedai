@@ -5,7 +5,6 @@ import { DEFAULT_WAIT_MS } from '../browser/fields.js'
 import { requireBrowser, type BrowserHostProvider } from '../browser/host.js'
 import { requireHost, type AppBrowserTabRequest, type AppCommandHost, type AppUiHost } from './host.js'
 import { resolveHtmlPreview } from './preview-html.js'
-import { AGENT_RUN_MAX_PROMPT_CHARS } from '../../../shared/agent-runs.js'
 
 const paneField: JsonObject = {
   type: 'string', minLength: 1,
@@ -86,22 +85,6 @@ export function appCommandActions(
         const paneId = otherPane(host, input, context, 'stop')
         await host.stopAgent(paneId)
         return jsonResult(host.state(['chat'], paneId, context.paneId ?? null))
-      }
-    },
-    {
-      action: 'start_agent',
-      description:
-        'Turn another pane into a driven agent run: the app sends the standing prompt now and re-sends a cycle message every time a turn ends until the run is paused or stopped. A message in flight is folded in, not raced. Refused for the calling pane.',
-      inputSchema: objectSchema({
-        pane_id: paneField,
-        prompt: { type: 'string', minLength: 1, maxLength: AGENT_RUN_MAX_PROMPT_CHARS, description: 'Standing instructions the run carries; re-sent after a context rotation.' },
-        max_cycles: { type: 'integer', minimum: 1, description: 'Pause the run after this many cycles; omit to run until paused.' }
-      }, ['prompt']),
-      run: async (input, context) => {
-        const host = requireHost(app, 'app commands')
-        const paneId = otherPane(host, input, context, 'start an agent in')
-        const run = await host.startAgent(paneId, { prompt: stringArg(input, 'prompt')!, maxCycles: typeof input.max_cycles === 'number' ? input.max_cycles : null })
-        return jsonResult({ run, ...host.state(['chat'], paneId, context.paneId ?? null) })
       }
     },
     {

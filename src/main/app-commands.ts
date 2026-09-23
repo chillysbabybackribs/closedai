@@ -4,6 +4,7 @@ import type { ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
 import { describeAgentRun, type AgentRun, type AgentRunStartOptions } from '../shared/agent-runs.js'
 import type { BrowserCoordination } from './tools/browser/coordination.js'
 import type {
+  AppAgentRunRequest,
   AppBrowserTabRequest,
   AppBrowserTabs,
   AppChatWorkspace,
@@ -27,7 +28,16 @@ export type AppCommandDeps = {
   window: () => AppWindowInfo | null
   browserCoordination?: BrowserCoordination
   /** The agent run driving a chat, when one exists; projected beside the chat's own state. */
-  agentRuns?: () => { get(chatId: string): AgentRun | null; startRun(chatId: string, options: AgentRunStartOptions): Promise<AgentRun> } | null
+  agentRuns?: () => AppAgentRunDriver | null
+}
+
+/** The run service surface the command host uses; AgentRunService satisfies it. */
+export type AppAgentRunDriver = {
+  get(chatId: string): AgentRun | null
+  startRun(chatId: string, options: AgentRunStartOptions): Promise<AgentRun>
+  pauseRun(chatId: string, reason: string, options?: { interrupt?: boolean }): Promise<AgentRun | null>
+  resumeRun(chatId: string): Promise<AgentRun | null>
+  stopRun(chatId: string): Promise<void>
 }
 
 const PEER_LIMIT = 12
@@ -117,10 +127,28 @@ export class AppCommandAccess implements AppCommandHost {
     await this.chat().interrupt(paneId)
   }
 
-  async startAgent(paneId: string, options: AgentRunStartOptions): Promise<AgentRun> {
+  async agentRun(request: AppAgentRunRequest): Promise<AgentRun | null> {
     const runs = this.deps.agentRuns?.()
     if (!runs) throw new Error('Agent runs are not available')
-    return runs.startRun(paneId, options)
+    if (!this.chat().paneSnapshot(request.paneId)) throw new Error(`Unknown pane ${request.paneId}`)
+    switch (request.op) {
+      case 'start':
+        return runs.startRun(request.paneId, request.options)
+      case 'pause': {
+        const paused = await runs.pauseRun(request.paneId, 'Paused by a tool', { interrupt: true })
+        if (!paused) throw new Error(`Pane ${request.paneId} has no agent run to pause`)
+        return paused
+      }
+      case 'resume': {
+        const resumed = await runs.resumeRun(request.paneId)
+        if (!resumed) throw new Error(`Pane ${request.paneId} has no agent run to resume`)
+        return resumed
+      }
+      case 'stop':
+        if (!runs.get(request.paneId)) throw new Error(`Pane ${request.paneId} has no agent run to stop`)
+        await runs.stopRun(request.paneId)
+        return null
+    }
   }
 
   async openChat(request: AppOpenChatRequest): Promise<{ paneId: string; threadId: string | null }> {

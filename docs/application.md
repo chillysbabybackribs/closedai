@@ -376,7 +376,8 @@ with "App relaunched". A strip above the composer shows the state and cycle coun
 (`chat.agent-pause`, also ends the turn in flight), **Resume** (`chat.agent-resume`) and **Stop**
 (`chat.agent-stop`, removes the run and leaves an ordinary chat). The composer's own pause button
 and a tool's `stop_agent` pause the run too; a user message sent between cycles is folded into
-the loop rather than raced. `closedai_app.state` reports the run under `chat.agentRun`. There is no collapsed mode;
+the loop rather than raced. Models drive runs in other panes with `closedai_app.agent` (`start`
+with a standing prompt attaches the same loop to an existing chat; `pause`, `resume`, `stop`). `closedai_app.state` reports the run under `chat.agentRun`. There is no collapsed mode;
 pending attachment chips sit above the line inside the card. The setup trigger opens a
 fixed-height panel (520px, or less when the pane is shorter), top to bottom: a Context line
 (`composer.context`; used/window tokens, the first plan window, a meter) that expands to the

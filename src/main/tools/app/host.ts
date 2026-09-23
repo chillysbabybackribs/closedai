@@ -127,6 +127,11 @@ export type AppBrowserTabRequest = {
   title?: string | null
 }
 
+/** Drive the agent run of a pane: start attaches one, pause/resume/stop act on the existing run. */
+export type AppAgentRunRequest =
+  | { op: 'start'; paneId: string; options: AgentRunStartOptions }
+  | { op: 'pause' | 'resume' | 'stop'; paneId: string }
+
 export type AppCommandHost = {
   state(sections: readonly AppStateSection[], paneId: string | undefined, callerPaneId: string | null): Record<string, unknown>
   selectedPaneId(): string
@@ -135,7 +140,7 @@ export type AppCommandHost = {
   cancelProjectSwitch(paneId: string): ProjectSwitchStatus | null
   sendMessage(request: AppSendRequest): Promise<AppSendResult>
   stopAgent(paneId: string): Promise<void>
-  startAgent(paneId: string, options: AgentRunStartOptions): Promise<AgentRun>
+  agentRun(request: AppAgentRunRequest): Promise<AgentRun | null>
   openChat(request: AppOpenChatRequest): Promise<{ paneId: string; threadId: string | null }>
   closeChat(paneId: string): Promise<void>
   selectModel(paneId: string, modelId: string, effort: string | undefined): Promise<void>

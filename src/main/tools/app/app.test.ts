@@ -47,10 +47,12 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
       return { paneId: request.paneId, turnStarted: true, turnCompleted: true, elapsedMs: 1200 }
     },
     stopAgent: async (paneId) => { calls.push(['stopAgent', paneId]) },
-    startAgent: async (paneId, options) => {
-      calls.push(['startAgent', paneId, options])
+    agentRun: async (request) => {
+      calls.push(['agentRun', request])
+      if (request.op === 'stop') return null
       return {
-        chatId: paneId, prompt: options.prompt, status: 'running', cycle: 1, maxCycles: options.maxCycles ?? null,
+        chatId: request.paneId, prompt: request.op === 'start' ? request.options.prompt : 'standing', status: request.op === 'pause' ? 'paused' : 'running',
+        cycle: 1, maxCycles: request.op === 'start' ? request.options.maxCycles ?? null : null,
         startedAt: 1, updatedAt: 1, lastTurnEndedAt: null, reason: null, failures: 0, threadId: null
       }
     },
@@ -91,12 +93,13 @@ function textOf(result: { content: Array<{ type: string; text?: string }> }): st
 
 test('namespace advertises state, deterministic commands, and control-level ui actions', () => {
   const { registry } = harness()
-  assert.deepEqual(registry.names(), ['closedai_app.state', 'closedai_app.command', 'closedai_app.ui'])
-  const [state, command, ui] = registry.namespaces[0]!.tools
+  assert.deepEqual(registry.names(), ['closedai_app.state', 'closedai_app.command', 'closedai_app.agent', 'closedai_app.ui'])
+  const [state, command, agent, ui] = registry.namespaces[0]!.tools
   assert.equal(state!.actions, undefined)
   assert.deepEqual(command!.actions?.map((action) => action.name), [
-    'project_switch', 'new_chat', 'send_message', 'stop_agent', 'start_agent', 'open_chat', 'close_chat', 'select_model', 'browser_tab'
+    'project_switch', 'new_chat', 'send_message', 'stop_agent', 'open_chat', 'close_chat', 'select_model', 'browser_tab'
   ])
+  assert.deepEqual(agent!.actions?.map((action) => action.name), ['start', 'pause', 'resume', 'stop'])
   assert.deepEqual(ui!.actions?.map((action) => action.name), [
     'controls', 'click', 'type', 'press_key', 'scroll', 'wait_for'
   ])
@@ -145,9 +148,6 @@ test('send_message defaults to awaiting the turn and refuses the calling pane', 
   assert.match(textOf(self), /calling pane/)
   const selected = await call('command', { action: 'stop_agent' }, 'pane-selected')
   assert.equal(selected.isError, true)
-  const started = await call('command', { action: 'start_agent', prompt: 'keep going' }, 'pane-selected')
-  assert.equal(started.isError, true)
-  assert.match(textOf(started), /calling pane/)
   assert.equal(calls.length, 2)
 })
 
@@ -155,7 +155,6 @@ test('commands route to the host with the selected pane as the default target', 
   const { calls, call } = harness()
   await call('command', { action: 'new_chat' })
   await call('command', { action: 'stop_agent' })
-  await call('command', { action: 'start_agent', pane_id: 'pane-agent', prompt: 'repair the app', max_cycles: 3 })
   await call('command', { action: 'open_chat', title: 'benchmark' })
   await call('command', { action: 'close_chat', pane_id: 'pane-old' })
   await call('command', { action: 'select_model', model_id: 'gpt-5', reasoning_effort: 'high' })
@@ -164,12 +163,34 @@ test('commands route to the host with the selected pane as the default target', 
   assert.deepEqual(verbs, [
     ['newChat'],
     ['stopAgent', 'pane-selected'],
-    ['startAgent', 'pane-agent', { prompt: 'repair the app', maxCycles: 3 }],
     ['openChat', { paneId: undefined, threadId: undefined, title: 'benchmark' }],
     ['closeChat', 'pane-old'],
     ['selectModel', 'pane-selected', 'gpt-5', 'high'],
     ['browserTab', { op: 'rename', tabId: '3', url: undefined, title: 'Docs' }]
   ])
+})
+
+test('agent actions drive another pane\'s run and refuse the calling pane', async () => {
+  const { calls, call } = harness()
+  const started = await call('agent', { action: 'start', pane_id: 'pane-agent', prompt: 'repair the app', max_cycles: 3 })
+  assert.equal(started.isError, undefined)
+  assert.match(textOf(started), /"status": "running"/)
+  await call('agent', { action: 'pause', pane_id: 'pane-agent' })
+  await call('agent', { action: 'resume', pane_id: 'pane-agent' })
+  const stopped = await call('agent', { action: 'stop' })
+  assert.match(textOf(stopped), /"run": null/)
+  const verbs = calls.filter((entry) => Array.isArray(entry) && entry[0] === 'agentRun').map((entry) => entry[1])
+  assert.deepEqual(verbs, [
+    { op: 'start', paneId: 'pane-agent', options: { prompt: 'repair the app', maxCycles: 3 } },
+    { op: 'pause', paneId: 'pane-agent' },
+    { op: 'resume', paneId: 'pane-agent' },
+    { op: 'stop', paneId: 'pane-selected' }
+  ])
+  const self = await call('agent', { action: 'start', prompt: 'loop' }, 'pane-selected')
+  assert.equal(self.isError, true)
+  assert.match(textOf(self), /calling pane/)
+  const missing = await call('agent', { action: 'start', pane_id: 'pane-agent' })
+  assert.equal(missing.isError, true)
 })
 
 test('preview_html resolves workspace html and reveals the browser when hidden', async () => {

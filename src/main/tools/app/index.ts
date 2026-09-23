@@ -2,6 +2,7 @@ import { defineActionTool } from '../action-tool.js'
 import type { ToolNamespace } from '../tool.js'
 import { uiControlFamilies } from '../../../shared/ui-controls.js'
 import type { BrowserHostProvider } from '../browser/host.js'
+import { appAgentActions } from './agent.js'
 import { appCommandActions } from './command.js'
 import type { AppCommandHost, AppUiHost } from './host.js'
 import { appStateTool } from './state.js'
@@ -28,6 +29,14 @@ export function appTools(
           'Deterministic app commands via main-process services — no DOM inspection. Operate panes, models, and ' +
           'browser tabs; use closedai_app.state for facts. Use closedai_app.ui only when a real control must be exercised as a batched fallback.',
         actions: appCommandActions(app, ui, page)
+      }),
+      defineActionTool({
+        name: 'agent',
+        deferLoading: true,
+        description:
+          'Drive the agent run of another pane: start attaches the main-process cycle loop with standing instructions; ' +
+          'pause, resume, and stop act on an existing run. state.chat.agentRun reports status, cycle, and pause reason.',
+        actions: appAgentActions(app)
       }),
       defineActionTool({
         name: 'ui',
