@@ -6,7 +6,7 @@ import { requireHost, type AppCommandHost } from './host.js'
 
 const paneField: JsonObject = {
   type: 'string', minLength: 1,
-  description: 'Chat pane id from state.workspace or command new_chat; defaults to the selected pane.'
+  description: 'Target chat pane id from state.workspace or command new_chat; required and must not be the calling pane.'
 }
 
 /**
@@ -16,7 +16,10 @@ const paneField: JsonObject = {
 export function appAgentActions(app: () => AppCommandHost | null): ToolAction[] {
   const target = (input: JsonObject, context: ToolContext, verb: string) => {
     const host = requireHost(app, 'agent runs')
-    const paneId = stringArg(input, 'pane_id') ?? host.selectedPaneId()
+    const paneId = stringArg(input, 'pane_id')
+    if (!paneId) {
+      throw new Error(`agent ${verb} needs pane_id of another chat; omitting it would follow UI focus and can start a run on the wrong pane`)
+    }
     if (context.paneId && paneId === context.paneId) {
       throw new Error(`Cannot ${verb} the calling pane (${paneId}); pass the pane_id of another pane, for example one returned by command new_chat`)
     }
@@ -33,7 +36,7 @@ export function appAgentActions(app: () => AppCommandHost | null): ToolAction[] 
         pane_id: paneField,
         prompt: { type: 'string', minLength: 1, maxLength: AGENT_RUN_MAX_PROMPT_CHARS, description: 'Standing instructions; re-sent whenever the provider thread changes.' },
         max_cycles: { type: 'integer', minimum: 1, description: 'Pause after this many cycles; omit to run until paused.' }
-      }, ['prompt']),
+      }, ['prompt', 'pane_id']),
       run: async (input, context) => {
         const { host, paneId } = target(input, context, 'start an agent in')
         const maxCycles = typeof input.max_cycles === 'number' ? input.max_cycles : null
@@ -44,7 +47,7 @@ export function appAgentActions(app: () => AppCommandHost | null): ToolAction[] 
     {
       action: 'pause',
       description: 'Pause the run of another pane and end its turn in flight; the run keeps its prompt and cycle count.',
-      inputSchema: objectSchema({ pane_id: paneField }),
+      inputSchema: objectSchema({ pane_id: paneField }, ['pane_id']),
       run: async (input, context) => {
         const { host, paneId } = target(input, context, 'pause the agent of')
         return respond(host, paneId, context, await host.agentRun({ op: 'pause', paneId }))
@@ -53,7 +56,7 @@ export function appAgentActions(app: () => AppCommandHost | null): ToolAction[] 
     {
       action: 'resume',
       description: 'Resume a paused run: the next cycle goes out at once when the pane is idle, or after the current turn ends.',
-      inputSchema: objectSchema({ pane_id: paneField }),
+      inputSchema: objectSchema({ pane_id: paneField }, ['pane_id']),
       run: async (input, context) => {
         const { host, paneId } = target(input, context, 'resume the agent of')
         return respond(host, paneId, context, await host.agentRun({ op: 'resume', paneId }))
@@ -62,7 +65,7 @@ export function appAgentActions(app: () => AppCommandHost | null): ToolAction[] 
     {
       action: 'stop',
       description: 'End the run entirely and interrupt any turn in flight; the chat stays open as an ordinary chat. Use command stop_agent to interrupt a turn without ending the run.',
-      inputSchema: objectSchema({ pane_id: paneField }),
+      inputSchema: objectSchema({ pane_id: paneField }, ['pane_id']),
       run: async (input, context) => {
         const { host, paneId } = target(input, context, 'stop the agent of')
         return respond(host, paneId, context, await host.agentRun({ op: 'stop', paneId }))

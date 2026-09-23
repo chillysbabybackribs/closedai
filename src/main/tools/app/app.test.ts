@@ -177,20 +177,23 @@ test('agent actions drive another pane\'s run and refuse the calling pane', asyn
   assert.match(textOf(started), /"status": "running"/)
   await call('agent', { action: 'pause', pane_id: 'pane-agent' })
   await call('agent', { action: 'resume', pane_id: 'pane-agent' })
-  const stopped = await call('agent', { action: 'stop' })
+  const stopped = await call('agent', { action: 'stop', pane_id: 'pane-agent' })
   assert.match(textOf(stopped), /"run": null/)
   const verbs = calls.filter((entry) => Array.isArray(entry) && entry[0] === 'agentRun').map((entry) => entry[1])
   assert.deepEqual(verbs, [
     { op: 'start', paneId: 'pane-agent', options: { prompt: 'repair the app', maxCycles: 3 } },
     { op: 'pause', paneId: 'pane-agent' },
     { op: 'resume', paneId: 'pane-agent' },
-    { op: 'stop', paneId: 'pane-selected' }
+    { op: 'stop', paneId: 'pane-agent' }
   ])
   const self = await call('agent', { action: 'start', prompt: 'loop' }, 'pane-selected')
   assert.equal(self.isError, true)
-  assert.match(textOf(self), /calling pane/)
-  const missing = await call('agent', { action: 'start', pane_id: 'pane-agent' })
-  assert.equal(missing.isError, true)
+  assert.match(textOf(self), /pane_id is required|needs pane_id/)
+  const onCaller = await call('agent', { action: 'start', pane_id: 'pane-selected', prompt: 'loop' }, 'pane-selected')
+  assert.equal(onCaller.isError, true)
+  assert.match(textOf(onCaller), /calling pane/)
+  const missingPrompt = await call('agent', { action: 'start', pane_id: 'pane-agent' })
+  assert.equal(missingPrompt.isError, true)
 })
 
 test('preview_html resolves workspace html and reveals the browser when hidden', async () => {
