@@ -360,11 +360,17 @@ The composer is a single stack: a draft card (text and the action button on the 
 footer bar beneath it with attach (`composer.upload`) on the left, the model setup trigger
 (`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
 on the right naming the working folder. There is no collapsed mode;
-pending attachment chips sit above the line inside the card. The setup trigger opens a panel with
-Model (provider tabs, a compact scrollable list with optional filter, context-size badges, and
-**Show N more models** (`composer.model-more`) per provider), Effort (segmented
-`composer.effort-item`), and Context & plan (collapsed by default; context window, plan windows,
-Compact conversation). The folder trigger opens a separate panel with the current folder, recent
+pending attachment chips sit above the line inside the card. The setup trigger opens a
+fixed-height panel (520px, or less when the pane is shorter), top to bottom: a Context line
+(`composer.context`; used/window tokens, the first plan window, a meter) that expands to the
+full usage card with Compact conversation; every model in one scrolling list sectioned by
+provider under pinned headings (`composer.model-item`, context-size badges, no search or
+folding; sections of another provider say **new thread**), opening scrolled to the current
+model's section; Effort (segmented `composer.effort-item`, or a same-height "Set by <provider>"
+line for models without levels); and **Recent** (`composer.model-recent`), the last three models
+used in this window from any provider, most recent nearest the trigger. Recent is kept in the
+renderer's localStorage (`closedai.composer.recentModels`) and records every model a pane lands
+on, whether picked, restored, or set by a tool. The folder trigger opens a separate panel with the current folder, recent
 chips, and choose/clear actions (`composer.project-new`, `composer.project-recent`,
 `composer.project-clear`). Model and effort rows are disabled while a turn runs; folder changes
 queue until the chat is idle when a turn is in flight. The

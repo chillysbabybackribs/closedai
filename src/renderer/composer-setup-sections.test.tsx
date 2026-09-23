@@ -3,49 +3,29 @@ import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-import type { ChatModel } from '../shared/chat.js'
-import { EffortSection, FolderSection, folderName, ModelSection } from './composer-setup-sections.tsx'
-import { providerSections } from './model-menu-state.ts'
+import { EffortSection, FolderSection, folderName } from './composer-setup-sections.tsx'
 
-function model(id: string, provider: ChatModel['provider'], displayName = id): ChatModel {
-  return { id, provider, displayName, description: '', defaultReasoningEffort: 'medium', supportedReasoningEfforts: [], isDefault: false }
-}
-
-test('the model section groups by provider, checks the selection, and folds long catalogues', () => {
-  const models = [
-    model('gpt-5', 'codex', 'GPT-5'),
-    ...Array.from({ length: 8 }, (_, index) => model(`cursor-${index}`, 'cursor', `Cursor ${index}`))
-  ]
-  const html = renderToStaticMarkup(createElement(ModelSection, {
-    sections: providerSections(models, {}, 'cursor-0'),
-    selectedModel: 'cursor-0',
-    disabled: false,
-    onChoose: () => {}
-  }))
-  assert.match(html, /data-ui="composer\.model-item" data-ui-key="cursor-0"[^>]*/)
-  assert.match(html, /role="radio" aria-checked="true"[^>]*data-ui-key="cursor-0"/)
-  assert.match(html, /data-ui="composer\.model-more" data-ui-key="cursor"[^>]*>[\s\S]*Show 4 more models/)
-  assert.match(html, /aria-selected="true" class="composer-model-tab" data-ui-key="cursor"/)
-  assert.doesNotMatch(html, /Cursor 7/)
-  assert.doesNotMatch(html, /data-ui-key="gpt-5"/)
-})
-
-test('the model section says so when there are no models', () => {
-  const html = renderToStaticMarkup(createElement(ModelSection, { sections: [], selectedModel: null, disabled: false, onChoose: () => {} }))
-  assert.match(html, /No models are available yet/)
-})
-
-test('effort is a segmented radio group with the current level checked', () => {
+test('effort is a segmented toggle group with the current level on', () => {
   const html = renderToStaticMarkup(createElement(EffortSection, {
     efforts: [{ reasoningEffort: 'low', description: 'Fast' }, { reasoningEffort: 'high', description: 'Thorough' }],
     selected: 'high',
     disabled: true,
+    note: 'Locked while this turn runs',
+    providerLabel: 'Codex',
     onChoose: () => {}
   }))
-  assert.match(html, /composer-setup-segment/)
-  assert.match(html, /aria-checked="false"[^>]*data-ui-key="low"[^>]*disabled/)
-  assert.match(html, /aria-checked="true"[^>]*data-ui-key="high"/)
-  assert.match(html, />Low<|>High</)
+  assert.match(html, /data-state="off"[^>]*data-ui="composer\.effort-item" data-ui-key="low"/)
+  assert.match(html, /data-state="on"[^>]*data-ui="composer\.effort-item" data-ui-key="high"/)
+  assert.match(html, /Locked while this turn runs/)
+  assert.match(html, />Low<[\s\S]*>High</)
+})
+
+test('a model without effort levels keeps the row and says who sets it', () => {
+  const html = renderToStaticMarkup(createElement(EffortSection, {
+    efforts: [], selected: null, disabled: false, providerLabel: 'Cursor', onChoose: () => {}
+  }))
+  assert.match(html, /Set by Cursor for this model/)
+  assert.doesNotMatch(html, /composer\.effort-item/)
 })
 
 test('the folder section lists the current folder, the other recents, and both ways to change', () => {
