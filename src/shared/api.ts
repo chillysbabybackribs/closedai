@@ -1,4 +1,5 @@
 import type { AgentRun, AgentRunStartOptions, AgentRunsEvent } from './agent-runs.js'
+import type { SavedAgent, SavedAgentDraft, SavedAgentPatch } from './agent-library.js'
 import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { SavedSite, SavedSiteDraft, SavedSitePatch } from './saved-sites.js'

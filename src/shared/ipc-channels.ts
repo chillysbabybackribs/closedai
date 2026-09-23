@@ -1,4 +1,5 @@
 import type { AgentRun, AgentRunStartOptions, AgentRunsEvent } from './agent-runs.js'
+import type { SavedAgent, SavedAgentDraft, SavedAgentPatch } from './agent-library.js'
 import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { SavedSite, SavedSiteDraft, SavedSitePatch } from './saved-sites.js'
@@ -89,6 +90,10 @@ export type IpcInvokeChannels = {
   'agentRuns:pause': { args: [string]; result: AgentRun | null }
   'agentRuns:resume': { args: [string]; result: AgentRun | null }
   'agentRuns:stop': { args: [string]; result: void }
+  'agentLibrary:list': { args: []; result: SavedAgent[] }
+  'agentLibrary:save': { args: [SavedAgentDraft]; result: SavedAgent }
+  'agentLibrary:update': { args: [string, SavedAgentPatch]; result: SavedAgent | null }
+  'agentLibrary:remove': { args: [string]; result: void }
   'credentials:status': { args: []; result: CredentialVaultStatus }
   'credentials:list': { args: []; result: CredentialSummary[] }
   'credentials:save': { args: [CredentialDraft]; result: CredentialSummary }
@@ -124,6 +129,7 @@ export type IpcEventChannels = {
   'savedSites:changed': SavedSite[]
   'chat:event': ChatWorkspaceEvent
   'agentRuns:event': AgentRunsEvent
+  'agentLibrary:changed': SavedAgent[]
   'security:credentialApprovals': CredentialApprovalRequest[]
   'tools:event': ToolsEvent
   'models:event': ModelsEvent
@@ -218,6 +224,12 @@ export const IPC = {
       resume: 'agentRuns:resume',
       stop: 'agentRuns:stop'
     },
+    agentLibrary: {
+      list: 'agentLibrary:list',
+      save: 'agentLibrary:save',
+      update: 'agentLibrary:update',
+      remove: 'agentLibrary:remove'
+    },
     credentials: {
       status: 'credentials:status',
       list: 'credentials:list',
@@ -259,6 +271,7 @@ export const IPC = {
     savedSitesChanged: 'savedSites:changed',
     chatEvent: 'chat:event',
     agentRunsEvent: 'agentRuns:event',
+    agentLibraryChanged: 'agentLibrary:changed',
     securityCredentialApprovals: 'security:credentialApprovals',
     toolsEvent: 'tools:event',
     modelsEvent: 'models:event',

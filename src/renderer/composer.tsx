@@ -357,7 +357,7 @@ Do as many cycles as you can within one turn, then end the turn with a status li
 Each cycle:
 1. closedai_app.state (workspace + ui + browser) and git status—note clean vs dirty before edits.
 2. Pick one user-facing workflow (chat, layout, browser, composer, history search, tools modal, settings). Prefer flows you can exercise from this pane without messaging other live chats.
-3. Exercise with closedai_app.command when a command exists; use closedai_app.ui only with fallback_reason when no command applies. Use embedded_browser.* for page content—not OS open helpers or file:// links.
+3. Exercise with closedai_app.command when a command exists; use closedai_app.ui only with fallback_reason when no command applies. Use embedded_browser.* for page content—not OS open helpers or file:// links. Never use press_key Escape to dismiss UI—it pauses running turns (this agent run and other chats); use explicit close/cancel controls.
 4. Do not use Computer Use / cua_repl for ClosedAI's own UI—use closedai_app and ui-controls manifest ids.
 5. Workspace safety: do not send_message, stop_agent, or closedai_app.agent on other panes; avoid open_chat unless a closed chat is required for the test; if you change selectedPaneId for a test, note it and return focus to this agent pane when done.
 6. Stable repro → smallest focused fix, then npm run test:one on the touched module (typecheck only if shared contracts changed). Flaky repro after two honest attempts → log it and move on—do not chase the same flake all cycle.

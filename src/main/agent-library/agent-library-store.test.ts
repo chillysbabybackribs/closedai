@@ -1,0 +1,74 @@
+import assert from 'node:assert/strict'
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import test from 'node:test'
+import { BUILT_IN_AGENTS } from '../../shared/agent-library.js'
+import { AgentLibraryStore } from './agent-library-store.js'
+
+async function scratch(): Promise<string> {
+  return join(await mkdtemp(join(tmpdir(), 'agent-library-')), 'agent-library.json')
+}
+
+test('a first open seeds the built-in agents and writes them; a later open keeps the file as is', async () => {
+  const file = await scratch()
+  const store = await AgentLibraryStore.open(file)
+  assert.deepEqual(store.list().map((agent) => agent.name), BUILT_IN_AGENTS.map((agent) => agent.name))
+  const persisted = JSON.parse(await readFile(file, 'utf8')) as { version: number; agents: unknown[] }
+  assert.equal(persisted.version, 1)
+  assert.equal(persisted.agents.length, BUILT_IN_AGENTS.length)
+  store.remove(store.list()[0]!.id)
+  await store.flush()
+  const reopened = await AgentLibraryStore.open(file)
+  assert.deepEqual(reopened.list(), [], 'an emptied library is the user\'s choice, not a reason to re-seed')
+})
+
+test('save, update, recordRun and remove keep the list ordered by last use and announce changes', async () => {
+  let clock = 1_000
+  const store = await AgentLibraryStore.open(await scratch(), () => clock)
+  const changes: number[] = []
+  store.on('changed', (agents: unknown[]) => changes.push(agents.length))
+  clock = 2_000
+  const triage = store.save({ name: '  Triage  bot ', prompt: '  Sort issues. ', maxCycles: 4 })
+  assert.equal(triage.name, 'Triage bot')
+  assert.equal(triage.prompt, 'Sort issues.')
+  assert.equal(triage.maxCycles, 4)
+  assert.equal(store.list()[0]!.id, triage.id, 'the newest entry leads until something else runs')
+  clock = 3_000
+  const repair = store.list().find((agent) => agent.name === 'Repair agent')!
+  store.recordRun(repair.id)
+  assert.equal(store.list()[0]!.id, repair.id)
+  assert.equal(store.get(repair.id)!.runCount, 1)
+  assert.equal(store.get(repair.id)!.lastRunAt, 3_000)
+  clock = 4_000
+  const updated = store.update(triage.id, { maxCycles: 0, prompt: 'Sort and label issues.' })
+  assert.equal(updated!.maxCycles, null, 'zero means no cap')
+  assert.equal(updated!.updatedAt, 4_000)
+  assert.equal(store.update('missing', { name: 'x' }), null)
+  store.recordRun('missing')
+  store.remove(triage.id)
+  assert.equal(store.get(triage.id), null)
+  assert.deepEqual(changes, [2, 2, 2, 1])
+})
+
+test('saving refuses a blank name or blank instructions', async () => {
+  const store = await AgentLibraryStore.open(await scratch())
+  assert.throws(() => store.save({ name: '  ', prompt: 'Go.' }), /name/)
+  assert.throws(() => store.save({ name: 'Blank', prompt: '  ' }), /instructions/)
+  const repair = store.list()[0]!
+  assert.throws(() => store.update(repair.id, { name: '' }), /name/)
+})
+
+test('a malformed file starts clean without re-seeding, and broken entries are dropped on read', async () => {
+  const file = await scratch()
+  await writeFile(file, JSON.stringify({ version: 1, agents: [
+    { id: 'ok', name: 'Kept', prompt: 'Do it.', maxCycles: 'many', createdAt: 5, runCount: -1 },
+    { id: 'no-name', name: '', prompt: 'x' },
+    'junk'
+  ] }))
+  const store = await AgentLibraryStore.open(file)
+  assert.deepEqual(store.list().map((agent) => [agent.name, agent.maxCycles, agent.updatedAt, agent.runCount]), [['Kept', null, 5, 0]])
+  await writeFile(file, '{not json')
+  const clean = await AgentLibraryStore.open(file)
+  assert.deepEqual(clean.list().map((agent) => agent.name), BUILT_IN_AGENTS.map((agent) => agent.name), 'unreadable counts as first open')
+})

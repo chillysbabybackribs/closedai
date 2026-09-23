@@ -99,9 +99,11 @@ export class AgentRunService extends EventEmitter {
     if (!this.chat.paneSnapshot(chatId)) throw new Error('Open the chat before starting an agent in it')
     if (this.get(chatId)?.status === 'running') throw new Error('This chat already has a running agent; pause or stop it first')
     const at = this.now()
+    const name = typeof options.name === 'string' && options.name.trim() ? options.name.trim() : null
     const run: AgentRun = {
       chatId, prompt, status: 'running', cycle: 0, maxCycles, startedAt: at, updatedAt: at,
-      lastTurnEndedAt: null, reason: null, failures: 0, threadId: null
+      lastTurnEndedAt: null, reason: null, failures: 0, threadId: null,
+      agentId: typeof options.agentId === 'string' && options.agentId ? options.agentId : null, name
     }
     this.store.update(chatId, { agentRun: run })
     this.emitChange()
@@ -111,7 +113,10 @@ export class AgentRunService extends EventEmitter {
       this.forget(chatId)
       throw error
     }
-    return this.get(chatId) ?? run
+    const started = this.get(chatId) ?? run
+    // The library counts a run once its first cycle is out; a failed first send never counts.
+    this.emit('started', started)
+    return started
   }
 
   /** Stop driving the chat. From the strip this also ends the turn in flight; runtime pauses do not. */

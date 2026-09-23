@@ -16,6 +16,7 @@ import { dispatchAppClick } from './app-automation-input.js'
 import {
   conditionProbeExpression,
   controlsExpression,
+  escapeWouldPauseTaskExpression,
   targetClickExpression,
   targetScrollExpression,
   targetSelector,
@@ -78,7 +79,15 @@ export class AppAutomationAccess implements AppUiHost {
   }
 
   async pressKey(key: string, modifiers: string[]): Promise<unknown> {
-    const { input } = this.resolve()
+    const { contents, input } = this.resolve()
+    if (key === 'Escape' && modifiers.length === 0) {
+      const wouldPause = await contents.executeJavaScript(escapeWouldPauseTaskExpression(), true) as boolean
+      if (wouldPause) {
+        throw new Error(
+          'Escape would pause a running chat turn (any pane). Close overlays with manifest controls (dialog.close, layout.preset-cancel, a menu tab toggle, etc.) instead of press_key Escape.'
+        )
+      }
+    }
     return await input.pressKey(key, modifiers)
   }
 

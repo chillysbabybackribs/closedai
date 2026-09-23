@@ -24,11 +24,17 @@ export type AgentRun = {
   failures: number
   /** The provider thread the last driven turn used; a change means a rotation or handoff. */
   threadId: string | null
+  /** The saved agent (src/shared/agent-library.ts) this run started from; null for a one-off. */
+  agentId: string | null
+  /** The saved agent's name at start time, shown on the strip; null for a one-off. */
+  name: string | null
 }
 
 export type AgentRunStartOptions = {
   prompt: string
   maxCycles?: number | null
+  agentId?: string | null
+  name?: string | null
 }
 
 /** Pushed to the renderer whenever any run changes; the whole list, so a pane can look itself up. */
@@ -61,8 +67,9 @@ export function agentCycleMessage(run: Pick<AgentRun, 'prompt' | 'cycle'>, threa
 }
 
 /** One-line status for tab hints, tooltips, and the closedai_app state projection. */
-export function describeAgentRun(run: Pick<AgentRun, 'status' | 'cycle' | 'reason'>): string {
-  const base = run.status === 'running' ? `Agent running · cycle ${run.cycle}` : `Agent paused · cycle ${run.cycle}`
+export function describeAgentRun(run: Pick<AgentRun, 'status' | 'cycle' | 'reason'> & { name?: string | null }): string {
+  const who = run.name || 'Agent'
+  const base = run.status === 'running' ? `${who} running · cycle ${run.cycle}` : `${who} paused · cycle ${run.cycle}`
   return run.reason && run.status === 'paused' ? `${base} · ${run.reason}` : base
 }
 
@@ -84,7 +91,9 @@ export function normalizeAgentRun(candidate: unknown, chatId: string): AgentRun 
     lastTurnEndedAt: positiveTime(record.lastTurnEndedAt),
     reason: typeof record.reason === 'string' && record.reason.length > 0 ? record.reason : null,
     failures: nonNegativeInt(record.failures) ?? 0,
-    threadId: typeof record.threadId === 'string' && record.threadId.length > 0 ? record.threadId : null
+    threadId: typeof record.threadId === 'string' && record.threadId.length > 0 ? record.threadId : null,
+    agentId: typeof record.agentId === 'string' && record.agentId.length > 0 ? record.agentId : null,
+    name: typeof record.name === 'string' && record.name.trim().length > 0 ? record.name.trim() : null
   }
 }
 

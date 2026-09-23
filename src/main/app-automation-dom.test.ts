@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   conditionProbeExpression,
   controlsExpression,
+  escapeWouldPauseTaskExpression,
   targetClickExpression,
   targetSelector,
   targetTypeExpression,
@@ -212,6 +213,25 @@ test('ui state names a portalled menu by its trigger control and lists it once',
   })
 })
 
+test('agent strip controls resolve in a visible tile without data-selected', async () => {
+  const run = (expression: string) => (new Function(`return ${expression}`) as () => Promise<unknown>)()
+  const strip = fakeElement({
+    attributes: { 'data-ui': 'chat.agent-resume' },
+    closest: (selector: string) => selector.includes('data-pane-id')
+      ? { getAttribute: (attr: string) => (attr === 'data-selected' ? 'false' : 'pane-agent') }
+      : null
+  })
+  await withDom([strip], async () => {
+    const originalFromPoint = globalThis.document.elementFromPoint
+    globalThis.document.elementFromPoint = () => strip as unknown as Element
+    try {
+      await run(targetClickExpression({ control: 'chat.agent-resume' }))
+    } finally {
+      globalThis.document.elementFromPoint = originalFromPoint
+    }
+  })
+})
+
 test('control resolution diagnoses elements belonging to unselected panes', async () => {
   const run = (expression: string) => (new Function(`return ${expression}`) as () => Promise<unknown>)()
   const otherPane = fakeElement({
@@ -242,6 +262,36 @@ test('click preparation falls back to an uncovered child when a sibling floats o
       assert.deepEqual(prepared.point, { x: 27, y: 25 })
     } finally {
       globalThis.document.elementFromPoint = originalFromPoint
+    }
+  })
+})
+
+test('escape pause probe matches overlay ownership and running turns', () => {
+  withDom([], () => {
+    const originalDocument = globalThis.document
+    const stop = fakeElement({ attributes: { 'data-ui': 'composer.stop' } })
+    Object.assign(globalThis, {
+      document: {
+        querySelector: (selector: string) => {
+          if (selector.includes('composer.stop')) return stop
+          if (selector.includes('role="menu"')) return null
+          return null
+        },
+        querySelectorAll: () => [],
+        body: { hasAttribute: () => false }
+      },
+      getComputedStyle: () => ({ display: 'block', visibility: 'visible', opacity: '1' })
+    })
+    try {
+      const idle = new Function(`return ${escapeWouldPauseTaskExpression()}`)() as boolean
+      assert.equal(idle, true)
+      Object.assign(globalThis.document, {
+        querySelector: (selector: string) => (selector.includes('role="menu"') ? stop : selector.includes('composer.stop') ? stop : null)
+      })
+      const menuOpen = new Function(`return ${escapeWouldPauseTaskExpression()}`)() as boolean
+      assert.equal(menuOpen, false)
+    } finally {
+      Object.assign(globalThis, { document: originalDocument })
     }
   })
 })

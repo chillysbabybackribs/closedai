@@ -131,6 +131,31 @@ export function targetScrollExpression(target: AppUiTarget): string {
 }
 
 /** One probe per poll: counts of rendered/enabled target matches and whether text is on screen. */
+/** True when an unmodified Escape would pause a running turn (matches App.tsx pause-task gate). */
+export function escapeWouldPauseTaskExpression(): string {
+  return `(() => {
+    const overlayOpen = Boolean(document.querySelector(
+      '[role="dialog"], [role="menu"], [data-radix-menu-content], [data-radix-popper-content-wrapper], .radix-dropdown-menu-content'
+    ));
+    if (overlayOpen) return false;
+    if (Boolean(document.querySelector('.chat-layout-tile[data-solo="true"]'))) return false;
+    if (document.body.hasAttribute('data-layout-resize') || Boolean(document.querySelector('[data-layout-drag]'))) return false;
+    const active = document.activeElement;
+    let pauses = false;
+    if (!active) pauses = true;
+    else if (active.getAttribute('data-ui') === 'composer.input') pauses = true;
+    else {
+      const tag = active.tagName.toUpperCase();
+      if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+        const editable = active.getAttribute('contenteditable');
+        pauses = !(active.isContentEditable || (editable !== null && editable !== 'false'));
+      }
+    }
+    if (!pauses) return false;
+    return Boolean(document.querySelector('[data-ui="composer.stop"]'));
+  })()`
+}
+
 export function conditionProbeExpression(options: AppWaitOptions): string {
   const target = targetSelector(options)
   return `(() => {
@@ -185,6 +210,8 @@ function selectRenderedElement(target: AppUiTarget, visible: Visible, nameOf: Na
   const rendered = all.filter((element) => {
     if (!element.isConnected || !visible(element)) return false
     if (!target.selector && /^(chat|composer)\./.test(target.control ?? '')) {
+      // Agent strip controls sit in a visible tile that may not carry data-selected=true in multi-tab headers.
+      if (/^chat\.agent-/.test(target.control ?? '')) return true
       const pane = element.closest?.('[data-pane-id]')
       if (pane && pane.getAttribute('data-selected') !== 'true') return false
     }
