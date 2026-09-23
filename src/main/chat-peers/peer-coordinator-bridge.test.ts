@@ -5,6 +5,7 @@ import {
   onCoordinatorUserMessage,
   onCoordinatorTurnEnded,
   onWorkerTurnEnded,
+  pauseCoordinatorCrew,
   resetCoordinatorBridgeForTests,
   WORKER_FINISHED_PREFIX,
   type CoordinatorBridgeHost
@@ -67,6 +68,15 @@ test('worker turn ended alerts coordinator immediately', async () => {
   assert.equal(h.sends[0]![0], 'coord')
   assert.ok(h.sends[0]![1].startsWith(WORKER_FINISHED_PREFIX))
   assert.match(h.sends[0]![1], /Found three papers/)
+})
+
+test('pauseCoordinatorCrew blocks worker finished handoff', async () => {
+  resetCoordinatorBridgeForTests()
+  const h = host() as ReturnType<typeof host> & { setSnapshot: (id: string, s: ChatSnapshot) => void }
+  pauseCoordinatorCrew(h.store, 'coord')
+  h.setSnapshot('worker', snap([{ type: 'assistant', id: 'a1', turnId: 't1', text: 'blocked', phase: null, streaming: false }]))
+  await onWorkerTurnEnded(h, 'worker')
+  assert.equal(h.sends.length, 0)
 })
 
 test('coordinator turn after worker report forwards assistant reply to worker', async () => {

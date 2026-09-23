@@ -389,8 +389,10 @@ layout, and leaves focus on the current chat. Border colors mark coordinator (bl
 message in **Coordinator** starts **Worker** on the same text at once. When **Worker** finishes a
 turn, **Coordinator** receives a `[Worker finished]` message and starts its next turn immediately;
 when that Coordinator turn finishes, its assistant reply is sent to **Worker** automatically (repeat
-until you stop a turn). From the Coordinator pane, `new_chat` and awaited worker turns keep focus on
-the coordinator. **Stop coordinating** (`layout.coordinator-disable`) clears the grouping only. Then **Workspace layout…**
+until you stop a turn). **Stop crew** (`layout.coordinator-stop`, Ctrl/Cmd+Shift+X) interrupts every
+pane in the crew and pauses auto handoff until you send a new message in Coordinator. From the
+Coordinator pane, `new_chat` and awaited worker turns keep focus on the coordinator. **Stop
+coordinating** (`layout.coordinator-disable`) stops the crew and clears the grouping. Then **Workspace layout…**
 (`layout.presets`), **Rename…**, optional **Pin chat**, and
 pause/resume when the tab’s task is running or paused. Ctrl/Cmd+W uses that same close or hide path for the focused chat.
 A rejected layout operation shows its reason above the canvas, cleared by the next successful

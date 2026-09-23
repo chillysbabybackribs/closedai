@@ -1,7 +1,7 @@
 import type { ChatAttachment, ChatSnapshot } from '../../shared/chat.js'
 import type { ChatPaneId } from '../../shared/chat-peers.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
-import { groupMembers, pickCoordinatorWorker } from './coordinator.js'
+import { findCoordinatorWorkspace, groupMembers, pickCoordinatorWorker } from './coordinator.js'
 import type { ChatEvent } from '../../shared/chat.js'
 import type { PeerEntry, PeerLifecycle } from './peer-lifecycle.js'
 
@@ -174,6 +174,19 @@ export async function stopCoordinatorCrew(
     if (isRunning(member.id)) await interrupt(member.id)
   }))
   return true
+}
+
+export async function stopCoordinatorCrewForManager(
+  store: ChatStore,
+  paneId: ChatPaneId | undefined,
+  interrupt: (paneId: ChatPaneId) => Promise<void>,
+  isRunning: (paneId: ChatPaneId) => boolean
+): Promise<void> {
+  const record = paneId ? store.get(paneId) : null
+  const target = record?.coordinatorGroup ? paneId! : findCoordinatorWorkspace(store)?.coordinatorPaneId
+  if (!target || !await stopCoordinatorCrew(store, target, interrupt, isRunning)) {
+    throw new Error('No coordinator crew is active')
+  }
 }
 
 export function wireCoordinatorAfterPaneEvent(

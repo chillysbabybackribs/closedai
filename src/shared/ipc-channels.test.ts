@@ -68,6 +68,7 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'chat:openCoordinatorWorkspace',
     'chat:enableCoordinator',
     'chat:disableCoordinator',
+    'chat:stopCoordinatorCrew',
     'chat:closePeer',
     'chat:continueInNewPeer',
     'chat:openChat',
