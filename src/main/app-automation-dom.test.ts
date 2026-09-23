@@ -131,6 +131,27 @@ test('ui state reads browser visibility from the workspace, not the titlebar tog
   })
 })
 
+test('ui state names a portalled menu by its trigger control and lists it once', () => {
+  const trigger = fakeElement({ attributes: { 'data-ui': 'titlebar.menu', 'data-state': 'open' }, closest: () => null })
+  const content = fakeElement({ tagName: 'DIV', attributes: { 'aria-labelledby': 'trigger-1' }, closest: () => null })
+  withDom([], () => {
+    const originalDocument = globalThis.document
+    Object.assign(globalThis, {
+      document: {
+        querySelector: () => null,
+        querySelectorAll: (selector: string) => (selector.includes('[role="menu"]') ? [content, trigger] : []),
+        getElementById: (id: string) => (id === 'trigger-1' ? trigger : null)
+      }
+    })
+    try {
+      const state = new Function(`return ${uiStateExpression()}`)() as { menus: string[] }
+      assert.deepEqual(state.menus, ['titlebar.menu'])
+    } finally {
+      Object.assign(globalThis, { document: originalDocument })
+    }
+  })
+})
+
 test('control resolution diagnoses elements belonging to unselected panes', async () => {
   const run = (expression: string) => (new Function(`return ${expression}`) as () => Promise<unknown>)()
   const otherPane = fakeElement({

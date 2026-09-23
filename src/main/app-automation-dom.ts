@@ -56,8 +56,14 @@ export function uiStateExpression(): string {
     ${helpers()}
     const byId = (id) => Array.from(document.querySelectorAll('[data-ui="' + id + '"]'))
       .find((element) => visible(element) && (!element.closest('[data-pane-id]') || element.closest('[data-pane-id]').getAttribute('data-selected') === 'true')) || null;
-    const ids = (selector) => Array.from(document.querySelectorAll(selector)).filter(visible)
-      .map((element) => element.getAttribute('data-ui') || element.getAttribute('aria-label') || element.tagName.toLowerCase());
+    // Portalled popovers (Radix menu/listbox content) carry no data-ui; name them by their trigger.
+    const labelledBy = (element) => {
+      const trigger = element.getAttribute('aria-labelledby');
+      const owner = trigger ? document.getElementById(trigger) : null;
+      return owner && owner.getAttribute('data-ui');
+    };
+    const ids = (selector) => Array.from(new Set(Array.from(document.querySelectorAll(selector)).filter(visible)
+      .map((element) => element.getAttribute('data-ui') || labelledBy(element) || element.getAttribute('aria-label') || element.tagName.toLowerCase())));
     const input = byId('composer.input');
     const active = document.activeElement;
     const focused = active && active.closest ? active.closest('[data-ui]') : null;
