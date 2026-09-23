@@ -5,8 +5,9 @@ the registry is the single source of truth, and a provider adapter translates it
 protocol: `app-server-tools.ts` for Codex (`dynamicTools` + `item/tool/call`),
 `src/main/claude/claude-tools.ts` for Claude Code (in-process MCP), and
 `src/main/antigravity/antigravity-mcp.ts` and `src/main/cursor/cursor-mcp.ts` for the HTTP MCP
-providers. The same page tool appears as `embedded_browser.page` for Codex,
-`mcp__embedded_browser__page` for Claude, and `mcp_embedded_browser_page` for Antigravity and Cursor.
+providers. Codex names it `embedded_browser.page`, Claude names it `mcp__embedded_browser__page`,
+and Antigravity declares `mcp_embedded_browser_page`. Cursor's ACP events carry the server and tool
+names separately.
 Source review: 2026-09-23. See [Model context](model-context.md) for prompt delivery and
 [Application guide](application.md) for UI behavior the tools operate on.
 
