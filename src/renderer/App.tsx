@@ -21,7 +21,6 @@ import type { ChatPaneDialog } from './chat-pane.js'
 import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SettingsDialog, type SettingsTab } from './settings/settings-dialog.js'
 import { useToolsPreset } from './tools/use-tools-preset.js'
-import { Network, Square } from 'lucide-react'
 import { BrowserGlobeIcon } from './browser-globe-icon.js'
 import {
   normalizeAppearanceSettings,
@@ -96,12 +95,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       } else if (shortcut === 'new-chat') {
         event.preventDefault()
         history.newChat()
-      } else if (shortcut === 'open-coordinator') {
-        event.preventDefault()
-        workspaceRef.current?.openCoordinatorWorkspace()
-      } else if (shortcut === 'stop-coordinator-crew') {
-        event.preventDefault()
-        window.closedai.chat.stopCoordinatorCrew(null).catch(report('Could not stop the coordinator crew'))
       } else if (shortcut === 'close-tab') {
         event.preventDefault()
         workspaceRef.current?.closeFocused().catch(report('Could not close the chat'))
@@ -201,20 +194,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         <div className="titlebar-search-tools">
           <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef}
             onOpened={() => setHistoryOpen(false)} />
-          <button type="button" className="titlebar-icon-button titlebar-coordinator-toggle"
-            data-ui="layout.coordinator-open" disabled={!chat.selectedPaneId}
-            aria-label="Coordinator and Worker chats"
-            title="Coordinator and Worker (Ctrl+Shift+C)"
-            onClick={() => workspaceRef.current?.openCoordinatorWorkspace()}>
-            <Network size={20} strokeWidth={1.75} aria-hidden="true" />
-          </button>
-          <button type="button" className="titlebar-icon-button titlebar-coordinator-stop"
-            data-ui="layout.coordinator-stop"
-            aria-label="Stop coordinator and worker"
-            title="Stop crew — interrupt both and pause auto handoff (Ctrl+Shift+X)"
-            onClick={() => { void window.closedai.chat.stopCoordinatorCrew(null) }}>
-            <Square size={18} strokeWidth={2} aria-hidden="true" />
-          </button>
           <button type="button" className={`titlebar-icon-button titlebar-browser-toggle${browserVisible ? ' is-selected' : ''}`}
             data-ui="layout.browser-toggle" disabled={!chat.selectedPaneId}
             aria-pressed={browserVisible} aria-label={browserVisible ? 'Hide browser' : 'Show browser'}

@@ -19,7 +19,6 @@ export type ChatLayoutHandle = {
   closeFocused: () => Promise<void>
   openLayoutPresets: () => void
   applyPreset: (preset: LayoutPreset) => void
-  openCoordinatorWorkspace: () => void
 }
 
 export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, toolsPreset = null, onRenameChat, onBrowserVisibilityChange, archiveChat, ref }: {
@@ -91,12 +90,8 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
     applyPreset: (preset) => {
       setBrowserRevealVersion((value) => value + 1)
       void layout.arrange(preset, canvasSize.current)
-    },
-    openCoordinatorWorkspace: () => {
-      setBrowserRevealVersion((value) => value + 1)
-      void layout.openCoordinatorWorkspace()
     }
-  }), [layout.dock, layout.toggleBrowser, layout.closeFocused, layout.arrange, layout.openCoordinatorWorkspace, chat.selectedPaneId])
+  }), [layout.dock, layout.toggleBrowser, layout.closeFocused, layout.arrange, chat.selectedPaneId])
   useEffect(() => window.closedai.browser.onState((state) => {
     if (state.image || state.url.startsWith('file:')) {
       layout.showBrowser()
@@ -120,8 +115,6 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   const onHide = useCallback((id: string) => { void layout.hide(id) }, [layout.hide])
   const onSizeChange = useCallback((size: CanvasSize) => { canvasSize.current = size }, [])
   const actions = useMemo(() => ({ moveTab: layout.moveTabToTile }), [layout.moveTabToTile])
-  const onEnableCoordinator = useCallback((_id: string) => { void layout.openCoordinatorWorkspace() }, [layout.openCoordinatorWorkspace])
-  const onDisableCoordinator = useCallback((id: string) => { void layout.disableCoordinator(id) }, [layout.disableCoordinator])
   const onRename = useMemo(() => onRenameChat
     ? (id: string) => onRenameChat(id, chatsRef.current.find((row) => row.paneId === id)?.title ?? 'New chat')
     : undefined, [onRenameChat])
@@ -140,7 +133,6 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
         onRenameChat={onRename} onTogglePin={onTogglePin} onContinueChat={(id) => { void continueChatRef.current(id) }}
         onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets} onSizeChange={onSizeChange}
         onHide={onHide} onResize={layout.resize}
-        onEnableCoordinator={onEnableCoordinator} onDisableCoordinator={onDisableCoordinator}
         renderPane={renderPane}
       renderBrowser={renderBrowser}
     />

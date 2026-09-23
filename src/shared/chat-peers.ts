@@ -1,4 +1,3 @@
-import type { CoordinatorGroup } from './coordinator.js'
 import type { ChatProvider, ChatSnapshot, ChatTranscriptItem } from './chat.js'
 
 export type ChatPaneId = string
@@ -35,7 +34,6 @@ export type ChatPeerSummary = {
   paused?: boolean
   activity: string | null
   updatedAt: number
-  coordinatorGroup?: CoordinatorGroup | null
 }
 
 /**

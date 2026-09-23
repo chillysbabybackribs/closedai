@@ -73,12 +73,8 @@ export class AppCommandAccess implements AppCommandHost {
     return this.chat().snapshot().selectedPaneId
   }
 
-  async newChat(callerPaneId?: string | null): Promise<{ paneId: string }> {
-    return { paneId: await this.chat().newPeer(callerPaneId ?? undefined) }
-  }
-
-  openCoordinatorWorkspace(): Promise<import('../shared/coordinator.js').OpenCoordinatorWorkspaceResult> {
-    return this.chat().openCoordinatorWorkspace()
+  async newChat(): Promise<{ paneId: string }> {
+    return { paneId: await this.chat().newPeer() }
   }
 
   queueProjectSwitch(request: ProjectSwitchRequest, signal: AbortSignal): Promise<ProjectSwitchStatus> {
@@ -108,9 +104,6 @@ export class AppCommandAccess implements AppCommandHost {
       if (!request.awaitTurn) return { paneId: request.paneId, turnStarted, turnCompleted: false, elapsedMs: Date.now() - started }
       const idle = turnStarted && chat.paneSnapshot(request.paneId)?.activeTurnId === null
       const turnCompleted = idle || await raceTimeout(completed, request.timeoutMs, request.signal)
-      if (turnCompleted && request.callerPaneId) {
-        await chat.restoreCoordinatorFocus(request.callerPaneId, request.paneId)
-      }
       return { paneId: request.paneId, turnStarted, turnCompleted, elapsedMs: Date.now() - started }
     } finally {
       chat.off('event', listener)
@@ -237,14 +230,7 @@ function projectWorkspace(chat: AppChatWorkspace, callerPaneId: string | null): 
       running: peer.running,
       ...(peer.activity ? { activity: peer.activity.slice(0, 80) } : {}),
       threadId: peer.threadId,
-      updatedAt: peer.updatedAt,
-      ...(peer.coordinatorGroup ? {
-        coordinatorRole: peer.coordinatorGroup.role,
-        coordinatorGroupId: peer.coordinatorGroup.id,
-        ...(peer.coordinatorGroup.role === 'worker' && peer.coordinatorGroup.slot
-          ? { coordinatorWorkerSlot: peer.coordinatorGroup.slot }
-          : {})
-      } : {})
+      updatedAt: peer.updatedAt
     }))
   }
 }

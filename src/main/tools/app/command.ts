@@ -41,22 +41,11 @@ export function appCommandActions(
     },
     {
       action: 'new_chat',
-      description:
-        'Create a chat and return its pane id. From a coordinator pane, returns a linked worker id without moving focus. Otherwise selects the new chat like File → New chat. ' +
-        'coordinator: true instead runs the title-bar Coordinator control (ensure Coordinator and Worker chats exist beside the selected chat); the calling chat stays selected.',
-      inputSchema: objectSchema({
-        coordinator: { type: 'boolean', description: 'Open the coordinator workspace instead of a single chat; default false.' }
-      }),
-      run: async (input, context) => {
-        if (booleanArg(input, 'coordinator', false)) {
-          const automation = ui()
-          if (!automation) throw new Error('Coordinator workspace needs the renderer UI; start the app and retry')
-          await automation.click({ control: 'layout.coordinator-open' })
-          const host = requireHost(app, 'app commands')
-          return jsonResult(host.state(['workspace'], undefined, context.paneId ?? null))
-        }
+      description: 'Create a chat and return its pane id; selects the new chat like File → New chat.',
+      inputSchema: objectSchema({}),
+      run: async (_input, context) => {
         const host = requireHost(app, 'app commands')
-        const created = await host.newChat(context.paneId ?? null)
+        const created = await host.newChat()
         return jsonResult({ ...created, ...host.state(['workspace'], created.paneId, context.paneId ?? null) })
       }
     },
@@ -82,8 +71,7 @@ export function appCommandActions(
           text: stringArg(input, 'text')!,
           awaitTurn: booleanArg(input, 'await_turn', true),
           timeoutMs: numberArg(input, 'timeout_ms', 60_000),
-          signal: context.signal,
-          callerPaneId: context.paneId ?? null
+          signal: context.signal
         })
         return jsonResult({ ...result, ...host.state(['chat'], paneId, context.paneId ?? null) })
       }

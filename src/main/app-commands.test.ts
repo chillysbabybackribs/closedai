@@ -55,17 +55,10 @@ class FakeWorkspace extends EventEmitter implements AppChatWorkspace {
     }
   }
   paneSnapshot(paneId: string): ChatSnapshot | null { return this.panes.get(paneId) ?? null }
-  async newPeer(_callerPaneId?: string): Promise<string> {
+  async newPeer(): Promise<string> {
     this.panes.set('pane-3', chatSnapshot({ threadId: null }))
     this.selected = 'pane-3'
     return 'pane-3'
-  }
-  async openCoordinatorWorkspace() {
-    return { groupId: 'g1', coordinatorPaneId: 'coord', workerPaneId: 'worker' }
-  }
-  async restoreCoordinatorFocus(callerPaneId: string, workerPaneId: string): Promise<void> {
-    this.calls.push(['restoreCoordinatorFocus', callerPaneId, workerPaneId])
-    this.selected = callerPaneId
   }
   async send(paneId: string, text: string): Promise<void> {
     this.calls.push(['send', paneId, text])
@@ -173,37 +166,6 @@ test('chat state defaults to the caller independently of UI focus, with an expli
   assert.equal(own.cwd, '/repo')
   assert.equal((host.state(['chat'], 'pane-1', 'pane-2').chat as Record<string, unknown>).paneId, 'pane-1')
   assert.equal((host.state(['chat'], undefined, null).chat as Record<string, unknown>).paneId, 'pane-1')
-})
-
-test('workspace panes expose coordinator role when grouped', () => {
-  const workspace = new FakeWorkspace()
-  workspace.panes.set('coord', chatSnapshot({ threadId: null }))
-  workspace.panes.set('worker', chatSnapshot({ threadId: null }))
-  const snapshot = workspace.snapshot()
-  snapshot.chats = snapshot.chats.map((row) => {
-    if (row.paneId === 'coord') {
-      return { ...row, title: 'Coordinator', coordinatorGroup: { id: 'g1', role: 'coordinator', slot: null } }
-    }
-    if (row.paneId === 'worker') {
-      return {
-        ...row, title: 'Worker', parentPaneId: 'coord',
-        coordinatorGroup: { id: 'g1', role: 'worker', slot: 'a' }
-      }
-    }
-    return row
-  })
-  workspace.snapshot = () => snapshot
-  const { host } = access(workspace)
-  const panes = (host.state(['workspace'], undefined, 'pane-1').workspace as {
-    panes: Array<Record<string, unknown>>
-  }).panes
-  const coord = panes.find((pane) => pane.paneId === 'coord')
-  const worker = panes.find((pane) => pane.paneId === 'worker')
-  assert.deepEqual(coord?.coordinatorRole, 'coordinator')
-  assert.equal(coord?.coordinatorGroupId, 'g1')
-  assert.equal(coord?.coordinatorWorkerSlot, undefined)
-  assert.deepEqual(worker?.coordinatorRole, 'worker')
-  assert.equal(worker?.coordinatorWorkerSlot, 'a')
 })
 
 test('workspace ranks the selected, calling, and running panes above idle ones', () => {

@@ -292,43 +292,9 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   }, [cwd, clearError, fail, release])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
-  const openCoordinatorWorkspace = useCallback(async (): Promise<void> => {
-    if (pending.current) return
-    pending.current = true
-    setBusy(true)
-    clearError()
-    try {
-      const anchorPaneId = latestSnapshot.current.selectedPaneId
-      const result = await window.closedai.chat.openCoordinatorWorkspace()
-      setLayout((value) => {
-        let tree = value.tree
-        const dockIfMissing = (id: string, target: string, edge: DockEdge) => {
-          if (paneIds(tree).includes(id)) return
-          tree = dockPane(tree, id, target, edge, crypto.randomUUID())
-        }
-        dockIfMissing(result.coordinatorPaneId, anchorPaneId, 'right')
-        dockIfMissing(result.workerPaneId, result.coordinatorPaneId, 'right')
-        return tree === value.tree ? value : { ...value, tree }
-      })
-      selected.current = anchorPaneId
-      await window.closedai.chat.selectPane(anchorPaneId)
-      setNotice({ text: 'Coordinator and Worker chats are ready — arrange them like any other pane.' })
-      release()
-    } catch (reason) {
-      fail(reason)
-      release()
-    }
-  }, [clearError, fail, release])
-  const disableCoordinator = useCallback(async (paneId: string): Promise<void> => {
-    try {
-      await window.closedai.chat.disableCoordinator(paneId)
-      setNotice({ text: 'Coordinator mode cleared for this group.' })
-      clearError()
-    } catch (reason) { fail(reason) }
-  }, [clearError, fail])
   return {
     ...layout, error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane,
     activateTab, moveTabToTile, closeTab, hide, closeFocused, resize, arrange, toggleBrowser,
-    showBrowser, openCoordinatorWorkspace, disableCoordinator
+    showBrowser
   }
 }

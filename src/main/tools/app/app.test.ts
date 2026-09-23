@@ -51,9 +51,6 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
     closeChat: async (paneId) => { calls.push(['closeChat', paneId]) },
     selectModel: async (paneId, modelId, effort) => { calls.push(['selectModel', paneId, modelId, effort]) },
     browserTab: async (request) => { calls.push(['browserTab', request]); return { tabCount: 1 } },
-    openCoordinatorWorkspace: async () => ({
-      groupId: 'g1', coordinatorPaneId: 'coord', workerPaneId: 'worker'
-    }),
     ...overrides.app
   }
   const page = {
@@ -132,7 +129,7 @@ test('send_message defaults to awaiting the turn and refuses the calling pane', 
   const result = await call('command', { action: 'send_message', pane_id: 'pane-new', text: 'hello' })
   assert.match(textOf(result), /"turnCompleted": true/)
   assert.deepEqual(calls[0], ['sendMessage', {
-    paneId: 'pane-new', text: 'hello', awaitTurn: true, timeoutMs: 60_000, signal: false, callerPaneId: 'pane-caller'
+    paneId: 'pane-new', text: 'hello', awaitTurn: true, timeoutMs: 60_000, signal: false
   }])
   assert.deepEqual(calls[1], ['state', ['chat'], 'pane-new', 'pane-caller'])
 

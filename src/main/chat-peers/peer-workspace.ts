@@ -1,5 +1,4 @@
 import type { ChatAttachment, ChatHistoryPage, ChatHistoryWindow, ChatThreadSummary } from '../../shared/chat.js'
-import type { EnableCoordinatorResult, OpenCoordinatorWorkspaceResult } from '../../shared/coordinator.js'
 import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import type { DeferredProjectSwitch } from './deferred-project-switch.js'
 
@@ -30,12 +29,7 @@ export interface ChatWorkspaceSurface {
   listChats(): Promise<ChatRowSummary[]>
   /** Every thread the providers and the store know, reconciled first; for tools that search by title. */
   listThreads(): Promise<ChatThreadSummary[]>
-  newPeer(callerPaneId?: ChatPaneId): Promise<ChatPaneId>
-  openCoordinatorWorkspace(): Promise<OpenCoordinatorWorkspaceResult>
-  enableCoordinator(paneId: ChatPaneId): Promise<EnableCoordinatorResult>
-  disableCoordinator(paneId: ChatPaneId): Promise<void>
-  stopCoordinatorCrew(paneId?: ChatPaneId): Promise<void>
-  restoreCoordinatorFocus(callerPaneId: ChatPaneId, workerPaneId: ChatPaneId): Promise<void>
+  newPeer(): Promise<ChatPaneId>
   closePeer(paneId: ChatPaneId): Promise<void>
   continueInNewPeer(source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId>
   /** Show a chat: select it if attached, else attach it, replacing the selected chat only when that one is blank. */

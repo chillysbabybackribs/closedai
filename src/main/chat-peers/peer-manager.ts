@@ -12,12 +12,8 @@ import type {
   PeerChatReadResult
 } from '../../shared/chat-peers.js'
 import { chatProviderOfId } from '../../shared/chat-providers.js'
-import type { EnableCoordinatorResult, OpenCoordinatorWorkspaceResult } from '../../shared/coordinator.js'
 import type { ChatRecordSeed } from '../../shared/chat-store.js'
 import type { ChatContinuation } from '../../shared/types.js'
-import { pickCoordinatorWorker } from './coordinator.js'
-import { enableCoordinator, openCoordinatorWorkspace, type PeerCoordinatorHost } from './peer-coordinator-ops.js'
-import { disableCoordinatorGroup, stopCoordinatorCrewForManager, wireCoordinatorAfterSend } from './peer-coordinator-bridge.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import { refreshModelPicker as refreshPaneModelPickers, selectedHub as hubForSelectedPane } from './peer-model-settings.js'
@@ -72,7 +68,6 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   private readonly projectChanges: PeerProjectChanges
   /** Tail of each pane's operation chain, so callers on one pane cannot interleave. */
   private readonly paneOperations = new Map<ChatPaneId, Promise<void>>()
-  private readonly crewInternalSend = new Set<ChatPaneId>()
   private readonly chatsEmit = new PeerEmitThrottle(() => this.emitChats())
   private readonly archives: PeerArchives
 
@@ -233,7 +228,6 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     try {
       await this.withAwake(paneId, (surface) => surface.send(text, attachments))
       if (text.trim() || attachments.length) this.store.update(paneId, { messageSentAt: Date.now() })
-      wireCoordinatorAfterSend(this.supportHost().coordinatorBridge, paneId, text, attachments)
     } catch (error) {
       cancelTiming?.()
       throw error
@@ -332,74 +326,10 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     }))
   }
 
-  async newPeer(callerPaneId?: ChatPaneId): Promise<ChatPaneId> {
+  async newPeer(): Promise<ChatPaneId> {
     this.projectSwitch.assertAvailable()
-    if (callerPaneId) {
-      const caller = this.store.get(callerPaneId)
-      if (caller?.coordinatorGroup?.role === 'coordinator') {
-        return this.coordinatorWorkerPeer(callerPaneId)
-      }
-    }
     const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
     return this.newChat(current.selectedModel, current.selectedReasoningEffort, null)
-  }
-
-  async openCoordinatorWorkspace(): Promise<OpenCoordinatorWorkspaceResult> {
-    return openCoordinatorWorkspace(this.coordinatorHost())
-  }
-
-  async enableCoordinator(paneId: ChatPaneId): Promise<EnableCoordinatorResult> {
-    return enableCoordinator(this.coordinatorHost(), paneId)
-  }
-
-  private coordinatorHost(): PeerCoordinatorHost {
-    return {
-      store: this.store,
-      assertAvailable: () => this.projectSwitch.assertAvailable(),
-      modelOf: (paneId) => {
-        const current = this.lifecycle.require(paneId).surface.snapshot({ limit: 0 })
-        return { modelId: current.selectedModel, reasoningEffort: current.selectedReasoningEffort }
-      },
-      selectedPaneId: () => this.selectedPaneId,
-      createSeeded: (model, seed) =>
-        this.newChat(model.modelId, model.reasoningEffort, null, this.workspace(), { selectPane: false, seed }),
-      retainPane: (paneId) => {
-        if (!this.lifecycle.get(paneId)) this.lifecycle.attach(this.store.require(paneId))
-        this.visiblePaneIds.add(paneId)
-      },
-      selectPane: (paneId) => this.selectPane(paneId),
-      settle: async () => {
-        await this.persistOpenChats()
-        await this.trimAttached()
-        this.emitWorkspace()
-      }
-    }
-  }
-
-  stopCoordinatorCrew(paneId?: ChatPaneId): Promise<void> {
-    return stopCoordinatorCrewForManager(this.store, paneId, (id) => this.interrupt(id), (id) => this.lifecycle.isRunning(id))
-  }
-
-  async disableCoordinator(paneId: ChatPaneId): Promise<void> {
-    if (await disableCoordinatorGroup(this.store, paneId, (id) => this.interrupt(id), (id) => this.lifecycle.isRunning(id))) this.emitWorkspace()
-  }
-
-  async restoreCoordinatorFocus(callerPaneId: ChatPaneId, workerPaneId: ChatPaneId): Promise<void> {
-    if (callerPaneId === workerPaneId) return
-    const caller = this.store.get(callerPaneId)
-    const worker = this.store.get(workerPaneId)
-    if (caller?.coordinatorGroup?.role !== 'coordinator') return
-    if (worker?.coordinatorGroup?.role !== 'worker' || worker.parentChatId !== callerPaneId) return
-    await this.selectPane(callerPaneId)
-  }
-
-  private coordinatorWorkerPeer(coordinatorPaneId: ChatPaneId): ChatPaneId {
-    const workerId = pickCoordinatorWorker(this.store, coordinatorPaneId, (id) => {
-      const entry = this.lifecycle.get(id)
-      return entry ? entry.surface.snapshot({ limit: 0 }).activeTurnId !== null : false
-    })
-    void this.selectPane(coordinatorPaneId)
-    return workerId
   }
 
   private async newChat(modelId: string | null, reasoningEffort: string | null, continuation: ChatContinuation | null,
@@ -612,9 +542,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       selectedPaneId: () => this.selectedPaneId,
       visiblePaneIds: () => this.visiblePaneIds,
       retainedTabIds: () => this.retainedTabIds,
-      emitWorkspaceEvent: (event) => { this.emit('event', event) },
-      coordinatorBridge: { store: this.store, send: (paneId, text, attachments) => this.send(paneId, text, attachments),
-        lifecycle: this.lifecycle, crewInternalSend: this.crewInternalSend }
+      emitWorkspaceEvent: (event) => { this.emit('event', event) }
     }
   }
 

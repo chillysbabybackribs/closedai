@@ -92,8 +92,6 @@ export type AppSendRequest = {
   awaitTurn: boolean
   timeoutMs: number
   signal: AbortSignal
-  /** When set, focus returns here after a worker turn if caller is a coordinator. */
-  callerPaneId?: string | null
 }
 
 export type AppSendResult = {
@@ -129,7 +127,7 @@ export type AppBrowserTabRequest = {
 export type AppCommandHost = {
   state(sections: readonly AppStateSection[], paneId: string | undefined, callerPaneId: string | null): Record<string, unknown>
   selectedPaneId(): string
-  newChat(callerPaneId?: string | null): Promise<{ paneId: string }>
+  newChat(): Promise<{ paneId: string }>
   queueProjectSwitch(request: ProjectSwitchRequest, signal: AbortSignal): Promise<ProjectSwitchStatus>
   cancelProjectSwitch(paneId: string): ProjectSwitchStatus | null
   sendMessage(request: AppSendRequest): Promise<AppSendResult>
@@ -138,7 +136,6 @@ export type AppCommandHost = {
   closeChat(paneId: string): Promise<void>
   selectModel(paneId: string, modelId: string, effort: string | undefined): Promise<void>
   browserTab(request: AppBrowserTabRequest, paneId?: string | null): Promise<unknown>
-  openCoordinatorWorkspace(): Promise<import('../../../shared/coordinator.js').OpenCoordinatorWorkspaceResult>
 }
 
 /** The slice of the chat workspace the command host needs; ChatPeerManager satisfies it. */
@@ -150,9 +147,7 @@ export type AppChatWorkspace = {
   }
   snapshot(): ChatWorkspaceSnapshot
   paneSnapshot(paneId: string): ChatSnapshot | null
-  newPeer(callerPaneId?: string): Promise<string>
-  openCoordinatorWorkspace(): Promise<import('../../../shared/coordinator.js').OpenCoordinatorWorkspaceResult>
-  restoreCoordinatorFocus(callerPaneId: string, workerPaneId: string): Promise<void>
+  newPeer(): Promise<string>
   send(paneId: string, text: string, attachments: ChatAttachment[]): Promise<void>
   interrupt(paneId: string): Promise<void>
   selectPane(paneId: string): Promise<void>

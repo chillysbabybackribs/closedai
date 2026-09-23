@@ -4,7 +4,6 @@ import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type {
   ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot
 } from './chat-peers.js'
-import type { EnableCoordinatorResult, OpenCoordinatorWorkspaceResult } from './coordinator.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.js'
 import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
@@ -66,10 +65,6 @@ export type IpcInvokeChannels = {
   'chat:login': { args: []; result: void }
   'chat:listChats': { args: []; result: ChatRowSummary[] }
   'chat:newPeer': { args: []; result: ChatPaneId }
-  'chat:openCoordinatorWorkspace': { args: []; result: OpenCoordinatorWorkspaceResult }
-  'chat:enableCoordinator': { args: [ChatPaneId]; result: EnableCoordinatorResult }
-  'chat:disableCoordinator': { args: [ChatPaneId]; result: void }
-  'chat:stopCoordinatorCrew': { args: [ChatPaneId | null]; result: void }
   'chat:closePeer': { args: [ChatPaneId]; result: void }
   'chat:continueInNewPeer': { args: [ChatContinuationSource, string | null]; result: ChatPaneId }
   'chat:openChat': { args: [string]; result: ChatPaneId }
@@ -183,10 +178,6 @@ export const IPC = {
       login: 'chat:login',
       listChats: 'chat:listChats',
       newPeer: 'chat:newPeer',
-      openCoordinatorWorkspace: 'chat:openCoordinatorWorkspace',
-      enableCoordinator: 'chat:enableCoordinator',
-      disableCoordinator: 'chat:disableCoordinator',
-      stopCoordinatorCrew: 'chat:stopCoordinatorCrew',
       closePeer: 'chat:closePeer',
       continueInNewPeer: 'chat:continueInNewPeer',
       openChat: 'chat:openChat',

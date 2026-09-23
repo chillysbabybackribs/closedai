@@ -50,7 +50,6 @@ function record(overrides: Partial<ChatRecord> = {}): ChatRecord {
     continuation: null,
     checkpoint: null,
     parentChatId: null,
-    coordinatorGroup: null,
     sessionRotations: [],
     ...overrides
   }

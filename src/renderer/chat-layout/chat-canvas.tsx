@@ -42,11 +42,9 @@ type ChatCanvasProps = {
   onDock: (id: string | null, target: string, edge: DockEdge | null, singleTab?: boolean) => void
   onHide: (id: string) => void
   onResize: (id: string, ratio: number) => void
-  onEnableCoordinator?: (id: string) => void
-  onDisableCoordinator?: (id: string) => void
 }
 
-function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize, onEnableCoordinator, onDisableCoordinator }: ChatCanvasProps) {
+function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: ChatCanvasProps) {
   const viewport = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [dragging, setDragging] = useState<{ id: string; singleTab: boolean } | null>(null)
@@ -188,12 +186,8 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         const tileRect = isThisTileSolo ? soloRect : rect
         const tileKey = activeId === BROWSER_PANE_ID ? BROWSER_PANE_ID : (tabs[0] ?? activeId)
         const row = chatRow?.(activeId)
-        const coordinatorRole = row?.coordinatorGroup?.role === 'coordinator' ? 'coordinator'
-          : row?.coordinatorGroup?.role === 'worker' ? `worker-${row.coordinatorGroup.slot ?? 'a'}` : undefined
         return <section key={tileKey}
           className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID ? undefined : activeId}
-          data-coordinator-role={coordinatorRole}
-          data-coordinator-group={row?.coordinatorGroup?.id}
           data-solo={isThisTileSolo ? 'true' : undefined}
           hidden={soloTile ? !isThisTileSolo : (activeId === BROWSER_PANE_ID && !browserVisible)}
           data-selected={activeId === selectedId || tabs.includes(selectedId)} aria-label={activeId === BROWSER_PANE_ID ? 'Browser' : title(activeId)}
@@ -238,7 +232,6 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
             row={row} soloTile={soloTile ?? null} setSoloPaneId={setSoloPaneId} tabFocus={tabFocus} onSelect={onSelect}
             onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat} onRenameChat={onRenameChat}
             onTogglePin={onTogglePin} onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets}
-            onEnableCoordinator={onEnableCoordinator} onDisableCoordinator={onDisableCoordinator}
             onHide={onHide} setDragging={setDragging} canMaximize={canMaximize} isThisTileSolo={isThisTileSolo} />}
           {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
           {activeId === BROWSER_PANE_ID ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">

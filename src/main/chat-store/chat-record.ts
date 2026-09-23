@@ -1,4 +1,3 @@
-import { normalizeCoordinatorGroup } from '../chat-peers/coordinator.js'
 import { chatRecordThreadId, type ChatRecord } from '../../shared/chat-store.js'
 import { chatProviderOfId, isChatProvider } from '../../shared/chat-providers.js'
 import type { ChatPeerRecord } from '../../shared/types.js'
@@ -53,7 +52,6 @@ export function normalizeChatRecord(candidate: unknown): ChatRecord | null {
     continuation: normalizeContinuation(record.continuation),
     checkpoint: record.checkpoint === undefined ? null : normalizeMemoryCheckpoint(record.checkpoint),
     parentChatId: optionalString(record.parentChatId),
-    coordinatorGroup: normalizeCoordinatorGroup(record.coordinatorGroup),
     sessionRotations: normalizeSessionRotations(record.sessionRotations)
   }
 }
@@ -87,7 +85,6 @@ export function chatRecordFromPeer(peer: ChatPeerRecord, cwd: string, projectPat
     continuation: peer.continuation ?? null,
     checkpoint: peer.checkpoint ?? null,
     parentChatId: null,
-    coordinatorGroup: null,
     sessionRotations: []
   }
 }
