@@ -2,12 +2,11 @@ import assert from 'node:assert/strict'
 import { mkdtemp, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
 import test from 'node:test'
 import { uiControlFamilies } from '../../../shared/ui-controls.js'
 import { ToolRegistry } from '../registry.js'
 import { appTools } from './index.js'
-import type { AppBrowserTabRequest, AppCommandHost, AppUiHost } from './host.js'
+import type { AppCommandHost, AppUiHost } from './host.js'
 
 function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandHost> } = {}) {
   const calls: unknown[] = []
@@ -54,7 +53,24 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
     browserTab: async (request) => { calls.push(['browserTab', request]); return { tabCount: 1 } },
     ...overrides.app
   }
-  const registry = new ToolRegistry([appTools(() => app, () => ui)])
+  const page = {
+    navigate: async () => ({
+      ok: true as const,
+      tabId: 'tab-preview',
+      ready: {
+        url: 'file:///mock.html', title: 'mock', elapsedMs: 0,
+        readyState: 'complete', reached: true, conditionMet: null
+      }
+    }),
+    listTabs: () => [],
+    readPage: async () => null,
+    fetchPage: async () => null,
+    waitFor: async () => null,
+    evaluate: async () => null,
+    query: async () => null,
+    consoleMessages: () => null
+  }
+  const registry = new ToolRegistry([appTools(() => app, () => ui, () => page)])
   const call = (tool: string, arguments_: Record<string, unknown>, paneId: string | null = 'pane-caller') => registry.call(
     { namespace: 'closedai_app', tool, arguments: arguments_ },
     { threadId: null, turnId: null, callId: 'app-call', paneId, source: 'exec' }
@@ -160,9 +176,7 @@ test('preview_html resolves workspace html and reveals the browser when hidden',
   const result = await call('command', { action: 'browser_tab', op: 'preview_html', path: 'mock.html' })
   assert.equal(result.isError, undefined)
   assert.match(textOf(result), /mock\.html/)
-  const browserCall = calls.find((entry) => Array.isArray(entry) && entry[0] === 'browserTab') as ['browserTab', AppBrowserTabRequest]
-  assert.equal(browserCall[1].op, 'new')
-  assert.equal(browserCall[1].url, pathToFileURL(path.join(cwd, 'mock.html')).href)
+  assert.match(textOf(result), /tab-preview/)
   const toggle = calls.find((entry) => Array.isArray(entry) && entry[0] === 'click') as ['click', { control: string }]
   assert.equal(toggle[1].control, 'layout.browser-toggle')
 })

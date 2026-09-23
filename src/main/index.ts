@@ -258,7 +258,7 @@ async function main(): Promise<void> {
       requireApproval: () => securitySettings!.get().credentialsRequireApproval,
       approve: (request, signal) => credentialApprovals.ask(request, signal)
     })),
-    appTools(() => appCommandAccess, () => appAutomationAccess),
+    appTools(() => appCommandAccess, () => appAutomationAccess, () => pageAccess),
     browserTools(() => pageAccess, () => networkAccess, () => networkAccess),
     cdpTools(() => cdpAccess, artifacts.service),
     captureTools(() => captureAccess, screenshots),

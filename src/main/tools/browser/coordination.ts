@@ -39,7 +39,7 @@ export class BrowserCoordination {
     const pageTool = namespace === 'embedded_browser' && ['page', 'script'].includes(tool)
     const capture = namespace === 'closedai_ui' && tool === 'capture' && action === 'browser_page'
     if (!tabCommand && !pageTool && !capture && namespace !== 'browser_cdp') return input
-    if (tabCommand && input.op === 'new') return input
+    if (tabCommand && (input.op === 'new' || input.op === 'preview_html')) return input
     if (tabCommand && ['release', 'release_all', 'claim'].includes(String(input.op))) return input
     if (pageTool && tool === 'page' && action === 'navigate') {
       if (input.new_tab === true && input.tab_id) throw new Error('navigate cannot combine tab_id with new_tab')

@@ -1,6 +1,8 @@
 import type { ToolAction } from '../action-tool.js'
 import { jsonResult, objectSchema } from '../json-result.js'
 import { booleanArg, numberArg, stringArg, type JsonObject, type ToolContext } from '../tool.js'
+import { DEFAULT_WAIT_MS } from '../browser/fields.js'
+import { requireBrowser, type BrowserHostProvider } from '../browser/host.js'
 import { requireHost, type AppBrowserTabRequest, type AppCommandHost, type AppUiHost } from './host.js'
 import { resolveHtmlPreview } from './preview-html.js'
 
@@ -14,7 +16,8 @@ const AWAIT_TURN_MAX_MS = 120_000
 /** Deterministic app commands over the same services the renderer's IPC calls. */
 export function appCommandActions(
   app: () => AppCommandHost | null,
-  ui: () => AppUiHost | null
+  ui: () => AppUiHost | null,
+  page: BrowserHostProvider
 ): ToolAction[] {
   return [
     {
@@ -162,10 +165,20 @@ export function appCommandActions(
           const cwd = chat?.cwd
           if (!cwd) throw new Error('Could not read the chat working directory for preview_html')
           const resolved = await resolveHtmlPreview(stringArg(input, 'path')!, cwd)
-          const browser = await host.browserTab({ op: 'new', url: resolved.fileUrl }, context.paneId)
+          const outcome = await requireBrowser(page).navigate(resolved.fileUrl, {
+            newTab: true,
+            ready: { until: 'load', timeoutMs: DEFAULT_WAIT_MS }
+          })
+          if (!outcome.ok) throw new Error(`Could not open ${resolved.path}: ${outcome.error}`)
           let browserRevealed = false
           if (booleanArg(input, 'reveal_browser', true)) browserRevealed = await revealBrowserPane(ui)
-          return jsonResult({ ...resolved, browser, browserRevealed })
+          return jsonResult({
+            ...resolved,
+            tabId: outcome.tabId,
+            title: outcome.ready.title,
+            url: outcome.ready.url,
+            browserRevealed
+          })
         }
         return jsonResult(await host.browserTab({
           op: opRaw as AppBrowserTabRequest['op'],

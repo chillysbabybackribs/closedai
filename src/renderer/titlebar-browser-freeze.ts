@@ -12,8 +12,14 @@ const EAGER_CAPTURE_TRIGGER = '[data-ui="titlebar.chat-search"], [data-ui="layou
 // the native pixels were already hidden. A secondary button never switches tabs, so the shot
 // this primes is always of the page the freeze is about to stand in for.
 const BROWSER_SURFACE = '[data-ui-surface="browser"]'
+// Native WebContentsView pixels can extend a fractional pixel past the renderer's
+// measured host edge. Treat overlays that reach the edge as overlapping so their
+// shadow and border cannot slip underneath the native page during the handoff.
+const NATIVE_VIEW_EDGE_MARGIN = 3
 
-export function rectsOverlap(a: DOMRectReadOnly, b: DOMRectReadOnly): boolean {
+type RectEdges = Pick<DOMRectReadOnly, 'left' | 'right' | 'top' | 'bottom'>
+
+export function rectsOverlap(a: RectEdges, b: RectEdges): boolean {
   return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
 }
 
@@ -31,8 +37,14 @@ export function overlayIsOpen(overlay: Element): boolean {
 export function overlayBlocksBrowser(root: ParentNode = document): boolean {
   const host = root.querySelector(BROWSER_HOST_SELECTOR)
   if (!(host instanceof Element)) return false
-  const browserRect = host.getBoundingClientRect()
-  if (browserRect.width < 2 || browserRect.height < 2) return false
+  const hostRect = host.getBoundingClientRect()
+  const browserRect = {
+    left: hostRect.left - NATIVE_VIEW_EDGE_MARGIN,
+    right: hostRect.right + NATIVE_VIEW_EDGE_MARGIN,
+    top: hostRect.top - NATIVE_VIEW_EDGE_MARGIN,
+    bottom: hostRect.bottom + NATIVE_VIEW_EDGE_MARGIN
+  }
+  if (hostRect.width < 2 || hostRect.height < 2) return false
   for (const overlay of root.querySelectorAll(OVERLAY_SELECTOR)) {
     if (!overlayIsOpen(overlay)) continue
     const rect = overlay.getBoundingClientRect()

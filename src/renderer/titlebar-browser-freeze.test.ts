@@ -27,12 +27,12 @@ test('open dialogs and menus in open details remain browser overlays', () => {
 test('modal backdrop occludes the browser before an image dialog grows into it', () => {
   const originalElement = Object.getOwnPropertyDescriptor(globalThis, 'Element')
   class Surface {
-    constructor(readonly left: number, readonly width: number, readonly attributes: Record<string, string> = {}) {}
+    constructor(readonly left: number, readonly width: number, readonly attributes: Record<string, string> = {}, readonly top = 0, readonly height = 800) {}
     hasAttribute(name: string) { return Object.hasOwn(this.attributes, name) }
     getAttribute(name: string) { return this.attributes[name] ?? null }
     closest() { return null }
     getBoundingClientRect() {
-      return { left: this.left, right: this.left + this.width, top: 0, bottom: 800, width: this.width, height: 800 }
+      return { left: this.left, right: this.left + this.width, top: this.top, bottom: this.top + this.height, width: this.width, height: this.height }
     }
   }
   Object.defineProperty(globalThis, 'Element', { configurable: true, value: Surface })
@@ -62,6 +62,13 @@ test('modal backdrop occludes the browser before an image dialog grows into it',
       querySelectorAll: (selector: string) => selector.includes('.titlebar-layout-menu') ? [layoutMenu] : []
     } as unknown as ParentNode
     assert.equal(overlayBlocksBrowser(layoutRoot), true, 'title bar layout menu freezes an overlapping native page')
+    const edgeMenu = new Surface(720, 460, { 'data-state': 'open' }, 0, 200)
+    const edgeHost = new Surface(720, 460, {}, 200, 600)
+    const edgeRoot = {
+      querySelector: () => edgeHost,
+      querySelectorAll: () => [edgeMenu]
+    } as unknown as ParentNode
+    assert.equal(overlayBlocksBrowser(edgeRoot), true, 'an overlay touching the native page edge is occluded')
     const clearRoot = {
       querySelector: () => host,
       querySelectorAll: () => [new Surface(100, 440)]

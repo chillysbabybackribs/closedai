@@ -89,6 +89,18 @@ test('acting without an assigned tab refuses to use the visible page', () => {
   )
 })
 
+test('preview_html and new tab commands do not require a prior assignment', () => {
+  const { prepare } = harness()
+  assert.deepEqual(
+    prepare('a', { action: 'browser_tab', op: 'preview_html', path: 'output/mock.html' }, 'closedai_app', 'command'),
+    { action: 'browser_tab', op: 'preview_html', path: 'output/mock.html' }
+  )
+  assert.deepEqual(
+    prepare('a', { action: 'browser_tab', op: 'new', url: 'file:///tmp/x.html' }, 'closedai_app', 'command'),
+    { action: 'browser_tab', op: 'new', url: 'file:///tmp/x.html' }
+  )
+})
+
 test('reading the visible page leaves it alone: the next navigation opens the chat its own tab', () => {
   const { prepare, policy, tabs } = harness()
   assert.equal(prepare('a', { action: 'read_page' }).tab_id, 'user', 'an untargeted read uses what is on screen')

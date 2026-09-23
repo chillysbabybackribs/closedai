@@ -1,6 +1,7 @@
 import { defineActionTool } from '../action-tool.js'
 import type { ToolNamespace } from '../tool.js'
 import { uiControlFamilies } from '../../../shared/ui-controls.js'
+import type { BrowserHostProvider } from '../browser/host.js'
 import { appCommandActions } from './command.js'
 import type { AppCommandHost, AppUiHost } from './host.js'
 import { appStateTool } from './state.js'
@@ -10,7 +11,11 @@ import { appUiActions } from './ui.js'
  * closedai_app: the app's own state and commands, deterministic and DOM-free, plus a ui tool that
  * drives real controls by their manifest id for when the interaction itself is under test.
  */
-export function appTools(app: () => AppCommandHost | null, ui: () => AppUiHost | null): ToolNamespace {
+export function appTools(
+  app: () => AppCommandHost | null,
+  ui: () => AppUiHost | null,
+  page: BrowserHostProvider = () => null
+): ToolNamespace {
   return {
     name: 'closedai_app',
     description: 'State, commands, and control-level interaction for the ClosedAI desktop app.',
@@ -22,7 +27,7 @@ export function appTools(app: () => AppCommandHost | null, ui: () => AppUiHost |
         description:
           'Deterministic app commands via main-process services — no DOM inspection. Operate panes, models, and ' +
           'browser tabs; use closedai_app.state for facts. Use closedai_app.ui only when a real control must be exercised as a batched fallback.',
-        actions: appCommandActions(app, ui)
+        actions: appCommandActions(app, ui, page)
       }),
       defineActionTool({
         name: 'ui',
