@@ -117,23 +117,23 @@ export function ComposerSetupMenu({
         avoidCollisions
         aria-label="Chat setup"
         onOpenAutoFocus={(event) => {
-            // Focus the model list, not the context line above it, so arrows and Enter pick a model.
-            const list = (event.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>('[cmdk-root]')
-            if (!list) return
-            event.preventDefault()
-            list.focus()
-          }}
-        onCloseAutoFocus={(event) => {
-            if (!focusInputOnCloseRef.current) return
-            focusInputOnCloseRef.current = false
-            const textarea = triggerRef.current?.closest('.composer')?.querySelector<HTMLTextAreaElement>('textarea')
-            if (textarea) {
-              event.preventDefault()
-              textarea.focus()
-            }
+          // Focus the model list, not the context line above it, so arrows and Enter pick a model.
+          const list = (event.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>('[cmdk-root]')
+          if (!list) return
+          event.preventDefault()
+          list.focus()
         }}
-        >
-          <ContextSection
+        onCloseAutoFocus={(event) => {
+          if (!focusInputOnCloseRef.current) return
+          focusInputOnCloseRef.current = false
+          const textarea = triggerRef.current?.closest('.composer')?.querySelector<HTMLTextAreaElement>('textarea')
+          if (textarea) {
+            event.preventDefault()
+            textarea.focus()
+          }
+        }}
+      >
+        <ContextSection
             usage={contextUsage}
             provider={selected?.provider ?? provider}
             planUsage={planUsage}
@@ -142,8 +142,8 @@ export function ComposerSetupMenu({
             modelDescription={trigger.description}
             onCompact={onCompact}
             compactEnabled={compactEnabled}
-          />
-          <ModelPicker
+        />
+        <ModelPicker
             models={models}
             selectedModel={selectedModel}
             provider={provider}
@@ -160,8 +160,8 @@ export function ComposerSetupMenu({
                 onChoose={chooseEffort}
               />
             }
-          />
-        </PopoverContent>
+        />
+      </PopoverContent>
     </Popover>
   )
 }

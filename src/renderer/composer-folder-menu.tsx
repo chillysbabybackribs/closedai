@@ -65,15 +65,15 @@ export function ComposerFolderMenu({
         aria-label="Working folder"
       >
         <FolderSection
-            cwd={cwd}
-            projectPath={projectPath}
-            pending={projectPending}
-            recentProjects={recentProjects}
-            disabled={busy}
-            onChooseProject={onChooseProject}
-            onSelectProject={onSelectProject}
-            onClearProject={onClearProject}
-            onError={onError}
+          cwd={cwd}
+          projectPath={projectPath}
+          pending={projectPending}
+          recentProjects={recentProjects}
+          disabled={busy}
+          onChooseProject={onChooseProject}
+          onSelectProject={onSelectProject}
+          onClearProject={onClearProject}
+          onError={onError}
         />
       </PopoverContent>
     </Popover>
