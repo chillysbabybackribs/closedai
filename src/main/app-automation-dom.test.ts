@@ -77,10 +77,12 @@ function fakeElement(overrides: Record<string, unknown> = {}): Record<string, un
     disabled: false,
     tagName: 'BUTTON',
     innerText: 'Open this chat',
+    children: [],
     getAttribute: (name: string) => attributes[name] ?? null,
     scrollIntoView: () => {},
     contains: () => false,
     getClientRects: () => [{ width: 80, height: 30, left: 10, top: 10, right: 90, bottom: 40 }],
+    getBoundingClientRect: () => ({ width: 80, height: 30, left: 10, top: 10, right: 90, bottom: 40 }),
     ...overrides
   }
 }
@@ -190,6 +192,29 @@ test('control resolution diagnoses elements belonging to unselected panes', asyn
   })
   await withDom([otherPane], () =>
     assert.rejects(run(targetClickExpression({ control: 'composer.stop' })), /belongs to unselected pane pane-other/))
+})
+
+test('click preparation falls back to an uncovered child when a sibling floats over the centre', async () => {
+  const run = (expression: string) => (new Function(`return ${expression}`) as () => Promise<{ point: { x: number; y: number } }>)()
+  const label = fakeElement({ tagName: 'SPAN', getBoundingClientRect: () => ({ width: 30, height: 20, left: 12, top: 15, right: 42, bottom: 35 }) })
+  const target = fakeElement({
+    attributes: { 'data-ui': 'composer.setup' },
+    getClientRects: () => [{ width: 400, height: 30, left: 10, top: 10, right: 410, bottom: 40 }],
+    getBoundingClientRect: () => ({ width: 400, height: 30, left: 10, top: 10, right: 410, bottom: 40 }),
+    children: [label],
+    contains: (node: unknown) => node === label
+  })
+  const floating = fakeElement({ attributes: { 'data-ui': 'composer.agents' } })
+  await withDom([target], async () => {
+    const originalFromPoint = globalThis.document.elementFromPoint
+    globalThis.document.elementFromPoint = (x: number) => (x > 100 && x < 320 ? floating : label) as unknown as Element
+    try {
+      const prepared = await run(targetClickExpression({ control: 'composer.setup' }))
+      assert.deepEqual(prepared.point, { x: 27, y: 25 })
+    } finally {
+      globalThis.document.elementFromPoint = originalFromPoint
+    }
+  })
 })
 
 test('click preparation reports covering elements', async () => {

@@ -236,14 +236,27 @@ async function prepareSelectedClick(element: Element): Promise<AppPreparedClick>
     }
   }
   if (!point) throw new Error('Element is not visible after scrolling')
-  const hit = document.elementFromPoint(point.x, point.y)
-  if (!hit || (hit !== element && !element.contains(hit))) {
-    const cover = hit
+  // A wide control can have a sibling floated over its centre (the composer's agent button sits
+  // over the model trigger), so fall back to its own children and off-centre points before failing.
+  const candidates = [point]
+  for (const child of Array.from(element.children)) {
+    const rect = child.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) candidates.push({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+  }
+  const box = element.getBoundingClientRect()
+  for (const fraction of [0.15, 0.85]) candidates.push({ x: box.left + box.width * fraction, y: point.y })
+  let cover: string | null = null
+  for (const candidate of candidates) {
+    if (candidate.x < 0 || candidate.y < 0 || candidate.x > window.innerWidth || candidate.y > window.innerHeight) continue
+    const hit = document.elementFromPoint(candidate.x, candidate.y)
+    if (hit && (hit === element || element.contains(hit))) {
+      return { point: candidate, viewport: { width: window.innerWidth, height: window.innerHeight } }
+    }
+    cover ??= hit
       ? (hit.getAttribute('data-ui') ? `[data-ui="${hit.getAttribute('data-ui')}"]` : (hit.className ? `.${String(hit.className).trim().split(/\s+/)[0]}` : hit.tagName.toLowerCase()))
       : 'viewport boundary'
-    throw new Error(`Element is covered at its clickable center by ${cover}`)
   }
-  return { point, viewport: { width: window.innerWidth, height: window.innerHeight } }
+  throw new Error(`Element is covered at its clickable center by ${cover}`)
 }
 
 function prepareSelectedType(element: Element, clear: boolean): boolean {
