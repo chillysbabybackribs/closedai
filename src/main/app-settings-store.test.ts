@@ -20,7 +20,7 @@ test('a missing file yields the defaults, including the compaction threshold', a
   const { store } = await storeWith(null)
   assert.deepEqual(store.get(), DEFAULT_APP_SETTINGS)
   assert.equal(store.get().chatCompactAtPercent, 80)
-  assert.equal(store.get().chatCompactAtTokens, 40_000)
+  assert.equal(store.get().chatCompactAtTokens, 28_000)
   assert.equal(store.get().chatMidTurnCompactTokens, 0)
   assert.equal(store.get().toolBatchMaxCalls, 16)
   assert.equal(store.get().chatSeamlessRotation, true)
@@ -83,7 +83,7 @@ test('the compaction threshold is clamped and bad values fall back', async () =>
 })
 
 test('the between-turn token budget is opt-in, bounded, and persists independently', async () => {
-  for (const [input, expected] of [[0, 0], [-1, 0], [500, 20_000], [32_000.4, 32_000], [9e9, 2_000_000], ['lots', 40_000]]) {
+  for (const [input, expected] of [[0, 0], [-1, 0], [500, 20_000], [32_000.4, 32_000], [9e9, 2_000_000], ['lots', 28_000]]) {
     const { store } = await storeWith(JSON.stringify({ chatCompactAtTokens: input }))
     assert.equal(store.get().chatCompactAtTokens, expected)
   }

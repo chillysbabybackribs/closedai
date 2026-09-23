@@ -1,4 +1,4 @@
-import { type ContextUsage, usagePercent } from './context-compaction.js'
+import { idleDelayForContextTrigger, type ContextUsage, usagePercent } from './context-compaction.js'
 
 // Invisible session rotation: same idle thresholds as compaction, but the provider thread is
 // reset with a thin seed on the next send instead of calling native compact.
@@ -9,14 +9,14 @@ export type SessionRotatorDeps = {
   thresholdTokens?: () => number
   now?: () => number
   idleDelayMs?: number
+  tokenIdleDelayMs?: number
   threadId: () => string | null
   turnActive: () => boolean
   rotate: () => Promise<void>
 }
 
-const ROTATION_IDLE_MS = 15_000
 const ROTATION_TIMEOUT_MS = 90_000
-const TOKEN_ROTATION_COOLDOWN_MS = 5 * 60_000
+const TOKEN_ROTATION_COOLDOWN_MS = 3 * 60_000
 
 export class SessionRotator {
   private usage: ContextUsage | null = null
@@ -81,7 +81,7 @@ export class SessionRotator {
     this.scheduled = setTimeout(() => {
       this.scheduled = null
       void this.maybeStart()
-    }, this.deps.idleDelayMs ?? ROTATION_IDLE_MS)
+    }, idleDelayForContextTrigger(this.deps))
     this.scheduled.unref?.()
   }
 
@@ -94,7 +94,7 @@ export class SessionRotator {
     const last = this.lastTokenAttempt
     if (last && last.budget === budget) {
       const growth = this.usage.usedTokens - last.tokens
-      if (this.now() - last.at < TOKEN_ROTATION_COOLDOWN_MS || growth < Math.max(4_000, budget * 0.25)) return null
+      if (this.now() - last.at < TOKEN_ROTATION_COOLDOWN_MS || growth < Math.max(3_000, budget * 0.15)) return null
     }
     return 'tokens'
   }

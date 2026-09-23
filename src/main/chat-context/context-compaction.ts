@@ -17,6 +17,8 @@ export type ContextCompactorDeps = {
   /** Injectable clock and grace period for deterministic policy tests. */
   now?: () => number
   idleDelayMs?: number
+  /** Overrides idle wait for the token trigger; production omits this to use TOKEN_TRIGGER_IDLE_MS. */
+  tokenIdleDelayMs?: number
   threadId: () => string | null
   /** True while the app-server has a turn open; compaction runs as one. */
   turnActive: () => boolean
@@ -27,8 +29,24 @@ export type ContextCompactorDeps = {
 const COMPACT_METHOD = 'thread/compact/start'
 /** Compaction is one model call; well past this it is safer to unblock sends than wait. */
 const COMPACTION_TIMEOUT_MS = 90_000
-const COMPACTION_IDLE_MS = 15_000
-const TOKEN_COMPACTION_COOLDOWN_MS = 5 * 60_000
+/** Window-percent triggers wait longer so a quick follow-up send can cancel queued work. */
+export const PERCENT_TRIGGER_IDLE_MS = 15_000
+/** Token-budget triggers rotate/compact sooner; replay-heavy Codex threads benefit from shorter idle. */
+export const TOKEN_TRIGGER_IDLE_MS = 8_000
+const TOKEN_COMPACTION_COOLDOWN_MS = 3 * 60_000
+
+export function idleDelayForContextTrigger(deps: {
+  thresholdTokens?: () => number
+  idleDelayMs?: number
+  /** Production default 8s; tests pass 0 for immediate scheduling. */
+  tokenIdleDelayMs?: number
+}): number {
+  const tokenBudget = deps.thresholdTokens?.() ?? 0
+  if (tokenBudget > 0) {
+    return deps.tokenIdleDelayMs ?? deps.idleDelayMs ?? TOKEN_TRIGGER_IDLE_MS
+  }
+  return deps.idleDelayMs ?? PERCENT_TRIGGER_IDLE_MS
+}
 
 /** Shape of the app-server's `thread/tokenUsage/updated` payload. */
 export function parseTokenUsage(value: unknown): ContextUsage | null {
@@ -132,7 +150,7 @@ export class ContextCompactor {
     this.scheduled = setTimeout(() => {
       this.scheduled = null
       void this.maybeStart()
-    }, this.deps.idleDelayMs ?? COMPACTION_IDLE_MS)
+    }, idleDelayForContextTrigger(this.deps))
     this.scheduled.unref?.()
   }
 
@@ -145,7 +163,7 @@ export class ContextCompactor {
     const last = this.lastTokenAttempt
     if (last && last.budget === budget) {
       const growth = this.usage.usedTokens - last.tokens
-      if (this.now() - last.at < TOKEN_COMPACTION_COOLDOWN_MS || growth < Math.max(4_000, budget * 0.25)) return null
+      if (this.now() - last.at < TOKEN_COMPACTION_COOLDOWN_MS || growth < Math.max(3_000, budget * 0.15)) return null
     }
     return 'tokens'
   }

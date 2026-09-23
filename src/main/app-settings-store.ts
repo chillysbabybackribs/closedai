@@ -45,7 +45,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   toolBatchMaxCalls: DEFAULT_BATCH_MAX_CALLS,
   // Default token rotation threshold drops accumulated tool dumps during idle time.
   chatCompactAtPercent: 80,
-  chatCompactAtTokens: 40_000,
+  chatCompactAtTokens: 28_000,
   chatMidTurnCompactTokens: 0,
   chatSeamlessRotation: true
 }

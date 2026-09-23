@@ -561,10 +561,11 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   adopting a smaller active-context target.
 - `ChatService` watches `thread/tokenUsage/updated` and asks for `thread/compact/start` after a
   turn ends with the context above `chatCompactAtPercent` (default 80; 0 disables this trigger).
-  The independent `chatCompactAtTokens` trigger defaults to 0 (off), with nonzero values rounded
-  and clamped to 20,000–2,000,000. Both triggers schedule native compaction after 15 idle seconds. A new send
+  The independent `chatCompactAtTokens` trigger defaults to 28,000 (0 disables), with nonzero values
+  rounded and clamped to 20,000–2,000,000. Window-percent triggers schedule after 15 idle seconds;
+  the token trigger schedules after 8 idle seconds. A new send
   or provider turn cancels a queued attempt; a compaction already in flight still blocks sends.
-  Token retries require five minutes plus growth of max(4,000, 25% of the budget) from the lowest
+  Token retries require three minutes plus growth of max(3,000, 15% of the budget) from the lowest
   usage observed since the previous attempt. Window-percentage pressure bypasses those retry
   requirements, but still waits for the idle grace.
   One compaction per completed turn at most. This is a soft trigger: native compaction may retain
@@ -606,11 +607,10 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   `src/main/chat-context/thread-handoff.ts`. The header shows the context percentage so the
   user can see when to reach for it.
 
-To trial the smaller budget, quit ClosedAI, set `"chatCompactAtTokens": 32000` in
-`<userData>/app-settings.json`, and relaunch the updated build. There is not yet a settings UI
-for this field. Keep `chatCompactAtPercent` at 80 as the window-pressure fallback. Restore
-`chatCompactAtTokens` to 0 to disable only the experiment; existing history is unchanged either
-way. 32k is an evaluation starting point, not a measured optimum. With `chatSeamlessRotation`
+To tighten or relax rotation, quit ClosedAI, edit `"chatCompactAtTokens"` in
+`<userData>/app-settings.json`, and relaunch. There is not yet a settings UI for this field.
+The default is 28,000; set 0 to disable only the token trigger. Keep `chatCompactAtPercent` at
+80 as the window-pressure fallback. With `chatSeamlessRotation`
 enabled (the default), these thresholds trigger session rotation; set it to false to evaluate
 native compaction instead. Neither path automatically generates the model-written checkpoints
 described below.

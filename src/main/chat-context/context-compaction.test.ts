@@ -1,17 +1,29 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { ContextCompactor, describeUsage, parseTokenUsage } from './context-compaction.ts'
+import {
+  ContextCompactor,
+  describeUsage,
+  idleDelayForContextTrigger,
+  parseTokenUsage,
+  TOKEN_TRIGGER_IDLE_MS
+} from './context-compaction.ts'
 
-function harness(threshold = 60, budget = 0, idleDelayMs = 0) {
+function harness(
+  threshold = 60,
+  budget = 0,
+  schedule: { idleDelayMs?: number; tokenIdleDelayMs?: number } = {}
+) {
   const requests: Array<[string, Record<string, unknown>]> = []
   const notices: Array<[string, string]> = []
   let fail: Error | null = null
   let turnActive = false
   let now = 0
+  const idleDelayMs = schedule.idleDelayMs ?? 0
   const compactor = new ContextCompactor({
     thresholdPercent: () => threshold,
     thresholdTokens: () => budget,
     idleDelayMs,
+    ...(budget > 0 ? { tokenIdleDelayMs: schedule.tokenIdleDelayMs ?? idleDelayMs } : {}),
     now: () => now,
     threadId: () => 'thread-1',
     turnActive: () => turnActive,
@@ -45,14 +57,20 @@ test('token usage is read from the last model request without reasoning output',
   assert.equal(describeUsage(null), null)
 })
 
+test('token budget scheduling uses the shorter idle grace', () => {
+  assert.equal(idleDelayForContextTrigger({ thresholdTokens: () => 28_000 }), TOKEN_TRIGGER_IDLE_MS)
+  assert.equal(idleDelayForContextTrigger({ thresholdTokens: () => 28_000, idleDelayMs: 0 }), 0)
+  assert.equal(idleDelayForContextTrigger({ thresholdTokens: () => 0, idleDelayMs: 15_000 }), 15_000)
+})
+
 test('the absolute trigger runs while idle, independently of window size or percent trigger', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
-  const h = harness(0, 32_000, 15_000)
+  const h = harness(0, 32_000, { tokenIdleDelayMs: TOKEN_TRIGGER_IDLE_MS })
   h.compactor.noteUsage({ usedTokens: 40_000, contextWindow: 1_000_000 })
   h.compactor.turnFinished()
   assert.equal(h.compactor.scheduledForIdle, true)
   assert.equal(h.compactor.inFlight, false)
-  t.mock.timers.tick(14_999)
+  t.mock.timers.tick(TOKEN_TRIGGER_IDLE_MS - 1)
   assert.equal(h.requests.length, 0)
   t.mock.timers.tick(1)
   assert.equal(h.requests.length, 1)
@@ -62,15 +80,15 @@ test('the absolute trigger runs while idle, independently of window size or perc
 
 test('send and provider-start cancel a queued compaction without waiting', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
-  const h = harness(0, 32_000, 15_000)
+  const h = harness(0, 32_000, { tokenIdleDelayMs: TOKEN_TRIGGER_IDLE_MS })
   h.compactor.noteUsage({ usedTokens: 40_000, contextWindow: 200_000 })
   h.compactor.turnFinished()
   await h.compactor.prepareForSend()
-  t.mock.timers.tick(15_000)
+  t.mock.timers.tick(TOKEN_TRIGGER_IDLE_MS)
   assert.equal(h.requests.length, 0)
   h.compactor.turnFinished()
   h.compactor.turnStarted()
-  t.mock.timers.tick(15_000)
+  t.mock.timers.tick(TOKEN_TRIGGER_IDLE_MS)
   assert.equal(h.requests.length, 0)
   h.compactor.turnFinished()
   h.compactor.reset()
@@ -106,7 +124,7 @@ test('token retries require cooldown and growth, using the post-compaction low w
 
 test('window pressure bypasses token cooldown but still waits for idle grace', (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
-  const h = harness(80, 32_000, 15_000)
+  const h = harness(80, 32_000, { idleDelayMs: 15_000 })
   h.compactor.noteUsage({ usedTokens: 40_000, contextWindow: 200_000 })
   h.compactor.turnFinished()
   t.mock.timers.tick(15_000)
@@ -123,7 +141,7 @@ test('window pressure bypasses token cooldown but still waits for idle grace', (
 
 test('an immediate follow-up cancels percentage compaction before another model call starts', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
-  const h = harness(60, 0, 15_000)
+  const h = harness(60, 0, { idleDelayMs: 15_000 })
   h.compactor.noteUsage({ usedTokens: 160_000, contextWindow: 200_000 })
   h.compactor.turnFinished()
   assert.equal(h.compactor.inFlight, false)
@@ -136,11 +154,11 @@ test('an immediate follow-up cancels percentage compaction before another model 
 
 test('active turns prevent idle compaction, including a turn starting during the grace period', (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
-  const h = harness(0, 32_000, 15_000)
+  const h = harness(0, 32_000, { tokenIdleDelayMs: TOKEN_TRIGGER_IDLE_MS })
   h.compactor.noteUsage({ usedTokens: 40_000, contextWindow: 200_000 })
   h.compactor.turnFinished()
   h.setTurnActive(true)
-  t.mock.timers.tick(15_000)
+  t.mock.timers.tick(TOKEN_TRIGGER_IDLE_MS)
   assert.equal(h.requests.length, 0)
   h.compactor.turnFinished()
   assert.equal(h.compactor.scheduledForIdle, false)
