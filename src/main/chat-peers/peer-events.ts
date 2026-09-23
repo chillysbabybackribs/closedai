@@ -3,7 +3,7 @@ import { activityPhase, CHAT_TURN_PAGE_SIZE } from '../../shared/chat.js'
 import { tailTurnSlice } from '../../shared/chat-turn-page.js'
 import type { ChatPeerSummary, ChatRowSummary, ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
-import type { CachedChatView } from '../chat-store/chat-transcript-cache.js'
+import { cachedChatThreadId, type CachedChatView } from '../chat-store/chat-transcript-cache.js'
 import { handoffSourceTitle } from '../../shared/chat-display.js'
 import { summaryForRecord } from './peer-summary.js'
 
@@ -227,7 +227,7 @@ export function cachedPaneView(
   const checkpoint = record?.checkpoint && record.checkpoint.threadId === threadId
     ? record.checkpoint
     : snapshot.checkpoint
-  const cachedThreadId = record?.threadId ?? (record?.continuation?.sourceCwd ? record.continuation.sourceThreadId : null)
+  const cachedThreadId = cachedChatThreadId(record)
   if (!cached || !cachedThreadId || cached.threadId !== cachedThreadId) {
     return checkpoint === snapshot.checkpoint ? snapshot : { ...snapshot, checkpoint }
   }

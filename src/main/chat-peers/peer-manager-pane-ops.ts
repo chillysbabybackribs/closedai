@@ -2,7 +2,7 @@ import type { ChatEvent, ChatSnapshot } from '../../shared/chat.js'
 import type { ChatPaneId, ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import type { ChatSurface } from '../chat-hub.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
-import { CACHED_TRANSCRIPT_ITEMS, type ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
+import { cachedChatThreadId, CACHED_TRANSCRIPT_ITEMS, type ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
 import { traceLog } from '../trace/trace-log.js'
 import type { BrowserAssignmentIdleRelease } from '../tools/browser/assignment-idle-release.js'
 import type { DeferredProjectSwitch } from './deferred-project-switch.js'
@@ -44,7 +44,7 @@ export function rememberPeerTranscript(
   entry: PeerEntry
 ): void {
   const record = store.get(entry.chatId)
-  const threadId = record?.threadId ?? (record?.continuation?.sourceCwd ? record.continuation.sourceThreadId : null)
+  const threadId = cachedChatThreadId(record)
   if (!threadId) return
   transcripts.remember(entry.chatId, threadId, entry.surface.snapshot({ limit: CACHED_TRANSCRIPT_ITEMS, unit: 'item' }))
 }

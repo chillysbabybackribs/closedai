@@ -1,6 +1,7 @@
 import { readdir, readFile, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { ChatContextUsage, ChatSnapshot, ChatTranscriptItem } from '../../shared/chat.js'
+import type { ChatRecord } from '../../shared/chat-store.js'
 import { writeAtomic } from '../atomic-write.js'
 
 // The last thing the app saw of each chat, on disk, so opening one paints before its provider is
@@ -19,6 +20,15 @@ export const CACHED_TRANSCRIPT_ITEMS = 60
 export const CACHED_TRANSCRIPT_BYTES = 256 * 1024
 
 const WRITE_DELAY_MS = 400
+
+/** Rotation releases the active session, but its saved view still belongs to this chat. */
+export function cachedChatThreadId(record: ChatRecord | undefined): string | null {
+  if (!record) return null
+  return record.threadId ?? (record.continuation
+    ? record.sessionRotations.at(-1)?.providerThreadId ??
+      (record.continuation.sourceCwd ? record.continuation.sourceThreadId : null)
+    : null)
+}
 
 /** One chat as the app last showed it. */
 export type CachedChatView = {

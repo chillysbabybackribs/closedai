@@ -9,6 +9,8 @@ export async function restoreHubHistory(
   read: (threadId: string, cwd?: string) => Promise<ChatThreadContent>
 ): Promise<ChatThreadContent | null> {
   const source = saved.chatContinuation
+  if (!source && !saved.chatThreadId && !saved.chatClaudeSessionId &&
+      !saved.chatAntigravityConversationId && !saved.chatCursorSessionId) return null
   const sources = new Map<string, { through: string | null; cwd?: string }>()
   if (source?.sourceCwd && source.sourceThreadId) {
     sources.set(source.sourceThreadId, { through: source.sourceThroughItemId ?? null, cwd: source.sourceCwd })
