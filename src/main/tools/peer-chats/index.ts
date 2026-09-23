@@ -23,6 +23,7 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
     tools: [
       defineTool({
         name: 'list',
+        deferLoading: true,
         description: 'scope open (default) lists peer activity; paneId is the chat_id for read. scope history discovers previous conversations across projects, including closed chats, newest user activity first. Returns up to 5 compact entries (max 8), without loading transcripts. query filters titles, previews, project paths, and saved notes by a literal case-insensitive phrase; it does not search transcript bodies. cwd optionally narrows to one project directory. Page with nextBeforeChatId as before_chat_id. Use recall(scope=history, chat_id=...) to read or search a transcript. Older explicit references take precedence over recency.',
         inputSchema: { type: 'object', additionalProperties: false, properties: {
           scope: { type: 'string', enum: ['open', 'history'] },
