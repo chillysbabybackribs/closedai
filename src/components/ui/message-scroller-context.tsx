@@ -80,6 +80,7 @@ export function MessageScrollerProvider({
   const handledAnchorRef = useRef<HTMLElement | null>(null)
   const lastScrollTopRef = useRef(0)
   const userScrollingRef = useRef(false)
+  const followResumeBlockedRef = useRef(false)
   const prependRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null)
   const scrollTargetRef = useRef<ScrollPosition | null>(null)
   const frameRef = useRef<number | null>(null)
@@ -100,8 +101,11 @@ export function MessageScrollerProvider({
     const delta = metrics.scrollTop - lastScrollTopRef.current
     lastScrollTopRef.current = metrics.scrollTop
     const edges = scrollEdges(metrics, EDGE_THRESHOLD)
+    if (delta > 0) followResumeBlockedRef.current = false
     if (!anchoredRef.current) {
-      followingRef.current = followingAfterViewportSync(followingRef.current, autoScroll, edges)
+      followingRef.current = followingAfterViewportSync(
+        followingRef.current, autoScroll, edges, followResumeBlockedRef.current
+      )
     }
     if (!edges.end && scrollTargetRef.current === 'end') scrollTargetRef.current = null
     if (!edges.start && scrollTargetRef.current === 'start') scrollTargetRef.current = null
@@ -146,6 +150,7 @@ export function MessageScrollerProvider({
     anchoredRef.current = null
     setSpacerHeight(0)
     followingRef.current = autoScroll
+    followResumeBlockedRef.current = false
     scrollTargetRef.current = 'end'
     viewport.scrollTo({ top: viewport.scrollHeight, behavior })
     scheduleSync()
@@ -183,6 +188,9 @@ export function MessageScrollerProvider({
 
   const userScrollIntent = useCallback((direction?: 'start' | 'end') => {
     userScrollingRef.current = true
+    // Wheel/touch intent arrives before Chromium moves the viewport. A pending layout sync at
+    // the old bottom must not re-enable following in that gap and undo the user's next scroll.
+    followResumeBlockedRef.current = direction !== 'end'
     if (direction) {
       setState((previous) => ({ ...previous, direction: direction === 'start' ? 'up' : 'down' }))
     }

@@ -25,9 +25,10 @@ export type AnchorScrollLayout = {
 export function followingAfterViewportSync(
   following: boolean,
   autoScroll: boolean,
-  edges: ScrollEdges
+  edges: ScrollEdges,
+  resumeBlocked = false
 ): boolean {
-  return edges.end ? following : autoScroll
+  return edges.end || resumeBlocked ? following : autoScroll
 }
 
 /** Constant-time edge calculation; no transcript-row geometry is involved. */

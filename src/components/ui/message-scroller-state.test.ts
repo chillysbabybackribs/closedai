@@ -87,6 +87,12 @@ test('explicitly escaped readers stay put until they return to the bottom', () =
   assert.equal(followingAfterViewportSync(false, true, { start: true, end: false }), true)
 })
 
+test('upward input cannot resume following before the browser has moved away from the bottom', () => {
+  const atBottom = { start: true, end: false }
+  assert.equal(followingAfterViewportSync(false, true, atBottom, true), false)
+  assert.equal(followingAfterViewportSync(false, true, atBottom, false), true)
+})
+
 
 const bottomFollowing = {
   prepending: false, newAnchor: false, anchorMode: false,
