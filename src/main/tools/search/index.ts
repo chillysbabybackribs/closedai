@@ -29,6 +29,7 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
   ], deps.now)
   const query = defineTool({
       name: 'query',
+      deferLoading: true,
       description:
         'Search Brave, Exa, Serper, Tavily, and You.com. Set intent for evidence shape; boost official docs with preferred_domains. ' +
         'depth quick (default) uses one provider; balanced/deep wait for more. discoveredBy is index overlap, not confirmation. ' +

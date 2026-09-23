@@ -62,6 +62,10 @@ The registry supplies provider-neutral tool descriptions and schemas. Codex rece
 tool specifications, Claude receives in-process MCP servers, and Antigravity and Cursor receive
 HTTP MCP servers. File search and edits stay with each provider's native tools. Some tools are
 deferred where the provider supports discovery; see [Tools](tools.md#how-the-model-sees-it).
+On Codex, only a small eager set (typically `embedded_browser.page` and `closedai_app.state`)
+ships full schemas on every turn; tools such as `search.query`, `tool_batch.run`, and the browser
+CDP namespace load through discovery. `measureToolContextBudget()` in the main process guards
+that eager wire size in tests.
 
 Restart the application to load a changed main-process build. Use a fresh chat to evaluate a
 prompt or native-provider baseline without earlier thread context. Tool switches may cause a

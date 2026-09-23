@@ -29,10 +29,8 @@ export function navigateAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'navigate',
     description:
-      'Navigate to a URL; use search.query or search.run for discovery. Free text and search-engine pages are refused. ' +
-      'Waits for the requested readiness condition and returns URL, title, and load state. The first untargeted call ' +
-      'assigns and selects a tab; new_tab creates another. Use tab_id for a known tab. Another chat’s assigned tab ' +
-      'cannot be navigated, and the signed-in browser session is shared.',
+      'Navigate to a URL (not search text or search-engine pages — use search.query/run). Returns URL, title, and load state after readiness. ' +
+      'First untargeted call assigns a tab; new_tab adds another. tab_id targets a known tab; other chats’ assigned tabs are read-only.',
     inputSchema: {
       type: 'object',
       properties: {

@@ -12,6 +12,12 @@ const baseRequest: SearchRequest = {
   query: 'closedai search', intent: 'general', depth: 'balanced', count: 5
 }
 
+test('search.query is deferred for Codex discovery', () => {
+  const registry = new ToolRegistry([searchTools()])
+  const tool = registry.namespaces[0]?.tools.find((entry) => entry.name === 'query')
+  assert.equal(tool?.deferLoading, true)
+})
+
 test('search.query defaults to quick depth when omitted', async () => {
   const providers: SearchProvider[] = []
   const fetchMock: typeof fetch = async (input) => {

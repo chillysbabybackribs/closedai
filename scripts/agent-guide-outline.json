@@ -42,6 +42,7 @@
         "Provider threads replay tool results and images every send until rotation, compaction, or a handoff/branch.",
         "search.query depth quick (default) uses one provider; balanced and deep wait for several. Prefer search.run for parallel research.",
         "Prefer embedded_browser.script extract on structured JSON; use capture sparingly (image tokens add up). Codex code mode: pass capture data URLs to image(), not JSON text with base64.",
+        "Codex loads most ClosedAI tools on discovery (deferLoading), including search.query; only a small eager set replays every turn — disable unused tool groups in Settings.",
         "Disable unused tool groups in Settings; the Tools modal advertised-token sum shows eager tool text on Codex-class providers.",
         "Start a fresh chat, branch, or handoff when context usage is high instead of one endless thread."
       ]
