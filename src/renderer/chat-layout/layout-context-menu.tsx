@@ -50,7 +50,6 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
     : tabActivity?.state === 'paused' ? 'resume' : null
   const hasChatActions = Boolean(onRename || onTogglePin || turnControl)
   const hasCloseActions = canCloseTab || canHidePane || canMoveTab
-  const hasFollowing = Boolean(onOpenPresets || hasChatActions)
 
   return <ContextMenu.Content className="titlebar-menu-content chat-layout-context-menu" loop>
     {canCloseTab && (
