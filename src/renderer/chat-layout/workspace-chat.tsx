@@ -6,7 +6,7 @@ import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import { getWorkspaceSnapshot } from './workspace-snapshot-store.js'
 import { useWorkspacePaneSlice } from './workspace-pane-subscription.js'
 
-export const WorkspaceChat = memo(function WorkspaceChat({ paneId, dispatch, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onNewChat, onContinueInNewChat, archiveChat, openHistoryChat }: {
+export const WorkspaceChat = memo(function WorkspaceChat({ paneId, dispatch, appearance, historyOpen, onHistoryOpenChange, dialog, onDialogChange, onNewChat, onStartAgent, onContinueInNewChat, archiveChat, openHistoryChat }: {
   paneId: string
   dispatch: Dispatch<ChatWorkspaceAction>
   appearance: AppearanceSettings
@@ -15,6 +15,7 @@ export const WorkspaceChat = memo(function WorkspaceChat({ paneId, dispatch, app
   dialog: ChatPaneDialog | null
   onDialogChange: (dialog: ChatPaneDialog | null) => void
   onNewChat: () => void
+  onStartAgent?: (prompt: string) => Promise<void>
   onContinueInNewChat?: () => Promise<void>
   archiveChat?: (chatId: string) => Promise<void>
   openHistoryChat?: (chatId: string) => Promise<void>
@@ -32,7 +33,7 @@ export const WorkspaceChat = memo(function WorkspaceChat({ paneId, dispatch, app
   const isSelected = slice.selectedPaneId === paneId
   return <ChatPane controller={controller} zoom={appearance.chatZoom} fontSize={appearance.chatFontSize}
     composerFontSize={appearance.composerFontSize} historyOpen={historyOpen} onHistoryOpenChange={onHistoryOpenChange}
-    dialog={dialog} onDialogChange={onDialogChange} selected={isSelected} onNewChat={onNewChat}
+    dialog={dialog} onDialogChange={onDialogChange} selected={isSelected} onNewChat={onNewChat} onStartAgent={onStartAgent}
     onContinueInNewChat={onContinueInNewChat} archiveChat={archiveChat}
     openHistoryChat={openHistoryChat} />
 })

@@ -66,6 +66,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
       onHistoryOpenChange={onHistoryOpenChange} dialog={selectedPaneId === id ? dialog : null}
       onDialogChange={onDialogChange} archiveChat={archiveChat}
       openHistoryChat={openHistoryChat}
+      onStartAgent={(prompt) => startAgentRef.current(id, prompt)}
       onContinueInNewChat={() => continueChatRef.current(id)}
       onNewChat={() => { void layout.newChat(id) }} />
   )
@@ -78,6 +79,16 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
     </div>
   ), [browser, browserDragHandle, layout.browserVisible])
   const continueChatRef = useRef<(id: string) => Promise<void>>(async () => {})
+  const startAgentRef = useRef<(id: string, prompt: string) => Promise<void>>(async () => {})
+  startAgentRef.current = async (sourceId, prompt) => {
+    onHistoryOpenChange(false)
+    const target = sourceId
+    await layout.dock(null, target, null, false, async () => {
+      const agentPaneId = await window.closedai.chat.newPeer()
+      void window.closedai.chat.send(agentPaneId, prompt, []).catch(() => {})
+      return agentPaneId
+    })
+  }
   continueChatRef.current = (id: string): Promise<void> => {
     onHistoryOpenChange(false)
     const row = chatsRef.current.find((entry) => entry.paneId === id)

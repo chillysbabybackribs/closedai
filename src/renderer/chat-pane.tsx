@@ -39,6 +39,7 @@ export const ChatPane = memo(function ChatPane({
   onDialogChange,
   selected = true,
   onNewChat: _onNewChat,
+  onStartAgent,
   onContinueInNewChat,
   archiveChat,
   openHistoryChat
@@ -55,6 +56,7 @@ export const ChatPane = memo(function ChatPane({
   onDialogChange?: (dialog: ChatPaneDialog | null) => void
   selected?: boolean
   onNewChat: () => void
+  onStartAgent?: (prompt: string) => Promise<void>
   /** Opens a sibling tab with a digest-seeded chat (layout placement); message actions use this for full continue. */
   onContinueInNewChat?: () => Promise<void>
   archiveChat?: (chatId: string) => Promise<void>
@@ -200,6 +202,7 @@ export const ChatPane = memo(function ChatPane({
           onModelChange={chat.selectModel}
           onReasoningEffortChange={chat.selectReasoningEffort}
           onSend={sendMessage}
+          onStartAgent={onStartAgent}
           onStop={chat.interrupt}
           paused={state.pausedTurnId !== null}
           onResume={() => sendMessage(CHAT_RESUME_PROMPT, [])}
