@@ -87,3 +87,21 @@ export function normalizeSavedAgent(candidate: unknown): SavedAgent | null {
 function positiveTime(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.floor(value) : null
 }
+
+/** One line under a library entry: how often it ran and how long ago; "Never run" until it has. */
+export function describeAgentUse(agent: Pick<SavedAgent, 'runCount' | 'lastRunAt'>, now: number): string {
+  if (agent.runCount === 0 || agent.lastRunAt === null) return 'Never run'
+  const times = agent.runCount === 1 ? 'Ran once' : `Ran ${agent.runCount} times`
+  return `${times} · last ${relativeSpan(now - agent.lastRunAt)} ago`
+}
+
+function relativeSpan(ms: number): string {
+  const minutes = Math.floor(Math.max(0, ms) / 60_000)
+  if (minutes < 1) return 'moments'
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 48) return `${hours} h`
+  const days = Math.floor(hours / 24)
+  if (days < 14) return `${days} d`
+  return `${Math.floor(days / 7)} wk`
+}

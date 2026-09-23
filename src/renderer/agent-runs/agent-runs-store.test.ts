@@ -5,7 +5,7 @@ import { createAgentRunsStore } from './agent-runs-store.ts'
 
 function run(chatId: string, cycle: number): AgentRun {
   return { chatId, prompt: 'Go.', status: 'running', cycle, maxCycles: null, startedAt: 1, updatedAt: 1,
-    lastTurnEndedAt: null, reason: null, failures: 0, threadId: null }
+    lastTurnEndedAt: null, reason: null, failures: 0, threadId: null, agentId: null, name: null }
 }
 
 test('the first subscriber primes from the list and later events replace it', async () => {

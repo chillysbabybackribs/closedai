@@ -3,14 +3,15 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowUp, Play, Square } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog.js'
 import { PromptInput, PromptInputAction, PromptInputTextarea } from '../components/ui/prompt-input.js'
+import type { AgentRunStartOptions } from '../shared/agent-runs.js'
 import type { ChatAttachment, ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
 import { ComposerFolderMenu } from './composer-folder-menu.js'
 import { ComposerSetupMenu, type ComposerSetupHandle } from './composer-setup-menu.js'
 import { useComposerDraft } from './composer-drafts.js'
+import { AgentLibraryDialog } from './agent-library/agent-library-dialog.js'
 import { errorMessage } from './error-message.js'
 
 export type ComposerProps = {
@@ -31,7 +32,8 @@ export type ComposerProps = {
   onModelChange: (modelId: string) => Promise<void>
   onReasoningEffortChange: (effort: string) => Promise<void>
   onSend: (text: string, attachments: ChatAttachment[]) => Promise<void>
-  onStartAgent?: (prompt: string) => Promise<void>
+  /** Starts an agent run in a new chat from the Agent dialog; see agent-library/. */
+  onStartAgent?: (options: AgentRunStartOptions) => Promise<void>
   onStop: () => Promise<void>
   /** A turn the pause button ended and nothing has followed, so Resume is worth offering. */
   paused: boolean
@@ -81,9 +83,6 @@ export function Composer({
   // One alert row for whatever the composer's own controls could not do: attach, pause, pick.
   const [composerError, setComposerError] = useState('')
   const [agentsOpen, setAgentsOpen] = useState(false)
-  const [agentPrompt, setAgentPrompt] = useState(DEFAULT_AGENT_PROMPT)
-  const [startingAgent, setStartingAgent] = useState(false)
-  const agentPromptRef = useRef<HTMLTextAreaElement>(null)
   const providerLabel = CHAT_PROVIDER_LABELS[provider]
   const [sending, setSending] = useState(false)
   // Blank while a turn runs: the pause button is the affordance then, and a hint would compete.
@@ -96,31 +95,6 @@ export function Composer({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const focusAfterSendRef = useRef(false)
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !sending && enabled && !running
-
-  async function startAgentFromBuilder(): Promise<void> {
-    if (!onStartAgent || startingAgent) return
-    const prompt = agentPrompt.trim()
-    if (!prompt) return
-    setStartingAgent(true)
-    setComposerError('')
-    try {
-      await onStartAgent(prompt)
-      setAgentsOpen(false)
-    } catch (error) {
-      setComposerError(errorMessage(error, 'Could not start the agent'))
-    } finally {
-      setStartingAgent(false)
-    }
-  }
-
-  useEffect(() => {
-    if (!agentsOpen) return
-    const frame = window.requestAnimationFrame(() => {
-      agentPromptRef.current?.focus()
-      agentPromptRef.current?.setSelectionRange(0, 0)
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [agentsOpen])
 
   useEffect(() => {
     if (sending || !focusAfterSendRef.current) return
@@ -274,7 +248,7 @@ export function Composer({
         <div className="composer-footer">
           {onStartAgent && <div className="composer-footer-agent">
             <Button type="button" variant="ghost" className="composer-agent-trigger" data-ui="composer.agents"
-              aria-label="Start agent" disabled={!enabled || startingAgent} onClick={() => setAgentsOpen(true)}>
+              aria-label="Open agents" disabled={!enabled} onClick={() => setAgentsOpen(true)}>
               <span>Agent</span>
             </Button>
           </div>}
@@ -320,47 +294,8 @@ export function Composer({
           </div>
         </div>
       </div>
-      <Dialog open={agentsOpen} onOpenChange={setAgentsOpen}>
-        <DialogContent className="composer-agent-dialog" data-ui="dialog.agent">
-          <DialogTitle>Start agent</DialogTitle>
-          <DialogDescription>
-            Opens a new chat with your instructions, using this pane&apos;s model. Pause anytime to test manually.
-          </DialogDescription>
-          <textarea
-            ref={agentPromptRef}
-            className="composer-agent-prompt"
-            data-ui="composer.agent-prompt"
-            value={agentPrompt}
-            onChange={(event) => setAgentPrompt(event.target.value)}
-            disabled={startingAgent}
-            spellCheck={false}
-            aria-label="Agent instructions"
-          />
-          <div className="composer-agent-dialog-actions">
-            <Button type="button" data-ui="composer.agent-start"
-              disabled={startingAgent || agentPrompt.trim().length === 0}
-              onClick={() => void startAgentFromBuilder()}>
-              {startingAgent ? 'Starting…' : 'Start'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {onStartAgent && <AgentLibraryDialog open={agentsOpen} onOpenChange={setAgentsOpen} onStart={onStartAgent} />}
       {composerError && <div className="prompt-attachment-error" role="alert">{composerError}</div>}
     </form>
   )
 }
-
-const DEFAULT_AGENT_PROMPT = `You are the continuously running ClosedAI application repair agent. The app drives you: whenever your turn ends, it sends the next cycle automatically until I pause or stop the run from the agent strip. Do not stop because a failure is ambiguous, verification failed, or the same issue recurs. I am monitoring; the strip is the only stop signal.
-
-Do as many cycles as you can within one turn, then end the turn with a status line; the next "Cycle N" message picks up from there. No sign-off, no "let me know if you want me to continue," and no treating a cycle report as the end of the job. If this chat's context is rotated, these instructions arrive again with the next cycle.
-
-Each cycle:
-1. closedai_app.state (workspace + ui + browser) and git status—note clean vs dirty before edits.
-2. Pick one user-facing workflow (chat, layout, browser, composer, history search, tools modal, settings). Prefer flows you can exercise from this pane without messaging other live chats.
-3. Exercise with closedai_app.command when a command exists; use closedai_app.ui only with fallback_reason when no command applies. Use embedded_browser.* for page content—not OS open helpers or file:// links. Never use press_key Escape to dismiss UI—it pauses running turns (this agent run and other chats); use explicit close/cancel controls.
-4. Do not use Computer Use / cua_repl for ClosedAI's own UI—use closedai_app and ui-controls manifest ids.
-5. Workspace safety: do not send_message, stop_agent, or closedai_app.agent on other panes; avoid open_chat unless a closed chat is required for the test; if you change selectedPaneId for a test, note it and return focus to this agent pane when done.
-6. Stable repro → smallest focused fix, then npm run test:one on the touched module (typecheck only if shared contracts changed). Flaky repro after two honest attempts → log it and move on—do not chase the same flake all cycle.
-7. End each cycle with one line: Cycle N — workflow — result — edited y/n — next.
-
-Preserve unrelated user changes; no speculative refactors.`

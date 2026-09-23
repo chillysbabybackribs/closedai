@@ -159,8 +159,12 @@ parked, detached, or freshly restored — paints from the chat's saved view inst
 transcript items (their serialized JSON capped at 256 KiB in UTF-8), its thread name, and its last
 context reading, written to `chat-transcripts/<chat id>.json` at each turn boundary and read back
 before the pane is announced. The view is display-only and never reaches a model; the provider's
-replay replaces it as soon as it lands, and it is used only while the chat still holds the thread
-it was taken from, so a new chat or a provider switch shows nothing stale. The cache drops oldest
+replay replaces it as soon as it lands. It remains valid for the active thread or the last retired
+session of a chat awaiting its next send after rotation, so relaunching that chat does not show
+an empty composer. Startup rebuilds visible history from retained rotation sessions, in order,
+and earlier-message paging crosses their boundaries. This is display history only: retired
+sessions are read, not resumed as model context. Explicitly starting or opening another chat
+clears the rotation history association. The cache drops oldest
 items until the tail fits, including the last item if it alone exceeds the cap; older cache files
 receive the same trimming when loaded. The provider retains the full transcript. The live transcript
 shows the current turn by default; **View previous messages** loads one earlier user/model turn at
@@ -362,10 +366,21 @@ available width for the title; the focused tile has the accent tab indicator.
 The composer is a single stack: a draft card (text and the action button on the right) and a
 footer bar beneath it with attach (`composer.upload`) on the left, the model setup trigger
 (`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
-on the right naming the working folder. The **Agent** button (`composer.agents`) opens a small
-builder with an instructions field (`composer.agent-prompt`) prefilled with a repair-agent template;
-**Start** (`composer.agent-start`) docks a new chat and starts an **agent run** on it
-(`agentRuns.start`), using the launching pane's model and folder. The main process
+on the right naming the working folder. The **Agent** button (`composer.agents`) opens the
+**Agents** dialog (`dialog.agent`, `src/renderer/agent-library/`): the saved-agent library on
+the left (`composer.agent-item`, most recently used first, each with its run count and last run;
+`composer.agent-new` clears the editor) and an editor on the right with a name
+(`composer.agent-name`), a max-cycles cap (`composer.agent-cycles`, blank runs until paused), and
+the standing instructions (`composer.agent-prompt`). The library (`src/main/agent-library/`,
+`agent-library.json`) is user-owned and never pruned; a first open seeds it with the built-in
+repair agent (`BUILT_IN_AGENTS` in `src/shared/agent-library.ts`), and an emptied library stays
+empty. **Save** (`composer.agent-save`) keeps a new entry or the loaded one's edits;
+**Delete** (`composer.agent-delete`) removes the loaded entry. **Start**
+(`composer.agent-start`) saves a named editor first, then docks a new chat and starts an
+**agent run** on it (`agentRuns.start`) using the launching pane's model and folder; an unnamed
+editor runs once and is not kept. The run records the library entry it came from (`agentId`,
+`name`), the strip and `closedai_app.state` show the agent's name, and main counts the run on
+the entry (`lastRunAt`, `runCount`) once its first cycle is out. The main process
 (`src/main/agent-runs/`) owns the loop: the instructions are cycle 1, and after every finished turn
 it waits a short settle delay and sends the next `Cycle N` message, so the chat never stops
 because the model signed off. A turn that produced no assistant or tool output counts as a
@@ -823,6 +838,7 @@ instrumentation.
 | Store file reads that set a damaged file aside, durable atomic writes | `src/main/store-recovery.ts`, `src/main/atomic-write.ts` |
 | Attach/detach lifecycle, summaries, per-chat settings, idle parking, catalog reconciliation | `src/main/chat-peers/` |
 | Agent runs: the turn-by-turn loop behind agent chats, retry and pause policy, relaunch restore | `src/main/agent-runs/`, `src/shared/agent-runs.ts` |
+| Agent library: the saved agents the Agents dialog lists, seeds, and counts runs for | `src/main/agent-library/`, `src/shared/agent-library.ts`, `src/renderer/agent-library/` |
 | Per-workspace provider model catalog cache | `src/main/chat-context/provider-catalog-cache.ts` |
 | Provider routing and id families | `src/main/chat-hub.ts`, `src/shared/chat-providers.ts` |
 | Workspace Codex process, pane routing, and transcript normalization | `src/main/codex-workspace-runtime.ts`, `src/main/chat-service.ts`, `src/main/app-server-client.ts`, `src/main/chat-normalizers.ts` |
@@ -869,6 +885,7 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 | `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, pin timestamp, parent chat, continuation digest, checkpoint, and the agent run driving the chat (`agentRun`: prompt, status, cycle, limits, failure count, last thread). Debounced atomic writes; flushed on quit |
 | `app-settings.json` | Cookie-import latch; active workspace/project; the open chat ids (`chatOpenIds`) and `chatSelectedPaneId`; saved per-project open ids and selection in `chatWorkspaces`; tool switches and context/batch settings. Legacy `chatPeers` and `chatWorkspaces[].peers` are imported into `chats.json` once, keeping each pane id as the chat id, and removed |
 | `browser-tabs.json`, `browser-history.json` | Restored tabs and omnibox history |
+| `agent-library.json` | Agents the user built and kept: id, name, standing instructions, cycle cap, created/updated times, last run and run count. Seeded with the built-in repair agent only when the file is missing; never pruned, debounced atomic writes, flushed on quit |
 | `saved-sites.json` | Sites the user saved on purpose: id, url, title, favicon, note, tags, saved/updated times, and the `lastCheckedAt`/`lastSummary` slots a daily brief will write; never pruned, debounced atomic writes, flushed on quit |
 | `Partitions/browser`, `code-cache/` | Chromium session data and app-configured code cache |
 | `browser-cache-state.json` | Last measured regenerable browser cache size and prune timestamp; when Cache + Service Worker + GPU caches exceed 768MB and the seven-day cooldown has elapsed, startup and periodic maintenance clear only regenerable stores (cookies, localStorage, and IndexedDB stay intact) |

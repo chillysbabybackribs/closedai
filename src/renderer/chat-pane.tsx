@@ -58,7 +58,7 @@ export const ChatPane = memo(function ChatPane({
   onDialogChange?: (dialog: ChatPaneDialog | null) => void
   selected?: boolean
   onNewChat: () => void
-  onStartAgent?: (prompt: string) => Promise<void>
+  onStartAgent?: (options: AgentRunStartOptions) => Promise<void>
   /** Opens a sibling tab with a digest-seeded chat (layout placement); message actions use this for full continue. */
   onContinueInNewChat?: () => Promise<void>
   archiveChat?: (chatId: string) => Promise<void>

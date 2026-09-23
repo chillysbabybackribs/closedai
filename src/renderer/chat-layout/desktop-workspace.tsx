@@ -66,7 +66,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
       onHistoryOpenChange={onHistoryOpenChange} dialog={selectedPaneId === id ? dialog : null}
       onDialogChange={onDialogChange} archiveChat={archiveChat}
       openHistoryChat={openHistoryChat}
-      onStartAgent={(prompt) => startAgentRef.current(id, prompt)}
+      onStartAgent={(options) => startAgentRef.current(id, options)}
       onContinueInNewChat={() => continueChatRef.current(id)}
       onNewChat={() => { void layout.newChat(id) }} />
   )
@@ -79,8 +79,8 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
     </div>
   ), [browser, browserDragHandle, layout.browserVisible])
   const continueChatRef = useRef<(id: string) => Promise<void>>(async () => {})
-  const startAgentRef = useRef<(id: string, prompt: string) => Promise<void>>(async () => {})
-  startAgentRef.current = async (sourceId, prompt) => {
+  const startAgentRef = useRef<(id: string, options: AgentRunStartOptions) => Promise<void>>(async () => {})
+  startAgentRef.current = async (sourceId, options) => {
     onHistoryOpenChange(false)
     const target = sourceId
     // Main drives the run from here on: the prompt is cycle 1, and every finished turn sends the
@@ -90,7 +90,7 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
     await layout.dock(null, target, null, false, async () => {
       const agentPaneId = await window.closedai.chat.newPeer()
       try {
-        await window.closedai.agentRuns.start(agentPaneId, { prompt })
+        await window.closedai.agentRuns.start(agentPaneId, options)
       } catch (error) {
         startError = error
       }

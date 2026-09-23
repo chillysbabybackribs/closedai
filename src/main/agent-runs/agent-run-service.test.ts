@@ -243,7 +243,7 @@ test('runs that were running at quit come back paused; archiving pauses and hide
   const id = openChat(h)
   const at = Date.now()
   h.store.update(id, { agentRun: { chatId: id, prompt: 'Go.', status: 'running', cycle: 4, maxCycles: null, startedAt: at, updatedAt: at,
-    lastTurnEndedAt: at, reason: null, failures: 0, threadId: 'thread-a' } })
+    lastTurnEndedAt: at, reason: null, failures: 0, threadId: 'thread-a', agentId: null, name: null } })
   const events: number[] = []
   h.service.on('change', (event: { runs: unknown[] }) => events.push(event.runs.length))
   h.service.start()
@@ -291,4 +291,27 @@ test('a start from the library keeps the agent id and name and announces the sta
   failing.service.on('started', () => { announced += 1 })
   await assert.rejects(failing.service.startRun(other, { prompt: 'Go.', agentId: 'saved-1' }), /offline/)
   assert.equal(announced, 0, 'a failed first send is not a run')
+})
+
+test('a run started from a library entry carries the agent id and name and announces the start', async () => {
+  const h = harness()
+  h.service.start()
+  const id = openChat(h)
+  const started: string[] = []
+  h.service.on('started', (run: { agentId: string | null; name: string | null }) => started.push(`${run.agentId}:${run.name}`))
+  const run = await h.service.startRun(id, { prompt: 'Go.', agentId: 'lib-1', name: '  Repair agent ' })
+  assert.equal(run.agentId, 'lib-1')
+  assert.equal(run.name, 'Repair agent')
+  assert.deepEqual(started, ['lib-1:Repair agent'])
+  assert.equal(h.store.require(id).agentRun?.name, 'Repair agent', 'the name is persisted with the run')
+})
+
+test('a failed first send announces nothing, so the library does not count it', async () => {
+  const h = harness({ sendError: () => new Error('signed out') })
+  h.service.start()
+  const id = openChat(h)
+  let announced = 0
+  h.service.on('started', () => { announced += 1 })
+  await assert.rejects(h.service.startRun(id, { prompt: 'Go.', agentId: 'lib-1', name: 'Repair agent' }), /signed out/)
+  assert.equal(announced, 0)
 })

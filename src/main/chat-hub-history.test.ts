@@ -7,7 +7,7 @@ import type { ChatTranscriptItem } from '../shared/chat.js'
 import { DEFAULT_APP_SETTINGS } from './app-settings-store.js'
 import { ChatHub, type ChatHubProviders } from './chat-hub.js'
 import { restoreHubHistory } from './chat-hub-history.js'
-import { chatRecord, FakeSurface, MemorySettings } from './chat-peers/peer-manager-harness.js'
+import { FakeSurface, MemorySettings } from './chat-peers/peer-manager-harness.js'
 import { PeerSettings } from './chat-peers/peer-settings.js'
 import { ChatStore } from './chat-store/chat-store.js'
 import { ChatTranscriptCache } from './chat-store/chat-transcript-cache.js'
@@ -38,7 +38,7 @@ test('disk relaunch paints a rotated chat, rebuilds every session, and pages acr
   t.after(() => rm(dir, { recursive: true, force: true }))
   const path = join(dir, 'chats.json')
   const store = await ChatStore.open(path)
-  const record = store.create({ cwd: '/workspace', projectPath: '/workspace', provider: 'codex', modelId: 'gpt' })
+  const record = store.create({ cwd: '/workspace', projectPath: '/workspace', provider: 'codex', modelId: 'gpt', reasoningEffort: null })
   store.update(record.id, { continuation, sessionRotations: rotations, title: 'Saved conversation' })
   const cache = new ChatTranscriptCache(join(dir, 'transcripts'))
   cache.remember(record.id, 'second', { ...new FakeSurface('gpt').state, items: [user('second-user')] })
@@ -48,6 +48,12 @@ test('disk relaunch paints a rotated chat, rebuilds every session, and pages acr
   const loaded = new ChatTranscriptCache(join(dir, 'transcripts'))
   const settings = new MemorySettings({ ...DEFAULT_APP_SETTINGS, chatOpenIds: [record.id], chatSelectedPaneId: record.id })
   const all = providers()
+  all.codex.state.connection = { state: 'starting', message: 'Starting' }
+  const read = all.codex.readThread.bind(all.codex)
+  all.codex.readThread = async (id) => {
+    all.codex.state.connection = { state: 'ready', message: 'Connected for history' }
+    return read(id)
+  }
   const hub = new ChatHub(all, 'gpt', new PeerSettings(settings, reopened, record.id))
   const manager = new ChatPeerManager(settings, reopened, () => hub, undefined, undefined, loaded)
   t.after(() => manager.stop())
@@ -56,6 +62,7 @@ test('disk relaunch paints a rotated chat, rebuilds every session, and pages acr
     if (event.type === 'workspace') painted.push(event.snapshot.selected.items.map((item: ChatTranscriptItem) => item.id))
   })
   await manager.start()
+  assert.ok(all.codex.calls.includes('start'), 'reading history must not skip provider resume')
   assert.deepEqual(painted[0], ['second-user'])
   assert.equal(manager.snapshot().selected.threadId, null)
   assert.deepEqual(hub.snapshot().items.map((item) => item.id), ['first-user', 'second-user'])
@@ -73,10 +80,16 @@ test('disk relaunch paints a rotated chat, rebuilds every session, and pages acr
 })
 
 test('history survives a consumed handoff and a resumed active thread', async () => {
-  const settings = new MemorySettings({ ...DEFAULT_APP_SETTINGS, chatThreadId: 'third', chatSessionRotations: rotations })
+  const settings = new MemorySettings({ ...DEFAULT_APP_SETTINGS, chatThreadId: 'third', chatContinuation: continuation, chatSessionRotations: rotations })
   const all = providers()
   all.codex.state.threadId = 'third'
   all.codex.state.items = [user('third-user')]
+  const read = all.codex.readThread.bind(all.codex)
+  all.codex.readThread = async (id) => {
+    // Connecting for a history read can resume the current session and clear its handoff.
+    await settings.set({ chatContinuation: null })
+    return read(id)
+  }
   const hub = new ChatHub(all, 'gpt', settings)
   await hub.start()
   assert.deepEqual(hub.snapshot().items.map((item) => item.id), ['first-user', 'second-user', 'third-user'])
@@ -97,5 +110,4 @@ test('an explicit new chat and a separate continuation do not restore retired hi
   const read = async () => { throw new Error('must not read an unrelated chat') }
   assert.equal(await restoreHubHistory({ ...DEFAULT_APP_SETTINGS, chatSessionRotations: rotations }, read), null)
   assert.equal(await restoreHubHistory({ ...DEFAULT_APP_SETTINGS, chatContinuation: continuation }, read), null)
-  assert.equal(chatRecord('blank', 'gpt').threadId, null)
 })

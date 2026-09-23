@@ -107,6 +107,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   private stopped = false
   /** Cleared whenever the pane leaves that conversation; in memory only, like the pane itself. */
   private carriedHistory: CarriedHistory | null = null
+  private historyRevision = 0
   /** A provider switch whose start and hand-over are still landing; conversation calls wait for it. */
   private switching: Promise<void> | null = null
   /**
@@ -159,6 +160,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
   }
 
   restoreConversation(source: ChatSnapshot): void {
+    this.historyRevision += 1
     this.carriedHistory = { provider: this.active, threadName: source.threadName, items: source.items }
   }
 
@@ -185,10 +187,11 @@ export class ChatHub extends EventEmitter implements ChatSurface {
    */
   async start(): Promise<void> {
     this.stopped = false
+    const needsStart = !this.dormant.has(this.active) && !this.isReady(this.active)
     await this.restoreSavedHistory()
     // A dormant provider waits for the first message; a ready one is not connected again (every
     // connect re-reads the catalog and replays the thread, which a warm-up must not repeat).
-    if (!this.dormant.has(this.active) && !this.isReady(this.active)) {
+    if (needsStart) {
       await this.providers[this.active].start({ warm: true })
         .catch((error: unknown) => console.warn(`[chat] ${this.active} start failed:`, error))
     }
@@ -203,11 +206,12 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   private async restoreSavedHistory(): Promise<void> {
     if (this.carriedHistory) return
+    const revision = this.historyRevision
     const saved = this.settings.get()
     const history = await restoreHubHistory(saved, (id, cwd) => this.readThread(id, cwd))
     const current = this.settings.get()
-    if (!history || this.stopped || JSON.stringify([saved.chatContinuation, saved.chatSessionRotations]) !==
-        JSON.stringify([current.chatContinuation, current.chatSessionRotations])) return
+    if (!history || this.stopped || revision !== this.historyRevision ||
+        JSON.stringify(saved.chatSessionRotations) !== JSON.stringify(current.chatSessionRotations)) return
     this.restoreConversation({ ...this.current().snapshot(), threadName: history.threadName, items: history.items })
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }
@@ -297,6 +301,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   async newThread(): Promise<void> {
     await this.settled()
+    this.historyRevision += 1
     this.carriedHistory = null
     await this.current().newThread()
     await this.settings.set({ chatSessionRotations: [] })
@@ -304,6 +309,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   async continueInNewThread(): Promise<void> {
     await this.settled()
+    this.historyRevision += 1
     this.carriedHistory = null
     await this.current().continueInNewThread()
     await this.settings.set({ chatSessionRotations: [] })
@@ -311,6 +317,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
 
   async openThread(threadId: string): Promise<void> {
     await this.settled()
+    this.historyRevision += 1
     const target = chatProviderOfId(threadId)
     const source = this.snapshot()
     this.carriedHistory = null
@@ -437,7 +444,7 @@ export class ChatHub extends EventEmitter implements ChatSurface {
       warmPromise: () => this.warmPromise,
       setWarmPromise: (promise) => { this.warmPromise = promise },
       carriedHistory: () => this.carriedHistory,
-      setCarriedHistory: (history) => { this.carriedHistory = history },
+      setCarriedHistory: (history) => { this.historyRevision += 1; this.carriedHistory = history },
       providers: this.providers,
       settings: this.settings,
       checkpoint: this.checkpoint,

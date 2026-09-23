@@ -35,3 +35,10 @@ test('a run started from the library is named on the strip', () => {
   assert.match(html, /Repair agent running/)
   assert.doesNotMatch(html, /Agent running/)
 })
+
+test('a run started from the library is named on the strip', () => {
+  const run: AgentRun = { ...base, agentId: 'lib-1', name: 'Repair agent' }
+  const html = renderToStaticMarkup(createElement(AgentRunStrip, { run, onPause: noop, onResume: noop, onStop: noop }))
+  assert.match(html, /Repair agent running/)
+  assert.doesNotMatch(html, /Agent running/)
+})

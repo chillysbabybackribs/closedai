@@ -15,7 +15,7 @@ export const WorkspaceChat = memo(function WorkspaceChat({ paneId, dispatch, app
   dialog: ChatPaneDialog | null
   onDialogChange: (dialog: ChatPaneDialog | null) => void
   onNewChat: () => void
-  onStartAgent?: (prompt: string) => Promise<void>
+  onStartAgent?: (options: AgentRunStartOptions) => Promise<void>
   onContinueInNewChat?: () => Promise<void>
   archiveChat?: (chatId: string) => Promise<void>
   openHistoryChat?: (chatId: string) => Promise<void>

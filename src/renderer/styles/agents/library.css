@@ -1,0 +1,16 @@
+/* Agents dialog (agent-library/agent-library-dialog.tsx): the same fixed frame as the tools
+   modal; the panel lays itself out with utility classes inside it. */
+.agent-library-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(960px, 94vw);
+  height: min(600px, 88vh);
+  max-width: none;
+  padding: 0;
+  overflow: hidden;
+}
+
+.agent-library-prompt {
+  font-size: 12.5px;
+  line-height: 1.5;
+}

@@ -45,7 +45,7 @@ export async function restoreHubHistory(
 export function withHubHistory(snapshot: ChatSnapshot, carried: CarriedHistory | null, window?: ChatHistoryWindow): ChatSnapshot {
   if (!carried || carried.provider !== snapshot.provider) return snapshot
   const transcript = new ChatTranscript(snapshot.cwd, () => null, () => {})
-  for (const item of [...carried.items, ...snapshot.items]) transcript.upsert(item)
+  transcript.replaceItems([...carried.items, ...snapshot.items])
   const page = window ? transcript.page(window) : null
   return {
     ...snapshot,

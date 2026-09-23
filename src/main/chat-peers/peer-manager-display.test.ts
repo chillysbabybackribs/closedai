@@ -231,11 +231,15 @@ test('a rotated chat paints and saves its last session view while its active thr
     sessionRotations: [{ epoch: 2, providerThreadId: 'last-session', sourceThroughItemId: 'saved', at: 2 }]
   })], 'pane-a', undefined, undefined, transcripts)
   await manager.start()
-  assert.equal(manager.snapshot().selected.items[0]?.id, 'saved')
+  assert.equal(manager.snapshot({ limit: 60 }).selected.items[0]?.id, 'saved')
   assert.equal(manager.snapshot().selected.threadId, null)
+  surfaces[0]!.state.items = [{ type: 'user', id: 'live', turnId: null, text: 'Retained transcript' }]
+  store.update('pane-a', { continuation: null })
+  surfaces[0]!.state.items = []
+  assert.deepEqual(manager.snapshot({ limit: 60 }).selected.items, [])
+  store.update('pane-a', { continuation: { sourcePaneId: 'pane-a', sourceThreadId: 'first-session',
+    sourceProvider: 'codex', sourceTitle: 'Saved conversation', handoff: 'Continue', createdAt: 1 } })
   surfaces[0]!.state.items = [{ type: 'user', id: 'live', turnId: null, text: 'Retained transcript' }]
   manager.stop()
   assert.equal(transcripts.peek('pane-a')?.items[0]?.id, 'live')
-  store.update('pane-a', { continuation: null })
-  assert.deepEqual(manager.snapshot().selected?.items ?? [], [])
 })
