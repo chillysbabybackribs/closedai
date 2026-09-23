@@ -17,7 +17,7 @@ function escapeEvent(overrides: {
     ctrlKey: overrides.ctrlKey ?? false,
     metaKey: overrides.metaKey ?? false,
     shiftKey: overrides.shiftKey ?? false,
-    nativeEvent: { isComposing: overrides.isComposing ?? false }
+    nativeEvent: { isComposing: overrides.isComposing ?? false } as KeyboardEvent
   })
 }
 

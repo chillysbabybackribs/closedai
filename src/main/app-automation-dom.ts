@@ -65,7 +65,7 @@ export function uiStateExpression(): string {
       chatSearchOpen: byId('titlebar.chat-search')?.getAttribute('aria-expanded') === 'true',
       layout: {
         visiblePaneIds: Array.from(document.querySelectorAll('[data-pane-id]')).map((element) => element.getAttribute('data-pane-id')),
-        browserVisible: document.querySelector('[data-ui="layout.browser-toggle"]')?.getAttribute('aria-pressed') !== 'false'
+        browserVisible: document.querySelector('.workspace-right[data-mode="browser"]')?.getAttribute('data-with-browser') === 'yes'
       },
       historyOpen: Boolean(byId('chat.history')),
       downloadsOpen: Boolean(document.querySelector('[data-ui-surface="browser-downloads"]')),

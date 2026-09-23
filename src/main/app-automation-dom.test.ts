@@ -26,6 +26,7 @@ test('control listing and ui state are bounded renderer expressions over data-ui
   const state = uiStateExpression()
   validJavaScript(state)
   for (const id of ['composer.input', 'data-can-send', 'composer.stop', 'chat.history']) assert.match(state, new RegExp(id))
+  assert.match(state, /data-with-browser/)
 })
 
 test('targets become attribute selectors and action expressions stay valid', () => {
@@ -106,6 +107,28 @@ test('control resolution names the failure: not rendered, disabled, or ambiguous
     assert.rejects(run(targetClickExpression({ control: 'titlebar.chat-search-result' })), /matches 2 elements.*Items: a: Alpha chat \| b: Beta chat/))
   await withDom(rows, () =>
     assert.rejects(run(targetClickExpression({ control: 'titlebar.chat-search-result', match: 'gamma' })), /No visible titlebar\.chat-search-result matches "gamma"/))
+})
+
+test('ui state reads browser visibility from the workspace, not the titlebar toggle', () => {
+  const browserDock = fakeElement({
+    attributes: { 'data-mode': 'browser', 'data-with-browser': 'no' },
+    closest: () => null
+  })
+  withDom([], () => {
+    const originalDocument = globalThis.document
+    Object.assign(globalThis, {
+      document: {
+        querySelector: (selector: string) => (selector.includes('workspace-right') ? browserDock : null),
+        querySelectorAll: () => []
+      }
+    })
+    try {
+      const state = new Function(`return ${uiStateExpression()}`)() as { layout: { browserVisible: boolean } }
+      assert.equal(state.layout.browserVisible, false)
+    } finally {
+      Object.assign(globalThis, { document: originalDocument })
+    }
+  })
 })
 
 test('control resolution diagnoses elements belonging to unselected panes', async () => {
