@@ -97,6 +97,7 @@ export function ModelPicker({
             {group.models.map((model) => (
               <ModelRow
                 key={model.id}
+                control="composer.model-item"
                 model={model}
                 value={itemValue(group.provider, model)}
                 checked={model.id === selectedModel}
@@ -115,6 +116,7 @@ export function ModelPicker({
           {recent.map((model) => (
             <ModelRow
               key={model.id}
+              control="composer.model-recent"
               model={model}
               value={itemValue('recent', model)}
               checked={false}
@@ -129,7 +131,8 @@ export function ModelPicker({
   )
 }
 
-function ModelRow({ model, value, checked, disabled, lane = false, onSelect }: {
+function ModelRow({ control, model, value, checked, disabled, lane = false, onSelect }: {
+  control: 'composer.model-item' | 'composer.model-recent'
   model: ChatModel
   value: string
   checked: boolean
@@ -145,7 +148,7 @@ function ModelRow({ model, value, checked, disabled, lane = false, onSelect }: {
       value={value}
       disabled={disabled}
       onSelect={onSelect}
-      data-ui={lane ? 'composer.model-recent' : 'composer.model-item'}
+      data-ui={control}
       data-ui-key={model.id}
       data-checked={checked || undefined}
       title={title || undefined}
