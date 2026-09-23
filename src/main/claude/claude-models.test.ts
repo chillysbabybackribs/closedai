@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ModelInfo } from '@anthropic-ai/claude-agent-sdk'
 import { claudeModelId, claudeModelValue, claudeSessionIdOf, claudeThreadId, isClaudeModelId, isClaudeThreadId } from './claude-ids.js'
-import { claudeDisplayName, claudeModelCatalog, claudeModelsFromInfo, resolveClaudeModelId, supportsAdaptiveThinking } from './claude-models.js'
+import { claudeContextWindow, claudeDisplayName, claudeModelCatalog, claudeModelsFromInfo, resolveClaudeModelId, supportsAdaptiveThinking } from './claude-models.js'
 
 // The catalog the CLI reported on 2026-09-02 (SDK 0.3.258), trimmed to the fields used.
 const infos: ModelInfo[] = [
@@ -23,18 +23,26 @@ test('ids round-trip through the claude prefix and reject foreign ids', () => {
   assert.equal(isClaudeThreadId('0f7c0c9c-1c1e-4c7a-9f8b-3a1f6d2e9a10'), false)
 })
 
+test('context window follows tier markers and family defaults', () => {
+  assert.equal(claudeContextWindow({ value: 'opus[1m]', resolvedModel: 'claude-opus-5[1m]', displayName: 'Opus', description: '' }), 1_000_000)
+  assert.equal(claudeContextWindow({ value: 'sonnet', resolvedModel: 'claude-sonnet-5', displayName: 'Sonnet', description: '' }), 200_000)
+})
+
 test('catalog collapses aliases, keeps the CLI default, and carries effort levels', () => {
   const models = claudeModelsFromInfo(infos)
-  assert.deepEqual(models.map((model) => model.id), ['claude:opus[1m]', 'claude:claude-fable-5-1[1m]', 'claude:haiku'])
-  assert.equal(models[0]!.isDefault, true)
+  assert.deepEqual(models.map((model) => model.id), ['claude:haiku', 'claude:claude-fable-5-1[1m]', 'claude:opus[1m]'])
+  assert.equal(models[2]!.contextWindow, 1_000_000)
+  assert.equal(models[0]!.contextWindow, 200_000)
+  assert.equal(models.find((model) => model.isDefault)?.id, 'claude:opus[1m]')
   assert.equal(models[0]!.provider, 'claude')
   assert.equal(models[0]!.defaultReasoningEffort, 'high')
-  assert.deepEqual(models[0]!.supportedReasoningEfforts.map((option) => option.reasoningEffort), ['low', 'medium', 'high', 'xhigh', 'max'])
-  assert.deepEqual(models[2]!.supportedReasoningEfforts, [])
+  const opus = models.find((model) => model.id === 'claude:opus[1m]')!
+  assert.deepEqual(opus.supportedReasoningEfforts.map((option) => option.reasoningEffort), ['low', 'medium', 'high', 'xhigh', 'max'])
+  assert.deepEqual(models.find((model) => model.id === 'claude:haiku')!.supportedReasoningEfforts, [])
 })
 
 test('display names carry the full version and context tier', () => {
-  assert.deepEqual(claudeModelsFromInfo(infos).map((model) => model.displayName), ['Opus 5 (1M)', 'Fable 5.1 (1M)', 'Haiku 4.5'])
+  assert.deepEqual(claudeModelsFromInfo(infos).map((model) => model.displayName), ['Haiku 4.5', 'Fable 5.1 (1M)', 'Opus 5 (1M)'])
   assert.equal(claudeDisplayName({ value: 'sonnet', resolvedModel: 'claude-sonnet-5', displayName: 'Sonnet' }), 'Sonnet 5')
   assert.equal(claudeDisplayName({ value: 'custom', resolvedModel: 'my-gateway-model', displayName: 'Gateway' }), 'Gateway')
 })

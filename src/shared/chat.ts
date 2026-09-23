@@ -29,6 +29,8 @@ export type ChatModel = {
   defaultReasoningEffort: string
   supportedReasoningEfforts: ChatReasoningEffort[]
   isDefault: boolean
+  /** Claude Code fast mode; live-applied through the SDK when the account supports it. */
+  supportsFastMode?: boolean
 }
 
 export type ChatReasoningEffort = {

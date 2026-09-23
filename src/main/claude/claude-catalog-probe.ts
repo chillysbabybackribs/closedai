@@ -31,5 +31,3 @@ export async function probeClaudeCatalog(sdk: Pick<ClaudeSdk, 'query'>, cwd: str
     await runtime.close()
   }
 }
-
-export type { ModelInfo }

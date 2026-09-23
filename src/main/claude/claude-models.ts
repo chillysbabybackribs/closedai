@@ -19,6 +19,9 @@ const EFFORT_DESCRIPTIONS: Record<string, string> = {
   max: 'Maximum effort'
 }
 
+/** Picker order: lighter models first within the Claude section. */
+const FAMILY_RANK: Record<string, number> = { haiku: 0, sonnet: 1, fable: 2, opus: 3 }
+
 /** Composer models for the CLI's catalog. Aliases of the same model collapse to one entry. */
 export function claudeModelsFromInfo(infos: readonly ModelInfo[]): ChatModel[] {
   const defaultTarget = infos.find((info) => info.value === 'default')?.resolvedModel ?? null
@@ -29,18 +32,47 @@ export function claudeModelsFromInfo(infos: readonly ModelInfo[]): ChatModel[] {
     const identity = info.resolvedModel ?? info.value
     if (seen.has(identity)) continue
     seen.add(identity)
+    const contextWindow = claudeContextWindow(info)
     models.push({
       provider: 'claude',
       id: claudeModelId(info.value),
       displayName: claudeDisplayName(info),
       description: info.description ?? '',
+      ...(contextWindow ? { contextWindow } : {}),
       defaultReasoningEffort: CLAUDE_DEFAULT_EFFORT,
       supportedReasoningEfforts: effortOptions(info),
+      ...(info.supportsFastMode ? { supportsFastMode: true } : {}),
       isDefault: defaultTarget !== null && identity === defaultTarget
     })
   }
-  if (models.length > 0 && !models.some((model) => model.isDefault)) models[0]!.isDefault = true
-  return models
+  const sorted = sortClaudeModels(models, infos)
+  if (sorted.length > 0 && !sorted.some((model) => model.isDefault)) sorted[0]!.isDefault = true
+  return sorted
+}
+
+/** Context capacity for the picker and rotation heuristics when the CLI does not spell it out. */
+export function claudeContextWindow(info: Pick<ModelInfo, 'value' | 'resolvedModel' | 'displayName' | 'description'>): number | undefined {
+  const raw = `${info.resolvedModel ?? ''} ${info.value} ${info.displayName ?? ''} ${info.description ?? ''}`
+  if (/\[1m\]|1\s*m\s*context|1m context/i.test(raw)) return 1_000_000
+  if (/\b200\s*k\b|200k context/i.test(raw)) return 200_000
+  if (/haiku/i.test(raw)) return 200_000
+  if (/opus|sonnet|fable/i.test(raw)) return 200_000
+  return undefined
+}
+
+function sortClaudeModels(models: ChatModel[], infos: readonly ModelInfo[]): ChatModel[] {
+  const valueById = new Map(models.map((model) => [model.id, claudeModelValue(model.id)]))
+  const infoByValue = new Map(infos.map((info) => [info.value, info]))
+  const rank = (model: ChatModel): number => {
+    const value = valueById.get(model.id) ?? ''
+    const info = infoByValue.get(value)
+    const raw = (info?.resolvedModel ?? value).toLowerCase()
+    for (const [family, order] of Object.entries(FAMILY_RANK)) {
+      if (raw.includes(family)) return order
+    }
+    return 99
+  }
+  return [...models].sort((a, b) => rank(a) - rank(b) || a.displayName.localeCompare(b.displayName))
 }
 
 /**

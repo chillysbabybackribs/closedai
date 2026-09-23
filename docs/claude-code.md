@@ -41,7 +41,10 @@ and transcript notes were reviewed against current source on 2026-09-03, without
   `Query.applyFlagSettings({ effortLevel })`; the model applies live through `Query.setModel`.
 - **Models** come from `Query.supportedModels()` at startup, never a hardcoded list: aliases of one model
   collapse (`default` and `opus[1m]` both resolve to `claude-opus-5[1m]`), the CLI's default is the
-  picker default, and each entry's `supportedEffortLevels` feeds the effort picker.
+  picker default, and each entry's `supportedEffortLevels` feeds the effort picker. The picker lists
+  Haiku → Sonnet → Fable → Opus, attaches a context tier when the CLI names one (`[1m]` → 1M), and
+  records `supportsFastMode` when the account advertises it. A cold catalog read uses a short-lived
+  probe process with no MCP servers; a warm start reuses the session process instead.
 
 - **Grep and Glob are requested explicitly** (`allowedTools: ['Grep', 'Glob']`): native Claude
   Code builds otherwise omit them and route every search through Bash (SDK `tools` docs). Verified

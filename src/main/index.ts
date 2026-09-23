@@ -104,6 +104,8 @@ let stopBrowserCacheMaintenance: (() => void) | null = null
 let browserReadyToLoad: Promise<unknown> | null = null
 /** A cookie import this slow is a broken one; the first page loads without it. */
 const COOKIE_IMPORT_LOAD_GATE_MS = 5000
+/** Long enough after the window's first load that the check cannot compete with the mount. */
+const COOKIE_REPAIR_IDLE_MS = 10_000
 let quitting = false
 const liveVerifyHandle: LiveVerifyHandle = {
   requested: false,
@@ -330,7 +332,8 @@ async function main(): Promise<void> {
   // refilled a moment late, and the launch after it is latched and correct.
   if (!cookieImportPending) {
     mainWindow?.webContents.once('did-finish-load', () => {
-      void importDefaultBrowserCookies(cookieDeps).catch(reportCookieImport)
+      setTimeout(() => { void importDefaultBrowserCookies(cookieDeps).catch(reportCookieImport) },
+        COOKIE_REPAIR_IDLE_MS).unref()
     })
   }
   void chatService.start()
@@ -355,7 +358,12 @@ function reportCookieImport(error: unknown): void {
 
 /** The same promise, but never waited on for longer than `ms`. */
 function capped(work: Promise<unknown>, ms: number, onTimeout: () => void): Promise<unknown> {
-  return Promise.race([work, new Promise((resolve) => setTimeout(() => { onTimeout(); resolve(null) }, ms).unref())])
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => { onTimeout(); resolve(null) }, ms)
+    timer.unref()
+    const settle = (): void => { clearTimeout(timer); resolve(null) }
+    void work.then(settle, settle)
+  })
 }
 
 /** Null for Electron's default userData; a short stable hash for any other profile. */

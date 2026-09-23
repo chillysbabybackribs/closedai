@@ -47,6 +47,7 @@ import { ChatTranscript } from '../chat-transcript.js'
 import type { ScreenshotStore } from '../tools/capture/screenshot-store.js'
 import { ToolRegistry } from '../tools/registry.js'
 import { forgetClaudeCatalog, readClaudeCatalog, rememberClaudeCatalog } from './claude-catalog.js'
+import { probeClaudeCatalog } from './claude-catalog-probe.js'
 import { archiveClaudeThread, claudeThreadName, listClaudeThreads } from './claude-history.js'
 import { claudeModelValue, claudeSessionIdOf, claudeThreadId } from './claude-ids.js'
 import { buildClaudeUserMessage } from './claude-input.js'
@@ -89,6 +90,7 @@ export class ClaudeChatService extends EventEmitter {
    */
   private readonly threadCache = new Map<string, ChatThreadContent>()
   private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
+  private mcpServersCache: { key: string; servers: ReturnType<typeof claudeMcpServers> } | null = null
 
   constructor(
     readonly cwd: string,
@@ -299,9 +301,9 @@ export class ClaudeChatService extends EventEmitter {
       // one, so a new chat's composer is live immediately.
       let catalog = readClaudeCatalog(this.cwd)
       if (!catalog) {
-        const runtime = this.session.ensureRuntime()
-        const [models, account] = await Promise.all([runtime.supportedModels(), runtime.accountInfo().catch(() => null)])
-        catalog = { models, account }
+        catalog = warm
+          ? await this.readCatalogFromSession()
+          : await probeClaudeCatalog(this.sdk, this.cwd)
         rememberClaudeCatalog(this.cwd, catalog)
       }
       this.modelInfos = catalog.models
@@ -343,15 +345,32 @@ export class ClaudeChatService extends EventEmitter {
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
   }
 
+  private async readCatalogFromSession(): Promise<Awaited<ReturnType<typeof probeClaudeCatalog>>> {
+    const runtime = this.session!.ensureRuntime()
+    const [models, account] = await Promise.all([
+      runtime.supportedModels(),
+      runtime.accountInfo().catch(() => null)
+    ])
+    return { models, account }
+  }
+
+  private mcpServersFor(sdk: ClaudeSdk): ReturnType<typeof claudeMcpServers> {
+    const key = this.tools.disabledIds().join('\0')
+    if (this.mcpServersCache?.key === key) return this.mcpServersCache.servers
+    const servers = claudeMcpServers(sdk, this.tools, () => ({
+      paneId: this.paneId,
+      threadId: this.session?.sessionId ? claudeThreadId(this.session.sessionId) : null,
+      turnId: this.activeTurnId
+    }))
+    this.mcpServersCache = { key, servers }
+    return servers
+  }
+
   private createSession(sdk: ClaudeSdk): ClaudeSession {
     const session = new ClaudeSession({
       sdk,
       cwd: this.cwd,
-      mcpServers: () => claudeMcpServers(sdk, this.tools, () => ({
-        paneId: this.paneId,
-        threadId: this.session?.sessionId ? claudeThreadId(this.session.sessionId) : null,
-        turnId: this.activeTurnId
-      })),
+      mcpServers: () => this.mcpServersFor(sdk),
       displayScreenshot: (callId) => this.screenshots?.get(callId) ?? null,
       apply: (op) => this.applyOp(op),
       onTurn: (turnId) => this.setTurn(turnId),
