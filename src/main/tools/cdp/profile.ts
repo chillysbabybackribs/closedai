@@ -35,12 +35,8 @@ export function cdpProfileTool(cdp: CdpHostProvider): ToolDefinition {
     name: 'profile',
     deferLoading: true,
     description:
-      'Measure what a real page costs: unused JavaScript and CSS bytes, the functions holding the ' +
-      'main thread, and the call sites allocating memory. Coverage and sampling must be armed before ' +
-      'the code runs, so call start, then navigate or interact, then stop. The raw protocol payloads ' +
-      'are far too large to return — a single precise-coverage take on an article page is ~950k ' +
-      'characters — so every result here is folded in the main process into ranked totals. Use metrics ' +
-      'on its own for a cheap snapshot of nodes, listeners, layout counts and heap size with nothing armed.',
+      'Profile page coverage or runtime cost. Call start, perform the work, then stop; reports summarize the selected ' +
+      'channels by URL, function, or allocation site. metrics returns a snapshot without starting a recording.',
     actions: actions(cdp)
   })
 }
