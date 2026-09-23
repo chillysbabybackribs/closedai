@@ -15,7 +15,8 @@ import { chatProviderOfId } from '../../shared/chat-providers.js'
 import type { EnableCoordinatorResult, OpenCoordinatorWorkspaceResult } from '../../shared/coordinator.js'
 import type { ChatRecordSeed } from '../../shared/chat-store.js'
 import type { ChatContinuation } from '../../shared/types.js'
-import { coordinatorResult, findCoordinatorWorkspace, groupMembers, pickCoordinatorWorker } from './coordinator.js'
+import { groupMembers, pickCoordinatorWorker } from './coordinator.js'
+import { enableCoordinator, openCoordinatorWorkspace, type PeerCoordinatorHost } from './peer-coordinator-ops.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import { refreshModelPicker as refreshPaneModelPickers, selectedHub as hubForSelectedPane } from './peer-model-settings.js'
@@ -341,79 +342,31 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   async openCoordinatorWorkspace(): Promise<OpenCoordinatorWorkspaceResult> {
-    this.projectSwitch.assertAvailable()
-    const existing = findCoordinatorWorkspace(this.store)
-    if (existing) {
-      await this.selectPane(existing.coordinatorPaneId)
-      await this.persistOpenChats()
-      await this.trimAttached()
-      this.emitWorkspace()
-      return existing
-    }
-    const groupId = crypto.randomUUID()
-    const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
-    const coordinatorPaneId = await this.newChat(current.selectedModel, current.selectedReasoningEffort, null, this.workspace(), {
-      selectPane: false,
-      seed: {
-        coordinatorGroup: { id: groupId, role: 'coordinator', slot: null },
-        title: 'Coordinator',
-        titleSource: 'manual'
-      }
-    })
-    const workerPaneId = await this.newChat(current.selectedModel, current.selectedReasoningEffort, null, this.workspace(), {
-      selectPane: false,
-      seed: {
-        parentChatId: coordinatorPaneId,
-        coordinatorGroup: { id: groupId, role: 'worker', slot: 'a' },
-        title: 'Worker',
-        titleSource: 'manual'
-      }
-    })
-    await this.selectPane(coordinatorPaneId)
-    await this.persistOpenChats()
-    await this.trimAttached()
-    this.emitWorkspace()
-    return { groupId, coordinatorPaneId, workerPaneId }
+    return openCoordinatorWorkspace(this.coordinatorHost())
   }
 
   async enableCoordinator(paneId: ChatPaneId): Promise<EnableCoordinatorResult> {
-    this.projectSwitch.assertAvailable()
-    const record = this.store.require(paneId)
-    if (record.coordinatorGroup?.role === 'coordinator') {
-      const workers = groupMembers(this.store, record.coordinatorGroup.id)
-        .filter((member) => member.coordinatorGroup?.role === 'worker')
-        .sort((a, b) => (a.coordinatorGroup!.slot === 'a' ? 0 : 1) - (b.coordinatorGroup!.slot === 'a' ? 0 : 1))
-      if (workers.length >= 2) {
-        await this.selectPane(paneId)
-        return coordinatorResult(paneId, [workers[0]!, workers[1]!])
+    return enableCoordinator(this.coordinatorHost(), paneId)
+  }
+
+  private coordinatorHost(): PeerCoordinatorHost {
+    return {
+      store: this.store,
+      assertAvailable: () => this.projectSwitch.assertAvailable(),
+      modelOf: (paneId) => {
+        const current = this.lifecycle.require(paneId).surface.snapshot({ limit: 0 })
+        return { modelId: current.selectedModel, reasoningEffort: current.selectedReasoningEffort }
+      },
+      selectedPaneId: () => this.selectedPaneId,
+      createSeeded: (model, seed) =>
+        this.newChat(model.modelId, model.reasoningEffort, null, this.workspace(), { selectPane: false, seed }),
+      selectPane: (paneId) => this.selectPane(paneId),
+      settle: async () => {
+        await this.persistOpenChats()
+        await this.trimAttached()
+        this.emitWorkspace()
       }
     }
-    const groupId = crypto.randomUUID()
-    this.store.update(paneId, { coordinatorGroup: { id: groupId, role: 'coordinator', slot: null } })
-    const current = this.lifecycle.require(paneId).surface.snapshot({ limit: 0 })
-    const workerA = await this.newChat(current.selectedModel, current.selectedReasoningEffort, null, this.workspace(), {
-      selectPane: false,
-      seed: {
-        parentChatId: paneId,
-        coordinatorGroup: { id: groupId, role: 'worker', slot: 'a' },
-        title: 'Worker A',
-        titleSource: 'manual'
-      }
-    })
-    const workerB = await this.newChat(current.selectedModel, current.selectedReasoningEffort, null, this.workspace(), {
-      selectPane: false,
-      seed: {
-        parentChatId: paneId,
-        coordinatorGroup: { id: groupId, role: 'worker', slot: 'b' },
-        title: 'Worker B',
-        titleSource: 'manual'
-      }
-    })
-    await this.selectPane(paneId)
-    await this.persistOpenChats()
-    await this.trimAttached()
-    this.emitWorkspace()
-    return coordinatorResult(paneId, [this.store.require(workerA), this.store.require(workerB)])
   }
 
   async disableCoordinator(paneId: ChatPaneId): Promise<void> {
