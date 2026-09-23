@@ -15,6 +15,7 @@ export type SecuritySettingsAccess = {
  */
 export class SecuritySettingsStore implements SecuritySettingsAccess {
   readonly #listeners = new Set<(settings: SecuritySettings) => void>()
+  #writing: Promise<void> = Promise.resolve()
 
   private constructor(
     private readonly filePath: string,
@@ -30,12 +31,18 @@ export class SecuritySettingsStore implements SecuritySettingsAccess {
     return { ...this.settings }
   }
 
-  async set(patch: Partial<SecuritySettings>): Promise<SecuritySettings> {
-    this.settings = normalizeSecuritySettings({ ...this.settings, ...patch })
-    await writeAtomic(this.filePath, `${JSON.stringify(this.settings, null, 2)}\n`)
-    const snapshot = this.get()
-    for (const listener of this.#listeners) listener(snapshot)
-    return snapshot
+  set(patch: Partial<SecuritySettings>): Promise<SecuritySettings> {
+    const requested = { ...patch }
+    const write = this.#writing.then(async () => {
+      const next = normalizeSecuritySettings({ ...this.settings, ...requested })
+      await writeAtomic(this.filePath, `${JSON.stringify(next, null, 2)}\n`)
+      this.settings = next
+      const snapshot = this.get()
+      for (const listener of this.#listeners) listener(snapshot)
+      return snapshot
+    })
+    this.#writing = write.then(() => {}, () => {})
+    return write
   }
 
   onChange(listener: (settings: SecuritySettings) => void): () => void {

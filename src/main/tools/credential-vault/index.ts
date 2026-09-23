@@ -71,7 +71,8 @@ function readTool(getVault: () => CredentialVaultHost | null, getPolicy: () => C
       'Decrypt selected fields from one saved credential for an operation the user requested. Call list first and request ' +
       'only the required field_ids. The result is sensitive: never print, quote, summarize, log, or write it to source or ' +
       'files; use it only in the immediate operation. Do not call this through tool_batch. An entry the user has not ' +
-      'allowed agents to use is refused, and the user may be asked to approve the read before it returns.',
+      'allowed agents to use is refused, including changes made while approval is pending, and the user may be asked ' +
+      'to approve the read before it returns.',
     timeoutMs: READ_TIMEOUT_MS,
     inputSchema: objectSchema({
       credential_id: { type: 'string', minLength: 1, description: 'Credential id returned by credential_vault.list.' },
@@ -117,6 +118,9 @@ function readTool(getVault: () => CredentialVaultHost | null, getPolicy: () => C
           reason: stringArg(input, 'reason', '')!
         }, context.signal)
         if (!allowed) throw new Error(APPROVAL_DECLINED_MESSAGE)
+        const current = (await vault.list()).find((entry) => entry.id === credentialId)
+        if (!current) throw new Error('Credential not found')
+        if (!current.agentAccess) throw new Error(AGENT_ACCESS_OFF_MESSAGE)
       }
       const revealed = await Promise.all(fields.map(async (field) => [field.id, await vault.reveal(credential.id, field.id)]))
       return {

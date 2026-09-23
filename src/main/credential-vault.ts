@@ -66,6 +66,7 @@ export class CredentialVault {
   #encryption: VaultEncryption
   #policy: VaultPolicy
   #loaded: Promise<StoredVault> | null = null
+  #writing: Promise<void> = Promise.resolve()
 
   constructor(filePath: string, encryption: VaultEncryption, policy: VaultPolicy = { secretsRequireKeychain: () => false }) {
     this.#filePath = filePath
@@ -116,10 +117,12 @@ export class CredentialVault {
       })
     }
 
-    const vault = await this.#load()
-    vault.credentials.push(record)
-    await this.#persist(vault)
-    return summarize(record)
+    return this.#enqueue(async () => {
+      const vault = structuredClone(await this.#load())
+      vault.credentials.push(record)
+      await this.#persist(vault)
+      return summarize(record)
+    })
   }
 
   /** Decrypt one field on demand. The renderer asks per reveal or copy, never in bulk. */
@@ -140,31 +143,36 @@ export class CredentialVault {
   }
 
   async remove(credentialId: string): Promise<void> {
-    const vault = await this.#load()
-    const next = vault.credentials.filter((entry) => entry.id !== credentialId)
-    if (next.length === vault.credentials.length) return
-    vault.credentials = next
-    await this.#persist(vault)
+    return this.#enqueue(async () => {
+      const vault = await this.#load()
+      const next = vault.credentials.filter((entry) => entry.id !== credentialId)
+      if (next.length === vault.credentials.length) return
+      await this.#persist({ ...vault, credentials: next })
+    })
   }
 
   async rename(credentialId: string, label: string): Promise<CredentialSummary> {
-    const vault = await this.#load()
-    const record = vault.credentials.find((entry) => entry.id === credentialId)
-    if (!record) throw new Error('Credential not found')
-    record.label = label.trim() || record.serviceId
-    record.updatedAt = Date.now()
-    await this.#persist(vault)
-    return summarize(record)
+    return this.#enqueue(async () => {
+      const vault = structuredClone(await this.#load())
+      const record = vault.credentials.find((entry) => entry.id === credentialId)
+      if (!record) throw new Error('Credential not found')
+      record.label = label.trim() || record.serviceId
+      record.updatedAt = Date.now()
+      await this.#persist(vault)
+      return summarize(record)
+    })
   }
 
   /** Settings → Security per-entry switch; `updatedAt` is untouched so the list order holds. */
   async setAgentAccess(credentialId: string, allowed: boolean): Promise<CredentialSummary> {
-    const vault = await this.#load()
-    const record = vault.credentials.find((entry) => entry.id === credentialId)
-    if (!record) throw new Error('Credential not found')
-    record.agentAccess = allowed
-    await this.#persist(vault)
-    return summarize(record)
+    return this.#enqueue(async () => {
+      const vault = structuredClone(await this.#load())
+      const record = vault.credentials.find((entry) => entry.id === credentialId)
+      if (!record) throw new Error('Credential not found')
+      record.agentAccess = allowed
+      await this.#persist(vault)
+      return summarize(record)
+    })
   }
 
   #protect(kind: CredentialFieldKind, value: string): { value: string; encrypted: boolean } {
@@ -181,24 +189,38 @@ export class CredentialVault {
   }
 
   async #persist(vault: StoredVault): Promise<void> {
-    this.#loaded = Promise.resolve(vault)
     await writeAtomic(this.#filePath, JSON.stringify(vault, null, 2))
+    this.#loaded = Promise.resolve(vault)
+  }
+
+  #enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const write = this.#writing.then(operation)
+    this.#writing = write.then(() => {}, () => {})
+    return write
   }
 }
 
 function normalize(parsed: unknown): StoredVault {
-  if (!parsed || typeof parsed !== 'object') return structuredClone(EMPTY)
-  const credentials = (parsed as StoredVault).credentials
-  if (!Array.isArray(credentials)) return structuredClone(EMPTY)
+  if (!parsed || typeof parsed !== 'object') throw new Error('Invalid credential vault')
+  const { version, credentials } = parsed as StoredVault
+  if (version !== 1 || !Array.isArray(credentials) || !credentials.every(validRecord)) {
+    throw new Error('Invalid credential vault structure')
+  }
   return {
     version: 1,
     credentials: credentials
-      .filter(
-        (record): record is StoredCredential =>
-          Boolean(record) && typeof record.id === 'string' && Array.isArray(record.fields)
-      )
       .map((record) => ({ ...record, agentAccess: record.agentAccess !== false }))
   }
+}
+
+function validRecord(record: StoredCredential): boolean {
+  return Boolean(record) && typeof record.id === 'string' && typeof record.serviceId === 'string' &&
+    typeof record.label === 'string' && Number.isFinite(record.createdAt) && Number.isFinite(record.updatedAt) &&
+    (record.agentAccess === undefined || typeof record.agentAccess === 'boolean') &&
+    Array.isArray(record.fields) && record.fields.every((field) =>
+      Boolean(field) && typeof field.id === 'string' && typeof field.label === 'string' &&
+      ['text', 'secret', 'url', 'username'].includes(field.kind) &&
+      typeof field.value === 'string' && typeof field.encrypted === 'boolean')
 }
 
 function summarize(record: StoredCredential): CredentialSummary {
