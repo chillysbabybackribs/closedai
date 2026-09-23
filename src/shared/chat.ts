@@ -126,12 +126,13 @@ export type ChatTranscriptItem =
       output?: string
     } & ActivityTiming
   | {
-      /** Visual evidence produced by a capture tool. Display-only in the app transcript. */
+      /** Captured or generated image. Display-only in the app transcript. */
       type: 'screenshot'
       id: string
       turnId: string | null
       imageUrl: string
-      surface: 'app_window' | 'agent_workspace' | 'browser_page' | 'crop'
+      surface: 'app_window' | 'agent_workspace' | 'browser_page' | 'crop' | 'generated_image'
+      savedPath?: string
       caption: string
     }
   | { type: 'notice'; id: string; turnId: string | null; text: string; tone: 'info' | 'error' }

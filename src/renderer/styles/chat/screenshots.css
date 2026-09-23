@@ -11,12 +11,27 @@
   box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
 }
 
-.prompt-screenshot > img {
+.prompt-screenshot > img,
+.prompt-generated-image > img {
   display: block;
   width: 100%;
   max-height: min(62vh, 720px);
   object-fit: contain;
   background: var(--chassis-well);
+}
+
+.prompt-generated-image {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.prompt-generated-image:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
 }
 
 .prompt-screenshot > figcaption {

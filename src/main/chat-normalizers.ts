@@ -138,6 +138,8 @@ export function normalizeItem(
       return { type: 'tool', id, turnId, label: 'Web search', detail: stringOf(item.query), status: completed ? 'completed' : 'inProgress' }
     case 'imageView':
       return { type: 'tool', id, turnId, label: 'Viewed image', detail: stringOf(item.path), status: completed ? 'completed' : 'inProgress' }
+    case 'imageGeneration':
+      return normalizeGeneratedImage(item, id, turnId, completed)
     case 'contextCompaction':
       return { type: 'notice', id, turnId, text: 'Conversation context compacted', tone: 'info' }
     case 'enteredReviewMode':
@@ -240,6 +242,29 @@ function normalizeScreenshot(
   }
   if (!imageUrl) return null
   return { type: 'screenshot', id, turnId, imageUrl, surface, caption }
+}
+
+/** Native Codex imageGeneration items arrive both live and in thread/read replay. */
+function normalizeGeneratedImage(
+  item: Record<string, unknown>, id: string, turnId: string | null, completed: boolean
+): ChatTranscriptItem {
+  const status = stringOf(item.status) || (completed ? 'completed' : 'inProgress')
+  const failure = stringOf(item.failure) || stringOf(recordOf(item.failure)?.message)
+  if (status === 'failed' || failure) {
+    return { type: 'notice', id, turnId, tone: 'error', text: failure || 'Image generation failed.' }
+  }
+  const result = stringOf(item.result)
+  if (status === 'completed' && result) {
+    return {
+      type: 'screenshot', id, turnId, surface: 'generated_image', caption: '',
+      imageUrl: `data:image/png;base64,${result}`,
+      ...(typeof item.savedPath === 'string' && item.savedPath ? { savedPath: item.savedPath } : {})
+    }
+  }
+  return {
+    type: 'tool', id, turnId, label: 'Generate image', detail: '', status,
+    ...(status === 'completed' ? { output: 'Image generation returned no image.' } : {})
+  }
 }
 
 export function dynamicToolLabel(item: Record<string, unknown>): string {
