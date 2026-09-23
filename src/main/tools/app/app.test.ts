@@ -128,7 +128,9 @@ test('send_message defaults to awaiting the turn and refuses the calling pane', 
   const { calls, call } = harness()
   const result = await call('command', { action: 'send_message', pane_id: 'pane-new', text: 'hello' })
   assert.match(textOf(result), /"turnCompleted": true/)
-  assert.deepEqual(calls[0], ['sendMessage', { paneId: 'pane-new', text: 'hello', awaitTurn: true, timeoutMs: 60_000, signal: false }])
+  assert.deepEqual(calls[0], ['sendMessage', {
+    paneId: 'pane-new', text: 'hello', awaitTurn: true, timeoutMs: 60_000, signal: false, callerPaneId: 'pane-caller'
+  }])
   assert.deepEqual(calls[1], ['state', ['chat'], 'pane-new', 'pane-caller'])
 
   const self = await call('command', { action: 'send_message', pane_id: 'pane-caller', text: 'loop' })
