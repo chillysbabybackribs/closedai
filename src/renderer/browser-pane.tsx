@@ -27,9 +27,14 @@ export const BrowserPane = memo(function BrowserPane({
   dragHandle?: ReactNode
 }): JSX.Element {
   const downloads = useBrowserDownloadsController()
-  // Opening downloads closes the saved-sites workspace panel.
-  const dismissSaved = savedSites.dismiss
-  useEffect(() => { if (downloads.isOpen) dismissSaved() }, [downloads.isOpen, dismissSaved])
+  // Whichever panel opens last wins. Keep the callbacks current without treating their changing
+  // identity as another open event (the saved-sites controller also updates when a row changes).
+  const dismissSaved = useRef(savedSites.dismiss)
+  const dismissDownloads = useRef(downloads.dismiss)
+  dismissSaved.current = savedSites.dismiss
+  dismissDownloads.current = downloads.dismiss
+  useEffect(() => { if (downloads.isOpen) dismissSaved.current() }, [downloads.isOpen])
+  useEffect(() => { if (savedSites.isOpen) dismissDownloads.current() }, [savedSites.isOpen])
   // One slot for a rejected tab or navigation command; it shares the tab strip's grid row.
   const [notice, setNotice] = useState<{ text: string } | null>(null)
   const report = useCallback((reason: unknown) => setNotice({ text: errorMessage(reason) }), [])

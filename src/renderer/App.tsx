@@ -245,7 +245,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           archiveChat={history.deleteRow}
         />}
       </div>
-      {savedSites.isOpen && <BrowserSavedSitesShelf controller={savedSites} onError={report('Could not open saved site')}
+      {savedSites.isOpen && <BrowserSavedSitesShelf controller={savedSites} onError={report('Could not update saved sites')}
         onOpenSite={(url) => {
           if (!browserVisible) workspaceRef.current?.toggleBrowser()
           return savedSites.open(url)
