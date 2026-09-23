@@ -27,13 +27,9 @@ export function cdpTools(cdp: CdpHostProvider, artifacts?: ArtifactService): Too
         name: 'protocol',
         deferLoading: true,
         description:
-          'Advanced CDP access when embedded_browser page, network, or session tools lack a needed capability. ' +
-          'Use capabilities for supported domains, targets for child sessions, command for Domain.method, ' +
-          'and events after enabling a domain. IDs may expire after navigation; pass child sessionId as session_id. ' +
-          'Raw Input.* requires fallback_reason and batched inspection/verification. Use closedai_ui.capture for images. ' +
-          'Returns JSON text; JSON.parse in exec. command retain=true archives the full JSON response before output truncation ' +
-          'and returns a durable receipt; requires explicit tab_id, operation_key and label. ' +
-          'Without retention oversized results carry _closedai_truncated.',
+          'Advanced DevTools access when embedded_browser lacks a capability. Child-target session ids may expire on navigation; ' +
+          'supply the listed session_id when reading child-target data. Input.* commands are real input. ' +
+          'Results are JSON text; parse them in exec.',
         actions: actions(cdp, artifacts)
       }),
       cdpPageTool(cdp),
