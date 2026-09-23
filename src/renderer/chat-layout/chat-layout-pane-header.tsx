@@ -1,0 +1,113 @@
+import { ContextMenu } from 'radix-ui'
+import { Plus, X } from 'lucide-react'
+import type { ChatRowSummary } from '../../shared/chat-peers.js'
+import type { ChatReviewQueue } from '../chat-history/review-queue.js'
+import { ChatLayoutContextMenu } from './layout-context-menu.js'
+import { ChatLayoutPaneHints } from './chat-layout-pane-hints.js'
+import { ChatTabs } from './chat-tabs.js'
+import { CHAT_DRAG_TYPE } from './layout-tree.js'
+import { paneHideHint, tabCloseHint } from './layout-copy.js'
+import type { TabActivity } from './tab-activity.js'
+
+function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, soloTile, setSoloPaneId, tabFocus, hideHint, closeHint, tabActivity, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onHide, setDragging, canMaximize, isThisTileSolo }: {
+  activeId: string
+  tabs: string[]
+  chatCount: number
+  busy: boolean
+  toolsPreset: 'full' | 'read-only' | 'custom' | null
+  title: (id: string) => string
+  activity?: (id: string) => TabActivity
+  reviewQueue?: ChatReviewQueue
+  row: ChatRowSummary | undefined
+  soloTile: { id: string; tabs: string[] } | null
+  setSoloPaneId: React.Dispatch<React.SetStateAction<string | null>>
+  tabFocus: React.MutableRefObject<string | null>
+  hideHint: string
+  closeHint: string
+  tabActivity?: TabActivity
+  onSelect: (id: string) => void
+  onSelectTab: (id: string) => void
+  onCloseTab: (id: string) => void
+  onNewChat: (id: string) => void
+  onRenameChat?: (id: string) => void
+  onTogglePin?: (id: string, pinned: boolean) => void
+  onPauseTab?: (id: string) => void
+  onResumeTab?: (id: string) => void
+  onOpenPresets?: () => void
+  onHide: (id: string) => void
+  setDragging: (value: { id: string; singleTab: boolean } | null) => void
+  canMaximize: boolean
+  isThisTileSolo: boolean
+}) {
+  return <ContextMenu.Root>
+    <ContextMenu.Trigger asChild>
+      <header className="chat-layout-header"
+        onClick={(event) => {
+          if (!(event.target as HTMLElement).closest('button')) onSelect(activeId)
+        }}
+        onDoubleClick={(event) => {
+          if ((event.target as HTMLElement).closest('button')) return
+          if (canMaximize || isThisTileSolo) setSoloPaneId((current) => current ? null : activeId)
+        }}>
+        <button type="button" className="chat-layout-drag" data-ui="layout.pane-drag" data-ui-key={activeId}
+          draggable={!busy} disabled={busy} aria-label="Drag to move chat pane"
+          title="Drag to move whole pane · Tab drags move one conversation"
+          onDragStart={(event) => {
+            event.dataTransfer.setData(CHAT_DRAG_TYPE, activeId)
+            event.dataTransfer.effectAllowed = 'move'
+            setDragging({ id: activeId, singleTab: false })
+          }}>
+          <span className="chat-layout-drag-dots" aria-hidden="true" />
+        </button>
+        <ChatTabs ids={tabs} activeId={activeId} busy={busy} canClose={tabs.length > 1 || chatCount > 1}
+          title={title} activity={activity} reviewQueue={reviewQueue}
+          onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab}
+          onDrag={(tab) => setDragging({ id: tab, singleTab: true })} />
+        {toolsPreset === 'read-only' && <span className="chat-layout-preset" data-ui="layout.tools-preset"
+          title="Tools are in Read-only: the model can look but not act. Change it in Agent → Tools & capabilities.">Read-only</span>}
+        <button type="button" className="chat-layout-new-chat"
+          data-ui="layout.new-chat" data-ui-key={activeId} disabled={busy}
+          title="New chat tab" aria-label="New chat tab"
+          onClick={() => onNewChat(activeId)}>
+          <Plus size={14} aria-hidden="true" />
+        </button>
+        <button data-ui="layout.pane-hide" data-ui-key={activeId} disabled={busy || chatCount < 2}
+          title={`Hide pane · ${hideHint}`} aria-label={`Hide chat pane · ${hideHint}`} onClick={() => {
+            if (soloTile) setSoloPaneId(null)
+            onHide(activeId)
+          }}>
+          <X size={14} aria-hidden="true" />
+        </button>
+      </header>
+    </ContextMenu.Trigger>
+    <ChatLayoutContextMenu activeId={activeId} tabs={tabs} chatCount={chatCount} busy={busy}
+      hideHint={hideHint} closeHint={closeHint} tabActivity={tabActivity}
+      pinned={row?.pinnedAt != null}
+      onOpenPresets={onOpenPresets ? () => { if (soloTile) setSoloPaneId(null); onOpenPresets() } : undefined}
+      onRename={onRenameChat ? () => onRenameChat(activeId) : undefined}
+      onTogglePin={onTogglePin ? () => onTogglePin(activeId, row?.pinnedAt == null) : undefined}
+      onPause={onPauseTab ? () => onPauseTab(activeId) : undefined}
+      onResume={onResumeTab ? () => onResumeTab(activeId) : undefined}
+      onCloseTab={() => { if (soloTile) setSoloPaneId(null); onCloseTab(activeId) }}
+      onHide={() => { if (soloTile) setSoloPaneId(null); onHide(activeId) }} />
+  </ContextMenu.Root>
+}
+
+export function ChatLayoutPaneHeader(props: Parameters<typeof ChatLayoutPaneHeaderBody>[0] & {
+  reviewQueue?: ChatReviewQueue
+  activity?: (id: string) => TabActivity
+  tabs: string[]
+  activeId: string
+}) {
+  const { reviewQueue, activity, tabs, activeId, ...rest } = props
+  if (reviewQueue) {
+    return <ChatLayoutPaneHints tabs={tabs} activeId={activeId} reviewQueue={reviewQueue}>
+      {(hints) => <ChatLayoutPaneHeaderBody {...rest} tabs={tabs} activeId={activeId} reviewQueue={reviewQueue}
+        activity={activity} hideHint={hints.hideHint} closeHint={hints.closeHint} tabActivity={hints.tabActivity} />}
+    </ChatLayoutPaneHints>
+  }
+  return <ChatLayoutPaneHeaderBody {...rest} tabs={tabs} activeId={activeId} activity={activity}
+    hideHint={paneHideHint(tabs.map((id) => activity?.(id)?.state))}
+    closeHint={tabCloseHint(activity?.(activeId)?.state)}
+    tabActivity={activity?.(activeId)} />
+}

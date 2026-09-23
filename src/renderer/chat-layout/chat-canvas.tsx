@@ -1,19 +1,16 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { ContextMenu } from 'radix-ui'
-import { Plus, X } from 'lucide-react'
+import { memo, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
-import { ChatLayoutContextMenu } from './layout-context-menu.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
-import { ChatTabs } from './chat-tabs.js'
 import { LayoutDivider } from './layout-divider.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import type { TabActivity } from './tab-activity.js'
-import { paneHideHint, tabCloseHint } from './layout-copy.js'
 import { browserDropAt, browserDropPreview, sameBrowserDrop, type BrowserDrop } from './browser-drop.js'
+import { ChatLayoutPaneHeader } from './chat-layout-pane-header.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: {
+type ChatCanvasProps = {
   tree: ChatLayout
   selectedId: string
   busy: boolean
@@ -24,6 +21,7 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
   onDragActive: (active: boolean) => void
   title: (id: string) => string
   activity?: (id: string) => TabActivity
+  reviewQueue?: ChatReviewQueue
   chatRow?: (id: string) => ChatRowSummary | undefined
   renderPane: (id: string) => ReactNode
   onSelect: (id: string) => void
@@ -44,7 +42,9 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
   onDock: (id: string | null, target: string, edge: DockEdge | null, singleTab?: boolean) => void
   onHide: (id: string) => void
   onResize: (id: string, ratio: number) => void
-}) {
+}
+
+function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: ChatCanvasProps) {
   const viewport = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [dragging, setDragging] = useState<{ id: string; singleTab: boolean } | null>(null)
@@ -185,8 +185,6 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
         const isThisTileSolo = soloTile ? (soloTile.id === activeId || soloTile.tabs.includes(activeId)) : false
         const tileRect = isThisTileSolo ? soloRect : rect
         const tileKey = activeId === BROWSER_PANE_ID ? BROWSER_PANE_ID : (tabs[0] ?? activeId)
-        const hideHint = paneHideHint(tabs.map((id) => activity?.(id)?.state))
-        const closeHint = tabCloseHint(activity?.(activeId)?.state)
         const row = chatRow?.(activeId)
         return <section key={tileKey}
           className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID ? undefined : activeId}
@@ -229,60 +227,12 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
             setDrop(null)
             onDragActive(false)
           }}>
-          {activeId !== BROWSER_PANE_ID && <ContextMenu.Root>
-            <ContextMenu.Trigger asChild>
-              <header className="chat-layout-header"
-                onClick={(event) => {
-                  if (!(event.target as HTMLElement).closest('button')) onSelect(activeId)
-                }}
-                onDoubleClick={(event) => {
-                  if ((event.target as HTMLElement).closest('button')) return
-                  if (canMaximize || isThisTileSolo) {
-                    setSoloPaneId((current) => current ? null : activeId)
-                  }
-                }}
-              >
-                <button type="button" className="chat-layout-drag" data-ui="layout.pane-drag" data-ui-key={activeId}
-                  draggable={!busy} disabled={busy} aria-label="Drag to move chat pane"
-                  title="Drag to move whole pane · Tab drags move one conversation"
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData(CHAT_DRAG_TYPE, activeId)
-                    event.dataTransfer.effectAllowed = 'move'
-                    setDragging({ id: activeId, singleTab: false })
-                  }}>
-                  <span className="chat-layout-drag-dots" aria-hidden="true" />
-                </button>
-                <ChatTabs ids={tabs} activeId={activeId} busy={busy} canClose={tabs.length > 1 || chatCount > 1}
-                  title={title} activity={activity} onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab}
-                  onDrag={(tab) => setDragging({ id: tab, singleTab: true })} />
-                {toolsPreset === 'read-only' && <span className="chat-layout-preset" data-ui="layout.tools-preset"
-                  title="Tools are in Read-only: the model can look but not act. Change it in Agent → Tools & capabilities.">Read-only</span>}
-                <button type="button" className="chat-layout-new-chat"
-                  data-ui="layout.new-chat" data-ui-key={activeId} disabled={busy}
-                  title="New chat tab" aria-label="New chat tab"
-                  onClick={() => onNewChat(activeId)}>
-                  <Plus size={14} aria-hidden="true" />
-                </button>
-                <button data-ui="layout.pane-hide" data-ui-key={activeId} disabled={busy || chatCount < 2}
-                  title={`Hide pane · ${hideHint}`} aria-label={`Hide chat pane · ${hideHint}`} onClick={() => {
-                    if (soloTile) setSoloPaneId(null)
-                    onHide(activeId)
-                  }}>
-                  <X size={14} aria-hidden="true" />
-                </button>
-              </header>
-            </ContextMenu.Trigger>
-            <ChatLayoutContextMenu activeId={activeId} tabs={tabs} chatCount={chatCount} busy={busy}
-              hideHint={hideHint} closeHint={closeHint} tabActivity={activity?.(activeId)}
-              pinned={row?.pinnedAt != null}
-              onOpenPresets={onOpenPresets ? () => { if (soloTile) setSoloPaneId(null); onOpenPresets() } : undefined}
-              onRename={onRenameChat ? () => onRenameChat(activeId) : undefined}
-              onTogglePin={onTogglePin ? () => onTogglePin(activeId, row?.pinnedAt == null) : undefined}
-              onPause={onPauseTab ? () => onPauseTab(activeId) : undefined}
-              onResume={onResumeTab ? () => onResumeTab(activeId) : undefined}
-              onCloseTab={() => { if (soloTile) setSoloPaneId(null); onCloseTab(activeId) }}
-              onHide={() => { if (soloTile) setSoloPaneId(null); onHide(activeId) }} />
-          </ContextMenu.Root>}
+          {activeId !== BROWSER_PANE_ID && <ChatLayoutPaneHeader activeId={activeId} tabs={tabs} chatCount={chatCount}
+            busy={busy} toolsPreset={toolsPreset ?? null} title={title} activity={activity} reviewQueue={reviewQueue}
+            row={row} soloTile={soloTile} setSoloPaneId={setSoloPaneId} tabFocus={tabFocus} onSelect={onSelect}
+            onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat} onRenameChat={onRenameChat}
+            onTogglePin={onTogglePin} onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets}
+            onHide={onHide} setDragging={setDragging} canMaximize={canMaximize} isThisTileSolo={isThisTileSolo} />}
           {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
           {activeId === BROWSER_PANE_ID ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
             {renderBrowser}
@@ -315,3 +265,19 @@ export function ChatCanvas({ tree, selectedId, busy, notice, toolsPreset = null,
     </div>
   </div>
 }
+
+function chatCanvasPropsEqual(previous: ChatCanvasProps, next: ChatCanvasProps): boolean {
+  return previous.tree === next.tree && previous.selectedId === next.selectedId && previous.busy === next.busy
+    && previous.notice === next.notice && previous.toolsPreset === next.toolsPreset
+    && previous.browserVisible === next.browserVisible && previous.browserRevealVersion === next.browserRevealVersion
+    && previous.renderBrowser === next.renderBrowser && previous.renderPane === next.renderPane
+    && previous.onDragActive === next.onDragActive && previous.title === next.title && previous.activity === next.activity
+    && previous.reviewQueue === next.reviewQueue && previous.chatRow === next.chatRow && previous.onSelect === next.onSelect
+    && previous.onSelectTab === next.onSelectTab && previous.onCloseTab === next.onCloseTab && previous.onNewChat === next.onNewChat
+    && previous.onRenameChat === next.onRenameChat && previous.onTogglePin === next.onTogglePin
+    && previous.onPauseTab === next.onPauseTab && previous.onResumeTab === next.onResumeTab
+    && previous.onOpenPresets === next.onOpenPresets && previous.onSizeChange === next.onSizeChange
+    && previous.onDock === next.onDock && previous.onHide === next.onHide && previous.onResize === next.onResize
+}
+
+export const ChatCanvas = memo(ChatCanvasInner, chatCanvasPropsEqual)
