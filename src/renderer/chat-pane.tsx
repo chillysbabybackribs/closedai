@@ -18,6 +18,8 @@ import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { injectComposerDraft } from './composer-drafts.js'
 import { CredentialApprovalCards } from './credential-approval-card.js'
+import { AgentRunStrip } from './agent-runs/agent-run-strip.js'
+import { useAgentRun } from './agent-runs/agent-runs-store.js'
 import { errorMessage } from './error-message.js'
 import type { ComposerSetupHandle } from './composer-setup-menu.js'
 import { securityRequests } from './security-requests.js'
@@ -75,6 +77,7 @@ export const ChatPane = memo(function ChatPane({
   const manualCompact = state.provider === 'antigravity' && preferences?.chatSeamlessRotation !== true
   const ready = state.connection.state === 'ready'
   const running = chatRunning(state)
+  const agentRun = useAgentRun(chat.selectedPaneId)
   const [ownHistoryOpen, setOwnHistoryOpen] = useState(false)
   const historyOpen = controlledHistoryOpen ?? ownHistoryOpen
   const setHistoryOpen = onHistoryOpenChange ?? setOwnHistoryOpen
@@ -180,6 +183,12 @@ export const ChatPane = memo(function ChatPane({
             onLogin={chat.loginWithChatGPT} onChooseModel={openModelMenu} />
         )}
         <CredentialApprovalCards requests={approvals} onDecide={decideCredential} />
+        {agentRun && (
+          <AgentRunStrip run={agentRun}
+            onPause={() => window.closedai.agentRuns.pause(agentRun.chatId)}
+            onResume={() => window.closedai.agentRuns.resume(agentRun.chatId)}
+            onStop={() => window.closedai.agentRuns.stop(agentRun.chatId)} />
+        )}
         {notice && (
           <div className="chat-pane-notice" role="alert">
             <span>{notice}</span>

@@ -83,11 +83,20 @@ export function DesktopWorkspace({ chat, reviewQueue, appearance, historyOpen, o
   startAgentRef.current = async (sourceId, prompt) => {
     onHistoryOpenChange(false)
     const target = sourceId
+    // Main drives the run from here on: the prompt is cycle 1, and every finished turn sends the
+    // next cycle until the strip's Pause or Stop. A failed first send keeps the docked pane so
+    // the builder can report why and try again.
+    let startError: unknown = null
     await layout.dock(null, target, null, false, async () => {
       const agentPaneId = await window.closedai.chat.newPeer()
-      void window.closedai.chat.send(agentPaneId, prompt, []).catch(() => {})
+      try {
+        await window.closedai.agentRuns.start(agentPaneId, { prompt })
+      } catch (error) {
+        startError = error
+      }
       return agentPaneId
     })
+    if (startError) throw startError
   }
   continueChatRef.current = (id: string): Promise<void> => {
     onHistoryOpenChange(false)

@@ -350,9 +350,9 @@ export function Composer({
   )
 }
 
-const DEFAULT_AGENT_PROMPT = `You are the continuously running ClosedAI application repair agent. Keep cycling until I manually pause this chat. Do not stop because a failure is ambiguous, verification failed, or the same issue recurs. I am monitoring; Pause is the only stop signal.
+const DEFAULT_AGENT_PROMPT = `You are the continuously running ClosedAI application repair agent. The app drives you: whenever your turn ends, it sends the next cycle automatically until I pause or stop the run from the agent strip. Do not stop because a failure is ambiguous, verification failed, or the same issue recurs. I am monitoring; the strip is the only stop signal.
 
-Run many cycles back-to-back in one stretch. After each cycle, immediately start the next—no sign-off, no "let me know if you want me to continue," and no treating a cycle report as the end of the job. If the platform ends your turn while this chat is not paused, I may Resume; your last line should be a one-line CONTINUATION: note so Resume picks up cleanly.
+Do as many cycles as you can within one turn, then end the turn with a status line; the next "Cycle N" message picks up from there. No sign-off, no "let me know if you want me to continue," and no treating a cycle report as the end of the job. If this chat's context is rotated, these instructions arrive again with the next cycle.
 
 Each cycle:
 1. closedai_app.state (workspace + ui + browser) and git status—note clean vs dirty before edits.
