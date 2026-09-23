@@ -108,22 +108,22 @@ export function ComposerSetupMenu({
         <ChevronDown className="composer-footer-chevron" size={12} strokeWidth={2.2} aria-hidden="true" />
       </PopoverTrigger>
       <PopoverContent
-          className="composer-setup"
-          side="top"
-          align="start"
-          sideOffset={6}
-          collisionPadding={12}
-          collisionBoundary={boundary ?? undefined}
-          avoidCollisions
-          aria-label="Chat setup"
-          onOpenAutoFocus={(event) => {
+        className="composer-setup"
+        side="top"
+        align="start"
+        sideOffset={6}
+        collisionPadding={12}
+        collisionBoundary={boundary ?? undefined}
+        avoidCollisions
+        aria-label="Chat setup"
+        onOpenAutoFocus={(event) => {
             // Focus the model list, not the context line above it, so arrows and Enter pick a model.
             const list = (event.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>('[cmdk-root]')
             if (!list) return
             event.preventDefault()
             list.focus()
           }}
-          onCloseAutoFocus={(event) => {
+        onCloseAutoFocus={(event) => {
             if (!focusInputOnCloseRef.current) return
             focusInputOnCloseRef.current = false
             const textarea = triggerRef.current?.closest('.composer')?.querySelector<HTMLTextAreaElement>('textarea')
@@ -131,7 +131,7 @@ export function ComposerSetupMenu({
               event.preventDefault()
               textarea.focus()
             }
-          }}
+        }}
         >
           <ContextSection
             usage={contextUsage}

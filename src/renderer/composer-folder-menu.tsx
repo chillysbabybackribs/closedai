@@ -55,16 +55,16 @@ export function ComposerFolderMenu({
         </span>
       </PopoverTrigger>
       <PopoverContent
-          className="composer-setup composer-folder-popover"
-          side="top"
-          align="end"
-          sideOffset={6}
-          collisionPadding={12}
-          collisionBoundary={boundary ?? undefined}
-          avoidCollisions
-          aria-label="Working folder"
-        >
-          <FolderSection
+        className="composer-setup composer-folder-popover"
+        side="top"
+        align="end"
+        sideOffset={6}
+        collisionPadding={12}
+        collisionBoundary={boundary ?? undefined}
+        avoidCollisions
+        aria-label="Working folder"
+      >
+        <FolderSection
             cwd={cwd}
             projectPath={projectPath}
             pending={projectPending}
@@ -74,8 +74,8 @@ export function ComposerFolderMenu({
             onSelectProject={onSelectProject}
             onClearProject={onClearProject}
             onError={onError}
-          />
-        </PopoverContent>
+        />
+      </PopoverContent>
     </Popover>
   )
 }

@@ -41,7 +41,6 @@ export function ModelPicker({
   const current = models.find((model) => model.id === selectedModel) ?? null
   const landing = current ?? groups[0]?.models[0] ?? null
   const [highlighted, setHighlighted] = useState(() => (landing ? itemValue(landing.provider, landing) : ''))
-  
 
   if (groups.length === 0) {
     return <p className="composer-setup-note px-3 py-3">No models are available yet.</p>
