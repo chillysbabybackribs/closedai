@@ -120,6 +120,15 @@ test('a reader above the bottom stays put during streaming but a new prompt resu
   assert.equal(resizeScrollAction({ ...reading, newAnchor: true }), 'end')
 })
 
+test('agent cycle prompts preserve a reader position while keeping bottom follow active', () => {
+  assert.equal(resizeScrollAction({
+    ...bottomFollowing, newAnchor: true, preservePositionOnNewAnchor: true
+  }), 'end')
+  assert.equal(resizeScrollAction({
+    ...bottomFollowing, newAnchor: true, preservePositionOnNewAnchor: true, following: false
+  }), 'none')
+})
+
 test('revealing older history preserves position even when the visible anchor changes', () => {
   assert.equal(resizeScrollAction({
     ...bottomFollowing, prepending: true, newAnchor: true

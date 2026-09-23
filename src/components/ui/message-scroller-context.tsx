@@ -54,6 +54,7 @@ export function MessageScrollerProvider({
   autoScroll = false,
   children,
   defaultScrollPosition = 'end',
+  preservePositionOnNewPrompts = false,
   scrollPreviousItemPeek = 0
 }: {
   /**
@@ -63,6 +64,8 @@ export function MessageScrollerProvider({
    */
   anchorPrompts?: boolean
   autoScroll?: boolean
+  /** Keep agent cycle prompts from pulling a reader away from the transcript they are browsing. */
+  preservePositionOnNewPrompts?: boolean
   children: ReactNode
   defaultScrollPosition?: ScrollPosition
   scrollPreviousItemPeek?: number
@@ -231,12 +234,17 @@ export function MessageScrollerProvider({
       const action = resizeScrollAction({
         prepending: Boolean(prepended),
         newAnchor,
+        preservePositionOnNewAnchor: preservePositionOnNewPrompts && newAnchor,
         anchorMode: anchorPrompts || defaultScrollPosition === 'last-anchor',
-        anchored: Boolean(anchoredRef.current),
+        anchored: Boolean(anchoredRef.current) && !(preservePositionOnNewPrompts && newAnchor),
         following: followingRef.current,
         autoScroll
       })
       handledAnchorRef.current = lastAnchor
+      if (newAnchor && preservePositionOnNewPrompts) {
+        anchoredRef.current = null
+        setSpacerHeight(0)
+      }
       if (action === 'preserve' && prepended) {
         userScrollingRef.current = false
         prependRef.current = null
@@ -275,7 +283,8 @@ export function MessageScrollerProvider({
       observer.disconnect()
       mutations.disconnect()
     }
-  }, [anchorPrompts, anchorToElement, autoScroll, content, defaultScrollPosition, scheduleSync, setSpacerHeight, spacer, viewport])
+  }, [anchorPrompts, anchorToElement, autoScroll, content, defaultScrollPosition, preservePositionOnNewPrompts,
+    scheduleSync, setSpacerHeight, spacer, viewport])
 
   useEffect(() => () => {
     if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current)

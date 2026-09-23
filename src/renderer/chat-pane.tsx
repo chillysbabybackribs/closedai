@@ -164,7 +164,7 @@ export const ChatPane = memo(function ChatPane({
             onClose={() => setHistoryOpen(false)}
           />
         ) : (
-          <TranscriptScroller paneId={chat.selectedPaneId}>
+          <TranscriptScroller paneId={chat.selectedPaneId} preservePositionOnNewPrompts={Boolean(agentRun)}>
             {!hasMessages && blocked ? (
               <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} availability={availability}
                 onLogin={chat.loginWithChatGPT} onChooseModel={openModelMenu} />
@@ -239,9 +239,11 @@ export const ChatPane = memo(function ChatPane({
 
 function TranscriptScroller({
   paneId,
+  preservePositionOnNewPrompts = false,
   children
 }: {
   paneId: string
+  preservePositionOnNewPrompts?: boolean
   children: JSX.Element
 }): JSX.Element {
   // A sent prompt anchors at the viewport top and the response streams in below it, so the
@@ -254,6 +256,7 @@ function TranscriptScroller({
       autoScroll
       anchorPrompts
       defaultScrollPosition="end"
+      preservePositionOnNewPrompts={preservePositionOnNewPrompts}
       scrollPreviousItemPeek={12}
     >
       <MessageScroller className="chat-scroll-root prompt-chat-scroll">

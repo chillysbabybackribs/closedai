@@ -87,12 +87,14 @@ function clamp(value: number, minimum: number, maximum: number): number {
 export function resizeScrollAction(input: {
   prepending: boolean
   newAnchor: boolean
+  preservePositionOnNewAnchor?: boolean
   anchorMode: boolean
   anchored: boolean
   following: boolean
   autoScroll: boolean
 }): 'preserve' | 'anchor' | 'end' | 'none' {
   if (input.prepending) return 'preserve'
+  if (input.newAnchor && input.preservePositionOnNewAnchor) return input.following ? 'end' : 'none'
   if (input.newAnchor && input.anchorMode) return 'anchor'
   if (input.newAnchor && input.autoScroll) return 'end'
   if (input.anchored && input.anchorMode) return 'anchor'

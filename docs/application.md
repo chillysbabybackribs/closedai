@@ -527,7 +527,9 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   the beginning of a long answer stays readable instead of scrolling away. Scrolling releases the
   anchor without collapsing its spacer (removing it mid-gesture clamps scrollTop and teleports the
   reader); reaching the bottom resumes follow-to-bottom for the rest of the turn, and the next
-  prompt re-anchors. A prompt only counts as newly sent while it is the newest transcript row, so
+  prompt re-anchors. Agent-run cycle prompts preserve the reader's current position, so a running
+  or paused agent chat can keep browsing earlier transcript history while new cycles arrive. A
+  prompt only counts as newly sent while it is the newest transcript row, so
   provider replays and pane wakes that re-materialize the last prompt with its response below it
   never move the viewport. Opening a chat still mounts scrolled to the end, and revealing earlier
   history still preserves the reading position. Native `overflow-anchor` is disabled on the chat
