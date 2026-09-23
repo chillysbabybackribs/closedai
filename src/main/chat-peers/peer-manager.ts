@@ -12,7 +12,10 @@ import type {
   PeerChatReadResult
 } from '../../shared/chat-peers.js'
 import { chatProviderOfId } from '../../shared/chat-providers.js'
+import type { EnableCoordinatorResult } from '../../shared/coordinator.js'
+import type { ChatRecordSeed } from '../../shared/chat-store.js'
 import type { ChatContinuation } from '../../shared/types.js'
+import { coordinatorResult, groupMembers, pickCoordinatorWorker } from './coordinator.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import { refreshModelPicker as refreshPaneModelPickers, selectedHub as hubForSelectedPane } from './peer-model-settings.js'
@@ -325,18 +328,93 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     }))
   }
 
-  async newPeer(): Promise<ChatPaneId> {
+  async newPeer(callerPaneId?: ChatPaneId): Promise<ChatPaneId> {
     this.projectSwitch.assertAvailable()
+    if (callerPaneId) {
+      const caller = this.store.get(callerPaneId)
+      if (caller?.coordinatorGroup?.role === 'coordinator') {
+        return this.coordinatorWorkerPeer(callerPaneId)
+      }
+    }
     const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
     return this.newChat(current.selectedModel, current.selectedReasoningEffort, null)
   }
+
+  async enableCoordinator(paneId: ChatPaneId): Promise<EnableCoordinatorResult> {
+    this.projectSwitch.assertAvailable()
+    const record = this.store.require(paneId)
+    if (record.coordinatorGroup?.role === 'coordinator') {
+      const workers = groupMembers(this.store, record.coordinatorGroup.id)
+        .filter((member) => member.coordinatorGroup?.role === 'worker')
+        .sort((a, b) => (a.coordinatorGroup!.slot === 'a' ? 0 : 1) - (b.coordinatorGroup!.slot === 'a' ? 0 : 1))
+      if (workers.length >= 2) {
+        await this.selectPane(paneId)
+        return coordinatorResult(paneId, [workers[0]!, workers[1]!])
+      }
+    }
+    const groupId = crypto.randomUUID()
+    this.store.update(paneId, { coordinatorGroup: { id: groupId, role: 'coordinator', slot: null } })
+    const current = this.lifecycle.require(paneId).surface.snapshot({ limit: 0 })
+    const workerA = await this.newChat(current.selectedModel, current.selectedReasoningEffort, null, this.workspace(), {
+      selectPane: false,
+      seed: {
+        parentChatId: paneId,
+        coordinatorGroup: { id: groupId, role: 'worker', slot: 'a' },
+        title: 'Worker A',
+        titleSource: 'manual'
+      }
+    })
+    const workerB = await this.newChat(current.selectedModel, current.selectedReasoningEffort, null, this.workspace(), {
+      selectPane: false,
+      seed: {
+        parentChatId: paneId,
+        coordinatorGroup: { id: groupId, role: 'worker', slot: 'b' },
+        title: 'Worker B',
+        titleSource: 'manual'
+      }
+    })
+    await this.selectPane(paneId)
+    await this.persistOpenChats()
+    await this.trimAttached()
+    this.emitWorkspace()
+    return coordinatorResult(paneId, [this.store.require(workerA), this.store.require(workerB)])
+  }
+
+  async disableCoordinator(paneId: ChatPaneId): Promise<void> {
+    const record = this.store.get(paneId)
+    const groupId = record?.coordinatorGroup?.id
+    if (!groupId) return
+    for (const member of groupMembers(this.store, groupId)) {
+      this.store.update(member.id, { coordinatorGroup: null })
+    }
+    this.emitWorkspace()
+  }
+
+  private coordinatorWorkerPeer(coordinatorPaneId: ChatPaneId): ChatPaneId {
+    const workerId = pickCoordinatorWorker(this.store, coordinatorPaneId, (id) => {
+      const entry = this.lifecycle.get(id)
+      return entry ? entry.surface.snapshot({ limit: 0 }).activeTurnId !== null : false
+    })
+    void this.selectPane(coordinatorPaneId)
+    return workerId
+  }
+
   private async newChat(modelId: string | null, reasoningEffort: string | null, continuation: ChatContinuation | null,
-    selection: ChatWorkspaceSelection = this.store.require(this.selectedPaneId)): Promise<ChatPaneId> {
+    selection: ChatWorkspaceSelection = this.store.require(this.selectedPaneId),
+    options?: { selectPane?: boolean; seed?: Partial<ChatRecordSeed> }): Promise<ChatPaneId> {
     const previousPaneId = this.selectedPaneId
     const { cwd, projectPath } = selection
-    const record = this.store.create({ cwd, projectPath, provider: chatProviderOfId(modelId), modelId, reasoningEffort, continuation })
+    const record = this.store.create({
+      cwd,
+      projectPath,
+      provider: chatProviderOfId(modelId),
+      modelId,
+      reasoningEffort,
+      continuation,
+      ...options?.seed
+    })
     this.lifecycle.attach(record)
-    this.selectedPaneId = record.id
+    if (options?.selectPane !== false) this.selectedPaneId = record.id
     this.parking.schedule(previousPaneId)
     this.lifecycle.parkExcessIdle(record.id)
     this.emitWorkspace()

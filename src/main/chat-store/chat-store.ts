@@ -111,6 +111,7 @@ export class ChatStore extends EventEmitter {
       continuation: seed.continuation ?? null,
       checkpoint: seed.checkpoint ?? null,
       parentChatId: seed.parentChatId ?? null,
+      coordinatorGroup: seed.coordinatorGroup ?? null,
       sessionRotations: seed.sessionRotations ?? []
     }
     if (this.chats.has(record.id)) throw new Error(`Chat already exists: ${record.id}`)
