@@ -311,7 +311,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       }))
       selected.current = anchorPaneId
       await window.closedai.chat.selectPane(anchorPaneId)
-      setNotice({ text: 'Coordinator and Worker opened beside the browser; this chat stays in view.' })
+      setNotice({ text: 'Coordinator and Worker opened as columns beside the browser; this chat stays in view.' })
       release()
     } catch (reason) {
       fail(reason)
