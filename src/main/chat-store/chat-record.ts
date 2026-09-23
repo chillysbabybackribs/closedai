@@ -4,6 +4,7 @@ import type { ChatPeerRecord } from '../../shared/types.js'
 import { normalizeContinuation } from '../app-settings-store.js'
 import { normalizeMemoryCheckpoint } from '../chat-context/memory-checkpoint.js'
 import { MAX_SESSION_ROTATIONS, type ChatSessionRotation } from '../../shared/session-rotation.js'
+import { normalizeAgentRun } from '../../shared/agent-runs.js'
 
 // Shape checks for records read back from disk, and the one-way translation from the pane
 // records that settings used to hold. Both keep the pane id as the chat id: the drawer's
@@ -52,7 +53,8 @@ export function normalizeChatRecord(candidate: unknown): ChatRecord | null {
     continuation: normalizeContinuation(record.continuation),
     checkpoint: record.checkpoint === undefined ? null : normalizeMemoryCheckpoint(record.checkpoint),
     parentChatId: optionalString(record.parentChatId),
-    sessionRotations: normalizeSessionRotations(record.sessionRotations)
+    sessionRotations: normalizeSessionRotations(record.sessionRotations),
+    agentRun: normalizeAgentRun(record.agentRun, id)
   }
 }
 
@@ -85,7 +87,8 @@ export function chatRecordFromPeer(peer: ChatPeerRecord, cwd: string, projectPat
     continuation: peer.continuation ?? null,
     checkpoint: peer.checkpoint ?? null,
     parentChatId: null,
-    sessionRotations: []
+    sessionRotations: [],
+    agentRun: null
   }
 }
 

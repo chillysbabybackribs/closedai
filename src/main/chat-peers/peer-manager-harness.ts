@@ -42,6 +42,7 @@ export function chatRecord(id: string, modelId: string | null, extra: Partial<Ch
     checkpoint: null,
     parentChatId: null,
     sessionRotations: [],
+    agentRun: null,
     ...extra
   }
 }

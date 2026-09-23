@@ -1,3 +1,4 @@
+import type { AgentRun } from './agent-runs.js'
 import type { ChatProvider } from './chat.js'
 import type { ChatMemoryCheckpoint } from './chat-memory.js'
 import { prefixChatId } from './chat-providers.js'
@@ -48,6 +49,8 @@ export type ChatRecord = {
   parentChatId: string | null
   /** Invisible session rotations newest last; used for recall chains in later phases. */
   sessionRotations: ChatSessionRotation[]
+  /** The agent run driving this chat, running or paused; null for an ordinary chat. */
+  agentRun: AgentRun | null
 }
 
 export type ChatRecordSeed = Pick<ChatRecord, 'cwd' | 'projectPath' | 'provider' | 'modelId' | 'reasoningEffort'> &
