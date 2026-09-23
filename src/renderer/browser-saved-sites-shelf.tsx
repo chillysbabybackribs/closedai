@@ -21,7 +21,9 @@ export function BrowserSavedSitesShelf({
   const [position, setPosition] = useState(() => ({
     x: Math.max(12, window.innerWidth - 408), y: 72
   }))
+  const [size, setSize] = useState(() => ({ width: 380, height: Math.min(440, window.innerHeight - 96) }))
   const [drag, setDrag] = useState<{ x: number; y: number; left: number; top: number } | null>(null)
+  const [resize, setResize] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
   const startDrag = (event: PointerEvent<HTMLElement>): void => {
     if (event.button !== 0 || (event.target as Element).closest('button')) return
     event.currentTarget.setPointerCapture(event.pointerId)
@@ -29,16 +31,19 @@ export function BrowserSavedSitesShelf({
   }
   const moveDrag = (event: PointerEvent<HTMLElement>): void => {
     if (!drag) return
-    const panel = event.currentTarget.parentElement!
     setPosition({
-      x: Math.max(8, Math.min(window.innerWidth - panel.offsetWidth - 8, drag.left + event.clientX - drag.x)),
+      x: Math.max(8, Math.min(window.innerWidth - size.width - 8, drag.left + event.clientX - drag.x)),
       y: Math.max(42, Math.min(window.innerHeight - 48, drag.top + event.clientY - drag.y))
     })
   }
+  const resizeTo = (width: number, height: number): void => setSize({
+    width: Math.max(280, Math.min(window.innerWidth - position.x - 8, width)),
+    height: Math.max(180, Math.min(window.innerHeight - position.y - 8, height))
+  })
   return (
     <section
       className="browser-saved-sites"
-      style={{ left: position.x, top: position.y }}
+      style={{ left: position.x, top: position.y, width: size.width, height: size.height }}
       aria-label="Saved sites"
       role="dialog"
       aria-modal="false"
@@ -69,6 +74,27 @@ export function BrowserSavedSitesShelf({
           ))}
         </ul>
       )}
+      <button type="button" className="browser-saved-sites-resize" data-ui="saved-sites.resize"
+        aria-label="Resize saved sites" title="Drag to resize saved sites"
+        onPointerDown={(event) => {
+          if (event.button !== 0) return
+          event.preventDefault()
+          event.currentTarget.setPointerCapture(event.pointerId)
+          setResize({ x: event.clientX, y: event.clientY, ...size })
+        }}
+        onPointerMove={(event) => {
+          if (resize) resizeTo(resize.width + event.clientX - resize.x, resize.height + event.clientY - resize.y)
+        }}
+        onPointerUp={() => setResize(null)} onLostPointerCapture={() => setResize(null)}
+        onKeyDown={(event) => {
+          const step = event.shiftKey ? 8 : 24
+          if (event.key === 'ArrowRight') resizeTo(size.width + step, size.height)
+          else if (event.key === 'ArrowLeft') resizeTo(size.width - step, size.height)
+          else if (event.key === 'ArrowDown') resizeTo(size.width, size.height + step)
+          else if (event.key === 'ArrowUp') resizeTo(size.width, size.height - step)
+          else return
+          event.preventDefault()
+        }} />
     </section>
   )
 }

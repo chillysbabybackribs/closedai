@@ -19,8 +19,21 @@
     0 12px 32px rgb(0 0 0 / 46%);
   z-index: 120;
   overflow: hidden;
-  resize: both;
 }
+
+.browser-saved-sites-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: linear-gradient(135deg, transparent 48%, #777782 50%, #777782 54%, transparent 56%) 9px 9px / 8px 8px no-repeat;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.browser-saved-sites-resize:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -2px; }
 
 .browser-saved-sites-head {
   display: flex;

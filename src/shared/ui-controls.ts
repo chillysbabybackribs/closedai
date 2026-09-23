@@ -121,7 +121,8 @@ export const UI_CONTROLS = {
   'browser.downloads': 'Show or hide the downloads shelf',
   'browser.saved-sites': 'Star left of Downloads: save the active web page and open the movable saved-sites panel, or open it when the page is already saved (gold star); click again to hide it. Disabled on non-web pages',
 
-  'saved-sites.move': 'Drag the saved-sites panel by its header; resize it from the lower-right corner',
+  'saved-sites.move': 'Drag the saved-sites panel by its header',
+  'saved-sites.resize': 'Resize the saved-sites panel from its lower-right corner, or use arrow keys (Shift for fine steps)',
   'saved-sites.hide': 'Hide the saved-sites panel',
   'saved-sites.open': 'Navigate the active tab to a saved site; item is the saved-site id',
   'saved-sites.note-edit': 'Open the optional note on a saved site for editing (shows the note text, or "Add note" when empty); item is the saved-site id',
