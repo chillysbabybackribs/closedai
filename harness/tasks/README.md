@@ -17,7 +17,9 @@ live model (Phase B). Each task lists a deterministic tool trace, an oracle, and
 
 ```sh
 npm run harness:replay          # all *.json catalogs under harness/tasks/
-npm run harness:model           # model path (golden adapter today)
+npm run harness:model           # golden adapter (stub replay through model path)
+npm run harness:codex           # live Codex turn (tasks with `user` only; concurrency 1)
+npm run harness:compare         # A/B variant pass rates
 npm run harness:extract         # dry-run draft tasks from tool tests
 npm run harness:extract -- --write
 ```

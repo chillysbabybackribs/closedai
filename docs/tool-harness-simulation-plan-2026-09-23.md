@@ -1,6 +1,6 @@
 # Tool harness simulation and optimization plan
 
-Status: Phase 0–1 replay + coverage guard shipped; Phase 2 golden model path wired, Codex turn pending  
+Status: Phase 0–2 replay, coverage, Codex turns, and variant compare shipped  
 Date: 2026-09-23
 
 ## Purpose
@@ -196,12 +196,17 @@ Deliverables:
 
 ### Phase 2 — Model runner (one provider)
 
-- [x] `src/main/harness/model-run.ts` — golden adapter (replay through model path); Codex turn TBD.
-- [ ] Env: `CLOSEDAI_HARNESS_API_KEY` / use existing Codex CLI auth pattern documented in runner README.
-- [x] `npm run harness:model` and `--adapter=golden|codex` on `scripts/harness-sim/run.mjs`.
+- [x] `src/main/harness/model-run.ts` + `codex-turn.ts` — golden replay path and live Codex app-server turns.
+- [x] Uses installed Codex CLI auth (`codex app-server`); optional `CLOSEDAI_HARNESS_MODEL`, `CLOSEDAI_HARNESS_EFFORT`, `CLOSEDAI_HARNESS_SKIP_CODEX=1`.
+- [x] `npm run harness:model`, `npm run harness:codex`, `--adapter=golden|codex` on `scripts/harness-sim/run.mjs`.
 
 **Exit criteria:** Pilot catalog ≥70% pass on **main** harness with manual review of failures
 (mis-oracle vs real harness bug).
+
+### Phase 4 — Variant comparison (initial)
+
+- [x] `harness/variants/*.json` + `src/main/harness/variants.ts`.
+- [x] `npm run harness:compare` — multi-variant pass-rate summary (`--variant=main --variant=…`).
 
 ### Phase 3 — Second backend + live subset
 
