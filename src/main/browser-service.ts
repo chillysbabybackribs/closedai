@@ -499,7 +499,7 @@ export class BrowserService extends EventEmitter {
     if (!(tab instanceof BrowserTab)) return null
     // A detached or just-revealed tab has no frame to capture, and capturePage against one
     // returns the empty surface rather than the page. Hold its compositor and let it paint.
-    const release = this.rendering.pin(tab.id)
+    const release = this.leaseTabRendering(tab.id) ?? (() => {})
     const imageUrl = await settleFrames(tab.view.webContents, CAPTURE_SETTLE_MS)
       .then(() => tab.screenshot())
       .catch(() => null)
