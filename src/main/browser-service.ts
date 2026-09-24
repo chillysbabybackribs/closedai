@@ -1,4 +1,4 @@
-import { app, BrowserWindow, desktopCapturer, session, webContents, type LoadURLOptions, type WebContents, type WebContentsViewConstructorOptions } from 'electron'
+import { app, BrowserWindow, desktopCapturer, session, type LoadURLOptions, type WebContents, type WebContentsViewConstructorOptions } from 'electron'
 import { EventEmitter } from 'node:events'
 import { join } from 'node:path'
 import type { BrowserHistory } from './browser-history-store.js'
@@ -30,7 +30,6 @@ import {
   type BrowserServiceTabOpsHost
 } from './browser-service-tab-ops.js'
 import type { CdpBrowserTarget } from './cdp/browser-cdp-access.js'
-import { HiddenCaptureSurfaces } from './browser-capture-surface.js'
 
 type BrowserServiceOptions = {
   initialUrl?: string
@@ -46,9 +45,10 @@ type BrowserServiceOptions = {
   readyToLoad?: Promise<unknown>
 }
 
-// How long a reveal waits for the page's first frame before showing it anyway. Long enough
-// for a live page to answer in one or two frames, short enough that a page which will never
-// paint (a throttled or crashed renderer) cannot hold the renderer's still on screen.
+// How long a reveal waits for the page's first frame before showing it anyway. A parked page
+// keeps painting at the pane's size, so a live one answers in one or two frames; the bound only
+// keeps a page that will never paint (a throttled or crashed renderer) from holding the
+// renderer's still on screen.
 const REVEAL_SETTLE_MS = 400
 // The same bound for a still: a capture is worth a couple of frames' wait, never a stall.
 const CAPTURE_SETTLE_MS = 250
@@ -70,7 +70,6 @@ export class BrowserService extends EventEmitter {
   private readonly partitionSession: Electron.Session
   private readonly permissions: Pick<PermissionPolicyDeps, 'policy' | 'ask'>
   private readonly persistentSessionCookies: PersistentSessionCookies
-  private readonly captureSurfaces: HiddenCaptureSurfaces
   // What the app records about every tab without a debugger: network traffic and rules on
   // the session, console output per tab. Exposed to the model tools through the access classes.
   readonly observers = new BrowserObservers((webContentsId) => this.tabIdForContents(webContentsId))
@@ -87,7 +86,7 @@ export class BrowserService extends EventEmitter {
   // cycles to finish loading itself. See browser-tab-cadence.ts for the measurement.
   private readonly cadence = new TabCadencePolicy(webContentsCadence({
     contents: (tabId) => {
-      const tab = this.captureSurfaces.has(tabId) ? null : this.tabs.find((candidate) => candidate.id === tabId)
+      const tab = this.tabs.find((candidate) => candidate.id === tabId)
       return tab instanceof BrowserTab ? tab.view.webContents : null
     },
     onScreen: (tabId) => tabId === this.activeId && browserSurfaceVisibility(this.bounds).pageVisible
@@ -99,7 +98,6 @@ export class BrowserService extends EventEmitter {
     options: BrowserServiceOptions = {}
   ) {
     super()
-    this.captureSurfaces = new HiddenCaptureSurfaces(window)
     this.on('error', () => {})
     this.permissions = options.permissions ?? { policy: () => 'allow', ask: async () => true }
     this.partitionSession = session.fromPartition(PARTITION)
@@ -328,9 +326,6 @@ export class BrowserService extends EventEmitter {
 
   async setBounds(bounds: BrowserBounds): Promise<void> {
     this.bounds = browserPaneBounds(this.bounds, bounds)
-    // A preview capture briefly owns a hidden host. Restore only after it has returned
-    // the view, so the renderer cannot remove its still before the native page is back.
-    if (bounds.occluded !== true && this.overlayCapture) await this.overlayCapture
     const { paneVisible, pageVisible } = browserSurfaceVisibility(this.bounds)
     const revealing = pageVisible && !this.pageVisible
     this.pageVisible = pageVisible
@@ -340,33 +335,14 @@ export class BrowserService extends EventEmitter {
       parkWebBrowserTabs(this.tabOpsHost())
       return
     }
-    // Do not move a leased capture off its hidden host's viewport mid-frame. Its release
-    // reapplies the newest pane bounds; the renderer then requests the latest preview size.
-    if (!pageVisible && active && this.overlayCapture && this.captureSurfaces.has(active.id)) return
     // Keep the loaded surface attached and full-sized, using the same parking path as an
-    // overlay. Place it beyond the current window even if the window grew while hidden.
-    active?.applyBounds(paneVisible ? this.bounds : {
-      ...this.bounds, x: this.window.getContentBounds().width, occluded: true
-    }, pageVisible)
+    // overlay: the page stays mapped at the pane's size and keeps laying out there.
+    active?.applyBounds(paneVisible ? this.bounds : { ...this.bounds, occluded: true }, pageVisible)
     // The renderer holds its freeze still until this call resolves. Returning the moment the
     // view is made visible drops the still onto a surface that has not painted yet, which is
     // the blank the still existed to cover; wait for the frame instead.
-    if (revealing && active) {
-      const contents = active.view.webContents
-      if (!contents.isDestroyed() && browserSurfaceVisibility(this.bounds).pageVisible) {
-        // Reparenting from a never-shown host leaves Chromium's widget hidden even
-        // after View visibility is restored. Arm it through a painted frame before
-        // releasing the still, preserving keyboard focus and the cadence policy.
-        const focused = webContents.getFocusedWebContents()
-        const throttled = contents.getBackgroundThrottling()
-        contents.setBackgroundThrottling(false)
-        if (focused && !focused.isDestroyed()) focused.focus()
-        try { await settleFrames(contents, REVEAL_SETTLE_MS) } finally {
-          if (!contents.isDestroyed() && !this.captureSurfaces.has(active.id)) {
-            contents.setBackgroundThrottling(throttled)
-          }
-        }
-      }
+    if (revealing && active && !active.view.webContents.isDestroyed()) {
+      await settleFrames(active.view.webContents, REVEAL_SETTLE_MS)
     }
   }
 
@@ -441,30 +417,26 @@ export class BrowserService extends EventEmitter {
     return { activated: true }
   }
 
-  /** Keep a tab's compositor attached while a frame-dependent tool operates on it. */
+  /**
+   * Keep a tab's compositor attached while a frame-dependent tool operates on it. The view never
+   * leaves this window: a covered or collapsed pane parks it with one pixel still inside, where
+   * Chromium keeps it mapped, laid out at the pane's size and capturable.
+   */
   leaseTabRendering(tabId: string): (() => void) | null {
     const tab = this.tabs.find((candidate) => candidate.id === tabId)
     if (!(tab instanceof BrowserTab)) return null
     const release = this.rendering.pin(tabId)
-    let hiddenRelease: (() => void) | undefined
-    try {
-      hiddenRelease = !browserSurfaceVisibility(this.bounds).pageVisible || !(this.active instanceof BrowserTab)
-        ? this.captureSurfaces.acquire(tab, this.bounds) : undefined
-      this.prepareTabForTool(tab)
-    } catch (error) { hiddenRelease?.(); release(); throw error }
+    try { this.prepareTabForTool(tab) } catch (error) { release(); throw error }
     return () => {
-      try { hiddenRelease?.() } finally {
-        release()
-        if (this.tabs.includes(tab)) this.prepareTabForTool(tab)
-      }
+      release()
+      if (this.tabs.includes(tab)) this.prepareTabForTool(tab)
     }
   }
 
   private prepareTabForTool(tab: BrowserTab): void {
     prepareBrowserTabForTool({
       tab, active: this.active, activeId: this.activeId, bounds: this.bounds,
-      rendering: this.rendering, captureSurfaces: this.captureSurfaces,
-      attachTabView: (tabId) => { this.attachTabView(tabId) }
+      rendering: this.rendering, attachTabView: (tabId) => { this.attachTabView(tabId) }
     })
   }
 
@@ -516,17 +488,17 @@ export class BrowserService extends EventEmitter {
   }
 
   // A still of the active tab for the renderer's overlay freeze (the native view composites
-  // above the DOM, so a shelf or dialog shows this image while the live pixels are hidden).
+  // above the DOM, so a shelf, dialog or layout drag shows this image while the live pixels are
+  // parked). One capture runs at a time; a caller arriving mid-capture shares its result and the
+  // renderer re-requests once the latest size is known.
   async capture(): Promise<BrowserShot | null> {
     if (this.overlayCapture) return this.overlayCapture
     const tab = this.active
     if (!(tab instanceof BrowserTab)) return null
-    // The hidden host paints the resized viewport without intercepting drag input.
-    const release = this.leaseTabRendering(tab.id) ?? (() => {})
-    // capturePage requests a paint itself. rAF does not run in the never-shown host,
-    // so waiting for it would add the full timeout to every preview size change.
-    const pending = (this.captureSurfaces.has(tab.id)
-      ? Promise.resolve(false) : settleFrames(tab.view.webContents, CAPTURE_SETTLE_MS))
+    // The parked page keeps painting at its current bounds, so a double rAF is a real frame at
+    // the size the still stands in for, not a timeout.
+    const release = this.rendering.pin(tab.id)
+    const pending = settleFrames(tab.view.webContents, CAPTURE_SETTLE_MS)
       .then(() => tab.screenshot())
       .then((imageUrl): BrowserShot | null => {
         if (!imageUrl || this.active !== tab) return null
@@ -559,7 +531,6 @@ export class BrowserService extends EventEmitter {
     this.persistentSessionCookies.dispose()
     this.rendering.dispose()
     this.cadence.dispose()
-    this.captureSurfaces.dispose()
     for (const tab of this.tabs) {
       try {
         if (tab instanceof BrowserTab) this.window.contentView.removeChildView(tab.view)
