@@ -7,7 +7,7 @@ import { Loader } from '../components/ui/loader.js'
 import { errorMessage } from './error-message.js'
 import type { ChatRowSummary } from '../shared/chat-peers.js'
 import { formatChatTime } from './chat-history/history-format.js'
-import { activityAt, searchChats, segmentTitle } from './chat-history/history-search.js'
+import { activityAt, rankChats, segmentTitle } from './chat-history/history-search.js'
 
 export type ChatHistoryProps = {
   /** The selected chat's id; the same id names it in the store and as a pane. */
@@ -25,15 +25,23 @@ export type ChatHistoryProps = {
   onOpened?: () => void
 }
 
+/** Rows painted per page; a workspace can hold a thousand chats and painting them all was slow. */
+export const HISTORY_PAGE_SIZE = 50
+
+/** How many rows to show after asking for more: one more page, never past the end. */
+export function nextHistoryPage(shown: number, total: number, pageSize = HISTORY_PAGE_SIZE): number {
+  return Math.min(total, shown + pageSize)
+}
+
 type LoadState =
   | { status: 'loading' }
   | { status: 'ready'; threads: ChatRowSummary[] }
   | { status: 'error'; message: string }
 
 /**
- * Every listable chat across directories, shown in a History view tab. The rows, their order,
- * the visibility rule, the matcher, and the time shown are the same ones header search uses, so
- * the two surfaces never disagree about what history contains.
+ * Every listable chat across directories, shown in a History view tab a page at a time. The rows,
+ * their order, the visibility rule, the matcher, and the time shown are the same ones header
+ * search uses, so the two surfaces never disagree about what history contains.
  */
 export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, archiveChat, onClose, onOpened }: ChatHistoryProps): JSX.Element {
   const [load, setLoad] = useState<LoadState>({ status: 'loading' })
@@ -41,6 +49,7 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const [shown, setShown] = useState(HISTORY_PAGE_SIZE)
 
   useEffect(() => {
     if (chats) {
@@ -63,7 +72,9 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
     listChats().catch(() => {})
   }, [live, listChats, reloadKey])
 
-  const visible = useMemo(() => load.status === 'ready' ? searchChats(load.threads, query, Infinity) : [], [load, query])
+  const ranked = useMemo(() => load.status === 'ready' ? rankChats(load.threads, query) : [], [load, query])
+  const visible = useMemo(() => ranked.slice(0, shown), [ranked, shown])
+  const remaining = ranked.length - visible.length
 
   async function open(chatId: string): Promise<void> {
     if (busy || pendingId) return
@@ -111,7 +122,7 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
         <input
           type="search"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => { setQuery(event.target.value); setShown(HISTORY_PAGE_SIZE) }}
           onKeyDown={onSearchKeyDown}
           placeholder="Search chats"
           aria-label="Search chats"
@@ -134,9 +145,9 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
         </div>
       )}
 
-      {load.status === 'ready' && visible.length === 0 && (
+      {load.status === 'ready' && ranked.length === 0 && (
         <div className="chat-history-status">
-          <p>{load.threads.length === 0 ? 'No chats yet for this workspace.' : 'No chats match your search.'}</p>
+          <p>{load.threads.length === 0 ? 'No chats yet.' : 'No chats match your search.'}</p>
         </div>
       )}
 
@@ -187,6 +198,14 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
               </li>
             )
           })}
+          {remaining > 0 && (
+            <li className="chat-history-more">
+              <Button type="button" variant="ghost" size="sm" data-ui="chat.history-more"
+                onClick={() => setShown((current) => nextHistoryPage(current, ranked.length))}>
+                Show {Math.min(HISTORY_PAGE_SIZE, remaining)} more · {remaining} older
+              </Button>
+            </li>
+          )}
         </ul>
       )}
     </section>

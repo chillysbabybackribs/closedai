@@ -150,3 +150,12 @@
 .chat-history-row:hover .chat-history-archive,
 .chat-history-row:focus-within .chat-history-archive,
 .chat-history-archive:focus-visible { opacity: 1; }
+
+.chat-history-more {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  padding: 6px 0 2px;
+}
+
+.chat-history-more > button { color: var(--muted-foreground); font-variant-numeric: tabular-nums; }

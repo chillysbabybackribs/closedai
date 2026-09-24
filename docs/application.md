@@ -264,15 +264,18 @@ main process, every directory, attached or detached) and share one model in
 `src/renderer/chat-history/history-search.ts`: one visibility rule (`listableChat`: a blank pane
 is hidden unless it is running or continues another chat), one order and time (`activityAt`: last
 turn end, else store update), and one matcher (fuzzy title subsequence, then preview substring,
-title hits first). Neither surface caps what it lists at rest; the header groups, the History view
-flattens, and both show the project folder.
+title hits first). Both show the project folder. Neither paints the whole store: a workspace holds
+hundreds of closed chats and rendering them all made both surfaces slow to open. The header groups
+and windows Closed to the 20 newest (`REST_CLOSED_LIMIT`; live groups are complete) and keeps 40
+ranked matches for a query, with captions and footer saying "n of total"; the History view flattens
+and pages 50 rows at a time behind a "Show more" control (`chat.history-more`).
 Clicking or focusing the input opens a dropdown. The palette has one state and closes only on
 discrete events: Escape, opening a result, focus leaving the component, a press outside it, or the
 window losing focus (a click on the native browser view). Nothing is inferred from pointer position,
 so moving the pointer over or away from the palette never opens or closes it. Presses inside the
 popup do not move focus, so the input keeps the keyboard.
 The dropdown groups chats into Running, Paused, Recently completed (unread), Open (still attached),
-and Closed (detached), newest last turn first, in a scrollable list whose captions carry the counts.
+and Closed (detached, 20 newest), newest last turn first, in a scrollable list whose captions carry the counts.
 Rows are single lines in a command-palette surface wider than the input: a live-state glyph (or the
 provider's mark when idle), the title, the project folder as a dim description, and the
 last-activity time on the right; a search result also carries an Open/Closed tag since no group
