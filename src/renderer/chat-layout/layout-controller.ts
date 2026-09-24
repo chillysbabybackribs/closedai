@@ -316,7 +316,6 @@ export function useChatLayout(
         const next = removeTab(value.tree, id)
         return next && paneIds(next).length ? { ...value, tree: next } : value
       })
-      if (!isViewTabId(id)) reportRemoval([id], 'Tab closed')
     } catch (reason) {
       fail(reason)
       release()

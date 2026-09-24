@@ -15,8 +15,6 @@ test('pane hide hints prefer running over paused across the tile', () => {
   assert.equal(paneHideHint(['failed', 'unread']), 'Does not stop tasks')
 })
 
-test('removal notices identify continuing or paused tasks after close or hide', () => {
-  assert.equal(removalNotice('Tab closed', [{ running: true }]), 'Tab closed · Tasks continue in the background')
+test('removal notices identify continuing or paused tasks after pane hide', () => {
   assert.equal(removalNotice('Pane hidden', [{ paused: true }]), 'Pane hidden · Tasks remain paused')
-  assert.equal(removalNotice('Tab closed', [{}]), 'Tab closed')
 })
