@@ -1,4 +1,4 @@
-import { app, BrowserWindow, desktopCapturer, session, type LoadURLOptions, type WebContents, type WebContentsViewConstructorOptions } from 'electron'
+import { app, BrowserWindow, desktopCapturer, session, webContents, type LoadURLOptions, type WebContents, type WebContentsViewConstructorOptions } from 'electron'
 import { EventEmitter } from 'node:events'
 import { join } from 'node:path'
 import type { BrowserHistory } from './browser-history-store.js'
@@ -354,10 +354,18 @@ export class BrowserService extends EventEmitter {
     if (revealing && active) {
       const contents = active.view.webContents
       if (!contents.isDestroyed() && browserSurfaceVisibility(this.bounds).pageVisible) {
+        // Reparenting from a never-shown host leaves Chromium's widget hidden even
+        // after View visibility is restored. Arm it through a painted frame before
+        // releasing the still, preserving keyboard focus and the cadence policy.
+        const focused = webContents.getFocusedWebContents()
         const throttled = contents.getBackgroundThrottling()
         contents.setBackgroundThrottling(false)
-        await settleFrames(contents, REVEAL_SETTLE_MS)
-        if (!contents.isDestroyed()) contents.setBackgroundThrottling(throttled)
+        if (focused && !focused.isDestroyed()) focused.focus()
+        try { await settleFrames(contents, REVEAL_SETTLE_MS) } finally {
+          if (!contents.isDestroyed() && !this.captureSurfaces.has(active.id)) {
+            contents.setBackgroundThrottling(throttled)
+          }
+        }
       }
     }
   }
@@ -513,7 +521,10 @@ export class BrowserService extends EventEmitter {
     if (this.overlayCapture) return this.overlayCapture
     const tab = this.active
     if (!(tab instanceof BrowserTab)) return null
+    // The hidden host paints the resized viewport without intercepting drag input.
     const release = this.leaseTabRendering(tab.id) ?? (() => {})
+    // capturePage requests a paint itself. rAF does not run in the never-shown host,
+    // so waiting for it would add the full timeout to every preview size change.
     const pending = (this.captureSurfaces.has(tab.id)
       ? Promise.resolve(false) : settleFrames(tab.view.webContents, CAPTURE_SETTLE_MS))
       .then(() => tab.screenshot())

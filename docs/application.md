@@ -384,9 +384,11 @@ new bounds. Layout drags temporarily occlude the native browser after the still 
 the moving native surface cannot intercept drag events. After each bounds update the preview
 refreshes from the resized page, so responsive content reflows before release. Captures are
 serialized through a reusable hidden capture host (kept alive to preserve native drag routing)
-and obsolete sizes are discarded; the previous frame stays at its natural scale
+without waiting for animation frames in that never-shown window, and obsolete sizes are discarded;
+the previous frame stays at its natural scale
 until the replacement arrives, without stretching. The still remains through commit,
-then clears after native bounds are restored. Preview dimensions update once per animation frame without size tweening, so
+then clears after native bounds are restored and Chromium's drawing widget is re-armed through
+a painted frame, preserving focus and the tab's background cadence. Preview dimensions update once per animation frame without size tweening, so
 transcripts do not repeatedly rewrap after a target change. On release the accepted split stays
 mounted until the chat-open operation commits (or fails); native drag-end cannot briefly restore
 the old layout. A hidden browser takes no space in the preview, so chats can occupy full-height
