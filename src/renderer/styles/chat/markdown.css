@@ -17,23 +17,25 @@
 .aui-md > :first-child { margin-top: 0; }
 .aui-md > :last-child { margin-bottom: 0; }
 
+/* Same ink as inline web sources (.prompt-source-trigger); not path-chip code styling. */
 .aui-md-local-file {
   display: inline;
+  max-width: none;
   padding: 0;
   border: 0;
   background: none;
-  color: var(--color-primary, #8cc8ff);
+  color: var(--link-ink);
   font: inherit;
+  font-weight: inherit;
+  font-family: inherit;
   text-align: inherit;
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
-  text-underline-offset: 2px;
+  text-decoration: none;
+  vertical-align: baseline;
   cursor: pointer;
+  transition: color 120ms var(--ease-chrome);
 }
 
-.aui-md-local-file:hover {
-  text-decoration-color: currentColor;
-}
+.aui-md-local-file:hover { color: #9eccf8; }
 
 .aui-md-local-file:disabled { cursor: wait; opacity: 0.65; }
 .aui-md-file-error { display: block; color: #fca5a5; font-size: 0.9em; }

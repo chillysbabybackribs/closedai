@@ -6,7 +6,7 @@ import { cn } from '../lib/utils.js'
 import { Markdown, MarkdownLink } from '../components/ui/markdown.js'
 import { remarkBareUrls } from '../components/ui/markdown-links.js'
 import { remarkWorkspaceFilePaths } from '../components/ui/markdown-workspace-paths.js'
-import { isWorkspaceFileHref, localFilePath } from '../shared/local-files.js'
+import { isWorkspaceFileHref } from '../shared/local-files.js'
 
 const CHAT_REMARK_PLUGINS = [remarkGfm, remarkBreaks, remarkBareUrls, remarkWorkspaceFilePaths]
 
@@ -23,8 +23,8 @@ function LocalFileLink({ href, cwd, children }: { href: string; cwd?: string; ch
     } finally { setOpening(false) }
   }
   return <>
-    <button type="button" className="aui-md-local-file" data-ui="chat.local-file" data-ui-key={href}
-      title={localFilePath(href) ?? href} disabled={opening} onClick={() => void open()}>{children}</button>
+    <button type="button" className="aui-md-local-file prompt-source-trigger" data-ui="chat.local-file" data-ui-key={href}
+      disabled={opening} onClick={() => void open()}>{children}</button>
     {error && <span className="aui-md-file-error" role="alert">{error}</span>}
   </>
 }

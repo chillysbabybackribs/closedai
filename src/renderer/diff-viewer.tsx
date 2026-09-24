@@ -99,7 +99,7 @@ export const DiffViewer = memo(function DiffViewer({
           <FileCode className="diff-header-icon" aria-hidden="true" />
           <button
             type="button"
-            className="diff-header-path"
+            className="diff-header-path aui-md-local-file prompt-source-trigger"
             data-ui="chat.local-file"
             data-ui-key={path}
             onClick={openFile}
