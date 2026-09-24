@@ -73,6 +73,8 @@ export async function peerManagerTrimAttached(host: PeerManagerSupportHost): Pro
     ...switching
   ])
   if (detached.length === 0) return
+  // The detached rows were built while these chats were still attached; rebuild them.
+  host.chatRowsCache?.invalidateDetached()
   host.chatsEmit.schedule()
   await peerManagerPersistOpenChats(host)
 }
