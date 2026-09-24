@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { closesHistoryOnSearchEscape } from './chat-history.js'
+import { closesHistoryOnSearchEscape, HISTORY_PAGE_SIZE, nextHistoryPage } from './chat-history.js'
 
 function escapeEvent(overrides: {
   key?: string
@@ -27,4 +27,10 @@ test('Escape in chat history search closes the panel', () => {
   assert.equal(escapeEvent({ isComposing: true }), false)
   assert.equal(escapeEvent({ ctrlKey: true }), false)
   assert.equal(escapeEvent({ shiftKey: true }), false)
+})
+
+test('History view pages older chats one page at a time and stops at the end', () => {
+  assert.equal(nextHistoryPage(HISTORY_PAGE_SIZE, 1000), HISTORY_PAGE_SIZE * 2)
+  assert.equal(nextHistoryPage(HISTORY_PAGE_SIZE, 60), 60)
+  assert.equal(nextHistoryPage(10, 5), 5)
 })

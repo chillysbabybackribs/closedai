@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
-import { chatSearchMeta, chatSearchView, listableChat, searchChats, segmentTitle, stepHighlight } from './history-search.js'
+import {
+  chatSearchFooter, chatSearchMeta, chatSearchView, listableChat, rankChats, REST_CLOSED_LIMIT, searchChats, segmentTitle,
+  stepHighlight
+} from './history-search.js'
 
 function chat(paneId: string, title: string, updatedAt = 100, cwd = '/projects/app'): ChatRowSummary {
   return {
@@ -87,8 +90,10 @@ test('activity groups are exclusive and precede recent history without hiding ol
   assert.deepEqual(view.sections.map(section => section.label), ['Running', 'Recently completed', 'Closed'])
   assert.deepEqual(view.sections[0]!.hits.map(hit => hit.row.paneId), ['running'])
   assert.deepEqual(view.sections[1]!.hits.map(hit => hit.row.paneId), ['newly-finished', 'finished'])
-  // Groups are not capped: the rest view lists every chat the History view lists.
+  // Under the Closed window every closed chat is listed, and the total agrees.
   assert.equal(view.sections[2]!.hits.length, 13)
+  assert.equal(view.sections[2]!.total, 13)
+  assert.equal(view.total, 16)
   assert.equal(view.sections[2]!.hits[0]!.row.paneId, 'viewed')
   const ids = view.sections.flatMap(section => section.hits.map(hit => hit.row.paneId))
   assert.equal(new Set(ids).size, ids.length)
@@ -102,7 +107,10 @@ test('search flattens activity into title-ranked results and keeps global activi
     chat('finished', 'Finished task', 200)]
   const reviews = { finished: { queuedAt: 200, viewedAt: null } }
   const view = chatSearchView(rows, 'browser', reviews)
-  assert.equal(chatSearchView(rows, 'browser', reviews, 1).sections[0]!.hits.length, 1)
+  const one = chatSearchView(rows, 'browser', reviews, { query: 1 })
+  assert.equal(one.sections[0]!.hits.length, 1)
+  assert.equal(one.sections[0]!.total, 2)
+  assert.equal(one.total, 2)
   assert.deepEqual(view.sections.map(section => section.label), ['Matching chats'])
   assert.deepEqual(view.sections[0]!.hits.map(hit => [hit.row.paneId, hit.status]),
     [['history', 'closed'], ['running', 'running']])
@@ -153,4 +161,31 @@ test('row meta names closed chats and uses last-turn time', () => {
   const open = chatSearchView([{ ...chat('live', 'Current tab', 10), attached: true }], '', {})
     .sections[0]!.hits[0]!
   assert.equal(chatSearchMeta(open, () => 'Just now'), 'app · Open · Just now')
+})
+
+test('at rest Closed is a window of the newest chats and live groups are never windowed', () => {
+  const rows = [
+    ...Array.from({ length: REST_CLOSED_LIMIT + 30 }, (_, i) => chat(`closed-${i}`, 'Closed', 1000 + i)),
+    ...Array.from({ length: 25 }, (_, i) => ({ ...chat(`open-${i}`, 'Open', i), attached: true })),
+    { ...chat('running', 'Running', 1), running: true }
+  ]
+  const view = chatSearchView(rows, '', {})
+  const closed = view.sections.find(section => section.label === 'Closed')!
+  assert.equal(closed.hits.length, REST_CLOSED_LIMIT)
+  assert.equal(closed.total, REST_CLOSED_LIMIT + 30)
+  assert.equal(closed.hits[0]!.row.paneId, `closed-${REST_CLOSED_LIMIT + 29}`)
+  assert.equal(view.sections.find(section => section.label === 'Open')!.hits.length, 25)
+  assert.equal(view.total, rows.length)
+  assert.equal(chatSearchView(rows, '', {}, { closed: 5 }).sections.find(s => s.label === 'Closed')!.hits.length, 5)
+  // A query ranks the whole history, not the window.
+  assert.equal(rankChats(rows, 'closed').length, REST_CLOSED_LIMIT + 30)
+  assert.equal(chatSearchView(rows, 'closed', {}, { query: 40 }).sections[0]!.hits.length, 40)
+})
+
+test('the footer says how much of history is listed and how to reach the rest', () => {
+  assert.equal(chatSearchFooter(1, 1, false), '1 chat')
+  assert.equal(chatSearchFooter(3, 3, false), '3 chats')
+  assert.equal(chatSearchFooter(1, 1, true), '1 match')
+  assert.equal(chatSearchFooter(24, 850, false), '24 of 850 chats · type to search older')
+  assert.equal(chatSearchFooter(40, 120, true), '40 of 120 matches')
 })
