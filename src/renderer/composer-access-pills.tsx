@@ -23,15 +23,6 @@ export function ComposerAccessPills({ paneId, startEnabled, runningTurn, continu
       <button
         type="button"
         className="composer-pill"
-        data-ui="composer.browser"
-        onClick={() => workspace.toggleBrowser()}
-      >
-        <Globe2 size={14} strokeWidth={1.9} aria-hidden="true" />
-        <span className="composer-pill-label">Browser</span>
-      </button>
-      <button
-        type="button"
-        className="composer-pill"
         data-ui="composer.new-chat"
         data-ui-key={paneId}
         onClick={() => workspace.newChat(paneId)}
@@ -49,6 +40,15 @@ export function ComposerAccessPills({ paneId, startEnabled, runningTurn, continu
         onNewAgent={(id) => workspace.openAgentsView(id)}
         onError={onComposerError}
       />
+      <button
+        type="button"
+        className="composer-pill"
+        data-ui="composer.browser"
+        onClick={() => workspace.toggleBrowser()}
+      >
+        <Globe2 size={14} strokeWidth={1.9} aria-hidden="true" />
+        <span className="composer-pill-label">Browser</span>
+      </button>
       {continueMessageId && onContinueInNewChat ? (
         <ComposerContinuePill
           messageId={continueMessageId}

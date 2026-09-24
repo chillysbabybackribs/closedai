@@ -311,7 +311,7 @@
   color: #e8bc6a;
 }
 
-/* Pills under the card: browser toggle and saved-agent launcher (composer-access-pills.tsx). */
+/* Pills under the card: new chat, agents menu, browser toggle (composer-access-pills.tsx). */
 .composer-pills {
   display: flex;
   flex-wrap: wrap;
