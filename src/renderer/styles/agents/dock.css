@@ -60,6 +60,11 @@
   animation: none;
 }
 
+/* The shell's unlayered `button { font: inherit }` outranks the Button size utilities; restore
+   the size each variant asks for so the dock's controls match its text. */
+.agent-dock-panel [data-slot='button'] { font-size: var(--text-sm); }
+.agent-dock-panel [data-slot='button'][data-size='xs'] { font-size: var(--text-xs); }
+
 .agent-dock-summary,
 .agent-dock-empty {
   color: var(--chrome-fg);
