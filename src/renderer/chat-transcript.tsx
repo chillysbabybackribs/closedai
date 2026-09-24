@@ -154,9 +154,10 @@ export const ChatTranscript = memo(function ChatTranscript({
       {showEarlier ? (
         <div ref={foldBannerRef} className="transcript-fold-banner" role="status">
           <button type="button" data-ui="chat.show-earlier" className="transcript-fold-toggle"
-            disabled={loadingEarlier} onClick={() => { void revealEarlier() }}>
+            disabled={loadingEarlier} aria-busy={loadingEarlier || undefined}
+            aria-label={loadingEarlier ? 'Loading earlier messages' : 'View previous messages'}
+            onClick={() => { void revealEarlier() }}>
             <ChevronUp className="transcript-fold-chevron" aria-hidden="true" />
-            <span>{loadingEarlier ? 'Loading…' : 'View previous messages'}</span>
           </button>
         </div>
       ) : null}

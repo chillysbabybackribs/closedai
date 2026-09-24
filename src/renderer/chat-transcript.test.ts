@@ -127,7 +127,8 @@ test('opening a long transcript shows only the latest turn until earlier ones ar
     type: 'user', id: `u${index}`, turnId: `t${index}`, text: `Message ${index}`
   }))
   const html = renderTranscript({ items })
-  assert.match(html, /View previous messages/)
+  assert.match(html, /data-ui="chat\.show-earlier"/)
+  assert.match(html, /aria-label="View previous messages"/)
   assert.doesNotMatch(html, /Message 248/)
   assert.match(html, /Message 249/)
   assert.equal((html.match(/data-slot="message-scroller-item"/g) ?? []).length, 1)
