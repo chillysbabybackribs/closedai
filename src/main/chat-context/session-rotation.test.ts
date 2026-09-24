@@ -48,6 +48,29 @@ test('send cancels a queued rotation without waiting', async (t) => {
   assert.deepEqual(h.rotations, [])
 })
 
+test('task-aware pressure can schedule rotation without token usage', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const notices: string[] = []
+  let turnActive = false
+  const rotator = new SessionRotator({
+    enabled: () => true,
+    thresholdPercent: () => 0,
+    thresholdTokens: () => 0,
+    idleDelayMs: 0,
+    threadId: () => 'thread-1',
+    turnActive: () => turnActive,
+    pressureTrigger: () => 'items',
+    hasPressureThresholds: () => true,
+    onScheduled: (reason) => { notices.push(reason) },
+    rotate: async () => { rotator.complete() }
+  })
+  rotator.turnFinished()
+  assert.deepEqual(notices, ['items'])
+  t.mock.timers.tick(1)
+  await flushAsync()
+  assert.equal(rotator.scheduledForIdle, false)
+})
+
 test('rotation stays off when seamless rotation is disabled', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const h = harness(false, 80, 15_000)

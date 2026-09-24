@@ -5,6 +5,8 @@ import type {
   ChatSnapshot, ChatThreadContent, ChatThreadSummary
 } from '../../shared/chat.js'
 import type { RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
+import { createSessionRotator } from '../chat-context/session-rotator-factory.js'
+import type { SessionRotator } from '../chat-context/session-rotation.js'
 import {
   detachCursorThread,
   resumeCursorSession,
@@ -77,6 +79,7 @@ export class CursorChatService extends EventEmitter {
   private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
   private promptSuggestion: string | null = null
   private suggestionGeneration = 0
+  private readonly rotator: SessionRotator
 
   constructor(
     readonly cwd: string,
@@ -96,6 +99,14 @@ export class CursorChatService extends EventEmitter {
       (event) => this.emitEvent(event),
       (callId) => screenshots?.get(callId) ?? null
     )
+    this.rotator = createSessionRotator({
+      settings: this.settings,
+      threadId: () => (this.session?.sessionId ? cursorThreadId(this.session.sessionId) : null),
+      turnActive: () => this.activeTurnId !== null,
+      transcriptItems: () => this.transcript.snapshot(),
+      notice: (text) => this.addNotice(text, 'info', null),
+      rotate: () => this.rotateProviderSession()
+    })
   }
 
   snapshot(window?: ChatHistoryWindow): ChatSnapshot {
@@ -140,6 +151,7 @@ export class CursorChatService extends EventEmitter {
       // Paint the accepted message before the provider starts; see the Claude lane for why.
       this.transcript.addOptimisticUser(randomUUID(), prompt, summaries)
       await prepare?.()
+      await this.rotator.prepareForSend()
       await this.ensureReady()
       const session = this.session!
       if (this.activeTurnId) throw new Error('A Cursor turn is already running')
@@ -291,7 +303,7 @@ export class CursorChatService extends EventEmitter {
   async compactConversation(): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
     if (!this.settings.get().chatSeamlessRotation) throw new Error('The active provider does not support compaction')
-    await rotateCursorProviderSession(this.threadHost(), this.session)
+    await this.rotateProviderSession()
     this.addNotice('Provider context will shrink on the next message; the visible transcript is unchanged.', 'info', null)
   }
 
@@ -543,9 +555,19 @@ export class CursorChatService extends EventEmitter {
       this.setPaused(null)
       this.suggestionGeneration += 1
       this.setPromptSuggestion(null)
+      this.rotator.turnStarted()
     }
     this.bindBridge()
     this.emitEvent({ type: 'turn', turnId })
+    if (turnId === null) this.rotator.turnFinished()
+  }
+
+  private async rotateProviderSession(): Promise<void> {
+    try {
+      await rotateCursorProviderSession(this.threadHost(), this.session)
+    } finally {
+      this.rotator.complete()
+    }
   }
 
   private async updatePromptSuggestion(answer: string): Promise<void> {
@@ -593,6 +615,7 @@ export class CursorChatService extends EventEmitter {
       settings: this.settings,
       paneId: this.paneId,
       transcript: this.transcript,
+      rotator: this.rotator,
       session: () => this.session,
       threadName: () => this.threadName,
       setThreadName: (name) => { this.threadName = name },

@@ -32,6 +32,7 @@ export type AntigravityThreadHost = {
 
 export async function resumeAntigravityConversation(host: AntigravityThreadHost, conversationId: string): Promise<void> {
   host.setContextUsage(null)
+  host.rotator.reset()
   const items = await host.history.loadTranscript(conversationId)
   await host.session()!.adopt(conversationId)
   host.transcript.replaceItems(items ?? [])

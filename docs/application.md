@@ -250,11 +250,20 @@ source pane closes—without opening it in the UI. Source recall stops at the sa
 checkpoint newer than a branch point is not carried. Missing boundaries (including legacy
 continuations) fail closed. Retrieval uses existing provider stores; no second transcript
 archive is introduced. When `chatSeamlessRotation` is enabled (default on; set false to opt out), idle context pressure
-on Codex and Claude can rotate the provider session invisibly: the visible transcript stays put,
-a thin seed is queued for the next send, and each rotation appends metadata to the chat record
-for later recall-chain work. Source recall on the same pane after rotation reads the in-memory
-transcript through the frozen boundary so tool output remains recoverable without reopening the
-dropped provider thread. Disabling seamless rotation restores the native compaction path.
+on Codex, Claude, Cursor, and Antigravity can rotate the provider session invisibly: the visible
+transcript stays put, a thin seed is queued for the next send, and each rotation appends metadata
+to the chat record for later recall-chain work. Triggers include the saved percentage and token
+budgets (`chatCompactAtPercent`, `chatCompactAtTokens`), plus task-aware defaults in app settings:
+transcript item count (`chatRotateAtItems`, default 100), tool calls since the latest user message
+(`chatRotateAtToolCallsSinceUser`, default 24), and tool-output characters in that span
+(`chatRotateAtToolOutputChars`, default 280000). Set any of those to `0` to disable that trigger.
+When a rotation is queued after a turn, an info notice explains which trigger fired. Source recall
+on the same pane after rotation reads the in-memory transcript through the frozen boundary so tool
+output remains recoverable without reopening the dropped provider thread. With seamless rotation on,
+Claude Code auto-compaction stays off but background precompute compaction remains on by default
+(`chatClaudePrecomputeCompaction`; set false to disable). Disabling seamless rotation restores the
+native compaction path. For shell build or verify scripts, `node scripts/work-lock.mjs --cwd <repo> --
+…` serializes heavy work per workspace using `.closedai/work.lock`.
 See [Model context](model-context.md) for trust and [Tools](tools.md) for limits.
 
 Cross-project memory uses `peer_chats.list(scope=history)` and `recall(scope=history)` against

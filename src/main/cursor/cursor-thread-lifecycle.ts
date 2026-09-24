@@ -25,6 +25,7 @@ export async function resumeCursorSession(host: CursorThreadHost, session: Curso
   const items = await session.replay(sessionId)
   session.continueWith(sessionId)
   host.transcript.replaceItems(items)
+  host.rotator.reset()
   host.setThreadName(null)
   await host.settings.set({ chatCursorSessionId: sessionId, chatContinuation: null })
   host.emitEvent({ type: 'replace', snapshot: host.snapshot() })

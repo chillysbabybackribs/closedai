@@ -5,6 +5,8 @@ import type {
 } from '../../shared/chat.js'
 import type { RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
 import { describeUsage, type ContextUsage } from '../chat-context/context-compaction.js'
+import { createSessionRotator } from '../chat-context/session-rotator-factory.js'
+import type { SessionRotator } from '../chat-context/session-rotation.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import {
   buildThreadHandoff,
@@ -94,6 +96,7 @@ export class AntigravityChatService extends EventEmitter {
   private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
   private promptSuggestion: string | null = null
   private suggestionGeneration = 0
+  private readonly rotator: SessionRotator
 
   constructor(
     readonly cwd: string,
@@ -108,6 +111,15 @@ export class AntigravityChatService extends EventEmitter {
     super()
     this.history = new AntigravityHistory(stateDir)
     this.transcript = new ChatTranscript(cwd, () => this.activeTurnId, (event) => this.emitEvent(event), (callId) => screenshots?.get(callId) ?? null)
+    this.rotator = createSessionRotator({
+      settings: this.settings,
+      threadId: () => (this.session?.conversationId ? antigravityThreadId(this.session.conversationId) : null),
+      turnActive: () => this.activeTurnId !== null,
+      transcriptItems: () => this.transcript.snapshot(),
+      currentUsage: () => this.contextUsage,
+      notice: (text) => this.addNotice(text, 'info', null),
+      rotate: () => this.rotateProviderSession()
+    })
   }
 
   snapshot(window?: ChatHistoryWindow): ChatSnapshot {
@@ -152,6 +164,7 @@ export class AntigravityChatService extends EventEmitter {
       // Paint the accepted message before the provider starts; see the Claude lane for why.
       this.transcript.addOptimisticUser(crypto.randomUUID(), prompt, summaries)
       await prepare?.()
+      await this.rotator.prepareForSend()
       await this.ensureReady()
       const session = this.session!
       if (this.activeTurnId) throw new Error('An Antigravity turn is already running')
@@ -328,7 +341,7 @@ export class AntigravityChatService extends EventEmitter {
   async compactConversation(): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
     if (this.settings.get().chatSeamlessRotation) {
-      await rotateAntigravityProviderSession(this.threadHost())
+      await this.rotateProviderSession()
       this.addNotice('Provider context will shrink on the next message; the visible transcript is unchanged.', 'info', null)
       return
     }
@@ -525,10 +538,22 @@ export class AntigravityChatService extends EventEmitter {
       this.setPaused(null)
       this.suggestionGeneration += 1
       this.setPromptSuggestion(null)
+      this.rotator.turnStarted()
     }
     this.bindBridge()
     this.emitEvent({ type: 'turn', turnId })
-    if (turnId === null) void this.refreshPlanUsage()
+    if (turnId === null) {
+      this.rotator.turnFinished()
+      void this.refreshPlanUsage()
+    }
+  }
+
+  private async rotateProviderSession(): Promise<void> {
+    try {
+      await rotateAntigravityProviderSession(this.threadHost())
+    } finally {
+      this.rotator.complete()
+    }
   }
 
   private async updatePromptSuggestion(answer: string): Promise<void> {
@@ -566,6 +591,7 @@ export class AntigravityChatService extends EventEmitter {
     const model = this.modelState.models.find((entry) => entry.id === this.modelState.selectedModel)
     const contextWindow = model?.contextWindow ?? antigravityContextWindow(this.modelState.selectedModel)
     this.contextUsage = { usedTokens: usage.inputTokens, contextWindow }
+    this.rotator.noteUsage(this.contextUsage)
     this.emitEvent({ type: 'context', usage: describeUsage(this.contextUsage) })
   }
 
@@ -577,6 +603,7 @@ export class AntigravityChatService extends EventEmitter {
       cwd: this.cwd,
       bridge: this.bridge,
       transcript: this.transcript,
+      rotator: this.rotator,
       session: () => this.session,
       setSession: (session) => { this.session = session },
       createSession: () => this.createSession(),
