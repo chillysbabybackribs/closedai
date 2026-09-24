@@ -12,12 +12,10 @@ import {
 } from "lucide-react"
 
 import { cn } from "../../lib/utils.js"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip.js"
 
-// A glass icon dock: a pill bar of raised square tiles that lift on hover, name themselves in a
-// tooltip, and carry an optional count badge. Colours come from theme tokens so the bar follows
-// the active theme. Labels use the shared Tooltip, which is portaled (never clipped at a window
-// edge) and which the native browser view already yields to. HeroDockBar, HeroDockIcon and
+// A glass icon dock on a dark hero: raised square tiles that lift on hover, show their label
+// beneath, and carry an optional count badge. The classes are the published component's own;
+// only its global stylesheet was turned into scoped utilities. HeroDockBar, HeroDockIcon and
 // HeroDockSeparator are the reusable pieces; the default export is the hero they were published with.
 
 export default function HeroDock(): JSX.Element {
@@ -56,7 +54,7 @@ export default function HeroDock(): JSX.Element {
 
           <div className="relative mt-6 w-full max-w-[85%] sm:max-w-[80%]">
             <div className="flex items-center justify-center">
-              <HeroDockBar className="scale-90 sm:scale-95">
+              <HeroDockBar>
                 <HeroDockIcon icon={Home} label="Agents" />
                 <HeroDockIcon icon={Compass} label="Leads" />
                 <HeroDockIcon icon={Calendar} label="Operations" badge="4" />
@@ -91,82 +89,59 @@ export default function HeroDock(): JSX.Element {
   )
 }
 
-/** The pill that holds the tiles; its tooltips share one provider so moving along the bar skips the open delay. */
+/** The published Dock: a pill bar, drawn slightly under size as the original is. */
 export function HeroDockBar({ className, children, ...props }: ComponentProps<"div">): JSX.Element {
   return (
-    <TooltipProvider>
+    <div className="relative flex scale-90 items-center gap-2 sm:scale-95 sm:gap-4">
       <div
         {...props}
         className={cn(
-          "flex items-center gap-3 rounded-[28px] bg-(--surface-raised)/85 px-3 py-2 shadow-[inset_0_1px_0_var(--surface-highlight),0_10px_30px_-12px_rgb(0_0_0/0.6)] ring-1 ring-(--hairline-strong) backdrop-blur-lg sm:gap-5 sm:rounded-[48px] sm:px-6 sm:py-3",
+          "flex items-center gap-3 rounded-[28px] bg-neutral-900/80 px-3 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-lg sm:gap-5 sm:rounded-[48px] sm:px-6 sm:py-3",
           className
         )}
       >
         {children}
       </div>
-    </TooltipProvider>
+    </div>
   )
 }
 
-export function HeroDockSeparator({ className }: { className?: string }): JSX.Element {
-  return (
-    <span
-      className={cn("mx-1 hidden h-6 w-px bg-(--hairline-strong) sm:block", className)}
-      aria-hidden="true"
-    />
-  )
+export function HeroDockSeparator(): JSX.Element {
+  return <span className="mx-1 hidden h-6 w-px bg-white/10 sm:block" aria-hidden="true" />
 }
 
 export type HeroDockIconProps = Omit<ComponentProps<"button">, "children"> & {
-  /** The tile glyph; children render after it, for a glyph that is not an icon (initials) or a status dot. */
+  /** The tile glyph; children render after it, for a glyph that is not an icon such as initials. */
   icon?: LucideIcon
   children?: ReactNode
-  /** Accessible name and default tooltip text. */
   label: string
-  /** Richer tooltip body; defaults to the label. */
-  tip?: ReactNode
-  side?: "top" | "bottom"
   badge?: string
 }
 
-export function HeroDockIcon({
-  icon: Icon,
-  children,
-  label,
-  tip,
-  side = "bottom",
-  badge,
-  className,
-  ...props
-}: HeroDockIconProps): JSX.Element {
+export function HeroDockIcon({ icon: Icon, children, label, badge, className, ...props }: HeroDockIconProps): JSX.Element {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          aria-label={label}
-          {...props}
-          className={cn(
-            "group relative grid shrink-0 place-items-center bg-linear-to-b from-(--surface-control-hover) to-(--surface-control) text-foreground/85 shadow-[inset_0_1px_0_var(--surface-highlight)] ring-1 ring-(--hairline-strong) outline-none h-12 w-12 rounded-xl transition-transform duration-200 hover:-translate-y-1 hover:scale-[1.05] hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:h-14 sm:w-14",
-            // Hover halo: a drop shadow that fades in under the lifted tile.
-            "after:pointer-events-none after:absolute after:-inset-0.5 after:rounded-[inherit] after:opacity-0 after:shadow-[0_10px_24px_-10px_rgb(0_0_0/0.7)] after:transition-opacity after:duration-250 hover:after:opacity-100",
-            className
-          )}
-        >
-          {Icon ? (
-            <Icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" strokeWidth={2.1} />
-          ) : null}
-          {children}
-          {badge ? (
-            <span className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-foreground px-1 text-[10px] font-semibold text-background">
-              {badge}
-            </span>
-          ) : null}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side={side} className="max-w-64">
-        {tip ?? label}
-      </TooltipContent>
-    </Tooltip>
+    <button
+      type="button"
+      aria-label={label}
+      {...props}
+      className={cn(
+        "group relative grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-b from-neutral-800/60 to-neutral-900/70 text-white/85 shadow-lg ring-1 ring-white/10 outline-none backdrop-blur-xl transition-transform duration-200 hover:-translate-y-1 hover:scale-[1.05] focus-visible:ring-2 focus-visible:ring-white/50 sm:h-14 sm:w-14",
+        // The published .hover-halo: a faint outer ring and drop shadow that fade in on hover.
+        "after:pointer-events-none after:absolute after:-inset-0.5 after:rounded-[inherit] after:opacity-0 after:shadow-[0_0_0_0_rgba(255,255,255,.18),0_12px_30px_-10px_rgba(0,0,0,.7)] after:transition-opacity after:duration-250 hover:after:opacity-100",
+        className
+      )}
+    >
+      {Icon ? <Icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" strokeWidth={2.1} /> : null}
+      {children}
+      {badge ? (
+        <span className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-semibold text-neutral-900 ring-1 ring-white/80">
+          {badge}
+        </span>
+      ) : null}
+      {/* The published .tooltip: rests 6px low and transparent, rises into place on hover or focus. */}
+      <span className="pointer-events-none absolute -bottom-6 translate-y-[calc(50%+6px)] whitespace-nowrap text-[9px] tracking-wide text-white/70 opacity-0 transition-[opacity,translate] duration-200 group-hover:translate-y-1/2 group-hover:opacity-100 group-focus-visible:translate-y-1/2 group-focus-visible:opacity-100 sm:text-[10px]">
+        {label}
+      </span>
+    </button>
   )
 }

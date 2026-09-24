@@ -32,7 +32,7 @@ export function AgentDock({ chats, onOpenChat, onOpenAgents }: AgentDockProps): 
   const runsApi = window.closedai.agentRuns
 
   return (
-    <footer className="agent-dock grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 py-2 text-xs"
+    <footer className="agent-dock grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 pt-2 pb-6 text-xs"
       data-ui="dock.bar" aria-label="Agents">
       <p role="status" className="truncate">
         <span className="font-medium text-foreground">Agents</span>
@@ -44,7 +44,7 @@ export function AgentDock({ chats, onOpenChat, onOpenAgents }: AgentDockProps): 
             onPause={(id) => runsApi.pause(id)} onResume={(id) => runsApi.resume(id)} onStop={(id) => runsApi.stop(id)} />
         ))}
         {tiles.length > 0 && <HeroDockSeparator />}
-        <HeroDockIcon icon={Plus} label="New or saved agent" side="top" data-ui="dock.agents" onClick={onOpenAgents} />
+        <HeroDockIcon icon={Plus} label="New agent" aria-label="New or saved agent" data-ui="dock.agents" onClick={onOpenAgents} />
       </HeroDockBar>
       <span aria-hidden="true" />
     </footer>
