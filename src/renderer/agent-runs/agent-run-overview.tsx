@@ -21,10 +21,22 @@ export function AgentRunOverview({ chats, onOpenChat }: {
       <span role="status">{dockSummary(tiles)}</span>
     </div>
     {tiles.length === 0
-      ? <p className="agent-run-overview-empty">No agent runs yet. Start one from a saved agent or a new draft.</p>
-      : <div className="agent-run-overview-list">
-        {tiles.map((tile) => <AgentRunCard key={tile.chatId} tile={tile} onOpenChat={onOpenChat}
-          onPause={(id) => api.pause(id)} onResume={(id) => api.resume(id)} onStop={(id) => api.stop(id)} />)}
+      ? <p className="agent-run-overview-empty">No runs in this workspace yet. Write instructions below and press Start.</p>
+      : <div className="agent-run-table-wrap">
+        <table className="agent-run-table">
+          <thead>
+            <tr>
+              <th scope="col">Agent</th>
+              <th scope="col">Status</th>
+              <th scope="col">Activity</th>
+              <th scope="col"><span className="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {tiles.map((tile) => <AgentRunCard key={tile.chatId} tile={tile} onOpenChat={onOpenChat}
+              onPause={(id) => api.pause(id)} onResume={(id) => api.resume(id)} onStop={(id) => api.stop(id)} />)}
+          </tbody>
+        </table>
       </div>}
   </section>
 }

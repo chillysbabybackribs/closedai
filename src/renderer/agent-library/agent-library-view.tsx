@@ -18,32 +18,44 @@ export type AgentLibraryViewProps = {
   onOpenChat: (chatId: string) => void
 }
 
+const START_STEPS = [
+  'Write what the agent should do on each cycle in Instructions.',
+  'Optionally name it and Save to keep it in your library.',
+  'Press Start — a new chat opens beside this pane and runs until you pause or stop it.'
+] as const
+
 /** The Agents view: opened from the tile + menu or Agent → Agents…. */
 export function AgentLibraryView({ active, startEnabled, onStart, chats, onOpenChat }: AgentLibraryViewProps): JSX.Element {
   const agents = useAgentLibrary()
   const now = useMemo(() => Date.now(), [active]) // eslint-disable-line react-hooks/exhaustive-deps
   const save = async (draft: SavedAgentDraft, id: string | null): Promise<SavedAgent> => {
-    // An entry deleted elsewhere while it sat in the editor is saved again as a new one.
     const updated = id ? await window.closedai.agentLibrary.update(id, draft) : null
     return updated ?? window.closedai.agentLibrary.save(draft)
   }
   return (
-      <div className="agent-library-view">
-        <header className="shrink-0 border-b px-6 py-3.5">
-          <h2 className="text-sm font-semibold">Agents</h2>
-          <p className="text-muted-foreground text-xs">
-            Standing instructions the app keeps driving cycle after cycle. Start opens a new chat beside the chat this view follows, with its model and folder.
+    <div className="agent-library-view">
+      <header className="agent-library-intro">
+        <div>
+          <h2 className="agent-library-title">Agents</h2>
+          <p className="agent-library-lede">
+            Reusable instructions the app sends every cycle. Runs stay visible above; each one is a normal chat you can open anytime.
           </p>
-        </header>
-        <AgentRunOverview chats={chats} onOpenChat={onOpenChat} />
-        <AgentLibraryPanel
-          agents={agents}
-          now={now}
-          startEnabled={startEnabled}
-          onSave={save}
-          onRemove={(id) => window.closedai.agentLibrary.remove(id)}
-          onStart={onStart}
-        />
-      </div>
+        </div>
+        <ol className="agent-library-steps">
+          {START_STEPS.map((step, index) => (
+            <li key={step}><span className="agent-library-step-num">{index + 1}</span>{step}</li>
+          ))}
+        </ol>
+      </header>
+      <AgentRunOverview chats={chats} onOpenChat={onOpenChat} />
+      <AgentLibraryPanel
+        agents={agents}
+        now={now}
+        startEnabled={startEnabled}
+        onSave={save}
+        onRemove={(id) => window.closedai.agentLibrary.remove(id)}
+        onStart={onStart}
+      />
+    </div>
   )
 }

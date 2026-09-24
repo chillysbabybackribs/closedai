@@ -44,8 +44,8 @@ function sameDraft(a: Draft, b: Draft): boolean {
 }
 
 export function AgentLibraryPanel({ agents, now, startEnabled, onSave, onRemove, onStart }: AgentLibraryPanelProps): JSX.Element {
-  const [selectedId, setSelectedId] = useState<string | null>(() => agents[0]?.id ?? null)
-  const [draft, setDraft] = useState<Draft>(() => (agents[0] ? draftOf(agents[0]) : EMPTY_DRAFT))
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   const [busy, setBusy] = useState<Busy>(null)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -67,10 +67,7 @@ export function AgentLibraryPanel({ agents, now, startEnabled, onSave, onRemove,
       setDraft(EMPTY_DRAFT)
       return
     }
-    if (selectedId === null && !dirty && agents[0]) {
-      setSelectedId(agents[0].id)
-      setDraft(draftOf(agents[0]))
-    } else if (selected && !dirty) {
+    if (selected && !dirty) {
       setDraft(draftOf(selected))
     }
     // The baseline is derived from `agents`; this reacts to the library, not to typing.
@@ -124,66 +121,74 @@ export function AgentLibraryPanel({ agents, now, startEnabled, onSave, onRemove,
   }, 'Could not delete the agent')
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <aside className="flex w-60 shrink-0 flex-col border-r" aria-label="Saved agents">
-        <div className="px-3 pt-3 pb-2">
-          <Button type="button" variant="outline" size="sm" className="w-full justify-start" data-ui="agents.new"
-            disabled={busy !== null} onClick={() => choose(null)}>
-            <Plus aria-hidden="true" /> New agent
-          </Button>
-        </div>
-        <div role="listbox" aria-label="Saved agents" className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-          {agents.length === 0 && (
-            <p className="text-muted-foreground px-2 py-3 text-xs">Nothing saved yet. Name the draft and save it to keep it here.</p>
-          )}
-          {agents.map((agent) => {
-            const active = agent.id === selectedId
-            return (
-              <button
-                key={agent.id}
-                type="button"
-                role="option"
-                aria-selected={active}
-                data-ui="agents.item"
-                data-ui-key={agent.id}
-                disabled={busy !== null}
-                onClick={() => choose(agent)}
-                className={cn(
-                  'hover:bg-accent/60 block w-full rounded-md px-2.5 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-                  active && 'bg-accent text-accent-foreground'
-                )}
-              >
-                <span className="block truncate text-sm font-medium">{agent.name}</span>
-                <span className="text-muted-foreground block truncate text-xs">
-                  {describeAgentUse(agent, now)}
-                  {agent.maxCycles !== null ? ` · ${agent.maxCycles} cycles` : ''}
-                </span>
-              </button>
-            )
-          })}
-        </div>
+    <div className="agent-library-split">
+      <aside className="agent-library-rail" aria-label="Saved agents">
+        <button type="button" className="agent-library-new" data-ui="agents.new" disabled={busy !== null} onClick={() => choose(null)}>
+          <Plus size={14} aria-hidden="true" /> New agent
+        </button>
+        {agents.length === 0 ? (
+          <p className="agent-library-rail-empty">Saved agents appear here after you name a draft and Save.</p>
+        ) : (
+          <div className="agent-library-table-wrap">
+            <table className="agent-library-table">
+              <thead>
+                <tr>
+                  <th scope="col">Saved</th>
+                  <th scope="col">Use</th>
+                </tr>
+              </thead>
+              <tbody role="listbox" aria-label="Saved agents">
+                {agents.map((agent) => {
+                  const active = agent.id === selectedId
+                  return (
+                    <tr key={agent.id} data-active={active || undefined}>
+                      <td colSpan={2} className="agent-library-table-row">
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={active}
+                          data-ui="agents.item"
+                          data-ui-key={agent.id}
+                          disabled={busy !== null}
+                          onClick={() => choose(agent)}
+                          className="agent-library-item"
+                        >
+                          <span className="agent-library-item-name">{agent.name}</span>
+                          <span className="agent-library-item-meta">
+                            {describeAgentUse(agent, now)}
+                            {agent.maxCycles !== null ? ` · ${agent.maxCycles} max` : ''}
+                          </span>
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </aside>
-      <section className="flex min-w-0 flex-1 flex-col gap-3 px-6 py-4" aria-label="Agent editor">
+      <section className="agent-library-editor" aria-label="Agent editor">
         <div className="flex gap-3">
           <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs font-medium">
             Name
-            <Input ref={nameRef} data-ui="agents.name" value={draft.name} placeholder="Leave blank for a one-off run"
+            <Input ref={nameRef} className="agent-library-field" data-ui="agents.name" value={draft.name} placeholder="Optional — blank runs once without saving"
               disabled={busy !== null} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
           </label>
           <label className="flex w-32 shrink-0 flex-col gap-1 text-xs font-medium">
             Cycle limit
-            <Input data-ui="agents.max-cycles" type="number" min={1} inputMode="numeric" value={draft.maxCycles} placeholder="None"
+            <Input className="agent-library-field" data-ui="agents.max-cycles" type="number" min={1} inputMode="numeric" value={draft.maxCycles} placeholder="None"
               disabled={busy !== null} onChange={(event) => setDraft({ ...draft, maxCycles: event.target.value })} />
           </label>
         </div>
         <label className="flex min-h-0 flex-1 flex-col gap-1 text-xs font-medium">
           Instructions
           <Textarea data-ui="agents.prompt" value={draft.prompt} spellCheck={false} disabled={busy !== null}
-            placeholder="What this agent does every cycle, and how it reports."
-            className="agent-library-prompt min-h-0 flex-1 resize-none font-normal"
+            placeholder="Example: Each cycle, read closedai_app.state, pick one workflow to exercise, fix any bug you find, and report one line: cycle — workflow — result."
+            className="agent-library-prompt agent-library-field min-h-0 flex-1 resize-none font-normal"
             onChange={(event) => setDraft({ ...draft, prompt: event.target.value })} />
         </label>
-        <footer className="flex items-center gap-2">
+        <footer className="agent-library-footer">
           {selected && (
             <Button type="button" variant="ghost" size="sm" data-ui="agents.delete" disabled={busy !== null}
               className={cn(confirmDelete && 'text-destructive')}
@@ -194,7 +199,7 @@ export function AgentLibraryPanel({ agents, now, startEnabled, onSave, onRemove,
           <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs" role={error ? 'alert' : undefined}>
             {error || (tooLong ? `Instructions are limited to ${AGENT_RUN_MAX_PROMPT_CHARS} characters` : dirty && selected ? 'Unsaved changes' : '')}
           </span>
-          <Button type="button" variant="outline" size="sm" data-ui="agents.save" disabled={!canSave} onClick={() => void save()}>
+          <Button type="button" variant="ghost" size="sm" data-ui="agents.save" disabled={!canSave} onClick={() => void save()}>
             {busy === 'save' ? 'Saving…' : 'Save'}
           </Button>
           <Button type="button" size="sm" data-ui="agents.start" disabled={!canStart} onClick={() => void start()}>

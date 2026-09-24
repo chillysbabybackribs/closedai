@@ -416,9 +416,10 @@ footer bar beneath it with attach (`composer.upload`) on the left, the model set
 on the right naming the working folder. Model and folder controls share the same neutral color,
 with rounded hover surfaces inside a softly outlined composer. The model trigger fits its label
 and chevron, leaving the space before the folder outside its hover and click area. The footer has no Agent button.
-Agent → Agents… or the tile + menu opens the **Agents** view tab (`view.agents`, `src/renderer/agent-library/`) in this chat's tile: the saved-agent library on
-the left (`agents.item`, most recently used first, each with its run count and last run;
-`agents.new` clears the editor) and an editor on the right with a name (`agents.name`), a
+Agent → Agents… or the tile + menu opens the **Agents** view tab (`view.agents`, `src/renderer/agent-library/`) in this chat's tile: a short numbered getting-started
+list at the top, a **Runs** table (hairline rows, no card chrome), then the saved-agent library on
+the left as a flat table (`agents.item`, most recently used first, each with its run count and last run;
+`agents.new` clears the editor; the editor opens on a blank draft) and an editor on the right with a name (`agents.name`), a
 max-cycles cap (`agents.max-cycles`, blank runs until paused), and the standing instructions
 (`agents.prompt`). The library (`src/main/agent-library/`, `agent-library.json`) is user-owned
 and never pruned; a first open seeds it with the built-in repair agent (`BUILT_IN_AGENTS` in
@@ -443,9 +444,9 @@ the loop rather than raced.
 
 The **Agents tab** opens from the workflow icon beside Search chats in the title bar
 (`titlebar.agents`), the tile + menu, or Agent → Agents…. It opens or focuses a view tab in
-the selected chat tile. Its Runs section lists every agent run, with state, cycle, current
+the selected chat tile. Its Runs section lists every agent run in a minimal table, with state, cycle, current
 activity or pause reason, and a summary of running and attention-needed runs. Runs needing
-the user appear first. Each run card offers **Open chat** (`agents.open-chat`), **Review** for a
+the user appear first. Each run row offers **Open chat** (`agents.open-chat`), **Review** for a
 pending credential approval (`agents.review`), **Pause**/**Resume**/**Stop** (`agents.pause`,
 `agents.resume`, `agents.stop`; Stop reads **Dismiss** for a finished run). Opening a chat
 reveals it as a tab in the workspace. The saved-agent library and editor remain below the

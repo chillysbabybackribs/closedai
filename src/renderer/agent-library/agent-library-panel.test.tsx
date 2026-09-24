@@ -17,22 +17,21 @@ function render(overrides: Partial<AgentLibraryPanelProps> = {}): string {
   return renderToStaticMarkup(createElement(AgentLibraryPanel, props))
 }
 
-test('the library lists every saved agent with its use and loads the first one into the editor', () => {
+test('the library lists saved agents in a table and opens on a blank draft', () => {
   const html = render()
   assert.match(html, /data-ui="agents\.item" data-ui-key="a1"/)
-  assert.match(html, /aria-selected="true"[^>]*data-ui-key="a1"/)
   assert.match(html, /Ran 3 times · last 2 h ago/)
-  assert.match(html, /Never run · 4 cycles/)
-  assert.match(html, /data-ui="agents\.name"[^>]*value="Repair agent"/)
-  assert.match(html, /data-ui="agents\.prompt"[^>]*>Fix things\.<\/textarea>/)
-  assert.match(html, /data-ui="agents\.delete"/)
-  assert.match(html, /data-ui="agents\.save"[^>]*disabled=""/, 'an unchanged entry has nothing to save')
-  assert.doesNotMatch(html, /data-ui="agents\.start"[^>]*disabled=""/)
+  assert.match(html, /Never run · 4 max/)
+  assert.match(html, /data-ui="agents\.name"[^>]*value=""/)
+  assert.match(html, /data-ui="agents\.prompt"[^>]*><\/textarea>/)
+  assert.doesNotMatch(html, /aria-selected="true"/)
+  assert.doesNotMatch(html, /data-ui="agents\.delete"/)
+  assert.match(html, /data-ui="agents\.start"[^>]*disabled=""/, 'Start waits for instructions on a new draft')
 })
 
 test('an empty library shows a new draft with Start off until there are instructions', () => {
   const html = render({ agents: [] })
-  assert.match(html, /Nothing saved yet/)
+  assert.match(html, /Saved agents appear here/)
   assert.match(html, /data-ui="agents\.name"[^>]*value=""/)
   assert.doesNotMatch(html, /data-ui="agents\.delete"/)
   assert.match(html, /data-ui="agents\.start"[^>]*disabled=""/)
