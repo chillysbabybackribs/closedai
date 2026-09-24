@@ -70,27 +70,38 @@ export const ChatTranscript = memo(function ChatTranscript({
   }, [items, actionMessageIds])
   const rows = useMemo(() => transcriptRows(items), [items])
   const tailStart = useMemo(() => lastTurnRowStart(rows), [rows])
+  const tailAnchorKey = useMemo(() => transcriptRowKey(rows[tailStart]), [rows, tailStart])
   const [visibleAnchor, setVisibleAnchor] = useState(() => transcriptRowKey(rows[tailStart]))
   const [loadingEarlier, setLoadingEarlier] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [loadEpoch, setLoadEpoch] = useState(0)
   const browsedEarlier = useRef(false)
-  const { prepareForPrepend } = useMessageScroller()
+  const scrollToRevealedTurnRef = useRef(false)
+  const { prepareForPrepend, scrollToStart } = useMessageScroller()
   const scrollable = useMessageScrollerScrollable()
   const start = anchoredVisibleStart(visibleAnchor, rows, CHAT_MOUNTED_TURN_WINDOW)
   const setVisibleStart = (index: number): void => setVisibleAnchor(transcriptRowKey(rows[index]))
   const visibleRows = rows.slice(start)
 
+  // Reset only on chat/thread change or a new user turn — not on streaming/tool row updates.
   useLayoutEffect(() => {
     browsedEarlier.current = false
-    setVisibleStart(tailStart)
-  }, [actions?.threadKey, rows, tailStart])
+    scrollToRevealedTurnRef.current = false
+    setVisibleAnchor(tailAnchorKey)
+  }, [actions?.threadKey, tailAnchorKey])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (loadEpoch === 0) return
     setVisibleStart(clampVisibleStart(previousTurnRowStart(rows, tailStart), rows, CHAT_MOUNTED_TURN_WINDOW))
+    scrollToRevealedTurnRef.current = true
     setLoadEpoch(0)
   }, [loadEpoch, rows, tailStart])
+
+  useLayoutEffect(() => {
+    if (!scrollToRevealedTurnRef.current) return
+    scrollToRevealedTurnRef.current = false
+    scrollToStart()
+  }, [start, scrollToStart])
 
   useEffect(() => {
     if (start < tailStart) browsedEarlier.current = true
@@ -108,6 +119,7 @@ export const ChatTranscript = memo(function ChatTranscript({
     prepareForPrepend()
     if (start > 0) {
       setVisibleStart(clampVisibleStart(previousTurnRowStart(rows, start), rows, CHAT_MOUNTED_TURN_WINDOW))
+      scrollToRevealedTurnRef.current = true
       return
     }
     if (!hasEarlier || !loadEarlier) return

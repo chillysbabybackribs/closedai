@@ -148,27 +148,39 @@
 }
 
 .transcript-fold-banner {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   justify-content: center;
-  margin: 8px var(--chat-inline) 12px;
+  margin: 0 var(--chat-inline) 12px;
+  padding: 8px 0 4px;
+  background: linear-gradient(
+    to bottom,
+    var(--background, #181818) 70%,
+    transparent
+  );
 }
 
 .transcript-fold-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 0;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 12px;
   border: none;
+  border-radius: 8px;
   background: none;
   color: var(--muted-foreground, #949498);
   font-size: 11px;
   line-height: 1.2;
   cursor: pointer;
-  transition: color 120ms ease;
+  transition: color 120ms ease, background-color 120ms ease;
 }
 
 .transcript-fold-toggle:hover {
   color: var(--foreground, #e4e4e7);
+  background: color-mix(in srgb, var(--foreground, #e4e4e7) 8%, transparent);
 }
 
 .transcript-fold-chevron {
