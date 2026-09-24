@@ -1,5 +1,5 @@
 import { ChatDockRail } from './chat-dock-rail.js'
-import { expandedPaneIds, layoutGroups, setGroupDocked } from './layout-docking.js'
+import { DOCK_HEIGHT, expandedPaneIds, layoutGroups, setGroupDocked } from './layout-docking.js'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type ReactNode } from 'react'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
@@ -202,6 +202,15 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     width: Math.max(size.width, minimum.width),
     height: Math.max(size.height, minimum.height)
   }
+  const [dockPeekGroupId, setDockPeekGroupId] = useState<string | null>(null)
+  const activeRails = preview?.rails ?? geometry.rails
+  const dockPeekRail = dockPeekGroupId
+    ? activeRails.find((rail) => rail.groups.some((group) => group.id === dockPeekGroupId))
+    : undefined
+  const dockPeekRect = dockPeekRail
+    ? { x: dockPeekRail.boundary.x, y: dockPeekRail.boundary.y, width: dockPeekRail.boundary.width,
+      height: Math.max(0, dockPeekRail.boundary.height - DOCK_HEIGHT) }
+    : null
   const browserDrop = drop?.edge && dragging?.id === BROWSER_PANE_ID ? drop as BrowserDrop : null
   const resolveBrowserDrop = (element: HTMLElement, x: number, y: number): BrowserDrop | null => {
     const bounds = element.getBoundingClientRect()
@@ -266,7 +275,8 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       {[...renderedTiles, ...dockedGroups.map((group) => ({ id: group.id, tabs: group.tabs ?? [group.id],
         rect: { x: 0, y: 0, width: 0, height: 0 } }))].map(({ id: activeId, tabs, rect }) => {
         const isThisTileSolo = soloTile ? (soloTile.id === activeId || soloTile.tabs.includes(activeId)) : false
-        const tileRect = isThisTileSolo ? soloRect : rect
+        const isDockPeek = Boolean(dockPeekRect && dockPeekGroupId === activeId && dockedIds.has(activeId))
+        const tileRect = isDockPeek && dockPeekRect ? dockPeekRect : isThisTileSolo ? soloRect : rect
         const tileTabs = tabs
         const tileActiveId = tileTabs.includes(activeId) ? activeId : (tileTabs[0] ?? activeId)
         const row = chatRow?.(activeId)
@@ -274,7 +284,8 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
           className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID || isViewTabId(activeId) ? undefined : activeId}
           data-view-id={isViewTabId(activeId) ? activeId : undefined}
           data-solo={isThisTileSolo ? 'true' : undefined}
-          hidden={dockedIds.has(activeId) || (soloTile ? !isThisTileSolo : (activeId === BROWSER_PANE_ID && !browserVisible))}
+          hidden={(dockedIds.has(activeId) && !isDockPeek) || (soloTile ? !isThisTileSolo : (activeId === BROWSER_PANE_ID && !browserVisible))}
+          data-dock-peek={isDockPeek ? 'true' : undefined}
           data-selected={activeId === selectedId || tabs.includes(selectedId)} aria-label={activeId === BROWSER_PANE_ID ? 'Browser' : title(activeId)}
           onFocusCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
           onPointerDownCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}>
@@ -289,11 +300,13 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
           {activeId === BROWSER_PANE_ID ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
             {renderBrowser}
           </div> : tileTabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
-            aria-label={title(tabId)} hidden={tabId !== tileActiveId}>{renderPane(tabId, !dockedIds.has(activeId) && tabId === tileActiveId)}</div>)}
+            aria-label={title(tabId)} hidden={tabId !== tileActiveId}>{renderPane(tabId, (isDockPeek || !dockedIds.has(activeId)) && tabId === tileActiveId)}</div>)}
         </section>
       })}
-      {!soloTile && !dragging && !settling && onPreview && (preview?.rails ?? geometry.rails).map((rail) =>
-        <ChatDockRail key={rail.id} rail={rail} busy={busy} onRestore={(id) => { tabFocus.current = id; onSelectTab(id) }} onPreview={onPreview} />)}
+      {dockPeekRail && dockPeekRect && dockPeekRect.height > 0 ? <div className="chat-dock-peek-scrim" style={position(dockPeekRail.boundary)} aria-hidden="true" /> : null}
+      {!soloTile && !dragging && !settling && onPreview && activeRails.map((rail) =>
+        <ChatDockRail key={rail.id} rail={rail} busy={busy} onRestore={(id) => { tabFocus.current = id; onSelectTab(id) }}
+          onPreview={onPreview} onPeekGroup={setDockPeekGroupId} />)}
       {dragging?.id === BROWSER_PANE_ID && !busy && (['left', 'right'] as const).map((edge) => <div key={edge}
         className="chat-layout-workspace-dock" data-edge={edge} data-ui="layout.workspace-dock" data-ui-key={edge}
         data-active={browserDrop?.target === WORKSPACE_DOCK_ID && browserDrop.edge === edge}

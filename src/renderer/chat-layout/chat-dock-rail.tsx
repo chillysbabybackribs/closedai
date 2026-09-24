@@ -10,25 +10,9 @@ import type { Rect } from './layout-tree.js'
 type Rail = ReturnType<typeof layoutGeometry>['rails'][number]
 const position = (rect: Rect) => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-function LivePreview({ paneId }: { paneId: string }) {
-  const { state, chats } = useWorkspacePaneSlice(paneId)
-  const row = chats.find((chat) => chat.paneId === paneId)
-  const messages = state?.items.filter((item) => item.type === 'user' || item.type === 'assistant').slice(-3)
-  return <>
-    <div className="chat-dock-preview-heading"><strong>{row?.title ?? 'Chat preview'}</strong>
-      <span>{state?.activeTurnId || row?.running ? 'Working' : row?.paused ? 'Paused' : 'Chat'}</span></div>
-    <div className="chat-dock-preview-messages">
-      {messages?.length ? messages.map((item) => <div key={item.id} className="chat-dock-message" data-role={item.type}>
-        <span>{item.type === 'user' ? 'You' : 'Assistant'}</span>
-        <p>{'text' in item ? item.text.slice(-1000) : ''}</p>
-      </div>) : <p className="chat-dock-empty">{row?.preview || 'No messages yet'}</p>}
-    </div>
-  </>
-}
-
-function DockTab({ group, boundary, width, busy, onRestore, onPreview }: {
+function DockTab({ group, boundary, width, busy, onRestore, onPreview, onPeekGroup }: {
   group: DockGroup; boundary: HTMLElement | null; width: number; busy: boolean
-  onRestore: (id: string) => void; onPreview: (id: string | null) => void
+  onRestore: (id: string) => void; onPreview: (id: string | null) => void; onPeekGroup: (id: string | null) => void
 }) {
   const [open, setOpen] = useState(false)
   const chatIds = (group.tabs ?? [group.id]).filter((id) => !isViewTabId(id))
@@ -39,10 +23,18 @@ function DockTab({ group, boundary, width, busy, onRestore, onPreview }: {
     : undefined
   const detail = activeTitle && activeTitle !== 'New chat' ? activeTitle : null
   useEffect(() => {
-    if (!open || !previewId) return
-    onPreview(previewId)
-    return () => onPreview(null)
-  }, [open, previewId, onPreview])
+    if (!open) {
+      onPreview(null)
+      onPeekGroup(null)
+      return
+    }
+    if (previewId) onPreview(previewId)
+    onPeekGroup(group.id)
+    return () => {
+      onPreview(null)
+      onPeekGroup(null)
+    }
+  }, [open, previewId, group.id, onPreview, onPeekGroup])
   return <HoverCard.Root open={open} onOpenChange={setOpen} openDelay={350} closeDelay={150}>
     <HoverCard.Trigger asChild>
       <Toolbar.Button className="chat-dock-tab" data-ui="layout.dock-restore" data-ui-key={group.id}
@@ -53,17 +45,19 @@ function DockTab({ group, boundary, width, busy, onRestore, onPreview }: {
       </Toolbar.Button>
     </HoverCard.Trigger>
     <HoverCard.Portal>
-      <HoverCard.Content className="chat-dock-preview" side="top" align="start" sideOffset={8}
-        collisionBoundary={boundary} collisionPadding={8} style={{ width: Math.min(340, Math.max(120, width - 16)) }}>
-        {previewId ? <LivePreview paneId={previewId} /> : <p className="chat-dock-empty">Workspace view</p>}
-        <div className="chat-dock-preview-footer">{chatIds.length > 1 ? `${chatIds.length} chats · ` : ''}Click tab to restore</div>
+      <HoverCard.Content className="chat-dock-preview-anchor" side="top" align="start" sideOffset={0}
+        collisionBoundary={boundary} collisionPadding={8}>
+        <span className="chat-dock-preview-sr">
+          {detail ? `${detail}. ` : ''}{chatIds.length > 1 ? `${chatIds.length} chats in group. ` : ''}Live preview shown above the dock rail. Click tab to restore.
+        </span>
       </HoverCard.Content>
     </HoverCard.Portal>
   </HoverCard.Root>
 }
 
-export function ChatDockRail({ rail, busy, onRestore, onPreview }: {
+export function ChatDockRail({ rail, busy, onRestore, onPreview, onPeekGroup }: {
   rail: Rail; busy: boolean; onRestore: (id: string) => void; onPreview: (id: string | null) => void
+  onPeekGroup: (id: string | null) => void
 }) {
   const [boundary, setBoundary] = useState<HTMLDivElement | null>(null)
   return <>
@@ -74,7 +68,7 @@ export function ChatDockRail({ rail, busy, onRestore, onPreview }: {
           <PanelBottom size={14} strokeWidth={1.65} />
         </span>
         {rail.groups.map((group) => <DockTab key={group.id} group={group} boundary={boundary} width={rail.rect.width}
-          busy={busy} onRestore={onRestore} onPreview={onPreview} />)}
+          busy={busy} onRestore={onRestore} onPreview={onPreview} onPeekGroup={onPeekGroup} />)}
       </Toolbar.Root>
     </div>
   </>
