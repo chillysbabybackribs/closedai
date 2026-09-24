@@ -27,6 +27,8 @@ export type ScrollPosition = 'start' | 'end' | 'last-anchor'
 
 export type ScrollerContextValue = {
   prepareForPrepend: () => void
+  /** Extra inset above a prompt anchor (for example the transcript fold banner). */
+  setPromptAnchorTopInset: (insetPx: number) => void
   scrollToEnd: (behavior?: ScrollBehavior) => void
   scrollToStart: (behavior?: ScrollBehavior) => void
   setContent: (element: HTMLDivElement | null) => void
@@ -87,6 +89,7 @@ export function MessageScrollerProvider({
   const lastScrollTopRef = useRef(0)
   const userScrollingRef = useRef(false)
   const followResumeBlockedRef = useRef(false)
+  const promptAnchorTopInsetRef = useRef(0)
   const prependRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null)
   const scrollTargetRef = useRef<ScrollPosition | null>(null)
   const frameRef = useRef<number | null>(null)
@@ -183,7 +186,7 @@ export function MessageScrollerProvider({
     userScrollingRef.current = false
     const layout = anchorScrollLayout({
       ...measurements,
-      previousItemPeek: scrollPreviousItemPeek,
+      previousItemPeek: scrollPreviousItemPeek + promptAnchorTopInsetRef.current,
       viewportHeight: viewport.clientHeight
     })
     setSpacerHeight(layout.spacerHeight)
@@ -195,6 +198,15 @@ export function MessageScrollerProvider({
     scheduleSync()
     return true
   }, [content, scheduleSync, scrollPreviousItemPeek, setSpacerHeight, spacer, viewport])
+
+  const setPromptAnchorTopInset = useCallback((insetPx: number) => {
+    const next = Math.max(0, Math.ceil(insetPx))
+    if (promptAnchorTopInsetRef.current === next) return
+    promptAnchorTopInsetRef.current = next
+    if (!anchorPrompts) return
+    const target = anchoredRef.current
+    if (target) anchorToElement(target)
+  }, [anchorPrompts, anchorToElement])
 
   const prepareForPrepend = useCallback(() => {
     if (!viewport) return
@@ -321,6 +333,7 @@ export function MessageScrollerProvider({
 
   const value = useMemo<ScrollerContextValue>(() => ({
     prepareForPrepend,
+    setPromptAnchorTopInset,
     scrollToEnd,
     scrollToStart,
     setContent,
@@ -329,7 +342,7 @@ export function MessageScrollerProvider({
     state,
     syncFromViewport: scheduleSync,
     userScrollIntent
-  }), [prepareForPrepend, scheduleSync, scrollToEnd, scrollToStart, state, userScrollIntent])
+  }), [prepareForPrepend, scheduleSync, scrollToEnd, scrollToStart, setPromptAnchorTopInset, state, userScrollIntent])
 
   return <ScrollerContext.Provider value={value}>{children}</ScrollerContext.Provider>
 }

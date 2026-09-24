@@ -171,6 +171,10 @@ function useMessageScrollerScrollable(): ScrollEdges {
   return useScrollerContext().state.edges
 }
 
+function useMessageScrollerPromptAnchorInset(): ScrollerContextValue['setPromptAnchorTopInset'] {
+  return useScrollerContext().setPromptAnchorTopInset
+}
+
 function userScrollDirection(event: KeyboardEvent): 'start' | 'end' | null {
   const target = event.target
   if (target instanceof HTMLElement && target !== event.currentTarget &&
@@ -199,5 +203,6 @@ export {
   MessageScrollerItem,
   MessageScrollerButton,
   useMessageScroller,
+  useMessageScrollerPromptAnchorInset,
   useMessageScrollerScrollable
 }

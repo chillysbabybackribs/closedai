@@ -1,4 +1,4 @@
-import type { ClipboardEvent, DragEvent, FormEvent, JSX, Ref } from 'react'
+import type { ClipboardEvent, DragEvent, FormEvent, JSX, KeyboardEvent, Ref } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowUp, Play, Square } from 'lucide-react'
 
@@ -97,6 +97,8 @@ export function Composer({
   const focusAfterSendRef = useRef(false)
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !sending && enabled && !running
 
+  useEffect(() => setDismissedSuggestion(null), [promptSuggestion])
+
   useEffect(() => {
     if (sending || !focusAfterSendRef.current) return
     focusAfterSendRef.current = false
@@ -164,7 +166,7 @@ export function Composer({
     if (event.dataTransfer.files.length) void addFiles(event.dataTransfer.files)
   }
 
-  function suggestionKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>): void {
+  function suggestionKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
     if (!visibleSuggestion) return
     if (event.key === 'Escape') {
       event.preventDefault()
@@ -172,7 +174,6 @@ export function Composer({
     } else if (event.key === 'Tab' || (event.key === 'ArrowRight' && event.currentTarget.selectionStart === 0 && event.currentTarget.selectionEnd === 0)) {
       event.preventDefault()
       setInput(visibleSuggestion)
-      setDismissedSuggestion(visibleSuggestion)
     }
   }
 
@@ -254,7 +255,7 @@ export function Composer({
                 data-ui="composer.input"
                 data-can-send={canSend || undefined}
                 data-suggestion={Boolean(visibleSuggestion) || undefined}
-                placeholder={inputPlaceholder}
+                placeholder={visibleSuggestion ? '' : inputPlaceholder}
                 spellCheck={false}
                 rows={1}
                 className="composer-textarea"

@@ -13,6 +13,7 @@ import { NumberTicker } from '../components/ui/number-ticker.js'
 import {
   MessageScrollerItem,
   useMessageScroller,
+  useMessageScrollerPromptAnchorInset,
   useMessageScrollerScrollable
 } from '../components/ui/message-scroller.js'
 import { shouldCollapseBrowsedHistory } from '../components/ui/message-scroller-state.js'
@@ -76,8 +77,10 @@ export const ChatTranscript = memo(function ChatTranscript({
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [loadEpoch, setLoadEpoch] = useState(0)
   const browsedEarlier = useRef(false)
+  const foldBannerRef = useRef<HTMLDivElement>(null)
   const scrollToRevealedTurnRef = useRef(false)
   const { prepareForPrepend, scrollToStart } = useMessageScroller()
+  const setPromptAnchorTopInset = useMessageScrollerPromptAnchorInset()
   const scrollable = useMessageScrollerScrollable()
   const start = anchoredVisibleStart(visibleAnchor, rows, CHAT_MOUNTED_TURN_WINDOW)
   const setVisibleStart = (index: number): void => setVisibleAnchor(transcriptRowKey(rows[index]))
@@ -138,10 +141,25 @@ export const ChatTranscript = memo(function ChatTranscript({
   const lastTurnIndex = useMemo(() => lastRowForTurn(rows, activeTurnId), [rows, activeTurnId])
   const showEarlier = start > 0 || hasEarlier
 
+  useLayoutEffect(() => {
+    if (!showEarlier) {
+      setPromptAnchorTopInset(0)
+      return
+    }
+    const banner = foldBannerRef.current
+    if (!banner) {
+      setPromptAnchorTopInset(0)
+      return
+    }
+    const style = window.getComputedStyle(banner)
+    const marginBottom = Number.parseFloat(style.marginBottom) || 0
+    setPromptAnchorTopInset(banner.offsetHeight + marginBottom)
+  }, [historyError, loadingEarlier, setPromptAnchorTopInset, showEarlier])
+
   return (
     <>
       {showEarlier ? (
-        <div className="transcript-fold-banner" role="status">
+        <div ref={foldBannerRef} className="transcript-fold-banner" role="status">
           <button type="button" data-ui="chat.show-earlier" className="transcript-fold-toggle"
             disabled={loadingEarlier} onClick={() => { void revealEarlier() }}>
             <ChevronUp className="transcript-fold-chevron" aria-hidden="true" />

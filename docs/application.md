@@ -682,7 +682,9 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   (Escape also acts as a hotkey to pause the running task), and Resume (`composer.resume`) after a
   pause. An empty composer shows the muted placeholder “Message <Provider>”, “Resume, or send
   something new” after a pause, and nothing while a turn runs so the pause button carries that
-  affordance. Typed drafts naturally hide the placeholder;
+  affordance. Claude chats can show a muted next-prompt suggestion when Claude Code supplies one;
+  Tab or Right Arrow accepts it into the draft, Escape dismisses it, and typing hides it until the
+  draft is empty again. These suggestions are transient and clear when the next turn starts. Typed drafts naturally hide the placeholder;
   connection/unavailable messages retain precedence while idle. The textarea label, the disabled
   placeholder, and the pause/resume tooltips name the pane's provider. Before the first snapshot
   the workspace area shows “Starting ClosedAI…”, or “Could not start” with the reason and Retry

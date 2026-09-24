@@ -109,7 +109,9 @@
   padding: 1px 5px;
   border: 1px solid color-mix(in srgb, var(--muted-foreground) 30%, transparent);
   border-radius: 5px;
-  font: 10px/16px inherit;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 16px;
   white-space: nowrap;
 }
 
