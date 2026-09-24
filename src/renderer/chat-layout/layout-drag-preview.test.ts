@@ -46,7 +46,7 @@ for (const source of ['a', 'b']) {
     const tree: ChatLayout = { kind: 'pane', id: 'a', tabs: ['a', 'b'] }
     const committed = layoutGeometry(tree, 1000, 800).panes
     for (const edge of ['left', 'right', 'top', 'bottom'] as const) {
-      const preview = dragSplitPreview(tree, source, { target: 'a', edge }, true, 1000, 800)!
+      const preview: ReturnType<typeof layoutGeometry> = dragSplitPreview(tree, source, { target: 'a', edge }, true, 1000, 800)!
       const rendered = dragPreviewPanes(committed, preview)
       assert.deepEqual(rendered.map((pane) => pane.id), ['a', 'b'])
       for (const pane of rendered) {
