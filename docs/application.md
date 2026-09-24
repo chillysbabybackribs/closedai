@@ -443,8 +443,10 @@ and a tool's `stop_agent` pause the run too; a user message sent between cycles 
 the loop rather than raced.
 
 The **Agents tab** opens from the workflow icon beside Search chats in the title bar
-(`titlebar.agents`), the tile + menu, or Agent → Agents…. It opens or focuses a view tab in
-the selected chat tile. Its Runs section lists every agent run in a minimal table, with state, cycle, current
+(`titlebar.agents`), the tile + menu, or Agent → Agents…. There is at most one Agents tab in
+the workspace: any of those entry points opens it in its existing tile or creates it in the
+selected chat's tile, then focuses it (Trace, History and Tools still dedupe per tile only).
+The title-bar icon shows selected while that tab exists. Its Runs section lists every agent run in a minimal table, with state, cycle, current
 activity or pause reason, and a summary of running and attention-needed runs. Runs needing
 the user appear first. Each run row offers **Open chat** (`agents.open-chat`), **Review** for a
 pending credential approval (`agents.review`), **Pause**/**Resume**/**Stop** (`agents.pause`,

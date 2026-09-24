@@ -60,6 +60,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   dialogsRef.current = { settingsOpen, renamingChat }
   const toolsPreset = useToolsPreset()
   const [browserVisible, setBrowserVisible] = useState(false)
+  const [agentsViewOpen, setAgentsViewOpen] = useState(false)
   const savedSites = useBrowserSavedSitesController()
   // A shortcut or menu action main refused; shown under the title bar until dismissed.
   const [shellError, setShellError] = useState<string | null>(null)
@@ -204,9 +205,10 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         />
         <div className="titlebar-search-tools">
           <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef} />
-          <button type="button" className="titlebar-icon-button titlebar-agent-toggle"
+          <button type="button" className={`titlebar-icon-button titlebar-agent-toggle${agentsViewOpen ? ' is-selected' : ''}`}
             data-ui="titlebar.agents" disabled={!chat.selectedPaneId}
-            aria-label="Open Agents tab" title="Open Agents tab"
+            aria-pressed={agentsViewOpen} aria-label={agentsViewOpen ? 'Focus Agents tab' : 'Open Agents tab'}
+            title={agentsViewOpen ? 'Focus Agents tab' : 'Open Agents tab'}
             onClick={() => workspaceRef.current?.openView('agents')}>
             <Workflow size={19} aria-hidden="true" />
           </button>
@@ -233,6 +235,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           key={chat.workspace?.cwd ?? chat.state.cwd}
           ref={workspaceRef}
           onBrowserVisibilityChange={setBrowserVisible}
+          onAgentsViewOpenChange={setAgentsViewOpen}
           chat={chat}
           savedSites={savedSites}
           reviewQueue={history.reviewQueue}

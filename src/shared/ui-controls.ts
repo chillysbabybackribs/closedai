@@ -15,7 +15,7 @@ export const UI_CONTROLS = {
   'titlebar.chat-search-delete': 'Delete a chat from history immediately without confirmation; item is the chat id',
   'titlebar.menu': 'Application menu tab; item is file, view, agent, or developer',
   'titlebar.menu-item': 'Application menu row; item is its stable key, for example new-chat, tools, compact-context, stop-turn, turn-trace, reload-renderer, toggle-devtools',
-  'titlebar.agents': 'Workflow icon beside Search chats: open or focus the Agents tab in the selected chat tile',
+  'titlebar.agents': 'Workflow icon beside Search chats: open or focus the workspace Agents tab (one per layout; same tab as Agent → Agents… and the tile + menu)',
   'window.minimize': 'Minimize the window',
   'window.maximize': 'Maximize or restore the window',
   'window.close': 'Close the window',

@@ -7,6 +7,14 @@ import { tabIds, tabOwner } from './layout-tabs.js'
 export const VIEW_KINDS = ['trace', 'agents', 'history', 'tools'] as const
 export type ViewKind = typeof VIEW_KINDS[number]
 
+/** Views that show workspace-wide content: one tab for the whole layout, opened or focused from anywhere. */
+export const WORKSPACE_VIEW_KINDS = ['agents'] as const satisfies readonly ViewKind[]
+export type WorkspaceViewKind = typeof WORKSPACE_VIEW_KINDS[number]
+
+export function isWorkspaceViewKind(kind: ViewKind): kind is WorkspaceViewKind {
+  return (WORKSPACE_VIEW_KINDS as readonly string[]).includes(kind)
+}
+
 export const VIEW_LABELS: Record<ViewKind, string> = {
   trace: 'Trace',
   agents: 'Agents',
@@ -38,6 +46,15 @@ export function tileChats(tree: ChatLayout | null, tileId: string): string[] {
 /** The existing view of this kind in a tile, so opening it again selects instead of duplicating. */
 export function tileView(tree: ChatLayout | null, tileId: string, kind: ViewKind): string | null {
   return tabIds(tree).find((id) => viewKindOf(id) === kind && tabOwner(tree, id) === tileId) ?? null
+}
+
+/** The workspace's single tab of this kind, if any (see {@link WORKSPACE_VIEW_KINDS}). */
+export function workspaceView(tree: ChatLayout | null, kind: WorkspaceViewKind): string | null {
+  return tabIds(tree).find((id) => viewKindOf(id) === kind) ?? null
+}
+
+export function hasWorkspaceView(tree: ChatLayout | null, kind: WorkspaceViewKind): boolean {
+  return workspaceView(tree, kind) !== null
 }
 
 export type ViewScope = { chatId: string; mode: 'pinned' | 'following' }

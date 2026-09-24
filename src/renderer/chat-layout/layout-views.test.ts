@@ -2,10 +2,11 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { chatPaneIds, dockPane, isViewTabId, paneIds, readLayout, saveLayout, type ChatLayout } from './layout-tree.ts'
 import { addTab, chatTabIds, moveTab, pruneTabs, removeTab, selectTab, tabIds } from './layout-tabs.ts'
-import { parseViewTab, pinOnMove, pruneViewScopes, tileView, viewScope, viewTabId } from './layout-views.ts'
+import { parseViewTab, pinOnMove, pruneViewScopes, tileView, viewScope, viewTabId, workspaceView } from './layout-views.ts'
 
 const trace = viewTabId('trace', 'v1')
 const tools = viewTabId('tools', 'v2')
+const agents = viewTabId('agents', 'v3')
 
 test('view ids carry their kind and stay out of the chat lists', () => {
   assert.ok(isViewTabId(trace))
@@ -23,6 +24,14 @@ test('view ids carry their kind and stay out of the chat lists', () => {
   assert.equal(tileView(tree, trace, 'trace'), trace)
   assert.equal(tileView(tree, trace, 'tools'), null)
   assert.equal(tileView(tree, 'b', 'trace'), null)
+})
+
+test('the Agents view is one tab for the whole workspace', () => {
+  let tree: ChatLayout = addTab({ kind: 'pane', id: 'a' }, 'a', agents)
+  tree = dockPane(tree, 'b', agents, 'right', 'split')
+  assert.equal(workspaceView(tree, 'agents'), agents)
+  assert.equal(tileView(tree, 'b', 'trace'), null)
+  assert.equal(tileView(tree, 'b', 'agents'), null, 'Agents in the other tile is found by workspaceView, not tileView')
 })
 
 test('a view follows its own tile, then the workspace selection, unless pinned', () => {

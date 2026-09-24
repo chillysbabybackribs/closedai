@@ -12,7 +12,7 @@ import { ChatLayoutActions } from './layout-context-menu.js'
 import { useChatLayout } from './layout-controller.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, paneIds } from './layout-tree.js'
 import { tabOwner } from './layout-tabs.js'
-import { VIEW_LABELS, parseViewTab, type ViewKind } from './layout-views.js'
+import { VIEW_LABELS, hasWorkspaceView, parseViewTab, type ViewKind } from './layout-views.js'
 import { LayoutPresetsDialog } from './layout-presets-dialog.js'
 import type { CanvasSize, LayoutPreset } from './layout-presets.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
@@ -34,7 +34,7 @@ export type ChatLayoutHandle = {
   applyPreset: (preset: LayoutPreset) => void
 }
 
-export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, onRenameChat, onBrowserVisibilityChange, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, onRenameChat, onBrowserVisibilityChange, onAgentsViewOpenChange, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
   savedSites: BrowserSavedSitesController
   reviewQueue: ChatReviewQueue
@@ -42,11 +42,14 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   toolsPreset?: 'full' | 'read-only' | 'custom' | null
   onRenameChat?: (id: string, title: string) => void
   onBrowserVisibilityChange: (visible: boolean) => void
+  onAgentsViewOpenChange?: (open: boolean) => void
   archiveChat?: (chatId: string) => Promise<void>
   ref?: Ref<ChatLayoutHandle>
 }) {
   const layout = useChatLayout(chat.snapshot)
   useEffect(() => onBrowserVisibilityChange(layout.browserVisible), [layout.browserVisible, onBrowserVisibilityChange])
+  const agentsViewOpen = hasWorkspaceView(layout.tree, 'agents')
+  useEffect(() => onAgentsViewOpenChange?.(agentsViewOpen), [agentsViewOpen, onAgentsViewOpenChange])
   const browserDragHandle = useMemo(() => <button type="button"
     className="browser-layout-drag" data-ui="layout.browser-drag" draggable={!layout.busy} disabled={layout.busy}
     aria-label="Move browser" title="Drag above or beside a chat; drop at the workspace edge for a full-height column"

@@ -3,7 +3,7 @@ import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { errorMessage } from '../error-message.js'
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, chatPaneIds, isViewTabId, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
 import { addTab, chatTabIds, focusChatTabInLayout, focusedCloseAction, isChatTabActive, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds, tabOwner, type TileDirection } from './layout-tabs.js'
-import { pinOnMove, pruneViewScopes, tileView, viewScope, viewTabId, type ViewKind } from './layout-views.js'
+import { isWorkspaceViewKind, pinOnMove, pruneViewScopes, tileView, viewScope, viewTabId, workspaceView, type ViewKind } from './layout-views.js'
 import { removalNotice } from './layout-copy.js'
 import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
 const ERROR_TTL_MS = 8000
@@ -233,6 +233,8 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   const openView = useCallback((kind: ViewKind, target: string): void => {
     if (pending.current) return
     const tree = current.current.tree
+    const anywhere = isWorkspaceViewKind(kind) ? workspaceView(tree, kind) : null
+    if (anywhere) { void activateTab(anywhere); return }
     const tile = paneIds(tree).includes(target) ? target : tabOwner(tree, target) ?? paneIds(tree)[0]!
     const existing = tileView(tree, tile, kind)
     if (existing) { void activateTab(existing); return }
