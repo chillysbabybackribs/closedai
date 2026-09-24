@@ -319,15 +319,11 @@ closing tabs. **New chat** (`composer.new-chat`) beside it adds and selects a fr
 Hiding a tile neither detaches its runtime nor stops its turn; the model command `close_chat`
 still detaches and stops it.
 
-Each tile header shows conversation and view tabs and a **+** button (`layout.add`) that opens
-the add menu: **New chat** (`layout.new-chat`), then the views the tile can show (`layout.open-view`:
-Trace, Agents, History, Tools, each with a live hint such as "2 running" or "Read-only"), then
-**Browser** (`layout.open-browser`, reveals the shared browser; hint "Open" when already shown). Rows are
-text only, no icons. The menu is
-the shared monochrome dropdown (`src/components/ui/dropdown-menu.tsx`, also used by the view scope chip),
-right-aligned to the + and dropped just below the tile header. New chat uses that tile's active
-chat model, adds a tab, and selects it while retaining the previous tabs and the other tiles and
-divider sizes.
+Each tile header shows conversation and view tabs and a **+** button (`layout.new-chat`) that adds
+and selects a fresh conversation tab in that tile. It uses that tile's active chat model and
+retains the previous tabs and the other tiles and divider sizes. Trace, Agents, History, Tools,
+and the browser are opened from the title bar, composer pills, or keyboard shortcuts—not from the
+tile header.
 
 ### Views
 
@@ -444,11 +440,11 @@ footer bar beneath it with attach (`composer.upload`) on the left, the model set
 on the right naming the working folder. Model and folder controls share the same neutral color,
 with rounded hover surfaces inside a softly outlined composer. The model trigger fits its label
 and chevron, leaving the space before the folder outside its hover and click area. Under the card, **Browser** (`composer.browser`), **New chat** (`composer.new-chat`), **Agents** (`composer.agents`), and when the latest reply can hand off, **Fresh context** (`composer.continue`) appear in
-every chat. Browser toggles the embedded pane. New chat matches the tile header add menu's new-chat action for that pane. **Fresh context** continues the full thread in a new tab with a digest on the first send. Agents opens a menu of saved agents: **Start new run**
+every chat. Browser toggles the embedded pane. New chat matches the tile header **+** for that pane. **Fresh context** continues the full thread in a new tab with a digest on the first send. Agents opens a menu of saved agents: **Start new run**
 (`composer.agents-start`, a new tab beside **this** chat's tile and the run starts at once; only a
 **live** run for that agent offers **Open** instead), **New agent…** (`composer.agents-new`) and
 **Manage** (`composer.agents-manage`) for the workspace Agents tab. The pill shows how many runs are
-live workspace-wide. Agent → Agents… or the tile + menu still opens the **Agents** view tab (`view.agents`,
+live workspace-wide. Agent → Agents… or the composer **Agents** pill still opens the **Agents** view tab (`view.agents`,
 `src/renderer/agent-library/`), which shows no scope chip and stacks three screens under a one-line
 header. The **Library** opens first: a grid of saved-agent cards (`agents.card`; live runs first,
 then most recently used, then never-run by name), each with the name, the first two lines of its

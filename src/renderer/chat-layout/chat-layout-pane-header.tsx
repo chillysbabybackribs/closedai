@@ -1,18 +1,16 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { ContextMenu } from 'radix-ui'
-import { Minus, X } from 'lucide-react'
+import { Minus, Plus, X } from 'lucide-react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import { ChatLayoutContextMenu } from './layout-context-menu.js'
 import { ChatLayoutPaneHints } from './chat-layout-pane-hints.js'
 import { ChatTabs } from './chat-tabs.js'
 import { CHAT_DRAG_TYPE, isViewTabId } from './layout-tree.js'
-import type { ViewKind } from './layout-views.js'
-import { PaneAddMenu, type ViewHints } from './pane-add-menu.js'
 import { paneHideHint, tabCloseHint } from './layout-copy.js'
 import type { TabActivity } from './tab-activity.js'
 
-function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, soloTile, setSoloPaneId, tabFocus, hideHint, closeHint, tabActivity, viewHints, browserVisible, onSelect, onSelectTab, onCloseTab, onNewChat, onOpenView, onShowBrowser, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onMinimize, onHide, setDragging, canMaximize, isThisTileSolo }: {
+function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, soloTile, setSoloPaneId, tabFocus, hideHint, closeHint, tabActivity, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onMinimize, onHide, setDragging, canMaximize, isThisTileSolo }: {
   activeId: string
   tabs: string[]
   chatCount: number
@@ -28,14 +26,10 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
   hideHint: string
   closeHint: string
   tabActivity?: TabActivity
-  viewHints?: ViewHints
-  browserVisible?: boolean
   onSelect: (id: string) => void
   onSelectTab: (id: string) => void
   onCloseTab: (id: string) => void
   onNewChat: (id: string) => void
-  onOpenView?: (kind: ViewKind, tileId: string) => void
-  onShowBrowser?: () => void
   onRenameChat?: (id: string) => void
   onTogglePin?: (id: string, pinned: boolean) => void
   onPauseTab?: (id: string) => void
@@ -75,13 +69,12 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
           onDrag={(tab) => setDragging({ id: tab, singleTab: true })} />
         {toolsPreset === 'read-only' && <span className="chat-layout-preset" data-ui="layout.tools-preset"
           title="Tools are in Read-only: the model can look but not act. Change it in Agent → Tools & capabilities.">Read-only</span>}
-        {onOpenView
-          ? <PaneAddMenu tileId={activeId} busy={busy} hints={viewHints} browserVisible={browserVisible ?? false}
-              onNewChat={() => onNewChat(activeId)} onOpenView={(kind) => onOpenView(kind, activeId)} onShowBrowser={onShowBrowser} />
-          : <button type="button" className="chat-layout-new-chat"
-              data-ui="layout.new-chat" data-ui-key={activeId} disabled={busy}
-              title="New chat tab" aria-label="New chat tab"
-              onClick={() => onNewChat(activeId)}>+</button>}
+        <button type="button" className="chat-layout-new-chat"
+          data-ui="layout.new-chat" data-ui-key={activeId} disabled={busy}
+          title="New chat tab" aria-label="New chat tab"
+          onClick={() => onNewChat(activeId)}>
+          <Plus size={14} aria-hidden="true" />
+        </button>
         {onMinimize && <button data-ui="layout.pane-minimize" data-ui-key={activeId} disabled={busy}
           title="Dock group" aria-label="Dock group" onClick={() => {
             if (soloTile) setSoloPaneId(null)

@@ -3,7 +3,6 @@ import { BrowserPane } from '../browser-pane.js'
 import type { BrowserSavedSitesController } from '../browser-saved-sites-controller.js'
 import { useBrowserController } from '../browser-controller.js'
 import type { AgentRunStartOptions } from '../../shared/agent-runs.js'
-import { useAgentRuns } from '../agent-runs/agent-runs-store.js'
 import { type useChatController } from '../chat-controller.js'
 import { injectComposerDraft } from '../composer-drafts.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
@@ -16,7 +15,6 @@ import { VIEW_LABELS, parseViewTab, type ViewKind } from './layout-views.js'
 import { LayoutPresetsDialog } from './layout-presets-dialog.js'
 import type { CanvasSize, LayoutPreset } from './layout-presets.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
-import type { ViewHints } from './pane-add-menu.js'
 import { WorkspaceChat } from './workspace-chat.js'
 import { WorkspacePaneActionsContext, type WorkspacePaneActions } from './workspace-pane-actions.js'
 import { WorkspaceViewContext, WorkspaceViewHost, type WorkspaceViewContextValue } from './workspace-view-host.js'
@@ -147,7 +145,6 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   const onSelectTab = useCallback((id: string) => { void layout.activateTab(id) }, [layout.activateTab])
   const onCloseTab = useCallback((id: string) => { void layout.closeTab(id) }, [layout.closeTab])
   const onNewChat = useCallback((id: string) => { void layout.newChat(id) }, [layout.newChat])
-  const onOpenView = useCallback((kind: ViewKind, tileId: string) => layout.openView(kind, tileId), [layout.openView])
   const onTogglePin = useCallback((id: string, pinned: boolean) => { void chat.sidebar.setChatPinned(id, pinned).catch(() => {}) }, [chat.sidebar])
   const onPauseTab = useCallback((id: string) => { void chat.interruptPane(id) }, [chat.interruptPane])
   const onResumeTab = useCallback((id: string) => { void chat.resumePane(id) }, [chat.resumePane])
@@ -155,12 +152,6 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   const onHide = useCallback((id: string) => { void layout.hide(id) }, [layout.hide])
   const onSizeChange = useCallback((size: CanvasSize) => { canvasSize.current = size }, [])
   const actions = useMemo(() => ({ moveTab: layout.moveTabToTile }), [layout.moveTabToTile])
-  // The + menu tells you what is worth opening: runs in flight, a registry that cannot act.
-  const runningAgents = useAgentRuns().filter((run) => run.status === 'running').length
-  const viewHints = useMemo<ViewHints>(() => ({
-    ...(toolsPreset === 'read-only' ? { tools: 'Read-only' } : {}),
-    ...(runningAgents ? { agents: `${runningAgents} running` } : {})
-  }), [toolsPreset, runningAgents])
   const onRename = useMemo(() => onRenameChat
     ? (id: string) => onRenameChat(id, chatsRef.current.find((row) => row.paneId === id)?.title ?? 'New chat')
     : undefined, [onRenameChat])
@@ -218,7 +209,6 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
         reviewQueue={reviewQueue}
         chatRow={chatRow}
         onSelect={select} onDock={onDock} onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat}
-        onOpenView={onOpenView} onShowBrowser={revealBrowser} viewHints={viewHints}
         onRenameChat={onRename} onTogglePin={onTogglePin} onContinueChat={(id) => { void continueChatRef.current(id) }}
         onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets} onSizeChange={onSizeChange}
         onMinimize={layout.minimize} onPreview={layout.setPreviewPaneId} onHide={onHide} onResize={layout.resize}

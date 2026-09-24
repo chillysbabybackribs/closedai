@@ -4,8 +4,6 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, isViewTabId, layoutGeometry, minimumSize, removePane, type ChatLayout, type DockEdge, type Rect, type SplitResizePhase } from './layout-tree.js'
-import type { ViewKind } from './layout-views.js'
-import type { ViewHints } from './pane-add-menu.js'
 import { LayoutDivider } from './layout-divider.js'
 import { createSplitResizeSession, paintSplitResize, type SplitResizeFrame } from './layout-split-resize.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
@@ -34,11 +32,6 @@ type ChatCanvasProps = {
   onSelectTab: (id: string) => void
   onCloseTab: (id: string) => void
   onNewChat: (id: string) => void
-  /** Open (or focus) a view tab in a tile; absent, the + button only adds chats. */
-  onOpenView?: (kind: ViewKind, tileId: string) => void
-  /** The + menu's Browser row; reveals the shared browser. */
-  onShowBrowser?: () => void
-  viewHints?: ViewHints
   /** The tools preset; the header names it while it is Read-only. */
   toolsPreset?: 'full' | 'read-only' | 'custom' | null
   onRenameChat?: (id: string) => void
@@ -57,7 +50,7 @@ type ChatCanvasProps = {
   onResize: (id: string, ratio: number, phase?: SplitResizePhase) => void
 }
 
-function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onOpenView, onShowBrowser, viewHints, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onMinimize, onPreview, onHide, onResize }: ChatCanvasProps) {
+function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onMinimize, onPreview, onHide, onResize }: ChatCanvasProps) {
   const viewport = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const layoutFrame = useRef<SplitResizeFrame>({ tree, browserVisible, width: 0, height: 0 })
@@ -282,8 +275,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
           {activeId !== BROWSER_PANE_ID && <ChatLayoutPaneHeader activeId={tileActiveId} tabs={tileTabs} chatCount={chatCount}
             busy={busy} toolsPreset={toolsPreset ?? null} title={title} activity={activity} reviewQueue={reviewQueue}
             row={row} soloTile={soloTile ?? null} setSoloPaneId={setSoloPaneId} tabFocus={tabFocus} onSelect={onSelect}
-            onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat} onOpenView={onOpenView}
-            onShowBrowser={onShowBrowser} viewHints={viewHints} browserVisible={browserVisible} onRenameChat={onRenameChat}
+            onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat} onRenameChat={onRenameChat}
             onTogglePin={onTogglePin} onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets}
             onMinimize={onMinimize && setGroupDocked(tree, activeId, true) !== tree ? onMinimize : undefined}
             onHide={onHide} setDragging={setDragging} canMaximize={canMaximize} isThisTileSolo={isThisTileSolo} />}
@@ -315,7 +307,6 @@ function chatCanvasPropsEqual(previous: ChatCanvasProps, next: ChatCanvasProps):
     && previous.onDragActive === next.onDragActive && previous.title === next.title && previous.activity === next.activity
     && previous.reviewQueue === next.reviewQueue && previous.chatRow === next.chatRow && previous.onSelect === next.onSelect
     && previous.onSelectTab === next.onSelectTab && previous.onCloseTab === next.onCloseTab && previous.onNewChat === next.onNewChat
-    && previous.onOpenView === next.onOpenView && previous.onShowBrowser === next.onShowBrowser && previous.viewHints === next.viewHints
     && previous.onRenameChat === next.onRenameChat && previous.onTogglePin === next.onTogglePin
     && previous.onPauseTab === next.onPauseTab && previous.onResumeTab === next.onResumeTab
     && previous.onOpenPresets === next.onOpenPresets && previous.onSizeChange === next.onSizeChange

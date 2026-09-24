@@ -1,5 +1,5 @@
-/* Workspace views (chat-layout/workspace-view.tsx, pane-add-menu.tsx): view tabs in the tile
-   strip, the + menu, and the view body chrome. A view tab shows a kind glyph where a chat tab
+/* Workspace views (chat-layout/workspace-view.tsx): view tabs in the tile strip and the view
+   body chrome. A view tab shows a kind glyph where a chat tab
    shows status; it never spins and is never unread. */
 
 .chat-layout-tab[data-kind] > [role='tab'] .chat-tab-indicator { color: inherit; opacity: 0.8; }

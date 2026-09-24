@@ -164,7 +164,7 @@ test('ChatCanvas names running close/hide actions and overlays a pane status not
   assert.match(html, /class="chat-layout-notice"[^>]*>Pane hidden · Tasks continue in the background/)
 })
 
-test('ChatCanvas renders a view tab with its kind glyph, no chat status, and the add menu', () => {
+test('ChatCanvas renders a view tab with its kind glyph, no chat status, and a new-chat button', () => {
   const view = 'closedai:view:trace:v1'
   const tree: ChatLayout = { kind: 'pane', id: view, tabs: ['chat-1', view] }
   const html = renderToStaticMarkup(createElement(ChatCanvas, {
@@ -181,8 +181,6 @@ test('ChatCanvas renders a view tab with its kind glyph, no chat status, and the
     onSelectTab: () => {},
     onCloseTab: () => {},
     onNewChat: () => {},
-    onOpenView: () => {},
-    onShowBrowser: () => {},
     onDock: () => {},
     onHide: () => {},
     onResize: () => {}
@@ -196,9 +194,7 @@ test('ChatCanvas renders a view tab with its kind glyph, no chat status, and the
   assert.match(html, /class="chat-layout-tab" data-active="true" data-kind="trace"/)
   assert.match(html, /class="chat-layout-tab" data-active="false" data-status="working"/)
   assert.match(html, /aria-label="Close view: Trace · Chats stay open"/)
-  // The + is a menu trigger now; New chat is its first row (rendered lazily by Radix).
-  assert.match(html, /data-ui="layout\.add" data-ui-key="closedai:view:trace:v1"/)
-  assert.doesNotMatch(html, /data-ui="layout\.new-chat"/)
+  assert.match(html, /data-ui="layout\.new-chat" data-ui-key="closedai:view:trace:v1"/)
   assert.match(html, /id="chat-panel-chat-1"[^>]*hidden/)
   assert.doesNotMatch(html, /id="chat-panel-closedai:view:trace:v1"[^>]*hidden/)
 })
