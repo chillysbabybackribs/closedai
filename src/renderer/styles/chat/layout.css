@@ -221,7 +221,7 @@
    The floor keeps a label legible: past it the strip overflows and scrolls (wheel, arrow keys,
    selection) rather than shrinking every tab to nothing. */
 @container chat-tile (max-width: 720px) {
-  .chat-layout-tabs:has(.chat-layout-tab + .chat-layout-tab) .chat-layout-tab {
+  .chat-layout-tabs:not(:has(.chat-layout-tab[data-kind])):has(.chat-layout-tab + .chat-layout-tab) .chat-layout-tab {
     flex: 1 1 0;
     min-width: 96px;
     max-width: none;

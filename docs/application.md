@@ -296,7 +296,8 @@ still detaches and stops it.
 Each tile header shows conversation and view tabs and a **+** button (`layout.add`) that opens
 the add menu: **New chat** (`layout.new-chat`), then the views the tile can show (`layout.open-view`:
 Trace, Agents, History, Tools, each with a live hint such as "2 running" or "Read-only"), then
-**Browser** (`layout.open-browser`, reveals the shared browser; hint "Open" when already shown). The menu is
+**Browser** (`layout.open-browser`, reveals the shared browser; hint "Open" when already shown). Rows are
+text only, no icons. The menu is
 the shared monochrome dropdown (`src/components/ui/dropdown-menu.tsx`, also used by the view scope chip),
 right-aligned to the + and dropped just below the tile header. New chat uses that tile's active
 chat model, adds a tab, and selects it while retaining the previous tabs and the other tiles and
@@ -330,7 +331,7 @@ catch up with the new chat before reconciling tabs; menu focus restoration canno
 The tab's full surface, including its title, activity icon, and padding, drags that conversation
 (tab split, stack, or join). A 36 × 38 pixel grip at the left of the tile header (matching the
 browser tab strip) drags the whole pane with every tab in it; compact equal-width tabs leave no
-empty header space, so the grip is the reliable whole-tile target. The overlaid close button keeps its own click action; its
+empty header space, so the grip is the reliable whole-tile target. Opening a view keeps conversation tabs at their usual width. The overlaid close button keeps its own click action; its
 hit area is a 24 × tab-height strip around the existing 11 px icon, without a larger hover chip.
 Click a tab to return to its conversation; arrow keys and Home/End
 also switch tabs, and Delete closes the focused tab. Only the active tab's close button is in the
@@ -428,7 +429,7 @@ with "App relaunched". A strip above the composer shows the state and cycle coun
 and a tool's `stop_agent` pause the run too; a user message sent between cycles is folded into
 the loop rather than raced.
 
-The **Agents tab** opens from the robot icon beside Search chats in the title bar
+The **Agents tab** opens from the workflow icon beside Search chats in the title bar
 (`titlebar.agents`), the tile + menu, or Agent → Agents…. It opens or focuses a view tab in
 the selected chat tile. Its Runs section lists every agent run, with state, cycle, current
 activity or pause reason, and a summary of running and attention-needed runs. Runs needing

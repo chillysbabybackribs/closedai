@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { Tabs } from 'radix-ui'
-import { Bot, KeyRound, ShieldCheck, Type } from 'lucide-react'
+import { Cpu, KeyRound, ShieldCheck, Type } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ export type SettingsTab = 'appearance' | 'models' | 'credentials' | 'security'
 
 const TABS: Array<{ id: SettingsTab; label: string; description: string; icon: JSX.Element }> = [
   { id: 'appearance', label: 'Appearance', description: 'Adjust chat readability without changing the browser pane.', icon: <Type size={18} /> },
-  { id: 'models', label: 'Models', description: 'Choose which models from each connected provider appear in the composer menu.', icon: <Bot size={18} /> },
+  { id: 'models', label: 'Models', description: 'Choose which models from each connected provider appear in the composer menu.', icon: <Cpu size={18} /> },
   { id: 'credentials', label: 'Credentials', description: 'API keys and logins the app and its agents can use, encrypted by your OS keychain.', icon: <KeyRound size={18} /> },
   { id: 'security', label: 'Security', description: 'Manual choices about credentials and the browser. Defaults keep the app unrestricted.', icon: <ShieldCheck size={18} /> }
 ]

@@ -10,7 +10,6 @@ import { ChatHistory } from '../chat-history.js'
 import { ToolsPanel } from '../tools/tools-panel.js'
 import { TracePanel } from '../trace/trace-panel.js'
 import { VIEW_LABELS, type ViewKind, type ViewScope } from './layout-views.js'
-import { VIEW_ICONS } from './pane-add-menu.js'
 
 export type WorkspaceViewProps = {
   viewId: string
@@ -99,4 +98,3 @@ function ScopeChip({ viewId, scope, chatTitle, pinOptions, onPin }: {
   </DropdownMenu>
 }
 
-export { VIEW_ICONS }

@@ -24,7 +24,7 @@ import { useToolsPreset } from './tools/use-tools-preset.js'
 import { BrowserGlobeIcon } from './browser-globe-icon.js'
 import { useBrowserSavedSitesController } from './browser-saved-sites-controller.js'
 import { BrowserSavedSitesShelf } from './browser-saved-sites-shelf.js'
-import { Bot } from 'lucide-react'
+import { Workflow } from 'lucide-react'
 import {
   normalizeAppearanceSettings,
   persistAppearanceSettings,
@@ -209,7 +209,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             data-ui="titlebar.agents" disabled={!chat.selectedPaneId}
             aria-label="Open Agents tab" title="Open Agents tab"
             onClick={() => workspaceRef.current?.openView('agents')}>
-            <Bot size={19} aria-hidden="true" />
+            <Workflow size={19} aria-hidden="true" />
           </button>
           <button type="button" className={`titlebar-icon-button titlebar-browser-toggle${browserVisible ? ' is-selected' : ''}`}
             data-ui="layout.browser-toggle" disabled={!chat.selectedPaneId}
