@@ -26,6 +26,12 @@ export type WorkspaceViewContextValue = {
   sendToChat: (chatId: string, text: string) => void
   /** Start a run in a new chat beside `chatId`'s tile; undefined when runs cannot start. */
   startAgent?: (chatId: string, options: AgentRunStartOptions) => Promise<void>
+  savedSites: {
+    update: (id: string, note: string) => Promise<void>
+    remove: (id: string) => Promise<void>
+    openSite: (url: string) => Promise<void>
+  }
+  onSavedSitesError: (reason: unknown) => void
 }
 
 export const WorkspaceViewContext = createContext<WorkspaceViewContextValue | null>(null)
@@ -42,5 +48,6 @@ export function WorkspaceViewHost({ viewId, kind }: { viewId: string; kind: View
     onPin={(chatId) => workspace.pinView(viewId, chatId)} onClose={() => workspace.closeTab(viewId)}
     onSendToChat={workspace.sendToChat} onStartAgent={workspace.startAgent} startEnabled={Boolean(row)}
     history={{ listChats: workspace.listChats, chats, busy: row?.running ?? false,
-      openChat: (chatId) => workspace.activateChat(chatId, tile ?? undefined), archiveChat: workspace.archiveChat }} />
+      openChat: (chatId) => workspace.activateChat(chatId, tile ?? undefined), archiveChat: workspace.archiveChat }}
+    savedSites={workspace.savedSites} onSavedSitesError={workspace.onSavedSitesError} />
 }

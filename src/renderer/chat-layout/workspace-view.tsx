@@ -8,6 +8,7 @@ import {
 import { AgentLibraryView } from '../agent-library/agent-library-view.js'
 import { ChatHistory } from '../chat-history.js'
 import { ToolsPanel } from '../tools/tools-panel.js'
+import { SavedSitesPanel } from '../saved-sites/saved-sites-panel.js'
 import { TracePanel } from '../trace/trace-panel.js'
 import { VIEW_LABELS, type ViewKind, type ViewScope } from './layout-views.js'
 
@@ -26,6 +27,12 @@ export type WorkspaceViewProps = {
   /** Agents start beside the scoped chat's tile; undefined when the app cannot start runs. */
   onStartAgent?: (chatId: string, options: AgentRunStartOptions) => Promise<void>
   startEnabled: boolean
+  savedSites: {
+    update: (id: string, note: string) => Promise<void>
+    remove: (id: string) => Promise<void>
+    openSite: (url: string) => Promise<void>
+  }
+  onSavedSitesError: (reason: unknown) => void
   history: {
     listChats: () => Promise<ChatRowSummary[]>
     chats: ChatRowSummary[]
@@ -41,11 +48,12 @@ export type WorkspaceViewProps = {
  * pinned means it does not. Agents shows no toolbar: it is workspace-wide, and scope only picks
  * the tile a new run docks beside, which is always this one.
  */
-export const WorkspaceView = memo(function WorkspaceView({ viewId, kind, active, scope, pinOptions, onPin, onClose, onSendToChat, onStartAgent, startEnabled, history }: WorkspaceViewProps): ReactNode {
+export const WorkspaceView = memo(function WorkspaceView({ viewId, kind, active, scope, pinOptions, onPin, onClose, onSendToChat, onStartAgent, startEnabled, history, savedSites, onSavedSitesError }: WorkspaceViewProps): ReactNode {
   const chatTitle = pinOptions.find((option) => option.id === scope.chatId)?.title ?? 'this chat'
+  const scoped = kind !== 'agents' && kind !== 'saved-sites'
   return <section className="workspace-view" data-ui={`view.${kind}`} data-ui-key={viewId} data-kind={kind}
     aria-label={`${VIEW_LABELS[kind]} view`}>
-    {kind !== 'agents' && <div className="workspace-view-bar">
+    {scoped && <div className="workspace-view-bar">
       <ScopeChip viewId={viewId} scope={scope} chatTitle={chatTitle} pinOptions={pinOptions} onPin={onPin} />
     </div>}
     <div className="workspace-view-body">
@@ -56,6 +64,8 @@ export const WorkspaceView = memo(function WorkspaceView({ viewId, kind, active,
         onStart={(options) => onStartAgent(scope.chatId, options)} />}
       {kind === 'history' && <ChatHistory activeChatId={scope.chatId} busy={history.busy} listChats={history.listChats}
         chats={history.chats} openChat={history.openChat} archiveChat={history.archiveChat} onClose={onClose} onOpened={() => {}} />}
+      {kind === 'saved-sites' && <SavedSitesPanel active={active} onError={onSavedSitesError} onOpenSite={savedSites.openSite}
+        update={savedSites.update} remove={savedSites.remove} />}
     </div>
   </section>
 })

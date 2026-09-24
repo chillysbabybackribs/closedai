@@ -62,16 +62,6 @@ test('modal backdrop occludes the browser before an image dialog grows into it',
       querySelectorAll: (selector: string) => selector.includes('[role="menu"]') ? [viewMenu] : []
     } as unknown as ParentNode
     assert.equal(overlayBlocksBrowser(viewMenuRoot), true, 'View menu freezes an overlapping native page')
-    const savedPanelRoot = {
-      querySelector: () => host,
-      querySelectorAll: (selector: string) => selector.includes('[role="dialog"]') ? [new Surface(860, 380)] : []
-    } as unknown as ParentNode
-    assert.equal(overlayBlocksBrowser(savedPanelRoot), true, 'saved sites can float over the native page')
-    const movedPanelRoot = {
-      querySelector: () => host,
-      querySelectorAll: (selector: string) => selector.includes('[role="dialog"]') ? [new Surface(100, 380)] : []
-    } as unknown as ParentNode
-    assert.equal(overlayBlocksBrowser(movedPanelRoot), false, 'moving saved sites away restores the live page')
     const edgeMenu = new Surface(720, 460, { 'data-state': 'open' }, 0, 200)
     const edgeHost = new Surface(720, 460, {}, 200, 600)
     const edgeRoot = {

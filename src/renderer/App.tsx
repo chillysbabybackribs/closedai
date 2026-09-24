@@ -22,7 +22,6 @@ import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SettingsDialog, type SettingsTab } from './settings/settings-dialog.js'
 import { useToolsPreset } from './tools/use-tools-preset.js'
 import { useBrowserSavedSitesController } from './browser-saved-sites-controller.js'
-import { BrowserSavedSitesShelf } from './browser-saved-sites-shelf.js'
 import { Globe, Workflow } from 'lucide-react'
 import {
   normalizeAppearanceSettings,
@@ -176,18 +175,17 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       // Trace, Agents, History and Tools are view tabs in the selected chat's tile, not dialogs.
       case 'history': workspaceRef.current?.toggleView('history').catch(report('Could not open chat history')); break
       case 'toggle-browser': workspaceRef.current?.toggleBrowser(); break
-      case 'saved-sites': savedSites.toggle(); break
       case 'layout': workspaceRef.current?.openLayoutPresets(); break
       case 'toggle-fullscreen': window.closedai.window.toggleFullscreen().catch(report('Could not toggle fullscreen')); break
       case 'close-tab': workspaceRef.current?.closeFocused().catch(report('Could not close the chat')); break
       case 'close-window': window.closedai.window.close().catch(report('Could not close the window')); break
-      case 'agents': case 'tools': case 'trace': workspaceRef.current?.openView(action); break
+      case 'agents': case 'tools': case 'trace': case 'saved-sites': workspaceRef.current?.openView(action); break
       case 'compact': chatRef.current.compactConversation().catch(report('Could not compact the conversation')); break
       case 'stop-turn': chatRef.current.interrupt().catch(report('Could not pause the task')); break
       case 'reload': window.location.reload(); break
       case 'devtools': window.closedai.window.toggleDevTools().catch(report('Could not open developer tools')); break
     }
-  }, [history.newChat, savedSites.toggle, report])
+  }, [history.newChat, report])
 
   return (
     <div className="shell" data-ui-surface="shell">
@@ -242,14 +240,10 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           appearance={appearance}
           toolsPreset={toolsPreset}
           onRenameChat={(id, title) => setRenamingChat({ id, title })}
+          onSavedSitesError={report('Could not update saved sites')}
           archiveChat={history.deleteRow}
         />}
       </div>
-      {savedSites.isOpen && <BrowserSavedSitesShelf controller={savedSites} onError={report('Could not update saved sites')}
-        onOpenSite={(url) => {
-          if (!browserVisible) workspaceRef.current?.toggleBrowser()
-          return savedSites.open(url)
-        }} />}
       <ChatRenameDialog
         open={Boolean(renamingChat)}
         chatId={renamingChat?.id ?? ''}

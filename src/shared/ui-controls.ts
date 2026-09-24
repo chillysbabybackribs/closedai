@@ -123,12 +123,10 @@ export const UI_CONTROLS = {
   'browser.suggestion-remove': 'Remove a saved browser history entry; item is its URL',
   'browser.address': 'Address bar',
   'browser.downloads': 'Show or hide the downloads shelf',
-  'browser.saved-sites': 'Star left of Downloads: save the active web page and open the movable saved-sites panel, or open it when the page is already saved (gold star); click again to hide it. Disabled on non-web pages',
+  'browser.saved-sites': 'Star left of Downloads: save or unsave the active web page (gold when saved). Disabled on non-web pages',
 
-  'saved-sites.move': 'Drag the saved-sites panel by its header',
-  'saved-sites.resize': 'Resize the saved-sites panel from its lower-right corner, or use arrow keys (Shift for fine steps)',
-  'saved-sites.hide': 'Hide the saved-sites panel',
   'saved-sites.open': 'Navigate the active tab to a saved site; item is the saved-site id',
+  'saved-sites.log': 'Brief check log for a saved site (last check time and summary); item is the saved-site id',
   'saved-sites.note-edit': 'Open the optional note on a saved site for editing (shows the note text, or "Add note" when empty); item is the saved-site id',
   'saved-sites.note': 'Note field shown after saved-sites.note-edit; Enter or blur saves, Escape reverts; item is the saved-site id',
   'saved-sites.remove': 'Remove a saved site; item is the saved-site id',
@@ -144,6 +142,7 @@ export const UI_CONTROLS = {
   'view.trace': 'Turn trace view tab body for the chat the view follows or is pinned to, opened through the tile + menu or Developer → Turn trace; item is the view tab id',
   'view.agents': 'Agents view tab body: a Library of saved-agent cards with pushed Build and Runs screens, no scope chip (runs dock beside the tab\u2019s own tile), opened from the header icon, tile + menu or Agent → Agents…; item is the view tab id',
   'view.history': 'History view tab body listing chats across directories a page at a time (the same rows, order, and matcher as header search; chat.history-more pages older chats), opened through the tile + menu or File → Manage chat history; item is the view tab id',
+  'view.saved-sites': 'Saved sites view tab: kept pages with notes and brief check log (lastCheckedAt and lastSummary), opened through the tile + menu or Developer → Saved sites; item is the view tab id',
   'view.scope': 'Scope chip in a view toolbar (Trace, Tools, History; the Agents view has none): Following (the tile\u2019s own chat, dashed) or Pinned (one chat, solid); opens the scope menu; item is the view tab id',
   'view.scope-follow': 'Scope menu: return the view to following its tile; item is the view tab id',
   'view.scope-pin': 'Scope menu: pin the view to one open chat so moving it never retargets; item is the chat id',
@@ -220,7 +219,7 @@ export const UI_CONTROLS = {
 
 export type UiControlId = keyof typeof UI_CONTROLS
 
-export const UI_SURFACES = ['shell', 'chat', 'browser', 'browser-downloads', 'browser-saved-sites', 'overlay'] as const
+export const UI_SURFACES = ['shell', 'chat', 'browser', 'browser-downloads', 'overlay'] as const
 
 export type UiSurface = (typeof UI_SURFACES)[number]
 

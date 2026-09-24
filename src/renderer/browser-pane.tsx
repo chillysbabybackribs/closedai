@@ -29,12 +29,8 @@ export const BrowserPane = memo(function BrowserPane({
   const downloads = useBrowserDownloadsController()
   // Whichever panel opens last wins. Keep the callbacks current without treating their changing
   // identity as another open event (the saved-sites controller also updates when a row changes).
-  const dismissSaved = useRef(savedSites.dismiss)
   const dismissDownloads = useRef(downloads.dismiss)
-  dismissSaved.current = savedSites.dismiss
   dismissDownloads.current = downloads.dismiss
-  useEffect(() => { if (downloads.isOpen) dismissSaved.current() }, [downloads.isOpen])
-  useEffect(() => { if (savedSites.isOpen) dismissDownloads.current() }, [savedSites.isOpen])
   // One slot for a rejected tab or navigation command; it shares the tab strip's grid row.
   const [notice, setNotice] = useState<{ text: string } | null>(null)
   const report = useCallback((reason: unknown) => setNotice({ text: errorMessage(reason) }), [])
@@ -318,23 +314,23 @@ function BrowserToolbar({
       </div>
       <button
         type="button"
-        className={`browser-nav-button ${savedSites.isOpen ? 'is-active' : ''} ${pageIsSaved ? 'is-saved' : ''}`}
+        className={`browser-nav-button ${pageIsSaved ? 'is-saved' : ''}`}
         disabled={!browser.url.startsWith('http')}
         onClick={() => {
           downloads.dismiss()
-          void savedSites.star({ url: browser.url, title: activeTab?.title ?? browser.title, favicon: activeTab?.favicon ?? null }).catch(onError)
+          void savedSites.toggleSave({ url: browser.url, title: activeTab?.title ?? browser.title, favicon: activeTab?.favicon ?? null }).catch(onError)
         }}
-        title={pageIsSaved ? 'Saved sites' : 'Save site'}
-        aria-label={pageIsSaved ? 'Saved sites' : 'Save site'}
+        title={pageIsSaved ? 'Unsave site' : 'Save site'}
+        aria-label={pageIsSaved ? 'Unsave site' : 'Save site'}
         data-ui="browser.saved-sites"
-        aria-pressed={savedSites.isOpen}
+        aria-pressed={pageIsSaved}
       >
         <Star size={16} />
       </button>
       <button
         type="button"
         className={`browser-nav-button ${downloads.isOpen ? 'is-active' : ''} ${downloads.hasActive ? 'is-busy' : ''}`}
-        onClick={() => { savedSites.dismiss(); downloads.toggle() }}
+        onClick={() => downloads.toggle()}
         title="Downloads"
         aria-label="Downloads"
         data-ui="browser.downloads"

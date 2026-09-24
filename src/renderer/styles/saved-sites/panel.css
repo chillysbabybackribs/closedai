@@ -1,0 +1,178 @@
+/* Saved sites view tab (saved-sites/saved-sites-panel.tsx). */
+.saved-sites-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.saved-sites-panel-header {
+  flex: none;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.saved-sites-panel-title { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.3; }
+.saved-sites-panel-description { margin: 2px 0 0; color: var(--muted-foreground); font-size: 11.5px; line-height: 1.4; }
+
+.saved-sites-panel-empty {
+  margin: 16px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.saved-sites-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px 10px 16px;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.saved-sites-panel-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
+  gap: 2px 6px;
+  padding: 8px 8px 10px;
+  border-radius: 8px;
+}
+
+.saved-sites-panel-row:hover { background: color-mix(in srgb, var(--foreground) 4%, transparent); }
+
+.saved-sites-panel-open {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.saved-sites-panel-open svg,
+.saved-sites-panel-open .browser-suggestion-favicon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.saved-sites-panel-text { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+
+.saved-sites-panel-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-sites-panel-open:hover .saved-sites-panel-name { color: var(--primary); }
+
+.saved-sites-panel-host {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-sites-panel-remove {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  display: inline-flex;
+  padding: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.saved-sites-panel-row:hover .saved-sites-panel-remove,
+.saved-sites-panel-row:focus-within .saved-sites-panel-remove { opacity: 1; }
+
+.saved-sites-panel-remove:hover {
+  color: var(--destructive);
+  background: color-mix(in srgb, var(--destructive) 12%, transparent);
+}
+
+.saved-sites-panel-note-text {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  justify-self: start;
+  max-width: 100%;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-sites-panel-note-text.is-empty { font-style: italic; opacity: 0.65; }
+
+.saved-sites-panel-row:hover .saved-sites-panel-note-text.is-empty,
+.saved-sites-panel-note-text.is-empty:focus-visible { opacity: 1; }
+
+.saved-sites-panel-note-text:hover { color: var(--foreground); }
+
+.saved-sites-panel-note {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 6px;
+  background: var(--surface-highlight);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 11.5px;
+}
+
+.saved-sites-panel-note::placeholder { color: var(--muted-foreground); opacity: 0.8; }
+
+.saved-sites-panel-log {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  padding: 4px 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  margin-top: 4px;
+}
+
+.saved-sites-panel-log-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.saved-sites-panel-log-summary {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--foreground);
+  white-space: pre-wrap;
+}
+
+.saved-sites-panel-log-summary.is-empty {
+  color: var(--muted-foreground);
+  font-style: italic;
+}

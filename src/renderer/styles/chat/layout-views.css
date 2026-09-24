@@ -60,7 +60,8 @@
 /* Panels that were dialog contents fill the view instead of sizing to the viewport. */
 .workspace-view .trace-panel,
 .workspace-view .tools-panel,
-.workspace-view .agent-library-view {
+.workspace-view .agent-library-view,
+.workspace-view .saved-sites-panel {
   width: auto;
   height: auto;
   max-width: none;

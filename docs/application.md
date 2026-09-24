@@ -759,10 +759,12 @@ history entry, not cookies or site data. `browser-omnibox.ts` owns the renderer 
 
 Saved sites (`saved-sites-store.ts`, `saved-sites.json`) are pages the user keeps on purpose, a
 different thing from history (every page visited, pruned by frequency, skipped for agent-driven
-tabs). The star left of Downloads (`browser.saved-sites`) saves the active web page and opens the
-saved-sites panel; when the page is already saved the star is gold and toggles the panel. View → Saved sites opens the same panel even when the browser is hidden. The panel (`browser-saved-sites-shelf.tsx`) floats above the workspace without blocking chat controls; its header moves it and its lower-right corner resizes it. Opening Downloads closes it, and opening Saved sites closes Downloads. It lists rows newest first with favicon, title,
-host, an optional note shown as text (click it, or "Add note", to edit), open, and a remove
-control revealed on hover. Opening a saved site restores the browser pane if hidden. The tab context menu
+tabs). The star left of Downloads (`browser.saved-sites`) saves or unsaves the active web page; when
+the page is already saved the star is gold. Developer → Saved sites opens a workspace view tab (like
+Trace or Agents) with the full list even when the browser is hidden. The view (`saved-sites/saved-sites-panel.tsx`)
+lists rows newest first with favicon, title, host, an optional note (click it, or "Add note", to edit),
+a brief check log (`lastCheckedAt` and `lastSummary`, empty until a daily brief runs), open, and a remove
+control revealed on hover. Opening a saved site from the view restores the browser pane if hidden. The tab context menu
 offers Save site / Unsave site for any web tab. Only http(s) pages can be saved; a saved URL is
 identified without scheme or leading `www.`, so re-saving refreshes title and favicon instead of
 duplicating. Each record also carries `tags`, `lastCheckedAt`, and `lastSummary`, empty until a

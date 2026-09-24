@@ -34,7 +34,7 @@ export type ChatLayoutHandle = {
   applyPreset: (preset: LayoutPreset) => void
 }
 
-export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, onRenameChat, onBrowserVisibilityChange, onAgentsViewOpenChange, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, onRenameChat, onBrowserVisibilityChange, onAgentsViewOpenChange, onSavedSitesError, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
   savedSites: BrowserSavedSitesController
   reviewQueue: ChatReviewQueue
@@ -43,6 +43,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   onRenameChat?: (id: string, title: string) => void
   onBrowserVisibilityChange: (visible: boolean) => void
   onAgentsViewOpenChange?: (open: boolean) => void
+  onSavedSitesError?: (reason: unknown) => void
   archiveChat?: (chatId: string) => Promise<void>
   ref?: Ref<ChatLayoutHandle>
 }) {
@@ -168,12 +169,23 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     void layout.activateTab(chatId)
   }, [layout.activateTab])
   const startAgent = useCallback((chatId: string, options: AgentRunStartOptions) => startAgentRef.current(chatId, options), [])
+  const openSavedSite = useCallback(async (url: string) => {
+    revealBrowser()
+    await savedSites.open(url)
+  }, [revealBrowser, savedSites])
+  const savedSitesView = useMemo(() => ({
+    update: savedSites.update,
+    remove: savedSites.remove,
+    openSite: openSavedSite
+  }), [savedSites.update, savedSites.remove, openSavedSite])
+  const reportSavedSitesError = useCallback((reason: unknown) => { onSavedSitesError?.(reason) }, [onSavedSitesError])
   const viewContext = useMemo<WorkspaceViewContextValue>(() => ({
     tree: layout.tree, views: layout.views, selectedPaneId: chat.selectedPaneId, chats: chat.chats, title: chatTitle,
     listChats: chat.listChats, archiveChat: archiveChat ?? chat.archiveChat, activateChat: layout.activateTab,
-    pinView: layout.pinView, closeTab: onCloseTab, sendToChat, startAgent
+    pinView: layout.pinView, closeTab: onCloseTab, sendToChat, startAgent, savedSites: savedSitesView,
+    onSavedSitesError: reportSavedSitesError
   }), [layout.tree, layout.views, chat.selectedPaneId, chat.chats, chatTitle, chat.listChats, archiveChat, chat.archiveChat,
-    layout.activateTab, layout.pinView, onCloseTab, sendToChat, startAgent])
+    layout.activateTab, layout.pinView, onCloseTab, sendToChat, startAgent, savedSitesView, reportSavedSitesError])
   return <div className="chat-desktop-workspace">
     {layout.error && <div className="chat-layout-error" role="alert">{layout.error}</div>}
     <ChatLayoutActions.Provider value={actions}>

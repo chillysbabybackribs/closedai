@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import { Activity, CircleAlert, History, LoaderCircle, Pause, Workflow, Wrench, X, type LucideIcon } from 'lucide-react'
+import { Activity, CircleAlert, History, LoaderCircle, Pause, Star, Workflow, Wrench, X, type LucideIcon } from 'lucide-react'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { TabActivity } from './tab-activity.js'
 import { tabCloseHint } from './layout-copy.js'
@@ -51,7 +51,7 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, revie
   </div>
 }
 
-const VIEW_GLYPHS: Record<ViewKind, LucideIcon> = { trace: Activity, agents: Workflow, history: History, tools: Wrench }
+const VIEW_GLYPHS: Record<ViewKind, LucideIcon> = { trace: Activity, agents: Workflow, history: History, tools: Wrench, 'saved-sites': Star }
 
 /** A view tab shows its kind where a chat tab shows status: never a spinner, never unread. */
 function ViewTabGlyph({ kind }: { kind: ViewKind }) {

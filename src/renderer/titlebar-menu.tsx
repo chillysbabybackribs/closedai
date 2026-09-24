@@ -72,7 +72,6 @@ const MENUS: Menu[] = [
     label: 'View',
     rows: [
       { key: 'toggle-browser-pane', label: 'Toggle browser pane', action: 'toggle-browser' },
-      { key: 'saved-sites', label: 'Saved sites…', action: 'saved-sites' },
       SEP,
       ...VIEW_LAYOUT_ROWS,
       SEP,
@@ -100,6 +99,7 @@ const MENUS: Menu[] = [
     label: 'Developer',
     rows: [
       { key: 'turn-trace', label: 'Turn trace…', shortcut: 'Ctrl+Shift+I', action: 'trace' },
+      { key: 'saved-sites', label: 'Saved sites…', action: 'saved-sites' },
       SEP,
       { key: 'reload-renderer', label: 'Reload renderer', shortcut: 'Ctrl+R', action: 'reload' },
       { key: 'toggle-devtools', label: 'Toggle DevTools', shortcut: 'F12', action: 'devtools' }
