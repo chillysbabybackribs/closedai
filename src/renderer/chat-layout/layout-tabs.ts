@@ -54,7 +54,7 @@ export function isChatTabActive(tree: ChatLayout | null, chatId: string): boolea
   if (!tree) return false
   if (tree.kind === 'pane') {
     const tabs = tree.tabs ?? [tree.id]
-    return tabs.includes(chatId) && tree.id === chatId
+    return !tree.docked && tabs.includes(chatId) && tree.id === chatId
   }
   return isChatTabActive(tree.first, chatId) || isChatTabActive(tree.second, chatId)
 }
@@ -64,7 +64,7 @@ export function selectTab(tree: ChatLayout, target: string, id: string): ChatLay
   const owner = tabOwner(tree, id)
   if (!owner) return addTab(tree, target, id)
   const visit = (node: ChatLayout): ChatLayout => node.kind === 'pane'
-    ? node.id === owner ? { ...node, id, tabs: node.tabs ?? [node.id] } : node
+    ? node.id === owner ? { ...node, id, docked: false, tabs: node.tabs ?? [node.id] } : node
     : { ...node, first: visit(node.first), second: visit(node.second) }
   return visit(tree)
 }

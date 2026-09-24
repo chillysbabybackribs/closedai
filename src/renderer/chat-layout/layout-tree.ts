@@ -1,5 +1,6 @@
+import { DOCK_HEIGHT, expandedTree, hasBrowser, layoutGroups, type DockGroup } from './layout-docking.js'
 export type DockEdge = 'left' | 'right' | 'top' | 'bottom'
-export type ChatLayout = { kind: 'pane'; id: string; tabs?: string[] } | {
+export type ChatLayout = { kind: 'pane'; id: string; tabs?: string[]; docked?: boolean; dockNumber?: number } | {
   kind: 'split'; id: string; axis: 'horizontal' | 'vertical'; ratio: number
   first: ChatLayout; second: ChatLayout
 }
@@ -38,7 +39,7 @@ export function paneIds(tree: ChatLayout | null): string[] {
 
 /** Tiles whose active tab is a chat: what main treats as visible. */
 export function chatPaneIds(tree: ChatLayout | null): string[] {
-  return paneIds(tree).filter((id) => !isViewTabId(id))
+  return tree ? layoutGroups(tree).filter((group) => !group.docked && !isViewTabId(group.id)).map((group) => group.id) : []
 }
 
 export function removePane(tree: ChatLayout | null, id: string): ChatLayout | null {
@@ -93,10 +94,15 @@ export function resizeSplit(tree: ChatLayout, id: string, ratio: number): ChatLa
   return { ...tree, first: resizeSplit(tree.first, id, ratio), second: resizeSplit(tree.second, id, ratio) }
 }
 
-export function minimumSize(tree: ChatLayout): { width: number; height: number } {
+export function minimumSize(tree: ChatLayout, region = true): { width: number; height: number } {
+  if (region && !hasBrowser(tree) && layoutGroups(tree).some((group) => group.docked)) {
+    const expanded = expandedTree(tree)
+    const size = expanded ? minimumSize(expanded, false) : { width: 180, height: 0 }
+    return { width: size.width, height: size.height + DOCK_HEIGHT }
+  }
   if (tree.kind === 'pane') return { width: tree.id === BROWSER_PANE_ID ? 384 : 300, height: 280 }
-  const a = minimumSize(tree.first)
-  const b = minimumSize(tree.second)
+  const a = minimumSize(tree.first, region)
+  const b = minimumSize(tree.second, region)
   return tree.axis === 'horizontal'
     ? { width: a.width + b.width + DIVIDER_SIZE, height: Math.max(a.height, b.height) }
     : { width: Math.max(a.width, b.width), height: a.height + b.height + DIVIDER_SIZE }
@@ -109,7 +115,17 @@ export type SplitResizePhase = 'commit' | 'cancel'
 export function layoutGeometry(tree: ChatLayout, width: number, height: number, splitRatios?: SplitRatioOverrides) {
   const panes: Array<{ id: string; tabs: string[]; rect: Rect }> = []
   const dividers: Array<{ id: string; axis: 'horizontal' | 'vertical'; rect: Rect; parent: Rect; ratio: number; min: number; max: number }> = []
-  const visit = (node: ChatLayout, rect: Rect): void => {
+  const rails: Array<{ id: string; groups: DockGroup[]; rect: Rect; boundary: Rect }> = []
+  const visit = (node: ChatLayout, rect: Rect, region = true): void => {
+    if (region && !hasBrowser(node)) {
+      const groups = layoutGroups(node).filter((group) => group.docked)
+      if (groups.length) {
+        rails.push({ id: node.id, groups, boundary: rect, rect: { ...rect, y: rect.y + rect.height - DOCK_HEIGHT, height: DOCK_HEIGHT } })
+        const expanded = expandedTree(node)
+        if (expanded) visit(expanded, { ...rect, height: rect.height - DOCK_HEIGHT }, false)
+        return
+      }
+    }
     if (node.kind === 'pane') { panes.push({ id: node.id, tabs: node.tabs ?? [node.id], rect }); return }
     const horizontal = node.axis === 'horizontal'
     const dimension = horizontal ? 'width' : 'height'
@@ -129,7 +145,7 @@ export function layoutGeometry(tree: ChatLayout, width: number, height: number, 
   }
   const minimum = minimumSize(tree)
   visit(tree, { x: 0, y: 0, width: Math.max(width, minimum.width), height: Math.max(height, minimum.height) })
-  return { panes, dividers, minimum }
+  return { panes, dividers, minimum, rails }
 }
 
 /** A view pinned to one chat; unpinned views follow their tile and are absent here. */
@@ -160,7 +176,9 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, cwd: string): Save
       seen.add(node.id)
       if (seen.size > 65) return false
       if (node.kind === 'pane') {
-        if (node.id === BROWSER_PANE_ID) return node.tabs === undefined
+        if (node.id === BROWSER_PANE_ID) return node.tabs === undefined && !node.docked
+        if (node.docked !== undefined && typeof node.docked !== 'boolean') return false
+        if (node.dockNumber !== undefined && (!Number.isSafeInteger(node.dockNumber) || node.dockNumber < 1)) return false
         const tabs = node.tabs ?? [node.id]
         if (!Array.isArray(tabs) || !tabs.includes(node.id) || !tabs.length) return false
         for (const id of tabs) {
