@@ -175,7 +175,7 @@ test('ChatCanvas renders a view tab with its kind glyph, no chat status, and the
     renderBrowser: createElement('div', { id: 'browser-content' }, 'Browser'),
     onDragActive: () => {},
     title: (id) => id === view ? 'Trace' : `Chat ${id}`,
-    activity: () => ({ state: 'working', label: 'Working' }),
+    activity: () => ({ state: 'working' as const, label: 'Working' }),
     renderPane: (id) => createElement('div', { id: `content-${id}` }, `Content ${id}`),
     onSelect: () => {},
     onSelectTab: () => {},
