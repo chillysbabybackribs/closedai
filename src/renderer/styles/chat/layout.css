@@ -116,6 +116,11 @@
 .chat-layout-canvas[data-layout-drag='true'] .chat-layout-tile,
 .chat-layout-canvas[data-layout-drag='true'] .chat-layout-divider {
   will-change: left, top, width, height;
+  transition: left 90ms ease-out, top 90ms ease-out, width 90ms ease-out, height 90ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-layout-canvas[data-layout-drag='true'] .chat-layout-tile,
+  .chat-layout-canvas[data-layout-drag='true'] .chat-layout-divider { transition: none; }
 }
 /* Geometry supplies both dimensions, so descendants can adapt to short rows as well as columns. */
 /* Each tile is a card lifted off the chassis: one drawn edge, a short contact shadow, and
