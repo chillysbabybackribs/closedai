@@ -1,37 +1,100 @@
 .chat-dock-boundary { position: absolute; pointer-events: none; }
+
+/* Regional strip at the bottom of a chat column; the track spans the full rail width. */
 .chat-dock-rail {
   position: absolute;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 5px 2px;
   box-sizing: border-box;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  border-top: 1px solid var(--hairline);
-  color: var(--chrome-fg);
+  display: flex;
+  align-items: stretch;
+  padding: 4px 0 0;
+  pointer-events: none;
 }
-.chat-dock-tab {
-  flex: 0 0 auto;
-  height: 24px;
-  padding: 0 12px;
-  border: 1px solid var(--hairline);
-  border-radius: 6px;
-  background: var(--surface-chrome);
+
+.chat-dock-rail-track {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 100%;
+  padding: 3px 4px 3px 6px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 1px solid var(--tile-edge);
+  background: color-mix(in srgb, var(--chrome-fg-strong) 4%, var(--titlebar-surface, var(--surface-chrome)));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 3%),
+    0 1px 2px rgb(0 0 0 / 6%);
   color: var(--chrome-fg);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  pointer-events: auto;
+}
+
+.chat-dock-rail-mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  color: var(--chrome-control-quiet, var(--chrome-fg));
+  opacity: 0.72;
+}
+
+.chat-dock-tab {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  max-width: min(240px, 100%);
+  height: 24px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--chrome-fg-strong) 6%, transparent);
+  color: var(--chrome-fg);
+  box-shadow: none;
   font: inherit;
   font-size: 11px;
   font-weight: 500;
+  letter-spacing: var(--tracking-ui, normal);
   cursor: pointer;
   transition: background 120ms ease, color 120ms ease;
 }
-.chat-dock-tab:hover, .chat-dock-tab[data-state="open"] {
-  color: var(--chrome-fg-strong);
-  background: var(--surface-control-hover);
+
+.chat-dock-tab-name {
+  flex-shrink: 0;
 }
-.chat-dock-tab:focus-visible { outline: 2px solid var(--focus-ink); outline-offset: 1px; }
-.chat-dock-tab:disabled { opacity: 0.5; cursor: default; }
+
+.chat-dock-tab-detail {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--chrome-control-muted, var(--chrome-fg));
+  font-weight: 400;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0.88;
+}
+
+.chat-dock-tab:hover,
+.chat-dock-tab[data-state='open'] {
+  color: var(--chrome-fg-strong);
+  background: var(--surface-control-hover, var(--chrome-control-hover));
+}
+
+.chat-dock-tab:focus-visible {
+  outline: 2px solid var(--focus-ink);
+  outline-offset: 1px;
+}
+
+.chat-dock-tab:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .chat-dock-preview {
   z-index: 50;
   width: 340px;
@@ -48,15 +111,38 @@
   font-size: 12px;
   pointer-events: auto;
 }
+
 .chat-dock-preview-heading { display: flex; gap: 12px; align-items: baseline; margin-bottom: 12px; }
 .chat-dock-preview-heading strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; }
-.chat-dock-preview-heading > span, .chat-dock-preview-footer, .chat-dock-message > span {
-  color: var(--chrome-fg); font-size: 10px;
+.chat-dock-preview-heading > span,
+.chat-dock-preview-footer,
+.chat-dock-message > span {
+  color: var(--chrome-fg);
+  font-size: 10px;
 }
+
 .chat-dock-preview-messages { display: flex; flex-direction: column; gap: 12px; max-height: 245px; overflow: hidden; }
-.chat-dock-message p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
-.chat-dock-message[data-role="user"] { padding: 8px 10px; border-radius: 8px; background: var(--surface-control-hover); }
+
+.chat-dock-message p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+.chat-dock-message[data-role='user'] {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-control-hover);
+}
+
 .chat-dock-preview-footer { margin-top: 12px; padding-top: 9px; border-top: 1px solid var(--hairline); }
 .chat-dock-empty { color: var(--chrome-fg); line-height: 1.5; }
-@media (prefers-reduced-motion: reduce) { .chat-dock-tab { transition: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-dock-tab { transition: none; }
+}
