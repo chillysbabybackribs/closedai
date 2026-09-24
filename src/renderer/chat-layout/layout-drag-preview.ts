@@ -57,7 +57,6 @@ export function chatDropAt(
   const tile = panes.find(({ rect }) => x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height)
   if (!tile) return null
   const dx = (x - tile.rect.x) / tile.rect.width
-  const dy = (y - tile.rect.y) / tile.rect.height
   const held = previous?.target === tile.id ? previous : null
   if (tile.id === BROWSER_PANE_ID) {
     const margin = Math.min(0.1, 32 / tile.rect.width)
