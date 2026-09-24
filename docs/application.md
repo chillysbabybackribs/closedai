@@ -706,8 +706,10 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   window; View owns browser visibility, Saved sites, layout, chat zoom, and fullscreen; Agent owns the
   Agents view (Agents…, the saved-agent Library with its Build and Runs screens, one tab per
   workspace), what the model is given (Tools & capabilities, likewise a view tab) and a "Selected chat" section naming
-  the pane its rows act on (Compact context, Stop turn; rows that do not apply are disabled, not
-  hidden); Developer owns Turn trace (a view tab), Reload renderer, and Toggle DevTools.
+  the pane its rows act on (Shrink provider context, Stop turn; rows that do not apply are disabled, not
+  hidden). **Shrink provider context** rotates or compacts the provider thread while keeping the visible
+  transcript; it is available for Codex, Claude, Cursor, and Antigravity when seamless rotation is on
+  (and for Codex native compaction or Antigravity native compact when it is off). Developer owns Turn trace (a view tab), Reload renderer, and Toggle DevTools.
   Shortcuts: Ctrl+Shift+T tools, Ctrl+Shift+I trace, Ctrl+R reload, F12 DevTools.
   Send, pause,
   and resume controls live in the composer; Pause and Resume also appear in header search rows.
@@ -1070,9 +1072,11 @@ Provider history is not deleted; rotation leaves the old thread in the provider 
 
 The Turn trace shows send-to-first-assistant-text timing for all four providers: preparation,
 Codex's measured compaction wait (a subset of preparation), and time after provider dispatch.
-The clock starts when the pane manager receives Send, before waking the pane. It ends when main
-receives non-empty assistant text, including commentary, not when the renderer paints it. Provider
-queueing, reasoning, tools, and internal compaction are not individually separated after dispatch.
+It also records `response.turn_complete` when the turn ends, including elapsed time to first text,
+tool and command counts, and summed command wall time for that turn. The first-text clock starts when
+the pane manager receives Send, before waking the pane. It ends when main receives non-empty assistant
+text, including commentary, not when the renderer paints it. Provider queueing, reasoning, tools,
+and internal compaction are not individually separated after dispatch.
 See [Tools](tools.md) for configuration and measurement limits.
 
 `toolBatchMaxCalls` defaults to 16, is clamped to 1–64, and takes effect on app startup.

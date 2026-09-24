@@ -116,7 +116,7 @@ export function ContextUsage({
             disabled={!compactEnabled}
             onClick={() => { void onCompact() }}
           >
-            Compact conversation
+            Shrink provider context
           </button>
         </div>
       )}

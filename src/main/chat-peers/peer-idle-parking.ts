@@ -1,5 +1,6 @@
 import type { ChatPaneId } from '../../shared/chat-peers.js'
 import type { ChatSurface } from '../chat-hub.js'
+import { paneSurfaceBusy } from './pane-busy.js'
 
 export type ParkablePeer = {
   surface: ChatSurface
@@ -43,12 +44,13 @@ export class PeerIdleParking {
   /** Start the idle clock: the grace period for an unselected chat, the longer one for the selected. */
   schedule(paneId: ChatPaneId): void {
     const entry = this.peer(paneId)
-    if (!entry || entry.parked || entry.idleTimer || entry.surface.snapshot({ limit: 0 }).activeTurnId) return
-    if (entry.surface.hasRunningBackground?.()) return
+    if (!entry || entry.parked || entry.idleTimer) return
+    const snapshot = entry.surface.snapshot({ limit: 0 })
+    if (paneSurfaceBusy(snapshot, entry.surface.hasRunningBackground?.bind(entry.surface))) return
     const selected = paneId === this.selectedPaneId()
     entry.idleTimer = setTimeout(() => {
       entry.idleTimer = null
-      if (entry.surface.snapshot({ limit: 0 }).activeTurnId || entry.surface.hasRunningBackground?.()) return
+      if (paneSurfaceBusy(entry.surface.snapshot({ limit: 0 }), entry.surface.hasRunningBackground?.bind(entry.surface))) return
       // Selected since the clock started: it earns the longer window rather than parking now.
       if (!selected && paneId === this.selectedPaneId()) {
         this.schedule(paneId)

@@ -9,6 +9,7 @@ import { traceLog } from '../trace/trace-log.js'
 import type { PeerIdleParking, ParkablePeer } from './peer-idle-parking.js'
 import { PeerSettings } from './peer-settings.js'
 import { PLACEHOLDER_TITLE, PeerSummaryCache } from './peer-summary.js'
+import { paneSurfaceBusy } from './pane-busy.js'
 import { ChatTitles } from '../chat-titles/chat-titles.js'
 import { titleRequest } from '../chat-titles/title-policy.js'
 
@@ -226,7 +227,7 @@ export class PeerLifecycle {
     const entry = this.peers.get(chatId)
     if (!entry) return false
     if (entry.surface.hasRunningBackground?.()) return true
-    return entry.surface.snapshot({ limit: 0 }).activeTurnId != null
+    return paneSurfaceBusy(entry.surface.snapshot({ limit: 0 }), entry.surface.hasRunningBackground?.bind(entry.surface))
   }
 
   /**

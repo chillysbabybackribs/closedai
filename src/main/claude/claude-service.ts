@@ -288,6 +288,17 @@ export class ClaudeChatService extends EventEmitter {
     if (sessionId === this.session?.sessionId) await this.newThread()
   }
 
+  /** Re-seed the SDK session from a bounded transcript summary; the visible transcript is unchanged. */
+  async compactConversation(): Promise<void> {
+    if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
+    if (!this.seamlessRotation()) throw new Error('The active provider does not support compaction')
+    if (!buildThreadHandoff(this.transcript.snapshot(), this.threadName)) {
+      throw new Error('There is no conversation to compact yet')
+    }
+    await rotateClaudeProviderSession(this.threadHost(), this.session)
+    this.addNotice('Provider context will shrink on the next message; the visible transcript is unchanged.', 'info', null)
+  }
+
   stop(): void {
     void this.session?.retire()
   }

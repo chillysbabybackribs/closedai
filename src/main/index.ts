@@ -14,6 +14,7 @@ import { BrowserTabSessionStore } from './browser-tab-session-store.js'
 import { AppSettingsStore } from './app-settings-store.js'
 import { BrowserDownloadService } from './browser-download-service.js'
 import { maintainBrowserCache, scheduleBrowserCacheMaintenance } from './browser-cache-maintenance.js'
+import { scheduleVerifyJanitor } from './verify-janitor.js'
 import { importDefaultBrowserCookies } from './browser-cookie-import.js'
 import { CodexWorkspaceRuntime } from './codex-workspace-runtime.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
@@ -110,6 +111,7 @@ let nativeInstrument: NativeInstrumentService | null = null
 let appAutomationAccess: AppAutomationAccess | null = null
 let appCommandAccess: AppCommandAccess | null = null
 let stopBrowserCacheMaintenance: (() => void) | null = null
+let stopVerifyJanitor: (() => void) | null = null
 let browserReadyToLoad: Promise<unknown> | null = null
 /** A cookie import this slow is a broken one; the first page loads without it. */
 const COOKIE_IMPORT_LOAD_GATE_MS = 5000
@@ -357,6 +359,7 @@ async function main(): Promise<void> {
   void chatService.start()
   agentRuns.start()
   stopBrowserCacheMaintenance = scheduleBrowserCacheMaintenance(userData())
+  stopVerifyJanitor = scheduleVerifyJanitor(() => chatService!.runningPaneIds())
   const liveVerifyMode = process.env.CLOSEDAI_LIVE_VERIFY?.trim() || liveVerifyFromArgv()
   if (liveVerifyMode) requestLiveVerify(liveVerifyHandle, app, liveVerifyMode, true)
 }
@@ -452,6 +455,8 @@ app.on('before-quit', (event) => {
   nativeInstrument?.dispose()
   stopBrowserCacheMaintenance?.()
   stopBrowserCacheMaintenance = null
+  stopVerifyJanitor?.()
+  stopVerifyJanitor = null
   agentRuns?.stop()
   chatService?.stop()
   for (const runtime of codexRuntimes.values()) runtime.stop()

@@ -341,6 +341,24 @@ export class ChatService extends EventEmitter {
     if (threadId === this.threadId) await this.newThread()
   }
 
+  /** Shrink provider-side context while keeping the visible transcript (rotation or native compact). */
+  async compactConversation(): Promise<void> {
+    if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
+    if (this.seamlessRotation()) {
+      if (!buildThreadHandoff(this.transcript.snapshot(), this.threadName)) {
+        throw new Error('There is no conversation to compact yet')
+      }
+      await rotateCodexProviderSession(this.threadHost())
+      this.addNotice('Provider context will shrink on the next message; the visible transcript is unchanged.', 'info', null)
+      return
+    }
+    const threadId = this.threadId
+    if (!threadId) throw new Error('There is no conversation to compact yet')
+    await this.compactor.prepareForSend()
+    await this.client.request('thread/compact/start', { threadId })
+    await this.compactor.idle()
+  }
+
   async beginChatGptLogin(): Promise<string> {
     await this.ensureConnected()
     return startChatGptLogin(this.client)

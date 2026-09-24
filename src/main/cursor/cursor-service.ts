@@ -292,6 +292,7 @@ export class CursorChatService extends EventEmitter {
     if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
     if (!this.settings.get().chatSeamlessRotation) throw new Error('The active provider does not support compaction')
     await rotateCursorProviderSession(this.threadHost(), this.session)
+    this.addNotice('Provider context will shrink on the next message; the visible transcript is unchanged.', 'info', null)
   }
 
   async archiveThread(threadId: string): Promise<void> {

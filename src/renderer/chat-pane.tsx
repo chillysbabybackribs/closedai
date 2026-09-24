@@ -21,6 +21,7 @@ import { useAgentRun } from './agent-runs/agent-runs-store.js'
 import { composerAnchoredBottom, paneHasTranscript } from './chat-composer-layout.js'
 import { latestContinueEligibleMessageId } from './transcript-rows.js'
 import { errorMessage } from './error-message.js'
+import { providerSupportsContextShrink } from './context-shrink-eligibility.js'
 import type { ComposerSetupHandle } from './composer-setup-menu.js'
 import { securityRequests } from './security-requests.js'
 import { useCredentialApprovals } from './use-security-requests.js'
@@ -55,7 +56,7 @@ export const ChatPane = memo(function ChatPane({
     ...(chat.workspace?.recentProjects ?? []),
     ...chat.chats.filter((row) => row.projectPath).map((row) => ({ cwd: row.cwd, projectPath: row.projectPath! }))
   ].map((entry) => [entry.projectPath, entry])).values()].filter((entry) => entry.projectPath !== project.projectPath)
-  const manualCompact = state.provider === 'antigravity' && preferences?.chatSeamlessRotation !== true
+  const manualCompact = providerSupportsContextShrink(state.provider, preferences?.chatSeamlessRotation)
   const ready = state.connection.state === 'ready'
   const running = chatRunning(state)
   const agentRun = useAgentRun(chat.selectedPaneId)

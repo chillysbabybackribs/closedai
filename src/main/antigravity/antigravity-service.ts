@@ -329,6 +329,7 @@ export class AntigravityChatService extends EventEmitter {
     if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
     if (this.settings.get().chatSeamlessRotation) {
       await rotateAntigravityProviderSession(this.threadHost())
+      this.addNotice('Provider context will shrink on the next message; the visible transcript is unchanged.', 'info', null)
       return
     }
     const seed = buildCompactionSeed(this.transcript.snapshot(), this.threadName)

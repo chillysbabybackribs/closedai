@@ -1,5 +1,12 @@
-import type { ChatEvent } from '../../shared/chat.js'
+import type { ChatEvent, ChatTranscriptItem } from '../../shared/chat.js'
 import type { TraceInput, TraceScope } from './trace-log.js'
+
+type TurnStats = {
+  toolCalls: number
+  commands: number
+  commandMs: number
+  backgroundTasks: number
+}
 
 type Request = {
   scope: TraceScope
@@ -8,6 +15,9 @@ type Request = {
   compactionWaitMs: number
   assistantIds: Set<string>
   firstText: boolean
+  firstTextAt: number | null
+  stats: TurnStats
+  countedItems: Set<string>
 }
 
 /** Main-process receipt timing, not provider token-generation or renderer-paint timing. */
@@ -25,7 +35,9 @@ export class ResponseLatency {
     if (this.requests.size >= 256) this.requests.delete(this.requests.keys().next().value!)
     const request: Request = {
       scope: { ...scope, turnId: null }, startedAt: this.now(), dispatchedAt: null,
-      compactionWaitMs: 0, assistantIds: new Set(), firstText: false
+      compactionWaitMs: 0, assistantIds: new Set(), firstText: false, firstTextAt: null,
+      stats: { toolCalls: 0, commands: 0, commandMs: 0, backgroundTasks: 0 },
+      countedItems: new Set()
     }
     const paneId = scope.paneId
     this.requests.set(paneId, request)
@@ -64,10 +76,14 @@ export class ResponseLatency {
       if (event.turnId) {
         request.scope.turnId ??= event.turnId
       } else {
-        if (!request.firstText) this.report(request, 'response.no_text')
+        if (request.firstText) this.reportTurnComplete(request)
+        else this.report(request, 'response.no_text')
         this.requests.delete(paneId)
       }
       return
+    }
+    if (event.type === 'item') {
+      this.noteItem(request, event.item)
     }
     if (request.firstText) return
     if (event.type === 'item') {
@@ -94,8 +110,56 @@ export class ResponseLatency {
 
   private firstText(request: Request): void {
     request.firstText = true
+    request.firstTextAt = this.now()
     request.assistantIds.clear()
     this.report(request, 'response.first_text')
+  }
+
+  private noteItem(request: Request, item: ChatTranscriptItem): void {
+    if (request.dispatchedAt === null) return
+    const turnId = request.scope.turnId
+    if (turnId && item.turnId && item.turnId !== turnId) return
+    if (request.countedItems.has(item.id)) return
+    if (item.type === 'tool') {
+      request.countedItems.add(item.id)
+      request.stats.toolCalls += 1
+      if (item.background) request.stats.backgroundTasks += 1
+      if (item.startedAt !== undefined && item.finishedAt !== undefined) {
+        request.stats.commandMs += Math.max(0, item.finishedAt - item.startedAt)
+      }
+      return
+    }
+    if (item.type === 'command') {
+      request.countedItems.add(item.id)
+      request.stats.commands += 1
+      if (item.startedAt !== undefined && item.finishedAt !== undefined) {
+        request.stats.commandMs += Math.max(0, item.finishedAt - item.startedAt)
+      }
+    }
+  }
+
+  private reportTurnComplete(request: Request): void {
+    const elapsedMs = Math.max(0, this.now() - request.startedAt)
+    const preparationMs = Math.max(0, request.dispatchedAt! - request.startedAt)
+    const firstTextMs = request.firstTextAt === null ? null : Math.max(0, request.firstTextAt - request.startedAt)
+    this.record(request.scope, {
+      kind: 'turn',
+      label: 'response.turn_complete',
+      summary: `Turn finished after ${(elapsedMs / 1_000).toFixed(2)}s`,
+      durationMs: elapsedMs,
+      detail: {
+        elapsedMs,
+        preparationMs,
+        compactionWaitMs: Math.min(preparationMs, request.compactionWaitMs),
+        afterDispatchMs: Math.max(0, elapsedMs - preparationMs),
+        firstTextMs,
+        toolCalls: request.stats.toolCalls,
+        commands: request.stats.commands,
+        commandMs: request.stats.commandMs,
+        backgroundTasks: request.stats.backgroundTasks,
+        measurement: 'main-process receipt through turn end; excludes renderer paint'
+      }
+    })
   }
 
   private report(request: Request, label: 'response.first_text' | 'response.no_text'): void {

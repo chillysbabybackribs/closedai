@@ -16,6 +16,7 @@ import {
 import { appShortcutForKey, escapePausesTask, targetRunningPaneId } from './app-shortcuts.js'
 import { AppStartup } from './app-startup.js'
 import { errorMessage } from './error-message.js'
+import { providerSupportsContextShrink } from './context-shrink-eligibility.js'
 import { TitlebarMenu, type MenuAction } from './titlebar-menu.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
 import { ChatRenameDialog } from './chat-rename-dialog.js'
@@ -168,7 +169,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const running = chat.state.activeTurnId !== null
   // Compaction is a manual step only where the provider does not rotate seamlessly; elsewhere
   // the row stays visible but disabled so the menu reads the same in every chat.
-  const compactEnabled = chat.state.provider === 'antigravity' && chat.preferences?.chatSeamlessRotation !== true
+  const compactEnabled = providerSupportsContextShrink(chat.state.provider, chat.preferences?.chatSeamlessRotation)
     && ready && !running && chat.state.items.some((item) => item.type === 'user')
   const menuAction = useCallback((action: Exclude<MenuAction, 'search-chats'>): void => {
     switch (action) {

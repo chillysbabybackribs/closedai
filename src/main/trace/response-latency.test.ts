@@ -41,8 +41,10 @@ for (const provider of ['codex', 'claude', 'antigravity', 'cursor'] as const) {
     h.at(2_000)
     h.timing.event('p', assistant('Hello again'))
     h.timing.event('p', { type: 'turn', turnId: null })
-    assert.equal(h.entries.length, 1)
+    assert.equal(h.entries.length, 2)
     assert.equal(h.entries[0]!.label, 'response.first_text')
+    assert.equal(h.entries[1]!.label, 'response.turn_complete')
+    assert.equal((h.entries[1]!.detail as { toolCalls: number }).toolCalls, 0)
     assert.equal(h.entries[0]!.turnId, 't')
     assert.equal(h.entries[0]!.provider, provider)
     assert.deepEqual(h.entries[0]!.detail, {
@@ -103,6 +105,29 @@ test('turns ending without text report missing text, not a zero-latency response
   assert.equal(h.entries[0]!.label, 'response.no_text')
   assert.equal(h.entries[0]!.durationMs, 500)
   assert.ok(h.timing.begin(h.scope))
+})
+
+test('turn complete counts tool and command wall time for the active turn', () => {
+  const h = harness()
+  h.dispatch()
+  h.timing.event('p', { type: 'turn', turnId: 't' })
+  h.at(200)
+  h.timing.event('p', {
+    type: 'item',
+    item: {
+      type: 'command', id: 'cmd-1', turnId: 't', command: 'npm test', cwd: '/w', status: 'completed',
+      output: 'ok', exitCode: 0, startedAt: 100, finishedAt: 1_500
+    }
+  })
+  h.at(400)
+  h.timing.event('p', assistant('Done'))
+  h.at(900)
+  h.timing.event('p', { type: 'turn', turnId: null })
+  assert.equal(h.entries[1]!.label, 'response.turn_complete')
+  const detail = h.entries[1]!.detail as { commands: number; commandMs: number; firstTextMs: number }
+  assert.equal(detail.commands, 1)
+  assert.equal(detail.commandMs, 1_400)
+  assert.equal(detail.firstTextMs, 400)
 })
 
 test('parallel panes retain independent dispatch times', () => {

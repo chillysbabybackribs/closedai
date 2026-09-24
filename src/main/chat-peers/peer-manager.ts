@@ -198,6 +198,15 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   /** One pane's live snapshot without waking a parked peer; null for an unknown pane. */
+  /** Panes with a foreground turn or provider background work in flight. */
+  runningPaneIds(): Set<ChatPaneId> {
+    const ids = new Set<ChatPaneId>()
+    for (const chatId of this.lifecycle.ids()) {
+      if (this.lifecycle.isRunning(chatId)) ids.add(chatId)
+    }
+    return ids
+  }
+
   paneSnapshot(paneId: ChatPaneId): ChatSnapshot | null {
     return this.lifecycle.get(paneId)?.surface.snapshot() ?? null
   }

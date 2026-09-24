@@ -90,7 +90,7 @@ const MENUS: Menu[] = [
       { key: 'tools', label: 'Tools & capabilities…', shortcut: 'Ctrl+Shift+T', action: 'tools' },
       SEP,
       { kind: 'heading', label: 'Selected chat' },
-      { key: 'compact-context', label: 'Compact context', action: 'compact' },
+      { key: 'compact-context', label: 'Shrink provider context', action: 'compact' },
       { key: 'stop-turn', label: 'Stop turn', shortcut: 'Esc', action: 'stop-turn' }
     ]
   },
