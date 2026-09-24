@@ -26,10 +26,10 @@ export function AgentDockIcon({ tile, onOpenChat, ...controls }: AgentDockTilePr
               aria-label={`${tile.name}: ${DOCK_STATE_LABEL[tile.state]}`}
               className="absolute inset-0 rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
               <Avatar className={cn('size-full overflow-visible', ATTENTION_RING[tile.state])}>
-                <AvatarFallback className="bg-accent text-[0.65rem] font-semibold text-accent-foreground">
+                <AvatarFallback className="bg-accent text-[0.6rem] font-semibold text-accent-foreground">
                   {dockInitials(tile.name)}
                 </AvatarFallback>
-                <AvatarBadge className={cn('size-2.5 ring-(--titlebar-surface)', DOCK_STATE_TONE[tile.state])} />
+                <AvatarBadge className={cn('-right-0.5 -bottom-0.5 size-2 ring-(--titlebar-surface)', DOCK_STATE_TONE[tile.state])} />
               </Avatar>
             </button>
           </PopoverTrigger>

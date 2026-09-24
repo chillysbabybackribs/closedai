@@ -34,7 +34,7 @@ export function AgentDock({ chats, onOpenChat, onOpenAgents }: AgentDockProps): 
   const runsApi = window.closedai.agentRuns
 
   return (
-    <footer className="agent-dock mt-1.5 grid h-9 grid-cols-[1fr_auto_1fr] items-center gap-3 border-t border-(--hairline-strong) bg-(--titlebar-surface) px-3 text-xs shadow-[inset_0_1px_0_var(--surface-highlight)]"
+    <footer className="agent-dock mt-2 grid h-9 grid-cols-[1fr_auto_1fr] items-center gap-3 border-t border-(--hairline-strong) bg-(--titlebar-surface) px-3 text-xs shadow-[inset_0_1px_0_var(--surface-highlight)]"
       data-ui="dock.bar" aria-label="Agents">
       <p role="status" className="truncate">
         <span className="font-medium text-foreground">Agents</span>
