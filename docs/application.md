@@ -380,7 +380,10 @@ browser in a full-height column beside all chats. Moving the browser preserves i
 the selected chat; its position uses the same saved layout and resizable dividers.
 While a pane or the browser is dragged toward a split target, tiles and dividers live-resize to
 the layout that would result on release; chats and the browser page stay visible and track their
-new bounds. A hidden browser takes no space in the preview, so chats can occupy full-height
+new bounds. Preview dimensions update once per animation frame without size tweening, so
+transcripts do not repeatedly rewrap after a target change. On release the accepted split stays
+mounted until the chat-open operation commits (or fails); native drag-end cannot briefly restore
+the old layout. A hidden browser takes no space in the preview, so chats can occupy full-height
 columns across the workspace; its saved dock position is retained. Splitting either the active or an inactive conversation tab out of a group
 shows both the dragged conversation and the remaining group in their proposed shells before release.
 Hit targets for chat and browser drags stay fixed on the pre-drag layout so the destination
@@ -409,7 +412,8 @@ dragging emphasize both with the focus color without filling the gutter.
 This area stays outside native browser bounds. They resize horizontal and vertical
 splits independently; arrow keys resize a focused divider by 5% (Shift: 1%), and double-click
 balances it within pane minimums. Escape during a drag restores its starting proportions;
-pointer cancellation, lost capture, and window blur release the gesture. Nested splits support columns, rows,
+pointer cancellation and lost capture restore the starting proportions, while window blur commits
+the last position. The final geometry is painted before releasing the gesture. Nested splits support columns, rows,
 and quadrants, up to 32 visible chats. A tile has a 300 × 280 px minimum; the chat area scrolls
 when a small window cannot fit the chosen arrangement. Every layout uses the same one-line
 composer (a 52 px draft row, a 38 px footer, and a 32 px send/pause control). Drafts grow upward within a tile-relative height limit and

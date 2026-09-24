@@ -52,28 +52,16 @@ export function LayoutDivider({ divider, splitResize, onResize }: {
       const body = target.ownerDocument.body
       const previous = body.getAttribute('data-layout-resize')
       body.setAttribute('data-layout-resize', divider.axis)
-      let moveRaf = 0
-      let lastMove: PointerEvent | null = null
       let lastRatio = divider.ratio
-      const applyMove = (): void => {
-        moveRaf = 0
-        const next = lastMove
-        if (!next) return
-        const delta = (horizontal ? next.clientX : next.clientY) - start
-        lastRatio = clamp(divider.ratio + delta / length)
-        live.current.move(divider.id, lastRatio)
-      }
       const move = (next: PointerEvent): void => {
         if (next.pointerId !== pointerId) return
-        lastMove = next
-        if (!moveRaf) moveRaf = requestAnimationFrame(applyMove)
+        const delta = (horizontal ? next.clientX : next.clientY) - start
+        lastRatio = clamp(divider.ratio + delta / length)
+        // The resize session coalesces paints; a second RAF adds a frame of lag.
+        live.current.move(divider.id, lastRatio)
       }
       const finish = (commit: boolean): void => {
-        if (moveRaf) {
-          cancelAnimationFrame(moveRaf)
-          moveRaf = 0
-          applyMove()
-        }
+        if (!commit) live.current.move(divider.id, divider.ratio)
         live.current.end()
         if (commit) resize.current(divider.id, lastRatio, 'commit')
         else resize.current(divider.id, divider.ratio, 'cancel')

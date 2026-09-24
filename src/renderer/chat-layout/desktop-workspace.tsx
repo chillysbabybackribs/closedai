@@ -141,7 +141,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   }, [imageTabId, layout.showBrowser])
   const select = useCallback((id: string): void => { void layout.focusPane(id) }, [layout.focusPane])
   const onDock = useCallback((id: string | null, target: string, edge: import('./layout-tree.js').DockEdge | null, singleTab?: boolean) => {
-    void layout.dock(id, target, edge, singleTab)
+    return layout.dock(id, target, edge, singleTab)
   }, [layout.dock])
   const onSelectTab = useCallback((id: string) => { void layout.activateTab(id) }, [layout.activateTab])
   const onCloseTab = useCallback((id: string) => { void layout.closeTab(id) }, [layout.closeTab])

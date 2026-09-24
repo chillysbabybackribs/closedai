@@ -48,7 +48,7 @@ type ChatCanvasProps = {
   onOpenPresets?: () => void
   /** Tile canvas content box, for arranging presets against the real space. */
   onSizeChange?: (size: { width: number; height: number }) => void
-  onDock: (id: string | null, target: string, edge: DockEdge | null, singleTab?: boolean) => void
+  onDock: (id: string | null, target: string, edge: DockEdge | null, singleTab?: boolean) => void | Promise<void>
   onHide: (id: string) => void
   onResize: (id: string, ratio: number, phase?: SplitResizePhase) => void
 }
@@ -74,6 +74,12 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   })
   const [dragging, setDragging] = useState<{ id: string; singleTab: boolean } | null>(null)
   const [drop, setDrop] = useState<{ target: string; edge: DockEdge | null } | null>(null)
+  // Keep the accepted frame mounted while chat.openChat crosses IPC. Native dragend
+  // ends the gesture, not the asynchronous layout transaction.
+  const [settling, setSettling] = useState<ReturnType<typeof layoutGeometry> | null>(null)
+  const settlingRef = useRef(false)
+  const dragActiveListener = useRef(onDragActive)
+  dragActiveListener.current = onDragActive
   const dropTarget = useRef<typeof drop>(null)
   const dropPaintRaf = useRef(0)
   const finishDrag = useCallback((): void => {
@@ -84,8 +90,8 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     dropTarget.current = null
     setDragging(null)
     setDrop(null)
-    onDragActive(false)
-  }, [onDragActive])
+    dragActiveListener.current(false)
+  }, [])
   const queueDrop = (next: typeof drop): void => {
     if (next?.target === dropTarget.current?.target && next?.edge === dropTarget.current?.edge) return
     dropTarget.current = next
@@ -120,9 +126,9 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   }, [])
   useEffect(() => {
     const start = (event: DragEvent): void => {
-      if (!event.dataTransfer?.types.includes(CHAT_DRAG_TYPE)) return
+      if (settlingRef.current || !event.dataTransfer?.types.includes(CHAT_DRAG_TYPE)) return
       setDragging({ id: event.dataTransfer.getData(CHAT_DRAG_TYPE), singleTab: event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE) })
-      onDragActive(true)
+      dragActiveListener.current(true)
     }
     const clear = (): void => { finishDrag() }
     const cancel = (event: KeyboardEvent): void => { if (event.key === 'Escape') clear() }
@@ -137,9 +143,10 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       window.removeEventListener('drop', clear)
       window.removeEventListener('blur', clear)
       window.removeEventListener('keydown', cancel)
-      onDragActive(false)
+      if (dropPaintRaf.current) cancelAnimationFrame(dropPaintRaf.current)
+      dragActiveListener.current(false)
     }
-  }, [finishDrag, onDragActive])
+  }, [finishDrag])
   const [soloPaneId, setSoloPaneId] = useState<string | null>(null)
   useEffect(() => { setSoloPaneId(null) }, [browserRevealVersion])
   const visibleTree = browserVisible ? tree : removePane(tree, BROWSER_PANE_ID)!
@@ -147,14 +154,15 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   const splitPreview = useMemo(() => (dragging && drop?.edge
     ? dragSplitPreview(tree, dragging.id, drop, dragging.singleTab, size.width, size.height, browserVisible)
     : null), [dragging, drop, tree, size.width, size.height, browserVisible])
-  const minimum = splitPreview?.minimum ?? minimumSize(visibleTree)
+  const preview = settling ?? splitPreview
+  const minimum = preview?.minimum ?? minimumSize(visibleTree)
   // Render the complete proposed layout: splitting the active tab also creates a
   // tile for its remaining siblings. Geometry alone cannot make that tile visible.
-  const displayedTiles = dragPreviewPanes(geometry.panes, splitPreview)
+  const displayedTiles = dragPreviewPanes(geometry.panes, preview)
   const renderedTiles = browserVisible || displayedTiles.some((pane) => pane.id === BROWSER_PANE_ID)
     ? displayedTiles
     : [...displayedTiles, { id: BROWSER_PANE_ID, tabs: [BROWSER_PANE_ID], rect: { x: 0, y: 0, width: 0, height: 0 } }]
-  const layoutDividers = splitPreview?.dividers ?? geometry.dividers
+  const layoutDividers = preview?.dividers ?? geometry.dividers
   const chatCount = paneIds(tree).length
   const canMaximize = chatCount > 1 || (browserVisible && chatCount >= 1)
   const soloTile = soloPaneId
@@ -222,17 +230,27 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
           queueDrop(null)
         }
       }}
-      onDropCapture={(event) => {
+      onDropCapture={async (event) => {
         const source = event.dataTransfer.getData(CHAT_DRAG_TYPE)
-        if (!source) return
+        if (!source || settlingRef.current) return
         event.preventDefault()
         event.stopPropagation()
         const bounds = event.currentTarget.getBoundingClientRect()
         const target = source === BROWSER_PANE_ID
           ? resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
           : chatDropAt(geometry.panes, event.clientX - bounds.left, event.clientY - bounds.top, dropTarget.current)
-        if (!busy && target) onDock(source, target.target, target.edge, event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE))
+        if (busy || !target) { finishDrag(); return }
+        const singleTab = event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE)
+        const accepted = dragSplitPreview(tree, source, target, singleTab, size.width, size.height, browserVisible)
+        settlingRef.current = true
+        setSettling(accepted)
         finishDrag()
+        try {
+          await onDock(source, target.target, target.edge, singleTab)
+        } finally {
+          settlingRef.current = false
+          setSettling(null)
+        }
       }}>
       {renderedTiles.map(({ id: activeId, tabs, rect }) => {
         const isThisTileSolo = soloTile ? (soloTile.id === activeId || soloTile.tabs.includes(activeId)) : false

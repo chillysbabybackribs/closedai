@@ -51,6 +51,9 @@ export function createSplitResizeSession(paint: () => void): {
         cancelAnimationFrame(raf)
         raf = 0
       }
+      // Flush the final pointer position (or restored start ratio) before ending.
+      // React may not write unchanged styles back after a cancelled DOM-only resize.
+      if (live.active && live.ratio) paint()
       live.active = false
       live.ratio = null
     }

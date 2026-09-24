@@ -113,15 +113,8 @@
 .chat-layout-workspace-dock span { writing-mode: vertical-rl; font-size: 11px; color: var(--chrome-fg-strong); }
 .chat-layout-workspace-dock[data-active='true'] { background: rgb(138 180 248 / 35%); border-style: solid; }
 .chat-layout-canvas { position: relative; width: 100%; height: 100%; }
-.chat-layout-canvas[data-layout-drag='true'] .chat-layout-tile,
-.chat-layout-canvas[data-layout-drag='true'] .chat-layout-divider {
-  will-change: left, top, width, height;
-  transition: left 90ms ease-out, top 90ms ease-out, width 90ms ease-out, height 90ms ease-out;
-}
-@media (prefers-reduced-motion: reduce) {
-  .chat-layout-canvas[data-layout-drag='true'] .chat-layout-tile,
-  .chat-layout-canvas[data-layout-drag='true'] .chat-layout-divider { transition: none; }
-}
+/* Preview geometry is already frame-coalesced. Animating dimensions repeatedly reflows
+   transcripts and interrupts the final frame when the native drag ends. */
 /* Geometry supplies both dimensions, so descendants can adapt to short rows as well as columns. */
 /* Each tile is a card lifted off the chassis: one drawn edge, a short contact shadow, and
    a soft cast. Dividers and the viewport gutter show the chassis between cards. */
