@@ -208,19 +208,19 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   // Preview movement can put a different DOM element under a stationary pointer.
   // Accept dragenter too, so release works before Chromium emits another dragover.
   const acceptDrag = (event: ReactDragEvent<HTMLDivElement>): void => {
-        if (!dragging || !event.dataTransfer.types.includes(CHAT_DRAG_TYPE)) return
-        event.stopPropagation()
-        if (busy) { event.dataTransfer.dropEffect = 'none'; return }
-        event.preventDefault()
-        if (soloTile) setSoloPaneId(null)
-        const bounds = event.currentTarget.getBoundingClientRect()
-        const next = dragging.id === BROWSER_PANE_ID
-          ? resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
-          : chatDropAt(geometry.panes, event.clientX - bounds.left, event.clientY - bounds.top, dropTarget.current)
-        event.dataTransfer.dropEffect = next ? 'move' : 'none'
-        if (next?.target === dropTarget.current?.target && next?.edge === dropTarget.current?.edge) return
-        queueDrop(next)
-      }
+    if (!dragging || !event.dataTransfer.types.includes(CHAT_DRAG_TYPE)) return
+    event.stopPropagation()
+    if (busy) { event.dataTransfer.dropEffect = 'none'; return }
+    event.preventDefault()
+    if (soloTile) setSoloPaneId(null)
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const next = dragging.id === BROWSER_PANE_ID
+      ? resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
+      : chatDropAt(geometry.panes, event.clientX - bounds.left, event.clientY - bounds.top, dropTarget.current)
+    event.dataTransfer.dropEffect = next ? 'move' : 'none'
+    if (next?.target === dropTarget.current?.target && next?.edge === dropTarget.current?.edge) return
+    queueDrop(next)
+  }
 
   return <div className="chat-layout-viewport" ref={viewport}>
     <div className="chat-layout-canvas" ref={canvasRef} style={{ minWidth: minimum.width, minHeight: minimum.height }}
