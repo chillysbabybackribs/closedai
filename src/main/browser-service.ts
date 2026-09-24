@@ -351,7 +351,14 @@ export class BrowserService extends EventEmitter {
     // The renderer holds its freeze still until this call resolves. Returning the moment the
     // view is made visible drops the still onto a surface that has not painted yet, which is
     // the blank the still existed to cover; wait for the frame instead.
-    if (revealing && active) await settleFrames(active.view.webContents, REVEAL_SETTLE_MS)
+    if (revealing && active) {
+      await settleFrames(active.view.webContents, REVEAL_SETTLE_MS)
+      const contents = active.view.webContents
+      if (!contents.isDestroyed() && browserSurfaceVisibility(this.bounds).pageVisible) {
+        contents.setBackgroundThrottling(false)
+        contents.setBackgroundThrottling(true)
+      }
+    }
   }
 
   async navigate(input: string): Promise<void> {
@@ -505,11 +512,9 @@ export class BrowserService extends EventEmitter {
     if (this.overlayCapture) return this.overlayCapture
     const tab = this.active
     if (!(tab instanceof BrowserTab)) return null
-    // Keep overlay previews in the resident window. Reparenting through a hidden host
-    // can leave Chromium's drawing widget hidden when the drag ends.
-    const release = this.rendering.pin(tab.id)
-    const releaseCadence = this.cadence.hold(tab.id)
-    const pending = settleFrames(tab.view.webContents, CAPTURE_SETTLE_MS)
+    const release = this.leaseTabRendering(tab.id) ?? (() => {})
+    const pending = (this.captureSurfaces.has(tab.id)
+      ? Promise.resolve(false) : settleFrames(tab.view.webContents, CAPTURE_SETTLE_MS))
       .then(() => tab.screenshot())
       .then((imageUrl): BrowserShot | null => {
         if (!imageUrl || this.active !== tab) return null
@@ -518,7 +523,7 @@ export class BrowserService extends EventEmitter {
       })
       .catch(() => null)
       .finally(() => {
-        try { releaseCadence(); release() } finally { this.overlayCapture = null }
+        try { release() } finally { this.overlayCapture = null }
       })
     this.overlayCapture = pending
     return pending
