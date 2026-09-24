@@ -27,7 +27,7 @@ export type BrowserServiceTabOpsHost = {
 }
 
 export function parkWebBrowserTabs(host: BrowserServiceTabOpsHost): void {
-  const bounds = { ...host.bounds, x: host.window.getContentBounds().width, occluded: true }
+  const bounds = { ...host.bounds, occluded: true }
   for (const tab of host.tabs) {
     if (tab instanceof BrowserTab) tab.applyBounds(bounds, false)
   }

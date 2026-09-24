@@ -198,9 +198,10 @@ export class BrowserTab extends EventEmitter {
     this.bounds = sanitizeBounds(bounds)
     this.visible = show && this.bounds.width > 1 && this.bounds.height > 1
     if (!show && bounds.occluded === true && this.bounds.width > 1 && this.bounds.height > 1) {
-      // Keep the loaded native surface visible and full-sized so Chromium continues producing
-      // frames. The renderer's freeze still covers the browser box while this view sits outside
-      // the window; restoring its real bounds avoids the setVisible(false/true) blanking bug.
+      // Keep the loaded native surface mapped and full-sized so Chromium keeps laying it out and
+      // producing frames at the pane's size. The renderer's freeze still covers the browser box
+      // while this view sits almost entirely outside the window; restoring its real bounds later
+      // avoids the setVisible(false/true) blanking bug.
       this.view.setBounds(browserOccludedBounds(this.surfaceBounds()))
       this.view.setVisible(true)
       return

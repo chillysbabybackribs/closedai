@@ -2,7 +2,6 @@ import type { BrowserBounds } from '../shared/types.js'
 import { BrowserTab } from './browser-tab.js'
 import { browserSurfaceVisibility } from './browser-surface-visibility.js'
 import { prepareTabSurfaceForTool } from './browser-tab-activation.js'
-import type { HiddenCaptureSurfaces } from './browser-capture-surface.js'
 import type { TabRenderingPolicy } from './browser-tab-rendering.js'
 
 export function prepareBrowserTabForTool(options: {
@@ -11,11 +10,9 @@ export function prepareBrowserTabForTool(options: {
   activeId: string | null
   bounds: BrowserBounds
   rendering: TabRenderingPolicy
-  captureSurfaces: HiddenCaptureSurfaces
   attachTabView: (tabId: string) => void
 }): void {
-  const { tab, active, activeId, bounds, rendering, captureSurfaces, attachTabView } = options
-  if (captureSurfaces.has(tab.id)) return
+  const { tab, active, activeId, bounds, rendering, attachTabView } = options
   const visibility = browserSurfaceVisibility(bounds)
   if (rendering.describe(tab.id).pins > 0 && (tab.id !== activeId || !visibility.pageVisible)) {
     if (active instanceof BrowserTab && active.id !== tab.id && visibility.pageVisible) {
