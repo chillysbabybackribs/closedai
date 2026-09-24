@@ -1,10 +1,18 @@
 /* A quiet utility row: it sits at half strength under the answer and comes forward when the
    turn is hovered or one of its controls holds focus. */
+.message-actions-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
 .message-actions {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-top: 8px;
   color: var(--muted-foreground);
   opacity: 0.55;
   transition: opacity 120ms ease;
@@ -51,7 +59,8 @@
 }
 
 .message-timestamp {
-  margin-left: 4px;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
   opacity: 0;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
@@ -59,12 +68,12 @@
 }
 
 .prompt-message-assistant:hover .message-timestamp,
-.message-actions:focus-within .message-timestamp {
+.message-actions-wrap:focus-within .message-timestamp {
   opacity: 1;
 }
 
 .message-action-error {
-  display: block;
+  flex-basis: 100%;
   margin-top: 4px;
   color: var(--muted-foreground);
   font-size: 12px;

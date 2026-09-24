@@ -96,11 +96,11 @@ export function MessageActions({ item, context, showContinue }: {
             <MessageSquareShare aria-hidden="true" />
           </button>
         ) : null}
-        {timestamp ? <time className="message-timestamp" dateTime={timestamp.toISOString()} title={timestamp.toLocaleString()}>
-          {timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-        </time> : null}
         <span className="sr-only" role="status">{copied ? 'Response copied' : ''}</span>
       </div>
+      {timestamp ? <time className="message-timestamp" dateTime={timestamp.toISOString()} title={timestamp.toLocaleString()}>
+        {timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+      </time> : null}
       {error ? <span className="message-action-error" role="alert">{error}</span> : null}
     </div>
   )

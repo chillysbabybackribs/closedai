@@ -51,6 +51,23 @@ test('list is scoped to the working directory and newest first', () => {
   assert.deepEqual(store.list('/w').map((record) => record.id), [b.id, a.id])
 })
 
+test('findByThreadId uses an index instead of scanning the store', () => {
+  const store = ChatStore.inMemory()
+  const record = store.create({
+    ...seed,
+    codexThreadId: 'thread-lookup',
+    title: 'T',
+    titleSource: 'generated',
+    messageSentAt: 1
+  })
+  assert.equal(store.findByThreadId('thread-lookup')?.id, record.id)
+  store.update(record.id, { modelId: 'claude:opus', claudeSessionId: 's9' })
+  assert.equal(store.findByThreadId('claude:s9')?.id, record.id)
+  assert.equal(store.findByThreadId('thread-lookup'), undefined)
+  store.remove(record.id)
+  assert.equal(store.findByThreadId('claude:s9'), undefined)
+})
+
 test('adopt records a provider thread under the thread id and only refreshes a known one', () => {
   const store = ChatStore.inMemory()
   const adopted = store.adopt('/w', '/w', { id: 'claude:abc', title: 'Older work', preview: 'p', createdAt: 5, updatedAt: 9 }, null)
