@@ -221,7 +221,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
         onOpenView={onOpenView} onShowBrowser={revealBrowser} viewHints={viewHints}
         onRenameChat={onRename} onTogglePin={onTogglePin} onContinueChat={(id) => { void continueChatRef.current(id) }}
         onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets} onSizeChange={onSizeChange}
-        onHide={onHide} onResize={layout.resize}
+        onMinimize={layout.minimize} onPreview={layout.setPreviewPaneId} onHide={onHide} onResize={layout.resize}
         renderPane={renderPane}
       renderBrowser={renderBrowser}
     />

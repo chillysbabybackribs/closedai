@@ -34,6 +34,8 @@ export const UI_CONTROLS = {
   'layout.pin': 'Tab context menu: pin or unpin this chat in history; item is the chat id',
   'layout.pause-tab': 'Tab context menu: pause the running task in this chat without opening it; item is the chat id',
   'layout.resume-tab': 'Tab context menu: resume a paused task in this chat; item is the chat id',
+  'layout.pane-minimize': 'Dock the whole tab group in its regional rail, preserving chats and drafts; absent on the last visible chat; item is the active tab id',
+  'layout.dock-restore': 'Restore a docked group; hover or keyboard focus previews its latest messages live; item is the active tab id',
   'layout.pane-hide': 'Tab context menu or header control: remove this tile from the layout without stopping its chat; item is the chat id',
   'layout.presets': 'Header context-menu row (also View → Workspace layout): open the workspace layout dialog; item is the chat id',
   'layout.presets-dialog': 'Workspace layout dialog: pick a starting arrangement that saves like any hand-built layout',

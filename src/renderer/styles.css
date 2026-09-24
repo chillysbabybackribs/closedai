@@ -12,6 +12,7 @@
 @import "./styles/titlebar-menu.css";
 @import "./styles/dropdown-menu.css";
 @import "./styles/chat/layout.css";
+@import "./styles/chat/dock.css";
 @import "./styles/chat/layout-views.css";
 @import "./styles/chat/layout-presets.css";
 @import "./styles/browser.css";
