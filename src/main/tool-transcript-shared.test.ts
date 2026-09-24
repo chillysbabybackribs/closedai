@@ -5,7 +5,9 @@ import { nullableString, recordOf, recordOfOrEmpty, stringOf } from './json-coer
 import {
   WITHHELD_TOOL_OUTPUT,
   closedAiToolItem,
+  editDiff,
   jsonPreview,
+  prefixLines,
   promoteCaptureToScreenshot,
   recordableToolOutput,
   toolResultWithheld
@@ -64,4 +66,14 @@ test('promoteCaptureToScreenshot requires a valid capture surface and image', ()
     caption: 'nope',
     imageUrl: 'data:image/png;base64,AAA'
   }), null)
+})
+
+test('a final newline ends the last diff line instead of adding an empty one', () => {
+  assert.equal(prefixLines('+', 'a\nb\n'), '+a\n+b')
+  assert.equal(prefixLines('+', 'a\r\n'), '+a')
+  assert.equal(prefixLines('+', '\n'), '+')
+  assert.equal(prefixLines('+', 'a\n\n'), '+a\n+')
+  assert.equal(prefixLines('+', ''), '')
+  assert.equal(editDiff('line 10\n', 'ten\n'), '-line 10\n+ten')
+  assert.equal(editDiff('', 'new\n'), '+new')
 })

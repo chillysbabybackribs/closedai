@@ -1,6 +1,6 @@
 import type { ChatFileChange, ChatTranscriptItem } from '../../shared/chat.js'
 import { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
-import { closedAiToolItem, jsonPreview, recordableToolOutput } from '../tool-transcript-shared.js'
+import { closedAiToolItem, editDiff, jsonPreview, recordableToolOutput } from '../tool-transcript-shared.js'
 
 // Pure translations from ACP tool calls to the transcript vocabulary Codex items use, so the
 // renderer's activity rows and diffs need no provider branches. ACP already normalises what the
@@ -142,14 +142,6 @@ function detailOf(rawInput: Record<string, unknown>): string {
 function unquoteTitle(title: string): string {
   const match = /^`(.*)`$/s.exec(title.trim())
   return match ? match[1]! : title
-}
-
-function editDiff(before: string, after: string): string {
-  return [before ? prefixLines('-', before) : '', after ? prefixLines('+', after) : ''].filter(Boolean).join('\n')
-}
-
-function prefixLines(prefix: string, text: string): string {
-  return text ? text.split('\n').map((line) => `${prefix}${line}`).join('\n') : ''
 }
 
 function exitCodeIn(text: string): number | null {

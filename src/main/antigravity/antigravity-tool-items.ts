@@ -1,6 +1,6 @@
 import type { ChatFileChange, ChatTranscriptItem } from '../../shared/chat.js'
 import { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
-import { closedAiToolItem, jsonPreview, recordableToolOutput } from '../tool-transcript-shared.js'
+import { closedAiToolItem, editDiff, jsonPreview, prefixLines, recordableToolOutput } from '../tool-transcript-shared.js'
 
 // Pure translations from `agy` tool steps to the transcript vocabulary Codex items use, so the
 // renderer's activity rows and diffs need no provider branches. Native tools map by name and
@@ -82,14 +82,6 @@ function fileChange(name: string, input: Record<string, unknown>): ChatFileChang
   }
   if (name === 'notebook_edit') return { path, kind: 'update', diff: prefixLines('+', stringOf(input.NewSource)) }
   return null
-}
-
-function editDiff(before: string, after: string): string {
-  return [before ? prefixLines('-', before) : '', after ? prefixLines('+', after) : ''].filter(Boolean).join('\n')
-}
-
-function prefixLines(prefix: string, text: string): string {
-  return text ? text.split('\n').map((line) => `${prefix}${line}`).join('\n') : ''
 }
 
 function nativeLabel(name: string, input: Record<string, unknown>): { label: string; detail: string } {

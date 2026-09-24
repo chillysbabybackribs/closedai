@@ -87,3 +87,18 @@ export function promoteCaptureToScreenshot(input: PromoteCaptureInput): Extract<
 function clip(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max)}…` : text
 }
+
+/** A replace edit as removed-then-added lines, the diff shape every lane's file rows count. */
+export function editDiff(before: string, after: string): string {
+  return [prefixLines('-', before), prefixLines('+', after)].filter(Boolean).join('\n')
+}
+
+/**
+ * Each line of `text` behind a diff marker. A final newline ends the last line rather than
+ * starting another, so "a\n" is one line: splitting it raw added an empty marked line to nearly
+ * every edit and inflated the +/− counts on activity rows.
+ */
+export function prefixLines(prefix: string, text: string): string {
+  if (!text) return ''
+  return text.replace(/\r?\n$/, '').split('\n').map((line) => `${prefix}${line}`).join('\n')
+}

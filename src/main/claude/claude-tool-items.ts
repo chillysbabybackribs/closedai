@@ -1,6 +1,6 @@
 import type { ChatFileChange, ChatTranscriptItem } from '../../shared/chat.js'
 import { recordOfOrEmpty, stringOf } from '../json-coerce.js'
-import { closedAiToolItem, jsonPreview, promoteCaptureToScreenshot, recordableToolOutput } from '../tool-transcript-shared.js'
+import { closedAiToolItem, editDiff, jsonPreview, prefixLines, promoteCaptureToScreenshot, recordableToolOutput } from '../tool-transcript-shared.js'
 
 // Pure translations from Claude Code tool calls to the transcript vocabulary Codex items use,
 // so the renderer's activity rows, diffs, and screenshots need no provider branches. Built-in
@@ -86,7 +86,7 @@ function fileChange(name: string, input: Record<string, unknown>): ChatFileChang
     const path = stringOf(input.file_path)
     if (!path) return null
     const edits = Array.isArray(input.edits) ? input.edits.map(recordOfOrEmpty) : [input]
-    const diff = edits.map(editDiff).filter(Boolean).join('\n@@\n')
+    const diff = edits.map((edit) => editDiff(stringOf(edit.old_string), stringOf(edit.new_string))).filter(Boolean).join('\n@@\n')
     return { path, kind: 'update', diff }
   }
   if (name === 'NotebookEdit') {
@@ -94,16 +94,6 @@ function fileChange(name: string, input: Record<string, unknown>): ChatFileChang
     return path ? { path, kind: 'update', diff: prefixLines('+', stringOf(input.new_source)) } : null
   }
   return null
-}
-
-function editDiff(edit: Record<string, unknown>): string {
-  const before = stringOf(edit.old_string)
-  const after = stringOf(edit.new_string)
-  return [before ? prefixLines('-', before) : '', after ? prefixLines('+', after) : ''].filter(Boolean).join('\n')
-}
-
-function prefixLines(prefix: string, text: string): string {
-  return text ? text.split('\n').map((line) => `${prefix}${line}`).join('\n') : ''
 }
 
 function planText(name: string, input: Record<string, unknown>): string {
